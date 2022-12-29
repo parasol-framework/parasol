@@ -621,17 +621,20 @@ static const FieldArray clVectorShapeFields[] = {
    END_FIELD
 };
 
+//********************************************************************************************************************
+
 static ERROR init_supershape(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clVectorShape,
-      FID_BaseClassID|TLONG, ID_VECTOR,
-      FID_SubClassID|TLONG,  ID_VECTORSHAPE,
-      FID_Name|TSTRING,      "VectorShape",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Actions|TPTR,      clVectorShapeActions,
-      FID_Fields|TARRAY,     clVectorShapeFields,
-      FID_Size|TLONG,        sizeof(objVectorShape),
-      FID_Path|TSTR,         "modules:vector",
-      TAGEND));
+   clVectorShape = objMetaClass::create::global(
+      fl::BaseClassID(ID_VECTOR),
+      fl::SubClassID(ID_VECTORSHAPE),
+      fl::Name("VectorShape"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clVectorShapeActions),
+      fl::Fields(clVectorShapeFields),
+      fl::Size(sizeof(objVectorShape)),
+      fl::Path(MOD_PATH));
+
+   return clVectorShape ? ERR_Okay : ERR_AddClass;
 }
 

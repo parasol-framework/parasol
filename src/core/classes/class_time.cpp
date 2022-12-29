@@ -265,24 +265,16 @@ static const MethodArray TimeMethods[] = {
 
 extern "C" ERROR add_time_class(void)
 {
-   if (!NewPrivateObject(ID_METACLASS, 0, (OBJECTPTR *)&TimeClass)) {
-      if (SetFields(TimeClass,
-            FID_BaseClassID|TLONG,   ID_TIME,
-            FID_ClassVersion|TFLOAT, VER_TIME,
-            FID_Name|TSTRING,   "Time",
-            FID_Category|TLONG, CCF_SYSTEM,
-            FID_Actions|TPTR,   TimeActions,
-            FID_Methods|TARRAY, TimeMethods,
-            FID_Fields|TARRAY,  TimeFields,
-            FID_Size|TLONG,     sizeof(objTime),
-            FID_Path|TSTR,      "modules:core",
-            TAGEND) IS ERR_Okay) {
-         if (!acInit(TimeClass)) {
-            return ERR_Okay;
-         }
-         else return ERR_Init;
-      }
-      else return ERR_SetField;
-   }
-   else return ERR_NewObject;
+   TimeClass = objMetaClass::create::global(
+      fl::BaseClassID(ID_TIME),
+      fl::ClassVersion(VER_TIME),
+      fl::Name("Time"),
+      fl::Category(CCF_SYSTEM),
+      fl::Actions(TimeActions),
+      fl::Methods(TimeMethods),
+      fl::Fields(TimeFields),
+      fl::Size(sizeof(objTime)),
+      fl::Path("modules:core"));
+
+   return TimeClass ? ERR_Okay : ERR_AddClass;
 }

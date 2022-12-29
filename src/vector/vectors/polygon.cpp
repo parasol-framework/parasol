@@ -555,16 +555,19 @@ static const FieldArray clPolygonFields[] = {
    END_FIELD
 };
 
+//********************************************************************************************************************
+
 static ERROR init_polygon(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clVectorPolygon,
-      FID_BaseClassID|TLONG, ID_VECTOR,
-      FID_SubClassID|TLONG,  ID_VECTORPOLYGON,
-      FID_Name|TSTRING,      "VectorPolygon",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Actions|TPTR,      clPolygonActions,
-      FID_Fields|TARRAY,     clPolygonFields,
-      FID_Size|TLONG,        sizeof(objVectorPoly),
-      FID_Path|TSTR,         MOD_PATH,
-      TAGEND));
+   clVectorPolygon = objMetaClass::create::global(
+      fl::BaseClassID(ID_VECTOR),
+      fl::SubClassID(ID_VECTORPOLYGON),
+      fl::Name("VectorPolygon"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clPolygonActions),
+      fl::Fields(clPolygonFields),
+      fl::Size(sizeof(objVectorPoly)),
+      fl::Path(MOD_PATH));
+
+   return clVectorPolygon ? ERR_Okay : ERR_AddClass;
 }

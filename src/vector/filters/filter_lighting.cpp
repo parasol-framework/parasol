@@ -891,15 +891,16 @@ static const FieldArray clLightingFXFields[] = {
 
 ERROR init_lightingfx(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clLightingFX,
-      FID_BaseClassID|TLONG, ID_FILTEREFFECT,
-      FID_SubClassID|TLONG,  ID_LIGHTINGFX,
-      FID_Name|TSTRING,      "LightingFX",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Actions|TPTR,      clLightingFXActions,
-      FID_Methods|TARRAY,    clLightingFXMethods,
-      FID_Fields|TARRAY,     clLightingFXFields,
-      FID_Size|TLONG,        sizeof(objLightingFX),
-      FID_Path|TSTR,         MOD_PATH,
-      TAGEND));
+   clLightingFX = objMetaClass::create::global(
+      fl::BaseClassID(ID_FILTEREFFECT),
+      fl::SubClassID(ID_LIGHTINGFX),
+      fl::Name("LightingFX"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clLightingFXActions),
+      fl::Methods(clLightingFXMethods),
+      fl::Fields(clLightingFXFields),
+      fl::Size(sizeof(objLightingFX)),
+      fl::Path(MOD_PATH));
+
+   return clLightingFX ? ERR_Okay : ERR_AddClass;
 }

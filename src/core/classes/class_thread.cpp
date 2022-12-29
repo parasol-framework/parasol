@@ -664,20 +664,15 @@ static const FieldArray clFields[] = {
 
 extern "C" ERROR add_thread_class(void)
 {
-   if (!NewPrivateObject(ID_METACLASS, 0, (OBJECTPTR *)&ThreadClass)) {
-      if (!SetFields(ThreadClass,
-            FID_ClassVersion|TFLOAT, VER_THREAD,
-            FID_Name|TSTR,      "Thread",
-            FID_Category|TLONG, CCF_SYSTEM,
-            FID_Actions|TPTR,   clThreadActions,
-            FID_Methods|TARRAY, clThreadMethods,
-            FID_Fields|TARRAY,  clFields,
-            FID_Size|TLONG,     sizeof(extThread),
-            FID_Path|TSTR,      "modules:core",
-            TAGEND)) {
-         return acInit(ThreadClass);
-      }
-      else return ERR_SetField;
-   }
-   else return ERR_NewObject;
+   ThreadClass = objMetaClass::create::global(
+      fl::ClassVersion(VER_THREAD),
+      fl::Name("Thread"),
+      fl::Category(CCF_SYSTEM),
+      fl::Actions(clThreadActions),
+      fl::Methods(clThreadMethods),
+      fl::Fields(clFields),
+      fl::Size(sizeof(extThread)),
+      fl::Path("modules:core"));
+
+   return ThreadClass ? ERR_Okay : ERR_AddClass;
 }

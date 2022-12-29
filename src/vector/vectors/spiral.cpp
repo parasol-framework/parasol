@@ -21,7 +21,7 @@ class objVectorSpiral : public extVector {
    LONG Dimensions;
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void generate_spiral(objVectorSpiral *Vector)
 {
@@ -55,7 +55,7 @@ static void generate_spiral(objVectorSpiral *Vector)
    Vector->BY2 = max_y;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR SPIRAL_NewObject(objVectorSpiral *Self, APTR Void)
 {
@@ -342,7 +342,7 @@ static ERROR SPIRAL_SET_Width(objVectorSpiral *Self, Variable *Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const ActionArray clVectorSpiralActions[] = {
    { AC_NewObject, (APTR)SPIRAL_NewObject },
@@ -366,19 +366,20 @@ static const FieldArray clVectorSpiralFields[] = {
    END_FIELD
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR init_spiral(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clVectorSpiral,
-      FID_BaseClassID|TLONG, ID_VECTOR,
-      FID_SubClassID|TLONG,  ID_VECTORSPIRAL,
-      FID_Name|TSTRING,      "VectorSpiral",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Actions|TPTR,      clVectorSpiralActions,
-      FID_Fields|TARRAY,     clVectorSpiralFields,
-      FID_Size|TLONG,        sizeof(objVectorSpiral),
-      FID_Path|TSTR,         "modules:vector",
-      TAGEND));
+   clVectorSpiral = objMetaClass::create::global(
+      fl::BaseClassID(ID_VECTOR),
+      fl::SubClassID(ID_VECTORSPIRAL),
+      fl::Name("VectorSpiral"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clVectorSpiralActions),
+      fl::Fields(clVectorSpiralFields),
+      fl::Size(sizeof(objVectorSpiral)),
+      fl::Path(MOD_PATH));
+
+   return clVectorSpiral ? ERR_Okay : ERR_AddClass;
 }
 

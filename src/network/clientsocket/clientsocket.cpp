@@ -524,16 +524,15 @@ static const FieldArray clClientSocketFields[] = {
 
 static ERROR init_clientsocket(void)
 {
-   if (CreateObject(ID_METACLASS, 0, &clClientSocket,
-      FID_BaseClassID|TLONG,    ID_CLIENTSOCKET,
-      FID_ClassVersion|TDOUBLE, 1.0,
-      FID_Name|TSTRING,         "ClientSocket",
-      FID_Category|TLONG,       CCF_NETWORK,
-      FID_Actions|TPTR,         clClientSocketActions,
-      FID_Fields|TARRAY,        clClientSocketFields,
-      FID_Size|TLONG,           sizeof(extClientSocket),
-      FID_Path|TSTR,            MOD_PATH,
-      TAGEND) != ERR_Okay) return ERR_CreateObject;
+   clClientSocket = objMetaClass::create::global(
+      fl::BaseClassID(ID_CLIENTSOCKET),
+      fl::ClassVersion(1.0),
+      fl::Name("ClientSocket"),
+      fl::Category(CCF_NETWORK),
+      fl::Actions(clClientSocketActions),
+      fl::Fields(clClientSocketFields),
+      fl::Size(sizeof(extClientSocket)),
+      fl::Path(MOD_PATH));
 
-   return ERR_Okay;
+   return clClientSocket ? ERR_Okay : ERR_AddClass;
 }

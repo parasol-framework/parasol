@@ -1161,16 +1161,19 @@ static const FieldArray clSceneFields[] = {
    END_FIELD
 };
 
+//********************************************************************************************************************
+
 ERROR init_vectorscene(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clVectorScene,
-      FID_ClassVersion|TFLOAT, VER_VECTORSCENE,
-      FID_Name|TSTR,      "VectorScene",
-      FID_Category|TLONG, CCF_GRAPHICS,
-      FID_Actions|TPTR,   clVectorSceneActions,
-      FID_Methods|TARRAY, clVectorSceneMethods,
-      FID_Fields|TARRAY,  clSceneFields,
-      FID_Size|TLONG,     sizeof(extVectorScene),
-      FID_Path|TSTR,      "modules:vector",
-      TAGEND));
+   clVectorScene = objMetaClass::create::global(
+      fl::ClassVersion(VER_VECTORSCENE),
+      fl::Name("VectorScene"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clVectorSceneActions),
+      fl::Methods(clVectorSceneMethods),
+      fl::Fields(clSceneFields),
+      fl::Size(sizeof(extVectorScene)),
+      fl::Path(MOD_PATH));
+
+   return clVectorScene ? ERR_Okay : ERR_AddClass;
 }

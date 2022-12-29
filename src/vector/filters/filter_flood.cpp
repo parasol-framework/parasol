@@ -167,15 +167,15 @@ static const FieldArray clFloodFXFields[] = {
 
 ERROR init_floodfx(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clFloodFX,
-      FID_BaseClassID|TLONG, ID_FILTEREFFECT,
-      FID_SubClassID|TLONG,  ID_FLOODFX,
-      FID_Name|TSTRING,      "FloodFX",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Flags|TLONG,       CLF_PRIVATE_ONLY|CLF_PROMOTE_INTEGRAL,
-      FID_Actions|TPTR,      clFloodFXActions,
-      FID_Fields|TARRAY,     clFloodFXFields,
-      FID_Size|TLONG,        sizeof(objFloodFX),
-      FID_Path|TSTR,         MOD_PATH,
-      TAGEND));
+   clFloodFX = objMetaClass::create::global(
+      fl::BaseClassID(ID_FILTEREFFECT),
+      fl::SubClassID(ID_FLOODFX),
+      fl::Name("FloodFX"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clFloodFXActions),
+      fl::Fields(clFloodFXFields),
+      fl::Size(sizeof(objFloodFX)),
+      fl::Path(MOD_PATH));
+
+   return clFloodFX ? ERR_Okay : ERR_AddClass;
 }

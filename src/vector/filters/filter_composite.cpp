@@ -911,14 +911,15 @@ static const FieldArray clCompositeFXFields[] = {
 
 ERROR init_compositefx(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clCompositeFX,
-      FID_BaseClassID|TLONG, ID_FILTEREFFECT,
-      FID_SubClassID|TLONG,  ID_COMPOSITEFX,
-      FID_Name|TSTRING,      "CompositeFX",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Actions|TPTR,      clCompositeFXActions,
-      FID_Fields|TARRAY,     clCompositeFXFields,
-      FID_Size|TLONG,        sizeof(objCompositeFX),
-      FID_Path|TSTR,         MOD_PATH,
-      TAGEND));
+   clCompositeFX = objMetaClass::create::global(
+      fl::BaseClassID(ID_FILTEREFFECT),
+      fl::SubClassID(ID_COMPOSITEFX),
+      fl::Name("CompositeFX"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clCompositeFXActions),
+      fl::Fields(clCompositeFXFields),
+      fl::Size(sizeof(objCompositeFX)),
+      fl::Path(MOD_PATH));
+
+   return clCompositeFX ? ERR_Okay : ERR_AddClass;
 }

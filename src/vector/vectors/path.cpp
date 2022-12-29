@@ -505,15 +505,16 @@ static const FieldArray clPathFields[] = {
 
 static ERROR init_path(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clVectorPath,
-      FID_BaseClassID|TLONG, ID_VECTOR,
-      FID_SubClassID|TLONG,  ID_VECTORPATH,
-      FID_Name|TSTR,         "VectorPath",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Actions|TPTR,      clVectorPathActions,
-      FID_Methods|TARRAY,    clVectorPathMethods,
-      FID_Fields|TARRAY,     clPathFields,
-      FID_Size|TLONG,        sizeof(objVectorPath),
-      FID_Path|TSTR,         MOD_PATH,
-      TAGEND));
+   clVectorPath = objMetaClass::create::global(
+      fl::BaseClassID(ID_VECTOR),
+      fl::SubClassID(ID_VECTORPATH),
+      fl::Name("VectorPath"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clVectorPathActions),
+      fl::Methods(clVectorPathMethods),
+      fl::Fields(clPathFields),
+      fl::Size(sizeof(objVectorPath)),
+      fl::Path(MOD_PATH));
+
+   return clVectorPath ? ERR_Okay : ERR_AddClass;
 }

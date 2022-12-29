@@ -2827,15 +2827,16 @@ static const FieldArray clBitmapFields[] = {
 
 ERROR create_bitmap_class(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clBitmap,
-      FID_ClassVersion|TFLOAT, VER_BITMAP,
-      FID_Name|TSTR,      "Bitmap",
-      FID_Category|TLONG, CCF_GRAPHICS,
-      FID_Actions|TPTR,   clBitmapActions,
-      FID_Methods|TARRAY, clBitmapMethods,
-      FID_Fields|TARRAY,  clBitmapFields,
-      FID_Size|TLONG,     sizeof(extBitmap),
-      FID_Path|TSTR,      MOD_PATH,
-      TAGEND));
+   clBitmap = objMetaClass::create::global(
+      fl::ClassVersion(VER_BITMAP),
+      fl::Name("Bitmap"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clBitmapActions),
+      fl::Methods(clBitmapMethods),
+      fl::Fields(clBitmapFields),
+      fl::Size(sizeof(extBitmap)),
+      fl::Path(MOD_PATH));
+
+   return clBitmap ? ERR_Okay : ERR_AddClass;
 }
 

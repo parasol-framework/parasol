@@ -899,14 +899,15 @@ static const FieldArray clProxyFields[] = {
 
 ERROR init_proxy(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clProxy,
-      FID_ClassVersion|TFLOAT, VER_PROXY,
-      FID_Name|TSTR,      "Proxy",
-      FID_Category|TLONG, CCF_NETWORK,
-      FID_Actions|TPTR,   clProxyActions,
-      FID_Methods|TARRAY, clProxyMethods,
-      FID_Fields|TARRAY,  clProxyFields,
-      FID_Size|TLONG,     sizeof(extProxy),
-      FID_Path|TSTR,      MOD_PATH,
-      TAGEND));
+   clProxy = objMetaClass::create::global(
+      fl::ClassVersion(VER_PROXY),
+      fl::Name("Proxy"),
+      fl::Category(CCF_NETWORK),
+      fl::Actions(clProxyActions),
+      fl::Methods(clProxyMethods),
+      fl::Fields(clProxyFields),
+      fl::Size(sizeof(extProxy)),
+      fl::Path(MOD_PATH));
+
+   return clProxy ? ERR_Okay : ERR_AddClass;
 }

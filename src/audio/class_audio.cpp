@@ -2835,17 +2835,18 @@ static const FieldArray clAudioFields[] = {
 
 ERROR add_audio_class(void)
 {
-   return CreateObject(ID_METACLASS, 0, &clAudio,
-      FID_BaseClassID|TLONG,   ID_AUDIO,
-      FID_ClassVersion|TFLOAT, 1.0,
-      FID_Name|TSTRING,        "Audio",
-      FID_Category|TLONG,      CCF_AUDIO,
-      FID_Actions|TPTR,        clAudioActions,
-      FID_Methods|TARRAY,      clAudioMethods,
-      FID_Fields|TARRAY,       clAudioFields,
-      FID_Size|TLONG,          sizeof(extAudio),
-      FID_Path|TSTR,           MOD_PATH,
-      TAGEND);
+   clAudio = objMetaClass::create::global(
+      fl::BaseClassID(ID_AUDIO),
+      fl::ClassVersion(1.0),
+      fl::Name("Audio"),
+      fl::Category(CCF_AUDIO),
+      fl::Actions(clAudioActions),
+      fl::Methods(clAudioMethods),
+      fl::Fields(clAudioFields),
+      fl::Size(sizeof(extAudio)),
+      fl::Path(MOD_PATH));
+
+   return clAudio ? ERR_Okay : ERR_AddClass;
 }
 
 void free_audio_class(void)

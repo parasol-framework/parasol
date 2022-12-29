@@ -544,15 +544,16 @@ static const FieldArray clSVGFields[] = {
 
 static ERROR init_svg(void)
 {
-   return CreateObject(ID_METACLASS, 0, &clSVG,
-      FID_ClassVersion|TFLOAT, VER_SVG,
-      FID_Name|TSTR,      "SVG",
-      FID_Category|TLONG, CCF_GUI,
-      FID_Actions|TPTR,   clSVGActions,
-      FID_Methods|TARRAY, clSVGMethods,
-      FID_Fields|TARRAY,  clSVGFields,
-      FID_Flags|TLONG,    CLF_PRIVATE_ONLY|CLF_PROMOTE_INTEGRAL,
-      FID_Size|TLONG,     sizeof(extSVG),
-      FID_Path|TSTR,      MOD_PATH,
-      TAGEND);
+   clSVG = objMetaClass::create::global(
+      fl::ClassVersion(VER_SVG),
+      fl::Name("SVG"),
+      fl::Category(CCF_GUI),
+      fl::Actions(clSVGActions),
+      fl::Methods(clSVGMethods),
+      fl::Fields(clSVGFields),
+      fl::Flags(CLF_PROMOTE_INTEGRAL),
+      fl::Size(sizeof(extSVG)),
+      fl::Path(MOD_PATH));
+
+   return clSVG ? ERR_Okay : ERR_AddClass;
 }

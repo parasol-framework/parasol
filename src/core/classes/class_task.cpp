@@ -2994,27 +2994,18 @@ static const FieldArray clFields[] = {
 
 extern "C" ERROR add_task_class(void)
 {
-   parasol::Log log(__FUNCTION__);
+   TaskClass = objMetaClass::create::global(
+      fl::ClassVersion(VER_TASK),
+      fl::Name("Task"),
+      fl::Category(CCF_SYSTEM),
+      fl::FileExtension("*.exe|*.bat|*.com"),
+      fl::FileDescription("Executable File"),
+      fl::FileHeader("[0:$4d5a]|[0:$7f454c46]"),
+      fl::Actions(clActions),
+      fl::Methods(clTaskMethods),
+      fl::Fields(clFields),
+      fl::Size(sizeof(extTask)),
+      fl::Path("modules:core"));
 
-   log.branch();
-
-   if (!NewPrivateObject(ID_METACLASS, 0, (OBJECTPTR *)&TaskClass)) {
-      if (!SetFields(TaskClass,
-            FID_ClassVersion|TFLOAT,  VER_TASK,
-            FID_Name|TSTRING,         "Task",
-            FID_Category|TLONG,       CCF_SYSTEM,
-            FID_FileExtension|TSTR,   "*.exe|*.bat|*.com",
-            FID_FileDescription|TSTR, "Executable File",
-            FID_FileHeader|TSTR,      "[0:$4d5a]|[0:$7f454c46]",
-            FID_Actions|TPTR,         clActions,
-            FID_Methods|TARRAY,       clTaskMethods,
-            FID_Fields|TARRAY,        clFields,
-            FID_Size|TLONG,           sizeof(extTask),
-            FID_Path|TSTR,            "modules:core",
-            TAGEND)) {
-         return acInit(TaskClass);
-      }
-      else return ERR_SetField;
-   }
-   else return ERR_NewObject;
+   return TaskClass ? ERR_Okay : ERR_AddClass;
 }

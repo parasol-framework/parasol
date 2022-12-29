@@ -353,17 +353,18 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    if (LoadModule("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
 
-   return(CreateObject(ID_METACLASS, 0, &clJPEG,
-      FID_BaseClassID|TLONG,    ID_PICTURE,
-      FID_SubClassID|TLONG,     ID_JPEG,
-      FID_Name|TSTRING,         "JPEG",
-      FID_Category|TLONG,       CCF_GRAPHICS,
-      FID_FileExtension|TSTR,   "*.jpeg|*.jpeg|*.jfif",
-      FID_FileDescription|TSTR, "JPEG Picture",
-      FID_FileHeader|TSTR,      "[0:$ffd8ffe0]|[0:$ffd8ffe1]|[0:$ffd8fffe]",
-      FID_Actions|TPTR,         clActions,
-      FID_Path|TSTR,            MOD_PATH,
-      TAGEND));
+   clJPEG = objMetaClass::create::global(
+      fl::BaseClassID(ID_PICTURE),
+      fl::SubClassID(ID_JPEG),
+      fl::Name("JPEG"),
+      fl::Category(CCF_GRAPHICS),
+      fl::FileExtension("*.jpeg|*.jpeg|*.jfif"),
+      fl::FileDescription("JPEG Picture"),
+      fl::FileHeader("[0:$ffd8ffe0]|[0:$ffd8ffe1]|[0:$ffd8fffe]"),
+      fl::Actions(clActions),
+      fl::Path(MOD_PATH));
+
+   return clJPEG ? ERR_Okay : ERR_AddClass;
 }
 
 //****************************************************************************

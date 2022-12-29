@@ -1514,16 +1514,15 @@ static const FieldArray clSocketFields[] = {
 
 static ERROR init_netsocket(void)
 {
-   if (CreateObject(ID_METACLASS, 0, &clNetSocket,
-      FID_ClassVersion|TFLOAT, VER_NETSOCKET,
-      FID_Name|TSTRING,   "NetSocket",
-      FID_Category|TLONG, CCF_NETWORK,
-      FID_Actions|TPTR,   clNetSocketActions,
-      FID_Methods|TARRAY, clNetSocketMethods,
-      FID_Fields|TARRAY,  clSocketFields,
-      FID_Size|TLONG,     sizeof(extNetSocket),
-      FID_Path|TSTR,      MOD_PATH,
-      TAGEND) != ERR_Okay) return ERR_CreateObject;
+   clNetSocket = objMetaClass::create::global(
+      fl::ClassVersion(VER_NETSOCKET),
+      fl::Name("NetSocket"),
+      fl::Category(CCF_NETWORK),
+      fl::Actions(clNetSocketActions),
+      fl::Methods(clNetSocketMethods),
+      fl::Fields(clSocketFields),
+      fl::Size(sizeof(extNetSocket)),
+      fl::Path(MOD_PATH));
 
-   return ERR_Okay;
+   return clNetSocket ? ERR_Okay : ERR_AddClass;
 }

@@ -498,15 +498,16 @@ static const FieldArray clPatternFields[] = {
 
 ERROR init_pattern(void) // The pattern is a definition type for creating patterns and not drawing.
 {
-   return(CreateObject(ID_METACLASS, 0, &clVectorPattern,
-      FID_BaseClassID|TLONG, ID_VECTORPATTERN,
-      FID_Name|TSTRING,      "VectorPattern",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Actions|TPTR,      clPatternActions,
-      FID_Fields|TARRAY,     clPatternFields,
-      FID_Flags|TLONG,       CLF_PRIVATE_ONLY|CLF_PROMOTE_INTEGRAL,
-      FID_Size|TLONG,        sizeof(extVectorPattern),
-      FID_Path|TSTR,         "modules:vector",
-      TAGEND));
+   clVectorPattern = objMetaClass::create::global(
+      fl::BaseClassID(ID_VECTORPATTERN),
+      fl::Name("VectorPattern"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Flags(CLF_PROMOTE_INTEGRAL),
+      fl::Actions(clPatternActions),
+      fl::Fields(clPatternFields),
+      fl::Size(sizeof(extVectorPattern)),
+      fl::Path(MOD_PATH));
+
+   return clVectorPattern ? ERR_Okay : ERR_AddClass;
 }
 

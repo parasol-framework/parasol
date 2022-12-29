@@ -1829,19 +1829,20 @@ static const ActionArray clActions[] = {
 
 ERROR add_sound_class(void)
 {
-   return CreateObject(ID_METACLASS, 0, &clSound,
-      FID_BaseClassID|TLONG,    ID_SOUND,
-      FID_ClassVersion|TDOUBLE, VER_SOUND,
-      FID_FileExtension|TSTR,   "*.wav|*.wave|*.snd",
-      FID_FileDescription|TSTR, "Sound Sample",
-      FID_FileHeader|TSTR,      "[0:$52494646][8:$57415645]",
-      FID_Name|TSTRING,         "Sound",
-      FID_Category|TLONG,       CCF_AUDIO,
-      FID_Actions|TPTR,         clActions,
-      FID_Fields|TARRAY,        clFields,
-      FID_Size|TLONG,           sizeof(extSound),
-      FID_Path|TSTR,            MOD_PATH,
-      TAGEND);
+   clSound = objMetaClass::create::global(
+      fl::BaseClassID(ID_SOUND),
+      fl::ClassVersion(VER_SOUND),
+      fl::FileExtension("*.wav|*.wave|*.snd"),
+      fl::FileDescription("Sound Sample"),
+      fl::FileHeader("[0:$52494646][8:$57415645]"),
+      fl::Name("Sound"),
+      fl::Category(CCF_AUDIO),
+      fl::Actions(clActions),
+      fl::Fields(clFields),
+      fl::Size(sizeof(extSound)),
+      fl::Path(MOD_PATH));
+
+   return clSound ? ERR_Okay : ERR_AddClass;
 }
 
 void free_sound_class(void)

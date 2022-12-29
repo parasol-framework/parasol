@@ -1192,25 +1192,20 @@ static const FieldArray clFields[] = {
 
 extern "C" ERROR add_config_class(void)
 {
-   if (!NewPrivateObject(ID_METACLASS, 0, (OBJECTPTR *)&ConfigClass)) {
-      if (!SetFields(ConfigClass,
-            FID_BaseClassID|TLONG,    ID_CONFIG,
-            FID_ClassVersion|TFLOAT,  VER_CONFIG,
-            FID_Name|TSTR,            "Config",
-            FID_Category|TLONG,       CCF_DATA,
-            FID_FileExtension|TSTR,   "*.cfg|*.cnf|*.config",
-            FID_FileDescription|TSTR, "Config File",
-            FID_Flags|TLONG,          CLF_PRIVATE_ONLY,
-            FID_Actions|TPTR,         clConfigActions,
-            FID_Methods|TARRAY,       clConfigMethods,
-            FID_Fields|TARRAY,        clFields,
-            FID_Size|TLONG,           sizeof(extConfig),
-            FID_Path|TSTR,            "modules:core",
-            TAGEND)) {
-         return acInit(ConfigClass);
-      }
-      else return ERR_SetField;
-   }
-   else return ERR_NewObject;
+   ConfigClass = extMetaClass::create::global(
+      fl::BaseClassID(ID_CONFIG),
+      fl::ClassVersion(VER_CONFIG),
+      fl::Name("Config"),
+      fl::Category(CCF_DATA),
+      fl::FileExtension("*.cfg|*.cnf|*.config"),
+      fl::FileDescription("Config File"),
+      fl::Flags(CLF_PRIVATE_ONLY),
+      fl::Actions(clConfigActions),
+      fl::Methods(clConfigMethods),
+      fl::Fields(clFields),
+      fl::Size(sizeof(extConfig)),
+      fl::Path("modules:core"));
+
+   return ConfigClass ? ERR_Okay : ERR_AddClass;
 }
 

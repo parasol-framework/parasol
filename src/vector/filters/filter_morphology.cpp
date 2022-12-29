@@ -311,15 +311,15 @@ static const FieldArray clMorphologyFXFields[] = {
 
 ERROR init_morphfx(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clMorphologyFX,
-      FID_BaseClassID|TLONG, ID_FILTEREFFECT,
-      FID_SubClassID|TLONG,  ID_MORPHOLOGYFX,
-      FID_Name|TSTRING,      "MorphologyFX",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Flags|TLONG,       CLF_PRIVATE_ONLY|CLF_PROMOTE_INTEGRAL,
-      FID_Actions|TPTR,      clMorphologyFXActions,
-      FID_Fields|TARRAY,     clMorphologyFXFields,
-      FID_Size|TLONG,        sizeof(objMorphologyFX),
-      FID_Path|TSTR,         MOD_PATH,
-      TAGEND));
+   clMorphologyFX = objMetaClass::create::global(
+      fl::BaseClassID(ID_FILTEREFFECT),
+      fl::SubClassID(ID_MORPHOLOGYFX),
+      fl::Name("MorphologyFX"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clMorphologyFXActions),
+      fl::Fields(clMorphologyFXFields),
+      fl::Size(sizeof(objMorphologyFX)),
+      fl::Path(MOD_PATH));
+
+   return clMorphologyFX ? ERR_Okay : ERR_AddClass;
 }

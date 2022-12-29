@@ -2421,15 +2421,16 @@ static ERROR init_text(void)
 
    FID_FreetypeFace = StrHash("FreetypeFace", FALSE);
 
-   return(CreateObject(ID_METACLASS, 0, &clVectorText,
-      FID_BaseClassID|TLONG, ID_VECTOR,
-      FID_SubClassID|TLONG,  ID_VECTORTEXT,
-      FID_Name|TSTRING,      "VectorText",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Actions|TPTR,      clVectorTextActions,
-      FID_Methods|TARRAY,    clVectorTextMethods,
-      FID_Fields|TARRAY,     clTextFields,
-      FID_Size|TLONG,        sizeof(objVectorText),
-      FID_Path|TSTR,         MOD_PATH,
-      TAGEND));
+   clVectorText = objMetaClass::create::global(
+      fl::BaseClassID(ID_VECTOR),
+      fl::SubClassID(ID_VECTORTEXT),
+      fl::Name("VectorText"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clVectorTextActions),
+      fl::Methods(clVectorTextMethods),
+      fl::Fields(clTextFields),
+      fl::Size(sizeof(objVectorText)),
+      fl::Path(MOD_PATH));
+
+   return clVectorText ? ERR_Okay : ERR_AddClass;
 }

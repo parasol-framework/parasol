@@ -387,14 +387,15 @@ static const ActionArray clRectangleActions[] = {
 
 static ERROR init_rectangle(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clVectorRectangle,
-      FID_BaseClassID|TLONG, ID_VECTOR,
-      FID_SubClassID|TLONG,  ID_VECTORRECTANGLE,
-      FID_Name|TSTRING,      "VectorRectangle",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Actions|TPTR,      clRectangleActions,
-      FID_Fields|TARRAY,     clRectangleFields,
-      FID_Size|TLONG,        sizeof(objVectorRectangle),
-      FID_Path|TSTR,         MOD_PATH,
-      TAGEND));
+   clVectorRectangle = objMetaClass::create::global(
+      fl::BaseClassID(ID_VECTOR),
+      fl::SubClassID(ID_VECTORRECTANGLE),
+      fl::Name("VectorRectangle"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clRectangleActions),
+      fl::Fields(clRectangleFields),
+      fl::Size(sizeof(objVectorRectangle)),
+      fl::Path(MOD_PATH));
+
+   return clVectorRectangle ? ERR_Okay : ERR_AddClass;
 }

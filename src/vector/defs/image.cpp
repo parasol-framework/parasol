@@ -159,16 +159,19 @@ static const FieldArray clImageFields[] = {
    END_FIELD
 };
 
+//********************************************************************************************************************
+
 ERROR init_image(void) // The gradient is a definition type for creating gradients and not drawing.
 {
-   return(CreateObject(ID_METACLASS, 0, &clVectorImage,
-      FID_BaseClassID|TLONG, ID_VECTORIMAGE,
-      FID_Name|TSTRING,      "VectorImage",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Actions|TPTR,      clImageActions,
-      FID_Fields|TARRAY,     clImageFields,
-      FID_Size|TLONG,        sizeof(objVectorImage),
-      FID_Path|TSTR,         "modules:vector",
-      TAGEND));
+   clVectorImage = objMetaClass::create::global(
+      fl::BaseClassID(ID_VECTORIMAGE),
+      fl::Name("VectorImage"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clImageActions),
+      fl::Fields(clImageFields),
+      fl::Size(sizeof(objVectorImage)),
+      fl::Path(MOD_PATH));
+
+   return clVectorImage ? ERR_Okay : ERR_AddClass;
 }
 

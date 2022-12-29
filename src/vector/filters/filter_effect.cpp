@@ -353,16 +353,14 @@ static const FieldArray clFilterEffectFields[] = {
 
 ERROR init_filtereffect(void)
 {
-   if (CreateObject(ID_METACLASS, 0, &clFilterEffect,
-      FID_ClassVersion|TFLOAT,  VER_FILTEREFFECT,
-      FID_Name|TSTR,            "FilterEffect",
-      FID_Category|TLONG,       CCF_GRAPHICS,
-      FID_Flags|TLONG,          CLF_PROMOTE_INTEGRAL|CLF_PRIVATE_ONLY,
-      FID_Actions|TPTR,         clFilterEffectActions,
-      FID_Fields|TARRAY,        clFilterEffectFields,
-      FID_Size|TLONG,           sizeof(extFilterEffect),
-      FID_Path|TSTR,            MOD_PATH,
-      TAGEND)) return ERR_CreateObject;
+   clFilterEffect = objMetaClass::create::global(
+      fl::ClassVersion(VER_FILTEREFFECT),
+      fl::Name("FilterEffect"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clFilterEffectActions),
+      fl::Fields(clFilterEffectFields),
+      fl::Size(sizeof(extFilterEffect)),
+      fl::Path(MOD_PATH));
 
-   return ERR_Okay;
+   return clFilterEffect ? ERR_Okay : ERR_AddClass;
 }

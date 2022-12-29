@@ -396,24 +396,26 @@ static const ActionArray clActions[] = {
    { 0, NULL }
 };
 
+//********************************************************************************************************************
+
 static ERROR add_parc_class(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clParc,
-      FID_ClassVersion|TFLOAT,  VER_PARC,
-      FID_Name|TSTRING,         "Parc",
-      FID_FileExtension|TSTR,   "*.parc",
-      FID_FileDescription|TSTR, "Parasol Archive",
-      FID_FileHeader|TSTR,      "[0:$504b0304]",
-      FID_Category|TLONG,       CCF_SYSTEM,
-      FID_Flags|TLONG,          CLF_PRIVATE_ONLY,
-      FID_Actions|TPTR,         clActions,
-      FID_Fields|TARRAY,        clFields,
-      FID_Size|TLONG,           sizeof(objParc),
-      FID_Path|TSTR,            MOD_PATH,
-      TAGEND));
+   clParc = objMetaClass::create::global(
+      fl::ClassVersion(VER_PARC),
+      fl::Name("Parc"),
+      fl::FileExtension("*.parc"),
+      fl::FileDescription("Parasol Archive"),
+      fl::FileHeader("[0:$504b0304]"),
+      fl::Category(CCF_SYSTEM),
+      fl::Actions(clActions),
+      fl::Fields(clFields),
+      fl::Size(sizeof(objParc)),
+      fl::Path(MOD_PATH));
+
+   return clParc ? ERR_Okay : ERR_AddClass;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, VER_PARC)
 

@@ -1697,16 +1697,17 @@ ERROR create_pointer_class(void)
    else log.msg("Old-style input system will be used for direct mouse communication.");
 #endif
 
-   return(CreateObject(ID_METACLASS, 0, &clPointer,
-      FID_BaseClassID|TLONG,   ID_POINTER,
-      FID_ClassVersion|TFLOAT, VER_POINTER,
-      FID_Name|TSTRING,   "Pointer",
-      FID_Category|TLONG, CCF_GRAPHICS,
-      FID_Actions|TPTR,   clPointerActions,
-      FID_Methods|TARRAY, clPointerMethods,
-      FID_Fields|TARRAY,  clPointerFields,
-      FID_Size|TLONG,     sizeof(extPointer),
-      FID_Flags|TLONG,    CLF_SHARED_ONLY,
-      FID_Path|TSTR,      MOD_PATH,
-      TAGEND));
+   clPointer = objMetaClass::create::global(
+      fl::BaseClassID(ID_POINTER),
+      fl::ClassVersion(VER_POINTER),
+      fl::Name("Pointer"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clPointerActions),
+      fl::Methods(clPointerMethods),
+      fl::Fields(clPointerFields),
+      fl::Size(sizeof(extPointer)),
+      fl::Flags(CLF_SHARED_ONLY),
+      fl::Path(MOD_PATH));
+
+   return clPointer ? ERR_Okay : ERR_AddClass;
 }
