@@ -156,5 +156,39 @@ inline FieldValue Volume(std::string Value) { return FieldValue(FID_Volume, Valu
 constexpr FieldValue Flags(LONG Value) { return FieldValue(FID_Flags, Value); }
 constexpr FieldValue Permissions(LONG Value) { return FieldValue(FID_Permissions, Value); }
 constexpr FieldValue Routine(CPTR Value) { return FieldValue(FID_Routine, Value); }
+constexpr FieldValue BaseClassID(LONG Value) { return FieldValue(FID_BaseClassID, Value); }
+constexpr FieldValue SubClassID(LONG Value) { return FieldValue(FID_SubClassID, Value); }
+constexpr FieldValue ClassVersion(DOUBLE Value) { return FieldValue(FID_ClassVersion, Value); }
+constexpr FieldValue Version(DOUBLE Value) { return FieldValue(FID_Version, Value); }
+constexpr FieldValue Name(CSTRING Value) { return FieldValue(FID_Name, Value); }
+inline FieldValue Name(std::string Value) { return FieldValue(FID_Name, Value.c_str()); }
+constexpr FieldValue Category(LONG Value) { return FieldValue(FID_Category, Value); }
+constexpr FieldValue FileExtension(CSTRING Value) { return FieldValue(FID_FileExtension, Value); }
+inline FieldValue FileExtension(std::string Value) { return FieldValue(FID_FileExtension, Value.c_str()); }
+constexpr FieldValue FileDescription(CSTRING Value) { return FieldValue(FID_FileDescription, Value); }
+inline FieldValue FileDescription(std::string Value) { return FieldValue(FID_FileDescription, Value.c_str()); }
+constexpr FieldValue FileHeader(CSTRING Value) { return FieldValue(FID_FileHeader, Value); }
+inline FieldValue FileHeader(std::string Value) { return FieldValue(FID_FileHeader, Value.c_str()); }
+constexpr FieldValue Actions(CPTR Value) { return FieldValue(FID_Actions, Value); }
+constexpr FieldValue Size(LONG Value) { return FieldValue(FID_Size, Value); }
+constexpr FieldValue Methods(const MethodArray *Value) { return FieldValue(FID_Methods, Value, FD_ARRAY); }
+constexpr FieldValue Fields(const FieldArray *Value) { return FieldValue(FID_Fields, Value, FD_ARRAY); }
+constexpr FieldValue ArchiveName(CSTRING Value) { return FieldValue(FID_ArchiveName, Value); }
+inline FieldValue ArchiveName(std::string Value) { return FieldValue(FID_ArchiveName, Value.c_str()); }
 
+}
+
+//********************************************************************************************************************
+
+inline ERROR LoadModule(CSTRING Name, DOUBLE Version, OBJECTPTR *Module, APTR Functions) {
+   if (auto module = objModule::create::global(fl::Name(Name), fl::Version(Version))) {
+      APTR functionbase;
+      if (!module->getPtr(FID_ModBase, &functionbase)) {
+         if (Module) *Module = module;
+         if (Functions) ((APTR *)Functions)[0] = functionbase;
+         return ERR_Okay;
+      }
+      else return ERR_GetField;
+   }
+   else return ERR_CreateObject;
 }

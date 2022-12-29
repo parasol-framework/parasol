@@ -1,4 +1,12 @@
 
+#ifdef REVERSE_BYTEORDER // CPU is little endian (Intel, ARM)
+#define wrb_long(a,b) ((LONG *)(b))[0] = (a)
+#define wrb_word(a,b) ((WORD *)(b))[0] = (a)
+#else // CPU is big endian (Motorola)
+#define wrb_long(a,b) (b)[0] = (UBYTE)(a); (b)[1] = (UBYTE)((a)>>8); (b)[2] = (UBYTE)((a)>>16); (b)[3] = (UBYTE)((a)>>24)
+#define wrb_word(a,b) (b)[0] = (UBYTE)(a); (b)[1] = (UBYTE)((a)>>8)
+#endif
+
 //*********************************************************************************************************************
 
 static void print(extCompression *Self, CSTRING Buffer)
@@ -28,14 +36,11 @@ static ERROR compress_folder(extCompression *Self, CSTRING Location, CSTRING Pat
    if ((!Self) or (!Location)) return ERR_NullArgs;
    if (!Path) Path = "";
 
-   objFile *file;
-   if (CreateObject(ID_FILE, NF_INTEGRAL, (OBJECTPTR *)&file, FID_Path|TSTR, Location, TAGEND) != ERR_Okay) {
-      return log.warning(ERR_File);
-   }
+   objFile::create file = { fl::Path(Location) };
+   if (!file.ok()) return log.warning(ERR_File);
 
    if ((file->Flags & FL_LINK) and (!(Self->Flags & CMF_NO_LINKS))) {
       log.msg("Folder is a link.");
-      acFree(file);
       return compress_file(Self, Location, Path, TRUE);
    }
 
@@ -59,14 +64,8 @@ static ERROR compress_folder(extCompression *Self, CSTRING Location, CSTRING Pat
    ERROR error = send_feedback(Self, &feedback);
 
    Self->prvFileIndex++;
-   if ((error IS ERR_Terminate) or (error IS ERR_Cancelled)) {
-      acFree(file);
-      return ERR_Cancelled;
-   }
-   else if (error IS ERR_Skip) {
-      acFree(file);
-      return ERR_Okay;
-   }
+   if ((error IS ERR_Terminate) or (error IS ERR_Cancelled)) return ERR_Cancelled;
+   else if (error IS ERR_Skip) return ERR_Okay;
    else error = ERR_Okay;
 
    // Clear default variables
@@ -81,16 +80,16 @@ static ERROR compress_folder(extCompression *Self, CSTRING Location, CSTRING Pat
    if (pathlen > 0) {
       // Seek to the position at which this new directory entry will be added
 
-      ZipFile *chain;
       ULONG dataoffset = 0;
-      if ((chain = Self->prvFiles)) {
+      if (auto chain = Self->prvFiles) {
          while (chain->Next) chain = (ZipFile *)chain->Next;
          if (acSeekStart(Self->FileIO, chain->Offset + HEAD_NAMELEN) != ERR_Okay) {
-            acFree(file);
             return log.warning(ERR_Seek);
          }
-         UWORD namelen    = read_word(Self->FileIO);
-         UWORD extralen   = read_word(Self->FileIO);
+
+         UWORD namelen, extralen;
+         if (flReadLE(Self->FileIO, &namelen)) return ERR_Read;
+         if (flReadLE(Self->FileIO, &extralen)) return ERR_Read;
          dataoffset = chain->Offset + HEAD_LENGTH + namelen + extralen + chain->CompressedSize;
       }
 
@@ -105,7 +104,6 @@ static ERROR compress_folder(extCompression *Self, CSTRING Location, CSTRING Pat
       // Allocate the file entry structure and set up some initial variables.
 
       if (AllocMemory(sizeof(ZipFile) + pathlen + 1, MEM_DATA, (APTR *)&entry, NULL) != ERR_Okay) {
-         acFree(file);
          return ERR_AllocMemory;
       }
 
@@ -145,7 +143,7 @@ static ERROR compress_folder(extCompression *Self, CSTRING Location, CSTRING Pat
 
       // Add the entry to the file chain
 
-      if ((chain = Self->prvFiles)) {
+      if (auto chain = Self->prvFiles) {
          while (chain->Next) chain = (ZipFile *)chain->Next;
          entry->Prev = (CompressedFile *)chain;
          chain->Next = (CompressedFile *)entry;
@@ -186,7 +184,6 @@ static ERROR compress_folder(extCompression *Self, CSTRING Location, CSTRING Pat
       FreeResource(dir);
    }
 
-   acFree(file);
    return ERR_Okay;
 
 exit:
@@ -195,7 +192,6 @@ exit:
       FreeResource(entry);
    }
 
-   acFree(file);
    return error;
 }
 
@@ -212,23 +208,22 @@ static ERROR compress_file(extCompression *Self, CSTRING Location, CSTRING Path,
    ZipFile *fileexists = NULL;
    ZipFile *entry = NULL;
    STRING symlink = NULL;
-   UBYTE deflateend = FALSE;
+   bool deflateend = false;
    ERROR error = ERR_Failed;
-   objFile *file = NULL;
    ZipFile *chain;
    ULONG dataoffset = 0;
    char filename[512] = "";
    LONG i, len;
+
    WORD level = Self->CompressionLevel / 10;
    if (level < 0) level = 0;
    else if (level > 9) level = 9;
 
    // Open the source file for reading only
 
-   if (CreateObject(ID_FILE, NF_INTEGRAL, (OBJECTPTR *)&file,
-         FID_Path|TSTR,   Location,
-         FID_Flags|TLONG, (Link IS TRUE) ? 0 : FL_READ,
-         TAGEND) != ERR_Okay) {
+   objFile::create file = { fl::Path(Location), fl::Flags((Link IS TRUE) ? 0 : FL_READ) };
+
+   if (!file.ok()) {
       if (Self->OutputID) {
          StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "  Error opening file \"%s\".", Location);
          print(Self, (CSTRING)Self->prvOutput);
@@ -236,6 +231,7 @@ static ERROR compress_file(extCompression *Self, CSTRING Location, CSTRING Path,
       error = log.warning(ERR_OpenFile);
       goto exit;
    }
+
 
    if ((Link) and (!(file->Flags & FL_LINK))) {
       log.warning("Internal Error: Expected a link, but the file is not.");
@@ -286,8 +282,10 @@ static ERROR compress_file(extCompression *Self, CSTRING Location, CSTRING Path,
    if ((chain = Self->prvFiles)) {
       while (chain->Next) chain = (ZipFile *)chain->Next;
       if (acSeek(Self->FileIO, chain->Offset + HEAD_NAMELEN, SEEK_START) != ERR_Okay) return log.warning(ERR_Seek);
-      UWORD namelen    = read_word(Self->FileIO);
-      UWORD extralen   = read_word(Self->FileIO);
+
+      UWORD namelen, extralen;
+      if (flReadLE(Self->FileIO, &namelen)) { error = ERR_Read; goto exit; }
+      if (flReadLE(Self->FileIO, &extralen)) { error = ERR_Read; goto exit; }
       dataoffset = chain->Offset + HEAD_LENGTH + namelen + extralen + chain->CompressedSize;
    }
 
@@ -305,7 +303,7 @@ static ERROR compress_file(extCompression *Self, CSTRING Location, CSTRING Path,
    Self->prvZip.total_out = 0;
 
    if (deflateInit2(&Self->prvZip, level, Z_DEFLATED, -MAX_WBITS, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY) IS ERR_Okay) {
-      deflateend = TRUE;
+      deflateend = true;
       Self->prvZip.next_out  = Self->prvOutput;
       Self->prvZip.avail_out = SIZE_COMPRESSION_BUFFER;
    }
@@ -393,7 +391,7 @@ static ERROR compress_file(extCompression *Self, CSTRING Location, CSTRING Path,
    }
    else {
       struct acRead read = { .Buffer = Self->prvInput, .Length = SIZE_COMPRESSION_BUFFER };
-      while ((!Action(AC_Read, file, &read)) and (read.Result > 0)) {
+      while ((!Action(AC_Read, *file, &read)) and (read.Result > 0)) {
          Self->prvZip.next_in  = Self->prvInput;
          Self->prvZip.avail_in = read.Result;
 
@@ -424,7 +422,7 @@ static ERROR compress_file(extCompression *Self, CSTRING Location, CSTRING Path,
 
    if (acFlush(Self) != ERR_Okay) goto exit;
    deflateEnd(&Self->prvZip);
-   deflateend = FALSE;
+   deflateend = false;
 
    // Finalise entry details
 
@@ -474,19 +472,16 @@ static ERROR compress_file(extCompression *Self, CSTRING Location, CSTRING Path,
 
    if (fileexists) remove_file(Self, &fileexists);
 
-   acFree(file);
    Self->prvFileIndex++;
    return ERR_Okay;
 
 exit:
-   if (deflateend IS TRUE) deflateEnd(&Self->prvZip);
+   if (deflateend) deflateEnd(&Self->prvZip);
 
    if (entry) {
       FreeFromLL((CompressedFile *)entry, (CompressedFile *)Self->prvFiles, (CompressedFile **)&Self->prvFiles);
       FreeResource(entry);
    }
-
-   if (file) acFree(file);
 
    Self->prvFileIndex++;
    return error;
@@ -497,7 +492,7 @@ exit:
 ERROR remove_file(extCompression *Self, ZipFile **File)
 {
    parasol::Log log(__FUNCTION__);
-   ZipFile *file = *File;
+   auto file = *File;
 
    log.branch("Deleting \"%s\"", file->Name);
 
@@ -505,8 +500,10 @@ ERROR remove_file(extCompression *Self, ZipFile **File)
    // to the start of the file's position.
 
    if (acSeekStart(Self->FileIO, file->Offset + HEAD_NAMELEN) != ERR_Okay) return log.warning(ERR_Seek);
-   UWORD namelen    = read_word(Self->FileIO);
-   UWORD extralen   = read_word(Self->FileIO);
+
+   UWORD namelen, extralen;
+   if (flReadLE(Self->FileIO, &namelen)) return ERR_Read;
+   if (flReadLE(Self->FileIO, &extralen)) return ERR_Read;
    LONG chunksize  = HEAD_LENGTH + namelen + extralen + file->CompressedSize;
    DOUBLE currentpos = file->Offset + chunksize;
    if (acSeekStart(Self->FileIO, currentpos) != ERR_Okay) return log.warning(ERR_Seek);
@@ -528,7 +525,7 @@ ERROR remove_file(extCompression *Self, ZipFile **File)
 
    // Remove the file reference from the chain
 
-   ZipFile *next = (ZipFile *)file->Next;
+   auto next = (ZipFile *)file->Next;
    FreeFromLL((CompressedFile *)file, (CompressedFile *)Self->prvFiles, (CompressedFile **)&Self->prvFiles);
    FreeResource(file);
 
@@ -703,7 +700,7 @@ static ERROR scan_zip(extCompression *Self)
    ZipFile *lastentry = NULL;
    LONG type, result;
    LONG total_files = 0;
-   while ((type = read_long(Self->FileIO))) {
+   while (!flReadLE(Self->FileIO, &type)) {
       if (type IS 0x04034b50) {
          // PKZIP file header entry detected
 
@@ -889,8 +886,10 @@ static void write_eof(extCompression *Self)
 
          while (chain->Next) chain = (ZipFile *)chain->Next;
          acSeekStart(Self->FileIO, chain->Offset + HEAD_NAMELEN);
-         UWORD namelen = read_word(Self->FileIO);
-         UWORD extralen = read_word(Self->FileIO);
+
+         UWORD namelen, extralen;
+         if (flReadLE(Self->FileIO, &namelen)) return;
+         if (flReadLE(Self->FileIO, &extralen)) return;
          acSeekCurrent(Self->FileIO, chain->CompressedSize + namelen + extralen);
          ULONG listoffset = chain->Offset + chain->CompressedSize + namelen + extralen + HEAD_LENGTH;
 

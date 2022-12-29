@@ -174,8 +174,7 @@ ERROR GetField(OBJECTPTR Object, FIELD FieldID, APTR Result)
    else *((LONG *)Result)  = 0;
 #endif
 
-   Field *field;
-   if ((field = lookup_id(Object, FieldID, &Object))) {
+   if (auto field = lookup_id(Object, FieldID, &Object)) {
       if (!(field->Flags & FD_READ)) {
          if (!field->Name) log.warning("Illegal attempt to read field %s.", GET_FIELD_NAME(FieldID));
          else log.warning("Illegal attempt to read field %s.", field->Name);
@@ -183,8 +182,7 @@ ERROR GetField(OBJECTPTR Object, FIELD FieldID, APTR Result)
       }
 
       ScopedObjectAccess objlock(Object);
-      ERROR error = copy_field_to_buffer(Object, field, type, Result, NULL, NULL);
-      return error;
+      return copy_field_to_buffer(Object, field, type, Result, NULL, NULL);
    }
    else log.warning("Unsupported field %s", GET_FIELD_NAME(FieldID));
 
@@ -232,8 +230,7 @@ ERROR GetFieldArray(OBJECTPTR Object, FIELD FieldID, APTR *Result, LONG *Element
 
    *Result = NULL;
 
-   Field *field;
-   if ((field = lookup_id(Object, FieldID, &Object))) {
+   if (auto field = lookup_id(Object, FieldID, &Object)) {
       if ((!(field->Flags & FD_READ)) or (!(field->Flags & FD_ARRAY))) {
          if (!field->Name) log.warning("Illegal attempt to read field %s.", GET_FIELD_NAME(FieldID));
          else log.warning("Illegal attempt to read field %s.", field->Name);
@@ -322,8 +319,7 @@ ERROR GetFields(OBJECTPTR Object, ...)
       }
 
       OBJECTPTR target;
-      Field *field;
-      if ((field = lookup_id(Object, field_id, &target))) {
+      if (auto field = lookup_id(Object, field_id, &target)) {
          if (!(field->Flags & FD_READ)) {
             if (!field->Name) log.warning("Field #%d is not readable.", (LONG)field_id);
             else log.warning("Field \"%s\" is not readable.", field->Name);
@@ -410,18 +406,18 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
    flagref[0] = 0;
    STRING ext = NULL;
    CSTRING fname = FieldName;
-   BYTE strconvert = FALSE;
-   BYTE checkdefined = FALSE;
+   bool strconvert = false;
+   bool checkdefined = false;
 
    // NB: The $ character can be used at the start of a field name to convert lookups and flag based fields to strings.
 
    while (fname[0] <= 0x40) {
       if (fname[0] IS '$') {
-         strconvert = TRUE;
+         strconvert = true;
          fname++;
       }
       else if (fname[0] IS '?') {
-         checkdefined = TRUE;
+         checkdefined = true;
          fname++;
       }
       else break;
@@ -533,11 +529,8 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
                }
             }
 
-            if (field->Flags & FD_OBJECT) {
-               Buffer[0] = '#';
-               IntToStr(large, Buffer+1, BufferSize-1);
-            }
-            else IntToStr(large, Buffer, BufferSize);
+            if (field->Flags & FD_OBJECT) StrFormat(Buffer, BufferSize, "#" PF64(), large);
+            else StrFormat(Buffer, BufferSize, PF64(), large);
          }
          else return error;
       }
@@ -555,10 +548,7 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
                error = GetFieldVariable(obj, ext, Buffer, BufferSize);
                return error;
             }
-            else {
-               Buffer[0] = '#';
-               IntToStr(obj->UID, Buffer+1, BufferSize-1);
-            }
+            else StrFormat(Buffer, BufferSize, "#%d", obj->UID);
          }
          else StrCopy("0", Buffer, BufferSize);
       }
@@ -685,25 +675,24 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
       }
       else if (DestFlags & FD_STRING) {
          // Special feature: If a string is requested, the array values are converted to CSV format.
-         LONG i;
          LONG pos = 0;
          if (srcflags & FD_LONG) {
             LONG *array = (LONG *)data;
-            for (i=0; i < array_size; i++) {
+            for (LONG i=0; i < array_size; i++) {
                pos += IntToStr(*array++, strGetField+pos, sizeof(strGetField)-pos);
                if (((size_t)pos < sizeof(strGetField)-2) and (i+1 < array_size)) strGetField[pos++] = ',';
             }
          }
          else if (srcflags & FD_BYTE) {
             UBYTE *array = (UBYTE *)data;
-            for (i=0; i < array_size; i++) {
+            for (LONG i=0; i < array_size; i++) {
                pos += IntToStr(*array++, strGetField+pos, sizeof(strGetField)-pos);
                if (((size_t)pos < sizeof(strGetField)-2) and (i+1 < array_size)) strGetField[pos++] = ',';
             }
          }
          else if (srcflags & FD_DOUBLE) {
             DOUBLE *array = (DOUBLE *)data;
-            for (i=0; i < array_size; i++) {
+            for (LONG i=0; i < array_size; i++) {
                pos += StrFormat(strGetField+pos, sizeof(strGetField)-pos, "%f", *array++);
                if (((size_t)pos < sizeof(strGetField)-2) and (i+1 < array_size)) strGetField[pos++] = ',';
             }
@@ -766,8 +755,7 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
    else if (srcflags & (FD_POINTER|FD_STRING)) {
       if (DestFlags & (FD_POINTER|FD_STRING)) *((APTR *)Result) = *((APTR *)data);
       else if (srcflags & (FD_INTEGRAL|FD_OBJECT)) {
-         OBJECTPTR object = *((OBJECTPTR *)data);
-         if (object) {
+         if (auto object = *((OBJECTPTR *)data)) {
             if (DestFlags & FD_LONG)       *((LONG *)Result)  = object->UID;
             else if (DestFlags & FD_LARGE) *((LARGE *)Result) = object->UID;
             else goto mismatch;

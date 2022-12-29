@@ -795,26 +795,21 @@ class ObjectContext {
 
 // This structure is used by the FileList field
 
-#define FIELDS_COMPRESSEDFILE struct CompressedFile *Next;  \
-   struct CompressedFile *Prev;  \
-   STRING Name; \
-   STRING Comment; \
-   ULONG  CompressedSize; \
-   ULONG  OriginalSize; \
-   LONG   Year; \
-   UBYTE  Month; \
-   UBYTE  Day; \
-   UBYTE  Hour; \
-   UBYTE  Minute;
-
 struct CompressedFile {
-   FIELDS_COMPRESSEDFILE
+   struct CompressedFile *Next;
+   struct CompressedFile *Prev;
+   STRING Name;
+   STRING Comment;
+   ULONG  CompressedSize;
+   ULONG  OriginalSize;
+   LONG   Year;
+   UBYTE  Month;
+   UBYTE  Day;
+   UBYTE  Hour;
+   UBYTE  Minute;
 };
 
-struct ZipFile {
-   FIELDS_COMPRESSEDFILE
-
-   // Private fields
+struct ZipFile : public CompressedFile {
    ULONG TimeStamp;     // Time stamp information
    ULONG CRC;           // CRC validation number
    ULONG Offset;        // Byte offset of the file within the archive
@@ -1259,8 +1254,7 @@ class ScopedObjectAccess {
 
 //********************************************************************************************************************
 
-INLINE LARGE calc_timestamp(struct DateTime *Date)
-{
+inline LARGE calc_timestamp(struct DateTime *Date) {
    return(Date->Second +
           ((LARGE)Date->Minute * 60LL) +
           ((LARGE)Date->Hour * 60LL * 60LL) +
@@ -1269,32 +1263,15 @@ INLINE LARGE calc_timestamp(struct DateTime *Date)
           ((LARGE)Date->Year * 60LL * 60LL * 24LL * 31LL * 12LL));
 }
 
-//********************************************************************************************************************
-// Stubs.
-
-static LONG read_long(APTR File) __attribute__((unused));
-static WORD read_word(APTR File) __attribute__((unused));
-
-static LONG read_long(APTR File)
-{
-   struct acRead args;
-   LONG value;
-   args.Buffer = (APTR)&value;
-   args.Length = 4;
-   if (!Action(AC_Read, (OBJECTPTR)File, &args)) return value; // !!! Use ReadLE/BE
-   else LogF("@read_long()","Failed.");
-   return 0;
+inline UWORD reverse_word(UWORD Value) {
+    return (((Value & 0x00FF) << 8) | ((Value & 0xFF00) >> 8));
 }
 
-static WORD read_word(APTR File)
-{
-   struct acRead args;
-   WORD value;
-   args.Buffer = (APTR)&value;
-   args.Length = 2;
-   if (!Action(AC_Read, (OBJECTPTR)File, &args)) return value; // !!! Use ReadLE/BE
-   else LogF("@read_word()","Failed.");
-   return 0;
+inline ULONG reverse_long(ULONG Value) {
+    return (((Value & 0x000000FF) << 24) |
+            ((Value & 0x0000FF00) <<  8) |
+            ((Value & 0x00FF0000) >>  8) |
+            ((Value & 0xFF000000) >> 24));
 }
 
 //********************************************************************************************************************

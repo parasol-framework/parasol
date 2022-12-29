@@ -941,8 +941,7 @@ static ERROR FILE_NextFile(extFile *Self, struct flNext *Args)
          CopyMemory(Self->prvList->Info->Name, path + folder_len, name_len);
          path[folder_len + name_len] = 0;
 
-         extFile *file;
-         if (!CreateObject(ID_FILE, 0, (OBJECTPTR *)&file, FID_Path|TSTR, path, TAGEND)) {
+         if (auto file = extFile::create::global(fl::Path(path))) {
             Args->File = file;
             return ERR_Okay;
          }
@@ -2863,16 +2862,16 @@ static const FieldArray FileFields[] = {
 
 extern "C" ERROR add_file_class(void)
 {
-   extern objMetaClass *glFileClass;
-   return CreateObject(ID_METACLASS, 0, (OBJECTPTR *)&glFileClass,
-      FID_ClassVersion|TFLOAT, VER_FILE,
-      FID_Name|TSTR,      "File",
-      FID_Category|TLONG, CCF_SYSTEM,
-      FID_Flags|TLONG,    CLF_PRIVATE_ONLY,
-      FID_Actions|TPTR,   clFileActions,
-      FID_Methods|TARRAY, clFileMethods,
-      FID_Fields|TARRAY,  FileFields,
-      FID_Size|TLONG,     sizeof(extFile),
-      FID_Path|TSTR,      "modules:core",
-      TAGEND);
+   glFileClass = extMetaClass::create::global(
+      fl::ClassVersion(VER_FILE),
+      fl::Name("File"),
+      fl::Category(CCF_SYSTEM),
+      fl::Flags(CLF_PRIVATE_ONLY),
+      fl::Actions(clFileActions),
+      fl::Methods(clFileMethods),
+      fl::Fields(FileFields),
+      fl::Size(sizeof(extFile)),
+      fl::Path("modules:core"));
+
+   return glFileClass ? ERR_Okay : ERR_AddClass;
 }

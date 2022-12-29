@@ -1,42 +1,31 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -CLASS-
 Module: Manages the loading of system libraries.
 
 The Module class is used to load and maintain the modules that are installed on the user's system.  A number of modules
 are available in the core platform as standard, which you can use in the development of your programs.
-Examples of existing modules can be found in both the "modules:" folder.
+Examples of existing modules can be found in both the `modules:` folder.
 
-To load a module for the purpose of utilising its API functions, you will need to create a module object and initialise
-it.  The following code segment illustrates:
+To load a module and interact with its API, create a module object and initialise it.  The following code segment
+illustrates:
 
 <pre>
-objModule *modDisplay;
-struct DisplayBase *DisplayBase;
-
-if (!CreateObject(ID_MODULE, 0, &amp;modDisplay,
-      FID_Name|TSTR, "display",
-      TAGEND)) {
-   modDisplay->getPtr(FID_ModBase, &amp;DisplayBase);
-}
+DisplayBase *DisplayBase;
+auto modDisplay = objModule::create::global(fl::Name("display"));
+if (modDisplay) modDisplay->getPtr(FID_ModBase, &amp;DisplayBase);
 </pre>
 
-Post-initialisation there is very little that you need to do with the object besides reading its function base from the
-#ModBase field.  Keep in mind that you must not free the module object until you are finished with the
-functions that it provides.
-
-A list of officially recognised modules that export function tables can be found in the Module Index manual. If you
-would like to learn more about modules in general, refer to the Module Interfaces manual.  If you would like to write a
-new module, please read the Module Development Guide.
+It is critical that the module object is not terminated until the program no longer needs its functionality.
 -END-
 
-*****************************************************************************/
+**********************************************************************************************************************/
 
 #ifdef __unix__
 #include <dlfcn.h>
@@ -69,7 +58,7 @@ static ModuleMaster * check_resident(extModule *, CSTRING);
 static ERROR intercepted_master(ModuleMaster *, APTR);
 static void free_module(MODHANDLE handle);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR GET_Actions(extModule *, ActionEntry **);
 static ERROR GET_IDL(extModule *, CSTRING *);
@@ -111,7 +100,7 @@ static const ActionArray glModuleActions[] = {
    { 0, NULL }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR MODULE_ResolveSymbol(extModule *, struct modResolveSymbol *);
 
@@ -122,7 +111,7 @@ static const MethodArray glModuleMethods[] = {
    { 0, NULL, NULL, 0 }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR GET_MMActions(ModuleMaster *, ActionEntry **);
 
@@ -177,39 +166,37 @@ static const ActionArray glModuleMasterActions[] = {
    { 0, NULL }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 extern "C" ERROR add_module_class(void)
 {
-   if (CreateObject(ID_METACLASS, 0, (OBJECTPTR *)&ModuleClass,
-         FID_BaseClassID|TLONG,    ID_MODULE,
-         FID_ClassVersion|TFLOAT,  VER_MODULE,
-         FID_Name|TSTR,            "Module",
-         FID_Category|TLONG,       CCF_SYSTEM,
-         FID_FileExtension|TSTR,   "*.mod|*.so|*.dll",
-         FID_FileDescription|TSTR, "System Module",
-         FID_Actions|TPTR,         glModuleActions,
-         FID_Methods|TARRAY,       glModuleMethods,
-         FID_Fields|TARRAY,        glModuleFields,
-         FID_Size|TLONG,           sizeof(extModule),
-         FID_Path|TSTR,            "modules:core",
-         TAGEND) != ERR_Okay) return ERR_AddClass;
+   if (!(ModuleClass = extMetaClass::create::global(
+      fl::BaseClassID(ID_MODULE),
+      fl::ClassVersion(VER_MODULE),
+      fl::Name("Module"),
+      fl::Category(CCF_SYSTEM),
+      fl::FileExtension("*.mod|*.so|*.dll"),
+      fl::FileDescription("System Module"),
+      fl::Actions(glModuleActions),
+      fl::Methods(glModuleMethods),
+      fl::Fields(glModuleFields),
+      fl::Size(sizeof(extModule)),
+      fl::Path("modules:core")))) return ERR_AddClass;
 
-   if (CreateObject(ID_METACLASS, 0, (OBJECTPTR *)&ModuleMasterClass,
-         FID_BaseClassID|TLONG,   ID_MODULEMASTER,
-         FID_ClassVersion|TFLOAT, 1.0,
-         FID_Name|TSTR,           "ModuleMaster",
-         FID_Category|TLONG,      CCF_SYSTEM,
-         FID_Actions|TPTR,        glModuleMasterActions,
-         FID_Fields|TARRAY,       glModuleMasterFields,
-         FID_Size|TLONG,          sizeof(ModuleMaster),
-         FID_Path|TSTR,           "modules:core",
-         TAGEND) != ERR_Okay) return ERR_AddClass;
+   if (!(ModuleMasterClass = extMetaClass::create::global(
+      fl::BaseClassID(ID_MODULEMASTER),
+      fl::ClassVersion(1.0),
+      fl::Name("ModuleMaster"),
+      fl::Category(CCF_SYSTEM),
+      fl::Actions(glModuleMasterActions),
+      fl::Fields(glModuleMasterFields),
+      fl::Size(sizeof(ModuleMaster)),
+      fl::Path("modules:core")))) return ERR_AddClass;
 
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Action interception routine.
 
 static ERROR intercepted_master(ModuleMaster *Self, APTR Args)
@@ -220,7 +207,7 @@ static ERROR intercepted_master(ModuleMaster *Self, APTR Args)
    else return ERR_NoSupport;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR GET_MMActions(ModuleMaster *Self, ActionEntry **Value)
 {
@@ -228,7 +215,7 @@ static ERROR GET_MMActions(ModuleMaster *Self, ActionEntry **Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR MODULEMASTER_Free(ModuleMaster *Self, APTR Void)
 {
@@ -256,7 +243,7 @@ ERROR MODULEMASTER_Free(ModuleMaster *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This action sends a CLOSE command to the module, then frees the personally assigned module structure.  Note that the
 // module code will be left resident in memory as it belongs to the ModuleMaster, not the Module.  See Expunge()
 // in the Core for further details.
@@ -276,11 +263,11 @@ static ERROR MODULE_Free(extModule *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 GetVar: Module parameters can be retrieved through this action.
 -END-
-*****************************************************************************/
+**********************************************************************************************************************/
 
 static ERROR MODULE_GetVar(extModule *Self, struct acGetVar *Args)
 {
@@ -302,7 +289,7 @@ static ERROR MODULE_GetVar(extModule *Self, struct acGetVar *Args)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR MODULE_Init(extModule *Self, APTR Void)
 {
@@ -729,7 +716,7 @@ exit:
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 ResolveSymbol: Resolves the symbol names in loaded link libraries to address pointers.
@@ -749,7 +736,7 @@ FieldNotSet: The module has not been successfully initialised.
 NotFound: The symbol was not found.
 NoSupport: The host platform does not support this method.
 
-*****************************************************************************/
+**********************************************************************************************************************/
 
 static ERROR MODULE_ResolveSymbol(extModule *Self, struct modResolveSymbol *Args)
 {
@@ -783,7 +770,7 @@ static ERROR MODULE_ResolveSymbol(extModule *Self, struct modResolveSymbol *Args
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 SetVar: Passes variable parameters to loaded modules.
 -END-
@@ -803,7 +790,7 @@ static ERROR MODULE_SetVar(extModule *Self, struct acSetVar *Args)
    return VarSetString(Self->Vars, Args->Field, Args->Value);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Actions: Used to gain direct access to a module's actions.
@@ -829,7 +816,7 @@ It is recommended that you refer to the Action Support Guide before hooking into
 code for before.
 -END-
 
-*****************************************************************************/
+**********************************************************************************************************************/
 
 static ERROR GET_Actions(extModule *Self, ActionEntry **Value)
 {
@@ -842,7 +829,7 @@ static ERROR GET_Actions(extModule *Self, ActionEntry **Value)
    else return log.warning(ERR_FieldNotSet);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Flags: Optional flags.
@@ -851,7 +838,7 @@ Lookup: MOF
 -FIELD-
 IDL: Returns a compressed IDL string from the module, if available.
 
-*****************************************************************************/
+**********************************************************************************************************************/
 
 static ERROR GET_IDL(extModule *Self, CSTRING *Value)
 {
@@ -865,7 +852,7 @@ static ERROR GET_IDL(extModule *Self, CSTRING *Value)
    else return log.warning(ERR_NotInitialised);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 FunctionList: Refers to a list of public functions exported by the module.
 
@@ -887,7 +874,7 @@ Status: private
 Setting the module Table prior to initialisation allows 'fake' modules to be created that reside in memory rather
 than on disk.
 
-*****************************************************************************/
+**********************************************************************************************************************/
 
 static ERROR SET_Header(extModule *Self, ModHeader *Value)
 {
@@ -896,7 +883,7 @@ static ERROR SET_Header(extModule *Self, ModHeader *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Master: For internal use only.
@@ -936,7 +923,7 @@ sub-directories before the module name itself - this could become more common in
 It is critical that file extensions do not appear in the Name string, e.g. "screen.dll" as not all systems
 may use a ".dll" extension.
 
-*****************************************************************************/
+**********************************************************************************************************************/
 
 static ERROR GET_Name(extModule *Self, CSTRING *Value)
 {
@@ -948,7 +935,7 @@ static ERROR SET_Name(extModule *Self, CSTRING Name)
 {
    if (!Name) return ERR_Okay;
 
-   WORD i;
+   LONG i;
    for (i=0; (Name[i]) and ((size_t)i < sizeof(Self->Name)-1); i++) {
       if ((Name[i] >= 'A') and (Name[i] <= 'Z')) Self->Name[i] = Name[i] - 'A' + 'a';
       else Self->Name[i] = Name[i];
@@ -958,7 +945,7 @@ static ERROR SET_Name(extModule *Self, CSTRING Name)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Version: Minimum required version number.
@@ -975,9 +962,9 @@ provide backwards-compatible functionality for your software.
 After initialisation, the Version field will be updated to reflect the actual version of the Module.
 -END-
 
-*****************************************************************************/
+**********************************************************************************************************************/
 
-//****************************************************************************
+//********************************************************************************************************************
 // Builds jump tables that link programs to modules.
 
 APTR build_jump_table(LONG JumpType, const Function *FList, LONG MemFlags)
@@ -1006,7 +993,7 @@ APTR build_jump_table(LONG JumpType, const Function *FList, LONG MemFlags)
    return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This special routine will compare strings up to a '.' extension or null character.
 
 static LONG cmp_mod_names(CSTRING String1, CSTRING String2)
@@ -1053,7 +1040,7 @@ static LONG cmp_mod_names(CSTRING String1, CSTRING String2)
    return FALSE;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Searches the system for a ModuleMaster header that matches the Module details.  The module must have been
 // loaded into memory in order for this function to return successfully.
 
@@ -1099,7 +1086,7 @@ static ModuleMaster * check_resident(extModule *Self, CSTRING ModuleName)
    return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Search the module database (loaded from disk).
 
 ModuleItem * find_module(ULONG Hash)
@@ -1107,7 +1094,7 @@ ModuleItem * find_module(ULONG Hash)
    parasol::Log log(__FUNCTION__);
 
    if (glModules) {
-      LONG *offsets = (LONG *)(glModules + 1);
+      auto offsets = (LONG *)(glModules + 1);
 
       log.traceBranch("Scanning %d modules for %x", glModules->Total, Hash);
 
@@ -1126,7 +1113,7 @@ ModuleItem * find_module(ULONG Hash)
    return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void free_module(MODHANDLE handle)
 {

@@ -1090,7 +1090,7 @@ struct Edges {
 #define NF_UNLOCK_FREE 0x00000020
 #define NF_FREE 0x00000040
 #define NF_TIMER_SUB 0x00000080
-#define NF_CREATE_OBJECT 0x00000100
+#define NF_SUPPRESS_LOG 0x00000100
 #define NF_COLLECT 0x00000200
 #define NF_NEW_OBJECT 0x00000400
 #define NF_RECLASSED 0x00000800
@@ -1423,16 +1423,14 @@ extern "C" {
 #endif
 
 #ifdef DEBUG
-#define MSG(...)  LogF(0,__VA_ARGS__)
-#define FMSG(...) LogF(__VA_ARGS__)
-#define LOGRETURN()    LogReturn()
+ #define MSG(...)  LogF(0,__VA_ARGS__)
+ #define FMSG(...) LogF(__VA_ARGS__)
+ #define LOGRETURN()    LogReturn()
 #else
-#define MSG(...)
-#define FMSG(...)
-#define LOGRETURN()
+ #define MSG(...)
+ #define FMSG(...)
+ #define LOGRETURN()
 #endif
-#define LOG FMSG
-#define LOGBACK LOGRETURN
 
 #define PRIVATE_FIELDS
 
@@ -1469,37 +1467,6 @@ extern "C" {
 
 #ifdef  __cplusplus
 }
-#endif
-
-//****************************************************************************
-// Endian management routines.
-
-#ifdef REVERSE_BYTEORDER
-
-// CPU is little endian (Intel, ARM)
-
-#define wrb_long(a,b) ((LONG *)(b))[0] = (a)
-#define wrb_word(a,b) ((WORD *)(b))[0] = (a)
-
-INLINE ULONG cpu_be32(ULONG x) {
-   return ((((UBYTE)x)<<24)|(((UBYTE)(x>>8))<<16)|((x>>8) & 0xff00)|(x>>24));
-}
-
-#define be32_cpu(x) ((x<<24)|((x<<8) & 0xff0000)|((x>>8) & 0xff00)|(x>>24))
-#define cpu_be16(x) ((x<<8)|(x>>8))
-#define be16_cpu(x) ((x<<8)|(x>>8))
-
-#else
-
-// CPU is big endian (Motorola)
-
-#define wrb_long(a,b) (b)[0] = (UBYTE)(a); (b)[1] = (UBYTE)((a)>>8); (b)[2] = (UBYTE)((a)>>16); (b)[3] = (UBYTE)((a)>>24)
-#define wrb_word(a,b) (b)[0] = (UBYTE)(a); (b)[1] = (UBYTE)((a)>>8)
-
-#define cpu_be32(x) (x)
-#define be32_cpu(x) (x)
-#define cpu_be16(x) (x)
-#define be16_cpu(x) (x)
 #endif
 
 // Fast float-2-int conversion, with rounding to the nearest integer (F2I) and truncation (F2T)
@@ -1670,6 +1637,7 @@ struct OpenInfo {
 // FieldValue is used to simplify the initialisation of new objects.
 
 namespace parasol {
+
 struct FieldValue {
    ULONG FieldID;
    LONG Type;
@@ -1688,7 +1656,9 @@ struct FieldValue {
    constexpr FieldValue(ULONG pFID, DOUBLE pValue)  : FieldID(pFID), Type(FD_DOUBLE), Double(pValue) { };
    constexpr FieldValue(ULONG pFID, APTR pValue)    : FieldID(pFID), Type(FD_POINTER), Pointer(pValue) { };
    constexpr FieldValue(ULONG pFID, CPTR pValue)    : FieldID(pFID), Type(FD_POINTER), CPointer(pValue) { };
+   constexpr FieldValue(ULONG pFID, CPTR pValue, LONG pCustom) : FieldID(pFID), Type(pCustom), CPointer(pValue) { };
 };
+
 }
 
 #include <string.h> // memset()
@@ -2313,34 +2283,31 @@ struct CoreBase {
 #define END_FIELD { NULL, 0, 0, NULL, NULL }
 #define FDEF static const struct FunctionField
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #ifndef PRV_CORE_MODULE
-#undef ActionMsg
-#define ActionMsg(a,b,c)          (CoreBase->_ActionMsg(a,b,c,0,0))
+ #define ActionMsgPort(a,b,c,d,e)  (CoreBase->_ActionMsg(a,b,c,d,e))
+ #define DeregisterFD(a)           (CoreBase->_RegisterFD((a), RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL, 0, 0))
+ #define DelayAction(a,b,c)        (CoreBase->_ActionMsg(a,b,c,0,(CLASSID)-1))
+ #define DelayMsg(a,b,c)           (CoreBase->_ActionMsg(a,b,c,0,(CLASSID)-1))
+ #define DeleteMsg(a,b)            (CoreBase->_UpdateMessage(a,b,(APTR)-1,0,0))
+ #define GetObjectAddress          (CoreBase->_GetMemAddress)
+ #define SendAction(a,b,c,d)       (CoreBase->_ActionMsg(a,b,c,d,0))
+ #define WaitMsg(a,b,c)            (CoreBase->_ActionMsg(a,b,c,0,-2))
 
-#undef Action
-#define Action(a,b,c) (CoreBase->_Action(a,b,c))
+ #undef ActionMsg
+ #define ActionMsg(a,b,c)          (CoreBase->_ActionMsg(a,b,c,0,0))
 
-#define ActionMsgPort(a,b,c,d,e)  (CoreBase->_ActionMsg(a,b,c,d,e))
-#define DeregisterFD(a)           (CoreBase->_RegisterFD((a), RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL, 0, 0))
-#define DelayAction(a,b,c)        (CoreBase->_ActionMsg(a,b,c,0,(CLASSID)-1))
-#define DelayMsg(a,b,c)           (CoreBase->_ActionMsg(a,b,c,0,(CLASSID)-1))
-#define DeleteMsg(a,b)            (CoreBase->_UpdateMessage(a,b,(APTR)-1,0,0))
-#define GetObjectAddress          (CoreBase->_GetMemAddress)
+ #undef Action
+ #define Action(a,b,c)             (CoreBase->_Action(a,b,c))
 
-#undef NewLockedObject
-#define NewLockedObject(a,b,c,d)  (CoreBase->_NewLockedObject(a,b,c,d,0))
+ #undef NewLockedObject
+ #define NewLockedObject(a,b,c,d)  (CoreBase->_NewLockedObject(a,b,c,d,0))
 
-#undef PrintDiagnosis
-#define PrintDiagnosis()          (CoreBase->_PrintDiagnosis(NULL,NULL))
+ #undef PrintDiagnosis
+ #define PrintDiagnosis()          (CoreBase->_PrintDiagnosis(NULL,NULL))
 
-#define SendAction(a,b,c,d)       (CoreBase->_ActionMsg(a,b,c,d,0))
-
-#define WaitMsg(a,b,c)            (CoreBase->_ActionMsg(a,b,c,0,-2))
 #endif // PRV_CORE_MODULE
-
-// Macros
 
 #define GetParentContext()        ((OBJECTPTR)(MAXINT)GetResource(RES_PARENT_CONTEXT))
 #define GetResourcePtr(a)         ((APTR)(MAXINT)GetResource((a)))
@@ -2357,14 +2324,12 @@ typedef std::map<std::string, std::string> ConfigKeys;
 typedef std::pair<std::string, ConfigKeys> ConfigGroup;
 typedef std::vector<ConfigGroup> ConfigGroups;
 
-inline LONG StrLength(CSTRING String)
-{
+inline LONG StrLength(CSTRING String) {
    if (String) return strlen(String);
    else return 0;
 }
 
-inline LARGE StrToInt(CSTRING String)
-{
+inline LARGE StrToInt(CSTRING String) {
    if (!String) return 0;
 
    while ((*String < '0') or (*String > '9')) { // Ignore any leading characters
@@ -2377,11 +2342,8 @@ inline LARGE StrToInt(CSTRING String)
    return strtoll(String, NULL, 0);
 }
 
-inline DOUBLE StrToFloat(CSTRING String)
-{
+inline DOUBLE StrToFloat(CSTRING String) {
    if (!String) return 0;
-
-   // Ignore any leading characters
 
    while ((*String != '-') and (*String != '.') and ((*String < '0') or (*String > '9'))) {
       if (!*String) return 0;
@@ -2395,8 +2357,7 @@ inline LONG IntToStr(LARGE Integer, STRING String, LONG StringSize) {
    return StrFormat(String, StringSize, PF64(), Integer);
 }
 
-inline ERROR ClearMemory(APTR Memory, LONG Length)
-{
+inline ERROR ClearMemory(APTR Memory, LONG Length) {
    if (!Memory) return ERR_NullArgs;
    memset(Memory, 0, Length); // memset() is assumed to be optimised by the compiler.
    return ERR_Okay;
@@ -2674,13 +2635,41 @@ class Create {
    public:
       ERROR error;
 
+      // Return an unscoped direct object pointer
+
+      template <typename... Args> static T * global(Args... Fields) {
+         parasol::Create<T> object = { Fields... };
+         if (object.ok()) {
+            auto result = *object;
+            object.obj = NULL;
+            return result;
+         }
+         else return NULL;
+      }
+
+      // Return an unscoped integral object (suitable for class allocations only).
+
+      template <typename... Args> static T * integral(Args... Fields) {
+         parasol::Create<T> object({ Fields... }, NF_INTEGRAL);
+         if (object.ok()) return *object;
+         else return NULL;
+      }
+
+      // Return an unscoped and untracked object pointer.
+
+      template <typename... Args> static T * untracked(Args... Fields) {
+         parasol::Create<T> object({ Fields... }, NF_UNTRACKED);
+         if (object.ok()) return *object;
+         else return NULL;
+      }
+
       // Create a scoped object
 
-      Create(std::initializer_list<FieldValue> Fields) : obj(NULL) {
+      Create(std::initializer_list<FieldValue> Fields, LONG Flags = 0) : obj(NULL), error(ERR_Failed) {
          parasol::Log log("CreateObject");
          log.branch(T::CLASS_NAME);
 
-         if (!NewObject(T::CLASS_ID, NF_CREATE_OBJECT, (BaseClass **)&obj)) {
+         if (!NewObject(T::CLASS_ID, NF_SUPPRESS_LOG|Flags, (BaseClass **)&obj)) {
             for (auto &f : Fields) {
                OBJECTPTR target;
                if (auto field = FindField(obj, f.FieldID, &target)) {
@@ -2695,7 +2684,7 @@ class Create {
                   else {
                      target->threadLock();
 
-                     if (f.Type & (FD_POINTER|FD_STRING|FD_FUNCTION|FD_VARIABLE)) {
+                     if (f.Type & (FD_POINTER|FD_STRING|FD_ARRAY|FD_FUNCTION|FD_VARIABLE)) {
                         error = field->WriteValue(target, field, f.Type, f.Pointer, 0);
                      }
                      else if (f.Type & (FD_DOUBLE|FD_FLOAT)) {
@@ -2716,13 +2705,22 @@ class Create {
                else { error = log.warning(ERR_UnsupportedField); return; }
             }
 
-            if (!(error = acInit(obj))) return;
+            if ((error = acInit(obj))) {
+               acFree(obj);
+               obj = NULL;
+            }
          }
          else error = ERR_NewObject;
       }
 
       ~Create() {
-         if (obj) { acFree(obj); obj = NULL; }
+         if (obj) {
+            if ((obj->BaseClass::Flags & NF_INITIALISED) and (obj->BaseClass::Flags & (NF_UNTRACKED|NF_INTEGRAL)))  {
+               return; // Detected a successfully created unscoped object
+            }
+            acFree(obj);
+            obj = NULL;
+         }
       }
 
       T * operator->() { return obj; }; // Promotes underlying methods and fields
@@ -3241,7 +3239,7 @@ inline ERROR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, DOUBLE *Value)
    ERROR error;
    struct cfgReadValue read = { .Group = Group, .Key = Key };
    if (!(error = Action(MT_CfgReadValue, Self, &read))) {
-      *Value = StrToFloat(read.Data);
+      *Value = strtod(read.Data, NULL);
       return ERR_Okay;
    }
    else { *Value = 0; return error; }
@@ -3252,7 +3250,7 @@ inline ERROR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
    ERROR error;
    struct cfgReadValue read = { .Group = Group, .Key = Key };
    if (!(error = Action(MT_CfgReadValue, Self, &read))) {
-      *Value = StrToInt(read.Data);
+      *Value = strtol(read.Data, NULL, 0);
       return ERR_Okay;
    }
    else { *Value = 0; return error; }
@@ -3862,23 +3860,6 @@ inline ERROR acWrite(OBJECTID ObjectID, CPTR Buffer, LONG Bytes) {
    return ActionMsg(AC_Write, ObjectID, &write);
 }
 
-inline ERROR LoadModule(CSTRING Name, FLOAT Version, OBJECTPTR *Module, APTR Functions) {
-   OBJECTPTR module;
-   if (!CreateObject(ID_MODULE, 0, &module,
-         FID_Name|TSTR,   Name,
-         FID_Version|TFLOAT, Version,
-         TAGEND)) {
-      APTR functionbase;
-      if (!GetField(module, FID_ModBase|TPTR, &functionbase)) {
-         if (Module) *Module = module;
-         if (Functions) ((APTR *)Functions)[0] = functionbase;
-         return ERR_Okay;
-      }
-      else return ERR_GetField;
-   }
-   else return ERR_CreateObject;
-}
-
 inline FIELD ResolveField(CSTRING Field) {
    return StrHash(Field, FALSE);
 }
@@ -4060,10 +4041,10 @@ struct X11Globals {
 
 // Event support
 
-typedef struct rkEvent {
+struct rkEvent {
    EVENTID EventID;
    // Data follows
-} rkEvent;
+};
 
 #define EVID_DISPLAY_RESOLUTION_CHANGE  GetEventID(EVG_DISPLAY, "resolution", "change")
 
@@ -4118,7 +4099,7 @@ typedef struct { EVENTID EventID; DOUBLE Volume; LONG Muted; } evVolume;
 typedef struct { EVENTID EventID; LONG Qualifiers; LONG Code; LONG Unicode; } evKey;
 typedef struct { EVENTID EventID; WORD TotalWithFocus; WORD TotalLostFocus; OBJECTID FocusList[1]; } evFocus;
 
-// Hotplug event structure.  The hotlpug event is sent whenever a new hardware device is inserted by the user.
+// Hotplug event structure.  The hotplug event is sent whenever a new hardware device is inserted by the user.
 
 struct evHotplug {
    EVENTID EventID;
@@ -4139,15 +4120,6 @@ struct evHotplug {
    char Vendor[40];     // Name of vendor
 };
 
-inline void SET_DEVICE(struct dcDeviceInput *Input, WORD Type, WORD Flags, DOUBLE Value, LARGE Timestamp)
-{
-   Input->Type  = Type;
-   Input->Flags = Flags;
-   Input->Value = Value;
-   Input->Timestamp = Timestamp;
-}
-
-//****************************************************************************
 // File Methods.
 
 inline CSTRING flReadLine(OBJECTPTR Object) {
@@ -4156,19 +4128,23 @@ inline CSTRING flReadLine(OBJECTPTR Object) {
    else return NULL;
 }
 
-//****************************************************************************
-// Little endian read functions.
+// Read little endian values.
 
-inline ERROR flReadLE(OBJECTPTR Object, WORD *Result)
+template<class T> ERROR flReadLE(OBJECTPTR Object, T *Result)
 {
-   UBYTE data[2];
-   struct acRead read = { .Buffer = data, .Length = 2 };
+   UBYTE data[sizeof(T)];
+   struct acRead read = { .Buffer = data, .Length = sizeof(T) };
    if (!Action(AC_Read, Object, &read)) {
-      if (read.Result IS 2) {
-         #ifdef LITTLE_ENDIAN
-            *Result = ((WORD *)data)[0];
+      if (read.Result IS sizeof(T)) {
+         #ifdef LITTLE_ENDIAN // The CPU is little endian
+            *Result = ((T *)data)[0];
          #else
-            *Result = (data[1]<<8) | data[0];
+            switch(sizeof(T)) {
+               case 2:  *Result = (data[1]<<8) | data[0]; break;
+               case 4:  *Result = (data[0]<<24)|(data[1]<<16)|(data[2]<<8)|(data[3]); break;
+               case 8:  *Result = ((LARGE)data[0]<<56)|((LARGE)data[1]<<48)|((LARGE)data[2]<<40)|((LARGE)data[3]<<32)|(data[4]<<24)|(data[5]<<16)|(data[6]<<8)|(data[7]); break;
+               default: *Result = ((T *)data)[0];
+            }
          #endif
          return ERR_Okay;
       }
@@ -4177,43 +4153,6 @@ inline ERROR flReadLE(OBJECTPTR Object, WORD *Result)
    else return ERR_Read;
 }
 
-inline ERROR flReadLE(OBJECTPTR Object, LONG *Result)
-{
-   UBYTE data[4];
-   struct acRead read = { data, sizeof(data) };
-   if (!Action(AC_Read, Object, &read)) {
-      if (read.Result IS sizeof(data)) {
-         #ifdef LITTLE_ENDIAN
-            *Result = ((LONG *)data)[0];
-         #else
-            *Result = (data[0]<<24)|(data[1]<<16)|(data[2]<<8)|(data[3])
-         #endif
-         return ERR_Okay;
-      }
-      else return ERR_Read;
-   }
-   else return ERR_Read;
-}
-
-inline ERROR flReadLE(OBJECTPTR Object, LARGE *Result)
-{
-   UBYTE data[8];
-   struct acRead read = { data, sizeof(data) };
-   if (!Action(AC_Read, Object, &read)) {
-      if (read.Result IS sizeof(data)) {
-         #ifdef LITTLE_ENDIAN
-            *Result = ((LARGE *)data)[0];
-         #else
-            *Result = ((LARGE)data[0]<<56)|((LARGE)data[1]<<48)|((LARGE)data[2]<<40)|((LARGE)data[3]<<32)|(data[4]<<24)|(data[5]<<16)|(data[6]<<8)|(data[7])
-         #endif
-         return ERR_Okay;
-      }
-      else return ERR_Read;
-   }
-   else return ERR_Read;
-}
-
-#ifdef __cplusplus
 template <class R>
 constexpr FUNCTION make_function_stdc(R Routine, OBJECTPTR Context = CurrentContext()) {
    FUNCTION func = { .Type = CALL_STDC, .StdC = { .Context = Context, .Routine = (APTR)Routine } };
@@ -4224,6 +4163,5 @@ inline FUNCTION make_function_script(OBJECTPTR Script, LARGE Procedure) {
    FUNCTION func = { .Type = CALL_SCRIPT, .Script = { .Script = (OBJECTPTR)Script, .ProcedureID = Procedure } };
    return func;
 }
-#endif
 
 inline CSTRING BaseClass::className() { return Class->ClassName; }

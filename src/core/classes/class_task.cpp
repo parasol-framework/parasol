@@ -473,7 +473,7 @@ static CSTRING action_id_name(LONG ActionID)
       return ActionTable[ActionID].Name;
    }
    else {
-      IntToStr(ActionID, idname, sizeof(idname));
+      StrFormat(idname, sizeof(idname), "%d", ActionID);
       return idname;
    }
 }
@@ -1513,7 +1513,7 @@ static ERROR TASK_Free(extTask *Self, APTR Void)
 GetEnv: Retrieves environment variables for the active process.
 
 On platforms that support environment variables, GetEnv() returns the value of the environment variable matching the
-Name string.  If there is no matching variable, ERR_DoesNotExist is returned.
+Name string.  If there is no matching variable, `ERR_DoesNotExist` is returned.
 
 In Windows, it is possible to look up registry keys if the string starts with one of the following (in all other
 cases, the system's environment variables are queried):
@@ -1594,15 +1594,26 @@ static ERROR TASK_GetEnv(extTask *Self, struct taskGetEnv *Args)
                APTR keyhandle;
                if (!RegOpenKeyExA(keys[ki].ID, path, 0, KEY_READ, &keyhandle)) {
                   LONG type;
-
                   LONG envlen = ENV_SIZE;
                   if (!RegQueryValueExA(keyhandle, str+len+1, 0, &type, Self->Env, &envlen)) {
                      // Numerical registry types can be converted into strings
 
                      switch(type) {
-                        case REG_DWORD: IntToStr(((LONG *)Self->Env)[0], Self->Env, ENV_SIZE); break;
-                        case REG_DWORD_BIG_ENDIAN: IntToStr(((LONG *)Self->Env)[0], Self->Env, ENV_SIZE); break; // Not quite right... we should convert the endianness first.
-                        case REG_QWORD: IntToStr(((LARGE *)Self->Env)[0], Self->Env, ENV_SIZE); break;
+                        case REG_DWORD:
+                           StrFormat(Self->Env, ENV_SIZE, "%d", ((LONG *)Self->Env)[0]);
+                           break;
+                        case REG_DWORD_BIG_ENDIAN: {
+                           #ifdef LITTLE_ENDIAN // Intel
+                           LONG value = reverse_long(((LONG *)Self->Env)[0]);
+                           #else
+                           LONG value = ((LONG *)Self->Env)[0];
+                           #endif
+                           StrFormat(Self->Env, ENV_SIZE, "%d", value);
+                           break;
+                        }
+                        case REG_QWORD:
+                           IntToStr(((LARGE *)Self->Env)[0], Self->Env, ENV_SIZE);
+                           break;
                      }
 
                      Args->Value = Self->Env;
@@ -1655,7 +1666,7 @@ system's environment variables are queried):
 </pre>
 
 When setting a registry key, the function will always set the Value as a string type unless the key already exists.  If
-the existing key value is a number such as DWORD or QWORD, then the Value will be converted to an integer before the
+the existing key value is a number such as `DWORD` or `QWORD`, then the Value will be converted to an integer before the
 key is set.
 
 -INPUT-
@@ -1833,7 +1844,7 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
 #ifdef _WIN32
       char buffer[300];
       if (winGetExeDirectory(sizeof(buffer), buffer)) {
-         len = StrLength(buffer);
+         LONG len = StrLength(buffer);
          while ((len > 1) and (buffer[len-1] != '/') and (buffer[len-1] != '\\') and (buffer[len-1] != ':')) len--;
          if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (void **)&Self->ProcessPath, &Self->ProcessPathMID)) {
             for (i=0; i < len; i++) Self->ProcessPath[i] = buffer[i];
@@ -1855,11 +1866,7 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
 
          // This method of path retrieval only works on Linux (most types of Unix don't provide any support for this).
 
-         LONG pos = 0;
-         for (i=0; "/proc/"[i]; i++) procfile[pos++] = "/proc/"[i];
-         pos += IntToStr(glProcessID, procfile+pos, 20);
-         for (i=0; "/exe"[i]; i++) procfile[pos++] = "/exe"[i];
-         procfile[pos] = 0;
+         StrFormat(procfile, sizeof(procfile), "/proc/%d/exe", glProcessID);
 
          buffer[0] = 0;
          if ((i = readlink(procfile, buffer, sizeof(buffer)-1)) > 0) {
@@ -1928,7 +1935,6 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
 
       call.StdC.Routine = (APTR)msg_threadaction; // class_thread.c
       AddMsgHandler(NULL, MSGID_THREAD_ACTION, &call, &Self->MsgThreadAction);
-
 
       log.msg("Process Path: %s", Self->ProcessPath);
       log.msg("Working Path: %s", Self->Path);

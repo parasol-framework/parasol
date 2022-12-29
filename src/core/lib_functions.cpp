@@ -281,10 +281,9 @@ objMetaClass * FindClass(CLASSID ClassID)
 
          log.branch("Attempting to load module \"%s\" for class $%.8x.", path, ClassID);
 
-         OBJECTPTR module;
-         if (!CreateObject(ID_MODULE, NF_UNTRACKED, &module, FID_Name|TSTR, path, TAGEND)) {
+         objModule::create mod = { fl::Name(path) };
+         if (mod.ok()) {
             if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) mc = ptr[0];
-            acFree(module);  // Free the module object - the code and any classes it created will continue to remain in memory.
          }
       }
 
