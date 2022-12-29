@@ -366,11 +366,10 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
          return ERR_Failed;
       }
 
-      // An external reference can refer to a module (preferred) or a class name.
+      // An external reference can refer to a module for auto-loading (preferred) or a class name.
 
-      OBJECTPTR mod;
-      if (!CreateObject(ID_MODULE, NF_INTEGRAL, &mod, FID_Name|TSTR, path + 4, TAGEND)) acFree(mod);
-      else FindClass(ResolveClassName(path + 4));
+      objModule::create mod = { fl::Name(path + 4) };
+      if (!mod.ok()) FindClass(ResolveClassName(path + 4));
 
       tlClassLoaded = true; // This setting will prevent recursion
       return ERR_VirtualVolume;

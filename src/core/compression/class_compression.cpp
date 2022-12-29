@@ -1,10 +1,9 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -CLASS-
 Compression: Compresses data into archives, supporting a variety of compression formats.
@@ -45,7 +44,7 @@ This code is based on the work of Jean-loup Gailly and Mark Adler.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define ZLIB_MEM_LEVEL 8
 
@@ -92,7 +91,7 @@ static void write_eof(extCompression *Self);
 
 static ERROR GET_Size(extCompression *, LARGE *);
 
-//****************************************************************************
+//********************************************************************************************************************
 // Special definitions.
 
 static const UBYTE glHeader[HEAD_LENGTH] = {
@@ -156,7 +155,7 @@ void FreeFromLL(CompressedFile *a, CompressedFile *b, CompressedFile **c)
    a->Next = 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR convert_zip_error(struct z_stream_s *Stream, LONG Result)
 {
@@ -178,7 +177,7 @@ ERROR convert_zip_error(struct z_stream_s *Stream, LONG Result)
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR COMPRESSION_ActionNotify(extCompression *Self, struct acActionNotify *Args)
 {
@@ -193,7 +192,7 @@ static ERROR COMPRESSION_ActionNotify(extCompression *Self, struct acActionNotif
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 CompressBuffer: Compresses a plain memory area into an empty buffer.
@@ -223,7 +222,7 @@ Failed
 BufferOverflow: The output buffer is not large enough.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR COMPRESSION_CompressBuffer(extCompression *Self, struct cmpCompressBuffer *Args)
 {
@@ -238,14 +237,12 @@ static ERROR COMPRESSION_CompressBuffer(extCompression *Self, struct cmpCompress
    Self->prvZip.next_out  = (Bytef *)Args->Output + 8;
    Self->prvZip.avail_out = Args->OutputSize - 8;
 
-   LONG err, level;
-
-   level = Self->CompressionLevel / 10;
+   LONG level = Self->CompressionLevel / 10;
    if (level < 0) level = 0;
    else if (level > 9) level = 9;
 
-   if ((err = deflateInit2(&Self->prvZip, level, Z_DEFLATED, Self->WindowBits, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY)) IS ERR_Okay) {
-      if ((err = deflate(&Self->prvZip, Z_FINISH)) IS Z_STREAM_END) {
+   if (deflateInit2(&Self->prvZip, level, Z_DEFLATED, Self->WindowBits, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY) IS ERR_Okay) {
+      if (deflate(&Self->prvZip, Z_FINISH) IS Z_STREAM_END) {
          Args->Result = Self->prvZip.total_out + 8;
          deflateEnd(&Self->prvZip);
 
@@ -264,7 +261,7 @@ static ERROR COMPRESSION_CompressBuffer(extCompression *Self, struct cmpCompress
    else return log.warning(ERR_Failed);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 CompressStreamStart: Initialises a new compression stream.
@@ -275,7 +272,7 @@ The level of compression is determined by the #CompressionLevel field value.
 Okay
 Failed: Failed to initialise the decompression process.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR COMPRESSION_CompressStreamStart(extCompression *Self, APTR Void)
 {
@@ -302,7 +299,7 @@ static ERROR COMPRESSION_CompressStreamStart(extCompression *Self, APTR Void)
    else return log.warning(ERR_Failed);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 CompressStream: Compresses streamed data into a buffer.
@@ -311,13 +308,13 @@ Use the CompressStream method to compress incoming streams of data whilst using 
 compression process is handled in three phases of Start, Compress and End.  The methods provided for each phase are
 #CompressStreamStart(), #CompressStream() and #CompressStreamEnd().
 
-A compression object can manage only one compression stream at any given time.  If it is necessary to compress multiple
-streams at once, create a compression object for each individual stream.
+A compression object can manage only one compression stream at any given time.  If it is necessary to compress
+multiple streams at once, create a compression object for each individual stream.
 
-No meta-information is written to the stream, so the client will need a way to record the total number of bytes that have been
-output during the compression process. This value must be stored somewhere in order to decompress the stream correctly.
-There is also no header information recorded to identify the type of algorithm used to compress the stream.  We
-recommend that the compression object's sub-class ID is stored for future reference.
+No meta-information is written to the stream, so the client will need a way to record the total number of bytes that
+have been output during the compression process. This value must be stored somewhere in order to decompress the
+stream correctly.  There is also no header information recorded to identify the type of algorithm used to compress
+the stream.  We recommend that the compression object's sub-class ID is stored for future reference.
 
 The following C code illustrates a simple means of compressing a file to another file using a stream:
 
@@ -371,7 +368,7 @@ BufferOverflow: The output buffer is not large enough to contain the compressed 
 Retry: Please recall the method using a larger output buffer.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR COMPRESSION_CompressStream(extCompression *Self, struct cmpCompressStream *Args)
 {
@@ -464,7 +461,7 @@ static ERROR COMPRESSION_CompressStream(extCompression *Self, struct cmpCompress
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 CompressStreamEnd: Ends the compression of an open stream.
@@ -484,7 +481,7 @@ Okay
 NullArgs
 BufferOverflow: The supplied Output buffer is not large enough (check the MinOutputSize field for the minimum allowable size).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR COMPRESSION_CompressStreamEnd(extCompression *Self, struct cmpCompressStreamEnd *Args)
 {
@@ -557,7 +554,7 @@ static ERROR COMPRESSION_CompressStreamEnd(extCompression *Self, struct cmpCompr
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 DecompressStreamStart: Initialises a new decompression stream.
@@ -574,7 +571,7 @@ has been processed, then call #DecompressStreamEnd().
 Okay
 Failed: Failed to initialise the decompression process.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR COMPRESSION_DecompressStreamStart(extCompression *Self, APTR Void)
 {
@@ -598,7 +595,7 @@ static ERROR COMPRESSION_DecompressStreamStart(extCompression *Self, APTR Void)
    else return log.warning(ERR_Failed);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 DecompressStream: Decompresses streamed data to an output buffer.
@@ -632,7 +629,7 @@ NullArgs
 AllocMemory
 BufferOverflow: The output buffer is not large enough.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR COMPRESSION_DecompressStream(extCompression *Self, struct cmpDecompressStream *Args)
 {
@@ -719,7 +716,7 @@ static ERROR COMPRESSION_DecompressStream(extCompression *Self, struct cmpDecomp
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 DecompressStreamEnd: Must be called at the end of the decompression process.
@@ -734,7 +731,7 @@ ptr(func) Callback: Refers to a function that will be called for each decompress
 Okay
 NullArgs
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR COMPRESSION_DecompressStreamEnd(extCompression *Self, struct cmpDecompressStreamEnd *Args)
 {
@@ -751,7 +748,7 @@ static ERROR COMPRESSION_DecompressStreamEnd(extCompression *Self, struct cmpDec
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 CompressFile: Add files to a compression object.
@@ -779,7 +776,7 @@ File: An error was encountered when trying to open the source file.
 NoPermission: The CMF_READ_ONLY flag has been set on the compression object.
 NoSupport: The sub-class does not support this method.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR COMPRESSION_CompressFile(extCompression *Self, struct cmpCompressFile *Args)
 {
@@ -913,7 +910,7 @@ static ERROR COMPRESSION_CompressFile(extCompression *Self, struct cmpCompressFi
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 DecompressBuffer: Decompresses data originating from the CompressBuffer method.
@@ -934,7 +931,7 @@ Okay
 Args
 BufferOverflow: The output buffer is not large enough to hold the decompressed information.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR COMPRESSION_DecompressBuffer(extCompression *Self, struct cmpDecompressBuffer *Args)
 {
@@ -966,7 +963,7 @@ static ERROR COMPRESSION_DecompressBuffer(extCompression *Self, struct cmpDecomp
    else return log.warning(ERR_Failed);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 DecompressFile: Extracts one or more files from a compression object.
@@ -999,7 +996,7 @@ Write: Failed to write uncompressed information to a destination file.
 Cancelled: The decompression process was cancelled by the feedback mechanism.
 Failed
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompressFile *Args)
 {
@@ -1068,7 +1065,6 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
 
    ERROR error      = ERR_Okay;
    UWORD inflateend = FALSE;
-   objFile *file    = NULL;
    Self->prvFileIndex = 0;
 
    CompressionFeedback feedback;
@@ -1138,8 +1134,9 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
             goto exit;
          }
 
-         UWORD namelen = read_word(Self->FileIO);
-         UWORD extralen = read_word(Self->FileIO);
+         UWORD namelen, extralen;
+         if (flReadLE(Self->FileIO, &namelen)) { error = ERR_Read; goto exit; }
+         if (flReadLE(Self->FileIO, &extralen)) { error = ERR_Read; goto exit; }
          if (acSeek(Self->FileIO, namelen + extralen, SEEK_CURRENT) != ERR_Okay) {
             error = log.warning(ERR_Seek);
             goto exit;
@@ -1228,12 +1225,13 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
             }
             else permissions = Self->Permissions;
 
-            if ((error = CreateObject(ID_FILE, NF_INTEGRAL, (OBJECTPTR *)&file,
-                  FID_Path|TSTR,         destpath,
-                  FID_Flags|TLONG,       FL_NEW|FL_WRITE,
-                  FID_Permissions|TLONG, permissions,
-                  TAGEND)) != ERR_Okay) {
-               log.warning("Error %d creating file \"%s\".", error, destpath);
+            objFile::create file = {
+               fl::Path(destpath), fl::Flags(FL_NEW|FL_WRITE), fl::Permissions(permissions)
+            };
+
+            if (!file.ok()) {
+               log.warning("Error %d creating file \"%s\".", file.error, destpath);
+               error = ERR_File;
                goto exit;
             }
 
@@ -1257,7 +1255,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
 
                   while ((!(error = Action(AC_Read, Self->FileIO, &read))) and (read.Result > 0)) {
                      struct acWrite write = { .Buffer = Self->prvInput, .Length = read.Result };
-                     if (Action(AC_Write, file, &write) != ERR_Okay) { error = log.warning(ERR_Write); goto exit; }
+                     if (Action(AC_Write, *file, &write) != ERR_Okay) { error = log.warning(ERR_Write); goto exit; }
 
                      inputlen -= read.Result;
                      if (inputlen <= 0) break;
@@ -1306,7 +1304,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
                         .Buffer = Self->prvOutput,
                         .Length = (LONG)(SIZE_COMPRESSION_BUFFER - Self->prvZip.avail_out)
                      };
-                     if (Action(AC_Write, file, &write) != ERR_Okay) { error = log.warning(ERR_Write); goto exit; }
+                     if (Action(AC_Write, *file, &write) != ERR_Okay) { error = log.warning(ERR_Write); goto exit; }
 
                      // Exit if all data has been written out
 
@@ -1344,10 +1342,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
 
             // Give the file a date that matches the original
 
-            flSetDate(file, feedback.Year, feedback.Month, feedback.Day, feedback.Hour, feedback.Minute, feedback.Second, 0);
-
-            acFree(file);
-            file = NULL;
+            flSetDate(*file, feedback.Year, feedback.Month, feedback.Day, feedback.Hour, feedback.Minute, feedback.Second, 0);
          }
 
          if (feedback.Progress < feedback.OriginalSize) {
@@ -1366,7 +1361,6 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
 
 exit:
    if (inflateend) inflateEnd(&Self->prvZip);
-   if (file) acFree(file);
 
    if ((error IS ERR_Okay) and (Self->prvFileIndex <= 0)) {
       log.msg("No files matched the path \"%s\".", Args->Path);
@@ -1376,7 +1370,7 @@ exit:
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 DecompressObject: Decompresses one file to a target object.
@@ -1401,7 +1395,7 @@ Seek
 Write
 Failed
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecompressObject *Args)
 {
@@ -1456,8 +1450,9 @@ static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecomp
          return log.warning(ERR_Seek);
       }
 
-      LONG namelen = read_word(Self->FileIO);
-      LONG extralen = read_word(Self->FileIO);
+      UWORD namelen, extralen;
+      if (flReadLE(Self->FileIO, &namelen)) return ERR_Read;
+      if (flReadLE(Self->FileIO, &extralen)) return ERR_Read;
       if (acSeek(Self->FileIO, namelen + extralen, SEEK_CURRENT) != ERR_Okay) {
          return log.warning(ERR_Seek);
       }
@@ -1582,7 +1577,8 @@ exit:
    if (error) log.warning(error);
    return error;
 }
-/*****************************************************************************
+
+/*********************************************************************************************************************
 
 -METHOD-
 Find: Find the first item that matches a given filter.
@@ -1607,7 +1603,7 @@ NoSupport
 NullArgs
 Search
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static THREADVAR CompressedItem glFindMeta;
 
@@ -1630,7 +1626,7 @@ static ERROR COMPRESSION_Find(extCompression *Self, struct cmpFind *Args)
    return ERR_Search;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Flush: Flushes all pending actions.
 -END-
@@ -1673,7 +1669,7 @@ static ERROR COMPRESSION_Flush(extCompression *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR COMPRESSION_Free(extCompression *Self, APTR Void)
 {
@@ -1700,7 +1696,7 @@ static ERROR COMPRESSION_Free(extCompression *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR COMPRESSION_Init(extCompression *Self, APTR Void)
 {
@@ -1717,11 +1713,7 @@ static ERROR COMPRESSION_Init(extCompression *Self, APTR Void)
    else if (Self->Flags & CMF_NEW) {
       // If the NEW flag is set then create a new archive, destroying any file already at that location
 
-      if (!CreateObject(ID_FILE, NF_INTEGRAL, (OBJECTPTR *)&Self->FileIO,
-            FID_Path|TSTR,   path,
-            FID_Flags|TLONG, FL_READ|FL_WRITE|FL_NEW,
-            TAGEND)) {
-
+      if ((Self->FileIO = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_WRITE|FL_NEW)))) {
          return ERR_Okay;
       }
       else {
@@ -1734,30 +1726,28 @@ static ERROR COMPRESSION_Init(extCompression *Self, APTR Void)
       }
    }
    else {
-      ERROR error;
-      BYTE exists;
+      ERROR error = ERR_Okay;
       LONG type;
-
-      if ((!AnalysePath(path, &type)) and (type IS LOC_FILE)) exists = TRUE;
-      else exists = FALSE;
+      bool exists = ((!AnalysePath(path, &type)) and (type IS LOC_FILE));
 
       if (exists) {
-         error = CreateObject(ID_FILE, NF_INTEGRAL, (OBJECTPTR *)&Self->FileIO,
-            FID_Path|TSTR,   path,
-            FID_Flags|TLONG, FL_READ|FL_APPROXIMATE|((Self->Flags & CMF_READ_ONLY) ? 0 : FL_WRITE),
-            TAGEND);
+         parasol::Create<objFile> file({
+            fl::Path(path),
+            fl::Flags(FL_READ|FL_APPROXIMATE|((Self->Flags & CMF_READ_ONLY) ? 0 : FL_WRITE))
+         }, NF_INTEGRAL);
 
          // Try switching to read-only access if we were denied permission.
 
-         if ((error IS ERR_NoPermission) and (!(Self->Flags & CMF_READ_ONLY))) {
+         if (file.ok()) Self->FileIO = *file;
+         else if ((file.error IS ERR_NoPermission) and (!(Self->Flags & CMF_READ_ONLY))) {
             log.trace("Trying read-only access...");
-            if (!(error = CreateObject(ID_FILE, NF_INTEGRAL, (OBJECTPTR *)&Self->FileIO,
-                  FID_Path|TSTR,   path,
-                  FID_Flags|TLONG, FL_READ|FL_APPROXIMATE,
-                  TAGEND))) {
+
+            if ((Self->FileIO = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_APPROXIMATE)))) {
                Self->Flags |= CMF_READ_ONLY;
             }
+            else error = ERR_File;
          }
+         else error = ERR_File;
       }
       else error = ERR_DoesNotExist;
 
@@ -1782,13 +1772,9 @@ static ERROR COMPRESSION_Init(extCompression *Self, APTR Void)
       else if ((!exists) and (Self->Flags & CMF_CREATE_FILE)) {
          // Create a new file if the requested location does not exist
 
-         log.msg("Creating a new file because the location does not exist.");
+         log.extmsg("Creating a new file because the location does not exist.");
 
-         if (!CreateObject(ID_FILE, NF_INTEGRAL, (OBJECTPTR *)&Self->FileIO,
-               FID_Path|TSTR,   path,
-               FID_Flags|TLONG, FL_READ|FL_WRITE|FL_NEW,
-               TAGEND)) {
-
+         if ((Self->FileIO = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_WRITE|FL_NEW)))) {
             return ERR_Okay;
          }
          else {
@@ -1808,7 +1794,7 @@ static ERROR COMPRESSION_Init(extCompression *Self, APTR Void)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR COMPRESSION_NewObject(extCompression *Self, APTR Void)
 {
@@ -1827,7 +1813,7 @@ static ERROR COMPRESSION_NewObject(extCompression *Self, APTR Void)
    else return log.warning(ERR_AllocMemory);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 RemoveFile: Deletes one or more files from a compression object.
@@ -1874,8 +1860,7 @@ static ERROR COMPRESSION_RemoveFile(extCompression *Self, struct cmpRemoveFile *
             print(Self, (CSTRING)Self->prvOutput);
          }
 
-         ERROR error;
-         if ((error = remove_file(Self, &filelist)) != ERR_Okay) return error;
+         if (auto error = remove_file(Self, &filelist)) return error;
       }
       else filelist = (ZipFile *)filelist->Next;
    }
@@ -1883,7 +1868,7 @@ static ERROR COMPRESSION_RemoveFile(extCompression *Self, struct cmpRemoveFile *
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Scan: Scan the archive's index of compressed data.
@@ -1911,7 +1896,7 @@ NoSupport
 NullArgs
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR COMPRESSION_Scan(extCompression *Self, struct cmpScan *Args)
 {
@@ -1969,8 +1954,7 @@ static ERROR COMPRESSION_Scan(extCompression *Self, struct cmpScan *Args)
             error = routine(Self, &meta);
          }
          else if (Args->Callback->Type IS CALL_SCRIPT) {
-            OBJECTPTR script = Args->Callback->Script.Script;
-            if (script) {
+            if (auto script = Args->Callback->Script.Script) {
                const ScriptArg args[] = {
                   { "Compression", FD_OBJECTPTR, { .Address = Self } },
                   { "CompressedItem:Item", FD_STRUCT|FD_PTR, { .Address = &meta } }
@@ -1988,7 +1972,7 @@ static ERROR COMPRESSION_Scan(extCompression *Self, struct cmpScan *Args)
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "compression_fields.cpp"
 #include "compression_func.cpp"
@@ -2044,22 +2028,23 @@ static const FieldArray clFields[] = {
 
 extern "C" ERROR add_compression_class(void)
 {
-   return(CreateObject(ID_METACLASS, 0, (OBJECTPTR *)&glCompressionClass,
-      FID_ClassVersion|TFLOAT,  VER_COMPRESSION,
-      FID_Name|TSTR,            "Compression",
-      FID_FileExtension|TSTR,   "*.zip",
-      FID_FileDescription|TSTR, "ZIP File",
-      FID_FileHeader|TSTR,      "[0:$504b0304]",
-      FID_Category|TLONG,       CCF_DATA,
-      FID_Actions|TPTR,         clCompressionActions,
-      FID_Methods|TARRAY,       clCompressionMethods,
-      FID_Fields|TARRAY,        clFields,
-      FID_Size|TLONG,           sizeof(extCompression),
-      FID_Path|TSTR,            "modules:core",
-      TAGEND));
+   glCompressionClass = extMetaClass::create::global(
+      fl::ClassVersion(VER_COMPRESSION),
+      fl::Name("Compression"),
+      fl::FileExtension("*.zip"),
+      fl::FileDescription("ZIP File"),
+      fl::FileHeader("[0:$504b0304]"),
+      fl::Category(CCF_DATA),
+      fl::Actions(clCompressionActions),
+      fl::Methods(clCompressionMethods),
+      fl::Fields(clFields),
+      fl::Size(sizeof(extCompression)),
+      fl::Path("modules:core"));
+
+   return glCompressionClass ? ERR_Okay : ERR_AddClass;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "class_archive.cpp"
 #include "class_compressed_stream.cpp"

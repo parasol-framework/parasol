@@ -19,8 +19,6 @@ STRING ProgAuthor    = "Paul Manias";
 STRING ProgDate      = "February 2014";
 STRING ProgCopyright = "Paul Manias (c) 2014";
 
-static struct StringsBase *StringsBase;
-static struct FileSystemBase *FileSystemBase;
 extern struct CoreBase *CoreBase;
 static volatile OBJECTPTR glConfig = NULL;
 static LONG glTotalThreads = 8;
@@ -132,9 +130,6 @@ void program(void)
    LONG i;
    STRING *args;
 
-   StringsBase = GetResourcePtr(RES_STRINGS);
-   FileSystemBase = GetResourcePtr(RES_FILESYSTEM);
-
    if ((CurrentTask()->getPtr(FID_Parameters, &args) IS ERR_Okay) and (args)) {
       for (i=0; args[i]; i++) {
          if (!StrMatch(args[i], "-threads")) {
@@ -153,9 +148,7 @@ void program(void)
       }
    }
 
-
-   CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&glConfig,
-      TAGEND);
+   glConfig = objConfig::create::global();
 
    #ifdef QUICKLOCK
       log.msg("Quick-locking will be tested.");

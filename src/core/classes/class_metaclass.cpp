@@ -43,7 +43,7 @@ static void copy_field(extMetaClass *, const FieldArray *, Field *, LONG *);
 static void register_fields(extMetaClass *);
 static Field * lookup_id_byclass(extMetaClass *, ULONG, extMetaClass **);
 
-//****************************************************************************
+//********************************************************************************************************************
 // The MetaClass is the focal point of the OO design model.  Because classes are treated like objects, they must point
 // back to a controlling class definition - this it.  See NewObject() for the management code for this data.
 
@@ -190,7 +190,7 @@ void init_metaclass(void)
    glMetaClass.OriginalFieldTotal = ARRAYSIZE(glMetaFields)-1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Sort class lookup by class ID.
 
 static void sort_class_db(void)
@@ -246,7 +246,7 @@ ERROR CLASS_FindField(extMetaClass *Class, struct mcFindField *Args)
    else return ERR_Search;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR CLASS_Free(extMetaClass *Class, APTR Void)
 {
@@ -258,7 +258,7 @@ ERROR CLASS_Free(extMetaClass *Class, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR CLASS_Init(extMetaClass *Self, APTR Void)
 {
@@ -886,7 +886,7 @@ static ERROR GET_TotalMethods(extMetaClass *Class, LONG *Value)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR field_setup(extMetaClass *Class)
 {
@@ -1077,7 +1077,7 @@ static ERROR field_setup(extMetaClass *Class)
    return sort_class_fields(Class, fields);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Register a hashed field ID and its corresponding name.  Use GET_FIELD_NAME() to retrieve field names from the store.
 
 static void register_fields(extMetaClass *Class)
@@ -1096,7 +1096,7 @@ static void register_fields(extMetaClass *Class)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void copy_field(extMetaClass *Class, const FieldArray *Source, Field *Dest, LONG *Offset)
 {
@@ -1232,7 +1232,7 @@ ERROR sort_class_fields(extMetaClass *Class, Field *fields)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // These are pre-defined fields that are applied to each class' object.
 
 static ERROR OBJECT_GetClass(OBJECTPTR Self, extMetaClass **Value)
@@ -1241,7 +1241,7 @@ static ERROR OBJECT_GetClass(OBJECTPTR Self, extMetaClass **Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR OBJECT_GetClassID(OBJECTPTR Self, CLASSID *Value)
 {
@@ -1249,7 +1249,7 @@ static ERROR OBJECT_GetClassID(OBJECTPTR Self, CLASSID *Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR OBJECT_GetOwner(OBJECTPTR Self, OBJECTID *OwnerID)
 {
@@ -1273,7 +1273,7 @@ static ERROR OBJECT_SetOwner(OBJECTPTR Self, OBJECTID OwnerID)
    else return log.warning(ERR_NullArgs);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR OBJECT_GetTask(OBJECTPTR Self, OBJECTID *TaskID)
 {
@@ -1281,7 +1281,7 @@ static ERROR OBJECT_GetTask(OBJECTPTR Self, OBJECTID *TaskID)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR OBJECT_GetName(OBJECTPTR Self, STRING *Name)
 {
@@ -1295,7 +1295,7 @@ static ERROR OBJECT_SetName(OBJECTPTR Self, CSTRING Name)
    else return SetName(Self, Name);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This function expects you to have a lock on the class semaphore.
 
 ERROR write_class_item(ClassItem *item)
@@ -1343,7 +1343,7 @@ ERROR write_class_item(ClassItem *item)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Please note that this function will clear any registered classes, so the native classes are re-registered at the end
 // of the routine.
 
@@ -1358,17 +1358,14 @@ ERROR load_classes(void)
 
    ERROR error;
    if (!(error = AccessSemaphore(glSharedControl->ClassSemaphore, 3000, 0))) {
-      objFile *file;
-      if (!CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
-            FID_Path|TSTR,   glClassBinPath,
-            FID_Flags|TLONG, FL_READ,
-            TAGEND)) {
+      objFile::create file = { fl::Path(glClassBinPath), fl::Flags(FL_READ) };
 
+      if (file.ok()) {
          LONG filesize;
          file->get(FID_Size, &filesize);
 
          LONG total;
-         if (!(error = acRead(file, &total, sizeof(total), NULL))) {
+         if (!(error = file->read(&total, sizeof(total), NULL))) {
             log.msg("There are %d class records to process.", total);
             LONG memsize = sizeof(ClassHeader) + (sizeof(LONG) * total) + filesize - sizeof(LONG);
             if (!(error = AllocMemory(memsize, MEM_NO_CLEAR|MEM_PUBLIC|MEM_UNTRACKED|MEM_NO_BLOCK, (APTR *)&glClassDB, &glSharedControl->ClassesMID))) {
@@ -1377,7 +1374,7 @@ ERROR load_classes(void)
                glClassDB->Total = total;
                glClassDB->Size  = memsize;
 
-               if (!(error = acRead(file, CL_ITEMS(glClassDB), filesize - sizeof(LONG), NULL))) {
+               if (!(error = file->read(CL_ITEMS(glClassDB), filesize - sizeof(LONG), NULL))) {
                   log.msg("Loaded %d classes.", glClassDB->Total);
 
                   // Build the class offset array
@@ -1396,8 +1393,6 @@ ERROR load_classes(void)
             else error = log.warning(ERR_AllocMemory);
          }
          else error = log.warning(ERR_Read);
-
-         acFree(file);
       }
       else glScanClasses = TRUE;
 
@@ -1423,8 +1418,8 @@ ERROR load_classes(void)
    return error;
 }
 
-//****************************************************************************
-// [Refer to register_class() if you want to see how classes are recognised]
+//********************************************************************************************************************
+// [Refer to register_class() to see how classes are recognised]
 //
 // If the classes.bin file is missing or incomplete, this code will scan for every module installed in the system and
 // initialise it so that all classes can be registered in the class database.
@@ -1454,10 +1449,8 @@ void scan_classes(void)
 
             log.msg("Loading module for class scan: %s", modules);
 
-            OBJECTPTR module;
-            if (!CreateObject(ID_MODULE, 0, &module, FID_Name|TSTR, modules, FID_Flags|TLONG, MOF_SYSTEM_PROBE, TAGEND)) {
-               acFree(module);
-            }
+            objModule::create mod = { fl::Name(modules), fl::Flags(MOF_SYSTEM_PROBE) };
+
             total++;
          }
 
@@ -1644,7 +1637,7 @@ ERROR register_class(CSTRING Name, CLASSID ParentID, LONG Category, CSTRING Path
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Search the class database for a specific class ID.
 
 ClassItem * find_class(ULONG Hash)
@@ -1672,7 +1665,7 @@ ClassItem * find_class(ULONG Hash)
    return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Lookup the fields declared by a MetaClass, as opposed to the fields of the MetaClass itself.
 
 static Field * lookup_id_byclass(extMetaClass *Class, ULONG FieldID, extMetaClass **Result)

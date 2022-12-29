@@ -63,7 +63,7 @@ ERROR CreateObjectF(LARGE ClassID, LONG Flags, OBJECTPTR *argObject, va_list Lis
    OBJECTPTR object;
    ERROR error;
 
-   if (!NewObject(ClassID, Flags|NF_CREATE_OBJECT, &object)) {
+   if (!NewObject(ClassID, Flags|NF_SUPPRESS_LOG, &object)) {
       if (!SetFieldsF(object, List)) {
          if (!(error = acInit(object))) {
             if (argObject) *argObject = object;
@@ -150,7 +150,7 @@ ERROR NewObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object)
 
    if (Object) *Object = NULL;
 
-   Flags &= (NF_UNTRACKED|NF_INTEGRAL|NF_UNIQUE|NF_NAME|NF_PUBLIC|NF_CREATE_OBJECT); // Very important to eliminate any internal flags.
+   Flags &= (NF_UNTRACKED|NF_INTEGRAL|NF_UNIQUE|NF_NAME|NF_PUBLIC|NF_SUPPRESS_LOG); // Very important to eliminate any internal flags.
 
    // If the object is integral then turn off use of the UNTRACKED flag (otherwise the child will
    // end up being tracked to its task rather than its parent object).
@@ -167,7 +167,7 @@ ERROR NewObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object)
       return ERR_Args;
    }
 
-   if (!(Flags & NF_CREATE_OBJECT)) log.branch("%s #%d, Flags: $%x", mc->ClassName, glSharedControl->PrivateIDCounter, Flags);
+   if (!(Flags & NF_SUPPRESS_LOG)) log.branch("%s #%d, Flags: $%x", mc->ClassName, glSharedControl->PrivateIDCounter, Flags);
 
    OBJECTPTR head = NULL;
    MEMORYID head_id = 0;
@@ -175,11 +175,11 @@ ERROR NewObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object)
 
    if (!AllocMemory(mc->Size + sizeof(Stats), MEM_OBJECT|MEM_NO_LOCK|(Flags & NF_UNTRACKED ? MEM_UNTRACKED : 0), (APTR *)&head, &head_id)) {
       head->Stats     = (Stats *)ResolveAddress(head, mc->Size);
-      head->UID  = head_id;
+      head->UID       = head_id;
       head->MemFlags |= MEM_NO_LOCK; // Prevents private memory allocations made by this class from being automatically locked.
       head->ClassID   = mc->BaseClassID;
       if (mc->BaseClassID IS mc->SubClassID) { // Object derived from a base class
-         head->SubID   = 0;
+         head->SubID = 0;
       }
       else { // Object derived from a sub-class
          head->SubID = mc->SubClassID;
@@ -347,7 +347,7 @@ ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR *Object, OBJECTID *Ob
    if (Object) *Object = NULL;
    *ObjectID = 0;
 
-   Flags &= (NF_UNTRACKED|NF_INTEGRAL|NF_UNIQUE|NF_NAME|NF_PUBLIC|NF_CREATE_OBJECT); // Very important to eliminate any internal flags.
+   Flags &= (NF_UNTRACKED|NF_INTEGRAL|NF_UNIQUE|NF_NAME|NF_PUBLIC|NF_SUPPRESS_LOG); // Very important to eliminate any internal flags.
 
    // If the object is to be a child of a larger object, turn off use of the UNTRACKED flag (otherwise the child will
    // end up being tracked to its task rather than its parent object).

@@ -1652,15 +1652,12 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    LONG permissions, dhandle, len;
    LONG srclen, result;
    char dest[2000];
-   BYTE srcdir;
+   bool srcdir;
    ERROR error;
 
    if ((!Source) or (!Source[0]) or (!Dest) or (!Dest[0])) return log.warning(ERR_NullArgs);
 
    log.traceBranch("\"%s\" to \"%s\"", Source, Dest);
-
-   extFile *srcfile = NULL;
-   extFile *destfile = NULL;
 
    if ((error = ResolvePath(Source, 0, &src)) != ERR_Okay) {
       return ERR_FileNotFound;
@@ -1680,8 +1677,8 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    // Check if the source is a folder
 
    for (srclen=0; src[srclen]; srclen++);
-   if ((src[srclen-1] IS '/') or (src[srclen-1] IS '\\')) srcdir = TRUE;
-   else srcdir = FALSE;
+   if ((src[srclen-1] IS '/') or (src[srclen-1] IS '\\')) srcdir = true;
+   else srcdir = false;
 
    // If the destination is a folder, we need to copy the name of the source to create the new file or dir.
 
@@ -1716,38 +1713,32 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    feedback.Dest = dest;
 
    if ((srcvirtual->VirtualID != 0xffffffff) or (destvirtual->VirtualID != 0xffffffff)) {
-      APTR data;
-      LONG bufsize, result;
-
       log.trace("Using virtual copy routine.");
 
       // Open the source and destination
 
-      if (!CreateObject(ID_FILE, 0, (OBJECTPTR *)&srcfile,
-            FID_Path|TSTR,   Source,
-            FID_Flags|TLONG, FL_READ,
-            TAGEND)) {
+      extFile::create srcfile = { fl::Path(Source), fl::Flags(FL_READ) };
 
+      if (srcfile.ok()) {
          if ((Move) and (srcvirtual IS destvirtual)) {
             // If the source and destination use the same virtual volume, execute the move method.
-
-            error = flMove(srcfile, Dest, NULL);
-            goto exit;
-         }
-
-         if (!CreateObject(ID_FILE, 0, (OBJECTPTR *)&destfile,
-               FID_Path|TSTR,         Dest,
-               FID_Flags|TLONG,       FL_WRITE|FL_NEW,
-               FID_Permissions|TLONG, srcfile->Permissions,
-               TAGEND)) {
-         }
-         else {
-            error = ERR_CreateFile;
+            error = flMove(*srcfile, Dest, NULL);
             goto exit;
          }
       }
       else {
          error = ERR_FileNotFound;
+         goto exit;
+      }
+
+      extFile::create destfile = {
+         fl::Path(Dest),
+         fl::Flags(FL_WRITE|FL_NEW),
+         fl::Permissions(srcfile->Permissions)
+      };
+
+      if (!destfile.ok()) {
+         error = ERR_CreateFile;
          goto exit;
       }
 
@@ -1794,17 +1785,18 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
       // Use a reasonably small read buffer so that we can provide continuous feedback
 
-      bufsize = ((Callback) and (Callback->Type)) ? 65536 : 65536 * 2;
+      LONG bufsize = ((Callback) and (Callback->Type)) ? 65536 : 65536 * 2;
 
       // This routine is designed to handle streams - where either the source is a stream or the destination is a stream.
 
+      APTR data;
       error = ERR_Okay;
       if (!AllocMemory(bufsize, MEM_DATA|MEM_NO_CLEAR, (APTR *)&data, NULL)) {
          #define STREAM_TIMEOUT (10000LL)
 
          LARGE time = (PreciseTime() / 1000LL);
          while (srcfile->Position < srcfile->Size) {
-            error = acRead(srcfile, data, bufsize, &len);
+            error = srcfile->read(data, bufsize, &len);
             if (error) {
                log.warning("acRead() failed: %s", GetErrorMsg(error));
                break;
@@ -1813,7 +1805,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
             feedback.Position += len;
 
             if (len) {
-               time = (PreciseTime()/1000LL);
+               time = (PreciseTime() / 1000LL);
             }
             else {
                log.msg("Failed to read any data, position " PF64() " / " PF64() ".", srcfile->Position, srcfile->Size);
@@ -1828,7 +1820,8 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
             // Write the data
 
             while (len > 0) {
-               if ((error = acWrite(destfile, data, len, &result)) != ERR_Okay) {
+               LONG result;
+               if ((error = acWrite(*destfile, data, len, &result)) != ERR_Okay) {
                   error = ERR_Write;
                   break;
                }
@@ -1872,7 +1865,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
       else error = log.warning(ERR_AllocMemory);
 
       if ((Move) and (!error)) {
-         flDelete(srcfile, 0);
+         flDelete(*srcfile, 0);
       }
 
       goto exit;
@@ -2191,8 +2184,6 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    }
 
 exit:
-   if (srcfile) acFree(srcfile);
-   if (destfile) acFree(destfile);
    FreeResource(src);
    return error;
 }
@@ -3092,8 +3083,9 @@ ERROR fs_makedir(CSTRING Path, LONG Permissions)
 ERROR load_datatypes(void)
 {
    parasol::Log log(__FUNCTION__);
+
    if (!glDatatypes) {
-      if (CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&glDatatypes, TAGEND) != ERR_Okay) {
+      if (!(glDatatypes = objConfig::create::untracked(fl::Path("user:config/locale.cfg")))) {
          return log.warning(ERR_CreateObject);
       }
    }
@@ -3112,13 +3104,10 @@ ERROR load_datatypes(void)
 
    if (!glDatatypes) {
       reload = true;
-
       if (!get_file_info("config:users/associations.cfg", &info, sizeof(info))) {
          user_ts = info.TimeStamp;
       }
-      else {
-         return log.warning(ERR_FileDoesNotExist);
-      }
+      else return log.warning(ERR_FileDoesNotExist);
    }
    else {
       reload = false;
@@ -3131,17 +3120,12 @@ ERROR load_datatypes(void)
    }
 
    if (reload) {
-      objConfig *datatypes;
-
-      if (CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&datatypes,
-            FID_Path|TSTR, "config:users/associations.cfg",
-            FID_Flags|TLONG, CNF_OPTIONAL_FILES,
-            TAGEND) != ERR_Okay) {
-         return log.warning(ERR_CreateObject);
+      if (auto cfg = objConfig::create::untracked(fl::Path("config:users/associations.cfg"),
+            fl::Flags(CNF_OPTIONAL_FILES))) {
+         if (glDatatypes) acFree(glDatatypes);
+         glDatatypes = cfg;
       }
-
-      if (glDatatypes) acFree(glDatatypes);
-      glDatatypes = datatypes;
+      else return log.warning(ERR_CreateObject);
    }
 
    return ERR_Okay;
