@@ -147,17 +147,14 @@ ERROR add_asset_class(void)
 
    // Create the assets: control class
 
-   if (CreateObject(ID_METACLASS, 0, &glAssetClass,
-         FID_BaseClassID|TLONG, ID_FILE,
-         FID_SubClassID|TLONG,  ID_FILEASSETS,
-         FID_Name|TSTRING,      "FileAssets",
-         FID_Actions|TPTR,      clActions,
-         FID_Methods|TARRAY,    clMethods,
-         FID_Fields|TARRAY,     clFields,
-         FID_Path|TSTR,         "modules:core",
-         TAGEND) != ERR_Okay) {
-      return ERR_CreateObject;
-   }
+   if (!(glAssetClass = extMetaClass::create::global(
+      fl::BaseClassID(ID_FILE),
+      fl::SubClassID(ID_FILEASSETS),
+      fl::Name("FileAssets"),
+      fl::Actions(clActions),
+      fl::Methods(clMethods),
+      fl::Fields(clFields),
+      fl::Path("modules:core")))) return ERR_CreateObject;
 
    // Create the 'assets' virtual volume
 

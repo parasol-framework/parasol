@@ -712,9 +712,9 @@ The Callback parameter can be set with a function that matches this prototype:
 `LONG Callback(struct FileFeedback *)`
 
 Prior to the deletion of any file, a &FileFeedback structure is passed that describes the file's location.  The
-callback must return a constant value that can potentially affect file processing.  Valid values are FFR_Okay (delete
-the file), FFR_Skip (do not delete the file) and FFR_Abort (abort the process completely and return ERR_Cancelled as an
-error code).
+callback must return a constant value that can potentially affect file processing.  Valid values are `FFR_Okay` (delete
+the file), `FFR_Skip` (do not delete the file) and `FFR_Abort` (abort the process completely and return `ERR_Cancelled`
+as an error code).
 
 -INPUT-
 cstr Path: String referring to the file or folder to be deleted.  Folders must be denoted with a trailing slash.
@@ -758,11 +758,11 @@ ERROR DeleteFile(CSTRING Path, FUNCTION *Callback)
 -FUNCTION-
 SetDefaultPermissions: Forces the user and group permissions to be applied to new files and folders.
 
-By default, user, group and permission information for new files is inherited from the system defaults or from the file
-source in copy operations.  This behaviour can be overridden with new default values on a global basis (affects all
-threads).
+By default, user, group and permission information for new files is inherited either from the system defaults or from
+the file source in copy operations.  Use this function to override this behaviour with new default values.  All
+threads of the process will be affected.
 
-To revert behaviour to the default, set the User and/or Group values to -1 and the Permissions value to zero.
+To revert behaviour to the default settings, set the User and/or Group values to -1 and the Permissions value to zero.
 
 -INPUT-
 int User: User ID to apply to new files.
@@ -914,17 +914,17 @@ ERROR TranslateCmdRef(CSTRING String, STRING *Command)
    if (String[cmdindex] IS ']') cmdindex++;
    while ((String[cmdindex]) and (String[cmdindex] <= 0x20)) cmdindex++;
 
-   objConfig *cfgprog;
    ERROR error;
-   if (!(error = CreateObject(ID_CONFIG, 0, (OBJECTPTR *)&cfgprog, FID_Path|TSTR, "config:software/programs.cfg", TAGEND))) {
+   objConfig::create cfgprog = { fl::Path("config:software/programs.cfg") };
+   if (cfgprog.ok()) {
       ConfigGroups *groups;
       if (!cfgprog->getPtr(FID_Data, &groups)) {
          error = ERR_Failed;
          for (auto& [group, keys] : groups[0]) {
             if (!StrMatch(buffer, group.c_str())) {
                CSTRING cmd, args;
-               if (!cfgReadValue(cfgprog, group.c_str(), "CommandFile", &cmd)) {
-                  if (cfgReadValue(cfgprog, group.c_str(), "Args", &args)) args = "";
+               if (!cfgReadValue(*cfgprog, group.c_str(), "CommandFile", &cmd)) {
+                  if (cfgReadValue(*cfgprog, group.c_str(), "Args", &args)) args = "";
                   StrFormat(buffer, sizeof(buffer), "\"%s\" %s %s", cmd, args, String + cmdindex);
 
                   *Command = StrClone(buffer);
@@ -936,9 +936,8 @@ ERROR TranslateCmdRef(CSTRING String, STRING *Command)
          }
       }
       else error = ERR_NoData;
-
-      acFree(cfgprog);
    }
+   else error = ERR_File;
 
    return error;
 }
@@ -992,8 +991,9 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
 
    log.branch("%.80s, Flags: $%.8x", path, Flags);
 
-   OBJECTPTR file = NULL;
-   if (!CreateObject(ID_FILE, 0, &file, FID_Path|TSTR, path, FID_Flags|TLONG, FL_READ|FL_FILE, TAGEND)) {
+   objFile::create file = { fl::Path(path), fl::Flags(FL_READ|FL_FILE) };
+
+   if (file.ok()) {
       LARGE timestamp, file_size;
       file->get(FID_Size, &file_size);
       file->get(FID_TimeStamp, &timestamp);
@@ -1001,7 +1001,6 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
       CacheFileIndex index(path, timestamp, file_size);
 
       if (glCache.contains(index)) {
-         acFree(file);
          FreeResource(path);
 
          auto cf = glCache[index];
@@ -1013,7 +1012,6 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
       // If the client just wanted to check for the existence of the file, do not proceed in loading it.
 
       if (Flags & LDF_CHECK_EXISTS) {
-         acFree(file);
          FreeResource(path);
          return ERR_Search;
       }
@@ -1039,14 +1037,13 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
 
          if (file_size) {
             LONG result;
-            error = acRead(file, cache->Data, file_size, &result);
+            error = file->read(cache->Data, file_size, &result);
             if ((!error) and (file_size != result)) error = ERR_Read;
          }
 
          if (!error) {
             glCache[index] = cache;
             *Cache = cache;
-            acFree(file);
 
             if (!glCacheTimer) {
                parasol::SwitchContext context(CurrentTask());
@@ -1063,7 +1060,6 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
    }
    else error = ERR_CreateObject;
 
-   if (file) acFree(file);
    FreeResource(path);
    return error;
 }
@@ -1254,17 +1250,11 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRe
       FreeResource(res_path);
    }
    else if (error IS ERR_VirtualVolume) {
-      extFile *file;
+      extFile::create file = { fl::Path(res_path), fl::Flags(FL_READ|FL_FILE|(approx ? FL_APPROXIMATE : 0)) };
 
-      if (!CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
-            FID_Path|TSTR,   res_path,
-            FID_Flags|TLONG, FL_READ|FL_FILE|(approx ? FL_APPROXIMATE : 0),
-            TAGEND)) {
-
-         if (!acRead(file, Buffer, BufferSize, BytesRead)) error = ERR_Okay;
+      if (file.ok()) {
+         if (!file->read(Buffer, BufferSize, BytesRead)) error = ERR_Okay;
          else error = ERR_Read;
-
-         acFree(file);
       }
       else error = ERR_File;
 
@@ -1280,23 +1270,15 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRe
 
 #else
 
-   extFile *file;
+   extFile::create file = { fl::Path(Path), fl::Flags(FL_READ|FL_FILE|(approx ? FL_APPROXIMATE : 0)) };
 
-   if (!CreateObject(ID_FILE, 0, (OBJECTPTR *)&file,
-         FID_Path|TSTR,   Path,
-         FID_Flags|TLONG, FL_READ|FL_FILE|(approx ? FL_APPROXIMATE : 0),
-         TAGEND)) {
-
+   if (file.ok()) {
       LONG result;
-      if (!acRead(file, Buffer, BufferSize, &result)) {
+      if (!file->read(Buffer, BufferSize, &result)) {
          if (BytesRead) *BytesRead = result;
-         acFree(file);
          return ERR_Okay;
       }
-      else {
-         acFree(file);
-         return ERR_Read;
-      }
+      else return ERR_Read;
    }
    else return ERR_File;
 
@@ -1670,15 +1652,12 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    LONG permissions, dhandle, len;
    LONG srclen, result;
    char dest[2000];
-   BYTE srcdir;
+   bool srcdir;
    ERROR error;
 
    if ((!Source) or (!Source[0]) or (!Dest) or (!Dest[0])) return log.warning(ERR_NullArgs);
 
    log.traceBranch("\"%s\" to \"%s\"", Source, Dest);
-
-   extFile *srcfile = NULL;
-   extFile *destfile = NULL;
 
    if ((error = ResolvePath(Source, 0, &src)) != ERR_Okay) {
       return ERR_FileNotFound;
@@ -1698,8 +1677,8 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    // Check if the source is a folder
 
    for (srclen=0; src[srclen]; srclen++);
-   if ((src[srclen-1] IS '/') or (src[srclen-1] IS '\\')) srcdir = TRUE;
-   else srcdir = FALSE;
+   if ((src[srclen-1] IS '/') or (src[srclen-1] IS '\\')) srcdir = true;
+   else srcdir = false;
 
    // If the destination is a folder, we need to copy the name of the source to create the new file or dir.
 
@@ -1734,38 +1713,32 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    feedback.Dest = dest;
 
    if ((srcvirtual->VirtualID != 0xffffffff) or (destvirtual->VirtualID != 0xffffffff)) {
-      APTR data;
-      LONG bufsize, result;
-
       log.trace("Using virtual copy routine.");
 
       // Open the source and destination
 
-      if (!CreateObject(ID_FILE, 0, (OBJECTPTR *)&srcfile,
-            FID_Path|TSTR,   Source,
-            FID_Flags|TLONG, FL_READ,
-            TAGEND)) {
+      extFile::create srcfile = { fl::Path(Source), fl::Flags(FL_READ) };
 
+      if (srcfile.ok()) {
          if ((Move) and (srcvirtual IS destvirtual)) {
             // If the source and destination use the same virtual volume, execute the move method.
-
-            error = flMove(srcfile, Dest, NULL);
-            goto exit;
-         }
-
-         if (!CreateObject(ID_FILE, 0, (OBJECTPTR *)&destfile,
-               FID_Path|TSTR,         Dest,
-               FID_Flags|TLONG,       FL_WRITE|FL_NEW,
-               FID_Permissions|TLONG, srcfile->Permissions,
-               TAGEND)) {
-         }
-         else {
-            error = ERR_CreateFile;
+            error = flMove(*srcfile, Dest, NULL);
             goto exit;
          }
       }
       else {
          error = ERR_FileNotFound;
+         goto exit;
+      }
+
+      extFile::create destfile = {
+         fl::Path(Dest),
+         fl::Flags(FL_WRITE|FL_NEW),
+         fl::Permissions(srcfile->Permissions)
+      };
+
+      if (!destfile.ok()) {
+         error = ERR_CreateFile;
          goto exit;
       }
 
@@ -1812,17 +1785,18 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
       // Use a reasonably small read buffer so that we can provide continuous feedback
 
-      bufsize = ((Callback) and (Callback->Type)) ? 65536 : 65536 * 2;
+      LONG bufsize = ((Callback) and (Callback->Type)) ? 65536 : 65536 * 2;
 
       // This routine is designed to handle streams - where either the source is a stream or the destination is a stream.
 
+      APTR data;
       error = ERR_Okay;
       if (!AllocMemory(bufsize, MEM_DATA|MEM_NO_CLEAR, (APTR *)&data, NULL)) {
          #define STREAM_TIMEOUT (10000LL)
 
          LARGE time = (PreciseTime() / 1000LL);
          while (srcfile->Position < srcfile->Size) {
-            error = acRead(srcfile, data, bufsize, &len);
+            error = srcfile->read(data, bufsize, &len);
             if (error) {
                log.warning("acRead() failed: %s", GetErrorMsg(error));
                break;
@@ -1831,7 +1805,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
             feedback.Position += len;
 
             if (len) {
-               time = (PreciseTime()/1000LL);
+               time = (PreciseTime() / 1000LL);
             }
             else {
                log.msg("Failed to read any data, position " PF64() " / " PF64() ".", srcfile->Position, srcfile->Size);
@@ -1846,7 +1820,8 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
             // Write the data
 
             while (len > 0) {
-               if ((error = acWrite(destfile, data, len, &result)) != ERR_Okay) {
+               LONG result;
+               if ((error = acWrite(*destfile, data, len, &result)) != ERR_Okay) {
                   error = ERR_Write;
                   break;
                }
@@ -1890,7 +1865,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
       else error = log.warning(ERR_AllocMemory);
 
       if ((Move) and (!error)) {
-         flDelete(srcfile, 0);
+         flDelete(*srcfile, 0);
       }
 
       goto exit;
@@ -2108,20 +2083,16 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
       // Check if there is enough room to copy this file to the destination
 
-      objStorageDevice *device;
-      if (!CreateObject(ID_STORAGEDEVICE, 0, (OBJECTPTR *)&device,
-            FID_Volume|TSTR, dest,
-            TAGEND)) {
+      objStorageDevice::create device = { fl::Volume(dest) };
+      if (device.ok()) {
          if (device->BytesFree >= 0) {
             if (device->BytesFree - 1024LL <= feedback.Size) {
                close(handle);
                log.warning("Not enough space on device (" PF64() "/" PF64() " < " PF64() ")", device->BytesFree, device->DeviceSize, (LARGE)feedback.Size);
                error = ERR_OutOfSpace;
-               acFree(device);
                goto exit;
             }
          }
-         acFree(device);
       }
 
       if ((dhandle = open(dest, O_WRONLY|O_CREAT|O_TRUNC|O_LARGEFILE|WIN32OPEN, permissions)) IS -1) {
@@ -2213,8 +2184,6 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    }
 
 exit:
-   if (srcfile) acFree(srcfile);
-   if (destfile) acFree(destfile);
    FreeResource(src);
    return error;
 }
@@ -3114,8 +3083,9 @@ ERROR fs_makedir(CSTRING Path, LONG Permissions)
 ERROR load_datatypes(void)
 {
    parasol::Log log(__FUNCTION__);
+
    if (!glDatatypes) {
-      if (CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&glDatatypes, TAGEND) != ERR_Okay) {
+      if (!(glDatatypes = objConfig::create::untracked(fl::Path("user:config/locale.cfg")))) {
          return log.warning(ERR_CreateObject);
       }
    }
@@ -3134,13 +3104,10 @@ ERROR load_datatypes(void)
 
    if (!glDatatypes) {
       reload = true;
-
       if (!get_file_info("config:users/associations.cfg", &info, sizeof(info))) {
          user_ts = info.TimeStamp;
       }
-      else {
-         return log.warning(ERR_FileDoesNotExist);
-      }
+      else return log.warning(ERR_FileDoesNotExist);
    }
    else {
       reload = false;
@@ -3153,17 +3120,12 @@ ERROR load_datatypes(void)
    }
 
    if (reload) {
-      objConfig *datatypes;
-
-      if (CreateObject(ID_CONFIG, NF_UNTRACKED, (OBJECTPTR *)&datatypes,
-            FID_Path|TSTR, "config:users/associations.cfg",
-            FID_Flags|TLONG, CNF_OPTIONAL_FILES,
-            TAGEND) != ERR_Okay) {
-         return log.warning(ERR_CreateObject);
+      if (auto cfg = objConfig::create::untracked(fl::Path("config:users/associations.cfg"),
+            fl::Flags(CNF_OPTIONAL_FILES))) {
+         if (glDatatypes) acFree(glDatatypes);
+         glDatatypes = cfg;
       }
-
-      if (glDatatypes) acFree(glDatatypes);
-      glDatatypes = datatypes;
+      else return log.warning(ERR_CreateObject);
    }
 
    return ERR_Okay;

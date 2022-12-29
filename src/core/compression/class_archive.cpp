@@ -1,10 +1,9 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -CLASS-
 FileArchive: Creates simple read-only volumes backed by compressed archives.
@@ -12,28 +11,28 @@ FileArchive: Creates simple read-only volumes backed by compressed archives.
 The FileArchive class makes it possible to create virtual file system volumes that are based on compressed file
 archives.  It is not necessary for client programs to instantiate a FileArchive to make use of this functionality.
 Instead, create a @Compression object that declares a Path to the source archive file and set an
-ArchiveName for reference.  In the example below, also take note of the use of NF_UNTRACKED to prevent the
-@Compression object from being automatically collected when it goes out of scope:
+ArchiveName for reference.  In the C++ example below, take note of the `untracked` specifier to prevent the
+@Compression object from being collected when it goes out of scope:
 
 <pre>
-CreateObject(ID_COMPRESSION, NF_UNTRACKED, &archive,
-   FID_Path|TSTR,        "user:documents/myfile.zip",
-   FID_ArchiveName|TSTR, "myfiles",
-   TAGEND);
+objCompression::create::untracked(
+   fl::Path("user:documents/myfile.zip"),
+   fl::ArchiveName("myfiles")
+);
 </pre>
 
-With the Compression object in place, opening files within the archive is as simple as using the correct path
-reference.  The format is `archive:ArchiveName/path/to/file.ext` and the example below illustrates:
+With the Compression object in place, opening files within the archive only requires the correct path
+reference.  The format is `archive:ArchiveName/path/to/file.ext` and the Fluid example below illustrates:
 
 `obj.new('file', { path='archive:myfiles/readme.txt', flags='!READ' })`
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 using namespace parasol;
 
-#define LEN_ARCHIVE 8 // "archive:" length
+constexpr LONG LEN_ARCHIVE = 8; // "archive:" length
 
 struct prvFileArchive {
    ZipFile  Info;
@@ -55,7 +54,7 @@ static ERROR get_info(CSTRING, FileInfo *, LONG);
 static ERROR scan_folder(DirInfo *);
 static ERROR test_path(STRING, LONG, LONG *);
 
-//****************************************************************************
+//********************************************************************************************************************
 // Return the portion of the string that follows the last discovered '/' or '\'
 
 INLINE CSTRING name_from_path(CSTRING Path)
@@ -69,7 +68,7 @@ INLINE CSTRING name_from_path(CSTRING Path)
    return Path;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void reset_state(extFile *Self)
 {
@@ -82,7 +81,7 @@ static void reset_state(extFile *Self)
    Self->Position = 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR seek_to_item(extFile *Self)
 {
@@ -92,7 +91,8 @@ static ERROR seek_to_item(extFile *Self)
    acSeekStart(prv->FileStream, item->Offset + HEAD_EXTRALEN);
    prv->ReadPtr = NULL;
 
-   UWORD extra_len = read_word(prv->FileStream);
+   UWORD extra_len;
+   if (flReadLE(prv->FileStream, &extra_len)) return ERR_Read;
    ULONG stream_start = item->Offset + HEAD_LENGTH + item->NameLen + extra_len;
    if (acSeekStart(prv->FileStream, stream_start) != ERR_Okay) return ERR_Seek;
 
@@ -118,7 +118,7 @@ static ERROR seek_to_item(extFile *Self)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Insert a new compression object as an archive.
 
 extern void add_archive(extCompression *Compression)
@@ -126,19 +126,19 @@ extern void add_archive(extCompression *Compression)
    glArchives[Compression->ArchiveHash] = Compression;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 extern void remove_archive(extCompression *Compression)
 {
    glArchives.erase(Compression->ArchiveHash);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Return the archive referenced by 'archive:[NAME]/...'
 
 extern extCompression * find_archive(CSTRING Path, std::string &FilePath)
 {
-   parasol::Log log(__FUNCTION__);
+   Log log(__FUNCTION__);
 
    if (!Path) return NULL;
 
@@ -162,11 +162,11 @@ extern extCompression * find_archive(CSTRING Path, std::string &FilePath)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR ARCHIVE_Activate(extFile *Self, APTR Void)
 {
-   parasol::Log log;
+   Log log;
 
    auto prv = (prvFileArchive *)Self->ChildPrivate;
 
@@ -176,11 +176,10 @@ static ERROR ARCHIVE_Activate(extFile *Self, APTR Void)
 
    log.msg("Allocating file stream for item %s", prv->Info.Name);
 
-   if (!CreateObject(ID_FILE, NF_INTEGRAL, (OBJECTPTR *)&prv->FileStream,
-         FID_Name|TSTR,   "ArchiveFileStream",
-         FID_Path|TSTR,   prv->Archive->Path,
-         FID_Flags|TLONG, FL_READ,
-         TAGEND)) {
+   if ((prv->FileStream = extFile::create::integral(
+      fl::Name("ArchiveFileStream"),
+      fl::Path(prv->Archive->Path),
+      fl::Flags(FL_READ)))) {
 
       ERROR error = seek_to_item(Self);
       if (error) log.warning(error);
@@ -189,7 +188,7 @@ static ERROR ARCHIVE_Activate(extFile *Self, APTR Void)
    else return ERR_File;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR ARCHIVE_Free(extFile *Self, APTR Void)
 {
@@ -203,11 +202,11 @@ static ERROR ARCHIVE_Free(extFile *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR ARCHIVE_Init(extFile *Self, APTR Void)
 {
-   parasol::Log log;
+   Log log;
 
    if (!Self->Path) return ERR_FieldNotSet;
 
@@ -260,7 +259,7 @@ static ERROR ARCHIVE_Init(extFile *Self, APTR Void)
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR ARCHIVE_Query(extFile *Self, APTR Void)
 {
@@ -270,7 +269,7 @@ static ERROR ARCHIVE_Query(extFile *Self, APTR Void)
 
    ERROR error;
    if (!prv->FileStream) {
-      error = acActivate(Self);
+      error = Self->activate();
       if (error) return error;
    }
 
@@ -297,11 +296,11 @@ static ERROR ARCHIVE_Query(extFile *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR ARCHIVE_Read(extFile *Self, struct acRead *Args)
 {
-   parasol::Log log;
+   Log log;
 
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
    else if (Args->Length == 0) return ERR_Okay;
@@ -394,11 +393,11 @@ static ERROR ARCHIVE_Read(extFile *Self, struct acRead *Args)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR ARCHIVE_Seek(extFile *Self, struct acSeek *Args)
 {
-   parasol::Log log;
+   Log log;
    LARGE pos;
 
    log.traceBranch("Seek to offset %.2f from seek position %d", Args->Offset, Args->Position);
@@ -427,15 +426,15 @@ static ERROR ARCHIVE_Seek(extFile *Self, struct acSeek *Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR ARCHIVE_Write(extFile *Self, struct acWrite *Args)
 {
-   parasol::Log log;
+   Log log;
    return log.warning(ERR_NoSupport);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR ARCHIVE_GET_Size(extFile *Self, LARGE *Value)
 {
@@ -447,7 +446,7 @@ static ERROR ARCHIVE_GET_Size(extFile *Self, LARGE *Value)
    else return ERR_NotInitialised;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Open the archive: volume for scanning.
 
 static ERROR open_folder(DirInfo *Dir)
@@ -460,12 +459,12 @@ static ERROR open_folder(DirInfo *Dir)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Scan the next entry in the folder.
 
 static ERROR scan_folder(DirInfo *Dir)
 {
-   parasol::Log log(__FUNCTION__);
+   Log log(__FUNCTION__);
 
    // Retrieve the file path, skipping the "archive:name/" part.
 
@@ -488,8 +487,8 @@ static ERROR scan_folder(DirInfo *Dir)
       // Single folders will appear as 'ABCDEF/'
       // Single files will appear as 'ABCDEF.ABC' (no slash)
 
-      LONG name_len = StrLength(zf->Name);
-      LONG path_len = StrLength(path);
+      LONG name_len = strlen(zf->Name);
+      LONG path_len = strlen(path);
 
       if (name_len <= path_len) continue;
 
@@ -555,18 +554,18 @@ static ERROR scan_folder(DirInfo *Dir)
    return ERR_DirEmpty;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR close_folder(DirInfo *Dir)
 {
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 {
-   parasol::Log log(__FUNCTION__);
+   Log log(__FUNCTION__);
    CompressedItem *item;
    extCompression *cmp;
    std::string file_path;
@@ -612,12 +611,12 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Test an archive: location.
 
 static ERROR test_path(STRING Path, LONG Flags, LONG *Type)
 {
-   parasol::Log log(__FUNCTION__);
+   Log log(__FUNCTION__);
 
    log.traceBranch("%s", Path);
 
@@ -656,7 +655,7 @@ static ERROR test_path(STRING Path, LONG Flags, LONG *Type)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const ActionArray clArchiveActions[] = {
    { AC_Activate, (APTR)ARCHIVE_Activate },
@@ -678,22 +677,23 @@ static const struct FieldArray clArchiveFields[] = {
     END_FIELD
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 extern "C" ERROR add_archive_class(void)
 {
-   return CreateObject(ID_METACLASS, 0, (OBJECTPTR *)&glArchiveClass,
-      FID_BaseClassID|TLONG, ID_FILE,
-      FID_SubClassID|TLONG,  ID_FILEARCHIVE,
-      FID_Name|TSTRING,      "FileArchive",
-      FID_Actions|TPTR,      clArchiveActions,
-      FID_Methods|TARRAY,    clArchiveMethods,
-      FID_Fields|TARRAY,     clArchiveFields,
-      FID_Path|TSTR,         "modules:core",
-      TAGEND);
+   glArchiveClass = extMetaClass::create::global(
+      fl::BaseClassID(ID_FILE),
+      fl::SubClassID(ID_FILEARCHIVE),
+      fl::Name("FileArchive"),
+      fl::Actions(clArchiveActions),
+      fl::Methods(clArchiveMethods),
+      fl::Fields(clArchiveFields),
+      fl::Path("modules:core"));
+
+   return glArchiveClass ? ERR_Okay : ERR_AddClass;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 extern "C" ERROR create_archive_volume(void)
 {

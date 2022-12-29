@@ -920,15 +920,16 @@ static const FieldArray clScriptFields[] = {
 
 extern "C" ERROR add_script_class(void)
 {
-   return(CreateObject(ID_METACLASS, 0, (OBJECTPTR *)&glScriptClass,
-      FID_ClassVersion|TFLOAT, VER_SCRIPT,
-      FID_Name|TSTR,      "Script",
-      FID_Category|TLONG, CCF_DATA,
-      FID_Flags|TLONG,    CLF_PRIVATE_ONLY,
-      FID_Actions|TPTR,   clScriptActions,
-      FID_Methods|TARRAY, clScriptMethods,
-      FID_Fields|TARRAY,  clScriptFields,
-      FID_Size|TLONG,     sizeof(objScript),
-      FID_Path|TSTR,      "modules:core",
-      TAGEND));
+   glScriptClass = extMetaClass::create::global(
+      fl::ClassVersion(VER_SCRIPT),
+      fl::Name("Script"),
+      fl::Category(CCF_DATA),
+      fl::Flags(CLF_PRIVATE_ONLY),
+      fl::Actions(clScriptActions),
+      fl::Methods(clScriptMethods),
+      fl::Fields(clScriptFields),
+      fl::Size(sizeof(objScript)),
+      fl::Path("modules:core"));
+
+   return glScriptClass ? ERR_Okay : ERR_AddClass;
 }

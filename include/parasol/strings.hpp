@@ -1,7 +1,5 @@
 #pragma once
 
-#ifdef __cplusplus
-
 #include <sstream>
 
 namespace parasol {
@@ -22,19 +20,19 @@ void split(InType Input, OutIt Output)
    *Output++ = std::string(current, begin);
 }
 
-INLINE void ltrim(std::string &s, const std::string &match) {
+inline void ltrim(std::string &s, const std::string &match) {
    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [match](unsigned char ch) {
       return match.find(ch) == std::string::npos;
    }));
 }
 
-INLINE void rtrim(std::string &s, const std::string &match) {
+inline void rtrim(std::string &s, const std::string &match) {
    s.erase(std::find_if(s.rbegin(), s.rend(), [match](unsigned char ch) {
       return match.find(ch) == std::string::npos;
    }).base(), s.end());
 }
 
-INLINE void camelcase(std::string &s) {
+inline void camelcase(std::string &s) {
    bool raise = true;
    for (ULONG i=0; i < s.size(); i++) {
       if (raise) {
@@ -46,4 +44,3 @@ INLINE void camelcase(std::string &s) {
 }
 
 } // namespace
-#endif

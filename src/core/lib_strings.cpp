@@ -926,11 +926,10 @@ ERROR StrReadLocale(CSTRING Key, CSTRING *Value)
    #endif
 
    if (!glLocale) {
-      if (!CreateObject(ID_CONFIG, NF_UNTRACKED, &glLocale, FID_Path|TSTR, "user:config/locale.cfg", TAGEND)) {
+      if (!(glLocale = objConfig::create::untracked(fl::Path("user:config/locale.cfg")))) {
+         return ERR_NoData;
       }
    }
-
-   if (!glLocale) return ERR_NoData;
 
    if (!cfgReadValue(glLocale, "LOCALE", Key, Value)) {
       if (!*Value) *Value = ""; // It is OK for some values to be empty strings.

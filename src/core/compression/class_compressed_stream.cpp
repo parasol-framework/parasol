@@ -1,10 +1,10 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -CLASS-
 CompressedStream: Acts as a proxy for decompressing and compressing data streams between objects.
@@ -25,7 +25,7 @@ to the streaming process.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 class extCompressedStream : public objCompressedStream {
    public:
@@ -38,7 +38,7 @@ class extCompressedStream : public objCompressedStream {
 
 static ERROR CSTREAM_Reset(extCompressedStream *, APTR);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CSTREAM_Free(extCompressedStream *Self, APTR Void)
 {
@@ -46,11 +46,11 @@ static ERROR CSTREAM_Free(extCompressedStream *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CSTREAM_Init(extCompressedStream *Self, APTR Void)
 {
-   parasol::Log log(__FUNCTION__);
+   parasol::Log log;
 
    if ((!Self->Input) and (!Self->Output)) return log.warning(ERR_FieldNotSet);
 
@@ -62,24 +62,24 @@ static ERROR CSTREAM_Init(extCompressedStream *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CSTREAM_NewObject(extCompressedStream *Self, APTR Void) {
    Self->Format = CF_GZIP;
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Read: Decompress data from the input stream and write it to the supplied buffer.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define MIN_OUTPUT_SIZE ((32 * 1024) + 2048)
 
 static ERROR CSTREAM_Read(extCompressedStream *Self, struct acRead *Args)
 {
-   parasol::Log log(__FUNCTION__);
+   parasol::Log log;
 
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
    if (!Self->initialised()) return log.warning(ERR_NotInitialised);
@@ -159,7 +159,7 @@ static ERROR CSTREAM_Read(extCompressedStream *Self, struct acRead *Args)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Reset: Reset the state of the stream.
 
@@ -167,7 +167,7 @@ Resetting a CompressedStream returns it to the same state as that when first ini
 affect the state of the object referenced via #Input or #Output, so it may be necessary for the client to reset
 referenced objects separately.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CSTREAM_Reset(extCompressedStream *Self, APTR Void)
 {
@@ -188,15 +188,15 @@ static ERROR CSTREAM_Reset(extCompressedStream *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Seek: For use in decompressing streams only.  Seeks to a position within the stream.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CSTREAM_Seek(extCompressedStream *Self, struct acSeek *Args)
 {
-   parasol::Log log(__FUNCTION__);
+   parasol::Log log;
 
    if (!Args) return ERR_NullArgs;
 
@@ -229,15 +229,15 @@ static ERROR CSTREAM_Seek(extCompressedStream *Self, struct acSeek *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Write: Compress raw data in a buffer and write it to the Output object.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CSTREAM_Write(extCompressedStream *Self, struct acWrite *Args)
 {
-   parasol::Log log(__FUNCTION__);
+   parasol::Log log;
 
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
    if (!Self->initialised()) return log.warning(ERR_NotInitialised);
@@ -324,7 +324,7 @@ static ERROR CSTREAM_Write(extCompressedStream *Self, struct acWrite *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Format: The format of the compressed stream.  The default is GZIP.
 
@@ -355,7 +355,7 @@ This means that at least one call to the #Read() action is required before the S
 
 If the size is unknown, a value of -1 is returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CSTREAM_GET_Size(extCompressedStream *Self, LARGE *Value)
 {
@@ -370,17 +370,15 @@ static ERROR CSTREAM_GET_Size(extCompressedStream *Self, LARGE *Value)
    else return ERR_Failed;
 }
 
-/*****************************************************************************
-
+/*********************************************************************************************************************
 -FIELD-
 TotalOutput: A live counter of total bytes that have been output by the stream.
 -END-
-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include "class_compressed_stream_def.c"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const FieldArray clStreamFields[] = {
    { "TotalOutput", FDF_LARGE|FDF_R,   0, NULL, NULL },
@@ -405,15 +403,16 @@ static const ActionArray clStreamActions[] = {
 
 extern "C" ERROR add_compressed_stream_class(void)
 {
-   return(CreateObject(ID_METACLASS, 0, (OBJECTPTR *)&glCompressedStreamClass,
-      FID_BaseClassID|TLONG,    ID_COMPRESSEDSTREAM,
-      FID_ClassVersion|TFLOAT,  1.0,
-      FID_Name|TSTRING,         "CompressedStream",
-      FID_FileDescription|TSTR, "GZip File",
-      FID_Category|TLONG,       CCF_DATA,
-      FID_Actions|TPTR,         clStreamActions,
-      FID_Fields|TARRAY,        clStreamFields,
-      FID_Size|TLONG,           sizeof(extCompressedStream),
-      FID_Path|TSTR,            "modules:core",
-      TAGEND));
+   glCompressedStreamClass = extMetaClass::create::global(
+      fl::BaseClassID(ID_COMPRESSEDSTREAM),
+      fl::ClassVersion(1.0),
+      fl::Name("CompressedStream"),
+      fl::FileDescription("GZip File"),
+      fl::Category(CCF_DATA),
+      fl::Actions(clStreamActions),
+      fl::Fields(clStreamFields),
+      fl::Size(sizeof(extCompressedStream)),
+      fl::Path("modules:core"));
+
+   return glCompressedStreamClass ? ERR_Okay : ERR_AddClass;
 }

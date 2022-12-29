@@ -10,7 +10,6 @@ FDEF argsAccessPrivateObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD
 FDEF argsAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Action", FD_LONG }, { "Object", FD_OBJECTPTR }, { "Parameters", FD_PTR }, { 0, 0 } };
 FDEF argsActionList[] = { { "Void", FD_VOID }, { "ActionTable:Actions", FD_ARRAY|FD_STRUCT|FD_RESULT }, { "Size", FD_LONG|FD_ARRAYSIZE|FD_RESULT }, { 0, 0 } };
 FDEF argsActionMsg[] = { { "Error", FD_LONG|FD_ERROR }, { "Action", FD_LONG }, { "Object", FD_OBJECTID }, { "Args", FD_PTR }, { "MessageID", FD_LONG }, { "ClassID", FD_LONG|FD_UNSIGNED }, { 0, 0 } };
-FDEF argsActionTags[] = { { "Error", FD_LONG|FD_ERROR }, { "Action", FD_LONG }, { "Object", FD_OBJECTPTR }, { "Tags", FD_TAGS }, { 0, 0 } };
 FDEF argsActionThread[] = { { "Error", FD_LONG|FD_ERROR }, { "Action", FD_LONG }, { "Object", FD_OBJECTPTR }, { "Args", FD_PTR }, { "Callback", FD_FUNCTIONPTR }, { "Key", FD_LONG }, { 0, 0 } };
 FDEF argsAddInfoTag[] = { { "Error", FD_LONG|FD_ERROR }, { "FileInfo:Info", FD_PTR|FD_STRUCT }, { "Name", FD_STR }, { "Value", FD_STR }, { 0, 0 } };
 FDEF argsAddMsgHandler[] = { { "Error", FD_LONG|FD_ERROR }, { "Custom", FD_PTR }, { "MsgType", FD_LONG }, { "Routine", FD_FUNCTIONPTR }, { "MsgHandler:Handle", FD_PTR|FD_STRUCT|FD_RESOURCE|FD_ALLOC|FD_RESULT }, { 0, 0 } };
@@ -37,7 +36,7 @@ FDEF argsCurrentTask[] = { { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsDeleteFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF argsDeleteVolume[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { 0, 0 } };
 FDEF argsFindClass[] = { { "Object", FD_OBJECTPTR }, { "ClassID", FD_LONG|FD_UNSIGNED }, { 0, 0 } };
-FDEF argsFindField[] = { { "Field", FD_PTR|FD_STRUCT }, { "Object", FD_OBJECTPTR }, { "FieldID", FD_LONG|FD_UNSIGNED }, { "Source", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
+FDEF argsFindField[] = { { "Field", FD_PTR|FD_STRUCT }, { "Object", FD_OBJECTPTR }, { "FieldID", FD_LONG|FD_UNSIGNED }, { "Target", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
 FDEF argsFindObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "ClassID", FD_LONG|FD_UNSIGNED }, { "Flags", FD_LONG }, { "Array", FD_BUFFER|FD_ARRAY|FD_OBJECTID }, { "Count", FD_LONG|FD_ARRAYSIZE|FD_RESULT }, { 0, 0 } };
 FDEF argsFindPrivateObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "Object", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
 FDEF argsFreeMutex[] = { { "Void", FD_VOID }, { "Mutex", FD_PTR }, { 0, 0 } };
@@ -56,7 +55,6 @@ FDEF argsGetFieldVariable[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OB
 FDEF argsGetFields[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Tags", FD_VARTAGS }, { 0, 0 } };
 FDEF argsGetMemAddress[] = { { "Result", FD_PTR }, { "ID", FD_LONG }, { 0, 0 } };
 FDEF argsGetMessage[] = { { "Error", FD_LONG|FD_ERROR }, { "Queue", FD_LONG }, { "Type", FD_LONG }, { "Flags", FD_LONG }, { "Buffer", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
-FDEF argsGetMsgPort[] = { { "Result", FD_LONG }, { "Object", FD_OBJECTID }, { 0, 0 } };
 FDEF argsGetName[] = { { "Result", FD_STR }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsGetObjectPtr[] = { { "Object", FD_OBJECTPTR }, { "Object", FD_OBJECTID }, { 0, 0 } };
 FDEF argsGetOwnerID[] = { { "Result", FD_OBJECTID }, { "Object", FD_OBJECTID }, { 0, 0 } };
@@ -162,7 +160,7 @@ const struct Function glFunctions[] = {
    { (APTR)Action, "Action", argsAction },
    { (APTR)ActionList, "ActionList", argsActionList },
    { (APTR)ActionMsg, "ActionMsg", argsActionMsg },
-   { (APTR)ActionTags, "ActionTags", argsActionTags },
+   { (APTR)KeyGet, "KeyGet", argsKeyGet },
    { (APTR)ResolveClassID, "ResolveClassID", argsResolveClassID },
    { (APTR)AllocateID, "AllocateID", argsAllocateID },
    { (APTR)AllocMemory, "AllocMemory", argsAllocMemory },
@@ -243,7 +241,7 @@ const struct Function glFunctions[] = {
    { (APTR)OpenDir, "OpenDir", argsOpenDir },
    { (APTR)GetObjectPtr, "GetObjectPtr", argsGetObjectPtr },
    { (APTR)FindField, "FindField", argsFindField },
-   { (APTR)GetMsgPort, "GetMsgPort", argsGetMsgPort },
+   { (APTR)VarIterate, "VarIterate", argsVarIterate },
    { (APTR)GetErrorMsg, "GetErrorMsg", argsGetErrorMsg },
    { (APTR)GetActionMsg, "GetActionMsg", argsGetActionMsg },
    { (APTR)FuncError, "FuncError", argsFuncError },
@@ -308,8 +306,6 @@ const struct Function glFunctions[] = {
    { (APTR)DeleteVolume, "DeleteVolume", argsDeleteVolume },
    { (APTR)VirtualVolume, "VirtualVolume", argsVirtualVolume },
    { (APTR)CopyFile, "CopyFile", argsCopyFile },
-   { (APTR)KeyGet, "KeyGet", argsKeyGet },
-   { (APTR)VarIterate, "VarIterate", argsVarIterate },
    { NULL, NULL, NULL }
 };
 

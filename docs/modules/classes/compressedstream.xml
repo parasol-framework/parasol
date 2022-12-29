@@ -250,7 +250,7 @@
       <const name="RECLASSED">The object switched from the base-class to a sub-class during initialisation.</const>
       <const name="SHARED">Allocates a shared object using shareable resources, allowing it to be accessed directly by any process.  Access is granted via exclusive access locks  - refer to the AccessObject() and ReleaseObject() functions.</const>
       <const name="SIGNALLED">The object has been signalled and is awaiting processing.</const>
-      <const name="TIMER_SUB">Indicates that the object is subscribed to a timer Zinterval.</const>
+      <const name="TIMER_SUB">Indicates that the object is subscribed to a timer interval.</const>
       <const name="UNIQUE">Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating shared objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.</const>
       <const name="UNLOCK_FREE">Read-only indicator for when the object is marked for deletion.</const>
       <const name="UNTRACKED">An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.</const>
