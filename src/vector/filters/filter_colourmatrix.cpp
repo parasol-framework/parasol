@@ -573,15 +573,15 @@ static const FieldArray clColourFXFields[] = {
 
 ERROR init_colourfx(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clColourFX,
-      FID_BaseClassID|TLONG, ID_FILTEREFFECT,
-      FID_SubClassID|TLONG,  ID_COLOURFX,
-      FID_Name|TSTRING,      "ColourFX",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Flags|TLONG,       CLF_PRIVATE_ONLY|CLF_PROMOTE_INTEGRAL,
-      FID_Actions|TPTR,      clColourFXActions,
-      FID_Fields|TARRAY,     clColourFXFields,
-      FID_Size|TLONG,        sizeof(objColourFX),
-      FID_Path|TSTR,         MOD_PATH,
-      TAGEND));
+   clColourFX = objMetaClass::create::global(
+      fl::BaseClassID(ID_FILTEREFFECT),
+      fl::SubClassID(ID_COLOURFX),
+      fl::Name("ColourFX"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clColourFXActions),
+      fl::Fields(clColourFXFields),
+      fl::Size(sizeof(objColourFX)),
+      fl::Path(MOD_PATH));
+
+   return clColourFX ? ERR_Okay : ERR_AddClass;
 }

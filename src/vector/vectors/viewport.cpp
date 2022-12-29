@@ -994,14 +994,15 @@ static const FieldArray clViewFields[] = {
 
 static ERROR init_viewport(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clVectorViewport,
-      FID_BaseClassID|TLONG, ID_VECTOR,
-      FID_SubClassID|TLONG,  ID_VECTORVIEWPORT,
-      FID_Name|TSTRING,      "VectorViewport",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Actions|TPTR,      clVectorViewportActions,
-      FID_Fields|TARRAY,     clViewFields,
-      FID_Size|TLONG,        sizeof(extVectorViewport),
-      FID_Path|TSTR,         MOD_PATH,
-      TAGEND));
+   clVectorViewport = objMetaClass::create::global(
+      fl::BaseClassID(ID_VECTOR),
+      fl::SubClassID(ID_VECTORVIEWPORT),
+      fl::Name("VectorViewport"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clVectorViewportActions),
+      fl::Fields(clViewFields),
+      fl::Size(sizeof(extVectorViewport)),
+      fl::Path(MOD_PATH));
+
+   return clVectorViewport ? ERR_Okay : ERR_AddClass;
 }

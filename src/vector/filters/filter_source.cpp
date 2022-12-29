@@ -332,15 +332,15 @@ static const FieldArray clSourceFXFields[] = {
 
 ERROR init_sourcefx(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clSourceFX,
-      FID_BaseClassID|TLONG, ID_FILTEREFFECT,
-      FID_SubClassID|TLONG,  ID_SOURCEFX,
-      FID_Name|TSTRING,      "SourceFX",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Flags|TLONG,       CLF_PRIVATE_ONLY,
-      FID_Actions|TPTR,      clSourceFXActions,
-      FID_Fields|TARRAY,     clSourceFXFields,
-      FID_Size|TLONG,        sizeof(objSourceFX),
-      FID_Path|TSTR,         MOD_PATH,
-      TAGEND));
+   clSourceFX = objMetaClass::create::global(
+      fl::BaseClassID(ID_FILTEREFFECT),
+      fl::SubClassID(ID_SOURCEFX),
+      fl::Name("SourceFX"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clSourceFXActions),
+      fl::Fields(clSourceFXFields),
+      fl::Size(sizeof(objSourceFX)),
+      fl::Path(MOD_PATH));
+
+   return clSourceFX ? ERR_Okay : ERR_AddClass;
 }

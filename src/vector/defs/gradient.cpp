@@ -801,14 +801,14 @@ static const FieldArray clGradientFields[] = {
 
 ERROR init_gradient(void) // The gradient is a definition type for creating gradients and not drawing.
 {
-   return(CreateObject(ID_METACLASS, 0, &clVectorGradient,
-      FID_BaseClassID|TLONG, ID_VECTORGRADIENT,
-      FID_Name|TSTR,         "VectorGradient",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Actions|TPTR,      clVectorGradientActions,
-      FID_Fields|TARRAY,     clGradientFields,
-      FID_Size|TLONG,        sizeof(extVectorGradient),
-      FID_Path|TSTR,         "modules:vector",
-      TAGEND));
-}
+   clVectorGradient = objMetaClass::create::global(
+      fl::BaseClassID(ID_VECTORGRADIENT),
+      fl::Name("VectorGradient"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clVectorGradientActions),
+      fl::Fields(clGradientFields),
+      fl::Size(sizeof(extVectorGradient)),
+      fl::Path(MOD_PATH));
 
+   return clVectorGradient ? ERR_Okay : ERR_AddClass;
+}

@@ -3164,7 +3164,7 @@ static ERROR SET_Y(extDisplay *Self, LONG Value)
    else return acMoveToPoint(Self, 0, Value, 0, MTF_Y);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Attempt to create a display buffer (process is not guaranteed, programmer has to check the Buffer field to know if
 // this succeeded or not).
 
@@ -3203,7 +3203,7 @@ void alloc_display_buffer(extDisplay *Self)
    else error = ERR_NewObject;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "class_display_def.c"
 
@@ -3252,26 +3252,27 @@ static const FieldArray DisplayFields[] = {
    END_FIELD
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 CSTRING dpms_name(LONG Index)
 {
    return clDisplayDPMS[Index].Name;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR create_display_class(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clDisplay,
-      FID_ClassVersion|TFLOAT, VER_DISPLAY,
-      FID_Name|TSTRING,   "Display",
-      FID_Category|TLONG, CCF_GRAPHICS,
-      FID_Flags|TLONG,    CLF_PROMOTE_INTEGRAL,
-      FID_Actions|TPTR,   clDisplayActions,
-      FID_Methods|TARRAY, clDisplayMethods,
-      FID_Fields|TARRAY,  DisplayFields,
-      FID_Size|TLONG,     sizeof(extDisplay),
-      FID_Path|TSTR,      MOD_PATH,
-      TAGEND));
+   clDisplay = objMetaClass::create::global(
+      fl::ClassVersion(VER_DISPLAY),
+      fl::Name("Display"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Flags(CLF_PROMOTE_INTEGRAL),
+      fl::Actions(clDisplayActions),
+      fl::Methods(clDisplayMethods),
+      fl::Fields(DisplayFields),
+      fl::Size(sizeof(extDisplay)),
+      fl::Path(MOD_PATH));
+
+   return clDisplay ? ERR_Okay : ERR_AddClass;
 }

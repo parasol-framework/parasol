@@ -316,15 +316,15 @@ static const FieldArray clImageFXFields[] = {
 
 ERROR init_imagefx(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clImageFX,
-      FID_BaseClassID|TLONG, ID_FILTEREFFECT,
-      FID_SubClassID|TLONG,  ID_IMAGEFX,
-      FID_Name|TSTRING,      "ImageFX",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Flags|TLONG,       CLF_PRIVATE_ONLY,
-      FID_Actions|TPTR,      clImageFXActions,
-      FID_Fields|TARRAY,     clImageFXFields,
-      FID_Size|TLONG,        sizeof(objImageFX),
-      FID_Path|TSTR,         MOD_PATH,
-      TAGEND));
+   clImageFX = objMetaClass::create::global(
+      fl::BaseClassID(ID_FILTEREFFECT),
+      fl::SubClassID(ID_IMAGEFX),
+      fl::Name("ImageFX"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clImageFXActions),
+      fl::Fields(clImageFXFields),
+      fl::Size(sizeof(objImageFX)),
+      fl::Path(MOD_PATH));
+
+   return clImageFX ? ERR_Okay : ERR_AddClass;
 }

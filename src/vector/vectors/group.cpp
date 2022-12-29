@@ -14,12 +14,13 @@ If there is a need to adjust the container dimensions, use a @VectorViewport ins
 
 static ERROR init_group(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clVectorGroup,
-      FID_BaseClassID|TLONG,    ID_VECTOR,
-      FID_SubClassID|TLONG,     ID_VECTORGROUP,
-      FID_Name|TSTRING,         "VectorGroup",
-      FID_Category|TLONG,       CCF_GRAPHICS,
-      FID_Size|TLONG,           sizeof(extVector),
-      FID_Path|TSTR,            MOD_PATH,
-      TAGEND));
+   clVectorGroup = objMetaClass::create::global(
+      fl::BaseClassID(ID_VECTOR),
+      fl::SubClassID(ID_VECTORGROUP),
+      fl::Name("VectorGroup"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Size(sizeof(extVector)),
+      fl::Path(MOD_PATH));
+
+   return clVectorGroup ? ERR_Okay : ERR_AddClass;
 }

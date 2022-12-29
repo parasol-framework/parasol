@@ -90,16 +90,17 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   return(CreateObject(ID_METACLASS, 0, &clJSON,
-      FID_BaseClassID|TLONG,    ID_XML,
-      FID_SubClassID|TLONG,     ID_JSON,
-      FID_Name|TSTRING,         "JSON",
-      FID_Category|TLONG,       CCF_DATA,
-      FID_FileExtension|TSTR,   "*.json",
-      FID_FileDescription|TSTR, "JSON Data",
-      FID_Actions|TPTR,         clActions,
-      FID_Path|TSTR,            "classes/data/json",
-      TAGEND));
+   if ((clJSON = objMetaClass::create::global(
+      fl::BaseClassID(ID_XML),
+      fl::SubClassID(ID_JSON),
+      fl::Name("JSON"),
+      fl::Category(CCF_DATA),
+      fl::FileExtension("*.json"),
+      fl::FileDescription("JSON Data"),
+      fl::Actions(clActions),
+      fl::Path("modules:json")))) return ERR_Okay;
+
+   return ERR_AddClass;
 }
 
 ERROR CMDExpunge(void)

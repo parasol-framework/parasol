@@ -1697,16 +1697,17 @@ static const FieldArray clFields[] = {
 
 static ERROR create_http_class(void)
 {
-   return CreateObject(ID_METACLASS, 0, &clHTTP,
-      FID_BaseClassID|TLONG,   ID_HTTP,
-      FID_ClassVersion|TFLOAT, VER_HTTP,
-      FID_Name|TSTR,      "HTTP",
-      FID_Category|TLONG, CCF_NETWORK,
-      FID_Actions|TPTR,   clHTTPActions,
-      FID_Fields|TARRAY,  clFields,
-      FID_Size|TLONG,     sizeof(extHTTP),
-      FID_Path|TSTR,      MOD_PATH,
-      TAGEND);
+   clHTTP = objMetaClass::create::global(
+      fl::BaseClassID(ID_HTTP),
+      fl::ClassVersion(VER_HTTP),
+      fl::Name("HTTP"),
+      fl::Category(CCF_NETWORK),
+      fl::Actions(clHTTPActions),
+      fl::Fields(clFields),
+      fl::Size(sizeof(extHTTP)),
+      fl::Path(MOD_PATH));
+
+   return clHTTP ? ERR_Okay : ERR_AddClass;
 }
 
 //****************************************************************************

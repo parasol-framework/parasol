@@ -83,25 +83,22 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if ((avail) AND (glX11->RRInitialised <= 1)) {
       // Build the screen.xml file if this is the first task to initialise the RandR extension.
 
-      objFile *file;
-      if (!CreateObject(ID_FILE, 0, &file, NULL,
-            FID_Path|TSTR,   "user:config/screen.xml",
-            FID_Flags|TLONG, FL_NEW|FL_WRITE,
-            TAGEND)) {
+      objFile::create file = { fl::Path("user:config/screen.xml"), fl::Flags(FL_NEW|FL_WRITE) };
 
-         write_string(file, "<?xml version=\"1.0\"?>\n\n");
-         write_string(file, "<displayinfo>\n");
-         write_string(file, "  <manufacturer value=\"XFree86\"/>\n");
-         write_string(file, "  <chipset value=\"X11\"/>\n");
-         write_string(file, "  <dac value=\"N/A\"/>\n");
-         write_string(file, "  <clock value=\"N/A\"/>\n");
-         write_string(file, "  <version value=\"1.00\"/>\n");
-         write_string(file, "  <certified value=\"February 2007\"/>\n");
-         write_string(file, "  <monitor_mfr value=\"Unknown\"/>\n");
-         write_string(file, "  <monitor_model value=\"Unknown\"/>\n");
-         write_string(file, "  <scanrates minhscan=\"0\" maxhscan=\"0\" minvscan=\"0\" maxvscan=\"0\"/>\n");
-         write_string(file, "  <gfx_output unknown/>\n");
-         write_string(file, "</displayinfo>\n\n");
+      if (file.ok()) {
+         write_string(*file, "<?xml version=\"1.0\"?>\n\n");
+         write_string(*file, "<displayinfo>\n");
+         write_string(*file, "  <manufacturer value=\"XFree86\"/>\n");
+         write_string(*file, "  <chipset value=\"X11\"/>\n");
+         write_string(*file, "  <dac value=\"N/A\"/>\n");
+         write_string(*file, "  <clock value=\"N/A\"/>\n");
+         write_string(*file, "  <version value=\"1.00\"/>\n");
+         write_string(*file, "  <certified value=\"February 2007\"/>\n");
+         write_string(*file, "  <monitor_mfr value=\"Unknown\"/>\n");
+         write_string(*file, "  <monitor_model value=\"Unknown\"/>\n");
+         write_string(*file, "  <scanrates minhscan=\"0\" maxhscan=\"0\" minvscan=\"0\" maxvscan=\"0\"/>\n");
+         write_string(*file, "  <gfx_output unknown/>\n");
+         write_string(*file, "</displayinfo>\n\n");
 
          WORD xbpp = DefaultDepth(XDisplay, screen);
 
@@ -138,16 +135,14 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
             if ((glSizes[i].width >= 640) AND (glSizes[i].height >= 480)) {
                StrFormat(buffer, sizeof(buffer), "<screen name=\"%dx%d\" width=\"%d\" height=\"%d\" depth=\"%d\" colours=\"%d\"\n",
                   glSizes[i].width, glSizes[i].height, glSizes[i].width, glSizes[i].height, xbpp, xcolours);
-               write_string(file, buffer);
+               write_string(*file, buffer);
 
                StrFormat(buffer, sizeof(buffer), "  bytes=\"%d\" defaultrefresh=\"0\" minrefresh=\"0\" maxrefresh=\"0\">\n", xbytes);
-               write_string(file, buffer);
+               write_string(*file, buffer);
 
-               write_string(file, "</screen>\n\n");
+               write_string(*file, "</screen>\n\n");
             }
          }
-
-         acFree(file);
       }
    }
 

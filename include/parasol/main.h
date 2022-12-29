@@ -153,6 +153,7 @@ constexpr FieldValue Path(CSTRING Value) { return FieldValue(FID_Path, Value); }
 inline FieldValue Path(std::string Value) { return FieldValue(FID_Path, Value.c_str()); }
 constexpr FieldValue Volume(CSTRING Value) { return FieldValue(FID_Volume, Value); }
 inline FieldValue Volume(std::string Value) { return FieldValue(FID_Volume, Value.c_str()); }
+constexpr FieldValue Target(OBJECTID Value) { return FieldValue(FID_Target, Value); }
 constexpr FieldValue Flags(LONG Value) { return FieldValue(FID_Flags, Value); }
 constexpr FieldValue Permissions(LONG Value) { return FieldValue(FID_Permissions, Value); }
 constexpr FieldValue Routine(CPTR Value) { return FieldValue(FID_Routine, Value); }

@@ -785,14 +785,15 @@ static const FieldArray clNetLookupFields[] = {
 
 ERROR init_netlookup(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clNetLookup,
-      FID_ClassVersion|TFLOAT, VER_NETLOOKUP,
-      FID_Name|TSTR,      "NetLookup",
-      FID_Category|TLONG, CCF_NETWORK,
-      FID_Actions|TPTR,   clNetLookupActions,
-      FID_Methods|TARRAY, clNetLookupMethods,
-      FID_Fields|TARRAY,  clNetLookupFields,
-      FID_Size|TLONG,     sizeof(extNetLookup),
-      FID_Path|TSTR,      MOD_PATH,
-      TAGEND));
+   clNetLookup = objMetaClass::create::global(
+      fl::ClassVersion(VER_NETLOOKUP),
+      fl::Name("NetLookup"),
+      fl::Category(CCF_NETWORK),
+      fl::Actions(clNetLookupActions),
+      fl::Methods(clNetLookupMethods),
+      fl::Fields(clNetLookupFields),
+      fl::Size(sizeof(extNetLookup)),
+      fl::Path(MOD_PATH));
+
+   return clNetLookup ? ERR_Okay : ERR_AddClass;
 }

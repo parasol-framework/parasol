@@ -2980,15 +2980,16 @@ ERROR create_surface_class(void)
    // When operating stand-alone, do not share surfaces by default.
    if (GetResource(RES_GLOBAL_INSTANCE)) flags = CLF_SHARED_ONLY|CLF_PUBLIC_OBJECTS;
 
-   return CreateObject(ID_METACLASS, 0, &clSurface,
-      FID_ClassVersion|TDOUBLE, VER_SURFACE,
-      FID_Name|TSTRING,   "Surface",
-      FID_Category|TLONG, CCF_GUI,
-      FID_Actions|TPTR,   clSurfaceActions,
-      FID_Methods|TARRAY, clSurfaceMethods,
-      FID_Fields|TARRAY,  clSurfaceFields,
-      FID_Size|TLONG,     sizeof(extSurface),
-      FID_Flags|TLONG,    flags,
-      FID_Path|TSTR,      MOD_PATH,
-      TAGEND);
+   clSurface = objMetaClass::create::global(
+      fl::ClassVersion(VER_SURFACE),
+      fl::Name("Surface"),
+      fl::Category(CCF_GUI),
+      fl::Actions(clSurfaceActions),
+      fl::Methods(clSurfaceMethods),
+      fl::Fields(clSurfaceFields),
+      fl::Size(sizeof(extSurface)),
+      fl::Flags(flags),
+      fl::Path(MOD_PATH));
+
+   return clSurface ? ERR_Okay : ERR_AddClass;
 }

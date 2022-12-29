@@ -1,10 +1,9 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -CLASS-
 StorageDevice: Queries the meta data of file system volumes.
@@ -16,7 +15,7 @@ initialisation will fail.
 Following initialisation, all meta fields describing the volume are readable for further information.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define PRV_FILESYSTEM
 #include "../defs.h"
@@ -24,7 +23,7 @@ Following initialisation, all meta fields describing the volume are readable for
 static ERROR STORAGE_Free(extStorageDevice *, APTR);
 static ERROR STORAGE_Init(extStorageDevice *, APTR);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR STORAGE_Free(extStorageDevice *Self, APTR Void)
 {
@@ -32,7 +31,7 @@ static ERROR STORAGE_Free(extStorageDevice *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR STORAGE_Init(extStorageDevice *Self, APTR Void)
 {
@@ -52,7 +51,7 @@ static ERROR STORAGE_Init(extStorageDevice *Self, APTR Void)
    else return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 BytesFree: Total amount of storage space that is available, measured in bytes.
 
@@ -70,7 +69,7 @@ DeviceID: A unique ID for the mounted device (platform dependent, NULL if unavai
 
 If a volume expresses a unique device identifier such as a factory serial number, it will be readable from this field.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_DeviceID(extStorageDevice *Self, STRING *Value)
 {
@@ -84,7 +83,7 @@ static ERROR GET_DeviceID(extStorageDevice *Self, STRING *Value)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 DeviceSize: The storage size of the device in bytes, without accounting for the file system format.
 
@@ -103,7 +102,7 @@ format is 'name:', but omitting the colon or defining complete file system paths
 acceptable.  Any characters following a colon will be stripped automatically with no ongoing functional impact.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Volume(extStorageDevice *Self, STRING *Value)
 {
@@ -140,7 +139,7 @@ static ERROR SET_Volume(extStorageDevice *Self, CSTRING Value)
    else return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const FieldDef clDeviceFlags[] = {
    { "CompactDisc",  DEVICE_COMPACT_DISC },
@@ -177,6 +176,8 @@ static const ActionArray clActions[] = {
    { AC_Init, (APTR)STORAGE_Init },
    { 0, NULL }
 };
+
+//********************************************************************************************************************
 
 extern "C" ERROR add_storage_class(void)
 {

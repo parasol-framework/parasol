@@ -443,14 +443,15 @@ static const ActionArray clEllipseActions[] = {
 
 static ERROR init_ellipse(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clVectorEllipse,
-      FID_BaseClassID|TLONG, ID_VECTOR,
-      FID_SubClassID|TLONG,  ID_VECTORELLIPSE,
-      FID_Name|TSTRING,      "VectorEllipse",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Actions|TPTR,      clEllipseActions,
-      FID_Fields|TARRAY,     clEllipseFields,
-      FID_Size|TLONG,        sizeof(objVectorEllipse),
-      FID_Path|TSTR,         MOD_PATH,
-      TAGEND));
+   clVectorEllipse = objMetaClass::create::global(
+      fl::BaseClassID(ID_VECTOR),
+      fl::SubClassID(ID_VECTORELLIPSE),
+      fl::Name("VectorEllipse"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clEllipseActions),
+      fl::Fields(clEllipseFields),
+      fl::Size(sizeof(objVectorEllipse)),
+      fl::Path(MOD_PATH));
+
+   return clVectorEllipse ? ERR_Okay : ERR_AddClass;
 }

@@ -119,15 +119,15 @@ static const FieldArray clMergeFXFields[] = {
 
 ERROR init_mergefx(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clMergeFX,
-      FID_BaseClassID|TLONG, ID_FILTEREFFECT,
-      FID_SubClassID|TLONG,  ID_MERGEFX,
-      FID_Name|TSTRING,      "MergeFX",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Flags|TLONG,       CLF_PRIVATE_ONLY|CLF_PROMOTE_INTEGRAL,
-      FID_Actions|TPTR,      clMergeFXActions,
-      FID_Fields|TARRAY,     clMergeFXFields,
-      FID_Size|TLONG,        sizeof(objMergeFX),
-      FID_Path|TSTR,         MOD_PATH,
-      TAGEND));
+   clMergeFX = objMetaClass::create::global(
+      fl::BaseClassID(ID_FILTEREFFECT),
+      fl::SubClassID(ID_MERGEFX),
+      fl::Name("MergeFX"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clMergeFXActions),
+      fl::Fields(clMergeFXFields),
+      fl::Size(sizeof(objMergeFX)),
+      fl::Path(MOD_PATH));
+
+   return clMergeFX ? ERR_Okay : ERR_AddClass;
 }

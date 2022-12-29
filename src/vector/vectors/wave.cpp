@@ -603,14 +603,15 @@ static const ActionArray clWaveActions[] = {
 
 static ERROR init_wave(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clVectorWave,
-      FID_BaseClassID|TLONG, ID_VECTOR,
-      FID_SubClassID|TLONG,  ID_VECTORWAVE,
-      FID_Name|TSTRING,      "VectorWave",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Actions|TPTR,      clWaveActions,
-      FID_Fields|TARRAY,     clWaveFields,
-      FID_Size|TLONG,        sizeof(objVectorWave),
-      FID_Path|TSTR,         "modules:vector",
-      TAGEND));
+   clVectorWave = objMetaClass::create::global(
+      fl::BaseClassID(ID_VECTOR),
+      fl::SubClassID(ID_VECTORWAVE),
+      fl::Name("VectorWave"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clWaveActions),
+      fl::Fields(clWaveFields),
+      fl::Size(sizeof(objVectorWave)),
+      fl::Path(MOD_PATH));
+
+   return clVectorWave ? ERR_Okay : ERR_AddClass;
 }

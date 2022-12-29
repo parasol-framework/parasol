@@ -931,7 +931,7 @@ static ERROR SET_RequestHandler(objClipboard *Self, FUNCTION *Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void free_clip(ClipEntry *Clip)
 {
@@ -959,7 +959,7 @@ static void free_clip(ClipEntry *Clip)
    ClearMemory(Clip, sizeof(ClipEntry));
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR add_clip(MEMORYID ClusterID, LONG Datatype, CSTRING File, LONG Flags,
    CLASSID ClassID, LONG TotalItems, LONG *Counter)
@@ -1078,7 +1078,7 @@ static ERROR add_clip(MEMORYID ClusterID, LONG Datatype, CSTRING File, LONG Flag
    else return ERR_AccessMemory;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Called when the windows clipboard holds new text.  We respond by copying this into our internal clipboard system.
 
 #ifdef _WIN32
@@ -1100,7 +1100,7 @@ void report_windows_clip_text(CSTRING String)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 // Called when the windows clipboard holds new file references.
 
 #ifdef _WIN32
@@ -1121,7 +1121,7 @@ extern "C" void report_windows_files(APTR Data, LONG CutOperation)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #ifdef _WIN32
 extern "C" void report_windows_hdrop(STRING Data, LONG CutOperation)
@@ -1142,7 +1142,7 @@ extern "C" void report_windows_hdrop(STRING Data, LONG CutOperation)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 // Called when the windows clipboard holds new text in UTF-16 format.
 
 #ifdef _WIN32
@@ -1204,23 +1204,20 @@ static const FieldArray clFields[] = {
    END_FIELD
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR create_clipboard_class(void)
 {
-   if (CreateObject(ID_METACLASS, 0, &clClipboard,
-         FID_BaseClassID|TLONG,   ID_CLIPBOARD,
-         FID_ClassVersion|TFLOAT, VER_CLIPBOARD,
-         FID_Name|TSTR,           "Clipboard",
-         FID_Category|TLONG,      CCF_IO,
-         FID_Actions|TPTR,        clClipboardActions,
-         FID_Methods|TARRAY,      clClipboardMethods,
-         FID_Fields|TARRAY,       clFields,
-         FID_Size|TLONG,          sizeof(objClipboard),
-         FID_Path|TSTR,           MOD_PATH,
-         TAGEND)) {
-      return ERR_AddClass;
-   }
+   clClipboard = objMetaClass::create::global(
+      fl::BaseClassID(ID_CLIPBOARD),
+      fl::ClassVersion(VER_CLIPBOARD),
+      fl::Name("Clipboard"),
+      fl::Category(CCF_IO),
+      fl::Actions(clClipboardActions),
+      fl::Methods(clClipboardMethods),
+      fl::Fields(clFields),
+      fl::Size(sizeof(objClipboard)),
+      fl::Path(MOD_PATH));
 
-   return ERR_Okay;
+   return clClipboard ? ERR_Okay : ERR_AddClass;
 }

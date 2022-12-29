@@ -2632,20 +2632,21 @@ static const FieldArray clFields[] = {
 
 static ERROR add_xml_class(void)
 {
-   return CreateObject(ID_METACLASS, 0, &clXML,
-      FID_BaseClassID|TLONG,    ID_XML,
-      FID_ClassVersion|TFLOAT,  VER_XML,
-      FID_Name|TSTR,            "XML",
-      FID_FileExtension|TSTR,   "*.xml",
-      FID_FileDescription|TSTR, "XML File",
-      FID_Category|TLONG,       CCF_DATA,
-      FID_Flags|TLONG,          CLF_PROMOTE_INTEGRAL,
-      FID_Actions|TPTR,         clXMLActions,
-      FID_Methods|TARRAY,       clXMLMethods,
-      FID_Fields|TARRAY,        clFields,
-      FID_Size|TLONG,           sizeof(extXML),
-      FID_Path|TSTR,            MOD_PATH,
-      TAGEND);
+   clXML = objMetaClass::create::global(
+      fl::BaseClassID(ID_XML),
+      fl::ClassVersion(VER_XML),
+      fl::Name("XML"),
+      fl::FileExtension("*.xml"),
+      fl::FileDescription("XML File"),
+      fl::Category(CCF_DATA),
+      fl::Flags(CLF_PROMOTE_INTEGRAL),
+      fl::Actions(clXMLActions),
+      fl::Methods(clXMLMethods),
+      fl::Fields(clFields),
+      fl::Size(sizeof(extXML)),
+      fl::Path(MOD_PATH));
+
+   return clXML ? ERR_Okay : ERR_AddClass;
 }
 
 PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, MODVERSION_XML)

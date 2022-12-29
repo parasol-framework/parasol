@@ -1,6 +1,6 @@
 #include "../picture/picture.h"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR RSVG_Activate(prvPicture *Self, APTR Void)
 {
@@ -20,18 +20,17 @@ static ERROR RSVG_Activate(prvPicture *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR RSVG_Free(prvPicture *Self, APTR Void)
 {
-   prvSVG *prv;
-   if ((prv = (prvSVG *)Self->ChildPrivate)) {
+   if (auto prv = (prvSVG *)Self->ChildPrivate) {
       if (prv->SVG) { acFree(prv->SVG); prv->SVG = NULL; }
    }
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR RSVG_Init(prvPicture *Self, APTR Void)
 {
@@ -65,7 +64,7 @@ static ERROR RSVG_Init(prvPicture *Self, APTR Void)
    else return ERR_AllocMemory;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR RSVG_Query(prvPicture *Self, APTR Void)
 {
@@ -152,7 +151,7 @@ static ERROR RSVG_Query(prvPicture *Self, APTR Void)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR RSVG_Resize(prvPicture *Self, struct acResize *Args)
 {
@@ -184,7 +183,7 @@ static ERROR RSVG_Resize(prvPicture *Self, struct acResize *Args)
    else return ERR_NotInitialised;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const ActionArray clActions[] = {
    { AC_Activate, (APTR)RSVG_Activate },
@@ -195,18 +194,19 @@ static const ActionArray clActions[] = {
    { 0, NULL }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR init_rsvg(void)
 {
-   return CreateObject(ID_METACLASS, 0, &clRSVG,
-      FID_BaseClassID|TLONG,    ID_PICTURE,
-      FID_SubClassID|TLONG,     ID_RSVG,
-      FID_Name|TSTRING,         "RSVG",
-      FID_Category|TLONG,       CCF_GRAPHICS,
-      FID_FileExtension|TSTR,   "*.svg|*.svgz",
-      FID_FileDescription|TSTR, "SVG image",
-      FID_Actions|TPTR,         clActions,
-      FID_Path|TSTR,            MOD_PATH,
-      TAGEND);
+   clRSVG = objMetaClass::create::global(
+      fl::BaseClassID(ID_PICTURE),
+      fl::SubClassID(ID_RSVG),
+      fl::Name("RSVG"),
+      fl::Category(CCF_GRAPHICS),
+      fl::FileExtension("*.svg|*.svgz"),
+      fl::FileDescription("SVG image"),
+      fl::Actions(clActions),
+      fl::Path(MOD_PATH));
+
+   return clRSVG ? ERR_Okay : ERR_AddClass;
 }

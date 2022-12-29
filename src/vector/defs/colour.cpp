@@ -53,14 +53,16 @@ static const FieldArray clColourFields[] = {
 
 ERROR init_colour(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clVectorColour,
-      FID_BaseClassID|TLONG, ID_VECTORCOLOUR,
-      FID_Name|TSTRING,      "VectorColour",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Actions|TPTR,      clColourActions,
-      FID_Fields|TARRAY,     clColourFields,
-      FID_Size|TLONG,        sizeof(objVectorColour),
-      FID_Path|TSTR,         "modules:vector",
-      TAGEND));
+   clVectorColour = objMetaClass::create::global(
+      fl::BaseClassID(ID_VECTORCOLOUR),
+      fl::Name("VectorColour"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clColourActions),
+      fl::Fields(clColourFields),
+      fl::Size(sizeof(objVectorColour)),
+      fl::Path(MOD_PATH));
+
+   return clVectorColour ? ERR_Okay : ERR_AddClass;
 }
+
 

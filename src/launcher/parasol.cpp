@@ -252,18 +252,12 @@ ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)
          OBJECTPTR pointer;
          if (!NewLockedObject(ID_POINTER, NF_PUBLIC, &pointer, &glSystemPointerID)) {
             SetFields(pointer,
-               FID_Owner|TLONG,  glTargetID,
-               FID_Name|TSTRING, "SystemPointer",
+               FID_Owner|TLONG, glTargetID,
+               FID_Name|TSTR,   "SystemPointer",
                TAGEND);
             if (!acInit(pointer)) {
-               OBJECTPTR script;
-               if (!CreateObject(ID_SCRIPT, 0, &script,
-                     FID_Path|TSTR,    "~templates:defaultvariables",
-                     FID_Target|TLONG, glTargetID,
-                     TAGEND)) {
-                  error = acActivate(script);
-                  acFree(script);
-               }
+               objScript::create script = { fl::Path("~templates:defaultvariables"), fl::Target(glTargetID) };
+               if (script.ok()) error = script->activate();
                else error = ERR_CreateObject;
             }
             else error = ERR_Init;

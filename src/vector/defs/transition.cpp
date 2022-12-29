@@ -224,14 +224,15 @@ static const FieldArray clTransitionFields[] = {
 
 ERROR init_transition(void) // The transition is a definition type for creating transitions and not drawing.
 {
-   return(CreateObject(ID_METACLASS, 0, &clVectorTransition,
-      FID_BaseClassID|TLONG, ID_VECTORTRANSITION,
-      FID_Name|TSTRING,      "VectorTransition",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Actions|TPTR,      clTransitionActions,
-      FID_Fields|TARRAY,     clTransitionFields,
-      FID_Size|TLONG,        sizeof(objVectorTransition),
-      FID_Path|TSTR,         "modules:vector",
-      TAGEND));
+   clVectorTransition = objMetaClass::create::global(
+      fl::BaseClassID(ID_VECTORTRANSITION),
+      fl::Name("VectorTransition"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clTransitionActions),
+      fl::Fields(clTransitionFields),
+      fl::Size(sizeof(objVectorTransition)),
+      fl::Path(MOD_PATH));
+
+   return clVectorTransition ? ERR_Okay : ERR_AddClass;
 }
 

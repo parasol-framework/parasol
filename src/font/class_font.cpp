@@ -2119,7 +2119,7 @@ static void unload_glyph_cache(extFont *Font)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "class_font_def.c"
 
@@ -2183,21 +2183,21 @@ static const FieldArray clFontFields[] = {
    END_FIELD
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR add_font_class(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clFont,
-      FID_BaseClassID|TLONG,    ID_FONT,
-      FID_ClassVersion|TFLOAT,  VER_FONT,
-      FID_Name|TSTRING,         "Font",
-      FID_Category|TLONG,       CCF_GRAPHICS,
-      FID_Flags|TLONG,          CLF_PRIVATE_ONLY,
-      FID_FileExtension|TSTR,   "*.font|*.fnt|*.tty|*.fon",
-      FID_FileDescription|TSTR, "Font",
-      FID_Actions|TPTR,         clFontActions,
-      FID_Fields|TARRAY,        clFontFields,
-      FID_Size|TLONG,           sizeof(extFont),
-      FID_Path|TSTR,            MOD_PATH,
-      TAGEND));
+   clFont = objMetaClass::create::global(
+      fl::BaseClassID(ID_FONT),
+      fl::ClassVersion(VER_FONT),
+      fl::Name("Font"),
+      fl::Category(CCF_GRAPHICS),
+      fl::FileExtension("*.font|*.fnt|*.tty|*.fon"),
+      fl::FileDescription("Font"),
+      fl::Actions(clFontActions),
+      fl::Fields(clFontFields),
+      fl::Size(sizeof(extFont)),
+      fl::Path(MOD_PATH));
+
+   return clFont ? ERR_Okay : ERR_AddClass;
 }

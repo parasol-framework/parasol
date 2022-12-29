@@ -483,15 +483,15 @@ static const FieldArray clTurbulenceFXFields[] = {
 
 ERROR init_turbulencefx(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clTurbulenceFX,
-      FID_BaseClassID|TLONG, ID_FILTEREFFECT,
-      FID_SubClassID|TLONG,  ID_TURBULENCEFX,
-      FID_Name|TSTRING,      "TurbulenceFX",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Flags|TLONG,       CLF_PRIVATE_ONLY|CLF_PROMOTE_INTEGRAL,
-      FID_Actions|TPTR,      clTurbulenceFXActions,
-      FID_Fields|TARRAY,     clTurbulenceFXFields,
-      FID_Size|TLONG,        sizeof(objTurbulenceFX),
-      FID_Path|TSTR,         MOD_PATH,
-      TAGEND));
+   clTurbulenceFX = objMetaClass::create::global(
+      fl::BaseClassID(ID_FILTEREFFECT),
+      fl::SubClassID(ID_TURBULENCEFX),
+      fl::Name("TurbulenceFX"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clTurbulenceFXActions),
+      fl::Fields(clTurbulenceFXFields),
+      fl::Size(sizeof(objTurbulenceFX)),
+      fl::Path(MOD_PATH));
+
+   return clTurbulenceFX ? ERR_Okay : ERR_AddClass;
 }

@@ -418,15 +418,15 @@ static const FieldArray clBlurFXFields[] = {
 
 ERROR init_blurfx(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clBlurFX,
-      FID_BaseClassID|TLONG, ID_FILTEREFFECT,
-      FID_SubClassID|TLONG,  ID_BLURFX,
-      FID_Name|TSTRING,      "BlurFX",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Flags|TLONG,       CLF_PRIVATE_ONLY|CLF_PROMOTE_INTEGRAL,
-      FID_Actions|TPTR,      clBlurFXActions,
-      FID_Fields|TARRAY,     clBlurFXFields,
-      FID_Size|TLONG,        sizeof(objBlurFX),
-      FID_Path|TSTR,         MOD_PATH,
-      TAGEND));
+   clBlurFX = objMetaClass::create::global(
+      fl::BaseClassID(ID_FILTEREFFECT),
+      fl::SubClassID(ID_BLURFX),
+      fl::Name("BlurFX"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clBlurFXActions),
+      fl::Fields(clBlurFXFields),
+      fl::Size(sizeof(objBlurFX)),
+      fl::Path(MOD_PATH));
+
+   return clBlurFX ? ERR_Okay : ERR_AddClass;
 }

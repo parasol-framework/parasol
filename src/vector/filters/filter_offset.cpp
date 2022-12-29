@@ -102,14 +102,15 @@ static const FieldArray clOffsetFXFields[] = {
 
 ERROR init_offsetfx(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clOffsetFX,
-      FID_BaseClassID|TLONG, ID_FILTEREFFECT,
-      FID_SubClassID|TLONG,  ID_OFFSETFX,
-      FID_Name|TSTRING,      "OffsetFX",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Actions|TPTR,      clOffsetFXActions,
-      FID_Fields|TARRAY,     clOffsetFXFields,
-      FID_Size|TLONG,        sizeof(objOffsetFX),
-      FID_Path|TSTR,         MOD_PATH,
-      TAGEND));
+   clOffsetFX = objMetaClass::create::global(
+      fl::BaseClassID(ID_FILTEREFFECT),
+      fl::SubClassID(ID_OFFSETFX),
+      fl::Name("OffsetFX"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clOffsetFXActions),
+      fl::Fields(clOffsetFXFields),
+      fl::Size(sizeof(objOffsetFX)),
+      fl::Path(MOD_PATH));
+
+   return clOffsetFX ? ERR_Okay : ERR_AddClass;
 }

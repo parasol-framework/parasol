@@ -237,15 +237,16 @@ static const FieldArray clClipFields[] = {
 
 static ERROR init_clip(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clVectorClip,
-      FID_BaseClassID|TLONG, ID_VECTOR,
-      FID_SubClassID|TLONG,  ID_VECTORCLIP,
-      FID_Name|TSTRING,      "VectorClip",
-      FID_Actions|TPTR,      clClipActions,
-      FID_Fields|TARRAY,     clClipFields,
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Size|TLONG,        sizeof(objVectorClip),
-      FID_Path|TSTR,         MOD_PATH,
-      TAGEND));
+   clVectorClip = objMetaClass::create::global(
+      fl::BaseClassID(ID_VECTOR),
+      fl::SubClassID(ID_VECTORCLIP),
+      fl::Name("VectorClip"),
+      fl::Actions(clClipActions),
+      fl::Fields(clClipFields),
+      fl::Category(CCF_GRAPHICS),
+      fl::Size(sizeof(objVectorClip)),
+      fl::Path(MOD_PATH));
+
+   return clVectorClip ? ERR_Okay : ERR_AddClass;
 }
 

@@ -965,19 +965,20 @@ INLINE void layout_doc_fast(extDocument *Self)
 
 static ERROR add_document_class(void)
 {
-   return CreateObject(ID_METACLASS, 0, &clDocument,
-      FID_BaseClassID|TLONG,   ID_DOCUMENT,
-      FID_ClassVersion|TFLOAT, VER_DOCUMENT,
-      FID_Name|TSTR,           "Document",
-      FID_Category|TLONG,      CCF_GUI,
-      FID_Flags|TLONG,         CLF_PROMOTE_INTEGRAL|CLF_PRIVATE_ONLY,
-      FID_Actions|TPTR,        clDocumentActions,
-      FID_Methods|TARRAY,      clDocumentMethods,
-      FID_Fields|TARRAY,       clFields,
-      FID_Size|TLONG,          sizeof(extDocument),
-      FID_Path|TSTR,           MOD_PATH,
-      FID_FileExtension|TSTR,  "*.rpl|*.ripple|*.rple",
-      TAGEND);
+   clDocument = objMetaClass::create::global(
+      fl::BaseClassID(ID_DOCUMENT),
+      fl::ClassVersion(VER_DOCUMENT),
+      fl::Name("Document"),
+      fl::Category(CCF_GUI),
+      fl::Flags(CLF_PROMOTE_INTEGRAL),
+      fl::Actions(clDocumentActions),
+      fl::Methods(clDocumentMethods),
+      fl::Fields(clFields),
+      fl::Size(sizeof(extDocument)),
+      fl::Path(MOD_PATH),
+      fl::FileExtension("*.rpl|*.ripple|*.rple"));
+
+   return clDocument ? ERR_Okay : ERR_AddClass;
 }
 
 //****************************************************************************

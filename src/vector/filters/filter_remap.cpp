@@ -504,15 +504,16 @@ static const FieldArray clRemapFXFields[] = {
 
 ERROR init_remapfx(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clRemapFX,
-      FID_BaseClassID|TLONG, ID_FILTEREFFECT,
-      FID_SubClassID|TLONG,  ID_REMAPFX,
-      FID_Name|TSTRING,      "RemapFX",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Actions|TPTR,      clRemapFXActions,
-      FID_Methods|TARRAY,    clRemapFXMethods,
-      FID_Fields|TARRAY,     clRemapFXFields,
-      FID_Size|TLONG,        sizeof(objRemapFX),
-      FID_Path|TSTR,         MOD_PATH,
-      TAGEND));
+   clRemapFX = objMetaClass::create::global(
+      fl::BaseClassID(ID_FILTEREFFECT),
+      fl::SubClassID(ID_REMAPFX),
+      fl::Name("RemapFX"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clRemapFXActions),
+      fl::Methods(clRemapFXMethods),
+      fl::Fields(clRemapFXFields),
+      fl::Size(sizeof(objRemapFX)),
+      fl::Path(MOD_PATH));
+
+   return clRemapFX ? ERR_Okay : ERR_AddClass;
 }

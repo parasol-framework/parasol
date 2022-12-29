@@ -1137,17 +1137,18 @@ static ERROR register_interfaces(objScript *Self)
 
 ERROR create_fluid(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clFluid,
-      FID_BaseClassID|TLONG,    ID_SCRIPT,
-      FID_SubClassID|TLONG,     ID_FLUID,
-      FID_ClassVersion|TFLOAT,  VER_FLUID,
-      FID_Name|TSTR,            "Fluid",
-      FID_Category|TLONG,       CCF_DATA,
-      FID_FileExtension|TSTR,   "*.fluid|*.fb|*.lua",
-      FID_FileDescription|TSTR, "Fluid",
-      FID_Actions|TPTR,         clActions,
-      FID_Methods|TARRAY,       clMethods,
-      FID_Fields|TARRAY,        clFields,
-      FID_Path|TSTR,            MOD_PATH,
-      TAGEND));
+   clFluid = objMetaClass::create::global(
+      fl::BaseClassID(ID_SCRIPT),
+      fl::SubClassID(ID_FLUID),
+      fl::ClassVersion(VER_FLUID),
+      fl::Name("Fluid"),
+      fl::Category(CCF_DATA),
+      fl::FileExtension("*.fluid|*.fb|*.lua"),
+      fl::FileDescription("Fluid"),
+      fl::Actions(clActions),
+      fl::Methods(clMethods),
+      fl::Fields(clFields),
+      fl::Path(MOD_PATH));
+
+   return clFluid ? ERR_Okay : ERR_AddClass;
 }

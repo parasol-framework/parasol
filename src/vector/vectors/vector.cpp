@@ -2307,14 +2307,15 @@ static const FieldArray clVectorFields[] = {
 
 static ERROR init_vector(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clVector,
-      FID_ClassVersion|TFLOAT, VER_VECTOR,
-      FID_Name|TSTR,      "Vector",
-      FID_Category|TLONG, CCF_GRAPHICS,
-      FID_Actions|TPTR,   clVectorActions,
-      FID_Methods|TARRAY, clVectorMethods,
-      FID_Fields|TARRAY,  clVectorFields,
-      FID_Size|TLONG,     sizeof(extVector),
-      FID_Path|TSTR,      "modules:vector",
-      TAGEND));
+   clVector = objMetaClass::create::global(
+      fl::ClassVersion(VER_VECTOR),
+      fl::Name("Vector"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clVectorActions),
+      fl::Methods(clVectorMethods),
+      fl::Fields(clVectorFields),
+      fl::Size(sizeof(extVector)),
+      fl::Path(MOD_PATH));
+
+   return clVector ? ERR_Okay : ERR_AddClass;
 }

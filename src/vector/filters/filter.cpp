@@ -909,17 +909,15 @@ static const FieldArray clFilterFields[] = {
 
 ERROR init_filter(void)
 {
-   if (CreateObject(ID_METACLASS, 0, &clVectorFilter,
-      FID_BaseClassID|TLONG, ID_VECTORFILTER,
-      FID_Name|TSTRING,      "VectorFilter",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Flags|TLONG,       CLF_PRIVATE_ONLY|CLF_PROMOTE_INTEGRAL,
-      FID_Actions|TPTR,      clVectorFilterActions,
-      FID_Fields|TARRAY,     clFilterFields,
-      FID_Size|TLONG,        sizeof(extVectorFilter),
-      FID_Path|TSTR,         "modules:vector",
-      TAGEND)) return ERR_CreateObject;
+   clVectorFilter = objMetaClass::create::global(
+      fl::BaseClassID(ID_VECTORFILTER),
+      fl::Name("VectorFilter"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clVectorFilterActions),
+      fl::Fields(clFilterFields),
+      fl::Size(sizeof(extVectorFilter)),
+      fl::Path(MOD_PATH));
 
-   return ERR_Okay;
+   return clVectorFilter ? ERR_Okay : ERR_AddClass;
 }
 
