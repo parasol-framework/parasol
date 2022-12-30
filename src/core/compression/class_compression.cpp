@@ -81,7 +81,7 @@ class extCompression : public objCompression {
 };
 
 static ERROR compress_folder(extCompression *, CSTRING, CSTRING);
-static ERROR compress_file(extCompression *, CSTRING, CSTRING, BYTE);
+static ERROR compress_file(extCompression *, CSTRING, CSTRING, bool);
 static void print(extCompression *, CSTRING);
 static ERROR remove_file(extCompression *, ZipFile **);
 static ERROR scan_zip(extCompression *);

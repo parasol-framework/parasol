@@ -2,7 +2,7 @@
 
 module({ name="Core", copyright="Paul Manias 1996-2022" }, function()
   c_include("<stdarg.h>")
-  cpp_include("<list>", "<map>", "<string>", "<vector>", "<unordered_map>")
+  cpp_include("<list>", "<map>", "<string>", "<vector>", "<unordered_map>", "<bit>")
 
   platform("Windows", function()
      enum("NETMSG", {}, "START", "END")
@@ -726,16 +726,15 @@ INLINE LONG F2I(DOUBLE val) {
 
 #endif
 
-INLINE LONG F2T(DOUBLE val) // For numbers no larger than 16 bit, standard (LONG) is faster than F2T().
+inline LONG F2T(DOUBLE val) // For numbers no larger than 16 bit, standard (LONG) is faster than F2T().
 {
-   if ((val > 32767.0) OR (val < -32767.0)) return((LONG)val);
+   if ((val > 32767.0) or (val < -32767.0)) return((LONG)val);
    else {
       val = val + (68719476736.0 * 1.5);
-#ifdef REVERSE_BYTEORDER
-      return ((LONG *)(APTR)&val)[0]>>16;
-#else
-      return ((LONG *)&val)[1]>>16;
-#endif
+      if constexpr (std::endian::native == std::endian::little) {
+         return ((LONG *)(APTR)&val)[0]>>16;
+      }
+      else return ((LONG *)&val)[1]>>16;
    }
 }
 
@@ -2687,7 +2686,7 @@ inline CSTRING flReadLine(OBJECTPTR Object) {
    else return NULL;
 }
 
-// Read little endian values.
+// Read endian values from files and objects.
 
 template<class T> ERROR flReadLE(OBJECTPTR Object, T *Result)
 {
@@ -2695,16 +2694,41 @@ template<class T> ERROR flReadLE(OBJECTPTR Object, T *Result)
    struct acRead read = { .Buffer = data, .Length = sizeof(T) };
    if (!Action(AC_Read, Object, &read)) {
       if (read.Result IS sizeof(T)) {
-         #ifdef LITTLE_ENDIAN // The CPU is little endian
+         if constexpr (std::endian::native == std::endian::little) {
             *Result = ((T *)data)[0];
-         #else
+         }
+         else {
             switch(sizeof(T)) {
                case 2:  *Result = (data[1]<<8) | data[0]; break;
                case 4:  *Result = (data[0]<<24)|(data[1]<<16)|(data[2]<<8)|(data[3]); break;
                case 8:  *Result = ((LARGE)data[0]<<56)|((LARGE)data[1]<<48)|((LARGE)data[2]<<40)|((LARGE)data[3]<<32)|(data[4]<<24)|(data[5]<<16)|(data[6]<<8)|(data[7]); break;
                default: *Result = ((T *)data)[0];
             }
-         #endif
+         }
+         return ERR_Okay;
+      }
+      else return ERR_Read;
+   }
+   else return ERR_Read;
+}
+
+template<class T> ERROR flReadBE(OBJECTPTR Object, T *Result)
+{
+   UBYTE data[sizeof(T)];
+   struct acRead read = { .Buffer = data, .Length = sizeof(T) };
+   if (!Action(AC_Read, Object, &read)) {
+      if (read.Result IS sizeof(T)) {
+         if constexpr (std::endian::native == std::endian::little) {
+            switch(sizeof(T)) {
+               case 2:  *Result = (data[1]<<8) | data[0]; break;
+               case 4:  *Result = (data[0]<<24)|(data[1]<<16)|(data[2]<<8)|(data[3]); break;
+               case 8:  *Result = ((LARGE)data[0]<<56)|((LARGE)data[1]<<48)|((LARGE)data[2]<<40)|((LARGE)data[3]<<32)|(data[4]<<24)|(data[5]<<16)|(data[6]<<8)|(data[7]); break;
+               default: *Result = ((T *)data)[0];
+            }
+         }
+         else {
+            *Result = ((T *)data)[0];
+         }
          return ERR_Okay;
       }
       else return ERR_Read;

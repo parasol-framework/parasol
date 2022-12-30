@@ -78,6 +78,8 @@ class ScopedObjectLock { // C++ wrapper for automatically releasing an object
       ScopedObjectLock() { obj = NULL; error = ERR_NotLocked; }
       ~ScopedObjectLock() { if (!error) ReleaseObject((OBJECTPTR)obj); }
       bool granted() { return error == ERR_Okay; }
+
+      T * & operator*() { return obj; }; // To allow object pointer referencing when calling functions
 };
 
 //********************************************************************************************************************

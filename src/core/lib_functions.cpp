@@ -832,9 +832,7 @@ ULONG GenCRC32(ULONG crc, APTR Data, ULONG len)
    }
 
    if (sizeof(void *) == sizeof(ptrdiff_t)) {
-      u4 endian;
-      endian = 1;
-      if (*((UBYTE *)(&endian))) {
+      if constexpr (std::endian::native == std::endian::little) {
          return crc32_little(crc, buf, len);
       }
       else return crc32_big(crc, buf, len);
