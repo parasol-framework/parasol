@@ -33,7 +33,6 @@ typedef LONG SOCKET_HANDLE;
 #else
 #error "No support for this platform"
 #endif
-  
 // Address types for the IPAddress structure.
 
 #define IPADDR_V4 0
@@ -134,6 +133,11 @@ INLINE ERROR csWriteClientMsg(APTR Ob, APTR Message, LONG Length) {
 
 class objClientSocket : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_CLIENTSOCKET;
+   static constexpr CSTRING CLASS_NAME = "ClientSocket";
+
+   using create = parasol::Create<objClientSocket>;
+
    LARGE    ConnectTime;         // System time for the creation of this socket
    objClientSocket * Prev;       // Previous socket in the chain
    objClientSocket * Next;       // Next socket in the chain
@@ -143,6 +147,7 @@ class objClientSocket : public BaseClass {
    FUNCTION Incoming;            // Callback for data being received from the socket
    LONG     MsgLen;              // Length of the current incoming message
    LONG     ReadCalled:1;        // TRUE if the Read action has been called
+
    // Action stubs
 
    inline ERROR init() { return Action(AC_Init, this, NULL); }
@@ -198,6 +203,11 @@ INLINE ERROR prxFind(APTR Ob, LONG Port, LONG Enabled) {
 
 class objProxy : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_PROXY;
+   static constexpr CSTRING CLASS_NAME = "Proxy";
+
+   using create = parasol::Create<objProxy>;
+
    STRING NetworkFilter;    // The name of the network that the proxy is limited to.
    STRING GatewayFilter;    // The IP address of the gateway that the proxy is limited to.
    STRING Username;         // The username to use when authenticating against the proxy server.
@@ -209,6 +219,7 @@ class objProxy : public BaseClass {
    LONG   Enabled;          // All proxies are enabled by default until this field is set to FALSE.
    LONG   Record;           // The unique ID of the current proxy record.
    LONG   Host;             // If TRUE, the proxy settings are derived from the host operating system's default settings.
+
    // Action stubs
 
    inline ERROR disable() { return Action(AC_Disable, this, NULL); }
@@ -256,8 +267,14 @@ INLINE ERROR nlBlockingResolveAddress(APTR Ob, CSTRING Address) {
 
 class objNetLookup : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_NETLOOKUP;
+   static constexpr CSTRING CLASS_NAME = "NetLookup";
+
+   using create = parasol::Create<objNetLookup>;
+
    LARGE UserData;    // Optional user data storage
    LONG  Flags;       // Optional flags
+
    // Action stubs
 
    inline ERROR init() { return Action(AC_Init, this, NULL); }
@@ -321,6 +338,11 @@ INLINE ERROR nsWriteMsg(APTR Ob, APTR Message, LONG Length) {
 
 class objNetSocket : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_NETSOCKET;
+   static constexpr CSTRING CLASS_NAME = "NetSocket";
+
+   using create = parasol::Create<objNetSocket>;
+
    struct NetClient * Clients;    // For server sockets, lists all clients connected to the server.
    APTR   UserData;               // A user-defined pointer that can be useful in action notify events.
    STRING Address;                // An IP address or domain name to connect to.
@@ -332,6 +354,7 @@ class objNetSocket : public BaseClass {
    LONG   Backlog;                // The maximum number of connections that can be queued against the socket.
    LONG   ClientLimit;            // The maximum number of clients that can be connected to a server socket.
    LONG   MsgLimit;               // Limits the size of incoming and outgoing messages.
+
    // Action stubs
 
    inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
@@ -410,7 +433,6 @@ INLINE ERROR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR 
       FID_UserData|TPTR, UserData,
       TAGEND));
 }
-  
 struct NetworkBase {
    ERROR (*_StrToAddress)(CSTRING, struct IPAddress *);
    CSTRING (*_AddressToStr)(struct IPAddress *);

@@ -15,6 +15,7 @@
 #include <parasol/system/fields.h>
 #include <parasol/modules/core.h>
 
+#include <type_traits>
 #include <memory>
 #include <optional>
 
@@ -146,6 +147,8 @@ class SwitchContext { // C++ wrapper for changing the current context with a res
 //********************************************************************************************************************
 // These field name and type declarations help to ensure that fields are paired with the correct type during create().
 
+class objBitmap;
+
 namespace fl {
    using namespace parasol;
 
@@ -176,20 +179,30 @@ constexpr FieldValue Methods(const MethodArray *Value) { return FieldValue(FID_M
 constexpr FieldValue Fields(const FieldArray *Value) { return FieldValue(FID_Fields, Value, FD_ARRAY); }
 constexpr FieldValue ArchiveName(CSTRING Value) { return FieldValue(FID_ArchiveName, Value); }
 inline FieldValue ArchiveName(std::string Value) { return FieldValue(FID_ArchiveName, Value.c_str()); }
+constexpr FieldValue Bitmap(objBitmap *Value) { return FieldValue(FID_Bitmap, Value); }
+constexpr FieldValue SpreadMethod(LONG Value) { return FieldValue(FID_SpreadMethod, Value); }
+constexpr FieldValue Units(LONG Value) { return FieldValue(FID_Units, Value); }
+constexpr FieldValue AspectRatio(LONG Value) { return FieldValue(FID_AspectRatio, Value); }
 
+template <class T> FieldValue Width(T Value) {
+   static_assert(std::is_arithmetic<T>::value, "Width value must be numeric");
+   return FieldValue(FID_Width, Value);
 }
 
-//********************************************************************************************************************
+template <class T> FieldValue Height(T Value) {
+   static_assert(std::is_arithmetic<T>::value, "Height value must be numeric");
+   return FieldValue(FID_Height, Value);
+}
 
-inline ERROR LoadModule(CSTRING Name, DOUBLE Version, OBJECTPTR *Module, APTR Functions) {
-   if (auto module = objModule::create::global(fl::Name(Name), fl::Version(Version))) {
-      APTR functionbase;
-      if (!module->getPtr(FID_ModBase, &functionbase)) {
-         if (Module) *Module = module;
-         if (Functions) ((APTR *)Functions)[0] = functionbase;
-         return ERR_Okay;
-      }
-      else return ERR_GetField;
-   }
-   else return ERR_CreateObject;
+template <class T> FieldValue X(T Value) {
+   static_assert(std::is_arithmetic<T>::value, "X value must be numeric");
+   return FieldValue(FID_X, Value);
+}
+
+template <class T> FieldValue Y(T Value) {
+   static_assert(std::is_arithmetic<T>::value, "Y value must be numeric");
+   return FieldValue(FID_Y, Value);
+}
+
+constexpr FieldValue BitsPerPixel(LONG Value) { return FieldValue(FID_BitsPerPixel, Value); }
 }

@@ -1650,6 +1650,7 @@ struct FieldValue {
       LONG    Long;
    };
 
+   //std::string not included as not compatible with constexpr
    constexpr FieldValue(ULONG pFID, CSTRING pValue) : FieldID(pFID), Type(FD_STRING), String(pValue) { };
    constexpr FieldValue(ULONG pFID, LONG pValue)    : FieldID(pFID), Type(FD_LONG), Long(pValue) { };
    constexpr FieldValue(ULONG pFID, LARGE pValue)   : FieldID(pFID), Type(FD_LARGE), Large(pValue) { };
@@ -3575,6 +3576,19 @@ class objModule : public BaseClass {
    struct ModuleMaster * Master;            // For internal use only.
    struct ModHeader * Header;               // For internal usage only.
    LONG   Flags;                            // Optional flags.
+   public:
+   static ERROR load(std::string Name, DOUBLE Version, OBJECTPTR *Module = NULL, APTR Functions = NULL) {
+      if (auto module = objModule::create::global(parasol::FieldValue(FID_Name, Name.c_str()), parasol::FieldValue(FID_Version, Version))) {
+         APTR functionbase;
+         if (!module->getPtr(FID_ModBase, &functionbase)) {
+            if (Module) *Module = module;
+            if (Functions) ((APTR *)Functions)[0] = functionbase;
+            return ERR_Okay;
+         }
+         else return ERR_GetField;
+      }
+      else return ERR_CreateObject;
+   }
 
    // Action stubs
 

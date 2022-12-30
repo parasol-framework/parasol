@@ -33,12 +33,18 @@ INLINE ERROR svgRender(APTR Ob, objBitmap * Bitmap, LONG X, LONG Y, LONG Width, 
 
 class objSVG : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_SVG;
+   static constexpr CSTRING CLASS_NAME = "SVG";
+
+   using create = parasol::Create<objSVG>;
+
    OBJECTPTR Target;    // The root Viewport that is generated during SVG initialisation can be created as a child of this target object.
    STRING    Path;      // The location of the source SVG data.
    STRING    Title;     // The title of the SVG document.
    LONG      Frame;     // Forces the graphics to be drawn to a specific frame.
    LONG      Flags;     // Optional flags.
    LONG      FrameRate; // The maximum frame rate to use when animating a vector scene.
+
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }

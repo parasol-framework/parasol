@@ -74,7 +74,6 @@ typedef struct XMLTag {
    UWORD Notation:1;       // Unparsable notations such as <!DOCTYPE ... >
    WORD  pad01;
 #endif
-  
 } XMLTAG;
 
 // XML class definition
@@ -225,6 +224,11 @@ INLINE ERROR xmlGetTag(APTR Ob, LONG Index, struct XMLTag ** Result) {
 
 class objXML : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_XML;
+   static constexpr CSTRING CLASS_NAME = "XML";
+
+   using create = parasol::Create<objXML>;
+
    STRING    Path;            // Set this field if the XML document originates from a file source.
    struct XMLTag * * Tags;    // Points to an array of tags loaded into an XML object.
    OBJECTPTR Source;          // Set this field if the XML document is to be sourced from another object.
@@ -236,6 +240,7 @@ class objXML : public BaseClass {
    LONG      Modified;        // A timestamp of when the XML data was last modified.
    LONG      ParseError;      // Private
    LONG      LineNo;          // Private
+
    // Action stubs
 
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
@@ -299,4 +304,3 @@ inline ERROR xmlSetAttrib(objXML *XML, LONG Tag, LONG Flags, CSTRING Attrib, DOU
    StrFormat(buffer, sizeof(buffer), "%g", Value);
    return xmlSetAttrib(XML, Tag, Flags, Attrib, buffer);
 }
-  

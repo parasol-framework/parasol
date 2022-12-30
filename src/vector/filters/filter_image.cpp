@@ -235,11 +235,7 @@ static ERROR IMAGEFX_SET_Path(objImageFX *Self, CSTRING Value)
 {
    if ((Self->Bitmap) or (Self->Picture)) return ERR_Failed;
 
-   if (!CreateObject(ID_PICTURE, NF_INTEGRAL, &Self->Picture,
-         FID_Path|TSTR,          Value,
-         FID_BitsPerPixel|TLONG, 32,
-         FID_Flags|TLONG,        PCF_FORCE_ALPHA_32,
-         TAGEND)) {
+   if ((Self->Picture = objPicture::create::integral(fl::Path(Value), fl::BitsPerPixel(32), fl::Flags(PCF_FORCE_ALPHA_32)))) {
       Self->Bitmap = Self->Picture->Bitmap;
       return ERR_Okay;
    }

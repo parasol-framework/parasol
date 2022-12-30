@@ -93,7 +93,6 @@ struct escFont {
 };
 
 typedef struct escFont escFont;
-  
 struct SurfaceClip {
    struct SurfaceClip * Next;
    LONG Left;
@@ -237,6 +236,11 @@ INLINE ERROR docReadContent(APTR Ob, LONG Format, LONG Start, LONG End, STRING *
 
 class objDocument : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_DOCUMENT;
+   static constexpr CSTRING CLASS_NAME = "Document";
+
+   using create = parasol::Create<objDocument>;
+
    LARGE    EventMask;        // Specifies events that need to be reported from the Document object.
    STRING   Description;      // A description of the document, provided by its author.
    STRING   FontFace;         // Defines the default font face.
@@ -265,6 +269,7 @@ class objDocument : public BaseClass {
    struct RGB8 VLinkColour;   // Default font colour for visited hyperlinks.
    struct RGB8 SelectColour;  // Default font colour to use when hyperlinks are selected.
    struct RGB8 Border;        // Border colour around the document's surface.
+
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }

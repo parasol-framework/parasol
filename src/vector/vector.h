@@ -154,13 +154,11 @@ public:
       }
       else {
          // NB: The clip region defines the true size and no data is allocated by the bitmap itself unless in debug mode.
-         if (CreateObject(ID_BITMAP, NF_INTEGRAL, &Bitmap,
-               FID_Name|TSTR,          "dummy_fx_bitmap",
-               FID_Width|TLONG,        Width,
-               FID_Height|TLONG,       Height,
-               FID_BitsPerPixel|TLONG, 32,
-               FID_Flags|TLONG,        Debug ? BMF_ALPHA_CHANNEL : (BMF_ALPHA_CHANNEL|BMF_NO_DATA),
-               TAGEND) != ERR_Okay) return NULL;
+         Bitmap = objBitmap::create::integral(
+            fl::Name("dummy_fx_bitmap"),
+            fl::Width(Width), fl::Height(Height), fl::BitsPerPixel(32),
+            fl::Flags(Debug ? BMF_ALPHA_CHANNEL : (BMF_ALPHA_CHANNEL|BMF_NO_DATA)));
+         if (!Bitmap) return NULL;
       }
 
       Bitmap->Clip = Clip;
