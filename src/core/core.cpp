@@ -1880,7 +1880,7 @@ static ERROR load_modules(void)
          LONG size;
          if (!(error = file->get(FID_Size, &size))) {
             if (!(error = AllocMemory(size, MEM_NO_CLEAR|MEM_PUBLIC|MEM_UNTRACKED|MEM_NO_BLOCK, (APTR *)&glModules, &glSharedControl->ModulesMID))) {
-               error = file->read(glModules, size, NULL);
+               error = file->read(glModules, size);
             }
          }
 

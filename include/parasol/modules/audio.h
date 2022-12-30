@@ -370,7 +370,7 @@ class objSound : public BaseClass {
    LONG      Position;     // The current playback position.
    LONG      Handle;       // Audio handle acquired at the audio object [Private - Available to child classes]
    LONG      ChannelIndex; // Refers to the channel that the sound is playing through.
-   OBJECTPTR File;         // Refers to the file object that contains the audio data for playback.
+   objFile * File;         // Refers to the file object that contains the audio data for playback.
 
    // Action stubs
 
