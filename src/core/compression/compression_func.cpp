@@ -1,11 +1,13 @@
 
-#ifdef REVERSE_BYTEORDER // CPU is little endian (Intel, ARM)
-#define wrb_long(a,b) ((LONG *)(b))[0] = (a)
-#define wrb_word(a,b) ((WORD *)(b))[0] = (a)
-#else // CPU is big endian (Motorola)
-#define wrb_long(a,b) (b)[0] = (UBYTE)(a); (b)[1] = (UBYTE)((a)>>8); (b)[2] = (UBYTE)((a)>>16); (b)[3] = (UBYTE)((a)>>24)
-#define wrb_word(a,b) (b)[0] = (UBYTE)(a); (b)[1] = (UBYTE)((a)>>8)
-#endif
+template<class T> void wrb(T Value, APTR Target) {
+   if constexpr (std::endian::native == std::endian::little) {
+      ((T *)Target)[0] = Value;
+   }
+   else if constexpr (sizeof(T) == 2) {
+      ((T *)Target)[0] = __builtin_bswap16(Value);
+   }
+   else ((T *)Target)[0] = __builtin_bswap32(Value);
+}
 
 //*********************************************************************************************************************
 
@@ -41,7 +43,7 @@ static ERROR compress_folder(extCompression *Self, CSTRING Location, CSTRING Pat
 
    if ((file->Flags & FL_LINK) and (!(Self->Flags & CMF_NO_LINKS))) {
       log.msg("Folder is a link.");
-      return compress_file(Self, Location, Path, TRUE);
+      return compress_file(Self, Location, Path, true);
    }
 
    if (Self->OutputID) {
@@ -132,12 +134,12 @@ static ERROR compress_folder(extCompression *Self, CSTRING Location, CSTRING Pat
       UBYTE header[sizeof(glHeader)];
       CopyMemory(glHeader, header, sizeof(glHeader));
 
-      wrb_word(entry->DeflateMethod, header + HEAD_DEFLATEMETHOD);
-      wrb_long(entry->TimeStamp, header + HEAD_TIMESTAMP);
-      wrb_long(entry->CRC, header + HEAD_CRC);
-      wrb_long(entry->CompressedSize, header + HEAD_COMPRESSEDSIZE);
-      wrb_long(entry->OriginalSize, header + HEAD_FILESIZE);
-      wrb_word(entry->NameLen, header + HEAD_NAMELEN);
+      wrb(entry->DeflateMethod, header + HEAD_DEFLATEMETHOD);
+      wrb(entry->TimeStamp, header + HEAD_TIMESTAMP);
+      wrb(entry->CRC, header + HEAD_CRC);
+      wrb(entry->CompressedSize, header + HEAD_COMPRESSEDSIZE);
+      wrb(entry->OriginalSize, header + HEAD_FILESIZE);
+      wrb(entry->NameLen, header + HEAD_NAMELEN);
       if (acWriteResult(Self->FileIO, header, HEAD_LENGTH) != HEAD_LENGTH) goto exit;
       if (acWriteResult(Self->FileIO, entry->Name, entry->NameLen) != entry->NameLen) goto exit;
 
@@ -177,7 +179,7 @@ static ERROR compress_folder(extCompression *Self, CSTRING Location, CSTRING Pat
             char location[len+StrLength(scan->Name)+1];
             j = StrCopy(Location, location, sizeof(location));
             StrCopy(scan->Name, location + j, sizeof(location) - j);
-            compress_file(Self, location, Path, (scan->Flags & RDF_LINK) ? TRUE : FALSE);
+            compress_file(Self, location, Path, (scan->Flags & RDF_LINK) ? true : false);
          }
       }
 
@@ -197,7 +199,7 @@ exit:
 
 //*********************************************************************************************************************
 
-static ERROR compress_file(extCompression *Self, CSTRING Location, CSTRING Path, BYTE Link)
+static ERROR compress_file(extCompression *Self, CSTRING Location, CSTRING Path, bool Link)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -451,12 +453,12 @@ static ERROR compress_file(extCompression *Self, CSTRING Location, CSTRING Path,
 
    UBYTE header[sizeof(glHeader)];
    CopyMemory(glHeader, header, sizeof(glHeader));
-   wrb_word(entry->DeflateMethod, header + HEAD_DEFLATEMETHOD);
-   wrb_long(entry->TimeStamp, header + HEAD_TIMESTAMP);
-   wrb_long(entry->CRC, header + HEAD_CRC);
-   wrb_long(entry->CompressedSize, header + HEAD_COMPRESSEDSIZE);
-   wrb_long(entry->OriginalSize, header + HEAD_FILESIZE);
-   wrb_word(entry->NameLen, header + HEAD_NAMELEN);
+   wrb(entry->DeflateMethod, header + HEAD_DEFLATEMETHOD);
+   wrb(entry->TimeStamp, header + HEAD_TIMESTAMP);
+   wrb(entry->CRC, header + HEAD_CRC);
+   wrb(entry->CompressedSize, header + HEAD_COMPRESSEDSIZE);
+   wrb(entry->OriginalSize, header + HEAD_FILESIZE);
+   wrb(entry->NameLen, header + HEAD_NAMELEN);
    if (acWriteResult(Self->FileIO, header, HEAD_LENGTH) != HEAD_LENGTH) goto exit;
    if (acWriteResult(Self->FileIO, entry->Name, entry->NameLen) != entry->NameLen) goto exit;
 
@@ -895,24 +897,24 @@ static void write_eof(extCompression *Self)
 
          // Write out the central directory
 
-         ULONG listsize   = 0;
-         UWORD filecount  = 0;
+         ULONG listsize  = 0;
+         UWORD filecount = 0;
          for (chain=Self->prvFiles; chain != NULL; chain=(ZipFile *)chain->Next) {
             UBYTE elist[sizeof(glList)];
             CopyMemory(glList, elist, sizeof(glList));
 
-            wrb_word(chain->DeflateMethod, elist+LIST_METHOD);
-            wrb_long(chain->TimeStamp, elist+LIST_TIMESTAMP);
-            wrb_long(chain->CRC, elist+LIST_CRC);
-            wrb_long(chain->CompressedSize, elist+LIST_COMPRESSEDSIZE);
-            wrb_long(chain->OriginalSize, elist+LIST_FILESIZE);
-            wrb_word(chain->NameLen, elist+LIST_NAMELEN);
-            wrb_word(0, elist+LIST_EXTRALEN);
-            wrb_word(chain->CommentLen, elist+LIST_COMMENTLEN);
-            wrb_word(0, elist+LIST_DISKNO);
-            wrb_word(0, elist+LIST_IFILE);
-            wrb_long(chain->Flags, elist+LIST_ATTRIB);
-            wrb_long(chain->Offset, elist+LIST_OFFSET);
+            wrb(chain->DeflateMethod, elist+LIST_METHOD);
+            wrb(chain->TimeStamp, elist+LIST_TIMESTAMP);
+            wrb(chain->CRC, elist+LIST_CRC);
+            wrb(chain->CompressedSize, elist+LIST_COMPRESSEDSIZE);
+            wrb(chain->OriginalSize, elist+LIST_FILESIZE);
+            wrb(chain->NameLen, elist+LIST_NAMELEN);
+            wrb<UWORD>(0, elist+LIST_EXTRALEN);
+            wrb(chain->CommentLen, elist+LIST_COMMENTLEN);
+            wrb<UWORD>(0, elist+LIST_DISKNO);
+            wrb<UWORD>(0, elist+LIST_IFILE);
+            wrb(chain->Flags, elist+LIST_ATTRIB);
+            wrb(chain->Offset, elist+LIST_OFFSET);
 
             acWriteResult(Self->FileIO, elist, LIST_LENGTH);
 
@@ -926,10 +928,10 @@ static void write_eof(extCompression *Self)
          UBYTE tail[sizeof(glTail)];
          CopyMemory(glTail, tail, sizeof(glTail));
 
-         wrb_word(filecount,  tail + TAIL_FILECOUNT); // File count for this file
-         wrb_word(filecount,  tail + TAIL_TOTALFILECOUNT); // File count for all zip files when spanning multiple archives
-         wrb_long(listsize,   tail + TAIL_FILELISTSIZE);
-         wrb_long(listoffset, tail + TAIL_FILELISTOFFSET);
+         wrb(filecount,  tail + TAIL_FILECOUNT); // File count for this file
+         wrb(filecount,  tail + TAIL_TOTALFILECOUNT); // File count for all zip files when spanning multiple archives
+         wrb(listsize,   tail + TAIL_FILELISTSIZE);
+         wrb(listoffset, tail + TAIL_FILELISTOFFSET);
          acWriteResult(Self->FileIO, tail, TAIL_LENGTH);
       }
       else SetFields(Self->FileIO, FID_Size|TLONG, 0, TAGEND);
