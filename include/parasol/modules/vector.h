@@ -394,6 +394,11 @@ struct VectorMatrix {
 
 class objVectorColour : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORCOLOUR;
+   static constexpr CSTRING CLASS_NAME = "VectorColour";
+
+   using create = parasol::Create<objVectorColour>;
+
    DOUBLE Red;    // The red component value.
    DOUBLE Green;  // The green component value.
    DOUBLE Blue;   // The blue component value.
@@ -439,6 +444,11 @@ INLINE ERROR scFindDef(APTR Ob, CSTRING Name, OBJECTPTR * Def) {
 
 class objVectorScene : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORSCENE;
+   static constexpr CSTRING CLASS_NAME = "VectorScene";
+
+   using create = parasol::Create<objVectorScene>;
+
    LARGE    RenderTime;           // Returns the rendering time of the last scene.
    DOUBLE   Gamma;                // Private. Not currently implemented.
    objVectorScene * HostScene;    // Refers to a top-level VectorScene object, if applicable.
@@ -450,6 +460,7 @@ class objVectorScene : public BaseClass {
    LONG     PageWidth;            // The width of the page that contains the vector.
    LONG     PageHeight;           // The height of the page that contains the vector.
    LONG     SampleMethod;         // The sampling method to use when interpolating images and patterns.
+
    // Action stubs
 
    inline ERROR draw() { return Action(AC_Draw, this, NULL); }
@@ -475,6 +486,11 @@ class objVectorScene : public BaseClass {
 
 class objVectorImage : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORIMAGE;
+   static constexpr CSTRING CLASS_NAME = "VectorImage";
+
+   using create = parasol::Create<objVectorImage>;
+
    DOUBLE X;                // Apply a horizontal offset to the image, the origin of which is determined by the #Units value.
    DOUBLE Y;                // Apply a vertical offset to the image, the origin of which is determined by the #Units value.
    objPicture * Picture;    // Refers to a @Picture from which the source #Bitmap is acquired.
@@ -491,6 +507,11 @@ class objVectorImage : public BaseClass {
 
 class objVectorPattern : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORPATTERN;
+   static constexpr CSTRING CLASS_NAME = "VectorPattern";
+
+   using create = parasol::Create<objVectorPattern>;
+
    DOUBLE X;                      // X coordinate for the pattern.
    DOUBLE Y;                      // Y coordinate for the pattern.
    DOUBLE Width;                  // Width of the pattern tile.
@@ -510,6 +531,11 @@ class objVectorPattern : public BaseClass {
 
 class objVectorGradient : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORGRADIENT;
+   static constexpr CSTRING CLASS_NAME = "VectorGradient";
+
+   using create = parasol::Create<objVectorGradient>;
+
    DOUBLE X1;                      // Initial X coordinate for the gradient.
    DOUBLE Y1;                      // Initial Y coordinate for the gradient.
    DOUBLE X2;                      // Final X coordinate for the gradient.
@@ -526,6 +552,7 @@ class objVectorGradient : public BaseClass {
    LONG   Flags;                   // Dimension flags are stored here.
    LONG   ColourSpace;             // Defines the colour space to use when interpolating gradient colours.
    LONG   TotalStops;              // Total number of stops defined in the Stops array.
+
    // Action stubs
 
    inline ERROR init() { return Action(AC_Init, this, NULL); }
@@ -537,6 +564,11 @@ class objVectorGradient : public BaseClass {
 
 class objFilterEffect : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_FILTEREFFECT;
+   static constexpr CSTRING CLASS_NAME = "FilterEffect";
+
+   using create = parasol::Create<objFilterEffect>;
+
    objFilterEffect * Next;    // Next filter in the chain.
    objFilterEffect * Prev;    // Previous filter in the chain.
    objBitmap * Target;        // Target bitmap for rendering the effect.
@@ -549,6 +581,7 @@ class objFilterEffect : public BaseClass {
    LONG   Dimensions;         // Dimension flags are stored here.
    LONG   SourceType;         // Specifies an input source for the effect algorithm, if required.
    LONG   MixType;            // If a secondary mix input is required for the effect, specify it here.
+
    // Action stubs
 
    inline ERROR init() { return Action(AC_Init, this, NULL); }
@@ -703,6 +736,11 @@ INLINE ERROR rfSelectMask(APTR Ob, LONG Component, LONG Mask) {
 
 class objVectorFilter : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORFILTER;
+   static constexpr CSTRING CLASS_NAME = "VectorFilter";
+
+   using create = parasol::Create<objVectorFilter>;
+
    DOUBLE X;                     // X coordinate for the filter.
    DOUBLE Y;                     // Y coordinate for the filter.
    DOUBLE Width;                 // The width of the filter area.  Can be expressed as a fixed or relative coordinate.
@@ -715,6 +753,7 @@ class objVectorFilter : public BaseClass {
    LONG   PrimitiveUnits;        // Alters the behaviour of some effects that support alternative position calculations.
    LONG   Dimensions;            // Dimension flags define whether individual dimension fields contain fixed or relative values.
    LONG   ColourSpace;           // The colour space of the filter graphics (SRGB or linear RGB).
+
    // Action stubs
 
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
@@ -805,6 +844,11 @@ INLINE ERROR vecFreeMatrix(APTR Ob, struct VectorMatrix * Matrix) {
 
 class objVector : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_VECTOR;
+   static constexpr CSTRING CLASS_NAME = "Vector";
+
+   using create = parasol::Create<objVector>;
+
    objVector * Child;                 // The first child vector, or NULL.
    objVectorScene * Scene;            // Short-cut to the top-level @VectorScene.
    objVector * Next;                  // The next vector in the branch, or NULL.
@@ -822,6 +866,7 @@ class objVector : public BaseClass {
    LONG      Cursor;                  // The mouse cursor to display when the pointer is within the vector's boundary.
    LONG      PathQuality;             // Defines the quality of a path when it is rendered.
    LONG      ColourSpace;             // Defines the colour space to use when blending the vector with a target bitmap's content.
+
    // Action stubs
 
    inline ERROR disable() { return Action(AC_Disable, this, NULL); }
@@ -1002,7 +1047,6 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
    Colour->Blue  = Blue;
    Colour->Alpha = Alpha;
 }
-  
 #define SVF_A 0x0002b606
 #define SVF_ACHROMATOMALY 0xc3f37036
 #define SVF_ACHROMATOPSIA 0xc3f56170

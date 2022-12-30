@@ -121,6 +121,11 @@ class objHTTP;
 
 class objHTTP : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_HTTP;
+   static constexpr CSTRING CLASS_NAME = "HTTP";
+
+   using create = parasol::Create<objHTTP>;
+
    DOUBLE   DataTimeout;     // The data timeout value, relevant when receiving or sending data.
    DOUBLE   ConnectTimeout;  // The initial connection timeout value, measured in seconds.
    LARGE    Index;           // Indicates download progress in terms of bytes received.
@@ -146,6 +151,7 @@ class objHTTP : public BaseClass {
    STRING   ProxyServer;     // The targeted HTTP server is specified here, either by name or IP address.
    LONG     ProxyPort;       // The port to use when communicating with the proxy server.
    LONG     BufferSize;      // Indicates the preferred buffer size for data operations.
+
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }

@@ -144,6 +144,11 @@ INLINE ERROR sciGetPos(APTR Ob, LONG Line, LONG Column, LONG * Pos) {
 
 class objScintilla : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_SCINTILLA;
+   static constexpr CSTRING CLASS_NAME = "Scintilla";
+
+   using create = parasol::Create<objScintilla>;
+
    LARGE     EventFlags;         // Specifies events that need to be reported from the Scintilla object.
    objFont * Font;               // Refers to the font that is used for drawing text in the document.
    CSTRING   Path;               // Identifies the location of a text file to load.
@@ -163,6 +168,7 @@ class objScintilla : public BaseClass {
    LONG      CursorCol;          // The current column of the text cursor.
    LONG      Lexer;              // The lexer for document styling is defined here.
    LONG      Modified;           // Returns TRUE if the document has been modified and not saved.
+
    // Action stubs
 
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
@@ -241,6 +247,11 @@ INLINE ERROR ssFind(APTR Ob, LONG * Pos, LONG Flags) {
 
 class objScintillaSearch : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_SCINTILLASEARCH;
+   static constexpr CSTRING CLASS_NAME = "ScintillaSearch";
+
+   using create = parasol::Create<objScintillaSearch>;
+
    objScintilla * Scintilla;    // Targets a Scintilla object for searching.
    CSTRING Text;                // The string sequence to search for.
    LONG    Flags;               // Optional flags.

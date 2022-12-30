@@ -47,8 +47,8 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   if (LoadModule("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase)) return ERR_InitModule;
-   if (LoadModule("font", MODVERSION_FONT, &modFont, &FontBase)) return ERR_InitModule;
+   if (objModule::load("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase)) return ERR_InitModule;
+   if (objModule::load("font", MODVERSION_FONT, &modFont, &FontBase)) return ERR_InitModule;
 
    ERROR error;
    if ((error = init_vectorscene())) return error; // Base class

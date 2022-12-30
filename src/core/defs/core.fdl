@@ -887,6 +887,7 @@ struct FieldValue {
       LONG    Long;
    };
 
+   //std::string not included as not compatible with constexpr
    constexpr FieldValue(ULONG pFID, CSTRING pValue) : FieldID(pFID), Type(FD_STRING), String(pValue) { };
    constexpr FieldValue(ULONG pFID, LONG pValue)    : FieldID(pFID), Type(FD_LONG), Long(pValue) { };
    constexpr FieldValue(ULONG pFID, LARGE pValue)   : FieldID(pFID), Type(FD_LARGE), Large(pValue) { };
@@ -2256,6 +2257,21 @@ struct TaskList {
     struct(*ModuleMaster) Master    # Shared details on the module
     struct(*ModHeader) Header       # For creating in-memory modules only.
     int(MOF) Flags                  # Optional flags
+  ]],
+  nil,
+  [[
+   static ERROR load(std::string Name, DOUBLE Version, OBJECTPTR *Module = NULL, APTR Functions = NULL) {
+      if (auto module = objModule::create::global(parasol::FieldValue(FID_Name, Name.c_str()), parasol::FieldValue(FID_Version, Version))) {
+         APTR functionbase;
+         if (!module->getPtr(FID_ModBase, &functionbase)) {
+            if (Module) *Module = module;
+            if (Functions) ((APTR *)Functions)[0] = functionbase;
+            return ERR_Okay;
+         }
+         else return ERR_GetField;
+      }
+      else return ERR_CreateObject;
+   }
   ]])
 
   -- Note that the fields following SystemTime are identical to struct DateTime

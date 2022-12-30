@@ -322,7 +322,7 @@ static int input_subscribe(lua_State *Lua)
    ERROR error;
    if (!modDisplay) {
       parasol::SwitchContext context(modFluid);
-      if ((error = LoadModule("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase))) {
+      if ((error = objModule::load("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase))) {
          luaL_error(Lua, "Failed to load display module.");
          return 0;
       }

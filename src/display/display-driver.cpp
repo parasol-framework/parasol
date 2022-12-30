@@ -804,7 +804,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    #ifdef __ANDROID__
       if (GetResource(RES_SYSTEM_STATE) >= 0) {
-         if (LoadModule("android", MODVERSION_ANDROID, (OBJECTPTR *)&modAndroid, &AndroidBase) != ERR_Okay) return ERR_InitModule;
+         if (objModule::load("android", MODVERSION_ANDROID, (OBJECTPTR *)&modAndroid, &AndroidBase) != ERR_Okay) return ERR_InitModule;
 
          FUNCTION fInitWindow, fTermWindow;
          SET_CALLBACK_STDC(fInitWindow, &android_init_window); // Sets EGL for re-initialisation and draws the display.
