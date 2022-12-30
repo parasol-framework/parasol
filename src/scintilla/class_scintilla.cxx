@@ -243,7 +243,7 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    objXML *style;
    if (!FindPrivateObject("glStyle", &style)) {
-      BYTE buffer[40];
+      char buffer[40];
       if (!acGetVar(style, "/colours/@texthighlight", buffer, sizeof(buffer))) {
          read_rgb8(buffer, &glHighlight);
       }

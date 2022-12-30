@@ -1365,7 +1365,7 @@ ERROR load_classes(void)
          file->get(FID_Size, &filesize);
 
          LONG total;
-         if (!(error = file->read(&total, sizeof(total), NULL))) {
+         if (!(error = file->read(&total, sizeof(total)))) {
             log.msg("There are %d class records to process.", total);
             LONG memsize = sizeof(ClassHeader) + (sizeof(LONG) * total) + filesize - sizeof(LONG);
             if (!(error = AllocMemory(memsize, MEM_NO_CLEAR|MEM_PUBLIC|MEM_UNTRACKED|MEM_NO_BLOCK, (APTR *)&glClassDB, &glSharedControl->ClassesMID))) {
@@ -1374,7 +1374,7 @@ ERROR load_classes(void)
                glClassDB->Total = total;
                glClassDB->Size  = memsize;
 
-               if (!(error = file->read(CL_ITEMS(glClassDB), filesize - sizeof(LONG), NULL))) {
+               if (!(error = file->read(CL_ITEMS(glClassDB), filesize - sizeof(LONG)))) {
                   log.msg("Loaded %d classes.", glClassDB->Total);
 
                   // Build the class offset array

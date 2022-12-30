@@ -511,14 +511,8 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
    // Load the sound file's header and test it to see if it matches our supported file format.
 
-   if (!CreateObject(ID_FILE, NF_INTEGRAL, &Self->File,
-         FID_Path|TSTR,   path,
-         FID_Flags|TLONG, FL_READ|FL_APPROXIMATE,
-         TAGEND)) {
-
-      read.Buffer = Self->prvHeader;
-      read.Length = sizeof(Self->prvHeader);
-      Action(AC_Read, Self->File, &read);
+   if ((Self->File = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_APPROXIMATE)))) {
+      Self->File->read(Self->prvHeader, (LONG)sizeof(Self->prvHeader));
 
       if ((StrCompare((CSTRING)Self->prvHeader, "RIFF", 4, STR_CASE) != ERR_Okay) or
           (StrCompare((CSTRING)Self->prvHeader + 8, "WAVE", 4, STR_CASE) != ERR_Okay)) {
@@ -533,7 +527,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
    // Read the RIFF header
 
-   acSeek(Self->File, 12.0, SEEK_START);
+   Self->File->seek(12.0, SEEK_START);
    id  = read_long(Self->File); // Contains the characters "fmt "
    len = read_long(Self->File); // Length of data in this chunk
 
