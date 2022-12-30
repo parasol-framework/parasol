@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -38,26 +37,22 @@ struct PlatformData { void *Void; };
 
 #include "windows.h"
 
-INLINE ERROR sndCloseChannelsID(OBJECTID AudioID, int Handle) {
-   extern struct CoreBase *CoreBase;
-   OBJECTPTR audio;
-   if (!AccessObject(AudioID, 5000, &audio)) {
+inline ERROR sndCloseChannelsID(OBJECTID AudioID, int Handle) {
+   parasol::ScopedObjectLock<extAudio> audio(AudioID);
+   if (audio.granted()) {
       struct sndCloseChannels close = { Handle };
-      Action(MT_SndCloseChannels, audio, &close);
-      ReleaseObject(audio);
+      Action(MT_SndCloseChannels, *audio, &close);
       return ERR_Okay;
    }
    else return ERR_AccessObject;
 }
 
-INLINE ERROR sndOpenChannelsID(OBJECTID AudioID, LONG Total, LONG Key, LONG Commands, LONG *Handle) {
-   extern struct CoreBase *CoreBase;
-   OBJECTPTR audio;
-   if (!AccessObject(AudioID, 5000, &audio)) {
+inline ERROR sndOpenChannelsID(OBJECTID AudioID, LONG Total, LONG Key, LONG Commands, LONG *Handle) {
+   parasol::ScopedObjectLock<extAudio> audio(AudioID);
+   if (audio.granted()) {
       struct sndOpenChannels open = { Total, Key, Commands };
-      Action(MT_SndOpenChannels, audio, &open);
+      Action(MT_SndOpenChannels, *audio, &open);
       *Handle = open.Result;
-      ReleaseObject(audio);
       return ERR_Okay;
    }
    else return ERR_AccessObject;
@@ -89,26 +84,18 @@ static const DOUBLE glScale[NOTE_B+1] = {
 
 static OBJECTPTR clSound = NULL;
 
-static ERROR find_chunk(extSound *, OBJECTPTR, CSTRING);
+static ERROR find_chunk(extSound *, objFile *, CSTRING);
 static ERROR playback_timer(extSound *, LARGE Elapsed, LARGE CurrentTime);
 
 #undef GetChannel
-#define GetChannel(a,b) &(a)->Channels[(b)>>16].Channel[(b) & 0xffff];
+inline AudioChannel * GetChannel(extAudio *Audio, LONG Channel) {
+   return &Audio->Channels[Channel>>16].Channel[Channel & 0xffff];
+}
 
 #define KEY_SOUNDCHANNELS 0x3389f93
 
 //********************************************************************************************************************
 // Stubs.
-
-static LONG read_long(OBJECTPTR File)
-{
-   struct acRead args;
-   LONG value;
-   args.Buffer = (APTR)&value;
-   args.Length = 4;
-   Action(AC_Read, File, &args);
-   return value;
-}
 
 #ifndef _WIN32
 static LONG sample_format(extSound *Self)
@@ -190,8 +177,8 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
 #endif
 
    LONG i;
-   extAudio *audio;
-   if (!AccessObject(Self->AudioID, 2000, &audio)) {
+   parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 2000);
+   if (audio.granted()) {
       // Restricted and streaming audio can only be played on one channel at any given time.  This search will check
       // if the sound object is already active on one of our channels.
 
@@ -199,7 +186,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
       if (Self->Flags & (SDF_RESTRICT_PLAY|SDF_STREAM)) {
          Self->ChannelIndex &= 0xffff0000;
          for (i=0; i < glMaxSoundChannels; i++) {
-            channel = GetChannel(audio, Self->ChannelIndex);
+            channel = GetChannel(*audio, Self->ChannelIndex);
             if ((channel) and (channel->SoundID IS Self->UID)) break;
             Self->ChannelIndex++;
          }
@@ -211,8 +198,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          AudioChannel *priority = NULL;
          Self->ChannelIndex &= 0xffff0000;
          for (i=0; i < glMaxSoundChannels; i++) {
-            channel = GetChannel(audio, Self->ChannelIndex);
-            if (channel) {
+            if (auto channel = GetChannel(*audio, Self->ChannelIndex)) {
                if ((channel->State IS CHS_STOPPED) or (channel->State IS CHS_FINISHED)) break;
                else if (channel->Priority < Self->Priority) priority = channel;
             }
@@ -222,22 +208,19 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          if (i >= glMaxSoundChannels) {
             if (!(channel = priority)) {
                log.msg("Audio channel not available for playback.");
-               ReleaseObject(audio);
                return ERR_Failed;
             }
          }
       }
 
-      COMMAND_Stop(audio, Self->ChannelIndex);
+      COMMAND_Stop(*audio, Self->ChannelIndex);
 
-      if (!COMMAND_SetSample(audio, Self->ChannelIndex, Self->Handle)) {
-         auto channel = GetChannel(audio, Self->ChannelIndex);
+      if (!COMMAND_SetSample(*audio, Self->ChannelIndex, Self->Handle)) {
+         auto channel = GetChannel(*audio, Self->ChannelIndex);
          channel->SoundID = Self->UID; // Record our object ID against the channel
 
-         COMMAND_SetVolume(audio, Self->ChannelIndex, Self->Volume * 3.0);
-         COMMAND_SetPan(audio, Self->ChannelIndex, Self->Pan);
-
-         ReleaseObject(audio);
+         COMMAND_SetVolume(*audio, Self->ChannelIndex, Self->Volume * 3.0);
+         COMMAND_SetPan(*audio, Self->ChannelIndex, Self->Pan);
 
          // The Play command must be messaged to the audio object because it needs to be executed by the task that owns
          // the audio memory.
@@ -262,7 +245,6 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
       }
       else {
          log.warning("Failed to set sample %d to channel $%.8x", Self->Handle, Self->ChannelIndex);
-         ReleaseObject(audio);
          return log.warning(ERR_Failed);
       }
    }
@@ -292,17 +274,14 @@ static ERROR SOUND_Deactivate(extSound *Self, APTR Void)
    }
 #endif
 
-   extAudio *audio;
-   if (!AccessObject(Self->AudioID, 3000, &audio)) {
+   parasol::ScopedObjectLock<extAudio> audio(Self->AudioID);
+   if (audio.granted()) {
       // Get a reference to our sound channel, then check if our unique ID is set against it.  If so, our sound is
       // currently playing and we must send a stop signal to the audio system.
 
-      auto channel = GetChannel(audio, Self->ChannelIndex);
-      if ((channel) and (channel->SoundID IS Self->UID)) {
-         COMMAND_Stop(audio, Self->ChannelIndex);
+      if (auto channel = GetChannel(*audio, Self->ChannelIndex)) {
+         if (channel->SoundID IS Self->UID) COMMAND_Stop(*audio, Self->ChannelIndex);
       }
-
-      ReleaseObject(audio);
    }
    else return log.warning(ERR_AccessObject);
 
@@ -332,13 +311,11 @@ static ERROR SOUND_Disable(extSound *Self, APTR Void)
 
    if (!Self->ChannelIndex) return ERR_Okay;
 
-   extAudio *audio;
-   if (!AccessObject(Self->AudioID, 5000, &audio)) {
-      auto channel = GetChannel(audio, Self->ChannelIndex);
-      if ((channel) and (channel->SoundID IS Self->UID)) {
-         COMMAND_Stop(audio, Self->ChannelIndex);
+   parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 5000);
+   if (audio.granted()) {
+      if (auto channel = GetChannel(*audio, Self->ChannelIndex)) {
+         if (channel->SoundID IS Self->UID) COMMAND_Stop(*audio, Self->ChannelIndex);
       }
-      ReleaseObject(audio);
       return ERR_Okay;
    }
    else return log.warning(ERR_AccessObject);
@@ -368,13 +345,11 @@ static ERROR SOUND_Enable(extSound *Self, APTR Void)
 
    if (!Self->ChannelIndex) return ERR_Okay;
 
-   extAudio *audio;
-   if (!AccessObject(Self->AudioID, 5000, &audio)) {
-      AudioChannel *channel = GetChannel(audio, Self->ChannelIndex);
-      if ((channel) and (channel->SoundID IS Self->UID)) {
-         COMMAND_Continue(audio, Self->ChannelIndex);
+   parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 5000);
+   if (audio.granted()) {
+      if (auto channel = GetChannel(*audio, Self->ChannelIndex)) {
+         if (channel->SoundID IS Self->UID) COMMAND_Continue(*audio, Self->ChannelIndex);
       }
-      ReleaseObject(audio);
       return ERR_Okay;
    }
    else return log.warning(ERR_AccessObject);
@@ -394,7 +369,7 @@ static ERROR SOUND_Free(extSound *Self, APTR Void)
    if (!Self->Handle) sndFree((PlatformData *)Self->prvPlatformData);
 #endif
 
-   acDeactivate(Self);
+   Self->deactivate();
 
    if (Self->Handle) {
       struct sndRemoveSample remove = { Self->Handle };
@@ -434,8 +409,7 @@ static ERROR SOUND_GetVar(extSound *Self, struct acGetVar *Args)
 {
    if ((!Args) or (!Args->Field)) return ERR_NullArgs;
 
-   CSTRING val;
-   if ((val = VarGetString(Self->Fields, Args->Field))) {
+   if (auto val = VarGetString(Self->Fields, Args->Field)) {
       StrCopy(val, Args->Buffer, Args->Size);
       return ERR_Okay;
    }
@@ -460,7 +434,6 @@ Init: Prepares a sound object for usage.
 static ERROR SOUND_Init(extSound *Self, APTR Void)
 {
    parasol::Log log;
-   struct acRead read;
    LONG id, len;
    STRING path;
    CSTRING strerr;
@@ -528,13 +501,12 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    // Read the RIFF header
 
    Self->File->seek(12.0, SEEK_START);
-   id  = read_long(Self->File); // Contains the characters "fmt "
-   len = read_long(Self->File); // Length of data in this chunk
+   flReadLE(Self->File, &id); // Contains the characters "fmt "
+   flReadLE(Self->File, &len); // Length of data in this chunk
 
    if (!AllocMemory(len, MEM_DATA, &Self->prvWAVE, NULL)) {
-      read.Buffer = (BYTE *)Self->prvWAVE;
-      read.Length = len;
-      if ((Action(AC_Read, Self->File, &read) != ERR_Okay) or (read.Result < len)) {
+      LONG result;
+      if (Self->File->read(Self->prvWAVE, len, &result) or (result != len)) {
          if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
          return log.warning(ERR_Read);
       }
@@ -559,7 +531,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
       return log.warning(ERR_Read);
    }
 
-   Self->Length = read_long(Self->File); // Length of audio data in this chunk
+   flReadLE(Self->File, &Self->Length); // Length of audio data in this chunk
 
    if (Self->Length & 1) Self->Length++;
 
@@ -621,7 +593,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    return ERR_Okay;
 }
 
-#else
+#else // Linux
 
 static ERROR SOUND_Init(extSound *Self, APTR Void)
 {
@@ -658,16 +630,18 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    // Open channels for sound sample playback.  Note that audio channels must be allocated 'locally' so that they
    // can be tracked back to our task.
 
-   if (!AccessObject(Self->AudioID, 3000, &audio)) {
-      error = sndOpenChannels(audio, glMaxSoundChannels, KEY_SOUNDCHANNELS + CurrentTaskID(), 0, &Self->ChannelIndex);
-      ReleaseObject(audio);
-   }
-   else error = ERR_AccessObject;
+   {
+      parasol::ScopedObjectLock<extAudio> audio(Self->AudioID);
+      if (audio.granted()) {
+         error = sndOpenChannels(*audio, glMaxSoundChannels, KEY_SOUNDCHANNELS + CurrentTaskID(), 0, &Self->ChannelIndex);
+      }
+      else error = ERR_AccessObject;
 
-   if (error) {
-      log.warning("Failed to open channels from Audio device.");
-      if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
-      return ERR_Failed;
+      if (error) {
+         log.warning("Failed to open channels from Audio device.");
+         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+         return ERR_Failed;
+      }
    }
 
    STRING path = NULL;
@@ -676,14 +650,12 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    // Set the initial sound title
 
    if (path) {
-      len = StrLength(path);
+      LONG len = strlen(path);
       while ((len > 0) and (path[len-1] != '/') and (path[len-1] != ':')) len--;
       acSetVar(Self, "Title", path+len);
    }
 
    if (Self->Length IS -1) {
-      // Enable continuous audio streaming mode
-
       log.msg("Enabling continuous audio streaming mode.");
 
       Self->Stream = STREAM_ALWAYS;
@@ -756,12 +728,8 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
       // Load the sound file's header and test it to see if it matches our supported file format.
 
-      if (!CreateObject(ID_FILE, NF_INTEGRAL, &Self->File,
-            FID_Path|TSTR,   path,
-            FID_Flags|TLONG, FL_READ|FL_APPROXIMATE,
-            TAGEND)) {
-
-         if (!acRead(Self->File, Self->prvHeader, sizeof(Self->prvHeader), NULL)) {
+      if ((Self->File = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_APPROXIMATE)))) {
+         if (!Self->File->read(Self->prvHeader, sizeof(Self->prvHeader))) {
             if ((StrCompare((CSTRING)Self->prvHeader, "RIFF", 4, STR_CASE) != ERR_Okay) or
                 (StrCompare((CSTRING)Self->prvHeader + 8, "WAVE", 4, STR_CASE) != ERR_Okay)) {
                if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
@@ -780,12 +748,12 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
       // Read the FMT header
 
-      acSeek(Self->File, 12, SEEK_START);
-      id  = read_long(Self->File); // Contains the characters "fmt "
-      len = read_long(Self->File); // Length of data in this chunk
+      Self->File->seek(12, SEEK_START);
+      flReadLE(Self->File, &id); // Contains the characters "fmt "
+      flReadLE(Self->File, &len); // Length of data in this chunk
 
       if (!AllocMemory(len, MEM_DATA, &Self->prvWAVE, NULL)) {
-         if ((acRead(Self->File, Self->prvWAVE, len, &result) != ERR_Okay) or (result < len)) {
+         if (Self->File->read(Self->prvWAVE, len, &result) or (result < len)) {
             if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
             log.warning("Failed to read WAVE format header (got %d, expected %d)", result, len);
             return ERR_Read;
@@ -810,18 +778,18 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 #if 0
       if (find_chunk(Self, Self->File, "cue ") IS ERR_Okay) {
          data_p += 32;
-         info.loopstart = read_long();
+         flReadLE(Self->File, &info.loopstart);
          // if the next chunk is a LIST chunk, look for a cue length marker
          if (find_chunk(Self, Self->File, "LIST") IS ERR_Okay) {
             if (!strncmp (data_p + 28, "mark", 4)) {
                data_p += 24;
-               i = read_long();	// samples in loop
+               flReadLE(Self->File, &i);	// samples in loop
                info.samples = info.loopstart + i;
             }
          }
       }
 #endif
-      acSeek(Self->File, pos, SEEK_START);
+      Self->File->seek(pos, SEEK_START);
 
       // Look for the "data" chunk
 
@@ -832,7 +800,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
       // Setup the sound structure
 
-      Self->Length = read_long(Self->File); // Length of audio data in this chunk
+      flReadLE(Self->File, &Self->Length); // Length of audio data in this chunk
 
       Self->File->get(FID_Position, &Self->prvDataOffset);
 
@@ -929,7 +897,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
       else if (!AllocMemory(Self->Length, MEM_DATA|MEM_NO_CLEAR, &buffer, NULL)) {
          Self->BufferLength = Self->Length;
 
-         if (!acRead(Self->File, buffer, Self->Length, &result)) {
+         if (!Self->File->read(buffer, Self->Length, &result)) {
             AudioLoop loop;
             if (Self->Flags & SDF_LOOP) {
                ClearMemory(&loop, sizeof(loop));
@@ -991,16 +959,6 @@ static ERROR SOUND_NewObject(extSound *Self, APTR Void)
    return ERR_Okay;
 }
 
-//********************************************************************************************************************
-
-static ERROR SOUND_ReleaseObject(extSound *Self, APTR Void)
-{
-   if (Self->prvPath)        { ReleaseMemory(Self->prvPath);        Self->prvPath    = NULL; }
-   if (Self->prvDescription) { ReleaseMemory(Self->prvDescription); Self->prvDescription = NULL; }
-   if (Self->prvDisclaimer)  { ReleaseMemory(Self->prvDisclaimer);  Self->prvDisclaimer  = NULL; }
-   return ERR_Okay;
-}
-
 /*********************************************************************************************************************
 -ACTION-
 Reset: Stops audio playback, resets configuration details and restores the playback position to the start of the sample.
@@ -1010,39 +968,30 @@ Reset: Stops audio playback, resets configuration details and restores the playb
 static ERROR SOUND_Reset(extSound *Self, APTR Void)
 {
    parasol::Log log;
-
    log.branch();
 
    if (!Self->ChannelIndex) return ERR_Okay;
 
-   extAudio *audio;
-   if (!AccessObject(Self->AudioID, 2000, &audio)) {
+   parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 2000);
+   if (audio.granted()) {
       Self->Position = 0;
-
-      auto channel = GetChannel(audio, Self->ChannelIndex);
-
+      auto channel = GetChannel(*audio, Self->ChannelIndex);
       if ((channel->SoundID != Self->UID) or (channel->State IS CHS_STOPPED) or
           (channel->State IS CHS_FINISHED)) {
-         ReleaseObject(audio);
          return ERR_Okay;
       }
 
-      COMMAND_Stop(audio, Self->ChannelIndex);
+      COMMAND_Stop(*audio, Self->ChannelIndex);
 
-      if (!COMMAND_SetSample(audio, Self->ChannelIndex, Self->Handle)) {
+      if (!COMMAND_SetSample(*audio, Self->ChannelIndex, Self->Handle)) {
          channel->SoundID = Self->UID;
 
-         COMMAND_SetVolume(audio, Self->ChannelIndex, Self->Volume * 3.0);
-         COMMAND_SetPan(audio, Self->ChannelIndex, Self->Pan);
-         COMMAND_Play(audio, Self->ChannelIndex, Self->Playback);
-
-         ReleaseObject(audio);
+         COMMAND_SetVolume(*audio, Self->ChannelIndex, Self->Volume * 3.0);
+         COMMAND_SetPan(*audio, Self->ChannelIndex, Self->Pan);
+         COMMAND_Play(*audio, Self->ChannelIndex, Self->Playback);
          return ERR_Okay;
       }
-      else {
-         ReleaseObject(audio);
-         return log.warning(ERR_Failed);
-      }
+      else return log.warning(ERR_Failed);
    }
    else return log.warning(ERR_AccessObject);
 }
@@ -1092,7 +1041,7 @@ static ERROR SOUND_Seek(extSound *Self, struct acSeek *Args)
 
    LONG active;
    if ((!SOUND_GET_Active(Self, &active)) and (active)) {
-      acDeactivate(Self);
+      Self->deactivate();
    }
    else active = FALSE;
 
@@ -1111,7 +1060,7 @@ static ERROR SOUND_Seek(extSound *Self, struct acSeek *Args)
       }
    }
 
-   if (active) acActivate(Self); // Restart the audio
+   if (active) Self->activate(); // Restart the audio
 
    return ERR_Okay;
 }
@@ -1163,15 +1112,13 @@ static ERROR SOUND_GET_Active(extSound *Self, LONG *Value)
    *Value = FALSE;
 
    if (Self->ChannelIndex) {
-      extAudio *audio;
-      if (!AccessObject(Self->AudioID, 5000, &audio)) {
-         auto channel = GetChannel(audio, Self->ChannelIndex);
-         if (channel) {
+      parasol::ScopedObjectLock<extAudio> audio(Self->AudioID);
+      if (audio.granted()) {
+         if (auto channel = GetChannel(*audio, Self->ChannelIndex)) {
             if (!((channel->State IS CHS_STOPPED) or (channel->State IS CHS_FINISHED))) {
                *Value = TRUE;
             }
          }
-         ReleaseObject(audio);
       }
       else return ERR_AccessObject;
    }
@@ -1284,7 +1231,7 @@ static ERROR SOUND_SET_Path(extSound *Self, CSTRING Value)
    if (Self->prvPath) { FreeResource(Self->prvPath); Self->prvPath = NULL; }
 
    if ((Value) and (*Value)) {
-      LONG i = StrLength(Value);
+      LONG i = strlen(Value);
       if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->prvPath, NULL)) {
          for (i=0; Value[i]; i++) Self->prvPath[i] = Value[i];
          Self->prvPath[i] = 0;
@@ -1475,10 +1422,9 @@ static ERROR SOUND_SET_Note(extSound *Self, CSTRING Value)
 #endif
 
    if (Self->ChannelIndex) {
-      extAudio *audio;
-      if (!AccessObject(Self->AudioID, 200, &audio)) {
-         COMMAND_SetFrequency(audio, Self->ChannelIndex, Self->Playback);
-         ReleaseObject(audio);
+      parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
+      if (audio.granted()) {
+         COMMAND_SetFrequency(*audio, Self->ChannelIndex, Self->Playback);
       }
       else return ERR_AccessObject;
    }
@@ -1519,8 +1465,6 @@ right speaker.
 
 static ERROR SOUND_SET_Pan(extSound *Self, DOUBLE Value)
 {
-   parasol::Log log;
-
    Self->Pan = Value;
 
    if (Self->Pan < -100) Self->Pan = -100;
@@ -1534,10 +1478,9 @@ static ERROR SOUND_SET_Pan(extSound *Self, DOUBLE Value)
 #endif
 
    if (Self->ChannelIndex) {
-      extAudio *audio;
-      if (!AccessObject(Self->AudioID, 200, &audio)) {
-         COMMAND_SetPan(audio, Self->ChannelIndex, (Self->Pan * 64) / 100);
-         ReleaseObject(audio);
+      parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
+      if (audio.granted()) {
+         COMMAND_SetPan(*audio, Self->ChannelIndex, (Self->Pan * 64) / 100);
       }
       else return ERR_AccessObject;
    }
@@ -1578,10 +1521,9 @@ static ERROR SOUND_SET_Playback(extSound *Self, LONG Value)
 #endif
 
    if (Self->ChannelIndex) {
-      extAudio *audio;
-      if (!AccessObject(Self->AudioID, 200, &audio)) {
-         COMMAND_SetFrequency(audio, Self->ChannelIndex, Self->Playback);
-         ReleaseObject(audio);
+      parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
+      if (audio.granted()) {
+         COMMAND_SetFrequency(*audio, Self->ChannelIndex, Self->Playback);
       }
       else return log.warning(ERR_AccessObject);
    }
@@ -1616,7 +1558,7 @@ static ERROR SOUND_GET_Position(extSound *Self, LONG *Value)
 
 static ERROR SOUND_SET_Position(extSound *Self, LONG Value)
 {
-   if (!acSeek(Self, Value, SEEK_START)) return ERR_Okay;
+   if (!Self->seek(Value, SEEK_START)) return ERR_Okay;
    else {
       parasol::Log log;
       log.msg("Failed to seek to byte position %d.", Value);
@@ -1678,10 +1620,9 @@ static ERROR SOUND_SET_Volume(extSound *Self, DOUBLE Value)
 #endif
 
    if (Self->ChannelIndex) {
-      extAudio *audio;
-      if (!AccessObject(Self->AudioID, 200, &audio)) {
-         COMMAND_SetVolume(audio, Self->ChannelIndex, Self->Volume);
-         ReleaseObject(audio);
+      parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
+      if (audio.granted()) {
+         COMMAND_SetVolume(*audio, Self->ChannelIndex, Self->Volume);
       }
       else return ERR_AccessObject;
    }
@@ -1691,19 +1632,19 @@ static ERROR SOUND_SET_Volume(extSound *Self, DOUBLE Value)
 
 //********************************************************************************************************************
 
-static ERROR find_chunk(extSound *Self, OBJECTPTR File, CSTRING ChunkName)
+static ERROR find_chunk(extSound *Self, objFile *File, CSTRING ChunkName)
 {
    while (1) {
       char chunk[4];
       LONG len;
-      if ((acRead(File, chunk, sizeof(chunk), &len) != ERR_Okay) or (len != sizeof(chunk))) {
+      if (File->read(chunk, sizeof(chunk), &len) or (len != sizeof(chunk))) {
          return ERR_Read;
       }
 
       if (!StrCompare(ChunkName, chunk, 4, STR_CASE)) return ERR_Okay;
 
-      len = read_long(Self->File); // Length of data in this chunk
-      acSeek(Self->File, len, SEEK_CURRENT);
+      flReadLE(Self->File, &len); // Length of data in this chunk
+      Self->File->seek(len, SEEK_CURRENT);
    }
 }
 
@@ -1811,7 +1752,6 @@ static const ActionArray clActions[] = {
    { AC_GetVar,        (APTR)SOUND_GetVar },
    { AC_Init,          (APTR)SOUND_Init },
    { AC_NewObject,     (APTR)SOUND_NewObject },
-   { AC_ReleaseObject, (APTR)SOUND_ReleaseObject },
    { AC_Reset,         (APTR)SOUND_Reset },
    { AC_SaveToObject,  (APTR)SOUND_SaveToObject },
    { AC_Seek,          (APTR)SOUND_Seek },
