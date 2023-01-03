@@ -654,6 +654,21 @@ struct Edges {
    LONG Bottom;  // Bottom coordinate
 };
 
+#ifndef DEFINE_ENUM_FLAG_OPERATORS
+template <size_t S> struct _ENUM_FLAG_INTEGER_FOR_SIZE;
+template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<1> { typedef BYTE type; };
+template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<2> { typedef WORD type; };
+template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<4> { typedef LONG type; };
+// used as an approximation of std::underlying_type<T>
+template <class T> struct _ENUM_FLAG_SIZED_INTEGER { typedef typename _ENUM_FLAG_INTEGER_FOR_SIZE<sizeof(T)>::type type; };
+
+#define DEFINE_ENUM_FLAG_OPERATORS(ENUMTYPE) \
+inline ENUMTYPE operator | (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) | ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+inline ENUMTYPE operator & (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) & ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+inline ENUMTYPE operator ~ (ENUMTYPE a) { return ENUMTYPE(~((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a)); } \
+inline ENUMTYPE operator ^ (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) ^ ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+inline ENUMTYPE &operator |= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) |= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); }
+#endif
 // Script flags
 
 #define SCF_EXIT_ON_ERROR 0x00000001
@@ -1433,6 +1448,10 @@ extern "C" {
  #define LOGRETURN()
 #endif
 
+#ifdef  __cplusplus
+}
+#endif
+
 #define PRIVATE_FIELDS
 
 #undef  NULL    // Turn off any previous definition of NULL
@@ -1464,10 +1483,6 @@ extern "C" {
  #define DEBUG_BREAK asm("int $3");
 #else
  #define DEBUG_BREAK
-#endif
-
-#ifdef  __cplusplus
-}
 #endif
 
 // Fast float-2-int conversion, with rounding to the nearest integer (F2I) and truncation (F2T)
@@ -1974,6 +1989,8 @@ struct ScriptArg { // For use with scExec
 };
 
 extern struct CoreBase *CoreBase;
+
+extern struct CoreBase *CoreBase;
 struct CoreBase {
    ERROR (*_AccessMemory)(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR Result);
    ERROR (*_Action)(LONG Action, OBJECTPTR Object, APTR Parameters);
@@ -2286,23 +2303,12 @@ template<class... Args> ERROR VirtualVolume(CSTRING Name, Args... Tags) { return
 //********************************************************************************************************************
 
 #ifndef PRV_CORE_MODULE
- #define ActionMsgPort(a,b,c,d,e)  (CoreBase->_ActionMsg(a,b,c,d,e))
  #define DeregisterFD(a)           (CoreBase->_RegisterFD((a), RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL, 0, 0))
- #define DelayAction(a,b,c)        (CoreBase->_ActionMsg(a,b,c,0,(CLASSID)-1))
- #define DelayMsg(a,b,c)           (CoreBase->_ActionMsg(a,b,c,0,(CLASSID)-1))
  #define DeleteMsg(a,b)            (CoreBase->_UpdateMessage(a,b,(APTR)-1,0,0))
  #define GetObjectAddress          (CoreBase->_GetMemAddress)
- #define SendAction(a,b,c,d)       (CoreBase->_ActionMsg(a,b,c,d,0))
- #define WaitMsg(a,b,c)            (CoreBase->_ActionMsg(a,b,c,0,-2))
-
- #undef ActionMsg
- #define ActionMsg(a,b,c)          (CoreBase->_ActionMsg(a,b,c,0,0))
 
  #undef Action
  #define Action(a,b,c)             (CoreBase->_Action(a,b,c))
-
- #undef NewLockedObject
- #define NewLockedObject(a,b,c,d)  (CoreBase->_NewLockedObject(a,b,c,d,0))
 
  #undef PrintDiagnosis
  #define PrintDiagnosis()          (CoreBase->_PrintDiagnosis(NULL,NULL))
@@ -2314,25 +2320,74 @@ template<class... Args> ERROR VirtualVolume(CSTRING Name, Args... Tags) { return
 #define AllocPublicMemory(a,b,c)  (AllocMemory((a),(b)|MEM_PUBLIC,0,(c)))
 #define AllocPrivateMemory(a,b,c) (AllocMemory((a),(b),(c),0))
 #define NewPrivateObject(a,b,c)   (NewObject(a,b,c))
-#define NewPublicObject(a,b,c)    (NewLockedObject(a,(b)|NF_PUBLIC,0,c))
-#define NewNamedObject(a,b,c,d,e) (CoreBase->_NewLockedObject(a,(b)|NF_NAME,c,d,e))
-#define StrMatch(a,b)             (StrCompare((a),(b),0,STR_MATCH_LEN))
 
-extern struct CoreBase *CoreBase;
+template<class T> inline ERROR SendAction(LONG Action, OBJECTID ObjectID, T *Args, MEMORYID MessageID) {
+   return ActionMsg(Action, ObjectID, Args, MessageID, 0);
+}
+
+template<class T> inline ERROR WaitMsg(LONG Action, OBJECTID ObjectID, T *Args) {
+   return ActionMsg(Action, ObjectID, Args, 0, (CLASSID)-2);
+}
+
+template<class T> inline ERROR DelayAction(LONG Action, OBJECTID ObjectID, T *Args) {
+   return ActionMsg(Action, ObjectID, Args, 0, (CLASSID)-1);
+}
+
+inline ERROR DelayMsg(LONG Action, OBJECTID ObjectID) {
+   return ActionMsg(Action, ObjectID, NULL, 0, (CLASSID)-1);
+}
+
+template<class T> inline ERROR DelayMsg(LONG Action, OBJECTID ObjectID, T *Args) {
+   return ActionMsg(Action, ObjectID, Args, 0, (CLASSID)-1);
+}
+
+inline ERROR ActionMsgPort(LONG Action, OBJECTID ObjectID, APTR Args, MEMORYID MessageID, CLASSID ClassID) {
+   return ActionMsg(Action, ObjectID, Args, MessageID, ClassID);
+}
+
+inline ERROR StrMatch(CSTRING A, CSTRING B) {
+   return StrCompare(A, B, 0, STR_MATCH_LEN);
+}
+
+#ifndef PRV_CORE_MODULE
+
+inline ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args) {
+   return ActionMsg(Action, Object, Args, 0, 0);
+}
+
+template<class T> inline ERROR NewObject(LARGE ClassID, T **Result) {
+   return NewObject(ClassID, 0, Result);
+}
+
+inline ERROR NewLockedObject(LARGE ClassID, LONG Flags, APTR Object, OBJECTID *ID) {
+  return NewLockedObject(ClassID, Flags, Object, ID, NULL);
+}
+
+inline ERROR NewLockedObject(LARGE ClassID, APTR Object, OBJECTID *ID) {
+  return NewLockedObject(ClassID, 0, Object, ID, NULL);
+}
+
+inline ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo) {
+   return MemoryIDInfo(ID,MemInfo,sizeof(struct MemInfo));
+}
+
+inline ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo) {
+   return MemoryPtrInfo(Address,MemInfo,sizeof(struct MemInfo));
+}
+
+#endif
+
+inline ERROR NewPublicObject(LARGE ClassID, LONG Flags, OBJECTID *ID) {
+  return NewLockedObject(ClassID, Flags|NF_PUBLIC, NULL, ID, NULL);
+}
+
+template<class T> inline ERROR NewNamedObject(LARGE ClassID, LONG Flags, T **Object, OBJECTID *ID, CSTRING Name) {
+  return NewLockedObject(ClassID, Flags|NF_NAME, Object, ID, Name);
+}
 
 typedef std::map<std::string, std::string> ConfigKeys;
 typedef std::pair<std::string, ConfigKeys> ConfigGroup;
 typedef std::vector<ConfigGroup> ConfigGroups;
-
-#ifndef PRV_CORE_MODULE
-inline ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo *MemInfo) {
-   return MemoryIDInfo(ID, MemInfo, sizeof(struct MemInfo));
-}
-
-inline ERROR MemoryPtrInfo(APTR Address, struct MemInfo *MemInfo) {
-   return MemoryPtrInfo(Address, MemInfo, sizeof(struct MemInfo));
-}
-#endif // PRV_CORE_MODULE
 
 inline LONG StrLength(CSTRING String) {
    if (String) return strlen(String);

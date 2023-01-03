@@ -226,10 +226,9 @@ static ERROR JPEG_Query(prvPicture *Self, APTR Void)
       STRING path;
       if (Self->get(FID_Location, &path) != ERR_Okay) return log.warning(ERR_GetField);
 
-      if (CreateObject(ID_FILE, 0, &Self->prvFile,
-            FID_Path|TPTR,   path,
-            FID_Flags|TLONG, FL_READ|FL_APPROXIMATE,
-            TAGEND) != ERR_Okay) return log.warning(ERR_CreateObject);
+      if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_APPROXIMATE)))) {
+         return log.warning(ERR_CreateObject);
+      }
    }
 
    acSeek(Self->prvFile, 0.0, SEEK_START);

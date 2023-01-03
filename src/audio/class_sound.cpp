@@ -451,7 +451,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
             if (acInit(audio) != ERR_Okay) {
                acFree(audio);
                ReleaseObject(audio);
-               if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+               if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
                return log.warning(ERR_Init);
             }
 
@@ -460,7 +460,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
             ReleaseObject(audio);
          }
          else if (error != ERR_ObjectExists) {
-            if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+            if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
             return log.warning(ERR_NewObject);
          }
       }
@@ -471,7 +471,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
    if (sndOpenChannelsID(Self->AudioID, glMaxSoundChannels, KEY_SOUNDCHANNELS + CurrentTaskID(), 0, &Self->ChannelIndex) != ERR_Okay) {
       log.warning("Failed to open channels from Audio device.");
-      if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+      if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
       return ERR_Failed;
    }
 
@@ -489,12 +489,12 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
       if ((StrCompare((CSTRING)Self->prvHeader, "RIFF", 4, STR_CASE) != ERR_Okay) or
           (StrCompare((CSTRING)Self->prvHeader + 8, "WAVE", 4, STR_CASE) != ERR_Okay)) {
-         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
          return ERR_NoSupport;
       }
    }
    else {
-      if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+      if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
       return log.warning(ERR_File);
    }
 
@@ -507,12 +507,12 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    if (!AllocMemory(len, MEM_DATA, &Self->prvWAVE, NULL)) {
       LONG result;
       if (Self->File->read(Self->prvWAVE, len, &result) or (result != len)) {
-         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
          return log.warning(ERR_Read);
       }
    }
    else {
-      if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+      if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
       return ERR_AllocMemory;
    }
 
@@ -520,14 +520,14 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
    if ((Self->prvWAVE->Format != WAVE_ADPCM) and (Self->prvWAVE->Format != WAVE_RAW)) {
       log.msg("This file's WAVE data format is not supported (type %d).", Self->prvWAVE->Format);
-      if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+      if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
       return ERR_InvalidData;
    }
 
    // Look for the "data" chunk
 
    if (find_chunk(Self, Self->File, "data") != ERR_Okay) {
-      if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+      if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
       return log.warning(ERR_Read);
    }
 
@@ -586,7 +586,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
    if (strerr) {
       log.warning("Failed to create audio buffer, reason: %s (buffer length %d, sample length %d)", strerr, Self->BufferLength, Self->Length);
-      if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+      if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
       return ERR_Failed;
    }
 
@@ -613,7 +613,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
             if (acInit(audio) != ERR_Okay) {
                acFree(audio);
                ReleaseObject(audio);
-               if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+               if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
                return log.warning(ERR_Init);
             }
 
@@ -621,7 +621,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
             ReleaseObject(audio);
          }
          else if (error != ERR_ObjectExists) {
-            if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+            if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
             return log.warning(ERR_NewObject);
          }
       }
@@ -639,7 +639,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
       if (error) {
          log.warning("Failed to open channels from Audio device.");
-         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
          return ERR_Failed;
       }
    }
@@ -689,7 +689,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
       else error = ERR_NewObject;
 
       if ((error) and (Self->Flags & SDF_TERMINATE)) {
-         DelayMsg(AC_Free, Self->UID, NULL);
+         DelayMsg(AC_Free, Self->UID);
          return error;
       }
 
@@ -708,7 +708,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
       if (WaitMsg(MT_SndAddStream, Self->AudioID, &stream) != ERR_Okay) {
          log.warning("Failed to add sample to the Audio device.");
-         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
          return ERR_Failed;
       }
 
@@ -732,7 +732,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
          if (!Self->File->read(Self->prvHeader, sizeof(Self->prvHeader))) {
             if ((StrCompare((CSTRING)Self->prvHeader, "RIFF", 4, STR_CASE) != ERR_Okay) or
                 (StrCompare((CSTRING)Self->prvHeader + 8, "WAVE", 4, STR_CASE) != ERR_Okay)) {
-               if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+               if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
                return ERR_NoSupport;
             }
          }
@@ -742,7 +742,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
          }
       }
       else {
-         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
          return log.warning(ERR_File);
       }
 
@@ -754,13 +754,13 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
       if (!AllocMemory(len, MEM_DATA, &Self->prvWAVE, NULL)) {
          if (Self->File->read(Self->prvWAVE, len, &result) or (result < len)) {
-            if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+            if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
             log.warning("Failed to read WAVE format header (got %d, expected %d)", result, len);
             return ERR_Read;
          }
       }
       else {
-         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
          return log.warning(ERR_AllocMemory);
       }
 
@@ -768,7 +768,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
       if ((Self->prvWAVE->Format != WAVE_ADPCM) and (Self->prvWAVE->Format != WAVE_RAW)) {
          log.warning("This file's WAVE data format is not supported (type %d).", Self->prvWAVE->Format);
-         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
          return ERR_InvalidData;
       }
 
@@ -794,7 +794,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
       // Look for the "data" chunk
 
       if (find_chunk(Self, Self->File, "data") != ERR_Okay) {
-         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
          return log.warning(ERR_Read);
       }
 
@@ -819,7 +819,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
       if ((Self->BitsPerSample != 8) and (Self->BitsPerSample != 16)) {
          log.warning("Bits-Per-Sample of %d not supported.", Self->BitsPerSample);
-         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
          return ERR_InvalidData;
       }
 
@@ -836,7 +836,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
       else if ((Self->prvWAVE->Channels IS 2) and (Self->BitsPerSample IS 16)) sampleformat = SFM_S16_BIT_STEREO;
 
       if (!sampleformat) {
-         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
          return log.warning(ERR_InvalidData);
       }
 
@@ -890,7 +890,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
          }
          else {
             log.warning("Failed to add sample to the Audio device.");
-            if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+            if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
             return ERR_Failed;
          }
       }
@@ -927,18 +927,18 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
             else {
                FreeResource(buffer);
                log.warning("Failed to add sample to the Audio device.");
-               if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+               if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
                return ERR_Failed;
             }
          }
          else {
             FreeResource(buffer);
-            if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+            if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
             return log.warning(ERR_Read);
          }
       }
       else {
-         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
+         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
          return log.warning(ERR_AllocMemory);
       }
    }
@@ -1664,8 +1664,8 @@ static ERROR playback_timer(extSound *Self, LARGE Elapsed, LARGE CurrentTime)
 
          if (!(Self->Flags & SDF_LOOP)) {
             log.extmsg("Sound playback completed.");
-            if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
-            else DelayMsg(AC_Deactivate, Self->UID, NULL);
+            if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
+            else DelayMsg(AC_Deactivate, Self->UID);
             Self->Timer = 0;
             return ERR_Terminate;
          }
@@ -1683,8 +1683,8 @@ static ERROR playback_timer(extSound *Self, LARGE Elapsed, LARGE CurrentTime)
    if (!(Self->Flags & SDF_LOOP)) {
       if ((!Self->get(FID_Active, &active)) and (active IS FALSE)) {
          log.extmsg("Sound playback completed.");
-         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID, NULL);
-         else DelayMsg(AC_Deactivate, Self->UID, NULL);
+         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
+         else DelayMsg(AC_Deactivate, Self->UID);
          Self->Timer = 0;
          return ERR_Terminate;
       }

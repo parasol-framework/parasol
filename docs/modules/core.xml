@@ -2075,7 +2075,7 @@ SetArray(Object, FID_Table|TLONG, array, 100);
 <pre>acInit(display);
 prev_context = SetContext(display);
 
-   NewObject(ID_BITMAP, 0, &amp;bitmap);
+   NewObject(ID_BITMAP, &amp;bitmap);
    AllocMemory(1000, MEM_DATA, &amp;memory, NULL);;
 
 SetContext(prev_context);
@@ -2085,7 +2085,7 @@ acFree(display);
 <pre>acInit(display);
 prev_context = SetContext(display);
 
-   NewObject(ID_BITMAP, 0, &amp;bitmap);
+   NewObject(ID_BITMAP, &amp;bitmap);
    AllocMemory(1000, MEM_DATA, &amp;memory, NULL);
 
 SetContext(prev_context);

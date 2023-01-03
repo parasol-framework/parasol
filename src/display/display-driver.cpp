@@ -893,7 +893,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
       // Try to load XRandR, but it's okay if it's not available
 
-      if (!NewObject(ID_MODULE, NULL, &modXRR)) {
+      if (!NewObject(ID_MODULE, &modXRR)) {
          char buffer[32];
          IntToStr((MAXINT)XDisplay, buffer, sizeof(buffer));
          acSetVar(modXRR, "XDisplay", buffer);

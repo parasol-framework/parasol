@@ -430,10 +430,8 @@ class objNetSocket : public BaseClass {
 #define SCV_APPLICATION_VERIFICATION 50
 
 INLINE ERROR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR UserData) {
-   return(CreateObject(ID_NETSOCKET, 0, NewNetSocketOut,
-      FID_Listener|TLONG, ListenerID,
-      FID_UserData|TPTR, UserData,
-      TAGEND));
+   if ((*NewNetSocketOut = objNetSocket::create::global(fl::Listener(ListenerID), fl::UserData(UserData)))) return ERR_Okay;
+   else return ERR_CreateObject;
 }
 extern struct NetworkBase *NetworkBase;
 struct NetworkBase {

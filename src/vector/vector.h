@@ -766,21 +766,19 @@ inline static DOUBLE dist(DOUBLE X1, DOUBLE Y1, DOUBLE X2, DOUBLE Y2)
 
 inline static void save_bitmap(objBitmap *Bitmap, std::string Name)
 {
-   objPicture *pic;
    std::string path = "temp:bmp_" + Name + ".png";
 
-   if (!CreateObject(ID_PICTURE, 0, &pic,
-         FID_Width|TLONG,        Bitmap->Clip.Right - Bitmap->Clip.Left,
-         FID_Height|TLONG,       Bitmap->Clip.Bottom - Bitmap->Clip.Top,
-         FID_BitsPerPixel|TLONG, 32,
-         FID_Flags|TLONG,        PCF_FORCE_ALPHA_32|PCF_NEW,
-         FID_Path|TSTR,          path.c_str(),
-         FID_ColourSpace|TLONG,  Bitmap->ColourSpace,
-         TAGEND)) {
+   objPicture::create pic = {
+      fl::Width(Bitmap->Clip.Right - Bitmap->Clip.Left),
+      fl::Height(Bitmap->Clip.Bottom - Bitmap->Clip.Top),
+      fl::BitsPerPixel(32),
+      fl::Flags(PCF_FORCE_ALPHA_32|PCF_NEW),
+      fl::Path(path),
+      fl::ColourSpace(Bitmap->ColourSpace) };
 
+   if (pic.ok()) {
       gfxCopyArea(Bitmap, pic->Bitmap, 0, Bitmap->Clip.Left, Bitmap->Clip.Top, pic->Bitmap->Width, pic->Bitmap->Height, 0, 0);
-      acSaveImage(pic, 0, 0);
-      acFree(pic);
+      acSaveImage(*pic, 0, 0);
    }
 }
 
@@ -788,17 +786,17 @@ inline static void save_bitmap(objBitmap *Bitmap, std::string Name)
 
 inline static void save_bitmap(std::string Name, UBYTE *Data, LONG Width, LONG Height, LONG BPP = 32)
 {
-   objPicture *pic;
    std::string path = "temp:raw_" + Name + ".png";
 
-   if (!CreateObject(ID_PICTURE, 0, &pic,
-         FID_Width|TLONG,        Width,
-         FID_Height|TLONG,       Height,
-         FID_BitsPerPixel|TLONG, BPP,
-         FID_Flags|TLONG,        PCF_FORCE_ALPHA_32|PCF_NEW,
-         FID_Path|TSTR,          path.c_str(),
-         TAGEND)) {
+   objPicture::create pic = {
+      fl::Width(Width),
+      fl::Height(Height),
+      fl::BitsPerPixel(BPP),
+      fl::Flags(PCF_FORCE_ALPHA_32|PCF_NEW),
+      fl::Path(path)
+   };
 
+   if (pic.ok()) {
       const LONG byte_width = Width * pic->Bitmap->BytesPerPixel;
       UBYTE *out = pic->Bitmap->Data;
       for (LONG y=0; y < Height; y++) {
@@ -806,8 +804,7 @@ inline static void save_bitmap(std::string Name, UBYTE *Data, LONG Width, LONG H
          out  += pic->Bitmap->LineWidth;
          Data += Width * pic->Bitmap->BytesPerPixel;
       }
-      acSaveImage(pic, 0, 0);
-      acFree(pic);
+      acSaveImage(*pic, 0, 0);
    }
 }
 

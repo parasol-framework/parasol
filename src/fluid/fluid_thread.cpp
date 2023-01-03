@@ -42,24 +42,14 @@ struct thread_callback {
 static int thread_script(lua_State *Lua)
 {
    CSTRING statement;
-   objThread *thread;
 
    if (!(statement = luaL_checkstring(Lua, 1))) {
       luaL_argerror(Lua, 1, "Script statement required.");
       return 0;
    }
 
-   if (!CreateObject(ID_THREAD, NF_UNTRACKED, &thread,
-         FID_Flags|TLONG,  THF_AUTO_FREE,
-         FID_Routine|TPTR, &thread_script_entry,
-         TAGEND)) {
-
-      objScript *script;
-      if (!CreateObject(ID_SCRIPT, 0, &script,
-            FID_Owner|TLONG,    thread->UID,
-            FID_Statement|TSTR, statement,
-            TAGEND)) {
-
+   if (auto thread = objThread::create::untracked(fl::Flags(THF_AUTO_FREE), fl::Routine((CPTR)thread_script_entry))) {
+      if (auto script = objScript::create::global(fl::Owner(thread->UID), fl::Statement(statement))) {
          if (lua_isfunction(Lua, 2)) {
             lua_pushvalue(Lua, 2);
             thread_callback cb = {
@@ -72,7 +62,7 @@ static int thread_script(lua_State *Lua)
             thread->set(FID_Callback, (CPTR)&thread_script_callback);
          }
 
-         if (acActivate(thread)) {
+         if (thread->activate()) {
             luaL_error(Lua, "Failed to execute thread");
          }
       }

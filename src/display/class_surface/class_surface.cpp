@@ -476,7 +476,7 @@ static ERROR SURFACE_ActionNotify(extSurface *Self, struct acActionNotify *Notif
 
          Self->Flags &= ~RNF_VISIBLE;
          UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
-         if (Self->flags() & NF_INTEGRAL) DelayMsg(AC_Free, Self->UID, NULL); // If the object is a child of something, give the parent object time to do the deallocation itself
+         if (Self->flags() & NF_INTEGRAL) DelayMsg(AC_Free, Self->UID); // If the object is a child of something, give the parent object time to do the deallocation itself
          else acFree(Self);
       }
       else {
@@ -2451,7 +2451,7 @@ static ERROR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
    else class_id = Args->ClassID;
 
    OBJECTPTR picture;
-   if (!NewObject(class_id, 0, &picture)) {
+   if (!NewObject(class_id, &picture)) {
       picture->set(FID_Flags, "NEW");
       picture->set(FID_Width, Self->Width);
       picture->set(FID_Height, Self->Height);
@@ -2634,7 +2634,7 @@ static ERROR SURFACE_SetOpacity(extSurface *Self, struct drwSetOpacity *Args)
 
    // Use the DelayMsg() feature so that we don't end up with major lag problems when SetOpacity is being used for things like fading.
 
-   if (Self->Flags & RNF_VISIBLE) DelayMsg(MT_DrwInvalidateRegion, Self->UID, NULL);
+   if (Self->Flags & RNF_VISIBLE) DelayMsg(MT_DrwInvalidateRegion, Self->UID);
 
    return ERR_Okay;
 }

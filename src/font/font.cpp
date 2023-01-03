@@ -274,12 +274,9 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    }
 
    LONG type;
-   bool refresh;
+   bool refresh = (AnalysePath("fonts:fonts.cfg", &type) != ERR_Okay) or (type != LOC_FILE);
 
-   if ((AnalysePath("fonts:fonts.cfg", &type) != ERR_Okay) or (type != LOC_FILE)) refresh = true;
-   else refresh = false;
-
-   if (!CreateObject(ID_CONFIG, 0, &glConfig, FID_Name|TSTR, "cfgSystemFonts", FID_Path|TSTR, "fonts:fonts.cfg", TAGEND)) {
+   if ((glConfig = objConfig::create::global(fl::Name("cfgSystemFonts"), fl::Path("fonts:fonts.cfg")))) {
       if (refresh) fntRefreshFonts();
 
       ConfigGroups *groups;
@@ -907,18 +904,13 @@ static ERROR fntInstallFont(CSTRING Files)
 
       // Read the file header to figure out whether the file belongs in the fixed or truetype directory.
 
-      OBJECTPTR file;
-      if (!CreateObject(ID_FILE, 0, &file, FID_Flags|TLONG, FL_READ, FID_Path|TSTR, buffer, TAGEND)) {
-         CSTRING directory = "fixed";
-         if (!acRead(file, buffer, 256, NULL)) {
-            if ((buffer[0] IS 'M') and (buffer[1] IS 'Z')) directory = "fixed";
-            else directory = "truetype";
-
+      objFile::create file = { fl::Flags(FL_READ), fl::Path(buffer) };
+      if (file.ok()) {
+         if (!file->read(buffer, 256, NULL)) {
+            CSTRING directory = ((buffer[0] IS 'M') and (buffer[1] IS 'Z')) ? "fixed" : "truetype";
             StrFormat(buffer, sizeof(buffer), "fonts:%s/", directory);
-            flCopy(file, buffer, NULL);
+            flCopy(*file, buffer, NULL);
          }
-
-         acFree(file);
       }
 
       if (Files[i]) {
@@ -1306,11 +1298,8 @@ static ERROR fntRefreshFonts(void)
 
    log.trace("Saving the font configuration file.");
 
-   OBJECTPTR file;
-   if (!CreateObject(ID_FILE, 0, &file, FID_Path|TSTR, "fonts:fonts.cfg", FID_Flags|TLONG, FL_NEW|FL_WRITE, TAGEND)) {
-      acSaveToObject(glConfig, file->UID, 0);
-      acFree(file);
-   }
+   objFile::create file = { fl::Path("fonts:fonts.cfg"), fl::Flags(FL_NEW|FL_WRITE) };
+   if (file.ok()) glConfig->saveToObject(file->UID, 0);
 
    return ERR_Okay;
 }

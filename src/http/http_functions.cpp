@@ -465,7 +465,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                   log.msg("Authentication successful, reactivating...");
                   Self->SecurePath = FALSE;
                   Self->set(FID_CurrentState, HGS_AUTHENTICATED);
-                  DelayMsg(AC_Activate, Self->UID, NULL);
+                  DelayMsg(AC_Activate, Self->UID);
                   return ERR_Okay;
                }
 

@@ -1507,7 +1507,7 @@ static ERROR SET_CurrentState(extHTTP *Self, LONG Value)
 
    if ((Value >= HGS_COMPLETED) and (Self->CurrentState < HGS_COMPLETED)) {
       Self->CurrentState = Value;
-      if (Self->Socket) DelayMsg(AC_Deactivate, Self->UID, NULL);
+      if (Self->Socket) DelayMsg(AC_Deactivate, Self->UID);
    }
    else Self->CurrentState = Value;
 

@@ -299,7 +299,7 @@ static ERROR PIC_Activate(prvPicture *Self, APTR Void)
       }
 
       objBitmap *tmp_bitmap;
-      if (!(error = NewObject(ID_BITMAP, 0, &tmp_bitmap))) {
+      if (!(error = NewObject(ID_BITMAP, &tmp_bitmap))) {
          SetFields(tmp_bitmap,
             FID_Width|TLONG,  bmp->Width,
             FID_Height|TLONG, bmp->Height,
