@@ -11,7 +11,7 @@ VectorRectangle extends the @Vector class with the ability to generate rectangul
 
 #include "agg_rounded_rect.h"
 
-static void generate_rectangle(objVectorRectangle *Vector)
+static void generate_rectangle(extVectorRectangle *Vector)
 {
    DOUBLE width = Vector->rWidth, height = Vector->rHeight;
    DOUBLE x = Vector->rX, y = Vector->rY;
@@ -53,7 +53,7 @@ Move: Moves the vector to a new position.
 
 *****************************************************************************/
 
-static ERROR RECTANGLE_Move(objVectorRectangle *Self, struct acMove *Args)
+static ERROR RECTANGLE_Move(extVectorRectangle *Self, struct acMove *Args)
 {
    parasol::Log log;
 
@@ -71,7 +71,7 @@ MoveToPoint: Moves the vector to a new fixed position.
 
 *****************************************************************************/
 
-static ERROR RECTANGLE_MoveToPoint(objVectorRectangle *Self, struct acMoveToPoint *Args)
+static ERROR RECTANGLE_MoveToPoint(extVectorRectangle *Self, struct acMoveToPoint *Args)
 {
    parasol::Log log;
 
@@ -87,7 +87,7 @@ static ERROR RECTANGLE_MoveToPoint(objVectorRectangle *Self, struct acMoveToPoin
 
 //****************************************************************************
 
-static ERROR RECTANGLE_NewObject(objVectorRectangle *Self, APTR Void)
+static ERROR RECTANGLE_NewObject(extVectorRectangle *Self, APTR Void)
 {
    Self->GeneratePath = (void (*)(extVector *))&generate_rectangle;
    return ERR_Okay;
@@ -99,7 +99,7 @@ Resize: Changes the rectangle dimensions.
 
 *****************************************************************************/
 
-static ERROR RECTANGLE_Resize(objVectorRectangle *Self, struct acResize *Args)
+static ERROR RECTANGLE_Resize(extVectorRectangle *Self, struct acResize *Args)
 {
    parasol::Log log;
 
@@ -131,13 +131,13 @@ The following dimension flags are supported:
 
 *****************************************************************************/
 
-static ERROR RECTANGLE_GET_Dimensions(objVectorRectangle *Self, LONG *Value)
+static ERROR RECTANGLE_GET_Dimensions(extVectorRectangle *Self, LONG *Value)
 {
    *Value = Self->rDimensions;
    return ERR_Okay;
 }
 
-static ERROR RECTANGLE_SET_Dimensions(objVectorRectangle *Self, LONG Value)
+static ERROR RECTANGLE_SET_Dimensions(extVectorRectangle *Self, LONG Value)
 {
    Self->rDimensions = Value;
    reset_path(Self);
@@ -154,7 +154,7 @@ will flip the rectangle on the vertical axis).
 
 *****************************************************************************/
 
-static ERROR RECTANGLE_GET_Height(objVectorRectangle *Self, Variable *Value)
+static ERROR RECTANGLE_GET_Height(extVectorRectangle *Self, Variable *Value)
 {
    DOUBLE val = Self->rHeight;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -163,7 +163,7 @@ static ERROR RECTANGLE_GET_Height(objVectorRectangle *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR RECTANGLE_SET_Height(objVectorRectangle *Self, Variable *Value)
+static ERROR RECTANGLE_SET_Height(extVectorRectangle *Self, Variable *Value)
 {
    parasol::Log log;
    DOUBLE val;
@@ -194,13 +194,13 @@ radius along the relevant axis.  A value of zero (the default) turns off this fe
 
 *****************************************************************************/
 
-static ERROR RECTANGLE_GET_RoundX(objVectorRectangle *Self, DOUBLE *Value)
+static ERROR RECTANGLE_GET_RoundX(extVectorRectangle *Self, DOUBLE *Value)
 {
    *Value = Self->rRoundX;
    return ERR_Okay;
 }
 
-static ERROR RECTANGLE_SET_RoundX(objVectorRectangle *Self, DOUBLE Value)
+static ERROR RECTANGLE_SET_RoundX(extVectorRectangle *Self, DOUBLE Value)
 {
    if ((Value < 0) or (Value > 1000)) return ERR_OutOfRange;
    Self->rRoundX = Value;
@@ -218,13 +218,13 @@ radius along the relevant axis.  A value of zero (the default) turns off this fe
 
 *****************************************************************************/
 
-static ERROR RECTANGLE_GET_RoundY(objVectorRectangle *Self, DOUBLE *Value)
+static ERROR RECTANGLE_GET_RoundY(extVectorRectangle *Self, DOUBLE *Value)
 {
    *Value = Self->rRoundY;
    return ERR_Okay;
 }
 
-static ERROR RECTANGLE_SET_RoundY(objVectorRectangle *Self, DOUBLE Value)
+static ERROR RECTANGLE_SET_RoundY(extVectorRectangle *Self, DOUBLE Value)
 {
    if ((Value < 0) or (Value > 1000)) return ERR_OutOfRange;
    Self->rRoundY = Value;
@@ -241,7 +241,7 @@ The position of the rectangle on the x-axis is defined here as a fixed or relati
 
 *****************************************************************************/
 
-static ERROR RECTANGLE_GET_X(objVectorRectangle *Self, Variable *Value)
+static ERROR RECTANGLE_GET_X(extVectorRectangle *Self, Variable *Value)
 {
    DOUBLE val = Self->rX;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -250,7 +250,7 @@ static ERROR RECTANGLE_GET_X(objVectorRectangle *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR RECTANGLE_SET_X(objVectorRectangle *Self, Variable *Value)
+static ERROR RECTANGLE_SET_X(extVectorRectangle *Self, Variable *Value)
 {
    parasol::Log log;
    DOUBLE val;
@@ -281,7 +281,7 @@ will flip the rectangle on the horizontal axis).
 
 *****************************************************************************/
 
-static ERROR RECTANGLE_GET_Width(objVectorRectangle *Self, Variable *Value)
+static ERROR RECTANGLE_GET_Width(extVectorRectangle *Self, Variable *Value)
 {
    DOUBLE val = Self->rWidth;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -290,7 +290,7 @@ static ERROR RECTANGLE_GET_Width(objVectorRectangle *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR RECTANGLE_SET_Width(objVectorRectangle *Self, Variable *Value)
+static ERROR RECTANGLE_SET_Width(extVectorRectangle *Self, Variable *Value)
 {
    parasol::Log log;
    DOUBLE val;
@@ -321,7 +321,7 @@ The position of the rectangle on the y-axis is defined here as a fixed or relati
 
 *****************************************************************************/
 
-static ERROR RECTANGLE_GET_Y(objVectorRectangle *Self, Variable *Value)
+static ERROR RECTANGLE_GET_Y(extVectorRectangle *Self, Variable *Value)
 {
    DOUBLE val = Self->rY;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -330,7 +330,7 @@ static ERROR RECTANGLE_GET_Y(objVectorRectangle *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR RECTANGLE_SET_Y(objVectorRectangle *Self, Variable *Value)
+static ERROR RECTANGLE_SET_Y(extVectorRectangle *Self, Variable *Value)
 {
    parasol::Log log;
    DOUBLE val;
@@ -394,7 +394,7 @@ static ERROR init_rectangle(void)
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clRectangleActions),
       fl::Fields(clRectangleFields),
-      fl::Size(sizeof(objVectorRectangle)),
+      fl::Size(sizeof(extVectorRectangle)),
       fl::Path(MOD_PATH));
 
    return clVectorRectangle ? ERR_Okay : ERR_AddClass;

@@ -229,9 +229,7 @@ void gen_vector_path(extVector *Vector)
           ((view->vpOverflowX != VIS_VISIBLE) or (view->vpOverflowY != VIS_VISIBLE))) {
          log.trace("A clip path will be created for viewport #%d.", Vector->UID);
          if (!view->vpClipMask) {
-            CreateObject(ID_VECTORCLIP, NF_INTEGRAL, &view->vpClipMask,
-               FID_Owner|TLONG, Vector->UID,
-               TAGEND);
+            view->vpClipMask = extVectorClip::create::integral(fl::Owner(Vector->UID));
          }
          if (view->vpClipMask) {
             delete view->vpClipMask->ClipPath;
@@ -302,7 +300,7 @@ void gen_vector_path(extVector *Vector)
                   trans_path.add_path(morph->BasePath);
                   trans_path.preserve_x_scale(true); // The default is true.  Switching to false produces a lot of scrunching and extending
                   if (morph->SubID IS ID_VECTORPATH) { // Enforcing a fixed length along the path effectively causes a resize.
-                     if (((objVectorPath *)morph)->PathLength > 0) trans_path.base_length(((objVectorPath *)morph)->PathLength);
+                     if (((extVectorPath *)morph)->PathLength > 0) trans_path.base_length(((extVectorPath *)morph)->PathLength);
                   }
 
                   Vector->BasePath.transform(trans_path); // Apply manipulation to the base path.
@@ -317,7 +315,7 @@ void gen_vector_path(extVector *Vector)
       // aligned, for which the width and height of the base-path must be known.
 
       if ((Vector->Dirty & RC_TRANSFORM) and (Vector->SubID IS ID_VECTORTEXT)) {
-         get_text_xy((objVectorText *)Vector); // Sets FinalX/Y
+         get_text_xy((extVectorText *)Vector); // Sets FinalX/Y
 
          Vector->Transform.reset();
          apply_parent_transforms(Vector, Vector->Transform);

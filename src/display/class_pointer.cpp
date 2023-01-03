@@ -911,32 +911,30 @@ SaveToObject: Saves the current pointer settings to another object.
 static ERROR PTR_SaveToObject(extPointer *Self, struct acSaveToObject *Args)
 {
    parasol::Log log;
-   OBJECTPTR config;
 
    if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
 
-   if (!CreateObject(ID_CONFIG, NF_INTEGRAL, &config, TAGEND)) {
+   objConfig::create config = { };
+   if (config.ok()) {
       char buffer[30];
       StrFormat(buffer, sizeof(buffer), "%f", Self->Speed);
-      cfgWriteValue(config, "POINTER", "Speed", buffer);
+      cfgWriteValue(*config, "POINTER", "Speed", buffer);
 
       StrFormat(buffer, sizeof(buffer), "%f", Self->Acceleration);
-      cfgWriteValue(config, "POINTER", "Acceleration", buffer);
+      cfgWriteValue(*config, "POINTER", "Acceleration", buffer);
 
       StrFormat(buffer, sizeof(buffer), "%f", Self->DoubleClick);
-      cfgWriteValue(config, "POINTER", "DoubleClick", buffer);
+      cfgWriteValue(*config, "POINTER", "DoubleClick", buffer);
 
       StrFormat(buffer, sizeof(buffer), "%d", Self->MaxSpeed);
-      cfgWriteValue(config, "POINTER", "MaxSpeed", buffer);
+      cfgWriteValue(*config, "POINTER", "MaxSpeed", buffer);
 
       StrFormat(buffer, sizeof(buffer), "%f", Self->WheelSpeed);
-      cfgWriteValue(config, "POINTER", "WheelSpeed", buffer);
+      cfgWriteValue(*config, "POINTER", "WheelSpeed", buffer);
 
-      cfgWriteValue(config, "POINTER", "ButtonOrder", Self->ButtonOrder);
+      cfgWriteValue(*config, "POINTER", "ButtonOrder", Self->ButtonOrder);
 
-      acSaveToObject(config, Args->DestID, 0);
-
-      acFree(config);
+      config->saveToObject(Args->DestID, 0);
    }
 
    return ERR_Okay;
@@ -1245,17 +1243,17 @@ static void set_pointer_defaults(extPointer *Self)
    DOUBLE doubleclick   = 0.36;
    CSTRING buttonorder   = "123456789ABCDEF";
 
-   OBJECTPTR config;
-   if (!CreateObject(ID_CONFIG, 0, &config, FID_Path|TSTR, "user:config/pointer.cfg", TAGEND)) {
+   objConfig::create config = { fl::Path("user:config/pointer.cfg") };
+
+   if (config.ok()) {
       DOUBLE dbl;
       CSTRING str;
-      if (!cfgRead(config, "POINTER", "Speed", &dbl)) speed = dbl;
-      if (!cfgRead(config, "POINTER", "Acceleration", &dbl)) acceleration = dbl;
-      if (!cfgRead(config, "POINTER", "MaxSpeed", &dbl)) maxspeed = dbl;
-      if (!cfgRead(config, "POINTER", "WheelSpeed", &dbl)) wheelspeed = dbl;
-      if (!cfgRead(config, "POINTER", "DoubleClick", &dbl)) doubleclick = dbl;
-      if (!cfgReadValue(config, "POINTER", "ButtonOrder", &str)) buttonorder = str;
-      acFree(config);
+      if (!cfgRead(*config, "POINTER", "Speed", &dbl)) speed = dbl;
+      if (!cfgRead(*config, "POINTER", "Acceleration", &dbl)) acceleration = dbl;
+      if (!cfgRead(*config, "POINTER", "MaxSpeed", &dbl)) maxspeed = dbl;
+      if (!cfgRead(*config, "POINTER", "WheelSpeed", &dbl)) wheelspeed = dbl;
+      if (!cfgRead(*config, "POINTER", "DoubleClick", &dbl)) doubleclick = dbl;
+      if (!cfgReadValue(*config, "POINTER", "ButtonOrder", &str)) buttonorder = str;
    }
 
    if (doubleclick < 0.2) doubleclick = 0.2;
@@ -1450,16 +1448,17 @@ static ERROR repeat_timer(extPointer *Self, LARGE Elapsed, LARGE Unused)
 static ERROR init_mouse_driver(void)
 {
    parasol::Log log(__FUNCTION__);
-   OBJECTPTR config;
    STRING str;
    WORD port;
    ERROR error;
    LONG i;
 
-   if (!CreateObject(ID_CONFIG, NF_INTEGRAL, &config, FID_Path|TSTR, "config:hardware/drivers.cfg", TAGEND)) {
-      if (!cfgReadValue(config, "MOUSE", "Device", &str)) StrCopy(str, Self->Device, COPY_ALL);
+   objConfig::create config = { fl::Path("config:hardware/drivers.cfg") };
 
-      if (!cfgReadValue(config, "MOUSE", "Driver", &str)) {
+   if (config.ok()) {
+      if (!cfgReadValue(*config, "MOUSE", "Device", &str)) StrCopy(str, Self->Device, COPY_ALL);
+
+      if (!cfgReadValue(*config, "MOUSE", "Driver", &str)) {
          for (LONG i=0; glMouseTypes[i].Name; i++) {
             if (!StrMatch(str, glMouseTypes[i].ShortName)) {
                glDriverIndex = i;
@@ -1467,8 +1466,6 @@ static ERROR init_mouse_driver(void)
             }
          }
       }
-
-      acFree(config);
    }
 
    log.msg("Using mouse driver \"%s\" and device \"%s\"", glMouseTypes[glDriverIndex].Name, Self->Device);

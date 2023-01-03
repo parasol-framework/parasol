@@ -1701,31 +1701,32 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
       while (Object->ExtClass) {
          if (Object->ExtClass->ActionTable[AC_Init].PerformAction) {
             error = Object->ExtClass->ActionTable[AC_Init].PerformAction(Object, NULL);
-            if (!error) {
-               set_object_flags(Object, Object->Flags|NF_INITIALISED);
-
-               if (Object->ExtClass != cl) {
-                  // Due to the switch, increase the open count of the sub-class (see NewObject() for details on object
-                  // reference counting).
-
-                  log.msg("Object class switched to sub-class \"%s\".", Object->className());
-
-                  if (!(Object->Flags & NF_PUBLIC)) Object->ExtClass->OpenCount++;
-
-                  Object->SubID = Object->ExtClass->SubClassID;
-                  Object->Flags |= NF_RECLASSED; // This flag indicates that the object originally belonged to the base-class
-               }
-
-               return ERR_Okay;
-            }
-
-            if (error IS ERR_UseSubClass) {
-               log.trace("Requested to use registered sub-class.");
-               use_subclass = TRUE;
-            }
-            else if (error != ERR_NoSupport) break;
          }
-         else return ERR_Okay;
+         else error = ERR_Okay; // If no initialiser defined, auto-OK
+
+         if (!error) {
+            set_object_flags(Object, Object->Flags|NF_INITIALISED);
+
+            if (Object->ExtClass != cl) {
+               // Due to the switch, increase the open count of the sub-class (see NewObject() for details on object
+               // reference counting).
+
+               log.msg("Object class switched to sub-class \"%s\".", Object->className());
+
+               if (!Object->isPublic()) Object->ExtClass->OpenCount++;
+
+               Object->SubID = Object->ExtClass->SubClassID;
+               Object->Flags |= NF_RECLASSED; // This flag indicates that the object originally belonged to the base-class
+            }
+
+            return ERR_Okay;
+         }
+
+         if (error IS ERR_UseSubClass) {
+            log.trace("Requested to use registered sub-class.");
+            use_subclass = TRUE;
+         }
+         else if (error != ERR_NoSupport) break;
 
          if (sli IS -1) {
             // Initialise a list of all sub-classes already in memory for querying in sequence.

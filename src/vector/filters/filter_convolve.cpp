@@ -61,8 +61,12 @@ UnitX/Y is considerably smaller than a device pixel.
 
 //********************************************************************************************************************
 
-class objConvolveFX : public extFilterEffect {
+class extConvolveFX : public extFilterEffect {
    public:
+   static constexpr CLASSID CLASS_ID = ID_CONVOLVEFX;
+   static constexpr CSTRING CLASS_NAME = "ConvolveFX";
+   using create = parasol::Create<extConvolveFX>;
+
    DOUBLE UnitX, UnitY;
    DOUBLE Divisor;
    DOUBLE Bias;
@@ -73,7 +77,7 @@ class objConvolveFX : public extFilterEffect {
    bool PreserveAlpha;
    DOUBLE Matrix[MAX_DIM * MAX_DIM];
 
-   objConvolveFX() : UnitX(1), UnitY(1), Divisor(0), Bias(0), TargetX(-1), TargetY(-1),
+   extConvolveFX() : UnitX(1), UnitY(1), Divisor(0), Bias(0), TargetX(-1), TargetY(-1),
       MatrixColumns(3), MatrixRows(3), EdgeMode(EM_DUPLICATE), MatrixSize(9), PreserveAlpha(false) { }
 
    inline UBYTE * getPixel(objBitmap *Bitmap, LONG X, LONG Y) const {
@@ -198,7 +202,7 @@ class objConvolveFX : public extFilterEffect {
 
 //********************************************************************************************************************
 
-static ERROR CONVOLVEFX_Draw(objConvolveFX *Self, struct acDraw *Args)
+static ERROR CONVOLVEFX_Draw(extConvolveFX *Self, struct acDraw *Args)
 {
    if (Self->Target->BytesPerPixel != 4) return ERR_Failed;
 
@@ -248,7 +252,7 @@ static ERROR CONVOLVEFX_Draw(objConvolveFX *Self, struct acDraw *Args)
 
 //********************************************************************************************************************
 
-static ERROR CONVOLVEFX_Init(objConvolveFX *Self, APTR Void)
+static ERROR CONVOLVEFX_Init(extConvolveFX *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -290,17 +294,17 @@ static ERROR CONVOLVEFX_Init(objConvolveFX *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR CONVOLVEFX_Free(objConvolveFX *Self, APTR Void)
+static ERROR CONVOLVEFX_Free(extConvolveFX *Self, APTR Void)
 {
-   Self->~objConvolveFX();
+   Self->~extConvolveFX();
    return ERR_Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR CONVOLVEFX_NewObject(objConvolveFX *Self, APTR Void)
+static ERROR CONVOLVEFX_NewObject(extConvolveFX *Self, APTR Void)
 {
-   new (Self) objConvolveFX;
+   new (Self) extConvolveFX;
    return ERR_Okay;
 }
 
@@ -316,13 +320,13 @@ clamped to 0 or 1.  The default is 0.
 
 *********************************************************************************************************************/
 
-static ERROR CONVOLVEFX_GET_Bias(objConvolveFX *Self, DOUBLE *Value)
+static ERROR CONVOLVEFX_GET_Bias(extConvolveFX *Self, DOUBLE *Value)
 {
    *Value = Self->Bias;
    return ERR_Okay;
 }
 
-static ERROR CONVOLVEFX_SET_Bias(objConvolveFX *Self, DOUBLE Value)
+static ERROR CONVOLVEFX_SET_Bias(extConvolveFX *Self, DOUBLE Value)
 {
    Self->Bias = Value;
    return ERR_Okay;
@@ -340,13 +344,13 @@ exception that if the sum is zero, then the divisor is set to 1.
 
 *********************************************************************************************************************/
 
-static ERROR CONVOLVEFX_GET_Divisor(objConvolveFX *Self, DOUBLE *Value)
+static ERROR CONVOLVEFX_GET_Divisor(extConvolveFX *Self, DOUBLE *Value)
 {
    *Value = Self->Divisor;
    return ERR_Okay;
 }
 
-static ERROR CONVOLVEFX_SET_Divisor(objConvolveFX *Self, DOUBLE Value)
+static ERROR CONVOLVEFX_SET_Divisor(extConvolveFX *Self, DOUBLE Value)
 {
    parasol::Log log;
    if (Value <= 0) return log.warning(ERR_InvalidValue);
@@ -364,13 +368,13 @@ when the #Matrix is positioned at or near the edge of the input image.
 
 *********************************************************************************************************************/
 
-static ERROR CONVOLVEFX_GET_EdgeMode(objConvolveFX *Self, LONG *Value)
+static ERROR CONVOLVEFX_GET_EdgeMode(extConvolveFX *Self, LONG *Value)
 {
    *Value = Self->EdgeMode;
    return ERR_Okay;
 }
 
-static ERROR CONVOLVEFX_SET_EdgeMode(objConvolveFX *Self, LONG Value)
+static ERROR CONVOLVEFX_SET_EdgeMode(extConvolveFX *Self, LONG Value)
 {
    Self->EdgeMode = Value;
    return ERR_Okay;
@@ -386,14 +390,14 @@ A list of numbers that make up the kernel matrix for the convolution.  The numbe
 
 *********************************************************************************************************************/
 
-static ERROR CONVOLVEFX_GET_Matrix(objConvolveFX *Self, DOUBLE **Value, LONG *Elements)
+static ERROR CONVOLVEFX_GET_Matrix(extConvolveFX *Self, DOUBLE **Value, LONG *Elements)
 {
    *Elements = Self->MatrixSize;
    *Value    = Self->Matrix;
    return ERR_Okay;
 }
 
-static ERROR CONVOLVEFX_SET_Matrix(objConvolveFX *Self, DOUBLE *Value, LONG Elements)
+static ERROR CONVOLVEFX_SET_Matrix(extConvolveFX *Self, DOUBLE *Value, LONG Elements)
 {
    parasol::Log log;
 
@@ -416,13 +420,13 @@ the impact on performance.  The default value is 3.
 
 *********************************************************************************************************************/
 
-static ERROR CONVOLVEFX_GET_MatrixRows(objConvolveFX *Self, LONG *Value)
+static ERROR CONVOLVEFX_GET_MatrixRows(extConvolveFX *Self, LONG *Value)
 {
    *Value = Self->MatrixRows;
    return ERR_Okay;
 }
 
-static ERROR CONVOLVEFX_SET_MatrixRows(objConvolveFX *Self, LONG Value)
+static ERROR CONVOLVEFX_SET_MatrixRows(extConvolveFX *Self, LONG Value)
 {
    parasol::Log log;
    if (Value <= 0) return log.warning(ERR_InvalidValue);
@@ -442,13 +446,13 @@ the impact on performance.  The default value is 3.
 
 *********************************************************************************************************************/
 
-static ERROR CONVOLVEFX_GET_MatrixColumns(objConvolveFX *Self, LONG *Value)
+static ERROR CONVOLVEFX_GET_MatrixColumns(extConvolveFX *Self, LONG *Value)
 {
    *Value = Self->MatrixColumns;
    return ERR_Okay;
 }
 
-static ERROR CONVOLVEFX_SET_MatrixColumns(objConvolveFX *Self, LONG Value)
+static ERROR CONVOLVEFX_SET_MatrixColumns(extConvolveFX *Self, LONG Value)
 {
    parasol::Log log;
    if (Value <= 0) return log.warning(ERR_InvalidValue);
@@ -464,13 +468,13 @@ PreserveAlpha: If TRUE, the alpha channel is protected from the effects of the c
 
 *********************************************************************************************************************/
 
-static ERROR CONVOLVEFX_GET_PreserveAlpha(objConvolveFX *Self, LONG *Value)
+static ERROR CONVOLVEFX_GET_PreserveAlpha(extConvolveFX *Self, LONG *Value)
 {
    *Value = Self->PreserveAlpha;
    return ERR_Okay;
 }
 
-static ERROR CONVOLVEFX_SET_PreserveAlpha(objConvolveFX *Self, LONG Value)
+static ERROR CONVOLVEFX_SET_PreserveAlpha(extConvolveFX *Self, LONG Value)
 {
    Self->PreserveAlpha = Value;
    return ERR_Okay;
@@ -488,13 +492,13 @@ default, the convolution matrix is centered in X over each pixel of the input im
 
 *********************************************************************************************************************/
 
-static ERROR CONVOLVEFX_GET_TargetX(objConvolveFX *Self, LONG *Value)
+static ERROR CONVOLVEFX_GET_TargetX(extConvolveFX *Self, LONG *Value)
 {
    *Value = Self->TargetX;
    return ERR_Okay;
 }
 
-static ERROR CONVOLVEFX_SET_TargetX(objConvolveFX *Self, LONG Value)
+static ERROR CONVOLVEFX_SET_TargetX(extConvolveFX *Self, LONG Value)
 {
    if (Self->initialised()) {
       parasol::Log log;
@@ -517,13 +521,13 @@ default, the convolution matrix is centered in Y over each pixel of the input im
 
 *********************************************************************************************************************/
 
-static ERROR CONVOLVEFX_GET_TargetY(objConvolveFX *Self, LONG *Value)
+static ERROR CONVOLVEFX_GET_TargetY(extConvolveFX *Self, LONG *Value)
 {
    *Value = Self->TargetY;
    return ERR_Okay;
 }
 
-static ERROR CONVOLVEFX_SET_TargetY(objConvolveFX *Self, LONG Value)
+static ERROR CONVOLVEFX_SET_TargetY(extConvolveFX *Self, LONG Value)
 {
    if (Self->initialised()) {
       parasol::Log log;
@@ -551,13 +555,13 @@ aligns with the pixel grid of the kernel.
 
 *********************************************************************************************************************/
 
-static ERROR CONVOLVEFX_GET_UnitX(objConvolveFX *Self, DOUBLE *Value)
+static ERROR CONVOLVEFX_GET_UnitX(extConvolveFX *Self, DOUBLE *Value)
 {
    *Value = Self->UnitX;
    return ERR_Okay;
 }
 
-static ERROR CONVOLVEFX_SET_UnitX(objConvolveFX *Self, DOUBLE Value)
+static ERROR CONVOLVEFX_SET_UnitX(extConvolveFX *Self, DOUBLE Value)
 {
    if (Value < 0) return ERR_InvalidValue;
 
@@ -582,13 +586,13 @@ aligns with the pixel grid of the kernel.
 
 *********************************************************************************************************************/
 
-static ERROR CONVOLVEFX_GET_UnitY(objConvolveFX *Self, DOUBLE *Value)
+static ERROR CONVOLVEFX_GET_UnitY(extConvolveFX *Self, DOUBLE *Value)
 {
    *Value = Self->UnitY;
    return ERR_Okay;
 }
 
-static ERROR CONVOLVEFX_SET_UnitY(objConvolveFX *Self, DOUBLE Value)
+static ERROR CONVOLVEFX_SET_UnitY(extConvolveFX *Self, DOUBLE Value)
 {
    if (Value < 0) return ERR_InvalidValue;
 
@@ -604,7 +608,7 @@ XMLDef: Returns an SVG compliant XML string that describes the effect.
 
 *********************************************************************************************************************/
 
-static ERROR CONVOLVEFX_GET_XMLDef(objConvolveFX *Self, STRING *Value)
+static ERROR CONVOLVEFX_GET_XMLDef(extConvolveFX *Self, STRING *Value)
 {
    std::stringstream stream;
 
@@ -652,7 +656,7 @@ ERROR init_convolvefx(void)
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clConvolveFXActions),
       fl::Fields(clConvolveFXFields),
-      fl::Size(sizeof(objConvolveFX)),
+      fl::Size(sizeof(extConvolveFX)),
       fl::Path(MOD_PATH));
 
    return clConvolveFX ? ERR_Okay : ERR_AddClass;

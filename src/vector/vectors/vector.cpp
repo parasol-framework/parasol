@@ -1522,13 +1522,13 @@ refer to the @VectorClip class for further information.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_Mask(extVector *Self, objVectorClip **Value)
+static ERROR VECTOR_GET_Mask(extVector *Self, extVectorClip **Value)
 {
    *Value = Self->ClipMask;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_Mask(extVector *Self, objVectorClip *Value)
+static ERROR VECTOR_SET_Mask(extVector *Self, extVectorClip *Value)
 {
    parasol::Log log;
 

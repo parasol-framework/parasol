@@ -213,26 +213,20 @@ static ERROR PARC_Init(objParc *Self, APTR Void)
    parasol::Log log;
    ERROR error;
 
-   if (!CreateObject(ID_COMPRESSION, NF_INTEGRAL, &Self->Archive,
-         FID_Path|TSTR,        Self->Path,
-         FID_ArchiveName|TSTR, "parc",
-         FID_Flags|TLONG,      CMF_READ_ONLY,
-         TAGEND)) {
+   if ((Self->Archive = objCompression::create::integral(
+         fl::Path(Self->Path),
+         fl::ArchiveName("parc"),
+         fl::Flags(CMF_READ_ONLY)))) {
 
       // Read the parc.xml file into the Info field.
 
-      objFile *info_file;
-      if (!CreateObject(ID_FILE, NF_INTEGRAL, &info_file,
-            FID_Flags|TLONG, FL_NEW|FL_BUFFER|FL_WRITE|FL_READ,
-            TAGEND)) {
+      objFile::create info_file = { fl::Flags(FL_NEW|FL_BUFFER|FL_WRITE|FL_READ) };
+      if (info_file.ok()) {
+         if (!cmpDecompressObject(Self->Archive, "parc.xml", *info_file)) {
+            info_file->seekStart(0);
 
-         if (!cmpDecompressObject(Self->Archive, "parc.xml", (OBJECTPTR)info_file)) {
-            acSeekStart(info_file, 0);
-
-            if (!CreateObject(ID_XML, NF_INTEGRAL, &Self->Info,
-                  FID_Flags|TLONG,    XMF_NEW,
-                  FID_Statement|TSTR, info_file->Buffer,
-                  TAGEND)) {
+            if (!(Self->Info = objXML::create::integral(fl::Flags(XMF_NEW),
+                  fl::Statement(info_file->Buffer)))) {
 
                // Verify the parc.xml file.
                // TODO
@@ -247,8 +241,6 @@ static ERROR PARC_Init(objParc *Self, APTR Void)
             else error = ERR_CreateObject;
          }
          else error = ERR_Decompression;
-
-         acFree(info_file);
       }
       else error = ERR_CreateObject;
    }

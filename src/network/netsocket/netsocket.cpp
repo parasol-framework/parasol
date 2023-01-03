@@ -160,7 +160,7 @@ static ERROR NETSOCKET_Connect(extNetSocket *Self, struct nsConnect *Args)
       log.msg("Attempting to resolve domain name '%s'...", Self->Address);
 
       if (!Self->NetLookup) {
-         if (CreateObject(ID_NETLOOKUP, NF_INTEGRAL, &Self->NetLookup, TAGEND)) {
+         if (!(Self->NetLookup = objNetLookup::create::integral())) {
             return ERR_CreateObject;
          }
       }

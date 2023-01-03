@@ -256,7 +256,7 @@ static ERROR parse_fe_blur(extSVG *Self, objVectorFilter *Filter, const XMLTag *
       }
    }
 
-   if (!acInit(fx)) return ERR_Okay;
+   if (!fx->init()) return ERR_Okay;
    else {
       acFree(fx);
       return ERR_Init;
@@ -286,7 +286,7 @@ static ERROR parse_fe_offset(extSVG *Self, objVectorFilter *Filter, const XMLTag
       }
    }
 
-   if (!acInit(fx)) return ERR_Okay;
+   if (!fx->init()) return ERR_Okay;
    else {
       acFree(fx);
       return ERR_Init;
@@ -363,7 +363,7 @@ static ERROR parse_fe_merge(extSVG *Self, objVectorFilter *Filter, const XMLTag 
       }
    }
 
-   if (!acInit(fx)) return ERR_Okay;
+   if (!fx->init()) return ERR_Okay;
    else {
       acFree(fx);
       return log.warning(ERR_Init);
@@ -450,7 +450,7 @@ static ERROR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, const
       }
    }
 
-   if (!acInit(fx)) return ERR_Okay;
+   if (!fx->init()) return ERR_Okay;
    else {
       acFree(fx);
       return ERR_Init;
@@ -550,7 +550,7 @@ static ERROR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, con
       }
    }
 
-   if (!acInit(fx)) return ERR_Okay;
+   if (!fx->init()) return ERR_Okay;
    else {
       acFree(fx);
       return ERR_Init;
@@ -675,7 +675,7 @@ static ERROR parse_fe_lighting(extSVG *Self, objVectorFilter *Filter, const XMLT
       }
    }
 
-   if (!acInit(fx)) return ERR_Okay;
+   if (!fx->init()) return ERR_Okay;
    else {
       acFree(fx);
       return ERR_Init;
@@ -730,7 +730,7 @@ static ERROR parse_fe_displacement_map(extSVG *Self, objVectorFilter *Filter, co
       }
    }
 
-   if (!acInit(fx)) return ERR_Okay;
+   if (!fx->init()) return ERR_Okay;
    else {
       acFree(fx);
       return ERR_Init;
@@ -821,7 +821,7 @@ static ERROR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, cons
       else log.warning("Unrecognised feComponentTransfer child node '%s'", child->Attrib->Name);
    }
 
-   if (!acInit(fx)) return ERR_Okay;
+   if (!fx->init()) return ERR_Okay;
    else {
       acFree(fx);
       return ERR_Init;
@@ -924,7 +924,7 @@ static ERROR parse_fe_composite(extSVG *Self, objVectorFilter *Filter, const XML
       }
    }
 
-   if (!acInit(fx)) return ERR_Okay;
+   if (!fx->init()) return ERR_Okay;
    else {
       acFree(fx);
       return ERR_Init;
@@ -979,7 +979,7 @@ static ERROR parse_fe_flood(extSVG *Self, objVectorFilter *Filter, const XMLTag 
       }
    }
 
-   if (!error) return acInit(fx);
+   if (!error) return fx->init();
    else {
       acFree(fx);
       return log.warning(error);
@@ -1039,7 +1039,7 @@ static ERROR parse_fe_turbulence(extSVG *Self, objVectorFilter *Filter, const XM
    }
 
 
-   if (!acInit(fx)) return ERR_Okay;
+   if (!fx->init()) return ERR_Okay;
    else {
       acFree(fx);
       return ERR_Init;
@@ -1085,7 +1085,7 @@ static ERROR parse_fe_morphology(extSVG *Self, objVectorFilter *Filter, const XM
       }
    }
 
-   if (!acInit(fx)) return ERR_Okay;
+   if (!fx->init()) return ERR_Okay;
    else {
       acFree(fx);
       return ERR_Init;
@@ -1139,7 +1139,7 @@ static ERROR parse_fe_source(extSVG *Self, objXML *XML, svgState *State, objVect
 
       if (vector) {
          fx->set(FID_SourceName, ref);
-         if (!(error = acInit(fx))) return ERR_Okay;
+         if (!(error = fx->init())) return ERR_Okay;
       }
       else error = ERR_Search;
    }
@@ -1238,7 +1238,7 @@ static ERROR parse_fe_image(extSVG *Self, objXML *XML, svgState *State, objVecto
       else fx->set(FID_Path, path);
    }
 
-   if (auto error = acInit(fx)) {
+   if (auto error = fx->init()) {
       acFree(fx);
       if (image_required) return error;
       else return ERR_Okay;
@@ -1327,7 +1327,7 @@ static void xtag_filter(extSVG *Self, objXML *XML, svgState *State, const XMLTag
          }
       }
 
-      if ((id) and (!acInit(filter))) {
+      if ((id) and (!filter->init())) {
          SetName(filter, id);
 
          if (Tag->Child) {
@@ -1501,7 +1501,7 @@ static ERROR process_shape(extSVG *Self, CLASSID VectorID, objXML *XML, svgState
 
       process_attrib(Self, XML, Tag, vector);
 
-      if (!acInit(vector)) {
+      if (!vector->init()) {
          // Process child tags, if any
 
          for (auto child=Tag->Child; child; child=child->Next) {
@@ -1654,17 +1654,14 @@ static ERROR load_pic(extSVG *Self, CSTRING Path, objPicture **Picture)
             ClearMemory(&state, sizeof(state));
 
             UBYTE *output;
-            LONG size = StrLength(val);
+            LONG size = strlen(val);
             if (!AllocMemory(size, MEM_DATA|MEM_NO_CLEAR, &output, NULL)) {
                LONG written;
                if (!(error = Base64Decode(&state, val, size, output, &written))) {
                   Path = "temp:svg.img";
-                  if (!CreateObject(ID_FILE, NF_INTEGRAL, &file,
-                        FID_Path|TSTR,   Path,
-                        FID_Flags|TLONG, FL_NEW|FL_WRITE,
-                        TAGEND)) {
+                  if ((file = objFile::create::integral(fl::Path(Path), fl::Flags(FL_NEW|FL_WRITE)))) {
                      LONG result;
-                     acWrite(file, output, written, &result);
+                     file->write(output, written, &result);
                   }
                   else error = ERR_File;
                }
@@ -1680,12 +1677,11 @@ static ERROR load_pic(extSVG *Self, CSTRING Path, objPicture **Picture)
    else log.branch("%s", Path);
 
    if (!error) {
-      error = CreateObject(ID_PICTURE, 0, Picture,
-            FID_Owner|TLONG,        Self->Scene->UID,
-            FID_Path|TSTR,          Path,
-            FID_BitsPerPixel|TLONG, 32,
-            FID_Flags|TLONG,        PCF_FORCE_ALPHA_32,
-            TAGEND);
+      if (!(*Picture = objPicture::create::global(
+         fl::Owner(Self->Scene->UID),
+         fl::Path(Path),
+         fl::BitsPerPixel(32),
+         fl::Flags(PCF_FORCE_ALPHA_32)))) error = ERR_CreateObject;
    }
 
    if (file) {
@@ -2095,7 +2091,7 @@ static void xtag_use(extSVG *Self, objXML *XML, svgState *State, const XMLTag *T
          if (!NewObject(ID_VECTORGROUP, 0, &group)) {
             SetOwner(group, Parent);
             Parent = group;
-            acInit(group);
+            group->init();
          }
       }
 
@@ -2150,7 +2146,7 @@ static void xtag_use(extSVG *Self, objXML *XML, svgState *State, const XMLTag *T
          }
       }
 
-      if (acInit(vector) != ERR_Okay) { acFree(vector); return; }
+      if (vector->init() != ERR_Okay) { acFree(vector); return; }
 
       // Add all child elements in <symbol> to the viewport.
 
@@ -2167,7 +2163,7 @@ static void xtag_use(extSVG *Self, objXML *XML, svgState *State, const XMLTag *T
          apply_state(&state, vector);
          process_attrib(Self, XML, Tag, vector); // Apply 'use' attributes to the group.
 
-         if (acInit(vector) != ERR_Okay) { acFree(vector); return; }
+         if (vector->init() != ERR_Okay) { acFree(vector); return; }
 
          objVector *sibling = NULL;
          xtag_default(Self, XML, &state, tagref, vector, &sibling);
@@ -2200,7 +2196,7 @@ static void xtag_group(extSVG *Self, objXML *XML, svgState *State, const XMLTag 
       }
    }
 
-   if (!acInit(group)) *Vector = group;
+   if (!group->init()) *Vector = group;
    else acFree(group);
 }
 
@@ -2335,7 +2331,7 @@ static void xtag_svg(extSVG *Self, objXML *XML, svgState *State, const XMLTag *T
       }
    }
 
-   if (!acInit(viewport)) *Vector = viewport;
+   if (!viewport->init()) *Vector = viewport;
    else acFree(viewport);
 }
 

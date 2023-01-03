@@ -322,7 +322,6 @@ Clipboard: Full support for clipboard activity is provided through this action.
 static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 {
    parasol::Log log;
-   OBJECTPTR file;
    STRING buffer;
    LONG size;
 
@@ -340,8 +339,7 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 
             LONG i = Self->SelectStart;
             LONG pos = 0;
-            auto str = Self->Stream;
-            if (str) {
+            if (auto str = Self->Stream) {
                while (str[i]) {
                   NEXT_CHAR(str, i);
                }
@@ -351,16 +349,15 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 
             // Send the document to the clipboard object
 
-            objClipboard *clipboard;
-            if (!CreateObject(ID_CLIPBOARD, 0, &clipboard, TAGEND)) {
-               if (!clipAddText(clipboard, buffer)) {
+            objClipboard::create clipboard = { };
+            if (clipboard.ok()) {
+               if (!clipAddText(*clipboard, buffer)) {
                   // Delete the highlighted document if the CUT mode was used
                   if (Args->Mode IS CLIPMODE_CUT) {
                      //delete_selection(Self);
                   }
                }
                else error_dialog("Clipboard Error", "Failed to add document to the system clipboard.", 0);
-               acFree(clipboard);
             }
 
             FreeResource(buffer);
@@ -378,29 +375,24 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
          return ERR_Failed;
       }
 
-      objClipboard *clipboard;
-      if (!CreateObject(ID_CLIPBOARD, 0, &clipboard, TAGEND)) {
+      objClipboard::create clipboard = { };
+      if (clipboard.ok()) {
          struct clipGetFiles get = { .Datatype = CLIPTYPE_TEXT, .Index = 0 };
-         if (!Action(MT_ClipGetFiles, clipboard, &get)) {
-            if (!CreateObject(ID_FILE, 0, &file,
-                  FID_Path|TSTR,   get.Files[0],
-                  FID_Flags|TLONG, FL_READ,
-                  TAGEND)) {
-
-               if ((file->get(FID_Size, &size) IS ERR_Okay) and (size > 0)) {
-                  if (!AllocMemory(size+1, MEM_STRING, &buffer, NULL)) {
+         if (!Action(MT_ClipGetFiles, *clipboard, &get)) {
+            objFile::create file = { fl::Path(get.Files[0]), fl::Flags(FL_READ) };
+            if (file.ok()) {
+               if ((!file->get(FID_Size, &size)) and (size > 0)) {
+                  if (auto buffer = new (std::nothrow) char[size+1]) {
                      LONG result;
-                     if (!acRead(file, buffer, size, &result)) {
+                     if (!file->read(buffer, size, &result)) {
                         buffer[result] = 0;
                         acDataText(Self, buffer);
                      }
                      else error_dialog("Clipboard Paste Error", NULL, ERR_Read);
-                     FreeResource(buffer);
+                     delete buffer;
                   }
                   else error_dialog("Clipboard Paste Error", NULL, ERR_AllocMemory);
                }
-
-               acFree(file);
             }
             else {
                char msg[200];
@@ -408,7 +400,6 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
                error_dialog("Paste Error", msg, 0);
             }
          }
-         acFree(clipboard);
       }
 
       return ERR_Okay;
@@ -450,9 +441,7 @@ static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
       if (Self->Processing) return log.warning(ERR_Recursion);
 
       if (!Self->XML) {
-         if (CreateObject(ID_XML, NF_INTEGRAL, &Self->XML,
-               FID_Flags|TLONG, XMF_ALL_CONTENT|XMF_PARSE_HTML|XMF_STRIP_HEADERS,
-               TAGEND) != ERR_Okay) {
+         if (!(Self->XML = objXML::create::integral(fl::Flags(XMF_ALL_CONTENT|XMF_PARSE_HTML|XMF_STRIP_HEADERS)))) {
             return log.warning(ERR_CreateObject);
          }
       }
@@ -1022,15 +1011,15 @@ NullArgs
 static ERROR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
 {
    parasol::Log log;
-   ERROR error;
 
    if ((!Args) or (!Args->XML)) return log.warning(ERR_NullArgs);
    if ((Args->Index < -1) or (Args->Index > Self->StreamLen)) return log.warning(ERR_OutOfRange);
 
    if (!Self->Stream) return ERR_NoData;
 
+   ERROR error = ERR_Okay;
    if (!Self->InsertXML) {
-      error = CreateObject(ID_XML, NF_INTEGRAL, &Self->InsertXML, FID_Statement|TSTR, Args->XML, TAGEND);
+      if (!(Self->InsertXML = objXML::create::integral(fl::Statement(Args->XML)))) error = ERR_CreateObject;
    }
    else error = Self->InsertXML->set(FID_Statement, Args->XML);
 

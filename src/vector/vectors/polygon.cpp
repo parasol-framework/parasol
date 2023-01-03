@@ -20,7 +20,7 @@ TODO: Add a SetPoint(DOUBLE X, DOUBLE Y) method for modifying existing points.
 
 #define MAX_POINTS 1024 * 16 // Maximum of 16k points per polygon object.
 
-static void generate_polygon(objVectorPoly *Vector)
+static void generate_polygon(extVectorPoly *Vector)
 {
    DOUBLE view_width, view_height;
    get_parent_size(Vector, view_width, view_height);
@@ -65,7 +65,7 @@ static void generate_polygon(objVectorPoly *Vector)
 //****************************************************************************
 // Converts a string of paired coordinates into a VectorPoint array.
 
-static ERROR read_points(objVectorPoly *Self, VectorPoint **Array, LONG *PointCount, CSTRING Value)
+static ERROR read_points(extVectorPoly *Self, VectorPoint **Array, LONG *PointCount, CSTRING Value)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -116,7 +116,7 @@ static ERROR read_points(objVectorPoly *Self, VectorPoint **Array, LONG *PointCo
 
 //****************************************************************************
 
-static ERROR POLYGON_Free(objVectorPoly *Self, APTR Void)
+static ERROR POLYGON_Free(extVectorPoly *Self, APTR Void)
 {
    if (Self->Points) { FreeResource(Self->Points); Self->Points = NULL; }
    return ERR_Okay;
@@ -128,7 +128,7 @@ Move: Moves a polygon to a new position.
 -END-
 *****************************************************************************/
 
-static ERROR POLYGON_Move(objVectorPoly *Self, struct acMove *Args)
+static ERROR POLYGON_Move(extVectorPoly *Self, struct acMove *Args)
 {
    parasol::Log log;
 
@@ -163,7 +163,7 @@ The operation will abort if any of the points in the polygon are discovered to b
 -END-
 *****************************************************************************/
 
-static ERROR POLYGON_MoveToPoint(objVectorPoly *Self, struct acMoveToPoint *Args)
+static ERROR POLYGON_MoveToPoint(extVectorPoly *Self, struct acMoveToPoint *Args)
 {
    parasol::Log log;
 
@@ -203,7 +203,7 @@ static ERROR POLYGON_MoveToPoint(objVectorPoly *Self, struct acMoveToPoint *Args
 
 //****************************************************************************
 
-static ERROR POLYGON_NewObject(objVectorPoly *Self, APTR Void)
+static ERROR POLYGON_NewObject(extVectorPoly *Self, APTR Void)
 {
    Self->GeneratePath = (void (*)(extVector *))&generate_polygon;
    Self->Closed       = TRUE;
@@ -223,7 +223,7 @@ If a Width and/or Height value of zero is passed, no scaling on the associated a
 
 *****************************************************************************/
 
-static ERROR POLYGON_Resize(objVectorPoly *Self, struct acResize *Args)
+static ERROR POLYGON_Resize(extVectorPoly *Self, struct acResize *Args)
 {
    parasol::Log log;
 
@@ -252,13 +252,13 @@ the default.  If FALSE, the polygon will not be closed, which results in the equ
 
 *****************************************************************************/
 
-static ERROR POLY_GET_Closed(objVectorPoly *Self, LONG *Value)
+static ERROR POLY_GET_Closed(extVectorPoly *Self, LONG *Value)
 {
    *Value = Self->Closed;
    return ERR_Okay;
 }
 
-static ERROR POLY_SET_Closed(objVectorPoly *Self, LONG Value)
+static ERROR POLY_SET_Closed(extVectorPoly *Self, LONG Value)
 {
    if (Value) Self->Closed = TRUE;
    else Self->Closed = FALSE;
@@ -278,13 +278,13 @@ operations.
 
 *****************************************************************************/
 
-static ERROR POLY_GET_PathLength(objVectorPoly *Self, LONG *Value)
+static ERROR POLY_GET_PathLength(extVectorPoly *Self, LONG *Value)
 {
    *Value = Self->PathLength;
    return ERR_Okay;
 }
 
-static ERROR POLY_SET_PathLength(objVectorPoly *Self, LONG Value)
+static ERROR POLY_SET_PathLength(extVectorPoly *Self, LONG Value)
 {
    if (Value >= 0) {
       Self->PathLength = Value;
@@ -304,14 +304,14 @@ points is required for the shape to be valid.  The &VectorPoint structure consis
 
 *****************************************************************************/
 
-static ERROR POLY_GET_PointsArray(objVectorPoly *Self, VectorPoint **Value, LONG *Elements)
+static ERROR POLY_GET_PointsArray(extVectorPoly *Self, VectorPoint **Value, LONG *Elements)
 {
    *Value = Self->Points;
    *Elements = Self->TotalPoints;
    return ERR_Okay;
 }
 
-static ERROR POLY_SET_PointsArray(objVectorPoly *Self, VectorPoint *Value, LONG Elements)
+static ERROR POLY_SET_PointsArray(extVectorPoly *Self, VectorPoint *Value, LONG Elements)
 {
    if (Elements >= 2) {
       VectorPoint *points;
@@ -337,7 +337,7 @@ a comma.
 
 *****************************************************************************/
 
-static ERROR POLY_SET_Points(objVectorPoly *Self, CSTRING Value)
+static ERROR POLY_SET_Points(extVectorPoly *Self, CSTRING Value)
 {
    ERROR error;
    VectorPoint *points;
@@ -360,7 +360,7 @@ TotalPoints is a read-only field value that reflects the total number of coordin
 
 *****************************************************************************/
 
-static ERROR POLY_GET_TotalPoints(objVectorPoly *Self, LONG *Value)
+static ERROR POLY_GET_TotalPoints(extVectorPoly *Self, LONG *Value)
 {
    *Value = Self->TotalPoints;
    return ERR_Okay;
@@ -378,7 +378,7 @@ a percentage.
 
 *****************************************************************************/
 
-static ERROR POLY_GET_X1(objVectorPoly *Self, Variable *Value)
+static ERROR POLY_GET_X1(extVectorPoly *Self, Variable *Value)
 {
    DOUBLE val = Self->Points[0].X;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Points[0].XRelative)) val = val * 100;
@@ -387,7 +387,7 @@ static ERROR POLY_GET_X1(objVectorPoly *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR POLY_SET_X1(objVectorPoly *Self, Variable *Value)
+static ERROR POLY_SET_X1(extVectorPoly *Self, Variable *Value)
 {
    parasol::Log log;
    DOUBLE val;
@@ -419,7 +419,7 @@ a percentage.
 
 *****************************************************************************/
 
-static ERROR POLY_GET_X2(objVectorPoly *Self, Variable *Value)
+static ERROR POLY_GET_X2(extVectorPoly *Self, Variable *Value)
 {
    DOUBLE val = Self->Points[1].X;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Points[1].XRelative)) val = val * 100;
@@ -428,7 +428,7 @@ static ERROR POLY_GET_X2(objVectorPoly *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR POLY_SET_X2(objVectorPoly *Self, Variable *Value)
+static ERROR POLY_SET_X2(extVectorPoly *Self, Variable *Value)
 {
    parasol::Log log;
    DOUBLE val;
@@ -460,7 +460,7 @@ a percentage.
 
 *****************************************************************************/
 
-static ERROR POLY_GET_Y1(objVectorPoly *Self, Variable *Value)
+static ERROR POLY_GET_Y1(extVectorPoly *Self, Variable *Value)
 {
    DOUBLE val = Self->Points[0].Y;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Points[0].YRelative)) val = val * 100;
@@ -469,7 +469,7 @@ static ERROR POLY_GET_Y1(objVectorPoly *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR POLY_SET_Y1(objVectorPoly *Self, Variable *Value)
+static ERROR POLY_SET_Y1(extVectorPoly *Self, Variable *Value)
 {
    parasol::Log log;
    DOUBLE val;
@@ -501,7 +501,7 @@ a percentage.
 -END-
 *****************************************************************************/
 
-static ERROR POLY_GET_Y2(objVectorPoly *Self, Variable *Value)
+static ERROR POLY_GET_Y2(extVectorPoly *Self, Variable *Value)
 {
    DOUBLE val = Self->Points[1].Y;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Points[1].YRelative)) val = val * 100;
@@ -510,7 +510,7 @@ static ERROR POLY_GET_Y2(objVectorPoly *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR POLY_SET_Y2(objVectorPoly *Self, Variable *Value)
+static ERROR POLY_SET_Y2(extVectorPoly *Self, Variable *Value)
 {
    parasol::Log log;
    DOUBLE val;
@@ -566,7 +566,7 @@ static ERROR init_polygon(void)
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clPolygonActions),
       fl::Fields(clPolygonFields),
-      fl::Size(sizeof(objVectorPoly)),
+      fl::Size(sizeof(extVectorPoly)),
       fl::Path(MOD_PATH));
 
    return clVectorPolygon ? ERR_Okay : ERR_AddClass;

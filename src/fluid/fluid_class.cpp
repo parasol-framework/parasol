@@ -455,17 +455,13 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 
          prv->SaveCompiled = FALSE;
 
-         objFile *cachefile;
-         if (!CreateObject(ID_FILE, NF_INTEGRAL, &cachefile,
-               FID_Path|TSTR,         Self->CacheFile,
-               FID_Flags|TLONG,       FL_NEW|FL_WRITE,
-               FID_Permissions|TLONG, prv->CachePermissions,
-               TAGEND)) {
+         objFile::create cachefile = {
+            fl::Path(Self->CacheFile), fl::Flags(FL_NEW|FL_WRITE), fl::Permissions(prv->CachePermissions)
+         };
 
+         if (cachefile.ok()) {
             save_binary(Self, cachefile->UID);
-
             cachefile->set(FID_Date, &prv->CacheDate);
-            acFree(cachefile);
          }
       }
    }
@@ -487,9 +483,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
       }
    }
 
-   if (!Self->Error) {
-      run_script(Self); // Will set Self->Error if there's an issue
-   }
+   if (!Self->Error) run_script(Self); // Will set Self->Error if there's an issue
 
    error = ERR_Okay; // The error reflects on the initial processing of the script only - the developer must check the Error field for information on script execution
 
@@ -551,11 +545,10 @@ restart:
                lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, list->Callback); // +1 Reference to callback
                lua_newtable(prv->Lua); // +1 Item table
 
-               objXML *xml;
-               if (!CreateObject(ID_XML, NF_INTEGRAL, &xml, FID_Statement|TSTR, Args->Buffer, TAGEND)) {
+               if (auto xml = objXML::create::integral(fl::Statement((CSTRING)Args->Buffer))) {
                   // <file path="blah.exe"/> becomes { item='file', path='blah.exe' }
 
-                  XMLTag *tag = xml->Tags[0];
+                  auto tag = xml->Tags[0];
                   LONG i = 1;
                   if (!StrMatch("receipt", tag->Attrib->Name)) {
                      for (auto scan=tag->Child; scan; scan=scan->Next) {
@@ -690,10 +683,9 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
    LONG loaded_size = 0;
    parasol::ScopedObject<objFile> src_file;
    if ((!Self->String) and (Self->Path)) {
-      error = CreateObject(ID_FILE, NF_INTEGRAL, &src_file.obj, FID_Path|TSTR, Self->Path, TAGEND);
-
       LARGE src_ts, src_size;
-      if (!error) {
+
+      if ((src_file.obj = objFile::create::integral(fl::Path(Self->Path)))) {
          error = GetFields(src_file.obj, FID_TimeStamp|TLARGE, &src_ts, FID_Size|TLARGE, &src_size, TAGEND);
       }
       else error = ERR_File;
@@ -703,12 +695,16 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
          // analysing the original location (i.e. the original location does not exist) then the cache file is loaded
          // instead of the original source code.
 
-         objFile *cache_file;
-         if (!CreateObject(ID_FILE, NF_INTEGRAL, &cache_file, FID_Path|TSTR, Self->CacheFile, TAGEND)) {
-            LARGE cache_ts, cache_size;
-            GetFields(cache_file, FID_TimeStamp|TLARGE, &cache_ts, FID_Size|TLARGE, &cache_size, TAGEND);
-            acFree(cache_file);
+         LARGE cache_ts = -1, cache_size;
 
+         {
+            objFile::create cache_file = { fl::Path(Self->CacheFile) };
+            if (cache_file.ok()) {
+               GetFields(*cache_file, FID_TimeStamp|TLARGE, &cache_ts, FID_Size|TLARGE, &cache_size, TAGEND);
+            }
+         }
+
+         if (cache_ts != -1) {
             if ((cache_ts IS src_ts) or (error)) {
                log.msg("Using cache '%s'", Self->CacheFile);
                if (!AllocMemory(cache_size, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), &Self->String, NULL)) {

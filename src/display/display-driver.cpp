@@ -1064,42 +1064,42 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
          glpDisplayDepth  = info.BitsPerPixel;
       }
 #else
-   OBJECTPTR config;
-   if (!CreateObject(ID_CONFIG, NULL, &config, FID_Path|TSTRING, "user:config/display.cfg", TAGEND)) {
-      cfgRead(config, "DISPLAY", "Maximise", &glpMaximise);
+   objConfig::create config = { fl::Path("user:config/display.cfg") };
+
+   if (config.ok()) {
+      cfgRead(*config, "DISPLAY", "Maximise", &glpMaximise);
 
       if ((glDisplayType IS DT_X11) or (glDisplayType IS DT_WINDOWS)) {
          log.msg("Using hosted window dimensions: %dx%d,%dx%d", glpDisplayX, glpDisplayY, glpDisplayWidth, glpDisplayHeight);
-         if ((cfgRead(config, "DISPLAY", "WindowWidth", &glpDisplayWidth) != ERR_Okay) or (!glpDisplayWidth)) {
-            cfgRead(config, "DISPLAY", "Width", &glpDisplayWidth);
+         if ((cfgRead(*config, "DISPLAY", "WindowWidth", &glpDisplayWidth) != ERR_Okay) or (!glpDisplayWidth)) {
+            cfgRead(*config, "DISPLAY", "Width", &glpDisplayWidth);
          }
 
-         if ((cfgRead(config, "DISPLAY", "WindowHeight", &glpDisplayHeight) != ERR_Okay) or (!glpDisplayHeight)) {
-            cfgRead(config, "DISPLAY", "Height", &glpDisplayHeight);
+         if ((cfgRead(*config, "DISPLAY", "WindowHeight", &glpDisplayHeight) != ERR_Okay) or (!glpDisplayHeight)) {
+            cfgRead(*config, "DISPLAY", "Height", &glpDisplayHeight);
          }
 
-         cfgRead(config, "DISPLAY", "WindowX", &glpDisplayX);
-         cfgRead(config, "DISPLAY", "WindowY", &glpDisplayY);
-         cfgRead(config, "DISPLAY", "FullScreen", &glpFullScreen);
+         cfgRead(*config, "DISPLAY", "WindowX", &glpDisplayX);
+         cfgRead(*config, "DISPLAY", "WindowY", &glpDisplayY);
+         cfgRead(*config, "DISPLAY", "FullScreen", &glpFullScreen);
       }
       else {
-         cfgRead(config, "DISPLAY", "Width", &glpDisplayWidth);
-         cfgRead(config, "DISPLAY", "Height", &glpDisplayHeight);
-         cfgRead(config, "DISPLAY", "XCoord", &glpDisplayX);
-         cfgRead(config, "DISPLAY", "YCoord", &glpDisplayY);
-         cfgRead(config, "DISPLAY", "Depth", &glpDisplayDepth);
+         cfgRead(*config, "DISPLAY", "Width", &glpDisplayWidth);
+         cfgRead(*config, "DISPLAY", "Height", &glpDisplayHeight);
+         cfgRead(*config, "DISPLAY", "XCoord", &glpDisplayX);
+         cfgRead(*config, "DISPLAY", "YCoord", &glpDisplayY);
+         cfgRead(*config, "DISPLAY", "Depth", &glpDisplayDepth);
          log.msg("Using default display dimensions: %dx%d,%dx%d", glpDisplayX, glpDisplayY, glpDisplayWidth, glpDisplayHeight);
       }
 
-      cfgRead(config, "DISPLAY", "RefreshRate", &glpRefreshRate);
-      cfgRead(config, "DISPLAY", "GammaRed", &glpGammaRed);
-      cfgRead(config, "DISPLAY", "GammaGreen", &glpGammaGreen);
-      cfgRead(config, "DISPLAY", "GammaBlue", &glpGammaBlue);
+      cfgRead(*config, "DISPLAY", "RefreshRate", &glpRefreshRate);
+      cfgRead(*config, "DISPLAY", "GammaRed", &glpGammaRed);
+      cfgRead(*config, "DISPLAY", "GammaGreen", &glpGammaGreen);
+      cfgRead(*config, "DISPLAY", "GammaBlue", &glpGammaBlue);
       CSTRING dpms;
-      if (!cfgReadValue(config, "DISPLAY", "DPMS", &dpms)) {
+      if (!cfgReadValue(*config, "DISPLAY", "DPMS", &dpms)) {
          StrCopy(dpms, glpDPMS, sizeof(glpDPMS));
       }
-      acFree(config);
    }
 #endif
 
@@ -1112,11 +1112,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    std::string src(icon_path);
    src.append("Default.zip");
-   if (CreateObject(ID_COMPRESSION, NF_INTEGRAL, &glIconArchive,
-         FID_Path|TSTR,        src.c_str(),
-         FID_ArchiveName|TSTR, "icons",
-         FID_Flags|TLONG,      CMF_READ_ONLY,
-         TAGEND)) {
+   if (!(glIconArchive = objCompression::create::integral(fl::Path(src), fl::ArchiveName("icons"), fl::Flags(CMF_READ_ONLY)))) {
       return ERR_CreateObject;
    }
 

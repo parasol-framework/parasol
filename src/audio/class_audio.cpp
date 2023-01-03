@@ -2176,23 +2176,24 @@ static void load_config(extAudio *Self)
 
    // Attempt to get the user's preferred pointer settings from the user:config/pointer file.
 
-   OBJECTPTR config;
-   if (!CreateObject(ID_CONFIG, 0, &config, FID_Path|TSTR, "user:config/audio.cfg", TAGEND)) {
-      cfgRead(config, "AUDIO", "OutputRate", &Self->OutputRate);
-      cfgRead(config, "AUDIO", "InputRate", &Self->InputRate);
-      cfgRead(config, "AUDIO", "Quality", &Self->Quality);
-      if (!cfgRead(config, "AUDIO", "Bass", &fvalue)) Self->Bass = fvalue;
-      if (!cfgRead(config, "AUDIO", "Treble", &fvalue)) Self->Treble = fvalue;
-      cfgRead(config, "AUDIO", "BitDepth", &Self->BitDepth);
+   objConfig::create config = { fl::Path("user:config/audio.cfg") };
 
-      if (!cfgRead(config, "AUDIO", "Periods", &value)) SET_Periods(Self, value);
-      if (!cfgRead(config, "AUDIO", "PeriodSize", &value)) SET_PeriodSize(Self, value);
+   if (config.ok()) {
+      cfgRead(*config, "AUDIO", "OutputRate", &Self->OutputRate);
+      cfgRead(*config, "AUDIO", "InputRate", &Self->InputRate);
+      cfgRead(*config, "AUDIO", "Quality", &Self->Quality);
+      if (!cfgRead(*config, "AUDIO", "Bass", &fvalue)) Self->Bass = fvalue;
+      if (!cfgRead(*config, "AUDIO", "Treble", &fvalue)) Self->Treble = fvalue;
+      cfgRead(*config, "AUDIO", "BitDepth", &Self->BitDepth);
 
-      if (!cfgReadValue(config, "AUDIO", "Device", &str)) StrCopy(str, Self->prvDevice, sizeof(Self->prvDevice));
+      if (!cfgRead(*config, "AUDIO", "Periods", &value)) SET_Periods(Self, value);
+      if (!cfgRead(*config, "AUDIO", "PeriodSize", &value)) SET_PeriodSize(Self, value);
+
+      if (!cfgReadValue(*config, "AUDIO", "Device", &str)) StrCopy(str, Self->prvDevice, sizeof(Self->prvDevice));
       else StrCopy("default", Self->prvDevice, sizeof(Self->prvDevice));
 
       Self->Flags |= ADF_STEREO;
-      if (!cfgReadValue(config, "AUDIO", "Stereo", &str)) {
+      if (!cfgReadValue(*config, "AUDIO", "Stereo", &str)) {
          if (!StrMatch("FALSE", str)) Self->Flags &= ~ADF_STEREO;
       }
 
@@ -2250,8 +2251,6 @@ static void load_config(extAudio *Self)
             break;
          }
       }
-
-      acFree(config);
    }
 }
 

@@ -65,13 +65,13 @@ extern struct DisplayBase *DisplayBase;
 extern struct FontBase *FontBase;
 
 typedef agg::pod_auto_array<agg::rgba8, 256> GRADIENT_TABLE;
-typedef class objVectorClip;
 typedef class objVectorTransition;
-typedef class objVectorText;
+typedef class extVectorText;
 typedef class extVector;
 typedef class extVectorScene;
 typedef class extFilterEffect;
 typedef class extVectorViewport;
+typedef class extVectorClip;
 
 //********************************************************************************************************************
 
@@ -218,6 +218,8 @@ class objVectorTransition : public BaseClass {
 
 class extVectorGradient : public objVectorGradient {
    public:
+   using create = parasol::Create<extVectorGradient>;
+
    struct GradientStop *Stops;  // An array of gradient stop colours.
    struct VectorMatrix *Matrices;
    class GradientColours *Colours;
@@ -228,6 +230,8 @@ class extVectorGradient : public objVectorGradient {
 
 class extVectorPattern : public objVectorPattern {
    public:
+   using create = parasol::Create<extVectorPattern>;
+
    struct VectorMatrix *Matrices;
    extVectorViewport *Viewport;
    objBitmap *Bitmap;
@@ -235,6 +239,8 @@ class extVectorPattern : public objVectorPattern {
 
 class extVectorFilter : public objVectorFilter {
    public:
+   using create = parasol::Create<extVectorFilter>;
+
    extVector *ClientVector;            // Client vector or viewport supplied by Scene.acDraw()
    extVectorViewport *ClientViewport;  // The nearest viewport containing the vector.
    extVectorScene *SourceScene;        // Internal scene for rendering SourceGraphic
@@ -255,12 +261,16 @@ class extVectorFilter : public objVectorFilter {
 
 class extFilterEffect : public objFilterEffect {
    public:
+   using create = parasol::Create<extFilterEffect>;
+
    extVectorFilter *Filter; // Direct reference to the parent filter
    UWORD UsageCount;        // Total number of other effects utilising this effect to build a pipeline
 };
 
 class extVector : public objVector {
    public:
+   using create = parasol::Create<extVector>;
+
    DOUBLE FinalX, FinalY;
    DOUBLE BX1, BY1, BX2, BY2;
    DOUBLE FillGradientAlpha, StrokeGradientAlpha;
@@ -278,7 +288,7 @@ class extVector : public objVector {
    std::vector<KeyboardSubscription> *KeyboardSubscriptions;
    extVectorFilter     *Filter;
    extVectorViewport   *ParentView;
-   objVectorClip       *ClipMask;
+   extVectorClip       *ClipMask;
    extVectorGradient   *StrokeGradient, *FillGradient;
    objVectorImage      *FillImage, *StrokeImage;
    extVectorPattern    *FillPattern, *StrokePattern;
@@ -319,6 +329,8 @@ __inline__ bool TabOrderedVector::operator()(const extVector *a, const extVector
 
 class extVectorScene : public objVectorScene {
    public:
+   using create = parasol::Create<extVectorScene>;
+
    DOUBLE ActiveVectorX, ActiveVectorY; // X,Y location of the active vector.
    class VMAdaptor *Adaptor; // Drawing adaptor, targeted to bitmap pixel type
    agg::rendering_buffer *Buffer; // AGG representation of the target bitmap
@@ -340,6 +352,10 @@ class extVectorScene : public objVectorScene {
 
 class extVectorViewport : public extVector {
    public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORVIEWPORT;
+   static constexpr CSTRING CLASS_NAME = "VectorViewport";
+   using create = parasol::Create<extVectorViewport>;
+
    FUNCTION vpDragCallback;
    DOUBLE vpViewX, vpViewY, vpViewWidth, vpViewHeight;     // Viewbox values determine the area of the SVG content that is being sourced.  These values are always fixed pixel units.
    DOUBLE vpTargetX, vpTargetY, vpTargetXO, vpTargetYO, vpTargetWidth, vpTargetHeight; // Target dimensions
@@ -347,7 +363,7 @@ class extVectorViewport : public extVector {
    DOUBLE vpFixedWidth, vpFixedHeight; // Fixed pixel position values, relative to parent viewport
    DOUBLE vpBX1, vpBY1, vpBX2, vpBY2; // Bounding box coordinates relative to (0,0), used for clipping
    DOUBLE vpAlignX, vpAlignY;
-   objVectorClip *vpClipMask; // Automatically generated if the viewport is rotated or sheared.  This is in addition to the Vector ClipMask, which can be user-defined.
+   extVectorClip *vpClipMask; // Automatically generated if the viewport is rotated or sheared.  This is in addition to the Vector ClipMask, which can be user-defined.
    LONG  vpDimensions;
    LONG  vpAspectRatio;
    UBYTE vpDragging:1;
@@ -356,21 +372,33 @@ class extVectorViewport : public extVector {
 
 //********************************************************************************************************************
 
-class objVectorPoly : public extVector {
+class extVectorPoly : public extVector {
    public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORPOLYGON;
+   static constexpr CSTRING CLASS_NAME = "VectorPolygon";
+   using create = parasol::Create<extVectorPoly>;
+
    struct VectorPoint *Points;
    LONG TotalPoints;
    bool Closed:1;      // Polygons are closed (TRUE) and Polylines are open (FALSE)
 };
 
-class objVectorPath : public extVector {
+class extVectorPath : public extVector {
    public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORPATH;
+   static constexpr CSTRING CLASS_NAME = "VectorPath";
+   using create = parasol::Create<extVectorPath>;
+
    std::vector<PathCommand> Commands;
    agg::path_storage *CustomPath;
 };
 
-class objVectorRectangle : public extVector {
+class extVectorRectangle : public extVector {
    public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORRECTANGLE;
+   static constexpr CSTRING CLASS_NAME = "VectorRectangle";
+   using create = parasol::Create<extVectorRectangle>;
+
    DOUBLE rX, rY;
    DOUBLE rWidth, rHeight;
    DOUBLE rRoundX, rRoundY;
@@ -385,8 +413,12 @@ class GradientColours {
       GRADIENT_TABLE table;
 };
 
-class objVectorClip : public extVector {
+class extVectorClip : public extVector {
    public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORCLIP;
+   static constexpr CSTRING CLASS_NAME = "VectorClip";
+   using create = parasol::Create<extVectorClip>;
+
    UBYTE *ClipData;
    agg::path_storage *ClipPath; // Internally generated path
    agg::rendering_buffer ClipRenderer;
@@ -847,7 +879,7 @@ void configure_stroke(extVector &Vector, T &Stroke)
 
    if (Vector.LineJoin) {
       if (Vector.SubID IS ID_VECTORPOLYGON) {
-         if (((objVectorPoly &)Vector).Closed) {
+         if (((extVectorPoly &)Vector).Closed) {
             switch(Vector.LineJoin) {
                case VLJ_MITER:        Stroke.line_cap(agg::square_cap); break;
                case VLJ_BEVEL:        Stroke.line_cap(agg::square_cap); break;
@@ -866,9 +898,9 @@ void configure_stroke(extVector &Vector, T &Stroke)
 
 extern agg::gamma_lut<UBYTE, UWORD, 8, 12> glGamma;
 
-extern void get_text_xy(objVectorText *);
+extern void get_text_xy(extVectorText *);
 extern void  vecArcTo(class SimpleVector *, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, LONG Flags);
-extern ERROR vecApplyPath(class SimpleVector *, objVectorPath *);
+extern ERROR vecApplyPath(class SimpleVector *, extVectorPath *);
 extern void  vecClosePath(class SimpleVector *);
 extern void  vecCurve3(class SimpleVector *, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
 extern void  vecCurve4(class SimpleVector *, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y);

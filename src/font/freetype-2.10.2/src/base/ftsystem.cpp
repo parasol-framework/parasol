@@ -238,26 +238,19 @@ extern struct CoreBase *CoreBase;
   /* documentation is in ftstream.h */
 
   FT_BASE_DEF( FT_Error )
-  FT_Stream_Open( FT_Stream    stream,
-                  const char*  filepathname )
+  FT_Stream_Open( FT_Stream stream, const char *filepathname )
   {
-   OBJECTPTR file;
-   extern OBJECTPTR modFont;
-   ERROR error;
-
    if (!stream) return FT_Err_Invalid_Stream_Handle;
 
-   {
-      parasol::SwitchContext ctx(modFont);
+   OBJECTPTR file = NULL;
 
-      error = CreateObject(ID_FILE, NF_INTEGRAL, &file,
-            FID_Name|TSTR,   "FreetypeTTFile",
-            FID_Path|TSTR,   filepathname,
-            FID_Flags|TLONG, FL_READ,
-            TAGEND);
+   {
+      extern OBJECTPTR modFont;
+      parasol::SwitchContext ctx(modFont);
+      file = objFile::create::integral(fl::Name("FreetypeTTFile"), fl::Path(filepathname), fl::Flags(FL_READ));
    }
 
-   if (!error) {
+   if (file) {
       LONG size;
       file->get(FID_Size, &size);
       stream->size = size;
