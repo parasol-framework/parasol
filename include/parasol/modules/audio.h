@@ -147,7 +147,6 @@ typedef struct {
 
 #define MAX_CHANNELSETS 8
 #define DEFAULT_BUFFER_SIZE 8096 // Measured in samples, not bytes
-  
 struct AudioSample {
    UBYTE *  Data;        // Private.  Pointer to the sample data.
    OBJECTID StreamID;    // Reference to an object to use for streaming
@@ -310,6 +309,11 @@ INLINE ERROR sndSetVolume(APTR Ob, LONG Index, CSTRING Name, LONG Flags, DOUBLE 
 
 class objAudio : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_AUDIO;
+   static constexpr CSTRING CLASS_NAME = "Audio";
+
+   using create = parasol::Create<objAudio>;
+
    DOUBLE Bass;           // Sets the amount of bass to use for audio playback.
    DOUBLE Treble;         // Sets the amount of treble to use for audio playback.
    LONG   OutputRate;     // Determines the frequency to use for the output of audio data.
@@ -320,6 +324,7 @@ class objAudio : public BaseClass {
    LONG   BitDepth;       // The bit depth affects the overall quality of audio input and output.
    LONG   Periods;        // Defines the number of periods that make up the internal audio buffer.
    LONG   PeriodSize;     // Defines the byte size of each period allocated to the internal audio buffer.
+
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
@@ -340,6 +345,11 @@ class objAudio : public BaseClass {
 
 class objSound : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_SOUND;
+   static constexpr CSTRING CLASS_NAME = "Sound";
+
+   using create = parasol::Create<objSound>;
+
    DOUBLE    Volume;       // The volume to use when playing the sound sample.
    DOUBLE    Pan;          // Determines the horizontal position of a sound when played through stereo speakers.
    LONG      Priority;     // The priority of a sound in relation to other sound samples being played.
@@ -360,7 +370,8 @@ class objSound : public BaseClass {
    LONG      Position;     // The current playback position.
    LONG      Handle;       // Audio handle acquired at the audio object [Private - Available to child classes]
    LONG      ChannelIndex; // Refers to the channel that the sound is playing through.
-   OBJECTPTR File;         // Refers to the file object that contains the audio data for playback.
+   objFile * File;         // Refers to the file object that contains the audio data for playback.
+
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }

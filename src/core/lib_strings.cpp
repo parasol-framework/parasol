@@ -892,7 +892,7 @@ ERROR StrReadLocale(CSTRING Key, CSTRING *Value)
             if (!AndroidBase) {  // Note that the module is terminated through resource tracking, we don't free it during our CMDExpunge() sequence for system integrity reasons.
                parasol::SwitchContext ctx(CurrentTask());
                OBJECTPTR module;
-               LoadModule("android", MODVERSION_FLUID, &module, &AndroidBase);
+               objModule::load("android", MODVERSION_FLUID, &module, &AndroidBase);
                if (!AndroidBase) return NULL;
             }
 

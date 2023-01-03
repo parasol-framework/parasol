@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <bit>
 #endif
 
 class objStorageDevice;
@@ -1489,16 +1490,15 @@ INLINE LONG F2I(DOUBLE val) {
 
 #endif
 
-INLINE LONG F2T(DOUBLE val) // For numbers no larger than 16 bit, standard (LONG) is faster than F2T().
+inline LONG F2T(DOUBLE val) // For numbers no larger than 16 bit, standard (LONG) is faster than F2T().
 {
-   if ((val > 32767.0) OR (val < -32767.0)) return((LONG)val);
+   if ((val > 32767.0) or (val < -32767.0)) return((LONG)val);
    else {
       val = val + (68719476736.0 * 1.5);
-#ifdef REVERSE_BYTEORDER
-      return ((LONG *)(APTR)&val)[0]>>16;
-#else
-      return ((LONG *)&val)[1]>>16;
-#endif
+      if constexpr (std::endian::native == std::endian::little) {
+         return ((LONG *)(APTR)&val)[0]>>16;
+      }
+      else return ((LONG *)&val)[1]>>16;
    }
 }
 
@@ -1650,6 +1650,7 @@ struct FieldValue {
       LONG    Long;
    };
 
+   //std::string not included as not compatible with constexpr
    constexpr FieldValue(ULONG pFID, CSTRING pValue) : FieldID(pFID), Type(FD_STRING), String(pValue) { };
    constexpr FieldValue(ULONG pFID, LONG pValue)    : FieldID(pFID), Type(FD_LONG), Long(pValue) { };
    constexpr FieldValue(ULONG pFID, LARGE pValue)   : FieldID(pFID), Type(FD_LARGE), Large(pValue) { };
@@ -3071,17 +3072,18 @@ class objFile : public BaseClass {
    }
    inline ERROR init() { return Action(AC_Init, this, NULL); }
    inline ERROR query() { return Action(AC_Query, this, NULL); }
-   inline ERROR read(APTR Buffer, LONG Bytes, LONG *Result) {
+   template <class T> ERROR read(APTR Buffer, T Bytes, LONG *Result) {
       ERROR error;
-      struct acRead read = { (BYTE *)Buffer, Bytes };
-      if (!(error = Action(AC_Read, this, &read))) {
-         if (Result) *Result = read.Result;
-         return ERR_Okay;
-      }
-      else {
-         if (Result) *Result = 0;
-         return error;
-      }
+      if (Bytes > 0x7fffffff) Bytes = 0x7fffffff;
+      struct acRead read = { (BYTE *)Buffer, (LONG)Bytes };
+      if (!(error = Action(AC_Read, this, &read))) *Result = read.Result;
+      else *Result = 0;
+      return error;
+   }
+   template <class T> ERROR read(APTR Buffer, T Bytes) {
+      if (Bytes > 0x7fffffff) Bytes = 0x7fffffff;
+      struct acRead read = { (BYTE *)Buffer, (LONG)Bytes };
+      return Action(AC_Read, this, &read);
    }
    inline ERROR rename(CSTRING Name) {
       struct acRename args = { Name };
@@ -3575,6 +3577,19 @@ class objModule : public BaseClass {
    struct ModuleMaster * Master;            // For internal use only.
    struct ModHeader * Header;               // For internal usage only.
    LONG   Flags;                            // Optional flags.
+   public:
+   static ERROR load(std::string Name, DOUBLE Version, OBJECTPTR *Module = NULL, APTR Functions = NULL) {
+      if (auto module = objModule::create::global(parasol::FieldValue(FID_Name, Name.c_str()), parasol::FieldValue(FID_Version, Version))) {
+         APTR functionbase;
+         if (!module->getPtr(FID_ModBase, &functionbase)) {
+            if (Module) *Module = module;
+            if (Functions) ((APTR *)Functions)[0] = functionbase;
+            return ERR_Okay;
+         }
+         else return ERR_GetField;
+      }
+      else return ERR_CreateObject;
+   }
 
    // Action stubs
 
@@ -4128,7 +4143,7 @@ inline CSTRING flReadLine(OBJECTPTR Object) {
    else return NULL;
 }
 
-// Read little endian values.
+// Read endian values from files and objects.
 
 template<class T> ERROR flReadLE(OBJECTPTR Object, T *Result)
 {
@@ -4136,16 +4151,41 @@ template<class T> ERROR flReadLE(OBJECTPTR Object, T *Result)
    struct acRead read = { .Buffer = data, .Length = sizeof(T) };
    if (!Action(AC_Read, Object, &read)) {
       if (read.Result IS sizeof(T)) {
-         #ifdef LITTLE_ENDIAN // The CPU is little endian
+         if constexpr (std::endian::native == std::endian::little) {
             *Result = ((T *)data)[0];
-         #else
+         }
+         else {
             switch(sizeof(T)) {
                case 2:  *Result = (data[1]<<8) | data[0]; break;
                case 4:  *Result = (data[0]<<24)|(data[1]<<16)|(data[2]<<8)|(data[3]); break;
                case 8:  *Result = ((LARGE)data[0]<<56)|((LARGE)data[1]<<48)|((LARGE)data[2]<<40)|((LARGE)data[3]<<32)|(data[4]<<24)|(data[5]<<16)|(data[6]<<8)|(data[7]); break;
                default: *Result = ((T *)data)[0];
             }
-         #endif
+         }
+         return ERR_Okay;
+      }
+      else return ERR_Read;
+   }
+   else return ERR_Read;
+}
+
+template<class T> ERROR flReadBE(OBJECTPTR Object, T *Result)
+{
+   UBYTE data[sizeof(T)];
+   struct acRead read = { .Buffer = data, .Length = sizeof(T) };
+   if (!Action(AC_Read, Object, &read)) {
+      if (read.Result IS sizeof(T)) {
+         if constexpr (std::endian::native == std::endian::little) {
+            switch(sizeof(T)) {
+               case 2:  *Result = (data[1]<<8) | data[0]; break;
+               case 4:  *Result = (data[0]<<24)|(data[1]<<16)|(data[2]<<8)|(data[3]); break;
+               case 8:  *Result = ((LARGE)data[0]<<56)|((LARGE)data[1]<<48)|((LARGE)data[2]<<40)|((LARGE)data[3]<<32)|(data[4]<<24)|(data[5]<<16)|(data[6]<<8)|(data[7]); break;
+               default: *Result = ((T *)data)[0];
+            }
+         }
+         else {
+            *Result = ((T *)data)[0];
+         }
          return ERR_Okay;
       }
       else return ERR_Read;

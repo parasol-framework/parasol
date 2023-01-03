@@ -241,7 +241,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    log.msg("Using display driver '%s'", displaymod);
 
    APTR driver_base;
-   if (LoadModule(displaymod, 1.0, (OBJECTPTR *)&modDriver, &driver_base) != ERR_Okay) {
+   if (objModule::load(displaymod, 1.0, (OBJECTPTR *)&modDriver, &driver_base) != ERR_Okay) {
 #if defined(__linux__) && !defined(__ANDROID__)
       if (display IS DISPLAY_X11) {
          static UBYTE x11_fail = FALSE;

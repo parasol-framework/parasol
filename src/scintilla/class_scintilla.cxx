@@ -237,13 +237,13 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   if (LoadModule((STRING)"display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
-   if (LoadModule((STRING)"font", MODVERSION_FONT, &modFont, &FontBase) != ERR_Okay) return ERR_InitModule;
-   if (LoadModule("vector", MODVERSION_VECTOR, &modVector, &VectorBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("font", MODVERSION_FONT, &modFont, &FontBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("vector", MODVERSION_VECTOR, &modVector, &VectorBase) != ERR_Okay) return ERR_InitModule;
 
    objXML *style;
    if (!FindPrivateObject("glStyle", &style)) {
-      BYTE buffer[40];
+      char buffer[40];
       if (!acGetVar(style, "/colours/@texthighlight", buffer, sizeof(buffer))) {
          read_rgb8(buffer, &glHighlight);
       }

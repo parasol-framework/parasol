@@ -51,6 +51,11 @@ struct FontList {
 
 class objFont : public BaseClass {
    public:
+   static constexpr CLASSID CLASS_ID = ID_FONT;
+   static constexpr CSTRING CLASS_NAME = "Font";
+
+   using create = parasol::Create<objFont>;
+
    DOUBLE Angle;                                         // A rotation angle to use when drawing scalable fonts.
    DOUBLE Point;                                         // The point size of a font.
    DOUBLE StrokeSize;                                    // The strength of stroked outlines is defined here.
@@ -86,6 +91,7 @@ class objFont : public BaseClass {
    LONG   EndY;                                          // Indicates the final vertical coordinate after completing a draw operation.
    LONG   VDPI;                                          // Defines the vertical dots-per-inch of the target device.
    LONG   HDPI;                                          // Defines the horizontal dots-per-inch of the target device.
+
    // Action stubs
 
    inline ERROR draw() { return Action(AC_Draw, this, NULL); }
