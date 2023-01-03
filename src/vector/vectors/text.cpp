@@ -1513,19 +1513,17 @@ static void generate_text_bitmap(objVectorText *Vector)
    }
 
    if (!Vector->txBitmapImage) {
-      if (CreateObject(ID_BITMAP, NF_INTEGRAL, &Vector->txAlphaBitmap,
-            FID_Width|TLONG,        longest_line_width,
-            FID_Height|TLONG,       dy,
-            FID_BitsPerPixel|TLONG, 32,
-            FID_Flags|TLONG,        BMF_ALPHA_CHANNEL,
-            TAGEND) != ERR_Okay) return;
+      if (!(Vector->txAlphaBitmap = objBitmap::create::integral(
+            fl::Width(longest_line_width),
+            fl::Height(dy),
+            fl::BitsPerPixel(32),
+            fl::Flags(BMF_ALPHA_CHANNEL)))) return;
 
-      if (CreateObject(ID_VECTORIMAGE, NF_INTEGRAL, &Vector->txBitmapImage,
-            FID_Bitmap|TPTR,        Vector->txAlphaBitmap,
-            FID_SpreadMethod|TLONG, VSPREAD_CLIP,
-            FID_Units|TLONG,        VUNIT_BOUNDING_BOX,
-            FID_AspectRatio|TLONG,  ARF_X_MIN|ARF_Y_MIN,
-            TAGEND) != ERR_Okay) return;
+      if (!(Vector->txBitmapImage = objVectorImage::create::integral(
+            fl::Bitmap(Vector->txAlphaBitmap),
+            fl::SpreadMethod(VSPREAD_CLIP),
+            fl::Units(VUNIT_BOUNDING_BOX),
+            fl::AspectRatio(ARF_X_MIN|ARF_Y_MIN)))) return;
    }
    else acResize(Vector->txAlphaBitmap, longest_line_width, dy, 0);
 

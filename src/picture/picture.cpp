@@ -88,7 +88,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    CoreBase = argCoreBase;
 
    if (argModule->getPtr(FID_Master, &modPicture) != ERR_Okay) return ERR_GetField;
-   if (LoadModule("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
 
    return(create_picture_class());
 }

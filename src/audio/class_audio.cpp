@@ -1228,14 +1228,10 @@ SaveSettings: Saves the current audio settings.
 
 static ERROR AUDIO_SaveSettings(extAudio *Self, APTR Void)
 {
-   OBJECTPTR file;
-   if (!CreateObject(ID_FILE, NF_INTEGRAL, &file,
-         FID_Path|TSTR,   "user:config/audio.cfg",
-         FID_Flags|TLONG, FL_NEW|FL_WRITE,
-         TAGEND)) {
-      ERROR error = acSaveToObject(Self, file->UID, 0);
-      acFree(file);
-      return error;
+   objFile::create file = { fl::Path("user:config/audio.cfg"), fl::Flags(FL_NEW|FL_WRITE) };
+
+   if (file.ok()) {
+      return acSaveToObject(Self, file->UID, 0);
    }
    else return ERR_CreateFile;
 }
@@ -1249,31 +1245,32 @@ SaveToObject: Saves the current audio settings to another object.
 static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 {
    parasol::Log log;
-   OBJECTPTR config;
-   char buffer[128];
 
    if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
 
-   if (!CreateObject(ID_CONFIG, NF_INTEGRAL, &config, TAGEND)) {
-      cfgWrite(config, "AUDIO", "OutputRate", Self->OutputRate);
-      cfgWrite(config, "AUDIO", "InputRate", Self->InputRate);
-      cfgWrite(config, "AUDIO", "Quality", Self->Quality);
-      cfgWrite(config, "AUDIO", "BitDepth", Self->BitDepth);
-      cfgWrite(config, "AUDIO", "Periods", Self->Periods);
-      cfgWrite(config, "AUDIO", "PeriodSize", Self->PeriodSize);
+   objConfig::create config = { };
+   if (config.ok()) {
+      char buffer[128];
+
+      cfgWrite(*config, "AUDIO", "OutputRate", Self->OutputRate);
+      cfgWrite(*config, "AUDIO", "InputRate", Self->InputRate);
+      cfgWrite(*config, "AUDIO", "Quality", Self->Quality);
+      cfgWrite(*config, "AUDIO", "BitDepth", Self->BitDepth);
+      cfgWrite(*config, "AUDIO", "Periods", Self->Periods);
+      cfgWrite(*config, "AUDIO", "PeriodSize", Self->PeriodSize);
 
       StrFormat(buffer, sizeof(buffer), "%.4f", Self->Bass);
-      cfgWriteValue(config, "AUDIO", "Bass", buffer);
+      cfgWriteValue(*config, "AUDIO", "Bass", buffer);
 
       StrFormat(buffer, sizeof(buffer), "%.4f", Self->Treble);
-      cfgWriteValue(config, "AUDIO", "Treble", buffer);
+      cfgWriteValue(*config, "AUDIO", "Treble", buffer);
 
-      if (Self->Flags & ADF_STEREO) cfgWriteValue(config, "AUDIO", "Stereo", "TRUE");
-      else cfgWriteValue(config, "AUDIO", "Stereo", "FALSE");
+      if (Self->Flags & ADF_STEREO) cfgWriteValue(*config, "AUDIO", "Stereo", "TRUE");
+      else cfgWriteValue(*config, "AUDIO", "Stereo", "FALSE");
 
 #ifdef __linux__
-      if (Self->prvDevice[0]) cfgWriteValue(config, "AUDIO", "Device", Self->prvDevice);
-      else cfgWriteValue(config, "AUDIO", "Device", "default");
+      if (Self->prvDevice[0]) cfgWriteValue(*config, "AUDIO", "Device", Self->prvDevice);
+      else cfgWriteValue(*config, "AUDIO", "Device", "default");
 
       if ((Self->VolumeCtl) and (Self->Flags & ADF_SYSTEM_WIDE)) {
          for (LONG i=0; Self->VolumeCtl[i].Name[0]; i++) {
@@ -1293,7 +1290,7 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
             buffer[pos++] = ']';
             buffer[pos] = 0;
 
-            cfgWriteValue(config, "MIXER", Self->VolumeCtl[i].Name, buffer);
+            cfgWriteValue(*config, "MIXER", Self->VolumeCtl[i].Name, buffer);
          }
       }
 #if 0
@@ -1334,19 +1331,18 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
       fright = (DOUBLE)right * 100.0 / (DOUBLE)(pmax - pmin);
       StrFormat(buffer, sizeof(buffer), "%.2f,%.2f,%d", fleft, fright, (mute) ? 0 : 1);
 
-      cfgWriteValue(config, "MIXER", Self->VolumeCtl[i].Name, buffer);
+      cfgWriteValue(*config, "MIXER", Self->VolumeCtl[i].Name, buffer);
    }
 #endif
 
 #else
       if (Self->VolumeCtl) {
          StrFormat(buffer, sizeof(buffer), "%d,[%.2f]", (Self->VolumeCtl[0].Flags & VCF_MUTE) ? 1 : 0, Self->VolumeCtl[0].Channels[0]);
-         cfgWriteValue(config, "MIXER", Self->VolumeCtl[0].Name, buffer);
+         cfgWriteValue(*config, "MIXER", Self->VolumeCtl[0].Name, buffer);
       }
 #endif
 
-      acSaveToObject(config, Args->DestID, 0);
-      acFree(config);
+      config->saveToObject(Args->DestID, 0);
    }
 
    return ERR_Okay;

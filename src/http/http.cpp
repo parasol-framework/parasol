@@ -275,7 +275,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   if (LoadModule("network", MODVERSION_NETWORK, &modNetwork, &NetworkBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("network", MODVERSION_NETWORK, &modNetwork, &NetworkBase) != ERR_Okay) return ERR_InitModule;
 
    if (!CreateObject(ID_PROXY, 0, &glProxy, TAGEND)) {
    }

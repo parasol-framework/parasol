@@ -254,7 +254,7 @@ typedef struct {
     int Position       # Byte position to start playing from
     int Handle         # Audio handle acquired at the audio object [Private - Available to child classes]
     int ChannelIndex   # Channel handle that the sound was last played on
-    obj File           # Private. The file holding the sample data; available to child classes only.
+    obj(File) File     # Private. The file holding the sample data; available to child classes only.
   ]])
 
   functionNames("snd",

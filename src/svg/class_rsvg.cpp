@@ -81,7 +81,7 @@ static ERROR RSVG_Query(prvPicture *Self, APTR Void)
    if (!prv->SVG) {
       STRING path;
       if (!Self->get(FID_Path, &path)) {
-         if (!CreateObject(ID_SVG, NF_INTEGRAL, &prv->SVG, FID_Path|TSTR, path, TAGEND)) {
+         if ((prv->SVG = objSVG::create::integral(fl::Path(path)))) {
          }
          else return log.warning(ERR_CreateObject);
       }
@@ -90,7 +90,7 @@ static ERROR RSVG_Query(prvPicture *Self, APTR Void)
 
    objVectorScene *scene;
    ERROR error;
-   if ((!(error = prv->SVG->getPtr(FID_Scene, &scene))) AND (scene)) {
+   if ((!(error = prv->SVG->getPtr(FID_Scene, &scene))) and (scene)) {
       if (Self->Flags & PCF_FORCE_ALPHA_32) {
          bmp->Flags |= BMF_ALPHA_CHANNEL;
          bmp->BitsPerPixel  = 32;
