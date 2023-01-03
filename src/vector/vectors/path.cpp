@@ -11,7 +11,7 @@ VectorPath provides support for parsing SVG styled path strings.
 
 //****************************************************************************
 
-static void generate_path(objVectorPath *Vector)
+static void generate_path(extVectorPath *Vector)
 {
    // TODO: We may be able to drop our internal PathCommand type in favour of agg:path_storage (and
    // extend it if necessary).
@@ -152,7 +152,7 @@ void convert_to_aggpath(std::vector<PathCommand> &Paths, agg::path_storage *Base
 
 //****************************************************************************
 
-static ERROR VECTORPATH_Clear(objVectorPath *Self, APTR Void)
+static ERROR VECTORPATH_Clear(extVectorPath *Self, APTR Void)
 {
    Self->Commands.clear();
    if (Self->CustomPath) { delete Self->CustomPath; Self->CustomPath = NULL; }
@@ -162,7 +162,7 @@ static ERROR VECTORPATH_Clear(objVectorPath *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR VECTORPATH_Flush(objVectorPath *Self, APTR Void)
+static ERROR VECTORPATH_Flush(extVectorPath *Self, APTR Void)
 {
 //   if (Self->CustomPath) { delete Self->CustomPath; Self->CustomPath = NULL; }
    reset_path(Self);
@@ -171,7 +171,7 @@ static ERROR VECTORPATH_Flush(objVectorPath *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR VECTORPATH_Free(objVectorPath *Self, APTR Void)
+static ERROR VECTORPATH_Free(extVectorPath *Self, APTR Void)
 {
    Self->Commands.~vector();
    if (Self->CustomPath) { delete Self->CustomPath; Self->CustomPath = NULL; }
@@ -180,14 +180,14 @@ static ERROR VECTORPATH_Free(objVectorPath *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR VECTORPATH_Init(objVectorPath *Self, APTR Void)
+static ERROR VECTORPATH_Init(extVectorPath *Self, APTR Void)
 {
    return ERR_Okay;
 }
 
 //****************************************************************************
 
-static ERROR VECTORPATH_NewObject(objVectorPath *Self, APTR Void)
+static ERROR VECTORPATH_NewObject(extVectorPath *Self, APTR Void)
 {
    new(&Self->Commands) std::vector<PathCommand>;
    Self->GeneratePath = (void (*)(extVector *))&generate_path;
@@ -214,7 +214,7 @@ NullArgs
 
 *****************************************************************************/
 
-static ERROR VECTORPATH_AddCommand(objVectorPath *Self, struct vpAddCommand *Args)
+static ERROR VECTORPATH_AddCommand(extVectorPath *Self, struct vpAddCommand *Args)
 {
    parasol::Log log;
 
@@ -252,7 +252,7 @@ OutOfRange
 
 *****************************************************************************/
 
-static ERROR VECTORPATH_GetCommand(objVectorPath *Self, struct vpGetCommand *Args)
+static ERROR VECTORPATH_GetCommand(extVectorPath *Self, struct vpGetCommand *Args)
 {
    parasol::Log log;
 
@@ -283,7 +283,7 @@ NothingDone
 
 *****************************************************************************/
 
-static ERROR VECTORPATH_RemoveCommand(objVectorPath *Self, struct vpRemoveCommand *Args)
+static ERROR VECTORPATH_RemoveCommand(extVectorPath *Self, struct vpRemoveCommand *Args)
 {
    parasol::Log log;
 
@@ -319,7 +319,7 @@ BufferOverflow
 
 *****************************************************************************/
 
-static ERROR VECTORPATH_SetCommand(objVectorPath *Self, struct vpSetCommand *Args)
+static ERROR VECTORPATH_SetCommand(extVectorPath *Self, struct vpSetCommand *Args)
 {
    parasol::Log log;
 
@@ -360,7 +360,7 @@ Args
 
 *****************************************************************************/
 
-static ERROR VECTORPATH_SetCommandList(objVectorPath *Self, struct vpSetCommandList *Args)
+static ERROR VECTORPATH_SetCommandList(extVectorPath *Self, struct vpSetCommandList *Args)
 {
    parasol::Log log;
 
@@ -391,7 +391,7 @@ directly.  After making changes to the path, call #Flush() to register the chang
 
 *****************************************************************************/
 
-static ERROR VECTORPATH_GET_Commands(objVectorPath *Self, PathCommand **Value, LONG *Elements)
+static ERROR VECTORPATH_GET_Commands(extVectorPath *Self, PathCommand **Value, LONG *Elements)
 {
    *Value = Self->Commands.data();
    *Elements = Self->Commands.size();
@@ -410,13 +410,13 @@ operations.
 
 *****************************************************************************/
 
-static ERROR VECTORPATH_GET_PathLength(objVectorPath *Self, LONG *Value)
+static ERROR VECTORPATH_GET_PathLength(extVectorPath *Self, LONG *Value)
 {
    *Value = Self->PathLength;
    return ERR_Okay;
 }
 
-static ERROR VECTORPATH_SET_PathLength(objVectorPath *Self, LONG Value)
+static ERROR VECTORPATH_SET_PathLength(extVectorPath *Self, LONG Value)
 {
    if (Value >= 0) {
       Self->PathLength = Value;
@@ -455,7 +455,7 @@ To terminate a path without joining it to the first coordinate, omit the 'Z' fro
 
 *****************************************************************************/
 
-static ERROR VECTORPATH_SET_Sequence(objVectorPath *Self, CSTRING Value)
+static ERROR VECTORPATH_SET_Sequence(extVectorPath *Self, CSTRING Value)
 {
    Self->Commands.clear();
    if (Self->CustomPath) { delete Self->CustomPath; Self->CustomPath = NULL; }
@@ -475,13 +475,13 @@ permitted, although this should be used for shrinking the list because expansion
 -END-
 *****************************************************************************/
 
-static ERROR VECTORPATH_GET_TotalCommands(objVectorPath *Self, LONG *Value)
+static ERROR VECTORPATH_GET_TotalCommands(extVectorPath *Self, LONG *Value)
 {
    *Value = Self->Commands.size();
    return ERR_Okay;
 }
 
-static ERROR VECTORPATH_SET_TotalCommands(objVectorPath *Self, LONG Value)
+static ERROR VECTORPATH_SET_TotalCommands(extVectorPath *Self, LONG Value)
 {
    parasol::Log log;
    if (Value < 0) return log.warning(ERR_OutOfRange);
@@ -513,7 +513,7 @@ static ERROR init_path(void)
       fl::Actions(clVectorPathActions),
       fl::Methods(clVectorPathMethods),
       fl::Fields(clPathFields),
-      fl::Size(sizeof(objVectorPath)),
+      fl::Size(sizeof(extVectorPath)),
       fl::Path(MOD_PATH));
 
    return clVectorPath ? ERR_Okay : ERR_AddClass;

@@ -288,10 +288,7 @@ static void expose_buffer(SurfaceList *list, LONG Total, LONG Index, LONG ScanIn
       }
 
       if (!glComposite) {
-         if (CreateObject(ID_BITMAP, NF_UNTRACKED, &glComposite,
-               FID_Width|TLONG,  list[Index].Width,
-               FID_Height|TLONG, list[Index].Height,
-               TAGEND) != ERR_Okay) {
+         if (!(glComposite = extBitmap::create::untracked(fl::Width(list[Index].Width), fl::Height(list[Index].Height)))) {
             return;
          }
 
@@ -810,8 +807,9 @@ static void event_user_login(extSurface *Self, APTR Info, LONG InfoSize)
 
    log.function("User login detected - resetting screen mode.");
 
-   OBJECTPTR config;
-   if (!CreateObject(ID_CONFIG, NF_INTEGRAL, &config, FID_Path|TSTR, "user:config/display.cfg", TAGEND)) {
+   objConfig::create config = { fl::Path("user:config/display.cfg") };
+
+   if (config.ok()) {
       OBJECTPTR object;
       CSTRING str;
 
@@ -823,15 +821,15 @@ static void event_user_login(extSurface *Self, APTR Info, LONG InfoSize)
       LONG width         = Self->Width;
       LONG height        = Self->Height;
 
-      cfgRead(config, "DISPLAY", "Width", &width);
-      cfgRead(config, "DISPLAY", "Height", &height);
-      cfgRead(config, "DISPLAY", "Depth", &depth);
-      cfgRead(config, "DISPLAY", "RefreshRate", &refreshrate);
-      cfgRead(config, "DISPLAY", "GammaRed", &gammared);
-      cfgRead(config, "DISPLAY", "GammaGreen", &gammagreen);
-      cfgRead(config, "DISPLAY", "GammaBlue", &gammablue);
+      cfgRead(*config, "DISPLAY", "Width", &width);
+      cfgRead(*config, "DISPLAY", "Height", &height);
+      cfgRead(*config, "DISPLAY", "Depth", &depth);
+      cfgRead(*config, "DISPLAY", "RefreshRate", &refreshrate);
+      cfgRead(*config, "DISPLAY", "GammaRed", &gammared);
+      cfgRead(*config, "DISPLAY", "GammaGreen", &gammagreen);
+      cfgRead(*config, "DISPLAY", "GammaBlue", &gammablue);
 
-      if (!cfgReadValue(config, "DISPLAY", "DPMS", &str)) {
+      if (!cfgReadValue(*config, "DISPLAY", "DPMS", &str)) {
          if (!AccessObject(Self->DisplayID, 3000, &object)) {
             object->set(FID_DPMS, str);
             ReleaseObject(object);
@@ -861,8 +859,6 @@ static void event_user_login(extSurface *Self, APTR Info, LONG InfoSize)
          .Flags = GMF_SAVE
       };
       ActionMsg(MT_GfxSetGamma, Self->DisplayID, &gamma);
-
-      acFree(config);
    }
 }
 

@@ -593,19 +593,20 @@ class objBitmap : public BaseClass {
    inline ERROR init() { return Action(AC_Init, this, NULL); }
    inline ERROR lock() { return Action(AC_Lock, this, NULL); }
    inline ERROR query() { return Action(AC_Query, this, NULL); }
-   inline ERROR read(APTR Buffer, LONG Bytes, LONG *Result) {
+   template <class T> ERROR read(APTR Buffer, T Bytes, LONG *Result) {
       ERROR error;
-      struct acRead read = { (BYTE *)Buffer, Bytes };
-      if (!(error = Action(AC_Read, this, &read))) {
-         if (Result) *Result = read.Result;
-         return ERR_Okay;
-      }
-      else {
-         if (Result) *Result = 0;
-         return error;
-      }
+      if (Bytes > 0x7fffffff) Bytes = 0x7fffffff;
+      struct acRead read = { (BYTE *)Buffer, (LONG)Bytes };
+      if (!(error = Action(AC_Read, this, &read))) *Result = read.Result;
+      else *Result = 0;
+      return error;
    }
-   inline ERROR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+   template <class T> ERROR read(APTR Buffer, T Bytes) {
+      if (Bytes > 0x7fffffff) Bytes = 0x7fffffff;
+      struct acRead read = { (BYTE *)Buffer, (LONG)Bytes };
+      return Action(AC_Read, this, &read);
+   }
+   inline ERROR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
    }
@@ -613,7 +614,7 @@ class objBitmap : public BaseClass {
       struct acSaveImage args = { { DestID }, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }
-   inline ERROR seek(DOUBLE Offset, LONG Position) {
+   inline ERROR seek(DOUBLE Offset, LONG Position = SEEK_CURRENT) {
       struct acSeek args = { Offset, Position };
       return Action(AC_Seek, this, &args);
    }
@@ -773,7 +774,11 @@ class objDisplay : public BaseClass {
       struct acRedimension args = { X, Y, Z, Width, Height, Depth };
       return Action(AC_Redimension, this, &args);
    }
-   inline ERROR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+   inline ERROR redimension(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
+      struct acRedimension args = { X, Y, 0, Width, Height, 0 };
+      return Action(AC_Redimension, this, &args);
+   }
+   inline ERROR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
    }
@@ -1044,7 +1049,11 @@ class objSurface : public BaseClass {
       struct acRedimension args = { X, Y, Z, Width, Height, Depth };
       return Action(AC_Redimension, this, &args);
    }
-   inline ERROR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+   inline ERROR redimension(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
+      struct acRedimension args = { X, Y, 0, Width, Height, 0 };
+      return Action(AC_Redimension, this, &args);
+   }
+   inline ERROR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
    }
@@ -1052,7 +1061,7 @@ class objSurface : public BaseClass {
       struct acSaveImage args = { { DestID }, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }
-   inline ERROR scroll(DOUBLE X, DOUBLE Y, DOUBLE Z) {
+   inline ERROR scroll(DOUBLE X, DOUBLE Y, DOUBLE Z = 0) {
       struct acScroll args = { X, Y, Z };
       return Action(AC_Scroll, this, &args);
    }

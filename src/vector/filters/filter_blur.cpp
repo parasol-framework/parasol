@@ -73,8 +73,12 @@ UBYTE const stack_blur_tables<T>::g_stack_blur8_shr[255] =
    24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24
 };
 
-class objBlurFX : public extFilterEffect {
+class extBlurFX : public extFilterEffect {
    public:
+   static constexpr CLASSID CLASS_ID = ID_BLURFX;
+   static constexpr CSTRING CLASS_NAME = "BlurFX";
+   using create = parasol::Create<extBlurFX>;
+
    DOUBLE SX, SY;
 };
 
@@ -82,7 +86,7 @@ class objBlurFX : public extFilterEffect {
 // This is the stack blur algorithm originally implemented in AGG.  It is intended to produce a near identical output
 // to that of a standard gaussian blur algorithm.
 
-static ERROR BLURFX_Draw(objBlurFX *Self, struct acDraw *Args)
+static ERROR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
 {
    auto bmp = Self->Target;
    if (bmp->BytesPerPixel != 4) return ERR_Failed;
@@ -352,13 +356,13 @@ If either value is 0 or less, the effect is disabled on that axis.
 
 *********************************************************************************************************************/
 
-static ERROR BLURFX_GET_SX(objBlurFX *Self, DOUBLE *Value)
+static ERROR BLURFX_GET_SX(extBlurFX *Self, DOUBLE *Value)
 {
    *Value = Self->SX;
    return ERR_Okay;
 }
 
-static ERROR BLURFX_SET_SX(objBlurFX *Self, DOUBLE Value)
+static ERROR BLURFX_SET_SX(extBlurFX *Self, DOUBLE Value)
 {
    Self->SX = Value;
    return ERR_Okay;
@@ -375,13 +379,13 @@ If either value is 0 or less, the effect is disabled on that axis.
 
 *********************************************************************************************************************/
 
-static ERROR BLURFX_GET_SY(objBlurFX *Self, DOUBLE *Value)
+static ERROR BLURFX_GET_SY(extBlurFX *Self, DOUBLE *Value)
 {
    *Value = Self->SY;
    return ERR_Okay;
 }
 
-static ERROR BLURFX_SET_SY(objBlurFX *Self, DOUBLE Value)
+static ERROR BLURFX_SET_SY(extBlurFX *Self, DOUBLE Value)
 {
    Self->SY = Value;
    return ERR_Okay;
@@ -395,7 +399,7 @@ XMLDef: Returns an SVG compliant XML string that describes the effect.
 
 *********************************************************************************************************************/
 
-static ERROR BLURFX_GET_XMLDef(objBlurFX *Self, STRING *Value)
+static ERROR BLURFX_GET_XMLDef(extBlurFX *Self, STRING *Value)
 {
    std::stringstream stream;
    stream << "feGaussianBlur stdDeviation=\"" << Self->SX << " " << Self->SY << "\"";
@@ -425,7 +429,7 @@ ERROR init_blurfx(void)
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clBlurFXActions),
       fl::Fields(clBlurFXFields),
-      fl::Size(sizeof(objBlurFX)),
+      fl::Size(sizeof(extBlurFX)),
       fl::Path(MOD_PATH));
 
    return clBlurFX ? ERR_Okay : ERR_AddClass;

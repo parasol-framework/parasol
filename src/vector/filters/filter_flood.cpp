@@ -14,8 +14,12 @@ The FloodFX class is an output-only effect that fills its target area with a sin
 
 *********************************************************************************************************************/
 
-class objFloodFX : public extFilterEffect {
+class extFloodFX : public extFilterEffect {
    public:
+   static constexpr CLASSID CLASS_ID = ID_FLOODFX;
+   static constexpr CSTRING CLASS_NAME = "FloodFX";
+   using create = parasol::Create<extFloodFX>;
+
    FRGB   Colour;
    RGB8   ColourRGB;
    DOUBLE Opacity;
@@ -23,7 +27,7 @@ class objFloodFX : public extFilterEffect {
 
 //********************************************************************************************************************
 
-static ERROR FLOODFX_NewObject(objFloodFX *Self, APTR Void)
+static ERROR FLOODFX_NewObject(extFloodFX *Self, APTR Void)
 {
    Self->Opacity = 1.0;
    Self->SourceType = VSF_NONE;
@@ -36,7 +40,7 @@ Draw: Render the effect to the target bitmap.
 -END-
 *********************************************************************************************************************/
 
-static ERROR FLOODFX_Draw(objFloodFX *Self, struct acDraw *Args)
+static ERROR FLOODFX_Draw(extFloodFX *Self, struct acDraw *Args)
 {
    parasol::Log log;
 
@@ -83,14 +87,14 @@ The colour is complemented by the #Opacity field.
 
 *********************************************************************************************************************/
 
-static ERROR FLOODFX_GET_Colour(objFloodFX *Self, FLOAT **Value, LONG *Elements)
+static ERROR FLOODFX_GET_Colour(extFloodFX *Self, FLOAT **Value, LONG *Elements)
 {
    *Value = (FLOAT *)&Self->Colour;
    *Elements = 4;
    return ERR_Okay;
 }
 
-static ERROR FLOODFX_SET_Colour(objFloodFX *Self, FLOAT *Value, LONG Elements)
+static ERROR FLOODFX_SET_Colour(extFloodFX *Self, FLOAT *Value, LONG Elements)
 {
    parasol::Log log;
    if (Value) {
@@ -118,13 +122,13 @@ Opacity: Modifies the opacity of the flood colour.
 
 *********************************************************************************************************************/
 
-static ERROR FLOODFX_GET_Opacity(objFloodFX *Self, DOUBLE *Value)
+static ERROR FLOODFX_GET_Opacity(extFloodFX *Self, DOUBLE *Value)
 {
    *Value = Self->Opacity;
    return ERR_Okay;
 }
 
-static ERROR FLOODFX_SET_Opacity(objFloodFX *Self, DOUBLE Value)
+static ERROR FLOODFX_SET_Opacity(extFloodFX *Self, DOUBLE Value)
 {
    parasol::Log log;
    if ((Value >= 0.0) and (Value <= 1.0)) {
@@ -142,7 +146,7 @@ XMLDef: Returns an SVG compliant XML string that describes the effect.
 
 *********************************************************************************************************************/
 
-static ERROR FLOODFX_GET_XMLDef(objFloodFX *Self, STRING *Value)
+static ERROR FLOODFX_GET_XMLDef(extFloodFX *Self, STRING *Value)
 {
    std::stringstream stream;
 
@@ -174,7 +178,7 @@ ERROR init_floodfx(void)
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clFloodFXActions),
       fl::Fields(clFloodFXFields),
-      fl::Size(sizeof(objFloodFX)),
+      fl::Size(sizeof(extFloodFX)),
       fl::Path(MOD_PATH));
 
    return clFloodFX ? ERR_Okay : ERR_AddClass;

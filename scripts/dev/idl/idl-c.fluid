@@ -106,6 +106,10 @@ glActionStubs = {
    inline ERROR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
       struct acRedimension args = { X, Y, Z, Width, Height, Depth };
       return Action(AC_Redimension, this, &args);
+   }
+   inline ERROR redimension(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
+      struct acRedimension args = { X, Y, 0, Width, Height, 0 };
+      return Action(AC_Redimension, this, &args);
    }]],
    Rename = [[
    inline ERROR rename(CSTRING Name) {
@@ -113,12 +117,12 @@ glActionStubs = {
       return Action(AC_Rename, this, &args);
    }]],
    Resize = [[
-   inline ERROR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+   inline ERROR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
    }]],
    Scroll = [[
-   inline ERROR scroll(DOUBLE X, DOUBLE Y, DOUBLE Z) {
+   inline ERROR scroll(DOUBLE X, DOUBLE Y, DOUBLE Z = 0) {
       struct acScroll args = { X, Y, Z };
       return Action(AC_Scroll, this, &args);
    }]],
@@ -155,7 +159,7 @@ glActionStubs = {
       return Action(AC_SaveToObject, this, &args);
    }]],
    Seek = [[
-   inline ERROR seek(DOUBLE Offset, LONG Position) {
+   inline ERROR seek(DOUBLE Offset, LONG Position = SEEK_CURRENT) {
       struct acSeek args = { Offset, Position };
       return Action(AC_Seek, this, &args);
    }
@@ -1347,14 +1351,15 @@ function outputClassHeader(class, Private, Custom)
          if not f.virtual then physicalFields = true end
       end
 
+      priority("class obj" .. class.name .. ";") -- Forward declaration
+      output("class obj" .. class.name ..  " : public " .. nz(class.base, "BaseClass") .. " {")
+      output("   public:")
+      output("   static constexpr CLASSID CLASS_ID = ID_" .. class.name:upper() .. ";")
+      output("   static constexpr CSTRING CLASS_NAME = \"" .. class.name .. "\";")
+      output("")
+      output("   using create = parasol::Create<obj" .. class.name .. ">;")
+
       if physicalFields then
-         priority("class obj" .. class.name .. ";") -- Forward declaration
-         output("class obj" .. class.name ..  " : public BaseClass {")
-         output("   public:")
-         output("   static constexpr CLASSID CLASS_ID = ID_" .. class.name:upper() .. ";")
-         output("   static constexpr CSTRING CLASS_NAME = \"" .. class.name .. "\";")
-         output("")
-         output("   using create = parasol::Create<obj" .. class.name .. ">;")
          output("")
 
          local max_len = 3 + class.longestFieldType + 1 + 2
@@ -1410,15 +1415,9 @@ function outputClassHeader(class, Private, Custom)
                output(glActionStubs['Init'])
             end
          end
-
-         output("};")
-         output()
-      elseif class.base then
-         priority("class obj" .. class.name .. ";")
-         output("class obj" .. class.name ..  " : public " .. class.base .. " {")
-         output("};")
-         output()
       end
+      output("};")
+      output()
    end
 end
 

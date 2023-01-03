@@ -151,17 +151,18 @@ class objClientSocket : public BaseClass {
    // Action stubs
 
    inline ERROR init() { return Action(AC_Init, this, NULL); }
-   inline ERROR read(APTR Buffer, LONG Bytes, LONG *Result) {
+   template <class T> ERROR read(APTR Buffer, T Bytes, LONG *Result) {
       ERROR error;
-      struct acRead read = { (BYTE *)Buffer, Bytes };
-      if (!(error = Action(AC_Read, this, &read))) {
-         if (Result) *Result = read.Result;
-         return ERR_Okay;
-      }
-      else {
-         if (Result) *Result = 0;
-         return error;
-      }
+      if (Bytes > 0x7fffffff) Bytes = 0x7fffffff;
+      struct acRead read = { (BYTE *)Buffer, (LONG)Bytes };
+      if (!(error = Action(AC_Read, this, &read))) *Result = read.Result;
+      else *Result = 0;
+      return error;
+   }
+   template <class T> ERROR read(APTR Buffer, T Bytes) {
+      if (Bytes > 0x7fffffff) Bytes = 0x7fffffff;
+      struct acRead read = { (BYTE *)Buffer, (LONG)Bytes };
+      return Action(AC_Read, this, &read);
    }
    inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result) {
       ERROR error;
@@ -363,17 +364,18 @@ class objNetSocket : public BaseClass {
    }
    inline ERROR disable() { return Action(AC_Disable, this, NULL); }
    inline ERROR init() { return Action(AC_Init, this, NULL); }
-   inline ERROR read(APTR Buffer, LONG Bytes, LONG *Result) {
+   template <class T> ERROR read(APTR Buffer, T Bytes, LONG *Result) {
       ERROR error;
-      struct acRead read = { (BYTE *)Buffer, Bytes };
-      if (!(error = Action(AC_Read, this, &read))) {
-         if (Result) *Result = read.Result;
-         return ERR_Okay;
-      }
-      else {
-         if (Result) *Result = 0;
-         return error;
-      }
+      if (Bytes > 0x7fffffff) Bytes = 0x7fffffff;
+      struct acRead read = { (BYTE *)Buffer, (LONG)Bytes };
+      if (!(error = Action(AC_Read, this, &read))) *Result = read.Result;
+      else *Result = 0;
+      return error;
+   }
+   template <class T> ERROR read(APTR Buffer, T Bytes) {
+      if (Bytes > 0x7fffffff) Bytes = 0x7fffffff;
+      struct acRead read = { (BYTE *)Buffer, (LONG)Bytes };
+      return Action(AC_Read, this, &read);
    }
    inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result) {
       ERROR error;

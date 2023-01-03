@@ -17,8 +17,31 @@ class objVectorImage;
 class objVectorPattern;
 class objVectorGradient;
 class objFilterEffect;
+class objImageFX;
+class objSourceFX;
+class objBlurFX;
+class objColourFX;
+class objCompositeFX;
+class objConvolveFX;
+class objDisplacementFX;
+class objFloodFX;
+class objLightingFX;
+class objMergeFX;
+class objMorphologyFX;
+class objOffsetFX;
+class objRemapFX;
+class objTurbulenceFX;
 class objVectorFilter;
 class objVector;
+class objVectorPath;
+class objVectorText;
+class objVectorWave;
+class objVectorRectangle;
+class objVectorPolygon;
+class objVectorShape;
+class objVectorSpiral;
+class objVectorEllipse;
+class objVectorClip;
 class objVectorViewport;
 
 // Options for drawing arcs.
@@ -473,8 +496,12 @@ class objVectorScene : public BaseClass {
       struct acRedimension args = { X, Y, Z, Width, Height, Depth };
       return Action(AC_Redimension, this, &args);
    }
+   inline ERROR redimension(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
+      struct acRedimension args = { X, Y, 0, Width, Height, 0 };
+      return Action(AC_Redimension, this, &args);
+   }
    inline ERROR reset() { return Action(AC_Reset, this, NULL); }
-   inline ERROR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+   inline ERROR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
    }
@@ -598,33 +625,97 @@ struct MergeSource {
 
 #define VER_IMAGEFX (1.000000)
 
+class objImageFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_IMAGEFX;
+   static constexpr CSTRING CLASS_NAME = "ImageFX";
+
+   using create = parasol::Create<objImageFX>;
+};
+
 // SourceFX class definition
 
 #define VER_SOURCEFX (1.000000)
+
+class objSourceFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_SOURCEFX;
+   static constexpr CSTRING CLASS_NAME = "SourceFX";
+
+   using create = parasol::Create<objSourceFX>;
+};
 
 // BlurFX class definition
 
 #define VER_BLURFX (1.000000)
 
+class objBlurFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_BLURFX;
+   static constexpr CSTRING CLASS_NAME = "BlurFX";
+
+   using create = parasol::Create<objBlurFX>;
+};
+
 // ColourFX class definition
 
 #define VER_COLOURFX (1.000000)
+
+class objColourFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_COLOURFX;
+   static constexpr CSTRING CLASS_NAME = "ColourFX";
+
+   using create = parasol::Create<objColourFX>;
+};
 
 // CompositeFX class definition
 
 #define VER_COMPOSITEFX (1.000000)
 
+class objCompositeFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_COMPOSITEFX;
+   static constexpr CSTRING CLASS_NAME = "CompositeFX";
+
+   using create = parasol::Create<objCompositeFX>;
+};
+
 // ConvolveFX class definition
 
 #define VER_CONVOLVEFX (1.000000)
+
+class objConvolveFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_CONVOLVEFX;
+   static constexpr CSTRING CLASS_NAME = "ConvolveFX";
+
+   using create = parasol::Create<objConvolveFX>;
+};
 
 // DisplacementFX class definition
 
 #define VER_DISPLACEMENTFX (1.000000)
 
+class objDisplacementFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_DISPLACEMENTFX;
+   static constexpr CSTRING CLASS_NAME = "DisplacementFX";
+
+   using create = parasol::Create<objDisplacementFX>;
+};
+
 // FloodFX class definition
 
 #define VER_FLOODFX (1.000000)
+
+class objFloodFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_FLOODFX;
+   static constexpr CSTRING CLASS_NAME = "FloodFX";
+
+   using create = parasol::Create<objFloodFX>;
+};
 
 // LightingFX class definition
 
@@ -656,17 +747,49 @@ INLINE ERROR ltSetSpotLight(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE PX, DO
 }
 
 
+class objLightingFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_LIGHTINGFX;
+   static constexpr CSTRING CLASS_NAME = "LightingFX";
+
+   using create = parasol::Create<objLightingFX>;
+};
+
 // MergeFX class definition
 
 #define VER_MERGEFX (1.000000)
+
+class objMergeFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_MERGEFX;
+   static constexpr CSTRING CLASS_NAME = "MergeFX";
+
+   using create = parasol::Create<objMergeFX>;
+};
 
 // MorphologyFX class definition
 
 #define VER_MORPHOLOGYFX (1.000000)
 
+class objMorphologyFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_MORPHOLOGYFX;
+   static constexpr CSTRING CLASS_NAME = "MorphologyFX";
+
+   using create = parasol::Create<objMorphologyFX>;
+};
+
 // OffsetFX class definition
 
 #define VER_OFFSETFX (1.000000)
+
+class objOffsetFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_OFFSETFX;
+   static constexpr CSTRING CLASS_NAME = "OffsetFX";
+
+   using create = parasol::Create<objOffsetFX>;
+};
 
 // RemapFX class definition
 
@@ -726,9 +849,25 @@ INLINE ERROR rfSelectMask(APTR Ob, LONG Component, LONG Mask) {
 }
 
 
+class objRemapFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_REMAPFX;
+   static constexpr CSTRING CLASS_NAME = "RemapFX";
+
+   using create = parasol::Create<objRemapFX>;
+};
+
 // TurbulenceFX class definition
 
 #define VER_TURBULENCEFX (1.000000)
+
+class objTurbulenceFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_TURBULENCEFX;
+   static constexpr CSTRING CLASS_NAME = "TurbulenceFX";
+
+   using create = parasol::Create<objTurbulenceFX>;
+};
 
 // VectorFilter class definition
 
@@ -929,6 +1068,14 @@ INLINE ERROR vpSetCommandList(APTR Ob, APTR Commands, LONG Size) {
 }
 
 
+class objVectorPath : public objVector {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORPATH;
+   static constexpr CSTRING CLASS_NAME = "VectorPath";
+
+   using create = parasol::Create<objVectorPath>;
+};
+
 // VectorText class definition
 
 #define VER_VECTORTEXT (1.000000)
@@ -945,39 +1092,108 @@ INLINE ERROR vtDeleteLine(APTR Ob, LONG Line) {
 }
 
 
+class objVectorText : public objVector {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORTEXT;
+   static constexpr CSTRING CLASS_NAME = "VectorText";
+
+   using create = parasol::Create<objVectorText>;
+};
+
 // VectorWave class definition
 
 #define VER_VECTORWAVE (1.000000)
+
+class objVectorWave : public objVector {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORWAVE;
+   static constexpr CSTRING CLASS_NAME = "VectorWave";
+
+   using create = parasol::Create<objVectorWave>;
+};
 
 // VectorRectangle class definition
 
 #define VER_VECTORRECTANGLE (1.000000)
 
+class objVectorRectangle : public objVector {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORRECTANGLE;
+   static constexpr CSTRING CLASS_NAME = "VectorRectangle";
+
+   using create = parasol::Create<objVectorRectangle>;
+};
+
 // VectorPolygon class definition
 
 #define VER_VECTORPOLYGON (1.000000)
+
+class objVectorPolygon : public objVector {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORPOLYGON;
+   static constexpr CSTRING CLASS_NAME = "VectorPolygon";
+
+   using create = parasol::Create<objVectorPolygon>;
+};
 
 // VectorShape class definition
 
 #define VER_VECTORSHAPE (1.000000)
 
+class objVectorShape : public objVector {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORSHAPE;
+   static constexpr CSTRING CLASS_NAME = "VectorShape";
+
+   using create = parasol::Create<objVectorShape>;
+};
+
 // VectorSpiral class definition
 
 #define VER_VECTORSPIRAL (1.000000)
+
+class objVectorSpiral : public objVector {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORSPIRAL;
+   static constexpr CSTRING CLASS_NAME = "VectorSpiral";
+
+   using create = parasol::Create<objVectorSpiral>;
+};
 
 // VectorEllipse class definition
 
 #define VER_VECTORELLIPSE (1.000000)
 
+class objVectorEllipse : public objVector {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORELLIPSE;
+   static constexpr CSTRING CLASS_NAME = "VectorEllipse";
+
+   using create = parasol::Create<objVectorEllipse>;
+};
+
 // VectorClip class definition
 
 #define VER_VECTORCLIP (1.000000)
+
+class objVectorClip : public objVector {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORCLIP;
+   static constexpr CSTRING CLASS_NAME = "VectorClip";
+
+   using create = parasol::Create<objVectorClip>;
+};
 
 // VectorViewport class definition
 
 #define VER_VECTORVIEWPORT (1.000000)
 
 class objVectorViewport : public objVector {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORVIEWPORT;
+   static constexpr CSTRING CLASS_NAME = "VectorViewport";
+
+   using create = parasol::Create<objVectorViewport>;
 };
 
 struct VectorBase {

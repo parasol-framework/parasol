@@ -445,33 +445,33 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     { id=21, name="SetSpotLight" }
   })
 
-  class("ImageFX",        { src="filters/filter_image.cpp", output="filters/filter_image_def.c", comment="Image filter support class." })
+  class("ImageFX",        { base='FilterEffect', src="filters/filter_image.cpp", output="filters/filter_image_def.c", comment="Image filter support class." })
 
-  class("SourceFX",       { src="filters/filter_source.cpp", output="filters/filter_source_def.c", comment="Source filter support class." })
+  class("SourceFX",       { base='FilterEffect', src="filters/filter_source.cpp", output="filters/filter_source_def.c", comment="Source filter support class." })
 
-  class("BlurFX",         { src="filters/filter_blur.cpp", output="filters/filter_blur_def.c", comment="Blur filter support class." })
+  class("BlurFX",         { base='FilterEffect', src="filters/filter_blur.cpp", output="filters/filter_blur_def.c", comment="Blur filter support class." })
 
-  class("ColourFX",       { src="filters/filter_colourmatrix.cpp", output="filters/filter_colourmatrix_def.c", comment="Colour filter support class." })
+  class("ColourFX",       { base='FilterEffect', src="filters/filter_colourmatrix.cpp", output="filters/filter_colourmatrix_def.c", comment="Colour filter support class." })
 
-  class("CompositeFX",    { src="filters/filter_composite.cpp", output="filters/filter_composite_def.c", comment="Composite filter support class." })
+  class("CompositeFX",    { base='FilterEffect', src="filters/filter_composite.cpp", output="filters/filter_composite_def.c", comment="Composite filter support class." })
 
-  class("ConvolveFX",     { src="filters/filter_convolve.cpp", output="filters/filter_convolve_def.c", comment="Convolve filter support class." })
+  class("ConvolveFX",     { base='FilterEffect', src="filters/filter_convolve.cpp", output="filters/filter_convolve_def.c", comment="Convolve filter support class." })
 
-  class("DisplacementFX", { src="filters/filter_displacement.cpp", output="filters/filter_displacement_def.c", comment="Displacement filter support class." })
+  class("DisplacementFX", { base='FilterEffect', src="filters/filter_displacement.cpp", output="filters/filter_displacement_def.c", comment="Displacement filter support class." })
 
-  class("FloodFX",        { src="filters/filter_flood.cpp", output="filters/filter_flood_def.c", comment="Flood filter support class." })
+  class("FloodFX",        { base='FilterEffect', src="filters/filter_flood.cpp", output="filters/filter_flood_def.c", comment="Flood filter support class." })
 
-  class("LightingFX",     { src="filters/filter_lighting.cpp", output="filters/filter_lighting_def.c", comment="Lighting filter support class." })
+  class("LightingFX",     { base='FilterEffect', src="filters/filter_lighting.cpp", output="filters/filter_lighting_def.c", comment="Lighting filter support class." })
 
-  class("MergeFX",        { src="filters/filter_merge.cpp", output="filters/filter_merge_def.c", comment="Merge filter support class." })
+  class("MergeFX",        { base='FilterEffect', src="filters/filter_merge.cpp", output="filters/filter_merge_def.c", comment="Merge filter support class." })
 
-  class("MorphologyFX",   { src="filters/filter_morphology.cpp", output="filters/filter_morphology_def.c", comment="Morphology filter support class." })
+  class("MorphologyFX",   { base='FilterEffect', src="filters/filter_morphology.cpp", output="filters/filter_morphology_def.c", comment="Morphology filter support class." })
 
-  class("OffsetFX",       { src="filters/filter_offset.cpp", output="filters/filter_offset_def.c", comment="Offset filter support class." })
+  class("OffsetFX",       { base='FilterEffect', src="filters/filter_offset.cpp", output="filters/filter_offset_def.c", comment="Offset filter support class." })
 
-  class("RemapFX",        { src="filters/filter_remap.cpp", output="filters/filter_remap_def.c", comment="Remap filter support class." })
+  class("RemapFX",        { base='FilterEffect', src="filters/filter_remap.cpp", output="filters/filter_remap_def.c", comment="Remap filter support class." })
 
-  class("TurbulenceFX",   { src="filters/filter_turbulence.cpp", output="filters/filter_turbulence_def.c", comment="Turbulence filter support class." })
+  class("TurbulenceFX",   { base='FilterEffect', src="filters/filter_turbulence.cpp", output="filters/filter_turbulence_def.c", comment="Turbulence filter support class." })
 
   class("VectorFilter",   { src="filters/filter.cpp", output="filters/filter_def.c" }, [[
     double X                  # Left-most position of filter area
@@ -531,7 +531,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     { id=34, name="SetCommandList" }
   })
 
-  class("VectorPath", { src="vectors/path.cpp", output="vectors/path_def.c" })
+  class("VectorPath", { base='Vector', src="vectors/path.cpp", output="vectors/path_def.c" })
 
   // VectorText method ID's start high enough to give a cushion from inherited Vector methods.
 
@@ -539,23 +539,23 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     { id=30, name="DeleteLine" }
   })
 
-  class('VectorText', { src='vectors/text.cpp', output="vectors/text_def.cpp"  })
+  class('VectorText', { base='Vector', src='vectors/text.cpp', output="vectors/text_def.cpp"  })
 
-  class('VectorWave', { src='vectors/wave.cpp' })
+  class('VectorWave', { base='Vector', src='vectors/wave.cpp' })
 
-  class('VectorRectangle', { src='vectors/rectangle.cpp' })
+  class('VectorRectangle', { base='Vector', src='vectors/rectangle.cpp' })
 
-  class('VectorPolygon', { src='vectors/polygon.cpp' })
+  class('VectorPolygon', { base='Vector', src='vectors/polygon.cpp' })
 
-  class('VectorShape', { src='vectors/supershape.cpp' })
+  class('VectorShape', { base='Vector', src='vectors/supershape.cpp' })
 
-  class('VectorSpiral', { src='vectors/spiral.cpp' })
+  class('VectorSpiral', { base='Vector', src='vectors/spiral.cpp' })
 
-  class('VectorEllipse', { src='vectors/ellipse.cpp' })
+  class('VectorEllipse', { base='Vector', src='vectors/ellipse.cpp' })
 
-  class('VectorClip', { src='vectors/clip.cpp' })
+  class('VectorClip', { base='Vector', src='vectors/clip.cpp' })
 
-  class('VectorViewport', { base='Vector',  src='vectors/viewport.cpp', output="vectors/viewport_def.cpp" })
+  class('VectorViewport', { base='Vector', src='vectors/viewport.cpp', output="vectors/viewport_def.cpp" })
 
   functionNames("vec",
     "DrawPath",

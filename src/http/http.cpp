@@ -277,8 +277,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    if (objModule::load("network", MODVERSION_NETWORK, &modNetwork, &NetworkBase) != ERR_Okay) return ERR_InitModule;
 
-   if (!CreateObject(ID_PROXY, 0, &glProxy, TAGEND)) {
-   }
+   glProxy = objProxy::create::global();
 
    return create_http_class();
 }
@@ -495,25 +494,15 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
 
             }
             else if (Self->InputFile) {
-               ERROR error;
-
                if (Self->MultipleInput) {
                   log.trace("Multiple input files detected.");
                   Self->InputPos = 0;
                   parse_file(Self, cmd, sizeof(cmd));
-                  error = CreateObject(ID_FILE, NF_INTEGRAL, &Self->flInput,
-                     FID_Path|TSTR,   cmd,
-                     FID_Flags|TLONG, FL_READ,
-                     TAGEND);
+                  Self->flInput = objFile::create::integral(fl::Path(cmd), fl::Flags(FL_READ));
                }
-               else {
-                  error = CreateObject(ID_FILE, NF_INTEGRAL, &Self->flInput,
-                     FID_Path|TSTR,   Self->InputFile,
-                     FID_Flags|TLONG, FL_READ,
-                     TAGEND);
-               }
+               else Self->flInput = objFile::create::integral(fl::Path(Self->InputFile), fl::Flags(FL_READ));
 
-               if (!error) {
+               if (Self->flInput) {
                   Self->Index = 0;
                   if (!Self->Size) {
                      Self->flInput->get(FID_Size, &Self->ContentLength); // Use the file's size as ContentLength
@@ -531,11 +520,9 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
             }
             else if (Self->InputObjectID) {
                if (!Self->Size) {
-                  OBJECTPTR input;
-                  if (!AccessObject(Self->InputObjectID, 3000, &input)) {
-                     LARGE len;
-                     if (!input->get(FID_Size, &len)) Self->ContentLength = len;
-                     ReleaseObject(input);
+                  parasol::ScopedObjectLock<BaseClass> input(Self->InputObjectID, 3000);
+                  if (input.granted()) {
+                     if (!input->get(FID_Size, &Self->ContentLength));
                   }
                }
                else Self->ContentLength = Self->Size;
@@ -641,26 +628,16 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
    len += StrCopy(CRLF, cmd+len, sizeof(cmd)-len);
 
    if (!Self->Socket) {
-      if (NewObject(ID_NETSOCKET, NF_INTEGRAL, &Self->Socket) != ERR_Okay) {
-         log.warning("Failed to create NetSocket.");
-         SET_ERROR(Self, ERR_NewObject);
-         return log.warning(Self->Error);
-      }
+      // If we're using straight SSL without tunnelling, set the SSL flag now so that SSL is automatically engaged on connection.
 
-      SetFields(Self->Socket,
-         FID_UserData|TPTR, Self,
-         FID_Incoming|TPTR, &socket_incoming,
-         FID_Feedback|TPTR, &socket_feedback,
-         TAGEND);
+      LONG flags = ((Self->Flags & HTF_SSL) and (!Self->Tunneling)) ? NSF_SSL : 0;
 
-      // If we using straight SSL without tunnelling, set the SSL flag now so that SSL is automatically engaged on connection.
-
-      if ((Self->Flags & HTF_SSL) and (!Self->Tunneling)) {
-         Self->Socket->Flags |= NSF_SSL;
-      }
-
-      if (acInit(Self->Socket) != ERR_Okay) {
-         SET_ERROR(Self, ERR_Init);
+      if (!(Self->Socket = objNetSocket::create::integral(
+            fl::UserData(Self),
+            fl::Incoming((CPTR)socket_incoming),
+            fl::Feedback((CPTR)socket_feedback),
+            fl::Flags(flags)))) {
+         SET_ERROR(Self, ERR_CreateObject);
          return log.warning(Self->Error);
       }
    }

@@ -1470,24 +1470,24 @@ static ERROR DISPLAY_SaveSettings(extDisplay *Self, APTR Void)
 
    log.branch();
 
-   OBJECTPTR config;
-   if (!CreateObject(ID_CONFIG, 0, &config, FID_Path|TSTR, "user:config/display.cfg", TAGEND)) {
+   objConfig::create config = { fl::Path("user:config/display.cfg") };
+
+   if (config.ok()) {
       if (!(Self->Flags & SCR_BORDERLESS)) {
-         cfgWrite(config, "DISPLAY", "WindowX", Self->X);
-         cfgWrite(config, "DISPLAY", "WindowY", Self->Y);
+         cfgWrite(*config, "DISPLAY", "WindowX", Self->X);
+         cfgWrite(*config, "DISPLAY", "WindowY", Self->Y);
 
-         if (Self->Width >= 600) cfgWrite(config, "DISPLAY", "WindowWidth", Self->Width);
-         else cfgWrite(config, "DISPLAY", "WindowWidth", 600);
+         if (Self->Width >= 600) cfgWrite(*config, "DISPLAY", "WindowWidth", Self->Width);
+         else cfgWrite(*config, "DISPLAY", "WindowWidth", 600);
 
-         if (Self->Height >= 480) cfgWrite(config, "DISPLAY", "WindowHeight", Self->Height);
-         else cfgWrite(config, "DISPLAY", "WindowHeight", 480);
+         if (Self->Height >= 480) cfgWrite(*config, "DISPLAY", "WindowHeight", Self->Height);
+         else cfgWrite(*config, "DISPLAY", "WindowHeight", 480);
       }
 
-      cfgWriteValue(config, "DISPLAY", "DPMS", dpms_name(Self->DPMS));
-      cfgWriteValue(config, "DISPLAY", "FullScreen", (Self->Flags & SCR_BORDERLESS) ? "1" : "0");
+      cfgWriteValue(*config, "DISPLAY", "DPMS", dpms_name(Self->DPMS));
+      cfgWriteValue(*config, "DISPLAY", "FullScreen", (Self->Flags & SCR_BORDERLESS) ? "1" : "0");
 
-      acSaveSettings(config);
-      acFree(config);
+      config->saveSettings();
    }
 
 #elif _WIN32
@@ -1495,21 +1495,21 @@ static ERROR DISPLAY_SaveSettings(extDisplay *Self, APTR Void)
    if ((Self->WindowHandle) and (Self->Width >= 640) and (Self->Height > 480)) {
       // Save the current window status to file, but only if it is large enough to be considered 'screen sized'.
 
-      OBJECTPTR config;
-      if (!CreateObject(ID_CONFIG, 0, &config, FID_Path|TSTR, "user:config/display.cfg", TAGEND)) {
+      objConfig::create config = { fl::Path("user:config/display.cfg") };
+
+      if (config.ok()) {
          LONG x, y, width, height, maximise;
 
          if (winGetWindowInfo(Self->WindowHandle, &x, &y, &width, &height, &maximise)) {
-            cfgWrite(config, "DISPLAY", "WindowWidth", width);
-            cfgWrite(config, "DISPLAY", "WindowHeight", height);
-            cfgWrite(config, "DISPLAY", "WindowX", x);
-            cfgWrite(config, "DISPLAY", "WindowY", y);
-            cfgWrite(config, "DISPLAY", "Maximise", maximise);
-            cfgWriteValue(config, "DISPLAY", "DPMS", dpms_name(Self->DPMS));
-            cfgWriteValue(config, "DISPLAY", "FullScreen", (Self->Flags & SCR_BORDERLESS) ? "1" : "0");
-            acSaveSettings(config);
+            cfgWrite(*config, "DISPLAY", "WindowWidth", width);
+            cfgWrite(*config, "DISPLAY", "WindowHeight", height);
+            cfgWrite(*config, "DISPLAY", "WindowX", x);
+            cfgWrite(*config, "DISPLAY", "WindowY", y);
+            cfgWrite(*config, "DISPLAY", "Maximise", maximise);
+            cfgWriteValue(*config, "DISPLAY", "DPMS", dpms_name(Self->DPMS));
+            cfgWriteValue(*config, "DISPLAY", "FullScreen", (Self->Flags & SCR_BORDERLESS) ? "1" : "0");
+            acSaveSettings(*config);
          }
-         acFree(config);
       }
       else return log.warning(ERR_CreateObject);
    }
@@ -1938,16 +1938,16 @@ static ERROR DISPLAY_SetMonitor(extDisplay *Self, struct gfxSetMonitor *Args)
 
    priverror = SetResource(RES_PRIVILEGEDUSER, 1);
 
-   if (!CreateObject(ID_CONFIG, NF_INTEGRAL, &config, FID_Path|TSTR, "config:hardware/monitor.cfg", TAGEND)) {
-      cfgWriteValue(config, "MONITOR", "Name", Self->Display);
-      cfgWrite(config, "MONITOR", "MinH", Self->MinHScan);
-      cfgWrite(config, "MONITOR", "MaxH", Self->MaxHScan);
-      cfgWrite(config, "MONITOR", "MinV", Self->MinVScan);
-      cfgWrite(config, "MONITOR", "MaxV", Self->MaxVScan);
-      cfgWrite(config, "MONITOR", "AutoDetect", (Args->Flags & SMF_AUTODETECT) ? 1 : 0);
-      cfgWrite(config, "MONITOR", "6Bit", glSixBitDisplay);
-      acSaveSettings(config);
-      acFree(config);
+   objConfig::create config = { fl::Path("config:hardware/monitor.cfg") };
+   if (config.ok()) {
+      cfgWriteValue(*config, "MONITOR", "Name", Self->Display);
+      cfgWrite(*config, "MONITOR", "MinH", Self->MinHScan);
+      cfgWrite(*config, "MONITOR", "MaxH", Self->MaxHScan);
+      cfgWrite(*config, "MONITOR", "MinV", Self->MinVScan);
+      cfgWrite(*config, "MONITOR", "MaxV", Self->MaxVScan);
+      cfgWrite(*config, "MONITOR", "AutoDetect", (Args->Flags & SMF_AUTODETECT) ? 1 : 0);
+      cfgWrite(*config, "MONITOR", "6Bit", glSixBitDisplay);
+      config->saveSettings();
    }
 
    if (!priverror) SetResource(RES_PRIVILEGEDUSER, 0);

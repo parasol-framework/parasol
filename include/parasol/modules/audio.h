@@ -390,7 +390,7 @@ class objSound : public BaseClass {
       struct acSaveToObject args = { { DestID }, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
-   inline ERROR seek(DOUBLE Offset, LONG Position) {
+   inline ERROR seek(DOUBLE Offset, LONG Position = SEEK_CURRENT) {
       struct acSeek args = { Offset, Position };
       return Action(AC_Seek, this, &args);
    }

@@ -24,8 +24,12 @@ Width and Height.  The placement and scaling of the referenced image is controll
 
 *********************************************************************************************************************/
 
-class objImageFX : public extFilterEffect {
+class extImageFX : public extFilterEffect {
    public:
+   static constexpr CLASSID CLASS_ID = ID_IMAGEFX;
+   static constexpr CSTRING CLASS_NAME = "ImageFX";
+   using create = parasol::Create<extImageFX>;
+
    objBitmap *Bitmap;    // Bitmap containing source image data.
    objPicture *Picture;  // Origin picture if loading a source file.
    LONG AspectRatio;     // Aspect ratio flags.
@@ -38,7 +42,7 @@ Draw: Render the effect to the target bitmap.
 -END-
 *********************************************************************************************************************/
 
-static ERROR IMAGEFX_Draw(objImageFX *Self, struct acDraw *Args)
+static ERROR IMAGEFX_Draw(extImageFX *Self, struct acDraw *Args)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -133,7 +137,7 @@ static ERROR IMAGEFX_Draw(objImageFX *Self, struct acDraw *Args)
 
 //********************************************************************************************************************
 
-static ERROR IMAGEFX_Free(objImageFX *Self, APTR Void)
+static ERROR IMAGEFX_Free(extImageFX *Self, APTR Void)
 {
    if (Self->Picture) { acFree(Self->Picture); Self->Picture = NULL; }
    return ERR_Okay;
@@ -141,7 +145,7 @@ static ERROR IMAGEFX_Free(objImageFX *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR IMAGEFX_Init(objImageFX *Self, APTR Void)
+static ERROR IMAGEFX_Init(extImageFX *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -153,7 +157,7 @@ static ERROR IMAGEFX_Init(objImageFX *Self, APTR Void)
 //********************************************************************************************************************
 // If the client attaches a bitmap as a child of our object, we use it as the primary image source.
 
-static ERROR IMAGEFX_NewChild(objImageFX *Self, struct acNewChild *Args)
+static ERROR IMAGEFX_NewChild(extImageFX *Self, struct acNewChild *Args)
 {
    parasol::Log log;
 
@@ -170,7 +174,7 @@ static ERROR IMAGEFX_NewChild(objImageFX *Self, struct acNewChild *Args)
 
 //********************************************************************************************************************
 
-static ERROR IMAGEFX_NewObject(objImageFX *Self, APTR Void)
+static ERROR IMAGEFX_NewObject(extImageFX *Self, APTR Void)
 {
    Self->AspectRatio    = ARF_X_MID|ARF_Y_MID|ARF_MEET;
    Self->ResampleMethod = VSM_BILINEAR;
@@ -186,13 +190,13 @@ Lookup: ARF
 
 *********************************************************************************************************************/
 
-static ERROR IMAGEFX_GET_AspectRatio(objImageFX *Self, LONG *Value)
+static ERROR IMAGEFX_GET_AspectRatio(extImageFX *Self, LONG *Value)
 {
    *Value = Self->AspectRatio;
    return ERR_Okay;
 }
 
-static ERROR IMAGEFX_SET_AspectRatio(objImageFX *Self, LONG Value)
+static ERROR IMAGEFX_SET_AspectRatio(extImageFX *Self, LONG Value)
 {
    Self->AspectRatio = Value;
    return ERR_Okay;
@@ -211,7 +215,7 @@ processed.
 
 *********************************************************************************************************************/
 
-static ERROR IMAGEFX_GET_Bitmap(objImageFX *Self, objBitmap **Value)
+static ERROR IMAGEFX_GET_Bitmap(extImageFX *Self, objBitmap **Value)
 {
    *Value = Self->Bitmap;
    return ERR_Okay;
@@ -224,14 +228,14 @@ Path: Path to an image file supported by the Picture class.
 
 *********************************************************************************************************************/
 
-static ERROR IMAGEFX_GET_Path(objImageFX *Self, STRING *Value)
+static ERROR IMAGEFX_GET_Path(extImageFX *Self, STRING *Value)
 {
    if (Self->Picture) return Self->Picture->get(FID_Path, Value);
    else *Value = NULL;
    return ERR_Okay;
 }
 
-static ERROR IMAGEFX_SET_Path(objImageFX *Self, CSTRING Value)
+static ERROR IMAGEFX_SET_Path(extImageFX *Self, CSTRING Value)
 {
    if ((Self->Bitmap) or (Self->Picture)) return ERR_Failed;
 
@@ -249,13 +253,13 @@ ResampleMethod: The resample algorithm to use for transforming the source image.
 
 *********************************************************************************************************************/
 
-static ERROR IMAGEFX_GET_ResampleMethod(objImageFX *Self, LONG *Value)
+static ERROR IMAGEFX_GET_ResampleMethod(extImageFX *Self, LONG *Value)
 {
    *Value = Self->ResampleMethod;
    return ERR_Okay;
 }
 
-static ERROR IMAGEFX_SET_ResampleMethod(objImageFX *Self, LONG Value)
+static ERROR IMAGEFX_SET_ResampleMethod(extImageFX *Self, LONG Value)
 {
    Self->ResampleMethod = Value;
    return ERR_Okay;
@@ -269,7 +273,7 @@ XMLDef: Returns an SVG compliant XML string that describes the filter.
 
 *********************************************************************************************************************/
 
-static ERROR IMAGEFX_GET_XMLDef(objImageFX *Self, STRING *Value)
+static ERROR IMAGEFX_GET_XMLDef(extImageFX *Self, STRING *Value)
 {
    *Value = StrClone("feImage");
    return ERR_Okay;
@@ -319,7 +323,7 @@ ERROR init_imagefx(void)
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clImageFXActions),
       fl::Fields(clImageFXFields),
-      fl::Size(sizeof(objImageFX)),
+      fl::Size(sizeof(extImageFX)),
       fl::Path(MOD_PATH));
 
    return clImageFX ? ERR_Okay : ERR_AddClass;

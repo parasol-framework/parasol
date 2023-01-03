@@ -268,33 +268,25 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
    parasol::SwitchContext ctx(Self);
 
    if (!Self->SourceGraphic) {
-      if (CreateObject(ID_BITMAP, NF_INTEGRAL, &Self->SourceGraphic,
-            FID_Name|TSTR,          "source_graphic",
-            FID_Width|TLONG,        Self->ClientViewport->Scene->PageWidth,
-            FID_Height|TLONG,       Self->ClientViewport->Scene->PageHeight,
-            FID_BitsPerPixel|TLONG, 32,
-            FID_Flags|TLONG,        BMF_ALPHA_CHANNEL,
-            FID_ColourSpace|TLONG,  CS_SRGB,
-            TAGEND)) return NULL;
+      if (!(Self->SourceGraphic = objBitmap::create::integral(fl::Name("source_graphic"),
+         fl::Width(Self->ClientViewport->Scene->PageWidth),
+         fl::Height(Self->ClientViewport->Scene->PageHeight),
+         fl::BitsPerPixel(32),
+         fl::Flags(BMF_ALPHA_CHANNEL),
+         fl::ColourSpace(CS_SRGB)))) return NULL;
    }
    else if ((Self->ClientViewport->Scene->PageWidth > Self->SourceGraphic->Width) or
             (Self->ClientViewport->Scene->PageHeight > Self->SourceGraphic->Height)) {
-      acResize(Self->SourceGraphic, Self->ClientViewport->Scene->PageWidth, Self->ClientViewport->Scene->PageHeight, 0);
+      Self->SourceGraphic->resize(Self->ClientViewport->Scene->PageWidth, Self->ClientViewport->Scene->PageHeight);
    }
 
    if (!Self->SourceScene) {
-      if (!CreateObject(ID_VECTORSCENE, NF_INTEGRAL, &Self->SourceScene,
-            FID_PageWidth|TLONG,  Self->ClientViewport->Scene->PageWidth,
-            FID_PageHeight|TLONG, Self->ClientViewport->Scene->PageHeight,
-            TAGEND)) {
+      if ((Self->SourceScene = extVectorScene::create::integral(
+            fl::PageWidth(Self->ClientViewport->Scene->PageWidth),
+            fl::PageHeight(Self->ClientViewport->Scene->PageHeight)))) {
 
-         extVectorViewport *viewport;
-         if (!CreateObject(ID_VECTORVIEWPORT, 0, &viewport,
-               FID_Owner|TLONG,       Self->SourceScene->UID,
-               FID_ColourSpace|TLONG, Self->ColourSpace,
-               TAGEND)) {
-         }
-         else return NULL;
+         if (!extVectorViewport::create::global(fl::Owner(Self->SourceScene->UID),
+               fl::ColourSpace(Self->ColourSpace))) return NULL;
       }
       else return NULL;
    }

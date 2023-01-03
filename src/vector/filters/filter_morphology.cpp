@@ -26,8 +26,12 @@ equal to the alpha channel.
 
 *********************************************************************************************************************/
 
-class objMorphologyFX : public extFilterEffect {
+class extMorphologyFX : public extFilterEffect {
    public:
+   static constexpr CLASSID CLASS_ID = ID_MORPHOLOGYFX;
+   static constexpr CSTRING CLASS_NAME = "MorphologyFX";
+   using create = parasol::Create<extMorphologyFX>;
+
    LONG RadiusX, RadiusY;
    UBYTE Operator;
 };
@@ -38,7 +42,7 @@ Draw: Render the effect to the target bitmap.
 -END-
 *********************************************************************************************************************/
 
-static ERROR MORPHOLOGYFX_Draw(objMorphologyFX *Self, struct acDraw *Args)
+static ERROR MORPHOLOGYFX_Draw(extMorphologyFX *Self, struct acDraw *Args)
 {
    const LONG canvasWidth = Self->Target->Clip.Right - Self->Target->Clip.Left;
    const LONG canvasHeight = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
@@ -196,7 +200,7 @@ static ERROR MORPHOLOGYFX_Draw(objMorphologyFX *Self, struct acDraw *Args)
 
 //********************************************************************************************************************
 
-static ERROR MORPHOLOGYFX_NewObject(objMorphologyFX *Self, APTR Void)
+static ERROR MORPHOLOGYFX_NewObject(extMorphologyFX *Self, APTR Void)
 {
    Self->Operator = MOP_ERODE;
    return ERR_Okay;
@@ -210,13 +214,13 @@ Lookup: MOP
 
 *********************************************************************************************************************/
 
-static ERROR MORPHOLOGYFX_GET_Operator(objMorphologyFX *Self, LONG *Value)
+static ERROR MORPHOLOGYFX_GET_Operator(extMorphologyFX *Self, LONG *Value)
 {
    *Value = Self->Operator;
    return ERR_Okay;
 }
 
-static ERROR MORPHOLOGYFX_SET_Operator(objMorphologyFX *Self, LONG Value)
+static ERROR MORPHOLOGYFX_SET_Operator(extMorphologyFX *Self, LONG Value)
 {
    Self->Operator = Value;
    return ERR_Okay;
@@ -229,13 +233,13 @@ RadiusX: X radius value.
 
 *********************************************************************************************************************/
 
-static ERROR MORPHOLOGYFX_GET_RadiusX(objMorphologyFX *Self, LONG *Value)
+static ERROR MORPHOLOGYFX_GET_RadiusX(extMorphologyFX *Self, LONG *Value)
 {
    *Value = Self->RadiusX;
    return ERR_Okay;
 }
 
-static ERROR MORPHOLOGYFX_SET_RadiusX(objMorphologyFX *Self, LONG Value)
+static ERROR MORPHOLOGYFX_SET_RadiusX(extMorphologyFX *Self, LONG Value)
 {
    if (Value >= 0) {
       Self->RadiusX = Value;
@@ -251,13 +255,13 @@ RadiusY: Y radius value.
 
 *********************************************************************************************************************/
 
-static ERROR MORPHOLOGYFX_GET_RadiusY(objMorphologyFX *Self, LONG *Value)
+static ERROR MORPHOLOGYFX_GET_RadiusY(extMorphologyFX *Self, LONG *Value)
 {
    *Value = Self->RadiusY;
    return ERR_Okay;
 }
 
-static ERROR MORPHOLOGYFX_SET_RadiusY(objMorphologyFX *Self, LONG Value)
+static ERROR MORPHOLOGYFX_SET_RadiusY(extMorphologyFX *Self, LONG Value)
 {
    if (Value >= 0) {
       Self->RadiusY = Value;
@@ -274,7 +278,7 @@ XMLDef: Returns an SVG compliant XML string that describes the effect.
 
 *********************************************************************************************************************/
 
-static ERROR MORPHOLOGYFX_GET_XMLDef(objMorphologyFX *Self, STRING *Value)
+static ERROR MORPHOLOGYFX_GET_XMLDef(extMorphologyFX *Self, STRING *Value)
 {
    std::stringstream stream;
 
@@ -318,7 +322,7 @@ ERROR init_morphfx(void)
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clMorphologyFXActions),
       fl::Fields(clMorphologyFXFields),
-      fl::Size(sizeof(objMorphologyFX)),
+      fl::Size(sizeof(extMorphologyFX)),
       fl::Path(MOD_PATH));
 
    return clMorphologyFX ? ERR_Okay : ERR_AddClass;

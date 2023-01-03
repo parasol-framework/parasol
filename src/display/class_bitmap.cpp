@@ -337,7 +337,7 @@ static ERROR BITMAP_Compress(extBitmap *Self, struct bmpCompress *Args)
 
    ERROR error = ERR_Okay;
    if (!glCompress) {
-      if (CreateObject(ID_COMPRESSION, NULL, &glCompress, TAGEND) != ERR_Okay) {
+      if (!(glCompress = objCompression::create::global())) {
          return log.warning(ERR_CreateObject);
       }
       SetOwner(glCompress, glModule);
@@ -599,7 +599,7 @@ static ERROR BITMAP_Decompress(extBitmap *Self, struct bmpDecompress *Args)
    }
 
    if (!glCompress) {
-      if (CreateObject(ID_COMPRESSION, NULL, &glCompress, TAGEND) != ERR_Okay) {
+      if (!(glCompress = objCompression::create::global())) {
          return log.warning(ERR_CreateObject);
       }
       SetOwner(glCompress, glModule);

@@ -317,11 +317,7 @@ redo_upload:
          // Open the next file
 
          if (!parse_file(Self, (STRING)Self->Buffer, Self->BufferSize)) {
-            if (!(CreateObject(ID_FILE, NF_INTEGRAL, &Self->flInput,
-                  FID_Path|TSTR,   (CSTRING)Self->Buffer,
-                  FID_Flags|TLONG, FL_READ,
-                  TAGEND))) {
-
+            if ((Self->flInput = objFile::create::integral(fl::Path((CSTRING)Self->Buffer), fl::Flags(FL_READ)))) {
                if (total_out < Self->BufferSize) goto redo_upload; // Upload as much as possible in each pass
                else goto continue_upload;
             }
@@ -603,14 +599,11 @@ static ERROR socket_incoming(objNetSocket *Socket)
                         CopyMemory(glAuthScript, scriptfile, glAuthScriptLength);
                         scriptfile[glAuthScriptLength] = 0;
 
-                        OBJECTPTR script;
-                        if (!CreateObject(ID_SCRIPT, NF_INTEGRAL, &script,
-                              FID_String|TSTR, scriptfile,
-                              TAGEND)) {
+                        objScript::create script = { fl::String(scriptfile) };
+                        if (script.ok()) {
                            AdjustLogLevel(1);
-                           error = acActivate(script);
+                           error = script->activate();
                            AdjustLogLevel(-1);
-                           acFree(script);
                         }
                         else error = ERR_CreateObject;
 
@@ -992,7 +985,7 @@ static ERROR process_data(extHTTP *Self, APTR Buffer, LONG Length)
       }
       else flags = FL_NEW;
 
-      if (!CreateObject(ID_FILE, NF_INTEGRAL, &Self->flOutput, FID_Path|TSTR, Self->OutputFile, FID_Flags|TLONG, flags|FL_WRITE, TAGEND)) {
+      if ((Self->flOutput = objFile::create::integral(fl::Path(Self->OutputFile), fl::Flags(flags|FL_WRITE)))) {
          if (Self->Flags & HTF_RESUME) {
             acSeekEnd(Self->flOutput, 0);
             Self->set(FID_Index, 0);
@@ -1001,7 +994,7 @@ static ERROR process_data(extHTTP *Self, APTR Buffer, LONG Length)
       else SET_ERROR(Self, ERR_CreateFile);
    }
 
-   if (Self->flOutput) acWrite(Self->flOutput, Buffer, Length, NULL);
+   if (Self->flOutput) Self->flOutput->write(Buffer, Length, NULL);
 
    if (Self->Flags & HTF_RECV_BUFFER) {
       if (!Self->RecvBuffer) {

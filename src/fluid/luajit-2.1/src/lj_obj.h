@@ -299,7 +299,7 @@ typedef const TValue cTValue;
 
 /* -- String object ------------------------------------------------------- */
 
-typedef uint32_t StrHash;	/* String hash value. */
+typedef uint32_t LuaStrHash;	/* String hash value. */
 typedef uint32_t StrID;		/* String ID. */
 
 /* String object header. String payload follows. */
@@ -308,7 +308,7 @@ typedef struct GCstr {
   uint8_t reserved;	/* Used by lexer for fast lookup of reserved words. */
   uint8_t hashalg;	/* Hash algorithm. */
   StrID sid;		/* Interned string ID. */
-  StrHash hash;		/* Hash of string. */
+  LuaStrHash hash;		/* Hash of string. */
   MSize len;		/* Size of string. */
 } GCstr;
 

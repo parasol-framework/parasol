@@ -332,35 +332,29 @@ static ERROR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nlResolveAddres
    }
 
    IPAddress ip;
-   ERROR error;
    if (!netStrToAddress(Args->Address, &ip)) {
-      OBJECTPTR thread;
       LONG pkg_size = sizeof(resolve_buffer) + sizeof(IPAddress) + StrLength(Args->Address) + 1;
-      if (!CreateObject(ID_THREAD, NF_INTEGRAL, &thread,
-            FID_Routine|TPTR, &thread_resolve_addr,
-            FID_Flags|TLONG,  THF_AUTO_FREE,
-            TAGEND)) {
+      if (auto th = objThread::create::integral(fl::Routine((CPTR)thread_resolve_addr),
+            fl::Flags(THF_AUTO_FREE))) {
          char buffer[pkg_size];
          auto rb = (resolve_buffer *)&buffer;
          rb->NetLookupID = Self->UID;
-         rb->ThreadID = thread->UID;
+         rb->ThreadID = th->UID;
          CopyMemory(&ip, (rb + 1), sizeof(ip));
          StrCopy(Args->Address, ((STRING)(rb + 1)) + sizeof(IPAddress), COPY_ALL);
-         if ((!thSetData(thread, rb, pkg_size)) and (!acActivate(thread))) {
+         if ((!thSetData(th, rb, pkg_size)) and (!th->activate())) {
             std::lock_guard<std::mutex> lock(*Self->ThreadLock);
-            Self->Threads->insert(thread->UID);
+            Self->Threads->insert(th->UID);
             return ERR_Okay;
          }
          else {
-            acFree(thread);
-            error = ERR_Failed;
+            acFree(th);
+            return log.warning(ERR_Failed);
          }
       }
-      else error = ERR_CreateObject;
+      else return log.warning(ERR_CreateObject);
    }
-   else error = ERR_Args;
-
-   return log.warning(error);
+   else return log.warning(ERR_Failed);
 }
 
 /*****************************************************************************
@@ -403,25 +397,22 @@ static ERROR NETLOOKUP_ResolveName(extNetLookup *Self, struct nlResolveName *Arg
       }
    }
 
-   OBJECTPTR thread;
    ERROR error;
    LONG pkg_size = sizeof(resolve_buffer) + StrLength(Args->HostName) + 1;
-   if (!CreateObject(ID_THREAD, NF_INTEGRAL, &thread,
-         FID_Routine|TPTR, &thread_resolve_name,
-         FID_Flags|TLONG,  THF_AUTO_FREE,
-         TAGEND)) {
+   if (auto th = objThread::create::integral(fl::Routine((CPTR)thread_resolve_name),
+         fl::Flags(THF_AUTO_FREE))) {
       char buffer[pkg_size];
       auto rb = (resolve_buffer *)&buffer;
       rb->NetLookupID = Self->UID;
-      rb->ThreadID = thread->UID;
+      rb->ThreadID = th->UID;
       StrCopy(Args->HostName, (STRING)(rb + 1), COPY_ALL);
-      if ((!thSetData(thread, buffer, pkg_size)) and (!acActivate(thread))) {
+      if ((!thSetData(th, buffer, pkg_size)) and (!th->activate())) {
          std::lock_guard<std::mutex> lock(*Self->ThreadLock);
-         Self->Threads->insert(thread->UID);
+         Self->Threads->insert(th->UID);
          return ERR_Okay;
       }
       else {
-         acFree(thread);
+         acFree(th);
          error = ERR_Failed;
       }
    }

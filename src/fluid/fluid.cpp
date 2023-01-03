@@ -640,8 +640,7 @@ ERROR load_include(objScript *Script, CSTRING IncName)
    AdjustLogLevel(1);
 
       if (!StrMatch("core", IncName)) { // The Core module's IDL is accessible from the RES_CORE_IDL resource.
-         CSTRING idl;
-         if ((idl = (CSTRING)GetResourcePtr(RES_CORE_IDL))) {
+         if (auto idl = (CSTRING)GetResourcePtr(RES_CORE_IDL)) {
             while ((idl) and (*idl)) {
                if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(prv->Lua, idl+2, IncName);
                else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(prv->Lua, idl+2, IncName);
@@ -654,8 +653,8 @@ ERROR load_include(objScript *Script, CSTRING IncName)
          else error = ERR_Failed;
       }
       else { // The IDL for standard modules is retrievable from the IDL string of a loaded module object.
-         OBJECTPTR module;
-         if (!CreateObject(ID_MODULE, NF_INTEGRAL, &module, FID_Name|TSTR, IncName, TAGEND)) {
+         objModule::create module = { fl::Name(IncName) };
+         if (module.ok()) {
             CSTRING idl;
             if ((!(error = module->get(FID_IDL, (STRING *)&idl))) and (idl)) {
                while ((idl) and (*idl)) {
@@ -668,8 +667,6 @@ ERROR load_include(objScript *Script, CSTRING IncName)
                VarSet(inc, IncName, &state, sizeof(state)); // Mark the file as loaded.
             }
             else log.warning("No IDL for module %s", IncName);
-
-            acFree(module);
          }
          else error = ERR_CreateObject;
       }
