@@ -198,9 +198,9 @@ enum {
 #include "hashes.h"
 
 struct CoreBase  *CoreBase;
-static struct FontBase    *FontBase;
-static struct DisplayBase *DisplayBase;
-static struct VectorBase  *VectorBase;
+struct FontBase    *FontBase;
+struct DisplayBase *DisplayBase;
+struct VectorBase  *VectorBase;
 static OBJECTPTR clDocument = NULL;
 static RGB8 glHighlight = { 220, 220, 255, 255 };
 static OBJECTPTR modDisplay = NULL, modFont = NULL, modDocument = NULL, modVector = NULL;

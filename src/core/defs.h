@@ -1221,7 +1221,7 @@ INLINE CSTRING GET_FIELD_NAME(ULONG FieldID)
    CSTRING name;
    if (!KeyGet(glFields, FieldID, (APTR *)&name, NULL)) return name;
    else {
-      StrFormat(tlFieldName, sizeof(tlFieldName), "$%.8x", FieldID);
+      snprintf(tlFieldName, sizeof(tlFieldName), "$%.8x", FieldID);
       return tlFieldName;
    }
 }

@@ -1196,62 +1196,63 @@ class objVectorViewport : public objVector {
    using create = parasol::Create<objVectorViewport>;
 };
 
+extern struct VectorBase *VectorBase;
 struct VectorBase {
-   ERROR (*_DrawPath)(objBitmap *, APTR, DOUBLE, OBJECTPTR, OBJECTPTR);
-   void (*_FreePath)(APTR);
-   ERROR (*_GenerateEllipse)(DOUBLE, DOUBLE, DOUBLE, DOUBLE, LONG, APTR);
-   ERROR (*_GeneratePath)(CSTRING, APTR);
-   ERROR (*_GenerateRectangle)(DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR);
-   ERROR (*_ReadPainter)(objVectorScene *, CSTRING, struct FRGB *, objVectorGradient **, objVectorImage **, objVectorPattern **);
-   void (*_TranslatePath)(APTR, DOUBLE, DOUBLE);
-   void (*_MoveTo)(APTR, DOUBLE, DOUBLE);
-   void (*_LineTo)(APTR, DOUBLE, DOUBLE);
-   void (*_ArcTo)(APTR, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE, LONG);
-   void (*_Curve3)(APTR, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
-   void (*_Smooth3)(APTR, DOUBLE, DOUBLE);
-   void (*_Curve4)(APTR, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
-   void (*_Smooth4)(APTR, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
-   void (*_ClosePath)(APTR);
-   void (*_RewindPath)(APTR);
-   LONG (*_GetVertex)(APTR, DOUBLE *, DOUBLE *);
-   ERROR (*_ApplyPath)(APTR, OBJECTPTR);
-   ERROR (*_Rotate)(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE);
-   ERROR (*_Translate)(struct VectorMatrix *, DOUBLE, DOUBLE);
-   ERROR (*_Skew)(struct VectorMatrix *, DOUBLE, DOUBLE);
-   ERROR (*_Multiply)(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
-   ERROR (*_MultiplyMatrix)(struct VectorMatrix *, struct VectorMatrix *);
-   ERROR (*_Scale)(struct VectorMatrix *, DOUBLE, DOUBLE);
-   ERROR (*_ParseTransform)(struct VectorMatrix *, CSTRING);
-   ERROR (*_ResetMatrix)(struct VectorMatrix *);
+   ERROR (*_DrawPath)(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
+   void (*_FreePath)(APTR Path);
+   ERROR (*_GenerateEllipse)(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR Path);
+   ERROR (*_GeneratePath)(CSTRING Sequence, APTR Path);
+   ERROR (*_GenerateRectangle)(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR Path);
+   ERROR (*_ReadPainter)(objVectorScene * Scene, CSTRING IRI, struct FRGB * RGB, objVectorGradient ** Gradient, objVectorImage ** Image, objVectorPattern ** Pattern);
+   void (*_TranslatePath)(APTR Path, DOUBLE X, DOUBLE Y);
+   void (*_MoveTo)(APTR Path, DOUBLE X, DOUBLE Y);
+   void (*_LineTo)(APTR Path, DOUBLE X, DOUBLE Y);
+   void (*_ArcTo)(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, LONG Flags);
+   void (*_Curve3)(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
+   void (*_Smooth3)(APTR Path, DOUBLE X, DOUBLE Y);
+   void (*_Curve4)(APTR Path, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y);
+   void (*_Smooth4)(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
+   void (*_ClosePath)(APTR Path);
+   void (*_RewindPath)(APTR Path);
+   LONG (*_GetVertex)(APTR Path, DOUBLE * X, DOUBLE * Y);
+   ERROR (*_ApplyPath)(APTR Path, OBJECTPTR VectorPath);
+   ERROR (*_Rotate)(struct VectorMatrix * Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY);
+   ERROR (*_Translate)(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
+   ERROR (*_Skew)(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
+   ERROR (*_Multiply)(struct VectorMatrix * Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX, DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY);
+   ERROR (*_MultiplyMatrix)(struct VectorMatrix * Target, struct VectorMatrix * Source);
+   ERROR (*_Scale)(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
+   ERROR (*_ParseTransform)(struct VectorMatrix * Matrix, CSTRING Transform);
+   ERROR (*_ResetMatrix)(struct VectorMatrix * Matrix);
 };
 
 #ifndef PRV_VECTOR_MODULE
-#define vecDrawPath(...) (VectorBase->_DrawPath)(__VA_ARGS__)
-#define vecFreePath(...) (VectorBase->_FreePath)(__VA_ARGS__)
-#define vecGenerateEllipse(...) (VectorBase->_GenerateEllipse)(__VA_ARGS__)
-#define vecGeneratePath(...) (VectorBase->_GeneratePath)(__VA_ARGS__)
-#define vecGenerateRectangle(...) (VectorBase->_GenerateRectangle)(__VA_ARGS__)
-#define vecReadPainter(...) (VectorBase->_ReadPainter)(__VA_ARGS__)
-#define vecTranslatePath(...) (VectorBase->_TranslatePath)(__VA_ARGS__)
-#define vecMoveTo(...) (VectorBase->_MoveTo)(__VA_ARGS__)
-#define vecLineTo(...) (VectorBase->_LineTo)(__VA_ARGS__)
-#define vecArcTo(...) (VectorBase->_ArcTo)(__VA_ARGS__)
-#define vecCurve3(...) (VectorBase->_Curve3)(__VA_ARGS__)
-#define vecSmooth3(...) (VectorBase->_Smooth3)(__VA_ARGS__)
-#define vecCurve4(...) (VectorBase->_Curve4)(__VA_ARGS__)
-#define vecSmooth4(...) (VectorBase->_Smooth4)(__VA_ARGS__)
-#define vecClosePath(...) (VectorBase->_ClosePath)(__VA_ARGS__)
-#define vecRewindPath(...) (VectorBase->_RewindPath)(__VA_ARGS__)
-#define vecGetVertex(...) (VectorBase->_GetVertex)(__VA_ARGS__)
-#define vecApplyPath(...) (VectorBase->_ApplyPath)(__VA_ARGS__)
-#define vecRotate(...) (VectorBase->_Rotate)(__VA_ARGS__)
-#define vecTranslate(...) (VectorBase->_Translate)(__VA_ARGS__)
-#define vecSkew(...) (VectorBase->_Skew)(__VA_ARGS__)
-#define vecMultiply(...) (VectorBase->_Multiply)(__VA_ARGS__)
-#define vecMultiplyMatrix(...) (VectorBase->_MultiplyMatrix)(__VA_ARGS__)
-#define vecScale(...) (VectorBase->_Scale)(__VA_ARGS__)
-#define vecParseTransform(...) (VectorBase->_ParseTransform)(__VA_ARGS__)
-#define vecResetMatrix(...) (VectorBase->_ResetMatrix)(__VA_ARGS__)
+inline ERROR vecDrawPath(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle) { return VectorBase->_DrawPath(Bitmap,Path,StrokeWidth,StrokeStyle,FillStyle); }
+inline void vecFreePath(APTR Path) { return VectorBase->_FreePath(Path); }
+inline ERROR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR Path) { return VectorBase->_GenerateEllipse(CX,CY,RX,RY,Vertices,Path); }
+inline ERROR vecGeneratePath(CSTRING Sequence, APTR Path) { return VectorBase->_GeneratePath(Sequence,Path); }
+inline ERROR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR Path) { return VectorBase->_GenerateRectangle(X,Y,Width,Height,Path); }
+inline ERROR vecReadPainter(objVectorScene * Scene, CSTRING IRI, struct FRGB * RGB, objVectorGradient ** Gradient, objVectorImage ** Image, objVectorPattern ** Pattern) { return VectorBase->_ReadPainter(Scene,IRI,RGB,Gradient,Image,Pattern); }
+inline void vecTranslatePath(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_TranslatePath(Path,X,Y); }
+inline void vecMoveTo(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_MoveTo(Path,X,Y); }
+inline void vecLineTo(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_LineTo(Path,X,Y); }
+inline void vecArcTo(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, LONG Flags) { return VectorBase->_ArcTo(Path,RX,RY,Angle,X,Y,Flags); }
+inline void vecCurve3(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y) { return VectorBase->_Curve3(Path,CtrlX,CtrlY,X,Y); }
+inline void vecSmooth3(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_Smooth3(Path,X,Y); }
+inline void vecCurve4(APTR Path, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y) { return VectorBase->_Curve4(Path,CtrlX1,CtrlY1,CtrlX2,CtrlY2,X,Y); }
+inline void vecSmooth4(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y) { return VectorBase->_Smooth4(Path,CtrlX,CtrlY,X,Y); }
+inline void vecClosePath(APTR Path) { return VectorBase->_ClosePath(Path); }
+inline void vecRewindPath(APTR Path) { return VectorBase->_RewindPath(Path); }
+inline LONG vecGetVertex(APTR Path, DOUBLE * X, DOUBLE * Y) { return VectorBase->_GetVertex(Path,X,Y); }
+inline ERROR vecApplyPath(APTR Path, OBJECTPTR VectorPath) { return VectorBase->_ApplyPath(Path,VectorPath); }
+inline ERROR vecRotate(struct VectorMatrix * Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY) { return VectorBase->_Rotate(Matrix,Angle,CenterX,CenterY); }
+inline ERROR vecTranslate(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y) { return VectorBase->_Translate(Matrix,X,Y); }
+inline ERROR vecSkew(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y) { return VectorBase->_Skew(Matrix,X,Y); }
+inline ERROR vecMultiply(struct VectorMatrix * Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX, DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY) { return VectorBase->_Multiply(Matrix,ScaleX,ShearY,ShearX,ScaleY,TranslateX,TranslateY); }
+inline ERROR vecMultiplyMatrix(struct VectorMatrix * Target, struct VectorMatrix * Source) { return VectorBase->_MultiplyMatrix(Target,Source); }
+inline ERROR vecScale(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y) { return VectorBase->_Scale(Matrix,X,Y); }
+inline ERROR vecParseTransform(struct VectorMatrix * Matrix, CSTRING Transform) { return VectorBase->_ParseTransform(Matrix,Transform); }
+inline ERROR vecResetMatrix(struct VectorMatrix * Matrix) { return VectorBase->_ResetMatrix(Matrix); }
 #endif
 
 //****************************************************************************

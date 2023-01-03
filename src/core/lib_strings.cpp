@@ -771,38 +771,6 @@ LONG StrDatatype(CSTRING String)
 /*********************************************************************************************************************
 
 -FUNCTION-
-StrFormat: Formats a string using printf() style arguments.
-ExtPrototype: const void *, LONG, const char *, ...) __attribute__((format(printf, 3, 4))
-
-StrFormat() duplicates the functionality found in the printf() family of functions.  It is provided to assist
-portability where there is no guarantee that POSIX is available on the host platform.
-
--INPUT-
-buf(str) Buffer: Reference to a destination buffer for the formatted string.
-bufsize Size: The length of the destination Buffer, in bytes.
-cstr Format: The string format to use for processing.
-tags Parameters: A tag-list of arguments that match the parameters in the Format string.
-
--RESULT-
-int: Returns the total number of characters written to the buffer (not including the NULL terminator).  If the total number of characters is greater or equal to the BufferSize minus 1, then you should assume that a buffer overflow occurred.
-
-*********************************************************************************************************************/
-
-LONG StrFormat(STRING Buffer, LONG BufferSize, CSTRING Format, ...)
-{
-   if (!Format) return 0;
-   if (BufferSize <= 0) return 0;
-
-   va_list arg;
-   va_start(arg, Format);
-   LONG chars = vsnprintf(Buffer, BufferSize, Format, arg);
-   va_end(arg);
-   return chars;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
 StrHash: Convert a string into a 32-bit hash.
 
 This function will convert a string into a 32-bit hash.  The hashing algorithm is consistent throughout our

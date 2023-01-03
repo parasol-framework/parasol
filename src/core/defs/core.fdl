@@ -1337,7 +1337,7 @@ struct ScriptArg { // For use with scExec
     "UTF8CharLength",
     "UTF8ReadValue",
     "UTF8WriteValue",
-    "StrFormat",
+    "CopyFile",
     "WaitForObjects",
     "ReadFileToBuffer",
     "StrDatatype",
@@ -1360,8 +1360,7 @@ struct ScriptArg { // For use with scExec
     "ResolvePath",
     "SetVolume",
     "DeleteVolume",
-    "VirtualVolume",
-    "CopyFile")
+    "VirtualVolume")
 
   c_insert([[
 
@@ -1410,6 +1409,16 @@ typedef std::map<std::string, std::string> ConfigKeys;
 typedef std::pair<std::string, ConfigKeys> ConfigGroup;
 typedef std::vector<ConfigGroup> ConfigGroups;
 
+#ifndef PRV_CORE_MODULE
+inline ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo *MemInfo) {
+   return MemoryIDInfo(ID, MemInfo, sizeof(struct MemInfo));
+}
+
+inline ERROR MemoryPtrInfo(APTR Address, struct MemInfo *MemInfo) {
+   return MemoryPtrInfo(Address, MemInfo, sizeof(struct MemInfo));
+}
+#endif // PRV_CORE_MODULE
+
 inline LONG StrLength(CSTRING String) {
    if (String) return strlen(String);
    else return 0;
@@ -1437,6 +1446,18 @@ inline DOUBLE StrToFloat(CSTRING String) {
    }
 
    return strtod(String, NULL);
+}
+
+inline LONG __attribute__((format(printf, 3, 4))) StrFormat(STRING Buffer, LONG BufferSize, CSTRING Format, ...)
+{
+   if (!Format) return 0;
+   if (BufferSize <= 0) return 0;
+
+   va_list arg;
+   va_start(arg, Format);
+   LONG chars = vsnprintf(Buffer, BufferSize, Format, arg);
+   va_end(arg);
+   return chars;
 }
 
 inline LONG IntToStr(LARGE Integer, STRING String, LONG StringSize) {

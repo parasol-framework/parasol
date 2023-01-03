@@ -312,11 +312,12 @@ class objDocument : public BaseClass {
    }
 };
 
+extern struct DocumentBase *DocumentBase;
 struct DocumentBase {
-   LONG (*_CharLength)(objDocument *, LONG);
+   LONG (*_CharLength)(objDocument * Document, LONG Index);
 };
 
 #ifndef PRV_DOCUMENT_MODULE
-#define docCharLength(...) (DocumentBase->_CharLength)(__VA_ARGS__)
+inline LONG docCharLength(objDocument * Document, LONG Index) { return DocumentBase->_CharLength(Document,Index); }
 #endif
 

@@ -107,9 +107,9 @@ capabilities.
 #include "module_def.c"
 
 MODULE_COREBASE;
-static struct DisplayBase *DisplayBase;
-static struct FontBase *FontBase;
-static struct VectorBase *VectorBase;
+struct DisplayBase *DisplayBase;
+struct FontBase *FontBase;
+struct VectorBase *VectorBase;
 
 static OBJECTPTR clScintilla = NULL;
 static OBJECTPTR modDisplay = NULL, modFont = NULL, modVector = NULL;
