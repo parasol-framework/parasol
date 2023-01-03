@@ -47,7 +47,7 @@ MODULE_COREBASE;
 static ModuleMaster *modPicture = NULL;
 static OBJECTPTR clPicture = NULL;
 static OBJECTPTR modDisplay = NULL;
-static DisplayBase *DisplayBase = NULL;
+struct DisplayBase *DisplayBase = NULL;
 static THREADVAR bool tlError = false;
 
 static ERROR decompress_png(prvPicture *, objBitmap *, int, int, png_structp, png_infop, png_uint_32, png_uint_32);

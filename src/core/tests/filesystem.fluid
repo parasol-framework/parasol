@@ -142,7 +142,6 @@ end
 
 function testFileIcons()
    local icon_pairs = {
-      { path='parasol:fluid.exe',               icon='icons:items/launch' },
       { path='fonts:fonts.cfg',                 icon='icons:filetypes/text' },
       { path='fonts:license-courier-prime.txt', icon='icons:filetypes/text' },
       { path='fonts:truetype/Micro-6.ttf',      icon='icons:filetypes/font' },

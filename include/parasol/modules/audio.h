@@ -403,17 +403,18 @@ class objSound : public BaseClass {
    }
 };
 
+extern struct AudioBase *AudioBase;
 struct AudioBase {
    ERROR (*_StartDrivers)(void);
-   ERROR (*_WaitDrivers)(LONG);
-   LONG (*_SetChannels)(LONG);
-   DOUBLE (*_SetTaskVolume)(DOUBLE);
+   ERROR (*_WaitDrivers)(LONG TimeOut);
+   LONG (*_SetChannels)(LONG Total);
+   DOUBLE (*_SetTaskVolume)(DOUBLE Volume);
 };
 
 #ifndef PRV_AUDIO_MODULE
-#define sndStartDrivers(...) (AudioBase->_StartDrivers)(__VA_ARGS__)
-#define sndWaitDrivers(...) (AudioBase->_WaitDrivers)(__VA_ARGS__)
-#define sndSetChannels(...) (AudioBase->_SetChannels)(__VA_ARGS__)
-#define sndSetTaskVolume(...) (AudioBase->_SetTaskVolume)(__VA_ARGS__)
+inline ERROR sndStartDrivers(void) { return AudioBase->_StartDrivers(); }
+inline ERROR sndWaitDrivers(LONG TimeOut) { return AudioBase->_WaitDrivers(TimeOut); }
+inline LONG sndSetChannels(LONG Total) { return AudioBase->_SetChannels(Total); }
+inline DOUBLE sndSetTaskVolume(DOUBLE Volume) { return AudioBase->_SetTaskVolume(Volume); }
 #endif
 

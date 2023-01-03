@@ -129,7 +129,7 @@ LONG UTF8PrevLength(CSTRING String, LONG Offset);
 LONG UTF8CharLength(CSTRING String);
 ULONG UTF8ReadValue(CSTRING String, LONG * Length);
 LONG UTF8WriteValue(LONG Value, STRING Buffer, LONG Size);
-LONG StrFormat(STRING Buffer, LONG Size, CSTRING Format, ...);
+ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
 ERROR WaitForObjects(LONG Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
 ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
 LONG StrDatatype(CSTRING String);
@@ -153,7 +153,6 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING * Result);
 ERROR SetVolume(LARGE,...);
 ERROR DeleteVolume(CSTRING Name);
 ERROR VirtualVolume(CSTRING Name, ...);
-ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
 
 #ifdef  __cplusplus
 }

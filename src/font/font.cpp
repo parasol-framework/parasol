@@ -66,7 +66,7 @@ static const UBYTE glWrapBreaks[256] = {
 
 OBJECTPTR modFont = NULL;
 struct CoreBase *CoreBase;
-static struct DisplayBase *DisplayBase;
+struct DisplayBase *DisplayBase;
 static OBJECTPTR clFont = NULL;
 static OBJECTPTR modDisplay = NULL;
 static FT_Library glFTLibrary = NULL;

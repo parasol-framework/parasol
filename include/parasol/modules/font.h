@@ -102,29 +102,30 @@ class objFont : public BaseClass {
    inline ERROR init() { return Action(AC_Init, this, NULL); }
 };
 
+extern struct FontBase *FontBase;
 struct FontBase {
-   ERROR (*_GetList)(struct FontList **);
-   LONG (*_StringWidth)(objFont *, CSTRING, LONG);
-   void (*_StringSize)(objFont *, CSTRING, LONG, LONG, LONG *, LONG *);
-   ERROR (*_ConvertCoords)(objFont *, CSTRING, LONG, LONG, LONG *, LONG *, LONG *, LONG *, LONG *);
-   LONG (*_CharWidth)(objFont *, ULONG, ULONG, LONG *);
-   DOUBLE (*_SetDefaultSize)(DOUBLE);
+   ERROR (*_GetList)(struct FontList ** Result);
+   LONG (*_StringWidth)(objFont * Font, CSTRING String, LONG Chars);
+   void (*_StringSize)(objFont * Font, CSTRING String, LONG Chars, LONG Wrap, LONG * Width, LONG * Rows);
+   ERROR (*_ConvertCoords)(objFont * Font, CSTRING String, LONG X, LONG Y, LONG * Column, LONG * Row, LONG * ByteColumn, LONG * BytePos, LONG * CharX);
+   LONG (*_CharWidth)(objFont * Font, ULONG Char, ULONG KChar, LONG * Kerning);
+   DOUBLE (*_SetDefaultSize)(DOUBLE Size);
    APTR (*_FreetypeHandle)(void);
-   ERROR (*_InstallFont)(CSTRING);
-   ERROR (*_RemoveFont)(CSTRING);
-   ERROR (*_SelectFont)(CSTRING, CSTRING, LONG, LONG, CSTRING *);
+   ERROR (*_InstallFont)(CSTRING Files);
+   ERROR (*_RemoveFont)(CSTRING Name);
+   ERROR (*_SelectFont)(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, CSTRING * Path);
 };
 
 #ifndef PRV_FONT_MODULE
-#define fntGetList(...) (FontBase->_GetList)(__VA_ARGS__)
-#define fntStringWidth(...) (FontBase->_StringWidth)(__VA_ARGS__)
-#define fntStringSize(...) (FontBase->_StringSize)(__VA_ARGS__)
-#define fntConvertCoords(...) (FontBase->_ConvertCoords)(__VA_ARGS__)
-#define fntCharWidth(...) (FontBase->_CharWidth)(__VA_ARGS__)
-#define fntSetDefaultSize(...) (FontBase->_SetDefaultSize)(__VA_ARGS__)
-#define fntFreetypeHandle(...) (FontBase->_FreetypeHandle)(__VA_ARGS__)
-#define fntInstallFont(...) (FontBase->_InstallFont)(__VA_ARGS__)
-#define fntRemoveFont(...) (FontBase->_RemoveFont)(__VA_ARGS__)
-#define fntSelectFont(...) (FontBase->_SelectFont)(__VA_ARGS__)
+inline ERROR fntGetList(struct FontList ** Result) { return FontBase->_GetList(Result); }
+inline LONG fntStringWidth(objFont * Font, CSTRING String, LONG Chars) { return FontBase->_StringWidth(Font,String,Chars); }
+inline void fntStringSize(objFont * Font, CSTRING String, LONG Chars, LONG Wrap, LONG * Width, LONG * Rows) { return FontBase->_StringSize(Font,String,Chars,Wrap,Width,Rows); }
+inline ERROR fntConvertCoords(objFont * Font, CSTRING String, LONG X, LONG Y, LONG * Column, LONG * Row, LONG * ByteColumn, LONG * BytePos, LONG * CharX) { return FontBase->_ConvertCoords(Font,String,X,Y,Column,Row,ByteColumn,BytePos,CharX); }
+inline LONG fntCharWidth(objFont * Font, ULONG Char, ULONG KChar, LONG * Kerning) { return FontBase->_CharWidth(Font,Char,KChar,Kerning); }
+inline DOUBLE fntSetDefaultSize(DOUBLE Size) { return FontBase->_SetDefaultSize(Size); }
+inline APTR fntFreetypeHandle(void) { return FontBase->_FreetypeHandle(); }
+inline ERROR fntInstallFont(CSTRING Files) { return FontBase->_InstallFont(Files); }
+inline ERROR fntRemoveFont(CSTRING Name) { return FontBase->_RemoveFont(Name); }
+inline ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, CSTRING * Path) { return FontBase->_SelectFont(Name,Style,Point,Flags,Path); }
 #endif
 

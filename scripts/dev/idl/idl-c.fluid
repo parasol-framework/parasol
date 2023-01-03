@@ -383,13 +383,25 @@ function flags(Prefix, Options, ...)
    end
 
    local function outputFlagDef(Options, Prefix, flag_name, val)
-      if (Options.bits == 16) then
+      if (Options.strict) then
+         if (Options.bits == 16) then
+            table.insert(sortedFlags, { value = val, define = string.format('   %s = 0x%.4x,', flag_name, val) } )
+         else
+            local hash_id = string.format('%08x', val):sub(-8)
+            table.insert(sortedFlags, { value = val, define = string.format('   %s = 0x%s,', flag_name, hash_id) } )
+         end
+      elseif (Options.bits == 16) then
          table.insert(sortedFlags, { value = val, define = string.format('#define %s_%s 0x%.4x', Prefix, flag_name, val) })
       else
          -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
          local hash_id = string.format('%08x', val):sub(-8)
          table.insert(sortedFlags, { value = val, define = string.format('#define %s_%s 0x%s', Prefix, flag_name, hash_id) } )
       end
+   end
+
+   if (Options.strict) then
+      table.insert(out, string.format('enum class %s : ULONG {', Prefix))
+      table.insert(out, '   NIL = 0,')
    end
 
    local lookup = { }
@@ -448,6 +460,12 @@ function flags(Prefix, Options, ...)
    table.sort(sortedFlags, function(a,b) return a.value < b.value end)
    for _, flag in ipairs(sortedFlags) do
       table.insert(out, flag.define)
+   end
+
+   if (Options.strict) then
+      table.insert(out, '};')
+      table.insert(out, '')
+      table.insert(out, 'DEFINE_ENUM_FLAG_OPERATORS(' .. Prefix .. ')')
    end
 
    table.insert(out, '')
@@ -1604,7 +1622,7 @@ function functionNames(Prefix, ...)
       local func = {
          name  = fname,
          def   = '   void (*_' .. fname .. ')(void);',
-         macro = '#define ' .. glFunctionPrefix:lower() .. fname .. '() (' .. glModule.name .. 'Base->_' .. fname .. ')()'
+         macro = 'template <typename... Args> inline ERROR ' .. glFunctionPrefix:lower() .. fname .. '(Args... pArgs) { return ' .. glModule.name .. 'Base->_' .. fname .. '(pArgs...); }'
       }
 
       table.insert(glFunctions, func)
@@ -1643,40 +1661,41 @@ end
 -- Conversion table for FDL types to their C/C++ and Field Definition equivalents.
 
 glTypes = {
-   hhandle    = { fd='FD_PTR',       c_type='HOSTHANDLE' },
-   structsize = { fd='FD_LONG|FD_BUFSIZE', c_type='LONG' },
-   bufsize    = { fd='FD_LONG|FD_BUFSIZE', c_type='LONG' },
-   arraysize  = { fd='FD_LONG|FD_ARRAYSIZE', c_type='LONG' },
-   mem        = { fd='FD_LONG',      c_type='MEMORYID' },
-   int        = { fd='FD_LONG',      c_type='LONG' },
-   uint       = { fd='FD_LONG|FD_UNSIGNED', c_type='ULONG' },
-   ptr        = { fd='FD_PTR',       c_type='APTR' },
-   cptr       = { fd='FD_PTR',       c_type='const void *' },
-   oid        = { fd='FD_OBJECTID',  c_type='OBJECTID' },
-   short      = { fd='FD_WORD',      c_type='WORD' },
-   ushort     = { fd='FD_WORD',      c_type='UWORD' },
-   uchar      = { fd='FD_BYTE',      c_type='UBYTE' },
-   char       = { fd='FD_BYTE',      c_type='BYTE' },
-   error      = { fd='FD_LONG|FD_ERROR', c_type='ERROR' },
-   large      = { fd='FD_LARGE',     c_type='LARGE' },
-   cid        = { fd='FD_LONG|FD_UNSIGNED', c_type='CLASSID' },
-   obj        = { fd='FD_OBJECTPTR', c_type='OBJECTPTR' },
-   ext        = { fd='FD_OBJECTPTR', c_type='OBJECTPTR' },
-   str        = { fd='FD_STR',       c_type='STRING' },
-   cstr       = { fd='FD_STR',       c_type='CSTRING' },
-   func       = { fd='FD_FUNCTION',  c_type='FUNCTION' },
-   float      = { fd='FD_FLOAT',     c_type='FLOAT' },
-   double     = { fd='FD_DOUBLE',    c_type='DOUBLE' },
-   maxint     = { fd='FD_LARGE',     c_type='MAXINT' },
-   eid        = { fd='FD_LONG',      c_type='EVENTID' },
-   fid        = { fd='FD_LARGE',     c_type='FIELD' },
-   tags       = { fd='FD_TAGS',      c_type='...' },
-   vtags      = { fd='FD_VARTAGS',   c_type='...' },
-   printf     = { fd='FD_TAGS',      c_type='...' },
-   void       = { fd='FD_VOID',      c_type='void' },
-   struct     = { fd='FD_STRUCT',    c_type='APTR' },
+   arraysize  = { fd='FD_LONG|FD_ARRAYSIZE',  c_type='LONG' },
+   bufsize    = { fd='FD_LONG|FD_BUFSIZE',    c_type='LONG' },
+   char       = { fd='FD_BYTE',               c_type='BYTE' },
+   cid        = { fd='FD_LONG|FD_UNSIGNED',   c_type='CLASSID' },
+   cptr       = { fd='FD_PTR',                c_type='const void *' },
+   cstr       = { fd='FD_STR',                c_type='CSTRING' },
+   double     = { fd='FD_DOUBLE',             c_type='DOUBLE' },
+   eid        = { fd='FD_LONG',               c_type='EVENTID' },
+   error      = { fd='FD_LONG|FD_ERROR',      c_type='ERROR' },
+   ext        = { fd='FD_OBJECTPTR',          c_type='OBJECTPTR' },
+   fid        = { fd='FD_LARGE',              c_type='FIELD' },
+   flags      = { fd='FD_LONG',               c_type='LONG' },
+   float      = { fd='FD_FLOAT',              c_type='FLOAT' },
+   func       = { fd='FD_FUNCTION',           c_type='FUNCTION' },
+   hhandle    = { fd='FD_PTR',                c_type='HOSTHANDLE' },
+   int        = { fd='FD_LONG',               c_type='LONG' },
+   large      = { fd='FD_LARGE',              c_type='LARGE' },
+   maxint     = { fd='FD_LARGE',              c_type='MAXINT' },
+   mem        = { fd='FD_LONG',               c_type='MEMORYID' },
+   obj        = { fd='FD_OBJECTPTR',          c_type='OBJECTPTR' },
+   oid        = { fd='FD_OBJECTID',           c_type='OBJECTID' },
+   printf     = { fd='FD_TAGS',               c_type='...' },
+   ptr        = { fd='FD_PTR',                c_type='APTR' },
    resource   = { fd='FD_STRUCT|FD_RESOURCE', c_type='APTR' },
-   va_list    = { fd='FD_PTR',       c_type='va_list' }
+   short      = { fd='FD_WORD',               c_type='WORD' },
+   str        = { fd='FD_STR',                c_type='STRING' },
+   struct     = { fd='FD_STRUCT',             c_type='APTR' },
+   structsize = { fd='FD_LONG|FD_BUFSIZE',    c_type='LONG' },
+   tags       = { fd='FD_TAGS',               c_type='...' },
+   uchar      = { fd='FD_BYTE',               c_type='UBYTE' },
+   uint       = { fd='FD_LONG|FD_UNSIGNED',   c_type='ULONG' },
+   ushort     = { fd='FD_WORD',               c_type='UWORD' },
+   va_list    = { fd='FD_PTR',                c_type='va_list' },
+   void       = { fd='FD_VOID',               c_type='void' },
+   vtags      = { fd='FD_VARTAGS',            c_type='...' }
 }
 
 function cType(Field, Origin)
@@ -1841,6 +1860,23 @@ function cType(Field, Origin)
          Field.lookup   = prefix
 
          if (glCustomTypes[prefix]) then
+            glActiveRefs['TYPE:' .. prefix] = 1
+         else
+            print('Unknown custom type "' .. prefix .. '"')
+         end
+         goto finalise
+      end
+   end
+
+   do -- Integer flags type reference, used for strongly typed enum flags
+      local prefix = Field.type:match("^flags%((%a+)%)")
+      if (prefix != nil) then
+         Field.type     = prefix
+         Field.fullType = glTypes.int
+         Field.ref      = glCustomTypes[prefix]
+         Field.lookup   = prefix
+
+         if (glCustomTypes[prefix] != nil) then
             glActiveRefs['TYPE:' .. prefix] = 1
          else
             print('Unknown custom type "' .. prefix .. '"')
@@ -2227,6 +2263,7 @@ function processFunction(extract)
    local status      = extract:match('\n[Ss]tatus:%s+(.-)\n')
    local category    = extract:match('\n[Cc]ategory:%s+(.-)\n')
    local ext_proto   = extract:match('\n[Ee]xtPrototype:%s+(.-)\n')
+   local attrib      = extract:match('\n[Aa]ttribute:%s+(.-)\n')
    local description = extract:match('\n\n(.-)\n%-[A-Z]+%-\n')
 
    if (name:find('%(%)') != nil) then
@@ -2249,9 +2286,11 @@ function processFunction(extract)
       print("Processing function " .. name .. "()")
    end
 
-   local def = { }
-   def.input = extract:match("\n%-INPUT%-\n(.-)\n%-[A-Z]+%-\n")
-   def.ext_proto = ext_proto
+   local def = {
+      input     = extract:match("\n%-INPUT%-\n(.-)\n%-[A-Z]+%-\n"),
+      ext_proto = ext_proto,
+      attrib    = attrib
+   }
 
    local errors = extract:match("\n%-ERRORS%-\n(.-)%-END%-")
    if nz(errors) then
@@ -2329,15 +2368,15 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
       func.result = cType({ type="error", values=Def.errors, isFunction=true }, "Function " .. Name)
    end
 
-   local macroArgs = ""
-   local macroValues = ""
-   local argSeq = ""
-   local proto = ""
-   local doc_proto = ""
-   local complexArgs = false
+   local outValues  = ""
+   local argSeq     = ""
+   local baseArgs
+   local proto      = ""
+   local doc_proto  = ""
+   local variadic   = false
+   local last_param = nil
 
    if nz(Def.input) then
-      local abc = 97
       func.input = { }
       for line, content in ipairs(Def.input:split("\n")) do
          local comment = content:match("^.+:%s-(.+)$")
@@ -2351,46 +2390,38 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
                argSeq = argSeq .. ", "
                proto = proto .. ", "
                doc_proto = doc_proto .. ", "
-               macroValues = macroValues .. ","
+               outValues = outValues .. ","
             end
 
             if (param.type == "APTR *") or (param.type == "OBJECTPTR *") then
-               argSeq = argSeq .. "APTR"
+               argSeq = argSeq .. "APTR " .. param.name
+            elseif (param.type == '...') then
+               baseArgs = argSeq .. "..."
+               argSeq = argSeq .. "Args... Tags"
             else
-               argSeq = argSeq .. param.type
+               argSeq = argSeq .. param.type .. " " .. cName(param)
             end
 
-            if (param.sizeof) then
-               proto = proto .. param.type .. " " .. cName(param)
-               doc_proto = doc_proto .. param.type .. " " .. cName(param)
-               macroValues = macroValues .. "sizeof(*" .. string.char(abc-1) .. ")"
-               complexArgs = true
-            elseif (param.type == "...") then
-               proto = proto .. param.type
-               doc_proto = doc_proto .. param.type
-               if nz(macroArgs) then
-                  macroArgs = macroArgs .. ","
-               else // This special case is required when '...' is the first parameter.
+            if (param.type == "...") then
+               proto = proto .. "..."
+               doc_proto = doc_proto .. "..."
+               if not nz(outValues) then
+                  // This special case is required when '...' is the first parameter.
                   if (param.fullType.fd == "FD_VARTAGS") then
-                     argSeq = "LARGE," .. argSeq
                      proto = "LARGE," .. proto
-                     doc_proto = "LARGE," .. doc_proto
                   else
-                     argSeq = "LONG," .. argSeq
                      proto = "LONG," .. proto
-                     doc_proto = "LONG," .. doc_proto
                   end
                end
-               macroArgs = macroArgs .. "..."
-               macroValues = macroValues .. "__VA_ARGS__"
+               outValues = outValues .. "Tags..."
+               variadic = true
             else
                proto = proto .. nz(param.extType, param.type) .. " " .. cName(param)
                doc_proto = doc_proto .. param.type .. " " .. cName(param)
-               if nz(macroArgs) then macroArgs = macroArgs .. "," end
-               macroArgs = macroArgs .. string.char(abc)
-               macroValues = macroValues .. string.char(abc)
-               abc = abc + 1
+               outValues = outValues .. param.name
             end
+
+            last_param = param
          elseif nz(content:trim()) then
             error("Unable to process line '" .. nz(content,"NULL") .. "' for function '" .. Name .. "'")
          end
@@ -2402,15 +2433,31 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
       response = { type="void" }
    end
 
-   func.def = "   " .. nz(response.type,"NIL") .. " (*_" .. func.name .. ")(" .. nz(nz(Def.ext_proto, argSeq),"void") .. ");"
+   if Def.ext_proto then
+      baseArgs = Def.ext_proto
+      argSeq   = Def.ext_proto
+      if (string.sub(argSeq, -3) == '...') then
+         argSeq = string.sub(argSeq, 1, -4) .. "Args... Tags"
+      end
+   elseif not baseArgs then
+      baseArgs = argSeq
+   end
+
+   -- The func.def is used for building the jump table
+   func.def = "   " .. nz(response.type,"NIL")
+   if Def.attrib then func.def = func.def .. " " .. nz(Def.attrib,"") end
+   func.def = func.def  .. " (*_" .. func.name .. ")(" .. nz(baseArgs,"void") .. ");"
+
    func.c_proto = proto
    func.doc_proto = doc_proto
    func.c_response = response.type
 
-   if (complexArgs) then
-      func.macro = "#define " .. glFunctionPrefix:lower() .. func.name .. "(" .. nz(macroArgs,"") .. ") (" .. glModule.name .. "Base->_" .. func.name .. ")(" .. nz(macroValues,"") .. ")"
+   if (variadic) then
+      func.macro = "template<class... Args> " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name .. "(" .. nz(argSeq,"void") .. ")" ..
+                   " { return " .. glModule.name .. "Base->_" .. func.name .. "(" .. nz(outValues,"") .. "); }"
    else
-      func.macro = "#define " .. glFunctionPrefix:lower() .. func.name .. "(...) (" .. glModule.name .. "Base->_" .. func.name .. ")(__VA_ARGS__)"
+      func.macro = "inline " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name .. "(" .. nz(argSeq,"void") .. ")" ..
+                   " { return " .. glModule.name .. "Base->_" .. func.name .. "(" .. nz(outValues,"") .. "); }"
    end
 end
 
@@ -2454,7 +2501,7 @@ function saveOutput()
       local blank = 0
       for a=1, #glOutput do
          if (glOutput[a] == "__FUNCTION_TABLE__") then
-            local out = "struct " .. glModule.name .. "Base {\n"
+            local out = "extern struct " .. glModule.name .. "Base *" .. glModule.name .. "Base;\n" .. "struct " .. glModule.name .. "Base {\n"
             for k, func in ipairs(glFunctions) do
                if nz(func.def) then
                   out = out .. func.def .. "\n"

@@ -1,8 +1,7 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
-The source code of the Parasol Framework is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol Framework is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 -CATEGORY-
 Name: Logging
@@ -23,7 +22,7 @@ Log levels are:
 8  TRACE Extremely detailed API messages suitable for intensive debugging only.
 9  Noisy debug messages that will appear frequently, e.g. being used in inner loops.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include <stdio.h>
 #include <unistd.h>
@@ -53,7 +52,7 @@ enum { EL_NONE=0, EL_MINOR, EL_MAJOR, EL_MAJORBOLD };
 
 static THREADVAR LONG tlBaseLine = 0;
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 AdjustLogLevel: Adjusts the base-line of all log messages.
@@ -76,7 +75,7 @@ int Adjust: The level of adjustment to make to new log messages.  Zero is the de
 -RESULT-
 int: Returns the absolute base-line value that was active prior to calling this function.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 LONG AdjustLogLevel(LONG BaseLine)
 {
@@ -86,11 +85,11 @@ LONG AdjustLogLevel(LONG BaseLine)
    return old_level;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 LogF: Sends formatted messages to the standard log.
-ExtPrototype: const void *, const char *, ...) __attribute__((format(printf, 2, 3))
+Attribute: __attribute__((format(printf, 2, 3)))
 
 The LogF() function follows the same functionality and rules as the ANSI printf() function, with the difference that
 it is passed through a log filter before appearing as output.  Imposed limits restrict the length of the message to
@@ -100,7 +99,7 @@ The following example will print the default width of a Display object to the lo
 
 <pre>
 if (!NewObject(ID_DISPLAY, 0, &display)) {
-   if (!acInit(display)) {
+   if (!display->init(display)) {
       LogF("Demo","The width of the display is: %d", display-&gt;Width);
    }
    acFree(display);
@@ -113,7 +112,7 @@ cstr Message: A formatted message to print.
 printf Tags: As per printf() rules, one parameter for every % symbol that has been used in the Message string is required.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void LogF(CSTRING Header, CSTRING Format, ...)
 {
@@ -332,11 +331,11 @@ exit:
    if (new_branch) tlDepth++;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 VLogF: Sends formatted messages to the standard log.
-ExtPrototype: int, const char *, const char *, va_list
+ExtPrototype: int Flags, const char *Header, const char *Message, va_list Args
 
 Please refer to LogF().  This function is not intended for external use.
 
@@ -347,13 +346,13 @@ cstr Message: A formatted message to print.
 va_list Args: A va_list corresponding to the arguments referenced in Message.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
 {
    if (tlLogStatus <= 0) { if (Flags & VLF_BRANCH) tlDepth++; return; }
 
-   static ULONG log_levels[10] = {
+   static const ULONG log_levels[10] = {
       VLF_CRITICAL,
       VLF_ERROR|VLF_CRITICAL,
       VLF_WARNING|VLF_ERROR|VLF_CRITICAL,
@@ -534,7 +533,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
    if (Flags & VLF_BRANCH) tlDepth++;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 FuncError: Sends basic error messages to the application log.
@@ -553,7 +552,7 @@ error Error: An error code from the "system/errors.h" include file.  Valid error
 -RESULT-
 error: Returns the same code that was specified in the Error parameter.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR FuncError(CSTRING Header, ERROR Code)
 {
@@ -648,7 +647,7 @@ ERROR FuncError(CSTRING Header, ERROR Code)
    return Code;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 LogReturn: Revert to the previous branch in the application logging tree.
@@ -684,7 +683,7 @@ when code goes out of scope.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void LogReturn(void)
 {
@@ -692,7 +691,7 @@ void LogReturn(void)
    if ((--tlDepth) < 0) tlDepth = 0;
 }
 
-//*****************************************************************************
+//********************************************************************************************************************
 
 static void fmsg(CSTRING Header, STRING Buffer, BYTE Colon, BYTE Sub) // Buffer must be COLUMN1+1 in size
 {

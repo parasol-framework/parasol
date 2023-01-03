@@ -1468,7 +1468,7 @@ end
 <p>The LogF() function follows the same functionality and rules as the ANSI printf() function, with the difference that it is passed through a log filter before appearing as output.  Imposed limits restrict the length of the message to 256 bytes, although a 120 byte limit is recommended where possible.</p>
 <p>The following example will print the default width of a Display object to the log.</p>
 <pre>if (!NewObject(ID_DISPLAY, 0, &amp;display)) {
-   if (!acInit(display)) {
+   if (!display-&gt;init(display)) {
       LogF("Demo","The width of the display is: %d", display-&gt;Width);
    }
    acFree(display);
@@ -2273,7 +2273,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>SetVolume</name>
     <category>Files</category>
     <comment>Adds a new volume name to the system.</comment>
-    <prototype>ERROR SetVolume(LARGE,...)</prototype>
+    <prototype>ERROR SetVolume(...)</prototype>
     <input>
       <param type="..." name="Tags">A list of AST tags, terminated with a single TAGEND entry.</param>
     </input>
@@ -2390,23 +2390,6 @@ SetField(Object, FID_Statement|TSTR, "string");
 <p>Any white-space at the start of the string will be skipped.</p>
     </description>
     <result type="LONG" lookup="STT">Returns STT_FLOAT, STT_NUMBER, STT_HEX or STT_STRING.</result>
-  </function>
-
-  <function>
-    <name>StrFormat</name>
-    <category>Strings</category>
-    <comment>Formats a string using printf() style arguments.</comment>
-    <prototype>LONG StrFormat(STRING Buffer, LONG Size, CSTRING Format, ...)</prototype>
-    <input>
-      <param type="STRING" name="Buffer">Reference to a destination buffer for the formatted string.</param>
-      <param type="LONG" name="Size">The length of the destination Buffer, in bytes.</param>
-      <param type="CSTRING" name="Format">The string format to use for processing.</param>
-      <param type="..." name="Parameters">A tag-list of arguments that match the parameters in the Format string.</param>
-    </input>
-    <description>
-<p>StrFormat() duplicates the functionality found in the printf() family of functions.  It is provided to assist portability where there is no guarantee that POSIX is available on the host platform.</p>
-    </description>
-    <result type="LONG">Returns the total number of characters written to the buffer (not including the NULL terminator).  If the total number of characters is greater or equal to the BufferSize minus 1, then you should assume that a buffer overflow occurred.</result>
   </function>
 
   <function>

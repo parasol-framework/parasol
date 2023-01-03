@@ -25,7 +25,7 @@ extern "C" {
 }
 
 struct CoreBase *CoreBase = NULL;
-static struct DisplayBase *DisplayBase = NULL;
+struct DisplayBase *DisplayBase = NULL;
 static OBJECTPTR clJPEG = NULL;
 static OBJECTPTR modDisplay = NULL;
 

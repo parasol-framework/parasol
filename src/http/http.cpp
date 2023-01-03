@@ -117,7 +117,7 @@ typedef char HASHHEX[HASHHEXLEN+1];
 static ERROR create_http_class(void);
 
 MODULE_COREBASE;
-static struct NetworkBase *NetworkBase;
+struct NetworkBase *NetworkBase;
 static OBJECTPTR modNetwork = NULL;
 static OBJECTPTR clHTTP = NULL;
 static objProxy *glProxy = NULL;

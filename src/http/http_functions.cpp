@@ -261,10 +261,10 @@ redo_upload:
       log.trace("Writing %d bytes (of expected " PF64() ") to socket.  Chunked: %d", len, Self->ContentLength, Self->Chunked);
 
       if (Self->Chunked) {
-         if (len & 0xf000)      { csize = 4+2; StrFormat(Self->WriteBuffer-6, 5, "%.4x", len); }
-         else if (len & 0x0f00) { csize = 3+2; StrFormat(Self->WriteBuffer-5, 4, "%.3x", len); }
-         else if (len & 0x00f0) { csize = 2+2; StrFormat(Self->WriteBuffer-4, 3, "%.2x", len); }
-         else { csize = 1+2; StrFormat(Self->WriteBuffer-3, 2, "%.1x", len); }
+         if (len & 0xf000)      { csize = 4+2; snprintf((char *)Self->WriteBuffer-6, 5, "%.4x", len); }
+         else if (len & 0x0f00) { csize = 3+2; snprintf((char *)Self->WriteBuffer-5, 4, "%.3x", len); }
+         else if (len & 0x00f0) { csize = 2+2; snprintf((char *)Self->WriteBuffer-4, 3, "%.2x", len); }
+         else { csize = 1+2; snprintf((char *)Self->WriteBuffer-3, 2, "%.1x", len); }
 
          Self->WriteBuffer[-1] = '\n';
          Self->WriteBuffer[-2] = '\r';
