@@ -219,20 +219,13 @@ static ERROR SVG_SaveImage(extSVG *Self, struct acSaveImage *Args)
    if (!width) width = 1920;
    if (!height) height = 1080;
 
-   objPicture *pic;
-   if (!CreateObject(ID_PICTURE, 0, &pic,
-         FID_Width|TLONG,  width,
-         FID_Height|TLONG, height,
-         FID_Flags|TLONG,  PCF_ALPHA|PCF_NEW,
-         TAGEND)) {
-
+   objPicture::create pic = { fl::Width(width), fl::Height(height), fl::Flags(PCF_ALPHA|PCF_NEW) };
+   if (pic.ok()) {
       if (!(error = svgRender(Self, pic->Bitmap, 0, 0, width, height))) {
-         if (!(error = acSaveImage(pic, Args->DestID, Args->ClassID))) {
+         if (!(error = acSaveImage(*pic, Args->DestID, Args->ClassID))) {
             return ERR_Okay;
          }
       }
-
-      acFree(pic);
    }
    else error = ERR_CreateObject;
 

@@ -397,7 +397,7 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
          }
          else {
             load_doc(Self, Self->Path, FALSE, 0);
-            DelayMsg(MT_DrwInvalidateRegion, Self->SurfaceID, NULL);
+            DelayMsg(MT_DrwInvalidateRegion, Self->SurfaceID);
          }
       }
       recursion--;
@@ -412,7 +412,7 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
          if (Self->Bookmark) { FreeResource(Self->Bookmark); Self->Bookmark = NULL; }
          if (Self->XML) { acFree(Self->XML); Self->XML = NULL; }
 
-         DelayMsg(MT_DrwInvalidateRegion, Self->SurfaceID, NULL);
+         DelayMsg(MT_DrwInvalidateRegion, Self->SurfaceID);
       }
    }
    else Self->Error = ERR_AllocMemory;

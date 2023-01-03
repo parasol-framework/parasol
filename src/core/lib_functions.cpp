@@ -262,9 +262,8 @@ objMetaClass * FindClass(CLASSID ClassID)
       // Note: Children of the class are not automatically loaded into memory if they are unavailable at the time.  Doing so
       // would result in lost CPU and memory resources due to loading code that may not be needed.
 
-      ClassItem *item;
       CSTRING path = NULL;
-      if ((item = find_class(ClassID))) {
+      if (auto item = find_class(ClassID)) {
          if (item->PathOffset) path = (CSTRING)item + item->PathOffset;
       }
 
@@ -1652,7 +1651,7 @@ for memory and object handling. For example:
 acInit(display);
 prev_context = SetContext(display);
 
-   NewObject(ID_BITMAP, 0, &bitmap);
+   NewObject(ID_BITMAP, &bitmap);
    AllocMemory(1000, MEM_DATA, &memory, NULL);;
 
 SetContext(prev_context);
@@ -1667,7 +1666,7 @@ display's existence.  Please keep in mind that the following is incorrect:
 acInit(display);
 prev_context = SetContext(display);
 
-   NewObject(ID_BITMAP, 0, &bitmap);
+   NewObject(ID_BITMAP, &bitmap);
    AllocMemory(1000, MEM_DATA, &memory, NULL);
 
 SetContext(prev_context);

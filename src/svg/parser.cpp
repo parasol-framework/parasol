@@ -133,7 +133,7 @@ static void xtag_pathtransition(extSVG *Self, objXML *XML, const XMLTag *Tag)
    log.traceBranch("Tag: %p", Tag);
 
    OBJECTPTR trans;
-   if (!NewObject(ID_VECTORTRANSITION, 0, &trans)) {
+   if (!NewObject(ID_VECTORTRANSITION, &trans)) {
       SetFields(trans,
          FID_Owner|TLONG, Self->Scene->UID, // All clips belong to the root page to prevent hierarchy issues.
          FID_Name|TSTR,   "SVGTransition",
@@ -180,7 +180,7 @@ static void xtag_clippath(extSVG *Self, objXML *XML, const XMLTag *Tag)
    OBJECTPTR clip;
    CSTRING id = NULL;
 
-   if (!NewObject(ID_VECTORCLIP, 0, &clip)) {
+   if (!NewObject(ID_VECTORCLIP, &clip)) {
       SetFields(clip,
          FID_Owner|TLONG, Self->Scene->UID, // All clips belong to the root page to prevent hierarchy issues.
          FID_Name|TSTR,   "SVGClip",
@@ -225,7 +225,7 @@ static ERROR parse_fe_blur(extSVG *Self, objVectorFilter *Filter, const XMLTag *
    parasol::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
-   if (NewObject(ID_BLURFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   if (NewObject(ID_BLURFX, &fx) != ERR_Okay) return ERR_NewObject;
    SetOwner(fx, Filter);
 
    for (LONG a=1; a < Tag->TotalAttrib; a++) {
@@ -270,7 +270,7 @@ static ERROR parse_fe_offset(extSVG *Self, objVectorFilter *Filter, const XMLTag
    parasol::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
-   if (NewObject(ID_OFFSETFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   if (NewObject(ID_OFFSETFX, &fx) != ERR_Okay) return ERR_NewObject;
    SetOwner(fx, Filter);
 
    for (LONG a=1; a < Tag->TotalAttrib; a++) {
@@ -300,7 +300,7 @@ static ERROR parse_fe_merge(extSVG *Self, objVectorFilter *Filter, const XMLTag 
    parasol::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
-   if (NewObject(ID_MERGEFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   if (NewObject(ID_MERGEFX, &fx) != ERR_Okay) return ERR_NewObject;
    SetOwner(fx, Filter);
 
    for (LONG a=1; a < Tag->TotalAttrib; a++) {
@@ -380,7 +380,7 @@ static ERROR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, const
    parasol::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
-   if (NewObject(ID_COLOURFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   if (NewObject(ID_COLOURFX, &fx) != ERR_Okay) return ERR_NewObject;
    SetOwner(fx, Filter);
 
    MATRIX m;
@@ -464,7 +464,7 @@ static ERROR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, con
    parasol::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
-   if (NewObject(ID_CONVOLVEFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   if (NewObject(ID_CONVOLVEFX, &fx) != ERR_Okay) return ERR_NewObject;
    SetOwner(fx, Filter);
 
    for (LONG a=1; a < Tag->TotalAttrib; a++) {
@@ -564,7 +564,7 @@ static ERROR parse_fe_lighting(extSVG *Self, objVectorFilter *Filter, const XMLT
    parasol::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
-   if (NewObject(ID_LIGHTINGFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   if (NewObject(ID_LIGHTINGFX, &fx) != ERR_Okay) return ERR_NewObject;
    SetOwner(fx, Filter);
 
    fx->set(FID_Type, Type);
@@ -689,7 +689,7 @@ static ERROR parse_fe_displacement_map(extSVG *Self, objVectorFilter *Filter, co
    parasol::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
-   if (NewObject(ID_DISPLACEMENTFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   if (NewObject(ID_DISPLACEMENTFX, &fx) != ERR_Okay) return ERR_NewObject;
    SetOwner(fx, Filter);
 
    for (LONG a=1; a < Tag->TotalAttrib; a++) {
@@ -744,7 +744,7 @@ static ERROR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, cons
    parasol::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
-   if (NewObject(ID_REMAPFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   if (NewObject(ID_REMAPFX, &fx) != ERR_Okay) return ERR_NewObject;
    SetOwner(fx, Filter);
 
    for (LONG a=1; a < Tag->TotalAttrib; a++) {
@@ -835,7 +835,7 @@ static ERROR parse_fe_composite(extSVG *Self, objVectorFilter *Filter, const XML
    parasol::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
-   if (NewObject(ID_COMPOSITEFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   if (NewObject(ID_COMPOSITEFX, &fx) != ERR_Okay) return ERR_NewObject;
    SetOwner(fx, Filter);
 
    for (LONG a=1; a < Tag->TotalAttrib; a++) {
@@ -938,7 +938,7 @@ static ERROR parse_fe_flood(extSVG *Self, objVectorFilter *Filter, const XMLTag 
    parasol::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
-   if (NewObject(ID_FLOODFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   if (NewObject(ID_FLOODFX, &fx) != ERR_Okay) return ERR_NewObject;
    SetOwner(fx, Filter);
 
    ERROR error = ERR_Okay;
@@ -993,7 +993,7 @@ static ERROR parse_fe_turbulence(extSVG *Self, objVectorFilter *Filter, const XM
    parasol::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
-   if (NewObject(ID_TURBULENCEFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   if (NewObject(ID_TURBULENCEFX, &fx) != ERR_Okay) return ERR_NewObject;
    SetOwner(fx, Filter);
 
    for (LONG a=1; a < Tag->TotalAttrib; a++) {
@@ -1053,7 +1053,7 @@ static ERROR parse_fe_morphology(extSVG *Self, objVectorFilter *Filter, const XM
    parasol::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
-   if (NewObject(ID_MORPHOLOGYFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   if (NewObject(ID_MORPHOLOGYFX, &fx) != ERR_Okay) return ERR_NewObject;
    SetOwner(fx, Filter);
 
    for (LONG a=1; a < Tag->TotalAttrib; a++) {
@@ -1100,7 +1100,7 @@ static ERROR parse_fe_source(extSVG *Self, objXML *XML, svgState *State, objVect
    parasol::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
-   if (NewObject(ID_SOURCEFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   if (NewObject(ID_SOURCEFX, &fx) != ERR_Okay) return ERR_NewObject;
    SetOwner(fx, Filter);
 
    bool required = false;
@@ -1169,7 +1169,7 @@ static ERROR parse_fe_image(extSVG *Self, objXML *XML, svgState *State, objVecto
    }
 
    objFilterEffect *fx;
-   if (NewObject(ID_IMAGEFX, 0, &fx) != ERR_Okay) return ERR_NewObject;
+   if (NewObject(ID_IMAGEFX, &fx) != ERR_Okay) return ERR_NewObject;
    SetOwner(fx, Filter);
 
    bool image_required = false;
@@ -1255,7 +1255,7 @@ static void xtag_filter(extSVG *Self, objXML *XML, svgState *State, const XMLTag
    objVectorFilter *filter;
    CSTRING id = NULL;
 
-   if (!NewObject(ID_VECTORFILTER, 0, &filter)) {
+   if (!NewObject(ID_VECTORFILTER, &filter)) {
       SetFields(filter,
          FID_Owner|TLONG,       Self->Scene->UID,
          FID_Name|TSTR,         "SVGFilter",
@@ -1381,7 +1381,7 @@ static void process_pattern(extSVG *Self, objXML *XML, const XMLTag *Tag)
    objVectorPattern *pattern;
    CSTRING id = NULL;
 
-   if (!NewObject(ID_VECTORPATTERN, 0, &pattern)) {
+   if (!NewObject(ID_VECTORPATTERN, &pattern)) {
       SetOwner(pattern, Self->Scene);
       SetFields(pattern,
          FID_Name|TSTR,          "SVGPattern",
@@ -1493,7 +1493,7 @@ static ERROR process_shape(extSVG *Self, CLASSID VectorID, objXML *XML, svgState
    objVector *vector;
 
    *Result = NULL;
-   if (!(error = NewObject(VectorID, 0, &vector))) {
+   if (!(error = NewObject(VectorID, &vector))) {
       SetOwner(vector, Parent);
       svgState state = *State;
       apply_state(&state, vector);
@@ -1703,7 +1703,7 @@ static void def_image(extSVG *Self, const XMLTag *Tag)
    CSTRING id = NULL;
    objPicture *pic = NULL;
 
-   if (!NewObject(ID_VECTORIMAGE, 0, &image)) {
+   if (!NewObject(ID_VECTORIMAGE, &image)) {
       SetFields(image,
          FID_Owner|TLONG,        Self->Scene->UID,
          FID_Name|TSTR,          "SVGImage",
@@ -2088,14 +2088,14 @@ static void xtag_use(extSVG *Self, objXML *XML, svgState *State, const XMLTag *T
       }
 
       if (need_group) {
-         if (!NewObject(ID_VECTORGROUP, 0, &group)) {
+         if (!NewObject(ID_VECTORGROUP, &group)) {
             SetOwner(group, Parent);
             Parent = group;
             group->init();
          }
       }
 
-      if (NewObject(ID_VECTORVIEWPORT, 0, &vector)) return;
+      if (NewObject(ID_VECTORVIEWPORT, &vector)) return;
       SetOwner(vector, Parent);
       SetFields(vector, FID_Width|TPERCENT|TDOUBLE, 100.0, FID_Height|TPERCENT|TDOUBLE, 100.0, TAGEND); // SVG default
 
@@ -2158,7 +2158,7 @@ static void xtag_use(extSVG *Self, objXML *XML, svgState *State, const XMLTag *T
    }
    else {
       // Rather than creating a vanilla group with a child viewport, this optimal approach creates the viewport only.
-      if (!NewObject(ID_VECTORVIEWPORT, 0, &vector)) {
+      if (!NewObject(ID_VECTORVIEWPORT, &vector)) {
          SetOwner(vector, Parent);
          apply_state(&state, vector);
          process_attrib(Self, XML, Tag, vector); // Apply 'use' attributes to the group.
@@ -2182,7 +2182,7 @@ static void xtag_group(extSVG *Self, objXML *XML, svgState *State, const XMLTag 
    svgState state = *State;
 
    objVector *group;
-   if (NewObject(ID_VECTORGROUP, 0, &group) != ERR_Okay) return;
+   if (NewObject(ID_VECTORGROUP, &group) != ERR_Okay) return;
    SetOwner(group, Parent);
    if (Tag->Child) set_state(&state, Tag); // Apply all group attribute values to the current state.
    process_attrib(Self, XML, Tag, group);
@@ -2216,7 +2216,7 @@ static void xtag_svg(extSVG *Self, objXML *XML, svgState *State, const XMLTag *T
    }
 
    objVectorViewport *viewport;
-   if (NewObject(ID_VECTORVIEWPORT, 0, &viewport)) return;
+   if (NewObject(ID_VECTORVIEWPORT, &viewport)) return;
    SetOwner(viewport, Parent);
 
    // The first viewport to be instantiated is stored as a local reference.  This is important if the developer has

@@ -67,7 +67,7 @@ static int object_call(lua_State *Lua)
       else {
          if (object->DelayCall) {
             object->DelayCall = FALSE;
-            error = DelayMsg(action_id, object->ObjectID, NULL);
+            error = DelayMsg(action_id, object->ObjectID);
          }
          else if (object->prvObject) error = Action(action_id, object->prvObject, NULL);
          else error = ActionMsg(action_id, object->ObjectID, NULL);
@@ -91,7 +91,7 @@ static int object_call(lua_State *Lua)
          LONG resultcount;
          if (!(error = build_args(Lua, methods->Args, methods->Size, argbuffer, &resultcount))) {
             if (object->DelayCall) {
-               error = DelayMsg(action_id, object->ObjectID, &argbuffer);
+               error = DelayMsg(action_id, object->ObjectID, (APTR)&argbuffer);
             }
             else if (object->prvObject) error = Action(action_id, object->prvObject, &argbuffer);
             else {
@@ -124,7 +124,7 @@ static int object_call(lua_State *Lua)
       else {
          if (object->DelayCall) {
             object->DelayCall = FALSE;
-            error = DelayMsg(action_id, object->ObjectID, NULL);
+            error = DelayMsg(action_id, object->ObjectID);
          }
          else if (object->prvObject) error = Action(action_id, object->prvObject, NULL);
          else error = ActionMsg(action_id, object->ObjectID, NULL);

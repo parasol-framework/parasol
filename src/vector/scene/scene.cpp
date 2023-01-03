@@ -358,11 +358,11 @@ static ERROR VECTORSCENE_Init(extVectorScene *Self, APTR Void)
    // match the width and height of the surface at all times when in this mode.
 
    if (Self->SurfaceID) {
-      OBJECTPTR surface;
-      if ((Self->SurfaceID) and (!AccessObject(Self->SurfaceID, 5000, &surface))) {
+      parasol::ScopedObjectLock<objSurface> surface(Self->SurfaceID, 5000);
+      if (surface.granted()) {
          auto callback = make_function_stdc(render_to_surface);
          struct drwAddCallback args = { &callback };
-         Action(MT_DrwAddCallback, surface, &args);
+         Action(MT_DrwAddCallback, *surface, &args);
 
          if ((!Self->PageWidth) or (!Self->PageHeight)) {
             Self->Flags |= VPF_RESIZE;
@@ -370,14 +370,12 @@ static ERROR VECTORSCENE_Init(extVectorScene *Self, APTR Void)
             surface->get(FID_Height, &Self->PageHeight);
          }
 
-         SubscribeActionTags(surface, AC_Redimension, AC_Free, AC_Focus, AC_LostFocus, TAGEND);
+         SubscribeActionTags(*surface, AC_Redimension, AC_Free, AC_Focus, AC_LostFocus, TAGEND);
 
          if (surface->Flags & RNF_HAS_FOCUS) {
             auto callback = make_function_stdc(scene_key_event);
             SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->KeyHandle);
          }
-
-         ReleaseObject(surface);
       }
 
       auto callback = make_function_stdc(scene_input_events);

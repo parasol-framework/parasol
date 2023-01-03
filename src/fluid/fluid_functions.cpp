@@ -584,10 +584,11 @@ int fcmd_require(lua_State *Lua)
 
       auto path = std::string("scripts:") + module + ".fluid";
 
-      objFile *file;
-      if (!(error = CreateObject(ID_FILE, 0, &file, FID_Path|TSTR, path.c_str(), FID_Flags|TLONG, FL_READ, TAGEND))) {
+      objFile::create file = { fl::Path(path), fl::Flags(FL_READ) };
+
+      if (file.ok()) {
          std::unique_ptr<char[]> buffer(new char[SIZE_READ]);
-         struct code_reader_handle handle = { file, buffer.get() };
+         struct code_reader_handle handle = { *file, buffer.get() };
          if (!lua_load(Lua, &code_reader, &handle, module)) {
             prv->RequireCounter++; // Used by getExecutionState()
             if (!lua_pcall(Lua, 0, 0, 0)) { // Success, mark the module as loaded.
@@ -598,7 +599,6 @@ int fcmd_require(lua_State *Lua)
             prv->RequireCounter--;
          }
          else error_msg = lua_tostring(Lua, -1);
-         acFree(file);
       }
       else {
          luaL_error(Lua, "Failed to open file '%s', may not exist.", path.c_str());

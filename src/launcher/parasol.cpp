@@ -239,7 +239,7 @@ ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)
 
    OBJECTPTR target;
    ERROR error;
-   if (!NewLockedObject(ID_SURFACE, 0, &target, &glTargetID)) {
+   if (!NewLockedObject(ID_SURFACE, &target, &glTargetID)) {
       SetFields(target,
          FID_Name|TSTR,    "SystemSurface",
          FID_WindowHandle|TLONG, WindowHandle,

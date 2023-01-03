@@ -83,7 +83,7 @@ static ERROR xtag_lineargradient(extSVG *Self, const XMLTag *Tag)
 
    CSTRING id = NULL;
 
-   if (!NewObject(ID_VECTORGRADIENT, 0, &gradient)) {
+   if (!NewObject(ID_VECTORGRADIENT, &gradient)) {
       SetOwner(gradient, Self->Scene);
       SetFields(gradient,
          FID_Name|TSTR,   "SVGLinearGrad",
@@ -168,7 +168,7 @@ static ERROR xtag_radialgradient(extSVG *Self, const XMLTag *Tag)
    objVectorGradient *gradient;
    CSTRING id = NULL;
 
-   if (!NewObject(ID_VECTORGRADIENT, 0, &gradient)) {
+   if (!NewObject(ID_VECTORGRADIENT, &gradient)) {
       SetOwner(gradient, Self->Scene);
 
       SetFields(gradient,
@@ -245,7 +245,7 @@ static ERROR xtag_diamondgradient(extSVG *Self, const XMLTag *Tag)
    objVectorGradient *gradient;
    CSTRING id = NULL;
 
-   if (!NewObject(ID_VECTORGRADIENT, 0, &gradient)) {
+   if (!NewObject(ID_VECTORGRADIENT, &gradient)) {
       SetOwner(gradient, Self->Scene);
 
       SetFields(gradient,
@@ -322,7 +322,7 @@ static ERROR xtag_contourgradient(extSVG *Self, const XMLTag *Tag)
    objVectorGradient *gradient;
    CSTRING id = NULL;
 
-   if (!NewObject(ID_VECTORGRADIENT, 0, &gradient)) {
+   if (!NewObject(ID_VECTORGRADIENT, &gradient)) {
       SetOwner(gradient, Self->Scene);
       SetFields(gradient,
          FID_Name|TSTR,  "SVGContourGrad",
@@ -392,7 +392,7 @@ static ERROR xtag_conicgradient(extSVG *Self, const XMLTag *Tag)
    parasol::Log log(__FUNCTION__);
    objVectorGradient *gradient;
 
-   if (!NewObject(ID_VECTORGRADIENT, 0, &gradient)) {
+   if (!NewObject(ID_VECTORGRADIENT, &gradient)) {
       SetOwner(gradient, Self->Scene);
 
       SetFields(gradient,

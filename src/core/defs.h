@@ -153,11 +153,6 @@ struct rkWatchPath {
 
 #include "prototypes.h"
 
-#define DelayMsg(a,b,c)     (ActionMsg(a,b,c,0,0xffffffff))
-#define DelayAction(a,b,c)  (ActionMsg(a,b,c,0,0xffffffff))
-#define SendAction(a,b,c,d) (ActionMsg(a,b,c,d,0))
-#define WaitMsg(a,b,c)      (ActionMsg(a,b,c,0,0xfffffffe))
-
 #include <parasol/main.h>
 
 enum {

@@ -138,7 +138,7 @@ static LONG exec_source(CSTRING TargetFile, CSTRING Procedure)
    if (subclass != ID_FLUID) return -1;
 
    objScript *script;
-   if (!NewObject(ID_FLUID, 0, &script)) {
+   if (!NewObject(ID_FLUID, &script)) {
       SetFields(script, FID_Path|TSTR,      TargetFile,
                         FID_Procedure|TSTR, Procedure,
                         TAGEND);
@@ -323,7 +323,7 @@ int main(int argc, CSTRING *argv)
 
          if (glScriptBuffer) {
             objScript *script;
-            if (!NewObject(ID_FLUID, 0, &script)) {
+            if (!NewObject(ID_FLUID, &script)) {
                script->set(FID_Statement, glScriptBuffer);
                if (glProcedure) script->set(FID_Procedure, glProcedure);
                if (glArgs) set_script_args(script, glArgs);

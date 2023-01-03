@@ -2020,7 +2020,7 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
 
       // Post a delayed CheckXWindow() message so that we can respond to changes by the window manager.
 
-      DelayMsg(MT_GfxCheckXWindow, Self->UID, NULL);
+      DelayMsg(MT_GfxCheckXWindow, Self->UID);
 
       // This really shouldn't be here, but until the management of menu focussing is fixed, we need it.
 
@@ -2603,7 +2603,7 @@ static ERROR SET_Flags(extDisplay *Self, LONG Value)
 
             if (Self->Flags & SCR_VISIBLE) {
                winShowWindow(Self->WindowHandle, TRUE);
-               DelayMsg(AC_Focus, Self->UID, NULL);
+               DelayMsg(AC_Focus, Self->UID);
             }
          }
 
@@ -2689,7 +2689,7 @@ static ERROR SET_Flags(extDisplay *Self, LONG Value)
          if (Self->Flags & SCR_VISIBLE) {
             acShow(Self);
             XSetInputFocus(XDisplay, Self->XWindowHandle, RevertToNone, CurrentTime);
-            DelayMsg(AC_Focus, Self->UID, NULL);
+            DelayMsg(AC_Focus, Self->UID);
          }
 
          resize_feedback(&Self->ResizeFeedback, Self->UID, Self->X, Self->Y, Self->Width, Self->Height);

@@ -95,7 +95,7 @@ static ERROR PROXY_Delete(extProxy *Self, APTR Void)
 
    if (glConfig) { acFree(glConfig); glConfig = NULL; }
 
-   if (!CreateObject(ID_CONFIG, NF_UNTRACKED, &glConfig, FID_Path|TSTR, "user:config/network/proxies.cfg", TAGEND)) {
+   if ((glConfig = objConfig::create::untracked(fl::Path("user:config/network/proxies.cfg")))) {
       cfgDeleteGroup(glConfig, Self->GroupName);
       acSaveSettings(glConfig);
    }
@@ -145,14 +145,13 @@ Find: Search for a proxy that matches a set of filters.
 The following example searches for all proxies available for use on port 80 (HTTP).
 
 <pre>
-if (!(CreateObject(ID_PROXY, 0, &proxy, TAGEND))) {
-   if (!prxFind(proxy, 80)) {
+objProxy::create proxy;
+if (proxy.ok()) {
+   if (!prxFind(*proxy, 80)) {
       do {
          ...
-      } while (!prxFindNext(proxy));
-      FreeResource(proxy);
+      } while (!prxFindNext(*proxy));
    }
-   acFree(proxy);
 }
 </pre>
 
@@ -179,7 +178,7 @@ static ERROR PROXY_Find(extProxy *Self, struct prxFind *Args)
 
    // Load the current proxy database into the cache
 
-   if (!CreateObject(ID_CONFIG, NF_UNTRACKED, &glConfig, FID_Path|TSTR, "user:config/network/proxies.cfg", TAGEND)) {
+   if ((glConfig = objConfig::create::untracked(fl::Path("user:config/network/proxies.cfg")))) {
       #ifdef _WIN32
          // Remove any existing host proxy settings
 

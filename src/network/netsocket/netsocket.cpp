@@ -160,7 +160,7 @@ static ERROR NETSOCKET_Connect(extNetSocket *Self, struct nsConnect *Args)
       log.msg("Attempting to resolve domain name '%s'...", Self->Address);
 
       if (!Self->NetLookup) {
-         if (!(Self->NetLookup = objNetLookup::create::integral())) {
+         if (!(Self->NetLookup = extNetLookup::create::integral())) {
             return ERR_CreateObject;
          }
       }
@@ -375,7 +375,7 @@ static ERROR NETSOCKET_FreeWarning(extNetSocket *Self, APTR Void)
       if (!Self->Terminating) { // Check terminating state to prevent flooding of the message queue
          log.msg("NetSocket in use, cannot free yet (request delayed).");
          Self->Terminating = TRUE;
-         DelayMsg(AC_Free, Self->UID, NULL);
+         DelayMsg(AC_Free, Self->UID);
       }
       return ERR_InUse;
    }

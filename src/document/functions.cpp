@@ -5685,11 +5685,11 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
                continue;
             }
             else if (Flags & ULD_TERMINATE) acFree(resource->ObjectID);
-            else DelayMsg(AC_Free, resource->ObjectID, NULL);
+            else DelayMsg(AC_Free, resource->ObjectID);
          }
          else if (resource->Type IS RT_OBJECT_UNLOAD_DELAY) {
             if (Flags & ULD_TERMINATE) acFree(resource->ObjectID);
-            else DelayMsg(AC_Free, resource->ObjectID, NULL);
+            else DelayMsg(AC_Free, resource->ObjectID);
          }
          else acFree(resource->ObjectID);
 
@@ -5777,7 +5777,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
    }
 
    OBJECTPTR dialog;
-   if (!NewObject(ID_SCRIPT, 0, &dialog)) {
+   if (!NewObject(ID_SCRIPT, &dialog)) {
       SetFields(dialog,
          FID_Name|TSTR,    "scDialog",
          FID_Owner|TLONG,  CurrentTaskID(),
@@ -5791,7 +5791,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
 
       CSTRING errstr;
       if ((Error) and (errstr = GetErrorMsg(Error))) {
-         LONG len = StrLength(Message);
+         LONG len = strlen(Message);
          char buffer[len+120];
          if (Message) {
             len = StrCopy(Message, buffer, sizeof(buffer));
