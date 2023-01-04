@@ -1256,7 +1256,7 @@ extern struct CoreBase *CoreBase;
     "CheckMemoryExists",
     "CheckObjectExists",
     "DeleteFile",
-    "CreateObject",
+    "VirtualVolume",
     "CurrentContext",
     "GetFieldArray",
     "AdjustLogLevel",
@@ -1389,8 +1389,7 @@ extern struct CoreBase *CoreBase;
     "MoveFile",
     "ResolvePath",
     "SetVolume",
-    "DeleteVolume",
-    "VirtualVolume")
+    "DeleteVolume")
 
   c_insert([[
 

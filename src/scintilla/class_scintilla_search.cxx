@@ -406,14 +406,15 @@ OBJECTPTR clScintillaSearch = NULL;
 
 ERROR init_search(void)
 {
-   return(CreateObject(ID_METACLASS, NF::NIL, &clScintillaSearch,
-      FID_ClassVersion|TFLOAT, 1.0,
-      FID_Name|TSTRING,   "ScintillaSearch",
-      FID_Category|TLONG, CCF_TOOL,
-      FID_Actions|TPTR,   clActions,
-      FID_Methods|TARRAY, clMethods,
-      FID_Fields|TARRAY,  clFields,
-      FID_Size|TLONG,     sizeof(objScintillaSearch),
-      FID_Path|TSTR,      "modules:scintilla",
-      TAGEND));
+   clScintillaSearch = objMetaClass::create::global(
+      fl::ClassVersion(1.0),
+      fl::Name("ScintillaSearch"),
+      fl::Category(CCF_TOOL),
+      fl::Actions(clActions),
+      fl::Methods(clMethods),
+      fl::Fields(clFields),
+      fl::Size(sizeof(objScintillaSearch)),
+      fl::Path("modules:scintilla"));
+
+   return clScintillaSearch ? ERR_Okay : ERR_AddClass;
 }

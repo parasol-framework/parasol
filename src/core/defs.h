@@ -953,7 +953,6 @@ ERROR AllocSemaphore(CSTRING, LONG, LONG, LONG *);
 ERROR FreeSemaphore(LONG SemaphoreID);
 ERROR SetFieldF(OBJECTPTR, FIELD, va_list);
 ERROR SetFieldsF(OBJECTPTR, va_list);
-ERROR CreateObjectF(LARGE, NF, OBJECTPTR *, va_list List);
 ERROR pReleaseSemaphore(LONG, LONG);
 
 ERROR fs_closedir(struct DirInfo *);

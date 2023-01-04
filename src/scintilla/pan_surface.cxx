@@ -102,9 +102,9 @@ void SurfacePan::Init(Scintilla::SurfaceID sid, Scintilla::WindowID WID_NAME)
    bitmap = static_cast<objBitmap *>(sid);
 
    // Set the Clipping rect to the dimensions of the bitmap
-   cliprect.left = 0;
-   cliprect.right = bitmap->Width;
-   cliprect.top = 0;
+   cliprect.left   = 0;
+   cliprect.right  = bitmap->Width;
+   cliprect.top    = 0;
    cliprect.bottom = bitmap->Height;
 }
 
@@ -115,15 +115,7 @@ void SurfacePan::InitPixMap(int width, int height, Scintilla::Surface *surface_,
    parasol::Log log(__FUNCTION__);
    log.traceBranch("Size: %dx%d", width, height);
 
-   //DebugOff();
-   ERROR error = CreateObject(ID_BITMAP, NF::NIL, &bitmap,
-      FID_Name|TSTR,    "sciPixmap",
-      FID_Width|TLONG,  width,
-      FID_Height|TLONG, height,
-      TAGEND);
-   //DebugOn();
-
-   if (error != ERR_Okay) {
+   if (!(bitmap = objBitmap::create::global(fl::Name("sciPixmap"), fl::Width(width), fl::Height(height)))) {
       log.warning("Failed to create offscreen surface object.");
       return;
    }

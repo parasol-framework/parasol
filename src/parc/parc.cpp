@@ -28,13 +28,13 @@ static OBJECTPTR clParc = NULL;
 
 class extParc : public objParc {
    public:
-   LONG     ProcessID;
-   OBJECTPTR Script;
    objCompression *Archive;
-   objXML *Info;           // The parc.xml file.
-   STRING Args;            // The arguments to pass to the program
-   STRING Path;
-   STRING Allow;
+   objXML    *Info;           // The parc.xml file.
+   OBJECTPTR Script;
+   STRING    Args;            // The arguments to pass to the program
+   STRING    Path;
+   STRING    Allow;
+   LONG      ProcessID;
    OBJECTID  WindowID;
 };
 
@@ -94,10 +94,13 @@ static ERROR PARC_Activate(extParc *Self, APTR Void)
             // Run the default script as specified in "parc.xml".
 
             if (class_id IS ID_SCRIPT) {
-               if (!CreateObject(subclass_id ? subclass_id : class_id, NF::INTEGRAL, &Self->Script, FID_Path|TSTR, path, TAGEND)) {
-                  error = acActivate(Self->Script);
+               if (!NewObject(subclass_id ? subclass_id : class_id, NF::INTEGRAL, &Self->Script)) {
+                  SetField(Self->Script, FID_Path|TSTR, path);
+                  if (!(error = acInit(Self->Script))) {
+                     error = acActivate(Self->Script);
+                  }
                }
-               else error = ERR_CreateObject;
+               else error = ERR_NewObject;
             }
             else {
                log.warning("The file '%s' referenced by /info/run is not recognised as a script.", path);
