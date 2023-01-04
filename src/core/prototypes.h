@@ -80,7 +80,7 @@ ERROR SysUnlock(LONG Index);
 ERROR CopyMemory(const void * Src, APTR Dest, LONG Size);
 ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile ** Cache);
 ERROR SubscribeActionTags(OBJECTPTR Object, ...);
-void PrintDiagnosis(LONG Process, LONG Signal);
+ERROR DeleteVolume(CSTRING Name);
 ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR * Object, OBJECTID * ID, CSTRING Name);
 ERROR UpdateMessage(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size);
 ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle);
@@ -151,7 +151,6 @@ ERROR CreateFolder(CSTRING Path, LONG Permissions);
 ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
 ERROR ResolvePath(CSTRING Path, LONG Flags, STRING * Result);
 ERROR SetVolume(LARGE,...);
-ERROR DeleteVolume(CSTRING Name);
 
 #ifdef  __cplusplus
 }
