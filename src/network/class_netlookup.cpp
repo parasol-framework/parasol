@@ -139,7 +139,7 @@ static ERROR NETLOOKUP_ActionNotify(extNetLookup *Self, struct acActionNotify *A
    if (!Args) return ERR_NullArgs;
 
    if (Args->ActionID IS AC_Free) {
-      if ((Self->Callback.Type IS CALL_SCRIPT) AND (Self->Callback.Script.Script->UID IS Args->ObjectID)) {
+      if ((Self->Callback.Type IS CALL_SCRIPT) and (Self->Callback.Script.Script->UID IS Args->ObjectID)) {
          Self->Callback.Type = CALL_NONE;
       }
    }

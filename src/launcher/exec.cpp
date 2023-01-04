@@ -21,7 +21,7 @@ static ERROR exec_data_file(CSTRING TargetFile)
             LONG i, j;
             for (i=0; glArgs[i]; i++) {
                CSTRING arg = glArgs[i];
-               for (j=0; (arg[j]) AND (arg[j] != '=') AND (j < (LONG)sizeof(argbuffer)-10); j++) argname[j] = arg[j];
+               for (j=0; (arg[j]) and (arg[j] != '=') and (j < (LONG)sizeof(argbuffer)-10); j++) argname[j] = arg[j];
                argname[j] = 0;
                LONG al = j;
 
@@ -38,8 +38,8 @@ static ERROR exec_data_file(CSTRING TargetFile)
 
                      i++;
                      LONG arg_index = 0;
-                     while ((arg) AND (arg[0] != '}')) {
-                        StrFormat(argbuffer+al, sizeof(argbuffer)-al, "(%d)", arg_index);
+                     while ((arg) and (arg[0] != '}')) {
+                        snprintf(argbuffer+al, sizeof(argbuffer)-al, "(%d)", arg_index);
                         SetVar(run, argbuffer, arg);
                         arg_index++;
                         i++;
@@ -110,7 +110,7 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
                   cmdline[i++] ='"';
                }
                CSTRING arg = *args;
-               while ((*arg) AND (i < sizeof(cmdline)-2)) {
+               while ((*arg) and (i < sizeof(cmdline)-2)) {
                   if (*arg IS '"') cmdline[i++] = '\\'; // Escape '"'
                   cmdline[i++] = *arg++;
                }
@@ -189,7 +189,7 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
          BYTE argbuffer[100];
          STRING argname = argbuffer;
          for (i=0; glArgs[i]; i++) {
-            for (j=0; (glArgs[i][j]) AND (glArgs[i][j] != '=') AND (j < (LONG)sizeof(argbuffer)-10); j++) argname[j] = glArgs[i][j];
+            for (j=0; (glArgs[i][j]) and (glArgs[i][j] != '=') and (j < (LONG)sizeof(argbuffer)-10); j++) argname[j] = glArgs[i][j];
             argname[j] = 0;
             LONG al = j;
 
@@ -204,8 +204,8 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
 
                   i++;
                   LONG arg_index = 0;
-                  while ((glArgs[i]) AND (glArgs[i][0] != '}')) {
-                     StrFormat(argname+al, sizeof(argbuffer)-al, "(%d)", arg_index);
+                  while ((glArgs[i]) and (glArgs[i][0] != '}')) {
+                     snprintf(argname+al, sizeof(argbuffer)-al, "(%d)", arg_index);
                      SetVar(glScript, argname, glArgs[i]);
                      arg_index++;
                      i++;

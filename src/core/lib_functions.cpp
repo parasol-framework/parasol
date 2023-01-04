@@ -1468,7 +1468,7 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
 
    if (i >= MAX_FDS) return log.warning(ERR_ArrayFull);
 
-   if (i IS glTotalFDs) log.function("FD: " PF64() ", Routine: %p, Flags: $%.2x (New)", (MAXINT)FD, Routine, Flags);
+   if (i IS glTotalFDs) log.function("FD: %" PF64 ", Routine: %p, Flags: $%.2x (New)", (MAXINT)FD, Routine, Flags);
 
 #ifdef _WIN32
    // Nothing to do for Win32
@@ -1981,7 +1981,7 @@ LARGE SetResource(LONG Resource, LARGE Value)
          break;
 
       default:
-         log.warning("Unrecognised resource ID: %d, Value: " PF64(), Resource, Value);
+         log.warning("Unrecognised resource ID: %d, Value: %" PF64, Resource, Value);
    }
 
    return oldvalue;

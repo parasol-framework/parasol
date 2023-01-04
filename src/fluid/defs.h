@@ -298,9 +298,9 @@ INLINE ULONG STRUCTHASH(CSTRING String)
    ULONG hash = 5381;
    UBYTE c;
    while ((c = *String++)) {
-      if ((c >= 'A') AND (c <= 'Z'));
-      else if ((c >= 'a') AND (c <= 'z'));
-      else if ((c >= '0') AND (c <= '9'));
+      if ((c >= 'A') and (c <= 'Z'));
+      else if ((c >= 'a') and (c <= 'z'));
+      else if ((c >= '0') and (c <= '9'));
       else break;
       hash = ((hash<<5) + hash) + c;
    }

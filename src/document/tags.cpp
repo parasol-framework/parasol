@@ -831,7 +831,7 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
             buffersize += StrLength(function) + 1;
          }
       }
-      else if ((!StrMatch("hint", Tag->Attrib[i].Name)) AND
+      else if ((!StrMatch("hint", Tag->Attrib[i].Name)) and
                (!StrMatch("title", Tag->Attrib[i].Name))) { // 'title' is the http equivalent of our 'hint'
          log.msg("No support for <a> hints yet.");
          hint = Tag->Attrib[i].Value;
@@ -2507,8 +2507,8 @@ static void tag_page(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 
    if ((name = str = XMLATTRIB(Tag, "name"))) {
       while (*str) {
-         if (((*str >= 'A') and (*str <= 'Z')) OR
-             ((*str >= 'a') and (*str <= 'z')) OR
+         if (((*str >= 'A') and (*str <= 'Z')) or
+             ((*str >= 'a') and (*str <= 'z')) or
              ((*str >= '0') and (*str <= '9'))) {
             // Character is valid
          }

@@ -554,7 +554,7 @@ ERROR calc(CSTRING String, DOUBLE *Result, STRING Output, LONG OutputSize)
          DOUBLE calc_float;
          calc(buf.c_str()+1, &calc_float, NULL, 0);
          char num[30];
-         StrFormat(num, sizeof(num), "%f", calc_float);
+         snprintf(num, sizeof(num), "%f", calc_float);
 
          in.replace(last_bracket, end - last_bracket, num);
       }
@@ -1533,7 +1533,7 @@ static LONG parse_tag(extDocument *Self, objXML *XML, XMLTag *Tag, LONG *Index, 
                i = check_tag_conditions(Self, Tag);
                RESTORE_ARGS();
 
-               if ((i) AND (parse_tag(Self, XML, Tag->Child, Index, Flags) & TRF_BREAK)) break;
+               if ((i) and (parse_tag(Self, XML, Tag->Child, Index, Flags) & TRF_BREAK)) break;
 
                Self->LoopIndex++;
             }
@@ -4985,7 +4985,7 @@ static ERROR load_doc(extDocument *Self, CSTRING Path, BYTE Unload, BYTE UnloadF
       }
       else {
          char msg[300];
-         StrFormat(msg, sizeof(msg), "Failed to load document file '%s'", path);
+         snprintf(msg, sizeof(msg), "Failed to load document file '%s'", path);
          error_dialog("Document Load Error", msg, Self->Error);
          return log.warning(ERR_OpenFile);
       }
@@ -5418,12 +5418,12 @@ static ERROR process_page(extDocument *Self, objXML *xml)
    else {
       if (Self->PageName) {
          char buffer[200];
-         StrFormat(buffer, sizeof(buffer), "Failed to find page '%s' in document '%s'.", Self->PageName, Self->Path);
+         snprintf(buffer, sizeof(buffer), "Failed to find page '%s' in document '%s'.", Self->PageName, Self->Path);
          error_dialog("Load Failed", buffer, 0);
       }
       else {
          char buffer[200];
-         StrFormat(buffer, sizeof(buffer), "Failed to find a valid page in document '%s'.", Self->Path);
+         snprintf(buffer, sizeof(buffer), "Failed to find a valid page in document '%s'.", Self->Path);
          error_dialog("Load Failed", buffer, 0);
       }
       Self->Error = ERR_Search;
@@ -6355,7 +6355,7 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                   objFont *font;
                   char fullfont[256];
                   if ((font = lookup_font(Self->Style.FontStyle.Index, "convert_xml"))) {
-                     StrFormat(fullfont, sizeof(fullfont), "%s:%.4f:%s", font->Face, font->Point, font->Style);
+                     snprintf(fullfont, sizeof(fullfont), "%s:%.4f:%s", font->Face, font->Point, font->Style);
                      error = insert_string(fullfont, Buffer, Self->BufferSize, pos, sizeof("[%font]")-1);
                   }
                }
@@ -6369,7 +6369,7 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                   objFont *font;
                   char colour[28];
                   if ((font = lookup_font(Self->Style.FontStyle.Index, "convert_xml"))) {
-                     StrFormat(colour, sizeof(colour), "#%.2x%.2x%.2x%.2x", font->Colour.Red, font->Colour.Green, font->Colour.Blue, font->Colour.Alpha);
+                     snprintf(colour, sizeof(colour), "#%.2x%.2x%.2x%.2x", font->Colour.Red, font->Colour.Green, font->Colour.Blue, font->Colour.Alpha);
                      error = insert_string(colour, Buffer, Self->BufferSize, pos, sizeof("[%fontcolour]")-1);
                   }
                }

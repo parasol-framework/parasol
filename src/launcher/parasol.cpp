@@ -75,7 +75,7 @@ static ERROR process_args(void)
    CSTRING *args;
    LONG i, j;
 
-   if ((!glTask->getPtr(FID_Parameters, &args)) AND (args)) {
+   if ((!glTask->getPtr(FID_Parameters, &args)) and (args)) {
       for (i=0; args[i]; i++) {
          if (!StrMatch(args[i], "--help")) {
             // Print help for the user

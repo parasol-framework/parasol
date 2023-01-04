@@ -171,20 +171,4 @@ typedef struct BaseClass * OBJECTPTR64 __attribute__ ((aligned (8))); // 64-bit 
 #define IS ==
 #endif
 
-#ifndef AND
-#define AND &&
-#endif
-
-#ifndef OR
-#define OR ||
-#endif
-
-#ifndef YES
-#define YES TRUE
-#endif
-
-#ifndef NO
-#define NO FALSE
-#endif
-
 #endif /* PLATFORM_CONFIG_H */

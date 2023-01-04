@@ -53,6 +53,7 @@ This code is based on the work of Jean-loup Gailly and Mark Adler.
 #define PRV_FILE
 #include "../defs.h"
 #include <parasol/main.h>
+#include <sstream>
 
 class extCompression : public objCompression {
    public:
@@ -83,11 +84,12 @@ class extCompression : public objCompression {
 static ERROR compress_folder(extCompression *, CSTRING, CSTRING);
 static ERROR compress_file(extCompression *, CSTRING, CSTRING, bool);
 static void print(extCompression *, CSTRING);
+static void print(extCompression *, std::string);
 static ERROR remove_file(extCompression *, ZipFile **);
 static ERROR scan_zip(extCompression *);
 static ERROR fast_scan_zip(extCompression *);
 static ERROR send_feedback(extCompression *, CompressionFeedback *);
-static void write_eof(extCompression *Self);
+static void write_eof(extCompression *);
 
 static ERROR GET_Size(extCompression *, LARGE *);
 
@@ -424,7 +426,7 @@ static ERROR COMPRESSION_CompressStream(extCompression *Self, struct cmpCompress
       if (len > 0) {
          Self->TotalOutput += len;
 
-         log.trace("%d bytes (total " PF64() ") were compressed.", len, Self->TotalOutput);
+         log.trace("%d bytes (total %" PF64 ") were compressed.", len, Self->TotalOutput);
 
          if (Args->Callback->Type IS CALL_STDC) {
             parasol::SwitchContext context(Args->Callback->StdC.Context);
@@ -790,8 +792,9 @@ static ERROR COMPRESSION_CompressFile(extCompression *Self, struct cmpCompressFi
    if (Self->SubID) return log.warning(ERR_NoSupport);
 
    if (Self->OutputID) {
-      StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Compressing \"%s\" to \"%s\".\n", Args->Location, Self->Path);
-      print(Self, (CSTRING)Self->prvOutput);
+      std::ostringstream out;
+      out << "Compressing \"" << Args->Location << "\" to \"" << Self->Path << "\".\n";
+      print(Self, out.str());
    }
 
    CSTRING src = Args->Location;
@@ -812,8 +815,9 @@ static ERROR COMPRESSION_CompressFile(extCompression *Self, struct cmpCompressFi
              (path[i] IS '>')) {
             log.warning("Illegal characters in path: %s", path);
             if (Self->OutputID) {
-               StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Warning - path ignored due to illegal characters: %s\n", path);
-               print(Self, (CSTRING)Self->prvOutput);
+               std::ostringstream out;
+               out << "Warning - path ignored due to illegal characters: " << path << "\n";
+               print(Self, out.str());
             }
             path = "";
             break;
@@ -903,8 +907,9 @@ static ERROR COMPRESSION_CompressFile(extCompression *Self, struct cmpCompressFi
    if (Self->OutputID) {
       LARGE size;
       GET_Size(Self, &size);
-      StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "\nCompression complete.  Archive is " PF64() " bytes in size.", size);
-      print(Self, (CSTRING)Self->prvOutput);
+      std::ostringstream out;
+      out << "\nCompression complete.  Archive is " << size <<  " bytes in size.";
+      print(Self, out.str());
    }
 
    return error;
@@ -1007,37 +1012,25 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
    // Validate arguments
 
    if ((!Args) or (!Args->Path)) {
-      if (Self->OutputID) {
-         StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Please supply a Path setting that refers to a compressed file archive.\n");
-         print(Self, (CSTRING)Self->prvOutput);
-      }
+      if (Self->OutputID) print(Self, "Please supply a Path setting that refers to a compressed file archive.\n");
 
       return log.warning(ERR_NullArgs);
    }
 
    if (!Args->Dest) {
-      if (Self->OutputID) {
-         StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Please supply a Destination that refers to a folder for decompression.\n");
-         print(Self, (CSTRING)Self->prvOutput);
-      }
+      if (Self->OutputID) print(Self, "Please supply a Destination that refers to a folder for decompression.\n");
 
       return log.warning(ERR_NullArgs);
    }
 
    if ((!*Args->Path) or (!*Args->Dest)) {
-      if (Self->OutputID) {
-         StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Please supply valid Path and Destination settings.\n");
-         print(Self, (CSTRING)Self->prvOutput);
-      }
+      if (Self->OutputID) print(Self, "Please supply valid Path and Destination settings.\n");
 
       return log.warning(ERR_Args);
    }
 
    if (!Self->FileIO) {
-      if (Self->OutputID) {
-         StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Internal error - decompression aborted.\n");
-         print(Self, (CSTRING)Self->prvOutput);
-      }
+      if (Self->OutputID) print(Self, "Internal error - decompression aborted.\n");
 
       return log.warning(ERR_MissingPath);
    }
@@ -1049,8 +1042,9 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
    // Tell the user what we are doing
 
    if (Self->OutputID) {
-      StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Decompressing archive \"%s\" with path \"%s\" to \"%s\".\n", Self->Path, Args->Path, Args->Dest);
-      print(Self, (CSTRING)Self->prvOutput);
+      std::ostringstream out;
+      out << "Decompressing archive \"" << Self->Path << "\" with path \"" << Args->Path << "\" to \"" << Args->Dest << "\".\n";
+      print(Self, out.str());
    }
 
    // Search for the file(s) in our archive that match the given name and extract them to the destination folder.
@@ -1076,8 +1070,9 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
          log.trace("Extracting \"%s\"", zf->Name);
 
          if (Self->OutputID) {
-            StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "  %s", zf->Name);
-            print(Self, (CSTRING)Self->prvOutput);
+            std::ostringstream out;
+            out << "  " << zf->Name;
+            print(Self, out.str());
          }
 
          // If the destination path specifies a folder, add the name of the file to the destination to generate the
@@ -1354,10 +1349,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
       }
    }
 
-   if (Self->OutputID) {
-      StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "\nDecompression complete.");
-      print(Self, (CSTRING)Self->prvOutput);
-   }
+   if (Self->OutputID) print(Self, "\nDecompression complete.");
 
 exit:
    if (inflateend) inflateEnd(&Self->prvZip);
@@ -1718,8 +1710,9 @@ static ERROR COMPRESSION_Init(extCompression *Self, APTR Void)
       }
       else {
          if (Self->OutputID) {
-            StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Failed to create file \"%s\".", path);
-            print(Self, (CSTRING)Self->prvOutput);
+            std::ostringstream out;
+            out << "Failed to create file \"" << path << "\".";
+            print(Self, out.str());
          }
 
          return log.warning(ERR_CreateObject);
@@ -1779,16 +1772,18 @@ static ERROR COMPRESSION_Init(extCompression *Self, APTR Void)
          }
          else {
             if (Self->OutputID) {
-               StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Failed to create file \"%s\".", path);
-               print(Self, (CSTRING)Self->prvOutput);
+               std::ostringstream out;
+               out << "Failed to create file \"" << path << "\".";
+               print(Self, out.str());
             }
 
             return log.warning(ERR_CreateObject);
          }
       }
       else {
-         StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Failed to open \"%s\".", path);
-         print(Self, (CSTRING)Self->prvOutput);
+         std::ostringstream out;
+         out << "Failed to open \"" << path << "\".";
+         print(Self, out.str());
          return log.warning(ERR_File);
       }
    }
@@ -1856,8 +1851,9 @@ static ERROR COMPRESSION_RemoveFile(extCompression *Self, struct cmpRemoveFile *
          // Delete the file from the archive
 
          if (Self->OutputID) {
-            StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "Removing file \"%s\".", filelist->Name);
-            print(Self, (CSTRING)Self->prvOutput);
+            std::ostringstream out;
+            out << "Removing file \"" << filelist->Name << "\".";
+            print(Self, out.str());
          }
 
          if (auto error = remove_file(Self, &filelist)) return error;

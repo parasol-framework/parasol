@@ -395,7 +395,7 @@ ERROR page_memory(PublicAddress *Block, APTR *Address)
             return ERR_Okay;
          }
          else {
-            log.warning("winMapMemory() failed to map handle " PF64() " (ID: %d) of process %d.  Offset %d", (MAXINT)Block->Handle, Block->MemoryID, Block->OwnerProcess, Block->Offset);
+            log.warning("winMapMemory() failed to map handle %" PF64 " (ID: %d) of process %d.  Offset %d", (MAXINT)Block->Handle, Block->MemoryID, Block->OwnerProcess, Block->Offset);
             return ERR_LockFailed;
          }
       #else
@@ -464,7 +464,7 @@ ERROR unpage_memory(APTR Address)
                   shmdt(Address);
                #else
                   if (munmap(Address, glMemoryPages[index].Size) IS -1) { // Used by ashmem on Android
-                     log.warning("munmap() failed on %p, size " PF64() ", error: %s", Address, glMemoryPages[index].Size, strerror(errno));
+                     log.warning("munmap() failed on %p, size %" PF64 ", error: %s", Address, glMemoryPages[index].Size, strerror(errno));
                   }
                #endif
 
@@ -515,7 +515,7 @@ ERROR unpage_memory_id(MEMORYID MemoryID)
                   shmdt(glMemoryPages[index].Address);
                #else
                   if (munmap(glMemoryPages[index].Address, glMemoryPages[index].Size) IS -1) { // Used by ashmem on Android
-                     log.warning("munmap() failed on %p, size " PF64() ", error: %s", glMemoryPages[index].Address, glMemoryPages[index].Size, strerror(errno));
+                     log.warning("munmap() failed on %p, size %" PF64 ", error: %s", glMemoryPages[index].Address, glMemoryPages[index].Size, strerror(errno));
                   }
                #endif
 

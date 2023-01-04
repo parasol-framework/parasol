@@ -92,30 +92,33 @@ include_directories("${PROJECT_SOURCE_DIR}/include"
    "${PROJECT_SOURCE_DIR}/include/parasol/3rdparty"
    "${CMAKE_CURRENT_BINARY_DIR}")
 
-	CHECK_C_SOURCE_COMPILES ("
+	CHECK_CXX_SOURCE_COMPILES ("
 #include <stdio.h>
 int main() {
    printf(\"%lld\", 0x1122334455667788);
    return 0;
 }"
-	PRINTF64_LLD)
+	PRINTF64_LLD
+   FAIL_REGEX "warning")
 
-	CHECK_C_SOURCE_COMPILES ("
+	CHECK_CXX_SOURCE_COMPILES ("
 #include <stdio.h>
 int main() {
-   printf(\"%I64d\", 0x1122334455667788);
+   printf(\"%I64lld\", 0x1122334455667788);
    return 0;
 }"
-	PRINTF64_ID)
+	PRINTF64_ID
+   FAIL_REGEX "warning")
 
-	CHECK_C_SOURCE_COMPILES ("
+	CHECK_CXX_SOURCE_COMPILES ("
 #include <stdio.h>
 #include <inttypes.h>
 int main() {
-   printf(\"%\"PRId64, 0x1122334455667788)
+   printf(\"%\" PRId64, 0x1122334455667788);
    return 0;
 }"
-	PRINTF64_PRID)
+	PRINTF64_PRID
+   FAIL_REGEX "warning")
 
 find_program (XXD_CMD "xxd")
 if (WIN32)
@@ -347,6 +350,9 @@ elseif (WIN32)
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdata-sections -fdiagnostics-color=auto -ffunction-sections -fno-strict-aliasing ${PARASOL_ARCH}")
    if (PRINTF64_ID)
       add_definitions ("-DPRINTF64I")
+   endif ()
+   if (PRINTF64_PRID)
+      add_definitions ("-DPRINTF64_PRID")
    endif ()
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Android")
 # TODO

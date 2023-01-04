@@ -394,7 +394,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
                if (glModulePath[0]) { // If no specific module path is defined, default to the system path and tack on the modules/ suffix.
                   i = StrCopy(glModulePath, path, sizeof(path));
                }
-               else i = StrFormat(path, sizeof(path), "%slib/parasol/", glRootPath);
+               else i = snprintf(path, sizeof(path), "%slib/parasol/", glRootPath);
 
                if (Self->Flags & MOF_LINK_LIBRARY) i += StrCopy("lib/", path+i, sizeof(path-i));
 

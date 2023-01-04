@@ -1,7 +1,7 @@
 --$FLUID:Include
 
 module({ name="Core", copyright="Paul Manias 1996-2022" }, function()
-  c_include("<stdarg.h>")
+  c_include("<stdarg.h>", "<inttypes.h>")
   cpp_include("<list>", "<map>", "<string>", "<vector>", "<unordered_map>", "<bit>")
 
   platform("Windows", function()
@@ -710,9 +710,11 @@ extern "C" {
 #define CODE_MEMT 0x4D454D54L
 
 #ifdef PRINTF64I
-  #define PF64() "%I64d"
+  #define PF64 "I64d"
+#elif PRINTF64_PRID
+  #define PF64 PRId64
 #else
-  #define PF64() "%lld"
+  #define PF64 "lld"
 #endif
 
 // Use DEBUG_BREAK in critical areas where you would want to break in gdb.  This feature will only be compiled
@@ -933,12 +935,18 @@ struct FieldValue {
     uchar Step                # Internal
     uchar PlainChar           # Internal
     bit(uchar) Initialised    # Internal
+  ]],
+  [[
+  rkBase64Decode() : Step(0), PlainChar(0), Initialised(0) { };
   ]])
 
   struct("rkBase64Encode", { type="base64encode", comment="Private structure for the Base64Encode() function." }, [[
     uchar Step             # Internal
     uchar Result           # Internal
     int StepCount          # Internal
+  ]],
+  [[
+  rkBase64Encode() : Step(0), Result(0), StepCount(0) { };
   ]])
 
   struct("FeedSubscription", { }, [[
@@ -1508,20 +1516,10 @@ inline DOUBLE StrToFloat(CSTRING String) {
    return strtod(String, NULL);
 }
 
-inline LONG __attribute__((format(printf, 3, 4))) StrFormat(STRING Buffer, LONG BufferSize, CSTRING Format, ...)
-{
-   if (!Format) return 0;
-   if (BufferSize <= 0) return 0;
-
-   va_list arg;
-   va_start(arg, Format);
-   LONG chars = vsnprintf(Buffer, BufferSize, Format, arg);
-   va_end(arg);
-   return chars;
-}
+// NB: Prefer std::to_string(value) where viable to get the std::string of a number.
 
 inline LONG IntToStr(LARGE Integer, STRING String, LONG StringSize) {
-   return StrFormat(String, StringSize, PF64(), Integer);
+   return snprintf(String, StringSize, "%lld", Integer);
 }
 
 inline ERROR ClearMemory(APTR Memory, LONG Length) {
@@ -2185,7 +2183,7 @@ inline ERROR cfgWrite(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG Integer)
 {
    if (!Self) return ERR_NullArgs;
    char buffer[32];
-   StrFormat(buffer, sizeof(buffer), "%d", Integer);
+   snprintf(buffer, sizeof(buffer), "%d", Integer);
    struct cfgWriteValue write = { Group, Key, buffer };
    return Action(MT_CfgWriteValue, Self, &write);
 }

@@ -2099,9 +2099,9 @@ static ERROR init_filesystem(std::forward_list<CSTRING> &Volumes)
          {
             char volpath[120];
             #ifdef _WIN32
-               StrFormat(volpath, sizeof(volpath), "%sconfig\\volumes.cfg", glSystemPath);
+               snprintf(volpath, sizeof(volpath), "%sconfig\\volumes.cfg", glSystemPath);
             #else
-               StrFormat(volpath, sizeof(volpath), "%sconfig/volumes.cfg", glSystemPath);
+               snprintf(volpath, sizeof(volpath), "%sconfig/volumes.cfg", glSystemPath);
             #endif
             cfgMergeFile(glVolumes, volpath);
          }
@@ -2149,7 +2149,7 @@ static ERROR init_filesystem(std::forward_list<CSTRING> &Volumes)
          }
          else {
             char path[200];
-            StrFormat(path, sizeof(path), "%slib/parasol/", glRootPath);
+            snprintf(path, sizeof(path), "%slib/parasol/", glRootPath);
             SetVolume(AST_NAME, "modules", AST_PATH, path, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "misc/brick",  TAGEND);
          }
 
@@ -2215,11 +2215,11 @@ static ERROR init_filesystem(std::forward_list<CSTRING> &Volumes)
                log.msg("Home folder is \"%s\".", homedir);
                for (i=0; (homedir[i]) and (i < (LONG)sizeof(buffer)-1); i++) buffer[i] = homedir[i];
                while ((i > 0) and (buffer[i-1] IS '/')) i--;
-               i += StrFormat(buffer+i, sizeof(buffer)-i, "/.%s%d/", glUserHomeFolder, F2T(VER_CORE));
+               i += snprintf(buffer+i, sizeof(buffer)-i, "/.%s%d/", glUserHomeFolder, F2T(VER_CORE));
             }
             else if ((logname = getenv("LOGNAME")) and (logname[0])) {
                log.msg("Login name for home folder is \"%s\".", logname);
-               i = StrFormat(buffer, sizeof(buffer), "config:users/%s/", logname);
+               i = snprintf(buffer, sizeof(buffer), "config:users/%s/", logname);
                buffer[i] = 0;
             }
             else {
@@ -2231,7 +2231,7 @@ static ERROR init_filesystem(std::forward_list<CSTRING> &Volumes)
             // facility, attempt to retrieve the login name and store the user files in the system folder.
 
             if ((i = winGetUserFolder(buffer, sizeof(buffer)-40))) {
-               StrFormat(buffer+i, sizeof(buffer)-i, "%s%d%d\\", glUserHomeFolder, F2T(VER_CORE), REV_CORE);
+               snprintf(buffer+i, sizeof(buffer)-i, "%s%d%d\\", glUserHomeFolder, F2T(VER_CORE), REV_CORE);
                while (buffer[i]) i++;
             }
             else {

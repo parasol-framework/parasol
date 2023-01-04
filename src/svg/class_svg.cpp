@@ -286,7 +286,7 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
 
                if (!(error = GetFields(Self->Viewport, FID_ViewX|TDOUBLE, &x, FID_ViewY|TDOUBLE, &y, FID_ViewWidth|TDOUBLE, &width, FID_ViewHeight|TDOUBLE, &height, TAGEND))) {
                   char buffer[80];
-                  StrFormat(buffer, sizeof(buffer), "%g %g %g %g", x, y, width, height);
+                  snprintf(buffer, sizeof(buffer), "%g %g %g %g", x, y, width, height);
                   xmlSetAttrib(*xml, index, XMS_NEW, "viewBox", buffer);
                }
 

@@ -354,7 +354,7 @@ static ERROR sndWaitDrivers(LONG TimeOut)
 
          genuine = FALSE;
          while (card >= 0) {
-            StrFormat(name, sizeof(name), "hw:%d", card);
+            snprintf(name, sizeof(name), "hw:%d", card);
 
             if ((err = snd_ctl_open(&ctlhandle, name, 0)) >= 0) {
                if ((err = snd_ctl_card_info(ctlhandle, info)) >= 0) {

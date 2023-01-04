@@ -492,7 +492,7 @@ static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
             // Proxy is for all ports
 
             char buffer[120];
-            StrFormat(buffer, sizeof(buffer), "%s:%d", Self->Server, Self->ServerPort);
+            snprintf(buffer, sizeof(buffer), "%s:%d", Self->Server, Self->ServerPort);
 
             log.trace("Changing all-port proxy to: %s", buffer);
 
@@ -517,7 +517,7 @@ static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
                if (!servers) servers = "";
                StrCopy(servers, server_buffer, sizeof(server_buffer));
 
-               StrFormat(buffer, sizeof(buffer), "%s=", portname);
+               snprintf(buffer, sizeof(buffer), "%s=", portname);
                if ((index = StrSearch(buffer, server_buffer, 0)) != -1) { // Entry already exists - remove it first
                   for (end=index; server_buffer[end]; end++) {
                      if (server_buffer[end] IS ';') {
@@ -531,7 +531,7 @@ static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
 
                // Add the entry to the end of the string list
 
-               len = StrFormat(buffer, sizeof(buffer), "%s=%s:%d", portname, Self->Server, Self->ServerPort);
+               len = snprintf(buffer, sizeof(buffer), "%s=%s:%d", portname, Self->Server, Self->ServerPort);
                end = StrLength(server_buffer);
                if (!AllocMemory(end + len + 2, MEM_STRING|MEM_NO_CLEAR, &newlist, NULL)) {
                   if (end > 0) {

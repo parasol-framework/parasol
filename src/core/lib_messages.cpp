@@ -470,7 +470,7 @@ timer_cycle:
             timer->LastCall = current_time;
             timer->Cycle = glTimerCycle;
 
-            //log.trace("Subscriber: %d, Interval: %d, Time: " PF64(), timer->SubscriberID, timer->Interval, current_time);
+            //log.trace("Subscriber: %d, Interval: %d, Time: %" PF64, timer->SubscriberID, timer->Interval, current_time);
 
             timer->Locked = true; // Prevents termination of the structure irrespective of having a TL_TIMER lock.
 
@@ -1610,7 +1610,7 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
                handles[total++] = glFDTable[i].FD;
             }
             else {
-               log.warning("FD " PF64() " has no READ/WRITE/EXCEPT flag setting - de-registering.", (LARGE)glFDTable[i].FD);
+               log.warning("FD %" PF64 " has no READ/WRITE/EXCEPT flag setting - de-registering.", (LARGE)glFDTable[i].FD);
                RegisterFD(glFDTable[i].FD, RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT, NULL, NULL);
                i--;
             }
@@ -1657,7 +1657,7 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
          break;
       }
       else if (i IS -2) {
-         log.warning("WaitForObjects() failed, bad handle " PF64() ".  Deregistering automatically.", (LARGE)handles[0]);
+         log.warning("WaitForObjects() failed, bad handle %" PF64 ".  Deregistering automatically.", (LARGE)handles[0]);
          RegisterFD((HOSTHANDLE)handles[0], RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT, NULL, NULL);
       }
       else if (i IS -4) {

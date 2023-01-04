@@ -908,7 +908,7 @@ static ERROR fntInstallFont(CSTRING Files)
       if (file.ok()) {
          if (!file->read(buffer, 256, NULL)) {
             CSTRING directory = ((buffer[0] IS 'M') and (buffer[1] IS 'Z')) ? "fixed" : "truetype";
-            StrFormat(buffer, sizeof(buffer), "fonts:%s/", directory);
+            snprintf(buffer, sizeof(buffer), "fonts:%s/", directory);
             flCopy(*file, buffer, NULL);
          }
       }
@@ -1320,7 +1320,7 @@ static void scan_truetype_folder(objConfig *Config)
 
    if (!OpenDir("fonts:truetype/", RDF_FILE, &dir)) {
       while (!ScanDir(dir)) {
-         StrFormat(location, sizeof(location), "fonts:truetype/%s", dir->Info->Name);
+         snprintf(location, sizeof(location), "fonts:truetype/%s", dir->Info->Name);
 
          for (j=0; location[j]; j++);
          while ((j > 0) and (location[j-1] != '.') and (location[j-1] != ':') and (location[j-1] != '/') and (location[j-1] != '\\')) j--;
@@ -1412,7 +1412,7 @@ static void scan_fixed_folder(objConfig *Config)
    DirInfo *dir;
    if (!OpenDir("fonts:fixed/", RDF_FILE, &dir)) {
       while (!ScanDir(dir)) {
-         StrFormat(location, sizeof(location), "fonts:fixed/%s", dir->Info->Name);
+         snprintf(location, sizeof(location), "fonts:fixed/%s", dir->Info->Name);
 
          winfnt_header_fields header;
          UBYTE points[20];

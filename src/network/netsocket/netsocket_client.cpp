@@ -22,7 +22,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
    RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_WRITE|RFD_REMOVE, &client_connect, NULL);
 
    #ifdef ENABLE_SSL
-   if ((Self->SSL) AND (!result)) {
+   if ((Self->SSL) and (!result)) {
       // Perform the SSL handshake
 
       log.traceBranch("Attempting SSL handshake.");
@@ -82,7 +82,7 @@ static void client_server_incoming(SOCKET_HANDLE FD, extNetSocket *Data)
    }
 
 #ifdef ENABLE_SSL
-   if ((Self->SSL) AND (Self->State IS NTC_CONNECTING_SSL)) {
+   if ((Self->SSL) and (Self->State IS NTC_CONNECTING_SSL)) {
       log.traceBranch("Continuing SSL communication...");
       sslConnect(Self);
       return;
@@ -95,12 +95,12 @@ static void client_server_incoming(SOCKET_HANDLE FD, extNetSocket *Data)
 #endif
 
    if (Self->IncomingRecursion) {
-      log.trace("[NetSocket:%d] Recursion detected on handle " PF64(), Self->UID, (MAXINT)FD);
+      log.trace("[NetSocket:%d] Recursion detected on handle %" PF64, Self->UID, (MAXINT)FD);
       if (Self->IncomingRecursion < 2) Self->IncomingRecursion++; // Indicate that there is more data to be received
       return;
    }
 
-   log.traceBranch("[NetSocket:%d] Socket: " PF64(), Self->UID, (MAXINT)FD);
+   log.traceBranch("[NetSocket:%d] Socket: %" PF64, Self->UID, (MAXINT)FD);
 
    Self->InUse++;
    Self->IncomingRecursion++;
@@ -178,7 +178,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
    if (Self->Terminating) return;
 
 #ifdef ENABLE_SSL
-   if ((Self->SSL) AND (Self->State IS NTC_CONNECTING_SSL)) {
+   if ((Self->SSL) and (Self->State IS NTC_CONNECTING_SSL)) {
       log.trace("Still connecting via SSL...");
       return;
    }
@@ -208,7 +208,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
       while (Self->WriteQueue.Buffer) {
          LONG len = Self->WriteQueue.Length - Self->WriteQueue.Index;
          #ifdef ENABLE_SSL
-         if ((!Self->SSL) AND (len > glMaxWriteLen)) len = glMaxWriteLen;
+         if ((!Self->SSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
          #else
          if (len > glMaxWriteLen) len = glMaxWriteLen;
          #endif
@@ -256,7 +256,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
       // If the write queue is empty and all data has been retrieved, we can remove the FD-Write registration so that
       // we don't tax the system resources.
 
-      if ((Self->Outgoing.Type IS CALL_NONE) AND (!Self->WriteQueue.Buffer)) {
+      if ((Self->Outgoing.Type IS CALL_NONE) and (!Self->WriteQueue.Buffer)) {
          log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Self->UID, Self->SocketHandle);
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_REMOVE|RFD_WRITE|RFD_SOCKET, NULL, NULL);

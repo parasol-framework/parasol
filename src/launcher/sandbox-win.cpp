@@ -29,11 +29,11 @@ static LONG str_copy(const char *String, char *Dest, int Length)
 {
    if (Length < 0) return(0);
    LONG i = 0;
-   if ((String) AND (Dest)) {
-      while ((i < Length) AND (*String)) {
+   if ((String) and (Dest)) {
+      while ((i < Length) and (*String)) {
          Dest[i++] = *String++;
       }
-      if ((*String) AND (i >= Length)) Dest[i-1] = 0;
+      if ((*String) and (i >= Length)) Dest[i-1] = 0;
       else Dest[i] = 0;
    }
    return(i);

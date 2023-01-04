@@ -251,7 +251,7 @@ class objXML : public BaseClass {
    inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
       struct acGetVar args = { FieldName, Buffer, Size };
       ERROR error = Action(AC_GetVar, this, &args);
-      if ((error) AND (Buffer)) Buffer[0] = 0;
+      if ((error) and (Buffer)) Buffer[0] = 0;
       return error;
    }
    inline ERROR init() { return Action(AC_Init, this, NULL); }
@@ -295,12 +295,12 @@ inline const XMLTag * XMLFIND(const XMLTag **List, CSTRING Name) {
 
 inline ERROR xmlSetAttrib(objXML *XML, LONG Tag, LONG Flags, CSTRING Attrib, LONG Value) {
    char buffer[20];
-   StrFormat(buffer, sizeof(buffer), "%d", Value);
+   snprintf(buffer, sizeof(buffer), "%d", Value);
    return xmlSetAttrib(XML, Tag, Flags, Attrib, buffer);
 }
 
 inline ERROR xmlSetAttrib(objXML *XML, LONG Tag, LONG Flags, CSTRING Attrib, DOUBLE Value) {
    char buffer[48];
-   StrFormat(buffer, sizeof(buffer), "%g", Value);
+   snprintf(buffer, sizeof(buffer), "%g", Value);
    return xmlSetAttrib(XML, Tag, Flags, Attrib, buffer);
 }

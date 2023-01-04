@@ -7,6 +7,7 @@
 #include <parasol/main.h>
 
 #include <stdarg.h>
+#include <inttypes.h>
 
 #ifdef __cplusplus
 #include <list>
@@ -1471,9 +1472,11 @@ extern "C" {
 #define CODE_MEMT 0x4D454D54L
 
 #ifdef PRINTF64I
-  #define PF64() "%I64d"
+  #define PF64 "I64d"
+#elif PRINTF64_PRID
+  #define PF64 PRId64
 #else
-  #define PF64() "%lld"
+  #define PF64 "lld"
 #endif
 
 // Use DEBUG_BREAK in critical areas where you would want to break in gdb.  This feature will only be compiled
@@ -1693,12 +1696,14 @@ typedef struct rkBase64Decode {
    UBYTE Step;             // Internal
    UBYTE PlainChar;        // Internal
    UBYTE Initialised:1;    // Internal
+  rkBase64Decode() : Step(0), PlainChar(0), Initialised(0) { };
 } BASE64DECODE;
 
 typedef struct rkBase64Encode {
    UBYTE Step;        // Internal
    UBYTE Result;      // Internal
    LONG  StepCount;   // Internal
+  rkBase64Encode() : Step(0), Result(0), StepCount(0) { };
 } BASE64ENCODE;
 
 struct FeedSubscription {
@@ -2128,7 +2133,7 @@ struct CoreBase {
    ERROR (*_TranslateCmdRef)(CSTRING String, STRING * Command);
    ERROR (*_AddInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING Value);
    LONG (*_UTF8Copy)(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
-   LONG (*_Base64Encode)(const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
+   LONG (*_Base64Encode)(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
    ERROR (*_VarSetString)(struct KeyStore * Store, CSTRING Key, CSTRING Value);
    CSTRING (*_VarGetString)(struct KeyStore * Store, CSTRING Key);
    ERROR (*_VarCopy)(struct KeyStore * Source, struct KeyStore * Dest);
@@ -2280,7 +2285,7 @@ inline const struct SystemState * GetSystemState(void) { return CoreBase->_GetSy
 inline ERROR TranslateCmdRef(CSTRING String, STRING * Command) { return CoreBase->_TranslateCmdRef(String,Command); }
 inline ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
 inline LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size) { return CoreBase->_UTF8Copy(Src,Dest,Chars,Size); }
-inline LONG Base64Encode(const void * Input, LONG InputSize, STRING Output, LONG OutputSize) { return CoreBase->_Base64Encode(Input,InputSize,Output,OutputSize); }
+inline LONG Base64Encode(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize) { return CoreBase->_Base64Encode(State,Input,InputSize,Output,OutputSize); }
 inline ERROR VarSetString(struct KeyStore * Store, CSTRING Key, CSTRING Value) { return CoreBase->_VarSetString(Store,Key,Value); }
 inline CSTRING VarGetString(struct KeyStore * Store, CSTRING Key) { return CoreBase->_VarGetString(Store,Key); }
 inline ERROR VarCopy(struct KeyStore * Source, struct KeyStore * Dest) { return CoreBase->_VarCopy(Source,Dest); }
@@ -2418,20 +2423,10 @@ inline DOUBLE StrToFloat(CSTRING String) {
    return strtod(String, NULL);
 }
 
-inline LONG __attribute__((format(printf, 3, 4))) StrFormat(STRING Buffer, LONG BufferSize, CSTRING Format, ...)
-{
-   if (!Format) return 0;
-   if (BufferSize <= 0) return 0;
-
-   va_list arg;
-   va_start(arg, Format);
-   LONG chars = vsnprintf(Buffer, BufferSize, Format, arg);
-   va_end(arg);
-   return chars;
-}
+// NB: Prefer std::to_string(value) where viable to get the std::string of a number.
 
 inline LONG IntToStr(LARGE Integer, STRING String, LONG StringSize) {
-   return StrFormat(String, StringSize, PF64(), Integer);
+   return snprintf(String, StringSize, "%lld", Integer);
 }
 
 inline ERROR ClearMemory(APTR Memory, LONG Length) {
@@ -3307,7 +3302,7 @@ inline ERROR cfgWrite(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG Integer)
 {
    if (!Self) return ERR_NullArgs;
    char buffer[32];
-   StrFormat(buffer, sizeof(buffer), "%d", Integer);
+   snprintf(buffer, sizeof(buffer), "%d", Integer);
    struct cfgWriteValue write = { Group, Key, buffer };
    return Action(MT_CfgWriteValue, Self, &write);
 }
@@ -3416,7 +3411,7 @@ class objScript : public BaseClass {
    inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
       struct acGetVar args = { FieldName, Buffer, Size };
       ERROR error = Action(AC_GetVar, this, &args);
-      if ((error) AND (Buffer)) Buffer[0] = 0;
+      if ((error) and (Buffer)) Buffer[0] = 0;
       return error;
    }
    inline ERROR init() { return Action(AC_Init, this, NULL); }
@@ -3530,7 +3525,7 @@ class objTask : public BaseClass {
    inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
       struct acGetVar args = { FieldName, Buffer, Size };
       ERROR error = Action(AC_GetVar, this, &args);
-      if ((error) AND (Buffer)) Buffer[0] = 0;
+      if ((error) and (Buffer)) Buffer[0] = 0;
       return error;
    }
    inline ERROR init() { return Action(AC_Init, this, NULL); }
@@ -3672,7 +3667,7 @@ class objModule : public BaseClass {
    inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
       struct acGetVar args = { FieldName, Buffer, Size };
       ERROR error = Action(AC_GetVar, this, &args);
-      if ((error) AND (Buffer)) Buffer[0] = 0;
+      if ((error) and (Buffer)) Buffer[0] = 0;
       return error;
    }
    inline ERROR init() { return Action(AC_Init, this, NULL); }

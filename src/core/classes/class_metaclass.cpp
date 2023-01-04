@@ -1119,7 +1119,7 @@ static void copy_field(extMetaClass *Class, const FieldArray *Source, Field *Des
       #ifdef _LP64
          if (Offset[0] & 0x7) {
             Offset[0] = (Offset[0] + 7) & (~0x7);
-            if (((fieldflags & FDF_R) and (!Dest->GetValue)) OR
+            if (((fieldflags & FDF_R) and (!Dest->GetValue)) or
                 ((fieldflags & FDF_W) and (!Dest->SetValue))) {
                log.warning("Misaligned 64-bit pointer '%s' in class '%s'.", Dest->Name, Class->ClassName);
             }
@@ -1134,7 +1134,7 @@ static void copy_field(extMetaClass *Class, const FieldArray *Source, Field *Des
    else if (fieldflags & FD_FUNCTION) Offset[0] += sizeof(FUNCTION);
    else if (fieldflags & (FD_DOUBLE|FD_LARGE)) {
       if (Offset[0] & 0x7) {
-         if (((fieldflags & FDF_R) and (!Dest->GetValue)) OR
+         if (((fieldflags & FDF_R) and (!Dest->GetValue)) or
              ((fieldflags & FDF_W) and (!Dest->SetValue))) {
             log.warning("Misaligned 64-bit field '%s' in class '%s'.", Dest->Name, Class->ClassName);
          }

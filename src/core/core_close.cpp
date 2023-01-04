@@ -341,7 +341,7 @@ EXPORT void CloseCore(void)
       if ((!glCrashStatus) and (glFDTable)) {
          for (LONG i=0; i < glTotalFDs; i++) {
             if (glFDTable[i].FD) {
-               log.warning("FD " PF64() " was not deregistered prior to program close.  Routine: %p, Data: %p, Flags: $%.8x", (LARGE)glFDTable[i].FD, glFDTable[i].Routine, glFDTable[i].Data, glFDTable[i].Flags);
+               log.warning("FD %" PF64 " was not deregistered prior to program close.  Routine: %p, Data: %p, Flags: $%.8x", (LARGE)glFDTable[i].FD, glFDTable[i].Routine, glFDTable[i].Data, glFDTable[i].Flags);
             }
          }
       }

@@ -449,15 +449,17 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <name>Base64Encode</name>
     <category>Strings</category>
     <comment>Encodes a binary source into a base 64 string.</comment>
-    <prototype>LONG Base64Encode(const void * Input, LONG InputSize, STRING Output, LONG OutputSize)</prototype>
+    <prototype>LONG Base64Encode(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize)</prototype>
     <input>
+      <param type="struct rkBase64Encode *" name="State">Pointer to an rkBase64Decode structure, initialised to zero.</param>
       <param type="const void *" name="Input">The binary data to encode.</param>
-      <param type="LONG" name="InputSize">The amount of data to encode.</param>
+      <param type="LONG" name="InputSize">The amount of data to encode.  Set to zero to finalise the output.</param>
       <param type="STRING" name="Output">Destination buffer for the encoded output.</param>
-      <param type="LONG" name="OutputSize">Size of the destination buffer.</param>
+      <param type="LONG" name="OutputSize">Size of the destination buffer.  Must be at least (InputSize * 4 / 3) + 1.</param>
     </input>
     <description>
-<p>This function needs to be replaced with the streaming version, see base64_init_encodestate()</p>
+<p>This is a state-based function that will encode raw data and output it as base-64 encoded text.  To use, the State structure must initially be set to zero (automatic if using C++).  Call this function repeatedly with new Input data and it will be written to the supplied Output pointer.  Once all incoming data has been consumed, call this function a final time with an Input of NULL and InputSize of zero.</p>
+<p>It is required that the Output is sized to at least <code>(4 / 3) + 1</code> of InputSize when encoding.  For the final output, the size must be at least 6 bytes.</p>
     </description>
     <result type="LONG">The total number of bytes output is returned.</result>
   </function>

@@ -133,11 +133,11 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
          for (i=0; i < glSizeCount; i++) {
             if ((glSizes[i].width >= 640) AND (glSizes[i].height >= 480)) {
-               StrFormat(buffer, sizeof(buffer), "<screen name=\"%dx%d\" width=\"%d\" height=\"%d\" depth=\"%d\" colours=\"%d\"\n",
+               snprintf(buffer, sizeof(buffer), "<screen name=\"%dx%d\" width=\"%d\" height=\"%d\" depth=\"%d\" colours=\"%d\"\n",
                   glSizes[i].width, glSizes[i].height, glSizes[i].width, glSizes[i].height, xbpp, xcolours);
                write_string(*file, buffer);
 
-               StrFormat(buffer, sizeof(buffer), "  bytes=\"%d\" defaultrefresh=\"0\" minrefresh=\"0\" maxrefresh=\"0\">\n", xbytes);
+               snprintf(buffer, sizeof(buffer), "  bytes=\"%d\" defaultrefresh=\"0\" minrefresh=\"0\" maxrefresh=\"0\">\n", xbytes);
                write_string(*file, buffer);
 
                write_string(*file, "</screen>\n\n");

@@ -523,5 +523,11 @@
       <field name="Initialised" type="UBYTE">Internal</field>
     </struct>
 
+    <struct name="rkBase64Encode" comment="Private structure for the Base64Encode() function." typeName="BASE64ENCODE">
+      <field name="Step" type="UBYTE">Internal</field>
+      <field name="Result" type="UBYTE">Internal</field>
+      <field name="StepCount" type="LONG">Internal</field>
+    </struct>
+
   </structs>
 </book>

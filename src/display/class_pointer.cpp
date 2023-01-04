@@ -97,7 +97,7 @@ static void send_inputmsg(InputEvent *Event, InputSubscription *List)
       if ((List[i].SurfaceFilter) and (List[i].SurfaceFilter != Event->RecipientID)) continue;
       if (!(List[i].InputMask & Event->Mask)) continue;
 
-      //log.msg("Process %d, Surface #%d, Mask: $%.8x & $%.8x, Last Alerted @ " PF64(), List[i].ProcessID, Event->RecipientID, Event->Mask, List[i].InputMask, List[i].LastAlerted);
+      //log.msg("Process %d, Surface #%d, Mask: $%.8x & $%.8x, Last Alerted @ %" PF64, List[i].ProcessID, Event->RecipientID, Event->Mask, List[i].InputMask, List[i].LastAlerted);
 
       // NB: When process ID's match we will instead process input events at the start of the next sleep cycle.
 
@@ -201,7 +201,7 @@ static ERROR PTR_DataFeed(extPointer *Self, struct acDataFeed *Args)
 
             input->Flags = glInputType[input->Type].Flags;
 
-            //log.traceBranch("Incoming Input: %s, Value: %.2f, Flags: $%.8x, Time: " PF64(), (input->Type < JET_END) ? glInputNames[input->Type] : (STRING)"", input->Value, input->Flags, input->Timestamp);
+            //log.traceBranch("Incoming Input: %s, Value: %.2f, Flags: $%.8x, Time: %" PF64, (input->Type < JET_END) ? glInputNames[input->Type] : (STRING)"", input->Value, input->Flags, input->Timestamp);
 
             if (input->Type IS JET_WHEEL) process_ptr_wheel(Self, input);
             else if (input->Flags & JTYPE_BUTTON) process_ptr_button(Self, input);
@@ -307,7 +307,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
    // Button Press Handler
 
    if (userinput.Value > 0) {
-      log.trace("Button %d depressed @ " PF64() " Coords: %.2fx%.2f", bi, userinput.Timestamp, Self->X, Self->Y);
+      log.trace("Button %d depressed @ %" PF64 " Coords: %.2fx%.2f", bi, userinput.Timestamp, Self->X, Self->Y);
 
       //if ((modal_id) and (modal_id != Self->OverObjectID)) {
       //   log.branch("Surface %d is modal, button click on %d cancelled.", modal_id, Self->OverObjectID);
@@ -917,19 +917,19 @@ static ERROR PTR_SaveToObject(extPointer *Self, struct acSaveToObject *Args)
    objConfig::create config = { };
    if (config.ok()) {
       char buffer[30];
-      StrFormat(buffer, sizeof(buffer), "%f", Self->Speed);
+      snprintf(buffer, sizeof(buffer), "%f", Self->Speed);
       cfgWriteValue(*config, "POINTER", "Speed", buffer);
 
-      StrFormat(buffer, sizeof(buffer), "%f", Self->Acceleration);
+      snprintf(buffer, sizeof(buffer), "%f", Self->Acceleration);
       cfgWriteValue(*config, "POINTER", "Acceleration", buffer);
 
-      StrFormat(buffer, sizeof(buffer), "%f", Self->DoubleClick);
+      snprintf(buffer, sizeof(buffer), "%f", Self->DoubleClick);
       cfgWriteValue(*config, "POINTER", "DoubleClick", buffer);
 
-      StrFormat(buffer, sizeof(buffer), "%d", Self->MaxSpeed);
+      snprintf(buffer, sizeof(buffer), "%d", Self->MaxSpeed);
       cfgWriteValue(*config, "POINTER", "MaxSpeed", buffer);
 
-      StrFormat(buffer, sizeof(buffer), "%f", Self->WheelSpeed);
+      snprintf(buffer, sizeof(buffer), "%f", Self->WheelSpeed);
       cfgWriteValue(*config, "POINTER", "WheelSpeed", buffer);
 
       cfgWriteValue(*config, "POINTER", "ButtonOrder", Self->ButtonOrder);
@@ -1034,7 +1034,7 @@ static ERROR SET_ButtonOrder(extPointer *Self, CSTRING Value)
    // Eliminate any invalid buttons
 
    for (WORD i=0; Self->ButtonOrder[i]; i++) {
-      if (((Self->ButtonOrder[i] >= '1') and (Self->ButtonOrder[i] <= '9')) OR
+      if (((Self->ButtonOrder[i] >= '1') and (Self->ButtonOrder[i] <= '9')) or
           ((Self->ButtonOrder[i] >= 'A') and (Self->ButtonOrder[i] <= 'Z'))) {
       }
       else Self->ButtonOrder[i] = ' ';

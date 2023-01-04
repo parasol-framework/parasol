@@ -27,6 +27,22 @@ static void print(extCompression *Self, CSTRING Buffer)
    else log.msg("%s", Buffer);
 }
 
+static void print(extCompression *Self, std::string Buffer)
+{
+   parasol::Log log;
+
+   if (Self->OutputID) {
+      struct acDataFeed feed = {
+         .ObjectID = Self->UID,
+         .DataType = DATA_TEXT,
+         .Buffer   = Buffer.c_str()
+      };
+      feed.Size = Buffer.length() + 1;
+      ActionMsg(AC_DataFeed, Self->OutputID, &feed, 0, 0);
+   }
+   else log.msg("%s", Buffer.c_str());
+}
+
 //*********************************************************************************************************************
 
 static ERROR compress_folder(extCompression *Self, CSTRING Location, CSTRING Path)
@@ -47,8 +63,9 @@ static ERROR compress_folder(extCompression *Self, CSTRING Location, CSTRING Pat
    }
 
    if (Self->OutputID) {
-      StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "  Compressing folder \"%s\".", Location);
-      print(Self, (CSTRING)Self->prvOutput);
+      std::ostringstream out;
+      out << "  Compressing folder \"" << Location << "\".";
+      print(Self, out.str());
    }
 
    // Send feedback if requested to do so
@@ -171,8 +188,8 @@ static ERROR compress_folder(extCompression *Self, CSTRING Location, CSTRING Pat
             j = StrLength(scan->Name);
             char location[len+j+1];
             char path[pathlen+j+1];
-            StrFormat(location, sizeof(location), "%s%s", Location, scan->Name);
-            StrFormat(path, sizeof(path), "%s%s", Path, scan->Name);
+            snprintf(location, sizeof(location), "%s%s", Location, scan->Name);
+            snprintf(path, sizeof(path), "%s%s", Path, scan->Name);
             compress_folder(Self, location, path);
          }
          else if (scan->Flags & (RDF_FILE|RDF_LINK)) {
@@ -227,8 +244,9 @@ static ERROR compress_file(extCompression *Self, CSTRING Location, CSTRING Path,
 
    if (!file.ok()) {
       if (Self->OutputID) {
-         StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "  Error opening file \"%s\".", Location);
-         print(Self, (CSTRING)Self->prvOutput);
+         std::ostringstream out;
+         out << "  Error opening file \"" << Location << "\".";
+         print(Self, out.str());
       }
       error = log.warning(ERR_OpenFile);
       goto exit;
@@ -275,8 +293,9 @@ static ERROR compress_file(extCompression *Self, CSTRING Location, CSTRING Path,
    // Send informative output to the user
 
    if (Self->OutputID) {
-      StrFormat((char *)Self->prvOutput, SIZE_COMPRESSION_BUFFER, "  Compressing file \"%s\".", Location);
-      print(Self, (CSTRING)Self->prvOutput);
+      std::ostringstream out;
+      out << "  Compressing file \"" << Location << "\".";
+      print(Self, out.str());
    }
 
    // Seek to the position at which this new file will be added

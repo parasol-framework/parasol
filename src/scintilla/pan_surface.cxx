@@ -78,7 +78,7 @@ SurfacePan::~SurfacePan()
 
 void SurfacePan::Release()
 {
-   if ((bitmap) AND (own_bitmap)) {
+   if ((bitmap) and (own_bitmap)) {
       acFree(bitmap);
       bitmap = NULL;
    }
@@ -299,7 +299,7 @@ void SurfacePan::Copy(Scintilla::PRectangle rc, Scintilla::Point from, Scintilla
 {
    SurfacePan &src_surface = static_cast<SurfacePan&>(surfaceSource);
 
-   if ((bitmap) AND (src_surface.bitmap)) {
+   if ((bitmap) and (src_surface.bitmap)) {
 //      BitmapClipper clipper(bitmap, cliprect);
 
       DBGDRAW("panCopy:","From: %dx%d To: %dx%d,%dx%d, Clip: %dx%d,%dx%d", from.x, from.y, rc.left, rc.top, rc.Width(), rc.Height(), bitmap->Clip.Left, bitmap->Clip.Top, bitmap->Clip.Right, bitmap->Clip.Bottom);
@@ -435,7 +435,7 @@ void SurfacePan::MeasureWidths(Scintilla::Font &font_, const char *string, int l
 
          // Supporting UTF8 characters are assigned the same pixel offset
 
-         while ((copy > 1) AND (i < len)) {
+         while ((copy > 1) and (i < len)) {
             positions[i++] = charpos;
             copy--;
          }
@@ -573,10 +573,10 @@ void SurfacePan::SetDBCSMode(int codePage)
 OBJECTPTR SurfacePan::GetFont(Scintilla::Font& font_)
 {
    if (font_.bold) {
-      if ((font_.italic) AND (glBIFont)) return glBIFont;
+      if ((font_.italic) and (glBIFont)) return glBIFont;
       else if (glBoldFont) return glBoldFont;
    }
-   else if ((font_.italic) AND (glItalicFont)) {
+   else if ((font_.italic) and (glItalicFont)) {
       return glItalicFont;
    }
 

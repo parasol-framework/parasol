@@ -243,20 +243,20 @@ static ERROR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Arg
                datatype = Args->Datatype;
                if (!datatype) {
                   if (object.obj->ClassID IS ID_PICTURE) {
-                     StrFormat(path, sizeof(path), "clipboard:image%d.%.3d", counter, i);
+                     snprintf(path, sizeof(path), "clipboard:image%d.%.3d", counter, i);
                      datatype = CLIPTYPE_IMAGE;
                   }
                   else if (object.obj->ClassID IS ID_SOUND) {
-                     StrFormat(path, sizeof(path), "clipboard:audio%d.%.3d", counter, i);
+                     snprintf(path, sizeof(path), "clipboard:audio%d.%.3d", counter, i);
                      datatype = CLIPTYPE_AUDIO;
                   }
                   else {
-                     StrFormat(path, sizeof(path), "clipboard:object%d.%.3d", counter, i);
+                     snprintf(path, sizeof(path), "clipboard:object%d.%.3d", counter, i);
                      datatype = CLIPTYPE_OBJECT;
                   }
                }
                else { // Use the specified datatype
-                  StrFormat(path, sizeof(path), "clipboard:%s%d.%.3d", GetDatatype(datatype), counter, i);
+                  snprintf(path, sizeof(path), "clipboard:%s%d.%.3d", GetDatatype(datatype), counter, i);
                }
 
                objFile::create file = { fl::Path(path), fl::Flags(FL_WRITE|FL_NEW) };
@@ -332,7 +332,7 @@ static ERROR CLIPBOARD_AddText(objClipboard *Self, struct clipAddText *Args)
    LONG counter;
    if (!(error = add_clip(Self->ClusterID, CLIPTYPE_TEXT, 0, 0, 0, 1, &counter))) {
       char buffer[200];
-      StrFormat(buffer, sizeof(buffer), "clipboard:text%d.000", counter);
+      snprintf(buffer, sizeof(buffer), "clipboard:text%d.000", counter);
 
       parasol::Create<objFile> file = { fl::Path(buffer), fl::Flags(FL_WRITE|FL_NEW), fl::Permissions(PERMIT_READ|PERMIT_WRITE) };
       if (file.ok()) {
@@ -428,7 +428,7 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
       #endif
 
       if (!add_clip(Self->ClusterID, CLIPTYPE_TEXT, 0, 0, 0, 1, &counter)) {
-         StrFormat(buffer, sizeof(buffer), "clipboard:text%d.000", counter);
+         snprintf(buffer, sizeof(buffer), "clipboard:text%d.000", counter);
 
          objFile::create file = {
             fl::Path(buffer),
@@ -655,7 +655,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
          // Calculate the length of the file strings
 
          char buffer[100];
-         LONG len = StrFormat(buffer, sizeof(buffer), "clipboard:%s%d.000", GetDatatype(clips[index].Datatype), clips[index].ID);
+         LONG len = snprintf(buffer, sizeof(buffer), "clipboard:%s%d.000", GetDatatype(clips[index].Datatype), clips[index].ID);
          len = ((len + 1) * clips[index].TotalItems) + 1;
 
          // Allocate the list array with some room for the strings at the end and then fill it with data.
@@ -664,7 +664,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
             STRING str = (STRING)(list + clips[index].TotalItems + 1);
             for (i=0; i < clips[index].TotalItems; i++) {
                if (i > 0) *str++ = '\0'; // Each file is separated with a NULL character
-               StrFormat(str, len, "clipboard:%s%d.%.3d", GetDatatype(clips[index].Datatype), clips[index].ID, i);
+               snprintf(str, len, "clipboard:%s%d.%.3d", GetDatatype(clips[index].Datatype), clips[index].ID, i);
                while (*str) str++;
             }
             *str = 0;
@@ -792,7 +792,7 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
                      return log.warning(ERR_AccessMemory);
                   }
                }
-               else StrFormat(Args->Buffer, Args->Size, "clipboard:%s%d.%.3d", datatype, clip->ID, i);
+               else snprintf(Args->Buffer, Args->Size, "clipboard:%s%d.%.3d", datatype, clip->ID, i);
             }
          }
 
@@ -948,7 +948,7 @@ static void free_clip(ClipEntry *Clip)
 
       for (WORD i=0; i < Clip->TotalItems; i++) {
          char buffer[200];
-         StrFormat(buffer, sizeof(buffer), "clipboard:%s%d.%.3d", datatype, Clip->ID, i);
+         snprintf(buffer, sizeof(buffer), "clipboard:%s%d.%.3d", datatype, Clip->ID, i);
          DeleteFile(buffer, NULL);
       }
    }
