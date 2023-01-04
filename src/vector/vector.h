@@ -15,6 +15,7 @@
 #include <set>
 #include <unordered_map>
 #include <mutex>
+#include <algorithm>
 
 #include <parasol/main.h>
 #include <parasol/modules/xml.h>

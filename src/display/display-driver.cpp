@@ -93,7 +93,7 @@ static void android_term_window(LONG);
 //****************************************************************************
 // Note: These values are used as the input masks
 
-const std::array<struct InputType, JET_END> glInputType{{
+const InputType glInputType[JET_END] = {
    { 0, 0 },                                         // UNUSED
    { JTYPE_DIGITAL|JTYPE_MOVEMENT, JTYPE_MOVEMENT }, // JET_DIGITAL_X
    { JTYPE_DIGITAL|JTYPE_MOVEMENT, JTYPE_MOVEMENT }, // JET_DIGITAL_Y
@@ -134,9 +134,9 @@ const std::array<struct InputType, JET_END> glInputType{{
    { JTYPE_EXT_MOVEMENT,           JTYPE_EXT_MOVEMENT }, // JET_DEVICE_TILT_Y
    { JTYPE_EXT_MOVEMENT,           JTYPE_EXT_MOVEMENT }, // JET_DEVICE_TILT_Z
    { JTYPE_FEEDBACK,               JTYPE_FEEDBACK }     // JET_DISPLAY_EDGE
-}};
+};
 
-const std::array<std::string, JET_END> glInputNames{
+const CSTRING glInputNames[JET_END] = {
    "",
    "DIGITAL_X",
    "DIGITAL_Y",

@@ -719,12 +719,13 @@ int fcmd_loadfile(lua_State *Lua)
 #warning Code compilation not currently supported
             /*
                if (recompile) {
-                  OBJECTPTR cachefile;
-                  if (!CreateObject(ID_FILE, 0, &cachefile,
-                        FID_Path|TSTR,         fbpath,
-                        FID_Flags|TLONG,       FL_NEW|FL_WRITE,
-                        FID_Permissions|TLONG, PERMIT_USER_READ|PERMIT_USER_WRITE,
-                        TAGEND)) {
+                  objFile::create cachefile = {
+                     fl::Path(fbpath),
+                     fl::Flags(FL_NEW|FL_WRITE),
+                     fl::Permissions(PERMIT_USER_READ|PERMIT_USER_WRITE)
+                  };
+
+                  if (cachefile.ok()) {
                      const Proto *f;
                      struct DateTime *date;
                      f = clvalue(prv->Lua->top + (-1))->l.p;
@@ -732,7 +733,6 @@ int fcmd_loadfile(lua_State *Lua)
                      if (!file.obj->getPtr(FID_Date, &date)) {
                         cachefile->set(FID_Date, date);
                      }
-                     acFree(cachefile);
                   }
                }
              */
