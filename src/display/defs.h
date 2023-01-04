@@ -476,8 +476,8 @@ struct InputType {
    LONG Mask;   // Limited flags to declare the mask that must be used to receive that type
 };
 
-extern const std::array<struct InputType, JET_END> glInputType;
-extern const std::array<std::string, JET_END> glInputNames;
+extern const InputType glInputType[JET_END];
+extern const CSTRING glInputNames[JET_END];
 
 #define find_surface_index(a,b) find_surface_list( (SurfaceList *)((BYTE *)(a) + (a)->ArrayIndex), (a)->Total, (b))
 #define find_own_index(a,b)     find_surface_list( (SurfaceList *)((BYTE *)(a) + (a)->ArrayIndex), (a)->Total, (b)->UID)

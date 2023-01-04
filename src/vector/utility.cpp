@@ -82,10 +82,6 @@ CSTRING get_name(OBJECTPTR Vector)
    return "Unknown";
 }
 
-INLINE CSTRING get_name(objVector *Vector) {
-   return get_name(Vector);
-}
-
 //********************************************************************************************************************
 // Read a string-based series of vector commands and add them to Path.
 

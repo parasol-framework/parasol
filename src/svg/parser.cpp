@@ -372,18 +372,25 @@ static ERROR parse_fe_merge(extSVG *Self, objVectorFilter *Filter, const XMLTag 
 
 //********************************************************************************************************************
 
+#define CM_SIZE 20
+
+static const DOUBLE glProtanopia[20] = { 0.567,0.433,0,0,0, 0.558,0.442,0,0,0, 0,0.242,0.758,0,0, 0,0,0,1,0 };
+static const DOUBLE glProtanomaly[20] = { 0.817,0.183,0,0,0, 0.333,0.667,0,0,0, 0,0.125,0.875,0,0, 0,0,0,1,0 };
+static const DOUBLE glDeuteranopia[20] = { 0.625,0.375,0,0,0, 0.7,0.3,0,0,0, 0,0.3,0.7,0,0, 0,0,0,1,0 };
+static const DOUBLE glDeuteranomaly[20] = { 0.8,0.2,0,0,0, 0.258,0.742,0,0,0, 0,0.142,0.858,0,0, 0,0,0,1,0 };
+static const DOUBLE glTritanopia[20] = { 0.95,0.05,0,0,0, 0,0.433,0.567,0,0, 0,0.475,0.525,0,0, 0,0,0,1,0 };
+static const DOUBLE glTritanomaly[20] = { 0.967,0.033,0,0,0, 0,0.733,0.267,0,0, 0,0.183,0.817,0,0, 0,0,0,1,0 };
+static const DOUBLE glAchromatopsia[20] = { 0.299,0.587,0.114,0,0, 0.299,0.587,0.114,0,0, 0.299,0.587,0.114,0,0, 0,0,0,1,0 };
+static const DOUBLE glAchromatomaly[20] = { 0.618,0.320,0.062,0,0, 0.163,0.775,0.062,0,0, 0.163,0.320,0.516,0,0, 0,0,0,1,0 };
+
 static ERROR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
 {
-   #define CM_SIZE 20
-   typedef std::array<DOUBLE, CM_SIZE> MATRIX;
-
    parasol::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
    if (NewObject(ID_COLOURFX, &fx) != ERR_Okay) return ERR_NewObject;
    SetOwner(fx, Filter);
 
-   MATRIX m;
    for (LONG a=1; a < Tag->TotalAttrib; a++) {
       CSTRING val = Tag->Attrib[a].Value;
       if (!val) continue;
@@ -391,6 +398,7 @@ static ERROR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, const
       ULONG hash = StrHash(Tag->Attrib[a].Name, FALSE);
       switch(hash) {
          case SVF_TYPE: {
+            const DOUBLE *m = NULL;
             LONG mode = 0;
             switch(StrHash(val, FALSE)) {
                case SVF_NONE:          mode = CM_NONE; break;
@@ -405,14 +413,14 @@ static ERROR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, const
                case SVF_COLOURISE:     mode = CM_COLOURISE; break;
                case SVF_DESATURATE:    mode = CM_DESATURATE; break;
                // Colour blindness modes
-               case SVF_PROTANOPIA:    mode = CM_MATRIX; m = MATRIX { 0.567,0.433,0,0,0, 0.558,0.442,0,0,0, 0,0.242,0.758,0,0, 0,0,0,1,0 }; break;
-               case SVF_PROTANOMALY:   mode = CM_MATRIX; m = MATRIX { 0.817,0.183,0,0,0, 0.333,0.667,0,0,0, 0,0.125,0.875,0,0, 0,0,0,1,0 }; break;
-               case SVF_DEUTERANOPIA:  mode = CM_MATRIX; m = MATRIX { 0.625,0.375,0,0,0, 0.7,0.3,0,0,0, 0,0.3,0.7,0,0, 0,0,0,1,0 }; break;
-               case SVF_DEUTERANOMALY: mode = CM_MATRIX; m = MATRIX { 0.8,0.2,0,0,0, 0.258,0.742,0,0,0, 0,0.142,0.858,0,0, 0,0,0,1,0 }; break;
-               case SVF_TRITANOPIA:    mode = CM_MATRIX; m = MATRIX { 0.95,0.05,0,0,0, 0,0.433,0.567,0,0, 0,0.475,0.525,0,0, 0,0,0,1,0 }; break;
-               case SVF_TRITANOMALY:   mode = CM_MATRIX; m = MATRIX { 0.967,0.033,0,0,0, 0,0.733,0.267,0,0, 0,0.183,0.817,0,0, 0,0,0,1,0 }; break;
-               case SVF_ACHROMATOPSIA: mode = CM_MATRIX; m = MATRIX { 0.299,0.587,0.114,0,0, 0.299,0.587,0.114,0,0, 0.299,0.587,0.114,0,0, 0,0,0,1,0 }; break;
-               case SVF_ACHROMATOMALY: mode = CM_MATRIX; m = MATRIX { 0.618,0.320,0.062,0,0, 0.163,0.775,0.062,0,0, 0.163,0.320,0.516,0,0, 0,0,0,1,0 }; break;
+               case SVF_PROTANOPIA:    mode = CM_MATRIX; m = glProtanopia; break;
+               case SVF_PROTANOMALY:   mode = CM_MATRIX; m = glProtanomaly; break;
+               case SVF_DEUTERANOPIA:  mode = CM_MATRIX; m = glDeuteranopia; break;
+               case SVF_DEUTERANOMALY: mode = CM_MATRIX; m = glDeuteranomaly; break;
+               case SVF_TRITANOPIA:    mode = CM_MATRIX; m = glTritanopia; break;
+               case SVF_TRITANOMALY:   mode = CM_MATRIX; m = glTritanomaly; break;
+               case SVF_ACHROMATOPSIA: mode = CM_MATRIX; m = glAchromatopsia; break;
+               case SVF_ACHROMATOMALY: mode = CM_MATRIX; m = glAchromatomaly; break;
 
                default:
                   log.warning("Unrecognised colour matrix type '%s'", val);
@@ -421,18 +429,19 @@ static ERROR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, const
             }
 
             fx->set(FID_Mode, mode);
-            if (mode IS CM_MATRIX) SetArray(fx, FID_Values|TDOUBLE, &m, ARRAYSIZE(m));
+            if (mode IS CM_MATRIX) SetArray(fx, FID_Values|TDOUBLE, (APTR)m, CM_SIZE);
             break;
          }
 
          case SVF_VALUES: {
+            DOUBLE m[CM_SIZE];
             LONG i;
             for (i=0; (*val) and (i < CM_SIZE); i++) {
                DOUBLE dbl;
                val = read_numseq(val, &dbl, TAGEND);
                m[i] = dbl;
             }
-            SetArray(fx, FID_Values|TDOUBLE, &m, i);
+            SetArray(fx, FID_Values|TDOUBLE, m, i);
             break;
          }
 
