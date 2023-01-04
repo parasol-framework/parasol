@@ -1277,7 +1277,7 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
             }
             else for (LONG c=0; c < ARRAYSIZE(Self->VolumeCtl[i].Channels); c++) {
                if (c > 0) out << ',';
-               out << Self->VolumeCtl[i].Channels[c]);
+               out << Self->VolumeCtl[i].Channels[c];
             }
             out << ']';
 
