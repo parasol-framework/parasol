@@ -90,7 +90,7 @@ static ERROR thread_action(extThread *Thread)
          else local_free_args(data + 1, obj->Class->Methods[-data->ActionID].Args);
       }
 
-      if (obj->Flags & NF_FREE) obj = NULL; // Clear the obj pointer because the object will be deleted on release.
+      if (obj->defined(NF::FREE)) obj = NULL; // Clear the obj pointer because the object will be deleted on release.
       ReleasePrivateObject(data->Object);
    }
    else {
@@ -138,8 +138,8 @@ static void free_private_children(OBJECTPTR Object)
                continue;
             }
 
-            if (!(mem.Object->Flags & NF_UNLOCK_FREE)) {
-               if (mem.Object->Flags & NF_INTEGRAL) {
+            if (!mem.Object->defined(NF::UNLOCK_FREE)) {
+               if (mem.Object->defined(NF::INTEGRAL)) {
                   log.warning("Found unfreed child object #%d (class %s) belonging to %s object #%d.", mem.Object->UID, ResolveClassID(mem.Object->ClassID), Object->className(), Object->UID);
                }
                acFree(mem.Object);
@@ -186,7 +186,7 @@ static void free_public_children(OBJECTPTR Object)
 {
    parasol::Log log;
 
-   if (!(Object->Flags & NF_HAS_SHARED_RESOURCES)) return;
+   if (!Object->defined(NF::HAS_SHARED_RESOURCES)) return;
 
    ScopedSysLock lock(PL_PUBLICMEM, 5000);
    if (lock.granted()) {
@@ -200,10 +200,10 @@ static void free_public_children(OBJECTPTR Object)
                FreeResourceID(glSharedBlocks[i].MemoryID);
             }
             else if (!page_memory(glSharedBlocks + i, (APTR *)&child)) {
-               OBJECTID id = child->UID;
-               if (!(child->Flags & (NF_UNLOCK_FREE|NF_COLLECT))) {
-                  child->Flags |= NF_COLLECT;
-                  if (child->Flags & NF_INTEGRAL) log.warning("Found unfreed object #%d (class $%.8x).", id, child->ClassID);
+               auto id = child->UID;
+               if (!child->defined(NF::UNLOCK_FREE|NF::COLLECT)) {
+                  child->Flags |= NF::COLLECT;
+                  if (child->defined(NF::INTEGRAL)) log.warning("Found unfreed object #%d (class $%.8x).", id, child->ClassID);
                   unpage_memory(child);
                   lock.release();
 
@@ -243,12 +243,14 @@ arguments to be passed to the Action() function:
    Action(AC_Move, Window, &move);
 </pre>
 
-In all cases, action calls can be simplified by using their corresponding macros:
+In all cases, action calls in C++ can be simplified by using their corresponding helper functions:
 
 <pre>
 1. acInit(Picture);
 
 2. acMove(Window, 30, 15, 0);
+
+3. Window->move(30, 15, 0);
 </pre>
 
 If the target object does not support the action code that has been specified, an error code of ERR_NoSupport will be
@@ -293,10 +295,10 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
 
    #ifdef DEBUG
    if ((ActionID != AC_AccessObject) and (ActionID != AC_ReleaseObject)) {
-      if (!(obj->Flags & NF_PUBLIC)) {
+      if (!obj->defined(NF::PUBLIC)) {
          if ((obj->TaskID) and (glCurrentTaskID != obj->TaskID) and (obj->TaskID != SystemTaskID)) {
             if (object_id < 0) {
-               log.warning("Public object #%d corrupt - missing the NF_PUBLIC flag ($%.8x)", object_id, obj->Flags);
+               log.warning("Public object #%d corrupt - missing the NF::PUBLIC flag ($%.8x)", object_id, obj->Flags);
                obj->threadRelease();
                return ERR_ObjectCorrupt;
             }
@@ -975,7 +977,7 @@ resource(Message): A Message structure is returned if the function is called in 
 Message * GetActionMsg(void)
 {
    if (auto obj = tlContext->resource()) {
-      if ((obj->Flags & NF_MESSAGE) and (obj->ActionDepth IS 1)) {
+      if (obj->defined(NF::MESSAGE) and (obj->ActionDepth IS 1)) {
          return tlCurrentMsg;
       }
    }
@@ -1257,7 +1259,7 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
    Object->threadLock();
 
    LONG memflags;
-   if (Object->Flags & NF_PUBLIC) memflags = Object->MemFlags|MEM_PUBLIC;
+   if (Object->defined(NF::PUBLIC)) memflags = Object->MemFlags|MEM_PUBLIC;
    else memflags = Object->MemFlags;
 
    LONG count = 0;  // Count the total number of actions to add
@@ -1510,21 +1512,21 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
 
    if ((Object->Locked) or (Object->ThreadPending)) {
       log.debug("Object #%d locked; marking for deletion.", Object->UID);
-      set_object_flags(Object, Object->Flags|NF_UNLOCK_FREE);
+      set_object_flags(Object, Object->Flags|NF::UNLOCK_FREE);
       return ERR_Okay|ERF_Notified;
    }
 
    // Return if the object is currently in the process of being freed (i.e. avoid recursion)
 
-   if (Object->Flags & NF_FREE) {
-      log.trace("Object already marked with NF_FREE.");
+   if (Object->defined(NF::FREE)) {
+      log.trace("Object already marked with NF::FREE.");
       return ERR_Okay|ERF_Notified;
    }
 
    if (Object->ActionDepth > 0) { // Free() is being called while the object itself is still in use.  This can be an issue with private objects that haven't been locked with AccessObject().
       log.trace("Free() attempt while object is in use.");
-      if (!(Object->Flags & NF_COLLECT)) {
-         set_object_flags(Object, Object->Flags|NF_COLLECT);
+      if (!Object->defined(NF::COLLECT)) {
+         set_object_flags(Object, Object->Flags|NF::COLLECT);
          ActionMsg(AC_Free, Object->UID, NULL, 0, -1);
       }
       return ERR_Okay|ERF_Notified;
@@ -1566,7 +1568,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
    // Mark the object as being in the free process.  The mark prevents any further access to the object via
    // AccessObject().  Classes may also use the flag to check if an object is in the process of being freed.
 
-   set_object_flags(Object, (Object->Flags|NF_FREE) & (~NF_UNLOCK_FREE));
+   set_object_flags(Object, (Object->Flags|NF::FREE) & (~NF::UNLOCK_FREE));
 
    NotifySubscribers(Object, AC_Free, NULL, 0, ERR_Okay);
 
@@ -1602,7 +1604,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
    free_private_children(Object);
    free_public_children(Object);
 
-   if (Object->Flags & NF_TIMER_SUB) {
+   if (Object->defined(NF::TIMER_SUB)) {
       ThreadLock lock(TL_TIMER, 200);
       if (lock.granted()) {
          for (auto it=glTimers.begin(); it != glTimers.end(); ) {
@@ -1615,9 +1617,9 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
       }
    }
 
-   if (Object->Flags & NF_PUBLIC) remove_shared_object(Object->UID);  // If the object is shared, remove it from the shared list
+   if (Object->defined(NF::PUBLIC)) remove_shared_object(Object->UID);  // If the object is shared, remove it from the shared list
 
-   if (!(Object->Flags & NF_PUBLIC)) { // Decrement the counters associated with the class that this object belongs to.
+   if (!Object->defined(NF::PUBLIC)) { // Decrement the counters associated with the class that this object belongs to.
       if ((mc->Base) and (mc->Base->OpenCount > 0)) mc->Base->OpenCount--; // Child detected
       if (mc->OpenCount > 0) mc->OpenCount--;
    }
@@ -1681,7 +1683,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
             error = cl->ActionTable[AC_Init].PerformAction(Object, NULL);
          }
 
-         if (!error) set_object_flags(Object, Object->Flags|NF_INITIALISED);
+         if (!error) set_object_flags(Object, Object->Flags|NF::INITIALISED);
       }
 
       return error;
@@ -1705,7 +1707,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
          else error = ERR_Okay; // If no initialiser defined, auto-OK
 
          if (!error) {
-            set_object_flags(Object, Object->Flags|NF_INITIALISED);
+            set_object_flags(Object, Object->Flags|NF::INITIALISED);
 
             if (Object->ExtClass != cl) {
                // Due to the switch, increase the open count of the sub-class (see NewObject() for details on object
@@ -1716,7 +1718,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
                if (!Object->isPublic()) Object->ExtClass->OpenCount++;
 
                Object->SubID = Object->ExtClass->SubClassID;
-               Object->Flags |= NF_RECLASSED; // This flag indicates that the object originally belonged to the base-class
+               Object->Flags |= NF::RECLASSED; // This flag indicates that the object originally belonged to the base-class
             }
 
             return ERR_Okay;
@@ -1774,9 +1776,9 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
                if (Object->ExtClass->ActionTable[AC_Init].PerformAction) {
                   if (!(error = Object->ExtClass->ActionTable[AC_Init].PerformAction(Object, NULL))) {
                      log.msg("Object class switched to sub-class \"%s\".", Object->className());
-                     set_object_flags(Object, Object->Flags|NF_INITIALISED);
+                     set_object_flags(Object, Object->Flags|NF::INITIALISED);
 
-                     if (!(Object->Flags & NF_PUBLIC)) { // Increase the open count of the sub-class
+                     if (!Object->defined(NF::PUBLIC)) { // Increase the open count of the sub-class
                         Object->ExtClass->OpenCount++;
                      }
                      return ERR_Okay;
@@ -1840,6 +1842,6 @@ ERROR MGR_Seek(OBJECTPTR Object, struct acSeek *Args)
 
 ERROR MGR_Signal(OBJECTPTR Object, APTR Void)
 {
-   Object->Flags |= NF_SIGNALLED;
+   Object->Flags |= NF::SIGNALLED;
    return ERR_Okay;
 }

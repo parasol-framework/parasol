@@ -15,7 +15,6 @@ static const char decoding[] = {62,-1,-1,-1,63,52,53,54,55,56,57,58,59,60,61,-1,
 const LONG CHARS_PER_LINE = 72;
 
 static int base64_decode_block(CSTRING, LONG, char *, rkBase64Decode *);
-static void base64_init_encodestate(rkBase64Encode *);
 static int base64_encode_block(CSTRING, LONG, char *, rkBase64Encode *);
 
 inline LONG base64_decode_value(LONG value_in)

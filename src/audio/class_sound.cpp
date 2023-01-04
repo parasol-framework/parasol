@@ -445,7 +445,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    if (!Self->AudioID) {
       LONG count = 1;
       if (FindObject("SystemAudio", ID_AUDIO, FOF_INCLUDE_SHARED, &Self->AudioID, &count) != ERR_Okay) {
-         if (!(error = NewNamedObject(ID_AUDIO, NF_PUBLIC|NF_UNIQUE, &audio, &Self->AudioID, "SystemAudio"))) {
+         if (!(error = NewNamedObject(ID_AUDIO, NF::PUBLIC|NF::UNIQUE, &audio, &Self->AudioID, "SystemAudio"))) {
             SetOwner(audio, CurrentTask());
 
             if (acInit(audio) != ERR_Okay) {
@@ -607,7 +607,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    if (!Self->AudioID) {
       LONG count = 1;
       if (FindObject("SystemAudio", ID_AUDIO, FOF_INCLUDE_SHARED, &Self->AudioID, &count) != ERR_Okay) {
-         if (!(error = NewNamedObject(ID_AUDIO, NF_PUBLIC|NF_UNIQUE, &audio, &Self->AudioID, "SystemAudio"))) {
+         if (!(error = NewNamedObject(ID_AUDIO, NF::PUBLIC|NF::UNIQUE, &audio, &Self->AudioID, "SystemAudio"))) {
             SetOwner(audio, CurrentTask());
 
             if (acInit(audio) != ERR_Okay) {
@@ -667,7 +667,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
       // Create a public file object that will handle the decoded audio stream
 
-      if (NewLockedObject(ID_FILE, NF_PUBLIC, &filestream, &Self->StreamFileID)) {
+      if (NewLockedObject(ID_FILE, NF::PUBLIC, &filestream, &Self->StreamFileID)) {
          SetFields(filestream,
             FID_Flags|TLONG, FL_BUFFER|FL_LOOP,
             FID_Size|TLONG,  Self->BufferLength,

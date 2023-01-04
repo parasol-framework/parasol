@@ -276,7 +276,7 @@ void ScintillaParasol::CopyToClipboard(const Scintilla::SelectionText &selectedT
    log.traceBranch("");
 
    OBJECTPTR clipboard;
-   if (!CreateObject(ID_CLIPBOARD, 0, &clipboard, TAGEND)) {
+   if (!CreateObject(ID_CLIPBOARD, NF::NIL, &clipboard, TAGEND)) {
       if (!clipAddText(clipboard, selectedText.s)) {
 
       }

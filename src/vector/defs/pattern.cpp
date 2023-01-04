@@ -104,7 +104,7 @@ static ERROR PATTERN_Init(extVectorPattern *Self, APTR Void)
 
 static ERROR PATTERN_NewObject(extVectorPattern *Self, APTR Void)
 {
-   if (!NewObject(ID_VECTORSCENE, NF_INTEGRAL, &Self->Scene)) {
+   if (!NewObject(ID_VECTORSCENE, NF::INTEGRAL, &Self->Scene)) {
       if (!NewObject(ID_VECTORVIEWPORT, &Self->Viewport)) {
          SetOwner(Self->Viewport, Self->Scene);
          Self->SpreadMethod = VSPREAD_REPEAT;

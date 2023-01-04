@@ -174,7 +174,7 @@ void init_metaclass(void)
    glMetaClass.BaseClass::ClassID       = ID_METACLASS;
    glMetaClass.BaseClass::SubID         = ID_METACLASS;
    glMetaClass.BaseClass::UID           = 123;
-   glMetaClass.BaseClass::Flags         = NF_INITIALISED;
+   glMetaClass.BaseClass::Flags         = NF::INITIALISED;
 
    glMetaClass.ClassVersion    = 1;
    glMetaClass.Methods         = glMetaMethods;
@@ -1313,7 +1313,7 @@ ERROR write_class_item(ClassItem *item)
       LONG flags = FL_WRITE;
       if (AnalysePath(glClassBinPath, NULL) != ERR_Okay) flags |= FL_NEW;
 
-      if (!NewLockedObject(ID_FILE, NF_INTEGRAL|NF_UNTRACKED, &file, &glClassFileID, NULL)) {
+      if (!NewLockedObject(ID_FILE, NF::INTEGRAL|NF::UNTRACKED, &file, &glClassFileID, NULL)) {
          SetFields(file,
             FID_Path|TSTR,         glClassBinPath,
             FID_Flags|TLONG,       flags,

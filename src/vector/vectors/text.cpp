@@ -324,7 +324,7 @@ static ERROR VECTORTEXT_Init(extVectorText *Self, APTR Void)
 
       // The editing cursor will inherit transforms from the VectorText as long as it is a direct child.
 
-      if (!CreateObject(ID_VECTORPOLYGON, 0, &Self->txCursor.vector,
+      if (!CreateObject(ID_VECTORPOLYGON, NF::NIL, &Self->txCursor.vector,
             FID_Name|TSTR,    "VTCursor",
             FID_X1|TLONG,     0,
             FID_Y1|TLONG,     0,
@@ -1759,7 +1759,7 @@ static void reset_font(extVectorText *Vector)
    parasol::SwitchContext context(Vector);
 
    objFont *font;
-   if (!NewObject(ID_FONT, NF_INTEGRAL, &font)) {
+   if (!NewObject(ID_FONT, NF::INTEGRAL, &font)) {
       // Note that we don't configure too much of the font, as AGG uses the Freetype functions directly.  The
       // use of the Font object is really as a place-holder to take advantage of the Parasol font cache.
 

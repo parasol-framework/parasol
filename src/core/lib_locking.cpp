@@ -1159,14 +1159,14 @@ ERROR AccessObject(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
       else return ERR_NoMatchingObject;
    }
    else if (!(error = AccessMemory(ObjectID, MEM_READ_WRITE|MEM_OBJECT, MilliSeconds, (void **)&obj))) {
-      if (obj->Flags & NF_FREE) { // If the object is currently being freed, access cannot be permitted even if the object is operating in the same task space.
+      if (obj->defined(NF::FREE)) { // If the object is currently being freed, access cannot be permitted even if the object is operating in the same task space.
          ReleaseMemory(obj);
          return ERR_MarkedForDeletion;
       }
 
       // This check prevents anyone from gaining access while ReleaseObject() is busy
 
-      if ((obj->Flags & NF_UNLOCK_FREE) and (!obj->Locked)) {
+      if (obj->defined(NF::UNLOCK_FREE) and (!obj->Locked)) {
          ReleaseMemory(obj);
          return ERR_MarkedForDeletion;
       }
@@ -1197,9 +1197,9 @@ ERROR AccessObject(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
 
       // Tell the object that an exclusive call is being made
 
-      if (obj->Flags & NF_PUBLIC) {
-         if (obj->Flags & NF_NEW_OBJECT) {
-            // If the object is currently in the process of being created for the first time (NF_NEW_OBJECT is set),
+      if (obj->isPublic()) {
+         if (obj->defined(NF::NEW_OBJECT)) {
+            // If the object is currently in the process of being created for the first time (NF::NEW_OBJECT is set),
             // do not call the AccessObject support routine if NewObject support has been written by the developer
             // (the NewObject support routine is expected to do the equivalent of AccessObject).
 
@@ -1278,7 +1278,7 @@ ERROR AccessPrivateObject(OBJECTPTR Object, LONG Timeout)
       // destroying the object when other threads could potentially be using it).
 
       if (Object->incQueue() IS 1) {
-         /*if (Object->Flags & NF_FREE) { // Disallow access to objects being freed.
+         /*if (Object->defined(NF::FREE)) { // Disallow access to objects being freed.
             Object->subQueue();
             return ERR_MarkedForDeletion;
          }*/
@@ -1288,7 +1288,7 @@ ERROR AccessPrivateObject(OBJECTPTR Object, LONG Timeout)
       }
 
       if (our_thread IS Object->ThreadID) { // Support nested locks.
-         /*if (Object->Flags & NF_FREE) { // Disallow access to objects being freed.
+         /*if (Object->defined(NF::FREE)) { // Disallow access to objects being freed.
             Object->subQueue();
             return ERR_MarkedForDeletion;
          }*/
@@ -1301,7 +1301,7 @@ ERROR AccessPrivateObject(OBJECTPTR Object, LONG Timeout)
       //    object is free.  By not sleeping, we don't have to be concerned about the missing signal.
    } while (Object->subQueue() IS 0); // Make a correction because we didn't obtain the lock.  Repeat loop if the object lock is at zero (available).
 
-   if (Object->Flags & (NF_FREE|NF_UNLOCK_FREE)) return ERR_MarkedForDeletion; // If the object is currently being removed by another thread, sleeping on it is pointless.
+   if (Object->defined(NF::FREE|NF::UNLOCK_FREE)) return ERR_MarkedForDeletion; // If the object is currently being removed by another thread, sleeping on it is pointless.
 
    // Problem: What if ReleaseObject() in another thread were to release the object prior to our TL_PRIVATE_OBJECTS lock?  This means that we would never receive the wake signal.
    // Solution: Prior to cond_wait(), increment the object queue to attempt a lock.  This is *slightly* less efficient than doing it after the cond_wait(), but
@@ -2006,8 +2006,8 @@ ERROR ReleaseObject(OBJECTPTR Object)
       }
       else { // Send a ReleaseObject notification to the object
 
-         if (Object->Flags & NF_PUBLIC) {
-            if (Object->Flags & NF_UNLOCK_FREE) {
+         if (Object->isPublic()) {
+            if (Object->defined(NF::UNLOCK_FREE)) {
                // Objects are not called with ReleaseObject() if they are marked for deletion.  This allows
                // the developer to maintain locks during the Free() action and release them manually when he is ready.
             }
@@ -2022,8 +2022,8 @@ ERROR ReleaseObject(OBJECTPTR Object)
 
          // Clean up
 
-         if (Object->Flags & NF_UNLOCK_FREE) {
-            Object->Flags &= ~(NF_UNLOCK_FREE|NF_FREE);
+         if (Object->defined(NF::UNLOCK_FREE)) {
+            Object->Flags = Object->Flags & ~(NF::UNLOCK_FREE|NF::FREE);
             Object->Locked = false;
             if (Object->UID < 0) { // If public, free the object and then release the memory block to destroy it.
                acFree(Object);
@@ -2092,7 +2092,7 @@ void ReleasePrivateObject(OBJECTPTR Object)
       #endif
 
       if (!thread_lock(TL_PRIVATE_OBJECTS, -1)) {
-         if (Object->Flags & (NF_FREE|NF_UNLOCK_FREE)) { // We have to tell other threads that the object is marked for deletion.
+         if (Object->defined(NF::FREE|NF::UNLOCK_FREE)) { // We have to tell other threads that the object is marked for deletion.
             // NB: A lock on PL_WAITLOCKS is not required because we're already protected by the TL_PRIVATE_OBJECTS
             // barrier (which is common between AccessPrivateObject() and ReleasePrivateObject()
             auto locks = (WaitLock *)ResolveAddress(glSharedControl, glSharedControl->WLOffset);
@@ -2107,8 +2107,8 @@ void ReleasePrivateObject(OBJECTPTR Object)
          // to ensure that once an object has been marked for deletion, references to the object pointer
          // are removed so that no thread will attempt to use it during deallocation.
 
-         if ((Object->Flags & NF_UNLOCK_FREE) and (!(Object->Flags & NF_FREE))) {
-            set_object_flags(Object, Object->Flags & (~NF_UNLOCK_FREE));
+         if (Object->defined(NF::UNLOCK_FREE) and (!Object->defined(NF::FREE))) {
+            set_object_flags(Object, Object->Flags & (~NF::UNLOCK_FREE));
             acFree(Object);
 
             cond_wake_all(CN_OBJECTS);
@@ -2119,8 +2119,8 @@ void ReleasePrivateObject(OBJECTPTR Object)
       }
       else exit(0);
    }
-   else if ((Object->Flags & NF_UNLOCK_FREE) and (!(Object->Flags & NF_FREE))) {
-      set_object_flags(Object, Object->Flags & (~NF_UNLOCK_FREE));
+   else if (Object->defined(NF::UNLOCK_FREE) and (!Object->defined(NF::FREE))) {
+      set_object_flags(Object, Object->Flags & (~NF::UNLOCK_FREE));
       acFree(Object);
    }
 }

@@ -74,7 +74,7 @@ ERROR threadpool_get(extThread **Result)
       }
 
       if (!thread) { // Allocate a new thread.
-         if (!(error = NewPrivateObject(ID_THREAD, NF_UNTRACKED, (OBJECTPTR *)&thread))) {
+         if (!(error = NewPrivateObject(ID_THREAD, NF::UNTRACKED, (OBJECTPTR *)&thread))) {
             SetName(thread, "ActionThread");
             if (!(error = acInit(thread))) {
                LONG i;

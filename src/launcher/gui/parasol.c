@@ -239,7 +239,7 @@ ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)
          TAGEND);
       if (!acInit(target)) {
          OBJECTPTR pointer;
-         if (!NewObject(ID_POINTER, NF_PUBLIC, &pointer, &glSystemPointerID)) {
+         if (!NewObject(ID_POINTER, NF::PUBLIC, &pointer, &glSystemPointerID)) {
             SetFields(pointer,
                FID_Owner|TLONG,  TargetID,
                FID_Name|TSTRING, "SystemPointer",

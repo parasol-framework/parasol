@@ -319,7 +319,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
    if ((master = check_resident(Self, name))) {
       Self->Master = master;
    }
-   else if (!NewPrivateObject(ID_MODULEMASTER, NF_NO_TRACK, (OBJECTPTR *)&master)) {
+   else if (!NewPrivateObject(ID_MODULEMASTER, NF::NO_TRACK, (OBJECTPTR *)&master)) {
       char path[300];
 
       if (!AccessObject(SystemTaskID, 5000, &Task)) {

@@ -1498,7 +1498,7 @@ static ERROR analyse_bmp_font(STRING Path, winfnt_header_fields *Header, STRING 
 
    *FaceName = NULL;
    parasol::ScopedObject<objFile> file;
-   if (!CreateObject(ID_FILE, 0, &file.obj, FID_Path|TSTR, Path, FID_Flags|TLONG, FL_READ, TAGEND)) {
+   if (!CreateObject(ID_FILE, NF::NIL, &file.obj, FID_Path|TSTR, Path, FID_Flags|TLONG, FL_READ, TAGEND)) {
       acRead(file.obj, &mz_header, sizeof(mz_header), NULL);
 
       if (mz_header.magic IS ID_WINMZ) {

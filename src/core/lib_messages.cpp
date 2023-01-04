@@ -1133,9 +1133,9 @@ ERROR WaitForObjects(LONG Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
       parasol::ScopedObjectLock<OBJECTPTR> lock(ObjectSignals[i].Object); // For thread safety
 
       // Refer to TASK_ActionNotify() for notification handling and clearing of signals
-      if (ObjectSignals[i].Object->Flags & NF_SIGNALLED) {
+      if (ObjectSignals[i].Object->defined(NF::SIGNALLED)) {
          // Objects that have already been signalled do not require monitoring
-         ObjectSignals[i].Object->Flags &= ~NF_SIGNALLED;
+         ObjectSignals[i].Object->Flags = ObjectSignals[i].Object->Flags & (~NF::SIGNALLED);
       }
       else if (!SubscribeAction(ObjectSignals[i].Object, AC_Free)) {
          log.debug("Monitoring object #%d", ObjectSignals[i].Object->UID);

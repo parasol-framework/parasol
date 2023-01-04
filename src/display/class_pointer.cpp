@@ -691,7 +691,7 @@ static ERROR PTR_Init(extPointer *Self, APTR Void)
    // Allocate a custom cursor bitmap
 
    ERROR error;
-   if (!NewLockedObject(ID_BITMAP, NF_INTEGRAL|Self->flags(), &bitmap, &Self->BitmapID)) {
+   if (!NewLockedObject(ID_BITMAP, NF::INTEGRAL|Self->flags(), &bitmap, &Self->BitmapID)) {
       SetFields(bitmap,
          FID_Name|TSTR,           "CustomCursor",
          FID_Width|TLONG,         MAX_CURSOR_WIDTH,
@@ -1543,7 +1543,7 @@ static ERROR init_mouse_driver(void)
 
    // Allocate the surface for software based cursor images
 
-   if (!NewLockedObject(ID_SURFACE, NF_INTEGRAL|Self->flags(), &surface, &Self->CursorSurfaceID)) {
+   if (!NewLockedObject(ID_SURFACE, NF::INTEGRAL|Self->flags(), &surface, &Self->CursorSurfaceID)) {
       SetFields(surface,
          FID_Name|TSTR,    "Pointer",
          FID_Parent|TLONG, Self->SurfaceID,

@@ -106,7 +106,7 @@ static ERROR PARC_Activate(objParc *Self, APTR Void)
             // Run the default script as specified in "parc.xml".
 
             if (class_id IS ID_SCRIPT) {
-               if (!CreateObject(subclass_id ? subclass_id : class_id, NF_INTEGRAL, &Self->Script, FID_Path|TSTR, path, TAGEND)) {
+               if (!CreateObject(subclass_id ? subclass_id : class_id, NF::INTEGRAL, &Self->Script, FID_Path|TSTR, path, TAGEND)) {
                   error = acActivate(Self->Script);
                }
                else error = ERR_CreateObject;
@@ -153,7 +153,7 @@ static ERROR PARC_DataFeed(objParc *Self, struct acDataFeed *Args)
 
       if (!Self->WindowID) {
          OBJECTPTR script;
-         if (!CreateObject(ID_FLUID, 0, &script,
+         if (!CreateObject(ID_FLUID, NF::NIL, &script,
                FID_Owner|TLONG,    CurrentTaskID(),
                FID_Statement|TSTR, glOutputScript,
                TAGEND)) {

@@ -999,7 +999,7 @@ static ERROR SCINTILLA_InsertText(extScintilla *Self, struct sciInsertText *Args
 
 static ERROR SCINTILLA_NewObject(extScintilla *Self, APTR)
 {
-   if (!NewObject(ID_FONT, NF_INTEGRAL, &Self->Font)) {
+   if (!NewObject(ID_FONT, NF::INTEGRAL, &Self->Font)) {
       Self->Font->set(FID_Face, "courier:10");
       Self->LeftMargin  = 4;
       Self->RightMargin = 30;
@@ -2165,7 +2165,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
    }
 
    OBJECTPTR dialog;
-   if (!NewObject(ID_SCRIPT, 0, &dialog)) {
+   if (!NewObject(ID_SCRIPT, &dialog)) {
       SetFields(dialog,
          FID_Name|TSTR,   "scDialog",
          FID_Owner|TLONG, CurrentTaskID(),
@@ -2207,12 +2207,11 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
 static ERROR load_file(extScintilla *Self, CSTRING Path)
 {
    parasol::Log log(__FUNCTION__);
-   objFile *file;
    STRING str;
    LONG size, len;
    ERROR error = ERR_Okay;
 
-   if (!CreateObject(ID_FILE, NF_INTEGRAL, &file, FID_Flags|TLONG, FL_READ, FID_Path|TSTR, Path, TAGEND)) {
+   if (auto file = objFile::create::integral(fl::Flags(FL_READ), fl::Path(Path))) {
       if (file->Flags & FL_STREAM) {
          if (!flStartStream(file, Self->UID, FL_READ, 0)) {
             acClear(Self);
@@ -2525,7 +2524,7 @@ static const FieldArray clFields[] = {
 
 static ERROR create_scintilla(void)
 {
-   return CreateObject(ID_METACLASS, 0, &clScintilla,
+   return CreateObject(ID_METACLASS, NF::NIL, &clScintilla,
       FID_ClassVersion|TFLOAT, VER_SCINTILLA,
       FID_Name|TSTR,      "Scintilla",
       FID_Category|TLONG, CCF_TOOL,

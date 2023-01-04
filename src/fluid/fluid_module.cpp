@@ -49,7 +49,7 @@ static int module_load(lua_State *Lua)
    }
 
    OBJECTPTR loaded_mod;
-   if (!(error = CreateObject(ID_MODULE, 0, &loaded_mod, FID_Name|TSTR, modname, TAGEND))) {
+   if (!(error = CreateObject(ID_MODULE, NF::NIL, &loaded_mod, FID_Name|TSTR, modname, TAGEND))) {
       auto mod = (struct module *)lua_newuserdata(Lua, sizeof(struct module));
       ClearMemory(mod, sizeof(struct module));
 

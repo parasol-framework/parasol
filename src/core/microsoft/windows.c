@@ -488,6 +488,13 @@ void winDeathBringer(LONG Status)
 }
 
 //****************************************************************************
+
+LONG winIsDebuggerPresent(void)
+{
+   return IsDebuggerPresent();
+}
+
+//****************************************************************************
 // Remove all allocations here, called at the end of CloseCore()
 
 void winShutdown(void)

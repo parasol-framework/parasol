@@ -1349,9 +1349,9 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
    FIELD field_id;
    BYTE customised;
 
-   // NF_INTEGRAL is only set when the object is owned by the document
+   // NF::INTEGRAL is only set when the object is owned by the document
 
-   if (NewLockedObject(class_id, (Self->CurrentObject) ? 0 : NF_INTEGRAL, &object, &object_id)) {
+   if (NewLockedObject(class_id, (Self->CurrentObject) ? NF::NIL : NF::INTEGRAL, &object, &object_id)) {
       log.warning("Failed to create object of class #%d.", class_id);
       return;
    }
@@ -1717,7 +1717,7 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
    }
 
    if (!StrMatch("fluid", type)) {
-      error = NewObject(ID_FLUID, NF_INTEGRAL, &script);
+      error = NewObject(ID_FLUID, NF::INTEGRAL, &script);
    }
    else {
       error = ERR_NoSupport;
