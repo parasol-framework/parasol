@@ -111,26 +111,26 @@ namespace agg
 namespace agg
 {
     //-------------------------------------------------------------------------
-    typedef AGG_INT8   int8;         //----int8
-    typedef AGG_INT8U  int8u;        //----int8u
-    typedef AGG_INT16  int16;        //----int16
-    typedef AGG_INT16U int16u;       //----int16u
-    typedef AGG_INT32  int32;        //----int32
-    typedef AGG_INT32U int32u;       //----int32u
-    typedef AGG_INT64  int64;        //----int64
-    typedef AGG_INT64U int64u;       //----int64u
+    typedef AGG_INT8   int8;
+    typedef AGG_INT8U  int8u;
+    typedef AGG_INT16  int16;
+    typedef AGG_INT16U int16u;
+    typedef AGG_INT32  int32;
+    typedef AGG_INT32U int32u;
+    typedef AGG_INT64  int64;
+    typedef AGG_INT64U int64u;
 
 #if defined(AGG_FISTP)
 #pragma warning(push)
 #pragma warning(disable : 4035) //Disable warning "no return value"
-    AGG_INLINE int iround(double v)              //-------iround
+    AGG_INLINE int iround(double v)
     {
         int t;
         __asm fld   qword ptr [v]
         __asm fistp dword ptr [t]
         __asm mov eax, dword ptr [t]
     }
-    AGG_INLINE unsigned uround(double v)         //-------uround
+    AGG_INLINE unsigned uround(double v)
     {
         unsigned t;
         __asm fld   qword ptr [v]
@@ -138,11 +138,11 @@ namespace agg
         __asm mov eax, dword ptr [t]
     }
 #pragma warning(pop)
-    AGG_INLINE unsigned ufloor(double v)         //-------ufloor
+    AGG_INLINE unsigned ufloor(double v)
     {
         return unsigned(floor(v));
     }
-    AGG_INLINE unsigned uceil(double v)          //--------uceil
+    AGG_INLINE unsigned uceil(double v)
     {
         return unsigned(ceil(v));
     }
@@ -182,7 +182,6 @@ namespace agg
     }
 #endif
 
-    //---------------------------------------------------------------saturation
     template<int Limit> struct saturation
     {
         AGG_INLINE static int iround(double v)
@@ -193,7 +192,6 @@ namespace agg
         }
     };
 
-    //------------------------------------------------------------------mul_one
     template<unsigned Shift> struct mul_one
     {
         AGG_INLINE static unsigned mul(unsigned a, unsigned b)
@@ -203,53 +201,42 @@ namespace agg
         }
     };
 
-    //-------------------------------------------------------------------------
-    typedef unsigned char cover_type;    //----cover_type
-    enum cover_scale_e
-    {
-        cover_shift = 8,                 //----cover_shift
-        cover_size  = 1 << cover_shift,  //----cover_size
-        cover_mask  = cover_size - 1,    //----cover_mask
-        cover_none  = 0,                 //----cover_none
-        cover_full  = cover_mask         //----cover_full
-    };
+    typedef unsigned char cover_type;
 
-    //----------------------------------------------------poly_subpixel_scale_e
+    static const int cover_shift = 8;
+    static const int cover_size  = 1 << cover_shift;
+    static const int cover_mask  = cover_size - 1;
+    static const int cover_none  = 0;
+    static const int cover_full  = cover_mask;
+
     // These constants determine the subpixel accuracy, to be more precise,
     // the number of bits of the fractional part of the coordinates.
     // The possible coordinate capacity in bits can be calculated by formula:
     // sizeof(int) * 8 - poly_subpixel_shift, i.e, for 32-bit integers and
     // 8-bits fractional part the capacity is 24 bits.
-    enum poly_subpixel_scale_e
-    {
-        poly_subpixel_shift = 8,                      //----poly_subpixel_shift
-        poly_subpixel_scale = 1<<poly_subpixel_shift, //----poly_subpixel_scale
-        poly_subpixel_mask  = poly_subpixel_scale-1,  //----poly_subpixel_mask
-    };
 
-    //----------------------------------------------------------filling_rule_e
+    static const int poly_subpixel_shift = 8;
+    static const int poly_subpixel_scale = 1<<poly_subpixel_shift;
+    static const int poly_subpixel_mask  = poly_subpixel_scale-1;
+
     enum filling_rule_e
     {
         fill_non_zero,
         fill_even_odd
     };
 
-    //-----------------------------------------------------------------------pi
     const double pi = 3.14159265358979323846;
 
-    //------------------------------------------------------------------deg2rad
     inline double deg2rad(double deg)
     {
         return deg * pi / 180.0;
     }
 
-    //------------------------------------------------------------------rad2deg
     inline double rad2deg(double rad)
     {
         return rad * 180.0 / pi;
     }
 
-    //----------------------------------------------------------------rect_base
     template<class T> struct rect_base
     {
         typedef T            value_type;
@@ -257,24 +244,20 @@ namespace agg
         T x1, y1, x2, y2;
 
         rect_base() {}
-        rect_base(T x1_, T y1_, T x2_, T y2_) :
-            x1(x1_), y1(y1_), x2(x2_), y2(y2_) {}
+        rect_base(T x1_, T y1_, T x2_, T y2_) : x1(x1_), y1(y1_), x2(x2_), y2(y2_) {}
 
-        void init(T x1_, T y1_, T x2_, T y2_)
-        {
+        void init(T x1_, T y1_, T x2_, T y2_) {
             x1 = x1_; y1 = y1_; x2 = x2_; y2 = y2_;
         }
 
-        const self_type& normalize()
-        {
+        const self_type& normalize() {
             T t;
             if(x1 > x2) { t = x1; x1 = x2; x2 = t; }
             if(y1 > y2) { t = y1; y1 = y2; y2 = t; }
             return *this;
         }
 
-        bool clip(const self_type& r)
-        {
+        bool clip(const self_type& r) {
             if(x2 > r.x2) x2 = r.x2;
             if(y2 > r.y2) y2 = r.y2;
             if(x1 < r.x1) x1 = r.x1;
@@ -282,40 +265,28 @@ namespace agg
             return x1 <= x2 && y1 <= y2;
         }
 
-        bool is_valid() const
-        {
+        bool is_valid() const {
             return x1 <= x2 && y1 <= y2;
         }
 
-        bool hit_test(T x, T y) const
-        {
+        bool hit_test(T x, T y) const {
             return (x >= x1 && x <= x2 && y >= y1 && y <= y2);
         }
     };
 
-    //-----------------------------------------------------intersect_rectangles
     template<class Rect>
-    inline Rect intersect_rectangles(const Rect& r1, const Rect& r2)
-    {
+    inline Rect intersect_rectangles(const Rect& r1, const Rect& r2) {
         Rect r = r1;
 
-        // First process x2,y2 because the other order
-        // results in Internal Compiler Error under
-        // Microsoft Visual C++ .NET 2003 69462-335-0000007-18038 in
-        // case of "Maximize Speed" optimization option.
-        //-----------------
-        if(r.x2 > r2.x2) r.x2 = r2.x2;
-        if(r.y2 > r2.y2) r.y2 = r2.y2;
-        if(r.x1 < r2.x1) r.x1 = r2.x1;
-        if(r.y1 < r2.y1) r.y1 = r2.y1;
+        if (r.x2 > r2.x2) r.x2 = r2.x2;
+        if (r.y2 > r2.y2) r.y2 = r2.y2;
+        if (r.x1 < r2.x1) r.x1 = r2.x1;
+        if (r.y1 < r2.y1) r.y1 = r2.y1;
         return r;
     }
 
-
-    //---------------------------------------------------------unite_rectangles
     template<class Rect>
-    inline Rect unite_rectangles(const Rect& r1, const Rect& r2)
-    {
+    inline Rect unite_rectangles(const Rect& r1, const Rect& r2) {
         Rect r = r1;
         if(r.x2 < r2.x2) r.x2 = r2.x2;
         if(r.y2 < r2.y2) r.y2 = r2.y2;
@@ -324,31 +295,23 @@ namespace agg
         return r;
     }
 
-    typedef rect_base<int>    rect_i; //----rect_i
-    typedef rect_base<float>  rect_f; //----rect_f
-    typedef rect_base<double> rect_d; //----rect_d
+    typedef rect_base<int>    rect_i;
+    typedef rect_base<float>  rect_f;
+    typedef rect_base<double> rect_d;
 
-    //---------------------------------------------------------path_commands_e
-    enum path_commands_e
-    {
-        path_cmd_stop     = 0,        //----path_cmd_stop
-        path_cmd_move_to  = 1,        //----path_cmd_move_to
-        path_cmd_line_to  = 2,        //----path_cmd_line_to
-        path_cmd_curve3   = 3,        //----path_cmd_curve3
-        path_cmd_curve4   = 4,        //----path_cmd_curve4
-        path_cmd_end_poly = 0x0F,     //----path_cmd_end_poly
-        path_cmd_mask     = 0x0F      //----path_cmd_mask
-    };
+    static const int path_cmd_stop     = 0;
+    static const int path_cmd_move_to  = 1;
+    static const int path_cmd_line_to  = 2;
+    static const int path_cmd_curve3   = 3;
+    static const int path_cmd_curve4   = 4;
+    static const int path_cmd_end_poly = 0x0F;
+    static const int path_cmd_mask     = 0x0F;
 
-    //------------------------------------------------------------path_flags_e
-    enum path_flags_e
-    {
-        path_flags_none  = 0,         //----path_flags_none
-        path_flags_ccw   = 0x10,      //----path_flags_ccw
-        path_flags_cw    = 0x20,      //----path_flags_cw
-        path_flags_close = 0x40,      //----path_flags_close
-        path_flags_mask  = 0xF0       //----path_flags_mask
-    };
+    static const int path_flags_none  = 0;
+    static const int path_flags_ccw   = 0x10;
+    static const int path_flags_cw    = 0x20;
+    static const int path_flags_close = 0x40;
+    static const int path_flags_mask  = 0xF0;
 
     //---------------------------------------------------------------is_vertex
     inline bool is_vertex(unsigned c)

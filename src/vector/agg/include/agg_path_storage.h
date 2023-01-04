@@ -355,9 +355,9 @@ namespace agg
         // arrange_orientations_all_paths(), all the polygons will have
         // the same orientation, i.e. path_flags_cw or path_flags_ccw
         //--------------------------------------------------------------------
-        unsigned arrange_polygon_orientation(unsigned start, path_flags_e orientation);
-        unsigned arrange_orientations(unsigned path_id, path_flags_e orientation);
-        void     arrange_orientations_all_paths(path_flags_e orientation);
+        unsigned arrange_polygon_orientation(unsigned start, int orientation);
+        unsigned arrange_orientations(unsigned path_id, int orientation);
+        void     arrange_orientations_all_paths(int orientation);
         void     invert_polygon(unsigned start);
 
         // Flip all vertices horizontally or vertically,
@@ -873,7 +873,7 @@ namespace agg
 
     //------------------------------------------------------------------------
     template<class VC>
-    unsigned path_base<VC>::arrange_polygon_orientation(unsigned start, path_flags_e orientation)
+    unsigned path_base<VC>::arrange_polygon_orientation(unsigned start, int orientation)
     {
         if(orientation == path_flags_none) return start;
 
@@ -906,7 +906,7 @@ namespace agg
 
    //------------------------------------------------------------------------
    template<class VC>
-   unsigned path_base<VC>::arrange_orientations(unsigned start, path_flags_e orientation)
+   unsigned path_base<VC>::arrange_orientations(unsigned start, int orientation)
    {
       if (orientation != path_flags_none) {
          while(start < m_vertices.total_vertices()) {
@@ -922,51 +922,39 @@ namespace agg
 
     //------------------------------------------------------------------------
     template<class VC>
-    void path_base<VC>::arrange_orientations_all_paths(path_flags_e orientation)
-    {
-        if(orientation != path_flags_none)
-        {
+    void path_base<VC>::arrange_orientations_all_paths(int orientation) {
+        if (orientation != path_flags_none) {
             unsigned start = 0;
-            while(start < m_vertices.total_vertices())
-            {
+            while(start < m_vertices.total_vertices()) {
                 start = arrange_orientations(start, orientation);
             }
         }
     }
 
-    //------------------------------------------------------------------------
     template<class VC>
-    void path_base<VC>::flip_x(double x1, double x2)
-    {
+    void path_base<VC>::flip_x(double x1, double x2) {
         unsigned i;
         double x, y;
-        for(i = 0; i < m_vertices.total_vertices(); i++)
-        {
+        for(i = 0; i < m_vertices.total_vertices(); i++) {
             unsigned cmd = m_vertices.vertex(i, &x, &y);
-            if(is_vertex(cmd))
-            {
+            if (is_vertex(cmd)) {
                 m_vertices.modify_vertex(i, x2 - x + x1, y);
             }
         }
     }
 
-    //------------------------------------------------------------------------
     template<class VC>
-    void path_base<VC>::flip_y(double y1, double y2)
-    {
+    void path_base<VC>::flip_y(double y1, double y2) {
         unsigned i;
         double x, y;
-        for(i = 0; i < m_vertices.total_vertices(); i++)
-        {
+        for(i = 0; i < m_vertices.total_vertices(); i++) {
             unsigned cmd = m_vertices.vertex(i, &x, &y);
-            if(is_vertex(cmd))
-            {
+            if(is_vertex(cmd)) {
                 m_vertices.modify_vertex(i, x, y2 - y + y1);
             }
         }
     }
 
-    //------------------------------------------------------------------------
     template<class VC>
     void path_base<VC>::translate(double dx, double dy, unsigned path_id)
     {

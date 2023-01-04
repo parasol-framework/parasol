@@ -2,27 +2,20 @@
 // Anti-Grain Geometry - Version 2.4
 // Copyright (C) 2002-2005 Maxim Shemanarev (http://www.antigrain.com)
 //
-// Permission to copy, use, modify, sell and distribute this software 
-// is granted provided this copyright notice appears in all copies. 
+// Permission to copy, use, modify, sell and distribute this software
+// is granted provided this copyright notice appears in all copies.
 // This software is provided "as is" without express or implied
 // warranty, and with no claim as to its suitability for any purpose.
 
-//
 // Simple Bresenham interpolator for ellipsees
-//
-//----------------------------------------------------------------------------
 
 #ifndef AGG_ELLIPSE_BRESENHAM_INCLUDED
 #define AGG_ELLIPSE_BRESENHAM_INCLUDED
 
-
 #include "agg_basics.h"
-
 
 namespace agg
 {
-
-    //------------------------------------------ellipse_bresenham_interpolator
     class ellipse_bresenham_interpolator
     {
     public:
@@ -37,7 +30,7 @@ namespace agg
             m_inc_y(-ry * m_two_rx2),
             m_cur_f(0)
         {}
-        
+
         int dx() const { return m_dx; }
         int dy() const { return m_dy; }
 
@@ -55,29 +48,26 @@ namespace agg
             mxy = fxy = m_cur_f + m_inc_x + m_ry2 + m_inc_y + m_rx2;
             if(mxy < 0) mxy = -mxy;
 
-            min_m = mx; 
+            min_m = mx;
             bool flag = true;
 
-            if(min_m > my)  
-            { 
-                min_m = my; 
-                flag = false; 
+            if (min_m > my) {
+                min_m = my;
+                flag = false;
             }
 
             m_dx = m_dy = 0;
 
-            if(min_m > mxy) 
-            { 
+            if (min_m > mxy) {
                 m_inc_x += m_two_ry2;
                 m_inc_y += m_two_rx2;
                 m_cur_f = fxy;
-                m_dx = 1; 
+                m_dx = 1;
                 m_dy = 1;
                 return;
             }
 
-            if(flag) 
-            {
+            if(flag) {
                 m_inc_x += m_two_ry2;
                 m_cur_f = fx;
                 m_dx = 1;
@@ -99,7 +89,6 @@ namespace agg
         int m_inc_x;
         int m_inc_y;
         int m_cur_f;
-
     };
 
 }
