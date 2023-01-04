@@ -18,26 +18,19 @@
 #include "agg_math.h"
 #include "agg_array.h"
 
-
 namespace agg
 {
-    enum gradient_subpixel_scale_e
-    {
-        gradient_subpixel_shift = 4,                              //-----gradient_subpixel_shift
-        gradient_subpixel_scale = 1 << gradient_subpixel_shift,   //-----gradient_subpixel_scale
-        gradient_subpixel_mask  = gradient_subpixel_scale - 1     //-----gradient_subpixel_mask
-    };
+    const int gradient_subpixel_shift = 4;
+    const int gradient_subpixel_scale = 1 << gradient_subpixel_shift;
+    const int gradient_subpixel_mask  = gradient_subpixel_scale - 1;
 
-    //==========================================================span_gradient
     template<class ColorT, class Interpolator, class GradientF,  class ColorF>
     class span_gradient {
     public:
         typedef Interpolator interpolator_type;
         typedef ColorT color_type;
 
-        enum downscale_shift_e {
-            downscale_shift = interpolator_type::subpixel_shift - gradient_subpixel_shift
-        };
+        const int downscale_shift = interpolator_type::subpixel_shift - gradient_subpixel_shift;
 
         span_gradient() {}
 
@@ -113,17 +106,14 @@ namespace agg
 
     class gradient_radial {
     public:
-        static AGG_INLINE int calculate(int x, int y, int)
-        {
+        static AGG_INLINE int calculate(int x, int y, int) {
             return int(fast_sqrt(x*x + y*y));
         }
     };
 
-    class gradient_radial_d
-    {
+    class gradient_radial_d {
     public:
-        static AGG_INLINE int calculate(int x, int y, int)
-        {
+        static AGG_INLINE int calculate(int x, int y, int) {
             return uround(sqrt(double(x)*double(x) + double(y)*double(y)));
         }
     };
@@ -153,8 +143,7 @@ namespace agg
         double focus_x() const { return double(m_fx) / gradient_subpixel_scale; }
         double focus_y() const { return double(m_fy) / gradient_subpixel_scale; }
 
-        int calculate(int x, int y, int) const
-        {
+        int calculate(int x, int y, int) const {
             double dx = x - m_fx;
             double dy = y - m_fy;
             double d2 = dx * m_fy - dy * m_fx;
@@ -163,8 +152,7 @@ namespace agg
         }
 
     private:
-        void update_values()
-        {
+        void update_values() {
             // Calculate the invariant values. In case the focal center
             // lies exactly on the gradient circle the divisor degenerates
             // into zero. In this case we just move the focal center by
@@ -175,8 +163,7 @@ namespace agg
             m_fx2 = double(m_fx) * double(m_fx);
             m_fy2 = double(m_fy) * double(m_fy);
             double d = (m_r2 - (m_fx2 + m_fy2));
-            if(d == 0)
-            {
+            if (d == 0) {
                 if(m_fx) { if(m_fx < 0) ++m_fx; else --m_fx; }
                 if(m_fy) { if(m_fy < 0) ++m_fy; else --m_fy; }
                 m_fx2 = double(m_fx) * double(m_fx);
@@ -207,49 +194,38 @@ namespace agg
 
     class gradient_diamond {
     public:
-        static AGG_INLINE int calculate(int x, int y, int)
-        {
+        static AGG_INLINE int calculate(int x, int y, int) {
             int ax = abs(x);
             int ay = abs(y);
             return ax > ay ? ax : ay;
         }
     };
 
-    class gradient_xy
-    {
+    class gradient_xy {
     public:
-        static AGG_INLINE int calculate(int x, int y, int d)
-        {
+        static AGG_INLINE int calculate(int x, int y, int d) {
             return abs(x) * abs(y) / d;
         }
     };
 
-    //========================================================gradient_sqrt_xy
-    class gradient_sqrt_xy
-    {
+    class gradient_sqrt_xy {
     public:
-        static AGG_INLINE int calculate(int x, int y, int)
-        {
+        static AGG_INLINE int calculate(int x, int y, int) {
             return fast_sqrt(abs(x) * abs(y));
         }
     };
 
-    //==========================================================gradient_conic
-    class gradient_conic
-    {
+    class gradient_conic {
     public:
-        static AGG_INLINE int calculate(int x, int y, int d)
-        {
+        static AGG_INLINE int calculate(int x, int y, int d) {
             return uround(fabs(atan2(double(y), double(x))) * double(d) / pi);
         }
     };
 
-    //=================================================gradient_repeat_adaptor
     template<class GradientF> class gradient_repeat_adaptor
     {
     public:
-        gradient_repeat_adaptor(const GradientF& gradient) :
-            m_gradient(&gradient) {}
+        gradient_repeat_adaptor(const GradientF& gradient) : m_gradient(&gradient) {}
 
         AGG_INLINE int calculate(int x, int y, int d) const
         {
@@ -263,14 +239,11 @@ namespace agg
     };
 
     //================================================gradient_reflect_adaptor
-    template<class GradientF> class gradient_reflect_adaptor
-    {
+    template<class GradientF> class gradient_reflect_adaptor {
     public:
-        gradient_reflect_adaptor(const GradientF& gradient) :
-            m_gradient(&gradient) {}
+        gradient_reflect_adaptor(const GradientF& gradient) : m_gradient(&gradient) {}
 
-        AGG_INLINE int calculate(int x, int y, int d) const
-        {
+        AGG_INLINE int calculate(int x, int y, int d) const {
             int d2 = d << 1;
             int ret = m_gradient->calculate(x, y, d) % d2;
             if(ret <  0) ret += d2;
@@ -281,8 +254,6 @@ namespace agg
     private:
         const GradientF* m_gradient;
     };
-
-
 }
 
 #endif

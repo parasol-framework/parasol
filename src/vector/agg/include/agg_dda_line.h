@@ -2,8 +2,8 @@
 // Anti-Grain Geometry - Version 2.4
 // Copyright (C) 2002-2005 Maxim Shemanarev (http://www.antigrain.com)
 //
-// Permission to copy, use, modify, sell and distribute this software 
-// is granted provided this copyright notice appears in all copies. 
+// Permission to copy, use, modify, sell and distribute this software
+// is granted provided this copyright notice appears in all copies.
 // This software is provided "as is" without express or implied
 // warranty, and with no claim as to its suitability for any purpose.
 
@@ -202,62 +202,43 @@ namespace agg
         int m_y;
     };
 
-
-
-
-
-
-
-    //---------------------------------------------line_bresenham_interpolator
-    class line_bresenham_interpolator
-    {
+    class line_bresenham_interpolator {
     public:
-        enum subpixel_scale_e
-        {
-            subpixel_shift = 8,
-            subpixel_scale = 1 << subpixel_shift,
-            subpixel_mask  = subpixel_scale - 1
-        };
+        static const int subpixel_shift = 8;
+        static const int subpixel_scale = 1 << subpixel_shift;
+        static const int subpixel_mask  = subpixel_scale - 1;
 
-        //--------------------------------------------------------------------
         static int line_lr(int v) { return v >> subpixel_shift; }
 
-        //--------------------------------------------------------------------
         line_bresenham_interpolator(int x1, int y1, int x2, int y2) :
             m_x1_lr(line_lr(x1)),
             m_y1_lr(line_lr(y1)),
             m_x2_lr(line_lr(x2)),
             m_y2_lr(line_lr(y2)),
             m_ver(abs(m_x2_lr - m_x1_lr) < abs(m_y2_lr - m_y1_lr)),
-            m_len(m_ver ? abs(m_y2_lr - m_y1_lr) : 
+            m_len(m_ver ? abs(m_y2_lr - m_y1_lr) :
                           abs(m_x2_lr - m_x1_lr)),
             m_inc(m_ver ? ((y2 > y1) ? 1 : -1) : ((x2 > x1) ? 1 : -1)),
-            m_interpolator(m_ver ? x1 : y1, 
-                           m_ver ? x2 : y2, 
+            m_interpolator(m_ver ? x1 : y1,
+                           m_ver ? x2 : y2,
                            m_len)
         {
         }
-    
-        //--------------------------------------------------------------------
+
         bool     is_ver() const { return m_ver; }
         unsigned len()    const { return m_len; }
         int      inc()    const { return m_inc; }
 
-        //--------------------------------------------------------------------
-        void hstep()
-        {
+        void hstep() {
             ++m_interpolator;
             m_x1_lr += m_inc;
         }
 
-        //--------------------------------------------------------------------
-        void vstep()
-        {
+        void vstep() {
             ++m_interpolator;
             m_y1_lr += m_inc;
         }
 
-        //--------------------------------------------------------------------
         int x1() const { return m_x1_lr; }
         int y1() const { return m_y1_lr; }
         int x2() const { return line_lr(m_interpolator.y()); }
@@ -266,13 +247,13 @@ namespace agg
         int y2_hr() const { return m_interpolator.y(); }
 
     private:
-        int                    m_x1_lr;
-        int                    m_y1_lr;
-        int                    m_x2_lr;
-        int                    m_y2_lr;
-        bool                   m_ver;
-        unsigned               m_len;
-        int                    m_inc;
+        int      m_x1_lr;
+        int      m_y1_lr;
+        int      m_x2_lr;
+        int      m_y2_lr;
+        bool     m_ver;
+        unsigned m_len;
+        int      m_inc;
         dda2_line_interpolator m_interpolator;
 
     };

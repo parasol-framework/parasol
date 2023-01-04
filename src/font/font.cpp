@@ -1171,7 +1171,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
    }
 
    ConfigKeys *preferred_group, *alt_group = NULL;
-   std::string preferred_type, alt_type = NULL;
+   std::string preferred_type, alt_type;
 
    if (not ((Point < 12) or (Flags & (FTF_PREFER_FIXED|FTF_REQUIRE_FIXED)))) {
       preferred_group = fixed_group;

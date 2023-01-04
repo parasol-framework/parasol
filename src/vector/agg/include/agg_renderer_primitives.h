@@ -2,8 +2,8 @@
 // Anti-Grain Geometry - Version 2.4
 // Copyright (C) 2002-2005 Maxim Shemanarev (http://www.antigrain.com)
 //
-// Permission to copy, use, modify, sell and distribute this software 
-// is granted provided this copyright notice appears in all copies. 
+// Permission to copy, use, modify, sell and distribute this software
+// is granted provided this copyright notice appears in all copies.
 // This software is provided "as is" without express or implied
 // warranty, and with no claim as to its suitability for any purpose.
 
@@ -22,14 +22,12 @@
 
 namespace agg
 {
-    //-----------------------------------------------------renderer_primitives
     template<class BaseRenderer> class renderer_primitives
     {
     public:
         typedef BaseRenderer base_ren_type;
         typedef typename base_ren_type::color_type color_type;
 
-        //--------------------------------------------------------------------
         explicit renderer_primitives(base_ren_type& ren) :
             m_ren(&ren),
             m_fill_color(),
@@ -39,19 +37,16 @@ namespace agg
         {}
         void attach(base_ren_type& ren) { m_ren = &ren; }
 
-        //--------------------------------------------------------------------
-        static int coord(double c) 
-        { 
-            return iround(c * line_bresenham_interpolator::subpixel_scale); 
+        static int coord(double c)
+        {
+            return iround(c * line_bresenham_interpolator::subpixel_scale);
         }
 
-        //--------------------------------------------------------------------
         void fill_color(const color_type& c) { m_fill_color = c; }
         void line_color(const color_type& c) { m_line_color = c; }
         const color_type& fill_color() const { return m_fill_color; }
         const color_type& line_color() const { return m_line_color; }
 
-        //--------------------------------------------------------------------
         void rectangle(int x1, int y1, int x2, int y2)
         {
             m_ren->blend_hline(x1,   y1,   x2-1, m_line_color, cover_full);
@@ -60,20 +55,17 @@ namespace agg
             m_ren->blend_vline(x1,   y1+1, y2,   m_line_color, cover_full);
         }
 
-        //--------------------------------------------------------------------
         void solid_rectangle(int x1, int y1, int x2, int y2)
         {
             m_ren->blend_bar(x1, y1, x2, y2, m_fill_color, cover_full);
         }
 
-        //--------------------------------------------------------------------
-        void outlined_rectangle(int x1, int y1, int x2, int y2) 
+        void outlined_rectangle(int x1, int y1, int x2, int y2)
         {
             rectangle(x1, y1, x2, y2);
             m_ren->blend_bar(x1+1, y1+1, x2-1, y2-1, m_fill_color, cover_full);
         }
 
-        //--------------------------------------------------------------------
         void ellipse(int x, int y, int rx, int ry)
         {
             ellipse_bresenham_interpolator ei(rx, ry);
@@ -92,7 +84,6 @@ namespace agg
             while(dy < 0);
         }
 
-        //--------------------------------------------------------------------
         void solid_ellipse(int x, int y, int rx, int ry)
         {
             ellipse_bresenham_interpolator ei(rx, ry);
@@ -119,7 +110,6 @@ namespace agg
             m_ren->blend_hline(x-dx0, y+dy0, x+dx0, m_fill_color, cover_full);
         }
 
-        //--------------------------------------------------------------------
         void outlined_ellipse(int x, int y, int rx, int ry)
         {
             ellipse_bresenham_interpolator ei(rx, ry);
@@ -146,7 +136,6 @@ namespace agg
             while(dy < 0);
         }
 
-        //--------------------------------------------------------------------
         void line(int x1, int y1, int x2, int y2, bool last=false)
         {
             line_bresenham_interpolator li(x1, y1, x2, y2);
@@ -183,14 +172,12 @@ namespace agg
             }
         }
 
-        //--------------------------------------------------------------------
         void move_to(int x, int y)
         {
             m_curr_x = x;
             m_curr_y = y;
         }
 
-        //--------------------------------------------------------------------
         void line_to(int x, int y, bool last=false)
         {
             line(m_curr_x, m_curr_y, x, y, last);
@@ -198,11 +185,9 @@ namespace agg
             m_curr_y = y;
         }
 
-        //--------------------------------------------------------------------
-        const base_ren_type& ren() const { return *m_ren; }        
-        base_ren_type& ren() { return *m_ren; }        
+        const base_ren_type& ren() const { return *m_ren; }
+        base_ren_type& ren() { return *m_ren; }
 
-        //--------------------------------------------------------------------
         const rendering_buffer& rbuf() const { return m_ren->rbuf(); }
         rendering_buffer& rbuf() { return m_ren->rbuf(); }
 
