@@ -107,8 +107,8 @@ public:
             UWORD width;
             ULONG offset;
 
-            flReadLE(pFile, &width);
-            flReadLE(pFile, &offset);
+            if (flReadLE(pFile, &width)) break;
+            if (flReadLE(pFile, &offset)) break;
 
             Chars[j].Width   = width;
             Chars[j].Advance = Chars[j].Width;
@@ -120,8 +120,8 @@ public:
          LONG j = pFace.first_char;
          for (LONG i=0; i < pFace.last_char - pFace.first_char + 1; i++) {
             UWORD width, offset;
-            flReadLE(pFile, &width);
-            flReadLE(pFile, &offset);
+            if (flReadLE(pFile, &width)) break;
+            if (flReadLE(pFile, &offset)) break;
             Chars[j].Width   = width;
             Chars[j].Advance = Chars[j].Width;
             Chars[j].Offset  = offset - pFace.bits_offset;

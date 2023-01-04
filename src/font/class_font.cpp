@@ -152,7 +152,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
    if (!Self->Point) Self->Point = global_point_size();
 
    if (!Self->Path) {
-      CSTRING path;
+      CSTRING path = NULL;
       if (!fntSelectFont(Self->prvFace, Self->prvStyle, Self->Point, Self->Flags & (FTF_PREFER_SCALED|FTF_PREFER_FIXED|FTF_ALLOW_SCALE), &path)) {
          Self->set(FID_Path, path);
          FreeResource(path);
