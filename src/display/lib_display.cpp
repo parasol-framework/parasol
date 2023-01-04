@@ -258,7 +258,7 @@ ERROR gfxSetHostOption(LONG Option, LARGE Value)
          break;
 
       default:
-         log.warning("Invalid option %d, Data " PF64(), Option, Value);
+         log.warning("Invalid option %d, Data %" PF64, Option, Value);
    }
 #endif
 

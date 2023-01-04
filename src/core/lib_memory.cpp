@@ -398,7 +398,7 @@ retry:
 
       if (Flags & (MEM_UNTRACKED|MEM_HIDDEN));
       else {
-         tlContext->resource()->Flags |= NF_HAS_SHARED_RESOURCES;
+         tlContext->resource()->Flags |= NF::HAS_SHARED_RESOURCES;
          if ((tlContext->resource()->Stats) and (tlContext->resource()->TaskID)) {
             glSharedBlocks[blk].TaskID = tlContext->resource()->TaskID;
          }
@@ -780,7 +780,7 @@ ERROR FreeResourceID(MEMORYID MemoryID)
                   if (!winCloseHandle(glSharedBlocks[entry].Handle)) {
                      char buffer[80];
                      winFormatMessage(0, buffer, sizeof(buffer));
-                     log.warning("winCloseHandle(" PF64() ") failed: %s", (MAXINT)glSharedBlocks[entry].Handle, buffer);
+                     log.warning("winCloseHandle(%" PF64 ") failed: %s", (MAXINT)glSharedBlocks[entry].Handle, buffer);
                   }
                }
 

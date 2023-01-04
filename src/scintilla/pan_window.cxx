@@ -140,7 +140,7 @@ void Scintilla::Window::InvalidateAll()
    if (scintilla->Visible IS FALSE) return;
 
    FMSG("~Window::InvalidateAll()","");
-   DelayMsg(AC_Draw, getSurfaceID(this), NULL);
+   DelayMsg(AC_Draw, getSurfaceID(this));
    LOGRETURN();
 }
 

@@ -6,6 +6,7 @@
 #include <parasol/modules/xml.h>
 #include <parasol/modules/display.h>
 #include <parasol/modules/fluid.h>
+#include <sstream>
 
 extern "C" {
  #include "lua.h"
@@ -284,7 +285,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
    if (CurrentTaskID() != Self->ownerTask()) return log.warning(ERR_IllegalActionAttempt);
    if ((!Self->String) or (!Self->String[0])) return log.warning(ERR_FieldNotSet);
 
-   log.msg(VLF_EXTAPI, "Target: %d, Procedure: %s / ID #" PF64(), Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", Self->ProcedureID);
+   log.msg(VLF_EXTAPI, "Target: %d, Procedure: %s / ID #%" PF64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", Self->ProcedureID);
 
    ERROR error = ERR_Failed;
 
@@ -381,14 +382,13 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 
       // Pre-load the Core module: mSys = mod.load('core')
 
-      OBJECTPTR module;
-      if (!CreateObject(ID_MODULE, 0, &module, FID_Name|TSTR, "core", TAGEND)) {
+      if (auto core = objModule::create::global(fl::Name("core"))) {
          auto mod = (struct module *)lua_newuserdata(prv->Lua, sizeof(struct module));
          ClearMemory(mod, sizeof(struct module));
          luaL_getmetatable(prv->Lua, "Fluid.mod");
          lua_setmetatable(prv->Lua, -2);
-         mod->Module = module;
-         module->getPtr(FID_FunctionList, &mod->Functions);
+         mod->Module = core;
+         core->getPtr(FID_FunctionList, &mod->Functions);
          lua_setglobal(prv->Lua, "mSys");
       }
       else {
@@ -419,12 +419,12 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
                LONG line = StrToInt(errorstr + i);
                while ((errorstr[i]) and (errorstr[i] != ':')) i++;
                if (errorstr[i] IS ':') i++;
-               i = StrFormat(buffer, sizeof(buffer), "Line %d: %s\n", line+Self->LineOffset, errorstr + i);
+               i = snprintf(buffer, sizeof(buffer), "Line %d: %s\n", line+Self->LineOffset, errorstr + i);
                CSTRING str = Self->String;
 
                for (j=1; j <= line+1; j++) {
                   if (j >= line-1) {
-                     i += StrFormat(buffer+i, sizeof(buffer)-i, "%d: ", j+Self->LineOffset);
+                     i += snprintf(buffer+i, sizeof(buffer)-i, "%d: ", j+Self->LineOffset);
                      LONG k;
                      for (k=0; (str[k]) and (str[k] != '\n') and (str[k] != '\r') and (k < 120); k++) {
                         if ((size_t)i >= sizeof(buffer)-1) break;
@@ -455,17 +455,13 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 
          prv->SaveCompiled = FALSE;
 
-         objFile *cachefile;
-         if (!CreateObject(ID_FILE, NF_INTEGRAL, &cachefile,
-               FID_Path|TSTR,         Self->CacheFile,
-               FID_Flags|TLONG,       FL_NEW|FL_WRITE,
-               FID_Permissions|TLONG, prv->CachePermissions,
-               TAGEND)) {
+         objFile::create cachefile = {
+            fl::Path(Self->CacheFile), fl::Flags(FL_NEW|FL_WRITE), fl::Permissions(prv->CachePermissions)
+         };
 
+         if (cachefile.ok()) {
             save_binary(Self, cachefile->UID);
-
             cachefile->set(FID_Date, &prv->CacheDate);
-            acFree(cachefile);
          }
       }
    }
@@ -487,9 +483,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
       }
    }
 
-   if (!Self->Error) {
-      run_script(Self); // Will set Self->Error if there's an issue
-   }
+   if (!Self->Error) run_script(Self); // Will set Self->Error if there's an issue
 
    error = ERR_Okay; // The error reflects on the initial processing of the script only - the developer must check the Error field for information on script execution
 
@@ -551,11 +545,10 @@ restart:
                lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, list->Callback); // +1 Reference to callback
                lua_newtable(prv->Lua); // +1 Item table
 
-               objXML *xml;
-               if (!CreateObject(ID_XML, NF_INTEGRAL, &xml, FID_Statement|TSTR, Args->Buffer, TAGEND)) {
+               if (auto xml = objXML::create::integral(fl::Statement((CSTRING)Args->Buffer))) {
                   // <file path="blah.exe"/> becomes { item='file', path='blah.exe' }
 
-                  XMLTag *tag = xml->Tags[0];
+                  auto tag = xml->Tags[0];
                   LONG i = 1;
                   if (!StrMatch("receipt", tag->Attrib->Name)) {
                      for (auto scan=tag->Child; scan; scan=scan->Next) {
@@ -617,7 +610,7 @@ static ERROR FLUID_DerefProcedure(objScript *Self, struct scDerefProcedure *Args
          auto prv = (prvFluid *)Self->ChildPrivate;
          if (!prv) return log.warning(ERR_ObjectCorrupt);
 
-         log.trace("Dereferencing procedure #" PF64(), Args->Procedure->Script.ProcedureID);
+         log.trace("Dereferencing procedure #%" PF64, Args->Procedure->Script.ProcedureID);
 
          if (Args->Procedure->Script.ProcedureID) {
             luaL_unref(prv->Lua, LUA_REGISTRYINDEX, Args->Procedure->Script.ProcedureID);
@@ -679,7 +672,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
       }
    }
 
-   if ((Self->flags() & NF_RECLASSED) and (!Self->String)) {
+   if ((Self->defined(NF::RECLASSED)) and (!Self->String)) {
       log.trace("No support for reclassed Script with no String field value.");
       return ERR_NoSupport;
    }
@@ -690,10 +683,9 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
    LONG loaded_size = 0;
    parasol::ScopedObject<objFile> src_file;
    if ((!Self->String) and (Self->Path)) {
-      error = CreateObject(ID_FILE, NF_INTEGRAL, &src_file.obj, FID_Path|TSTR, Self->Path, TAGEND);
-
       LARGE src_ts, src_size;
-      if (!error) {
+
+      if ((src_file.obj = objFile::create::integral(fl::Path(Self->Path)))) {
          error = GetFields(src_file.obj, FID_TimeStamp|TLARGE, &src_ts, FID_Size|TLARGE, &src_size, TAGEND);
       }
       else error = ERR_File;
@@ -703,12 +695,16 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
          // analysing the original location (i.e. the original location does not exist) then the cache file is loaded
          // instead of the original source code.
 
-         objFile *cache_file;
-         if (!CreateObject(ID_FILE, NF_INTEGRAL, &cache_file, FID_Path|TSTR, Self->CacheFile, TAGEND)) {
-            LARGE cache_ts, cache_size;
-            GetFields(cache_file, FID_TimeStamp|TLARGE, &cache_ts, FID_Size|TLARGE, &cache_size, TAGEND);
-            acFree(cache_file);
+         LARGE cache_ts = -1, cache_size;
 
+         {
+            objFile::create cache_file = { fl::Path(Self->CacheFile) };
+            if (cache_file.ok()) {
+               GetFields(*cache_file, FID_TimeStamp|TLARGE, &cache_ts, FID_Size|TLARGE, &cache_size, TAGEND);
+            }
+         }
+
+         if (cache_ts != -1) {
             if ((cache_ts IS src_ts) or (error)) {
                log.msg("Using cache '%s'", Self->CacheFile);
                if (!AllocMemory(cache_size, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), &Self->String, NULL)) {
@@ -736,7 +732,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
                if (Self->CacheFile) compile = TRUE; // Saving a compilation of the source is desired
             }
             else {
-               log.trace("Failed to read " PF64() " bytes from '%s'", src_size, Self->Path);
+               log.trace("Failed to read %" PF64 " bytes from '%s'", src_size, Self->Path);
                FreeResource(Self->String);
                Self->String = NULL;
                error = ERR_ReadFileToBuffer;
@@ -1020,7 +1016,7 @@ static ERROR run_script(objScript *Self)
                   }
                   else lua_pushinteger(prv->Lua, args->Long);
                }
-               else if (type & FD_LARGE)  { log.trace("Setting arg '%s', Value: " PF64(), args->Name, args->Large); lua_pushnumber(prv->Lua, args->Large); }
+               else if (type & FD_LARGE)  { log.trace("Setting arg '%s', Value: %" PF64, args->Name, args->Large); lua_pushnumber(prv->Lua, args->Large); }
                else if (type & FD_DOUBLE) { log.trace("Setting arg '%s', Value: %.2f", args->Name, args->Double); lua_pushnumber(prv->Lua, args->Double); }
                else { lua_pushnil(prv->Lua); log.warning("Arg '%s' uses unrecognised type $%.8x", args->Name, type); }
                count++;
@@ -1038,10 +1034,11 @@ static ERROR run_script(objScript *Self)
          while (r > 0) release_object(release_list[--r]);
       }
       else {
-         char buffer[200];
-         StrFormat(buffer, sizeof(buffer), "Procedure '%s' / #" PF64() " does not exist in the script.", Self->Procedure, Self->ProcedureID);
-         Self->set(FID_ErrorString, buffer);
-         log.warning("%s", buffer);
+         std::ostringstream ss;
+         ss << "Procedure '" << Self->Procedure << "' / #" << Self->ProcedureID << " does not exist in the script.";
+         auto str = ss.str().c_str();
+         Self->set(FID_ErrorString, str);
+         log.warning("%s", str);
 
          #ifdef DEBUG
             STRING *list;

@@ -1522,13 +1522,13 @@ refer to the @VectorClip class for further information.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_Mask(extVector *Self, objVectorClip **Value)
+static ERROR VECTOR_GET_Mask(extVector *Self, extVectorClip **Value)
 {
    *Value = Self->ClipMask;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_Mask(extVector *Self, objVectorClip *Value)
+static ERROR VECTOR_SET_Mask(extVector *Self, extVectorClip *Value)
 {
    parasol::Log log;
 
@@ -1884,7 +1884,7 @@ static ERROR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
 
    if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
-   char seq[4096] = "";
+   std::ostringstream seq;
 
    // See agg_path_storage.h for vertex traversal
    // All vertex coordinates are stored in absolute format.
@@ -1892,7 +1892,6 @@ static ERROR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
    agg::path_storage &base = Self->BasePath;
 
    DOUBLE x, y, x2, y2, x3, y3, last_x = 0, last_y = 0;
-   LONG p = 0;
    for (ULONG i=0; i < base.total_vertices(); i++) {
       LONG cmd = base.command(i);
       //LONG cmd_flags = cmd & (~agg::path_cmd_mask);
@@ -1903,19 +1902,19 @@ static ERROR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
 
       switch(cmd) {
          case agg::path_cmd_stop: // PE_ClosePath
-            seq[p++] = 'Z';
+            seq << 'Z';
             break;
 
          case agg::path_cmd_move_to: // PE_Move
             base.vertex(i, &x, &y);
-            p += StrFormat(seq+p, sizeof(seq)-p, "M%g,%g", x, y);
+            seq << 'M' << x << ',' << y;
             last_x = x;
             last_y = y;
             break;
 
          case agg::path_cmd_line_to: // PE_Line
             base.vertex(i, &x, &y);
-            p += StrFormat(seq+p, sizeof(seq)-p, "L%g,%g", x, y);
+            seq << 'L' << x << ',' << y;
             last_x = x;
             last_y = y;
             break;
@@ -1923,7 +1922,7 @@ static ERROR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
          case agg::path_cmd_curve3: // PE_QuadCurve
             base.vertex(i, &x, &y);
             base.vertex(i+1, &x2, &y2); // End of line
-            p += StrFormat(seq+p, sizeof(seq)-p, "q%g,%g,%g,%g", x - last_x, y - last_y, x2 - last_x, y2 - last_y);
+            seq << "q" << x - last_x << ',' << y - last_y << ',' << x2 - last_x << ',' << y2 - last_y;
             last_x = x;
             last_y = y;
             i += 1;
@@ -1933,14 +1932,14 @@ static ERROR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
             base.vertex(i, &x, &y);
             base.vertex(i+1, &x2, &y2);
             base.vertex(i+2, &x3, &y3); // End of line
-            p += StrFormat(seq+p, sizeof(seq)-p, "c%g,%g,%g,%g,%g,%g", x - last_x, y - last_y, x2 - last_x, y2 - last_y, x3 - last_x, y3 - last_y);
+            seq << 'c' << x - last_x << ',' << y - last_y << ',' << x2 - last_x << ',' << y2 - last_y << ',' << x3 - last_x << ',' << y3 - last_y;
             last_x = x3;
             last_y = y3;
             i += 2;
             break;
 
          case agg::path_cmd_end_poly: // PE_ClosePath
-            seq[p++] = 'Z';
+            seq << 'Z';
             break;
 
          default:
@@ -1948,10 +1947,10 @@ static ERROR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
             break;
       }
    }
-   seq[p] = 0;
 
-   if (seq[0]) {
-      *Value = StrClone(seq);
+   auto out = seq.str();
+   if (out.length() > 0) {
+      *Value = StrClone(out.c_str());
       return ERR_Okay;
    }
    else return ERR_NoData;

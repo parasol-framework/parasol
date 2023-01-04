@@ -78,7 +78,7 @@ public:
    LONG StyleFlags;
    ERROR Result;
 
-   BitmapCache(winfnt_header_fields &pFace, CSTRING pStyle, CSTRING pPath, OBJECTPTR pFile, winFont &pWinFont) {
+   BitmapCache(winfnt_header_fields &pFace, CSTRING pStyle, CSTRING pPath, objFile *pFile, winFont &pWinFont) {
       parasol::Log log(__FUNCTION__);
 
       log.branch("Caching font %s : %d : %s", pPath, pFace.nominal_point_size, pStyle);
@@ -98,24 +98,33 @@ public:
 
       // Read character information from the file
 
-      acSeek(pFile, pWinFont.Offset + 118, SEEK_START);
+      pFile->seek(pWinFont.Offset + 118, SEEK_START);
 
       ClearMemory(Chars, sizeof(Chars));
       if (pFace.version IS 0x300) {
          LONG j = pFace.first_char;
          for (LONG i=0; i < pFace.last_char - pFace.first_char + 1; i++) {
-            Chars[j].Width   = ReadWordLE(pFile);
+            UWORD width;
+            ULONG offset;
+
+            if (flReadLE(pFile, &width)) break;
+            if (flReadLE(pFile, &offset)) break;
+
+            Chars[j].Width   = width;
             Chars[j].Advance = Chars[j].Width;
-            Chars[j].Offset  = ReadLongLE(pFile) - pFace.bits_offset; // Long
+            Chars[j].Offset  = offset - pFace.bits_offset;
             j++;
          }
       }
       else {
          LONG j = pFace.first_char;
          for (LONG i=0; i < pFace.last_char - pFace.first_char + 1; i++) {
-            Chars[j].Width   = ReadWordLE(pFile);
+            UWORD width, offset;
+            if (flReadLE(pFile, &width)) break;
+            if (flReadLE(pFile, &offset)) break;
+            Chars[j].Width   = width;
             Chars[j].Advance = Chars[j].Width;
-            Chars[j].Offset  = ReadWordLE(pFile) - pFace.bits_offset; // Word
+            Chars[j].Offset  = offset - pFace.bits_offset;
             j++;
          }
       }
@@ -124,9 +133,9 @@ public:
 
       if (!AllocMemory(size, MEM_UNTRACKED, &mData, NULL)) {
          LONG result;
-         acSeek(pFile, pWinFont.Offset + pFace.bits_offset, SEEK_START);
+         pFile->seek(pWinFont.Offset + pFace.bits_offset, SEEK_START);
 
-         if ((!acRead(pFile, mData, size, &result)) and (result IS size)) {
+         if ((!pFile->read(mData, size, &result)) and (result IS size)) {
             // Convert the graphics format for wide characters from column-first format to row-first format.
 
             for (WORD i=0; i < 256; i++) {

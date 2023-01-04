@@ -167,7 +167,7 @@ thickness, or text inside the cell will mix with the border.
 #define CTRL_CODE      '\E' // The escape code, 0x1b.  NOTE: This must be between 1 and 0x20 so that it can be treated as whitespace for certain routines and also to avoid UTF8 interference
 #define CLIP_BLOCK     30
 
-#define DRAW_PAGE(a) DelayMsg(MT_DrwInvalidateRegion, (a)->SurfaceID, NULL);
+#define DRAW_PAGE(a) DelayMsg(MT_DrwInvalidateRegion, (a)->SurfaceID);
 
 #define ULD_TERMINATE       0x01
 #define ULD_KEEP_PARAMETERS 0x02
@@ -198,9 +198,9 @@ enum {
 #include "hashes.h"
 
 struct CoreBase  *CoreBase;
-static struct FontBase    *FontBase;
-static struct DisplayBase *DisplayBase;
-static struct VectorBase  *VectorBase;
+struct FontBase    *FontBase;
+struct DisplayBase *DisplayBase;
+struct VectorBase  *VectorBase;
 static OBJECTPTR clDocument = NULL;
 static RGB8 glHighlight = { 220, 220, 255, 255 };
 static OBJECTPTR modDisplay = NULL, modFont = NULL, modDocument = NULL, modVector = NULL;

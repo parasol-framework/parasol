@@ -473,7 +473,7 @@ static CSTRING action_id_name(LONG ActionID)
       return ActionTable[ActionID].Name;
    }
    else {
-      StrFormat(idname, sizeof(idname), "%d", ActionID);
+      snprintf(idname, sizeof(idname), "%d", ActionID);
       return idname;
    }
 }
@@ -499,9 +499,9 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
       ERROR error;
       if (!(error = AccessObject(action->ObjectID, 5000, &obj))) {
          if (action->SendArgs IS FALSE) {
-            obj->Flags |= NF_MESSAGE;
+            obj->Flags |= NF::MESSAGE;
             action->Error = Action(action->ActionID, obj, NULL);
-            obj->Flags &= ~NF_MESSAGE;
+            obj->Flags = obj->Flags & (~NF::MESSAGE);
             ReleaseObject(obj);
          }
          else {
@@ -525,9 +525,9 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
 
             if (fields) {
                if (!resolve_args(action+1, fields)) {
-                  obj->Flags |= NF_MESSAGE;
+                  obj->Flags |= NF::MESSAGE;
                   action->Error = Action(action->ActionID, obj, action+1);
-                  obj->Flags &= ~NF_MESSAGE;
+                  obj->Flags = obj->Flags & (~NF::MESSAGE);
                   ReleaseObject(obj);
 
                   if ((action->ReturnResult IS TRUE) and (action->ReturnMessage)) {
@@ -638,9 +638,9 @@ static void task_process_end(WINHANDLE FD, extTask *Task)
    winGetExitCodeProcess(Task->Platform, &Task->ReturnCode);
    if (Task->ReturnCode != 259) {
       Task->ReturnCodeSet = TRUE;
-      log.branch("Process " PF64() " ended, return code: %d.", (LARGE)FD, Task->ReturnCode);
+      log.branch("Process %" PF64 " ended, return code: %d.", (LARGE)FD, Task->ReturnCode);
    }
-   else log.branch("Process " PF64() " signalled exit too early.", (LARGE)FD);
+   else log.branch("Process %" PF64 " signalled exit too early.", (LARGE)FD);
 
    if (Task->Platform) {
       char buffer[4096];
@@ -746,7 +746,7 @@ static ERROR TASK_ActionNotify(extTask *Self, struct acActionNotify *Args)
 
             UnsubscribeAction(ref.Object, AC_Free);
             UnsubscribeAction(ref.Object, AC_Signal);
-            ref.Object->Flags &= ~NF_SIGNALLED;
+            ref.Object->Flags = ref.Object->Flags & (~NF::SIGNALLED);
 
             glWFOList.erase(lref);
             if (glWFOList.empty()) {
@@ -823,7 +823,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
 #ifdef _WIN32
    //struct taskAddArgument add;
-   //StrFormat(buffer, sizeof(buffer), "--instance %d", glInstanceID);
+   //snprintf(buffer, sizeof(buffer), "--instance %d", glInstanceID);
    //add.Argument = buffer;
    //Action(MT_AddTaskArgument, Self, &add);
 
@@ -1600,15 +1600,15 @@ static ERROR TASK_GetEnv(extTask *Self, struct taskGetEnv *Args)
 
                      switch(type) {
                         case REG_DWORD:
-                           StrFormat(Self->Env, ENV_SIZE, "%d", ((LONG *)Self->Env)[0]);
+                           snprintf(Self->Env, ENV_SIZE, "%d", ((LONG *)Self->Env)[0]);
                            break;
                         case REG_DWORD_BIG_ENDIAN: {
-                           #ifdef LITTLE_ENDIAN // Intel
-                           LONG value = reverse_long(((LONG *)Self->Env)[0]);
-                           #else
-                           LONG value = ((LONG *)Self->Env)[0];
-                           #endif
-                           StrFormat(Self->Env, ENV_SIZE, "%d", value);
+                           if constexpr (std::endian::native == std::endian::little) {
+                              StrCopy(std::to_string(reverse_long(((LONG *)Self->Env)[0])).c_str(), Self->Env, ENV_SIZE);
+                           }
+                           else {
+                              StrCopy(std::to_string(((LONG *)Self->Env)[0]).c_str(), Self->Env, ENV_SIZE);
+                           }
                            break;
                         }
                         case REG_QWORD:
@@ -1866,7 +1866,7 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
 
          // This method of path retrieval only works on Linux (most types of Unix don't provide any support for this).
 
-         StrFormat(procfile, sizeof(procfile), "/proc/%d/exe", glProcessID);
+         snprintf(procfile, sizeof(procfile), "/proc/%d/exe", glProcessID);
 
          buffer[0] = 0;
          if ((i = readlink(procfile, buffer, sizeof(buffer)-1)) > 0) {

@@ -48,8 +48,7 @@ static int module_load(lua_State *Lua)
       return 0;
    }
 
-   OBJECTPTR loaded_mod;
-   if (!(error = CreateObject(ID_MODULE, 0, &loaded_mod, FID_Name|TSTR, modname, TAGEND))) {
+   if (auto loaded_mod = objModule::create::global(fl::Name(modname))) {
       auto mod = (struct module *)lua_newuserdata(Lua, sizeof(struct module));
       ClearMemory(mod, sizeof(struct module));
 
@@ -863,7 +862,7 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
          if (argtype & FD_RESULT) {
             scan += sizeof(APTR);
             if (var) {
-               RMSG("Result-Arg: %s, Value: " PF64() " (Large)", argname, ((LARGE *)var)[0]);
+               RMSG("Result-Arg: %s, Value: %" PF64 " (Large)", argname, ((LARGE *)var)[0]);
                lua_pushnumber(prv->Lua, ((LARGE *)var)[0]);
             }
             else lua_pushnil(prv->Lua);

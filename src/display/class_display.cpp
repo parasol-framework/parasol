@@ -346,14 +346,14 @@ static ERROR DISPLAY_DataFeed(extDisplay *Self, struct acDataFeed *Args)
 
          STRING xml;
          if (!AllocMemory(xmlsize, MEM_STRING|MEM_NO_CLEAR, &xml, NULL)) {
-            LONG pos = StrFormat(xml, xmlsize, "<receipt totalitems=\"%d\" id=\"%d\">", total_items, request->Item);
+            LONG pos = snprintf(xml, xmlsize, "<receipt totalitems=\"%d\" id=\"%d\">", total_items, request->Item);
 
             for (LONG i=0; i < total_items; i++) {
                if (data[i].Datatype IS DATA_FILE) {
-                  pos += StrFormat(xml+pos, xmlsize-pos, "<file path=\"%s\"/>", (STRING)data[i].Data);
+                  pos += snprintf(xml+pos, xmlsize-pos, "<file path=\"%s\"/>", (STRING)data[i].Data);
                }
                else if (data[i].Datatype IS DATA_TEXT) {
-                  pos += StrFormat(xml+pos, xmlsize-pos, "<text>%s</text>", (STRING)data[i].Data);
+                  pos += snprintf(xml+pos, xmlsize-pos, "<text>%s</text>", (STRING)data[i].Data);
                }
                //else TODO: other types like images need their data saved to disk and referenced as a path, e.g. <image path="clipboard:abc.001"/>
             }
@@ -843,7 +843,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
 
          // If we are running inside a foreign window manager, use the following routine to create a new X11 window for us to run in.
 
-         log.msg("Creating X11 window %dx%d,%dx%d, Override: %d, XDisplay: %p, Parent: " PF64(), Self->X, Self->Y, Self->Width, Self->Height, swa.override_redirect, XDisplay, (LARGE)Self->XWindowHandle);
+         log.msg("Creating X11 window %dx%d,%dx%d, Override: %d, XDisplay: %p, Parent: %" PF64, Self->X, Self->Y, Self->Width, Self->Height, swa.override_redirect, XDisplay, (LARGE)Self->XWindowHandle);
 
          cwflags = CWEventMask|CWOverrideRedirect;
 
@@ -867,7 +867,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
             }
          }
 
-         log.trace("X-Window created successfully: " PF64(), (LARGE)Self->XWindowHandle);
+         log.trace("X-Window created successfully: %" PF64, (LARGE)Self->XWindowHandle);
 
          bmp->set(FID_Handle, (APTR)Self->XWindowHandle);
 
@@ -1234,10 +1234,10 @@ static ERROR DISPLAY_NewObject(extDisplay *Self, APTR Void)
    ERROR error;
 
    if (Self->isPublic()) {
-      error = NewLockedObject(ID_BITMAP, Self->flags()|NF_INTEGRAL, &Self->Bitmap, &Self->BitmapID);
+      error = NewLockedObject(ID_BITMAP, Self->flags()|NF::INTEGRAL, &Self->Bitmap, &Self->BitmapID);
    }
    else {
-      error = NewObject(ID_BITMAP, Self->flags()|NF_INTEGRAL, &Self->Bitmap);
+      error = NewObject(ID_BITMAP, Self->flags()|NF::INTEGRAL, &Self->Bitmap);
       Self->BitmapID = Self->Bitmap->UID;
    }
 
@@ -1470,24 +1470,24 @@ static ERROR DISPLAY_SaveSettings(extDisplay *Self, APTR Void)
 
    log.branch();
 
-   OBJECTPTR config;
-   if (!CreateObject(ID_CONFIG, 0, &config, FID_Path|TSTR, "user:config/display.cfg", TAGEND)) {
+   objConfig::create config = { fl::Path("user:config/display.cfg") };
+
+   if (config.ok()) {
       if (!(Self->Flags & SCR_BORDERLESS)) {
-         cfgWrite(config, "DISPLAY", "WindowX", Self->X);
-         cfgWrite(config, "DISPLAY", "WindowY", Self->Y);
+         cfgWrite(*config, "DISPLAY", "WindowX", Self->X);
+         cfgWrite(*config, "DISPLAY", "WindowY", Self->Y);
 
-         if (Self->Width >= 600) cfgWrite(config, "DISPLAY", "WindowWidth", Self->Width);
-         else cfgWrite(config, "DISPLAY", "WindowWidth", 600);
+         if (Self->Width >= 600) cfgWrite(*config, "DISPLAY", "WindowWidth", Self->Width);
+         else cfgWrite(*config, "DISPLAY", "WindowWidth", 600);
 
-         if (Self->Height >= 480) cfgWrite(config, "DISPLAY", "WindowHeight", Self->Height);
-         else cfgWrite(config, "DISPLAY", "WindowHeight", 480);
+         if (Self->Height >= 480) cfgWrite(*config, "DISPLAY", "WindowHeight", Self->Height);
+         else cfgWrite(*config, "DISPLAY", "WindowHeight", 480);
       }
 
-      cfgWriteValue(config, "DISPLAY", "DPMS", dpms_name(Self->DPMS));
-      cfgWriteValue(config, "DISPLAY", "FullScreen", (Self->Flags & SCR_BORDERLESS) ? "1" : "0");
+      cfgWriteValue(*config, "DISPLAY", "DPMS", dpms_name(Self->DPMS));
+      cfgWriteValue(*config, "DISPLAY", "FullScreen", (Self->Flags & SCR_BORDERLESS) ? "1" : "0");
 
-      acSaveSettings(config);
-      acFree(config);
+      config->saveSettings();
    }
 
 #elif _WIN32
@@ -1495,21 +1495,21 @@ static ERROR DISPLAY_SaveSettings(extDisplay *Self, APTR Void)
    if ((Self->WindowHandle) and (Self->Width >= 640) and (Self->Height > 480)) {
       // Save the current window status to file, but only if it is large enough to be considered 'screen sized'.
 
-      OBJECTPTR config;
-      if (!CreateObject(ID_CONFIG, 0, &config, FID_Path|TSTR, "user:config/display.cfg", TAGEND)) {
+      objConfig::create config = { fl::Path("user:config/display.cfg") };
+
+      if (config.ok()) {
          LONG x, y, width, height, maximise;
 
          if (winGetWindowInfo(Self->WindowHandle, &x, &y, &width, &height, &maximise)) {
-            cfgWrite(config, "DISPLAY", "WindowWidth", width);
-            cfgWrite(config, "DISPLAY", "WindowHeight", height);
-            cfgWrite(config, "DISPLAY", "WindowX", x);
-            cfgWrite(config, "DISPLAY", "WindowY", y);
-            cfgWrite(config, "DISPLAY", "Maximise", maximise);
-            cfgWriteValue(config, "DISPLAY", "DPMS", dpms_name(Self->DPMS));
-            cfgWriteValue(config, "DISPLAY", "FullScreen", (Self->Flags & SCR_BORDERLESS) ? "1" : "0");
-            acSaveSettings(config);
+            cfgWrite(*config, "DISPLAY", "WindowWidth", width);
+            cfgWrite(*config, "DISPLAY", "WindowHeight", height);
+            cfgWrite(*config, "DISPLAY", "WindowX", x);
+            cfgWrite(*config, "DISPLAY", "WindowY", y);
+            cfgWrite(*config, "DISPLAY", "Maximise", maximise);
+            cfgWriteValue(*config, "DISPLAY", "DPMS", dpms_name(Self->DPMS));
+            cfgWriteValue(*config, "DISPLAY", "FullScreen", (Self->Flags & SCR_BORDERLESS) ? "1" : "0");
+            acSaveSettings(*config);
          }
-         acFree(config);
       }
       else return log.warning(ERR_CreateObject);
    }
@@ -1674,7 +1674,7 @@ static ERROR DISPLAY_SetDisplay(extDisplay *Self, struct gfxSetDisplay *Args)
       ReleaseObject(Self->Bitmap);
       Self->Bitmap = NULL;
 
-      if (!NewObject(ID_BITMAP, NF_INTEGRAL|Self->flags(), &Self->Bitmap, Self->isPublic() ? &Self->BitmapID : NULL)) {
+      if (!NewObject(ID_BITMAP, NF::INTEGRAL|Self->flags(), &Self->Bitmap, Self->isPublic() ? &Self->BitmapID : NULL)) {
          Self->BitmapID = Self->Bitmap->UID;
          Self->Bitmap->BitsPerPixel = bpp;
          Self->Bitmap->Width        = Self->Width;
@@ -1938,16 +1938,16 @@ static ERROR DISPLAY_SetMonitor(extDisplay *Self, struct gfxSetMonitor *Args)
 
    priverror = SetResource(RES_PRIVILEGEDUSER, 1);
 
-   if (!CreateObject(ID_CONFIG, NF_INTEGRAL, &config, FID_Path|TSTR, "config:hardware/monitor.cfg", TAGEND)) {
-      cfgWriteValue(config, "MONITOR", "Name", Self->Display);
-      cfgWrite(config, "MONITOR", "MinH", Self->MinHScan);
-      cfgWrite(config, "MONITOR", "MaxH", Self->MaxHScan);
-      cfgWrite(config, "MONITOR", "MinV", Self->MinVScan);
-      cfgWrite(config, "MONITOR", "MaxV", Self->MaxVScan);
-      cfgWrite(config, "MONITOR", "AutoDetect", (Args->Flags & SMF_AUTODETECT) ? 1 : 0);
-      cfgWrite(config, "MONITOR", "6Bit", glSixBitDisplay);
-      acSaveSettings(config);
-      acFree(config);
+   objConfig::create config = { fl::Path("config:hardware/monitor.cfg") };
+   if (config.ok()) {
+      cfgWriteValue(*config, "MONITOR", "Name", Self->Display);
+      cfgWrite(*config, "MONITOR", "MinH", Self->MinHScan);
+      cfgWrite(*config, "MONITOR", "MaxH", Self->MaxHScan);
+      cfgWrite(*config, "MONITOR", "MinV", Self->MinVScan);
+      cfgWrite(*config, "MONITOR", "MaxV", Self->MaxVScan);
+      cfgWrite(*config, "MONITOR", "AutoDetect", (Args->Flags & SMF_AUTODETECT) ? 1 : 0);
+      cfgWrite(*config, "MONITOR", "6Bit", glSixBitDisplay);
+      config->saveSettings();
    }
 
    if (!priverror) SetResource(RES_PRIVILEGEDUSER, 0);
@@ -2020,7 +2020,7 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
 
       // Post a delayed CheckXWindow() message so that we can respond to changes by the window manager.
 
-      DelayMsg(MT_GfxCheckXWindow, Self->UID, NULL);
+      DelayMsg(MT_GfxCheckXWindow, Self->UID);
 
       // This really shouldn't be here, but until the management of menu focussing is fixed, we need it.
 
@@ -2059,7 +2059,7 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
    OBJECTID pointer_id;
    LONG count = 1;
    if (FindObject("SystemPointer", ID_POINTER, 0, &pointer_id, &count) != ERR_Okay) {
-      if (!NewNamedObject(ID_POINTER, NF_NO_TRACK|NF_PUBLIC|NF_UNIQUE, &pointer, &pointer_id, "SystemPointer")) {
+      if (!NewNamedObject(ID_POINTER, NF::NO_TRACK|NF::PUBLIC|NF::UNIQUE, &pointer, &pointer_id, "SystemPointer")) {
          OBJECTID owner = Self->ownerID();
          if (GetClassID(owner) IS ID_SURFACE) pointer->set(FID_Surface, owner);
 
@@ -2603,7 +2603,7 @@ static ERROR SET_Flags(extDisplay *Self, LONG Value)
 
             if (Self->Flags & SCR_VISIBLE) {
                winShowWindow(Self->WindowHandle, TRUE);
-               DelayMsg(AC_Focus, Self->UID, NULL);
+               DelayMsg(AC_Focus, Self->UID);
             }
          }
 
@@ -2689,7 +2689,7 @@ static ERROR SET_Flags(extDisplay *Self, LONG Value)
          if (Self->Flags & SCR_VISIBLE) {
             acShow(Self);
             XSetInputFocus(XDisplay, Self->XWindowHandle, RevertToNone, CurrentTime);
-            DelayMsg(AC_Focus, Self->UID, NULL);
+            DelayMsg(AC_Focus, Self->UID);
          }
 
          resize_feedback(&Self->ResizeFeedback, Self->UID, Self->X, Self->Y, Self->Width, Self->Height);
@@ -3178,7 +3178,7 @@ void alloc_display_buffer(extDisplay *Self)
 
    objBitmap *buffer;
    ERROR error;
-   if (!NewLockedObject(ID_BITMAP, NF_INTEGRAL|Self->flags(), &buffer, &Self->BufferID)) {
+   if (!NewLockedObject(ID_BITMAP, NF::INTEGRAL|Self->flags(), &buffer, &Self->BufferID)) {
       if (!SetFields(buffer,
             FID_Name|TSTR,           "SystemBuffer",
             FID_BitsPerPixel|TLONG,  Self->Bitmap->BitsPerPixel,

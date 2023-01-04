@@ -321,7 +321,7 @@ static ERROR FILE_BufferContent(extFile *Self, APTR Void)
       }
    }
 
-   log.msg("File content now buffered in a " PF64() " byte memory block.", Self->Size);
+   log.msg("File content now buffered in a %" PF64 " byte memory block.", Self->Size);
 
    close(Self->Handle);
    Self->Handle = -1;
@@ -1318,7 +1318,7 @@ static ERROR FILE_Seek(extFile *Self, struct acSeek *Args)
 
    LARGE ret;
    if ((ret = lseek64(Self->Handle, Self->Position, SEEK_SET)) != Self->Position) {
-      log.warning("Failed to Seek to new position of " PF64() " (return " PF64() ").", Self->Position, ret);
+      log.warning("Failed to Seek to new position of %" PF64 " (return %" PF64 ").", Self->Position, ret);
       Self->Position = oldpos;
       return ERR_SystemCall;
    }
@@ -2570,7 +2570,7 @@ static ERROR GET_Size(extFile *Self, LARGE *Size)
       struct stat64 stats;
       if (!stat64(path, &stats)) {
          *Size = stats.st_size;
-         log.trace("The file size is " PF64(), *Size);
+         log.trace("The file size is %" PF64, *Size);
          return ERR_Okay;
       }
       else return convert_errno(errno, ERR_SystemCall);
@@ -2610,7 +2610,7 @@ static ERROR SET_Size(extFile *Self, LARGE Size)
          return ERR_Okay;
       }
       else {
-         log.warning("Failed to set file size to " PF64(), Size);
+         log.warning("Failed to set file size to %" PF64, Size);
          return ERR_SystemCall;
       }
    }
@@ -2632,7 +2632,7 @@ static ERROR SET_Size(extFile *Self, LARGE Size)
       // Some filesystem drivers do not support truncation for the purpose of
       // enlarging files.  In this case, we have to write to the end of the file.
 
-      log.warning("" PF64() " bytes, ftruncate: %s", Size, strerror(errno));
+      log.warning("%" PF64 " bytes, ftruncate: %s", Size, strerror(errno));
 
       if (Size > Self->Size) {
          CSTRING path;

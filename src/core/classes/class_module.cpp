@@ -319,7 +319,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
    if ((master = check_resident(Self, name))) {
       Self->Master = master;
    }
-   else if (!NewPrivateObject(ID_MODULEMASTER, NF_NO_TRACK, (OBJECTPTR *)&master)) {
+   else if (!NewPrivateObject(ID_MODULEMASTER, NF::NO_TRACK, (OBJECTPTR *)&master)) {
       char path[300];
 
       if (!AccessObject(SystemTaskID, 5000, &Task)) {
@@ -394,7 +394,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
                if (glModulePath[0]) { // If no specific module path is defined, default to the system path and tack on the modules/ suffix.
                   i = StrCopy(glModulePath, path, sizeof(path));
                }
-               else i = StrFormat(path, sizeof(path), "%slib/parasol/", glRootPath);
+               else i = snprintf(path, sizeof(path), "%slib/parasol/", glRootPath);
 
                if (Self->Flags & MOF_LINK_LIBRARY) i += StrCopy("lib/", path+i, sizeof(path-i));
 

@@ -19,7 +19,7 @@ static ERROR SURFACE_Redimension(extSurface *Self, struct acRedimension *Args)
    Message *msg;
    if ((msg = GetActionMsg())) { // If this action was called as a message, then it could have been delayed and thus superseded by a more recent call.
       if (msg->Time < Self->LastRedimension) {
-         log.trace("Ignoring superseded redimension message (" PF64() " < " PF64() ").", msg->Time, Self->LastRedimension);
+         log.trace("Ignoring superseded redimension message (%" PF64 " < %" PF64 ").", msg->Time, Self->LastRedimension);
          return ERR_Okay|ERF_Notified;
       }
    }

@@ -126,14 +126,18 @@ class Component {
    }
 };
 
-class objRemapFX : public extFilterEffect {
+class extRemapFX : public extFilterEffect {
    public:
+   static constexpr CLASSID CLASS_ID = ID_REMAPFX;
+   static constexpr CSTRING CLASS_NAME = "RemapFX";
+   using create = parasol::Create<extRemapFX>;
+
    Component Red;
    Component Green;
    Component Blue;
    Component Alpha;
 
-   objRemapFX() : Red("Red"), Green("Green"), Blue("Blue"), Alpha("Alpha") { }
+   extRemapFX() : Red("Red"), Green("Green"), Blue("Blue"), Alpha("Alpha") { }
 
    Component * getComponent(LONG Component) {
       switch(Component) {
@@ -152,7 +156,7 @@ Draw: Render the effect to the target bitmap.
 -END-
 *********************************************************************************************************************/
 
-static ERROR REMAPFX_Draw(objRemapFX *Self, struct acDraw *Args)
+static ERROR REMAPFX_Draw(extRemapFX *Self, struct acDraw *Args)
 {
    if (Self->Target->BytesPerPixel != 4) return ERR_InvalidState;
 
@@ -213,17 +217,17 @@ static ERROR REMAPFX_Draw(objRemapFX *Self, struct acDraw *Args)
 
 //********************************************************************************************************************
 
-static ERROR REMAPFX_Free(objRemapFX *Self, APTR Void)
+static ERROR REMAPFX_Free(extRemapFX *Self, APTR Void)
 {
-   Self->~objRemapFX();
+   Self->~extRemapFX();
    return ERR_Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR REMAPFX_NewObject(objRemapFX *Self, APTR Void)
+static ERROR REMAPFX_NewObject(extRemapFX *Self, APTR Void)
 {
-   new (Self) objRemapFX;
+   new (Self) extRemapFX;
    return ERR_Okay;
 }
 
@@ -246,7 +250,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR REMAPFX_SelectDiscrete(objRemapFX *Self, struct rfSelectDiscrete *Args)
+static ERROR REMAPFX_SelectDiscrete(extRemapFX *Self, struct rfSelectDiscrete *Args)
 {
    parasol::Log log;
 
@@ -278,7 +282,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR REMAPFX_SelectIdentity(objRemapFX *Self, struct rfSelectIdentity *Args)
+static ERROR REMAPFX_SelectIdentity(extRemapFX *Self, struct rfSelectIdentity *Args)
 {
    parasol::Log log;
 
@@ -312,7 +316,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR REMAPFX_SelectGamma(objRemapFX *Self, struct rfSelectGamma *Args)
+static ERROR REMAPFX_SelectGamma(extRemapFX *Self, struct rfSelectGamma *Args)
 {
    parasol::Log log;
 
@@ -346,7 +350,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR REMAPFX_SelectInvert(objRemapFX *Self, struct rfSelectInvert *Args)
+static ERROR REMAPFX_SelectInvert(extRemapFX *Self, struct rfSelectInvert *Args)
 {
    parasol::Log log;
 
@@ -380,7 +384,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR REMAPFX_SelectLinear(objRemapFX *Self, struct rfSelectLinear *Args)
+static ERROR REMAPFX_SelectLinear(extRemapFX *Self, struct rfSelectLinear *Args)
 {
    parasol::Log log;
 
@@ -417,7 +421,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR REMAPFX_SelectMask(objRemapFX *Self, struct rfSelectMask *Args)
+static ERROR REMAPFX_SelectMask(extRemapFX *Self, struct rfSelectMask *Args)
 {
    parasol::Log log;
 
@@ -453,7 +457,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR REMAPFX_SelectTable(objRemapFX *Self, struct rfSelectTable *Args)
+static ERROR REMAPFX_SelectTable(extRemapFX *Self, struct rfSelectTable *Args)
 {
    parasol::Log log;
 
@@ -476,7 +480,7 @@ XMLDef: Returns an SVG compliant XML string that describes the filter.
 
 *********************************************************************************************************************/
 
-static ERROR REMAPFX_GET_XMLDef(objRemapFX *Self, STRING *Value)
+static ERROR REMAPFX_GET_XMLDef(extRemapFX *Self, STRING *Value)
 {
    std::stringstream stream;
 
@@ -512,7 +516,7 @@ ERROR init_remapfx(void)
       fl::Actions(clRemapFXActions),
       fl::Methods(clRemapFXMethods),
       fl::Fields(clRemapFXFields),
-      fl::Size(sizeof(objRemapFX)),
+      fl::Size(sizeof(extRemapFX)),
       fl::Path(MOD_PATH));
 
    return clRemapFX ? ERR_Okay : ERR_AddClass;

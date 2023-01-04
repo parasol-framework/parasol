@@ -531,12 +531,12 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    activate_console(glLogLevel > 0); // This works for the MinGW runtime libraries but not MSYS2
 
-   // If the log detail is less than 3, use an exception handler to deal with crashes.  Otherwise, do not set the
-   // handler because the developer may want to intercept the crash using a debugger.
+   // An exception handler deals with crashes unless the program is being debugged.
 
-   #ifndef DEBUG
-   if (glLogLevel <= 5) winSetUnhandledExceptionFilter(&CrashHandler);
-   #endif
+   if (!winIsDebuggerPresent()) {
+      winSetUnhandledExceptionFilter(&CrashHandler);
+   }
+   else log.msg("A debugger is active.");
 
    if (!(Info->Flags & OPF_GLOBAL_INSTANCE)) {
       // This process isn't a global instance, so check if there's an existing global process that we can attach to.
@@ -544,7 +544,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       // only available to child processes.
 
       WINHANDLE handle;
-      UBYTE standalone = TRUE;
+      bool standalone = true;
 
       if (!open_public_lock(&handle, glPublicLocks[PL_FORBID].Name)) { // Existing mutex resource is accessible
          free_public_lock(handle);
@@ -552,7 +552,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          if (!open_public_waitlock(&handle, glPublicLocks[CN_SEMAPHORES].Name)) { // Existing event resource is accessible
             free_public_waitlock(handle);
             log.trace("This process will attach to an existing global process.");
-            standalone = FALSE;
+            standalone = false;
          }
          else log.trace("Unable to access all parent process' locks, will run standalone");
       }
@@ -849,7 +849,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    // Allocate the System Task
 
-   if (!(error = NewLockedObject(ID_TASK, NF_NO_TRACK|NF_PUBLIC|NF_UNIQUE, &SystemTask, &SystemTaskID, "SystemTask"))) {
+   if (!(error = NewLockedObject(ID_TASK, NF::NO_TRACK|NF::PUBLIC|NF::UNIQUE, &SystemTask, &SystemTaskID, "SystemTask"))) {
       if (Action(AC_Init, SystemTask, NULL) != ERR_Okay) {
          if (Info->Flags & OPF_ERROR) Info->Error = ERR_Init;
          ReleaseObject(SystemTask);
@@ -910,7 +910,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    // Create our task object.  This is expected to be local to our process, so do not allocate this object publicly.
 
-   if (!NewPrivateObject(ID_TASK, NF_NO_TRACK, (OBJECTPTR *)&localtask)) {
+   if (!NewPrivateObject(ID_TASK, NF::NO_TRACK, (OBJECTPTR *)&localtask)) {
       localtask->Flags |= TSF_DUMMY;
 
       if (Info->Flags & OPF_NAME) {
@@ -2088,7 +2088,7 @@ static ERROR init_filesystem(std::forward_list<CSTRING> &Volumes)
    log.trace("Attempting to create SystemVolumes object.");
 
    ERROR error;
-   if (!(error = NewObject(ID_CONFIG, NF_NO_TRACK, (OBJECTPTR *)&glVolumes))) {
+   if (!(error = NewObject(ID_CONFIG, NF::NO_TRACK, (OBJECTPTR *)&glVolumes))) {
       SetName(glVolumes, "SystemVolumes");
       if (acInit(glVolumes) != ERR_Okay) {
          acFree(glVolumes);
@@ -2099,9 +2099,9 @@ static ERROR init_filesystem(std::forward_list<CSTRING> &Volumes)
          {
             char volpath[120];
             #ifdef _WIN32
-               StrFormat(volpath, sizeof(volpath), "%sconfig\\volumes.cfg", glSystemPath);
+               snprintf(volpath, sizeof(volpath), "%sconfig\\volumes.cfg", glSystemPath);
             #else
-               StrFormat(volpath, sizeof(volpath), "%sconfig/volumes.cfg", glSystemPath);
+               snprintf(volpath, sizeof(volpath), "%sconfig/volumes.cfg", glSystemPath);
             #endif
             cfgMergeFile(glVolumes, volpath);
          }
@@ -2149,7 +2149,7 @@ static ERROR init_filesystem(std::forward_list<CSTRING> &Volumes)
          }
          else {
             char path[200];
-            StrFormat(path, sizeof(path), "%slib/parasol/", glRootPath);
+            snprintf(path, sizeof(path), "%slib/parasol/", glRootPath);
             SetVolume(AST_NAME, "modules", AST_PATH, path, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "misc/brick",  TAGEND);
          }
 
@@ -2215,11 +2215,11 @@ static ERROR init_filesystem(std::forward_list<CSTRING> &Volumes)
                log.msg("Home folder is \"%s\".", homedir);
                for (i=0; (homedir[i]) and (i < (LONG)sizeof(buffer)-1); i++) buffer[i] = homedir[i];
                while ((i > 0) and (buffer[i-1] IS '/')) i--;
-               i += StrFormat(buffer+i, sizeof(buffer)-i, "/.%s%d/", glUserHomeFolder, F2T(VER_CORE));
+               i += snprintf(buffer+i, sizeof(buffer)-i, "/.%s%d/", glUserHomeFolder, F2T(VER_CORE));
             }
             else if ((logname = getenv("LOGNAME")) and (logname[0])) {
                log.msg("Login name for home folder is \"%s\".", logname);
-               i = StrFormat(buffer, sizeof(buffer), "config:users/%s/", logname);
+               i = snprintf(buffer, sizeof(buffer), "config:users/%s/", logname);
                buffer[i] = 0;
             }
             else {
@@ -2231,7 +2231,7 @@ static ERROR init_filesystem(std::forward_list<CSTRING> &Volumes)
             // facility, attempt to retrieve the login name and store the user files in the system folder.
 
             if ((i = winGetUserFolder(buffer, sizeof(buffer)-40))) {
-               StrFormat(buffer+i, sizeof(buffer)-i, "%s%d%d\\", glUserHomeFolder, F2T(VER_CORE), REV_CORE);
+               snprintf(buffer+i, sizeof(buffer)-i, "%s%d%d\\", glUserHomeFolder, F2T(VER_CORE), REV_CORE);
                while (buffer[i]) i++;
             }
             else {

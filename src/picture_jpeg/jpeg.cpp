@@ -25,7 +25,7 @@ extern "C" {
 }
 
 struct CoreBase *CoreBase = NULL;
-static struct DisplayBase *DisplayBase = NULL;
+struct DisplayBase *DisplayBase = NULL;
 static OBJECTPTR clJPEG = NULL;
 static OBJECTPTR modDisplay = NULL;
 
@@ -53,7 +53,7 @@ static ERROR JPEG_Activate(prvPicture *Self, APTR Void)
    if (!Self->prvFile) {
       if (Self->get(FID_Location, &location) != ERR_Okay) return log.warning(ERR_GetField);
 
-      if (CreateObject(ID_FILE, 0, &Self->prvFile,
+      if (CreateObject(ID_FILE, NF::NIL, &Self->prvFile,
             FID_Location|TSTR, location,
             FID_Flags|TLONG,   FL_READ|FL_APPROXIMATE,
             TAGEND) != ERR_Okay) {
@@ -106,7 +106,7 @@ static ERROR JPEG_Activate(prvPicture *Self, APTR Void)
 
       log.trace("Dest BPP of %d requires dithering.", bmp->BitsPerPixel);
 
-      if (!(error = CreateObject(ID_BITMAP, 0, &tmp_bitmap,
+      if (!(error = CreateObject(ID_BITMAP, NF::NIL, &tmp_bitmap,
             FID_Width|TLONG,        bmp->Width,
             FID_Height|TLONG,       bmp->Height,
             FID_BitsPerPixel|TLONG, 24,
@@ -226,10 +226,9 @@ static ERROR JPEG_Query(prvPicture *Self, APTR Void)
       STRING path;
       if (Self->get(FID_Location, &path) != ERR_Okay) return log.warning(ERR_GetField);
 
-      if (CreateObject(ID_FILE, 0, &Self->prvFile,
-            FID_Path|TPTR,   path,
-            FID_Flags|TLONG, FL_READ|FL_APPROXIMATE,
-            TAGEND) != ERR_Okay) return log.warning(ERR_CreateObject);
+      if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_APPROXIMATE)))) {
+         return log.warning(ERR_CreateObject);
+      }
    }
 
    acSeek(Self->prvFile, 0.0, SEEK_START);
@@ -282,7 +281,7 @@ static ERROR JPEG_SaveImage(prvPicture *Self, struct acSaveImage *Args)
          return ERR_GetField;
       }
 
-      if (CreateObject(ID_FILE, 0, &file, FID_Location|TSTR, path, FID_Flags|TLONG, FL_NEW|FL_WRITE, TAGEND) != ERR_Okay) {
+      if (CreateObject(ID_FILE, NF::NIL, &file, FID_Location|TSTR, path, FID_Flags|TLONG, FL_NEW|FL_WRITE, TAGEND) != ERR_Okay) {
          log.warning(ERR_CreateObject);
          return ERR_CreateObject;
       }

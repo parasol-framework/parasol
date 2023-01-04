@@ -235,7 +235,7 @@ EXPORT void CloseCore(void)
             if (mem.Flags & MEM_OBJECT) {
                auto obj = mem.Object;
                if (obj) {
-                  if ((obj->Stats) and (obj->Flags & NF_FOREIGN_OWNER)) {
+                  if ((obj->Stats) and obj->defined(NF::FOREIGN_OWNER)) {
                      acFree(obj);
                      // Don't be concerned about the stability of glPrivateMemory.  FreeResource() takes measures
                      // to avoid destabilising it during shutdown.
@@ -341,7 +341,7 @@ EXPORT void CloseCore(void)
       if ((!glCrashStatus) and (glFDTable)) {
          for (LONG i=0; i < glTotalFDs; i++) {
             if (glFDTable[i].FD) {
-               log.warning("FD " PF64() " was not deregistered prior to program close.  Routine: %p, Data: %p, Flags: $%.8x", (LARGE)glFDTable[i].FD, glFDTable[i].Routine, glFDTable[i].Data, glFDTable[i].Flags);
+               log.warning("FD %" PF64 " was not deregistered prior to program close.  Routine: %p, Data: %p, Flags: $%.8x", (LARGE)glFDTable[i].FD, glFDTable[i].Routine, glFDTable[i].Data, glFDTable[i].Flags);
             }
          }
       }
@@ -740,7 +740,7 @@ static void free_private_memory(void)
             if (mem.Flags & MEM_OBJECT) {
                log.warning("Unfreed private object #%d, Size %d, Class: $%.8x, Container: #%d.", mem.MemoryID, mem.Size, mem.Object->ClassID, mem.OwnerID);
 
-               if (mem.Object->Flags & NF_PUBLIC) remove_shared_object(mem.MemoryID);
+               if (mem.Object->isPublic()) remove_shared_object(mem.MemoryID);
             }
             else log.warning("Unfreed private memory #%d/%p, Size %d, Container: #%d.", mem.MemoryID, mem.Address, mem.Size, mem.OwnerID);
          }

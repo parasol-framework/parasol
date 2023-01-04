@@ -15,8 +15,12 @@ The Superformula is documented in detail at Wikipedia: http://en.wikipedia.org/w
 
 #define DEFAULT_VERTICES (360 * 4)
 
-class objVectorShape : public extVector {
+class extVectorShape : public extVector {
    public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORSHAPE;
+   static constexpr CSTRING CLASS_NAME = "VectorShape";
+   using create = parasol::Create<extVectorShape>;
+
    DOUBLE Radius;
    DOUBLE CX, CY;
    DOUBLE M, N1, N2, N3, A, B, Phi;
@@ -30,7 +34,7 @@ class objVectorShape : public extVector {
 
 //****************************************************************************
 
-static void generate_supershape(objVectorShape *Vector)
+static void generate_supershape(extVectorShape *Vector)
 {
    DOUBLE cx = Vector->CX, cy = Vector->CY;
 
@@ -140,7 +144,7 @@ static void generate_supershape(objVectorShape *Vector)
 
 //****************************************************************************
 
-static ERROR SUPER_NewObject(objVectorShape *Self, APTR Void)
+static ERROR SUPER_NewObject(extVectorShape *Self, APTR Void)
 {
    Self->Radius = 100;
    Self->N1 = 0.1;
@@ -164,13 +168,13 @@ This field sets the Superformula's 'A' parameter value.
 
 *****************************************************************************/
 
-static ERROR SUPER_GET_A(objVectorShape *Self, DOUBLE *Value)
+static ERROR SUPER_GET_A(extVectorShape *Self, DOUBLE *Value)
 {
    *Value = Self->A;
    return ERR_Okay;
 }
 
-static ERROR SUPER_SET_A(objVectorShape *Self, DOUBLE Value)
+static ERROR SUPER_SET_A(extVectorShape *Self, DOUBLE Value)
 {
    Self->A = Value;
    reset_path(Self);
@@ -185,13 +189,13 @@ This field sets the Superformula's 'B' parameter value.
 
 *****************************************************************************/
 
-static ERROR SUPER_GET_B(objVectorShape *Self, DOUBLE *Value)
+static ERROR SUPER_GET_B(extVectorShape *Self, DOUBLE *Value)
 {
    *Value = Self->B;
    return ERR_Okay;
 }
 
-static ERROR SUPER_SET_B(objVectorShape *Self, DOUBLE Value)
+static ERROR SUPER_SET_B(extVectorShape *Self, DOUBLE Value)
 {
    Self->B = Value;
    reset_path(Self);
@@ -206,7 +210,7 @@ The horizontal center of the shape is defined here as either a fixed or relative
 
 *****************************************************************************/
 
-static ERROR SUPER_GET_CenterX(objVectorShape *Self, Variable *Value)
+static ERROR SUPER_GET_CenterX(extVectorShape *Self, Variable *Value)
 {
    DOUBLE val = Self->CX;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_CENTER_X)) val = val * 100.0;
@@ -215,7 +219,7 @@ static ERROR SUPER_GET_CenterX(objVectorShape *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SUPER_SET_CenterX(objVectorShape *Self, Variable *Value)
+static ERROR SUPER_SET_CenterX(extVectorShape *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -242,7 +246,7 @@ The vertical center of the shape is defined here as either a fixed or relative v
 
 *****************************************************************************/
 
-static ERROR SUPER_GET_CenterY(objVectorShape *Self, Variable *Value)
+static ERROR SUPER_GET_CenterY(extVectorShape *Self, Variable *Value)
 {
    DOUBLE val = Self->CY;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_CENTER_Y)) val = val * 100.0;
@@ -251,7 +255,7 @@ static ERROR SUPER_GET_CenterY(objVectorShape *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SUPER_SET_CenterY(objVectorShape *Self, Variable *Value)
+static ERROR SUPER_SET_CenterY(extVectorShape *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -277,13 +281,13 @@ If TRUE, the shape path will be closed between the beginning and end points.
 
 *****************************************************************************/
 
-static ERROR SUPER_GET_Close(objVectorShape *Self, LONG *Value)
+static ERROR SUPER_GET_Close(extVectorShape *Self, LONG *Value)
 {
    *Value = Self->Close;
    return ERR_Okay;
 }
 
-static ERROR SUPER_SET_Close(objVectorShape *Self, LONG Value)
+static ERROR SUPER_SET_Close(extVectorShape *Self, LONG Value)
 {
    Self->Close = Value;
    reset_path(Self);
@@ -308,13 +312,13 @@ The following dimension flags are supported:
 
 *****************************************************************************/
 
-static ERROR SUPER_GET_Dimensions(objVectorShape *Self, LONG *Value)
+static ERROR SUPER_GET_Dimensions(extVectorShape *Self, LONG *Value)
 {
    *Value = Self->Dimensions;
    return ERR_Okay;
 }
 
-static ERROR SUPER_SET_Dimensions(objVectorShape *Self, LONG Value)
+static ERROR SUPER_SET_Dimensions(extVectorShape *Self, LONG Value)
 {
    Self->Dimensions = Value;
    reset_path(Self);
@@ -329,13 +333,13 @@ This field sets the Superformula's 'M' parameter value.
 
 *****************************************************************************/
 
-static ERROR SUPER_GET_M(objVectorShape *Self, DOUBLE *Value)
+static ERROR SUPER_GET_M(extVectorShape *Self, DOUBLE *Value)
 {
    *Value = Self->M;
    return ERR_Okay;
 }
 
-static ERROR SUPER_SET_M(objVectorShape *Self, DOUBLE Value)
+static ERROR SUPER_SET_M(extVectorShape *Self, DOUBLE Value)
 {
    Self->M = Value;
    reset_path(Self);
@@ -364,13 +368,13 @@ generated 'r' value.  Possible values and their effects are:
 
 *****************************************************************************/
 
-static ERROR SUPER_GET_Mod(objVectorShape *Self, LONG *Value)
+static ERROR SUPER_GET_Mod(extVectorShape *Self, LONG *Value)
 {
    *Value = Self->Mod;
    return ERR_Okay;
 }
 
-static ERROR SUPER_SET_Mod(objVectorShape *Self, LONG Value)
+static ERROR SUPER_SET_Mod(extVectorShape *Self, LONG Value)
 {
    Self->Mod = Value;
    reset_path(Self);
@@ -385,13 +389,13 @@ This field sets the Superformula's 'N1' parameter value.
 
 *****************************************************************************/
 
-static ERROR SUPER_GET_N1(objVectorShape *Self, DOUBLE *Value)
+static ERROR SUPER_GET_N1(extVectorShape *Self, DOUBLE *Value)
 {
    *Value = Self->N1;
    return ERR_Okay;
 }
 
-static ERROR SUPER_SET_N1(objVectorShape *Self, DOUBLE Value)
+static ERROR SUPER_SET_N1(extVectorShape *Self, DOUBLE Value)
 {
    Self->N1 = Value;
    reset_path(Self);
@@ -406,13 +410,13 @@ This field sets the Superformula's 'N2' parameter value.
 
 *****************************************************************************/
 
-static ERROR SUPER_GET_N2(objVectorShape *Self, DOUBLE *Value)
+static ERROR SUPER_GET_N2(extVectorShape *Self, DOUBLE *Value)
 {
    *Value = Self->N2;
    return ERR_Okay;
 }
 
-static ERROR SUPER_SET_N2(objVectorShape *Self, DOUBLE Value)
+static ERROR SUPER_SET_N2(extVectorShape *Self, DOUBLE Value)
 {
    Self->N2 = Value;
    reset_path(Self);
@@ -427,13 +431,13 @@ This field sets the Superformula's 'N3' parameter value.
 
 *****************************************************************************/
 
-static ERROR SUPER_GET_N3(objVectorShape *Self, DOUBLE *Value)
+static ERROR SUPER_GET_N3(extVectorShape *Self, DOUBLE *Value)
 {
    *Value = Self->N3;
    return ERR_Okay;
 }
 
-static ERROR SUPER_SET_N3(objVectorShape *Self, DOUBLE Value)
+static ERROR SUPER_SET_N3(extVectorShape *Self, DOUBLE Value)
 {
    Self->N3 = Value;
    reset_path(Self);
@@ -451,13 +455,13 @@ that the Phi value is increased in increments of 2 until the desired effect is a
 
 *****************************************************************************/
 
-static ERROR SUPER_GET_Phi(objVectorShape *Self, DOUBLE *Value)
+static ERROR SUPER_GET_Phi(extVectorShape *Self, DOUBLE *Value)
 {
    *Value = Self->Phi;
    return ERR_Okay;
 }
 
-static ERROR SUPER_SET_Phi(objVectorShape *Self, DOUBLE Value)
+static ERROR SUPER_SET_Phi(extVectorShape *Self, DOUBLE Value)
 {
    if (Value >= 2.0) {
       Self->Phi = Value;
@@ -475,7 +479,7 @@ The Radius defines the final size of the generated shape.  It can be expressed i
 
 *****************************************************************************/
 
-static ERROR SUPER_GET_Radius(objVectorShape *Self, Variable *Value)
+static ERROR SUPER_GET_Radius(extVectorShape *Self, Variable *Value)
 {
    DOUBLE val = Self->Radius;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_RADIUS)) val = val * 100.0;
@@ -484,7 +488,7 @@ static ERROR SUPER_GET_Radius(objVectorShape *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SUPER_SET_Radius(objVectorShape *Self, Variable *Value)
+static ERROR SUPER_SET_Radius(extVectorShape *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -513,13 +517,13 @@ The Repeat value cannot be set in conjunction with #Spiral.
 
 *****************************************************************************/
 
-static ERROR SUPER_GET_Repeat(objVectorShape *Self, LONG *Value)
+static ERROR SUPER_GET_Repeat(extVectorShape *Self, LONG *Value)
 {
    *Value = Self->Repeat;
    return ERR_Okay;
 }
 
-static ERROR SUPER_SET_Repeat(objVectorShape *Self, LONG Value)
+static ERROR SUPER_SET_Repeat(extVectorShape *Self, LONG Value)
 {
    if ((Value >= 0) and (Value < 512)) {
       Self->Repeat = Value;
@@ -538,13 +542,13 @@ specified.  For instance, a value of 5 will generate five spirals.
 
 *****************************************************************************/
 
-static ERROR SUPER_GET_Spiral(objVectorShape *Self, LONG *Value)
+static ERROR SUPER_GET_Spiral(extVectorShape *Self, LONG *Value)
 {
    *Value = Self->Spiral;
    return ERR_Okay;
 }
 
-static ERROR SUPER_SET_Spiral(objVectorShape *Self, LONG Value)
+static ERROR SUPER_SET_Spiral(extVectorShape *Self, LONG Value)
 {
    if (Value >= 0) {
       Self->Spiral = Value;
@@ -564,13 +568,13 @@ their vertices will always touch the sides of an elliptical area.
 -END-
 *****************************************************************************/
 
-static ERROR SUPER_GET_Vertices(objVectorShape *Self, LONG *Value)
+static ERROR SUPER_GET_Vertices(extVectorShape *Self, LONG *Value)
 {
    *Value = Self->Vertices;
    return ERR_Okay;
 }
 
-static ERROR SUPER_SET_Vertices(objVectorShape *Self, LONG Value)
+static ERROR SUPER_SET_Vertices(extVectorShape *Self, LONG Value)
 {
    if ((Value >= 3) and (Value < 16384)) {
       Self->Vertices = Value;
@@ -632,7 +636,7 @@ static ERROR init_supershape(void)
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clVectorShapeActions),
       fl::Fields(clVectorShapeFields),
-      fl::Size(sizeof(objVectorShape)),
+      fl::Size(sizeof(extVectorShape)),
       fl::Path(MOD_PATH));
 
    return clVectorShape ? ERR_Okay : ERR_AddClass;

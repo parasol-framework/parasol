@@ -1,7 +1,7 @@
 --$FLUID:Include
 
 module({ name="Core", copyright="Paul Manias 1996-2022" }, function()
-  c_include("<stdarg.h>")
+  c_include("<stdarg.h>", "<inttypes.h>")
   cpp_include("<list>", "<map>", "<string>", "<vector>", "<unordered_map>", "<bit>")
 
   platform("Windows", function()
@@ -12,6 +12,24 @@ module({ name="Core", copyright="Paul Manias 1996-2022" }, function()
 
   loadFile(glPath .. 'common.fdl')
   loadFile(glPath .. 'common-graphics.fdl')
+
+  c_insert([[
+#ifndef DEFINE_ENUM_FLAG_OPERATORS
+template <size_t S> struct _ENUM_FLAG_INTEGER_FOR_SIZE;
+template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<1> { typedef BYTE type; };
+template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<2> { typedef WORD type; };
+template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<4> { typedef LONG type; };
+// used as an approximation of std::underlying_type<T>
+template <class T> struct _ENUM_FLAG_SIZED_INTEGER { typedef typename _ENUM_FLAG_INTEGER_FOR_SIZE<sizeof(T)>::type type; };
+
+#define DEFINE_ENUM_FLAG_OPERATORS(ENUMTYPE) \
+inline ENUMTYPE operator | (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) | ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+inline ENUMTYPE operator & (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) & ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+inline ENUMTYPE operator ~ (ENUMTYPE a) { return ENUMTYPE(~((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a)); } \
+inline ENUMTYPE operator ^ (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) ^ ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+inline ENUMTYPE &operator |= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) |= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); }
+#endif
+  ]])
 
   flags("SCF", { comment="Script flags" },
     "EXIT_ON_ERROR: The script will automatically terminate its execution process if an error is detected.",
@@ -311,7 +329,7 @@ module({ name="Core", copyright="Paul Manias 1996-2022" }, function()
     "SMART_NAMES: Parse numeric object names as ID references and support use of the 'Owner' reserved keyword.",
     "INCLUDE_SHARED: Include shared objects when searching.")
 
-  flags("NF", { comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word." },
+  flags("NF", { strict=true, comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word." },
     "NO_TRACK|UNTRACKED: An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.",
     "PUBLIC|SHARED: Allocates a shared object using shareable resources, allowing it to be accessed directly by any process.  Access is granted via exclusive access locks  - refer to the AccessObject() and ReleaseObject() functions.",
     "FOREIGN_OWNER: Read-only indicator for when an object's parent is in a foreign process.",
@@ -669,6 +687,10 @@ extern "C" {
  #define LOGRETURN()
 #endif
 
+#ifdef  __cplusplus
+}
+#endif
+
 #define PRIVATE_FIELDS
 
 #undef  NULL    // Turn off any previous definition of NULL
@@ -688,9 +710,11 @@ extern "C" {
 #define CODE_MEMT 0x4D454D54L
 
 #ifdef PRINTF64I
-  #define PF64() "%I64d"
+  #define PF64 "I64d"
+#elif PRINTF64_PRID
+  #define PF64 PRId64
 #else
-  #define PF64() "%lld"
+  #define PF64 "lld"
 #endif
 
 // Use DEBUG_BREAK in critical areas where you would want to break in gdb.  This feature will only be compiled
@@ -700,10 +724,6 @@ extern "C" {
  #define DEBUG_BREAK asm("int $3");
 #else
  #define DEBUG_BREAK
-#endif
-
-#ifdef  __cplusplus
-}
 #endif
 
 // Fast float-2-int conversion, with rounding to the nearest integer (F2I) and truncation (F2T)
@@ -915,12 +935,18 @@ struct FieldValue {
     uchar Step                # Internal
     uchar PlainChar           # Internal
     bit(uchar) Initialised    # Internal
+  ]],
+  [[
+  rkBase64Decode() : Step(0), PlainChar(0), Initialised(0) { };
   ]])
 
   struct("rkBase64Encode", { type="base64encode", comment="Private structure for the Base64Encode() function." }, [[
     uchar Step             # Internal
     uchar Result           # Internal
     int StepCount          # Internal
+  ]],
+  [[
+  rkBase64Encode() : Step(0), Result(0), StepCount(0) { };
   ]])
 
   struct("FeedSubscription", { }, [[
@@ -1211,6 +1237,10 @@ struct ScriptArg { // For use with scExec
 };
 ]])
 
+  c_insert([[
+extern struct CoreBase *CoreBase;
+]])
+
   functionNames(nil,
     "AccessMemory",
     "Action",
@@ -1337,7 +1367,7 @@ struct ScriptArg { // For use with scExec
     "UTF8CharLength",
     "UTF8ReadValue",
     "UTF8WriteValue",
-    "StrFormat",
+    "CopyFile",
     "WaitForObjects",
     "ReadFileToBuffer",
     "StrDatatype",
@@ -1360,8 +1390,7 @@ struct ScriptArg { // For use with scExec
     "ResolvePath",
     "SetVolume",
     "DeleteVolume",
-    "VirtualVolume",
-    "CopyFile")
+    "VirtualVolume")
 
   c_insert([[
 
@@ -1372,23 +1401,12 @@ struct ScriptArg { // For use with scExec
 //********************************************************************************************************************
 
 #ifndef PRV_CORE_MODULE
- #define ActionMsgPort(a,b,c,d,e)  (CoreBase->_ActionMsg(a,b,c,d,e))
  #define DeregisterFD(a)           (CoreBase->_RegisterFD((a), RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL, 0, 0))
- #define DelayAction(a,b,c)        (CoreBase->_ActionMsg(a,b,c,0,(CLASSID)-1))
- #define DelayMsg(a,b,c)           (CoreBase->_ActionMsg(a,b,c,0,(CLASSID)-1))
  #define DeleteMsg(a,b)            (CoreBase->_UpdateMessage(a,b,(APTR)-1,0,0))
  #define GetObjectAddress          (CoreBase->_GetMemAddress)
- #define SendAction(a,b,c,d)       (CoreBase->_ActionMsg(a,b,c,d,0))
- #define WaitMsg(a,b,c)            (CoreBase->_ActionMsg(a,b,c,0,-2))
-
- #undef ActionMsg
- #define ActionMsg(a,b,c)          (CoreBase->_ActionMsg(a,b,c,0,0))
 
  #undef Action
  #define Action(a,b,c)             (CoreBase->_Action(a,b,c))
-
- #undef NewLockedObject
- #define NewLockedObject(a,b,c,d)  (CoreBase->_NewLockedObject(a,b,c,d,0))
 
  #undef PrintDiagnosis
  #define PrintDiagnosis()          (CoreBase->_PrintDiagnosis(NULL,NULL))
@@ -1400,11 +1418,70 @@ struct ScriptArg { // For use with scExec
 #define AllocPublicMemory(a,b,c)  (AllocMemory((a),(b)|MEM_PUBLIC,0,(c)))
 #define AllocPrivateMemory(a,b,c) (AllocMemory((a),(b),(c),0))
 #define NewPrivateObject(a,b,c)   (NewObject(a,b,c))
-#define NewPublicObject(a,b,c)    (NewLockedObject(a,(b)|NF_PUBLIC,0,c))
-#define NewNamedObject(a,b,c,d,e) (CoreBase->_NewLockedObject(a,(b)|NF_NAME,c,d,e))
-#define StrMatch(a,b)             (StrCompare((a),(b),0,STR_MATCH_LEN))
 
-extern struct CoreBase *CoreBase;
+template<class T> inline ERROR SendAction(LONG Action, OBJECTID ObjectID, T *Args, MEMORYID MessageID) {
+   return ActionMsg(Action, ObjectID, Args, MessageID, 0);
+}
+
+template<class T> inline ERROR WaitMsg(LONG Action, OBJECTID ObjectID, T *Args) {
+   return ActionMsg(Action, ObjectID, Args, 0, (CLASSID)-2);
+}
+
+template<class T> inline ERROR DelayAction(LONG Action, OBJECTID ObjectID, T *Args) {
+   return ActionMsg(Action, ObjectID, Args, 0, (CLASSID)-1);
+}
+
+inline ERROR DelayMsg(LONG Action, OBJECTID ObjectID) {
+   return ActionMsg(Action, ObjectID, NULL, 0, (CLASSID)-1);
+}
+
+template<class T> inline ERROR DelayMsg(LONG Action, OBJECTID ObjectID, T *Args) {
+   return ActionMsg(Action, ObjectID, Args, 0, (CLASSID)-1);
+}
+
+inline ERROR ActionMsgPort(LONG Action, OBJECTID ObjectID, APTR Args, MEMORYID MessageID, CLASSID ClassID) {
+   return ActionMsg(Action, ObjectID, Args, MessageID, ClassID);
+}
+
+inline ERROR StrMatch(CSTRING A, CSTRING B) {
+   return StrCompare(A, B, 0, STR_MATCH_LEN);
+}
+
+#ifndef PRV_CORE_MODULE
+
+inline ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args) {
+   return ActionMsg(Action, Object, Args, 0, 0);
+}
+
+template<class T> inline ERROR NewObject(LARGE ClassID, T **Result) {
+   return NewObject(ClassID, NF::NIL, Result);
+}
+
+inline ERROR NewLockedObject(LARGE ClassID, NF Flags, APTR Object, OBJECTID *ID) {
+  return NewLockedObject(ClassID, Flags, Object, ID, NULL);
+}
+
+inline ERROR NewLockedObject(LARGE ClassID, APTR Object, OBJECTID *ID) {
+  return NewLockedObject(ClassID, NF::NIL, Object, ID, NULL);
+}
+
+inline ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo) {
+   return MemoryIDInfo(ID,MemInfo,sizeof(struct MemInfo));
+}
+
+inline ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo) {
+   return MemoryPtrInfo(Address,MemInfo,sizeof(struct MemInfo));
+}
+
+#endif
+
+inline ERROR NewPublicObject(LARGE ClassID, NF Flags, OBJECTID *ID) {
+  return NewLockedObject(ClassID, Flags|NF::PUBLIC, NULL, ID, NULL);
+}
+
+template<class T> inline ERROR NewNamedObject(LARGE ClassID, NF Flags, T **Object, OBJECTID *ID, CSTRING Name) {
+  return NewLockedObject(ClassID, Flags|NF::NAME, Object, ID, Name);
+}
 
 typedef std::map<std::string, std::string> ConfigKeys;
 typedef std::pair<std::string, ConfigKeys> ConfigGroup;
@@ -1439,8 +1516,13 @@ inline DOUBLE StrToFloat(CSTRING String) {
    return strtod(String, NULL);
 }
 
+// NB: Prefer std::to_string(value) where viable to get the std::string of a number.
+
 inline LONG IntToStr(LARGE Integer, STRING String, LONG StringSize) {
-   return StrFormat(String, StringSize, PF64(), Integer);
+   auto str = std::to_string(Integer);
+   auto len = str.copy(String, StringSize-1);
+   String[len] = 0;
+   return len;
 }
 
 inline ERROR ClearMemory(APTR Memory, LONG Length) {
@@ -1469,7 +1551,7 @@ struct BaseClass { // Must be 64-bit aligned
    CLASSID  SubID;              // Reference to the object's sub-class, used to resolve the Class pointer
    OBJECTID UID;                // Unique object identifier
    OBJECTID OwnerID;            // Refers to the owner of this object
-   WORD     Flags;              // Object flags
+   NF       Flags;              // Object flags
    WORD     MemFlags;           // Recommended memory allocation flags
    OBJECTID TaskID;             // The process that this object belongs to
    volatile LONG  ThreadID;     // Managed by locking functions
@@ -1484,21 +1566,22 @@ struct BaseClass { // Must be 64-bit aligned
    volatile bool Locked;        // Set if locked by AccessObject()/AccessPrivateObject()
    BYTE ActionDepth;            // Incremented each time an action or method is called on the object
 
-   inline bool initialised() { return Flags & NF_INITIALISED; }
-   inline bool isPublic() { return Flags & NF_PUBLIC; }
+   inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
+   inline bool isPublic() { return (Flags & NF::PUBLIC) != NF::NIL; }
+   inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
    inline OBJECTID ownerTask() { return TaskID; }
    inline OBJECTID ownerID() { return OwnerID; }
    inline LONG memflags() { return MemFlags; }
-   inline LONG flags() { return Flags; }
+   inline NF flags() { return Flags; }
 
    CSTRING className();
 
    inline bool collecting() { // Is object being freed or marked for collection?
-      return Flags & (NF_FREE|NF_COLLECT);
+      return (Flags & (NF::FREE|NF::COLLECT)) != NF::NIL;
    }
 
    inline bool terminating() { // Is object currently being freed?
-      return Flags & NF_FREE;
+      return (Flags & NF::FREE) != NF::NIL;
    }
 
    inline ERROR threadLock() {
@@ -1736,7 +1819,7 @@ class Create {
       // Return an unscoped integral object (suitable for class allocations only).
 
       template <typename... Args> static T * integral(Args... Fields) {
-         parasol::Create<T> object({ Fields... }, NF_INTEGRAL);
+         parasol::Create<T> object({ Fields... }, NF::INTEGRAL);
          if (object.ok()) return *object;
          else return NULL;
       }
@@ -1744,18 +1827,26 @@ class Create {
       // Return an unscoped and untracked object pointer.
 
       template <typename... Args> static T * untracked(Args... Fields) {
-         parasol::Create<T> object({ Fields... }, NF_UNTRACKED);
+         parasol::Create<T> object({ Fields... }, NF::UNTRACKED);
          if (object.ok()) return *object;
          else return NULL;
       }
 
-      // Create a scoped object
+      // Create a scoped object that is not initialised.
 
-      Create(std::initializer_list<FieldValue> Fields, LONG Flags = 0) : obj(NULL), error(ERR_Failed) {
+      New(NF Flags = NF::NIL) : obj(NULL), error(ERR_NewObject) {
+         if (!NewObject(T::CLASS_ID, Flags, (BaseClass **)&obj)) {
+            error = ERR_Okay;
+         }
+      }
+
+      // Create a scoped object that is fully initialised.
+
+      Create(std::initializer_list<FieldValue> Fields, NF Flags = NF::NIL) : obj(NULL), error(ERR_Failed) {
          parasol::Log log("CreateObject");
          log.branch(T::CLASS_NAME);
 
-         if (!NewObject(T::CLASS_ID, NF_SUPPRESS_LOG|Flags, (BaseClass **)&obj)) {
+         if (!NewObject(T::CLASS_ID, NF::SUPPRESS_LOG|Flags, (BaseClass **)&obj)) {
             for (auto &f : Fields) {
                OBJECTPTR target;
                if (auto field = FindField(obj, f.FieldID, &target)) {
@@ -1801,8 +1892,10 @@ class Create {
 
       ~Create() {
          if (obj) {
-            if ((obj->BaseClass::Flags & NF_INITIALISED) and (obj->BaseClass::Flags & (NF_UNTRACKED|NF_INTEGRAL)))  {
-               return; // Detected a successfully created unscoped object
+            if (obj->initialised()) {
+               if ((obj->BaseClass::Flags & (NF::UNTRACKED|NF::INTEGRAL)) != NF::NIL)  {
+                  return; // Detected a successfully created unscoped object
+               }
             }
             acFree(obj);
             obj = NULL;
@@ -2104,7 +2197,7 @@ inline ERROR cfgWrite(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG Integer)
 {
    if (!Self) return ERR_NullArgs;
    char buffer[32];
-   StrFormat(buffer, sizeof(buffer), "%d", Integer);
+   snprintf(buffer, sizeof(buffer), "%d", Integer);
    struct cfgWriteValue write = { Group, Key, buffer };
    return Action(MT_CfgWriteValue, Self, &write);
 }

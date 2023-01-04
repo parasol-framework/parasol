@@ -66,7 +66,7 @@ static const UBYTE glWrapBreaks[256] = {
 
 OBJECTPTR modFont = NULL;
 struct CoreBase *CoreBase;
-static struct DisplayBase *DisplayBase;
+struct DisplayBase *DisplayBase;
 static OBJECTPTR clFont = NULL;
 static OBJECTPTR modDisplay = NULL;
 static FT_Library glFTLibrary = NULL;
@@ -274,12 +274,9 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    }
 
    LONG type;
-   bool refresh;
+   bool refresh = (AnalysePath("fonts:fonts.cfg", &type) != ERR_Okay) or (type != LOC_FILE);
 
-   if ((AnalysePath("fonts:fonts.cfg", &type) != ERR_Okay) or (type != LOC_FILE)) refresh = true;
-   else refresh = false;
-
-   if (!CreateObject(ID_CONFIG, 0, &glConfig, FID_Name|TSTR, "cfgSystemFonts", FID_Path|TSTR, "fonts:fonts.cfg", TAGEND)) {
+   if ((glConfig = objConfig::create::global(fl::Name("cfgSystemFonts"), fl::Path("fonts:fonts.cfg")))) {
       if (refresh) fntRefreshFonts();
 
       ConfigGroups *groups;
@@ -907,18 +904,13 @@ static ERROR fntInstallFont(CSTRING Files)
 
       // Read the file header to figure out whether the file belongs in the fixed or truetype directory.
 
-      OBJECTPTR file;
-      if (!CreateObject(ID_FILE, 0, &file, FID_Flags|TLONG, FL_READ, FID_Path|TSTR, buffer, TAGEND)) {
-         CSTRING directory = "fixed";
-         if (!acRead(file, buffer, 256, NULL)) {
-            if ((buffer[0] IS 'M') and (buffer[1] IS 'Z')) directory = "fixed";
-            else directory = "truetype";
-
-            StrFormat(buffer, sizeof(buffer), "fonts:%s/", directory);
-            flCopy(file, buffer, NULL);
+      objFile::create file = { fl::Flags(FL_READ), fl::Path(buffer) };
+      if (file.ok()) {
+         if (!file->read(buffer, 256, NULL)) {
+            CSTRING directory = ((buffer[0] IS 'M') and (buffer[1] IS 'Z')) ? "fixed" : "truetype";
+            snprintf(buffer, sizeof(buffer), "fonts:%s/", directory);
+            flCopy(*file, buffer, NULL);
          }
-
-         acFree(file);
       }
 
       if (Files[i]) {
@@ -1178,7 +1170,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
       }
    }
 
-   ConfigKeys *preferred_group, *alt_group;
+   ConfigKeys *preferred_group, *alt_group = NULL;
    std::string preferred_type, alt_type;
 
    if (not ((Point < 12) or (Flags & (FTF_PREFER_FIXED|FTF_REQUIRE_FIXED)))) {
@@ -1306,11 +1298,8 @@ static ERROR fntRefreshFonts(void)
 
    log.trace("Saving the font configuration file.");
 
-   OBJECTPTR file;
-   if (!CreateObject(ID_FILE, 0, &file, FID_Path|TSTR, "fonts:fonts.cfg", FID_Flags|TLONG, FL_NEW|FL_WRITE, TAGEND)) {
-      acSaveToObject(glConfig, file->UID, 0);
-      acFree(file);
-   }
+   objFile::create file = { fl::Path("fonts:fonts.cfg"), fl::Flags(FL_NEW|FL_WRITE) };
+   if (file.ok()) glConfig->saveToObject(file->UID, 0);
 
    return ERR_Okay;
 }
@@ -1331,7 +1320,7 @@ static void scan_truetype_folder(objConfig *Config)
 
    if (!OpenDir("fonts:truetype/", RDF_FILE, &dir)) {
       while (!ScanDir(dir)) {
-         StrFormat(location, sizeof(location), "fonts:truetype/%s", dir->Info->Name);
+         snprintf(location, sizeof(location), "fonts:truetype/%s", dir->Info->Name);
 
          for (j=0; location[j]; j++);
          while ((j > 0) and (location[j-1] != '.') and (location[j-1] != ':') and (location[j-1] != '/') and (location[j-1] != '\\')) j--;
@@ -1423,7 +1412,7 @@ static void scan_fixed_folder(objConfig *Config)
    DirInfo *dir;
    if (!OpenDir("fonts:fixed/", RDF_FILE, &dir)) {
       while (!ScanDir(dir)) {
-         StrFormat(location, sizeof(location), "fonts:fixed/%s", dir->Info->Name);
+         snprintf(location, sizeof(location), "fonts:fixed/%s", dir->Info->Name);
 
          winfnt_header_fields header;
          UBYTE points[20];
@@ -1508,32 +1497,32 @@ static ERROR analyse_bmp_font(STRING Path, winfnt_header_fields *Header, STRING 
    if ((!Path) or (!Header) or (!FaceName)) return ERR_NullArgs;
 
    *FaceName = NULL;
-   parasol::ScopedObject<objFile> file;
-   if (!CreateObject(ID_FILE, 0, &file.obj, FID_Path|TSTR, Path, FID_Flags|TLONG, FL_READ, TAGEND)) {
-      acRead(file.obj, &mz_header, sizeof(mz_header), NULL);
+   objFile::create file = { fl::Path(Path), fl::Flags(FL_READ) };
+   if (file.ok()) {
+      file->read(&mz_header, sizeof(mz_header), NULL);
 
       if (mz_header.magic IS ID_WINMZ) {
-         acSeekStart(file.obj, mz_header.lfanew);
+         file->seekStart(mz_header.lfanew);
 
-         if ((!acRead(file.obj, &ne_header, sizeof(ne_header), NULL)) and (ne_header.magic IS ID_WINNE)) {
+         if ((!file->read(&ne_header, sizeof(ne_header), NULL)) and (ne_header.magic IS ID_WINNE)) {
             res_offset = mz_header.lfanew + ne_header.resource_tab_offset;
-            acSeekStart(file.obj, res_offset);
+            file->seekStart(res_offset);
 
             font_count  = 0;
             font_offset = 0;
-            size_shift  = ReadWordLE(file.obj);
+            flReadLE(*file, &size_shift);
 
-            for (type_id=ReadWordLE(file.obj); type_id; type_id=ReadWordLE(file.obj)) {
-               count = ReadWordLE(file.obj);
+            for (flReadLE(*file, &type_id); type_id; flReadLE(*file, &type_id)) {
+               flReadLE(*file, &count);
 
                if (type_id IS 0x8008) {
                   font_count  = count;
-                  file.obj->get(FID_Position, &font_offset);
+                  file->get(FID_Position, &font_offset);
                   font_offset = font_offset + 4;
                   break;
                }
 
-               acSeekCurrent(file.obj, 4 + count * 12);
+               file->seekCurrent(4 + count * 12);
             }
 
             if ((!font_count) or (!font_offset)) {
@@ -1541,7 +1530,7 @@ static ERROR analyse_bmp_font(STRING Path, winfnt_header_fields *Header, STRING 
                return ERR_Failed;
             }
 
-            acSeekStart(file.obj, font_offset);
+            file->seekStart(font_offset);
 
             {
                winFont fonts[font_count];
@@ -1549,16 +1538,19 @@ static ERROR analyse_bmp_font(STRING Path, winfnt_header_fields *Header, STRING 
                // Get the offset and size of each font entry
 
                for (LONG i=0; i < font_count; i++) {
-                  fonts[i].Offset = ReadWordLE(file.obj)<<size_shift;
-                  fonts[i].Size   = ReadWordLE(file.obj)<<size_shift;
-                  acSeekCurrent(file.obj, 8);
+                  UWORD offset, size;
+                  flReadLE(*file, &offset);
+                  flReadLE(*file, &size);
+                  fonts[i].Offset = offset<<size_shift;
+                  fonts[i].Size   = size<<size_shift;
+                  file->seekCurrent(8);
                }
 
                // Read font point sizes
 
                for (i=0; (i < font_count) and (i < MaxPoints-1); i++) {
-                  acSeekStart(file.obj, fonts[i].Offset);
-                  if (!acRead(file.obj, Header, sizeof(winfnt_header_fields), NULL)) {
+                  file->seekStart(fonts[i].Offset);
+                  if (!file->read(Header, sizeof(winfnt_header_fields), NULL)) {
                      Points[i] = Header->nominal_point_size;
                   }
                }
@@ -1566,9 +1558,9 @@ static ERROR analyse_bmp_font(STRING Path, winfnt_header_fields *Header, STRING 
 
                // Go to the first font in the file and read the font header
 
-               acSeekStart(file.obj, fonts[0].Offset);
+               file->seekStart(fonts[0].Offset);
 
-               if (acRead(file.obj, Header, sizeof(winfnt_header_fields), NULL)) {
+               if (file->read(Header, sizeof(winfnt_header_fields), NULL)) {
                   return ERR_Read;
                }
 
@@ -1586,10 +1578,10 @@ static ERROR analyse_bmp_font(STRING Path, winfnt_header_fields *Header, STRING 
 
                // Extract the name of the font
 
-               acSeekStart(file.obj, fonts[0].Offset + Header->face_name_offset);
+               file->seekStart(fonts[0].Offset + Header->face_name_offset);
 
                for (i=0; (size_t)i < sizeof(face)-1; i++) {
-                  if ((acRead(file.obj, face+i, 1, NULL)) or (!face[i])) break;
+                  if ((file->read(face+i, 1, NULL)) or (!face[i])) break;
                }
                face[i] = 0;
                *FaceName = StrClone(face);

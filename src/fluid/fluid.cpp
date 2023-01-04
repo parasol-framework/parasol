@@ -133,21 +133,21 @@ static STRING flTestCall3(void)
 static void flTestCall4(LONG Long, LARGE Large)
 {
    LogF("TestCall4","Received long %d / $%.8x", Long, Long);
-   LogF("TestCall4","Received large " PF64() " / $%.8x%.8x", Large, (ULONG)Large, (ULONG)(Large>>32));
+   LogF("TestCall4","Received large %" PF64 " / $%.8x%.8x", Large, (ULONG)Large, (ULONG)(Large>>32));
 }
 
 static LONG flTestCall5(LONG LongA, LONG LongB, LONG LongC, LONG LongD, LONG LongE, LARGE LongF)
 {
-   LogF("TestCall5","Received ints: %d, %d, %d, %d, %d, " PF64(), LongA, LongB, LongC, LongD, LongE, LongF);
+   LogF("TestCall5","Received ints: %d, %d, %d, %d, %d, %" PF64, LongA, LongB, LongC, LongD, LongE, LongF);
    LogF("TestCall5","Received ints: $%.8x, $%.8x, $%.8x, $%.8x, $%.8x, $%.8x", LongA, LongB, LongC, LongD, LongE, (LONG)LongF);
    return LongF;
 }
 
 static LARGE flTestCall6(LONG long1, LARGE large1, LARGE large2, LONG long2, LARGE large3, DOUBLE float1)
 {
-   LogF("TestCall6","Received %d, " PF64() ", %d, %d, %d", long1, large1, (LONG)large2, (LONG)long2, (LONG)large3);
+   LogF("TestCall6","Received %d, %" PF64 ", %d, %d, %d", long1, large1, (LONG)large2, (LONG)long2, (LONG)large3);
    LogF("TestCall6","Received double %f", float1);
-   LogF("TestCall6","Returning " PF64(), large2);
+   LogF("TestCall6","Returning %" PF64, large2);
    return large2;
 }
 
@@ -640,8 +640,7 @@ ERROR load_include(objScript *Script, CSTRING IncName)
    AdjustLogLevel(1);
 
       if (!StrMatch("core", IncName)) { // The Core module's IDL is accessible from the RES_CORE_IDL resource.
-         CSTRING idl;
-         if ((idl = (CSTRING)GetResourcePtr(RES_CORE_IDL))) {
+         if (auto idl = (CSTRING)GetResourcePtr(RES_CORE_IDL)) {
             while ((idl) and (*idl)) {
                if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(prv->Lua, idl+2, IncName);
                else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(prv->Lua, idl+2, IncName);
@@ -654,8 +653,8 @@ ERROR load_include(objScript *Script, CSTRING IncName)
          else error = ERR_Failed;
       }
       else { // The IDL for standard modules is retrievable from the IDL string of a loaded module object.
-         OBJECTPTR module;
-         if (!CreateObject(ID_MODULE, NF_INTEGRAL, &module, FID_Name|TSTR, IncName, TAGEND)) {
+         objModule::create module = { fl::Name(IncName) };
+         if (module.ok()) {
             CSTRING idl;
             if ((!(error = module->get(FID_IDL, (STRING *)&idl))) and (idl)) {
                while ((idl) and (*idl)) {
@@ -668,8 +667,6 @@ ERROR load_include(objScript *Script, CSTRING IncName)
                VarSet(inc, IncName, &state, sizeof(state)); // Mark the file as loaded.
             }
             else log.warning("No IDL for module %s", IncName);
-
-            acFree(module);
          }
          else error = ERR_CreateObject;
       }

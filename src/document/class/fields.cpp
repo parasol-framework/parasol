@@ -397,7 +397,7 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
          }
          else {
             load_doc(Self, Self->Path, FALSE, 0);
-            DelayMsg(MT_DrwInvalidateRegion, Self->SurfaceID, NULL);
+            DelayMsg(MT_DrwInvalidateRegion, Self->SurfaceID);
          }
       }
       recursion--;
@@ -412,7 +412,7 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
          if (Self->Bookmark) { FreeResource(Self->Bookmark); Self->Bookmark = NULL; }
          if (Self->XML) { acFree(Self->XML); Self->XML = NULL; }
 
-         DelayMsg(MT_DrwInvalidateRegion, Self->SurfaceID, NULL);
+         DelayMsg(MT_DrwInvalidateRegion, Self->SurfaceID);
       }
    }
    else Self->Error = ERR_AllocMemory;
@@ -501,7 +501,7 @@ static ERROR SET_PageWidth(extDocument *Self, Variable *Value)
    }
    else if (Value->Type & FD_LARGE) {
       if (Value->Large <= 0) {
-         log.warning("A page width of " PF64() " is illegal.", Value->Large);
+         log.warning("A page width of %" PF64 " is illegal.", Value->Large);
          return ERR_OutOfRange;
       }
       Self->PageWidth = Value->Large;
@@ -687,10 +687,10 @@ static ERROR GET_WorkingPath(extDocument *Self, CSTRING *Value)
       if (j > 0) {
          auto save = Self->Path[j];
          Self->Path[j] = 0;
-         StrFormat(buf, sizeof(buf), "%s%s", workingpath, Self->Path);
+         snprintf(buf, sizeof(buf), "%s%s", workingpath, Self->Path);
          Self->Path[j] = save;
       }
-      else StrFormat(buf, sizeof(buf), "%s", workingpath);
+      else snprintf(buf, sizeof(buf), "%s", workingpath);
 
       if (ResolvePath(buf, RSF_APPROXIMATE, &Self->WorkingPath) != ERR_Okay) {
          Self->WorkingPath = StrClone(workingpath);

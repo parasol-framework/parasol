@@ -47,7 +47,7 @@ MODULE_COREBASE;
 static ModuleMaster *modPicture = NULL;
 static OBJECTPTR clPicture = NULL;
 static OBJECTPTR modDisplay = NULL;
-static DisplayBase *DisplayBase = NULL;
+struct DisplayBase *DisplayBase = NULL;
 static THREADVAR bool tlError = false;
 
 static ERROR decompress_png(prvPicture *, objBitmap *, int, int, png_structp, png_infop, png_uint_32, png_uint_32);
@@ -133,24 +133,19 @@ static ERROR PIC_Activate(prvPicture *Self, APTR Void)
    ERROR error = ERR_Failed;
    tlError = false;
 
-   objBitmap *bmp = Self->Bitmap;
+   auto bmp = Self->Bitmap;
    png_structp read_ptr = NULL;
    png_infop info_ptr = NULL;
    png_infop end_info = NULL;
 
    if (!Self->prvFile) {
       STRING path;
-      if (Self->get(FID_Path, &path) != ERR_Okay) {
-         return log.warning(ERR_GetField);
-      }
+      if (Self->get(FID_Path, &path) != ERR_Okay) return log.warning(ERR_GetField);
 
-      if (CreateObject(ID_FILE, 0, &Self->prvFile,
-            FID_Path|TSTR,   path,
-            FID_Flags|TLONG, FL_READ|FL_APPROXIMATE,
-            TAGEND) != ERR_Okay) goto exit;
+      if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_APPROXIMATE)))) goto exit;
    }
 
-   acSeek(Self->prvFile, 0, SEEK_START);
+   Self->prvFile->seekStart(0);
 
    // Allocate PNG structures
 
@@ -209,14 +204,12 @@ static ERROR PIC_Activate(prvPicture *Self, APTR Void)
          bmp->Flags |= BMF_ALPHA_CHANNEL;
       }
       else {
-         if (!NewObject(ID_BITMAP, NF_INTEGRAL, &Self->Mask)) {
-            Self->Mask->Width  = Self->Bitmap->Width;
-            Self->Mask->Height = Self->Bitmap->Height;
-            Self->Mask->AmtColours = 256;
-            Self->Mask->Flags      |= BMF_MASK;
-            if (!acInit(Self->Mask)) Self->Flags |= PCF_MASK|PCF_ALPHA;
-            else goto exit;
+         if ((Self->Mask = objBitmap::create::integral(
+               fl::Width(Self->Bitmap->Width), fl::Height(Self->Bitmap->Height),
+               fl::AmtColours(256), fl::Flags(BMF_MASK)))) {
+            Self->Flags |= PCF_MASK|PCF_ALPHA;
          }
+         else goto exit;
       }
    }
 
@@ -295,20 +288,18 @@ static ERROR PIC_Activate(prvPicture *Self, APTR Void)
    if ((bmp->BitsPerPixel < 24) and
        ((bmp->BitsPerPixel < total_bit_depth) or
         ((total_bit_depth <= 8) and (bmp->BitsPerPixel > 8)))) {
-      objBitmap *tmp_bitmap;
 
       log.msg("Destination Depth %d < Image Depth %d - Dithering.", bmp->BitsPerPixel, total_bit_depth);
 
       // Init our bitmap, since decompress_png() won't in this case.
 
-      if ((error = acQuery(bmp)) != ERR_Okay) goto exit;
+      if ((error = bmp->query())) goto exit;
       if (!bmp->initialised()) {
-         if ((error = acInit(bmp)) != ERR_Okay) goto exit;
+         if ((error = bmp->init())) goto exit;
       }
 
-      // Create our temporary bitmap
-
-      if (!(error = NewObject(ID_BITMAP, 0, &tmp_bitmap))) {
+      objBitmap *tmp_bitmap;
+      if (!(error = NewObject(ID_BITMAP, &tmp_bitmap))) {
          SetFields(tmp_bitmap,
             FID_Width|TLONG,  bmp->Width,
             FID_Height|TLONG, bmp->Height,
@@ -395,7 +386,7 @@ static ERROR PIC_Init(prvPicture *Self, APTR Void)
             if (Self->Flags & PCF_FORCE_ALPHA_32) Self->Flags &= ~(PCF_ALPHA|PCF_MASK);
 
             if (Self->Flags & PCF_ALPHA) {
-               if (!NewObject(ID_BITMAP, NF_INTEGRAL, &Self->Mask)) {
+               if (!NewObject(ID_BITMAP, NF::INTEGRAL, &Self->Mask)) {
                   Self->Mask->Width  = Self->Bitmap->Width;
                   Self->Mask->Height = Self->Bitmap->Height;
                   Self->Mask->Flags |= PCF_MASK;
@@ -406,7 +397,7 @@ static ERROR PIC_Init(prvPicture *Self, APTR Void)
                else return log.warning(ERR_NewObject);
             }
             else if (Self->Flags & PCF_MASK) {
-               if (!NewObject(ID_BITMAP, NF_INTEGRAL, &Self->Mask)) {
+               if (!NewObject(ID_BITMAP, NF::INTEGRAL, &Self->Mask)) {
                   Self->Mask->Width  = Self->Bitmap->Width;
                   Self->Mask->Height = Self->Bitmap->Height;
                   Self->Mask->Flags |= PCF_MASK;
@@ -468,7 +459,7 @@ static ERROR PIC_NewObject(prvPicture *Self, APTR Void)
 
    Self->Quality = 80; // 80% quality rating when saving
 
-   if (!NewObject(ID_BITMAP, NF_INTEGRAL, &Self->Bitmap)) {
+   if (!NewObject(ID_BITMAP, NF::INTEGRAL, &Self->Bitmap)) {
       return ERR_Okay;
    }
    else return log.warning(ERR_NewObject);
@@ -500,13 +491,10 @@ static ERROR PIC_Query(prvPicture *Self, APTR Void)
    if (!Self->prvFile) {
       if (Self->get(FID_Path, &path) != ERR_Okay) return log.warning(ERR_GetField);
 
-      if (CreateObject(ID_FILE, 0, &Self->prvFile,
-            FID_Path|TSTR,   path,
-            FID_Flags|TLONG, FL_READ|FL_APPROXIMATE,
-            TAGEND) != ERR_Okay) goto exit;
+      if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_APPROXIMATE)))) goto exit;
    }
 
-   acSeek(Self->prvFile, 0.0, SEEK_START);
+   Self->prvFile->seekStart(0);
 
    // Allocate PNG structures
 
@@ -599,8 +587,6 @@ static ERROR PIC_SaveImage(prvPicture *Self, struct acSaveImage *Args)
    ERROR error = ERR_Failed;
    tlError = false;
 
-   // Open the data file
-
    if ((Args) and (Args->DestID)) {
       if (AccessObject(Args->DestID, 3000, &file) != ERR_Okay) {
          log.warning("Failed to access destination object #%d.", Args->DestID);
@@ -608,16 +594,9 @@ static ERROR PIC_SaveImage(prvPicture *Self, struct acSaveImage *Args)
       }
    }
    else {
-      if (Self->get(FID_Path, &path) != ERR_Okay) {
-         return log.warning(ERR_MissingPath);
-      }
+      if (Self->get(FID_Path, &path) != ERR_Okay) return log.warning(ERR_MissingPath);
 
-      if (CreateObject(ID_FILE, 0, &file,
-            FID_Path|TSTR,   path,
-            FID_Flags|TLONG, FL_NEW|FL_WRITE,
-            TAGEND) != ERR_Okay) {
-         return ERR_CreateObject;
-      }
+      if (!(file = objFile::create::global(fl::Path(path), fl::Flags(FL_NEW|FL_WRITE)))) return ERR_CreateObject;
    }
 
    // Allocate PNG structures

@@ -15,6 +15,7 @@
 #include <set>
 #include <unordered_map>
 #include <mutex>
+#include <algorithm>
 
 #include <parasol/main.h>
 #include <parasol/modules/xml.h>
@@ -65,13 +66,13 @@ extern struct DisplayBase *DisplayBase;
 extern struct FontBase *FontBase;
 
 typedef agg::pod_auto_array<agg::rgba8, 256> GRADIENT_TABLE;
-typedef class objVectorClip;
 typedef class objVectorTransition;
-typedef class objVectorText;
+typedef class extVectorText;
 typedef class extVector;
 typedef class extVectorScene;
 typedef class extFilterEffect;
 typedef class extVectorViewport;
+typedef class extVectorClip;
 
 //********************************************************************************************************************
 
@@ -218,6 +219,8 @@ class objVectorTransition : public BaseClass {
 
 class extVectorGradient : public objVectorGradient {
    public:
+   using create = parasol::Create<extVectorGradient>;
+
    struct GradientStop *Stops;  // An array of gradient stop colours.
    struct VectorMatrix *Matrices;
    class GradientColours *Colours;
@@ -228,6 +231,8 @@ class extVectorGradient : public objVectorGradient {
 
 class extVectorPattern : public objVectorPattern {
    public:
+   using create = parasol::Create<extVectorPattern>;
+
    struct VectorMatrix *Matrices;
    extVectorViewport *Viewport;
    objBitmap *Bitmap;
@@ -235,6 +240,8 @@ class extVectorPattern : public objVectorPattern {
 
 class extVectorFilter : public objVectorFilter {
    public:
+   using create = parasol::Create<extVectorFilter>;
+
    extVector *ClientVector;            // Client vector or viewport supplied by Scene.acDraw()
    extVectorViewport *ClientViewport;  // The nearest viewport containing the vector.
    extVectorScene *SourceScene;        // Internal scene for rendering SourceGraphic
@@ -255,12 +262,16 @@ class extVectorFilter : public objVectorFilter {
 
 class extFilterEffect : public objFilterEffect {
    public:
+   using create = parasol::Create<extFilterEffect>;
+
    extVectorFilter *Filter; // Direct reference to the parent filter
    UWORD UsageCount;        // Total number of other effects utilising this effect to build a pipeline
 };
 
 class extVector : public objVector {
    public:
+   using create = parasol::Create<extVector>;
+
    DOUBLE FinalX, FinalY;
    DOUBLE BX1, BY1, BX2, BY2;
    DOUBLE FillGradientAlpha, StrokeGradientAlpha;
@@ -278,7 +289,7 @@ class extVector : public objVector {
    std::vector<KeyboardSubscription> *KeyboardSubscriptions;
    extVectorFilter     *Filter;
    extVectorViewport   *ParentView;
-   objVectorClip       *ClipMask;
+   extVectorClip       *ClipMask;
    extVectorGradient   *StrokeGradient, *FillGradient;
    objVectorImage      *FillImage, *StrokeImage;
    extVectorPattern    *FillPattern, *StrokePattern;
@@ -319,6 +330,8 @@ __inline__ bool TabOrderedVector::operator()(const extVector *a, const extVector
 
 class extVectorScene : public objVectorScene {
    public:
+   using create = parasol::Create<extVectorScene>;
+
    DOUBLE ActiveVectorX, ActiveVectorY; // X,Y location of the active vector.
    class VMAdaptor *Adaptor; // Drawing adaptor, targeted to bitmap pixel type
    agg::rendering_buffer *Buffer; // AGG representation of the target bitmap
@@ -340,6 +353,10 @@ class extVectorScene : public objVectorScene {
 
 class extVectorViewport : public extVector {
    public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORVIEWPORT;
+   static constexpr CSTRING CLASS_NAME = "VectorViewport";
+   using create = parasol::Create<extVectorViewport>;
+
    FUNCTION vpDragCallback;
    DOUBLE vpViewX, vpViewY, vpViewWidth, vpViewHeight;     // Viewbox values determine the area of the SVG content that is being sourced.  These values are always fixed pixel units.
    DOUBLE vpTargetX, vpTargetY, vpTargetXO, vpTargetYO, vpTargetWidth, vpTargetHeight; // Target dimensions
@@ -347,7 +364,7 @@ class extVectorViewport : public extVector {
    DOUBLE vpFixedWidth, vpFixedHeight; // Fixed pixel position values, relative to parent viewport
    DOUBLE vpBX1, vpBY1, vpBX2, vpBY2; // Bounding box coordinates relative to (0,0), used for clipping
    DOUBLE vpAlignX, vpAlignY;
-   objVectorClip *vpClipMask; // Automatically generated if the viewport is rotated or sheared.  This is in addition to the Vector ClipMask, which can be user-defined.
+   extVectorClip *vpClipMask; // Automatically generated if the viewport is rotated or sheared.  This is in addition to the Vector ClipMask, which can be user-defined.
    LONG  vpDimensions;
    LONG  vpAspectRatio;
    UBYTE vpDragging:1;
@@ -356,21 +373,33 @@ class extVectorViewport : public extVector {
 
 //********************************************************************************************************************
 
-class objVectorPoly : public extVector {
+class extVectorPoly : public extVector {
    public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORPOLYGON;
+   static constexpr CSTRING CLASS_NAME = "VectorPolygon";
+   using create = parasol::Create<extVectorPoly>;
+
    struct VectorPoint *Points;
    LONG TotalPoints;
    bool Closed:1;      // Polygons are closed (TRUE) and Polylines are open (FALSE)
 };
 
-class objVectorPath : public extVector {
+class extVectorPath : public extVector {
    public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORPATH;
+   static constexpr CSTRING CLASS_NAME = "VectorPath";
+   using create = parasol::Create<extVectorPath>;
+
    std::vector<PathCommand> Commands;
    agg::path_storage *CustomPath;
 };
 
-class objVectorRectangle : public extVector {
+class extVectorRectangle : public extVector {
    public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORRECTANGLE;
+   static constexpr CSTRING CLASS_NAME = "VectorRectangle";
+   using create = parasol::Create<extVectorRectangle>;
+
    DOUBLE rX, rY;
    DOUBLE rWidth, rHeight;
    DOUBLE rRoundX, rRoundY;
@@ -385,8 +414,12 @@ class GradientColours {
       GRADIENT_TABLE table;
 };
 
-class objVectorClip : public extVector {
+class extVectorClip : public extVector {
    public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORCLIP;
+   static constexpr CSTRING CLASS_NAME = "VectorClip";
+   using create = parasol::Create<extVectorClip>;
+
    UBYTE *ClipData;
    agg::path_storage *ClipPath; // Internally generated path
    agg::rendering_buffer ClipRenderer;
@@ -734,21 +767,19 @@ inline static DOUBLE dist(DOUBLE X1, DOUBLE Y1, DOUBLE X2, DOUBLE Y2)
 
 inline static void save_bitmap(objBitmap *Bitmap, std::string Name)
 {
-   objPicture *pic;
    std::string path = "temp:bmp_" + Name + ".png";
 
-   if (!CreateObject(ID_PICTURE, 0, &pic,
-         FID_Width|TLONG,        Bitmap->Clip.Right - Bitmap->Clip.Left,
-         FID_Height|TLONG,       Bitmap->Clip.Bottom - Bitmap->Clip.Top,
-         FID_BitsPerPixel|TLONG, 32,
-         FID_Flags|TLONG,        PCF_FORCE_ALPHA_32|PCF_NEW,
-         FID_Path|TSTR,          path.c_str(),
-         FID_ColourSpace|TLONG,  Bitmap->ColourSpace,
-         TAGEND)) {
+   objPicture::create pic = {
+      fl::Width(Bitmap->Clip.Right - Bitmap->Clip.Left),
+      fl::Height(Bitmap->Clip.Bottom - Bitmap->Clip.Top),
+      fl::BitsPerPixel(32),
+      fl::Flags(PCF_FORCE_ALPHA_32|PCF_NEW),
+      fl::Path(path),
+      fl::ColourSpace(Bitmap->ColourSpace) };
 
+   if (pic.ok()) {
       gfxCopyArea(Bitmap, pic->Bitmap, 0, Bitmap->Clip.Left, Bitmap->Clip.Top, pic->Bitmap->Width, pic->Bitmap->Height, 0, 0);
-      acSaveImage(pic, 0, 0);
-      acFree(pic);
+      acSaveImage(*pic, 0, 0);
    }
 }
 
@@ -756,17 +787,17 @@ inline static void save_bitmap(objBitmap *Bitmap, std::string Name)
 
 inline static void save_bitmap(std::string Name, UBYTE *Data, LONG Width, LONG Height, LONG BPP = 32)
 {
-   objPicture *pic;
    std::string path = "temp:raw_" + Name + ".png";
 
-   if (!CreateObject(ID_PICTURE, 0, &pic,
-         FID_Width|TLONG,        Width,
-         FID_Height|TLONG,       Height,
-         FID_BitsPerPixel|TLONG, BPP,
-         FID_Flags|TLONG,        PCF_FORCE_ALPHA_32|PCF_NEW,
-         FID_Path|TSTR,          path.c_str(),
-         TAGEND)) {
+   objPicture::create pic = {
+      fl::Width(Width),
+      fl::Height(Height),
+      fl::BitsPerPixel(BPP),
+      fl::Flags(PCF_FORCE_ALPHA_32|PCF_NEW),
+      fl::Path(path)
+   };
 
+   if (pic.ok()) {
       const LONG byte_width = Width * pic->Bitmap->BytesPerPixel;
       UBYTE *out = pic->Bitmap->Data;
       for (LONG y=0; y < Height; y++) {
@@ -774,8 +805,7 @@ inline static void save_bitmap(std::string Name, UBYTE *Data, LONG Width, LONG H
          out  += pic->Bitmap->LineWidth;
          Data += Width * pic->Bitmap->BytesPerPixel;
       }
-      acSaveImage(pic, 0, 0);
-      acFree(pic);
+      acSaveImage(*pic, 0, 0);
    }
 }
 
@@ -847,7 +877,7 @@ void configure_stroke(extVector &Vector, T &Stroke)
 
    if (Vector.LineJoin) {
       if (Vector.SubID IS ID_VECTORPOLYGON) {
-         if (((objVectorPoly &)Vector).Closed) {
+         if (((extVectorPoly &)Vector).Closed) {
             switch(Vector.LineJoin) {
                case VLJ_MITER:        Stroke.line_cap(agg::square_cap); break;
                case VLJ_BEVEL:        Stroke.line_cap(agg::square_cap); break;
@@ -866,9 +896,9 @@ void configure_stroke(extVector &Vector, T &Stroke)
 
 extern agg::gamma_lut<UBYTE, UWORD, 8, 12> glGamma;
 
-extern void get_text_xy(objVectorText *);
+extern void get_text_xy(extVectorText *);
 extern void  vecArcTo(class SimpleVector *, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, LONG Flags);
-extern ERROR vecApplyPath(class SimpleVector *, objVectorPath *);
+extern ERROR vecApplyPath(class SimpleVector *, extVectorPath *);
 extern void  vecClosePath(class SimpleVector *);
 extern void  vecCurve3(class SimpleVector *, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
 extern void  vecCurve4(class SimpleVector *, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y);

@@ -381,7 +381,7 @@ class objSound : public BaseClass {
    inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
       struct acGetVar args = { FieldName, Buffer, Size };
       ERROR error = Action(AC_GetVar, this, &args);
-      if ((error) AND (Buffer)) Buffer[0] = 0;
+      if ((error) and (Buffer)) Buffer[0] = 0;
       return error;
    }
    inline ERROR init() { return Action(AC_Init, this, NULL); }
@@ -390,7 +390,7 @@ class objSound : public BaseClass {
       struct acSaveToObject args = { { DestID }, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
-   inline ERROR seek(DOUBLE Offset, LONG Position) {
+   inline ERROR seek(DOUBLE Offset, LONG Position = SEEK_CURRENT) {
       struct acSeek args = { Offset, Position };
       return Action(AC_Seek, this, &args);
    }
@@ -403,17 +403,18 @@ class objSound : public BaseClass {
    }
 };
 
+extern struct AudioBase *AudioBase;
 struct AudioBase {
    ERROR (*_StartDrivers)(void);
-   ERROR (*_WaitDrivers)(LONG);
-   LONG (*_SetChannels)(LONG);
-   DOUBLE (*_SetTaskVolume)(DOUBLE);
+   ERROR (*_WaitDrivers)(LONG TimeOut);
+   LONG (*_SetChannels)(LONG Total);
+   DOUBLE (*_SetTaskVolume)(DOUBLE Volume);
 };
 
 #ifndef PRV_AUDIO_MODULE
-#define sndStartDrivers(...) (AudioBase->_StartDrivers)(__VA_ARGS__)
-#define sndWaitDrivers(...) (AudioBase->_WaitDrivers)(__VA_ARGS__)
-#define sndSetChannels(...) (AudioBase->_SetChannels)(__VA_ARGS__)
-#define sndSetTaskVolume(...) (AudioBase->_SetTaskVolume)(__VA_ARGS__)
+inline ERROR sndStartDrivers(void) { return AudioBase->_StartDrivers(); }
+inline ERROR sndWaitDrivers(LONG TimeOut) { return AudioBase->_WaitDrivers(TimeOut); }
+inline LONG sndSetChannels(LONG Total) { return AudioBase->_SetChannels(Total); }
+inline DOUBLE sndSetTaskVolume(DOUBLE Volume) { return AudioBase->_SetTaskVolume(Volume); }
 #endif
 

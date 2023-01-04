@@ -364,12 +364,8 @@ static void tag_call(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
    CSTRING *results;
    LONG size;
    if ((!GetFieldArray(script, FID_Results, &results, &size)) and (size > 0)) {
-      objXML *xmlinc;
-      if (!CreateObject(ID_XML, 0, &xmlinc,
-            FID_Statement|TSTR, results[0],
-            FID_Flags|TLONG,    XMF_PARSE_HTML|XMF_STRIP_HEADERS,
-            TAGEND)) {
-
+      auto xmlinc = objXML::create::global(fl::Statement(results[0]), fl::Flags(XMF_PARSE_HTML|XMF_STRIP_HEADERS));
+      if (xmlinc) {
          parse_tag(Self, xmlinc, xmlinc->Tags[0], Index, Flags);
 
          // Add the created XML object to the document rather than destroying it
@@ -681,16 +677,10 @@ static void tag_head(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 static void tag_include(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
-   CSTRING src;
-   if ((src = XMLATTRIB(Tag, "src"))) {
-      objXML *xmlinc;
-      if (!CreateObject(ID_XML, NF_INTEGRAL, &xmlinc,
-            FID_Path|TSTR,   src,
-            FID_Flags|TLONG, XMF_PARSE_HTML|XMF_STRIP_HEADERS,
-            TAGEND)) {
 
+   if (auto src = XMLATTRIB(Tag, "src")) {
+      if (auto xmlinc = objXML::create::integral(fl::Path(src), fl::Flags(XMF_PARSE_HTML|XMF_STRIP_HEADERS))) {
          parse_tag(Self, xmlinc, xmlinc->Tags[0], Index, Flags);
-
          add_resource_id(Self, xmlinc->UID, RT_OBJECT_TEMP);
       }
       else log.warning("Failed to include '%s'", src);
@@ -716,12 +706,7 @@ static void tag_parse(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
 
          log.traceBranch("Parsing string value as XML...");
 
-         objXML *xmlinc;
-         if (!CreateObject(ID_XML, NF_INTEGRAL, &xmlinc,
-               FID_Statement|TSTR, Self->Temp,
-               FID_Flags|TLONG,    XMF_PARSE_HTML|XMF_STRIP_HEADERS,
-               TAGEND)) {
-
+         if (auto xmlinc = objXML::create::integral(fl::Statement(Self->Temp), fl::Flags(XMF_PARSE_HTML|XMF_STRIP_HEADERS))) {
             parse_tag(Self, xmlinc, xmlinc->Tags[0], Index, Flags);
 
             // Add the created XML object to the document rather than destroying it
@@ -846,7 +831,7 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
             buffersize += StrLength(function) + 1;
          }
       }
-      else if ((!StrMatch("hint", Tag->Attrib[i].Name)) AND
+      else if ((!StrMatch("hint", Tag->Attrib[i].Name)) and
                (!StrMatch("title", Tag->Attrib[i].Name))) { // 'title' is the http equivalent of our 'hint'
          log.msg("No support for <a> hints yet.");
          hint = Tag->Attrib[i].Value;
@@ -1364,9 +1349,9 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
    FIELD field_id;
    BYTE customised;
 
-   // NF_INTEGRAL is only set when the object is owned by the document
+   // NF::INTEGRAL is only set when the object is owned by the document
 
-   if (NewLockedObject(class_id, (Self->CurrentObject) ? 0 : NF_INTEGRAL, &object, &object_id)) {
+   if (NewLockedObject(class_id, (Self->CurrentObject) ? NF::NIL : NF::INTEGRAL, &object, &object_id)) {
       log.warning("Failed to create object of class #%d.", class_id);
       return;
    }
@@ -1637,7 +1622,6 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
 {
    parasol::Log log(__FUNCTION__);
    OBJECTPTR script;
-   objXML *xmlinc;
    ERROR error;
 
    CSTRING type = "fluid";
@@ -1733,7 +1717,7 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
    }
 
    if (!StrMatch("fluid", type)) {
-      error = NewObject(ID_FLUID, NF_INTEGRAL, &script);
+      error = NewObject(ID_FLUID, NF::INTEGRAL, &script);
    }
    else {
       error = ERR_NoSupport;
@@ -1792,11 +1776,8 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
             CSTRING *results;
             LONG size;
             if ((!GetFieldArray(script, FID_Results, &results, &size)) and (size > 0)) {
-               if (!CreateObject(ID_XML, 0, &xmlinc,
-                     FID_Statement|TSTR, results[0],
-                     FID_Flags|TLONG,    XMF_PARSE_HTML|XMF_STRIP_HEADERS,
-                     TAGEND)) {
-
+               auto xmlinc = objXML::create::global(fl::Statement(results[0]), fl::Flags(XMF_PARSE_HTML|XMF_STRIP_HEADERS));
+               if (xmlinc) {
                   parse_tag(Self, xmlinc, xmlinc->Tags[0], Index, Flags);
 
                   // Add the created XML object to the document rather than destroying it
@@ -2526,8 +2507,8 @@ static void tag_page(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 
    if ((name = str = XMLATTRIB(Tag, "name"))) {
       while (*str) {
-         if (((*str >= 'A') and (*str <= 'Z')) OR
-             ((*str >= 'a') and (*str <= 'z')) OR
+         if (((*str >= 'A') and (*str <= 'Z')) or
+             ((*str >= 'a') and (*str <= 'z')) or
              ((*str >= '0') and (*str <= '9'))) {
             // Character is valid
          }

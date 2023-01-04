@@ -291,14 +291,14 @@ next:
                else keys["Path"] = keys["Path"] + "|" + path;
 
                if (flags & VOLUME_SAVE) { // Save the volume permanently
-                  objConfig::create userconfig = { fl::Path(savefile) };
+                  objConfig::create cfg = { fl::Path(savefile) };
 
-                  if (userconfig.ok()) {
-                     cfgWriteValue(*userconfig, group.c_str(), "Path", keys["Path"].c_str());
+                  if (cfg.ok()) {
+                     cfgWriteValue(*cfg, group.c_str(), "Path", keys["Path"].c_str());
                      objFile::create file = {
                         fl::Path(savefile), fl::Flags(FL_WRITE|FL_NEW), fl::Permissions(savepermissions)
                      };
-                     if (file.ok()) userconfig->saveToObject(file->UID, 0);
+                     if (file.ok()) cfg->saveToObject(file->UID, 0);
                   }
                }
 

@@ -85,7 +85,7 @@ static ERROR SVG_Free(extSVG *Self, APTR Void)
    if (Self->Path)   { FreeResource(Self->Path);   Self->Path = NULL; }
    if (Self->Title)  { FreeResource(Self->Title);  Self->Title = NULL; }
 
-   svgAnimation *anim = Self->Animations;
+   auto anim = Self->Animations;
    while (anim) {
       auto next = anim->Next;
       for (LONG i=0; i < anim->ValueCount; i++) { FreeResource(anim->Values[i]); anim->Values[i] = NULL; }
@@ -94,7 +94,7 @@ static ERROR SVG_Free(extSVG *Self, APTR Void)
    }
    Self->Animations = NULL;
 
-   svgInherit *inherit = Self->Inherit;
+   auto inherit = Self->Inherit;
    while (inherit) {
       auto next = inherit->Next;
       FreeResource(inherit);
@@ -119,7 +119,7 @@ generate the content in a local #Scene object, or alternatively the content can 
 static ERROR SVG_Init(extSVG *Self, APTR Void)
 {
    if (!Self->Target) {
-      if (!CreateObject(ID_VECTORSCENE, NF_INTEGRAL, &Self->Target, TAGEND)) {
+      if ((Self->Target = objVectorScene::create::integral())) {
          Self->Scene = (objVectorScene *)Self->Target;
       }
       else return ERR_NewObject;
@@ -219,20 +219,13 @@ static ERROR SVG_SaveImage(extSVG *Self, struct acSaveImage *Args)
    if (!width) width = 1920;
    if (!height) height = 1080;
 
-   objPicture *pic;
-   if (!CreateObject(ID_PICTURE, 0, &pic,
-         FID_Width|TLONG,  width,
-         FID_Height|TLONG, height,
-         FID_Flags|TLONG,  PCF_ALPHA|PCF_NEW,
-         TAGEND)) {
-
+   objPicture::create pic = { fl::Width(width), fl::Height(height), fl::Flags(PCF_ALPHA|PCF_NEW) };
+   if (pic.ok()) {
       if (!(error = svgRender(Self, pic->Bitmap, 0, 0, width, height))) {
-         if (!(error = acSaveImage(pic, Args->DestID, Args->ClassID))) {
+         if (!(error = acSaveImage(*pic, Args->DestID, Args->ClassID))) {
             return ERR_Okay;
          }
       }
-
-      acFree(pic);
    }
    else error = ERR_CreateObject;
 
@@ -270,23 +263,22 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
       else return log.warning(ERR_GetField);
    }
    else {
-      objXML *xml;
-      if (!CreateObject(ID_XML, NF_INTEGRAL, &xml,
-            FID_Flags|TLONG, XMF_NEW|XMF_READABLE,
-            TAGEND)) {
-         ERROR error = xmlInsertXML(xml, 0, 0, header, NULL);
+      objXML::create xml = { fl::Flags(XMF_NEW|XMF_READABLE) };
+
+      if (xml.ok()) {
+         ERROR error = xmlInsertXML(*xml, 0, 0, header, NULL);
          LONG index = xml->TagCount-1;
 
-         if (!(error = xmlInsertXML(xml, index, XMI_NEXT, "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:parasol=\"http://www.parasol.ws/xmlns/svg\"/>", &index))) {
+         if (!(error = xmlInsertXML(*xml, index, XMI_NEXT, "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:parasol=\"http://www.parasol.ws/xmlns/svg\"/>", &index))) {
             bool multiple_viewports = (Self->Scene->Viewport->Next) ? true : false;
             if (multiple_viewports) {
-               if (!(error = save_svg_defs(Self, xml, Self->Scene, index))) {
+               if (!(error = save_svg_defs(Self, *xml, Self->Scene, index))) {
                   for (auto scan=Self->Scene->Viewport; scan; scan=(objVectorViewport *)scan->Next) {
                      if (!scan->Child) continue; // Ignore dummy viewports with no content
-                     save_svg_scan(Self, xml, scan, index);
+                     save_svg_scan(Self, *xml, scan, index);
                   }
 
-                  error = acSaveToObject(xml, Args->DestID, 0);
+                  error = xml->saveToObject(Args->DestID, 0);
                }
             }
             else {
@@ -294,38 +286,37 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
 
                if (!(error = GetFields(Self->Viewport, FID_ViewX|TDOUBLE, &x, FID_ViewY|TDOUBLE, &y, FID_ViewWidth|TDOUBLE, &width, FID_ViewHeight|TDOUBLE, &height, TAGEND))) {
                   char buffer[80];
-                  StrFormat(buffer, sizeof(buffer), "%g %g %g %g", x, y, width, height);
-                  xmlSetAttrib(xml, index, XMS_NEW, "viewBox", buffer);
+                  snprintf(buffer, sizeof(buffer), "%g %g %g %g", x, y, width, height);
+                  xmlSetAttrib(*xml, index, XMS_NEW, "viewBox", buffer);
                }
 
                LONG dim;
                if ((!error) and (!(error = Self->Viewport->get(FID_Dimensions, &dim)))) {
                   if ((dim & (DMF_RELATIVE_X|DMF_FIXED_X)) and (!Self->Viewport->get(FID_X, &x)))
-                     set_dimension(xml, index, "x", x, dim & DMF_RELATIVE_X);
+                     set_dimension(*xml, index, "x", x, dim & DMF_RELATIVE_X);
 
                   if ((dim & (DMF_RELATIVE_Y|DMF_FIXED_Y)) and (!Self->Viewport->get(FID_Y, &y)))
-                     set_dimension(xml, index, "y", y, dim & DMF_RELATIVE_Y);
+                     set_dimension(*xml, index, "y", y, dim & DMF_RELATIVE_Y);
 
                   if ((dim & (DMF_RELATIVE_WIDTH|DMF_FIXED_WIDTH)) and (!Self->Viewport->get(FID_Width, &width)))
-                     set_dimension(xml, index, "width", width, dim & DMF_RELATIVE_WIDTH);
+                     set_dimension(*xml, index, "width", width, dim & DMF_RELATIVE_WIDTH);
 
                   if ((dim & (DMF_RELATIVE_HEIGHT|DMF_FIXED_HEIGHT)) and (!Self->Viewport->get(FID_Height, &height)))
-                     set_dimension(xml, index, "height", height, dim & DMF_RELATIVE_HEIGHT);
+                     set_dimension(*xml, index, "height", height, dim & DMF_RELATIVE_HEIGHT);
                }
 
                if (!error) {
-                  if (!(error = save_svg_defs(Self, xml, Self->Scene, index))) {
+                  if (!(error = save_svg_defs(Self, *xml, Self->Scene, index))) {
                      for (auto scan=((objVector *)Self->Viewport)->Child; scan; scan=scan->Next) {
-                        save_svg_scan(Self, xml, scan, index);
+                        save_svg_scan(Self, *xml, scan, index);
                      }
 
-                     error = acSaveToObject(xml, Args->DestID, 0);
+                     error = xml->saveToObject(Args->DestID, 0);
                   }
                }
             }
          }
 
-         acFree(xml);
          return error;
       }
       else return ERR_CreateObject;

@@ -43,8 +43,12 @@ image.  The Input image must remain in its current color space.
 
 *********************************************************************************************************************/
 
-class objDisplacementFX : public extFilterEffect {
+class extDisplacementFX : public extFilterEffect {
    public:
+   static constexpr CLASSID CLASS_ID = ID_DISPLACEMENTFX;
+   static constexpr CSTRING CLASS_NAME = "DisplacementFX";
+   using create = parasol::Create<extDisplacementFX>;
+
    DOUBLE Scale;
    LONG XChannel, YChannel;
 };
@@ -55,7 +59,7 @@ Draw: Render the effect to the target bitmap.
 -END-
 *********************************************************************************************************************/
 
-static ERROR DISPLACEMENTFX_Draw(objDisplacementFX *Self, struct acDraw *Args)
+static ERROR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
 {
    parasol::Log log;
 
@@ -141,7 +145,7 @@ static ERROR DISPLACEMENTFX_Draw(objDisplacementFX *Self, struct acDraw *Args)
 
 //********************************************************************************************************************
 
-static ERROR DISPLACEMENTFX_NewObject(objDisplacementFX *Self, APTR Void)
+static ERROR DISPLACEMENTFX_NewObject(extDisplacementFX *Self, APTR Void)
 {
    Self->Scale = 0; // SVG default requires this is 0, which makes the displacment algorithm ineffective.
    Self->XChannel = CMP_ALPHA;
@@ -159,13 +163,13 @@ When the value of this field is 0, this operation has no effect on the source im
 
 *********************************************************************************************************************/
 
-static ERROR DISPLACEMENTFX_GET_Scale(objDisplacementFX *Self, DOUBLE *Value)
+static ERROR DISPLACEMENTFX_GET_Scale(extDisplacementFX *Self, DOUBLE *Value)
 {
    *Value = Self->Scale;
    return ERR_Okay;
 }
 
-static ERROR DISPLACEMENTFX_SET_Scale(objDisplacementFX *Self, DOUBLE Value)
+static ERROR DISPLACEMENTFX_SET_Scale(extDisplacementFX *Self, DOUBLE Value)
 {
    Self->Scale = Value;
    return ERR_Okay;
@@ -179,13 +183,13 @@ Lookup: CMP
 
 *********************************************************************************************************************/
 
-static ERROR DISPLACEMENTFX_GET_XChannel(objDisplacementFX *Self, LONG *Value)
+static ERROR DISPLACEMENTFX_GET_XChannel(extDisplacementFX *Self, LONG *Value)
 {
    *Value = Self->XChannel;
    return ERR_Okay;
 }
 
-static ERROR DISPLACEMENTFX_SET_XChannel(objDisplacementFX *Self, LONG Value)
+static ERROR DISPLACEMENTFX_SET_XChannel(extDisplacementFX *Self, LONG Value)
 {
    Self->XChannel = Value;
    return ERR_Okay;
@@ -199,13 +203,13 @@ Lookup: CMP
 
 *********************************************************************************************************************/
 
-static ERROR DISPLACEMENTFX_GET_YChannel(objDisplacementFX *Self, LONG *Value)
+static ERROR DISPLACEMENTFX_GET_YChannel(extDisplacementFX *Self, LONG *Value)
 {
    *Value = Self->YChannel;
    return ERR_Okay;
 }
 
-static ERROR DISPLACEMENTFX_SET_YChannel(objDisplacementFX *Self, LONG Value)
+static ERROR DISPLACEMENTFX_SET_YChannel(extDisplacementFX *Self, LONG Value)
 {
    Self->YChannel = Value;
    return ERR_Okay;
@@ -219,7 +223,7 @@ XMLDef: Returns an SVG compliant XML string that describes the effect.
 
 *********************************************************************************************************************/
 
-static ERROR DISPLACEMENTFX_GET_XMLDef(objDisplacementFX *Self, STRING *Value)
+static ERROR DISPLACEMENTFX_GET_XMLDef(extDisplacementFX *Self, STRING *Value)
 {
    std::stringstream stream;
 
@@ -253,15 +257,15 @@ static const FieldArray clDisplacementFXFields[] = {
 
 ERROR init_displacementfx(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clDisplacementFX,
-      FID_BaseClassID|TLONG, ID_FILTEREFFECT,
-      FID_SubClassID|TLONG,  ID_DISPLACEMENTFX,
-      FID_Name|TSTRING,      "DisplacementFX",
-      FID_Category|TLONG,    CCF_GRAPHICS,
-      FID_Flags|TLONG,       CLF_PRIVATE_ONLY|CLF_PROMOTE_INTEGRAL,
-      FID_Actions|TPTR,      clDisplacementFXActions,
-      FID_Fields|TARRAY,     clDisplacementFXFields,
-      FID_Size|TLONG,        sizeof(objDisplacementFX),
-      FID_Path|TSTR,         MOD_PATH,
-      TAGEND));
+   clDisplacementFX = objMetaClass::create::global(
+      fl::BaseClassID(ID_FILTEREFFECT),
+      fl::SubClassID(ID_DISPLACEMENTFX),
+      fl::Name("DisplacementFX"),
+      fl::Category(CCF_GRAPHICS),
+      fl::Actions(clDisplacementFXActions),
+      fl::Fields(clDisplacementFXFields),
+      fl::Size(sizeof(extDisplacementFX)),
+      fl::Path(MOD_PATH));
+
+   return clDisplacementFX ? ERR_Okay : ERR_AddClass;
 }

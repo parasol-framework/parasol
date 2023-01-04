@@ -448,22 +448,14 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 
    objXML *xml;
    ERROR error = ERR_Okay;
-   if (!NewObject(ID_XML, NF_INTEGRAL, &xml)) {
+   if (!NewObject(ID_XML, NF::INTEGRAL, &xml)) {
       OBJECTPTR task = CurrentTask();
       STRING working_path = NULL;
 
       if (Path) {
          if (!StrCompare("*.svgz", Path, 0, STR_WILDCARD)) {
-            OBJECTPTR file, stream;
-            if (!CreateObject(ID_FILE, 0, &file,
-                  FID_Owner|TLONG, xml->UID,
-                  FID_Path|TSTR,   Path,
-                  FID_Flags|TLONG, FL_READ,
-                  TAGEND)) {
-               if (!CreateObject(ID_COMPRESSEDSTREAM, 0, &stream,
-                     FID_Owner|TLONG, file->UID,
-                     FID_Input|TPTR,  file,
-                     TAGEND)) {
+            if (auto file = objFile::create::global(fl::Owner(xml->UID), fl::Path(Path), fl::Flags(FL_READ))) {
+               if (auto stream = objCompressedStream::create::global(fl::Owner(file->UID), fl::Input(file))) {
                   xml->set(FID_Source, stream);
                }
                else {

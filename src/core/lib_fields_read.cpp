@@ -529,15 +529,18 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
                }
             }
 
-            if (field->Flags & FD_OBJECT) StrFormat(Buffer, BufferSize, "#" PF64(), large);
-            else StrFormat(Buffer, BufferSize, PF64(), large);
+            if (field->Flags & FD_OBJECT) {
+               Buffer[0] = '#';
+               IntToStr(large, Buffer+1, BufferSize-1);
+            }
+            else IntToStr(large, Buffer, BufferSize);
          }
          else return error;
       }
       else if (field->Flags & FD_DOUBLE) {
          DOUBLE dbl;
          if (!(error = copy_field_to_buffer(Object, field, FD_DOUBLE, &dbl, ext, NULL))) {
-            StrFormat(Buffer, BufferSize, "%f", dbl);
+            snprintf(Buffer, BufferSize, "%f", dbl);
          }
          else return error;
       }
@@ -548,7 +551,7 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
                error = GetFieldVariable(obj, ext, Buffer, BufferSize);
                return error;
             }
-            else StrFormat(Buffer, BufferSize, "#%d", obj->UID);
+            else snprintf(Buffer, BufferSize, "#%d", obj->UID);
          }
          else StrCopy("0", Buffer, BufferSize);
       }
@@ -693,7 +696,7 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
          else if (srcflags & FD_DOUBLE) {
             DOUBLE *array = (DOUBLE *)data;
             for (LONG i=0; i < array_size; i++) {
-               pos += StrFormat(strGetField+pos, sizeof(strGetField)-pos, "%f", *array++);
+               pos += snprintf(strGetField+pos, sizeof(strGetField)-pos, "%f", *array++);
                if (((size_t)pos < sizeof(strGetField)-2) and (i+1 < array_size)) strGetField[pos++] = ',';
             }
          }
@@ -747,7 +750,7 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
       else if (DestFlags & FD_DOUBLE) *((DOUBLE *)Result) = *((DOUBLE *)data);
       else if (DestFlags & FD_LARGE)  *((LARGE *)Result)  = F2I(*((DOUBLE *)data));
       else if (DestFlags & FD_STRING) {
-         StrFormat(strGetField, sizeof(strGetField), "%f", *((DOUBLE *)data));
+         snprintf(strGetField, sizeof(strGetField), "%f", *((DOUBLE *)data));
          *((STRING *)Result) = strGetField;
       }
       else goto mismatch;

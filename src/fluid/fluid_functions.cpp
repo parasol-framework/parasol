@@ -584,10 +584,11 @@ int fcmd_require(lua_State *Lua)
 
       auto path = std::string("scripts:") + module + ".fluid";
 
-      objFile *file;
-      if (!(error = CreateObject(ID_FILE, 0, &file, FID_Path|TSTR, path.c_str(), FID_Flags|TLONG, FL_READ, TAGEND))) {
+      objFile::create file = { fl::Path(path), fl::Flags(FL_READ) };
+
+      if (file.ok()) {
          std::unique_ptr<char[]> buffer(new char[SIZE_READ]);
-         struct code_reader_handle handle = { file, buffer.get() };
+         struct code_reader_handle handle = { *file, buffer.get() };
          if (!lua_load(Lua, &code_reader, &handle, module)) {
             prv->RequireCounter++; // Used by getExecutionState()
             if (!lua_pcall(Lua, 0, 0, 0)) { // Success, mark the module as loaded.
@@ -598,7 +599,6 @@ int fcmd_require(lua_State *Lua)
             prv->RequireCounter--;
          }
          else error_msg = lua_tostring(Lua, -1);
-         acFree(file);
       }
       else {
          luaL_error(Lua, "Failed to open file '%s', may not exist.", path.c_str());
@@ -644,17 +644,15 @@ int fcmd_loadfile(lua_State *Lua)
    LONG results = 0;
    ERROR error = ERR_Okay;
 
-   CSTRING path;
-   if ((path = lua_tostring(Lua, 1))) {
+   if (auto path = lua_tostring(Lua, 1)) {
       parasol::Log log("loadfile");
-      char fbpath[StrLength(path)+6];
+      LONG pathlen = strlen(path);
+      char fbpath[pathlen+6];
 
       log.branch("%s", path);
 
-      BYTE recompile = FALSE;
+      bool recompile = false;
       CSTRING src = path;
-
-      LONG pathlen = StrLength(path);
 
       if (!StrMatch(".fluid", path + pathlen - 6)) {
          // File is a .fluid.  Let's check if a .fb exists and is date-stamped for the same date as the .fluid version.
@@ -666,18 +664,17 @@ int fcmd_loadfile(lua_State *Lua)
 
          log.msg("Checking for a compiled Fluid file: %s", fbpath);
 
-         parasol::ScopedObject<objFile> fb_file, src_file;
-         if (!CreateObject(ID_FILE, NF_INTEGRAL, &fb_file.obj, FID_Path|TSTR, fbpath, TAGEND)) {
-            // A compiled version exists.  Compare datestamps
-
-            if (!(error = CreateObject(ID_FILE, NF_INTEGRAL, &src_file.obj, FID_Path|TSTR, path, TAGEND))) {
+         objFile::create fb_file = { fl::Path(fbpath) };
+         if (fb_file.ok()) { // A compiled version exists.  Compare datestamps
+            objFile::create src_file = { fl::Path(path) };
+            if (src_file.ok()) {
                LARGE fb_ts, src_ts;
-               fb_file.obj->get(FID_TimeStamp, &fb_ts);
-               src_file.obj->get(FID_TimeStamp, &src_ts);
+               fb_file->get(FID_TimeStamp, &fb_ts);
+               src_file->get(FID_TimeStamp, &src_ts);
 
                if (fb_ts != src_ts) {
                   log.msg("Timestamp mismatch, will recompile the cached version.");
-                  recompile = TRUE;
+                  recompile = true;
                   error = ERR_Failed;
                }
                else src = fbpath;
@@ -688,18 +685,18 @@ int fcmd_loadfile(lua_State *Lua)
          }
       }
 
-      parasol::ScopedObject<objFile> file;
-      if (!(error = CreateObject(ID_FILE, 0, &file.obj, FID_Path|TSTR, src, FID_Flags|TLONG, FL_READ, TAGEND))) {
+      objFile::create file = { fl::Path(src), fl::Flags(FL_READ) };
+      if (file.ok()) {
          APTR buffer;
          if (!AllocMemory(SIZE_READ, MEM_NO_CLEAR, &buffer, NULL)) {
-            struct code_reader_handle handle = { file.obj, buffer };
+            struct code_reader_handle handle = { *file, buffer };
 
             // Check for the presence of a compiled header and skip it if present
 
             {
                LONG len, i;
                char header[256];
-               if (!acRead(file.obj, header, sizeof(header), &len)) {
+               if (!file->read(header, sizeof(header), &len)) {
                   if (!StrCompare(LUA_COMPILED, header, 0, 0)) {
                      recompile = FALSE; // Do not recompile that which is already compiled
                      for (i=sizeof(LUA_COMPILED)-1; (i < len) and (header[i]); i++);
@@ -710,11 +707,11 @@ int fcmd_loadfile(lua_State *Lua)
                }
                else i = 0;
 
-               file.obj->set(FID_Position, i);
+               file->set(FID_Position, i);
             }
 
             LONG i;
-            for (i=StrLength(path); i > 0; i--) { // Get the file name from the path
+            for (i=strlen(path); i > 0; i--) { // Get the file name from the path
                if ((path[i-1] IS '\\') or (path[i-1] IS '/') or (path[i-1] IS ':')) break;
             }
 
@@ -722,12 +719,13 @@ int fcmd_loadfile(lua_State *Lua)
 #warning Code compilation not currently supported
             /*
                if (recompile) {
-                  OBJECTPTR cachefile;
-                  if (!CreateObject(ID_FILE, 0, &cachefile,
-                        FID_Path|TSTR,         fbpath,
-                        FID_Flags|TLONG,       FL_NEW|FL_WRITE,
-                        FID_Permissions|TLONG, PERMIT_USER_READ|PERMIT_USER_WRITE,
-                        TAGEND)) {
+                  objFile::create cachefile = {
+                     fl::Path(fbpath),
+                     fl::Flags(FL_NEW|FL_WRITE),
+                     fl::Permissions(PERMIT_USER_READ|PERMIT_USER_WRITE)
+                  };
+
+                  if (cachefile.ok()) {
                      const Proto *f;
                      struct DateTime *date;
                      f = clvalue(prv->Lua->top + (-1))->l.p;
@@ -735,7 +733,6 @@ int fcmd_loadfile(lua_State *Lua)
                      if (!file.obj->getPtr(FID_Date, &date)) {
                         cachefile->set(FID_Date, date);
                      }
-                     acFree(cachefile);
                   }
                }
              */
@@ -754,11 +751,11 @@ int fcmd_loadfile(lua_State *Lua)
          else error = ERR_AllocMemory;
       }
       else error = ERR_DoesNotExist;
+
+      if ((!error_msg) and (error)) error_msg = GetErrorMsg(error);
+      if (error_msg) luaL_error(Lua, "Failed to load/parse file '%s', error: %s", path, error_msg);
    }
    else luaL_argerror(Lua, 1, "File path required.");
-
-   if ((!error_msg) and (error)) error_msg = GetErrorMsg(error);
-   if (error_msg) luaL_error(Lua, "Failed to load/parse file '%s', error: %s", path, error_msg);
 
    return results;
 }

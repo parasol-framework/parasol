@@ -246,6 +246,8 @@ struct ClipEntry {
 
 class extPointer : public objPointer {
    public:
+   using create = parasol::Create<extPointer>;
+
    struct {
       LARGE LastClickTime;      // Timestamp
       OBJECTID LastClicked;     // Most recently clicked object
@@ -282,6 +284,8 @@ class extPointer : public objPointer {
 
 class extSurface : public objSurface {
    public:
+   using create = parasol::Create<extSurface>;
+
    LARGE    LastRedimension;      // Timestamp of the last redimension call
    objBitmap *Bitmap;
    struct SurfaceCallback *Callback;
@@ -322,6 +326,8 @@ class extSurface : public objSurface {
 
 class extDisplay : public objDisplay {
    public:
+   using create = parasol::Create<extDisplay>;
+
    DOUBLE Gamma[3];          // Red, green, blue gamma radioactivity indicator
    struct resolution *Resolutions;
    FUNCTION  ResizeFeedback;
@@ -361,6 +367,8 @@ class extDisplay : public objDisplay {
 
 class extBitmap : public objBitmap {
    public:
+   using create = parasol::Create<extBitmap>;
+
    ULONG  *Gradients;
    APTR   ResolutionChangeHandle;
    struct RGBPalette prvPaletteArray;
@@ -468,8 +476,8 @@ struct InputType {
    LONG Mask;   // Limited flags to declare the mask that must be used to receive that type
 };
 
-extern const std::array<struct InputType, JET_END> glInputType;
-extern const std::array<std::string, JET_END> glInputNames;
+extern const InputType glInputType[JET_END];
+extern const CSTRING glInputNames[JET_END];
 
 #define find_surface_index(a,b) find_surface_list( (SurfaceList *)((BYTE *)(a) + (a)->ArrayIndex), (a)->Total, (b))
 #define find_own_index(a,b)     find_surface_list( (SurfaceList *)((BYTE *)(a) + (a)->ArrayIndex), (a)->Total, (b)->UID)

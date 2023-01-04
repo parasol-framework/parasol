@@ -10,14 +10,18 @@ of `(XOffset,YOffset)`.
 
 *********************************************************************************************************************/
 
-class objOffsetFX : public extFilterEffect {
+class extOffsetFX : public extFilterEffect {
    public:
+   static constexpr CLASSID CLASS_ID = ID_OFFSETFX;
+   static constexpr CSTRING CLASS_NAME = "OffsetFX";
+   using create = parasol::Create<extOffsetFX>;
+
    LONG XOffset, YOffset;
 };
 
 //********************************************************************************************************************
 
-static ERROR OFFSETFX_Draw(objOffsetFX *Self, struct acDraw *Args)
+static ERROR OFFSETFX_Draw(extOffsetFX *Self, struct acDraw *Args)
 {
    objBitmap *inBmp;
    LONG dx = F2T((DOUBLE)Self->XOffset * Self->Filter->ClientVector->Transform.sx);
@@ -38,13 +42,13 @@ The (XOffset,YOffset) field values define the offset of the input source within 
 
 *********************************************************************************************************************/
 
-static ERROR OFFSETFX_GET_XOffset(objOffsetFX *Self, LONG *Value)
+static ERROR OFFSETFX_GET_XOffset(extOffsetFX *Self, LONG *Value)
 {
    *Value = Self->XOffset;
    return ERR_Okay;
 }
 
-static ERROR OFFSETFX_SET_XOffset(objOffsetFX *Self, LONG Value)
+static ERROR OFFSETFX_SET_XOffset(extOffsetFX *Self, LONG Value)
 {
    Self->XOffset = Value;
    return ERR_Okay;
@@ -59,13 +63,13 @@ The (XOffset,YOffset) field values define the offset of the input source within 
 
 *********************************************************************************************************************/
 
-static ERROR OFFSETFX_GET_YOffset(objOffsetFX *Self, LONG *Value)
+static ERROR OFFSETFX_GET_YOffset(extOffsetFX *Self, LONG *Value)
 {
    *Value = Self->YOffset;
    return ERR_Okay;
 }
 
-static ERROR OFFSETFX_SET_YOffset(objOffsetFX *Self, LONG Value)
+static ERROR OFFSETFX_SET_YOffset(extOffsetFX *Self, LONG Value)
 {
    Self->YOffset = Value;
    return ERR_Okay;
@@ -79,7 +83,7 @@ XMLDef: Returns an SVG compliant XML string that describes the effect.
 
 *********************************************************************************************************************/
 
-static ERROR OFFSETFX_GET_XMLDef(objOffsetFX *Self, STRING *Value)
+static ERROR OFFSETFX_GET_XMLDef(extOffsetFX *Self, STRING *Value)
 {
    std::stringstream stream;
    stream << "feOffset dx=\"" << Self->XOffset << "\" dy=\"" << Self->YOffset << "\"";
@@ -109,7 +113,7 @@ ERROR init_offsetfx(void)
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clOffsetFXActions),
       fl::Fields(clOffsetFXFields),
-      fl::Size(sizeof(objOffsetFX)),
+      fl::Size(sizeof(extOffsetFX)),
       fl::Path(MOD_PATH));
 
    return clOffsetFX ? ERR_Okay : ERR_AddClass;

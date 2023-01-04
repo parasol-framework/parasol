@@ -115,7 +115,7 @@ extern "C" const char * init_parasol(int argc, CSTRING *argv)
       }
    }
 
-   if ((!core_path[0]) OR (!(glCoreHandle = dlopen(core_path, RTLD_NOW)))) {
+   if ((!core_path[0]) or (!(glCoreHandle = dlopen(core_path, RTLD_NOW)))) {
       fprintf(stderr, "%s: %s\n", core_path, dlerror());
       msg = "Failed to open the core library.";
       goto failed_lib_open;

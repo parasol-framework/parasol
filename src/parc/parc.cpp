@@ -21,36 +21,24 @@ recommended that the process is terminated because the loss of system privileges
 #define PRV_PARC
 #include <parasol/main.h>
 #include <parasol/modules/xml.h>
-//#include <parasol/modules/display.h>
-
-#define VER_PARC 1.0
+#include <parasol/modules/parc.h>
 
 MODULE_COREBASE;
 static OBJECTPTR clParc = NULL;
 
-//****************************************************************************
-
-typedef class rkParc : public BaseClass {
+class extParc : public objParc {
    public:
-   STRING   Message;    // Set to a suitable user error message when an error occurs
-   OBJECTID OutputID;   // An object that will receive program output
-   LONG     Flags;
    LONG     ProcessID;
    OBJECTPTR Script;
-
-#ifdef PRV_PARC
    objCompression *Archive;
    objXML *Info;           // The parc.xml file.
    STRING Args;            // The arguments to pass to the program
    STRING Path;
    STRING Allow;
    OBJECTID  WindowID;
-#endif
-} objParc;
+};
 
-//****************************************************************************
-
-static ERROR GET_Args(objParc *, CSTRING *);
+static ERROR GET_Args(extParc *, CSTRING *);
 
 static ERROR add_parc_class(void);
 
@@ -83,7 +71,7 @@ sand-boxing of the application and protecting the host system.
 
 *****************************************************************************/
 
-static ERROR PARC_Activate(objParc *Self, APTR Void)
+static ERROR PARC_Activate(extParc *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -106,7 +94,7 @@ static ERROR PARC_Activate(objParc *Self, APTR Void)
             // Run the default script as specified in "parc.xml".
 
             if (class_id IS ID_SCRIPT) {
-               if (!CreateObject(subclass_id ? subclass_id : class_id, NF_INTEGRAL, &Self->Script, FID_Path|TSTR, path, TAGEND)) {
+               if (!CreateObject(subclass_id ? subclass_id : class_id, NF::INTEGRAL, &Self->Script, FID_Path|TSTR, path, TAGEND)) {
                   error = acActivate(Self->Script);
                }
                else error = ERR_CreateObject;
@@ -129,18 +117,18 @@ static ERROR PARC_Activate(objParc *Self, APTR Void)
 
 static const char glOutputScript[] = "\n\
    glSelf = obj.find('self')\n\
-   local win = obj.new('window', { insidewidth=400, insideheight=300, quit=0, title=arg('title','Program Output'),'\n\
+   local win = gui.window({ insidewidth=400, insideheight=300, quit=0, title=arg('title','Program Output'),'\n\
      icon='programs/shell', flags='!nomargins' })\n\
    local surface = win.new('surface', { x=win.leftMargin, y=win.topMargin, xOffset=win.rightMargin,\n\
       yOffset=win.bottomMargin, colour='230,230,230' })\n\
    surface.acShow()\n\
    local vsb = surface.new('scrollbar', { direction='vertical' })\n\
    local text = surface.new('text', { face='little', colour='0,0,0', vscroll=vsb, x=1, y=1, xoffset=20, yoffset=1 })\n\
-   win.acShow()\n\
+   win:show()\n\
    glSelf._output = text.id\n\
    glSelf._window = win.id";
 
-static ERROR PARC_DataFeed(objParc *Self, struct acDataFeed *Args)
+static ERROR PARC_DataFeed(extParc *Self, struct acDataFeed *Args)
 {
    parasol::Log log;
 
@@ -152,22 +140,17 @@ static ERROR PARC_DataFeed(objParc *Self, struct acDataFeed *Args)
       // Create an output window if we don't have one yet
 
       if (!Self->WindowID) {
-         OBJECTPTR script;
-         if (!CreateObject(ID_FLUID, 0, &script,
-               FID_Owner|TLONG,    CurrentTaskID(),
-               FID_Statement|TSTR, glOutputScript,
-               TAGEND)) {
-            acSetVar(script, "Title", "Program Output");
-            acActivate(script);
+         objScript::create script = { fl::Owner(CurrentTaskID()), fl::Statement(glOutputScript) };
+         if (script.ok()) {
+            acSetVar(*script, "Title", "Program Output");
+            script->activate();
 
             char str[90];
-            acGetVar(script, "window", str, sizeof(str));
+            acGetVar(*script, "window", str, sizeof(str));
             Self->WindowID = StrToInt(str);
 
-            acGetVar(script, "text", str, sizeof(str));
+            acGetVar(*script, "text", str, sizeof(str));
             Self->OutputID = StrToInt(str);
-
-            acFree(script);
          }
 
          if (!Self->WindowID) {
@@ -186,7 +169,7 @@ static ERROR PARC_DataFeed(objParc *Self, struct acDataFeed *Args)
 
 //****************************************************************************
 
-static ERROR PARC_Free(objParc *Self, APTR Void)
+static ERROR PARC_Free(extParc *Self, APTR Void)
 {
    if (Self->Script)  { acFree(Self->Script);   Self->Script = NULL; }
    if (Self->Archive) { acFree(Self->Archive);  Self->Archive = NULL; }
@@ -208,31 +191,25 @@ field after this action returns.
 
 *****************************************************************************/
 
-static ERROR PARC_Init(objParc *Self, APTR Void)
+static ERROR PARC_Init(extParc *Self, APTR Void)
 {
    parasol::Log log;
    ERROR error;
 
-   if (!CreateObject(ID_COMPRESSION, NF_INTEGRAL, &Self->Archive,
-         FID_Path|TSTR,        Self->Path,
-         FID_ArchiveName|TSTR, "parc",
-         FID_Flags|TLONG,      CMF_READ_ONLY,
-         TAGEND)) {
+   if ((Self->Archive = objCompression::create::integral(
+         fl::Path(Self->Path),
+         fl::ArchiveName("parc"),
+         fl::Flags(CMF_READ_ONLY)))) {
 
       // Read the parc.xml file into the Info field.
 
-      objFile *info_file;
-      if (!CreateObject(ID_FILE, NF_INTEGRAL, &info_file,
-            FID_Flags|TLONG, FL_NEW|FL_BUFFER|FL_WRITE|FL_READ,
-            TAGEND)) {
+      objFile::create info_file = { fl::Flags(FL_NEW|FL_BUFFER|FL_WRITE|FL_READ) };
+      if (info_file.ok()) {
+         if (!cmpDecompressObject(Self->Archive, "parc.xml", *info_file)) {
+            info_file->seekStart(0);
 
-         if (!cmpDecompressObject(Self->Archive, "parc.xml", (OBJECTPTR)info_file)) {
-            acSeekStart(info_file, 0);
-
-            if (!CreateObject(ID_XML, NF_INTEGRAL, &Self->Info,
-                  FID_Flags|TLONG,    XMF_NEW,
-                  FID_Statement|TSTR, info_file->Buffer,
-                  TAGEND)) {
+            if (!(Self->Info = objXML::create::integral(fl::Flags(XMF_NEW),
+                  fl::Statement(info_file->Buffer)))) {
 
                // Verify the parc.xml file.
                // TODO
@@ -247,8 +224,6 @@ static ERROR PARC_Init(objParc *Self, APTR Void)
             else error = ERR_CreateObject;
          }
          else error = ERR_Decompression;
-
-         acFree(info_file);
       }
       else error = ERR_CreateObject;
    }
@@ -259,7 +234,7 @@ static ERROR PARC_Init(objParc *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR PARC_NewObject(objParc *Self, APTR Void)
+static ERROR PARC_NewObject(extParc *Self, APTR Void)
 {
    return ERR_Okay;
 }
@@ -271,7 +246,7 @@ Allow: Private. Extends the access rights and allowable resource usage of the PA
 
 *****************************************************************************/
 
-static ERROR GET_Allow(objParc *Self, CSTRING *Value)
+static ERROR GET_Allow(extParc *Self, CSTRING *Value)
 {
    if (Self->Allow) {
       *Value = Self->Allow;
@@ -283,11 +258,11 @@ static ERROR GET_Allow(objParc *Self, CSTRING *Value)
    }
 }
 
-static ERROR SET_Allow(objParc *Self, CSTRING Value)
+static ERROR SET_Allow(extParc *Self, CSTRING Value)
 {
    if (Self->Allow) { FreeResource(Self->Allow); Self->Allow = NULL; }
 
-   if ((Value) AND (*Value)) {
+   if ((Value) and (*Value)) {
       if (!(Self->Allow = StrClone(Value))) return ERR_Okay;
       else return ERR_AllocMemory;
    }
@@ -304,7 +279,7 @@ whitespace.  If a parameter value needs to include whitespace, enclose the value
 
 *****************************************************************************/
 
-static ERROR GET_Args(objParc *Self, CSTRING *Value)
+static ERROR GET_Args(extParc *Self, CSTRING *Value)
 {
    if (Self->Args) {
       *Value = Self->Args;
@@ -316,13 +291,13 @@ static ERROR GET_Args(objParc *Self, CSTRING *Value)
    }
 }
 
-static ERROR SET_Args(objParc *Self, CSTRING Value)
+static ERROR SET_Args(extParc *Self, CSTRING Value)
 {
    if (Self->Args) { FreeResource(Self->Args); Self->Args = NULL; }
 
-   if ((Value) AND (*Value)) {
+   if ((Value) and (*Value)) {
       LONG i;
-      if ((Value[0] IS '1') AND (!Value[1])) return ERR_Okay; // Ignore arguments of "1"
+      if ((Value[0] IS '1') and (!Value[1])) return ERR_Okay; // Ignore arguments of "1"
       for (i=0; Value[i]; i++);
       if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, &Self->Args, NULL)) {
          for (i=0; Value[i]; i++) Self->Args[i] = Value[i];
@@ -336,24 +311,21 @@ static ERROR SET_Args(objParc *Self, CSTRING Value)
 /*****************************************************************************
 
 -FIELD-
-Flags: Defines special options to use when launching PARC files.
-
--FIELD-
 Path: Defines the path to the source PARC file.
 
 *****************************************************************************/
 
-static ERROR GET_Path(objParc *Self, STRING *Value)
+static ERROR GET_Path(extParc *Self, STRING *Value)
 {
    if (Self->Path) { *Value = Self->Path; return ERR_Okay; }
    else return ERR_FieldNotSet;
 }
 
-static ERROR SET_Path(objParc *Self, CSTRING Value)
+static ERROR SET_Path(extParc *Self, CSTRING Value)
 {
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
-   if ((Value) AND (*Value)) {
+   if ((Value) and (*Value)) {
       if (!(Self->Path = StrClone(Value))) return ERR_AllocMemory;
    }
    return ERR_Okay;
@@ -371,29 +343,17 @@ If an Output object is not provided, all data from the program will be directed 
 
 *****************************************************************************/
 
-static const FieldDef clFlags[] = {
-   { NULL, 0 }
-};
+#include "parc_def.c"
 
 static const FieldArray clFields[] = {
    { "Message",  FDF_STRING|FDF_R,     0, NULL, NULL },
    { "Output",   FDF_OBJECTID|FDF_RI,  0, NULL, NULL },
-   { "Flags",    FDF_LONGFLAGS|FDF_RI, (MAXINT)&clFlags, NULL, NULL },
    // Virtual fields
    { "Allow",    FDF_STRING|FDF_W,    0, (APTR)GET_Allow, (APTR)SET_Allow },
    { "Args",     FDF_STRING|FDF_RW,   0, (APTR)GET_Args,  (APTR)SET_Args },
    { "Path",     FDF_STRING|FDF_RW,   0, (APTR)GET_Path,  (APTR)SET_Path },
    { "Src",      FDF_SYNONYM|FDF_STRING|FDF_SYNONYM|FDF_RW, 0, (APTR)GET_Path, (APTR)SET_Path },
    END_FIELD
-};
-
-static const ActionArray clActions[] = {
-   { AC_Activate,   (APTR)PARC_Activate },
-   { AC_DataFeed,   (APTR)PARC_DataFeed },
-   { AC_Free,       (APTR)PARC_Free },
-   { AC_Init,       (APTR)PARC_Init },
-   { AC_NewObject,  (APTR)PARC_NewObject },
-   { 0, NULL }
 };
 
 //********************************************************************************************************************
@@ -407,9 +367,9 @@ static ERROR add_parc_class(void)
       fl::FileDescription("Parasol Archive"),
       fl::FileHeader("[0:$504b0304]"),
       fl::Category(CCF_SYSTEM),
-      fl::Actions(clActions),
+      fl::Actions(clParcActions),
       fl::Fields(clFields),
-      fl::Size(sizeof(objParc)),
+      fl::Size(sizeof(extParc)),
       fl::Path(MOD_PATH));
 
    return clParc ? ERR_Okay : ERR_AddClass;

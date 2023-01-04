@@ -132,10 +132,12 @@
 2. struct acMove move = { 30, 15, 0 };
    Action(AC_Move, Window, &amp;move);
 </pre>
-<p>In all cases, action calls can be simplified by using their corresponding macros:</p>
+<p>In all cases, action calls in C++ can be simplified by using their corresponding helper functions:</p>
 <pre>1. acInit(Picture);
 
 2. acMove(Window, 30, 15, 0);
+
+3. Window-&gt;move(30, 15, 0);
 </pre>
 <p>If the target object does not support the action code that has been specified, an error code of ERR_NoSupport will be returned.  If you need to test an object to see if it supports a particular action, use the <function module="Core">CheckAction</function> function.</p>
 <p>If you need to send an action to an object that does not belong to your task space, use the <function module="Core">ActionMsg</function> function.  If you're in a situation where you only have an object ID and are unsure as to whether or not the object is in your task space, use <function module="Core">ActionMsg</function> anyway as it will divert to the Action() function if the object is local.</p>
@@ -449,15 +451,17 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <name>Base64Encode</name>
     <category>Strings</category>
     <comment>Encodes a binary source into a base 64 string.</comment>
-    <prototype>LONG Base64Encode(const void * Input, LONG InputSize, STRING Output, LONG OutputSize)</prototype>
+    <prototype>LONG Base64Encode(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize)</prototype>
     <input>
+      <param type="struct rkBase64Encode *" name="State">Pointer to an rkBase64Decode structure, initialised to zero.</param>
       <param type="const void *" name="Input">The binary data to encode.</param>
-      <param type="LONG" name="InputSize">The amount of data to encode.</param>
+      <param type="LONG" name="InputSize">The amount of data to encode.  Set to zero to finalise the output.</param>
       <param type="STRING" name="Output">Destination buffer for the encoded output.</param>
-      <param type="LONG" name="OutputSize">Size of the destination buffer.</param>
+      <param type="LONG" name="OutputSize">Size of the destination buffer.  Must be at least (InputSize * 4 / 3) + 1.</param>
     </input>
     <description>
-<p>This function needs to be replaced with the streaming version, see base64_init_encodestate()</p>
+<p>This is a state-based function that will encode raw data and output it as base-64 encoded text.  To use, the State structure must initially be set to zero (automatic if using C++).  Call this function repeatedly with new Input data and it will be written to the supplied Output pointer.  Once all incoming data has been consumed, call this function a final time with an Input of NULL and InputSize of zero.</p>
+<p>It is required that the Output is sized to at least <code>(4 / 3) + 1</code> of InputSize when encoding.  For the final output, the size must be at least 6 bytes.</p>
     </description>
     <result type="LONG">The total number of bytes output is returned.</result>
   </function>
@@ -673,10 +677,10 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <name>CreateObject</name>
     <category>Objects</category>
     <comment>Provides a simplified means of creating and initialising new objects.</comment>
-    <prototype>ERROR CreateObject(LARGE ClassID, LONG Flags, OBJECTPTR * Object, ...)</prototype>
+    <prototype>ERROR CreateObject(LARGE ClassID, NF Flags, OBJECTPTR * Object, ...)</prototype>
     <input>
       <param type="LARGE" name="ClassID">Set to a class ID obtained from the "system/register.h" file or from <function module="Core">ResolveClassName</function>.</param>
-      <param type="LONG" name="Flags" lookup="NF">Optional flags to directly pass to <function module="Core">NewObject</function>.</param>
+      <param type="NF" name="Flags" lookup="NF">Optional flags to directly pass to <function module="Core">NewObject</function>.</param>
       <param type="OBJECTPTR *" name="Object">Pointer to an address variable that will store a reference to the new object.</param>
       <param type="..." name="Tags">Field tags are specified here.  See the <function module="Core">SetFields</function> function for information on the structure of the tags.  Remember to terminate the tag-list with TAGEND.</param>
     </input>
@@ -1468,7 +1472,7 @@ end
 <p>The LogF() function follows the same functionality and rules as the ANSI printf() function, with the difference that it is passed through a log filter before appearing as output.  Imposed limits restrict the length of the message to 256 bytes, although a 120 byte limit is recommended where possible.</p>
 <p>The following example will print the default width of a Display object to the log.</p>
 <pre>if (!NewObject(ID_DISPLAY, 0, &amp;display)) {
-   if (!acInit(display)) {
+   if (!display-&gt;init(display)) {
       LogF("Demo","The width of the display is: %d", display-&gt;Width);
    }
    acFree(display);
@@ -1596,10 +1600,10 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>NewLockedObject</name>
     <category>Objects</category>
     <comment>Creates a new object with a lock immediately applied.</comment>
-    <prototype>ERROR NewLockedObject(LARGE ClassID, LONG Flags, OBJECTPTR * Object, OBJECTID * ID, CSTRING Name)</prototype>
+    <prototype>ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR * Object, OBJECTID * ID, CSTRING Name)</prototype>
     <input>
       <param type="LARGE" name="ClassID">A class ID from "system/register.h" or generated by <function module="Core">ResolveClassName</function>.</param>
-      <param type="LONG" name="Flags" lookup="NF">Optional flags.</param>
+      <param type="NF" name="Flags" lookup="NF">Optional flags.</param>
       <param type="OBJECTPTR *" name="Object">Optional.  Pointer to an address variable that will store a reference to the new object.  If set to NULL, the acquired lock is released before returning to the client.</param>
       <param type="OBJECTID *" name="ID">Compulsory.  The unique ID of the new object will be returned in this parameter.</param>
       <param type="CSTRING" name="Name">Enabled only if NF_NAME or NF_UNIQUE are specified as Flags.  The Name refers to the name that you want to give the object.</param>
@@ -1621,10 +1625,10 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>NewObject</name>
     <category>Objects</category>
     <comment>Creates new objects.</comment>
-    <prototype>ERROR NewObject(LARGE ClassID, LONG Flags, OBJECTPTR * Object)</prototype>
+    <prototype>ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR * Object)</prototype>
     <input>
       <param type="LARGE" name="ClassID">A class ID from "system/register.h" or generated by <function module="Core">ResolveClassName</function>.</param>
-      <param type="LONG" name="Flags" lookup="NF">Optional flags.</param>
+      <param type="NF" name="Flags" lookup="NF">Optional flags.</param>
       <param type="OBJECTPTR *" name="Object">Pointer to an address variable that will store a reference to the new object.</param>
     </input>
     <description>
@@ -2075,7 +2079,7 @@ SetArray(Object, FID_Table|TLONG, array, 100);
 <pre>acInit(display);
 prev_context = SetContext(display);
 
-   NewObject(ID_BITMAP, 0, &amp;bitmap);
+   NewObject(ID_BITMAP, &amp;bitmap);
    AllocMemory(1000, MEM_DATA, &amp;memory, NULL);;
 
 SetContext(prev_context);
@@ -2085,7 +2089,7 @@ acFree(display);
 <pre>acInit(display);
 prev_context = SetContext(display);
 
-   NewObject(ID_BITMAP, 0, &amp;bitmap);
+   NewObject(ID_BITMAP, &amp;bitmap);
    AllocMemory(1000, MEM_DATA, &amp;memory, NULL);
 
 SetContext(prev_context);
@@ -2273,7 +2277,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>SetVolume</name>
     <category>Files</category>
     <comment>Adds a new volume name to the system.</comment>
-    <prototype>ERROR SetVolume(LARGE,...)</prototype>
+    <prototype>ERROR SetVolume(...)</prototype>
     <input>
       <param type="..." name="Tags">A list of AST tags, terminated with a single TAGEND entry.</param>
     </input>
@@ -2390,23 +2394,6 @@ SetField(Object, FID_Statement|TSTR, "string");
 <p>Any white-space at the start of the string will be skipped.</p>
     </description>
     <result type="LONG" lookup="STT">Returns STT_FLOAT, STT_NUMBER, STT_HEX or STT_STRING.</result>
-  </function>
-
-  <function>
-    <name>StrFormat</name>
-    <category>Strings</category>
-    <comment>Formats a string using printf() style arguments.</comment>
-    <prototype>LONG StrFormat(STRING Buffer, LONG Size, CSTRING Format, ...)</prototype>
-    <input>
-      <param type="STRING" name="Buffer">Reference to a destination buffer for the formatted string.</param>
-      <param type="LONG" name="Size">The length of the destination Buffer, in bytes.</param>
-      <param type="CSTRING" name="Format">The string format to use for processing.</param>
-      <param type="..." name="Parameters">A tag-list of arguments that match the parameters in the Format string.</param>
-    </input>
-    <description>
-<p>StrFormat() duplicates the functionality found in the printf() family of functions.  It is provided to assist portability where there is no guarantee that POSIX is available on the host platform.</p>
-    </description>
-    <result type="LONG">Returns the total number of characters written to the buffer (not including the NULL terminator).  If the total number of characters is greater or equal to the BufferSize minus 1, then you should assume that a buffer overflow occurred.</result>
   </function>
 
   <function>

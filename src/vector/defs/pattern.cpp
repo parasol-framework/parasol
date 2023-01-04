@@ -38,12 +38,11 @@ static ERROR PATTERN_Draw(extVectorPattern *Self, struct acDraw *Args)
          acResize(Self->Bitmap, Self->Scene->PageWidth, Self->Scene->PageHeight, 32);
       }
    }
-   else if (CreateObject(ID_BITMAP, NF_INTEGRAL, &Self->Bitmap,
-      FID_Width|TLONG,  Self->Scene->PageWidth,
-      FID_Height|TLONG, Self->Scene->PageHeight,
-      FID_Flags|TLONG,  BMF_ALPHA_CHANNEL,
-      FID_BitsPerPixel|TLONG, 32,
-      TAGEND)) return ERR_CreateObject;
+   else if (!(Self->Bitmap = objBitmap::create::integral(
+      fl::Width(Self->Scene->PageWidth),
+      fl::Height(Self->Scene->PageHeight),
+      fl::Flags(BMF_ALPHA_CHANNEL),
+      fl::BitsPerPixel(32)))) return ERR_CreateObject;
 
    ClearMemory(Self->Bitmap->Data, Self->Bitmap->LineWidth * Self->Bitmap->Height);
    Self->Scene->Bitmap = Self->Bitmap;
@@ -105,8 +104,8 @@ static ERROR PATTERN_Init(extVectorPattern *Self, APTR Void)
 
 static ERROR PATTERN_NewObject(extVectorPattern *Self, APTR Void)
 {
-   if (!NewObject(ID_VECTORSCENE, NF_INTEGRAL, &Self->Scene)) {
-      if (!NewObject(ID_VECTORVIEWPORT, 0, &Self->Viewport)) {
+   if (!NewObject(ID_VECTORSCENE, NF::INTEGRAL, &Self->Scene)) {
+      if (!NewObject(ID_VECTORVIEWPORT, &Self->Viewport)) {
          SetOwner(Self->Viewport, Self->Scene);
          Self->SpreadMethod = VSPREAD_REPEAT;
          Self->Units        = VUNIT_BOUNDING_BOX;

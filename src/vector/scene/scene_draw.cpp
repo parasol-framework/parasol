@@ -20,7 +20,7 @@ public:
    UBYTE mVisible;
    UBYTE mOverflowX;
    UBYTE mOverflowY;
-   objVectorClip *mClipMask;
+   extVectorClip *mClipMask;
    agg::trans_affine mTransform;
    bool mLinearRGB;
    bool mBackgroundActive;
@@ -1175,14 +1175,12 @@ private:
          objBitmap *bmpBkgd = NULL;
          objBitmap *bmpSave = NULL;
          if (shape->EnableBkgd) {
-            if (!CreateObject(ID_BITMAP, NF_INTEGRAL, &bmpBkgd,
-                  FID_Name|TSTR,    "scene_temp_bkgd",
-                  FID_Width|TLONG,  mBitmap->Width,
-                  FID_Height|TLONG, mBitmap->Height,
-                  FID_BitsPerPixel, 32,
-                  FID_Flags|TLONG,  BMF_ALPHA_CHANNEL,
-                  FID_ColourSpace|TLONG, mBitmap->ColourSpace,
-                  TAGEND)) {
+            if ((bmpBkgd = objBitmap::create::integral(fl::Name("scene_temp_bkgd"),
+                  fl::Width(mBitmap->Width),
+                  fl::Height(mBitmap->Height),
+                  fl::BitsPerPixel(32),
+                  fl::Flags(BMF_ALPHA_CHANNEL),
+                  fl::ColourSpace(mBitmap->ColourSpace)))) {
                bmpSave = mBitmap;
                mBitmap = bmpBkgd;
                mFormat.setBitmap(*bmpBkgd);

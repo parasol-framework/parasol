@@ -125,9 +125,9 @@ Now run `gdb` from the command-line and target parasol or the problem executable
 MSYS2 and MinGW are required for a Windows build.  Once installed, the build process is essentially identical to that of Linux.  The install of the build tools can be completed as follows:
 
 * Download the [MSYS2 archive](https://www.msys2.org/) and install to `C:\msys64`.
-* Launch MSYS2 and run `pacman -Syu`; relaunch MSYS2 and run `pacman -Su`
-* Install dev packages with `pacman -S base-devel gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain`
-* Install [Cmder](http://cmder.net/)
+* Launch MSYS2 and run `pacman -Syu`; relaunch MSYS2 and run `pacman -Syu` again.
+* Install all necessary dev packages with `pacman -S base-devel gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain`
+* Install [Cmder](https://cmder.app/)
 * Run Cmder, open Settings, then under Tasks add a new `MINGW64` shell with a command script of `set MSYSTEM=MINGW64 & set "PATH=/mingw64/bin;%PATH%" & C:\msys64\usr\bin\bash.exe --login -i`
 * Open a new console tab and you should see a bash shell.  Enter `gcc --version` to ensure that the build environment's gcc executable is accessible.
 * Follow the instructions from section 2 in this readme to perform a full compile, then proceed to section 3.

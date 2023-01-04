@@ -11,8 +11,12 @@ and Over.
 
 *********************************************************************************************************************/
 
-class objCompositeFX : public extFilterEffect {
+class extCompositeFX : public extFilterEffect {
    public:
+   static constexpr CLASSID CLASS_ID = ID_COMPOSITEFX;
+   static constexpr CSTRING CLASS_NAME = "CompositeFX";
+   using create = parasol::Create<extCompositeFX>;
+
    DOUBLE K1, K2, K3, K4; // For the arithmetic operator
    LONG Operator; // OP constant
 
@@ -549,7 +553,7 @@ Draw: Render the effect to the target bitmap.
 -END-
 *********************************************************************************************************************/
 
-static ERROR COMPOSITEFX_Draw(objCompositeFX *Self, struct acDraw *Args)
+static ERROR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
 {
    parasol::Log log;
 
@@ -734,7 +738,7 @@ static ERROR COMPOSITEFX_Draw(objCompositeFX *Self, struct acDraw *Args)
 
 //********************************************************************************************************************
 
-static ERROR COMPOSITEFX_Init(objCompositeFX *Self, APTR Void)
+static ERROR COMPOSITEFX_Init(extCompositeFX *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -748,7 +752,7 @@ static ERROR COMPOSITEFX_Init(objCompositeFX *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR COMPOSITEFX_NewObject(objCompositeFX *Self, APTR Void)
+static ERROR COMPOSITEFX_NewObject(extCompositeFX *Self, APTR Void)
 {
    Self->Operator = OP_OVER;
    return ERR_Okay;
@@ -761,13 +765,13 @@ K1: Input value for the arithmetic operation.
 
 *********************************************************************************************************************/
 
-static ERROR COMPOSITEFX_GET_K1(objCompositeFX *Self, DOUBLE *Value)
+static ERROR COMPOSITEFX_GET_K1(extCompositeFX *Self, DOUBLE *Value)
 {
    *Value = Self->K1;
    return ERR_Okay;
 }
 
-static ERROR COMPOSITEFX_SET_K1(objCompositeFX *Self, DOUBLE Value)
+static ERROR COMPOSITEFX_SET_K1(extCompositeFX *Self, DOUBLE Value)
 {
    Self->K1 = Value;
    return ERR_Okay;
@@ -780,13 +784,13 @@ K2: Input value for the arithmetic operation.
 
 *********************************************************************************************************************/
 
-static ERROR COMPOSITEFX_GET_K2(objCompositeFX *Self, DOUBLE *Value)
+static ERROR COMPOSITEFX_GET_K2(extCompositeFX *Self, DOUBLE *Value)
 {
    *Value = Self->K2;
    return ERR_Okay;
 }
 
-static ERROR COMPOSITEFX_SET_K2(objCompositeFX *Self, DOUBLE Value)
+static ERROR COMPOSITEFX_SET_K2(extCompositeFX *Self, DOUBLE Value)
 {
    Self->K2 = Value;
    return ERR_Okay;
@@ -799,13 +803,13 @@ K3: Input value for the arithmetic operation.
 
 *********************************************************************************************************************/
 
-static ERROR COMPOSITEFX_GET_K3(objCompositeFX *Self, DOUBLE *Value)
+static ERROR COMPOSITEFX_GET_K3(extCompositeFX *Self, DOUBLE *Value)
 {
    *Value = Self->K3;
    return ERR_Okay;
 }
 
-static ERROR COMPOSITEFX_SET_K3(objCompositeFX *Self, DOUBLE Value)
+static ERROR COMPOSITEFX_SET_K3(extCompositeFX *Self, DOUBLE Value)
 {
    Self->K3 = Value;
    return ERR_Okay;
@@ -818,13 +822,13 @@ K4: Input value for the arithmetic operation.
 
 *********************************************************************************************************************/
 
-static ERROR COMPOSITEFX_GET_K4(objCompositeFX *Self, DOUBLE *Value)
+static ERROR COMPOSITEFX_GET_K4(extCompositeFX *Self, DOUBLE *Value)
 {
    *Value = Self->K4;
    return ERR_Okay;
 }
 
-static ERROR COMPOSITEFX_SET_K4(objCompositeFX *Self, DOUBLE Value)
+static ERROR COMPOSITEFX_SET_K4(extCompositeFX *Self, DOUBLE Value)
 {
    Self->K4 = Value;
    return ERR_Okay;
@@ -840,13 +844,13 @@ Setting the Operator will determine the algorithm that is used for compositing. 
 
 *********************************************************************************************************************/
 
-static ERROR COMPOSITEFX_GET_Operator(objCompositeFX *Self, LONG *Value)
+static ERROR COMPOSITEFX_GET_Operator(extCompositeFX *Self, LONG *Value)
 {
    *Value = Self->Operator;
    return ERR_Okay;
 }
 
-static ERROR COMPOSITEFX_SET_Operator(objCompositeFX *Self, LONG Value)
+static ERROR COMPOSITEFX_SET_Operator(extCompositeFX *Self, LONG Value)
 {
    Self->Operator = Value;
    return ERR_Okay;
@@ -860,7 +864,7 @@ XMLDef: Returns an SVG compliant XML string that describes the filter.
 
 *********************************************************************************************************************/
 
-static ERROR COMPOSITEFX_GET_XMLDef(objCompositeFX *Self, STRING *Value)
+static ERROR COMPOSITEFX_GET_XMLDef(extCompositeFX *Self, STRING *Value)
 {
    *Value = StrClone("feComposite");
    return ERR_Okay;
@@ -918,7 +922,7 @@ ERROR init_compositefx(void)
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clCompositeFXActions),
       fl::Fields(clCompositeFXFields),
-      fl::Size(sizeof(objCompositeFX)),
+      fl::Size(sizeof(extCompositeFX)),
       fl::Path(MOD_PATH));
 
    return clCompositeFX ? ERR_Okay : ERR_AddClass;

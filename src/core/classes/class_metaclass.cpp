@@ -174,7 +174,7 @@ void init_metaclass(void)
    glMetaClass.BaseClass::ClassID       = ID_METACLASS;
    glMetaClass.BaseClass::SubID         = ID_METACLASS;
    glMetaClass.BaseClass::UID           = 123;
-   glMetaClass.BaseClass::Flags         = NF_INITIALISED;
+   glMetaClass.BaseClass::Flags         = NF::INITIALISED;
 
    glMetaClass.ClassVersion    = 1;
    glMetaClass.Methods         = glMetaMethods;
@@ -1119,7 +1119,7 @@ static void copy_field(extMetaClass *Class, const FieldArray *Source, Field *Des
       #ifdef _LP64
          if (Offset[0] & 0x7) {
             Offset[0] = (Offset[0] + 7) & (~0x7);
-            if (((fieldflags & FDF_R) and (!Dest->GetValue)) OR
+            if (((fieldflags & FDF_R) and (!Dest->GetValue)) or
                 ((fieldflags & FDF_W) and (!Dest->SetValue))) {
                log.warning("Misaligned 64-bit pointer '%s' in class '%s'.", Dest->Name, Class->ClassName);
             }
@@ -1134,7 +1134,7 @@ static void copy_field(extMetaClass *Class, const FieldArray *Source, Field *Des
    else if (fieldflags & FD_FUNCTION) Offset[0] += sizeof(FUNCTION);
    else if (fieldflags & (FD_DOUBLE|FD_LARGE)) {
       if (Offset[0] & 0x7) {
-         if (((fieldflags & FDF_R) and (!Dest->GetValue)) OR
+         if (((fieldflags & FDF_R) and (!Dest->GetValue)) or
              ((fieldflags & FDF_W) and (!Dest->SetValue))) {
             log.warning("Misaligned 64-bit field '%s' in class '%s'.", Dest->Name, Class->ClassName);
          }
@@ -1313,7 +1313,7 @@ ERROR write_class_item(ClassItem *item)
       LONG flags = FL_WRITE;
       if (AnalysePath(glClassBinPath, NULL) != ERR_Okay) flags |= FL_NEW;
 
-      if (!NewLockedObject(ID_FILE, NF_INTEGRAL|NF_UNTRACKED, &file, &glClassFileID, NULL)) {
+      if (!NewLockedObject(ID_FILE, NF::INTEGRAL|NF::UNTRACKED, &file, &glClassFileID, NULL)) {
          SetFields(file,
             FID_Path|TSTR,         glClassBinPath,
             FID_Flags|TLONG,       flags,

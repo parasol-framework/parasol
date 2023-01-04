@@ -159,12 +159,12 @@ static int number_tostring(lua_State *Lua)
 
    if ((num = (struct fnumber *)lua_touserdata(Lua, 1))) {
       switch (num->Type) {
-         case NUM_DOUBLE: lua_pushfstring(Lua, "%f", num->f64); return 1;
-         case NUM_FLOAT:  lua_pushfstring(Lua, "%f", num->f32); return 1;
-         case NUM_LARGE:  lua_pushfstring(Lua, PF64(), num->i64); return 1;
-         case NUM_LONG:   lua_pushfstring(Lua, "%d", num->i32); return 1;
-         case NUM_WORD:   lua_pushfstring(Lua, "%d", num->i16); return 1;
-         case NUM_BYTE:   lua_pushfstring(Lua, "%d", num->i8); return 1;
+         case NUM_DOUBLE: lua_pushfstring(Lua, std::to_string(num->f64).c_str()); return 1;
+         case NUM_FLOAT:  lua_pushfstring(Lua, std::to_string(num->f32).c_str()); return 1;
+         case NUM_LARGE:  lua_pushstring(Lua, std::to_string(num->i64).c_str()); return 1;
+         case NUM_LONG:   lua_pushstring(Lua, std::to_string(num->i32).c_str()); return 1;
+         case NUM_WORD:   lua_pushstring(Lua, std::to_string(num->i16).c_str()); return 1;
+         case NUM_BYTE:   lua_pushstring(Lua, std::to_string(num->i8).c_str()); return 1;
       }
    }
 

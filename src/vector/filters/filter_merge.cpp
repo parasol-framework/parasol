@@ -24,8 +24,12 @@ its vector description on top.
 
 *********************************************************************************************************************/
 
-class objMergeFX : public extFilterEffect {
+class extMergeFX : public extFilterEffect {
    public:
+   static constexpr CLASSID CLASS_ID = ID_MERGEFX;
+   static constexpr CSTRING CLASS_NAME = "MergeFX";
+   using create = parasol::Create<extMergeFX>;
+
    std::vector<MergeSource> List;
 };
 
@@ -35,7 +39,7 @@ Draw: Render the effect to the target bitmap.
 -END-
 *********************************************************************************************************************/
 
-static ERROR MERGEFX_Draw(objMergeFX *Self, struct acDraw *Args)
+static ERROR MERGEFX_Draw(extMergeFX *Self, struct acDraw *Args)
 {
    objBitmap *bmp;
    LONG copy_flags = (Self->Filter->ColourSpace IS VCS_LINEAR_RGB) ? BAF_LINEAR : 0;
@@ -54,7 +58,7 @@ static ERROR MERGEFX_Draw(objMergeFX *Self, struct acDraw *Args)
 
 //********************************************************************************************************************
 
-static ERROR MERGEFX_NewObject(objMergeFX *Self, APTR Void)
+static ERROR MERGEFX_NewObject(extMergeFX *Self, APTR Void)
 {
    Self->SourceType = VSF_IGNORE;
    return ERR_Okay;
@@ -72,7 +76,7 @@ direct pointer to the referenced effect in the Effect field, or an error will be
 
 *********************************************************************************************************************/
 
-static ERROR MERGEFX_SET_SourceList(objMergeFX *Self, MergeSource *Value, LONG Elements)
+static ERROR MERGEFX_SET_SourceList(extMergeFX *Self, MergeSource *Value, LONG Elements)
 {
    if ((!Value) or (Elements <= 0)) {
       Self->List.clear();
@@ -99,7 +103,7 @@ XMLDef: Returns an SVG compliant XML string that describes the filter.
 
 *********************************************************************************************************************/
 
-static ERROR MERGEFX_GET_XMLDef(objMergeFX *Self, STRING *Value)
+static ERROR MERGEFX_GET_XMLDef(extMergeFX *Self, STRING *Value)
 {
    *Value = StrClone("feMerge");
    return ERR_Okay;
@@ -126,7 +130,7 @@ ERROR init_mergefx(void)
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clMergeFXActions),
       fl::Fields(clMergeFXFields),
-      fl::Size(sizeof(objMergeFX)),
+      fl::Size(sizeof(extMergeFX)),
       fl::Path(MOD_PATH));
 
    return clMergeFX ? ERR_Okay : ERR_AddClass;

@@ -93,7 +93,7 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
             if (!StrCompare(group.c_str() + 4, Path, j, 0)) {
                if (Path[j] != ':') continue;
 
-               CSTRING datatype;
+               CSTRING datatype = NULL;
                if (keys.contains("Datatype")) datatype = keys["Datatype"].c_str();
                else if (keys.contains("Mode")) cmd = StrClone(keys["Mode"].c_str());
 
