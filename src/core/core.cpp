@@ -1304,23 +1304,7 @@ static ERROR init_shared_control(void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
-
--FUNCTION-
-PrintDiagnosis: Prints program state information to stdout.
-Category: Logging
-Status: private
-
-An analysis of any task's current state can be printed to stdout by calling this function.  This information is useful
-solely for the purpose of debugging, particularly in difficult situations where reviewing the current context and
-resource data may prove useful.
-
--INPUT-
-int Process: Process ID of the task to analyse - if zero, the current task is analysed.
-int Signal: Intended for internal use only (set to zero), indicates a signal number in the event of a crash.
--END-
-
-*****************************************************************************/
+//****************************************************************************
 
 static const CSTRING signals[] = {
    "00: UNKNOWN",
@@ -1363,7 +1347,7 @@ static const CSTRING signals[] = {
 };
 
 #ifdef __ANDROID__
-void PrintDiagnosis(LONG ProcessID, LONG Signal)
+void print_diagnosis(LONG ProcessID, LONG Signal)
 {
    if (!ProcessID) ProcessID = glProcessID;
 
@@ -1476,7 +1460,7 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
 
 #else
 
-void PrintDiagnosis(LONG ProcessID, LONG Signal)
+void print_diagnosis(LONG ProcessID, LONG Signal)
 {
    FILE *fd;
 #ifndef _WIN32
@@ -1660,7 +1644,7 @@ void PrintDiagnosis(LONG ProcessID, LONG Signal)
 static void DiagnosisHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
 {
    if (glLogLevel < 2) return;
-   PrintDiagnosis(glProcessID, 0);
+   print_diagnosis(glProcessID, 0);
    fflush(NULL);
 }
 #endif
@@ -1715,7 +1699,7 @@ static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
 
    glCrashStatus = 2;
 
-   PrintDiagnosis(glProcessID, SignalNumber);
+   print_diagnosis(glProcessID, SignalNumber);
 
    CloseCore();
    exit(255);
@@ -1836,7 +1820,7 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
 
    glCrashStatus = 2;
 
-   PrintDiagnosis(0,0);
+   print_diagnosis(0,0);
    fflush(NULL);
 
    CloseCore();
@@ -2047,7 +2031,7 @@ static void BreakHandler(void)
 
    glCrashStatus = 1;
 
-   PrintDiagnosis(0,0);
+   print_diagnosis(0,0);
    fflush(NULL);
 
    CloseCore();

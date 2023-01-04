@@ -25,7 +25,6 @@
       <category>Files</category>
       <category>KeyStore</category>
       <category>Locks</category>
-      <category>Logging</category>
       <category>Memory</category>
       <category>Messages</category>
       <category>Objects</category>
@@ -293,7 +292,7 @@ struct FunctionField argsResize[] = {
 
   <function>
     <name>AdjustLogLevel</name>
-    <category>Logging</category>
+    <category>System</category>
     <comment>Adjusts the base-line of all log messages.</comment>
     <prototype>LONG AdjustLogLevel(LONG Adjust)</prototype>
     <input>
@@ -900,22 +899,6 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id, &amp;count);
   </function>
 
   <function>
-    <name>FuncError</name>
-    <category>Logging</category>
-    <comment>Sends basic error messages to the application log.</comment>
-    <prototype>ERROR FuncError(CSTRING Header, ERROR Error)</prototype>
-    <input>
-      <param type="CSTRING" name="Header">A short string that names the function that is making the call.</param>
-      <param type="ERROR" name="Error">An error code from the "system/errors.h" include file.  Valid error codes and their descriptions can be found in the Parasol SDK manual.</param>
-    </input>
-    <description>
-<p>This function outputs a message to the application log.  It uses the codes listed in the system/errors.h file to display the correct string to the user.  The following example <code>FuncError(ERR_Write)</code> would produce input such as the following: <code>WriteFile: Error writing data to file.</code>.</p>
-<p>Notice that the Header parameter is not provided in the example.  It is not necessary to supply this parameter in C/C++ as the function name is automatically entered by the C pre-processor.</p>
-    </description>
-    <result type="ERROR">Returns the same code that was specified in the Error parameter.</result>
-  </function>
-
-  <function>
     <name>GenCRC32</name>
     <category>System</category>
     <comment>Generates 32-bit CRC checksum values.</comment>
@@ -1433,55 +1416,6 @@ end
       <error code="TimeOut">Function timed-out before successful completion.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
-  </function>
-
-  <function>
-    <name>LogF</name>
-    <category>Logging</category>
-    <comment>Sends formatted messages to the standard log.</comment>
-    <prototype>void LogF(CSTRING Header, CSTRING Message, ...)</prototype>
-    <input>
-      <param type="CSTRING" name="Header">A short name for the first column. Typically function names are placed here, so that the origin of the message is obvious.</param>
-      <param type="CSTRING" name="Message">A formatted message to print.</param>
-      <param type="..." name="Tags">As per printf() rules, one parameter for every % symbol that has been used in the Message string is required.</param>
-    </input>
-    <description>
-<p>The LogF() function follows the same functionality and rules as the ANSI printf() function, with the difference that it is passed through a log filter before appearing as output.  Imposed limits restrict the length of the message to 256 bytes, although a 120 byte limit is recommended where possible.</p>
-<p>The following example will print the default width of a Display object to the log.</p>
-<pre>if (!NewObject(ID_DISPLAY, 0, &amp;display)) {
-   if (!display-&gt;init(display)) {
-      LogF("Demo","The width of the display is: %d", display-&gt;Width);
-   }
-   acFree(display);
-}
-</pre>
-    </description>
-  </function>
-
-  <function>
-    <name>LogReturn</name>
-    <category>Logging</category>
-    <comment>Revert to the previous branch in the application logging tree.</comment>
-    <prototype>void LogReturn()</prototype>
-    <description>
-<p>Use LogReturn() to reverse any previous log message that created an indented branch.  Consider the following example that uses a tilde to create a new branch:</p>
-<pre>LogF("~Hello:","World.");
-   LogF("Goodbye:","World.");
-LogReturn();
-LogF("Log:","Back to normal.");
-</pre>
-<p>This will produce the following output:</p>
-<pre>Hello         World.
- Goodbye      World.
-Log           Back to normal.
-</pre>
-<p>If the code was missing the LogReturn() call, the log would be permanently out of step as follows:</p>
-<pre>Hello         World.
- Goodbye      World.
- Log          Back to normal.
-</pre>
-<p>In C++ the scope-managed <code>parasol::Log</code> class should be used instead.  It automatically debranches the messaging chain when code goes out of scope.</p>
-    </description>
   </function>
 
   <function>
@@ -2814,22 +2748,6 @@ SetField(Object, FID_Statement|TSTR, "string");
       <error code="SystemLocked">Part of the system is unreachable due to a persistent lock.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
-  </function>
-
-  <function>
-    <name>VLogF</name>
-    <category>Logging</category>
-    <comment>Sends formatted messages to the standard log.</comment>
-    <prototype>void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)</prototype>
-    <input>
-      <param type="LONG" name="Flags" lookup="VLF">Optional flags</param>
-      <param type="CSTRING" name="Header">A short name for the first column. Typically function names are placed here, so that the origin of the message is obvious.</param>
-      <param type="CSTRING" name="Message">A formatted message to print.</param>
-      <param type="va_list" name="Args">A va_list corresponding to the arguments referenced in Message.</param>
-    </input>
-    <description>
-<p>Please refer to LogF().  This function is not intended for external use.</p>
-    </description>
   </function>
 
   <function>

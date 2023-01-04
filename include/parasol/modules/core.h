@@ -2078,7 +2078,7 @@ struct CoreBase {
    ERROR (*_CopyMemory)(const void * Src, APTR Dest, LONG Size);
    ERROR (*_LoadFile)(CSTRING Path, LONG Flags, struct CacheFile ** Cache);
    ERROR (*_SubscribeActionTags)(OBJECTPTR Object, ...);
-   void (*_PrintDiagnosis)(LONG Process, LONG Signal);
+   ERROR (*_DeleteVolume)(CSTRING Name);
    ERROR (*_NewLockedObject)(LARGE ClassID, NF Flags, APTR Object, OBJECTID * ID, CSTRING Name);
    ERROR (*_UpdateMessage)(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size);
    ERROR (*_AddMsgHandler)(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle);
@@ -2149,7 +2149,6 @@ struct CoreBase {
    ERROR (*_MoveFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
    ERROR (*_ResolvePath)(CSTRING Path, LONG Flags, STRING * Result);
    ERROR (*_SetVolume)(...);
-   ERROR (*_DeleteVolume)(CSTRING Name);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2229,7 +2228,7 @@ inline ERROR SysUnlock(LONG Index) { return CoreBase->_SysUnlock(Index); }
 inline ERROR CopyMemory(const void * Src, APTR Dest, LONG Size) { return CoreBase->_CopyMemory(Src,Dest,Size); }
 inline ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile ** Cache) { return CoreBase->_LoadFile(Path,Flags,Cache); }
 template<class... Args> ERROR SubscribeActionTags(OBJECTPTR Object, Args... Tags) { return CoreBase->_SubscribeActionTags(Object,Tags...); }
-inline void PrintDiagnosis(LONG Process, LONG Signal) { return CoreBase->_PrintDiagnosis(Process,Signal); }
+inline ERROR DeleteVolume(CSTRING Name) { return CoreBase->_DeleteVolume(Name); }
 inline ERROR NewLockedObject(LARGE ClassID, NF Flags, APTR Object, OBJECTID * ID, CSTRING Name) { return CoreBase->_NewLockedObject(ClassID,Flags,Object,ID,Name); }
 inline ERROR UpdateMessage(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size) { return CoreBase->_UpdateMessage(Queue,Message,Type,Data,Size); }
 inline ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle) { return CoreBase->_AddMsgHandler(Custom,MsgType,Routine,Handle); }
@@ -2300,7 +2299,6 @@ inline ERROR CreateFolder(CSTRING Path, LONG Permissions) { return CoreBase->_Cr
 inline ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_MoveFile(Source,Dest,Callback); }
 inline ERROR ResolvePath(CSTRING Path, LONG Flags, STRING * Result) { return CoreBase->_ResolvePath(Path,Flags,Result); }
 template<class... Args> ERROR SetVolume(Args... Tags) { return CoreBase->_SetVolume(Tags...); }
-inline ERROR DeleteVolume(CSTRING Name) { return CoreBase->_DeleteVolume(Name); }
 #endif
 
 
@@ -2314,13 +2312,6 @@ inline ERROR DeleteVolume(CSTRING Name) { return CoreBase->_DeleteVolume(Name); 
  #define DeregisterFD(a)           (CoreBase->_RegisterFD((a), RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL, 0, 0))
  #define DeleteMsg(a,b)            (CoreBase->_UpdateMessage(a,b,(APTR)-1,0,0))
  #define GetObjectAddress          (CoreBase->_GetMemAddress)
-
- #undef Action
- #define Action(a,b,c)             (CoreBase->_Action(a,b,c))
-
- #undef PrintDiagnosis
- #define PrintDiagnosis()          (CoreBase->_PrintDiagnosis(NULL,NULL))
-
 #endif // PRV_CORE_MODULE
 
 #define GetParentContext()        ((OBJECTPTR)(MAXINT)GetResource(RES_PARENT_CONTEXT))
