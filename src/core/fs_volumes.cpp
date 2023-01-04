@@ -294,7 +294,7 @@ next:
                   objConfig::create cfg = { fl::Path(savefile) };
 
                   if (cfg.ok()) {
-                     cfgWriteValue(*cfg, group.c_str(), "Path", keys["Path"].c_str());
+                     cfg->write(group.c_str(), "Path", keys["Path"]);
                      objFile::create file = {
                         fl::Path(savefile), fl::Flags(FL_WRITE|FL_NEW), fl::Permissions(savepermissions)
                      };
@@ -308,7 +308,7 @@ next:
       }
    }
 
-   cfgWriteValue(glVolumes, name, "Name", name); // Ensure that an entry for the volume exists before we search for it.
+   glVolumes->write(name, "Name", name); // Ensure that an entry for the volume exists before we search for it.
 
    for (auto& [group, keys] : groups[0]) {
       if (!StrMatch(group.c_str(), name)) {
@@ -327,7 +327,7 @@ next:
             objConfig::create userconfig = { fl::Path(savefile) };
 
             if (userconfig.ok()) {
-               cfgWriteValue(*userconfig, name, "Name", name); // Ensure that an entry for the volume exists before we search for it.
+               userconfig->write(name, "Name", name); // Ensure that an entry for the volume exists before we search for it.
                ConfigGroups *usergroups;
                if (userconfig->getPtr(FID_Data, &usergroups)) {
                   for (auto& [group, ukeys] : usergroups[0]) {

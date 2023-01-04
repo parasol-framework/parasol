@@ -2744,7 +2744,15 @@ class Create {
          else return NULL;
       }
 
-      // Create a scoped object
+      // Create a scoped object that is not initialised.
+
+      Create(NF Flags = NF::NIL) : obj(NULL), error(ERR_NewObject) {
+         if (!NewObject(T::CLASS_ID, Flags, (BaseClass **)&obj)) {
+            error = ERR_Okay;
+         }
+      }
+
+      // Create a scoped object that is fully initialised.
 
       Create(std::initializer_list<FieldValue> Fields, NF Flags = NF::NIL) : obj(NULL), error(ERR_Failed) {
          parasol::Log log("CreateObject");
@@ -3291,6 +3299,24 @@ class objConfig : public BaseClass {
    STRING KeyFilter;    // Set this field to enable key filtering.
    STRING GroupFilter;  // Set this field to enable group filtering.
    LONG   Flags;        // Optional flags may be set here.
+   public:
+   inline ERROR write(CSTRING Group, CSTRING Key, CSTRING Value) {
+      struct cfgWriteValue write = { Group, Key, Value };
+      return Action(MT_CfgWriteValue, this, &write);
+   }
+   inline ERROR write(CSTRING Group, CSTRING Key, STRING Value) {
+      struct cfgWriteValue write = { Group, Key, Value };
+      return Action(MT_CfgWriteValue, this, &write);
+   }
+   inline ERROR write(CSTRING Group, CSTRING Key, std::string Value) {
+      struct cfgWriteValue write = { Group, Key, Value.c_str() };
+      return Action(MT_CfgWriteValue, this, &write);
+   }
+   template <class T> inline ERROR write(CSTRING Group, CSTRING Key, T Value) {
+      auto str = std::to_string(Value);
+      struct cfgWriteValue write = { Group, Key, str.c_str() };
+      return Action(MT_CfgWriteValue, this, &write);
+   }
 
    // Action stubs
 
@@ -3308,15 +3334,6 @@ class objConfig : public BaseClass {
    }
    inline ERROR sort() { return Action(AC_Sort, this, NULL); }
 };
-
-inline ERROR cfgWrite(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG Integer)
-{
-   if (!Self) return ERR_NullArgs;
-   char buffer[32];
-   snprintf(buffer, sizeof(buffer), "%d", Integer);
-   struct cfgWriteValue write = { Group, Key, buffer };
-   return Action(MT_CfgWriteValue, Self, &write);
-}
 
 inline ERROR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, DOUBLE *Value)
 {

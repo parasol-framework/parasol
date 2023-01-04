@@ -1250,21 +1250,21 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 
    objConfig::create config = { };
    if (config.ok()) {
-      cfgWrite(*config, "AUDIO", "OutputRate", Self->OutputRate);
-      cfgWrite(*config, "AUDIO", "InputRate", Self->InputRate);
-      cfgWrite(*config, "AUDIO", "Quality", Self->Quality);
-      cfgWrite(*config, "AUDIO", "BitDepth", Self->BitDepth);
-      cfgWrite(*config, "AUDIO", "Periods", Self->Periods);
-      cfgWrite(*config, "AUDIO", "PeriodSize", Self->PeriodSize);
-      cfgWriteValue(*config, "AUDIO", "Bass", std::to_string(Self->Bass).c_str());
-      cfgWriteValue(*config, "AUDIO", "Treble", std::to_string(Self->Treble).c_str());
+      config->write("AUDIO", "OutputRate", Self->OutputRate);
+      config->write("AUDIO", "InputRate", Self->InputRate);
+      config->write("AUDIO", "Quality", Self->Quality);
+      config->write("AUDIO", "BitDepth", Self->BitDepth);
+      config->write("AUDIO", "Periods", Self->Periods);
+      config->write("AUDIO", "PeriodSize", Self->PeriodSize);
+      config->write("AUDIO", "Bass", Self->Bass);
+      config->write("AUDIO", "Treble", Self->Treble);
 
-      if (Self->Flags & ADF_STEREO) cfgWriteValue(*config, "AUDIO", "Stereo", "TRUE");
-      else cfgWriteValue(*config, "AUDIO", "Stereo", "FALSE");
+      if (Self->Flags & ADF_STEREO) config->write("AUDIO", "Stereo", "TRUE");
+      else config->write("AUDIO", "Stereo", "FALSE");
 
 #ifdef __linux__
-      if (Self->prvDevice[0]) cfgWriteValue(*config, "AUDIO", "Device", Self->prvDevice);
-      else cfgWriteValue(*config, "AUDIO", "Device", "default");
+      if (Self->prvDevice[0]) config->write("AUDIO", "Device", Self->prvDevice);
+      else config->write("AUDIO", "Device", "default");
 
       if ((Self->VolumeCtl) and (Self->Flags & ADF_SYSTEM_WIDE)) {
          for (LONG i=0; Self->VolumeCtl[i].Name[0]; i++) {
@@ -1281,7 +1281,7 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
             }
             out << ']';
 
-            cfgWriteValue(*config, "MIXER", Self->VolumeCtl[i].Name, out.str().c_str());
+            config->write("MIXER", Self->VolumeCtl[i].Name, out.str());
          }
       }
 #if 0
@@ -1317,11 +1317,12 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 
       if (pmin >= pmax) continue;
 
+      std::ostringstream out;
       DOUBLE fleft = (DOUBLE)left * 100.0 / (DOUBLE)(pmax - pmin);
       DOUBLE fright = (DOUBLE)right * 100.0 / (DOUBLE)(pmax - pmin);
-      snprintf(buffer, sizeof(buffer), "%.2f,%.2f,%d", fleft, fright, (mute) ? 0 : 1);
+      out << fleft << ',' << fright << ',' << mute ? 0 : 1;
 
-      cfgWriteValue(*config, "MIXER", Self->VolumeCtl[i].Name, buffer);
+      config->write("MIXER", Self->VolumeCtl[i].Name, out.str());
    }
 #endif
 
@@ -1330,7 +1331,7 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
          std::string out((Self->VolumeCtl[0].Flags & VCF_MUTE) ? "1,[" : "0,[");
          out.append(std::to_string(Self->VolumeCtl[0].Channels[0]));
          out.append("]");
-         cfgWriteValue(*config, "MIXER", Self->VolumeCtl[0].Name, out.c_str());
+         config->write("MIXER", Self->VolumeCtl[0].Name, out);
       }
 #endif
 
