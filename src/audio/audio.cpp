@@ -38,6 +38,7 @@ please refer to the @Audio class.
 
 #include <parasol/main.h>
 #include <parasol/modules/audio.h>
+#include <sstream>
 
 static ERROR CMDInit(OBJECTPTR, struct CoreBase *);
 static ERROR CMDExpunge(void);
@@ -354,7 +355,7 @@ static ERROR sndWaitDrivers(LONG TimeOut)
 
          genuine = FALSE;
          while (card >= 0) {
-            StrFormat(name, sizeof(name), "hw:%d", card);
+            snprintf(name, sizeof(name), "hw:%d", card);
 
             if ((err = snd_ctl_open(&ctlhandle, name, 0)) >= 0) {
                if ((err = snd_ctl_card_info(ctlhandle, info)) >= 0) {

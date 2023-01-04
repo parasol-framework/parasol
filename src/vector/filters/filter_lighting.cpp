@@ -159,8 +159,12 @@ inline point3 rightNormal(const UBYTE m[9], const DOUBLE Scale) {
 
 //********************************************************************************************************************
 
-class objLightingFX : public extFilterEffect {
+class extLightingFX : public extFilterEffect {
    public:
+   static constexpr CLASSID CLASS_ID = ID_LIGHTINGFX;
+   static constexpr CSTRING CLASS_NAME = "LightingFX";
+   using create = parasol::Create<extLightingFX>;
+
    FRGB   Colour;           // Colour of the light source.
    FRGB   LinearColour;     // Colour of the light source in linear sRGB space.
    DOUBLE SpecularExponent; // Exponent value for specular lighting only.
@@ -183,7 +187,7 @@ class objLightingFX : public extFilterEffect {
    DOUBLE ConeScale;
    point3 SpotDelta;
 
-   objLightingFX() {
+   extLightingFX() {
       SpecularExponent = 1.0;
       Colour   = { 1.0, 1.0, 1.0, 1.0 };
       LinearColour = { 1.0, 1.0, 1.0, 1.0 };
@@ -198,7 +202,7 @@ class objLightingFX : public extFilterEffect {
 //********************************************************************************************************************
 // For point & spot light.
 
-static point3 read_light_delta(objLightingFX *Self, DOUBLE X, DOUBLE Y, DOUBLE SZ, UBYTE Z)
+static point3 read_light_delta(extLightingFX *Self, DOUBLE X, DOUBLE Y, DOUBLE SZ, UBYTE Z)
 {
    // The incoming Z value is in alpha, so is scaled to 0 - 1.0.
    point3 direction(X, Y, SZ - (DOUBLE(Z) * (1.0 / 255.0) * Self->Scale));
@@ -209,7 +213,7 @@ static point3 read_light_delta(objLightingFX *Self, DOUBLE X, DOUBLE Y, DOUBLE S
 //********************************************************************************************************************
 // Colour computation for spot light.  Resulting RGB values are 0 - 1.0
 
-static FRGB colour_spot_light(objLightingFX *Self, point3 &Point)
+static FRGB colour_spot_light(extLightingFX *Self, point3 &Point)
 {
    if (Self->ConeAngle) {
       DOUBLE cosAngle = -Point.dot(Self->SpotDelta);
@@ -233,7 +237,7 @@ static FRGB colour_spot_light(objLightingFX *Self, point3 &Point)
 //********************************************************************************************************************
 // Specular/Diffuse drawing functions.
 
-static void diffuse_light(objLightingFX *Self, const point3 &Normal, const point3 &STL, const FRGB &Colour, UBYTE *Output, UBYTE R, UBYTE G, UBYTE B, UBYTE A)
+static void diffuse_light(extLightingFX *Self, const point3 &Normal, const point3 &STL, const FRGB &Colour, UBYTE *Output, UBYTE R, UBYTE G, UBYTE B, UBYTE A)
 {
    DOUBLE scale = (Self->Constant * Normal.dot(STL)) * 255.0;
    if (scale < 0) scale = 0;
@@ -245,7 +249,7 @@ static void diffuse_light(objLightingFX *Self, const point3 &Normal, const point
    Output[A] = 255;
 }
 
-static void specular_light(objLightingFX *Self, const point3 &Normal, const point3 &STL, const FRGB &Colour, UBYTE *Output, UBYTE R, UBYTE G, UBYTE B, UBYTE A)
+static void specular_light(extLightingFX *Self, const point3 &Normal, const point3 &STL, const FRGB &Colour, UBYTE *Output, UBYTE R, UBYTE G, UBYTE B, UBYTE A)
 {
    point3 halfDir(STL);
    halfDir.fZ += 1.0; // Eye position is always (0, 0, 1)
@@ -274,7 +278,7 @@ Draw: Render the effect to the target bitmap.
 -END-
 *********************************************************************************************************************/
 
-static ERROR LIGHTINGFX_Draw(objLightingFX *Self, struct acDraw *Args)
+static ERROR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
 {
    parasol::Log log;
 
@@ -514,17 +518,17 @@ static ERROR LIGHTINGFX_Draw(objLightingFX *Self, struct acDraw *Args)
 
 //********************************************************************************************************************
 
-static ERROR LIGHTINGFX_Free(objLightingFX *Self, APTR Void)
+static ERROR LIGHTINGFX_Free(extLightingFX *Self, APTR Void)
 {
-   Self->~objLightingFX();
+   Self->~extLightingFX();
    return ERR_Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR LIGHTINGFX_NewObject(objLightingFX *Self, APTR Void)
+static ERROR LIGHTINGFX_NewObject(extLightingFX *Self, APTR Void)
 {
-   new (Self) objLightingFX;
+   new (Self) extLightingFX;
    return ERR_Okay;
 }
 
@@ -553,7 +557,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR LIGHTINGFX_SetDistantLight(objLightingFX *Self, struct ltSetDistantLight *Args)
+static ERROR LIGHTINGFX_SetDistantLight(extLightingFX *Self, struct ltSetDistantLight *Args)
 {
    parasol::Log log;
 
@@ -592,7 +596,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR LIGHTINGFX_SetPointLight(objLightingFX *Self, struct ltSetPointLight *Args)
+static ERROR LIGHTINGFX_SetPointLight(extLightingFX *Self, struct ltSetPointLight *Args)
 {
    parasol::Log log;
 
@@ -639,7 +643,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR LIGHTINGFX_SetSpotLight(objLightingFX *Self, struct ltSetSpotLight *Args)
+static ERROR LIGHTINGFX_SetSpotLight(extLightingFX *Self, struct ltSetSpotLight *Args)
 {
    parasol::Log log;
 
@@ -677,14 +681,14 @@ The default colour is pure white, `1.0,1.0,1.0,1.0`.
 
 *********************************************************************************************************************/
 
-static ERROR LIGHTINGFX_GET_Colour(objLightingFX *Self, FLOAT **Value, LONG *Elements)
+static ERROR LIGHTINGFX_GET_Colour(extLightingFX *Self, FLOAT **Value, LONG *Elements)
 {
    *Value = (FLOAT *)&Self->Colour;
    *Elements = 4;
    return ERR_Okay;
 }
 
-static ERROR LIGHTINGFX_SET_Colour(objLightingFX *Self, FLOAT *Value, LONG Elements)
+static ERROR LIGHTINGFX_SET_Colour(extLightingFX *Self, FLOAT *Value, LONG Elements)
 {
    if (Value) {
       if (Elements >= 1) Self->Colour.Red   = Value[0];
@@ -710,13 +714,13 @@ In the Phong lighting model, this field specifies the kd value in diffuse mode, 
 
 *********************************************************************************************************************/
 
-static ERROR LIGHTINGFX_GET_Constant(objLightingFX *Self, DOUBLE *Value)
+static ERROR LIGHTINGFX_GET_Constant(extLightingFX *Self, DOUBLE *Value)
 {
    *Value = Self->Constant;
    return ERR_Okay;
 }
 
-static ERROR LIGHTINGFX_SET_Constant(objLightingFX *Self, DOUBLE Value)
+static ERROR LIGHTINGFX_SET_Constant(extLightingFX *Self, DOUBLE Value)
 {
    if (Value >= 0) {
       Self->Constant = Value;
@@ -735,13 +739,13 @@ shinier the end result.
 
 *********************************************************************************************************************/
 
-static ERROR LIGHTINGFX_GET_Exponent(objLightingFX *Self, DOUBLE *Value)
+static ERROR LIGHTINGFX_GET_Exponent(extLightingFX *Self, DOUBLE *Value)
 {
    *Value = Self->SpecularExponent;
    return ERR_Okay;
 }
 
-static ERROR LIGHTINGFX_SET_Exponent(objLightingFX *Self, DOUBLE Value)
+static ERROR LIGHTINGFX_SET_Exponent(extLightingFX *Self, DOUBLE Value)
 {
    if ((Value >= 1.0) and (Value <= 128.0)) {
       Self->SpecularExponent = Value;
@@ -757,13 +761,13 @@ Scale: The maximum height of the input surface (bump map) when the alpha input i
 
 *********************************************************************************************************************/
 
-static ERROR LIGHTINGFX_GET_Scale(objLightingFX *Self, DOUBLE *Value)
+static ERROR LIGHTINGFX_GET_Scale(extLightingFX *Self, DOUBLE *Value)
 {
    *Value = Self->Scale;
    return ERR_Okay;
 }
 
-static ERROR LIGHTINGFX_SET_Scale(objLightingFX *Self, DOUBLE Value)
+static ERROR LIGHTINGFX_SET_Scale(extLightingFX *Self, DOUBLE Value)
 {
    Self->Scale = Value;
    return ERR_Okay;
@@ -777,13 +781,13 @@ Lookup: LT
 
 *********************************************************************************************************************/
 
-static ERROR LIGHTINGFX_GET_Type(objLightingFX *Self, LONG *Value)
+static ERROR LIGHTINGFX_GET_Type(extLightingFX *Self, LONG *Value)
 {
    *Value = Self->Type;
    return ERR_Okay;
 }
 
-static ERROR LIGHTINGFX_SET_Type(objLightingFX *Self, LONG Value)
+static ERROR LIGHTINGFX_SET_Type(extLightingFX *Self, LONG Value)
 {
    Self->Type = Value;
    return ERR_Okay;
@@ -804,13 +808,13 @@ that a value be provided for at least one of ResX and #UnitX.
 
 *********************************************************************************************************************/
 
-static ERROR LIGHTINGFX_GET_UnitX(objLightingFX *Self, DOUBLE *Value)
+static ERROR LIGHTINGFX_GET_UnitX(extLightingFX *Self, DOUBLE *Value)
 {
    *Value = Self->UnitX;
    return ERR_Okay;
 }
 
-static ERROR LIGHTINGFX_SET_UnitX(objLightingFX *Self, DOUBLE Value)
+static ERROR LIGHTINGFX_SET_UnitX(extLightingFX *Self, DOUBLE Value)
 {
    if (Value < 0) return ERR_InvalidValue;
    Self->UnitX = Value;
@@ -832,13 +836,13 @@ that a value be provided for at least one of ResY and #UnitY.
 
 *********************************************************************************************************************/
 
-static ERROR LIGHTINGFX_GET_UnitY(objLightingFX *Self, DOUBLE *Value)
+static ERROR LIGHTINGFX_GET_UnitY(extLightingFX *Self, DOUBLE *Value)
 {
    *Value = Self->UnitY;
    return ERR_Okay;
 }
 
-static ERROR LIGHTINGFX_SET_UnitY(objLightingFX *Self, DOUBLE Value)
+static ERROR LIGHTINGFX_SET_UnitY(extLightingFX *Self, DOUBLE Value)
 {
    if (Value < 0) return ERR_InvalidValue;
    Self->UnitY = Value;
@@ -853,7 +857,7 @@ XMLDef: Returns an SVG compliant XML string that describes the filter.
 
 *********************************************************************************************************************/
 
-static ERROR LIGHTINGFX_GET_XMLDef(objLightingFX *Self, STRING *Value)
+static ERROR LIGHTINGFX_GET_XMLDef(extLightingFX *Self, STRING *Value)
 {
    std::stringstream stream;
    std::string type(Self->Type IS LT_DIFFUSE ? "feDiffuseLighting" : "feSpecularLighting");
@@ -899,7 +903,7 @@ ERROR init_lightingfx(void)
       fl::Actions(clLightingFXActions),
       fl::Methods(clLightingFXMethods),
       fl::Fields(clLightingFXFields),
-      fl::Size(sizeof(objLightingFX)),
+      fl::Size(sizeof(extLightingFX)),
       fl::Path(MOD_PATH));
 
    return clLightingFX ? ERR_Okay : ERR_AddClass;

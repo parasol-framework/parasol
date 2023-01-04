@@ -581,7 +581,7 @@ void handle_key_press(XEvent *xevent)
       if (KeyHeld[value]) flags |= KQ_REPEAT;
       else KeyHeld[value] = 1;
 
-      if (value IS K_L_COMMAND)       glKeyFlags |= KQ_L_COMMAND;
+      if (value IS K_L_COMMAND)      glKeyFlags |= KQ_L_COMMAND;
       else if (value IS K_R_COMMAND) glKeyFlags |= KQ_R_COMMAND;
       else if (value IS K_L_SHIFT)   glKeyFlags |= KQ_L_SHIFT;
       else if (value IS K_R_SHIFT)   glKeyFlags |= KQ_R_SHIFT;
@@ -615,8 +615,8 @@ void handle_key_release(XEvent *xevent)
    if (XPending(XDisplay)) {
       XEvent peekevent;
       XPeekEvent(XDisplay, &peekevent);
-      if ((peekevent.type IS KeyPress) AND
-          (peekevent.xkey.keycode IS xevent->xkey.keycode) AND
+      if ((peekevent.type IS KeyPress) and
+          (peekevent.xkey.keycode IS xevent->xkey.keycode) and
           ((peekevent.xkey.time - xevent->xkey.time) < 2)) {
          // The key is held and repeated, so do not release it
          log.trace("XKey $%x is held and repeated, not releasing.", xevent->xkey.keycode);

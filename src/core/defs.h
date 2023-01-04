@@ -151,12 +151,8 @@ struct rkWatchPath {
 
 #define STAT_FOLDER 0x0001
 
+enum class NF : ULONG;
 #include "prototypes.h"
-
-#define DelayMsg(a,b,c)     (ActionMsg(a,b,c,0,0xffffffff))
-#define DelayAction(a,b,c)  (ActionMsg(a,b,c,0,0xffffffff))
-#define SendAction(a,b,c,d) (ActionMsg(a,b,c,d,0))
-#define WaitMsg(a,b,c)      (ActionMsg(a,b,c,0,0xfffffffe))
 
 #include <parasol/main.h>
 
@@ -336,7 +332,7 @@ struct SharedObject {
    OBJECTPTR Address;            // Pointer the object address (if in private memory)
    CLASSID   ClassID;            // Class ID of the object
    char      Name[MAX_NAME_LEN]; // Name of the object
-   UWORD     Flags;              // NF flags
+   NF        Flags;              // NF flags
    LONG      InstanceID;         // Reference to the instance that this object is restricted to
 };
 
@@ -957,7 +953,7 @@ ERROR AllocSemaphore(CSTRING, LONG, LONG, LONG *);
 ERROR FreeSemaphore(LONG SemaphoreID);
 ERROR SetFieldF(OBJECTPTR, FIELD, va_list);
 ERROR SetFieldsF(OBJECTPTR, va_list);
-ERROR CreateObjectF(LARGE, LONG, OBJECTPTR *, va_list List);
+ERROR CreateObjectF(LARGE, NF, OBJECTPTR *, va_list List);
 ERROR pReleaseSemaphore(LONG, LONG);
 
 ERROR fs_closedir(struct DirInfo *);
@@ -1044,7 +1040,7 @@ void   remove_shared_object(OBJECTID);
 ERROR  resolve_args(APTR, const struct FunctionField *);
 APTR   resolve_public_address(struct PublicAddress *);
 void   scan_classes(void);
-void   set_object_flags(OBJECTPTR, LONG);
+void   set_object_flags(OBJECTPTR, NF);
 ERROR  sort_class_fields(extMetaClass *, struct Field *);
 void   remove_threadpool(void);
 ERROR  threadpool_get(extThread **);
@@ -1145,6 +1141,7 @@ WINHANDLE winGetStdInput(void);
 LARGE winGetTickCount(void);
 void winInitialise(int *, void *);
 void winInitializeCriticalSection(APTR Lock);
+LONG winIsDebuggerPresent(void);
 void winDeleteCriticalSection(APTR Lock);
 LONG winLaunchProcess(APTR, STRING, STRING, BYTE Group, BYTE Redirect, APTR *ProcessResult, BYTE, STRING, STRING, LONG *);
 void winLeaveCriticalSection(APTR);
@@ -1221,7 +1218,7 @@ INLINE CSTRING GET_FIELD_NAME(ULONG FieldID)
    CSTRING name;
    if (!KeyGet(glFields, FieldID, (APTR *)&name, NULL)) return name;
    else {
-      StrFormat(tlFieldName, sizeof(tlFieldName), "$%.8x", FieldID);
+      snprintf(tlFieldName, sizeof(tlFieldName), "$%.8x", FieldID);
       return tlFieldName;
    }
 }

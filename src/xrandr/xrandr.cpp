@@ -73,14 +73,14 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    else log.msg("X11 display ownership is not enabled.");
 
    if (avail) {
-      if ((sizes = XRRSizes(XDisplay, screen, &count)) AND (count)) {
+      if ((sizes = XRRSizes(XDisplay, screen, &count)) and (count)) {
          glSizes = sizes;
          glSizeCount = count;
       }
       else log.msg("XRRSizes() failed.");
    }
 
-   if ((avail) AND (glX11->RRInitialised <= 1)) {
+   if ((avail) and (glX11->RRInitialised <= 1)) {
       // Build the screen.xml file if this is the first task to initialise the RandR extension.
 
       objFile::create file = { fl::Path("user:config/screen.xml"), fl::Flags(FL_NEW|FL_WRITE) };
@@ -132,12 +132,12 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
          }
 
          for (i=0; i < glSizeCount; i++) {
-            if ((glSizes[i].width >= 640) AND (glSizes[i].height >= 480)) {
-               StrFormat(buffer, sizeof(buffer), "<screen name=\"%dx%d\" width=\"%d\" height=\"%d\" depth=\"%d\" colours=\"%d\"\n",
+            if ((glSizes[i].width >= 640) and (glSizes[i].height >= 480)) {
+               snprintf(buffer, sizeof(buffer), "<screen name=\"%dx%d\" width=\"%d\" height=\"%d\" depth=\"%d\" colours=\"%d\"\n",
                   glSizes[i].width, glSizes[i].height, glSizes[i].width, glSizes[i].height, xbpp, xcolours);
                write_string(*file, buffer);
 
-               StrFormat(buffer, sizeof(buffer), "  bytes=\"%d\" defaultrefresh=\"0\" minrefresh=\"0\" maxrefresh=\"0\">\n", xbytes);
+               snprintf(buffer, sizeof(buffer), "  bytes=\"%d\" defaultrefresh=\"0\" minrefresh=\"0\" maxrefresh=\"0\">\n", xbytes);
                write_string(*file, buffer);
 
                write_string(*file, "</screen>\n\n");
@@ -176,7 +176,7 @@ static ERROR xrSetDisplayMode(LONG *Width, LONG *Height)
    WORD height = *Height;
 
    XRRScreenSize *sizes;
-   if ((sizes = XRRSizes(XDisplay, DefaultScreen(XDisplay), &count)) AND (count)) {
+   if ((sizes = XRRSizes(XDisplay, DefaultScreen(XDisplay), &count)) and (count)) {
       WORD index    = -1;
       LONG bestweight = 0x7fffffff;
 
@@ -275,7 +275,7 @@ static LONG xrGetDisplayTotal(void)
 
    if (!glActualCount) {
       for (LONG i=0; i < glSizeCount; i++) {
-         if ((glSizes[i].width >= 640) AND (glSizes[i].height >= 480)) {
+         if ((glSizes[i].width >= 640) and (glSizes[i].height >= 480)) {
             glActualCount++;
          }
       }
@@ -315,7 +315,7 @@ static struct xrMode * xrGetDisplayMode(LONG Index)
 
    j = Index;
    for (i=0; i < glSizeCount; i++) {
-      if ((glSizes[i].width >= 640) AND (glSizes[i].height >= 480)) {
+      if ((glSizes[i].width >= 640) and (glSizes[i].height >= 480)) {
          if (!j) {
             mode.Width  = glSizes[i].width;
             mode.Height = glSizes[i].height;

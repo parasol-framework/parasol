@@ -228,7 +228,7 @@ ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)
    OBJECTPTR target;
    ERROR error;
 
-   if (!NewObject(ID_SURFACE, 0, &target, &TargetID)) {
+   if (!NewObject(ID_SURFACE, &target, &TargetID)) {
       SetFields(target,
          FID_Name|TSTRING,       "SystemSurface",
          FID_WindowHandle|TLONG, WindowHandle,
@@ -239,7 +239,7 @@ ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)
          TAGEND);
       if (!acInit(target)) {
          OBJECTPTR pointer;
-         if (!NewObject(ID_POINTER, NF_PUBLIC, &pointer, &glSystemPointerID)) {
+         if (!NewObject(ID_POINTER, NF::PUBLIC, &pointer, &glSystemPointerID)) {
             SetFields(pointer,
                FID_Owner|TLONG,  TargetID,
                FID_Name|TSTRING, "SystemPointer",
@@ -247,7 +247,7 @@ ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)
 
             if (!acInit(pointer)) {
                OBJECTPTR script;
-               if (!PrivateObject(ID_SCRIPT, 0, &script,
+               if (!PrivateObject(ID_SCRIPT, &script,
                      FID_Path|TSTR, "templates:defaultvariables.fluid",
                      FID_Target|TLONG,  TargetID,
                      TAGEND)) {

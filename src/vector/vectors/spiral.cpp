@@ -11,8 +11,12 @@ point.
 
 #define MAX_SPIRAL_VERTICES 65536
 
-class objVectorSpiral : public extVector {
+class extVectorSpiral : public extVector {
    public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORSPIRAL;
+   static constexpr CSTRING CLASS_NAME = "VectorSpiral";
+   using create = parasol::Create<extVectorSpiral>;
+
    DOUBLE Scale;
    DOUBLE Offset;
    DOUBLE Radius;
@@ -23,7 +27,7 @@ class objVectorSpiral : public extVector {
 
 //********************************************************************************************************************
 
-static void generate_spiral(objVectorSpiral *Vector)
+static void generate_spiral(extVectorSpiral *Vector)
 {
    const DOUBLE cx = (Vector->Dimensions & DMF_RELATIVE_CENTER_X) ? Vector->CX * get_parent_width(Vector) : Vector->CX;
    const DOUBLE cy = (Vector->Dimensions & DMF_RELATIVE_CENTER_Y) ? Vector->CY * get_parent_height(Vector) : Vector->CY;
@@ -57,7 +61,7 @@ static void generate_spiral(objVectorSpiral *Vector)
 
 //********************************************************************************************************************
 
-static ERROR SPIRAL_NewObject(objVectorSpiral *Self, APTR Void)
+static ERROR SPIRAL_NewObject(extVectorSpiral *Self, APTR Void)
 {
    Self->Radius = 100;
    Self->Step   = 0.1;
@@ -75,7 +79,7 @@ The horizontal center of the spiral is defined here as either a fixed or relativ
 -END-
 *****************************************************************************/
 
-static ERROR SPIRAL_GET_CenterX(objVectorSpiral *Self, Variable *Value)
+static ERROR SPIRAL_GET_CenterX(extVectorSpiral *Self, Variable *Value)
 {
    DOUBLE val = Self->CX;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_CENTER_X)) val = val * 100.0;
@@ -84,7 +88,7 @@ static ERROR SPIRAL_GET_CenterX(objVectorSpiral *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SPIRAL_SET_CenterX(objVectorSpiral *Self, Variable *Value)
+static ERROR SPIRAL_SET_CenterX(extVectorSpiral *Self, Variable *Value)
 {
    parasol::Log log;
    DOUBLE val;
@@ -113,7 +117,7 @@ The vertical center of the spiral is defined here as either a fixed or relative 
 
 *****************************************************************************/
 
-static ERROR SPIRAL_GET_CenterY(objVectorSpiral *Self, Variable *Value)
+static ERROR SPIRAL_GET_CenterY(extVectorSpiral *Self, Variable *Value)
 {
    DOUBLE val = Self->CY;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_CENTER_Y)) val = val * 100.0;
@@ -122,7 +126,7 @@ static ERROR SPIRAL_GET_CenterY(objVectorSpiral *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SPIRAL_SET_CenterY(objVectorSpiral *Self, Variable *Value)
+static ERROR SPIRAL_SET_CenterY(extVectorSpiral *Self, Variable *Value)
 {
    parasol::Log log;
    DOUBLE val;
@@ -150,7 +154,7 @@ The height of the spiral is expressed as '#Radius * 2.0'.
 
 *****************************************************************************/
 
-static ERROR SPIRAL_GET_Height(objVectorSpiral *Self, Variable *Value)
+static ERROR SPIRAL_GET_Height(extVectorSpiral *Self, Variable *Value)
 {
    DOUBLE val = Self->Radius * 2.0;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -159,7 +163,7 @@ static ERROR SPIRAL_GET_Height(objVectorSpiral *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SPIRAL_SET_Height(objVectorSpiral *Self, Variable *Value)
+static ERROR SPIRAL_SET_Height(extVectorSpiral *Self, Variable *Value)
 {
    parasol::Log log;
    DOUBLE val;
@@ -181,13 +185,13 @@ Offset is set to zero.
 
 *****************************************************************************/
 
-static ERROR SPIRAL_GET_Offset(objVectorSpiral *Self, DOUBLE *Value)
+static ERROR SPIRAL_GET_Offset(extVectorSpiral *Self, DOUBLE *Value)
 {
    *Value = Self->Offset;
    return ERR_Okay;
 }
 
-static ERROR SPIRAL_SET_Offset(objVectorSpiral *Self, DOUBLE Value)
+static ERROR SPIRAL_SET_Offset(extVectorSpiral *Self, DOUBLE Value)
 {
    if (Value >= 0.0) {
       Self->Offset = Value;
@@ -208,13 +212,13 @@ length.
 
 *****************************************************************************/
 
-static ERROR SPIRAL_GET_PathLength(objVectorSpiral *Self, LONG *Value)
+static ERROR SPIRAL_GET_PathLength(extVectorSpiral *Self, LONG *Value)
 {
    *Value = Self->PathLength;
    return ERR_Okay;
 }
 
-static ERROR SPIRAL_SET_PathLength(objVectorSpiral *Self, LONG Value)
+static ERROR SPIRAL_SET_PathLength(extVectorSpiral *Self, LONG Value)
 {
    if (Value >= 0) {
       Self->PathLength = Value;
@@ -231,7 +235,7 @@ The radius of the spiral is defined here as either a fixed or relative value.
 
 *****************************************************************************/
 
-static ERROR SPIRAL_GET_Radius(objVectorSpiral *Self, Variable *Value)
+static ERROR SPIRAL_GET_Radius(extVectorSpiral *Self, Variable *Value)
 {
    DOUBLE val = Self->Radius;
    if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_RADIUS)) val = val * 100.0;
@@ -240,7 +244,7 @@ static ERROR SPIRAL_GET_Radius(objVectorSpiral *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SPIRAL_SET_Radius(objVectorSpiral *Self, Variable *Value)
+static ERROR SPIRAL_SET_Radius(extVectorSpiral *Self, Variable *Value)
 {
    parasol::Log log;
    DOUBLE val;
@@ -269,13 +273,13 @@ the scale factor.
 
 *****************************************************************************/
 
-static ERROR SPIRAL_GET_Scale(objVectorSpiral *Self, DOUBLE *Value)
+static ERROR SPIRAL_GET_Scale(extVectorSpiral *Self, DOUBLE *Value)
 {
    *Value = Self->Scale;
    return ERR_Okay;
 }
 
-static ERROR SPIRAL_SET_Scale(objVectorSpiral *Self, DOUBLE Value)
+static ERROR SPIRAL_SET_Scale(extVectorSpiral *Self, DOUBLE Value)
 {
    if (Value > 0.001) {
       Self->Scale = Value;
@@ -294,13 +298,13 @@ is 0.1.  Using larger values will create a spiral with more visible corners due 
 
 *****************************************************************************/
 
-static ERROR SPIRAL_GET_Step(objVectorSpiral *Self, DOUBLE *Value)
+static ERROR SPIRAL_GET_Step(extVectorSpiral *Self, DOUBLE *Value)
 {
    *Value = Self->Step;
    return ERR_Okay;
 }
 
-static ERROR SPIRAL_SET_Step(objVectorSpiral *Self, DOUBLE Value)
+static ERROR SPIRAL_SET_Step(extVectorSpiral *Self, DOUBLE Value)
 {
    if (Value != 0.0) {
       Self->Step = Value;
@@ -320,7 +324,7 @@ The width of the spiral is expressed as '#Radius * 2.0'.
 
 *****************************************************************************/
 
-static ERROR SPIRAL_GET_Width(objVectorSpiral *Self, Variable *Value)
+static ERROR SPIRAL_GET_Width(extVectorSpiral *Self, Variable *Value)
 {
    DOUBLE val = Self->Radius * 2.0;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -329,7 +333,7 @@ static ERROR SPIRAL_GET_Width(objVectorSpiral *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR SPIRAL_SET_Width(objVectorSpiral *Self, Variable *Value)
+static ERROR SPIRAL_SET_Width(extVectorSpiral *Self, Variable *Value)
 {
    parasol::Log log;
    DOUBLE val;
@@ -377,7 +381,7 @@ static ERROR init_spiral(void)
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clVectorSpiralActions),
       fl::Fields(clVectorSpiralFields),
-      fl::Size(sizeof(objVectorSpiral)),
+      fl::Size(sizeof(extVectorSpiral)),
       fl::Path(MOD_PATH));
 
    return clVectorSpiral ? ERR_Okay : ERR_AddClass;

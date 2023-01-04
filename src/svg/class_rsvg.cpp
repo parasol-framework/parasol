@@ -39,7 +39,7 @@ static ERROR RSVG_Init(prvPicture *Self, APTR Void)
 
    Self->get(FID_Path, &path);
 
-   if ((!path) OR (Self->Flags & PCF_NEW)) {
+   if ((!path) or (Self->Flags & PCF_NEW)) {
       return ERR_NoSupport; // Creating new SVG's is not supported in this module.
    }
 
@@ -117,7 +117,7 @@ static ERROR RSVG_Query(prvPicture *Self, APTR Void)
       if (!view_width)  SetField(view, FID_Width|TDOUBLE|TPERCENT, 100.0);
       if (!view_height) SetField(view, FID_Height|TDOUBLE|TPERCENT, 100.0);
 
-      if ((Self->DisplayWidth > 0) AND (Self->DisplayHeight > 0)) { // Client specified the display size?
+      if ((Self->DisplayWidth > 0) and (Self->DisplayHeight > 0)) { // Client specified the display size?
          // Give the vector scene a target width and height.
          if (!view_width) scene->set(FID_PageWidth, Self->DisplayWidth);
          else scene->set(FID_PageWidth, view_width);
@@ -167,7 +167,7 @@ static ERROR RSVG_Resize(prvPicture *Self, struct acResize *Args)
 
       if (!Action(AC_Resize, Self->Bitmap, Args)) {
          objVectorScene *scene;
-         if ((!prv->SVG->getPtr(FID_Scene, &scene)) AND (scene)) {
+         if ((!prv->SVG->getPtr(FID_Scene, &scene)) and (scene)) {
             scene->set(FID_PageWidth, Self->Bitmap->Width);
             scene->set(FID_PageHeight, Self->Bitmap->Height);
 

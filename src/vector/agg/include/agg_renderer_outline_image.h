@@ -17,19 +17,15 @@
 #include "agg_rendering_buffer.h"
 #include "agg_clip_liang_barsky.h"
 
-
 namespace agg
 {
-    //========================================================line_image_scale
     template<class Source> class line_image_scale
     {
     public:
         typedef typename Source::color_type color_type;
 
         line_image_scale(const Source& src, double height) :
-            m_source(src),
-            m_height(height),
-            m_scale(src.height() / height)
+            m_source(src), m_height(height), m_scale(src.height() / height)
         {
         }
 
@@ -55,8 +51,6 @@ namespace agg
         double        m_scale;
     };
 
-
-
     //======================================================line_image_pattern
     template<class Filter> class line_image_pattern
     {
@@ -64,7 +58,6 @@ namespace agg
         typedef Filter filter_type;
         typedef typename filter_type::color_type color_type;
 
-        //--------------------------------------------------------------------
         line_image_pattern(const Filter& filter) :
             m_filter(&filter),
             m_dilation(filter.dilation() + 1),
@@ -78,8 +71,6 @@ namespace agg
         {
         }
 
-        // Create
-        //--------------------------------------------------------------------
         template<class Source>
         line_image_pattern(const Filter& filter, const Source& src) :
             m_filter(&filter),
@@ -95,8 +86,6 @@ namespace agg
             create(src);
         }
 
-        // Create
-        //--------------------------------------------------------------------
         template<class Source> void create(const Source& src)
         {
             m_height = uceil(src.height());
@@ -153,21 +142,15 @@ namespace agg
             }
         }
 
-        //--------------------------------------------------------------------
         int pattern_width() const { return m_width_hr; }
         int line_width()    const { return m_half_height_hr; }
         double width()      const { return m_height; }
 
-        //--------------------------------------------------------------------
-        void pixel(color_type* p, int x, int y) const
-        {
+        void pixel(color_type* p, int x, int y) const {
             m_filter->pixel_high_res(m_buf.rows(),
-                                     p,
-                                     x % m_width_hr + m_dilation_hr,
-                                     y + m_offset_y_hr);
+               p, x % m_width_hr + m_dilation_hr, y + m_offset_y_hr);
         }
 
-        //--------------------------------------------------------------------
         const filter_type& filter() const { return *m_filter; }
 
     private:
@@ -188,11 +171,6 @@ namespace agg
         int                       m_offset_y_hr;
     };
 
-
-
-
-
-
     //=================================================line_image_pattern_pow2
     template<class Filter> class line_image_pattern_pow2 :
     public line_image_pattern<Filter>
@@ -202,11 +180,9 @@ namespace agg
         typedef typename filter_type::color_type color_type;
         typedef line_image_pattern<Filter> base_type;
 
-        //--------------------------------------------------------------------
         line_image_pattern_pow2(const Filter& filter) :
             line_image_pattern<Filter>(filter), m_mask(line_subpixel_mask) {}
 
-        //--------------------------------------------------------------------
         template<class Source>
         line_image_pattern_pow2(const Filter& filter, const Source& src) :
             line_image_pattern<Filter>(filter), m_mask(line_subpixel_mask)
@@ -214,7 +190,6 @@ namespace agg
             create(src);
         }
 
-        //--------------------------------------------------------------------
         template<class Source> void create(const Source& src)
         {
             line_image_pattern<Filter>::create(src);
@@ -229,7 +204,6 @@ namespace agg
             base_type::m_width_hr = m_mask + 1;
         }
 
-        //--------------------------------------------------------------------
         void pixel(color_type* p, int x, int y) const
         {
             base_type::m_filter->pixel_high_res(
@@ -242,17 +216,10 @@ namespace agg
         unsigned m_mask;
     };
 
-
-
-
-
-
-
     //===================================================distance_interpolator4
     class distance_interpolator4
     {
     public:
-        //---------------------------------------------------------------------
         distance_interpolator4() {}
         distance_interpolator4(int x1,  int y1, int x2, int y2,
                                int sx,  int sy, int ex, int ey,
@@ -291,7 +258,6 @@ namespace agg
             m_dy_end   <<= line_mr_subpixel_shift;
         }
 
-        //---------------------------------------------------------------------
         void inc_x()
         {
             m_dist += m_dy;
@@ -300,7 +266,6 @@ namespace agg
             m_dist_end += m_dy_end;
         }
 
-        //---------------------------------------------------------------------
         void dec_x()
         {
             m_dist -= m_dy;
@@ -309,7 +274,6 @@ namespace agg
             m_dist_end -= m_dy_end;
         }
 
-        //---------------------------------------------------------------------
         void inc_y()
         {
             m_dist -= m_dx;
@@ -318,7 +282,6 @@ namespace agg
             m_dist_end -= m_dx_end;
         }
 
-        //---------------------------------------------------------------------
         void dec_y()
         {
             m_dist += m_dx;
@@ -327,7 +290,6 @@ namespace agg
             m_dist_end += m_dx_end;
         }
 
-        //---------------------------------------------------------------------
         void inc_x(int dy)
         {
             m_dist       += m_dy;
@@ -350,7 +312,6 @@ namespace agg
             }
         }
 
-        //---------------------------------------------------------------------
         void dec_x(int dy)
         {
             m_dist       -= m_dy;
@@ -851,53 +812,42 @@ namespace agg
             m_pattern->pixel(p, x, y);
         }
 
-        //-------------------------------------------------------------------------
         void blend_color_hspan(int x, int y, unsigned len, const color_type* colors)
         {
             m_ren->blend_color_hspan(x, y, len, colors, 0);
         }
 
-        //-------------------------------------------------------------------------
         void blend_color_vspan(int x, int y, unsigned len, const color_type* colors)
         {
             m_ren->blend_color_vspan(x, y, len, colors, 0);
         }
 
-        //-------------------------------------------------------------------------
         static bool accurate_join_only() { return true; }
 
-        //-------------------------------------------------------------------------
         template<class Cmp>
         void semidot(Cmp, int, int, int, int)
         {
         }
 
-        //-------------------------------------------------------------------------
         void pie(int, int, int, int, int, int)
         {
         }
 
-        //-------------------------------------------------------------------------
         void line0(const line_parameters&)
         {
         }
 
-        //-------------------------------------------------------------------------
         void line1(const line_parameters&, int, int)
         {
         }
 
-        //-------------------------------------------------------------------------
         void line2(const line_parameters&, int, int)
         {
         }
 
-        //-------------------------------------------------------------------------
-        void line3_no_clip(const line_parameters& lp,
-                           int sx, int sy, int ex, int ey)
+        void line3_no_clip(const line_parameters& lp, int sx, int sy, int ex, int ey)
         {
-            if(lp.len > line_max_length)
-            {
+            if(lp.len > line_max_length) {
                 line_parameters lp1, lp2;
                 lp.divide(lp1, lp2);
                 int mx = lp1.x2 + (lp1.y2 - lp1.y1);
@@ -924,64 +874,46 @@ namespace agg
             m_start += uround(lp.len / m_scale_x);
         }
 
-        //-------------------------------------------------------------------------
-        void line3(const line_parameters& lp,
-                   int sx, int sy, int ex, int ey)
-        {
-            if(m_clipping)
-            {
+        void line3(const line_parameters& lp, int sx, int sy, int ex, int ey) {
+            if (m_clipping) {
                 int x1 = lp.x1;
                 int y1 = lp.y1;
                 int x2 = lp.x2;
                 int y2 = lp.y2;
                 unsigned flags = clip_line_segment(&x1, &y1, &x2, &y2, m_clip_box);
                 int start = m_start;
-                if((flags & 4) == 0)
-                {
-                    if(flags)
-                    {
-                        line_parameters lp2(x1, y1, x2, y2,
-                                           uround(calc_distance(x1, y1, x2, y2)));
-                        if(flags & 1)
-                        {
+                if((flags & 4) == 0) {
+                    if(flags) {
+                        line_parameters lp2(x1, y1, x2, y2, uround(calc_distance(x1, y1, x2, y2)));
+                        if(flags & 1) {
                             m_start += uround(calc_distance(lp.x1, lp.y1, x1, y1) / m_scale_x);
                             sx = x1 + (y2 - y1);
                             sy = y1 - (x2 - x1);
                         }
-                        else
-                        {
-                            while(abs(sx - lp.x1) + abs(sy - lp.y1) > lp2.len)
-                            {
+                        else {
+                            while(abs(sx - lp.x1) + abs(sy - lp.y1) > lp2.len) {
                                 sx = (lp.x1 + sx) >> 1;
                                 sy = (lp.y1 + sy) >> 1;
                             }
                         }
-                        if(flags & 2)
-                        {
+
+                        if (flags & 2) {
                             ex = x2 + (y2 - y1);
                             ey = y2 - (x2 - x1);
                         }
-                        else
-                        {
-                            while(abs(ex - lp.x2) + abs(ey - lp.y2) > lp2.len)
-                            {
+                        else {
+                            while(abs(ex - lp.x2) + abs(ey - lp.y2) > lp2.len) {
                                 ex = (lp.x2 + ex) >> 1;
                                 ey = (lp.y2 + ey) >> 1;
                             }
                         }
                         line3_no_clip(lp2, sx, sy, ex, ey);
                     }
-                    else
-                    {
-                        line3_no_clip(lp, sx, sy, ex, ey);
-                    }
+                    else line3_no_clip(lp, sx, sy, ex, ey);
                 }
                 m_start = start + uround(lp.len / m_scale_x);
             }
-            else
-            {
-                line3_no_clip(lp, sx, sy, ex, ey);
-            }
+            else line3_no_clip(lp, sx, sy, ex, ey);
         }
 
     private:

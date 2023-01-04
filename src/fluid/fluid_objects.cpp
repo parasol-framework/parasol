@@ -124,7 +124,7 @@ static int object_new(lua_State *Lua)
 
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
-   LONG objflags = 0;
+   NF objflags = NF::NIL;
    LONG type = lua_type(Lua, 1);
    if (type IS LUA_TNUMBER) {
       class_id = lua_tonumber(Lua, 1);
@@ -134,7 +134,7 @@ static int object_new(lua_State *Lua)
    else if ((class_name = luaL_checkstring(Lua, 1))) {
       if (class_name[0] IS '@') {
          class_name++;
-         objflags |= NF_PUBLIC;
+         objflags = objflags | NF::PUBLIC;
       }
       class_id = StrHash(class_name, 0);
       log.trace("%s, $%.8x", class_name, class_id);
@@ -299,7 +299,7 @@ static int object_newchild(lua_State *Lua)
 
    CSTRING class_name;
    CLASSID class_id;
-   LONG objflags = 0;
+   NF objflags = NF::NIL;
    LONG type = lua_type(Lua, 1);
    if (type IS LUA_TNUMBER) {
       class_id = lua_tonumber(Lua, 1);
@@ -309,7 +309,7 @@ static int object_newchild(lua_State *Lua)
    else if ((class_name = luaL_checkstring(Lua, 1))) {
       if (class_name[0] IS '@') {
          class_name++;
-         objflags |= NF_PUBLIC;
+         objflags = objflags | NF::PUBLIC;
       }
       class_id = StrHash(class_name, 0);
       log.trace("%s, $%.8x", class_name, class_id);

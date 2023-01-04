@@ -2,6 +2,8 @@
 
 set (MOD parc)
 
+idl_all ("${MOD}.fdl" NAME ${MOD}_defs APPEND_IDL "${MOD}_def.c" OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h")
+
 add_library (${MOD} SHARED)
 
 set_module_defaults (${MOD})

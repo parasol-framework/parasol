@@ -16,8 +16,12 @@ Waves can be used in Parasol's SVG implementation by using the &lt;parasol:wave/
 
 *****************************************************************************/
 
-class objVectorWave : public extVector {
+class extVectorWave : public extVector {
    public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORWAVE;
+   static constexpr CSTRING CLASS_NAME = "VectorWave";
+   using create = parasol::Create<extVectorWave>;
+
    DOUBLE wX, wY;
    DOUBLE wWidth, wHeight;
    DOUBLE wAmplitude;
@@ -32,7 +36,7 @@ class objVectorWave : public extVector {
 
 //****************************************************************************
 
-static void generate_wave(objVectorWave *Vector)
+static void generate_wave(extVectorWave *Vector)
 {
    DOUBLE ox = Vector->wX, oy = Vector->wY;
    DOUBLE width = Vector->wWidth, height = Vector->wHeight;
@@ -153,7 +157,7 @@ Move: Moves the vector to a new position.
 -END-
 *****************************************************************************/
 
-static ERROR WAVE_Move(objVectorWave *Self, struct acMove *Args)
+static ERROR WAVE_Move(extVectorWave *Self, struct acMove *Args)
 {
    parasol::Log log;
 
@@ -171,7 +175,7 @@ MoveToPoint: Moves the vector to a new fixed position.
 -END-
 *****************************************************************************/
 
-static ERROR WAVE_MoveToPoint(objVectorWave *Self, struct acMoveToPoint *Args)
+static ERROR WAVE_MoveToPoint(extVectorWave *Self, struct acMoveToPoint *Args)
 {
    parasol::Log log;
 
@@ -187,7 +191,7 @@ static ERROR WAVE_MoveToPoint(objVectorWave *Self, struct acMoveToPoint *Args)
 
 //****************************************************************************
 
-static ERROR WAVE_NewObject(objVectorWave *Self, APTR Void)
+static ERROR WAVE_NewObject(extVectorWave *Self, APTR Void)
 {
    Self->GeneratePath = (void (*)(extVector *))&generate_wave;
    Self->wFrequency = 1.0;
@@ -202,7 +206,7 @@ Resize: Changes the vector's area.
 -END-
 *****************************************************************************/
 
-static ERROR WAVE_Resize(objVectorWave *Self, struct acResize *Args)
+static ERROR WAVE_Resize(extVectorWave *Self, struct acResize *Args)
 {
    if (!Args) return ERR_NullArgs;
 
@@ -221,13 +225,13 @@ default.
 
 *****************************************************************************/
 
-static ERROR WAVE_GET_Amplitude(objVectorWave *Self, DOUBLE *Value)
+static ERROR WAVE_GET_Amplitude(extVectorWave *Self, DOUBLE *Value)
 {
    *Value = Self->wAmplitude;
    return ERR_Okay;
 }
 
-static ERROR WAVE_SET_Amplitude(objVectorWave *Self, DOUBLE Value)
+static ERROR WAVE_SET_Amplitude(extVectorWave *Self, DOUBLE Value)
 {
    if (Value > 0.0) {
       Self->wAmplitude = Value;
@@ -246,13 +250,13 @@ filled.
 
 *****************************************************************************/
 
-static ERROR WAVE_GET_Close(objVectorWave *Self, LONG *Value)
+static ERROR WAVE_GET_Close(extVectorWave *Self, LONG *Value)
 {
    *Value = Self->wClose;
    return ERR_Okay;
 }
 
-static ERROR WAVE_SET_Close(objVectorWave *Self, LONG Value)
+static ERROR WAVE_SET_Close(extVectorWave *Self, LONG Value)
 {
    Self->wClose = Value;
    reset_path(Self);
@@ -269,13 +273,13 @@ end points for the decay will be reversed.
 
 *****************************************************************************/
 
-static ERROR WAVE_GET_Decay(objVectorWave *Self, DOUBLE *Value)
+static ERROR WAVE_GET_Decay(extVectorWave *Self, DOUBLE *Value)
 {
    *Value = Self->wDecay;
    return ERR_Okay;
 }
 
-static ERROR WAVE_SET_Decay(objVectorWave *Self, DOUBLE Value)
+static ERROR WAVE_SET_Decay(extVectorWave *Self, DOUBLE Value)
 {
    Self->wDecay = Value;
    reset_path(Self);
@@ -293,13 +297,13 @@ will give the wave an appearance of moving from right to left.
 
 *****************************************************************************/
 
-static ERROR WAVE_GET_Degree(objVectorWave *Self, DOUBLE *Value)
+static ERROR WAVE_GET_Degree(extVectorWave *Self, DOUBLE *Value)
 {
    *Value = Self->wDegree;
    return ERR_Okay;
 }
 
-static ERROR WAVE_SET_Degree(objVectorWave *Self, DOUBLE Value)
+static ERROR WAVE_SET_Degree(extVectorWave *Self, DOUBLE Value)
 {
    Self->wDegree = Value;
    reset_path(Self);
@@ -326,13 +330,13 @@ The following dimension flags are supported:
 
 *****************************************************************************/
 
-static ERROR WAVE_GET_Dimensions(objVectorWave *Self, LONG *Value)
+static ERROR WAVE_GET_Dimensions(extVectorWave *Self, LONG *Value)
 {
    *Value = Self->wDimensions;
    return ERR_Okay;
 }
 
-static ERROR WAVE_SET_Dimensions(objVectorWave *Self, LONG Value)
+static ERROR WAVE_SET_Dimensions(extVectorWave *Self, LONG Value)
 {
    Self->wDimensions = Value;
    reset_path(Self);
@@ -348,13 +352,13 @@ value for the frequency is 1.0.  Shortening the frequency to a value closer to 0
 
 *****************************************************************************/
 
-static ERROR WAVE_GET_Frequency(objVectorWave *Self, DOUBLE *Value)
+static ERROR WAVE_GET_Frequency(extVectorWave *Self, DOUBLE *Value)
 {
    *Value = Self->wFrequency;
    return ERR_Okay;
 }
 
-static ERROR WAVE_SET_Frequency(objVectorWave *Self, DOUBLE Value)
+static ERROR WAVE_SET_Frequency(extVectorWave *Self, DOUBLE Value)
 {
    if (Value > 0.0) {
       Self->wFrequency = Value;
@@ -372,7 +376,7 @@ The height of the area containing the wave is defined here as a fixed or relativ
 
 *****************************************************************************/
 
-static ERROR WAVE_GET_Height(objVectorWave *Self, Variable *Value)
+static ERROR WAVE_GET_Height(extVectorWave *Self, Variable *Value)
 {
    DOUBLE val = Self->wHeight;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -381,7 +385,7 @@ static ERROR WAVE_GET_Height(objVectorWave *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR WAVE_SET_Height(objVectorWave *Self, Variable *Value)
+static ERROR WAVE_SET_Height(extVectorWave *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -409,13 +413,13 @@ By default, waves are generated in the style of a sine wave.  Alternative styles
 
 *****************************************************************************/
 
-static ERROR WAVE_GET_Style(objVectorWave *Self, LONG *Value)
+static ERROR WAVE_GET_Style(extVectorWave *Self, LONG *Value)
 {
    *Value = Self->wStyle;
    return ERR_Okay;
 }
 
-static ERROR WAVE_SET_Style(objVectorWave *Self, LONG Value)
+static ERROR WAVE_SET_Style(extVectorWave *Self, LONG Value)
 {
    Self->wStyle = Value;
    return ERR_Okay;
@@ -430,13 +434,13 @@ The thickness (height) of the wave is determined by the provided value.
 
 *****************************************************************************/
 
-static ERROR WAVE_GET_Thickness(objVectorWave *Self, DOUBLE *Value)
+static ERROR WAVE_GET_Thickness(extVectorWave *Self, DOUBLE *Value)
 {
    *Value = Self->wThickness;
    return ERR_Okay;
 }
 
-static ERROR WAVE_SET_Thickness(objVectorWave *Self, DOUBLE Value)
+static ERROR WAVE_SET_Thickness(extVectorWave *Self, DOUBLE Value)
 {
    Self->wThickness = Value;
    reset_path(Self);
@@ -451,7 +455,7 @@ The width of the area containing the wave is defined here as a fixed or relative
 
 *****************************************************************************/
 
-static ERROR WAVE_GET_Width(objVectorWave *Self, Variable *Value)
+static ERROR WAVE_GET_Width(extVectorWave *Self, Variable *Value)
 {
    DOUBLE val = Self->wWidth;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -460,7 +464,7 @@ static ERROR WAVE_GET_Width(objVectorWave *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR WAVE_SET_Width(objVectorWave *Self, Variable *Value)
+static ERROR WAVE_SET_Width(extVectorWave *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -486,7 +490,7 @@ The x coordinate of the wave is defined here as either a fixed or relative value
 
 *****************************************************************************/
 
-static ERROR WAVE_GET_X(objVectorWave *Self, Variable *Value)
+static ERROR WAVE_GET_X(extVectorWave *Self, Variable *Value)
 {
    DOUBLE val = Self->wX;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -495,7 +499,7 @@ static ERROR WAVE_GET_X(objVectorWave *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR WAVE_SET_X(objVectorWave *Self, Variable *Value)
+static ERROR WAVE_SET_X(extVectorWave *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -521,7 +525,7 @@ The y coordinate of the wave is defined here as either a fixed or relative value
 -END-
 *****************************************************************************/
 
-static ERROR WAVE_GET_Y(objVectorWave *Self, Variable *Value)
+static ERROR WAVE_GET_Y(extVectorWave *Self, Variable *Value)
 {
    DOUBLE val = Self->wY;
    if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
@@ -530,7 +534,7 @@ static ERROR WAVE_GET_Y(objVectorWave *Self, Variable *Value)
    return ERR_Okay;
 }
 
-static ERROR WAVE_SET_Y(objVectorWave *Self, Variable *Value)
+static ERROR WAVE_SET_Y(extVectorWave *Self, Variable *Value)
 {
    DOUBLE val;
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -610,7 +614,7 @@ static ERROR init_wave(void)
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clWaveActions),
       fl::Fields(clWaveFields),
-      fl::Size(sizeof(objVectorWave)),
+      fl::Size(sizeof(extVectorWave)),
       fl::Path(MOD_PATH));
 
    return clVectorWave ? ERR_Okay : ERR_AddClass;

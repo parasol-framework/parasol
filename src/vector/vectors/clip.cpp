@@ -18,7 +18,7 @@ to be shared by multiple vector objects within the same scene.
 //****************************************************************************
 // NB: Considered a shape (can be transformed)
 
-static void draw_clips(objVectorClip *Self, extVector *Branch,
+static void draw_clips(extVectorClip *Self, extVector *Branch,
    agg::rasterizer_scanline_aa<> &Rasterizer,
    agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> &Solid)
 {
@@ -42,7 +42,7 @@ Short: Renders the vector clipping shape(s) to an internal buffer.
 -END-
 *****************************************************************************/
 
-static ERROR CLIP_Draw(objVectorClip *Self, struct acDraw *Args)
+static ERROR CLIP_Draw(extVectorClip *Self, struct acDraw *Args)
 {
    parasol::Log log;
 
@@ -127,7 +127,7 @@ static ERROR CLIP_Draw(objVectorClip *Self, struct acDraw *Args)
 
 //****************************************************************************
 
-static ERROR CLIP_Free(objVectorClip *Self, APTR Void)
+static ERROR CLIP_Free(extVectorClip *Self, APTR Void)
 {
    if (Self->ClipData) { FreeResource(Self->ClipData); Self->ClipData = NULL; }
    if (Self->ClipPath) { delete Self->ClipPath; Self->ClipPath = NULL; }
@@ -139,7 +139,7 @@ static ERROR CLIP_Free(objVectorClip *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR CLIP_Init(objVectorClip *Self, APTR Void)
+static ERROR CLIP_Init(extVectorClip *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -158,7 +158,7 @@ static ERROR CLIP_Init(objVectorClip *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR CLIP_NewObject(objVectorClip *Self, APTR Void)
+static ERROR CLIP_NewObject(extVectorClip *Self, APTR Void)
 {
    Self->ClipUnits  = VUNIT_BOUNDING_BOX;
    Self->Visibility = VIS_HIDDEN; // Because the content of the clip object must be ignored by the core vector drawing routine.
@@ -175,7 +175,7 @@ string.
 
 *****************************************************************************/
 
-static ERROR CLIP_SET_Transform(objVectorClip *Self, CSTRING Commands)
+static ERROR CLIP_SET_Transform(extVectorClip *Self, CSTRING Commands)
 {
    parasol::Log log;
 
@@ -201,13 +201,13 @@ that references it.  The alternative is `USERSPACE`, which positions the path re
 -END-
 *****************************************************************************/
 
-static ERROR CLIP_GET_Units(objVectorClip *Self, LONG *Value)
+static ERROR CLIP_GET_Units(extVectorClip *Self, LONG *Value)
 {
    *Value = Self->ClipUnits;
    return ERR_Okay;
 }
 
-static ERROR CLIP_SET_Units(objVectorClip *Self, LONG Value)
+static ERROR CLIP_SET_Units(extVectorClip *Self, LONG Value)
 {
    Self->ClipUnits = Value;
    return ERR_Okay;
@@ -244,7 +244,7 @@ static ERROR init_clip(void)
       fl::Actions(clClipActions),
       fl::Fields(clClipFields),
       fl::Category(CCF_GRAPHICS),
-      fl::Size(sizeof(objVectorClip)),
+      fl::Size(sizeof(extVectorClip)),
       fl::Path(MOD_PATH));
 
    return clVectorClip ? ERR_Okay : ERR_AddClass;

@@ -97,7 +97,7 @@ static void send_inputmsg(InputEvent *Event, InputSubscription *List)
       if ((List[i].SurfaceFilter) and (List[i].SurfaceFilter != Event->RecipientID)) continue;
       if (!(List[i].InputMask & Event->Mask)) continue;
 
-      //log.msg("Process %d, Surface #%d, Mask: $%.8x & $%.8x, Last Alerted @ " PF64(), List[i].ProcessID, Event->RecipientID, Event->Mask, List[i].InputMask, List[i].LastAlerted);
+      //log.msg("Process %d, Surface #%d, Mask: $%.8x & $%.8x, Last Alerted @ %" PF64, List[i].ProcessID, Event->RecipientID, Event->Mask, List[i].InputMask, List[i].LastAlerted);
 
       // NB: When process ID's match we will instead process input events at the start of the next sleep cycle.
 
@@ -201,7 +201,7 @@ static ERROR PTR_DataFeed(extPointer *Self, struct acDataFeed *Args)
 
             input->Flags = glInputType[input->Type].Flags;
 
-            //log.traceBranch("Incoming Input: %s, Value: %.2f, Flags: $%.8x, Time: " PF64(), (input->Type < JET_END) ? glInputNames[input->Type] : (STRING)"", input->Value, input->Flags, input->Timestamp);
+            //log.traceBranch("Incoming Input: %s, Value: %.2f, Flags: $%.8x, Time: %" PF64, (input->Type < JET_END) ? glInputNames[input->Type] : (STRING)"", input->Value, input->Flags, input->Timestamp);
 
             if (input->Type IS JET_WHEEL) process_ptr_wheel(Self, input);
             else if (input->Flags & JTYPE_BUTTON) process_ptr_button(Self, input);
@@ -307,12 +307,12 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
    // Button Press Handler
 
    if (userinput.Value > 0) {
-      log.trace("Button %d depressed @ " PF64() " Coords: %.2fx%.2f", bi, userinput.Timestamp, Self->X, Self->Y);
+      log.trace("Button %d depressed @ %" PF64 " Coords: %.2fx%.2f", bi, userinput.Timestamp, Self->X, Self->Y);
 
       //if ((modal_id) and (modal_id != Self->OverObjectID)) {
       //   log.branch("Surface %d is modal, button click on %d cancelled.", modal_id, Self->OverObjectID);
-      //   DelayMsg(AC_MoveToFront, modal_id, NULL);
-      //   DelayMsg(AC_Focus, modal_id, NULL);
+      //   DelayMsg(AC_MoveToFront, modal_id);
+      //   DelayMsg(AC_Focus, modal_id);
       //}
 
       //if (!modal_id) {
@@ -346,7 +346,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
          }
          else target = Self->OverObjectID;
 
-         DelayMsg(AC_Focus, target, NULL);
+         DelayMsg(AC_Focus, target);
 
          call_userinput("ButtonPress", &userinput, uiflags, target, Self->OverObjectID,
             Self->X, Self->Y, Self->OverX, Self->OverY);
@@ -691,7 +691,7 @@ static ERROR PTR_Init(extPointer *Self, APTR Void)
    // Allocate a custom cursor bitmap
 
    ERROR error;
-   if (!NewLockedObject(ID_BITMAP, NF_INTEGRAL|Self->flags(), &bitmap, &Self->BitmapID)) {
+   if (!NewLockedObject(ID_BITMAP, NF::INTEGRAL|Self->flags(), &bitmap, &Self->BitmapID)) {
       SetFields(bitmap,
          FID_Name|TSTR,           "CustomCursor",
          FID_Width|TLONG,         MAX_CURSOR_WIDTH,
@@ -911,32 +911,30 @@ SaveToObject: Saves the current pointer settings to another object.
 static ERROR PTR_SaveToObject(extPointer *Self, struct acSaveToObject *Args)
 {
    parasol::Log log;
-   OBJECTPTR config;
 
    if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
 
-   if (!CreateObject(ID_CONFIG, NF_INTEGRAL, &config, TAGEND)) {
+   objConfig::create config = { };
+   if (config.ok()) {
       char buffer[30];
-      StrFormat(buffer, sizeof(buffer), "%f", Self->Speed);
-      cfgWriteValue(config, "POINTER", "Speed", buffer);
+      snprintf(buffer, sizeof(buffer), "%f", Self->Speed);
+      cfgWriteValue(*config, "POINTER", "Speed", buffer);
 
-      StrFormat(buffer, sizeof(buffer), "%f", Self->Acceleration);
-      cfgWriteValue(config, "POINTER", "Acceleration", buffer);
+      snprintf(buffer, sizeof(buffer), "%f", Self->Acceleration);
+      cfgWriteValue(*config, "POINTER", "Acceleration", buffer);
 
-      StrFormat(buffer, sizeof(buffer), "%f", Self->DoubleClick);
-      cfgWriteValue(config, "POINTER", "DoubleClick", buffer);
+      snprintf(buffer, sizeof(buffer), "%f", Self->DoubleClick);
+      cfgWriteValue(*config, "POINTER", "DoubleClick", buffer);
 
-      StrFormat(buffer, sizeof(buffer), "%d", Self->MaxSpeed);
-      cfgWriteValue(config, "POINTER", "MaxSpeed", buffer);
+      snprintf(buffer, sizeof(buffer), "%d", Self->MaxSpeed);
+      cfgWriteValue(*config, "POINTER", "MaxSpeed", buffer);
 
-      StrFormat(buffer, sizeof(buffer), "%f", Self->WheelSpeed);
-      cfgWriteValue(config, "POINTER", "WheelSpeed", buffer);
+      snprintf(buffer, sizeof(buffer), "%f", Self->WheelSpeed);
+      cfgWriteValue(*config, "POINTER", "WheelSpeed", buffer);
 
-      cfgWriteValue(config, "POINTER", "ButtonOrder", Self->ButtonOrder);
+      cfgWriteValue(*config, "POINTER", "ButtonOrder", Self->ButtonOrder);
 
-      acSaveToObject(config, Args->DestID, 0);
-
-      acFree(config);
+      config->saveToObject(Args->DestID, 0);
    }
 
    return ERR_Okay;
@@ -1036,7 +1034,7 @@ static ERROR SET_ButtonOrder(extPointer *Self, CSTRING Value)
    // Eliminate any invalid buttons
 
    for (WORD i=0; Self->ButtonOrder[i]; i++) {
-      if (((Self->ButtonOrder[i] >= '1') and (Self->ButtonOrder[i] <= '9')) OR
+      if (((Self->ButtonOrder[i] >= '1') and (Self->ButtonOrder[i] <= '9')) or
           ((Self->ButtonOrder[i] >= 'A') and (Self->ButtonOrder[i] <= 'Z'))) {
       }
       else Self->ButtonOrder[i] = ' ';
@@ -1245,17 +1243,17 @@ static void set_pointer_defaults(extPointer *Self)
    DOUBLE doubleclick   = 0.36;
    CSTRING buttonorder   = "123456789ABCDEF";
 
-   OBJECTPTR config;
-   if (!CreateObject(ID_CONFIG, 0, &config, FID_Path|TSTR, "user:config/pointer.cfg", TAGEND)) {
+   objConfig::create config = { fl::Path("user:config/pointer.cfg") };
+
+   if (config.ok()) {
       DOUBLE dbl;
       CSTRING str;
-      if (!cfgRead(config, "POINTER", "Speed", &dbl)) speed = dbl;
-      if (!cfgRead(config, "POINTER", "Acceleration", &dbl)) acceleration = dbl;
-      if (!cfgRead(config, "POINTER", "MaxSpeed", &dbl)) maxspeed = dbl;
-      if (!cfgRead(config, "POINTER", "WheelSpeed", &dbl)) wheelspeed = dbl;
-      if (!cfgRead(config, "POINTER", "DoubleClick", &dbl)) doubleclick = dbl;
-      if (!cfgReadValue(config, "POINTER", "ButtonOrder", &str)) buttonorder = str;
-      acFree(config);
+      if (!cfgRead(*config, "POINTER", "Speed", &dbl)) speed = dbl;
+      if (!cfgRead(*config, "POINTER", "Acceleration", &dbl)) acceleration = dbl;
+      if (!cfgRead(*config, "POINTER", "MaxSpeed", &dbl)) maxspeed = dbl;
+      if (!cfgRead(*config, "POINTER", "WheelSpeed", &dbl)) wheelspeed = dbl;
+      if (!cfgRead(*config, "POINTER", "DoubleClick", &dbl)) doubleclick = dbl;
+      if (!cfgReadValue(*config, "POINTER", "ButtonOrder", &str)) buttonorder = str;
    }
 
    if (doubleclick < 0.2) doubleclick = 0.2;
@@ -1450,16 +1448,17 @@ static ERROR repeat_timer(extPointer *Self, LARGE Elapsed, LARGE Unused)
 static ERROR init_mouse_driver(void)
 {
    parasol::Log log(__FUNCTION__);
-   OBJECTPTR config;
    STRING str;
    WORD port;
    ERROR error;
    LONG i;
 
-   if (!CreateObject(ID_CONFIG, NF_INTEGRAL, &config, FID_Path|TSTR, "config:hardware/drivers.cfg", TAGEND)) {
-      if (!cfgReadValue(config, "MOUSE", "Device", &str)) StrCopy(str, Self->Device, COPY_ALL);
+   objConfig::create config = { fl::Path("config:hardware/drivers.cfg") };
 
-      if (!cfgReadValue(config, "MOUSE", "Driver", &str)) {
+   if (config.ok()) {
+      if (!cfgReadValue(*config, "MOUSE", "Device", &str)) StrCopy(str, Self->Device, COPY_ALL);
+
+      if (!cfgReadValue(*config, "MOUSE", "Driver", &str)) {
          for (LONG i=0; glMouseTypes[i].Name; i++) {
             if (!StrMatch(str, glMouseTypes[i].ShortName)) {
                glDriverIndex = i;
@@ -1467,8 +1466,6 @@ static ERROR init_mouse_driver(void)
             }
          }
       }
-
-      acFree(config);
    }
 
    log.msg("Using mouse driver \"%s\" and device \"%s\"", glMouseTypes[glDriverIndex].Name, Self->Device);
@@ -1546,7 +1543,7 @@ static ERROR init_mouse_driver(void)
 
    // Allocate the surface for software based cursor images
 
-   if (!NewLockedObject(ID_SURFACE, NF_INTEGRAL|Self->flags(), &surface, &Self->CursorSurfaceID)) {
+   if (!NewLockedObject(ID_SURFACE, NF::INTEGRAL|Self->flags(), &surface, &Self->CursorSurfaceID)) {
       SetFields(surface,
          FID_Name|TSTR,    "Pointer",
          FID_Parent|TLONG, Self->SurfaceID,

@@ -863,10 +863,10 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
          if (j > 0) {
             char save = Self->Path[j];
             Self->Path[j] = 0;
-            StrFormat(buf, sizeof(buf), "%s%s", workingpath, Self->Path);
+            snprintf(buf, sizeof(buf), "%s%s", workingpath, Self->Path);
             Self->Path[j] = save;
          }
-         else StrFormat(buf, sizeof(buf), "%s", workingpath);
+         else snprintf(buf, sizeof(buf), "%s", workingpath);
 
          parasol::SwitchContext ctx(Self);
          if (ResolvePath(buf, RSF_APPROXIMATE, &Self->WorkingPath) != ERR_Okay) {

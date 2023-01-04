@@ -20,8 +20,12 @@ registered vector rather than an image file.
 
 *********************************************************************************************************************/
 
-class objSourceFX : public extFilterEffect {
+class extSourceFX : public extFilterEffect {
    public:
+   static constexpr CLASSID CLASS_ID = ID_SOURCEFX;
+   static constexpr CSTRING CLASS_NAME = "SourceFX";
+   using create = parasol::Create<extSourceFX>;
+
    objBitmap *Bitmap;     // Rendered image cache.
    objVector *Source;     // The vector branch to render as source graphic.
    objVectorScene *Scene; // Internal scene for rendering.
@@ -33,7 +37,7 @@ class objSourceFX : public extFilterEffect {
 
 //********************************************************************************************************************
 
-static ERROR SOURCEFX_ActionNotify(objSourceFX *Self, struct acActionNotify *Args)
+static ERROR SOURCEFX_ActionNotify(extSourceFX *Self, struct acActionNotify *Args)
 {
    if (Args->ActionID IS AC_Free) Self->Source = NULL;
    return ERR_Okay;
@@ -45,7 +49,7 @@ Draw: Render the source vector to the target bitmap.
 -END-
 *********************************************************************************************************************/
 
-static ERROR SOURCEFX_Draw(objSourceFX *Self, struct acDraw *Args)
+static ERROR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
 {
    parasol::Log log;
 
@@ -166,7 +170,7 @@ static ERROR SOURCEFX_Draw(objSourceFX *Self, struct acDraw *Args)
 
 //********************************************************************************************************************
 
-static ERROR SOURCEFX_Free(objSourceFX *Self, APTR Void)
+static ERROR SOURCEFX_Free(extSourceFX *Self, APTR Void)
 {
    if (Self->Bitmap)     { acFree(Self->Bitmap); Self->Bitmap = NULL; }
    if (Self->Source)     { UnsubscribeAction(Self->Source, AC_Free); Self->Source = NULL; }
@@ -177,7 +181,7 @@ static ERROR SOURCEFX_Free(objSourceFX *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR SOURCEFX_Init(objSourceFX *Self, APTR Void)
+static ERROR SOURCEFX_Init(extSourceFX *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -190,31 +194,19 @@ static ERROR SOURCEFX_Init(objSourceFX *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR SOURCEFX_NewObject(objSourceFX *Self, APTR Void)
+static ERROR SOURCEFX_NewObject(extSourceFX *Self, APTR Void)
 {
    Self->AspectRatio = ARF_X_MID|ARF_Y_MID|ARF_MEET;
    Self->SourceType  = VSF_NONE;
    Self->Render      = true;
 
-   if (!CreateObject(ID_VECTORSCENE, NF_INTEGRAL, &Self->Scene,
-         FID_Name|TSTR,        "fx_src_scene",
-         FID_PageWidth|TLONG,  1,
-         FID_PageHeight|TLONG, 1,
-         TAGEND)) {
-
-      objVectorViewport *vp;
-      if (!CreateObject(ID_VECTORVIEWPORT, 0, &vp,
-            FID_Name|TSTR,         "fx_src_viewport",
-            FID_Owner|TLONG,       Self->Scene->UID,
-            TAGEND)) {
-
-         if (!CreateObject(ID_BITMAP, NF_INTEGRAL, &Self->Bitmap,
-               FID_Name|TSTR,          "fx_src_cache",
-               FID_Width|TLONG,        1,
-               FID_Height|TLONG,       1,
-               FID_BitsPerPixel|TLONG, 32,
-               FID_Flags|TLONG,        BMF_ALPHA_CHANNEL|BMF_NO_DATA,
-               TAGEND)) {
+   if ((Self->Scene = objVectorScene::create::integral(fl::Name("fx_src_scene"), fl::PageWidth(1), fl::PageHeight(1)))) {
+      if (objVectorViewport::create::global(fl::Name("fx_src_viewport"), fl::Owner(Self->Scene->UID))) {
+         if ((Self->Bitmap = objBitmap::create::integral(fl::Name("fx_src_cache"),
+               fl::Width(1),
+               fl::Height(1),
+               fl::BitsPerPixel(32),
+               fl::Flags(BMF_ALPHA_CHANNEL|BMF_NO_DATA)))) {
             return ERR_Okay;
          }
          else return ERR_CreateObject;
@@ -232,13 +224,13 @@ Lookup: ARF
 
 *********************************************************************************************************************/
 
-static ERROR SOURCEFX_GET_AspectRatio(objSourceFX *Self, LONG *Value)
+static ERROR SOURCEFX_GET_AspectRatio(extSourceFX *Self, LONG *Value)
 {
    *Value = Self->AspectRatio;
    return ERR_Okay;
 }
 
-static ERROR SOURCEFX_SET_AspectRatio(objSourceFX *Self, LONG Value)
+static ERROR SOURCEFX_SET_AspectRatio(extSourceFX *Self, LONG Value)
 {
    Self->AspectRatio = Value;
    Self->Render = true;
@@ -255,7 +247,7 @@ ownership of the same @VectorScene that the filter pipeline belongs.
 
 *********************************************************************************************************************/
 
-static ERROR SOURCEFX_SET_Source(objSourceFX *Self, objVector *Value)
+static ERROR SOURCEFX_SET_Source(extSourceFX *Self, objVector *Value)
 {
    parasol::Log log;
    if (!Value) return log.warning(ERR_InvalidValue);
@@ -280,7 +272,7 @@ Vectors are registered via the @VectorScene AddDef() method.
 
 *********************************************************************************************************************/
 
-static ERROR SOURCEFX_SET_SourceName(objSourceFX *Self, CSTRING Value)
+static ERROR SOURCEFX_SET_SourceName(extSourceFX *Self, CSTRING Value)
 {
    parasol::Log log;
 
@@ -310,7 +302,7 @@ XMLDef: Returns an SVG compliant XML string that describes the filter.
 
 *********************************************************************************************************************/
 
-static ERROR SOURCEFX_GET_XMLDef(objSourceFX *Self, STRING *Value)
+static ERROR SOURCEFX_GET_XMLDef(extSourceFX *Self, STRING *Value)
 {
    *Value = StrClone("feImage");
    return ERR_Okay;
@@ -321,10 +313,10 @@ static ERROR SOURCEFX_GET_XMLDef(objSourceFX *Self, STRING *Value)
 #include "filter_source_def.c"
 
 static const FieldArray clSourceFXFields[] = {
-   { "AspectRatio",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clAspectRatio, (APTR)SOURCEFX_GET_AspectRatio, (APTR)SOURCEFX_SET_AspectRatio },
-   { "SourceName",     FDF_VIRTUAL|FDF_STRING|FDF_I,           0, NULL, (APTR)SOURCEFX_SET_SourceName },
-   { "Source",         FDF_VIRTUAL|FDF_OBJECT|FDF_R,           ID_VECTOR, NULL, (APTR)SOURCEFX_SET_Source },
-   { "XMLDef",         FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, 0, (APTR)SOURCEFX_GET_XMLDef, NULL },
+   { "AspectRatio", FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clAspectRatio, (APTR)SOURCEFX_GET_AspectRatio, (APTR)SOURCEFX_SET_AspectRatio },
+   { "SourceName",  FDF_VIRTUAL|FDF_STRING|FDF_I,           0, NULL, (APTR)SOURCEFX_SET_SourceName },
+   { "Source",      FDF_VIRTUAL|FDF_OBJECT|FDF_R,           ID_VECTOR, NULL, (APTR)SOURCEFX_SET_Source },
+   { "XMLDef",      FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, 0, (APTR)SOURCEFX_GET_XMLDef, NULL },
    END_FIELD
 };
 
@@ -339,7 +331,7 @@ ERROR init_sourcefx(void)
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clSourceFXActions),
       fl::Fields(clSourceFXFields),
-      fl::Size(sizeof(objSourceFX)),
+      fl::Size(sizeof(extSourceFX)),
       fl::Path(MOD_PATH));
 
    return clSourceFX ? ERR_Okay : ERR_AddClass;

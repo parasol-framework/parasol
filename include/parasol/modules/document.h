@@ -293,7 +293,7 @@ class objDocument : public BaseClass {
    inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
       struct acGetVar args = { FieldName, Buffer, Size };
       ERROR error = Action(AC_GetVar, this, &args);
-      if ((error) AND (Buffer)) Buffer[0] = 0;
+      if ((error) and (Buffer)) Buffer[0] = 0;
       return error;
    }
    inline ERROR init() { return Action(AC_Init, this, NULL); }
@@ -312,11 +312,12 @@ class objDocument : public BaseClass {
    }
 };
 
+extern struct DocumentBase *DocumentBase;
 struct DocumentBase {
-   LONG (*_CharLength)(objDocument *, LONG);
+   LONG (*_CharLength)(objDocument * Document, LONG Index);
 };
 
 #ifndef PRV_DOCUMENT_MODULE
-#define docCharLength(...) (DocumentBase->_CharLength)(__VA_ARGS__)
+inline LONG docCharLength(objDocument * Document, LONG Index) { return DocumentBase->_CharLength(Document,Index); }
 #endif
 

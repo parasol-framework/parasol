@@ -67,7 +67,7 @@ static int object_call(lua_State *Lua)
       else {
          if (object->DelayCall) {
             object->DelayCall = FALSE;
-            error = DelayMsg(action_id, object->ObjectID, NULL);
+            error = DelayMsg(action_id, object->ObjectID);
          }
          else if (object->prvObject) error = Action(action_id, object->prvObject, NULL);
          else error = ActionMsg(action_id, object->ObjectID, NULL);
@@ -91,7 +91,7 @@ static int object_call(lua_State *Lua)
          LONG resultcount;
          if (!(error = build_args(Lua, methods->Args, methods->Size, argbuffer, &resultcount))) {
             if (object->DelayCall) {
-               error = DelayMsg(action_id, object->ObjectID, &argbuffer);
+               error = DelayMsg(action_id, object->ObjectID, (APTR)&argbuffer);
             }
             else if (object->prvObject) error = Action(action_id, object->prvObject, &argbuffer);
             else {
@@ -124,7 +124,7 @@ static int object_call(lua_State *Lua)
       else {
          if (object->DelayCall) {
             object->DelayCall = FALSE;
-            error = DelayMsg(action_id, object->ObjectID, NULL);
+            error = DelayMsg(action_id, object->ObjectID);
          }
          else if (object->prvObject) error = Action(action_id, object->prvObject, NULL);
          else error = ActionMsg(action_id, object->ObjectID, NULL);
@@ -140,7 +140,7 @@ static int object_call(lua_State *Lua)
       CSTRING error_msg = GetErrorMsg(error);
       prv->CaughtError = error;
       if (!action_name) action_name = "Unnamed";
-      StrFormat(msg, sizeof(msg), "%s.%s() failed: %s", object->Class->ClassName, action_name, error_msg);
+      snprintf(msg, sizeof(msg), "%s.%s() failed: %s", object->Class->ClassName, action_name, error_msg);
       luaL_error(prv->Lua, msg);
    }
 
@@ -361,7 +361,7 @@ ERROR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE 
       else if (args[i].Type & FD_LARGE) {
          j = ALIGN64(j);
          ((LARGE *)(argbuffer + j))[0] = lua_tonumber(Lua, n);
-         //log.trace("Arg: %s, Value: " PF64(), args[i].Name, ((LARGE *)(argbuffer + j))[0]);
+         //log.trace("Arg: %s, Value: %" PF64, args[i].Name, ((LARGE *)(argbuffer + j))[0]);
          j += sizeof(LARGE);
       }
       else {
@@ -524,7 +524,7 @@ static LONG get_results(lua_State *Lua, const FunctionField *args, const BYTE *A
       else if (type & FD_LARGE) {
          of = ALIGN64(of);
          if (type & FD_RESULT) {
-            RMSG("Result-Arg: %s, Value: " PF64() " (Large)", args[i].Name, ((LARGE *)(ArgBuf+of))[0]);
+            RMSG("Result-Arg: %s, Value: %" PF64 " (Large)", args[i].Name, ((LARGE *)(ArgBuf+of))[0]);
             lua_pushnumber(Lua, ((LARGE *)(ArgBuf+of))[0]);
             total++;
          }

@@ -231,7 +231,7 @@ static void ssl_handshake_write(SOCKET_HANDLE Socket, APTR Data)
    extNetSocket *Self = reinterpret_cast<extNetSocket *>(Data);
    LONG result;
 
-   log.msg("Socket: " PF64(), (MAXINT)Socket);
+   log.msg("Socket: %" PF64, (MAXINT)Socket);
 
    if ((result = SSL_do_handshake(Self->SSL)) == 1) { // Handshake successful, connection established
       #ifdef __linux__
@@ -273,7 +273,7 @@ static void ssl_handshake_read(SOCKET_HANDLE Socket, APTR Data)
    extNetSocket *Self = reinterpret_cast<extNetSocket *>(Data);
    LONG result;
 
-   log.msg("Socket: " PF64(), (MAXINT)Socket);
+   log.msg("Socket: %" PF64, (MAXINT)Socket);
 
    if ((result = SSL_do_handshake(Self->SSL)) == 1) { // Handshake successful, connection established
       #ifdef __linux__

@@ -322,8 +322,12 @@ public:
 
 //********************************************************************************************************************
 
-class objColourFX : public extFilterEffect {
+class extColourFX : public extFilterEffect {
    public:
+   static constexpr CLASSID CLASS_ID = ID_COLOURFX;
+   static constexpr CSTRING CLASS_NAME = "ColourFX";
+   using create = parasol::Create<extColourFX>;
+
    DOUBLE Values[CM_SIZE];
    ColourMatrix *Matrix;
    LONG TotalValues;
@@ -336,7 +340,7 @@ Draw: Render the effect to the target bitmap.
 -END-
 *********************************************************************************************************************/
 
-static ERROR COLOURFX_Draw(objColourFX *Self, struct acDraw *Args)
+static ERROR COLOURFX_Draw(extColourFX *Self, struct acDraw *Args)
 {
    if (Self->Target->BytesPerPixel != 4) return ERR_Failed;
    if (!Self->Matrix) return ERR_Failed;
@@ -395,7 +399,7 @@ static ERROR COLOURFX_Draw(objColourFX *Self, struct acDraw *Args)
 
 //********************************************************************************************************************
 
-static ERROR COLOURFX_Free(objColourFX *Self, APTR Void)
+static ERROR COLOURFX_Free(extColourFX *Self, APTR Void)
 {
    if (Self->Matrix) { delete Self->Matrix; Self->Matrix = NULL; }
    return ERR_Okay;
@@ -403,7 +407,7 @@ static ERROR COLOURFX_Free(objColourFX *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR COLOURFX_Init(objColourFX *Self, APTR Void)
+static ERROR COLOURFX_Init(extColourFX *Self, APTR Void)
 {
    parasol::Log log;
 
@@ -471,7 +475,7 @@ static ERROR COLOURFX_Init(objColourFX *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR COLOURFX_NewObject(objColourFX *Self, APTR Void)
+static ERROR COLOURFX_NewObject(extColourFX *Self, APTR Void)
 {
    // Configure identity matrix
    Self->Values[0] = 1;
@@ -489,13 +493,13 @@ Lookup: CM
 
 *********************************************************************************************************************/
 
-static ERROR COLOURFX_GET_Mode(objColourFX *Self, LONG *Value)
+static ERROR COLOURFX_GET_Mode(extColourFX *Self, LONG *Value)
 {
    *Value = Self->Mode;
    return ERR_Okay;
 }
 
-static ERROR COLOURFX_SET_Mode(objColourFX *Self, LONG Value)
+static ERROR COLOURFX_SET_Mode(extColourFX *Self, LONG Value)
 {
    Self->Mode = Value;
    return ERR_Okay;
@@ -513,14 +517,14 @@ When values are not defined, they default to 0.
 
 *********************************************************************************************************************/
 
-static ERROR COLOURFX_GET_Values(objColourFX *Self, DOUBLE **Array, LONG *Elements)
+static ERROR COLOURFX_GET_Values(extColourFX *Self, DOUBLE **Array, LONG *Elements)
 {
    *Array = Self->Values;
    *Elements = Self->TotalValues;
    return ERR_Okay;
 }
 
-static ERROR COLOURFX_SET_Values(objColourFX *Self, DOUBLE *Array, LONG Elements)
+static ERROR COLOURFX_SET_Values(extColourFX *Self, DOUBLE *Array, LONG Elements)
 {
    if (Elements > ARRAYSIZE(Self->Values)) return ERR_InvalidValue;
    CopyMemory(Array, Self->Values, Elements * sizeof(DOUBLE));
@@ -535,7 +539,7 @@ XMLDef: Returns an SVG compliant XML string that describes the effect.
 
 *********************************************************************************************************************/
 
-static ERROR COLOURFX_GET_XMLDef(objColourFX *Self, STRING *Value)
+static ERROR COLOURFX_GET_XMLDef(extColourFX *Self, STRING *Value)
 {
    std::stringstream stream;
 
@@ -580,7 +584,7 @@ ERROR init_colourfx(void)
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clColourFXActions),
       fl::Fields(clColourFXFields),
-      fl::Size(sizeof(objColourFX)),
+      fl::Size(sizeof(extColourFX)),
       fl::Path(MOD_PATH));
 
    return clColourFX ? ERR_Okay : ERR_AddClass;

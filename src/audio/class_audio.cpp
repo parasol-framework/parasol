@@ -449,7 +449,7 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
    else {
       objFile *stream_file;
       ERROR error;
-      if (!NewLockedObject(ID_FILE, NF_INTEGRAL, &stream_file, &sample->StreamID)) {
+      if (!NewLockedObject(ID_FILE, NF::INTEGRAL, &stream_file, &sample->StreamID)) {
          if (!SetFields(stream_file, FID_Path|TSTR, Args->Path, FID_Flags|TLONG, FL_READ, TAGEND)) {
             if (!acInit(stream_file)) {
                error = ERR_Okay;
@@ -1250,20 +1250,14 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 
    objConfig::create config = { };
    if (config.ok()) {
-      char buffer[128];
-
       cfgWrite(*config, "AUDIO", "OutputRate", Self->OutputRate);
       cfgWrite(*config, "AUDIO", "InputRate", Self->InputRate);
       cfgWrite(*config, "AUDIO", "Quality", Self->Quality);
       cfgWrite(*config, "AUDIO", "BitDepth", Self->BitDepth);
       cfgWrite(*config, "AUDIO", "Periods", Self->Periods);
       cfgWrite(*config, "AUDIO", "PeriodSize", Self->PeriodSize);
-
-      StrFormat(buffer, sizeof(buffer), "%.4f", Self->Bass);
-      cfgWriteValue(*config, "AUDIO", "Bass", buffer);
-
-      StrFormat(buffer, sizeof(buffer), "%.4f", Self->Treble);
-      cfgWriteValue(*config, "AUDIO", "Treble", buffer);
+      cfgWriteValue(*config, "AUDIO", "Bass", std::to_string(Self->Bass).c_str());
+      cfgWriteValue(*config, "AUDIO", "Treble", std::to_string(Self->Treble).c_str());
 
       if (Self->Flags & ADF_STEREO) cfgWriteValue(*config, "AUDIO", "Stereo", "TRUE");
       else cfgWriteValue(*config, "AUDIO", "Stereo", "FALSE");
@@ -1274,23 +1268,20 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 
       if ((Self->VolumeCtl) and (Self->Flags & ADF_SYSTEM_WIDE)) {
          for (LONG i=0; Self->VolumeCtl[i].Name[0]; i++) {
-            if (Self->VolumeCtl[i].Flags & VCF_MUTE) buffer[0] = '1';
-            else buffer[0] = '0';
-            buffer[1] = ',';
+            std::ostringstream out;
+            if (Self->VolumeCtl[i].Flags & VCF_MUTE) out << "1,[";
+            else out << "0,[";
 
-            buffer[2] = '[';
-            LONG pos = 3;
             if (Self->VolumeCtl[i].Flags & VCF_MONO) {
-               pos += StrFormat(buffer+pos, sizeof(buffer)-pos, "%.2f", Self->VolumeCtl[i].Channels[0]);
+               out << Self->VolumeCtl[i].Channels[0];
             }
-            else for (LONG channel=0; channel < ARRAYSIZE(Self->VolumeCtl[i].Channels); channel++) {
-               if (channel > 0) buffer[pos++] = ',';
-               pos += StrFormat(buffer+pos, sizeof(buffer)-pos, "%.2f", Self->VolumeCtl[i].Channels[channel]);
+            else for (LONG c=0; c < ARRAYSIZE(Self->VolumeCtl[i].Channels); c++) {
+               if (c > 0) out << ',';
+               out << Self->VolumeCtl[i].Channels[c];
             }
-            buffer[pos++] = ']';
-            buffer[pos] = 0;
+            out << ']';
 
-            cfgWriteValue(*config, "MIXER", Self->VolumeCtl[i].Name, buffer);
+            cfgWriteValue(*config, "MIXER", Self->VolumeCtl[i].Name, out.str().c_str());
          }
       }
 #if 0
@@ -1301,7 +1292,6 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
    long left, right;
    long pmin, pmax;
    int mute;
-   DOUBLE fleft, fright;
    LONG i;
 
    snd_mixer_selem_id_alloca(&sid);
@@ -1327,9 +1317,9 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 
       if (pmin >= pmax) continue;
 
-      fleft = (DOUBLE)left * 100.0 / (DOUBLE)(pmax - pmin);
-      fright = (DOUBLE)right * 100.0 / (DOUBLE)(pmax - pmin);
-      StrFormat(buffer, sizeof(buffer), "%.2f,%.2f,%d", fleft, fright, (mute) ? 0 : 1);
+      DOUBLE fleft = (DOUBLE)left * 100.0 / (DOUBLE)(pmax - pmin);
+      DOUBLE fright = (DOUBLE)right * 100.0 / (DOUBLE)(pmax - pmin);
+      snprintf(buffer, sizeof(buffer), "%.2f,%.2f,%d", fleft, fright, (mute) ? 0 : 1);
 
       cfgWriteValue(*config, "MIXER", Self->VolumeCtl[i].Name, buffer);
    }
@@ -1337,8 +1327,10 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 
 #else
       if (Self->VolumeCtl) {
-         StrFormat(buffer, sizeof(buffer), "%d,[%.2f]", (Self->VolumeCtl[0].Flags & VCF_MUTE) ? 1 : 0, Self->VolumeCtl[0].Channels[0]);
-         cfgWriteValue(*config, "MIXER", Self->VolumeCtl[0].Name, buffer);
+         std::string out((Self->VolumeCtl[0].Flags & VCF_MUTE) ? "1,[" : "0,[");
+         out.append(std::to_string(Self->VolumeCtl[0].Channels[0]));
+         out.append("]");
+         cfgWriteValue(*config, "MIXER", Self->VolumeCtl[0].Name, out.c_str());
       }
 #endif
 
@@ -2075,7 +2067,7 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
             }
             else {
                log.warning("Audio error is terminal, self-destructing...");
-               DelayMsg(AC_Free, Self->UID, NULL);
+               DelayMsg(AC_Free, Self->UID);
                return ERR_Failed;
             }
          }
@@ -2176,23 +2168,24 @@ static void load_config(extAudio *Self)
 
    // Attempt to get the user's preferred pointer settings from the user:config/pointer file.
 
-   OBJECTPTR config;
-   if (!CreateObject(ID_CONFIG, 0, &config, FID_Path|TSTR, "user:config/audio.cfg", TAGEND)) {
-      cfgRead(config, "AUDIO", "OutputRate", &Self->OutputRate);
-      cfgRead(config, "AUDIO", "InputRate", &Self->InputRate);
-      cfgRead(config, "AUDIO", "Quality", &Self->Quality);
-      if (!cfgRead(config, "AUDIO", "Bass", &fvalue)) Self->Bass = fvalue;
-      if (!cfgRead(config, "AUDIO", "Treble", &fvalue)) Self->Treble = fvalue;
-      cfgRead(config, "AUDIO", "BitDepth", &Self->BitDepth);
+   objConfig::create config = { fl::Path("user:config/audio.cfg") };
 
-      if (!cfgRead(config, "AUDIO", "Periods", &value)) SET_Periods(Self, value);
-      if (!cfgRead(config, "AUDIO", "PeriodSize", &value)) SET_PeriodSize(Self, value);
+   if (config.ok()) {
+      cfgRead(*config, "AUDIO", "OutputRate", &Self->OutputRate);
+      cfgRead(*config, "AUDIO", "InputRate", &Self->InputRate);
+      cfgRead(*config, "AUDIO", "Quality", &Self->Quality);
+      if (!cfgRead(*config, "AUDIO", "Bass", &fvalue)) Self->Bass = fvalue;
+      if (!cfgRead(*config, "AUDIO", "Treble", &fvalue)) Self->Treble = fvalue;
+      cfgRead(*config, "AUDIO", "BitDepth", &Self->BitDepth);
 
-      if (!cfgReadValue(config, "AUDIO", "Device", &str)) StrCopy(str, Self->prvDevice, sizeof(Self->prvDevice));
+      if (!cfgRead(*config, "AUDIO", "Periods", &value)) SET_Periods(Self, value);
+      if (!cfgRead(*config, "AUDIO", "PeriodSize", &value)) SET_PeriodSize(Self, value);
+
+      if (!cfgReadValue(*config, "AUDIO", "Device", &str)) StrCopy(str, Self->prvDevice, sizeof(Self->prvDevice));
       else StrCopy("default", Self->prvDevice, sizeof(Self->prvDevice));
 
       Self->Flags |= ADF_STEREO;
-      if (!cfgReadValue(config, "AUDIO", "Stereo", &str)) {
+      if (!cfgReadValue(*config, "AUDIO", "Stereo", &str)) {
          if (!StrMatch("FALSE", str)) Self->Flags &= ~ADF_STEREO;
       }
 
@@ -2250,8 +2243,6 @@ static void load_config(extAudio *Self)
             break;
          }
       }
-
-      acFree(config);
    }
 }
 
@@ -2322,7 +2313,7 @@ static ERROR init_audio(extAudio *Self)
       }
 
       while (card >= 0) {
-         StrFormat(name, sizeof(name), "hw:%d", card);
+         snprintf(name, sizeof(name), "hw:%d", card);
 
          if ((err = snd_ctl_open(&ctlhandle, name, 0)) >= 0) {
             if ((err = snd_ctl_card_info(ctlhandle, info)) >= 0) {
@@ -2363,7 +2354,7 @@ static ERROR init_audio(extAudio *Self)
 
       volmax = 0;
       while (card >= 0) {
-         StrFormat(name, sizeof(name), "hw:%d", card);
+         snprintf(name, sizeof(name), "hw:%d", card);
          log.msg("Opening card %s", name);
 
          if ((err = snd_ctl_open(&ctlhandle, name, 0)) >= 0) {

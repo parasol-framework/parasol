@@ -151,17 +151,18 @@ class objClientSocket : public BaseClass {
    // Action stubs
 
    inline ERROR init() { return Action(AC_Init, this, NULL); }
-   inline ERROR read(APTR Buffer, LONG Bytes, LONG *Result) {
+   template <class T> ERROR read(APTR Buffer, T Bytes, LONG *Result) {
       ERROR error;
-      struct acRead read = { (BYTE *)Buffer, Bytes };
-      if (!(error = Action(AC_Read, this, &read))) {
-         if (Result) *Result = read.Result;
-         return ERR_Okay;
-      }
-      else {
-         if (Result) *Result = 0;
-         return error;
-      }
+      if (Bytes > 0x7fffffff) Bytes = 0x7fffffff;
+      struct acRead read = { (BYTE *)Buffer, (LONG)Bytes };
+      if (!(error = Action(AC_Read, this, &read))) *Result = read.Result;
+      else *Result = 0;
+      return error;
+   }
+   template <class T> ERROR read(APTR Buffer, T Bytes) {
+      if (Bytes > 0x7fffffff) Bytes = 0x7fffffff;
+      struct acRead read = { (BYTE *)Buffer, (LONG)Bytes };
+      return Action(AC_Read, this, &read);
    }
    inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result) {
       ERROR error;
@@ -363,17 +364,18 @@ class objNetSocket : public BaseClass {
    }
    inline ERROR disable() { return Action(AC_Disable, this, NULL); }
    inline ERROR init() { return Action(AC_Init, this, NULL); }
-   inline ERROR read(APTR Buffer, LONG Bytes, LONG *Result) {
+   template <class T> ERROR read(APTR Buffer, T Bytes, LONG *Result) {
       ERROR error;
-      struct acRead read = { (BYTE *)Buffer, Bytes };
-      if (!(error = Action(AC_Read, this, &read))) {
-         if (Result) *Result = read.Result;
-         return ERR_Okay;
-      }
-      else {
-         if (Result) *Result = 0;
-         return error;
-      }
+      if (Bytes > 0x7fffffff) Bytes = 0x7fffffff;
+      struct acRead read = { (BYTE *)Buffer, (LONG)Bytes };
+      if (!(error = Action(AC_Read, this, &read))) *Result = read.Result;
+      else *Result = 0;
+      return error;
+   }
+   template <class T> ERROR read(APTR Buffer, T Bytes) {
+      if (Bytes > 0x7fffffff) Bytes = 0x7fffffff;
+      struct acRead read = { (BYTE *)Buffer, (LONG)Bytes };
+      return Action(AC_Read, this, &read);
    }
    inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result) {
       ERROR error;
@@ -428,28 +430,27 @@ class objNetSocket : public BaseClass {
 #define SCV_APPLICATION_VERIFICATION 50
 
 INLINE ERROR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR UserData) {
-   return(CreateObject(ID_NETSOCKET, 0, NewNetSocketOut,
-      FID_Listener|TLONG, ListenerID,
-      FID_UserData|TPTR, UserData,
-      TAGEND));
+   if ((*NewNetSocketOut = objNetSocket::create::global(fl::Listener(ListenerID), fl::UserData(UserData)))) return ERR_Okay;
+   else return ERR_CreateObject;
 }
+extern struct NetworkBase *NetworkBase;
 struct NetworkBase {
-   ERROR (*_StrToAddress)(CSTRING, struct IPAddress *);
-   CSTRING (*_AddressToStr)(struct IPAddress *);
-   ULONG (*_HostToShort)(ULONG);
-   ULONG (*_HostToLong)(ULONG);
-   ULONG (*_ShortToHost)(ULONG);
-   ULONG (*_LongToHost)(ULONG);
-   ERROR (*_SetSSL)(objNetSocket *, ...);
+   ERROR (*_StrToAddress)(CSTRING String, struct IPAddress * Address);
+   CSTRING (*_AddressToStr)(struct IPAddress * IPAddress);
+   ULONG (*_HostToShort)(ULONG Value);
+   ULONG (*_HostToLong)(ULONG Value);
+   ULONG (*_ShortToHost)(ULONG Value);
+   ULONG (*_LongToHost)(ULONG Value);
+   ERROR (*_SetSSL)(objNetSocket * NetSocket, ...);
 };
 
 #ifndef PRV_NETWORK_MODULE
-#define netStrToAddress(...) (NetworkBase->_StrToAddress)(__VA_ARGS__)
-#define netAddressToStr(...) (NetworkBase->_AddressToStr)(__VA_ARGS__)
-#define netHostToShort(...) (NetworkBase->_HostToShort)(__VA_ARGS__)
-#define netHostToLong(...) (NetworkBase->_HostToLong)(__VA_ARGS__)
-#define netShortToHost(...) (NetworkBase->_ShortToHost)(__VA_ARGS__)
-#define netLongToHost(...) (NetworkBase->_LongToHost)(__VA_ARGS__)
-#define netSetSSL(...) (NetworkBase->_SetSSL)(__VA_ARGS__)
+inline ERROR netStrToAddress(CSTRING String, struct IPAddress * Address) { return NetworkBase->_StrToAddress(String,Address); }
+inline CSTRING netAddressToStr(struct IPAddress * IPAddress) { return NetworkBase->_AddressToStr(IPAddress); }
+inline ULONG netHostToShort(ULONG Value) { return NetworkBase->_HostToShort(Value); }
+inline ULONG netHostToLong(ULONG Value) { return NetworkBase->_HostToLong(Value); }
+inline ULONG netShortToHost(ULONG Value) { return NetworkBase->_ShortToHost(Value); }
+inline ULONG netLongToHost(ULONG Value) { return NetworkBase->_LongToHost(Value); }
+template<class... Args> ERROR netSetSSL(objNetSocket * NetSocket, Args... Tags) { return NetworkBase->_SetSSL(NetSocket,Tags...); }
 #endif
 

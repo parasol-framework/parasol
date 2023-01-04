@@ -13,15 +13,15 @@ static ERROR exec_data_file(CSTRING TargetFile)
    ERROR error;
 
    if (!(error = IdentifyFile(TargetFile, "Open", 0, &class_id, NULL, &command))) {
-      OBJECTPTR run;
-      if (!CreateObject(ID_TASK, 0, &run, FID_Location|TSTR, command, TAGEND)) {
+      objTask::create run = { fl::Location(command) };
+      if (run.ok()) {
          if (glArgs) {
             char argbuffer[100];
             STRING argname = argbuffer;
             LONG i, j;
             for (i=0; glArgs[i]; i++) {
                CSTRING arg = glArgs[i];
-               for (j=0; (arg[j]) AND (arg[j] != '=') AND (j < (LONG)sizeof(argbuffer)-10); j++) argname[j] = arg[j];
+               for (j=0; (arg[j]) and (arg[j] != '=') and (j < (LONG)sizeof(argbuffer)-10); j++) argname[j] = arg[j];
                argname[j] = 0;
                LONG al = j;
 
@@ -34,25 +34,24 @@ static ERROR exec_data_file(CSTRING TargetFile)
                      // Check in case of no gap, e.g. files={arg1 ... }
 
                      j++;
-                     if (arg[j] > 0x20) SetVar(run, argbuffer, arg + j);
+                     if (arg[j] > 0x20) SetVar(*run, argbuffer, arg + j);
 
                      i++;
                      LONG arg_index = 0;
-                     while ((arg) AND (arg[0] != '}')) {
-                        StrFormat(argbuffer+al, sizeof(argbuffer)-al, "(%d)", arg_index);
-                        SetVar(run, argbuffer, arg);
+                     while ((arg) and (arg[0] != '}')) {
+                        snprintf(argbuffer+al, sizeof(argbuffer)-al, "(%d)", arg_index);
+                        SetVar(*run, argbuffer, arg);
                         arg_index++;
                         i++;
                      }
                   }
-                  else SetVar(run, argname, arg+j);
+                  else SetVar(*run, argname, arg+j);
                }
-               else SetVar(run, argname, "1");
+               else SetVar(*run, argname, "1");
             }
          }
 
-         acActivate(run);
-         acFree(run);
+         run->activate();
       }
    }
 
@@ -110,7 +109,7 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
                   cmdline[i++] ='"';
                }
                CSTRING arg = *args;
-               while ((*arg) AND (i < sizeof(cmdline)-2)) {
+               while ((*arg) and (i < sizeof(cmdline)-2)) {
                   if (*arg IS '"') cmdline[i++] = '\\'; // Escape '"'
                   cmdline[i++] = *arg++;
                }
@@ -147,17 +146,13 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
    }
 
    if (class_id IS ID_PARC) {
-      OBJECTPTR parc;
+      objParc::create parc = { fl::Path(TargetFile), fl::Allow(glAllow) };
 
-      if (!(error = CreateObject(ID_PARC, 0, &parc,
-            FID_Path|TSTR,  TargetFile,
-            FID_Allow|TSTR, glAllow,
-            TAGEND))) {
-
+      if (parc.ok()) {
          // The user can use the --allow parameter to automatically give the PARC program additional access
          // rights as required.  E.g. "--allow storage,maxSize:1M,maxFiles:20,memory:100M"
 
-         if ((error = acActivate(parc))) {
+         if ((error = parc->activate())) {
             STRING msg;
             if (!parc->get(FID_Message, &msg)) {
                print("Failed to execute the archive, error: %s", GetErrorMsg(error));
@@ -179,7 +174,7 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
       return(exec_data_file(TargetFile));
    }
 
-   if (!NewObject(subclass ? subclass : class_id, 0, &glScript)) {
+   if (!NewObject(subclass ? subclass : class_id, &glScript)) {
       if (!glTargetID) glTargetID = CurrentTaskID();
       SetFields(glScript, FID_Path|TSTR,      TargetFile,
                           FID_Target|TLONG,   glTargetID,
@@ -189,7 +184,7 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
          BYTE argbuffer[100];
          STRING argname = argbuffer;
          for (i=0; glArgs[i]; i++) {
-            for (j=0; (glArgs[i][j]) AND (glArgs[i][j] != '=') AND (j < (LONG)sizeof(argbuffer)-10); j++) argname[j] = glArgs[i][j];
+            for (j=0; (glArgs[i][j]) and (glArgs[i][j] != '=') and (j < (LONG)sizeof(argbuffer)-10); j++) argname[j] = glArgs[i][j];
             argname[j] = 0;
             LONG al = j;
 
@@ -204,8 +199,8 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
 
                   i++;
                   LONG arg_index = 0;
-                  while ((glArgs[i]) AND (glArgs[i][0] != '}')) {
-                     StrFormat(argname+al, sizeof(argbuffer)-al, "(%d)", arg_index);
+                  while ((glArgs[i]) and (glArgs[i][0] != '}')) {
+                     snprintf(argname+al, sizeof(argbuffer)-al, "(%d)", arg_index);
                      SetVar(glScript, argname, glArgs[i]);
                      arg_index++;
                      i++;

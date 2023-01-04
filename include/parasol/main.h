@@ -79,6 +79,7 @@ class ScopedObjectLock { // C++ wrapper for automatically releasing an object
       ~ScopedObjectLock() { if (!error) ReleaseObject((OBJECTPTR)obj); }
       bool granted() { return error == ERR_Okay; }
 
+      T * operator->() { return obj; }; // Promotes underlying methods and fields
       T * & operator*() { return obj; }; // To allow object pointer referencing when calling functions
 };
 
@@ -156,35 +157,96 @@ namespace fl {
 
 constexpr FieldValue Path(CSTRING Value) { return FieldValue(FID_Path, Value); }
 inline FieldValue Path(std::string Value) { return FieldValue(FID_Path, Value.c_str()); }
-constexpr FieldValue Volume(CSTRING Value) { return FieldValue(FID_Volume, Value); }
-inline FieldValue Volume(std::string Value) { return FieldValue(FID_Volume, Value.c_str()); }
-constexpr FieldValue Target(OBJECTID Value) { return FieldValue(FID_Target, Value); }
-constexpr FieldValue Flags(LONG Value) { return FieldValue(FID_Flags, Value); }
-constexpr FieldValue Permissions(LONG Value) { return FieldValue(FID_Permissions, Value); }
-constexpr FieldValue Routine(CPTR Value) { return FieldValue(FID_Routine, Value); }
-constexpr FieldValue BaseClassID(LONG Value) { return FieldValue(FID_BaseClassID, Value); }
-constexpr FieldValue SubClassID(LONG Value) { return FieldValue(FID_SubClassID, Value); }
-constexpr FieldValue ClassVersion(DOUBLE Value) { return FieldValue(FID_ClassVersion, Value); }
-constexpr FieldValue Version(DOUBLE Value) { return FieldValue(FID_Version, Value); }
+
+constexpr FieldValue Location(CSTRING Value) { return FieldValue(FID_Location, Value); }
+inline FieldValue Location(std::string Value) { return FieldValue(FID_Location, Value.c_str()); }
+
+constexpr FieldValue Args(CSTRING Value) { return FieldValue(FID_Args, Value); }
+inline FieldValue Args(std::string Value) { return FieldValue(FID_Args, Value.c_str()); }
+
+constexpr FieldValue Statement(CSTRING Value) { return FieldValue(FID_Statement, Value); }
+inline FieldValue Statement(std::string Value) { return FieldValue(FID_Statement, Value.c_str()); }
+
+constexpr FieldValue Stroke(CSTRING Value) { return FieldValue(FID_Stroke, Value); }
+inline FieldValue Stroke(std::string Value) { return FieldValue(FID_Stroke, Value.c_str()); }
+
+constexpr FieldValue String(CSTRING Value) { return FieldValue(FID_String, Value); }
+inline FieldValue String(std::string Value) { return FieldValue(FID_String, Value.c_str()); }
+
 constexpr FieldValue Name(CSTRING Value) { return FieldValue(FID_Name, Value); }
 inline FieldValue Name(std::string Value) { return FieldValue(FID_Name, Value.c_str()); }
-constexpr FieldValue Category(LONG Value) { return FieldValue(FID_Category, Value); }
+
+constexpr FieldValue Allow(CSTRING Value) { return FieldValue(FID_Allow, Value); }
+inline FieldValue Allow(std::string Value) { return FieldValue(FID_Allow, Value.c_str()); }
+
+constexpr FieldValue Style(CSTRING Value) { return FieldValue(FID_Style, Value); }
+inline FieldValue Style(std::string Value) { return FieldValue(FID_Style, Value.c_str()); }
+
+constexpr FieldValue Face(CSTRING Value) { return FieldValue(FID_Face, Value); }
+inline FieldValue Face(std::string Value) { return FieldValue(FID_Face, Value.c_str()); }
+
 constexpr FieldValue FileExtension(CSTRING Value) { return FieldValue(FID_FileExtension, Value); }
 inline FieldValue FileExtension(std::string Value) { return FieldValue(FID_FileExtension, Value.c_str()); }
+
 constexpr FieldValue FileDescription(CSTRING Value) { return FieldValue(FID_FileDescription, Value); }
 inline FieldValue FileDescription(std::string Value) { return FieldValue(FID_FileDescription, Value.c_str()); }
+
 constexpr FieldValue FileHeader(CSTRING Value) { return FieldValue(FID_FileHeader, Value); }
 inline FieldValue FileHeader(std::string Value) { return FieldValue(FID_FileHeader, Value.c_str()); }
+
+constexpr FieldValue ArchiveName(CSTRING Value) { return FieldValue(FID_ArchiveName, Value); }
+inline FieldValue ArchiveName(std::string Value) { return FieldValue(FID_ArchiveName, Value.c_str()); }
+
+constexpr FieldValue Volume(CSTRING Value) { return FieldValue(FID_Volume, Value); }
+inline FieldValue Volume(std::string Value) { return FieldValue(FID_Volume, Value.c_str()); }
+
+constexpr FieldValue ReadOnly(LONG Value) { return FieldValue(FID_ReadOnly, Value); }
+constexpr FieldValue ReadOnly(bool Value) { return FieldValue(FID_ReadOnly, (Value ? 1 : 0)); }
+
+constexpr FieldValue Point(DOUBLE Value) { return FieldValue(FID_Point, Value); }
+constexpr FieldValue Point(LONG Value) { return FieldValue(FID_Point, Value); }
+constexpr FieldValue Point(CSTRING Value) { return FieldValue(FID_Point, Value); }
+inline FieldValue Point(std::string Value) { return FieldValue(FID_Point, Value.c_str()); }
+
+constexpr FieldValue Owner(OBJECTID Value) { return FieldValue(FID_Owner, Value); }
+constexpr FieldValue Target(OBJECTID Value) { return FieldValue(FID_Target, Value); }
+constexpr FieldValue Flags(LONG Value) { return FieldValue(FID_Flags, Value); }
+constexpr FieldValue Listener(LONG Value) { return FieldValue(FID_Listener, Value); }
+constexpr FieldValue Permissions(LONG Value) { return FieldValue(FID_Permissions, Value); }
+constexpr FieldValue UserData(CPTR Value) { return FieldValue(FID_UserData, Value); }
+constexpr FieldValue Routine(CPTR Value) { return FieldValue(FID_Routine, Value); }
+constexpr FieldValue Feedback(CPTR Value) { return FieldValue(FID_Feedback, Value); }
+constexpr FieldValue Incoming(CPTR Value) { return FieldValue(FID_Incoming, Value); }
+constexpr FieldValue BaseClassID(LONG Value) { return FieldValue(FID_BaseClassID, Value); }
+constexpr FieldValue SubClassID(LONG Value) { return FieldValue(FID_SubClassID, Value); }
+constexpr FieldValue AmtColours(LONG Value) { return FieldValue(FID_AmtColours, Value); }
+constexpr FieldValue ClassVersion(DOUBLE Value) { return FieldValue(FID_ClassVersion, Value); }
+constexpr FieldValue Version(DOUBLE Value) { return FieldValue(FID_Version, Value); }
+constexpr FieldValue Category(LONG Value) { return FieldValue(FID_Category, Value); }
 constexpr FieldValue Actions(CPTR Value) { return FieldValue(FID_Actions, Value); }
 constexpr FieldValue Size(LONG Value) { return FieldValue(FID_Size, Value); }
 constexpr FieldValue Methods(const MethodArray *Value) { return FieldValue(FID_Methods, Value, FD_ARRAY); }
 constexpr FieldValue Fields(const FieldArray *Value) { return FieldValue(FID_Fields, Value, FD_ARRAY); }
-constexpr FieldValue ArchiveName(CSTRING Value) { return FieldValue(FID_ArchiveName, Value); }
-inline FieldValue ArchiveName(std::string Value) { return FieldValue(FID_ArchiveName, Value.c_str()); }
 constexpr FieldValue Bitmap(objBitmap *Value) { return FieldValue(FID_Bitmap, Value); }
 constexpr FieldValue SpreadMethod(LONG Value) { return FieldValue(FID_SpreadMethod, Value); }
 constexpr FieldValue Units(LONG Value) { return FieldValue(FID_Units, Value); }
 constexpr FieldValue AspectRatio(LONG Value) { return FieldValue(FID_AspectRatio, Value); }
+constexpr FieldValue ColourSpace(LONG Value) { return FieldValue(FID_ColourSpace, Value); }
+constexpr FieldValue StrokeWidth(DOUBLE Value) { return FieldValue(FID_StrokeWidth, Value); }
+constexpr FieldValue Closed(bool Value) { return FieldValue(FID_Closed, (Value ? 1 : 0)); }
+constexpr FieldValue Visibility(LONG Value) { return FieldValue(FID_Visibility, Value); }
+constexpr FieldValue Input(CPTR Value) { return FieldValue(FID_Input, Value); }
+constexpr FieldValue Picture(OBJECTPTR Value) { return FieldValue(FID_Picture, Value); }
+
+template <class T> FieldValue PageWidth(T Value) {
+   static_assert(std::is_arithmetic<T>::value, "PageWidth value must be numeric");
+   return FieldValue(FID_PageWidth, Value);
+}
+
+template <class T> FieldValue PageHeight(T Value) {
+   static_assert(std::is_arithmetic<T>::value, "PageHeight value must be numeric");
+   return FieldValue(FID_PageHeight, Value);
+}
 
 template <class T> FieldValue Width(T Value) {
    static_assert(std::is_arithmetic<T>::value, "Width value must be numeric");
@@ -204,6 +266,26 @@ template <class T> FieldValue X(T Value) {
 template <class T> FieldValue Y(T Value) {
    static_assert(std::is_arithmetic<T>::value, "Y value must be numeric");
    return FieldValue(FID_Y, Value);
+}
+
+template <class T> FieldValue X1(T Value) {
+   static_assert(std::is_arithmetic<T>::value, "X1 value must be numeric");
+   return FieldValue(FID_X1, Value);
+}
+
+template <class T> FieldValue Y1(T Value) {
+   static_assert(std::is_arithmetic<T>::value, "Y1 value must be numeric");
+   return FieldValue(FID_Y1, Value);
+}
+
+template <class T> FieldValue X2(T Value) {
+   static_assert(std::is_arithmetic<T>::value, "X2 value must be numeric");
+   return FieldValue(FID_X2, Value);
+}
+
+template <class T> FieldValue Y2(T Value) {
+   static_assert(std::is_arithmetic<T>::value, "Y2 value must be numeric");
+   return FieldValue(FID_Y2, Value);
 }
 
 constexpr FieldValue BitsPerPixel(LONG Value) { return FieldValue(FID_BitsPerPixel, Value); }

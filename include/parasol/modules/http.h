@@ -159,7 +159,7 @@ class objHTTP : public BaseClass {
    inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
       struct acGetVar args = { FieldName, Buffer, Size };
       ERROR error = Action(AC_GetVar, this, &args);
-      if ((error) AND (Buffer)) Buffer[0] = 0;
+      if ((error) and (Buffer)) Buffer[0] = 0;
       return error;
    }
    inline ERROR init() { return Action(AC_Init, this, NULL); }

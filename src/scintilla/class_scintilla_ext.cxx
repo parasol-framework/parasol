@@ -276,7 +276,7 @@ void ScintillaParasol::CopyToClipboard(const Scintilla::SelectionText &selectedT
    log.traceBranch("");
 
    OBJECTPTR clipboard;
-   if (!CreateObject(ID_CLIPBOARD, 0, &clipboard, TAGEND)) {
+   if (!CreateObject(ID_CLIPBOARD, NF::NIL, &clipboard, TAGEND)) {
       if (!clipAddText(clipboard, selectedText.s)) {
 
       }
@@ -325,21 +325,17 @@ void ScintillaParasol::Paste()
 
    log.traceBranch("");
 
-   OBJECTPTR clipboard;
-   if (!CreateObject(ID_CLIPBOARD, 0, &clipboard, TAGEND)) {
+   objClipboard::create clipboard = { };
+   if (clipboard.ok()) {
       struct clipGetFiles get = { .Datatype = CLIPTYPE_TEXT, .Index = 0 };
-      if (!Action(MT_ClipGetFiles, clipboard, &get)) {
-         OBJECTPTR file;
-         if (!CreateObject(ID_FILE, 0, &file,
-               FID_Path|TSTR,   get.Files[0],
-               FID_Flags|TLONG, FL_READ,
-               TAGEND)) {
-
+      if (!Action(MT_ClipGetFiles, *clipboard, &get)) {
+         objFile::create file = { fl::Path(get.Files[0]), fl::Flags(FL_READ) };
+         if (file.ok()) {
             LONG len, size;
             if ((!file->get(FID_Size, &size)) and (size > 0)) {
                STRING buffer;
                if (!AllocMemory(size, MEM_STRING, &buffer, NULL)) {
-                  if (!acRead(file, buffer, size, &len)) {
+                  if (!file->read(buffer, size, &len)) {
                      pdoc->BeginUndoAction();
 
                         ClearSelection();
@@ -359,8 +355,6 @@ void ScintillaParasol::Paste()
                }
                else error_dialog("Paste Error", NULL, ERR_AllocMemory);
             }
-
-            acFree(file);
          }
          else {
             char msg[200];
@@ -368,7 +362,6 @@ void ScintillaParasol::Paste()
             error_dialog("Paste Error", msg, 0);
          }
       }
-      acFree(clipboard);
    }
 }
 
@@ -420,7 +413,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
 
          // Event report has to be delayed, as we otherwise get interference in the drawing process.
          scintilla->ReportEventFlags |= SEF_CURSOR_POS;
-         DelayMsg(MT_SciReportEvent, scintilla->UID, NULL);
+         DelayMsg(MT_SciReportEvent, scintilla->UID);
       }
    }
    else if (code IS SCN_STYLENEEDED) {
@@ -445,7 +438,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
       log.trace("[MODIFYATTEMPTRO]");
 
       scintilla->ReportEventFlags |= SEF_FAIL_RO;
-      DelayMsg(MT_SciReportEvent, scintilla->UID, NULL);
+      DelayMsg(MT_SciReportEvent, scintilla->UID);
    }
    else if (code IS SCN_CHARADDED) {
       // This is sent when the user types an ordinary text character (as opposed to a command character) that is
@@ -483,7 +476,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
       }
 
       scintilla->ReportEventFlags |= SEF_NEW_CHAR;
-      DelayMsg(MT_SciReportEvent, scintilla->UID, NULL);
+      DelayMsg(MT_SciReportEvent, scintilla->UID);
    }
    else if (code IS SCN_SAVEPOINTREACHED) {
       // The document is unmodified (recently saved)
@@ -764,7 +757,7 @@ void ScintillaParasol::panDraw(objSurface *TargetSurface, objBitmap *Bitmap)
       // means that the clipping area needs to be extended, and we're not able to do that from inside a Draw() call.
       // The simplest solution is to send a new draw message to the parent surface, telling it to redraw the entire area.
 
-      DelayMsg(AC_Draw, TargetSurface->UID, NULL);
+      DelayMsg(AC_Draw, TargetSurface->UID);
    }
 
    this->paintState = notPainting;
@@ -1017,7 +1010,7 @@ void ScintillaParasol::SetLexer(uptr_t LexID)
    //SendScintilla(SCI_CLEARDOCUMENTSTYLE);
 
    SendScintilla(SCI_STARTSTYLING, 0, 0x1f);
-   DelayMsg(AC_Draw, scintilla->SurfaceID, NULL);
+   DelayMsg(AC_Draw, scintilla->SurfaceID);
 }
 
 void ScintillaParasol::SetLexerLanguage(const char *languageName)

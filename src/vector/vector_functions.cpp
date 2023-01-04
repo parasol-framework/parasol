@@ -86,7 +86,7 @@ NullArgs
 
 *****************************************************************************/
 
-ERROR vecApplyPath(class SimpleVector *Vector, objVectorPath *VectorPath)
+ERROR vecApplyPath(class SimpleVector *Vector, extVectorPath *VectorPath)
 {
    if ((!Vector) or (!VectorPath)) return ERR_NullArgs;
    if (VectorPath->SubID != ID_VECTORPATH) return ERR_Args;

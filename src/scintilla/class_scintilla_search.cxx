@@ -121,7 +121,7 @@ static ERROR SEARCH_Find(objScintillaSearch *Self, struct ssFind *Args)
 
    // If not found and wraparound is wanted, try again
 
-   if ((pos IS -1) AND (Self->Flags & STF_WRAP) AND (!(Self->Flags & STF_SCAN_SELECTION))) {
+   if ((pos IS -1) and (Self->Flags & STF_WRAP) and (!(Self->Flags & STF_SCAN_SELECTION))) {
       if (!(Self->Flags & STF_BACKWARDS)) {
          start = 0;
          end = SCICALL(SCI_GETLENGTH);
@@ -176,14 +176,14 @@ static ERROR SEARCH_Init(objScintillaSearch *Self, APTR Void)
 
    if (!Self->Scintilla) { // Find our parent surface
       OBJECTID owner_id = Self->ownerID();
-      while ((owner_id) AND (GetClassID(owner_id) != ID_SCINTILLA)) {
+      while ((owner_id) and (GetClassID(owner_id) != ID_SCINTILLA)) {
          owner_id = GetOwnerID(owner_id);
       }
       if (owner_id) Self->Scintilla = (objScintilla *)GetObjectPtr(owner_id);
       else return log.warning(ERR_UnsupportedOwner);
    }
 
-   if ((!Self->Text) OR (!Self->Scintilla)) return log.warning(ERR_FieldNotSet);
+   if ((!Self->Text) or (!Self->Scintilla)) return log.warning(ERR_FieldNotSet);
 
    return ERR_Okay;
 }
@@ -252,7 +252,7 @@ static ERROR SEARCH_Next(objScintillaSearch *Self, struct ssNext *Args)
 
    // If not found and wraparound is wanted, try again
 
-   if ((pos IS -1) AND (Self->Flags & STF_WRAP)) {
+   if ((pos IS -1) and (Self->Flags & STF_WRAP)) {
       log.trace("Wrap-around");
       if (Self->Flags & STF_SCAN_SELECTION) {
          start = Self->Start;
@@ -406,7 +406,7 @@ OBJECTPTR clScintillaSearch = NULL;
 
 ERROR init_search(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clScintillaSearch,
+   return(CreateObject(ID_METACLASS, NF::NIL, &clScintillaSearch,
       FID_ClassVersion|TFLOAT, 1.0,
       FID_Name|TSTRING,   "ScintillaSearch",
       FID_Category|TLONG, CCF_TOOL,

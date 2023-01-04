@@ -554,7 +554,7 @@ ERROR calc(CSTRING String, DOUBLE *Result, STRING Output, LONG OutputSize)
          DOUBLE calc_float;
          calc(buf.c_str()+1, &calc_float, NULL, 0);
          char num[30];
-         StrFormat(num, sizeof(num), "%f", calc_float);
+         snprintf(num, sizeof(num), "%f", calc_float);
 
          in.replace(last_bracket, end - last_bracket, num);
       }
@@ -1533,7 +1533,7 @@ static LONG parse_tag(extDocument *Self, objXML *XML, XMLTag *Tag, LONG *Index, 
                i = check_tag_conditions(Self, Tag);
                RESTORE_ARGS();
 
-               if ((i) AND (parse_tag(Self, XML, Tag->Child, Index, Flags) & TRF_BREAK)) break;
+               if ((i) and (parse_tag(Self, XML, Tag->Child, Index, Flags) & TRF_BREAK)) break;
 
                Self->LoopIndex++;
             }
@@ -4970,12 +4970,9 @@ static ERROR load_doc(extDocument *Self, CSTRING Path, BYTE Unload, BYTE UnloadF
       OBJECTPTR task;
       if ((task = CurrentTask())) task->set(FID_Path, path);
 
-      objXML *xml;
-      if (!(Self->Error = CreateObject(ID_XML, NF_INTEGRAL, &xml,
-            FID_Flags|TLONG,    XMF_ALL_CONTENT|XMF_PARSE_HTML|XMF_STRIP_HEADERS|XMF_WELL_FORMED,
-            FID_Path|TSTR,      path,
-            FID_ReadOnly|TLONG, TRUE,
-            TAGEND))) {
+      if (auto xml = objXML::create::integral(
+         fl::Flags(XMF_ALL_CONTENT|XMF_PARSE_HTML|XMF_STRIP_HEADERS|XMF_WELL_FORMED),
+         fl::Path(path), fl::ReadOnly(TRUE))) {
 
          if (Self->XML) acFree(Self->XML);
          Self->XML = xml;
@@ -4988,7 +4985,7 @@ static ERROR load_doc(extDocument *Self, CSTRING Path, BYTE Unload, BYTE UnloadF
       }
       else {
          char msg[300];
-         StrFormat(msg, sizeof(msg), "Failed to load document file '%s'", path);
+         snprintf(msg, sizeof(msg), "Failed to load document file '%s'", path);
          error_dialog("Document Load Error", msg, Self->Error);
          return log.warning(ERR_OpenFile);
       }
@@ -5304,7 +5301,7 @@ static ERROR process_page(extDocument *Self, objXML *xml)
 
          log.traceBranch("Processing root level tags.");
 
-         Self->BodyTag = NULL;
+         Self->BodyTag   = NULL;
          Self->HeaderTag = NULL;
          Self->FooterTag = NULL;
          for (LONG i=0; xml->Tags[i]; i++) {
@@ -5414,25 +5411,19 @@ static ERROR process_page(extDocument *Self, objXML *xml)
       if (Self->VArg)   { FreeResource(Self->VArg); Self->VArg = NULL; }
 
       #ifdef RAW_OUTPUT
-         OBJECTPTR file;
-         if (!CreateObject(ID_FILE, NF_INTEGRAL, &file,
-               FID_Path|TSTR,   "drive1:doc-stream.bin",
-               FID_Flags|TLONG, FL_NEW|FL_WRITE,
-               TAGEND)) {
-            acWrite(file, Self->Stream, Self->StreamLen);
-            acFree(file);
-         }
+         objFile::create file = { fl::Path("drive1:doc-stream.bin"), fl::Flags(FL_NEW|FL_WRITE) };
+         file->write(Self->Stream, Self->StreamLen);
       #endif
    }
    else {
       if (Self->PageName) {
          char buffer[200];
-         StrFormat(buffer, sizeof(buffer), "Failed to find page '%s' in document '%s'.", Self->PageName, Self->Path);
+         snprintf(buffer, sizeof(buffer), "Failed to find page '%s' in document '%s'.", Self->PageName, Self->Path);
          error_dialog("Load Failed", buffer, 0);
       }
       else {
          char buffer[200];
-         StrFormat(buffer, sizeof(buffer), "Failed to find a valid page in document '%s'.", Self->Path);
+         snprintf(buffer, sizeof(buffer), "Failed to find a valid page in document '%s'.", Self->Path);
          error_dialog("Load Failed", buffer, 0);
       }
       Self->Error = ERR_Search;
@@ -5447,14 +5438,12 @@ static ERROR process_page(extDocument *Self, objXML *xml)
    if (!Self->PageProcessed) {
       for (auto trigger=Self->Triggers[DRT_PAGE_PROCESSED]; trigger; trigger=trigger->Next) {
          if (trigger->Function.Type IS CALL_SCRIPT) {
-            OBJECTPTR script;
-            if ((script = trigger->Function.Script.Script)) {
+            if (auto script = trigger->Function.Script.Script) {
                scCallback(script, trigger->Function.Script.ProcedureID, NULL, 0, NULL);
             }
          }
          else if (trigger->Function.Type IS CALL_STDC) {
-            auto routine = (void (*)(APTR, extDocument *))trigger->Function.StdC.Routine;
-            if (routine) {
+            if (auto routine = (void (*)(APTR, extDocument *))trigger->Function.StdC.Routine) {
                parasol::SwitchContext context(trigger->Function.StdC.Context);
                routine(trigger->Function.StdC.Context, Self);
             }
@@ -5622,8 +5611,7 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
    }
 
    for (LONG i=0; i < ARRAYSIZE(Self->Triggers); i++) {
-      DocTrigger *trigger;
-      if ((trigger = Self->Triggers[i])) {
+      if (auto trigger = Self->Triggers[i]) {
          while (trigger) {
             auto next = trigger->Next;
             FreeResource(trigger);
@@ -5697,11 +5685,11 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
                continue;
             }
             else if (Flags & ULD_TERMINATE) acFree(resource->ObjectID);
-            else DelayMsg(AC_Free, resource->ObjectID, NULL);
+            else DelayMsg(AC_Free, resource->ObjectID);
          }
          else if (resource->Type IS RT_OBJECT_UNLOAD_DELAY) {
             if (Flags & ULD_TERMINATE) acFree(resource->ObjectID);
-            else DelayMsg(AC_Free, resource->ObjectID, NULL);
+            else DelayMsg(AC_Free, resource->ObjectID);
          }
          else acFree(resource->ObjectID);
 
@@ -5716,11 +5704,9 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
    }
 
    if (!Self->Templates) {
-      CreateObject(ID_XML, NF_INTEGRAL, &Self->Templates,
-         FID_Name|TSTR,      "xmlTemplates",
-         FID_Statement|TSTR, glDefaultStyles,
-         FID_Flags|TLONG,    XMF_PARSE_HTML|XMF_STRIP_HEADERS,
-         TAGEND);
+      if (!(Self->Templates = objXML::create::integral(fl::Name("xmlTemplates"), fl::Statement(glDefaultStyles),
+         fl::Flags(XMF_PARSE_HTML|XMF_STRIP_HEADERS)))) return ERR_CreateObject;
+
       Self->TemplatesModified = Self->Templates->Modified;
    }
 
@@ -5791,7 +5777,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
    }
 
    OBJECTPTR dialog;
-   if (!NewObject(ID_SCRIPT, 0, &dialog)) {
+   if (!NewObject(ID_SCRIPT, &dialog)) {
       SetFields(dialog,
          FID_Name|TSTR,    "scDialog",
          FID_Owner|TLONG,  CurrentTaskID(),
@@ -5805,7 +5791,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
 
       CSTRING errstr;
       if ((Error) and (errstr = GetErrorMsg(Error))) {
-         LONG len = StrLength(Message);
+         LONG len = strlen(Message);
          char buffer[len+120];
          if (Message) {
             len = StrCopy(Message, buffer, sizeof(buffer));
@@ -5911,15 +5897,10 @@ static LONG create_font(CSTRING Face, CSTRING Style, LONG Point)
 
    AdjustLogLevel(2);
 
-   objFont *font;
-   if (!CreateObject(ID_FONT, NF_INTEGRAL, &font,
-         FID_Owner|TLONG, modDocument->UID,
-         FID_Face|TSTR,   Face,
-         FID_Style|TSTR,  Style,
-         FID_Point|TLONG, Point,
-         FID_Flags|TLONG, FTF_ALLOW_SCALE,
-         TAGEND)) {
+   objFont *font = objFont::create::integral(
+      fl::Owner(modDocument->UID), fl::Face(Face), fl::Style(Style), fl::Point(Point), fl::Flags(FTF_ALLOW_SCALE));
 
+   if (font) {
       // Perform a second check in case the font we ended up with is in our cache.  This can occur if the font we have acquired
       // is a little different to what we requested (e.g. scalable instead of fixed, or a different face).
 
@@ -6374,7 +6355,7 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                   objFont *font;
                   char fullfont[256];
                   if ((font = lookup_font(Self->Style.FontStyle.Index, "convert_xml"))) {
-                     StrFormat(fullfont, sizeof(fullfont), "%s:%.4f:%s", font->Face, font->Point, font->Style);
+                     snprintf(fullfont, sizeof(fullfont), "%s:%.4f:%s", font->Face, font->Point, font->Style);
                      error = insert_string(fullfont, Buffer, Self->BufferSize, pos, sizeof("[%font]")-1);
                   }
                }
@@ -6388,7 +6369,7 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                   objFont *font;
                   char colour[28];
                   if ((font = lookup_font(Self->Style.FontStyle.Index, "convert_xml"))) {
-                     StrFormat(colour, sizeof(colour), "#%.2x%.2x%.2x%.2x", font->Colour.Red, font->Colour.Green, font->Colour.Blue, font->Colour.Alpha);
+                     snprintf(colour, sizeof(colour), "#%.2x%.2x%.2x%.2x", font->Colour.Red, font->Colour.Green, font->Colour.Blue, font->Colour.Alpha);
                      error = insert_string(colour, Buffer, Self->BufferSize, pos, sizeof("[%fontcolour]")-1);
                   }
                }
@@ -8327,14 +8308,8 @@ static void exec_link(extDocument *Self, LONG Index)
                      std::string args;
                      split_command(scmd, args);
 
-                     OBJECTPTR task;
-                     if (!CreateObject(ID_TASK, NF_INTEGRAL, &task,
-                           FID_Path|TSTR, scmd.c_str(),
-                           FID_Args|TSTR, args.c_str(),
-                           TAGEND)) {
-                        acActivate(task);
-                        acFree(task);
-                     }
+                     objTask::create task = { fl::Path(scmd), fl::Args(args) };
+                     if (task.ok()) task->activate();
                   }
                   FreeResource(cmd);
                }

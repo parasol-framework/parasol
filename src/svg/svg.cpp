@@ -18,6 +18,7 @@ https://www.w3.org/Graphics/SVG/Test/Overview.html
 #define PRV_SVG
 #include <unordered_map>
 #include <string>
+#include <algorithm>
 #include <parasol/main.h>
 #include <parasol/modules/picture.h>
 #include <parasol/modules/xml.h>
@@ -29,8 +30,8 @@ https://www.w3.org/Graphics/SVG/Test/Overview.html
 #include <math.h>
 
 MODULE_COREBASE;
-static DisplayBase *DisplayBase;
-static VectorBase *VectorBase;
+struct DisplayBase *DisplayBase;
+struct VectorBase *VectorBase;
 static OBJECTPTR clSVG = NULL, clRSVG = NULL, modDisplay = NULL, modVector = NULL;
 
 struct prvSVG { // Private variables for RSVG

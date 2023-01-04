@@ -73,10 +73,10 @@ int lj_str_haspattern(GCstr *s)
 /* -- String hashing ------------------------------------------------------ */
 
 /* Keyed sparse ARX string hash. Constant time. */
-static StrHash hash_sparse(uint64_t seed, const char *str, MSize len)
+static LuaStrHash hash_sparse(uint64_t seed, const char *str, MSize len)
 {
   /* Constants taken from lookup3 hash by Bob Jenkins. */
-  StrHash a, b, h = len ^ (StrHash)seed;
+  LuaStrHash a, b, h = len ^ (LuaStrHash)seed;
   if (len >= 4) {  /* Caveat: unaligned access! */
     a = lj_getu32(str);
     h ^= lj_getu32(str+len-4);
@@ -97,12 +97,12 @@ static StrHash hash_sparse(uint64_t seed, const char *str, MSize len)
 
 #if LUAJIT_SECURITY_STRHASH
 /* Keyed dense ARX string hash. Linear time. */
-static LJ_NOINLINE StrHash hash_dense(uint64_t seed, StrHash h,
+static LJ_NOINLINE LuaStrHash hash_dense(uint64_t seed, LuaStrHash h,
 				      const char *str, MSize len)
 {
-  StrHash b = lj_bswap(lj_rol(h ^ (StrHash)(seed >> 32), 4));
+  LuaStrHash b = lj_bswap(lj_rol(h ^ (LuaStrHash)(seed >> 32), 4));
   if (len > 12) {
-    StrHash a = (StrHash)seed;
+    LuaStrHash a = (LuaStrHash)seed;
     const char *pe = str+len-12, *p = pe, *q = str;
     do {
       a += lj_getu32(p);
@@ -216,7 +216,7 @@ void lj_str_resize(lua_State *L, MSize newmask)
 
 #if LUAJIT_SECURITY_STRHASH
 /* Rehash and rechain all strings in a chain. */
-static LJ_NOINLINE GCstr *lj_str_rehash_chain(lua_State *L, StrHash hashc,
+static LJ_NOINLINE GCstr *lj_str_rehash_chain(lua_State *L, LuaStrHash hashc,
 					      const char *str, MSize len)
 {
   global_State *g = G(L);
@@ -230,7 +230,7 @@ static LJ_NOINLINE GCstr *lj_str_rehash_chain(lua_State *L, StrHash hashc,
     uintptr_t u;
     GCobj *next = gcnext(o);
     GCstr *s = gco2str(o);
-    StrHash hash;
+    LuaStrHash hash;
     if (ow) {  /* Must sweep while rechaining. */
       if (((o->gch.marked ^ LJ_GC_WHITES) & ow)) {  /* String alive? */
 	lj_assertG(!isdead(g, o) || (o->gch.marked & LJ_GC_FIXED),
@@ -273,7 +273,7 @@ static LJ_NOINLINE GCstr *lj_str_rehash_chain(lua_State *L, StrHash hashc,
 
 /* Allocate a new string and add to string interning table. */
 static GCstr *lj_str_alloc(lua_State *L, const char *str, MSize len,
-			   StrHash hash, int hashalg)
+			   LuaStrHash hash, int hashalg)
 {
   GCstr *s = lj_mem_newt(L, lj_str_size(len), GCstr);
   global_State *g = G(L);
@@ -316,7 +316,7 @@ GCstr *lj_str_new(lua_State *L, const char *str, size_t lenx)
   global_State *g = G(L);
   if (lenx-1 < LJ_MAX_STR-1) {
     MSize len = (MSize)lenx;
-    StrHash hash = hash_sparse(g->str.seed, str, len);
+    LuaStrHash hash = hash_sparse(g->str.seed, str, len);
     MSize coll = 0;
     int hashalg = 0;
     /* Check if the string has already been interned. */

@@ -288,10 +288,7 @@ static void expose_buffer(SurfaceList *list, LONG Total, LONG Index, LONG ScanIn
       }
 
       if (!glComposite) {
-         if (CreateObject(ID_BITMAP, NF_UNTRACKED, &glComposite,
-               FID_Width|TLONG,  list[Index].Width,
-               FID_Height|TLONG, list[Index].Height,
-               TAGEND) != ERR_Okay) {
+         if (!(glComposite = extBitmap::create::untracked(fl::Width(list[Index].Width), fl::Height(list[Index].Height)))) {
             return;
          }
 
@@ -479,7 +476,7 @@ static ERROR SURFACE_ActionNotify(extSurface *Self, struct acActionNotify *Notif
 
          Self->Flags &= ~RNF_VISIBLE;
          UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
-         if (Self->flags() & NF_INTEGRAL) DelayMsg(AC_Free, Self->UID, NULL); // If the object is a child of something, give the parent object time to do the deallocation itself
+         if (Self->defined(NF::INTEGRAL)) DelayMsg(AC_Free, Self->UID); // If the object is a child of something, give the parent object time to do the deallocation itself
          else acFree(Self);
       }
       else {
@@ -810,8 +807,9 @@ static void event_user_login(extSurface *Self, APTR Info, LONG InfoSize)
 
    log.function("User login detected - resetting screen mode.");
 
-   OBJECTPTR config;
-   if (!CreateObject(ID_CONFIG, NF_INTEGRAL, &config, FID_Path|TSTR, "user:config/display.cfg", TAGEND)) {
+   objConfig::create config = { fl::Path("user:config/display.cfg") };
+
+   if (config.ok()) {
       OBJECTPTR object;
       CSTRING str;
 
@@ -823,15 +821,15 @@ static void event_user_login(extSurface *Self, APTR Info, LONG InfoSize)
       LONG width         = Self->Width;
       LONG height        = Self->Height;
 
-      cfgRead(config, "DISPLAY", "Width", &width);
-      cfgRead(config, "DISPLAY", "Height", &height);
-      cfgRead(config, "DISPLAY", "Depth", &depth);
-      cfgRead(config, "DISPLAY", "RefreshRate", &refreshrate);
-      cfgRead(config, "DISPLAY", "GammaRed", &gammared);
-      cfgRead(config, "DISPLAY", "GammaGreen", &gammagreen);
-      cfgRead(config, "DISPLAY", "GammaBlue", &gammablue);
+      cfgRead(*config, "DISPLAY", "Width", &width);
+      cfgRead(*config, "DISPLAY", "Height", &height);
+      cfgRead(*config, "DISPLAY", "Depth", &depth);
+      cfgRead(*config, "DISPLAY", "RefreshRate", &refreshrate);
+      cfgRead(*config, "DISPLAY", "GammaRed", &gammared);
+      cfgRead(*config, "DISPLAY", "GammaGreen", &gammagreen);
+      cfgRead(*config, "DISPLAY", "GammaBlue", &gammablue);
 
-      if (!cfgReadValue(config, "DISPLAY", "DPMS", &str)) {
+      if (!cfgReadValue(*config, "DISPLAY", "DPMS", &str)) {
          if (!AccessObject(Self->DisplayID, 3000, &object)) {
             object->set(FID_DPMS, str);
             ReleaseObject(object);
@@ -861,8 +859,6 @@ static void event_user_login(extSurface *Self, APTR Info, LONG InfoSize)
          .Flags = GMF_SAVE
       };
       ActionMsg(MT_GfxSetGamma, Self->DisplayID, &gamma);
-
-      acFree(config);
    }
 }
 
@@ -1507,7 +1503,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
       // display will adjust the coordinates to reflect the absolute position of the surface on the desktop).
 
       objDisplay *display;
-      if (!NewLockedObject(ID_DISPLAY, NF_INTEGRAL|Self->flags(), &display, &Self->DisplayID)) {
+      if (!NewLockedObject(ID_DISPLAY, NF::INTEGRAL|Self->flags(), &display, &Self->DisplayID)) {
          SetFields(display,
                FID_Name|TSTR,           name,
                FID_X|TLONG,             Self->X,
@@ -1631,7 +1627,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
          }
          else bpp = display->Bitmap->BitsPerPixel;
 
-         if (!(NewLockedObject(ID_BITMAP, NF_INTEGRAL|Self->flags(), &bitmap, &Self->BufferID))) {
+         if (!(NewLockedObject(ID_BITMAP, NF::INTEGRAL|Self->flags(), &bitmap, &Self->BufferID))) {
             SetFields(bitmap,
                FID_BitsPerPixel|TLONG, bpp,
                FID_Width|TLONG,        Self->Width,
@@ -2455,7 +2451,7 @@ static ERROR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
    else class_id = Args->ClassID;
 
    OBJECTPTR picture;
-   if (!NewObject(class_id, 0, &picture)) {
+   if (!NewObject(class_id, &picture)) {
       picture->set(FID_Flags, "NEW");
       picture->set(FID_Width, Self->Width);
       picture->set(FID_Height, Self->Height);
@@ -2638,7 +2634,7 @@ static ERROR SURFACE_SetOpacity(extSurface *Self, struct drwSetOpacity *Args)
 
    // Use the DelayMsg() feature so that we don't end up with major lag problems when SetOpacity is being used for things like fading.
 
-   if (Self->Flags & RNF_VISIBLE) DelayMsg(MT_DrwInvalidateRegion, Self->UID, NULL);
+   if (Self->Flags & RNF_VISIBLE) DelayMsg(MT_DrwInvalidateRegion, Self->UID);
 
    return ERR_Okay;
 }

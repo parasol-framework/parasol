@@ -17,8 +17,31 @@ class objVectorImage;
 class objVectorPattern;
 class objVectorGradient;
 class objFilterEffect;
+class objImageFX;
+class objSourceFX;
+class objBlurFX;
+class objColourFX;
+class objCompositeFX;
+class objConvolveFX;
+class objDisplacementFX;
+class objFloodFX;
+class objLightingFX;
+class objMergeFX;
+class objMorphologyFX;
+class objOffsetFX;
+class objRemapFX;
+class objTurbulenceFX;
 class objVectorFilter;
 class objVector;
+class objVectorPath;
+class objVectorText;
+class objVectorWave;
+class objVectorRectangle;
+class objVectorPolygon;
+class objVectorShape;
+class objVectorSpiral;
+class objVectorEllipse;
+class objVectorClip;
 class objVectorViewport;
 
 // Options for drawing arcs.
@@ -473,8 +496,12 @@ class objVectorScene : public BaseClass {
       struct acRedimension args = { X, Y, Z, Width, Height, Depth };
       return Action(AC_Redimension, this, &args);
    }
+   inline ERROR redimension(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
+      struct acRedimension args = { X, Y, 0, Width, Height, 0 };
+      return Action(AC_Redimension, this, &args);
+   }
    inline ERROR reset() { return Action(AC_Reset, this, NULL); }
-   inline ERROR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+   inline ERROR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
    }
@@ -598,33 +625,97 @@ struct MergeSource {
 
 #define VER_IMAGEFX (1.000000)
 
+class objImageFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_IMAGEFX;
+   static constexpr CSTRING CLASS_NAME = "ImageFX";
+
+   using create = parasol::Create<objImageFX>;
+};
+
 // SourceFX class definition
 
 #define VER_SOURCEFX (1.000000)
+
+class objSourceFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_SOURCEFX;
+   static constexpr CSTRING CLASS_NAME = "SourceFX";
+
+   using create = parasol::Create<objSourceFX>;
+};
 
 // BlurFX class definition
 
 #define VER_BLURFX (1.000000)
 
+class objBlurFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_BLURFX;
+   static constexpr CSTRING CLASS_NAME = "BlurFX";
+
+   using create = parasol::Create<objBlurFX>;
+};
+
 // ColourFX class definition
 
 #define VER_COLOURFX (1.000000)
+
+class objColourFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_COLOURFX;
+   static constexpr CSTRING CLASS_NAME = "ColourFX";
+
+   using create = parasol::Create<objColourFX>;
+};
 
 // CompositeFX class definition
 
 #define VER_COMPOSITEFX (1.000000)
 
+class objCompositeFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_COMPOSITEFX;
+   static constexpr CSTRING CLASS_NAME = "CompositeFX";
+
+   using create = parasol::Create<objCompositeFX>;
+};
+
 // ConvolveFX class definition
 
 #define VER_CONVOLVEFX (1.000000)
+
+class objConvolveFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_CONVOLVEFX;
+   static constexpr CSTRING CLASS_NAME = "ConvolveFX";
+
+   using create = parasol::Create<objConvolveFX>;
+};
 
 // DisplacementFX class definition
 
 #define VER_DISPLACEMENTFX (1.000000)
 
+class objDisplacementFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_DISPLACEMENTFX;
+   static constexpr CSTRING CLASS_NAME = "DisplacementFX";
+
+   using create = parasol::Create<objDisplacementFX>;
+};
+
 // FloodFX class definition
 
 #define VER_FLOODFX (1.000000)
+
+class objFloodFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_FLOODFX;
+   static constexpr CSTRING CLASS_NAME = "FloodFX";
+
+   using create = parasol::Create<objFloodFX>;
+};
 
 // LightingFX class definition
 
@@ -656,17 +747,49 @@ INLINE ERROR ltSetSpotLight(APTR Ob, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE PX, DO
 }
 
 
+class objLightingFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_LIGHTINGFX;
+   static constexpr CSTRING CLASS_NAME = "LightingFX";
+
+   using create = parasol::Create<objLightingFX>;
+};
+
 // MergeFX class definition
 
 #define VER_MERGEFX (1.000000)
+
+class objMergeFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_MERGEFX;
+   static constexpr CSTRING CLASS_NAME = "MergeFX";
+
+   using create = parasol::Create<objMergeFX>;
+};
 
 // MorphologyFX class definition
 
 #define VER_MORPHOLOGYFX (1.000000)
 
+class objMorphologyFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_MORPHOLOGYFX;
+   static constexpr CSTRING CLASS_NAME = "MorphologyFX";
+
+   using create = parasol::Create<objMorphologyFX>;
+};
+
 // OffsetFX class definition
 
 #define VER_OFFSETFX (1.000000)
+
+class objOffsetFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_OFFSETFX;
+   static constexpr CSTRING CLASS_NAME = "OffsetFX";
+
+   using create = parasol::Create<objOffsetFX>;
+};
 
 // RemapFX class definition
 
@@ -726,9 +849,25 @@ INLINE ERROR rfSelectMask(APTR Ob, LONG Component, LONG Mask) {
 }
 
 
+class objRemapFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_REMAPFX;
+   static constexpr CSTRING CLASS_NAME = "RemapFX";
+
+   using create = parasol::Create<objRemapFX>;
+};
+
 // TurbulenceFX class definition
 
 #define VER_TURBULENCEFX (1.000000)
+
+class objTurbulenceFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_TURBULENCEFX;
+   static constexpr CSTRING CLASS_NAME = "TurbulenceFX";
+
+   using create = parasol::Create<objTurbulenceFX>;
+};
 
 // VectorFilter class definition
 
@@ -929,6 +1068,14 @@ INLINE ERROR vpSetCommandList(APTR Ob, APTR Commands, LONG Size) {
 }
 
 
+class objVectorPath : public objVector {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORPATH;
+   static constexpr CSTRING CLASS_NAME = "VectorPath";
+
+   using create = parasol::Create<objVectorPath>;
+};
+
 // VectorText class definition
 
 #define VER_VECTORTEXT (1.000000)
@@ -945,97 +1092,167 @@ INLINE ERROR vtDeleteLine(APTR Ob, LONG Line) {
 }
 
 
+class objVectorText : public objVector {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORTEXT;
+   static constexpr CSTRING CLASS_NAME = "VectorText";
+
+   using create = parasol::Create<objVectorText>;
+};
+
 // VectorWave class definition
 
 #define VER_VECTORWAVE (1.000000)
+
+class objVectorWave : public objVector {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORWAVE;
+   static constexpr CSTRING CLASS_NAME = "VectorWave";
+
+   using create = parasol::Create<objVectorWave>;
+};
 
 // VectorRectangle class definition
 
 #define VER_VECTORRECTANGLE (1.000000)
 
+class objVectorRectangle : public objVector {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORRECTANGLE;
+   static constexpr CSTRING CLASS_NAME = "VectorRectangle";
+
+   using create = parasol::Create<objVectorRectangle>;
+};
+
 // VectorPolygon class definition
 
 #define VER_VECTORPOLYGON (1.000000)
+
+class objVectorPolygon : public objVector {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORPOLYGON;
+   static constexpr CSTRING CLASS_NAME = "VectorPolygon";
+
+   using create = parasol::Create<objVectorPolygon>;
+};
 
 // VectorShape class definition
 
 #define VER_VECTORSHAPE (1.000000)
 
+class objVectorShape : public objVector {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORSHAPE;
+   static constexpr CSTRING CLASS_NAME = "VectorShape";
+
+   using create = parasol::Create<objVectorShape>;
+};
+
 // VectorSpiral class definition
 
 #define VER_VECTORSPIRAL (1.000000)
+
+class objVectorSpiral : public objVector {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORSPIRAL;
+   static constexpr CSTRING CLASS_NAME = "VectorSpiral";
+
+   using create = parasol::Create<objVectorSpiral>;
+};
 
 // VectorEllipse class definition
 
 #define VER_VECTORELLIPSE (1.000000)
 
+class objVectorEllipse : public objVector {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORELLIPSE;
+   static constexpr CSTRING CLASS_NAME = "VectorEllipse";
+
+   using create = parasol::Create<objVectorEllipse>;
+};
+
 // VectorClip class definition
 
 #define VER_VECTORCLIP (1.000000)
+
+class objVectorClip : public objVector {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORCLIP;
+   static constexpr CSTRING CLASS_NAME = "VectorClip";
+
+   using create = parasol::Create<objVectorClip>;
+};
 
 // VectorViewport class definition
 
 #define VER_VECTORVIEWPORT (1.000000)
 
 class objVectorViewport : public objVector {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORVIEWPORT;
+   static constexpr CSTRING CLASS_NAME = "VectorViewport";
+
+   using create = parasol::Create<objVectorViewport>;
 };
 
+extern struct VectorBase *VectorBase;
 struct VectorBase {
-   ERROR (*_DrawPath)(objBitmap *, APTR, DOUBLE, OBJECTPTR, OBJECTPTR);
-   void (*_FreePath)(APTR);
-   ERROR (*_GenerateEllipse)(DOUBLE, DOUBLE, DOUBLE, DOUBLE, LONG, APTR);
-   ERROR (*_GeneratePath)(CSTRING, APTR);
-   ERROR (*_GenerateRectangle)(DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR);
-   ERROR (*_ReadPainter)(objVectorScene *, CSTRING, struct FRGB *, objVectorGradient **, objVectorImage **, objVectorPattern **);
-   void (*_TranslatePath)(APTR, DOUBLE, DOUBLE);
-   void (*_MoveTo)(APTR, DOUBLE, DOUBLE);
-   void (*_LineTo)(APTR, DOUBLE, DOUBLE);
-   void (*_ArcTo)(APTR, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE, LONG);
-   void (*_Curve3)(APTR, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
-   void (*_Smooth3)(APTR, DOUBLE, DOUBLE);
-   void (*_Curve4)(APTR, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
-   void (*_Smooth4)(APTR, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
-   void (*_ClosePath)(APTR);
-   void (*_RewindPath)(APTR);
-   LONG (*_GetVertex)(APTR, DOUBLE *, DOUBLE *);
-   ERROR (*_ApplyPath)(APTR, OBJECTPTR);
-   ERROR (*_Rotate)(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE);
-   ERROR (*_Translate)(struct VectorMatrix *, DOUBLE, DOUBLE);
-   ERROR (*_Skew)(struct VectorMatrix *, DOUBLE, DOUBLE);
-   ERROR (*_Multiply)(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
-   ERROR (*_MultiplyMatrix)(struct VectorMatrix *, struct VectorMatrix *);
-   ERROR (*_Scale)(struct VectorMatrix *, DOUBLE, DOUBLE);
-   ERROR (*_ParseTransform)(struct VectorMatrix *, CSTRING);
-   ERROR (*_ResetMatrix)(struct VectorMatrix *);
+   ERROR (*_DrawPath)(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
+   void (*_FreePath)(APTR Path);
+   ERROR (*_GenerateEllipse)(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR Path);
+   ERROR (*_GeneratePath)(CSTRING Sequence, APTR Path);
+   ERROR (*_GenerateRectangle)(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR Path);
+   ERROR (*_ReadPainter)(objVectorScene * Scene, CSTRING IRI, struct FRGB * RGB, objVectorGradient ** Gradient, objVectorImage ** Image, objVectorPattern ** Pattern);
+   void (*_TranslatePath)(APTR Path, DOUBLE X, DOUBLE Y);
+   void (*_MoveTo)(APTR Path, DOUBLE X, DOUBLE Y);
+   void (*_LineTo)(APTR Path, DOUBLE X, DOUBLE Y);
+   void (*_ArcTo)(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, LONG Flags);
+   void (*_Curve3)(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
+   void (*_Smooth3)(APTR Path, DOUBLE X, DOUBLE Y);
+   void (*_Curve4)(APTR Path, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y);
+   void (*_Smooth4)(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
+   void (*_ClosePath)(APTR Path);
+   void (*_RewindPath)(APTR Path);
+   LONG (*_GetVertex)(APTR Path, DOUBLE * X, DOUBLE * Y);
+   ERROR (*_ApplyPath)(APTR Path, OBJECTPTR VectorPath);
+   ERROR (*_Rotate)(struct VectorMatrix * Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY);
+   ERROR (*_Translate)(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
+   ERROR (*_Skew)(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
+   ERROR (*_Multiply)(struct VectorMatrix * Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX, DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY);
+   ERROR (*_MultiplyMatrix)(struct VectorMatrix * Target, struct VectorMatrix * Source);
+   ERROR (*_Scale)(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
+   ERROR (*_ParseTransform)(struct VectorMatrix * Matrix, CSTRING Transform);
+   ERROR (*_ResetMatrix)(struct VectorMatrix * Matrix);
 };
 
 #ifndef PRV_VECTOR_MODULE
-#define vecDrawPath(...) (VectorBase->_DrawPath)(__VA_ARGS__)
-#define vecFreePath(...) (VectorBase->_FreePath)(__VA_ARGS__)
-#define vecGenerateEllipse(...) (VectorBase->_GenerateEllipse)(__VA_ARGS__)
-#define vecGeneratePath(...) (VectorBase->_GeneratePath)(__VA_ARGS__)
-#define vecGenerateRectangle(...) (VectorBase->_GenerateRectangle)(__VA_ARGS__)
-#define vecReadPainter(...) (VectorBase->_ReadPainter)(__VA_ARGS__)
-#define vecTranslatePath(...) (VectorBase->_TranslatePath)(__VA_ARGS__)
-#define vecMoveTo(...) (VectorBase->_MoveTo)(__VA_ARGS__)
-#define vecLineTo(...) (VectorBase->_LineTo)(__VA_ARGS__)
-#define vecArcTo(...) (VectorBase->_ArcTo)(__VA_ARGS__)
-#define vecCurve3(...) (VectorBase->_Curve3)(__VA_ARGS__)
-#define vecSmooth3(...) (VectorBase->_Smooth3)(__VA_ARGS__)
-#define vecCurve4(...) (VectorBase->_Curve4)(__VA_ARGS__)
-#define vecSmooth4(...) (VectorBase->_Smooth4)(__VA_ARGS__)
-#define vecClosePath(...) (VectorBase->_ClosePath)(__VA_ARGS__)
-#define vecRewindPath(...) (VectorBase->_RewindPath)(__VA_ARGS__)
-#define vecGetVertex(...) (VectorBase->_GetVertex)(__VA_ARGS__)
-#define vecApplyPath(...) (VectorBase->_ApplyPath)(__VA_ARGS__)
-#define vecRotate(...) (VectorBase->_Rotate)(__VA_ARGS__)
-#define vecTranslate(...) (VectorBase->_Translate)(__VA_ARGS__)
-#define vecSkew(...) (VectorBase->_Skew)(__VA_ARGS__)
-#define vecMultiply(...) (VectorBase->_Multiply)(__VA_ARGS__)
-#define vecMultiplyMatrix(...) (VectorBase->_MultiplyMatrix)(__VA_ARGS__)
-#define vecScale(...) (VectorBase->_Scale)(__VA_ARGS__)
-#define vecParseTransform(...) (VectorBase->_ParseTransform)(__VA_ARGS__)
-#define vecResetMatrix(...) (VectorBase->_ResetMatrix)(__VA_ARGS__)
+inline ERROR vecDrawPath(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle) { return VectorBase->_DrawPath(Bitmap,Path,StrokeWidth,StrokeStyle,FillStyle); }
+inline void vecFreePath(APTR Path) { return VectorBase->_FreePath(Path); }
+inline ERROR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR Path) { return VectorBase->_GenerateEllipse(CX,CY,RX,RY,Vertices,Path); }
+inline ERROR vecGeneratePath(CSTRING Sequence, APTR Path) { return VectorBase->_GeneratePath(Sequence,Path); }
+inline ERROR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR Path) { return VectorBase->_GenerateRectangle(X,Y,Width,Height,Path); }
+inline ERROR vecReadPainter(objVectorScene * Scene, CSTRING IRI, struct FRGB * RGB, objVectorGradient ** Gradient, objVectorImage ** Image, objVectorPattern ** Pattern) { return VectorBase->_ReadPainter(Scene,IRI,RGB,Gradient,Image,Pattern); }
+inline void vecTranslatePath(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_TranslatePath(Path,X,Y); }
+inline void vecMoveTo(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_MoveTo(Path,X,Y); }
+inline void vecLineTo(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_LineTo(Path,X,Y); }
+inline void vecArcTo(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, LONG Flags) { return VectorBase->_ArcTo(Path,RX,RY,Angle,X,Y,Flags); }
+inline void vecCurve3(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y) { return VectorBase->_Curve3(Path,CtrlX,CtrlY,X,Y); }
+inline void vecSmooth3(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_Smooth3(Path,X,Y); }
+inline void vecCurve4(APTR Path, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y) { return VectorBase->_Curve4(Path,CtrlX1,CtrlY1,CtrlX2,CtrlY2,X,Y); }
+inline void vecSmooth4(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y) { return VectorBase->_Smooth4(Path,CtrlX,CtrlY,X,Y); }
+inline void vecClosePath(APTR Path) { return VectorBase->_ClosePath(Path); }
+inline void vecRewindPath(APTR Path) { return VectorBase->_RewindPath(Path); }
+inline LONG vecGetVertex(APTR Path, DOUBLE * X, DOUBLE * Y) { return VectorBase->_GetVertex(Path,X,Y); }
+inline ERROR vecApplyPath(APTR Path, OBJECTPTR VectorPath) { return VectorBase->_ApplyPath(Path,VectorPath); }
+inline ERROR vecRotate(struct VectorMatrix * Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY) { return VectorBase->_Rotate(Matrix,Angle,CenterX,CenterY); }
+inline ERROR vecTranslate(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y) { return VectorBase->_Translate(Matrix,X,Y); }
+inline ERROR vecSkew(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y) { return VectorBase->_Skew(Matrix,X,Y); }
+inline ERROR vecMultiply(struct VectorMatrix * Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX, DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY) { return VectorBase->_Multiply(Matrix,ScaleX,ShearY,ShearX,ScaleY,TranslateX,TranslateY); }
+inline ERROR vecMultiplyMatrix(struct VectorMatrix * Target, struct VectorMatrix * Source) { return VectorBase->_MultiplyMatrix(Target,Source); }
+inline ERROR vecScale(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y) { return VectorBase->_Scale(Matrix,X,Y); }
+inline ERROR vecParseTransform(struct VectorMatrix * Matrix, CSTRING Transform) { return VectorBase->_ParseTransform(Matrix,Transform); }
+inline ERROR vecResetMatrix(struct VectorMatrix * Matrix) { return VectorBase->_ResetMatrix(Matrix); }
 #endif
 
 //****************************************************************************

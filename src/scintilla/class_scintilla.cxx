@@ -107,9 +107,9 @@ capabilities.
 #include "module_def.c"
 
 MODULE_COREBASE;
-static struct DisplayBase *DisplayBase;
-static struct FontBase *FontBase;
-static struct VectorBase *VectorBase;
+struct DisplayBase *DisplayBase;
+struct FontBase *FontBase;
+struct VectorBase *VectorBase;
 
 static OBJECTPTR clScintilla = NULL;
 static OBJECTPTR modDisplay = NULL, modFont = NULL, modVector = NULL;
@@ -445,24 +445,17 @@ static ERROR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
       SCICALL(SCI_APPENDTEXT, StrLength(str), str);
    }
    else if (Args->Datatype IS DATA_RECEIPT) {
-      LONG i, count;
-      objXML *xml;
-      XMLTag *tag;
-      STRING path;
-
       log.msg("Received item receipt from object %d.", Args->ObjectID);
 
-      if (!CreateObject(ID_XML, NF_INTEGRAL, &xml,
-            FID_Statement|TSTR, Args->Buffer,
-            TAGEND)) {
-
-         count = 0;
-         for (i=0; i < xml->TagCount; i++) {
-            tag = xml->Tags[i];
+      objXML::create xml = { fl::Statement((CSTRING)Args->Buffer) };
+      if (xml.ok()) {
+         LONG count = 0;
+         for (LONG i=0; i < xml->TagCount; i++) {
+            auto tag = xml->Tags[i];
             if (!StrMatch("file", tag->Attrib->Name)) {
                // If the file is being dragged within the same device, it will be moved instead of copied.
 
-               if ((path = XMLATTRIB(tag, "path"))) {
+               if (auto path = XMLATTRIB(tag, "path")) {
                   if (Self->FileDrop.Type) {
                      if (Self->FileDrop.Type IS CALL_STDC) {
                         parasol::SwitchContext ctx(Self->FileDrop.StdC.Context);
@@ -500,8 +493,6 @@ static ERROR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
                }
             }
          }
-
-         acFree(xml);
 
          return ERR_Okay;
       }
@@ -576,7 +567,7 @@ Disable: Disables the target #Surface.
 static ERROR SCINTILLA_Disable(extScintilla *Self, APTR Void)
 {
    Self->Flags |= SCF_DISABLED;
-   DelayMsg(AC_Draw, Self->SurfaceID, NULL);
+   DelayMsg(AC_Draw, Self->SurfaceID);
    return ERR_Okay;
 }
 
@@ -601,7 +592,7 @@ Enable: Enables the target #Surface.
 static ERROR SCINTILLA_Enable(extScintilla *Self, APTR Void)
 {
    Self->Flags &= ~SCF_DISABLED;
-   DelayMsg(AC_Draw, Self->SurfaceID, NULL);
+   DelayMsg(AC_Draw, Self->SurfaceID);
    return ERR_Okay;
 }
 
@@ -868,7 +859,7 @@ static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
       Self->API->SetLexer(Self->Lexer);
    }
 
-   DelayMsg(AC_Draw, Self->SurfaceID, NULL);
+   DelayMsg(AC_Draw, Self->SurfaceID);
 
    if (Self->LongestWidth) SCICALL(SCI_SETSCROLLWIDTH, Self->LongestWidth);
    else SCICALL(SCI_SETSCROLLWIDTH, 1UL);
@@ -1008,7 +999,7 @@ static ERROR SCINTILLA_InsertText(extScintilla *Self, struct sciInsertText *Args
 
 static ERROR SCINTILLA_NewObject(extScintilla *Self, APTR)
 {
-   if (!NewObject(ID_FONT, NF_INTEGRAL, &Self->Font)) {
+   if (!NewObject(ID_FONT, NF::INTEGRAL, &Self->Font)) {
       Self->Font->set(FID_Face, "courier:10");
       Self->LeftMargin  = 4;
       Self->RightMargin = 30;
@@ -1298,9 +1289,7 @@ static ERROR SCINTILLA_SetFont(extScintilla *Self, struct sciSetFont *Args)
 
    log.branch("%s", Args->Face);
 
-   objFont *font;
-   if (!CreateObject(ID_FONT, NF_INTEGRAL, &font, FID_Face|TSTR, Args->Face, TAGEND)) {
-      Self->Font = font;
+   if ((Self->Font = objFont::create::integral(fl::Face(Args->Face)))) {
       Self->Flags &= ~FTF_KERNING;
       create_styled_fonts(Self);
       Self->API->panFontChanged(Self->Font, Self->BoldFont, Self->ItalicFont, Self->BIFont);
@@ -2107,31 +2096,28 @@ static void create_styled_fonts(extScintilla *Self)
    if (Self->ItalicFont) { acFree(Self->ItalicFont); Self->ItalicFont = NULL; }
    if (Self->BIFont)     { acFree(Self->BIFont); Self->BIFont = NULL; }
 
-   if (!CreateObject(ID_FONT, NF_INTEGRAL, &Self->BoldFont,
-         FID_Face|TSTR,     Self->Font->Face,
-         FID_Point|TDOUBLE, Self->Font->Point,
-         FID_Flags|TLONG,   Self->Font->Flags,
-         FID_Style|TSTR,    "bold",
-         TAGEND)) {
+   if ((Self->BoldFont = objFont::create::integral(
+         fl::Face(Self->Font->Face),
+         fl::Point(Self->Font->Point),
+         fl::Flags(Self->Font->Flags),
+         fl::Style("bold")))) {
       if (!(Self->Font->Flags & FTF_KERNING)) Self->BoldFont->Flags &= ~FTF_KERNING;
    }
 
-   if (!CreateObject(ID_FONT, NF_INTEGRAL, &Self->ItalicFont,
-         FID_Face|TSTR,     Self->Font->Face,
-         FID_Point|TDOUBLE, Self->Font->Point,
-         FID_Flags|TLONG,   Self->Font->Flags,
-         FID_Style|TSTR,    "italics",
-         TAGEND)) {
+   if ((Self->ItalicFont = objFont::create::integral(
+         fl::Face(Self->Font->Face),
+         fl::Point(Self->Font->Point),
+         fl::Flags(Self->Font->Flags),
+         fl::Style("italics")))) {
       if (!(Self->Font->Flags & FTF_KERNING)) Self->BoldFont->Flags &= ~FTF_KERNING;
    }
 
-   if (!CreateObject(ID_FONT, NF_INTEGRAL, &Self->BIFont,
-         FID_Face|TSTR,     Self->Font->Face,
-         FID_Point|TDOUBLE, Self->Font->Point,
-         FID_Flags|TLONG,   Self->Font->Flags,
-         FID_Style|TSTR,    "bold italics",
-         TAGEND)) {
-      if (!(Self->Font->Flags & FTF_KERNING)) Self->BoldFont->Flags &= ~FTF_KERNING;
+   if ((Self->BIFont = objFont::create::integral(
+         fl::Face(Self->Font->Face),
+         fl::Point(Self->Font->Point),
+         fl::Flags(Self->Font->Flags),
+         fl::Style("bold italics")))) {
+       if (!(Self->Font->Flags & FTF_KERNING)) Self->BoldFont->Flags &= ~FTF_KERNING;
    }
 }
 
@@ -2179,7 +2165,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
    }
 
    OBJECTPTR dialog;
-   if (!NewObject(ID_SCRIPT, 0, &dialog)) {
+   if (!NewObject(ID_SCRIPT, &dialog)) {
       SetFields(dialog,
          FID_Name|TSTR,   "scDialog",
          FID_Owner|TLONG, CurrentTaskID(),
@@ -2221,12 +2207,11 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
 static ERROR load_file(extScintilla *Self, CSTRING Path)
 {
    parasol::Log log(__FUNCTION__);
-   objFile *file;
    STRING str;
    LONG size, len;
    ERROR error = ERR_Okay;
 
-   if (!CreateObject(ID_FILE, NF_INTEGRAL, &file, FID_Flags|TLONG, FL_READ, FID_Path|TSTR, Path, TAGEND)) {
+   if (auto file = objFile::create::integral(fl::Flags(FL_READ), fl::Path(Path))) {
       if (file->Flags & FL_STREAM) {
          if (!flStartStream(file, Self->UID, FL_READ, 0)) {
             acClear(Self);
@@ -2539,7 +2524,7 @@ static const FieldArray clFields[] = {
 
 static ERROR create_scintilla(void)
 {
-   return CreateObject(ID_METACLASS, 0, &clScintilla,
+   return CreateObject(ID_METACLASS, NF::NIL, &clScintilla,
       FID_ClassVersion|TFLOAT, VER_SCINTILLA,
       FID_Name|TSTR,      "Scintilla",
       FID_Category|TLONG, CCF_TOOL,

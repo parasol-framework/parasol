@@ -2,8 +2,8 @@
 static ERROR set_dimension(objXML *XML, LONG Index, CSTRING Attrib, DOUBLE Value, LONG Relative)
 {
    char buffer[40];
-   if (Relative) StrFormat(buffer, sizeof(buffer), "%g%%", Value * 100.0);
-   else StrFormat(buffer, sizeof(buffer), "%g", Value);
+   if (Relative) snprintf(buffer, sizeof(buffer), "%g%%", Value * 100.0);
+   else snprintf(buffer, sizeof(buffer), "%g", Value);
    return xmlSetAttrib(XML, Index, XMS_NEW, Attrib, buffer);
 }
 
@@ -117,7 +117,7 @@ static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LON
                      if (!(error = xmlInsertXML(XML, new_index, XMI_CHILD_END, "<stop/>", &stop_index))) {
                         error = xmlSetAttrib(XML, stop_index, XMS_NEW, "offset", stops[s].Offset);
 
-                        StrFormat(buffer, sizeof(buffer), "stop-color:rgb(%g,%g,%g,%g)", stops[s].RGB.Red*255.0, stops[s].RGB.Green*255.0, stops[s].RGB.Blue*255.0, stops[s].RGB.Alpha*255.0);
+                        snprintf(buffer, sizeof(buffer), "stop-color:rgb(%g,%g,%g,%g)", stops[s].RGB.Red*255.0, stops[s].RGB.Green*255.0, stops[s].RGB.Blue*255.0, stops[s].RGB.Alpha*255.0);
                         error = xmlSetAttrib(XML, stop_index, XMS_NEW, "style", buffer);
                      }
                   }
@@ -205,7 +205,7 @@ static ERROR save_svg_transform(VectorMatrix *Transform, char *Buffer, LONG Size
 
    LONG pos = 0;
    std::for_each(list.rbegin(), list.rend(), [&](auto t) {
-      pos += StrFormat(Buffer + pos, Size - pos, "matrix(%f %f %f %f %f %f) ", t->ScaleX, t->ShearY, t->ShearX, t->ScaleY, t->TranslateX, t->TranslateY);
+      pos += snprintf(Buffer + pos, Size - pos, "matrix(%f %f %f %f %f %f) ", t->ScaleX, t->ShearY, t->ShearX, t->ScaleY, t->TranslateX, t->TranslateY);
    });
 
    while ((pos > 0) and (Buffer[pos-1] IS ' ')) pos--;
@@ -237,7 +237,7 @@ static ERROR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LON
       error = xmlSetAttrib(XML, Tag, XMS_NEW, "stroke", str);
    }
    else if ((!GetFieldArray(Vector, FID_StrokeColour, &colour, &array_size)) and (colour[3] != 0)) {
-      StrFormat(buffer, sizeof(buffer), "rgb(%g,%g,%g,%g)", colour[0], colour[1], colour[2], colour[3]);
+      snprintf(buffer, sizeof(buffer), "rgb(%g,%g,%g,%g)", colour[0], colour[1], colour[2], colour[3]);
       error = xmlSetAttrib(XML, Tag, XMS_NEW, "stroke-color", buffer);
    }
 
@@ -277,7 +277,7 @@ static ERROR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LON
       LONG pos = 0;
       for (LONG i=0; i < dash_total; i++) {
          if (pos != 0) buffer[pos++] = ',';
-         pos += StrFormat(buffer+pos, sizeof(buffer)-pos, "%g", dash_array[i]);
+         pos += snprintf(buffer+pos, sizeof(buffer)-pos, "%g", dash_array[i]);
          if ((size_t)pos >= sizeof(buffer)-2) return ERR_BufferOverflow;
       }
       error = xmlSetAttrib(XML, Tag, XMS_NEW, "stroke-dasharray", buffer);
@@ -312,7 +312,7 @@ static ERROR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LON
       }
    }
    else if ((!error) and (!GetFieldArray(Vector, FID_FillColour, &colour, &array_size)) and (colour[3] != 0)) {
-      StrFormat(buffer, sizeof(buffer), "rgb(%g,%g,%g,%g)", colour[0], colour[1], colour[2], colour[3]);
+      snprintf(buffer, sizeof(buffer), "rgb(%g,%g,%g,%g)", colour[0], colour[1], colour[2], colour[3]);
       error = xmlSetAttrib(XML, Tag, XMS_NEW, "fill", buffer);
    }
 
@@ -344,7 +344,7 @@ static ERROR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LON
       if ((!error) and (!shape->get(FID_ID, &shape_id)) and (shape_id)) {
          // NB: It is required that the shape has previously been registered as a definition, otherwise the url will refer to a dud tag.
          char shape_ref[120];
-         StrFormat(shape_ref, sizeof(shape_ref), "url(#%s)", shape_id);
+         snprintf(shape_ref, sizeof(shape_ref), "url(#%s)", shape_id);
          error = xmlSetAttrib(XML, morph_tag, XMS_NEW, "xlink:href", shape_ref);
       }
 
@@ -463,7 +463,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
                if (!error) {
                   WORD pos = 0;
                   for (i=0; i < total_points; i++) {
-                     pos += StrFormat(buffer+pos, sizeof(buffer)-pos, "%g,%g ", points[i].X, points[i].Y);
+                     pos += snprintf(buffer+pos, sizeof(buffer)-pos, "%g,%g ", points[i].X, points[i].Y);
                      if ((size_t)pos >= sizeof(buffer)) { error = ERR_BufferOverflow; break; }
                   }
                }
@@ -477,7 +477,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
          if ((!error) and (!GetFieldArray(Vector, FID_PointsArray, &points, &total_points))) {
             WORD pos = 0;
             for (i=0; i < total_points; i++) {
-               pos += StrFormat(buffer+pos, sizeof(buffer)-pos, "%g,%g ", points[i].X, points[i].Y);
+               pos += snprintf(buffer+pos, sizeof(buffer)-pos, "%g,%g ", points[i].X, points[i].Y);
                if ((size_t)pos >= sizeof(buffer)) { error = ERR_BufferOverflow; break; }
             }
             if (!error) error = xmlSetAttrib(XML, new_index, XMS_NEW, "points", buffer);
@@ -509,7 +509,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
          LONG pos = 0;
          for (LONG i=0; i < total; i++) {
             if (pos != 0) buffer[pos++] = ',';
-            pos += StrFormat(buffer+pos, sizeof(buffer)-pos, "%g", dx[i]);
+            pos += snprintf(buffer+pos, sizeof(buffer)-pos, "%g", dx[i]);
             if ((size_t)pos >= sizeof(buffer)-2) return ERR_BufferOverflow;
          }
          error = xmlSetAttrib(XML, new_index, XMS_NEW, "dx", buffer);
@@ -519,7 +519,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
          LONG pos = 0;
          for (i=0; i < total; i++) {
             if (pos != 0) buffer[pos++] = ',';
-            pos += StrFormat(buffer+pos, sizeof(buffer)-pos, "%g", dy[i]);
+            pos += snprintf(buffer+pos, sizeof(buffer)-pos, "%g", dy[i]);
             if ((size_t)pos >= sizeof(buffer)-2) return ERR_BufferOverflow;
          }
          error = xmlSetAttrib(XML, new_index, XMS_NEW, "dy", buffer);
@@ -534,7 +534,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
          LONG pos = 0;
          for (i=0; i < total; i++) {
             if (pos != 0) buffer[pos++] = ',';
-            pos += StrFormat(buffer+pos, sizeof(buffer)-pos, "%g", rotate[i]);
+            pos += snprintf(buffer+pos, sizeof(buffer)-pos, "%g", rotate[i]);
             if ((size_t)pos >= sizeof(buffer)-2) return ERR_BufferOverflow;
          }
          error = xmlSetAttrib(XML, new_index, XMS_NEW, "rotate", buffer);
@@ -698,7 +698,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
 
       if ((!error) and (!(error = GetFields(Vector, FID_ViewX|TDOUBLE, &x, FID_ViewY|TDOUBLE, &y, FID_ViewWidth|TDOUBLE, &width, FID_ViewHeight|TDOUBLE, &height, TAGEND)))) {
          char buffer[80];
-         StrFormat(buffer, sizeof(buffer), "%g %g %g %g", x, y, width, height);
+         snprintf(buffer, sizeof(buffer), "%g %g %g %g", x, y, width, height);
          error = xmlSetAttrib(XML, new_index, XMS_NEW, "viewBox", buffer);
       }
 

@@ -12,6 +12,7 @@ only.
 *****************************************************************************/
 
 #include <parasol/main.h>
+#include <parasol/modules/parc.h>
 #include <startup.h>
 #include <parasol/modules/core.h>
 #include <string.h>
@@ -75,7 +76,7 @@ static ERROR process_args(void)
    CSTRING *args;
    LONG i, j;
 
-   if ((!glTask->getPtr(FID_Parameters, &args)) AND (args)) {
+   if ((!glTask->getPtr(FID_Parameters, &args)) and (args)) {
       for (i=0; args[i]; i++) {
          if (!StrMatch(args[i], "--help")) {
             // Print help for the user
@@ -239,7 +240,7 @@ ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)
 
    OBJECTPTR target;
    ERROR error;
-   if (!NewLockedObject(ID_SURFACE, 0, &target, &glTargetID)) {
+   if (!NewLockedObject(ID_SURFACE, &target, &glTargetID)) {
       SetFields(target,
          FID_Name|TSTR,    "SystemSurface",
          FID_WindowHandle|TLONG, WindowHandle,
@@ -250,7 +251,7 @@ ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)
          TAGEND);
       if (!acInit(target)) {
          OBJECTPTR pointer;
-         if (!NewLockedObject(ID_POINTER, NF_PUBLIC, &pointer, &glSystemPointerID)) {
+         if (!NewLockedObject(ID_POINTER, NF::PUBLIC, &pointer, &glSystemPointerID)) {
             SetFields(pointer,
                FID_Owner|TLONG, glTargetID,
                FID_Name|TSTR,   "SystemPointer",

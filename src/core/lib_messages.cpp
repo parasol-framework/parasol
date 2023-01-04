@@ -470,7 +470,7 @@ timer_cycle:
             timer->LastCall = current_time;
             timer->Cycle = glTimerCycle;
 
-            //log.trace("Subscriber: %d, Interval: %d, Time: " PF64(), timer->SubscriberID, timer->Interval, current_time);
+            //log.trace("Subscriber: %d, Interval: %d, Time: %" PF64, timer->SubscriberID, timer->Interval, current_time);
 
             timer->Locked = true; // Prevents termination of the structure irrespective of having a TL_TIMER lock.
 
@@ -1133,9 +1133,9 @@ ERROR WaitForObjects(LONG Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
       parasol::ScopedObjectLock<OBJECTPTR> lock(ObjectSignals[i].Object); // For thread safety
 
       // Refer to TASK_ActionNotify() for notification handling and clearing of signals
-      if (ObjectSignals[i].Object->Flags & NF_SIGNALLED) {
+      if (ObjectSignals[i].Object->defined(NF::SIGNALLED)) {
          // Objects that have already been signalled do not require monitoring
-         ObjectSignals[i].Object->Flags &= ~NF_SIGNALLED;
+         ObjectSignals[i].Object->Flags = ObjectSignals[i].Object->Flags & (~NF::SIGNALLED);
       }
       else if (!SubscribeAction(ObjectSignals[i].Object, AC_Free)) {
          log.debug("Monitoring object #%d", ObjectSignals[i].Object->UID);
@@ -1610,7 +1610,7 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
                handles[total++] = glFDTable[i].FD;
             }
             else {
-               log.warning("FD " PF64() " has no READ/WRITE/EXCEPT flag setting - de-registering.", (LARGE)glFDTable[i].FD);
+               log.warning("FD %" PF64 " has no READ/WRITE/EXCEPT flag setting - de-registering.", (LARGE)glFDTable[i].FD);
                RegisterFD(glFDTable[i].FD, RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT, NULL, NULL);
                i--;
             }
@@ -1657,7 +1657,7 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
          break;
       }
       else if (i IS -2) {
-         log.warning("WaitForObjects() failed, bad handle " PF64() ".  Deregistering automatically.", (LARGE)handles[0]);
+         log.warning("WaitForObjects() failed, bad handle %" PF64 ".  Deregistering automatically.", (LARGE)handles[0]);
          RegisterFD((HOSTHANDLE)handles[0], RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT, NULL, NULL);
       }
       else if (i IS -4) {

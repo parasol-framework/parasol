@@ -152,7 +152,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
    if (!Self->Point) Self->Point = global_point_size();
 
    if (!Self->Path) {
-      CSTRING path;
+      CSTRING path = NULL;
       if (!fntSelectFont(Self->prvFace, Self->prvStyle, Self->Point, Self->Flags & (FTF_PREFER_SCALED|FTF_PREFER_FIXED|FTF_ALLOW_SCALE), &path)) {
          Self->set(FID_Path, path);
          FreeResource(path);
@@ -174,126 +174,118 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
 
    BitmapCache *cache = check_bitmap_cache(Self, style);
 
-   OBJECTPTR file;
    if (cache); // The font exists in the cache
    else if (!StrCompare("*.ttf", Self->Path, 0, STR_WILDCARD)); // The font is truetype
-   else if (!CreateObject(ID_FILE, NF_INTEGRAL, &file,
-         FID_Path|TSTR,   Self->Path,
-         FID_Flags|TLONG, FL_READ|FL_APPROXIMATE,
-         TAGEND)) {
+   else {
+      objFile::create file = { fl::Path(Self->Path), fl::Flags(FL_READ|FL_APPROXIMATE) };
+      if (file.ok()) {
+         // Check if the file is a Windows Bitmap Font
 
-      // Check if the file is a Windows Bitmap Font
+         winmz_header_fields mz_header;
+         file->read(&mz_header, sizeof(mz_header));
 
-      winmz_header_fields mz_header;
-      acRead(file, &mz_header, sizeof(mz_header), NULL);
+         if (mz_header.magic IS ID_WINMZ) {
+            file->seek(mz_header.lfanew, SEEK_START);
 
-      if (mz_header.magic IS ID_WINMZ) {
-         acSeek(file, mz_header.lfanew, SEEK_START);
+            winne_header_fields ne_header;
+            if ((!file->read(&ne_header, sizeof(ne_header))) and (ne_header.magic IS ID_WINNE)) {
+               ULONG res_offset = mz_header.lfanew + ne_header.resource_tab_offset;
+               file->seek(res_offset, SEEK_START);
 
-         winne_header_fields ne_header;
-         if ((!acRead(file, &ne_header, sizeof(ne_header), NULL)) and (ne_header.magic IS ID_WINNE)) {
-            ULONG res_offset = mz_header.lfanew + ne_header.resource_tab_offset;
-            acSeek(file, res_offset, SEEK_START);
+               // Count the number of fonts in the file
 
-            // Count the number of fonts in the file
+               WORD size_shift = 0;
+               UWORD font_count = 0;
+               LONG font_offset = 0;
+               flReadLE(*file, &size_shift);
 
-            WORD size_shift = 0;
-            UWORD font_count = 0;
-            LONG font_offset = 0;
-            flReadLE(file, &size_shift);
+               WORD type_id;
+               for ((error = flReadLE(*file, &type_id)); (!error) and (type_id); error = flReadLE(*file, &type_id)) {
+                  WORD count = 0;
+                  flReadLE(*file, &count);
 
-            WORD type_id;
-            for ((error = flReadLE(file, &type_id)); (!error) and (type_id); error = flReadLE(file, &type_id)) {
-               WORD count = 0;
-               flReadLE(file, &count);
-
-               if ((UWORD)type_id IS 0x8008) {
-                  font_count  = count;
-                  file->get(FID_Position, &font_offset);
-                  font_offset += 4;
-                  break;
-               }
-
-               acSeek(file, 4 + (count * 12), SEEK_CURRENT);
-            }
-
-            if ((!font_count) or (!font_offset)) {
-               log.warning("There are no fonts in the file \"%s\"", Self->Path);
-               acFree(file);
-               return ERR_Failed;
-            }
-
-            acSeek(file, font_offset, SEEK_START);
-
-            // Scan the list of available fonts to find the closest point size for our font
-
-            winFont fonts[font_count];
-
-            for (LONG i=0; i < font_count; i++) {
-               fonts[i].Offset = ReadWordLE(file)<<size_shift;
-               fonts[i].Size   = ReadWordLE(file)<<size_shift;
-               acSeek(file, 8, SEEK_CURRENT);
-            }
-
-            LONG abs = 0x7fff;
-            LONG wfi = 0;
-            winfnt_header_fields face;
-            for (LONG i=0; i < font_count; i++) {
-               acSeek(file, (DOUBLE)fonts[i].Offset, SEEK_START);
-
-               winfnt_header_fields header;
-               if (!acRead(file, &header, sizeof(header), NULL)) {
-                  if ((header.version != 0x200) and (header.version != 0x300)) {
-                     log.warning("Font \"%s\" is written in unsupported version %d.", Self->prvFace, header.version);
-                     acFree(file);
-                     return ERR_Failed;
+                  if ((UWORD)type_id IS 0x8008) {
+                     font_count  = count;
+                     file->get(FID_Position, &font_offset);
+                     font_offset += 4;
+                     break;
                   }
 
-                  if (header.file_type & 1) {
-                     log.warning("Font \"%s\" is in the non-supported vector font format.", Self->prvFace);
-                     acFree(file);
-                     return ERR_Failed;
+                  file->seek(4 + (count * 12), SEEK_CURRENT);
+               }
+
+               if ((!font_count) or (!font_offset)) {
+                  log.warning("There are no fonts in the file \"%s\"", Self->Path);
+                  return ERR_Failed;
+               }
+
+               file->seek(font_offset, SEEK_START);
+
+               // Scan the list of available fonts to find the closest point size for our font
+
+               winFont fonts[font_count];
+
+               for (LONG i=0; i < font_count; i++) {
+                  UWORD offset, size;
+                  flReadLE(*file, &offset);
+                  flReadLE(*file, &size);
+                  fonts[i].Offset = offset<<size_shift;
+                  fonts[i].Size   = size<<size_shift;
+                  file->seek(8, SEEK_CURRENT);
+               }
+
+               LONG abs = 0x7fff;
+               LONG wfi = 0;
+               winfnt_header_fields face;
+               for (LONG i=0; i < font_count; i++) {
+                  file->seek((DOUBLE)fonts[i].Offset, SEEK_START);
+
+                  winfnt_header_fields header;
+                  if (!file->read(&header, sizeof(header))) {
+                     if ((header.version != 0x200) and (header.version != 0x300)) {
+                        log.warning("Font \"%s\" is written in unsupported version %d.", Self->prvFace, header.version);
+                        return ERR_Failed;
+                     }
+
+                     if (header.file_type & 1) {
+                        log.warning("Font \"%s\" is in the non-supported vector font format.", Self->prvFace);
+                        return ERR_Failed;
+                     }
+
+                     if (header.pixel_width <= 0) header.pixel_width = header.pixel_height;
+
+                     if ((diff = Self->Point - header.nominal_point_size) < 0) diff = -diff;
+
+                     if (diff < abs) {
+                        face = header;
+                        abs  = diff;
+                        wfi  = i;
+                     }
                   }
+                  else return log.warning(ERR_Read);
+               }
 
-                  if (header.pixel_width <= 0) header.pixel_width = header.pixel_height;
+               // Check the bitmap cache again to ensure that the discovered font is not already loaded.  This is important
+               // if the cached font wasn't originally found due to variation in point size.
 
-                  if ((diff = Self->Point - header.nominal_point_size) < 0) diff = -diff;
+               Self->Point = face.nominal_point_size;
+               cache = check_bitmap_cache(Self, style);
+               if (!cache) { // Load the font into the cache
+                  auto it = glBitmapCache.emplace(glBitmapCache.end(), face, Self->prvStyle, Self->Path, *file, fonts[wfi]);
 
-                  if (diff < abs) {
-                     face = header;
-                     abs  = diff;
-                     wfi  = i;
+                  if (!it->Result) cache = &(*it);
+                  else {
+                     ERROR error = it->Result;
+                     glBitmapCache.erase(it);
+                     return error;
                   }
                }
-               else {
-                  acFree(file);
-                  return log.warning(ERR_Read);
-               }
-            }
 
-            // Check the bitmap cache again to ensure that the discovered font is not already loaded.  This is important
-            // if the cached font wasn't originally found due to variation in point size.
-
-            Self->Point = face.nominal_point_size;
-            cache = check_bitmap_cache(Self, style);
-            if (!cache) { // Load the font into the cache
-               auto it = glBitmapCache.emplace(glBitmapCache.end(), face, Self->prvStyle, Self->Path, file, fonts[wfi]);
-
-               if (!it->Result) cache = &(*it);
-               else {
-                  ERROR error = it->Result;
-                  acFree(file);
-                  glBitmapCache.erase(it);
-                  return error;
-               }
-            }
-
+            } // File is not a windows fixed font (but could be truetype)
          } // File is not a windows fixed font (but could be truetype)
-      } // File is not a windows fixed font (but could be truetype)
-
-      acFree(file);
+      }
+      else return log.warning(ERR_OpenFile);
    }
-   else return log.warning(ERR_OpenFile);
 
    if (cache) {
       Self->prvData     = cache->mData;
@@ -307,7 +299,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
       Self->MaxHeight   = cache->Header.pixel_height; // Supposedly the pixel_height includes internal and external leading values (?)
       Self->prvBitmapHeight = cache->Header.pixel_height;
       Self->prvDefaultChar  = cache->Header.first_char + cache->Header.default_char;
-      Self->TotalChars = cache->Header.last_char - cache->Header.first_char + 1;
+      Self->TotalChars      = cache->Header.last_char - cache->Header.first_char + 1;
 
       // If this is a monospaced font, set the FixedWidth field
 

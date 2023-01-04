@@ -205,10 +205,8 @@ typedef LONG SOCKET_HANDLE;
 
   c_insert([[
 INLINE ERROR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR UserData) {
-   return(CreateObject(ID_NETSOCKET, 0, NewNetSocketOut,
-      FID_Listener|TLONG, ListenerID,
-      FID_UserData|TPTR, UserData,
-      TAGEND));
+   if ((*NewNetSocketOut = objNetSocket::create::global(fl::Listener(ListenerID), fl::UserData(UserData)))) return ERR_Okay;
+   else return ERR_CreateObject;
 }
   ]])
 
