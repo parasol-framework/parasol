@@ -346,14 +346,14 @@ static ERROR DISPLAY_DataFeed(extDisplay *Self, struct acDataFeed *Args)
 
          STRING xml;
          if (!AllocMemory(xmlsize, MEM_STRING|MEM_NO_CLEAR, &xml, NULL)) {
-            LONG pos = StrFormat(xml, xmlsize, "<receipt totalitems=\"%d\" id=\"%d\">", total_items, request->Item);
+            LONG pos = snprintf(xml, xmlsize, "<receipt totalitems=\"%d\" id=\"%d\">", total_items, request->Item);
 
             for (LONG i=0; i < total_items; i++) {
                if (data[i].Datatype IS DATA_FILE) {
-                  pos += StrFormat(xml+pos, xmlsize-pos, "<file path=\"%s\"/>", (STRING)data[i].Data);
+                  pos += snprintf(xml+pos, xmlsize-pos, "<file path=\"%s\"/>", (STRING)data[i].Data);
                }
                else if (data[i].Datatype IS DATA_TEXT) {
-                  pos += StrFormat(xml+pos, xmlsize-pos, "<text>%s</text>", (STRING)data[i].Data);
+                  pos += snprintf(xml+pos, xmlsize-pos, "<text>%s</text>", (STRING)data[i].Data);
                }
                //else TODO: other types like images need their data saved to disk and referenced as a path, e.g. <image path="clipboard:abc.001"/>
             }
@@ -843,7 +843,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
 
          // If we are running inside a foreign window manager, use the following routine to create a new X11 window for us to run in.
 
-         log.msg("Creating X11 window %dx%d,%dx%d, Override: %d, XDisplay: %p, Parent: " PF64(), Self->X, Self->Y, Self->Width, Self->Height, swa.override_redirect, XDisplay, (LARGE)Self->XWindowHandle);
+         log.msg("Creating X11 window %dx%d,%dx%d, Override: %d, XDisplay: %p, Parent: %" PF64, Self->X, Self->Y, Self->Width, Self->Height, swa.override_redirect, XDisplay, (LARGE)Self->XWindowHandle);
 
          cwflags = CWEventMask|CWOverrideRedirect;
 
@@ -867,7 +867,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
             }
          }
 
-         log.trace("X-Window created successfully: " PF64(), (LARGE)Self->XWindowHandle);
+         log.trace("X-Window created successfully: %" PF64, (LARGE)Self->XWindowHandle);
 
          bmp->set(FID_Handle, (APTR)Self->XWindowHandle);
 

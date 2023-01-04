@@ -72,7 +72,7 @@ static void set_script_args(objScript *Script, CSTRING *Args)
          i++;
          LONG arg_index = 0;
          while ((Args[i]) and (Args[i][0] != '}')) {
-            StrFormat(argname+al, sizeof(argbuffer)-al, "(%d)", arg_index);
+            snprintf(argname+al, sizeof(argbuffer)-al, "(%d)", arg_index);
             SetVar(Script, argname, Args[i]);
             arg_index++;
             i++;

@@ -36,11 +36,11 @@ static APTR find_core(char *PathBuffer, int Size)
          strncpy(PathBuffer+len, "lib\\core.dll", Size-len-1);
 
          handle = INVALID_HANDLE_VALUE;
-         while ((len) AND ((handle = FindFirstFileA(PathBuffer, &find)) IS INVALID_HANDLE_VALUE)) {
+         while ((len) && ((handle = FindFirstFileA(PathBuffer, &find)) IS INVALID_HANDLE_VALUE)) {
             // Regress by one folder to get to the root of the installation.
 
             if (PathBuffer[len-1] IS '\\') len--;
-            while ((len > 0) AND (PathBuffer[len-1] != '\\')) {
+            while ((len > 0) && (PathBuffer[len-1] != '\\')) {
                len--;
             }
 

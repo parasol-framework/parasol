@@ -1908,14 +1908,14 @@ static ERROR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
 
          case agg::path_cmd_move_to: // PE_Move
             base.vertex(i, &x, &y);
-            p += StrFormat(seq+p, sizeof(seq)-p, "M%g,%g", x, y);
+            p += snprintf(seq+p, sizeof(seq)-p, "M%g,%g", x, y);
             last_x = x;
             last_y = y;
             break;
 
          case agg::path_cmd_line_to: // PE_Line
             base.vertex(i, &x, &y);
-            p += StrFormat(seq+p, sizeof(seq)-p, "L%g,%g", x, y);
+            p += snprintf(seq+p, sizeof(seq)-p, "L%g,%g", x, y);
             last_x = x;
             last_y = y;
             break;
@@ -1923,7 +1923,7 @@ static ERROR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
          case agg::path_cmd_curve3: // PE_QuadCurve
             base.vertex(i, &x, &y);
             base.vertex(i+1, &x2, &y2); // End of line
-            p += StrFormat(seq+p, sizeof(seq)-p, "q%g,%g,%g,%g", x - last_x, y - last_y, x2 - last_x, y2 - last_y);
+            p += snprintf(seq+p, sizeof(seq)-p, "q%g,%g,%g,%g", x - last_x, y - last_y, x2 - last_x, y2 - last_y);
             last_x = x;
             last_y = y;
             i += 1;
@@ -1933,7 +1933,7 @@ static ERROR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
             base.vertex(i, &x, &y);
             base.vertex(i+1, &x2, &y2);
             base.vertex(i+2, &x3, &y3); // End of line
-            p += StrFormat(seq+p, sizeof(seq)-p, "c%g,%g,%g,%g,%g,%g", x - last_x, y - last_y, x2 - last_x, y2 - last_y, x3 - last_x, y3 - last_y);
+            p += snprintf(seq+p, sizeof(seq)-p, "c%g,%g,%g,%g,%g,%g", x - last_x, y - last_y, x2 - last_x, y2 - last_y, x3 - last_x, y3 - last_y);
             last_x = x3;
             last_y = y3;
             i += 2;

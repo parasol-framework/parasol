@@ -1607,7 +1607,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
       if (lock.granted()) {
          for (auto it=glTimers.begin(); it != glTimers.end(); ) {
             if (it->SubscriberID IS Object->UID) {
-               log.warning("%s object #%d has an unfreed timer subscription, routine %p, interval " PF64(), mc->ClassName, Object->UID, &it->Routine, it->Interval);
+               log.warning("%s object #%d has an unfreed timer subscription, routine %p, interval %" PF64, mc->ClassName, Object->UID, &it->Routine, it->Interval);
                it = glTimers.erase(it);
             }
             else it++;

@@ -396,7 +396,7 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
             }
             else {
                char msg[200];
-               StrFormat(msg, sizeof(msg), "Failed to load clipboard file \"%s\"", get.Files[0]);
+               snprintf(msg, sizeof(msg), "Failed to load clipboard file \"%s\"", get.Files[0]);
                error_dialog("Paste Error", msg, 0);
             }
          }

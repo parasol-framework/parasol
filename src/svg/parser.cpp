@@ -1806,7 +1806,7 @@ static ERROR xtag_image(extSVG *Self, objXML *XML, svgState *State, const XMLTag
          scAddDef(Self->Scene, id, image);
 
          char fillname[256];
-         StrFormat(fillname, sizeof(fillname), "url(#%s)", id);
+         snprintf(fillname, sizeof(fillname), "url(#%s)", id);
 
          // Use a rectangle shape to represent the image
 
@@ -2609,8 +2609,8 @@ static void apply_rule(extSVG *Self, objXML *XML, KatanaArray *Properties, const
 
             case KATANA_VALUE_PARSER_OPERATOR: {
                char str[8];
-               if (value->iValue != '=') StrFormat(str, sizeof(str), " %c ", value->iValue);
-               else StrFormat(str, sizeof(str), " %c", value->iValue);
+               if (value->iValue != '=') snprintf(str, sizeof(str), " %c ", value->iValue);
+               else snprintf(str, sizeof(str), " %c", value->iValue);
                xmlSetAttrib(XML, Tag->Index, XMS_UPDATE, prop->property, str);
                break;
             }
@@ -2621,14 +2621,14 @@ static void apply_rule(extSVG *Self, objXML *XML, KatanaArray *Properties, const
 
             case KATANA_VALUE_PARSER_HEXCOLOR: {
                char str[32];
-               StrFormat(str, sizeof(str), "#%s", value->string);
+               snprintf(str, sizeof(str), "#%s", value->string);
                xmlSetAttrib(XML, Tag->Index, XMS_UPDATE, prop->property, str);
                break;
             }
 
             case KATANA_VALUE_URI: {
                char str[256];
-               StrFormat(str, sizeof(str), "url(%s)", value->string);
+               snprintf(str, sizeof(str), "url(%s)", value->string);
                xmlSetAttrib(XML, Tag->Index, XMS_UPDATE, prop->property, str);
                break;
             }

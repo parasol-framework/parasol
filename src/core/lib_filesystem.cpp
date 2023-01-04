@@ -925,7 +925,7 @@ ERROR TranslateCmdRef(CSTRING String, STRING *Command)
                CSTRING cmd, args;
                if (!cfgReadValue(*cfgprog, group.c_str(), "CommandFile", &cmd)) {
                   if (cfgReadValue(*cfgprog, group.c_str(), "Args", &args)) args = "";
-                  StrFormat(buffer, sizeof(buffer), "\"%s\" %s %s", cmd, args, String + cmdindex);
+                  snprintf(buffer, sizeof(buffer), "\"%s\" %s %s", cmd, args, String + cmdindex);
 
                   *Command = StrClone(buffer);
                   error = ERR_Okay;
@@ -1808,10 +1808,10 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
                time = (PreciseTime() / 1000LL);
             }
             else {
-               log.msg("Failed to read any data, position " PF64() " / " PF64() ".", srcfile->Position, srcfile->Size);
+               log.msg("Failed to read any data, position %" PF64 " / %" PF64 ".", srcfile->Position, srcfile->Size);
 
                if ((PreciseTime() / 1000LL) - time > STREAM_TIMEOUT) {
-                  log.warning("Timeout - stopped reading at offset " PF64() " of " PF64() "", srcfile->Position, srcfile->Size);
+                  log.warning("Timeout - stopped reading at offset %" PF64 " of %" PF64 "", srcfile->Position, srcfile->Size);
                   error = ERR_TimeOut;
                   break;
                }
@@ -2088,7 +2088,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
          if (device->BytesFree >= 0) {
             if (device->BytesFree - 1024LL <= feedback.Size) {
                close(handle);
-               log.warning("Not enough space on device (" PF64() "/" PF64() " < " PF64() ")", device->BytesFree, device->DeviceSize, (LARGE)feedback.Size);
+               log.warning("Not enough space on device (%" PF64 "/%" PF64 " < %" PF64 ")", device->BytesFree, device->DeviceSize, (LARGE)feedback.Size);
                error = ERR_OutOfSpace;
                goto exit;
             }

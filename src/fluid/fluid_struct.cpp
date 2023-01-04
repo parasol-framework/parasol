@@ -354,7 +354,7 @@ static ERROR generate_structdef(objScript *Self, CSTRING StructName, CSTRING Seq
 
       STRING field_name = Buffer + buf + sizeof(struct structdef_field);
       LONG i;
-      for (i=0; (Sequence[pos]) and (Sequence[pos] != ',') and (Sequence[pos] != '[') AND
+      for (i=0; (Sequence[pos]) and (Sequence[pos] != ',') and (Sequence[pos] != '[') and
                 (Sequence[pos] != ':') and (i < 64); i++) {
          field_name[i] = Sequence[pos++];
       }
@@ -748,7 +748,7 @@ static LONG get_fieldvalue(lua_State *Lua, struct fstruct *FS, CSTRING fieldname
       }
       else {
          char buffer[80];
-         StrFormat(buffer, sizeof(buffer), "Field '%s' does not use a supported type ($%.8x).", fieldname, type);
+         snprintf(buffer, sizeof(buffer), "Field '%s' does not use a supported type ($%.8x).", fieldname, type);
          luaL_error(Lua, buffer);
          return 0;
       }
@@ -813,7 +813,7 @@ static int struct_set(lua_State *Lua)
 static int struct_destruct(lua_State *Lua)
 {
    auto fs = (fstruct *)luaL_checkudata(Lua, 1, "Fluid.struct");
-   if ((fs) AND (fs->Deallocate)) {
+   if ((fs) and (fs->Deallocate)) {
       FreeResource(fs->Data);
       fs->Data = NULL;
    }

@@ -1259,10 +1259,10 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
       cfgWrite(*config, "AUDIO", "Periods", Self->Periods);
       cfgWrite(*config, "AUDIO", "PeriodSize", Self->PeriodSize);
 
-      StrFormat(buffer, sizeof(buffer), "%.4f", Self->Bass);
+      snprintf(buffer, sizeof(buffer), "%.4f", Self->Bass);
       cfgWriteValue(*config, "AUDIO", "Bass", buffer);
 
-      StrFormat(buffer, sizeof(buffer), "%.4f", Self->Treble);
+      snprintf(buffer, sizeof(buffer), "%.4f", Self->Treble);
       cfgWriteValue(*config, "AUDIO", "Treble", buffer);
 
       if (Self->Flags & ADF_STEREO) cfgWriteValue(*config, "AUDIO", "Stereo", "TRUE");
@@ -1281,11 +1281,11 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
             buffer[2] = '[';
             LONG pos = 3;
             if (Self->VolumeCtl[i].Flags & VCF_MONO) {
-               pos += StrFormat(buffer+pos, sizeof(buffer)-pos, "%.2f", Self->VolumeCtl[i].Channels[0]);
+               pos += snprintf(buffer+pos, sizeof(buffer)-pos, "%.2f", Self->VolumeCtl[i].Channels[0]);
             }
             else for (LONG channel=0; channel < ARRAYSIZE(Self->VolumeCtl[i].Channels); channel++) {
                if (channel > 0) buffer[pos++] = ',';
-               pos += StrFormat(buffer+pos, sizeof(buffer)-pos, "%.2f", Self->VolumeCtl[i].Channels[channel]);
+               pos += snprintf(buffer+pos, sizeof(buffer)-pos, "%.2f", Self->VolumeCtl[i].Channels[channel]);
             }
             buffer[pos++] = ']';
             buffer[pos] = 0;
@@ -1329,7 +1329,7 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 
       fleft = (DOUBLE)left * 100.0 / (DOUBLE)(pmax - pmin);
       fright = (DOUBLE)right * 100.0 / (DOUBLE)(pmax - pmin);
-      StrFormat(buffer, sizeof(buffer), "%.2f,%.2f,%d", fleft, fright, (mute) ? 0 : 1);
+      snprintf(buffer, sizeof(buffer), "%.2f,%.2f,%d", fleft, fright, (mute) ? 0 : 1);
 
       cfgWriteValue(*config, "MIXER", Self->VolumeCtl[i].Name, buffer);
    }
@@ -1337,7 +1337,7 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 
 #else
       if (Self->VolumeCtl) {
-         StrFormat(buffer, sizeof(buffer), "%d,[%.2f]", (Self->VolumeCtl[0].Flags & VCF_MUTE) ? 1 : 0, Self->VolumeCtl[0].Channels[0]);
+         snprintf(buffer, sizeof(buffer), "%d,[%.2f]", (Self->VolumeCtl[0].Flags & VCF_MUTE) ? 1 : 0, Self->VolumeCtl[0].Channels[0]);
          cfgWriteValue(*config, "MIXER", Self->VolumeCtl[0].Name, buffer);
       }
 #endif
@@ -2321,7 +2321,7 @@ static ERROR init_audio(extAudio *Self)
       }
 
       while (card >= 0) {
-         StrFormat(name, sizeof(name), "hw:%d", card);
+         snprintf(name, sizeof(name), "hw:%d", card);
 
          if ((err = snd_ctl_open(&ctlhandle, name, 0)) >= 0) {
             if ((err = snd_ctl_card_info(ctlhandle, info)) >= 0) {
@@ -2362,7 +2362,7 @@ static ERROR init_audio(extAudio *Self)
 
       volmax = 0;
       while (card >= 0) {
-         StrFormat(name, sizeof(name), "hw:%d", card);
+         snprintf(name, sizeof(name), "hw:%d", card);
          log.msg("Opening card %s", name);
 
          if ((err = snd_ctl_open(&ctlhandle, name, 0)) >= 0) {

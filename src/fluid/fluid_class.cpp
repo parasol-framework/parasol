@@ -6,6 +6,7 @@
 #include <parasol/modules/xml.h>
 #include <parasol/modules/display.h>
 #include <parasol/modules/fluid.h>
+#include <sstream>
 
 extern "C" {
  #include "lua.h"
@@ -284,7 +285,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
    if (CurrentTaskID() != Self->ownerTask()) return log.warning(ERR_IllegalActionAttempt);
    if ((!Self->String) or (!Self->String[0])) return log.warning(ERR_FieldNotSet);
 
-   log.msg(VLF_EXTAPI, "Target: %d, Procedure: %s / ID #" PF64(), Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", Self->ProcedureID);
+   log.msg(VLF_EXTAPI, "Target: %d, Procedure: %s / ID #%" PF64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", Self->ProcedureID);
 
    ERROR error = ERR_Failed;
 
@@ -419,12 +420,12 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
                LONG line = StrToInt(errorstr + i);
                while ((errorstr[i]) and (errorstr[i] != ':')) i++;
                if (errorstr[i] IS ':') i++;
-               i = StrFormat(buffer, sizeof(buffer), "Line %d: %s\n", line+Self->LineOffset, errorstr + i);
+               i = snprintf(buffer, sizeof(buffer), "Line %d: %s\n", line+Self->LineOffset, errorstr + i);
                CSTRING str = Self->String;
 
                for (j=1; j <= line+1; j++) {
                   if (j >= line-1) {
-                     i += StrFormat(buffer+i, sizeof(buffer)-i, "%d: ", j+Self->LineOffset);
+                     i += snprintf(buffer+i, sizeof(buffer)-i, "%d: ", j+Self->LineOffset);
                      LONG k;
                      for (k=0; (str[k]) and (str[k] != '\n') and (str[k] != '\r') and (k < 120); k++) {
                         if ((size_t)i >= sizeof(buffer)-1) break;
@@ -610,7 +611,7 @@ static ERROR FLUID_DerefProcedure(objScript *Self, struct scDerefProcedure *Args
          auto prv = (prvFluid *)Self->ChildPrivate;
          if (!prv) return log.warning(ERR_ObjectCorrupt);
 
-         log.trace("Dereferencing procedure #" PF64(), Args->Procedure->Script.ProcedureID);
+         log.trace("Dereferencing procedure #%" PF64, Args->Procedure->Script.ProcedureID);
 
          if (Args->Procedure->Script.ProcedureID) {
             luaL_unref(prv->Lua, LUA_REGISTRYINDEX, Args->Procedure->Script.ProcedureID);
@@ -732,7 +733,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
                if (Self->CacheFile) compile = TRUE; // Saving a compilation of the source is desired
             }
             else {
-               log.trace("Failed to read " PF64() " bytes from '%s'", src_size, Self->Path);
+               log.trace("Failed to read %" PF64 " bytes from '%s'", src_size, Self->Path);
                FreeResource(Self->String);
                Self->String = NULL;
                error = ERR_ReadFileToBuffer;
@@ -1016,7 +1017,7 @@ static ERROR run_script(objScript *Self)
                   }
                   else lua_pushinteger(prv->Lua, args->Long);
                }
-               else if (type & FD_LARGE)  { log.trace("Setting arg '%s', Value: " PF64(), args->Name, args->Large); lua_pushnumber(prv->Lua, args->Large); }
+               else if (type & FD_LARGE)  { log.trace("Setting arg '%s', Value: %" PF64, args->Name, args->Large); lua_pushnumber(prv->Lua, args->Large); }
                else if (type & FD_DOUBLE) { log.trace("Setting arg '%s', Value: %.2f", args->Name, args->Double); lua_pushnumber(prv->Lua, args->Double); }
                else { lua_pushnil(prv->Lua); log.warning("Arg '%s' uses unrecognised type $%.8x", args->Name, type); }
                count++;
@@ -1034,10 +1035,11 @@ static ERROR run_script(objScript *Self)
          while (r > 0) release_object(release_list[--r]);
       }
       else {
-         char buffer[200];
-         StrFormat(buffer, sizeof(buffer), "Procedure '%s' / #" PF64() " does not exist in the script.", Self->Procedure, Self->ProcedureID);
-         Self->set(FID_ErrorString, buffer);
-         log.warning("%s", buffer);
+         std::ostringstream ss;
+         ss << "Procedure '" << Self->Procedure << "' / #" << Self->ProcedureID << " does not exist in the script.";
+         auto str = ss.str().c_str();
+         Self->set(FID_ErrorString, str);
+         log.warning("%s", str);
 
          #ifdef DEBUG
             STRING *list;

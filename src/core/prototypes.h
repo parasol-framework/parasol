@@ -140,7 +140,7 @@ const struct SystemState * GetSystemState();
 ERROR TranslateCmdRef(CSTRING String, STRING * Command);
 ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
 LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
-LONG Base64Encode(const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
+LONG Base64Encode(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
 ERROR VarSetString(struct KeyStore * Store, CSTRING Key, CSTRING Value);
 CSTRING VarGetString(struct KeyStore * Store, CSTRING Key);
 ERROR VarCopy(struct KeyStore * Source, struct KeyStore * Dest);

@@ -279,7 +279,7 @@ static ERROR SET_Allow(objParc *Self, CSTRING Value)
 {
    if (Self->Allow) { FreeResource(Self->Allow); Self->Allow = NULL; }
 
-   if ((Value) AND (*Value)) {
+   if ((Value) and (*Value)) {
       if (!(Self->Allow = StrClone(Value))) return ERR_Okay;
       else return ERR_AllocMemory;
    }
@@ -312,9 +312,9 @@ static ERROR SET_Args(objParc *Self, CSTRING Value)
 {
    if (Self->Args) { FreeResource(Self->Args); Self->Args = NULL; }
 
-   if ((Value) AND (*Value)) {
+   if ((Value) and (*Value)) {
       LONG i;
-      if ((Value[0] IS '1') AND (!Value[1])) return ERR_Okay; // Ignore arguments of "1"
+      if ((Value[0] IS '1') and (!Value[1])) return ERR_Okay; // Ignore arguments of "1"
       for (i=0; Value[i]; i++);
       if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, &Self->Args, NULL)) {
          for (i=0; Value[i]; i++) Self->Args[i] = Value[i];
@@ -345,7 +345,7 @@ static ERROR SET_Path(objParc *Self, CSTRING Value)
 {
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
-   if ((Value) AND (*Value)) {
+   if ((Value) and (*Value)) {
       if (!(Self->Path = StrClone(Value))) return ERR_AllocMemory;
    }
    return ERR_Okay;

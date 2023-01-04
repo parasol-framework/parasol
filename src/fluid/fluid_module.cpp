@@ -863,7 +863,7 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
          if (argtype & FD_RESULT) {
             scan += sizeof(APTR);
             if (var) {
-               RMSG("Result-Arg: %s, Value: " PF64() " (Large)", argname, ((LARGE *)var)[0]);
+               RMSG("Result-Arg: %s, Value: %" PF64 " (Large)", argname, ((LARGE *)var)[0]);
                lua_pushnumber(prv->Lua, ((LARGE *)var)[0]);
             }
             else lua_pushnil(prv->Lua);

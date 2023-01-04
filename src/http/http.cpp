@@ -94,6 +94,7 @@ For information about the HTTP protocol, please refer to the official protocol w
 #include <stdio.h>
 #include <unordered_map>
 #include <map>
+#include <sstream>
 
 #include <parasol/main.h>
 #include <parasol/modules/http.h>
@@ -241,15 +242,16 @@ static const FieldDef clStatus[] = {
 
 static CSTRING adv_crlf(CSTRING);
 static ERROR check_incoming_end(extHTTP *);
-static ERROR parse_file(extHTTP *, STRING Buffer, LONG Size);
+static ERROR parse_file(extHTTP *, STRING, LONG);
+static void parse_file(extHTTP *, std::ostringstream &);
 static ERROR parse_response(extHTTP *, CSTRING);
 static ERROR process_data(extHTTP *, APTR, LONG);
 static LONG  extract_value(CSTRING, STRING *);
 static void  writehex(HASH, HASHHEX);
 static void  digest_calc_ha1(extHTTP *, HASHHEX);
-static void  digest_calc_response(extHTTP *, CSTRING, CSTRING, HASHHEX, HASHHEX, HASHHEX);
-static ERROR write_socket(extHTTP *, APTR Buffer, LONG Length, LONG *Result);
-static LONG  set_http_method(extHTTP *, STRING Buffer, LONG Size, CSTRING Method);
+static void  digest_calc_response(extHTTP *, std::string, CSTRING, HASHHEX, HASHHEX, HASHHEX);
+static ERROR write_socket(extHTTP *, CPTR Buffer, LONG Length, LONG *Result);
+static void set_http_method(extHTTP *Self, CSTRING Method, std::ostringstream &);
 static ERROR SET_Path(extHTTP *, CSTRING);
 static ERROR SET_Location(extHTTP *, CSTRING);
 static ERROR timeout_manager(extHTTP *, LARGE, LARGE);
@@ -369,9 +371,7 @@ HostNotFound: DNS resolution of the domain name in the URI failed.
 static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
 {
    parasol::Log log;
-   char cmd[2048];
-   LONG len, resume_from, i;
-   ERROR result;
+   LONG i;
 
    if (!Self->initialised()) return log.warning(ERR_NotInitialised);
 
@@ -406,7 +406,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
       Self->RecvSize = 0;
    }
 
-   resume_from = 0;
+   std::ostringstream cmd;
 
    if ((Self->ProxyServer) and (Self->Flags & HTF_SSL) and (!Self->Socket)) {
       // SSL tunnelling is required.  Send a CONNECT request to the proxy and
@@ -414,7 +414,12 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
 
       log.trace("SSL tunnelling is required.");
 
-      len = StrFormat(cmd, sizeof(cmd), "CONNECT %s:%d HTTP/1.1%sHost: %s%sUser-Agent: %s%sProxy-Connection: keep-alive%sConnection: keep-alive%s", Self->Host, Self->Port, CRLF, Self->Host, CRLF, Self->UserAgent, CRLF, CRLF, CRLF);
+      cmd << "CONNECT " << Self->Host << ":" << Self->Port << " HTTP/1.1" << CRLF;
+      cmd << "Host: " << Self->Host << CRLF;
+      cmd << "User-Agent: " << Self->UserAgent << CRLF;
+      cmd << "Proxy-Connection: keep-alive" << CRLF;
+      cmd << "Connection: keep-alive" << CRLF;
+
       Self->Tunneling = TRUE;
 
       //set auth "Proxy-Authorization: Basic [base64::encode $opts(proxyUser):$opts(proxyPass)]"
@@ -424,12 +429,13 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
          // Copies a source (indicated by Path) to a Destination.  The Destination is referenced as an variable field.
 
          if (Self->Args->contains("Destination")) {
-            len = set_http_method(Self, cmd, sizeof(cmd), "COPY");
-            len += StrFormat(cmd+len, sizeof(cmd)-len, "Destination: http://%s/%s%s", Self->Host, Self->Args[0]["Destination"].c_str(), CRLF);
-            std::string& overwrite = Self->Args[0]["Overwrite"];
+            set_http_method(Self, "COPY", cmd);
+            cmd << "Destination: http://" << Self->Host << "/" << Self->Args[0]["Destination"] << CRLF;
+
+            auto & overwrite = Self->Args[0]["Overwrite"];
             if (!overwrite.empty()) {
                // If the overwrite is 'F' then copy will fail if the destination exists
-               len += StrFormat(cmd, sizeof(cmd), "Overwrite: %s%s", overwrite.c_str(), CRLF);
+               cmd << "Overwrite: " << overwrite << CRLF;
             }
          }
          else {
@@ -439,24 +445,24 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
          }
       }
       else if (Self->Method IS HTM_DELETE) {
-         len = set_http_method(Self, cmd, sizeof(cmd), "DELETE");
+         set_http_method(Self, "DELETE", cmd);
       }
       else if (Self->Method IS HTM_GET) {
-         len = set_http_method(Self, cmd, sizeof(cmd), "GET");
-         if (Self->Index) len += StrFormat(cmd+len, sizeof(cmd)-len, "Range: bytes=" PF64() "-%s", Self->Index, CRLF);
+         set_http_method(Self, "GET", cmd);
+         if (Self->Index) cmd << "Range: bytes=" << Self->Index << "-" << CRLF;
       }
       else if (Self->Method IS HTM_LOCK) {
-         len = 0;
+
       }
       else if (Self->Method IS HTM_MK_COL) {
-        len = set_http_method(Self, cmd, sizeof(cmd), "MKCOL");
+         set_http_method(Self, "MKCOL", cmd);
       }
       else if (Self->Method IS HTM_MOVE) {
          // Moves a source (indicated by Path) to a Destination.  The Destination is referenced as a variable field.
 
          if (Self->Args->contains("Destination")) {
-            len = set_http_method(Self, cmd, sizeof(cmd), "MOVE");
-            len += StrFormat(cmd+len, sizeof(cmd)-len, "Destination: http://%s/%s%s", Self->Host, Self->Args[0]["Destination"].c_str(), CRLF);
+            set_http_method(Self, "MOVE", cmd);
+            cmd << "Destination: http://" << Self->Host << "/" << Self->Args[0]["Destination"] << CRLF;
          }
          else {
             log.warning("HTTP MOVE request requires a destination path.");
@@ -466,9 +472,11 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
       }
       else if (Self->Method IS HTM_OPTIONS) {
          if ((!Self->Path) or ((Self->Path[0] IS '*') and (!Self->Path[1]))) {
-            len = StrFormat(cmd, sizeof(cmd), "OPTIONS * HTTP/1.1\r\nHost: %s\r\nUser-Agent: %s\r\n", Self->Host, Self->UserAgent);
+            cmd << "OPTIONS * HTTP/1.1" << CRLF;
+            cmd << "Host: " << Self->Host << CRLF;
+            cmd << "User-Agent: " << Self->UserAgent << CRLF;
          }
-         else len = set_http_method(Self, cmd, sizeof(cmd), "OPTIONS");
+         else set_http_method(Self, "OPTIONS", cmd);
       }
       else if ((Self->Method IS HTM_POST) or (Self->Method IS HTM_PUT)) {
          log.trace("POST/PUT request being processed.");
@@ -477,7 +485,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
 
          if ((!(Self->Flags & HTF_NO_HEAD)) and ((Self->SecurePath) or (Self->CurrentState IS HGS_AUTHENTICATING))) {
             log.trace("Executing HEAD statement for authentication.");
-            len = set_http_method(Self, cmd, sizeof(cmd), "HEAD");
+            set_http_method(Self, "HEAD", cmd);
             Self->set(FID_CurrentState, HGS_AUTHENTICATING);
          }
          else {
@@ -497,8 +505,8 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
                if (Self->MultipleInput) {
                   log.trace("Multiple input files detected.");
                   Self->InputPos = 0;
-                  parse_file(Self, cmd, sizeof(cmd));
-                  Self->flInput = objFile::create::integral(fl::Path(cmd), fl::Flags(FL_READ));
+                  parse_file(Self, cmd);
+                  Self->flInput = objFile::create::integral(fl::Path(cmd.str()), fl::Flags(FL_READ));
                }
                else Self->flInput = objFile::create::integral(fl::Path(Self->InputFile), fl::Flags(FL_READ));
 
@@ -533,10 +541,10 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
                return Self->Error;
             }
 
-            len = set_http_method(Self, cmd, sizeof(cmd), (Self->Method IS HTM_POST) ? "POST" : "PUT");
+            set_http_method(Self, (Self->Method IS HTM_POST) ? "POST" : "PUT", cmd);
 
             if (Self->ContentLength >= 0) {
-               len += StrFormat(cmd+len, sizeof(cmd)-len, "Content-length: " PF64() "\r\n", Self->ContentLength);
+               cmd << "Content-length: " << Self->ContentLength << CRLF;
             }
             else {
                log.msg("Content-length not defined for POST/PUT (transfer will be streamed).");
@@ -545,23 +553,22 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
                // uploads, and may even be of help when the content length is known.
 
                if (!(Self->Flags & HTF_RAW)) {
-                  len += StrCopy("Transfer-Encoding: chunked\r\n", cmd+len, sizeof(cmd)-len);
+                  cmd << "Transfer-Encoding: chunked" << CRLF;
                   Self->Chunked = TRUE;
                }
             }
 
             if (Self->ContentType) {
                log.trace("User content type: %s", Self->ContentType);
-               len += StrFormat(cmd+len, sizeof(cmd)-len, "Content-type: %s\r\n", Self->ContentType);
+               cmd << "Content-type: " << Self->ContentType << CRLF;
             }
             else if (Self->Method IS HTM_POST) {
-               len += StrCopy("Content-type: application/x-www-form-urlencoded\r\n", cmd+len, sizeof(cmd)-len);
+               cmd << "Content-type: application/x-www-form-urlencoded" << CRLF;
             }
-            else len += StrCopy("Content-type: application/binary\r\n", cmd+len, sizeof(cmd)-len);
+            else cmd << "Content-type: application/binary" << CRLF;
          }
       }
       else if (Self->Method IS HTM_UNLOCK) {
-         len = 0;
 
       }
       else {
@@ -576,30 +583,37 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
 
       if ((Self->AuthRetries > 0) and (Self->Username) and (Self->Password)) {
          if (Self->AuthDigest) {
-            UBYTE nonce_count[9] = "00000001";
+            char nonce_count[9] = "00000001";
             HASHHEX HA1, HA2 = "", response;
 
             for (i=0; i < 8; i++) Self->AuthCNonce[i] = '0' + (rand() % 10);
             Self->AuthCNonce[i] = 0;
 
             digest_calc_ha1(Self, HA1);
-            digest_calc_response(Self, cmd, (CSTRING)nonce_count, HA1, HA2, response);
+            digest_calc_response(Self, cmd.str(), nonce_count, HA1, HA2, response);
 
-            len += StrCopy("Authorization: Digest ", cmd+len, sizeof(cmd)-len);
-            len += StrFormat(cmd+len, sizeof(cmd)-len, "username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"/%s\", qop=%s, nc=%s, cnonce=\"%s\", response=\"%s\"",
-               Self->Username, Self->Realm, Self->AuthNonce, Self->Path, Self->AuthQOP, nonce_count, Self->AuthCNonce, response);
+            cmd << "Authorization: Digest ";
+            cmd << "username=\"" << Self->Username << "\", realm=\"" << Self->Realm << "\", ";
+            cmd << "nonce=\"" << Self->AuthNonce << "\", uri=\"/" << Self->Path << "\", ";
+            cmd << "qop=" << Self->AuthQOP << ", nc=" << nonce_count << ", ";
+            cmd << "cnonce=\"" << Self->AuthCNonce << "\", response=\"" << response << "\"";
 
-            if (Self->AuthOpaque) len += StrFormat(cmd+len, sizeof(cmd)-len, ", opaque=\"%s\"", Self->AuthOpaque);
+            if (Self->AuthOpaque) cmd << ", opaque=\"" << Self->AuthOpaque << "\"";
 
-            len += StrCopy("\r\n", cmd+len, sizeof(cmd)-len);
+            cmd << CRLF;
          }
          else {
-            char buffer[256];
+            std::string buffer(Self->Username);
+            buffer.append(":");
+            buffer.append(Self->Password);
+            char output[buffer.length() * 2];
 
-            len += StrCopy("Authorization: Basic ", cmd+len, sizeof(cmd)-len);
-            StrFormat(buffer, sizeof(buffer), "%s:%s", Self->Username, Self->Password);
-            len += Base64Encode(buffer, StrLength(buffer), cmd+len, sizeof(cmd)-len);
-            len += StrCopy("\r\n", cmd+len, sizeof(cmd)-len);
+            rkBase64Encode state;
+
+            cmd << "Authorization: Basic ";
+            auto len = Base64Encode(&state, buffer.c_str(), buffer.length(), output, buffer.length() * 2);
+            cmd.write(output, len);
+            cmd << CRLF;
          }
 
          // Clear the password.  This has the effect of resetting the authentication attempt in case the credentials are wrong.
@@ -616,16 +630,14 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
       if ((Self->CurrentState != HGS_AUTHENTICATING) and (Self->Headers)) {
          for (const auto& [k, v] : Self->Headers[0]) {
             log.trace("Custom header: %s: %s", k.c_str(), v.c_str());
-            len += StrFormat(cmd+len, sizeof(cmd)-len, "%s: %s\r\n", k.c_str(), v.c_str());
+            cmd << k << ": " << v << CRLF;
          }
       }
 
-      if (Self->Flags & HTF_DEBUG) log.msg("HTTP REQUEST HEADER\n%s", cmd);
+      if (Self->Flags & HTF_DEBUG) log.msg("HTTP REQUEST HEADER\n%s", cmd.str().c_str());
    }
 
-   // Terminating line feed
-
-   len += StrCopy(CRLF, cmd+len, sizeof(cmd)-len);
+   cmd << CRLF; // Terminating line feed
 
    if (!Self->Socket) {
       // If we're using straight SSL without tunnelling, set the SSL flag now so that SSL is automatically engaged on connection.
@@ -660,8 +672,10 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
 
    // Buffer the HTTP command string to the socket (will write on connect if we're not connected already).
 
-   if (!write_socket(Self, cmd, len, NULL)) {
+   auto cstr = cmd.str();
+   if (!write_socket(Self, cstr.c_str(), cstr.length(), NULL)) {
       if (Self->Socket->State IS NTC_DISCONNECTED) {
+         ERROR result;
          if ((result = nsConnect(Self->Socket, Self->ProxyServer ? Self->ProxyServer : Self->Host, Self->ProxyServer ? Self->ProxyPort : Self->Port)) IS ERR_Okay) {
             Self->Connecting = true;
 
@@ -1151,13 +1165,13 @@ static ERROR GET_Location(extHTTP *Self, STRING *Value)
    }
 
    if (!error) {
-      if (Self->Port IS 80) StrFormat(Self->URI, len, "http://%s/%s", Self->Host, Self->Path); // http
+      if (Self->Port IS 80) snprintf(Self->URI, len, "http://%s/%s", Self->Host, Self->Path); // http
       else if (Self->Port IS 443) {
-         StrFormat(Self->URI, len, "https://%s/%s", Self->Host, Self->Path); // https
+         snprintf(Self->URI, len, "https://%s/%s", Self->Host, Self->Path); // https
          Self->Flags |= HTF_SSL;
       }
-      else if (Self->Port IS 21) StrFormat(Self->URI, len, "ftp://%s/%s", Self->Host, Self->Path); // ftp
-      else StrFormat(Self->URI, len, "http://%s:%d/%s", Self->Host, Self->Port, Self->Path);
+      else if (Self->Port IS 21) snprintf(Self->URI, len, "ftp://%s/%s", Self->Host, Self->Path); // ftp
+      else snprintf(Self->URI, len, "http://%s:%d/%s", Self->Host, Self->Port, Self->Path);
       *Value = Self->URI;
       return ERR_Okay;
    }

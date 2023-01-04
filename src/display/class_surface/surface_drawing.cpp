@@ -436,8 +436,8 @@ static ERROR SURFACE_Expose(extSurface *Self, struct drwExpose *Args)
 
                   // Ignore region if it doesn't intersect
 
-                  if ((Args->X+Args->Width < msgexpose->X) OR
-                      (Args->Y+Args->Height < msgexpose->Y) OR
+                  if ((Args->X+Args->Width < msgexpose->X) or
+                      (Args->Y+Args->Height < msgexpose->Y) or
                       (Args->X > right) or (Args->Y > bottom)) continue;
 
                   if (Args->X < msgexpose->X) msgexpose->X = Args->X;

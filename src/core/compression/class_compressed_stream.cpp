@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -304,7 +303,7 @@ static ERROR CSTREAM_Write(extCompressedStream *Self, struct acWrite *Args)
 
       if (len > 0) {
          Self->TotalOutput += len;
-         log.trace("%d bytes (total " PF64() ") were compressed.", len, Self->TotalOutput);
+         log.trace("%d bytes (total %" PF64 ") were compressed.", len, Self->TotalOutput);
          acWrite(Self->Output, Self->OutputBuffer, len, NULL);
       }
       else {

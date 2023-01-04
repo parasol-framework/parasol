@@ -780,7 +780,7 @@ ERROR FreeResourceID(MEMORYID MemoryID)
                   if (!winCloseHandle(glSharedBlocks[entry].Handle)) {
                      char buffer[80];
                      winFormatMessage(0, buffer, sizeof(buffer));
-                     log.warning("winCloseHandle(" PF64() ") failed: %s", (MAXINT)glSharedBlocks[entry].Handle, buffer);
+                     log.warning("winCloseHandle(%" PF64 ") failed: %s", (MAXINT)glSharedBlocks[entry].Handle, buffer);
                   }
                }
 

@@ -27,7 +27,7 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
    Socket->InUse++;
    ClientSocket->ReadCalled = FALSE;
 
-   log.traceBranch("Handle: " PF64() ", Socket: %d, Client: %d", (LARGE)(MAXINT)SocketHandle, Socket->UID, ClientSocket->UID);
+   log.traceBranch("Handle: %" PF64 ", Socket: %d, Client: %d", (LARGE)(MAXINT)SocketHandle, Socket->UID, ClientSocket->UID);
 
    ERROR error = ERR_Okay;
    if (Socket->Incoming.Type) {
@@ -89,7 +89,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
    if (Socket->Terminating) return;
 
 #ifdef ENABLE_SSL
-   if ((Socket->SSL) AND (Socket->State IS NTC_CONNECTING_SSL)) {
+   if ((Socket->SSL) and (Socket->State IS NTC_CONNECTING_SSL)) {
       log.trace("Still connecting via SSL...");
       return;
    }
@@ -117,7 +117,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
       while (ClientSocket->WriteQueue.Buffer) {
          LONG len = ClientSocket->WriteQueue.Length - ClientSocket->WriteQueue.Index;
          #ifdef ENABLE_SSL
-         if ((!Socket->SSL) AND (len > glMaxWriteLen)) len = glMaxWriteLen;
+         if ((!Socket->SSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
          #else
          if (len > glMaxWriteLen) len = glMaxWriteLen;
          #endif
@@ -168,7 +168,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
       // If the write queue is empty and all data has been retrieved, we can remove the FD-Write registration so that
       // we don't tax the system resources.
 
-      if ((ClientSocket->Outgoing.Type IS CALL_NONE) AND (!ClientSocket->WriteQueue.Buffer)) {
+      if ((ClientSocket->Outgoing.Type IS CALL_NONE) and (!ClientSocket->WriteQueue.Buffer)) {
          log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Socket->UID, ClientSocket->SocketHandle);
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)ClientSocket->SocketHandle, RFD_REMOVE|RFD_WRITE|RFD_SOCKET, NULL, NULL);
