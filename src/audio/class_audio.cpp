@@ -1250,20 +1250,14 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 
    objConfig::create config = { };
    if (config.ok()) {
-      char buffer[128];
-
       cfgWrite(*config, "AUDIO", "OutputRate", Self->OutputRate);
       cfgWrite(*config, "AUDIO", "InputRate", Self->InputRate);
       cfgWrite(*config, "AUDIO", "Quality", Self->Quality);
       cfgWrite(*config, "AUDIO", "BitDepth", Self->BitDepth);
       cfgWrite(*config, "AUDIO", "Periods", Self->Periods);
       cfgWrite(*config, "AUDIO", "PeriodSize", Self->PeriodSize);
-
-      snprintf(buffer, sizeof(buffer), "%.4f", Self->Bass);
-      cfgWriteValue(*config, "AUDIO", "Bass", buffer);
-
-      snprintf(buffer, sizeof(buffer), "%.4f", Self->Treble);
-      cfgWriteValue(*config, "AUDIO", "Treble", buffer);
+      cfgWriteValue(*config, "AUDIO", "Bass", std::to_string(Self->Bass).c_str());
+      cfgWriteValue(*config, "AUDIO", "Treble", std::to_string(Self->Treble).c_str());
 
       if (Self->Flags & ADF_STEREO) cfgWriteValue(*config, "AUDIO", "Stereo", "TRUE");
       else cfgWriteValue(*config, "AUDIO", "Stereo", "FALSE");
@@ -1274,23 +1268,20 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 
       if ((Self->VolumeCtl) and (Self->Flags & ADF_SYSTEM_WIDE)) {
          for (LONG i=0; Self->VolumeCtl[i].Name[0]; i++) {
-            if (Self->VolumeCtl[i].Flags & VCF_MUTE) buffer[0] = '1';
-            else buffer[0] = '0';
-            buffer[1] = ',';
+            std::ostringstream out;
+            if (Self->VolumeCtl[i].Flags & VCF_MUTE) out << "1,[";
+            else out << "0,[";
 
-            buffer[2] = '[';
-            LONG pos = 3;
             if (Self->VolumeCtl[i].Flags & VCF_MONO) {
-               pos += snprintf(buffer+pos, sizeof(buffer)-pos, "%.2f", Self->VolumeCtl[i].Channels[0]);
+               out << Self->VolumeCtl[i].Channels[0];
             }
-            else for (LONG channel=0; channel < ARRAYSIZE(Self->VolumeCtl[i].Channels); channel++) {
-               if (channel > 0) buffer[pos++] = ',';
-               pos += snprintf(buffer+pos, sizeof(buffer)-pos, "%.2f", Self->VolumeCtl[i].Channels[channel]);
+            else for (LONG c=0; c < ARRAYSIZE(Self->VolumeCtl[i].Channels); c++) {
+               if (c > 0) out << ',';
+               out << Self->VolumeCtl[i].Channels[c]);
             }
-            buffer[pos++] = ']';
-            buffer[pos] = 0;
+            out << ']';
 
-            cfgWriteValue(*config, "MIXER", Self->VolumeCtl[i].Name, buffer);
+            cfgWriteValue(*config, "MIXER", Self->VolumeCtl[i].Name, out.str().c_str());
          }
       }
 #if 0
@@ -1301,7 +1292,6 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
    long left, right;
    long pmin, pmax;
    int mute;
-   DOUBLE fleft, fright;
    LONG i;
 
    snd_mixer_selem_id_alloca(&sid);
@@ -1327,8 +1317,8 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 
       if (pmin >= pmax) continue;
 
-      fleft = (DOUBLE)left * 100.0 / (DOUBLE)(pmax - pmin);
-      fright = (DOUBLE)right * 100.0 / (DOUBLE)(pmax - pmin);
+      DOUBLE fleft = (DOUBLE)left * 100.0 / (DOUBLE)(pmax - pmin);
+      DOUBLE fright = (DOUBLE)right * 100.0 / (DOUBLE)(pmax - pmin);
       snprintf(buffer, sizeof(buffer), "%.2f,%.2f,%d", fleft, fright, (mute) ? 0 : 1);
 
       cfgWriteValue(*config, "MIXER", Self->VolumeCtl[i].Name, buffer);
@@ -1337,8 +1327,10 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 
 #else
       if (Self->VolumeCtl) {
-         snprintf(buffer, sizeof(buffer), "%d,[%.2f]", (Self->VolumeCtl[0].Flags & VCF_MUTE) ? 1 : 0, Self->VolumeCtl[0].Channels[0]);
-         cfgWriteValue(*config, "MIXER", Self->VolumeCtl[0].Name, buffer);
+         std::string out((Self->VolumeCtl[0].Flags & VCF_MUTE) ? "1,[" : "0,[");
+         out.append(std::to_string(Self->VolumeCtl[0].Channels[0]));
+         out.append("]");
+         cfgWriteValue(*config, "MIXER", Self->VolumeCtl[0].Name, out.c_str());
       }
 #endif
 

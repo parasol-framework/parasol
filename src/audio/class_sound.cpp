@@ -501,8 +501,8 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    // Read the RIFF header
 
    Self->File->seek(12.0, SEEK_START);
-   flReadLE(Self->File, &id); // Contains the characters "fmt "
-   flReadLE(Self->File, &len); // Length of data in this chunk
+   if (flReadLE(Self->File, &id)) return ERR_Read; // Contains the characters "fmt "
+   if (flReadLE(Self->File, &len)) return ERR_Read; // Length of data in this chunk
 
    if (!AllocMemory(len, MEM_DATA, &Self->prvWAVE, NULL)) {
       LONG result;
@@ -531,7 +531,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
       return log.warning(ERR_Read);
    }
 
-   flReadLE(Self->File, &Self->Length); // Length of audio data in this chunk
+   if (flReadLE(Self->File, &Self->Length)) return ERR_Read; // Length of audio data in this chunk
 
    if (Self->Length & 1) Self->Length++;
 

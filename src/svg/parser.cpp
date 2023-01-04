@@ -1799,23 +1799,22 @@ static ERROR xtag_image(extSVG *Self, objXML *XML, svgState *State, const XMLTag
    // treat them as such would be out of step with all other scene graph members being true path-based objects.
 
    if (pic) {
-      objVectorImage *image;
-      if (!CreateObject(ID_VECTORIMAGE, NF::NIL, &image,
-            FID_Owner|TLONG,        Self->Scene->UID,
-            FID_Picture|TPTR,       pic,
-            FID_SpreadMethod|TLONG, VSPREAD_PAD,
-            FID_Units|TLONG,        VUNIT_BOUNDING_BOX,
-            FID_AspectRatio|TLONG,  ratio,
-            TAGEND)) {
+      if (auto image = objVectorImage::create::global(
+            fl::Owner(Self->Scene->UID),
+            fl::Picture(pic),
+            fl::SpreadMethod(VSPREAD_PAD),
+            fl::Units(VUNIT_BOUNDING_BOX),
+            fl::AspectRatio(ratio))) {
 
          SetOwner(pic, image); // It's best if the pic belongs to the image.
 
-         char id[32] = "img";
-         IntToStr(image->UID, id+3, sizeof(id)-3);
-         scAddDef(Self->Scene, id, image);
+         auto id = std::to_string(image->UID);
+         id.insert(0, "img");
+         scAddDef(Self->Scene, id.c_str(), image);
 
-         char fillname[256];
-         snprintf(fillname, sizeof(fillname), "url(#%s)", id);
+         std::string fillname("url(#");
+         fillname.append(id);
+         fillname.append(")");
 
          // Use a rectangle shape to represent the image
 

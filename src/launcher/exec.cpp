@@ -13,8 +13,8 @@ static ERROR exec_data_file(CSTRING TargetFile)
    ERROR error;
 
    if (!(error = IdentifyFile(TargetFile, "Open", 0, &class_id, NULL, &command))) {
-      OBJECTPTR run;
-      if (!CreateObject(ID_TASK, NF::NIL, &run, FID_Location|TSTR, command, TAGEND)) {
+      objTask::create run = { fl::Location(command) };
+      if (run.ok()) {
          if (glArgs) {
             char argbuffer[100];
             STRING argname = argbuffer;
@@ -34,25 +34,24 @@ static ERROR exec_data_file(CSTRING TargetFile)
                      // Check in case of no gap, e.g. files={arg1 ... }
 
                      j++;
-                     if (arg[j] > 0x20) SetVar(run, argbuffer, arg + j);
+                     if (arg[j] > 0x20) SetVar(*run, argbuffer, arg + j);
 
                      i++;
                      LONG arg_index = 0;
                      while ((arg) and (arg[0] != '}')) {
                         snprintf(argbuffer+al, sizeof(argbuffer)-al, "(%d)", arg_index);
-                        SetVar(run, argbuffer, arg);
+                        SetVar(*run, argbuffer, arg);
                         arg_index++;
                         i++;
                      }
                   }
-                  else SetVar(run, argname, arg+j);
+                  else SetVar(*run, argname, arg+j);
                }
-               else SetVar(run, argname, "1");
+               else SetVar(*run, argname, "1");
             }
          }
 
-         acActivate(run);
-         acFree(run);
+         run->activate();
       }
    }
 
@@ -147,17 +146,13 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
    }
 
    if (class_id IS ID_PARC) {
-      OBJECTPTR parc;
+      objParc::create parc = { fl::Path(TargetFile), fl::Allow(glAllow) };
 
-      if (!(error = CreateObject(ID_PARC, NF::NIL, &parc,
-            FID_Path|TSTR,  TargetFile,
-            FID_Allow|TSTR, glAllow,
-            TAGEND))) {
-
+      if (parc.ok()) {
          // The user can use the --allow parameter to automatically give the PARC program additional access
          // rights as required.  E.g. "--allow storage,maxSize:1M,maxFiles:20,memory:100M"
 
-         if ((error = acActivate(parc))) {
+         if ((error = parc->activate())) {
             STRING msg;
             if (!parc->get(FID_Message, &msg)) {
                print("Failed to execute the archive, error: %s", GetErrorMsg(error));

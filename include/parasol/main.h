@@ -158,17 +158,26 @@ namespace fl {
 constexpr FieldValue Path(CSTRING Value) { return FieldValue(FID_Path, Value); }
 inline FieldValue Path(std::string Value) { return FieldValue(FID_Path, Value.c_str()); }
 
+constexpr FieldValue Location(CSTRING Value) { return FieldValue(FID_Location, Value); }
+inline FieldValue Location(std::string Value) { return FieldValue(FID_Location, Value.c_str()); }
+
 constexpr FieldValue Args(CSTRING Value) { return FieldValue(FID_Args, Value); }
 inline FieldValue Args(std::string Value) { return FieldValue(FID_Args, Value.c_str()); }
 
 constexpr FieldValue Statement(CSTRING Value) { return FieldValue(FID_Statement, Value); }
 inline FieldValue Statement(std::string Value) { return FieldValue(FID_Statement, Value.c_str()); }
 
+constexpr FieldValue Stroke(CSTRING Value) { return FieldValue(FID_Stroke, Value); }
+inline FieldValue Stroke(std::string Value) { return FieldValue(FID_Stroke, Value.c_str()); }
+
 constexpr FieldValue String(CSTRING Value) { return FieldValue(FID_String, Value); }
 inline FieldValue String(std::string Value) { return FieldValue(FID_String, Value.c_str()); }
 
 constexpr FieldValue Name(CSTRING Value) { return FieldValue(FID_Name, Value); }
 inline FieldValue Name(std::string Value) { return FieldValue(FID_Name, Value.c_str()); }
+
+constexpr FieldValue Allow(CSTRING Value) { return FieldValue(FID_Allow, Value); }
+inline FieldValue Allow(std::string Value) { return FieldValue(FID_Allow, Value.c_str()); }
 
 constexpr FieldValue Style(CSTRING Value) { return FieldValue(FID_Style, Value); }
 inline FieldValue Style(std::string Value) { return FieldValue(FID_Style, Value.c_str()); }
@@ -223,6 +232,11 @@ constexpr FieldValue SpreadMethod(LONG Value) { return FieldValue(FID_SpreadMeth
 constexpr FieldValue Units(LONG Value) { return FieldValue(FID_Units, Value); }
 constexpr FieldValue AspectRatio(LONG Value) { return FieldValue(FID_AspectRatio, Value); }
 constexpr FieldValue ColourSpace(LONG Value) { return FieldValue(FID_ColourSpace, Value); }
+constexpr FieldValue StrokeWidth(DOUBLE Value) { return FieldValue(FID_StrokeWidth, Value); }
+constexpr FieldValue Closed(bool Value) { return FieldValue(FID_Closed, (Value ? 1 : 0)); }
+constexpr FieldValue Visibility(LONG Value) { return FieldValue(FID_Visibility, Value); }
+constexpr FieldValue Input(CPTR Value) { return FieldValue(FID_Input, Value); }
+constexpr FieldValue Picture(OBJECTPTR Value) { return FieldValue(FID_Picture, Value); }
 
 template <class T> FieldValue PageWidth(T Value) {
    static_assert(std::is_arithmetic<T>::value, "PageWidth value must be numeric");
@@ -252,6 +266,26 @@ template <class T> FieldValue X(T Value) {
 template <class T> FieldValue Y(T Value) {
    static_assert(std::is_arithmetic<T>::value, "Y value must be numeric");
    return FieldValue(FID_Y, Value);
+}
+
+template <class T> FieldValue X1(T Value) {
+   static_assert(std::is_arithmetic<T>::value, "X1 value must be numeric");
+   return FieldValue(FID_X1, Value);
+}
+
+template <class T> FieldValue Y1(T Value) {
+   static_assert(std::is_arithmetic<T>::value, "Y1 value must be numeric");
+   return FieldValue(FID_Y1, Value);
+}
+
+template <class T> FieldValue X2(T Value) {
+   static_assert(std::is_arithmetic<T>::value, "X2 value must be numeric");
+   return FieldValue(FID_X2, Value);
+}
+
+template <class T> FieldValue Y2(T Value) {
+   static_assert(std::is_arithmetic<T>::value, "Y2 value must be numeric");
+   return FieldValue(FID_Y2, Value);
 }
 
 constexpr FieldValue BitsPerPixel(LONG Value) { return FieldValue(FID_BitsPerPixel, Value); }

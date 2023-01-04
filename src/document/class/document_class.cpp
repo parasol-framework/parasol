@@ -389,7 +389,7 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
                         acDataText(Self, buffer);
                      }
                      else error_dialog("Clipboard Paste Error", NULL, ERR_Read);
-                     delete buffer;
+                     delete[] buffer;
                   }
                   else error_dialog("Clipboard Paste Error", NULL, ERR_AllocMemory);
                }
