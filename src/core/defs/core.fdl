@@ -1519,7 +1519,10 @@ inline DOUBLE StrToFloat(CSTRING String) {
 // NB: Prefer std::to_string(value) where viable to get the std::string of a number.
 
 inline LONG IntToStr(LARGE Integer, STRING String, LONG StringSize) {
-   return snprintf(String, StringSize, "%lld", Integer);
+   auto str = std::to_string(Integer);
+   auto len = str.copy(String, StringSize-1);
+   String[len] = 0;
+   return len;
 }
 
 inline ERROR ClearMemory(APTR Memory, LONG Length) {
