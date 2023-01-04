@@ -20,10 +20,6 @@
 
 #cmakedefine REVERSE_BYTEORDER
 
-#ifndef LITTLE_ENDIAN // Might be defined by endian.h
-#cmakedefine LITTLE_ENDIAN
-#endif
-
 /*****************************************************************************
 ** Standard data types.
 */
@@ -142,8 +138,6 @@ typedef struct BaseClass * OBJECTPTR64 __attribute__ ((aligned (8))); // 64-bit 
 #define __x86__         // Does the CPU support the x86 instruction set? (i486 minimum)
 #endif
 
-#define __corebase__  // Use CoreBase to make function calls
-
 #ifdef __arm__
 #define CPU_PC CPU_ARMEABI
 #elif __pentium__
@@ -151,13 +145,6 @@ typedef struct BaseClass * OBJECTPTR64 __attribute__ ((aligned (8))); // 64-bit 
 #else
 #define CPU_PC CPU_I686
 #endif
-
-/*****************************************************************************
-** Special keyword definitions.
-*/
-
-#undef NULL
-#define NULL 0
 
 #ifndef TRUE
 #define TRUE 1

@@ -295,11 +295,10 @@ static ERROR VECTORTEXT_Free(extVectorText *Self, APTR Void)
    if (Self->txKeyEvent)    { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = NULL; }
 
    if (Self->txFocusID) {
-      OBJECTPTR focus;
-      if (!AccessObject(Self->txFocusID, 5000, &focus)) {
+      parasol::ScopedObjectLock<> focus(Self->txFocusID, 5000);
+      if (focus.granted()) {
          auto callback = make_function_stdc(text_focus_event);
-         vecSubscribeFeedback(focus, 0, &callback);
-         ReleaseObject(focus);
+         vecSubscribeFeedback(*focus, 0, &callback);
       }
    }
 
@@ -315,27 +314,23 @@ static ERROR VECTORTEXT_Init(extVectorText *Self, APTR Void)
          if (Self->ParentView) Self->txFocusID = Self->ParentView->UID;
       }
 
-      OBJECTPTR focus;
-      if (!AccessObject(Self->txFocusID, 5000, &focus)) {
-         auto callback = make_function_stdc(text_focus_event);
-         vecSubscribeFeedback(focus, FM_HAS_FOCUS|FM_CHILD_HAS_FOCUS|FM_LOST_FOCUS, &callback);
-         ReleaseObject(focus);
+      {
+         parasol::ScopedObjectLock<> focus(Self->txFocusID, 5000);
+         if (focus.granted()) {
+            auto callback = make_function_stdc(text_focus_event);
+            vecSubscribeFeedback(*focus, FM_HAS_FOCUS|FM_CHILD_HAS_FOCUS|FM_LOST_FOCUS, &callback);
+         }
       }
 
       // The editing cursor will inherit transforms from the VectorText as long as it is a direct child.
 
-      if (!CreateObject(ID_VECTORPOLYGON, NF::NIL, &Self->txCursor.vector,
-            FID_Name|TSTR,    "VTCursor",
-            FID_X1|TLONG,     0,
-            FID_Y1|TLONG,     0,
-            FID_X2|TLONG,     1,
-            FID_Y2|TLONG,     1,
-            FID_Closed|TLONG, FALSE,
-            FID_Stroke|TSTR,  "rgb(255,0,0,255)",
-            FID_StrokeWidth|TDOUBLE, 1.25,
-            FID_Visibility|TLONG,    VIS_HIDDEN,
-            TAGEND)) {
-
+      if ((Self->txCursor.vector = extVectorPoly::create::global(
+            fl::Name("VTCursor"),
+            fl::X1(0), fl::Y1(0), fl::X2(1), fl::Y2(1),
+            fl::Closed(false),
+            fl::Stroke("rgb(255,0,0,255)"),
+            fl::StrokeWidth(1.25),
+            fl::Visibility(VIS_HIDDEN)))) {
       }
       else return ERR_CreateObject;
 

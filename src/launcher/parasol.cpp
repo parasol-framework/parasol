@@ -12,6 +12,7 @@ only.
 *****************************************************************************/
 
 #include <parasol/main.h>
+#include <parasol/modules/parc.h>
 #include <startup.h>
 #include <parasol/modules/core.h>
 #include <string.h>

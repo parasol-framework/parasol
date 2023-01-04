@@ -158,7 +158,7 @@ with normally.
 
 static ERROR SET_Modal(extSurface *Self, LONG Modal)
 {
-   if ((!Modal) and (Self-Modal)) {
+   if ((!Modal) and (Self->Modal)) {
       TaskList *task;
       if (Self->PrevModalID) {
          gfxSetModalSurface(Self->PrevModalID);

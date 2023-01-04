@@ -1603,12 +1603,12 @@ static ERROR TASK_GetEnv(extTask *Self, struct taskGetEnv *Args)
                            snprintf(Self->Env, ENV_SIZE, "%d", ((LONG *)Self->Env)[0]);
                            break;
                         case REG_DWORD_BIG_ENDIAN: {
-                           #ifdef LITTLE_ENDIAN // Intel
-                           LONG value = reverse_long(((LONG *)Self->Env)[0]);
-                           #else
-                           LONG value = ((LONG *)Self->Env)[0];
-                           #endif
-                           snprintf(Self->Env, ENV_SIZE, "%d", value);
+                           if constexpr (std::endian::native == std::endian::little) {
+                              StrCopy(std::to_string(reverse_long(((LONG *)Self->Env)[0])).c_str(), Self->Env, ENV_SIZE);
+                           }
+                           else {
+                              StrCopy(std::to_string(((LONG *)Self->Env)[0]).c_str(), Self->Env, ENV_SIZE);
+                           }
                            break;
                         }
                         case REG_QWORD:
