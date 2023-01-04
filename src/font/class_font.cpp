@@ -226,8 +226,11 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
                winFont fonts[font_count];
 
                for (LONG i=0; i < font_count; i++) {
-                  fonts[i].Offset = ReadWordLE(*file)<<size_shift;
-                  fonts[i].Size   = ReadWordLE(*file)<<size_shift;
+                  UWORD offset, size;
+                  flReadLE(*file, &offset);
+                  flReadLE(*file, &size);
+                  fonts[i].Offset = offset<<size_shift;
+                  fonts[i].Size   = size<<size_shift;
                   file->seek(8, SEEK_CURRENT);
                }
 

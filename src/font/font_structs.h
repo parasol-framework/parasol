@@ -22,20 +22,6 @@ INLINE FT_F26Dot6 DBL_TO_FT(DOUBLE Value)
   return F2T(Value * 64.0);
 }
 
-template <typename T> LONG ReadWordLE(T File)
-{
-   WORD result = 0;
-   flReadLE(File, &result);
-   return result;
-}
-
-template <typename T> LONG ReadLongLE(T File)
-{
-   LONG result = 0;
-   flReadLE(File, &result);
-   return result;
-}
-
 struct FontCharacter {
    WORD Width;
    WORD Advance;
