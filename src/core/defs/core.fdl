@@ -1834,7 +1834,7 @@ class Create {
 
       // Create a scoped object that is not initialised.
 
-      New(NF Flags = NF::NIL) : obj(NULL), error(ERR_NewObject) {
+      Create(NF Flags = NF::NIL) : obj(NULL), error(ERR_NewObject) {
          if (!NewObject(T::CLASS_ID, Flags, (BaseClass **)&obj)) {
             error = ERR_Okay;
          }
@@ -2190,18 +2190,29 @@ inline ERROR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
     str KeyFilter     # Enables key filtering, removing any unwanted keys on load.
     str GroupFilter   # Enables group filtering, removing any unwanted groups on load.
     int(CNF) Flags    # Not currently in use
+  ]],
+  nil,
+  [[
+   inline ERROR write(CSTRING Group, CSTRING Key, CSTRING Value) {
+      struct cfgWriteValue write = { Group, Key, Value };
+      return Action(MT_CfgWriteValue, this, &write);
+   }
+   inline ERROR write(CSTRING Group, CSTRING Key, STRING Value) {
+      struct cfgWriteValue write = { Group, Key, Value };
+      return Action(MT_CfgWriteValue, this, &write);
+   }
+   inline ERROR write(CSTRING Group, CSTRING Key, std::string Value) {
+      struct cfgWriteValue write = { Group, Key, Value.c_str() };
+      return Action(MT_CfgWriteValue, this, &write);
+   }
+   template <class T> inline ERROR write(CSTRING Group, CSTRING Key, T Value) {
+      auto str = std::to_string(Value);
+      struct cfgWriteValue write = { Group, Key, str.c_str() };
+      return Action(MT_CfgWriteValue, this, &write);
+   }
   ]])
 
   c_insert([[
-inline ERROR cfgWrite(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG Integer)
-{
-   if (!Self) return ERR_NullArgs;
-   char buffer[32];
-   snprintf(buffer, sizeof(buffer), "%d", Integer);
-   struct cfgWriteValue write = { Group, Key, buffer };
-   return Action(MT_CfgWriteValue, Self, &write);
-}
-
 inline ERROR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, DOUBLE *Value)
 {
    ERROR error;

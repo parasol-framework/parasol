@@ -261,7 +261,7 @@ static ERROR PROXY_Find(extProxy *Self, struct prxFind *Args)
                      id = 0;
                      cfgRead(glConfig, "ID", "Value", &id);
                      id = id + 1;
-                     cfgWrite(glConfig, "ID", "Value", id);
+                     glConfig->write("ID", "Value", id);
 
                      IntToStr(id, group, sizeof(group));
 
@@ -274,15 +274,15 @@ static ERROR PROXY_Find(extProxy *Self, struct prxFind *Args)
 
                         log.trace("Discovered proxy server %s, port %d", server, serverport);
 
-                        cfgWriteValue(glConfig, group, "Name", name);
-                        cfgWriteValue(glConfig, group, "Server", server);
+                        glConfig->write(group, "Name", name);
+                        glConfig->write(group, "Server", server);
 
-                        if (enabled > 0) cfgWrite(glConfig, group, "Enabled", enabled);
-                        else cfgWrite(glConfig, group, "Enabled", enabled);
+                        if (enabled > 0) glConfig->write(group, "Enabled", enabled);
+                        else glConfig->write(group, "Enabled", enabled);
 
-                        cfgWrite(glConfig, group, "Port", port);
-                        cfgWrite(glConfig, group, "ServerPort", serverport);
-                        cfgWrite(glConfig, group, "Host", 1); // Indicate that this proxy originates from host OS settings
+                        glConfig->write(group, "Port", port);
+                        glConfig->write(group, "ServerPort", serverport);
+                        glConfig->write(group, "Host", 1); // Indicate that this proxy originates from host OS settings
 
                         i = index + s;
                      }
@@ -469,9 +469,6 @@ administrator to define proxy settings as the default for all users by copying t
 static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
 {
    parasol::Log log;
-   objConfig *config;
-   objFile *file;
-   ERROR error;
 
    if ((!Self->Server) or (!Self->ServerPort)) return log.error(ERR_FieldNotSet);
 
@@ -555,44 +552,40 @@ static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
       return ERR_Okay;
    }
 
-   if (!CreateObject(ID_CONFIG, NF::NIL, &config, FID_Path|TSTR,  "user:config/network/proxies.cfg", TAGEND)) {
-      if (Self->GroupName[0]) cfgDeleteGroup(config, Self->GroupName);
+   objConfig::create config = { fl::Path("user:config/network/proxies.cfg") };
+
+   if (config.ok()) {
+      if (Self->GroupName[0]) cfgDeleteGroup(*config, Self->GroupName);
       else { // This is a new proxy
          LONG id = 0;
-         cfgRead(config, "ID", "Value", &id);
+         cfgRead(*config, "ID", "Value", &id);
          id = id + 1;
-         cfgWrite(config, "ID", "Value", id);
+         config->write("ID", "Value", id);
 
          IntToStr(id, Self->GroupName, sizeof(Self->GroupName));
          Self->Record = id;
       }
 
-      cfgWrite(config, Self->GroupName,   "Port",          Self->Port);
-      cfgWriteValue(config, Self->GroupName, "NetworkFilter", Self->NetworkFilter);
-      cfgWriteValue(config, Self->GroupName, "GatewayFilter", Self->GatewayFilter);
-      cfgWriteValue(config, Self->GroupName, "Username",      Self->Username);
-      cfgWriteValue(config, Self->GroupName, "Password",      Self->Password);
-      cfgWriteValue(config, Self->GroupName, "Name",          Self->ProxyName);
-      cfgWriteValue(config, Self->GroupName, "Server",        Self->Server);
-      cfgWrite(config, Self->GroupName,   "ServerPort",    Self->ServerPort);
-      cfgWrite(config, Self->GroupName,   "Enabled",       Self->Enabled);
+      config->write(Self->GroupName, "Port",          Self->Port);
+      config->write(Self->GroupName, "NetworkFilter", Self->NetworkFilter);
+      config->write(Self->GroupName, "GatewayFilter", Self->GatewayFilter);
+      config->write(Self->GroupName, "Username",      Self->Username);
+      config->write(Self->GroupName, "Password",      Self->Password);
+      config->write(Self->GroupName, "Name",          Self->ProxyName);
+      config->write(Self->GroupName, "Server",        Self->Server);
+      config->write(Self->GroupName, "ServerPort",    Self->ServerPort);
+      config->write(Self->GroupName, "Enabled",       Self->Enabled);
 
-      if (!CreateObject(ID_FILE, NF::NIL, &file,
-            FID_Path|TSTR,         "user:config/network/proxies.cfg",
-            FID_Permissions|TLONG, PERMIT_USER_READ|PERMIT_USER_WRITE,
-            FID_Flags|TLONG,       FL_NEW|FL_WRITE,
-            TAGEND)) {
+      objFile::create file = {
+         fl::Path("user:config/network/proxies.cfg"),
+         fl::Permissions(PERMIT_USER_READ|PERMIT_USER_WRITE),
+         fl::Flags(FL_NEW|FL_WRITE)
+      };
 
-         error = acSaveToObject(config, file->UID, 0);
-         acFree(file);
-      }
-      else error = ERR_CreateObject;
-
-      acFree(config);
+      if (file.ok()) return config->saveToObject(file->UID, 0);
+      else return ERR_CreateObject;
    }
-   else error = ERR_CreateObject;
-
-   return error;
+   else return ERR_CreateObject;
 }
 
 /****************************************************************************

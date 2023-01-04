@@ -105,7 +105,7 @@ static font_glyph * get_glyph(extFont *, ULONG, bool);
 static void unload_glyph_cache(extFont *);
 static void scan_truetype_folder(objConfig *);
 static void scan_fixed_folder(objConfig *);
-static ERROR analyse_bmp_font(STRING, winfnt_header_fields *, STRING *, UBYTE *, UBYTE);
+static ERROR analyse_bmp_font(CSTRING, winfnt_header_fields *, STRING *, UBYTE *, UBYTE);
 static ERROR  fntRefreshFonts(void);
 
 //****************************************************************************
@@ -1326,7 +1326,7 @@ static void scan_truetype_folder(objConfig *Config)
          while ((j > 0) and (location[j-1] != '.') and (location[j-1] != ':') and (location[j-1] != '/') and (location[j-1] != '\\')) j--;
 
          ResolvePath(location, 0, (STRING *)&open.pathname);
-         open.flags    = FT_OPEN_PATHNAME;
+         open.flags = FT_OPEN_PATHNAME;
          if (!FT_Open_Face(glFTLibrary, &open, 0, &ftface)) {
             FreeResource(open.pathname);
 
@@ -1360,9 +1360,9 @@ static void scan_truetype_folder(objConfig *Config)
             while ((n > 0) and (group[n-1] <= 0x20)) n--;
             group[n] = 0;
 
-            cfgWriteValue(Config, group, "Name", group);
+            Config->write(group, "Name", group);
 
-            if (FT_IS_SCALABLE(ftface)) cfgWriteValue(Config, group, "Scalable", "Yes");
+            if (FT_IS_SCALABLE(ftface)) Config->write(group, "Scalable", "Yes");
 
             // Add the style with a link to the font file location
 
@@ -1370,13 +1370,13 @@ static void scan_truetype_folder(objConfig *Config)
                if ((ftface->style_name) and (StrMatch("regular", ftface->style_name) != ERR_Okay)) {
                   std::string buffer("Scale:");
                   buffer.append(ftface->style_name);
-                  cfgWriteValue(Config, group, buffer.c_str(), location);
+                  Config->write(group, buffer.c_str(), location);
                }
                else {
-                  if (style IS FTF_BOLD) cfgWriteValue(Config, group, "Scale:Bold", location);
-                  else if (style IS FTF_ITALIC) cfgWriteValue(Config, group, "Scale:Italic", location);
-                  else if (style IS (FTF_BOLD|FTF_ITALIC)) cfgWriteValue(Config, group, "Scale:Bold Italic", location);
-                  else cfgWriteValue(Config, group, "Scale:Regular", location);
+                  if (style IS FTF_BOLD) Config->write(group, "Scale:Bold", location);
+                  else if (style IS FTF_ITALIC) Config->write(group, "Scale:Italic", location);
+                  else if (style IS (FTF_BOLD|FTF_ITALIC)) Config->write(group, "Scale:Bold Italic", location);
+                  else Config->write(group, "Scale:Regular", location);
                }
             }
 
@@ -1398,85 +1398,93 @@ static void scan_truetype_folder(objConfig *Config)
 static void scan_fixed_folder(objConfig *Config)
 {
    parasol::Log log(__FUNCTION__);
-   LONG j, n, style;
-   WORD i;
-   char location[100], group[200], pntbuffer[80];
-   STRING facename;
 
    log.branch("Scanning for fixed fonts.");
-
-   UBYTE bold = FALSE;
-   UBYTE bolditalic = FALSE;
-   UBYTE italic = FALSE;
 
    DirInfo *dir;
    if (!OpenDir("fonts:fixed/", RDF_FILE, &dir)) {
       while (!ScanDir(dir)) {
-         snprintf(location, sizeof(location), "fonts:fixed/%s", dir->Info->Name);
+         bool bold = false;
+         bool bolditalic = false;
+         bool italic = false;
+
+         std::string location("fonts:fixed/");
+         location.append(dir->Info->Name);
+         auto src = location.c_str();
 
          winfnt_header_fields header;
          UBYTE points[20];
-         if (!analyse_bmp_font(location, &header, &facename, points, ARRAYSIZE(points))) {
-            log.extmsg("Detected font file \"%s\", name: %s", location, facename);
+         STRING facename;
+         if (!analyse_bmp_font(src, &header, &facename, points, ARRAYSIZE(points))) {
+            log.extmsg("Detected font file \"%s\", name: %s", src, facename);
 
             if (!facename) continue;
-            StrCopy(facename, group, sizeof(group));
+            std::string group(facename);
 
             // Strip any style references out of the font name and keep them as style flags
 
-            style = 0;
-            if ((n = StrSearch(" Bold", group, STR_MATCH_CASE)) != -1) {
-               for (j=0; " Bold"[j]; j++) group[n++] = ' ';
-               style |= FTF_BOLD;
+            LONG style = 0;
+
+            {
+               auto n = group.find(" Bold");
+               if (n != std::string::npos) {
+                  group.erase(n, 5);
+                  style |= FTF_BOLD;
+               }
             }
 
-            if ((n = StrSearch(" Italic", group, STR_MATCH_CASE)) != -1) {
-               for (j=0; " Italic"[j]; j++) group[n++] = ' ';
-               style |= FTF_ITALIC;
+            {
+               auto n = group.find(" Italic");
+               if (n != std::string::npos) {
+                  group.erase(n, 7);
+                  style |= FTF_ITALIC;
+               }
             }
 
             if (header.italic) style |= FTF_ITALIC;
             if (header.weight >= 600) style |= FTF_BOLD;
 
-            for (n=0; group[n]; n++);
-            while ((n > 0) and (group[n-1] <= 0x20)) n--;
-            group[n] = 0;
+            {
+               auto n = group.length();
+               while ((n > 0) and (group[n-1] <= 0x20)) n--;
+               if (n != group.length()) group.resize(n);
+            }
 
-            cfgWriteValue(Config, group, "Name", group);
+            auto gs = group.c_str();
+            Config->write(gs, "Name", gs);
 
             // Add the style with a link to the font file location
 
             if (style IS FTF_BOLD) {
-               cfgWriteValue(Config, group, "Fixed:Bold", location);
-               bold = TRUE;
+               Config->write(gs, "Fixed:Bold", src);
+               bold = true;
             }
             else if (style IS FTF_ITALIC) {
-               cfgWriteValue(Config, group, "Fixed:Italic", location);
-               italic = TRUE;
+               Config->write(gs, "Fixed:Italic", src);
+               italic = true;
             }
             else if (style IS (FTF_BOLD|FTF_ITALIC)) {
-               cfgWriteValue(Config, group, "Fixed:Bold Italic", location);
-               bolditalic = TRUE;
+               Config->write(gs, "Fixed:Bold Italic", src);
+               bolditalic = true;
             }
             else {
-               cfgWriteValue(Config, group, "Fixed:Regular", location);
-               if (bold IS FALSE)       cfgWriteValue(Config, group, "Fixed:Bold", location);
-               if (bolditalic IS FALSE) cfgWriteValue(Config, group, "Fixed:Bold Italic", location);
-               if (italic IS FALSE)     cfgWriteValue(Config, group, "Fixed:Italic", location);
+               Config->write(gs, "Fixed:Regular", src);
+               if (!bold)       Config->write(gs, "Fixed:Bold", src);
+               if (!bolditalic) Config->write(gs, "Fixed:Bold Italic", src);
+               if (!italic)     Config->write(gs, "Fixed:Italic", src);
             }
 
-            j = 0;
-            for (i=0; points[i]; i++) {
-               if (i > 0) pntbuffer[j++] = ',';
-               j += IntToStr(points[i], pntbuffer+j, sizeof(pntbuffer)-j-2);
+            std::ostringstream out;
+            for (LONG i=0; points[i]; i++) {
+               if (i > 0) out << ',';
+               out << points[i];
             }
 
-            pntbuffer[j] = 0;
-            cfgWriteValue(Config, group, "Points", pntbuffer);
+            Config->write(gs, "Points", out.str());
 
             FreeResource(facename);
          }
-         else log.warning("Failed to analyse %s", location);
+         else log.warning("Failed to analyse %s", src);
       }
       FreeResource(dir);
    }
@@ -1485,7 +1493,7 @@ static void scan_fixed_folder(objConfig *Config)
 
 //****************************************************************************
 
-static ERROR analyse_bmp_font(STRING Path, winfnt_header_fields *Header, STRING *FaceName, UBYTE *Points, UBYTE MaxPoints)
+static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING *FaceName, UBYTE *Points, UBYTE MaxPoints)
 {
    parasol::Log log(__FUNCTION__);
    winmz_header_fields mz_header;
