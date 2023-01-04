@@ -910,7 +910,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    // Create our task object.  This is expected to be local to our process, so do not allocate this object publicly.
 
-   if (!NewPrivateObject(ID_TASK, NF::NO_TRACK, (OBJECTPTR *)&localtask)) {
+   if (!NewObject(ID_TASK, NF::NO_TRACK, (OBJECTPTR *)&localtask)) {
       localtask->Flags |= TSF_DUMMY;
 
       if (Info->Flags & OPF_NAME) {

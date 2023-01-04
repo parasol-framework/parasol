@@ -1392,23 +1392,17 @@ extern struct CoreBase *CoreBase;
 
   c_insert([[
 
+//********************************************************************************************************************
+
 #define PRIME_HASH 2654435761UL
 #define END_FIELD { NULL, 0, 0, NULL, NULL }
 #define FDEF static const struct FunctionField
 
-//********************************************************************************************************************
+#define DeregisterFD(a)   RegisterFD((a), RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL, 0, 0)
+#define DeleteMsg(a,b)    UpdateMessage(a,b,(APTR)-1,0,0)
 
-#ifndef PRV_CORE_MODULE
- #define DeregisterFD(a)           (CoreBase->_RegisterFD((a), RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL, 0, 0))
- #define DeleteMsg(a,b)            (CoreBase->_UpdateMessage(a,b,(APTR)-1,0,0))
- #define GetObjectAddress          (CoreBase->_GetMemAddress)
-#endif // PRV_CORE_MODULE
-
-#define GetParentContext()        ((OBJECTPTR)(MAXINT)GetResource(RES_PARENT_CONTEXT))
-#define GetResourcePtr(a)         ((APTR)(MAXINT)GetResource((a)))
-#define AllocPublicMemory(a,b,c)  (AllocMemory((a),(b)|MEM_PUBLIC,0,(c)))
-#define AllocPrivateMemory(a,b,c) (AllocMemory((a),(b),(c),0))
-#define NewPrivateObject(a,b,c)   (NewObject(a,b,c))
+inline OBJECTPTR GetParentContext() { return (OBJECTPTR)(MAXINT)GetResource(RES_PARENT_CONTEXT); }
+inline APTR GetResourcePtr(LONG ID) { return (APTR)(MAXINT)GetResource(ID); }
 
 template<class T> inline ERROR SendAction(LONG Action, OBJECTID ObjectID, T *Args, MEMORYID MessageID) {
    return ActionMsg(Action, ObjectID, Args, MessageID, 0);
