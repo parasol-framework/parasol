@@ -398,7 +398,7 @@ retry:
 
       if (Flags & (MEM_UNTRACKED|MEM_HIDDEN));
       else {
-         tlContext->resource()->Flags |= NF_HAS_SHARED_RESOURCES;
+         tlContext->resource()->Flags |= NF::HAS_SHARED_RESOURCES;
          if ((tlContext->resource()->Stats) and (tlContext->resource()->TaskID)) {
             glSharedBlocks[blk].TaskID = tlContext->resource()->TaskID;
          }

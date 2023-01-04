@@ -250,7 +250,7 @@ ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)
          TAGEND);
       if (!acInit(target)) {
          OBJECTPTR pointer;
-         if (!NewLockedObject(ID_POINTER, NF_PUBLIC, &pointer, &glSystemPointerID)) {
+         if (!NewLockedObject(ID_POINTER, NF::PUBLIC, &pointer, &glSystemPointerID)) {
             SetFields(pointer,
                FID_Owner|TLONG, glTargetID,
                FID_Name|TSTR,   "SystemPointer",

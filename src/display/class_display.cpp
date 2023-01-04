@@ -1234,10 +1234,10 @@ static ERROR DISPLAY_NewObject(extDisplay *Self, APTR Void)
    ERROR error;
 
    if (Self->isPublic()) {
-      error = NewLockedObject(ID_BITMAP, Self->flags()|NF_INTEGRAL, &Self->Bitmap, &Self->BitmapID);
+      error = NewLockedObject(ID_BITMAP, Self->flags()|NF::INTEGRAL, &Self->Bitmap, &Self->BitmapID);
    }
    else {
-      error = NewObject(ID_BITMAP, Self->flags()|NF_INTEGRAL, &Self->Bitmap);
+      error = NewObject(ID_BITMAP, Self->flags()|NF::INTEGRAL, &Self->Bitmap);
       Self->BitmapID = Self->Bitmap->UID;
    }
 
@@ -1674,7 +1674,7 @@ static ERROR DISPLAY_SetDisplay(extDisplay *Self, struct gfxSetDisplay *Args)
       ReleaseObject(Self->Bitmap);
       Self->Bitmap = NULL;
 
-      if (!NewObject(ID_BITMAP, NF_INTEGRAL|Self->flags(), &Self->Bitmap, Self->isPublic() ? &Self->BitmapID : NULL)) {
+      if (!NewObject(ID_BITMAP, NF::INTEGRAL|Self->flags(), &Self->Bitmap, Self->isPublic() ? &Self->BitmapID : NULL)) {
          Self->BitmapID = Self->Bitmap->UID;
          Self->Bitmap->BitsPerPixel = bpp;
          Self->Bitmap->Width        = Self->Width;
@@ -2059,7 +2059,7 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
    OBJECTID pointer_id;
    LONG count = 1;
    if (FindObject("SystemPointer", ID_POINTER, 0, &pointer_id, &count) != ERR_Okay) {
-      if (!NewNamedObject(ID_POINTER, NF_NO_TRACK|NF_PUBLIC|NF_UNIQUE, &pointer, &pointer_id, "SystemPointer")) {
+      if (!NewNamedObject(ID_POINTER, NF::NO_TRACK|NF::PUBLIC|NF::UNIQUE, &pointer, &pointer_id, "SystemPointer")) {
          OBJECTID owner = Self->ownerID();
          if (GetClassID(owner) IS ID_SURFACE) pointer->set(FID_Surface, owner);
 
@@ -3178,7 +3178,7 @@ void alloc_display_buffer(extDisplay *Self)
 
    objBitmap *buffer;
    ERROR error;
-   if (!NewLockedObject(ID_BITMAP, NF_INTEGRAL|Self->flags(), &buffer, &Self->BufferID)) {
+   if (!NewLockedObject(ID_BITMAP, NF::INTEGRAL|Self->flags(), &buffer, &Self->BufferID)) {
       if (!SetFields(buffer,
             FID_Name|TSTR,           "SystemBuffer",
             FID_BitsPerPixel|TLONG,  Self->Bitmap->BitsPerPixel,

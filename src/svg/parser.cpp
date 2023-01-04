@@ -1791,7 +1791,7 @@ static ERROR xtag_image(extSVG *Self, objXML *XML, svgState *State, const XMLTag
 
    if (pic) {
       objVectorImage *image;
-      if (!CreateObject(ID_VECTORIMAGE, 0, &image,
+      if (!CreateObject(ID_VECTORIMAGE, NF::NIL, &image,
             FID_Owner|TLONG,        Self->Scene->UID,
             FID_Picture|TPTR,       pic,
             FID_SpreadMethod|TLONG, VSPREAD_PAD,

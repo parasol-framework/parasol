@@ -1420,7 +1420,7 @@ void refresh_display_from_egl(extDisplay *Self)
 
    // If the display's bitmap depth / size needs to change, resize it here.
 
-   if (Self->Bitmap->Head.Flags & NF_INITIALISED) {
+   if (Self->Bitmap->Head.Flags & NF::INITIALISED) {
       if ((Self->Width != Self->Bitmap->Width) or (Self->Height != Self->Bitmap->Height)) {
          log.trace("Resizing OpenGL representative bitmap to match new dimensions.");
          acResize(Self->Bitmap, glEGLWidth, glEGLHeight, glEGLDepth);

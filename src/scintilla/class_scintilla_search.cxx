@@ -406,7 +406,7 @@ OBJECTPTR clScintillaSearch = NULL;
 
 ERROR init_search(void)
 {
-   return(CreateObject(ID_METACLASS, 0, &clScintillaSearch,
+   return(CreateObject(ID_METACLASS, NF::NIL, &clScintillaSearch,
       FID_ClassVersion|TFLOAT, 1.0,
       FID_Name|TSTRING,   "ScintillaSearch",
       FID_Category|TLONG, CCF_TOOL,

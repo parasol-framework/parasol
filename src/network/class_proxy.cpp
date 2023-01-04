@@ -555,7 +555,7 @@ static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
       return ERR_Okay;
    }
 
-   if (!CreateObject(ID_CONFIG, 0, &config, FID_Path|TSTR,  "user:config/network/proxies.cfg", TAGEND)) {
+   if (!CreateObject(ID_CONFIG, NF::NIL, &config, FID_Path|TSTR,  "user:config/network/proxies.cfg", TAGEND)) {
       if (Self->GroupName[0]) cfgDeleteGroup(config, Self->GroupName);
       else { // This is a new proxy
          LONG id = 0;
@@ -577,7 +577,7 @@ static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
       cfgWrite(config, Self->GroupName,   "ServerPort",    Self->ServerPort);
       cfgWrite(config, Self->GroupName,   "Enabled",       Self->Enabled);
 
-      if (!CreateObject(ID_FILE, 0, &file,
+      if (!CreateObject(ID_FILE, NF::NIL, &file,
             FID_Path|TSTR,         "user:config/network/proxies.cfg",
             FID_Permissions|TLONG, PERMIT_USER_READ|PERMIT_USER_WRITE,
             FID_Flags|TLONG,       FL_NEW|FL_WRITE,

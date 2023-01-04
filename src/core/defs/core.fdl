@@ -329,7 +329,7 @@ inline ENUMTYPE &operator |= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "SMART_NAMES: Parse numeric object names as ID references and support use of the 'Owner' reserved keyword.",
     "INCLUDE_SHARED: Include shared objects when searching.")
 
-  flags("NF", { comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word." },
+  flags("NF", { strict=true, comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word." },
     "NO_TRACK|UNTRACKED: An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.",
     "PUBLIC|SHARED: Allocates a shared object using shareable resources, allowing it to be accessed directly by any process.  Access is granted via exclusive access locks  - refer to the AccessObject() and ReleaseObject() functions.",
     "FOREIGN_OWNER: Read-only indicator for when an object's parent is in a foreign process.",
@@ -1454,15 +1454,15 @@ inline ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args) {
 }
 
 template<class T> inline ERROR NewObject(LARGE ClassID, T **Result) {
-   return NewObject(ClassID, 0, Result);
+   return NewObject(ClassID, NF::NIL, Result);
 }
 
-inline ERROR NewLockedObject(LARGE ClassID, LONG Flags, APTR Object, OBJECTID *ID) {
+inline ERROR NewLockedObject(LARGE ClassID, NF Flags, APTR Object, OBJECTID *ID) {
   return NewLockedObject(ClassID, Flags, Object, ID, NULL);
 }
 
 inline ERROR NewLockedObject(LARGE ClassID, APTR Object, OBJECTID *ID) {
-  return NewLockedObject(ClassID, 0, Object, ID, NULL);
+  return NewLockedObject(ClassID, NF::NIL, Object, ID, NULL);
 }
 
 inline ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo) {
@@ -1475,12 +1475,12 @@ inline ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo) {
 
 #endif
 
-inline ERROR NewPublicObject(LARGE ClassID, LONG Flags, OBJECTID *ID) {
-  return NewLockedObject(ClassID, Flags|NF_PUBLIC, NULL, ID, NULL);
+inline ERROR NewPublicObject(LARGE ClassID, NF Flags, OBJECTID *ID) {
+  return NewLockedObject(ClassID, Flags|NF::PUBLIC, NULL, ID, NULL);
 }
 
-template<class T> inline ERROR NewNamedObject(LARGE ClassID, LONG Flags, T **Object, OBJECTID *ID, CSTRING Name) {
-  return NewLockedObject(ClassID, Flags|NF_NAME, Object, ID, Name);
+template<class T> inline ERROR NewNamedObject(LARGE ClassID, NF Flags, T **Object, OBJECTID *ID, CSTRING Name) {
+  return NewLockedObject(ClassID, Flags|NF::NAME, Object, ID, Name);
 }
 
 typedef std::map<std::string, std::string> ConfigKeys;
@@ -1548,7 +1548,7 @@ struct BaseClass { // Must be 64-bit aligned
    CLASSID  SubID;              // Reference to the object's sub-class, used to resolve the Class pointer
    OBJECTID UID;                // Unique object identifier
    OBJECTID OwnerID;            // Refers to the owner of this object
-   WORD     Flags;              // Object flags
+   NF       Flags;              // Object flags
    WORD     MemFlags;           // Recommended memory allocation flags
    OBJECTID TaskID;             // The process that this object belongs to
    volatile LONG  ThreadID;     // Managed by locking functions
@@ -1563,21 +1563,22 @@ struct BaseClass { // Must be 64-bit aligned
    volatile bool Locked;        // Set if locked by AccessObject()/AccessPrivateObject()
    BYTE ActionDepth;            // Incremented each time an action or method is called on the object
 
-   inline bool initialised() { return Flags & NF_INITIALISED; }
-   inline bool isPublic() { return Flags & NF_PUBLIC; }
+   inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
+   inline bool isPublic() { return (Flags & NF::PUBLIC) != NF::NIL; }
+   inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
    inline OBJECTID ownerTask() { return TaskID; }
    inline OBJECTID ownerID() { return OwnerID; }
    inline LONG memflags() { return MemFlags; }
-   inline LONG flags() { return Flags; }
+   inline NF flags() { return Flags; }
 
    CSTRING className();
 
    inline bool collecting() { // Is object being freed or marked for collection?
-      return Flags & (NF_FREE|NF_COLLECT);
+      return (Flags & (NF::FREE|NF::COLLECT)) != NF::NIL;
    }
 
    inline bool terminating() { // Is object currently being freed?
-      return Flags & NF_FREE;
+      return (Flags & NF::FREE) != NF::NIL;
    }
 
    inline ERROR threadLock() {
@@ -1815,7 +1816,7 @@ class Create {
       // Return an unscoped integral object (suitable for class allocations only).
 
       template <typename... Args> static T * integral(Args... Fields) {
-         parasol::Create<T> object({ Fields... }, NF_INTEGRAL);
+         parasol::Create<T> object({ Fields... }, NF::INTEGRAL);
          if (object.ok()) return *object;
          else return NULL;
       }
@@ -1823,18 +1824,18 @@ class Create {
       // Return an unscoped and untracked object pointer.
 
       template <typename... Args> static T * untracked(Args... Fields) {
-         parasol::Create<T> object({ Fields... }, NF_UNTRACKED);
+         parasol::Create<T> object({ Fields... }, NF::UNTRACKED);
          if (object.ok()) return *object;
          else return NULL;
       }
 
       // Create a scoped object
 
-      Create(std::initializer_list<FieldValue> Fields, LONG Flags = 0) : obj(NULL), error(ERR_Failed) {
+      Create(std::initializer_list<FieldValue> Fields, NF Flags = NF::NIL) : obj(NULL), error(ERR_Failed) {
          parasol::Log log("CreateObject");
          log.branch(T::CLASS_NAME);
 
-         if (!NewObject(T::CLASS_ID, NF_SUPPRESS_LOG|Flags, (BaseClass **)&obj)) {
+         if (!NewObject(T::CLASS_ID, NF::SUPPRESS_LOG|Flags, (BaseClass **)&obj)) {
             for (auto &f : Fields) {
                OBJECTPTR target;
                if (auto field = FindField(obj, f.FieldID, &target)) {
@@ -1880,8 +1881,10 @@ class Create {
 
       ~Create() {
          if (obj) {
-            if ((obj->BaseClass::Flags & NF_INITIALISED) and (obj->BaseClass::Flags & (NF_UNTRACKED|NF_INTEGRAL)))  {
-               return; // Detected a successfully created unscoped object
+            if (obj->initialised()) {
+               if ((obj->BaseClass::Flags & (NF::UNTRACKED|NF::INTEGRAL)) != NF::NIL)  {
+                  return; // Detected a successfully created unscoped object
+               }
             }
             acFree(obj);
             obj = NULL;

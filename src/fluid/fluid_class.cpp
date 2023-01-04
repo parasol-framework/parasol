@@ -383,7 +383,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
       // Pre-load the Core module: mSys = mod.load('core')
 
       OBJECTPTR module;
-      if (!CreateObject(ID_MODULE, 0, &module, FID_Name|TSTR, "core", TAGEND)) {
+      if (!CreateObject(ID_MODULE, NF::NIL, &module, FID_Name|TSTR, "core", TAGEND)) {
          auto mod = (struct module *)lua_newuserdata(prv->Lua, sizeof(struct module));
          ClearMemory(mod, sizeof(struct module));
          luaL_getmetatable(prv->Lua, "Fluid.mod");
@@ -673,7 +673,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
       }
    }
 
-   if ((Self->flags() & NF_RECLASSED) and (!Self->String)) {
+   if ((Self->defined(NF::RECLASSED)) and (!Self->String)) {
       log.trace("No support for reclassed Script with no String field value.");
       return ERR_NoSupport;
    }

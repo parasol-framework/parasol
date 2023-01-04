@@ -14,7 +14,7 @@ static ERROR exec_data_file(CSTRING TargetFile)
 
    if (!(error = IdentifyFile(TargetFile, "Open", 0, &class_id, NULL, &command))) {
       OBJECTPTR run;
-      if (!CreateObject(ID_TASK, 0, &run, FID_Location|TSTR, command, TAGEND)) {
+      if (!CreateObject(ID_TASK, NF::NIL, &run, FID_Location|TSTR, command, TAGEND)) {
          if (glArgs) {
             char argbuffer[100];
             STRING argname = argbuffer;
@@ -149,7 +149,7 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
    if (class_id IS ID_PARC) {
       OBJECTPTR parc;
 
-      if (!(error = CreateObject(ID_PARC, 0, &parc,
+      if (!(error = CreateObject(ID_PARC, NF::NIL, &parc,
             FID_Path|TSTR,  TargetFile,
             FID_Allow|TSTR, glAllow,
             TAGEND))) {
@@ -179,7 +179,7 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
       return(exec_data_file(TargetFile));
    }
 
-   if (!NewObject(subclass ? subclass : class_id, 0, &glScript)) {
+   if (!NewObject(subclass ? subclass : class_id, &glScript)) {
       if (!glTargetID) glTargetID = CurrentTaskID();
       SetFields(glScript, FID_Path|TSTR,      TargetFile,
                           FID_Target|TLONG,   glTargetID,

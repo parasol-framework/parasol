@@ -386,7 +386,7 @@ static ERROR PIC_Init(prvPicture *Self, APTR Void)
             if (Self->Flags & PCF_FORCE_ALPHA_32) Self->Flags &= ~(PCF_ALPHA|PCF_MASK);
 
             if (Self->Flags & PCF_ALPHA) {
-               if (!NewObject(ID_BITMAP, NF_INTEGRAL, &Self->Mask)) {
+               if (!NewObject(ID_BITMAP, NF::INTEGRAL, &Self->Mask)) {
                   Self->Mask->Width  = Self->Bitmap->Width;
                   Self->Mask->Height = Self->Bitmap->Height;
                   Self->Mask->Flags |= PCF_MASK;
@@ -397,7 +397,7 @@ static ERROR PIC_Init(prvPicture *Self, APTR Void)
                else return log.warning(ERR_NewObject);
             }
             else if (Self->Flags & PCF_MASK) {
-               if (!NewObject(ID_BITMAP, NF_INTEGRAL, &Self->Mask)) {
+               if (!NewObject(ID_BITMAP, NF::INTEGRAL, &Self->Mask)) {
                   Self->Mask->Width  = Self->Bitmap->Width;
                   Self->Mask->Height = Self->Bitmap->Height;
                   Self->Mask->Flags |= PCF_MASK;
@@ -459,7 +459,7 @@ static ERROR PIC_NewObject(prvPicture *Self, APTR Void)
 
    Self->Quality = 80; // 80% quality rating when saving
 
-   if (!NewObject(ID_BITMAP, NF_INTEGRAL, &Self->Bitmap)) {
+   if (!NewObject(ID_BITMAP, NF::INTEGRAL, &Self->Bitmap)) {
       return ERR_Okay;
    }
    else return log.warning(ERR_NewObject);

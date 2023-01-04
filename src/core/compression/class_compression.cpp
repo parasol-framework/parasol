@@ -1727,7 +1727,7 @@ static ERROR COMPRESSION_Init(extCompression *Self, APTR Void)
          parasol::Create<objFile> file({
             fl::Path(path),
             fl::Flags(FL_READ|FL_APPROXIMATE|((Self->Flags & CMF_READ_ONLY) ? 0 : FL_WRITE))
-         }, NF_INTEGRAL);
+         }, NF::INTEGRAL);
 
          // Try switching to read-only access if we were denied permission.
 

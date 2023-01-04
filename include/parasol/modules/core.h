@@ -1096,26 +1096,31 @@ inline ENUMTYPE &operator |= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 
 // Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word.
 
-#define NF_PRIVATE 0x00000000
-#define NF_UNTRACKED 0x00000001
-#define NF_NO_TRACK 0x00000001
-#define NF_SHARED 0x00000002
-#define NF_PUBLIC 0x00000002
-#define NF_FOREIGN_OWNER 0x00000004
-#define NF_INITIALISED 0x00000008
-#define NF_INTEGRAL 0x00000010
-#define NF_UNLOCK_FREE 0x00000020
-#define NF_FREE 0x00000040
-#define NF_TIMER_SUB 0x00000080
-#define NF_SUPPRESS_LOG 0x00000100
-#define NF_COLLECT 0x00000200
-#define NF_NEW_OBJECT 0x00000400
-#define NF_RECLASSED 0x00000800
-#define NF_MESSAGE 0x00001000
-#define NF_SIGNALLED 0x00002000
-#define NF_HAS_SHARED_RESOURCES 0x00004000
-#define NF_UNIQUE 0x40000000
-#define NF_NAME 0x80000000
+enum class NF : ULONG {
+   NIL = 0,
+   PRIVATE = 0x00000000,
+   UNTRACKED = 0x00000001,
+   NO_TRACK = 0x00000001,
+   SHARED = 0x00000002,
+   PUBLIC = 0x00000002,
+   FOREIGN_OWNER = 0x00000004,
+   INITIALISED = 0x00000008,
+   INTEGRAL = 0x00000010,
+   UNLOCK_FREE = 0x00000020,
+   FREE = 0x00000040,
+   TIMER_SUB = 0x00000080,
+   SUPPRESS_LOG = 0x00000100,
+   COLLECT = 0x00000200,
+   NEW_OBJECT = 0x00000400,
+   RECLASSED = 0x00000800,
+   MESSAGE = 0x00001000,
+   SIGNALLED = 0x00002000,
+   HAS_SHARED_RESOURCES = 0x00004000,
+   UNIQUE = 0x40000000,
+   NAME = 0x80000000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(NF)
 
 // Reserved Public Memory identifiers.
 
@@ -2011,7 +2016,7 @@ struct CoreBase {
    ERROR (*_CheckMemoryExists)(MEMORYID ID);
    ERROR (*_CheckObjectExists)(OBJECTID Object);
    ERROR (*_DeleteFile)(CSTRING Path, FUNCTION * Callback);
-   ERROR (*_CreateObject)(LARGE ClassID, LONG Flags, APTR Object, ...);
+   ERROR (*_CreateObject)(LARGE ClassID, NF Flags, APTR Object, ...);
    OBJECTPTR (*_CurrentContext)(void);
    ERROR (*_GetFieldArray)(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements);
    LONG (*_AdjustLogLevel)(LONG Adjust);
@@ -2033,7 +2038,7 @@ struct CoreBase {
    ERROR (*_ManageAction)(LONG Action, APTR Routine);
    ERROR (*_MemoryIDInfo)(MEMORYID ID, struct MemInfo * MemInfo, LONG Size);
    ERROR (*_MemoryPtrInfo)(APTR Address, struct MemInfo * MemInfo, LONG Size);
-   ERROR (*_NewObject)(LARGE ClassID, LONG Flags, APTR Object);
+   ERROR (*_NewObject)(LARGE ClassID, NF Flags, APTR Object);
    LONG (*_NotifySubscribers)(OBJECTPTR Object, LONG Action, APTR Args, LONG Flags, ERROR Error);
    ERROR (*_StrReadLocale)(CSTRING Key, CSTRING * Value);
    APTR (*_GetMemAddress)(MEMORYID ID);
@@ -2074,7 +2079,7 @@ struct CoreBase {
    ERROR (*_LoadFile)(CSTRING Path, LONG Flags, struct CacheFile ** Cache);
    ERROR (*_SubscribeActionTags)(OBJECTPTR Object, ...);
    void (*_PrintDiagnosis)(LONG Process, LONG Signal);
-   ERROR (*_NewLockedObject)(LARGE ClassID, LONG Flags, APTR Object, OBJECTID * ID, CSTRING Name);
+   ERROR (*_NewLockedObject)(LARGE ClassID, NF Flags, APTR Object, OBJECTID * ID, CSTRING Name);
    ERROR (*_UpdateMessage)(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size);
    ERROR (*_AddMsgHandler)(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle);
    ERROR (*_FindPrivateObject)(CSTRING Name, APTR Object);
@@ -2163,7 +2168,7 @@ inline ERROR CheckAction(OBJECTPTR Object, LONG Action) { return CoreBase->_Chec
 inline ERROR CheckMemoryExists(MEMORYID ID) { return CoreBase->_CheckMemoryExists(ID); }
 inline ERROR CheckObjectExists(OBJECTID Object) { return CoreBase->_CheckObjectExists(Object); }
 inline ERROR DeleteFile(CSTRING Path, FUNCTION * Callback) { return CoreBase->_DeleteFile(Path,Callback); }
-template<class... Args> ERROR CreateObject(LARGE ClassID, LONG Flags, APTR Object, Args... Tags) { return CoreBase->_CreateObject(ClassID,Flags,Object,Tags...); }
+template<class... Args> ERROR CreateObject(LARGE ClassID, NF Flags, APTR Object, Args... Tags) { return CoreBase->_CreateObject(ClassID,Flags,Object,Tags...); }
 inline OBJECTPTR CurrentContext(void) { return CoreBase->_CurrentContext(); }
 inline ERROR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements) { return CoreBase->_GetFieldArray(Object,Field,Result,Elements); }
 inline LONG AdjustLogLevel(LONG Adjust) { return CoreBase->_AdjustLogLevel(Adjust); }
@@ -2185,7 +2190,7 @@ inline ERROR RegisterFD(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, A
 inline ERROR ManageAction(LONG Action, APTR Routine) { return CoreBase->_ManageAction(Action,Routine); }
 inline ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size) { return CoreBase->_MemoryIDInfo(ID,MemInfo,Size); }
 inline ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size) { return CoreBase->_MemoryPtrInfo(Address,MemInfo,Size); }
-inline ERROR NewObject(LARGE ClassID, LONG Flags, APTR Object) { return CoreBase->_NewObject(ClassID,Flags,Object); }
+inline ERROR NewObject(LARGE ClassID, NF Flags, APTR Object) { return CoreBase->_NewObject(ClassID,Flags,Object); }
 inline LONG NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, LONG Flags, ERROR Error) { return CoreBase->_NotifySubscribers(Object,Action,Args,Flags,Error); }
 inline ERROR StrReadLocale(CSTRING Key, CSTRING * Value) { return CoreBase->_StrReadLocale(Key,Value); }
 inline APTR GetMemAddress(MEMORYID ID) { return CoreBase->_GetMemAddress(ID); }
@@ -2226,7 +2231,7 @@ inline ERROR CopyMemory(const void * Src, APTR Dest, LONG Size) { return CoreBas
 inline ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile ** Cache) { return CoreBase->_LoadFile(Path,Flags,Cache); }
 template<class... Args> ERROR SubscribeActionTags(OBJECTPTR Object, Args... Tags) { return CoreBase->_SubscribeActionTags(Object,Tags...); }
 inline void PrintDiagnosis(LONG Process, LONG Signal) { return CoreBase->_PrintDiagnosis(Process,Signal); }
-inline ERROR NewLockedObject(LARGE ClassID, LONG Flags, APTR Object, OBJECTID * ID, CSTRING Name) { return CoreBase->_NewLockedObject(ClassID,Flags,Object,ID,Name); }
+inline ERROR NewLockedObject(LARGE ClassID, NF Flags, APTR Object, OBJECTID * ID, CSTRING Name) { return CoreBase->_NewLockedObject(ClassID,Flags,Object,ID,Name); }
 inline ERROR UpdateMessage(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size) { return CoreBase->_UpdateMessage(Queue,Message,Type,Data,Size); }
 inline ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle) { return CoreBase->_AddMsgHandler(Custom,MsgType,Routine,Handle); }
 inline ERROR FindPrivateObject(CSTRING Name, APTR Object) { return CoreBase->_FindPrivateObject(Name,Object); }
@@ -2361,15 +2366,15 @@ inline ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args) {
 }
 
 template<class T> inline ERROR NewObject(LARGE ClassID, T **Result) {
-   return NewObject(ClassID, 0, Result);
+   return NewObject(ClassID, NF::NIL, Result);
 }
 
-inline ERROR NewLockedObject(LARGE ClassID, LONG Flags, APTR Object, OBJECTID *ID) {
+inline ERROR NewLockedObject(LARGE ClassID, NF Flags, APTR Object, OBJECTID *ID) {
   return NewLockedObject(ClassID, Flags, Object, ID, NULL);
 }
 
 inline ERROR NewLockedObject(LARGE ClassID, APTR Object, OBJECTID *ID) {
-  return NewLockedObject(ClassID, 0, Object, ID, NULL);
+  return NewLockedObject(ClassID, NF::NIL, Object, ID, NULL);
 }
 
 inline ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo) {
@@ -2382,12 +2387,12 @@ inline ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo) {
 
 #endif
 
-inline ERROR NewPublicObject(LARGE ClassID, LONG Flags, OBJECTID *ID) {
-  return NewLockedObject(ClassID, Flags|NF_PUBLIC, NULL, ID, NULL);
+inline ERROR NewPublicObject(LARGE ClassID, NF Flags, OBJECTID *ID) {
+  return NewLockedObject(ClassID, Flags|NF::PUBLIC, NULL, ID, NULL);
 }
 
-template<class T> inline ERROR NewNamedObject(LARGE ClassID, LONG Flags, T **Object, OBJECTID *ID, CSTRING Name) {
-  return NewLockedObject(ClassID, Flags|NF_NAME, Object, ID, Name);
+template<class T> inline ERROR NewNamedObject(LARGE ClassID, NF Flags, T **Object, OBJECTID *ID, CSTRING Name) {
+  return NewLockedObject(ClassID, Flags|NF::NAME, Object, ID, Name);
 }
 
 typedef std::map<std::string, std::string> ConfigKeys;
@@ -2455,7 +2460,7 @@ struct BaseClass { // Must be 64-bit aligned
    CLASSID  SubID;              // Reference to the object's sub-class, used to resolve the Class pointer
    OBJECTID UID;                // Unique object identifier
    OBJECTID OwnerID;            // Refers to the owner of this object
-   WORD     Flags;              // Object flags
+   NF       Flags;              // Object flags
    WORD     MemFlags;           // Recommended memory allocation flags
    OBJECTID TaskID;             // The process that this object belongs to
    volatile LONG  ThreadID;     // Managed by locking functions
@@ -2470,21 +2475,22 @@ struct BaseClass { // Must be 64-bit aligned
    volatile bool Locked;        // Set if locked by AccessObject()/AccessPrivateObject()
    BYTE ActionDepth;            // Incremented each time an action or method is called on the object
 
-   inline bool initialised() { return Flags & NF_INITIALISED; }
-   inline bool isPublic() { return Flags & NF_PUBLIC; }
+   inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
+   inline bool isPublic() { return (Flags & NF::PUBLIC) != NF::NIL; }
+   inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
    inline OBJECTID ownerTask() { return TaskID; }
    inline OBJECTID ownerID() { return OwnerID; }
    inline LONG memflags() { return MemFlags; }
-   inline LONG flags() { return Flags; }
+   inline NF flags() { return Flags; }
 
    CSTRING className();
 
    inline bool collecting() { // Is object being freed or marked for collection?
-      return Flags & (NF_FREE|NF_COLLECT);
+      return (Flags & (NF::FREE|NF::COLLECT)) != NF::NIL;
    }
 
    inline bool terminating() { // Is object currently being freed?
-      return Flags & NF_FREE;
+      return (Flags & NF::FREE) != NF::NIL;
    }
 
    inline ERROR threadLock() {
@@ -2722,7 +2728,7 @@ class Create {
       // Return an unscoped integral object (suitable for class allocations only).
 
       template <typename... Args> static T * integral(Args... Fields) {
-         parasol::Create<T> object({ Fields... }, NF_INTEGRAL);
+         parasol::Create<T> object({ Fields... }, NF::INTEGRAL);
          if (object.ok()) return *object;
          else return NULL;
       }
@@ -2730,18 +2736,18 @@ class Create {
       // Return an unscoped and untracked object pointer.
 
       template <typename... Args> static T * untracked(Args... Fields) {
-         parasol::Create<T> object({ Fields... }, NF_UNTRACKED);
+         parasol::Create<T> object({ Fields... }, NF::UNTRACKED);
          if (object.ok()) return *object;
          else return NULL;
       }
 
       // Create a scoped object
 
-      Create(std::initializer_list<FieldValue> Fields, LONG Flags = 0) : obj(NULL), error(ERR_Failed) {
+      Create(std::initializer_list<FieldValue> Fields, NF Flags = NF::NIL) : obj(NULL), error(ERR_Failed) {
          parasol::Log log("CreateObject");
          log.branch(T::CLASS_NAME);
 
-         if (!NewObject(T::CLASS_ID, NF_SUPPRESS_LOG|Flags, (BaseClass **)&obj)) {
+         if (!NewObject(T::CLASS_ID, NF::SUPPRESS_LOG|Flags, (BaseClass **)&obj)) {
             for (auto &f : Fields) {
                OBJECTPTR target;
                if (auto field = FindField(obj, f.FieldID, &target)) {
@@ -2787,8 +2793,10 @@ class Create {
 
       ~Create() {
          if (obj) {
-            if ((obj->BaseClass::Flags & NF_INITIALISED) and (obj->BaseClass::Flags & (NF_UNTRACKED|NF_INTEGRAL)))  {
-               return; // Detected a successfully created unscoped object
+            if (obj->initialised()) {
+               if ((obj->BaseClass::Flags & (NF::UNTRACKED|NF::INTEGRAL)) != NF::NIL)  {
+                  return; // Detected a successfully created unscoped object
+               }
             }
             acFree(obj);
             obj = NULL;

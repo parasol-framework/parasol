@@ -499,9 +499,9 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
       ERROR error;
       if (!(error = AccessObject(action->ObjectID, 5000, &obj))) {
          if (action->SendArgs IS FALSE) {
-            obj->Flags |= NF_MESSAGE;
+            obj->Flags |= NF::MESSAGE;
             action->Error = Action(action->ActionID, obj, NULL);
-            obj->Flags &= ~NF_MESSAGE;
+            obj->Flags = obj->Flags & (~NF::MESSAGE);
             ReleaseObject(obj);
          }
          else {
@@ -525,9 +525,9 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
 
             if (fields) {
                if (!resolve_args(action+1, fields)) {
-                  obj->Flags |= NF_MESSAGE;
+                  obj->Flags |= NF::MESSAGE;
                   action->Error = Action(action->ActionID, obj, action+1);
-                  obj->Flags &= ~NF_MESSAGE;
+                  obj->Flags = obj->Flags & (~NF::MESSAGE);
                   ReleaseObject(obj);
 
                   if ((action->ReturnResult IS TRUE) and (action->ReturnMessage)) {
@@ -746,7 +746,7 @@ static ERROR TASK_ActionNotify(extTask *Self, struct acActionNotify *Args)
 
             UnsubscribeAction(ref.Object, AC_Free);
             UnsubscribeAction(ref.Object, AC_Signal);
-            ref.Object->Flags &= ~NF_SIGNALLED;
+            ref.Object->Flags = ref.Object->Flags & (~NF::SIGNALLED);
 
             glWFOList.erase(lref);
             if (glWFOList.empty()) {

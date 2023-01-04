@@ -449,7 +449,7 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
    else {
       objFile *stream_file;
       ERROR error;
-      if (!NewLockedObject(ID_FILE, NF_INTEGRAL, &stream_file, &sample->StreamID)) {
+      if (!NewLockedObject(ID_FILE, NF::INTEGRAL, &stream_file, &sample->StreamID)) {
          if (!SetFields(stream_file, FID_Path|TSTR, Args->Path, FID_Flags|TLONG, FL_READ, TAGEND)) {
             if (!acInit(stream_file)) {
                error = ERR_Okay;

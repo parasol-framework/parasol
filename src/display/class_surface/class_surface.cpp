@@ -476,7 +476,7 @@ static ERROR SURFACE_ActionNotify(extSurface *Self, struct acActionNotify *Notif
 
          Self->Flags &= ~RNF_VISIBLE;
          UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
-         if (Self->flags() & NF_INTEGRAL) DelayMsg(AC_Free, Self->UID); // If the object is a child of something, give the parent object time to do the deallocation itself
+         if (Self->defined(NF::INTEGRAL)) DelayMsg(AC_Free, Self->UID); // If the object is a child of something, give the parent object time to do the deallocation itself
          else acFree(Self);
       }
       else {
@@ -1503,7 +1503,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
       // display will adjust the coordinates to reflect the absolute position of the surface on the desktop).
 
       objDisplay *display;
-      if (!NewLockedObject(ID_DISPLAY, NF_INTEGRAL|Self->flags(), &display, &Self->DisplayID)) {
+      if (!NewLockedObject(ID_DISPLAY, NF::INTEGRAL|Self->flags(), &display, &Self->DisplayID)) {
          SetFields(display,
                FID_Name|TSTR,           name,
                FID_X|TLONG,             Self->X,
@@ -1627,7 +1627,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
          }
          else bpp = display->Bitmap->BitsPerPixel;
 
-         if (!(NewLockedObject(ID_BITMAP, NF_INTEGRAL|Self->flags(), &bitmap, &Self->BufferID))) {
+         if (!(NewLockedObject(ID_BITMAP, NF::INTEGRAL|Self->flags(), &bitmap, &Self->BufferID))) {
             SetFields(bitmap,
                FID_BitsPerPixel|TLONG, bpp,
                FID_Width|TLONG,        Self->Width,

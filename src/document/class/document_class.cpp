@@ -799,7 +799,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 
    // Allocate the view and page areas
 
-   if (!NewLockedObject(ID_SURFACE, NF_INTEGRAL, &surface, &Self->ViewID)) {
+   if (!NewLockedObject(ID_SURFACE, NF::INTEGRAL, &surface, &Self->ViewID)) {
       SetFields(surface,
          FID_Name|TSTR,    "rgnDocView",   // Do not change this name - it can be used by objects to detect if they are placed in a document
          FID_Parent|TLONG, Self->SurfaceID,
@@ -820,7 +820,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 
    if (error) return error;
 
-   if (!NewLockedObject(ID_SURFACE, NF_INTEGRAL, &surface, &Self->PageID)) {
+   if (!NewLockedObject(ID_SURFACE, NF::INTEGRAL, &surface, &Self->PageID)) {
       SetFields(surface,
          FID_Name|TSTR,       "rgnDocPage",  // Do not change this name - it can be used by objects to detect if they are placed in a document
          FID_Parent|TLONG,    Self->ViewID,

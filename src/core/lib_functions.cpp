@@ -126,7 +126,7 @@ ERROR CheckObjectExists(OBJECTID ObjectID)
          LONG result = ERR_False;
          auto mem = glPrivateMemory.find(ObjectID);
          if ((mem != glPrivateMemory.end()) and (mem->second.Object)) {
-            if (mem->second.Object->Flags & NF_UNLOCK_FREE);
+            if (mem->second.Object->defined(NF::UNLOCK_FREE));
             else result = ERR_True;
          }
          return result;
@@ -1256,7 +1256,7 @@ ERROR ListChildren(OBJECTID ObjectID, LONG IncludeShared, ChildEntry *List, LONG
       if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
          auto list = (SharedObject *)ResolveAddress(header, header->Offset);
          for (LONG j=0; j < header->NextEntry; j++) {
-            if ((list[j].OwnerID IS ObjectID) and (!(list[j].Flags & NF_INTEGRAL))) {
+            if ((list[j].OwnerID IS ObjectID) and ((list[j].Flags & NF::INTEGRAL) IS NF::NIL)) {
                List[i].ObjectID = list[j].ObjectID;
                List[i].ClassID  = list[j].ClassID;
                if (++i >= *Count) break;
@@ -1276,7 +1276,7 @@ ERROR ListChildren(OBJECTID ObjectID, LONG IncludeShared, ChildEntry *List, LONG
             if (mem IS glPrivateMemory.end()) continue;
 
             if (auto child = mem->second.Object) {
-               if (!(child->Flags & NF_INTEGRAL)) {
+               if (!child->defined(NF::INTEGRAL)) {
                   List[i].ObjectID = child->UID;
                   List[i].ClassID  = child->ClassID;
                   if (++i >= *Count) break;
@@ -1561,7 +1561,7 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 
    //if (Object->OwnerID) log.trace("SetOwner:","Changing the owner for object %d from %d to %d.", Object->UID, Object->OwnerID, Owner->UID);
 
-   if (Object->Flags & NF_FOREIGN_OWNER) { // Remove subscription to AC_OwnerDestroyed
+   if (Object->defined(NF::FOREIGN_OWNER)) { // Remove subscription to AC_OwnerDestroyed
       OBJECTPTR obj;
       if (!AccessObject(Object->OwnerID, 3000, &obj)) {
          auto context = SetContext(Object);
@@ -1630,7 +1630,7 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
          log.msg("Owner %d is in task %d, will monitor for termination.", Owner->UID, Owner->TaskID);
          parasol::SwitchContext ctx(Object);
          SubscribeAction(Owner, AC_OwnerDestroyed);
-         Object->Flags |= NF_FOREIGN_OWNER;
+         Object->Flags |= NF::FOREIGN_OWNER;
       }
    }
 
@@ -2061,7 +2061,7 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
       // For resource tracking purposes it is important for us to keep a record of the subscription so that
       // we don't treat the object address as valid when it's been removed from the system.
 
-      subscriber->Flags |= NF_TIMER_SUB;
+      subscriber->Flags |= NF::TIMER_SUB;
 
       if (Subscription) *Subscription = &*it;
 
@@ -2263,7 +2263,7 @@ void remove_object_hash(OBJECTPTR Object)
 
 //********************************************************************************************************************
 
-void set_object_flags(OBJECTPTR Object, LONG Flags)
+void set_object_flags(OBJECTPTR Object, NF Flags)
 {
    parasol::Log log(__FUNCTION__);
 
