@@ -41,23 +41,19 @@ static void decompress_jpeg(prvPicture *, objBitmap *, struct jpeg_decompress_st
 static ERROR JPEG_Activate(prvPicture *Self, APTR Void)
 {
    parasol::Log log;
-   objBitmap *bmp;
    struct jpeg_decompress_struct cinfo;
    struct jpeg_error_mgr jerr;
-   STRING location;
 
    // Return if the picture object has already been activated
 
    if (Self->Bitmap->initialised()) return ERR_Okay;
 
    if (!Self->prvFile) {
-      if (Self->get(FID_Location, &location) != ERR_Okay) return log.warning(ERR_GetField);
+      STRING path;
+      if (Self->get(FID_Location, &path) != ERR_Okay) return log.warning(ERR_GetField);
 
-      if (CreateObject(ID_FILE, NF::NIL, &Self->prvFile,
-            FID_Location|TSTR, location,
-            FID_Flags|TLONG,   FL_READ|FL_APPROXIMATE,
-            TAGEND) != ERR_Okay) {
-         log.warning("Failed to open file \"%s\".", location);
+      if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_APPROXIMATE)))) {
+         log.warning("Failed to open file \"%s\".", path);
          return ERR_File;
       }
    }
@@ -66,7 +62,7 @@ static ERROR JPEG_Activate(prvPicture *Self, APTR Void)
 
    acSeek(Self->prvFile, 0.0, SEEK_START);
 
-   bmp = Self->Bitmap;
+   auto bmp = Self->Bitmap;
    cinfo.err = jpeg_std_error((struct jpeg_error_mgr *)&jerr);
    jpeg_create_decompress(&cinfo);
    jpeg_stdio_src(&cinfo, Self->prvFile);
@@ -101,19 +97,12 @@ static ERROR JPEG_Activate(prvPicture *Self, APTR Void)
       decompress_jpeg(Self, bmp, &cinfo);
    }
    else {
-      objBitmap *tmp_bitmap;
-      ERROR error;
-
       log.trace("Dest BPP of %d requires dithering.", bmp->BitsPerPixel);
 
-      if (!(error = CreateObject(ID_BITMAP, NF::NIL, &tmp_bitmap,
-            FID_Width|TLONG,        bmp->Width,
-            FID_Height|TLONG,       bmp->Height,
-            FID_BitsPerPixel|TLONG, 24,
-            TAGEND))) {
-         decompress_jpeg(Self, tmp_bitmap, &cinfo);
-         gfxCopyArea(tmp_bitmap, bmp, BAF_DITHER, 0, 0, bmp->Width, bmp->Height, 0, 0);
-         acFree(tmp_bitmap);
+      objBitmap::create tmp = { fl::Width(bmp->Width), fl::Height(bmp->Height), fl::BitsPerPixel(24) };
+      if (tmp.ok()) {
+         decompress_jpeg(Self, *tmp, &cinfo);
+         gfxCopyArea(*tmp, bmp, BAF_DITHER, 0, 0, bmp->Width, bmp->Height, 0, 0);
       }
    }
 
@@ -269,21 +258,14 @@ static ERROR JPEG_SaveImage(prvPicture *Self, struct acSaveImage *Args)
    objFile *file = NULL;
 
    if ((Args) and (Args->DestID)) {
-      if (AccessObject(Args->DestID, 3000, &file) != ERR_Okay) {
-         log.warning("Failed to access destination object #%d.", Args->DestID);
-         return ERR_AccessObject;
-      }
+      if (AccessObject(Args->DestID, 3000, &file)) return log.warning(ERR_AccessObject);
    }
    else {
       STRING path;
-      if (Self->get(FID_Location, &path) != ERR_Okay) {
-         log.warning(ERR_MissingPath);
-         return ERR_GetField;
-      }
+      if (Self->get(FID_Location, &path) != ERR_Okay) return log.warning(ERR_MissingPath);
 
-      if (CreateObject(ID_FILE, NF::NIL, &file, FID_Location|TSTR, path, FID_Flags|TLONG, FL_NEW|FL_WRITE, TAGEND) != ERR_Okay) {
-         log.warning(ERR_CreateObject);
-         return ERR_CreateObject;
+      if (!(file = objFile::create::integral(fl::Path(path), fl::Flags(FL_NEW|FL_WRITE)))) {
+         return log.warning(ERR_CreateObject);
       }
    }
 

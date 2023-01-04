@@ -18,7 +18,7 @@ ERROR CheckAction(OBJECTPTR Object, LONG Action);
 ERROR CheckMemoryExists(MEMORYID ID);
 ERROR CheckObjectExists(OBJECTID Object);
 ERROR DeleteFile(CSTRING Path, FUNCTION * Callback);
-ERROR CreateObject(LARGE ClassID, NF Flags, OBJECTPTR * Object, ...);
+ERROR VirtualVolume(CSTRING Name, ...);
 OBJECTPTR CurrentContext();
 ERROR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR * Result, LONG * Elements);
 LONG AdjustLogLevel(LONG Adjust);
@@ -152,7 +152,6 @@ ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
 ERROR ResolvePath(CSTRING Path, LONG Flags, STRING * Result);
 ERROR SetVolume(LARGE,...);
 ERROR DeleteVolume(CSTRING Name);
-ERROR VirtualVolume(CSTRING Name, ...);
 
 #ifdef  __cplusplus
 }

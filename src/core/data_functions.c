@@ -30,7 +30,6 @@ FDEF argsCopyFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Source", FD_STR }, { "
 FDEF argsCopyMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Src", FD_PTR }, { "Dest", FD_PTR }, { "Size", FD_LONG }, { 0, 0 } };
 FDEF argsCreateFolder[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Permissions", FD_LONG }, { 0, 0 } };
 FDEF argsCreateLink[] = { { "Error", FD_LONG|FD_ERROR }, { "From", FD_STR }, { "To", FD_STR }, { 0, 0 } };
-FDEF argsCreateObject[] = { { "Error", FD_LONG|FD_ERROR }, { "ClassID", FD_LARGE }, { "Flags", FD_LONG }, { "Object", FD_OBJECTPTR|FD_RESULT }, { "Tags", FD_VARTAGS }, { 0, 0 } };
 FDEF argsCurrentContext[] = { { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsCurrentTask[] = { { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsDeleteFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
@@ -169,7 +168,7 @@ const struct Function glFunctions[] = {
    { (APTR)CheckMemoryExists, "CheckMemoryExists", argsCheckMemoryExists },
    { (APTR)CheckObjectExists, "CheckObjectExists", argsCheckObjectExists },
    { (APTR)DeleteFile, "DeleteFile", argsDeleteFile },
-   { (APTR)CreateObject, "CreateObject", argsCreateObject },
+   { (APTR)VirtualVolume, "VirtualVolume", argsVirtualVolume },
    { (APTR)CurrentContext, "CurrentContext", argsCurrentContext },
    { (APTR)GetFieldArray, "GetFieldArray", argsGetFieldArray },
    { (APTR)AdjustLogLevel, "AdjustLogLevel", argsAdjustLogLevel },
@@ -303,7 +302,6 @@ const struct Function glFunctions[] = {
    { (APTR)ResolvePath, "ResolvePath", argsResolvePath },
    { (APTR)SetVolume, "SetVolume", argsSetVolume },
    { (APTR)DeleteVolume, "DeleteVolume", argsDeleteVolume },
-   { (APTR)VirtualVolume, "VirtualVolume", argsVirtualVolume },
    { NULL, NULL, NULL }
 };
 

@@ -2524,17 +2524,18 @@ static const FieldArray clFields[] = {
 
 static ERROR create_scintilla(void)
 {
-   return CreateObject(ID_METACLASS, NF::NIL, &clScintilla,
-      FID_ClassVersion|TFLOAT, VER_SCINTILLA,
-      FID_Name|TSTR,      "Scintilla",
-      FID_Category|TLONG, CCF_TOOL,
-      FID_Flags|TLONG,    CLF_PROMOTE_INTEGRAL,
-      FID_Actions|TPTR,   clScintillaActions,
-      FID_Methods|TARRAY, clScintillaMethods,
-      FID_Fields|TARRAY,  clFields,
-      FID_Size|TLONG,     sizeof(extScintilla),
-      FID_Path|TSTR,      "modules:scintilla",
-      TAGEND);
+   clScintilla = objMetaClass::create::global(
+      fl::ClassVersion(VER_SCINTILLA),
+      fl::Name("Scintilla"),
+      fl::Category(CCF_TOOL),
+      fl::Flags(CLF_PROMOTE_INTEGRAL),
+      fl::Actions(clScintillaActions),
+      fl::Methods(clScintillaMethods),
+      fl::Fields(clFields),
+      fl::Size(sizeof(extScintilla)),
+      fl::Path("modules:scintilla"));
+
+   return clScintilla ? ERR_Okay : ERR_AddClass;
 }
 
 //****************************************************************************

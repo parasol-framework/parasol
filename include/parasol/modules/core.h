@@ -2016,7 +2016,7 @@ struct CoreBase {
    ERROR (*_CheckMemoryExists)(MEMORYID ID);
    ERROR (*_CheckObjectExists)(OBJECTID Object);
    ERROR (*_DeleteFile)(CSTRING Path, FUNCTION * Callback);
-   ERROR (*_CreateObject)(LARGE ClassID, NF Flags, APTR Object, ...);
+   ERROR (*_VirtualVolume)(CSTRING Name, ...);
    OBJECTPTR (*_CurrentContext)(void);
    ERROR (*_GetFieldArray)(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements);
    LONG (*_AdjustLogLevel)(LONG Adjust);
@@ -2150,7 +2150,6 @@ struct CoreBase {
    ERROR (*_ResolvePath)(CSTRING Path, LONG Flags, STRING * Result);
    ERROR (*_SetVolume)(...);
    ERROR (*_DeleteVolume)(CSTRING Name);
-   ERROR (*_VirtualVolume)(CSTRING Name, ...);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2168,7 +2167,7 @@ inline ERROR CheckAction(OBJECTPTR Object, LONG Action) { return CoreBase->_Chec
 inline ERROR CheckMemoryExists(MEMORYID ID) { return CoreBase->_CheckMemoryExists(ID); }
 inline ERROR CheckObjectExists(OBJECTID Object) { return CoreBase->_CheckObjectExists(Object); }
 inline ERROR DeleteFile(CSTRING Path, FUNCTION * Callback) { return CoreBase->_DeleteFile(Path,Callback); }
-template<class... Args> ERROR CreateObject(LARGE ClassID, NF Flags, APTR Object, Args... Tags) { return CoreBase->_CreateObject(ClassID,Flags,Object,Tags...); }
+template<class... Args> ERROR VirtualVolume(CSTRING Name, Args... Tags) { return CoreBase->_VirtualVolume(Name,Tags...); }
 inline OBJECTPTR CurrentContext(void) { return CoreBase->_CurrentContext(); }
 inline ERROR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements) { return CoreBase->_GetFieldArray(Object,Field,Result,Elements); }
 inline LONG AdjustLogLevel(LONG Adjust) { return CoreBase->_AdjustLogLevel(Adjust); }
@@ -2302,7 +2301,6 @@ inline ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { retur
 inline ERROR ResolvePath(CSTRING Path, LONG Flags, STRING * Result) { return CoreBase->_ResolvePath(Path,Flags,Result); }
 template<class... Args> ERROR SetVolume(Args... Tags) { return CoreBase->_SetVolume(Tags...); }
 inline ERROR DeleteVolume(CSTRING Name) { return CoreBase->_DeleteVolume(Name); }
-template<class... Args> ERROR VirtualVolume(CSTRING Name, Args... Tags) { return CoreBase->_VirtualVolume(Name,Tags...); }
 #endif
 
 
