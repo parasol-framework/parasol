@@ -1497,32 +1497,32 @@ static ERROR analyse_bmp_font(STRING Path, winfnt_header_fields *Header, STRING 
    if ((!Path) or (!Header) or (!FaceName)) return ERR_NullArgs;
 
    *FaceName = NULL;
-   parasol::ScopedObject<objFile> file;
-   if (!CreateObject(ID_FILE, NF::NIL, &file.obj, FID_Path|TSTR, Path, FID_Flags|TLONG, FL_READ, TAGEND)) {
-      acRead(file.obj, &mz_header, sizeof(mz_header), NULL);
+   objFile::create file = { fl::Path(Path), fl::Flags(FL_READ) };
+   if (file.ok()) {
+      file->read(&mz_header, sizeof(mz_header), NULL);
 
       if (mz_header.magic IS ID_WINMZ) {
-         acSeekStart(file.obj, mz_header.lfanew);
+         file->seekStart(mz_header.lfanew);
 
-         if ((!acRead(file.obj, &ne_header, sizeof(ne_header), NULL)) and (ne_header.magic IS ID_WINNE)) {
+         if ((!file->read(&ne_header, sizeof(ne_header), NULL)) and (ne_header.magic IS ID_WINNE)) {
             res_offset = mz_header.lfanew + ne_header.resource_tab_offset;
-            acSeekStart(file.obj, res_offset);
+            file->seekStart(res_offset);
 
             font_count  = 0;
             font_offset = 0;
-            size_shift  = ReadWordLE(file.obj);
+            flReadLE(*file, &size_shift);
 
-            for (type_id=ReadWordLE(file.obj); type_id; type_id=ReadWordLE(file.obj)) {
-               count = ReadWordLE(file.obj);
+            for (flReadLE(*file, &type_id); type_id; flReadLE(*file, &type_id)) {
+               flReadLE(*file, &count);
 
                if (type_id IS 0x8008) {
                   font_count  = count;
-                  file.obj->get(FID_Position, &font_offset);
+                  file->get(FID_Position, &font_offset);
                   font_offset = font_offset + 4;
                   break;
                }
 
-               acSeekCurrent(file.obj, 4 + count * 12);
+               file->seekCurrent(4 + count * 12);
             }
 
             if ((!font_count) or (!font_offset)) {
@@ -1530,7 +1530,7 @@ static ERROR analyse_bmp_font(STRING Path, winfnt_header_fields *Header, STRING 
                return ERR_Failed;
             }
 
-            acSeekStart(file.obj, font_offset);
+            file->seekStart(font_offset);
 
             {
                winFont fonts[font_count];
@@ -1538,16 +1538,19 @@ static ERROR analyse_bmp_font(STRING Path, winfnt_header_fields *Header, STRING 
                // Get the offset and size of each font entry
 
                for (LONG i=0; i < font_count; i++) {
-                  fonts[i].Offset = ReadWordLE(file.obj)<<size_shift;
-                  fonts[i].Size   = ReadWordLE(file.obj)<<size_shift;
-                  acSeekCurrent(file.obj, 8);
+                  UWORD offset, size;
+                  flReadLE(*file, &offset);
+                  flReadLE(*file, &size);
+                  fonts[i].Offset = offset<<size_shift;
+                  fonts[i].Size   = size<<size_shift;
+                  file->seekCurrent(8);
                }
 
                // Read font point sizes
 
                for (i=0; (i < font_count) and (i < MaxPoints-1); i++) {
-                  acSeekStart(file.obj, fonts[i].Offset);
-                  if (!acRead(file.obj, Header, sizeof(winfnt_header_fields), NULL)) {
+                  file->seekStart(fonts[i].Offset);
+                  if (!file->read(Header, sizeof(winfnt_header_fields), NULL)) {
                      Points[i] = Header->nominal_point_size;
                   }
                }
@@ -1555,9 +1558,9 @@ static ERROR analyse_bmp_font(STRING Path, winfnt_header_fields *Header, STRING 
 
                // Go to the first font in the file and read the font header
 
-               acSeekStart(file.obj, fonts[0].Offset);
+               file->seekStart(fonts[0].Offset);
 
-               if (acRead(file.obj, Header, sizeof(winfnt_header_fields), NULL)) {
+               if (file->read(Header, sizeof(winfnt_header_fields), NULL)) {
                   return ERR_Read;
                }
 
@@ -1575,10 +1578,10 @@ static ERROR analyse_bmp_font(STRING Path, winfnt_header_fields *Header, STRING 
 
                // Extract the name of the font
 
-               acSeekStart(file.obj, fonts[0].Offset + Header->face_name_offset);
+               file->seekStart(fonts[0].Offset + Header->face_name_offset);
 
                for (i=0; (size_t)i < sizeof(face)-1; i++) {
-                  if ((acRead(file.obj, face+i, 1, NULL)) or (!face[i])) break;
+                  if ((file->read(face+i, 1, NULL)) or (!face[i])) break;
                }
                face[i] = 0;
                *FaceName = StrClone(face);
