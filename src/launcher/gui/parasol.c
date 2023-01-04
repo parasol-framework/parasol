@@ -354,7 +354,7 @@ ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRI
       class_id = ID_SCRIPT;
    }
 
-   if (!NewPrivateObject(subclass ? subclass : class_id, 0, &glScript)) {
+   if (!NewObject(subclass ? subclass : class_id, 0, &glScript)) {
       if (!TargetID) TargetID = CurrentTaskID();
 
       SetFields(glScript, FID_Path|TSTR,      ScriptFile,
