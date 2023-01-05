@@ -504,7 +504,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    if (flReadLE(Self->File, &id)) return ERR_Read; // Contains the characters "fmt "
    if (flReadLE(Self->File, &len)) return ERR_Read; // Length of data in this chunk
 
-   if (!AllocMemory(len, MEM_DATA, &Self->prvWAVE, NULL)) {
+   if (!AllocMemory(len, MEM_DATA, &Self->prvWAVE)) {
       LONG result;
       if (Self->File->read(Self->prvWAVE, len, &result) or (result != len)) {
          if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
@@ -752,7 +752,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
       flReadLE(Self->File, &id); // Contains the characters "fmt "
       flReadLE(Self->File, &len); // Length of data in this chunk
 
-      if (!AllocMemory(len, MEM_DATA, &Self->prvWAVE, NULL)) {
+      if (!AllocMemory(len, MEM_DATA, &Self->prvWAVE)) {
          if (Self->File->read(Self->prvWAVE, len, &result) or (result < len)) {
             if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
             log.warning("Failed to read WAVE format header (got %d, expected %d)", result, len);
@@ -894,7 +894,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
             return ERR_Failed;
          }
       }
-      else if (!AllocMemory(Self->Length, MEM_DATA|MEM_NO_CLEAR, &buffer, NULL)) {
+      else if (!AllocMemory(Self->Length, MEM_DATA|MEM_NO_CLEAR, &buffer)) {
          Self->BufferLength = Self->Length;
 
          if (!Self->File->read(buffer, Self->Length, &result)) {
@@ -1232,7 +1232,7 @@ static ERROR SOUND_SET_Path(extSound *Self, CSTRING Value)
 
    if ((Value) and (*Value)) {
       LONG i = strlen(Value);
-      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->prvPath, NULL)) {
+      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->prvPath)) {
          for (i=0; Value[i]; i++) Self->prvPath[i] = Value[i];
          Self->prvPath[i] = 0;
       }

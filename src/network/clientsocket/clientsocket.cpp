@@ -319,7 +319,7 @@ static ERROR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct csReadClie
 
    if (!queue->Buffer) {
       queue->Length = 2048;
-      if (AllocMemory(queue->Length, MEM_NO_CLEAR, &queue->Buffer, NULL) != ERR_Okay) {
+      if (AllocMemory(queue->Length, MEM_NO_CLEAR, &queue->Buffer) != ERR_Okay) {
          return ERR_AllocMemory;
       }
    }
@@ -359,7 +359,7 @@ static ERROR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct csReadClie
             if (total_length > queue->Length) {
                MSG("Extending queue length from %d to %d", queue->Length, total_length);
                APTR buffer;
-               if (!AllocMemory(total_length, MEM_NO_CLEAR, &buffer, NULL)) {
+               if (!AllocMemory(total_length, MEM_NO_CLEAR, &buffer)) {
                   if (queue->Buffer) {
                      CopyMemory(queue->Buffer, buffer, queue->Index);
                      FreeResource(queue->Buffer);

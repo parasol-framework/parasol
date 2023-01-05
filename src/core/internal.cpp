@@ -597,7 +597,7 @@ ERROR critical_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
 
          log.trace("Killing process %d", murder);
          kill(murder, SIGUSR1); // Diagnosis signal
-         PrintDiagnosis(murder, 0);
+         print_diagnosis(murder, 0);
          kill(murder, SIGHUP); // Safe kill signal
          WaitTime(0,-200000);
          kill(murder, SIGKILL); // Force kill signal

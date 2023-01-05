@@ -195,7 +195,7 @@ static ERROR DOCUMENT_AddListener(extDocument *Self, struct docAddListener *Args
 
    if ((!Args) or (!Args->Trigger) or (!Args->Function)) return ERR_NullArgs;
 
-   if (!AllocMemory(sizeof(DocTrigger), MEM_DATA|MEM_NO_CLEAR, &trigger, NULL)) {
+   if (!AllocMemory(sizeof(DocTrigger), MEM_DATA|MEM_NO_CLEAR, &trigger)) {
       trigger->Function = *Args->Function;
       trigger->Next = Self->Triggers[Args->Trigger];
       Self->Triggers[Args->Trigger] = trigger;
@@ -334,7 +334,7 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
       // Calculate the length of the highlighted document
 
       if (Self->SelectEnd != Self->SelectStart) {
-         if (!AllocMemory(Self->SelectEnd - Self->SelectStart + 1, MEM_STRING|MEM_NO_CLEAR, &buffer, NULL)) {
+         if (!AllocMemory(Self->SelectEnd - Self->SelectStart + 1, MEM_STRING|MEM_NO_CLEAR, &buffer)) {
             // Copy the selected area into the buffer
 
             LONG i = Self->SelectStart;
@@ -1026,20 +1026,20 @@ static ERROR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
    if (!error) {
       if (!Self->Buffer) {
          Self->BufferSize = 65536;
-         if (AllocMemory(Self->BufferSize, MEM_NO_CLEAR, &Self->Buffer, NULL) != ERR_Okay) {
+         if (AllocMemory(Self->BufferSize, MEM_NO_CLEAR, &Self->Buffer) != ERR_Okay) {
             return ERR_AllocMemory;
          }
       }
 
       if (!Self->Temp) {
          Self->TempSize = 65536;
-         if (AllocMemory(Self->TempSize, MEM_NO_CLEAR, &Self->Temp, NULL) != ERR_Okay) {
+         if (AllocMemory(Self->TempSize, MEM_NO_CLEAR, &Self->Temp) != ERR_Okay) {
             return ERR_AllocMemory;
          }
       }
 
       if (!Self->VArg) {
-         if (AllocMemory(sizeof(Self->VArg[0]) * MAX_ARGS, MEM_NO_CLEAR, &Self->VArg, NULL) != ERR_Okay) {
+         if (AllocMemory(sizeof(Self->VArg[0]) * MAX_ARGS, MEM_NO_CLEAR, &Self->VArg) != ERR_Okay) {
             return ERR_AllocMemory;
          }
       }
@@ -1219,7 +1219,7 @@ static ERROR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args
 
    if (Args->Format IS DATA_TEXT) {
       STRING output;
-      if (!AllocMemory(Args->End - Args->Start + 1, MEM_NO_CLEAR, &output, NULL)) {
+      if (!AllocMemory(Args->End - Args->Start + 1, MEM_NO_CLEAR, &output)) {
          LONG j = 0;
          LONG i = Args->Start;
          while (i < Args->End) {
@@ -1243,7 +1243,7 @@ static ERROR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args
    }
    else if (Args->Format IS DATA_RAW) {
       STRING output;
-      if (!AllocMemory(Args->End - Args->Start + 1, MEM_NO_CLEAR, &output, NULL)) {
+      if (!AllocMemory(Args->End - Args->Start + 1, MEM_NO_CLEAR, &output)) {
          CopyMemory(Self->Stream + Args->Start, output, Args->End - Args->Start);
          output[Args->End - Args->Start] = 0;
          Args->Result = output;

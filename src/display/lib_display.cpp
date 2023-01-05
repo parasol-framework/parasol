@@ -35,7 +35,7 @@ ERROR gfxGetDisplayInfo(OBJECTID DisplayID, DISPLAYINFO **Result)
    if (!t_info) {
       // Each thread gets an allocation that can't be resource tracked, so MEM_HIDDEN is used in this case.
       // Note that this could conceivably cause memory leaks if temporary threads were to use this function.
-      if (AllocMemory(sizeof(DISPLAYINFO), MEM_NO_CLEAR|MEM_HIDDEN, &t_info, NULL)) {
+      if (AllocMemory(sizeof(DISPLAYINFO), MEM_NO_CLEAR|MEM_HIDDEN, &t_info)) {
          return ERR_AllocMemory;
       }
    }

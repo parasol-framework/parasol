@@ -576,7 +576,7 @@ static ERROR VECTOR_NewMatrix(extVector *Self, struct vecNewMatrix *Args)
    if (!Args) return ERR_NullArgs;
 
    VectorMatrix *transform;
-   if (!AllocMemory(sizeof(VectorMatrix), MEM_DATA|MEM_NO_CLEAR, &transform, NULL)) {
+   if (!AllocMemory(sizeof(VectorMatrix), MEM_DATA|MEM_NO_CLEAR, &transform)) {
       // Insert transform at the start of the list.
 
       transform->Vector = Self;

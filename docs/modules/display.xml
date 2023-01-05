@@ -1205,9 +1205,9 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </struct>
 
     <struct name="SurfaceInfo" typeName="SURFACEINFO">
+      <field name="Data" type="APTR">Bitmap data memory ID</field>
       <field name="ParentID" type="OBJECTID">Object that contains the surface area</field>
       <field name="BitmapID" type="OBJECTID">Surface bitmap buffer</field>
-      <field name="DataMID" type="OBJECTID">Bitmap data memory ID</field>
       <field name="DisplayID" type="OBJECTID">If the surface object is root, its display is reflected here</field>
       <field name="Flags" type="LONG">Surface flags (RNF_VISIBLE etc)</field>
       <field name="X" type="LONG">Horizontal coordinate</field>
@@ -1223,11 +1223,11 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </struct>
 
     <struct name="SurfaceList">
+      <field name="Data" type="APTR">For drwCopySurface()</field>
       <field name="ParentID" type="OBJECTID">Object that owns the surface area</field>
       <field name="SurfaceID" type="OBJECTID">ID of the surface area</field>
       <field name="BitmapID" type="OBJECTID">Shared bitmap buffer, if available</field>
       <field name="DisplayID" type="OBJECTID">Display</field>
-      <field name="DataMID" type="OBJECTID">For drwCopySurface()</field>
       <field name="TaskID" type="OBJECTID">Task that owns the surface</field>
       <field name="RootID" type="OBJECTID">RootLayer</field>
       <field name="PopOverID" type="OBJECTID"></field>

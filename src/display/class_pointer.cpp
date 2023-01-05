@@ -916,24 +916,12 @@ static ERROR PTR_SaveToObject(extPointer *Self, struct acSaveToObject *Args)
 
    objConfig::create config = { };
    if (config.ok()) {
-      char buffer[30];
-      snprintf(buffer, sizeof(buffer), "%f", Self->Speed);
-      cfgWriteValue(*config, "POINTER", "Speed", buffer);
-
-      snprintf(buffer, sizeof(buffer), "%f", Self->Acceleration);
-      cfgWriteValue(*config, "POINTER", "Acceleration", buffer);
-
-      snprintf(buffer, sizeof(buffer), "%f", Self->DoubleClick);
-      cfgWriteValue(*config, "POINTER", "DoubleClick", buffer);
-
-      snprintf(buffer, sizeof(buffer), "%d", Self->MaxSpeed);
-      cfgWriteValue(*config, "POINTER", "MaxSpeed", buffer);
-
-      snprintf(buffer, sizeof(buffer), "%f", Self->WheelSpeed);
-      cfgWriteValue(*config, "POINTER", "WheelSpeed", buffer);
-
-      cfgWriteValue(*config, "POINTER", "ButtonOrder", Self->ButtonOrder);
-
+      config->write("POINTER", "Speed", Self->Speed);
+      config->write("POINTER", "Acceleration", Self->Acceleration);
+      config->write("POINTER", "DoubleClick", Self->DoubleClick);
+      config->write("POINTER", "MaxSpeed", Self->MaxSpeed);
+      config->write("POINTER", "WheelSpeed", Self->WheelSpeed);
+      config->write("POINTER", "ButtonOrder", Self->ButtonOrder);
       config->saveToObject(Args->DestID, 0);
    }
 

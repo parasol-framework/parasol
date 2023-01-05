@@ -725,7 +725,7 @@ static ERROR SURFACE_AddCallback(extSurface *Self, struct drwAddCallback *Args)
          LONG new_size = Self->CallbackSize + 10;
          if (new_size > 255) new_size = 255;
          SurfaceCallback *scb;
-         if (!AllocMemory(sizeof(SurfaceCallback) * new_size, MEM_DATA|MEM_NO_CLEAR, &scb, NULL)) {
+         if (!AllocMemory(sizeof(SurfaceCallback) * new_size, MEM_DATA|MEM_NO_CLEAR, &scb)) {
             CopyMemory(Self->Callback, scb, sizeof(SurfaceCallback) * Self->CallbackCount);
 
             scb[Self->CallbackCount].Object   = context;
@@ -1641,7 +1641,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
                Self->BitsPerPixel  = bitmap->BitsPerPixel;
                Self->BytesPerPixel = bitmap->BytesPerPixel;
                Self->LineWidth     = bitmap->LineWidth;
-               Self->DataMID       = bitmap->DataMID;
+               Self->Data          = bitmap->Data;
                error = ERR_Okay;
             }
             else error = ERR_Init;

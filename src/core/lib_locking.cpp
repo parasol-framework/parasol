@@ -1624,7 +1624,7 @@ MEMORYID ReleaseMemory(APTR Address)
 
       if (!lock.granted()) {
          log.warning("PL_PUBLICMEM lock failed.  Will risk releasing memory address %p...", Address);
-         PrintDiagnosis(0, 0);
+         print_diagnosis(0, 0);
       }
 
       LONG entry = find_public_address(glSharedControl, Address);
@@ -1644,7 +1644,7 @@ MEMORYID ReleaseMemory(APTR Address)
             if (addr->AccessCount < 1) { // Sanity check
                log.warning("Process %d:%d attempt to release block %p / #%d @ %d without an existing lock (access count %d), locked by %d:%d", glProcessID, get_thread_id(), Address, id, entry, addr->AccessCount, addr->ProcessLockID, addr->ThreadLockID);
 
-               PrintDiagnosis(0, 0);
+               print_diagnosis(0, 0);
                return id;
             }
 
@@ -1734,7 +1734,7 @@ MEMORYID ReleaseMemory(APTR Address)
       if ((mem IS glPrivateMemory.end()) or (!mem->second.Address)) {
          if (tlContext->object()->Class) log.warning("Unable to find a record for memory address %p, ID %d [Context %d, Class %s].", Address, ((LONG *)Address)[-2], tlContext->object()->UID, tlContext->object()->className());
          else log.warning("Unable to find a record for memory address %p.", Address);
-         if (glLogLevel > 1) PrintDiagnosis(glProcessID, 0);
+         if (glLogLevel > 1) print_diagnosis(glProcessID, 0);
          return 0;
       }
 
@@ -1812,7 +1812,7 @@ ERROR ReleaseMemoryID(MEMORYID MemoryID)
       else {
          log.warning("LOCK_PUBLIC_MEMORY() failed.  Will risk releasing memory address #%d...", MemoryID);
          permit = FALSE;
-         PrintDiagnosis(0, 0);
+         print_diagnosis(0, 0);
       }
 
       if (find_public_mem_id(glSharedControl, MemoryID, &entry) != ERR_Okay) {
@@ -1831,7 +1831,7 @@ ERROR ReleaseMemoryID(MEMORYID MemoryID)
       if (!unpage_memory_id(MemoryID)) {
          if (addr->AccessCount < 1) { // Sanity check
             log.warning("Process %d:%d attempt to release block #%d, index %d without an existing lock (access count %d), locked by %d:%d", glProcessID, get_thread_id(), MemoryID, entry, addr->AccessCount, addr->ProcessLockID, addr->ThreadLockID);
-            PrintDiagnosis(0, 0);
+            print_diagnosis(0, 0);
             if (permit) UNLOCK_PUBLIC_MEMORY();
             return ERR_Okay;
          }
@@ -1917,7 +1917,7 @@ ERROR ReleaseMemoryID(MEMORYID MemoryID)
          if ((mem IS glPrivateMemory.end()) or (!mem->second.Address)) {
             if (tlContext->object()->Class) log.warning("Unable to find a record for memory address #%d [Context %d, Class %s].", MemoryID, tlContext->object()->UID, tlContext->object()->className());
             else log.warning("Unable to find a record for memory #%d.", MemoryID);
-            if (glLogLevel > 1) PrintDiagnosis(glProcessID, 0);
+            if (glLogLevel > 1) print_diagnosis(glProcessID, 0);
             return ERR_Search;
          }
 

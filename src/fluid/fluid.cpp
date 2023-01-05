@@ -163,7 +163,7 @@ static void flTestCall7(STRING a, STRING b, STRING c)
 struct references * alloc_references(void)
 {
    struct references *list;
-   if (!AllocMemory(sizeof(struct references), MEM_DATA|MEM_NO_CLEAR, &list, NULL)) {
+   if (!AllocMemory(sizeof(struct references), MEM_DATA|MEM_NO_CLEAR, &list)) {
       list->Index = 0;
       return list;
    }

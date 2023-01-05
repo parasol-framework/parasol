@@ -276,9 +276,9 @@ struct SurfaceControl {
 #define VER_SURFACEINFO 2
 
 typedef struct SurfaceInfoV2 {
+   APTR     Data;        // Bitmap data memory ID
    OBJECTID ParentID;    // Object that contains the surface area
    OBJECTID BitmapID;    // Surface bitmap buffer
-   OBJECTID DataMID;     // Bitmap data memory ID
    OBJECTID DisplayID;   // If the surface object is root, its display is reflected here
    LONG     Flags;       // Surface flags (RNF_VISIBLE etc)
    LONG     X;           // Horizontal coordinate
@@ -294,11 +294,11 @@ typedef struct SurfaceInfoV2 {
 } SURFACEINFO;
 
 struct SurfaceList {
+   APTR     Data;        // For drwCopySurface()
    OBJECTID ParentID;    // Object that owns the surface area
    OBJECTID SurfaceID;   // ID of the surface area
    OBJECTID BitmapID;    // Shared bitmap buffer, if available
    OBJECTID DisplayID;   // Display
-   OBJECTID DataMID;     // For drwCopySurface()
    OBJECTID TaskID;      // Task that owns the surface
    OBJECTID RootID;      // RootLayer
    OBJECTID PopOverID;
@@ -485,30 +485,29 @@ class objBitmap : public BaseClass {
    void (*ReadUCRPixel)(objBitmap *, LONG, LONG, struct RGB8 *);     // Points to a C function that reads pixels from the bitmap in RGB format.
    void (*ReadUCRIndex)(objBitmap *, UBYTE *, struct RGB8 *);        // Points to a C function that reads pixels from the bitmap in RGB format.
    void (*DrawUCRIndex)(objBitmap *, UBYTE *, struct RGB8 *);        // Points to a C function that draws pixels to the bitmap in RGB format.
-   UBYTE *  Data;                                                    // Pointer to a bitmap's data area.
-   LONG     Width;                                                   // The width of the bitmap, in pixels.
-   LONG     ByteWidth;                                               // The width of the bitmap, in bytes.
-   LONG     Height;                                                  // The height of the bitmap, in pixels.
-   LONG     Type;                                                    // Defines the data type of the bitmap.
-   LONG     LineWidth;                                               // Line differential in bytes
-   LONG     PlaneMod;                                                // The differential between each bitmap plane.
+   UBYTE * Data;                                                     // Pointer to a bitmap's data area.
+   LONG    Width;                                                    // The width of the bitmap, in pixels.
+   LONG    ByteWidth;                                                // The width of the bitmap, in bytes.
+   LONG    Height;                                                   // The height of the bitmap, in pixels.
+   LONG    Type;                                                     // Defines the data type of the bitmap.
+   LONG    LineWidth;                                                // Line differential in bytes
+   LONG    PlaneMod;                                                 // The differential between each bitmap plane.
    struct ClipRectangle Clip;                                        // Defines the bitmap's clipping region.
-   LONG     Size;                                                    // The total size of the bitmap, in bytes.
-   LONG     DataFlags;                                               // Defines the memory flags to use in allocating a bitmap's data area.
-   LONG     AmtColours;                                              // The maximum number of displayable colours.
-   LONG     Flags;                                                   // Optional flags.
-   LONG     TransIndex;                                              // The transparent colour of the bitmap, represented as an index.
-   LONG     BytesPerPixel;                                           // The number of bytes per pixel.
-   LONG     BitsPerPixel;                                            // The number of bits per pixel
-   LONG     Position;                                                // The current read/write data position.
-   LONG     XOffset;                                                 // Private. Provided for surface/video drawing purposes - considered too advanced for standard use.
-   LONG     YOffset;                                                 // Private. Provided for surface/video drawing purposes - considered too advanced for standard use.
-   LONG     Opacity;                                                 // Determines the translucency setting to use in drawing operations.
-   MEMORYID DataMID;                                                 // Memory ID of the bitmap's data, if applicable.
+   LONG    Size;                                                     // The total size of the bitmap, in bytes.
+   LONG    DataFlags;                                                // Defines the memory flags to use in allocating a bitmap's data area.
+   LONG    AmtColours;                                               // The maximum number of displayable colours.
+   LONG    Flags;                                                    // Optional flags.
+   LONG    TransIndex;                                               // The transparent colour of the bitmap, represented as an index.
+   LONG    BytesPerPixel;                                            // The number of bytes per pixel.
+   LONG    BitsPerPixel;                                             // The number of bits per pixel
+   LONG    Position;                                                 // The current read/write data position.
+   LONG    XOffset;                                                  // Private. Provided for surface/video drawing purposes - considered too advanced for standard use.
+   LONG    YOffset;                                                  // Private. Provided for surface/video drawing purposes - considered too advanced for standard use.
+   LONG    Opacity;                                                  // Determines the translucency setting to use in drawing operations.
    struct RGB8 TransRGB;                                             // The transparent colour of the bitmap, in RGB format.
    struct RGB8 BkgdRGB;                                              // Background colour (for clearing, resizing)
-   LONG     BkgdIndex;                                               // The bitmap's background colour is defined here as a colour index.
-   LONG     ColourSpace;                                             // Defines the colour space for RGB values.
+   LONG    BkgdIndex;                                                // The bitmap's background colour is defined here as a colour index.
+   LONG    ColourSpace;                                              // Defines the colour space for RGB values.
    public:
    inline ULONG getColour(UBYTE Red, UBYTE Green, UBYTE Blue, UBYTE Alpha) {
       if (BitsPerPixel > 8) return packPixel(Red, Green, Blue, Alpha);

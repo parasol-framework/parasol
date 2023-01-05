@@ -275,12 +275,11 @@ void ScintillaParasol::CopyToClipboard(const Scintilla::SelectionText &selectedT
    parasol::Log log(__FUNCTION__);
    log.traceBranch("");
 
-   OBJECTPTR clipboard;
-   if (!CreateObject(ID_CLIPBOARD, NF::NIL, &clipboard, TAGEND)) {
-      if (!clipAddText(clipboard, selectedText.s)) {
+   objClipboard::create clipboard = { };
+   if (clipboard.ok()) {
+      if (!clipAddText(*clipboard, selectedText.s)) {
 
       }
-      acFree(clipboard);
    }
 }
 
@@ -334,7 +333,7 @@ void ScintillaParasol::Paste()
             LONG len, size;
             if ((!file->get(FID_Size, &size)) and (size > 0)) {
                STRING buffer;
-               if (!AllocMemory(size, MEM_STRING, &buffer, NULL)) {
+               if (!AllocMemory(size, MEM_STRING, &buffer)) {
                   if (!file->read(buffer, size, &len)) {
                      pdoc->BeginUndoAction();
 

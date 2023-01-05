@@ -291,6 +291,8 @@ class extSurface : public objSurface {
    struct SurfaceCallback *Callback;
    APTR      UserLoginHandle;
    APTR      TaskRemovedHandle;
+   APTR      Data;
+   PrecopyRegion *Precopy;
    WINHANDLE DisplayWindow;       // Reference to the platform dependent window representing the Surface object
    OBJECTID PrevModalID;          // Previous surface to have been modal
    OBJECTID BitmapOwnerID;        // The surface object that owns the root bitmap
@@ -302,8 +304,6 @@ class extSurface : public objSurface {
    LONG     InputHandle;          // Input handler for dragging of surfaces
    TIMER    RedrawTimer;          // For ScheduleRedraw()
    TIMER    ScrollTimer;
-   MEMORYID DataMID;              // Bitmap memory reference
-   MEMORYID PrecopyMID;           // Precopy region information
    struct SurfaceCallback CallbackCache[4];
    WORD     ScrollProgress;
    WORD     Opacity;
@@ -373,7 +373,7 @@ class extBitmap : public objBitmap {
    APTR   ResolutionChangeHandle;
    struct RGBPalette prvPaletteArray;
    struct ColourFormat prvColourFormat;
-   MEMORYID prvCompressMID;
+   UBYTE *prvCompress;
    LONG   prvAFlags;                  // Private allocation flags
    #ifdef __xwindows__
       struct {

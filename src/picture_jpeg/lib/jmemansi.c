@@ -15,7 +15,7 @@ extern struct CoreBase *CoreBase;
 APTR jpeg_get_small(j_common_ptr cinfo, LONG sizeofobject)
 {
    APTR result;
-   if (AllocMemory(sizeofobject, MEM_DATA, &result, NULL) IS ERR_Okay) return result;
+   if (AllocMemory(sizeofobject, MEM_DATA, &result) IS ERR_Okay) return result;
    else return NULL;
 }
 
@@ -27,7 +27,7 @@ void jpeg_free_small(j_common_ptr cinfo, void * object, LONG sizeofobject)
 APTR jpeg_get_large(j_common_ptr cinfo, LONG sizeofobject)
 {
    APTR result;
-   if (AllocMemory(sizeofobject, MEM_DATA, &result, NULL) IS ERR_Okay) return result;
+   if (AllocMemory(sizeofobject, MEM_DATA, &result) IS ERR_Okay) return result;
    else return NULL;
 }
 

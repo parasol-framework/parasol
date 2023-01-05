@@ -1458,11 +1458,6 @@ extern "C" {
 }
 #endif
 
-#define PRIVATE_FIELDS
-
-#undef  NULL    // Turn off any previous definition of NULL
-#define NULL 0  // NULL is a value of 0
-
 #define skipwhitespace(a) while ((*(a) > 0) && (*(a) <= 0x20)) (a)++;
 
 #define ARRAYSIZE(a) ((LONG)(sizeof(a)/sizeof(a[0])))
@@ -1643,16 +1638,9 @@ struct OpenInfo {
 #define TSTRING   TSTR
 #define TREL      TRELATIVE
 
-#define ResolveAddress(a,b)  ((APTR)(((BYTE *)(a)) + (b)))
-
-#define FreeFromLL(a,b,c) if ((a)->Prev) (a)->Prev->Next = (a)->Next; \
-                          if ((a)->Next) (a)->Next->Prev = (a)->Prev; \
-                          if ((a) == (b)) { \
-                             (c) = (void *)((a)->Next); \
-                             if ((a)->Next) (a)->Next->Prev = 0; \
-                          } \
-                          (a)->Prev = 0; \
-                          (a)->Next = 0;
+template <class T> inline APTR ResolveAddress(T *Pointer, LONG Offset) {
+   return APTR(((BYTE *)Pointer) + Offset);
+}
 
 #define nextutf8(str) if (*(str)) for (++(str); (*(str) & 0xc0) IS 0x80; (str)++);
 
@@ -2016,7 +2004,7 @@ struct CoreBase {
    ERROR (*_CheckMemoryExists)(MEMORYID ID);
    ERROR (*_CheckObjectExists)(OBJECTID Object);
    ERROR (*_DeleteFile)(CSTRING Path, FUNCTION * Callback);
-   ERROR (*_CreateObject)(LARGE ClassID, NF Flags, APTR Object, ...);
+   ERROR (*_VirtualVolume)(CSTRING Name, ...);
    OBJECTPTR (*_CurrentContext)(void);
    ERROR (*_GetFieldArray)(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements);
    LONG (*_AdjustLogLevel)(LONG Adjust);
@@ -2078,7 +2066,7 @@ struct CoreBase {
    ERROR (*_CopyMemory)(const void * Src, APTR Dest, LONG Size);
    ERROR (*_LoadFile)(CSTRING Path, LONG Flags, struct CacheFile ** Cache);
    ERROR (*_SubscribeActionTags)(OBJECTPTR Object, ...);
-   void (*_PrintDiagnosis)(LONG Process, LONG Signal);
+   ERROR (*_DeleteVolume)(CSTRING Name);
    ERROR (*_NewLockedObject)(LARGE ClassID, NF Flags, APTR Object, OBJECTID * ID, CSTRING Name);
    ERROR (*_UpdateMessage)(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size);
    ERROR (*_AddMsgHandler)(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle);
@@ -2149,8 +2137,6 @@ struct CoreBase {
    ERROR (*_MoveFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
    ERROR (*_ResolvePath)(CSTRING Path, LONG Flags, STRING * Result);
    ERROR (*_SetVolume)(...);
-   ERROR (*_DeleteVolume)(CSTRING Name);
-   ERROR (*_VirtualVolume)(CSTRING Name, ...);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2168,7 +2154,7 @@ inline ERROR CheckAction(OBJECTPTR Object, LONG Action) { return CoreBase->_Chec
 inline ERROR CheckMemoryExists(MEMORYID ID) { return CoreBase->_CheckMemoryExists(ID); }
 inline ERROR CheckObjectExists(OBJECTID Object) { return CoreBase->_CheckObjectExists(Object); }
 inline ERROR DeleteFile(CSTRING Path, FUNCTION * Callback) { return CoreBase->_DeleteFile(Path,Callback); }
-template<class... Args> ERROR CreateObject(LARGE ClassID, NF Flags, APTR Object, Args... Tags) { return CoreBase->_CreateObject(ClassID,Flags,Object,Tags...); }
+template<class... Args> ERROR VirtualVolume(CSTRING Name, Args... Tags) { return CoreBase->_VirtualVolume(Name,Tags...); }
 inline OBJECTPTR CurrentContext(void) { return CoreBase->_CurrentContext(); }
 inline ERROR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements) { return CoreBase->_GetFieldArray(Object,Field,Result,Elements); }
 inline LONG AdjustLogLevel(LONG Adjust) { return CoreBase->_AdjustLogLevel(Adjust); }
@@ -2230,7 +2216,7 @@ inline ERROR SysUnlock(LONG Index) { return CoreBase->_SysUnlock(Index); }
 inline ERROR CopyMemory(const void * Src, APTR Dest, LONG Size) { return CoreBase->_CopyMemory(Src,Dest,Size); }
 inline ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile ** Cache) { return CoreBase->_LoadFile(Path,Flags,Cache); }
 template<class... Args> ERROR SubscribeActionTags(OBJECTPTR Object, Args... Tags) { return CoreBase->_SubscribeActionTags(Object,Tags...); }
-inline void PrintDiagnosis(LONG Process, LONG Signal) { return CoreBase->_PrintDiagnosis(Process,Signal); }
+inline ERROR DeleteVolume(CSTRING Name) { return CoreBase->_DeleteVolume(Name); }
 inline ERROR NewLockedObject(LARGE ClassID, NF Flags, APTR Object, OBJECTID * ID, CSTRING Name) { return CoreBase->_NewLockedObject(ClassID,Flags,Object,ID,Name); }
 inline ERROR UpdateMessage(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size) { return CoreBase->_UpdateMessage(Queue,Message,Type,Data,Size); }
 inline ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle) { return CoreBase->_AddMsgHandler(Custom,MsgType,Routine,Handle); }
@@ -2301,35 +2287,20 @@ inline ERROR CreateFolder(CSTRING Path, LONG Permissions) { return CoreBase->_Cr
 inline ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_MoveFile(Source,Dest,Callback); }
 inline ERROR ResolvePath(CSTRING Path, LONG Flags, STRING * Result) { return CoreBase->_ResolvePath(Path,Flags,Result); }
 template<class... Args> ERROR SetVolume(Args... Tags) { return CoreBase->_SetVolume(Tags...); }
-inline ERROR DeleteVolume(CSTRING Name) { return CoreBase->_DeleteVolume(Name); }
-template<class... Args> ERROR VirtualVolume(CSTRING Name, Args... Tags) { return CoreBase->_VirtualVolume(Name,Tags...); }
 #endif
 
+
+//********************************************************************************************************************
 
 #define PRIME_HASH 2654435761UL
 #define END_FIELD { NULL, 0, 0, NULL, NULL }
 #define FDEF static const struct FunctionField
 
-//********************************************************************************************************************
+#define DeregisterFD(a)   RegisterFD((a), RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL, 0, 0)
+#define DeleteMsg(a,b)    UpdateMessage(a,b,(APTR)-1,0,0)
 
-#ifndef PRV_CORE_MODULE
- #define DeregisterFD(a)           (CoreBase->_RegisterFD((a), RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL, 0, 0))
- #define DeleteMsg(a,b)            (CoreBase->_UpdateMessage(a,b,(APTR)-1,0,0))
- #define GetObjectAddress          (CoreBase->_GetMemAddress)
-
- #undef Action
- #define Action(a,b,c)             (CoreBase->_Action(a,b,c))
-
- #undef PrintDiagnosis
- #define PrintDiagnosis()          (CoreBase->_PrintDiagnosis(NULL,NULL))
-
-#endif // PRV_CORE_MODULE
-
-#define GetParentContext()        ((OBJECTPTR)(MAXINT)GetResource(RES_PARENT_CONTEXT))
-#define GetResourcePtr(a)         ((APTR)(MAXINT)GetResource((a)))
-#define AllocPublicMemory(a,b,c)  (AllocMemory((a),(b)|MEM_PUBLIC,0,(c)))
-#define AllocPrivateMemory(a,b,c) (AllocMemory((a),(b),(c),0))
-#define NewPrivateObject(a,b,c)   (NewObject(a,b,c))
+inline OBJECTPTR GetParentContext() { return (OBJECTPTR)(MAXINT)GetResource(RES_PARENT_CONTEXT); }
+inline APTR GetResourcePtr(LONG ID) { return (APTR)(MAXINT)GetResource(ID); }
 
 template<class T> inline ERROR SendAction(LONG Action, OBJECTID ObjectID, T *Args, MEMORYID MessageID) {
    return ActionMsg(Action, ObjectID, Args, MessageID, 0);
@@ -2363,6 +2334,10 @@ inline ERROR StrMatch(CSTRING A, CSTRING B) {
 
 inline ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args) {
    return ActionMsg(Action, Object, Args, 0, 0);
+}
+
+inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address) {
+   return AllocMemory(Size, Flags, Address, NULL);
 }
 
 template<class T> inline ERROR NewObject(LARGE ClassID, T **Result) {
@@ -2464,7 +2439,6 @@ struct BaseClass { // Must be 64-bit aligned
    OBJECTID UID;                // Unique object identifier
    OBJECTID OwnerID;            // Refers to the owner of this object
    NF       Flags;              // Object flags
-   WORD     MemFlags;           // Recommended memory allocation flags
    OBJECTID TaskID;             // The process that this object belongs to
    volatile LONG  ThreadID;     // Managed by locking functions
    #ifdef _WIN32
@@ -2483,7 +2457,6 @@ struct BaseClass { // Must be 64-bit aligned
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
    inline OBJECTID ownerTask() { return TaskID; }
    inline OBJECTID ownerID() { return OwnerID; }
-   inline LONG memflags() { return MemFlags; }
    inline NF flags() { return Flags; }
 
    CSTRING className();
@@ -2744,7 +2717,15 @@ class Create {
          else return NULL;
       }
 
-      // Create a scoped object
+      // Create a scoped object that is not initialised.
+
+      Create(NF Flags = NF::NIL) : obj(NULL), error(ERR_NewObject) {
+         if (!NewObject(T::CLASS_ID, Flags, (BaseClass **)&obj)) {
+            error = ERR_Okay;
+         }
+      }
+
+      // Create a scoped object that is fully initialised.
 
       Create(std::initializer_list<FieldValue> Fields, NF Flags = NF::NIL) : obj(NULL), error(ERR_Failed) {
          parasol::Log log("CreateObject");
@@ -3291,6 +3272,24 @@ class objConfig : public BaseClass {
    STRING KeyFilter;    // Set this field to enable key filtering.
    STRING GroupFilter;  // Set this field to enable group filtering.
    LONG   Flags;        // Optional flags may be set here.
+   public:
+   inline ERROR write(CSTRING Group, CSTRING Key, CSTRING Value) {
+      struct cfgWriteValue write = { Group, Key, Value };
+      return Action(MT_CfgWriteValue, this, &write);
+   }
+   inline ERROR write(CSTRING Group, CSTRING Key, STRING Value) {
+      struct cfgWriteValue write = { Group, Key, Value };
+      return Action(MT_CfgWriteValue, this, &write);
+   }
+   inline ERROR write(CSTRING Group, CSTRING Key, std::string Value) {
+      struct cfgWriteValue write = { Group, Key, Value.c_str() };
+      return Action(MT_CfgWriteValue, this, &write);
+   }
+   template <class T> inline ERROR write(CSTRING Group, CSTRING Key, T Value) {
+      auto str = std::to_string(Value);
+      struct cfgWriteValue write = { Group, Key, str.c_str() };
+      return Action(MT_CfgWriteValue, this, &write);
+   }
 
    // Action stubs
 
@@ -3308,15 +3307,6 @@ class objConfig : public BaseClass {
    }
    inline ERROR sort() { return Action(AC_Sort, this, NULL); }
 };
-
-inline ERROR cfgWrite(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG Integer)
-{
-   if (!Self) return ERR_NullArgs;
-   char buffer[32];
-   snprintf(buffer, sizeof(buffer), "%d", Integer);
-   struct cfgWriteValue write = { Group, Key, buffer };
-   return Action(MT_CfgWriteValue, Self, &write);
-}
 
 inline ERROR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, DOUBLE *Value)
 {

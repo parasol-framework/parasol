@@ -439,7 +439,7 @@ int fcmd_subscribe_event(lua_State *Lua)
       lua_pushinteger(Lua, ERR_Failed);
       return 1;
    }
-   else if (!(error = AllocMemory(sizeof(struct eventsub), MEM_DATA, &es, NULL))) {
+   else if (!(error = AllocMemory(sizeof(struct eventsub), MEM_DATA, &es))) {
       auto call = make_function_stdc(receive_event);
       if (!(error = SubscribeEvent(event_id, &call, es, &es->EventHandle))) {
          auto prv = (prvFluid *)Lua->Script->ChildPrivate;
@@ -688,7 +688,7 @@ int fcmd_loadfile(lua_State *Lua)
       objFile::create file = { fl::Path(src), fl::Flags(FL_READ) };
       if (file.ok()) {
          APTR buffer;
-         if (!AllocMemory(SIZE_READ, MEM_NO_CLEAR, &buffer, NULL)) {
+         if (!AllocMemory(SIZE_READ, MEM_NO_CLEAR, &buffer)) {
             struct code_reader_handle handle = { *file, buffer };
 
             // Check for the presence of a compiled header and skip it if present

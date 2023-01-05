@@ -79,7 +79,7 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG 
          else if ((Self->ContentLength IS -1) or (Self->Index < Self->ContentLength)) {
             UBYTE *buffer;
 
-            if (!AllocMemory(BUFFER_READ_SIZE, MEM_DATA|MEM_NO_CLEAR, &buffer, NULL)) {
+            if (!AllocMemory(BUFFER_READ_SIZE, MEM_DATA|MEM_NO_CLEAR, &buffer)) {
                while (1) {
                   len = sizeof(buffer);
                   if (Self->ContentLength != -1) {
@@ -171,7 +171,7 @@ static ERROR socket_outgoing(objNetSocket *Socket)
       if (Self->BufferSize < BUFFER_WRITE_SIZE) Self->BufferSize = BUFFER_WRITE_SIZE;
       if (Self->BufferSize > 0xffff) Self->BufferSize = 0xffff;
 
-      if (AllocMemory(Self->BufferSize, MEM_DATA|MEM_NO_CLEAR, &Self->Buffer, NULL)) {
+      if (AllocMemory(Self->BufferSize, MEM_DATA|MEM_NO_CLEAR, &Self->Buffer)) {
          return ERR_AllocMemory;
       }
    }
@@ -407,7 +407,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
       while (1) {
          if (!Self->Response) {
             Self->ResponseSize = 256;
-            if (AllocMemory(Self->ResponseSize + 1, MEM_STRING|MEM_NO_CLEAR, &Self->Response, NULL) != ERR_Okay) {
+            if (AllocMemory(Self->ResponseSize + 1, MEM_STRING|MEM_NO_CLEAR, &Self->Response) != ERR_Okay) {
                SET_ERROR(Self, log.warning(ERR_AllocMemory));
                return ERR_Terminate;
             }
@@ -595,7 +595,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
 
                      ERROR error;
                      STRING scriptfile;
-                     if (!AllocMemory(glAuthScriptLength+1, MEM_STRING|MEM_NO_CLEAR, &scriptfile, NULL)) {
+                     if (!AllocMemory(glAuthScriptLength+1, MEM_STRING|MEM_NO_CLEAR, &scriptfile)) {
                         CopyMemory(glAuthScript, scriptfile, glAuthScriptLength);
                         scriptfile[glAuthScriptLength] = 0;
 
@@ -625,7 +625,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                   Self->ChunkLen   = 0;  // Length of the first chunk is unknown at this stage
                   Self->ChunkBuffered = len;
                   if (len > Self->ChunkSize) Self->ChunkSize = len;
-                  if (!AllocMemory(Self->ChunkSize, MEM_DATA|MEM_NO_CLEAR, &Self->Chunk, NULL)) {
+                  if (!AllocMemory(Self->ChunkSize, MEM_DATA|MEM_NO_CLEAR, &Self->Chunk)) {
                      if (len > 0) CopyMemory(Self->Response + Self->SearchIndex + 4, Self->Chunk, len);
                   }
                   else {
@@ -805,7 +805,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
          // Maximum number of times that this subroutine can loop (on a fast network we could otherwise download indefinitely).
          // A limit of 64K per read session is acceptable with a time limit of 1/200 frames.
 
-         if (!AllocMemory(BUFFER_READ_SIZE, MEM_DATA|MEM_NO_CLEAR, &buffer, NULL)) {
+         if (!AllocMemory(BUFFER_READ_SIZE, MEM_DATA|MEM_NO_CLEAR, &buffer)) {
             LONG looplimit = (64 * 1024) / BUFFER_READ_SIZE;
             LARGE timelimit = PreciseTime() + 5000000LL;
 
@@ -999,7 +999,7 @@ static ERROR process_data(extHTTP *Self, APTR Buffer, LONG Length)
    if (Self->Flags & HTF_RECV_BUFFER) {
       if (!Self->RecvBuffer) {
          Self->RecvSize = Length;
-         if (!AllocMemory(Length+1, MEM_DATA|MEM_NO_CLEAR, &Self->RecvBuffer, NULL)) {
+         if (!AllocMemory(Length+1, MEM_DATA|MEM_NO_CLEAR, &Self->RecvBuffer)) {
             CopyMemory(Buffer, Self->RecvBuffer, Self->RecvSize);
             ((STRING)Self->RecvBuffer)[Self->RecvSize] = 0;
          }
@@ -1082,7 +1082,7 @@ static LONG extract_value(CSTRING String, STRING *Result)
          String++;
          for (i=0; (String[i]) and (String[i] != '"'); i++);
 
-         if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, &value, NULL)) {
+         if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, &value)) {
             CopyMemory(String, value, i);
             value[i] = 0;
          }
@@ -1094,7 +1094,7 @@ static LONG extract_value(CSTRING String, STRING *Result)
       else {
          for (i=0; (String[i]) and (String[i] != ','); i++);
 
-         if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, &value, NULL)) {
+         if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, &value)) {
             CopyMemory(String, value, i);
             value[i] = 0;
          }

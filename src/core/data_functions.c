@@ -30,7 +30,6 @@ FDEF argsCopyFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Source", FD_STR }, { "
 FDEF argsCopyMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Src", FD_PTR }, { "Dest", FD_PTR }, { "Size", FD_LONG }, { 0, 0 } };
 FDEF argsCreateFolder[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Permissions", FD_LONG }, { 0, 0 } };
 FDEF argsCreateLink[] = { { "Error", FD_LONG|FD_ERROR }, { "From", FD_STR }, { "To", FD_STR }, { 0, 0 } };
-FDEF argsCreateObject[] = { { "Error", FD_LONG|FD_ERROR }, { "ClassID", FD_LARGE }, { "Flags", FD_LONG }, { "Object", FD_OBJECTPTR|FD_RESULT }, { "Tags", FD_VARTAGS }, { 0, 0 } };
 FDEF argsCurrentContext[] = { { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsCurrentTask[] = { { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsDeleteFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
@@ -80,7 +79,6 @@ FDEF argsNewObject[] = { { "Error", FD_LONG|FD_ERROR }, { "ClassID", FD_LARGE },
 FDEF argsNotifySubscribers[] = { { "Result", FD_LONG }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { "Args", FD_PTR }, { "Flags", FD_LONG }, { "Error", FD_LONG|FD_ERROR }, { 0, 0 } };
 FDEF argsOpenDir[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Flags", FD_LONG }, { "DirInfo:Info", FD_PTR|FD_STRUCT|FD_RESOURCE|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 FDEF argsPreciseTime[] = { { "Result", FD_LARGE }, { 0, 0 } };
-FDEF argsPrintDiagnosis[] = { { "Void", FD_VOID }, { "Process", FD_LONG }, { "Signal", FD_LONG }, { 0, 0 } };
 FDEF argsProcessMessages[] = { { "Error", FD_LONG|FD_ERROR }, { "Flags", FD_LONG }, { "TimeOut", FD_LONG }, { 0, 0 } };
 FDEF argsReadFileToBuffer[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Buffer", FD_BUFFER|FD_PTR }, { "BufferSize", FD_LONG|FD_BUFSIZE }, { "Result", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsReallocMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Memory", FD_PTR }, { "Size", FD_LONG }, { "Address", FD_PTR|FD_ALLOC|FD_RESULT }, { "ID", FD_LONG|FD_RESULT }, { 0, 0 } };
@@ -169,7 +167,7 @@ const struct Function glFunctions[] = {
    { (APTR)CheckMemoryExists, "CheckMemoryExists", argsCheckMemoryExists },
    { (APTR)CheckObjectExists, "CheckObjectExists", argsCheckObjectExists },
    { (APTR)DeleteFile, "DeleteFile", argsDeleteFile },
-   { (APTR)CreateObject, "CreateObject", argsCreateObject },
+   { (APTR)VirtualVolume, "VirtualVolume", argsVirtualVolume },
    { (APTR)CurrentContext, "CurrentContext", argsCurrentContext },
    { (APTR)GetFieldArray, "GetFieldArray", argsGetFieldArray },
    { (APTR)AdjustLogLevel, "AdjustLogLevel", argsAdjustLogLevel },
@@ -231,7 +229,7 @@ const struct Function glFunctions[] = {
    { (APTR)CopyMemory, "CopyMemory", argsCopyMemory },
    { (APTR)LoadFile, "LoadFile", argsLoadFile },
    { (APTR)SubscribeActionTags, "SubscribeActionTags", argsSubscribeActionTags },
-   { (APTR)PrintDiagnosis, "PrintDiagnosis", argsPrintDiagnosis },
+   { (APTR)DeleteVolume, "DeleteVolume", argsDeleteVolume },
    { (APTR)NewLockedObject, "NewLockedObject", argsNewLockedObject },
    { (APTR)UpdateMessage, "UpdateMessage", argsUpdateMessage },
    { (APTR)AddMsgHandler, "AddMsgHandler", argsAddMsgHandler },
@@ -302,8 +300,6 @@ const struct Function glFunctions[] = {
    { (APTR)MoveFile, "MoveFile", argsMoveFile },
    { (APTR)ResolvePath, "ResolvePath", argsResolvePath },
    { (APTR)SetVolume, "SetVolume", argsSetVolume },
-   { (APTR)DeleteVolume, "DeleteVolume", argsDeleteVolume },
-   { (APTR)VirtualVolume, "VirtualVolume", argsVirtualVolume },
    { NULL, NULL, NULL }
 };
 

@@ -519,7 +519,7 @@ static void tag_editdef(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chi
 
    DocEdit *editptr, *last;
 
-   if (!AllocMemory(sizeof(DocEdit)+bufsize, MEM_NO_CLEAR, &editptr, NULL)) {
+   if (!AllocMemory(sizeof(DocEdit)+bufsize, MEM_NO_CLEAR, &editptr)) {
       CopyMemory(&edit, editptr, sizeof(DocEdit));
       if (bufsize > 0) {
          LONG offset = sizeof(DocEdit);
@@ -2222,7 +2222,7 @@ static void tag_table(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
    table = (escTable *)(Self->Stream + table_index + ESC_LEN_START);
    CopyMemory(&start, table, sizeof(start));
 
-   if (!AllocMemory(sizeof(tablecol) * table->TotalColumns, MEM_DATA, &table->Columns, NULL)) {
+   if (!AllocMemory(sizeof(tablecol) * table->TotalColumns, MEM_DATA, &table->Columns)) {
       if (columns) {
          // The columns value, if supplied is arranged as a CSV list of column widths
 
@@ -2570,7 +2570,7 @@ static void tag_trigger(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chi
       if (!extract_script(Self, function_name, &script, &function_name, NULL)) {
          if (!scGetProcedureID(script, function_name, &function_id)) {
             DocTrigger *trigger;
-            if (!AllocMemory(sizeof(DocTrigger), MEM_DATA|MEM_NO_CLEAR, &trigger, NULL)) {
+            if (!AllocMemory(sizeof(DocTrigger), MEM_DATA|MEM_NO_CLEAR, &trigger)) {
                trigger->Function = make_function_script(script, function_id);
                trigger->Next = Self->Triggers[trigger_code];
                Self->Triggers[trigger_code] = trigger;
