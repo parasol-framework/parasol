@@ -242,9 +242,9 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
   ]])
 
   struct("SurfaceInfo", { version=2, type="surfaceinfo" }, [[
+    ptr Data            # Bitmap data memory ID
     oid ParentID        # Object that contains the surface area
     oid BitmapID        # Surface bitmap buffer
-    oid DataMID         # Bitmap data memory ID
     oid DisplayID       # If the surface object is root, its display is reflected here
     int Flags           # Surface flags (RNF_VISIBLE etc)
     int X               # Horizontal coordinate
@@ -260,11 +260,11 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
   ]])
 
   struct("SurfaceList", { }, [[
+    ptr Data          # For drwCopySurface()
     oid ParentID      # Object that owns the surface area
     oid SurfaceID     # ID of the surface area
     oid BitmapID      # Shared bitmap buffer, if available
     oid DisplayID     # Display
-    oid DataMID       # For drwCopySurface()
     oid TaskID        # Task that owns the surface
     oid RootID        # RootLayer
     oid PopOverID
@@ -415,7 +415,6 @@ module({ name="Display", copyright="Paul Manias 2003-2022", version=1.0, status=
     int   XOffset               # Horizontal offset to apply to graphics coordinates
     int   YOffset               # Vertical offset to apply to graphics coordinates
     int   Opacity               # Opacity setting to use in drawing operations
-    mem   DataMID               # Memory ID of the bitmap's data, if applicable.
     struct(RGB8) TransRGB       # The transparent colour of the bitmap, in RGB format.
     struct(RGB8) BkgdRGB        # Background colour (for clearing, resizing)
     int BkgdIndex               # Colour index or packed colour of the background.

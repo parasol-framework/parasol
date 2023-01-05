@@ -110,7 +110,6 @@ static ERROR TASK_GetEnv(extTask *, struct taskGetEnv *);
 static ERROR TASK_GetVar(extTask *, struct acGetVar *);
 static ERROR TASK_Init(extTask *, APTR);
 static ERROR TASK_NewObject(extTask *, APTR);
-static ERROR TASK_ReleaseObject(extTask *, APTR);
 static ERROR TASK_SetEnv(extTask *, struct taskSetEnv *);
 static ERROR TASK_SetVar(extTask *, struct acSetVar *);
 static ERROR TASK_Write(extTask *, struct acWrite *);
@@ -141,7 +140,6 @@ static const ActionArray clActions[] = {
    { AC_Free,          (APTR)TASK_Free },
    { AC_GetVar,        (APTR)TASK_GetVar },
    { AC_NewObject,     (APTR)TASK_NewObject },
-   { AC_ReleaseObject, (APTR)TASK_ReleaseObject },
    { AC_SetVar,        (APTR)TASK_SetVar },
    { AC_Init,          (APTR)TASK_Init },
    { AC_Write,         (APTR)TASK_Write },
@@ -1326,12 +1324,6 @@ static ERROR TASK_AddArgument(extTask *Self, struct taskAddArgument *Args)
 
    if ((!Args) or (!Args->Argument) or (!*Args->Argument)) return log.warning(ERR_NullArgs);
 
-   if (!Self->ParametersMID) {
-      CSTRING array[2];
-      array[0] = Args->Argument;
-      return SetArray(Self, FID_Parameters|TSTR, array, 1);
-   }
-
    if (!Self->Parameters) {
       CSTRING *args;
       if (GetField(Self, FID_Parameters|TPTR, &args) != ERR_Okay) {
@@ -1344,9 +1336,8 @@ static ERROR TASK_AddArgument(extTask *Self, struct taskAddArgument *Args)
 
    LONG total;
    LONG len = StrLength(Args->Argument) + 1;
-   MEMORYID argsmid;
    CSTRING *args;
-   if (!AllocMemory(Self->ParametersSize + sizeof(STRING) + len, Self->memflags()|MEM_NO_CLEAR, (void **)&args, &argsmid)) {
+   if (!AllocMemory(Self->ParametersSize + sizeof(STRING) + len, MEM_DATA|MEM_NO_CLEAR, (void **)&args, NULL)) {
       Self->ParametersSize += sizeof(STRING) + len;
 
       for (total=0; Self->Parameters[total]; total++);
@@ -1380,11 +1371,8 @@ static ERROR TASK_AddArgument(extTask *Self, struct taskAddArgument *Args)
       else while (*src) *str++ = *src++;
       *str = 0;
 
-      ReleaseMemoryID(Self->ParametersMID);
-      FreeResourceID(Self->ParametersMID);
-
-      Self->Parameters    = args;
-      Self->ParametersMID = argsmid;
+      FreeResource(Self->Parameters);
+      Self->Parameters = args;
       return ERR_Okay;
    }
    else return log.warning(ERR_AllocMemory);
@@ -1477,20 +1465,13 @@ static ERROR TASK_Free(extTask *Self, APTR Void)
 
    // Free allocations
 
-   if (Self->LaunchPath)  { ReleaseMemoryID(Self->LaunchPathMID);  Self->LaunchPath  = NULL; }
-   if (Self->Location)    { ReleaseMemoryID(Self->LocationMID);    Self->Location    = NULL; }
-   if (Self->Path)        { ReleaseMemoryID(Self->PathMID);        Self->Path        = NULL; }
-   if (Self->ProcessPath) { ReleaseMemoryID(Self->ProcessPathMID); Self->ProcessPath = NULL; }
-   if (Self->Parameters)  { ReleaseMemoryID(Self->ParametersMID);  Self->Parameters  = NULL; }
-   if (Self->Copyright)   { ReleaseMemoryID(Self->CopyrightMID);   Self->Copyright   = NULL; }
-
-   if (Self->LaunchPathMID)  { FreeResourceID(Self->LaunchPathMID);  Self->LaunchPathMID  = 0; }
-   if (Self->LocationMID)    { FreeResourceID(Self->LocationMID);    Self->LocationMID    = 0; }
-   if (Self->PathMID)        { FreeResourceID(Self->PathMID);        Self->PathMID        = 0; }
-   if (Self->ProcessPathMID) { FreeResourceID(Self->ProcessPathMID); Self->ProcessPathMID = 0; }
-   if (Self->ParametersMID)  { FreeResourceID(Self->ParametersMID);  Self->ParametersMID  = 0; }
-   if (Self->CopyrightMID)   { FreeResourceID(Self->CopyrightMID);   Self->CopyrightMID   = 0; }
-   if (Self->MessageMID)     { FreeResourceID(Self->MessageMID);     Self->MessageMID     = 0; }
+   if (Self->LaunchPath)  { FreeResource(Self->LaunchPath);  Self->LaunchPath  = NULL; }
+   if (Self->Location)    { FreeResource(Self->Location);    Self->Location    = NULL; }
+   if (Self->Path)        { FreeResource(Self->Path);        Self->Path        = NULL; }
+   if (Self->ProcessPath) { FreeResource(Self->ProcessPath); Self->ProcessPath = NULL; }
+   if (Self->Parameters)  { FreeResource(Self->Parameters);  Self->Parameters  = NULL; }
+   if (Self->Copyright)   { FreeResource(Self->Copyright);   Self->Copyright   = NULL; }
+   if (Self->MessageMID)  { FreeResourceID(Self->MessageMID); Self->MessageMID  = 0; }
 
    if (Self->MsgAction)          { FreeResource(Self->MsgAction);          Self->MsgAction          = NULL; }
    if (Self->MsgGetField)        { FreeResource(Self->MsgGetField);        Self->MsgGetField        = NULL; }
@@ -1559,7 +1540,7 @@ static ERROR TASK_GetEnv(extTask *Self, struct taskGetEnv *Args)
    if (glCurrentTask != Self) return ERR_Failed;
 
    if (!Self->Env) {
-      if (AllocMemory(ENV_SIZE, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (APTR *)&Self->Env, NULL) != ERR_Okay) {
+      if (AllocMemory(ENV_SIZE, MEM_STRING|MEM_NO_CLEAR, (APTR *)&Self->Env, NULL) != ERR_Okay) {
          return ERR_AllocMemory;
       }
    }
@@ -1846,14 +1827,14 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
       if (winGetExeDirectory(sizeof(buffer), buffer)) {
          LONG len = StrLength(buffer);
          while ((len > 1) and (buffer[len-1] != '/') and (buffer[len-1] != '\\') and (buffer[len-1] != ':')) len--;
-         if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (void **)&Self->ProcessPath, &Self->ProcessPathMID)) {
+         if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->ProcessPath, NULL)) {
             for (i=0; i < len; i++) Self->ProcessPath[i] = buffer[i];
             Self->ProcessPath[i] = 0;
          }
       }
 
       if ((len = winGetCurrentDirectory(sizeof(buffer), buffer))) {
-         if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (void **)&Self->Path, &Self->PathMID)) {
+         if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->Path, NULL)) {
             for (i=0; i < len; i++) Self->Path[i] = buffer[i];
             if (Self->Path[i-1] != '\\') Self->Path[i++] = '\\';
             Self->Path[i] = 0;
@@ -1881,16 +1862,16 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
 
             for (len=0; buffer[len]; len++);
             while ((len > 1) and (buffer[len-1] != '/') and (buffer[len-1] != '\\') and (buffer[len-1] != ':')) len--;
-            if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (void **)&Self->ProcessPath, &Self->ProcessPathMID)) {
+            if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->ProcessPath, NULL)) {
                for (i=0; i < len; i++) Self->ProcessPath[i] = buffer[i];
                Self->ProcessPath[i] = 0;
             }
          }
 
-         if (!Self->PathMID) { // Set the working folder
+         if (!Self->Path) { // Set the working folder
             if (getcwd(buffer, sizeof(buffer))) {
                for (len=0; buffer[len]; len++);
-               if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (void **)&Self->Path, &Self->PathMID)) {
+               if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->Path, NULL)) {
                   for (i=0; buffer[i]; i++) Self->Path[i] = buffer[i];
                   Self->Path[i++] = '/';
                   Self->Path[i] = 0;
@@ -2013,19 +1994,6 @@ static ERROR TASK_Quit(extTask *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
-
-static ERROR TASK_ReleaseObject(extTask *Self, APTR Void)
-{
-   if (Self->LaunchPath)  { ReleaseMemoryID(Self->LaunchPathMID);  Self->LaunchPath  = NULL; }
-   if (Self->Location)    { ReleaseMemoryID(Self->LocationMID);    Self->Location    = NULL; }
-   if (Self->Parameters)  { ReleaseMemoryID(Self->ParametersMID);  Self->Parameters  = NULL; }
-   if (Self->Copyright)   { ReleaseMemoryID(Self->CopyrightMID);   Self->Copyright   = NULL; }
-   if (Self->Path)        { ReleaseMemoryID(Self->PathMID);        Self->Path        = NULL; }
-   if (Self->ProcessPath) { ReleaseMemoryID(Self->ProcessPathMID); Self->ProcessPath = NULL; }
-   return ERR_Okay;
-}
-
 /*****************************************************************************
 -ACTION-
 SetVar: Variable fields are supported for the general storage of program variables.
@@ -2048,7 +2016,7 @@ static ERROR TASK_SetVar(extTask *Self, struct acSetVar *Args)
    if (i < ARRAYSIZE(Self->Fields) - 1) {
       STRING field;
       if (!AllocMemory(StrLength(Args->Field) + StrLength(Args->Value) + 2,
-            MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (void **)&field, NULL)) {
+            MEM_STRING|MEM_NO_CLEAR, (void **)&field, NULL)) {
 
          LONG pos = StrCopy(Args->Field, field, COPY_ALL) + 1;
          StrCopy(Args->Value, field + pos, COPY_ALL);
@@ -2209,34 +2177,11 @@ static ERROR GET_Parameters(extTask *Self, CSTRING **Value, LONG *Elements)
       *Elements = 0;
       return ERR_Okay;
    }
-   else if (!Self->ParametersMID) {
+   else {
       log.msg("No arguments to return.");
       *Value = NULL;
       *Elements = 0;
       return ERR_FieldNotSet;
-   }
-   else if (!AccessMemory(Self->ParametersMID, MEM_READ, 2000, (void **)&Self->Parameters)) {
-      *Value = Self->Parameters;
-      // Resolve string addresses
-
-      LONG i;
-      for (i=0; Self->Parameters[i]; i++);
-      *Elements = i;
-
-      CSTRING args = (CSTRING)(Self->Parameters + i + 1);
-
-      for (i=0; Self->Parameters[i]; i++) {
-         Self->Parameters[i] = args;
-         while (*args) args++;
-         args++;
-      }
-
-      return ERR_Okay;
-   }
-   else {
-      *Value = NULL;
-      *Elements = 0;
-      return log.warning(ERR_AccessMemory);
    }
 }
 
@@ -2244,8 +2189,7 @@ static ERROR SET_Parameters(extTask *Self, CSTRING *Value, LONG Elements)
 {
    parasol::Log log;
 
-   if (Self->Parameters)    { ReleaseMemoryID(Self->ParametersMID); Self->Parameters = NULL; }
-   if (Self->ParametersMID) { FreeResourceID(Self->ParametersMID);    Self->ParametersMID = 0; }
+   if (Self->Parameters) { FreeResource(Self->Parameters); Self->Parameters = 0; }
 
    if (Value) {
       // Calculate the size of the argument array and strings tacked onto the end
@@ -2259,7 +2203,7 @@ static ERROR SET_Parameters(extTask *Self, CSTRING *Value, LONG Elements)
          Self->ParametersSize++; // String null terminator
       }
 
-      if (!AllocMemory(Self->ParametersSize, MEM_NO_CLEAR|Self->memflags(), (void **)&Self->Parameters, &Self->ParametersMID)) {
+      if (!AllocMemory(Self->ParametersSize, MEM_NO_CLEAR, (void **)&Self->Parameters, NULL)) {
          STRING args = (STRING)(Self->Parameters + j + 1);
          for (j=0; j < Elements; j++) {
             Self->Parameters[j] = args;
@@ -2305,36 +2249,19 @@ Copyright: Copyright/licensing details.
 
 static ERROR GET_Copyright(extTask *Self, STRING *Value)
 {
-   parasol::Log log;
-
-   if (Self->Copyright) {
-      *Value = Self->Copyright;
-      return ERR_Okay;
-   }
-   else if (!Self->CopyrightMID) {
-      *Value = NULL;
-      return ERR_FieldNotSet;
-   }
-   else if (!AccessMemory(Self->CopyrightMID, MEM_READ, 2000, (void **)&Self->Copyright)) {
-      *Value = Self->Copyright;
-      return ERR_Okay;
-   }
-   else {
-      *Value = NULL;
-      return log.warning(ERR_AccessMemory);
-   }
+   *Value = Self->Copyright;
+   return ERR_Okay;
 }
 
 static ERROR SET_Copyright(extTask *Self, CSTRING Value)
 {
    parasol::Log log;
 
-   if (Self->Copyright)    { ReleaseMemoryID(Self->CopyrightMID);   Self->Copyright = NULL; }
-   if (Self->CopyrightMID) { FreeResourceID(Self->CopyrightMID); Self->CopyrightMID = 0; }
+   if (Self->Copyright) { FreeResource(Self->Copyright); Self->Copyright = NULL; }
 
    if ((Value) and (*Value)) {
-      LONG len = StrLength(Value);
-      if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (void **)&Self->Copyright, &Self->CopyrightMID)) {
+      LONG len = strlen(Value);
+      if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->Copyright, NULL)) {
          CopyMemory(Value, Self->Copyright, len+1);
       }
       else return log.warning(ERR_AllocMemory);
@@ -2532,37 +2459,20 @@ activated.  This will override all other path options, such as the RESET_PATH fl
 
 static ERROR GET_LaunchPath(extTask *Self, STRING *Value)
 {
-   parasol::Log log;
-
-   if (Self->LaunchPath) {
-      *Value = Self->LaunchPath;
-      return ERR_Okay;
-   }
-   else if (!Self->LaunchPathMID) {
-      *Value = NULL;
-      return ERR_FieldNotSet;
-   }
-   else if (!AccessMemory(Self->LaunchPathMID, MEM_READ, 2000, (void **)&Self->LaunchPath)) {
-      *Value = Self->LaunchPath;
-      return ERR_Okay;
-   }
-   else {
-      *Value = NULL;
-      return log.warning(ERR_AccessMemory);
-   }
+   *Value = Self->LaunchPath;
+   return ERR_Okay;
 }
 
 static ERROR SET_LaunchPath(extTask *Self, CSTRING Value)
 {
    parasol::Log log;
 
-   if (Self->LaunchPath)    { ReleaseMemoryID(Self->LaunchPathMID);   Self->LaunchPath = NULL; }
-   if (Self->LaunchPathMID) { FreeResourceID(Self->LaunchPathMID); Self->LaunchPathMID = 0; }
+   if (Self->LaunchPath) { FreeResource(Self->LaunchPath); Self->LaunchPath = NULL; }
 
    if ((Value) and (*Value)) {
       LONG i;
       for (i=0; Value[i]; i++);
-      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (void **)&Self->LaunchPath, &Self->LaunchPathMID)) {
+      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->LaunchPath, NULL)) {
          CopyMemory(Value, Self->LaunchPath, i+1);
       }
       else return log.warning(ERR_AllocMemory);
@@ -2586,37 +2496,20 @@ only the quoted portion of the string will be used as the source path.
 
 static ERROR GET_Location(extTask *Self, STRING *Value)
 {
-   parasol::Log log;
-
-   if (Self->Location) {
-      *Value = Self->Location;
-      return ERR_Okay;
-   }
-   else if (!Self->LocationMID) {
-      *Value = NULL;
-      return ERR_FieldNotSet;
-   }
-   else if (!AccessMemory(Self->LocationMID, MEM_READ, 2000, (void **)&Self->Location)) {
-      *Value = Self->Location;
-      return ERR_Okay;
-   }
-   else {
-      *Value = NULL;
-      return log.warning(ERR_AccessMemory);
-   }
+   *Value = Self->Location;
+   return ERR_Okay;
 }
 
 static ERROR SET_Location(extTask *Self, CSTRING Value)
 {
    parasol::Log log;
 
-   if (Self->Location)    { ReleaseMemoryID(Self->LocationMID);   Self->Location = NULL; }
-   if (Self->LocationMID) { FreeResourceID(Self->LocationMID); Self->LocationMID = 0; }
+   if (Self->Location) { FreeResource(Self->Location); Self->Location = NULL; }
 
    if ((Value) and (*Value)) {
       LONG i;
       for (i=0; Value[i]; i++);
-      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (void **)&Self->Location, &Self->LocationMID)) {
+      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->Location, NULL)) {
          while ((*Value) and (*Value <= 0x20)) Value++;
          if (*Value IS '"') {
             Value++;
@@ -2719,30 +2612,13 @@ new folder fails for any reason, the working folder will remain unchanged and th
 
 static ERROR GET_Path(extTask *Self, STRING *Value)
 {
-   parasol::Log log;
-
-   if (Self->Path) {
-      *Value = Self->Path;
-      return ERR_Okay;
-   }
-   else if (!Self->PathMID) {
-      *Value = NULL;
-      return ERR_FieldNotSet;
-   }
-   else if (!AccessMemory(Self->PathMID, MEM_READ, 2000, (void **)&Self->Path)) {
-      *Value = Self->Path;
-      return ERR_Okay;
-   }
-   else {
-      *Value = NULL;
-      return log.warning(ERR_AccessMemory);
-   }
+   *Value = Self->Path;
+   return ERR_Okay;
 }
 
 static ERROR SET_Path(extTask *Self, CSTRING Value)
 {
    STRING new_path = NULL;
-   MEMORYID new_path_mid = 0;
 
    parasol::Log log;
 
@@ -2752,7 +2628,7 @@ static ERROR SET_Path(extTask *Self, CSTRING Value)
    if ((Value) and (*Value)) {
       LONG len = StrLength(Value);
       while ((len > 1) and (Value[len-1] != '/') and (Value[len-1] != '\\') and (Value[len-1] != ':')) len--;
-      if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), (void **)&new_path, &new_path_mid)) {
+      if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, (void **)&new_path, NULL)) {
          CopyMemory(Value, new_path, len);
          new_path[len] = 0;
 
@@ -2785,15 +2661,8 @@ static ERROR SET_Path(extTask *Self, CSTRING Value)
    else error = ERR_EmptyString;
 
    if (!error) {
-      if (Self->Path)    { ReleaseMemoryID(Self->PathMID); Self->Path = NULL; }
-      if (Self->PathMID) { FreeResourceID(Self->PathMID); Self->PathMID = 0; }
-
+      if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
       Self->Path = new_path;
-      Self->PathMID = new_path_mid;
-   }
-   else if (new_path_mid) {
-      ReleaseMemoryID(new_path_mid);
-      FreeResourceID(new_path_mid);
    }
 
    return error;
@@ -2814,24 +2683,8 @@ ProcessPath is set to the working folder in use at the time the process was laun
 
 static ERROR GET_ProcessPath(extTask *Self, CSTRING *Value)
 {
-   parasol::Log log;
-
-   if (Self->ProcessPath) {
-      *Value = Self->ProcessPath;
-      return ERR_Okay;
-   }
-   else if (!Self->ProcessPathMID) {
-      *Value = NULL;
-      return ERR_FieldNotSet;
-   }
-   else if (!AccessMemory(Self->ProcessPathMID, MEM_READ, 2000, (void **)&Self->ProcessPath)) {
-      *Value = Self->ProcessPath;
-      return ERR_Okay;
-   }
-   else {
-      *Value = NULL;
-      return log.warning(ERR_AccessMemory);
-   }
+   *Value = Self->ProcessPath;
+   return ERR_Okay;
 }
 
 /*****************************************************************************

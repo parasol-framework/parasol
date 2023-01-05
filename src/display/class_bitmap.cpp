@@ -233,16 +233,6 @@ static ERROR BITMAP_AccessObject(extBitmap *Self, APTR Void)
       }
    #endif
 
-   if (Self->DataMID) {
-      if (AccessMemory(Self->DataMID, MEM_READ_WRITE|MEM_NO_BLOCKING, 1000, (APTR *)&Self->Data) != ERR_Okay) {
-         return ERR_AccessMemory;
-      }
-      #ifdef __xwindows__
-         Self->x11.ximage.data = (char *)Self->Data;
-         Self->x11.ShmInfo.shmaddr = (char *)Self->Data;
-      #endif
-   }
-
    return ERR_Okay;
 }
 
@@ -323,13 +313,12 @@ static ERROR BITMAP_Compress(extBitmap *Self, struct bmpCompress *Args)
 
    log.traceBranch("");
 
-   if (Self->prvCompressMID) {
+   if (Self->prvCompress) {
       // If the original compression object still exists, all we are going to do is free up the raw bitmap data.
 
-      if ((Self->DataMID) and (Self->prvAFlags & BF_DATA)) {
-         if (Self->Data) { ReleaseMemoryID(Self->DataMID); Self->Data = NULL; }
-         FreeResourceID(Self->DataMID);
-         Self->DataMID = 0;
+      if ((Self->Data) and (Self->prvAFlags & BF_DATA)) {
+         FreeResource(Self->Data);
+         Self->Data = NULL;
       }
 
       return ERR_Okay;
@@ -344,18 +333,16 @@ static ERROR BITMAP_Compress(extBitmap *Self, struct bmpCompress *Args)
    }
 
    APTR buffer;
-   if (!AllocMemory(Self->Size, MEM_NO_CLEAR, &buffer, NULL)) {
+   if (!AllocMemory(Self->Size, MEM_NO_CLEAR, &buffer)) {
       struct cmpCompressBuffer cbuf;
       cbuf.Input      = Self->Data;
       cbuf.InputSize  = Self->Size;
       cbuf.Output     = buffer;
       cbuf.OutputSize = Self->Size;
       if (!Action(MT_CmpCompressBuffer, glCompress, &cbuf)) {
-         APTR data;
-         if (!AllocMemory(cbuf.Result, MEM_NO_CLEAR|Self->memflags(), &data, &Self->prvCompressMID)) {
-            CopyMemory(buffer, data, cbuf.Result);
+         if (!AllocMemory(cbuf.Result, MEM_NO_CLEAR, &Self->prvCompress)) {
+            CopyMemory(buffer, Self->prvCompress, cbuf.Result);
             FreeResource(buffer);
-            ReleaseMemoryID(Self->prvCompressMID);
          }
          else error = ERR_ReallocMemory;
       }
@@ -364,10 +351,9 @@ static ERROR BITMAP_Compress(extBitmap *Self, struct bmpCompress *Args)
    else error = ERR_AllocMemory;
 
    if (!error) { // Free the original data
-      if ((Self->DataMID) and (Self->prvAFlags & BF_DATA)) {
-         if (Self->Data) { ReleaseMemoryID(Self->DataMID); Self->Data = NULL; }
-         FreeResourceID(Self->DataMID);
-         Self->DataMID = 0;
+      if ((Self->Data) and (Self->prvAFlags & BF_DATA)) {
+         FreeResource(Self->Data);
+         Self->Data = NULL;
       }
 
       Self->Flags |= BMF_COMPRESSED;
@@ -581,10 +567,8 @@ static ERROR BITMAP_Decompress(extBitmap *Self, struct bmpDecompress *Args)
 {
    parasol::Log log;
    struct cmpDecompressBuffer dbuf;
-   APTR data;
-   ERROR error;
 
-   if (!Self->prvCompressMID) return ERR_Okay;
+   if (!Self->prvCompress) return ERR_Okay;
 
    log.msg(VLF_BRANCH|VLF_EXTAPI, "Size: %d, Retain: %d", Self->Size, (Args) ? Args->RetainData : FALSE);
 
@@ -592,7 +576,7 @@ static ERROR BITMAP_Decompress(extBitmap *Self, struct bmpDecompress *Args)
    // accesses the Data address following attempted decompression.
 
    if (!Self->Data) {
-      if (!AllocMemory(Self->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Self->memflags()|Self->DataFlags, &Self->Data, &Self->DataMID)) {
+      if (!AllocMemory(Self->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Self->DataFlags, &Self->Data)) {
          Self->prvAFlags |= BF_DATA;
       }
       else return log.warning(ERR_AllocMemory);
@@ -605,22 +589,18 @@ static ERROR BITMAP_Decompress(extBitmap *Self, struct bmpDecompress *Args)
       SetOwner(glCompress, glModule);
    }
 
-   if (!(error = AccessMemory(Self->prvCompressMID, MEM_READ, 1000, &data))) {
-      dbuf.Input      = data;
-      dbuf.Output     = Self->Data;
-      dbuf.OutputSize = Self->Size;
-      error = Action(MT_CmpDecompressBuffer, glCompress, &dbuf);
-      if (error IS ERR_BufferOverflow) error = ERR_Okay;
-      ReleaseMemoryID(Self->prvCompressMID);
-   }
+   dbuf.Input      = Self->prvCompress;
+   dbuf.Output     = Self->Data;
+   dbuf.OutputSize = Self->Size;
+   ERROR error = Action(MT_CmpDecompressBuffer, glCompress, &dbuf);
+   if (error IS ERR_BufferOverflow) error = ERR_Okay;
 
    if ((Args) and (Args->RetainData IS TRUE)) {
       // Keep the source compression data
    }
    else {
-      // Remove the source compression data
-      FreeResourceID(Self->prvCompressMID);
-      Self->prvCompressMID = NULL;
+      FreeResource(Self->prvCompress);
+      Self->prvCompress = NULL;
       Self->Flags &= ~BMF_COMPRESSED;
    }
 
@@ -700,7 +680,7 @@ static ERROR BITMAP_Demultiply(extBitmap *Self, APTR Void)
    if (!glDemultiply) {
       const std::lock_guard<std::mutex> lock(mutex);
       if (!glDemultiply) {
-         if (!AllocMemory(256 * 256, MEM_NO_CLEAR|MEM_UNTRACKED, &glDemultiply, NULL)) {
+         if (!AllocMemory(256 * 256, MEM_NO_CLEAR|MEM_UNTRACKED, &glDemultiply)) {
             for (LONG a=1; a <= 255; a++) {
                for (LONG i=0; i <= 255; i++) {
                   glDemultiply[(a<<8) + i] = (i * 0xff) / a;
@@ -888,13 +868,12 @@ static ERROR BITMAP_Free(extBitmap *Self, APTR Void)
       }
    #endif
 
-   if ((Self->DataMID) and (Self->prvAFlags & BF_DATA)) {
-      if (Self->Data) { ReleaseMemoryID(Self->DataMID); Self->Data = NULL; }
-      FreeResourceID(Self->DataMID);
-      Self->DataMID = 0;
+   if ((Self->Data) and (Self->prvAFlags & BF_DATA)) {
+      FreeResource(Self->Data);
+      Self->Data = NULL;
    }
 
-   if (Self->prvCompressMID) { FreeResourceID(Self->prvCompressMID); Self->prvCompressMID = 0; }
+   if (Self->prvCompress) { FreeResource(Self->prvCompress); Self->prvCompress = NULL; }
 
    if (Self->ResolutionChangeHandle) {
       UnsubscribeEvent(Self->ResolutionChangeHandle);
@@ -1020,7 +999,7 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
 
    Self->DataFlags &= ~MEM_TEXTURE; // Blitter memory not available in X11
 
-   if ((!Self->DataMID) and (!Self->Data)) {
+   if (!Self->Data) {
       if (!(Self->Flags & BMF_NO_DATA)) {
          Self->DataFlags &= ~MEM_VIDEO; // Video memory not available for allocation in X11 (may be set to identify X11 windows only)
 
@@ -1040,7 +1019,7 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
 
             if (Self->x11.XShmImage IS FALSE) {
                log.extmsg("Allocating a memory based XImage.");
-               if (!AllocMemory(Self->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Self->memflags()|Self->DataFlags, &Self->Data, &Self->DataMID)) {
+               if (!AllocMemory(Self->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Self->DataFlags, &Self->Data)) {
                   Self->prvAFlags |= BF_DATA;
 
                   if (Self->LineWidth & 0x0001) alignment = 8;
@@ -1075,7 +1054,7 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
                      if (glX11ShmImage) {
                         struct MemInfo meminfo;
 
-                        if ((!MemoryIDInfo(Self->DataMID, &meminfo)) and (meminfo.Handle)) {
+                        if ((!MemoryPtrInfo(Self->Data, &meminfo)) and (meminfo.Handle)) {
                            Self->x11.ShmInfo.shmid    = meminfo.Handle;
                            Self->x11.ShmInfo.readOnly = False;
                            Self->x11.ShmInfo.shmaddr  = (char *)Self->Data;
@@ -1103,7 +1082,7 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
 
    Self->DataFlags &= ~MEM_TEXTURE; // Video buffer memory not available in Win32
 
-   if ((!Self->DataMID) and (!Self->Data)) {
+   if (!Self->Data) {
       if (!(Self->Flags & BMF_NO_DATA)) {
          if (!Self->Size) {
             log.warning("The Bitmap has no Size (there is a dimensional error).");
@@ -1116,7 +1095,7 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
             }
             else return log.warning(ERR_SystemCall);
          }
-         else if (!AllocMemory(Self->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Self->memflags()|Self->DataFlags, &Self->Data, &Self->DataMID)) {
+         else if (!AllocMemory(Self->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Self->DataFlags, &Self->Data)) {
             Self->prvAFlags |= BF_DATA;
          }
          else return log.warning(ERR_AllocMemory);
@@ -1141,7 +1120,7 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
    // MEM_TEXTURE:  The bitmap is to be used as an OpenGL texture or off-screen buffer.  The bitmap content is temporary - i.e. the content can be dumped by the graphics driver if the video display changes.
    // MEM_DATA:  The bitmap resides in regular CPU accessible memory.
 
-   if ((!Self->DataMID) and (!Self->Data)) {
+   if (!Self->Data) {
       if (!(Self->Flags & BMF_NO_DATA)) {
          if (Self->Size <= 0) {
             log.warning("The Bitmap has no Size (there is a dimensional error).");
@@ -1158,7 +1137,7 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
             log.warning("Support for MEM_TEXTURE not included yet.");
             return ERR_NoSupport;
          }
-         else if (!AllocMemory(Self->Size, Self->memflags()|Self->DataFlags|MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR, &Self->Data, &Self->DataMID)) {
+         else if (!AllocMemory(Self->Size, Self->DataFlags|MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR, &Self->Data)) {
             Self->prvAFlags |= BF_DATA;
          }
          else return ERR_AllocMemory;
@@ -1652,8 +1631,6 @@ static ERROR BITMAP_ReleaseObject(extBitmap *Self, APTR Void)
    XSync(XDisplay, False);
 #endif
 
-   if ((Self->Data) and (Self->DataMID)) { ReleaseMemoryID(Self->DataMID); Self->Data = NULL; }
-
 #ifdef __xwindows__
    if (Self->x11.readable) { XDestroyImage(Self->x11.readable); Self->x11.readable = NULL; }
 #endif
@@ -1682,7 +1659,6 @@ FieldNotSet
 static ERROR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
 {
    parasol::Log log;
-   MEMORYID datamid;
    LONG width, height, bytewidth, bpp, amtcolours, size;
 
    if (!Args) return log.warning(ERR_NullArgs);
@@ -1758,13 +1734,9 @@ static ERROR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
       if ((size <= Self->Size) and (size / Self->Size > 0.5)) { // Do nothing when shrinking unless able to save considerable resources
          size = Self->Size;
       }
-      else if (!AllocMemory(size, MEM_NO_BLOCKING|MEM_NO_POOL|Self->memflags()|Self->DataFlags|MEM_NO_CLEAR, &data, &datamid)) {
-         if (Self->DataMID) {
-            ReleaseMemoryID(Self->DataMID);
-            FreeResourceID(Self->DataMID);
-         }
+      else if (!AllocMemory(size, MEM_NO_BLOCKING|MEM_NO_POOL|Self->DataFlags|MEM_NO_CLEAR, &data)) {
+         if (Self->Data) FreeResource(Self->Data);
          Self->Data = data;
-         Self->DataMID = datamid;
       }
       else return log.warning(ERR_AllocMemory);
    }
@@ -1793,7 +1765,7 @@ setfields:
       XSync(XDisplay, False);
 
       MemInfo meminfo;
-      if ((!MemoryIDInfo(datamid, &meminfo)) and (meminfo.Handle)) {
+      if ((!MemoryPtrInfo(Self->Data, &meminfo)) and (meminfo.Handle)) {
          ClearMemory(&Self->x11.ShmInfo, sizeof(Self->x11.ShmInfo));
          Self->x11.ShmInfo.shmid    = meminfo.Handle;
          Self->x11.ShmInfo.readOnly = False;
@@ -1921,7 +1893,7 @@ static ERROR BITMAP_SaveImage(extBitmap *Self, struct acSaveImage *Args)
    else pcx.NumPlanes = 3;
 
    size = width * height * pcx.NumPlanes;
-   if (!AllocMemory(size, MEM_DATA|MEM_NO_CLEAR, &buffer, NULL)) {
+   if (!AllocMemory(size, MEM_DATA|MEM_NO_CLEAR, &buffer)) {
       if (!AccessObject(Args->DestID, 3000, &dest)) {
          acWrite(dest, &pcx, sizeof(pcx), NULL);
 
@@ -2483,7 +2455,7 @@ ERROR SET_Palette(extBitmap *Self, RGBPalette *SrcPalette)
 
    if (SrcPalette->AmtColours <= 256) {
       if (!Self->Palette) {
-         if (AllocMemory(sizeof(RGBPalette), MEM_NO_CLEAR, &Self->Palette, NULL) != ERR_Okay) {
+         if (AllocMemory(sizeof(RGBPalette), MEM_NO_CLEAR, &Self->Palette) != ERR_Okay) {
             log.warning(ERR_AllocMemory);
          }
       }

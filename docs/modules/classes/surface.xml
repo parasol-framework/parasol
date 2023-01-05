@@ -1033,9 +1033,9 @@ the surface area first).</li>
     </struct>
 
     <struct name="SurfaceInfo" typeName="SURFACEINFO">
+      <field name="Data" type="APTR">Bitmap data memory ID</field>
       <field name="ParentID" type="OBJECTID">Object that contains the surface area</field>
       <field name="BitmapID" type="OBJECTID">Surface bitmap buffer</field>
-      <field name="DataMID" type="OBJECTID">Bitmap data memory ID</field>
       <field name="DisplayID" type="OBJECTID">If the surface object is root, its display is reflected here</field>
       <field name="Flags" type="LONG">Surface flags (RNF_VISIBLE etc)</field>
       <field name="X" type="LONG">Horizontal coordinate</field>

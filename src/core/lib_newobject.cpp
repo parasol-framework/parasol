@@ -15,79 +15,6 @@ static LONG add_shared_object(OBJECTPTR, OBJECTID, NF);
 /*****************************************************************************
 
 -FUNCTION-
-CreateObject: Provides a simplified means of creating and initialising new objects.
-
-CreateObject() combines the ~NewObject() and ~SetFields() functions into a stream-lined creation process and
-initialises the resulting object.  This is a convenience function and is not an integral part of the object management
-services.
-
-Please refer to the ~NewObject() function for information on the allocation of new objects.  Also see the ~SetFields()
-function for an outline of the formatting details of the tag arguments.
-
--INPUT-
-large ClassID: Set to a class ID obtained from the "system/register.h" file or from ~ResolveClassName().
-flags(NF) Flags: Optional flags to directly pass to ~NewObject().
-&obj Object: Pointer to an address variable that will store a reference to the new object.
-vtags Tags: Field tags are specified here.  See the ~SetFields() function for information on the structure of the tags.  Remember to terminate the tag-list with TAGEND.
-
--ERRORS-
-Okay
-Args
-NewObject
-SetField
-
-*****************************************************************************/
-
-ERROR CreateObject(LARGE ClassID, NF Flags, OBJECTPTR *argObject, ...)
-{
-   va_list list;
-   va_start(list, argObject);
-   ERROR error = CreateObjectF(ClassID, Flags, argObject, list);
-   va_end(list);
-   return error;
-}
-
-ERROR CreateObjectF(LARGE ClassID, NF Flags, OBJECTPTR *argObject, va_list List)
-{
-   parasol::Log log("CreateObject");
-
-   if (glLogLevel > 2) {
-      extMetaClass **ptr;
-      if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) {
-         log.branch("Class: %s", ptr[0]->ClassName);
-      }
-      else log.branch("Class: $%.8x", (ULONG)ClassID);
-   }
-   else log.branch("Class: $%.8x", (ULONG)ClassID);
-
-   OBJECTPTR object;
-   ERROR error;
-
-   if (!NewObject(ClassID, Flags|NF::SUPPRESS_LOG, &object)) {
-      if (!SetFieldsF(object, List)) {
-         if (!(error = acInit(object))) {
-            if (argObject) *argObject = object;
-            else if (object->UID < 0) ReleaseObject(object);
-            return ERR_Okay;
-         }
-      }
-      else error = log.warning(ERR_SetField);
-
-      if (object->UID < 0) {
-         acFree(object);
-         ReleaseObject(object);
-      }
-      else acFree(object);
-   }
-   else error = ERR_NewObject;
-
-   if (argObject) *argObject = NULL;
-   return error;
-}
-
-/*****************************************************************************
-
--FUNCTION-
 NewObject: Creates new objects.
 
 The NewObject() function is used to create new objects and register them for use within the Core.  After creating
@@ -176,7 +103,6 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
    if (!AllocMemory(mc->Size + sizeof(Stats), MEM_OBJECT|MEM_NO_LOCK|(((Flags & NF::UNTRACKED) != NF::NIL) ? MEM_UNTRACKED : 0), (APTR *)&head, &head_id)) {
       head->Stats     = (Stats *)ResolveAddress(head, mc->Size);
       head->UID       = head_id;
-      head->MemFlags |= MEM_NO_LOCK; // Prevents private memory allocations made by this class from being automatically locked.
       head->ClassID   = mc->BaseClassID;
       if (mc->BaseClassID IS mc->SubClassID) { // Object derived from a base class
          head->SubID = 0;
@@ -392,7 +318,6 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
    if ((Flags & NF::PUBLIC) != NF::NIL) {
       if (!AllocMemory(mc->Size + sizeof(Stats), MEM_PUBLIC|MEM_OBJECT, (void **)&head, &head_id)) {
          head->Stats = (Stats *)ResolveAddress(head, mc->Size);
-         head->MemFlags |= MEM_PUBLIC;
          head->UID = head_id;
       }
       else error = ERR_AllocMemory;
@@ -400,7 +325,6 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
    else if (!AllocMemory(mc->Size + sizeof(Stats), MEM_OBJECT|MEM_NO_LOCK, (APTR *)&head, &head_id)) {
       head->Stats = (Stats *)ResolveAddress(head, mc->Size);
       head->UID = head_id;
-      head->MemFlags |= MEM_NO_LOCK; // Prevents private memory allocations made by this class from being automatically locked.
    }
    else error = ERR_AllocMemory;
 

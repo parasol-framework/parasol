@@ -1258,9 +1258,8 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
 
    Object->threadLock();
 
-   LONG memflags;
-   if (Object->defined(NF::PUBLIC)) memflags = Object->MemFlags|MEM_PUBLIC;
-   else memflags = Object->MemFlags;
+   LONG memflags = 0;
+   if (Object->defined(NF::PUBLIC)) memflags = MEM_PUBLIC;
 
    LONG count = 0;  // Count the total number of actions to add
    va_list vlist;

@@ -1230,7 +1230,7 @@ static ERROR decompress_png(prvPicture *Self, objBitmap *Bitmap, int BitDepth, i
    if (!Bitmap->initialised()) {
       if ((error = acInit(Bitmap)) != ERR_Okay) return error;
    }
-   if ((error = AllocMemory(rowsize, MEM_DATA|MEM_NO_CLEAR, &row, NULL)) != ERR_Okay) return error;
+   if ((error = AllocMemory(rowsize, MEM_DATA|MEM_NO_CLEAR, &row)) != ERR_Okay) return error;
 
    if (Self->Flags & PCF_RESIZE) {
       DOUBLE fx, fy;

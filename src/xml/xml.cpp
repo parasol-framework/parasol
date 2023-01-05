@@ -275,7 +275,7 @@ static ERROR XML_DataFeed(extXML *Self, struct acDataFeed *Args)
       if (Self->TagCount < 1) return txt_to_xml(Self, (CSTRING)Args->Buffer);
 
       ClearMemory(&xml, sizeof(xml));
-      AllocMemory(sizeof(APTR), MEM_DATA, &xml.Tags, NULL);
+      AllocMemory(sizeof(APTR), MEM_DATA, &xml.Tags);
       xml.PrivateDataSize = Self->PrivateDataSize;
       xml.Flags = Self->Flags;
 
@@ -883,7 +883,7 @@ static ERROR XML_GetString(extXML *Self, struct xmlGetString *Args)
    // Allocate a buffer large enough to hold the XML information
 
    STRING buffer;
-   if (!AllocMemory(size+1, MEM_STRING|MEM_NO_CLEAR|MEM_CALLER, &buffer, NULL)) {
+   if (!AllocMemory(size+1, MEM_STRING|MEM_NO_CLEAR|MEM_CALLER, &buffer)) {
       buffer[0] = 0;
 
       LONG offset;
@@ -1374,7 +1374,7 @@ static void recalc_indexes(extXML *Self, XMLTag *Tag, LONG *Index, LONG *Level)
 
 static ERROR XML_NewObject(extXML *Self, APTR Void)
 {
-   if (!AllocMemory(sizeof(APTR), MEM_DATA, &Self->Tags, NULL)) {
+   if (!AllocMemory(sizeof(APTR), MEM_DATA, &Self->Tags)) {
       Self->ParseError = ERR_Okay;
       return ERR_Okay;
    }
@@ -2112,14 +2112,14 @@ static ERROR XML_SortXML(extXML *Self, struct xmlSort *Args)
    // Allocate an array to store the sort results
 
    ListSort *list;
-   if (AllocMemory(sizeof(ListSort) * root_total, MEM_NO_CLEAR, &list, NULL) != ERR_Okay) {
+   if (AllocMemory(sizeof(ListSort) * root_total, MEM_NO_CLEAR, &list) != ERR_Okay) {
       return ERR_AllocMemory;
    }
 
    // Tag address list
 
    ListSort **lookup;
-   if (AllocMemory(sizeof(APTR) * root_total, MEM_NO_CLEAR, &lookup, NULL) != ERR_Okay) {
+   if (AllocMemory(sizeof(APTR) * root_total, MEM_NO_CLEAR, &lookup) != ERR_Okay) {
       FreeResource(list);
       return ERR_AllocMemory;
    }
@@ -2289,7 +2289,7 @@ static ERROR XML_SortXML(extXML *Self, struct xmlSort *Args)
    // Clone the original tag array which will act as the target
 
    XMLTag **clone_array;
-   if (AllocMemory(sizeof(APTR) * (Self->TagCount + 1), MEM_UNTRACKED|MEM_NO_CLEAR, &clone_array, NULL) != ERR_Okay) {
+   if (AllocMemory(sizeof(APTR) * (Self->TagCount + 1), MEM_UNTRACKED|MEM_NO_CLEAR, &clone_array) != ERR_Okay) {
       FreeResource(list);
       FreeResource(lookup);
       return log.warning(ERR_Memory);
@@ -2535,7 +2535,7 @@ static ERROR GET_Statement(extXML *Self, STRING *Value)
    // Allocate a buffer large enough to hold the XML information
 
    STRING buffer;
-   if (!AllocMemory(size+1, MEM_STRING|MEM_NO_CLEAR, &buffer, NULL)) {
+   if (!AllocMemory(size+1, MEM_STRING|MEM_NO_CLEAR, &buffer)) {
       LONG offset = 0;
       for (auto tag=Self->Tags[Self->CurrentTag]; tag; tag=tag->Next) {
          build_xml_string(tag, buffer, Self->Flags, &offset);

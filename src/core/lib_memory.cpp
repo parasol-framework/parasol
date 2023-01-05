@@ -92,7 +92,7 @@ Here is an example:
 <pre>
 APTR address;
 
-if (!AllocMemory(1000, MEM_DATA, &address, NULL)) {
+if (!AllocMemory(1000, MEM_DATA, &address)) {
    ...
    FreeResource(address);
 }
@@ -629,7 +629,7 @@ ERROR FreeResource(const void *Address)
          if (head IS CODE_MEMH) log.warning("Second attempt at freeing address %p detected.", Address);
          else log.warning("Address %p is not a known private memory block.", Address);
          #ifdef DEBUG
-         PrintDiagnosis(0, 0);
+         print_diagnosis(0, 0);
          #endif
          return ERR_Memory;
       }

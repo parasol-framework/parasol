@@ -140,7 +140,7 @@ ERROR lock_surface(extBitmap *Bitmap, WORD Access)
       log.warning("Warning: Locking of OpenGL video surfaces for CPU access is bad practice (bitmap: #%d, mem: $%.8x)", Bitmap->UID, Bitmap->DataFlags);
 
       if (!Bitmap->Data) {
-         if (AllocMemory(Bitmap->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Bitmap->memflags()|Bitmap->DataFlags, &Bitmap->Data, &Bitmap->DataMID) != ERR_Okay) {
+         if (AllocMemory(Bitmap->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Bitmap->DataFlags, &Bitmap->Data) != ERR_Okay) {
             return log.warning(ERR_AllocMemory);
          }
          Bitmap->prvAFlags |= BF_DATA;
@@ -442,7 +442,7 @@ ERROR track_layer(extSurface *Self)
       list[i].BitsPerPixel  = Self->BitsPerPixel;
       list[i].BytesPerPixel = Self->BytesPerPixel;
       list[i].LineWidth     = Self->LineWidth;
-      list[i].DataMID       = Self->DataMID;
+      list[i].Data          = Self->Data;
       list[i].Cursor        = Self->Cursor;
       list[i].RootID        = Self->RootID;
 
@@ -561,7 +561,7 @@ ERROR update_surface_copy(extSurface *Self, SurfaceList *Copy)
          list[i].BitsPerPixel  = Self->BitsPerPixel;
          list[i].BytesPerPixel = Self->BytesPerPixel;
          list[i].LineWidth     = Self->LineWidth;
-         list[i].DataMID       = Self->DataMID;
+         list[i].Data          = Self->Data;
          list[i].Cursor        = Self->Cursor;
          list[i].RootID        = Self->RootID;
 
@@ -700,21 +700,16 @@ ERROR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
    log.traceBranch("resize_layer() %dx%d,%dx%d TO %dx%d,%dx%dx%d", Self->X, Self->Y, Self->Width, Self->Height, X, Y, Width, Height, BPP);
 
    if (Self->BitmapOwnerID IS Self->UID) {
-      objBitmap *bitmap;
-      if (!AccessObject(Self->BufferID, 5000, &bitmap)) {
-         if (!acResize(bitmap, Width, Height, BPP)) {
+      parasol::ScopedObjectLock<objBitmap> bitmap(Self->BufferID, 5000);
+      if (bitmap.granted()) {
+         if (!bitmap->resize(Width, Height, BPP)) {
             Self->LineWidth     = bitmap->LineWidth;
             Self->BytesPerPixel = bitmap->BytesPerPixel;
             Self->BitsPerPixel  = bitmap->BitsPerPixel;
-            Self->DataMID       = bitmap->DataMID;
+            Self->Data          = bitmap->Data;
             UpdateSurfaceList(Self);
          }
-         else {
-            ReleaseObject(bitmap);
-            return log.warning(ERR_Resize);
-         }
-
-         ReleaseObject(bitmap);
+         else return log.warning(ERR_Resize);
       }
       else return log.warning(ERR_AccessObject);
    }
@@ -859,7 +854,7 @@ static void check_bmp_buffer_depth(extSurface *Self, objBitmap *Bitmap)
          Self->LineWidth     = Bitmap->LineWidth;
          Self->BytesPerPixel = Bitmap->BytesPerPixel;
          Self->BitsPerPixel  = Bitmap->BitsPerPixel;
-         Self->DataMID       = Bitmap->DataMID;
+         Self->Data          = Bitmap->Data;
          UpdateSurfaceList(Self);
       }
    }
@@ -1198,7 +1193,7 @@ ERROR gfxCopySurface(OBJECTID SurfaceID, extBitmap *Bitmap, LONG Flags,
                tlNoDrawing = state;
             }
 
-            if ((Flags & (BDF_SYNC|BDF_DITHER)) or (!list_root.DataMID)) {
+            if ((Flags & (BDF_SYNC|BDF_DITHER)) or (!list_root.Data)) {
                extBitmap *src;
                if (!AccessObject(list_root.BitmapID, 4000, &src)) {
                   src->XOffset    = list_i.Left - list_root.Left;
@@ -1222,7 +1217,8 @@ ERROR gfxCopySurface(OBJECTID SurfaceID, extBitmap *Bitmap, LONG Flags,
                }
                else return log.warning(ERR_AccessObject);
             }
-            else if (!AccessMemory(list_root.DataMID, MEM_READ, 2000, &surface.Data)) {
+            else {
+               surface.Data          = list_root.Data;
                surface.XOffset       = list_i.Left - list_root.Left;
                surface.YOffset       = list_i.Top - list_root.Top;
                surface.LineWidth     = list_root.LineWidth;
@@ -1237,10 +1233,8 @@ ERROR gfxCopySurface(OBJECTID SurfaceID, extBitmap *Bitmap, LONG Flags,
                if (composite) gfxCopyRawBitmap(&surface, Bitmap, CSRF_DEFAULT_FORMAT|CSRF_OFFSET|CSRF_ALPHA, X, Y, Width, Height, XDest, YDest);
                else gfxCopyRawBitmap(&surface, Bitmap, CSRF_DEFAULT_FORMAT|CSRF_OFFSET, X, Y, Width, Height, XDest, YDest);
 
-               ReleaseMemory(surface.Data);
                return ERR_Okay;
             }
-            else return log.warning(ERR_AccessMemory);
          }
       }
 
@@ -1462,7 +1456,7 @@ ERROR gfxGetSurfaceInfo(OBJECTID SurfaceID, SURFACEINFO **Info)
       info.ParentID  = list[i].ParentID;
       info.BitmapID  = list[i].BitmapID;
       info.DisplayID = list[i].DisplayID;
-      info.DataMID   = list[root].DataMID;
+      info.Data      = list[root].Data;
       info.Flags     = list[i].Flags;
       info.X         = list[i].X;
       info.Y         = list[i].Y;
@@ -1931,12 +1925,10 @@ void _redraw_surface_do(extSurface *Self, SurfaceList *list, LONG Total, LONG In
    // Clear the background
 
    if ((Self->Flags & RNF_PRECOPY) and (!(Self->Flags & RNF_COMPOSITE))) {
-      PrecopyRegion *regions;
       LONG x, y, xoffset, yoffset, width, height;
-      LONG j;
 
-      if ((Self->PrecopyMID) and (!AccessMemory(Self->PrecopyMID, MEM_READ, 2000, &regions))) {
-         for (j=0; j < Self->PrecopyTotal; j++) {
+      if (auto regions = Self->Precopy) {
+         for (LONG j=0; j < Self->PrecopyTotal; j++) {
             // Convert relative values to their fixed equivalent
 
             if (regions[j].Dimensions & DMF_RELATIVE_X_OFFSET) xoffset = Self->Width * regions[j].XOffset / 100;

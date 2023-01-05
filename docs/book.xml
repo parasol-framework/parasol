@@ -129,7 +129,6 @@
           <chapter title="Document Class" src="classes/viewclass.rpl?xml=document.xml"/>
           <chapter title="Surface Class" src="classes/viewclass.rpl?xml=surface.xml"/>
           <chapter title="SVG Class" src="classes/viewclass.rpl?xml=svg.xml"/>
-          <chapter title="Window Class" src="classes/viewclass.rpl?xml=window.xml"/>
         </chapter>
 
         <chapter title="I/O" src="classes/index.rpl?category=IO">

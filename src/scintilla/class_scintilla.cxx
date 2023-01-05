@@ -1246,7 +1246,7 @@ static ERROR SCINTILLA_SaveToObject(extScintilla *Self, struct acSaveToObject *A
    if (!AccessObject(Args->DestID, 5000, &object)) {
       ERROR error;
       APTR buffer;
-      if (!(AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &buffer, NULL))) {
+      if (!(AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &buffer))) {
          SCICALL(SCI_GETTEXT, len+1, (const char *)buffer);
          error = acWrite(object, buffer, len, NULL);
          FreeResource(buffer);
@@ -1956,7 +1956,7 @@ static ERROR GET_String(extScintilla *Self, STRING *Value)
 
    if (Self->StringBuffer) { FreeResource(Self->StringBuffer); Self->StringBuffer = NULL; }
 
-   if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &Self->StringBuffer, NULL)) {
+   if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &Self->StringBuffer)) {
       SCICALL(SCI_GETTEXT, len+1, (const char *)Self->StringBuffer);
       *Value = Self->StringBuffer;
       return ERR_Okay;
@@ -2225,7 +2225,7 @@ static ERROR load_file(extScintilla *Self, CSTRING Path)
       else if (!file->get(FID_Size, &size)) {
          if (size > 0) {
             if (size < 1024 * 1024 * 10) {
-               if (!AllocMemory(size+1, MEM_STRING|MEM_NO_CLEAR, &str, NULL)) {
+               if (!AllocMemory(size+1, MEM_STRING|MEM_NO_CLEAR, &str)) {
                   if (!acRead(file, str, size, &len)) {
                      str[len] = 0;
                      SCICALL(SCI_SETTEXT, str);
@@ -2524,17 +2524,18 @@ static const FieldArray clFields[] = {
 
 static ERROR create_scintilla(void)
 {
-   return CreateObject(ID_METACLASS, NF::NIL, &clScintilla,
-      FID_ClassVersion|TFLOAT, VER_SCINTILLA,
-      FID_Name|TSTR,      "Scintilla",
-      FID_Category|TLONG, CCF_TOOL,
-      FID_Flags|TLONG,    CLF_PROMOTE_INTEGRAL,
-      FID_Actions|TPTR,   clScintillaActions,
-      FID_Methods|TARRAY, clScintillaMethods,
-      FID_Fields|TARRAY,  clFields,
-      FID_Size|TLONG,     sizeof(extScintilla),
-      FID_Path|TSTR,      "modules:scintilla",
-      TAGEND);
+   clScintilla = objMetaClass::create::global(
+      fl::ClassVersion(VER_SCINTILLA),
+      fl::Name("Scintilla"),
+      fl::Category(CCF_TOOL),
+      fl::Flags(CLF_PROMOTE_INTEGRAL),
+      fl::Actions(clScintillaActions),
+      fl::Methods(clScintillaMethods),
+      fl::Fields(clFields),
+      fl::Size(sizeof(extScintilla)),
+      fl::Path("modules:scintilla"));
+
+   return clScintilla ? ERR_Okay : ERR_AddClass;
 }
 
 //****************************************************************************

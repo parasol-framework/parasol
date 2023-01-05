@@ -446,12 +446,6 @@ class extTask : public objTask {
    public:
    using create = parasol::Create<extTask>;
    MEMORYID MessageMID;
-   MEMORYID LocationMID;       // Where to load the task from (string)
-   MEMORYID ParametersMID;     // Arguments (string)
-   MEMORYID CopyrightMID;      // Copyright details (string)
-   MEMORYID PathMID;
-   MEMORYID ProcessPathMID;
-   MEMORYID LaunchPathMID;
    STRING   LaunchPath;
    STRING   Path;
    STRING   ProcessPath;
@@ -953,7 +947,6 @@ ERROR AllocSemaphore(CSTRING, LONG, LONG, LONG *);
 ERROR FreeSemaphore(LONG SemaphoreID);
 ERROR SetFieldF(OBJECTPTR, FIELD, va_list);
 ERROR SetFieldsF(OBJECTPTR, va_list);
-ERROR CreateObjectF(LARGE, NF, OBJECTPTR *, va_list List);
 ERROR pReleaseSemaphore(LONG, LONG);
 
 ERROR fs_closedir(struct DirInfo *);
@@ -997,6 +990,7 @@ extern void add_archive(class extCompression *);
 extern void remove_archive(class extCompression *);
 extern void zipfile_to_item(struct ZipFile *ZF, struct CompressedItem *Item);
 
+void print_diagnosis(LONG ProcessID, LONG Signal);
 CSTRING action_name(OBJECTPTR Object, LONG ActionID);
 APTR   build_jump_table(LONG, const struct Function *, LONG);
 ERROR  copy_args(const struct FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, WORD *, CSTRING);

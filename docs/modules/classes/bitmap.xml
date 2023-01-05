@@ -528,13 +528,6 @@ unpackAlpha(Colour)
     </field>
 
     <field>
-      <name>DataMID</name>
-      <comment>Memory ID of the bitmap's data, if applicable.</comment>
-      <access>-/-</access>
-      <type>MEMORYID</type>
-    </field>
-
-    <field>
       <name>DrawUCPixel</name>
       <comment>Points to a C function that draws pixels to the bitmap using colour indexes.</comment>
       <access read="R">Read</access>

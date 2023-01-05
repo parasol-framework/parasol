@@ -4,7 +4,7 @@ The source code of the Parasol Framework is made publicly available under the te
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 -CATEGORY-
-Name: Logging
+Name: System
 -END-
 
 This file contains all logging functions.
@@ -90,6 +90,7 @@ LONG AdjustLogLevel(LONG BaseLine)
 -FUNCTION-
 LogF: Sends formatted messages to the standard log.
 Attribute: __attribute__((format(printf, 2, 3)))
+Status: private
 
 The LogF() function follows the same functionality and rules as the ANSI printf() function, with the difference that
 it is passed through a log filter before appearing as output.  Imposed limits restrict the length of the message to
@@ -336,6 +337,7 @@ exit:
 -FUNCTION-
 VLogF: Sends formatted messages to the standard log.
 ExtPrototype: int Flags, const char *Header, const char *Message, va_list Args
+Status: private
 
 Please refer to LogF().  This function is not intended for external use.
 
@@ -537,6 +539,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
 
 -FUNCTION-
 FuncError: Sends basic error messages to the application log.
+Status: private
 
 This function outputs a message to the application log.  It uses the codes listed in the system/errors.h file to
 display the correct string to the user.  The following example `FuncError(ERR_Write)` would produce input such
@@ -651,6 +654,7 @@ ERROR FuncError(CSTRING Header, ERROR Code)
 
 -FUNCTION-
 LogReturn: Revert to the previous branch in the application logging tree.
+Status: private
 
 Use LogReturn() to reverse any previous log message that created an indented branch.  Consider the following
 example that uses a tilde to create a new branch:

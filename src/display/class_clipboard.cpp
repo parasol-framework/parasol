@@ -121,7 +121,7 @@ static ERROR CLIPBOARD_AddFile(objClipboard *Self, struct clipAddFile *Args)
             // Build a list of resolved path names in a new buffer that is suitable for passing to Windows.
 
             STRING win;
-            if (!AllocMemory(512 * clips->TotalItems, MEM_DATA|MEM_NO_CLEAR, &win, NULL)) {
+            if (!AllocMemory(512 * clips->TotalItems, MEM_DATA|MEM_NO_CLEAR, &win)) {
                LONG j = 0, winpos = 0;
                for (LONG i=0; i < clips->TotalItems; i++) {
                   STRING path;
@@ -309,7 +309,7 @@ static ERROR CLIPBOARD_AddText(objClipboard *Self, struct clipAddText *Args)
       UWORD *utf16;
       ERROR error = ERR_Okay;
       LONG chars = UTF8Length(Args->String);
-      if (!AllocMemory((chars+1) * sizeof(WORD), MEM_DATA|MEM_NO_CLEAR, &utf16, NULL)) {
+      if (!AllocMemory((chars+1) * sizeof(WORD), MEM_DATA|MEM_NO_CLEAR, &utf16)) {
          CSTRING str = Args->String;
          LONG i = 0;
          while (*str) {
@@ -409,7 +409,7 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
             for (++bytes; (bytes < Args->Size) and ((str[bytes] & 0xc0) IS 0x80); bytes++);
          }
 
-        if (!AllocMemory((chars+1) * sizeof(WORD), MEM_DATA|MEM_NO_CLEAR, &utf16, NULL)) {
+        if (!AllocMemory((chars+1) * sizeof(WORD), MEM_DATA|MEM_NO_CLEAR, &utf16)) {
             LONG i = 0;
             while (i < bytes) {
                LONG len = UTF8CharLength(str);
@@ -627,7 +627,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
          if (!(error = AccessMemory(clips[index].Files, MEM_READ, 3000, &files))) {
             MEMINFO info;
             if (!MemoryIDInfo(clips[index].Files, &info)) {
-               if (!AllocMemory(((clips[index].TotalItems+1) * sizeof(STRING)) + info.Size, MEM_DATA|MEM_CALLER, &list, NULL)) {
+               if (!AllocMemory(((clips[index].TotalItems+1) * sizeof(STRING)) + info.Size, MEM_DATA|MEM_CALLER, &list)) {
                   CopyMemory(files, list + clips[index].TotalItems + 1, info.Size);
                }
                else {
@@ -660,7 +660,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
 
          // Allocate the list array with some room for the strings at the end and then fill it with data.
 
-         if (!AllocMemory(((clips[index].TotalItems+1) * sizeof(STRING)) + len, MEM_DATA|MEM_CALLER, &list, NULL)) {
+         if (!AllocMemory(((clips[index].TotalItems+1) * sizeof(STRING)) + len, MEM_DATA|MEM_CALLER, &list)) {
             STRING str = (STRING)(list + clips[index].TotalItems + 1);
             for (i=0; i < clips[index].TotalItems; i++) {
                if (i > 0) *str++ = '\0'; // Each file is separated with a NULL character
@@ -1163,7 +1163,7 @@ extern "C" void report_windows_clip_utf16(UWORD *String)
       }
 
       STRING u8str;
-      if (!AllocMemory(u8len+1, MEM_STRING|MEM_NO_CLEAR, &u8str, NULL)) {
+      if (!AllocMemory(u8len+1, MEM_STRING|MEM_NO_CLEAR, &u8str)) {
          LONG i = 0;
          for (LONG chars=0; String[chars]; chars++) {
             auto value = String[chars];
