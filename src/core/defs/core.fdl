@@ -190,9 +190,6 @@ inline ENUMTYPE &operator |= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 
   flags("OPF", { },
     "NAME",
-    "COPYRIGHT",
-    "DATE",
-    "AUTHOR",
     "CORE_VERSION",
     "JUMPTABLE",
     "MAX_DEPTH",
@@ -770,9 +767,6 @@ struct OpenTag {
 struct OpenInfo {
    LONG    Flags;           // OPF flags need to be set for fields that have been defined in this structure.
    CSTRING Name;            // OPF_NAME
-   CSTRING Copyright;       // OPF_COPYRIGHT
-   CSTRING Date;            // OPF_DATE
-   CSTRING Author;          // OPF_AUTHOR
    FLOAT   CoreVersion;     // OPF_CORE_VERSION
    LONG    JumpTable;       // OPF_JUMPTABLE
    LONG    MaxDepth;        // OPF_MAX_DEPTH
@@ -1518,16 +1512,16 @@ inline ERROR ClearMemory(APTR Memory, LONG Length) {
 
 struct BaseClass { // Must be 64-bit aligned
    union {
-      objMetaClass *Class;          // Class pointer, resolved on AccessObject()
-      class extMetaClass *ExtClass; // Internal class reference
+      objMetaClass *Class;          // [Public] Class pointer
+      class extMetaClass *ExtClass; // [Private] Internal version of the class pointer
    };
-   struct Stats *Stats;         // Stats pointer, resolved on AccessObject() [Private]
+   struct Stats *Stats;         // [Private] Stats pointer
    APTR     ChildPrivate;       // Address for the ChildPrivate structure, if allocated
    APTR     CreatorMeta;        // The creator (via NewObject) is permitted to store a custom data pointer here.
    CLASSID  ClassID;            // Reference to the object's class, used to resolve the Class pointer
    CLASSID  SubID;              // Reference to the object's sub-class, used to resolve the Class pointer
    OBJECTID UID;                // Unique object identifier
-   OBJECTID OwnerID;            // Refers to the owner of this object
+   OBJECTID OwnerID;            // The owner of this object
    NF       Flags;              // Object flags
    OBJECTID TaskID;             // The process that this object belongs to
    volatile LONG  ThreadID;     // Managed by locking functions

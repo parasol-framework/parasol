@@ -337,15 +337,12 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>GetModalSurface</name>
-    <comment>Returns the current modal surface (if defined) for a task.</comment>
-    <prototype>OBJECTID gfxGetModalSurface(OBJECTID Task)</prototype>
-    <input>
-      <param type="OBJECTID" name="Task">The task from which to retrieve the modal surface ID.  If zero, the modal surface for the current task is returned.</param>
-    </input>
+    <comment>Returns the current modal surface (if defined).</comment>
+    <prototype>OBJECTID gfxGetModalSurface()</prototype>
     <description>
-<p>This function returns the modal surface that is set for a specific task.  If no modal surface has been assigned to the task, zero is returned.</p>
+<p>This function returns the modal surface for the running process.  Returns zero if no modal surface is active.</p>
     </description>
-    <result type="OBJECTID">The modal surface for the indicated task is returned.</result>
+    <result type="OBJECTID">The UID of the modal surface, or zero.</result>
   </function>
 
   <function>

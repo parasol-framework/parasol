@@ -2023,7 +2023,7 @@ ERROR ReleaseObject(OBJECTPTR Object)
          // Clean up
 
          if (Object->defined(NF::UNLOCK_FREE)) {
-            Object->Flags = Object->Flags & ~(NF::UNLOCK_FREE|NF::FREE);
+            Object->Flags  = Object->Flags & ~(NF::UNLOCK_FREE|NF::FREE);
             Object->Locked = false;
             if (Object->UID < 0) { // If public, free the object and then release the memory block to destroy it.
                acFree(Object);

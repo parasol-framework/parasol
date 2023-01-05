@@ -20,10 +20,7 @@ restriction.
 #endif
 
 extern "C" void program(void);
-extern "C" STRING ProgCopyright;
-extern "C" STRING ProgAuthor;
 extern "C" STRING ProgName;
-extern "C" STRING ProgDate;
 
 struct CoreBase *CoreBase;
 
@@ -59,16 +56,13 @@ extern "C" const char * init_parasol(int argc, CSTRING *argv)
    info.Detail    = 0;
    info.MaxDepth  = 14;
    info.Name      = ProgName;
-   info.Author    = ProgAuthor;
-   info.Date      = ProgDate;
-   info.Copyright = ProgCopyright;
    info.Args      = argv;
    info.ArgCount  = argc;
    info.CoreVersion = 0; // Minimum required core version
    info.CompiledAgainst = VER_CORE; // The core that this code is compiled against
-   info.Error           = ERR_Okay;
+   info.Error     = ERR_Okay;
    info.RootPath  = root_path;
-   info.Flags     = OPF_CORE_VERSION|OPF_COMPILED_AGAINST|OPF_NAME|OPF_AUTHOR|OPF_DATE|OPF_COPYRIGHT|OPF_ARGS|OPF_ERROR|OPF_ROOT_PATH;
+   info.Flags     = OPF_CORE_VERSION|OPF_COMPILED_AGAINST|OPF_NAME|OPF_ARGS|OPF_ERROR|OPF_ROOT_PATH;
 
    // Check for a local installation in the CWD.
 

@@ -10,17 +10,14 @@ void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes)
 {
 #ifdef WIN_DRAGDROP
    parasol::Log log(__FUNCTION__);
-   objPointer *pointer;
-   OBJECTID modal_id;
-   extern OBJECTID glOverTaskID;
 
    log.branch("Surface: %d", SurfaceID);
 
-   if ((pointer = gfxAccessPointer())) {
+   if (auto pointer = gfxAccessPointer()) {
       // Pass AC_DragDrop to the surface underneath the mouse cursor.  If a surface subscriber accepts the data, it
       // will send a DATA_REQUEST to the relevant display object.  See DISPLAY_DataFeed() and winGetData().
 
-      modal_id = gfxGetModalSurface(glOverTaskID);
+      OBJECTID modal_id = gfxGetModalSurface();
       if (modal_id IS SurfaceID) modal_id = 0;
 
       if (!modal_id) {

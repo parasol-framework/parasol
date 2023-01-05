@@ -232,6 +232,7 @@ constexpr FieldValue SpreadMethod(LONG Value) { return FieldValue(FID_SpreadMeth
 constexpr FieldValue Units(LONG Value) { return FieldValue(FID_Units, Value); }
 constexpr FieldValue AspectRatio(LONG Value) { return FieldValue(FID_AspectRatio, Value); }
 constexpr FieldValue ColourSpace(LONG Value) { return FieldValue(FID_ColourSpace, Value); }
+constexpr FieldValue WindowHandle(LONG Value) { return FieldValue(FID_WindowHandle, Value); }
 constexpr FieldValue StrokeWidth(DOUBLE Value) { return FieldValue(FID_StrokeWidth, Value); }
 constexpr FieldValue Closed(bool Value) { return FieldValue(FID_Closed, (Value ? 1 : 0)); }
 constexpr FieldValue Visibility(LONG Value) { return FieldValue(FID_Visibility, Value); }
