@@ -451,11 +451,7 @@ class extTask : public objTask {
    STRING   ProcessPath;
    STRING   Location;         // Where to load the task from (string)
    CSTRING  *Parameters;      // Arguments (string array)
-   STRING   Copyright;        // Copyright details (string)
    char     Name[32];         // Name of the task, if specified (string)
-   char     Author[60];       // Who wrote the program (string)
-   char     Date[20];         // Date of compilation (string)
-   char     Short[80];        // Short description of program (string)
    LONG     ParametersSize;   // Byte size of the arguments structure
    STRING   Fields[100];      // Variable field storage
    BYTE     ReturnCodeSet;    // TRUE if the ReturnCode has been set
