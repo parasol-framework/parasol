@@ -282,7 +282,6 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 {
    parasol::Log log;
 
-   if (CurrentTaskID() != Self->ownerTask()) return log.warning(ERR_IllegalActionAttempt);
    if ((!Self->String) or (!Self->String[0])) return log.warning(ERR_FieldNotSet);
 
    log.msg(VLF_EXTAPI, "Target: %d, Procedure: %s / ID #%" PF64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", Self->ProcedureID);
