@@ -707,7 +707,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
          if (cache_ts != -1) {
             if ((cache_ts IS src_ts) or (error)) {
                log.msg("Using cache '%s'", Self->CacheFile);
-               if (!AllocMemory(cache_size, MEM_STRING|MEM_NO_CLEAR|Self->memflags(), &Self->String, NULL)) {
+               if (!AllocMemory(cache_size, MEM_STRING|MEM_NO_CLEAR, &Self->String)) {
                   LONG len;
                   error = ReadFileToBuffer(Self->CacheFile, Self->String, cache_size, &len);
                   loaded_size = cache_size;
@@ -718,7 +718,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
       }
 
       if ((!error) and (!loaded_size)) {
-         if (!AllocMemory(src_size+1, MEM_STRING|MEM_NO_CLEAR, &Self->String, NULL)) {
+         if (!AllocMemory(src_size+1, MEM_STRING|MEM_NO_CLEAR, &Self->String)) {
             LONG len;
             if (!ReadFileToBuffer(Self->Path, Self->String, src_size, &len)) {
                Self->String[len] = 0;
@@ -747,7 +747,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
 
    prvFluid *prv;
    if (!error) {
-      if (!AllocMemory(sizeof(prvFluid), Self->memflags(), &Self->ChildPrivate, NULL)) {
+      if (!AllocMemory(sizeof(prvFluid), MEM_DATA, &Self->ChildPrivate)) {
          prv = (prvFluid *)Self->ChildPrivate;
          if ((prv->SaveCompiled = compile)) {
             DateTime *dt;
@@ -846,7 +846,7 @@ static ERROR GET_Procedures(objScript *Self, STRING **Value, LONG *Elements)
    if (prv) {
       LONG memsize = 1024 * 64;
       UBYTE *list;
-      if (!AllocMemory(memsize, MEM_DATA|MEM_NO_CLEAR, &list, NULL)) {
+      if (!AllocMemory(memsize, MEM_DATA|MEM_NO_CLEAR, &list)) {
          LONG total = 0;
          LONG size  = 0;
          lua_pushnil(prv->Lua);

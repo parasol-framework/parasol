@@ -117,7 +117,7 @@ static APTR get_tmp(LONG Size)
    if (Size < 1024) Size = 1024;
    if ((glTmp) and (Size <= glTmpSize)) return glTmp;
    if (glTmp) { FreeResource(glTmp); glTmp = NULL; }
-   if (!AllocMemory(Size, MEM_DATA|MEM_NO_CLEAR|MEM_UNTRACKED, &glTmp, NULL)) {
+   if (!AllocMemory(Size, MEM_DATA|MEM_NO_CLEAR|MEM_UNTRACKED, &glTmp)) {
       glTmpSize = Size;
       return glTmp;
    }
@@ -252,7 +252,7 @@ static ERROR txt_to_json(objXML *Self, CSTRING Text)
 
    // Allocate an array to hold all of the tags
 
-   if (!AllocMemory(sizeof(APTR) * (Self->TagCount + 1), MEM_DATA|MEM_UNTRACKED, &tag, NULL)) {
+   if (!AllocMemory(sizeof(APTR) * (Self->TagCount + 1), MEM_DATA|MEM_UNTRACKED, &tag)) {
       FreeResource(Self->Tags);
       Self->Tags = tag;
    }
@@ -901,9 +901,9 @@ static ERROR create_tag(objXML *Self, LONG LineNo, exttag *Status, ...)
 
    XMLTag *xtag;
 #ifdef DEBUG
-   if (AllocMemory(sizeof(XMLTag) + Self->PrivateDataSize + (sizeof(XMLAttrib) * totalattrib) + attribsize, 0, &xtag, NULL) != ERR_Okay) {  // Memory will be tracked in debug mode.
+   if (AllocMemory(sizeof(XMLTag) + Self->PrivateDataSize + (sizeof(XMLAttrib) * totalattrib) + attribsize, 0, &xtag) != ERR_Okay) {  // Memory will be tracked in debug mode.
 #else
-   if (AllocMemory(sizeof(XMLTag) + Self->PrivateDataSize + (sizeof(XMLAttrib) * totalattrib) + attribsize, MEM_UNTRACKED, &xtag, NULL) != ERR_Okay) {
+   if (AllocMemory(sizeof(XMLTag) + Self->PrivateDataSize + (sizeof(XMLAttrib) * totalattrib) + attribsize, MEM_UNTRACKED, &xtag) != ERR_Okay) {
 #endif
       return log.warning(ERR_AllocMemory);
    }
@@ -956,9 +956,9 @@ static ERROR create_content(objXML *Self, LONG LineNo, exttag *Status, CSTRING C
    log.trace("Content; Line: %d", LineNo);
 
 #ifdef DEBUG // Memory will be tracked in debug mode.
-   if (AllocMemory(sizeof(XMLTag) + Self->PrivateDataSize + (sizeof(XMLAttrib)) + attribsize, 0, &xtag, NULL) != ERR_Okay) {
+   if (AllocMemory(sizeof(XMLTag) + Self->PrivateDataSize + (sizeof(XMLAttrib)) + attribsize, 0, &xtag) != ERR_Okay) {
 #else
-   if (AllocMemory(sizeof(XMLTag) + Self->PrivateDataSize + (sizeof(XMLAttrib)) + attribsize, MEM_UNTRACKED, &xtag, NULL) != ERR_Okay) {
+   if (AllocMemory(sizeof(XMLTag) + Self->PrivateDataSize + (sizeof(XMLAttrib)) + attribsize, MEM_UNTRACKED, &xtag) != ERR_Okay) {
 #endif
       return log.warning(ERR_AllocMemory);
    }

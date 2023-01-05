@@ -178,7 +178,7 @@ public:
          }
 
          if (!Bitmap->Data) {
-            if (!AllocMemory(Bitmap->LineWidth * canvas_height, MEM_DATA|MEM_NO_CLEAR, &Data, NULL)) {
+            if (!AllocMemory(Bitmap->LineWidth * canvas_height, MEM_DATA|MEM_NO_CLEAR, &Data)) {
                DataSize = Bitmap->LineWidth * canvas_height;
             }
             else {

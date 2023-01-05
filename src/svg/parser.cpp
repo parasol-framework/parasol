@@ -1664,7 +1664,7 @@ static ERROR load_pic(extSVG *Self, CSTRING Path, objPicture **Picture)
 
             UBYTE *output;
             LONG size = strlen(val);
-            if (!AllocMemory(size, MEM_DATA|MEM_NO_CLEAR, &output, NULL)) {
+            if (!AllocMemory(size, MEM_DATA|MEM_NO_CLEAR, &output)) {
                LONG written;
                if (!(error = Base64Decode(&state, val, size, output, &written))) {
                   Path = "temp:svg.img";
@@ -1888,7 +1888,7 @@ static ERROR xtag_style(extSVG *Self, objXML *XML, const XMLTag *Tag)
 
    STRING css_buffer;
    LONG css_size = 256 * 1024;
-   if (!AllocMemory(css_size, MEM_DATA|MEM_STRING|MEM_NO_CLEAR, &css_buffer, NULL)) {
+   if (!AllocMemory(css_size, MEM_DATA|MEM_STRING|MEM_NO_CLEAR, &css_buffer)) {
       if (!(error = xmlGetContent(XML, Tag->Index, css_buffer, css_size))) {
          KatanaOutput *css;
 
@@ -2441,7 +2441,7 @@ static ERROR xtag_animatetransform(extSVG *Self, objXML *XML, const XMLTag *Tag,
                while ((*value) and (*value <= 0x20)) value++;
                CSTRING str = value;
                for (s=0; (str[s]) and (str[s] != ';'); s++);
-               if (!AllocMemory(s+1, MEM_STRING, &copy, NULL)) {
+               if (!AllocMemory(s+1, MEM_STRING, &copy)) {
                   CopyMemory(str, copy, s);
                   copy[s] = 0;
                   anim.Values[v++] = copy;
@@ -2490,7 +2490,7 @@ static ERROR xtag_animatetransform(extSVG *Self, objXML *XML, const XMLTag *Tag,
    }
 
    svgAnimation *newAnim;
-   if (!AllocMemory(sizeof(svgAnimation), MEM_DATA|MEM_NO_CLEAR, &newAnim, NULL)) {
+   if (!AllocMemory(sizeof(svgAnimation), MEM_DATA|MEM_NO_CLEAR, &newAnim)) {
       if (Self->Animations) anim.Next = Self->Animations;
       CopyMemory(&anim, newAnim, sizeof(svgAnimation));
       Self->Animations = newAnim;

@@ -446,12 +446,6 @@ class extTask : public objTask {
    public:
    using create = parasol::Create<extTask>;
    MEMORYID MessageMID;
-   MEMORYID LocationMID;       // Where to load the task from (string)
-   MEMORYID ParametersMID;     // Arguments (string)
-   MEMORYID CopyrightMID;      // Copyright details (string)
-   MEMORYID PathMID;
-   MEMORYID ProcessPathMID;
-   MEMORYID LaunchPathMID;
    STRING   LaunchPath;
    STRING   Path;
    STRING   ProcessPath;

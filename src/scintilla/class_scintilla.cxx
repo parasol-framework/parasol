@@ -1246,7 +1246,7 @@ static ERROR SCINTILLA_SaveToObject(extScintilla *Self, struct acSaveToObject *A
    if (!AccessObject(Args->DestID, 5000, &object)) {
       ERROR error;
       APTR buffer;
-      if (!(AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &buffer, NULL))) {
+      if (!(AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &buffer))) {
          SCICALL(SCI_GETTEXT, len+1, (const char *)buffer);
          error = acWrite(object, buffer, len, NULL);
          FreeResource(buffer);
@@ -1956,7 +1956,7 @@ static ERROR GET_String(extScintilla *Self, STRING *Value)
 
    if (Self->StringBuffer) { FreeResource(Self->StringBuffer); Self->StringBuffer = NULL; }
 
-   if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &Self->StringBuffer, NULL)) {
+   if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &Self->StringBuffer)) {
       SCICALL(SCI_GETTEXT, len+1, (const char *)Self->StringBuffer);
       *Value = Self->StringBuffer;
       return ERR_Okay;
@@ -2225,7 +2225,7 @@ static ERROR load_file(extScintilla *Self, CSTRING Path)
       else if (!file->get(FID_Size, &size)) {
          if (size > 0) {
             if (size < 1024 * 1024 * 10) {
-               if (!AllocMemory(size+1, MEM_STRING|MEM_NO_CLEAR, &str, NULL)) {
+               if (!AllocMemory(size+1, MEM_STRING|MEM_NO_CLEAR, &str)) {
                   if (!acRead(file, str, size, &len)) {
                      str[len] = 0;
                      SCICALL(SCI_SETTEXT, str);

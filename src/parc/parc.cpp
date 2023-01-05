@@ -302,7 +302,7 @@ static ERROR SET_Args(extParc *Self, CSTRING Value)
       LONG i;
       if ((Value[0] IS '1') and (!Value[1])) return ERR_Okay; // Ignore arguments of "1"
       for (i=0; Value[i]; i++);
-      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, &Self->Args, NULL)) {
+      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, &Self->Args)) {
          for (i=0; Value[i]; i++) Self->Args[i] = Value[i];
          Self->Args[i] = 0;
       }

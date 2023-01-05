@@ -212,7 +212,7 @@ static int input_request_item(lua_State *Lua)
    }
 
    struct datarequest *request;
-   if (!AllocMemory(sizeof(struct datarequest), MEM_NO_CLEAR|MEM_DATA, &request, NULL)) {
+   if (!AllocMemory(sizeof(struct datarequest), MEM_NO_CLEAR|MEM_DATA, &request)) {
       struct object *obj;
       OBJECTID source_id;
       ERROR error;

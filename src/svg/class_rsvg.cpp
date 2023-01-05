@@ -57,7 +57,7 @@ static ERROR RSVG_Init(prvPicture *Self, APTR Void)
 
    Self->Flags |= PCF_SCALABLE;
 
-   if (!AllocMemory(sizeof(prvSVG), MEM_DATA, &Self->ChildPrivate, NULL)) {
+   if (!AllocMemory(sizeof(prvSVG), MEM_DATA, &Self->ChildPrivate)) {
       if (Self->Flags & PCF_LAZY) return ERR_Okay;
       return acActivate(Self);
    }

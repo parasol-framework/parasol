@@ -92,7 +92,7 @@ Here is an example:
 <pre>
 APTR address;
 
-if (!AllocMemory(1000, MEM_DATA, &address, NULL)) {
+if (!AllocMemory(1000, MEM_DATA, &address)) {
    ...
    FreeResource(address);
 }

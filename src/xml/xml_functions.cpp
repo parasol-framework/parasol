@@ -188,7 +188,7 @@ static ERROR txt_to_xml(extXML *Self, CSTRING Text)
    // Allocate an array to hold all of the XML tags
 
    XMLTag **tag;
-   if (AllocMemory(sizeof(APTR) * (Self->TagCount + 1), MEM_DATA|MEM_UNTRACKED, &tag, NULL) != ERR_Okay) {
+   if (AllocMemory(sizeof(APTR) * (Self->TagCount + 1), MEM_DATA|MEM_UNTRACKED, &tag) != ERR_Okay) {
       return ERR_AllocMemory;
    }
 
@@ -512,7 +512,7 @@ static ERROR extract_tag(extXML *Self, exttag *Status)
    }
 
    XMLTag *tag;
-   if (AllocMemory(sizeof(XMLTag) + Self->PrivateDataSize + (sizeof(XMLAttrib) * totalattrib) + attribsize, MEM_UNTRACKED, &tag, NULL) != ERR_Okay) {
+   if (AllocMemory(sizeof(XMLTag) + Self->PrivateDataSize + (sizeof(XMLAttrib) * totalattrib) + attribsize, MEM_UNTRACKED, &tag) != ERR_Okay) {
       return log.warning(ERR_AllocMemory);
    }
 
@@ -1494,7 +1494,7 @@ static ERROR parse_source(extXML *Self)
    if (Self->Source) {
       char *buffer;
       LARGE size = 64 * 1024;
-      if (!AllocMemory(size+1, MEM_STRING|MEM_NO_CLEAR, &buffer, NULL)) {
+      if (!AllocMemory(size+1, MEM_STRING|MEM_NO_CLEAR, &buffer)) {
          LONG pos = 0;
          Self->ParseError = ERR_Okay;
          acSeekStart(Self->Source, 0);

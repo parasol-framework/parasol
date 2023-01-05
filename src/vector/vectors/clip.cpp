@@ -91,7 +91,7 @@ static ERROR CLIP_Draw(extVectorClip *Self, struct acDraw *Args)
    }
 
    if (!Self->ClipData) {
-      if (!AllocMemory(size, MEM_DATA|MEM_NO_CLEAR, &Self->ClipData, NULL)) {
+      if (!AllocMemory(size, MEM_DATA|MEM_NO_CLEAR, &Self->ClipData)) {
          Self->ClipSize = size;
       }
       else return ERR_AllocMemory;

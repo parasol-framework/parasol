@@ -409,7 +409,7 @@ static void add_inherit(extSVG *Self, OBJECTPTR Object, CSTRING ID)
    parasol::Log log(__FUNCTION__);
    svgInherit *inherit;
    log.trace("Object: %d, ID: %s", Object->UID, ID);
-   if (!AllocMemory(sizeof(svgInherit), MEM_DATA|MEM_NO_CLEAR, &inherit, NULL)) {
+   if (!AllocMemory(sizeof(svgInherit), MEM_DATA|MEM_NO_CLEAR, &inherit)) {
       inherit->Object = Object;
       inherit->Next = Self->Inherit;
       while ((*ID) and (*ID IS '#')) ID++;

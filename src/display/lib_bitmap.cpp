@@ -65,7 +65,7 @@ static ERROR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LO
    if (Width * sizeof(RGB16) * 2 > glDitherSize) {
       if (glDither) { FreeResource(glDither); glDither = NULL; }
 
-      if (AllocMemory(Width * sizeof(RGB16) * 2, MEM_NO_CLEAR|MEM_UNTRACKED, &glDither, NULL) != ERR_Okay) {
+      if (AllocMemory(Width * sizeof(RGB16) * 2, MEM_NO_CLEAR|MEM_UNTRACKED, &glDither) != ERR_Okay) {
          return ERR_AllocMemory;
       }
       glDitherSize = Width * sizeof(RGB16) * 2;

@@ -215,7 +215,7 @@ static ERROR ARCHIVE_Init(extFile *Self, APTR Void)
    if (Self->Flags & (FL_NEW|FL_WRITE)) return log.warning(ERR_ReadOnly);
 
    ERROR error = ERR_Search;
-   if (!AllocMemory(sizeof(prvFileArchive), Self->memflags(), &Self->ChildPrivate, NULL)) {
+   if (!AllocMemory(sizeof(prvFileArchive), MEM_DATA, &Self->ChildPrivate, NULL)) {
       if (Self->Path[StrLength(Self->Path)-1] IS ':') { // Nothing is referenced
          return ERR_Okay;
       }

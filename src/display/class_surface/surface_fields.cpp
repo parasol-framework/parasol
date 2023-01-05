@@ -369,7 +369,7 @@ static ERROR SET_PrecopyRegion(extSurface *Self, STRING Value)
 
    log.branch("%s", Value);
 
-   if (Self->PrecopyMID) { FreeResourceID(Self->PrecopyMID); Self->PrecopyMID = 0; }
+   if (Self->Precopy) { FreeResource(Self->Precopy); Self->Precopy = NULL; }
 
    if ((!Value) or (!*Value)) return ERR_Okay;
 
@@ -491,16 +491,14 @@ static ERROR SET_PrecopyRegion(extSurface *Self, STRING Value)
    log.msg("%d regions were processed.", total);
 
    if (total > 0) {
-      PrecopyRegion *precopy;
-      if (!AllocMemory(sizeof(PrecopyRegion) * total, MEM_DATA|MEM_NO_CLEAR, &precopy, &Self->PrecopyMID)) {
-         CopyMemory(regions, precopy, sizeof(PrecopyRegion) * total);
+      if (!AllocMemory(sizeof(PrecopyRegion) * total, MEM_DATA|MEM_NO_CLEAR, &Self->Precopy)) {
+         CopyMemory(regions, Self->Precopy, sizeof(PrecopyRegion) * total);
          Self->PrecopyTotal = total;
          if (!Self->initialised()) {
             Self->Flags |= RNF_PRECOPY;
             UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
          }
 
-         ReleaseMemoryID(Self->PrecopyMID);
          return ERR_Okay;
       }
       else return log.warning(ERR_AllocMemory);
