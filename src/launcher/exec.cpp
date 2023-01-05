@@ -175,9 +175,8 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
    }
 
    if (!NewObject(subclass ? subclass : class_id, &glScript)) {
-      if (!glTargetID) glTargetID = CurrentTaskID();
       SetFields(glScript, FID_Path|TSTR,      TargetFile,
-                          FID_Target|TLONG,   glTargetID,
+                          FID_Target|TLONG,   glTarget ? glTarget->UID : CurrentTaskID(),
                           FID_Procedure|TSTR, Procedure,
                           TAGEND);
       if (glArgs) {
