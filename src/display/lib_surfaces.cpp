@@ -1506,8 +1506,8 @@ OBJECTID gfxGetUserFocus(void)
 GetVisibleArea: Returns the visible region of a surface.
 
 The GetVisibleArea() function returns the visible area of a surface, which is based on its position within its parent
-surfaces. The resulting coordinates are relative to point 0,0 of the queried surface. If the surface is not obscured,
-then the resulting coordinates will be (0,0),(Width,Height).
+surfaces. The resulting coordinates are relative to point `0,0` of the queried surface. If the surface is not obscured,
+then the resulting coordinates will be `(0,0),(Width,Height)`.
 
 -INPUT-
 oid Surface: The surface to query.  If zero, the top-level display will be queried.
