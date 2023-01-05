@@ -392,18 +392,8 @@ retry:
          glSharedBlocks[blk].Handle    = handle;
       #endif
 
-      // Record the task that the memory block should be tracked to.  The current context plays an important part in
-      // this, because if the object is shared then we want the allocation to track back to the task responsible for
-      // maintaining that object rather than having it track back to our own task.
-
       if (Flags & (MEM_UNTRACKED|MEM_HIDDEN));
-      else {
-         tlContext->resource()->Flags |= NF::HAS_SHARED_RESOURCES;
-         if ((tlContext->resource()->Stats) and (tlContext->resource()->TaskID)) {
-            glSharedBlocks[blk].TaskID = tlContext->resource()->TaskID;
-         }
-         else glSharedBlocks[blk].TaskID = glCurrentTaskID;
-      }
+      else glSharedBlocks[blk].TaskID = glCurrentTaskID;
 
       // Gain exclusive access if an address pointer has been requested
 
