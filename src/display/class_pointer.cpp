@@ -287,7 +287,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
    // surface, or if no modal surface is defined.
 
    if (glOverTaskID) {
-      modal_id = gfxGetModalSurface(glOverTaskID);
+      modal_id = gfxGetModalSurface();
 
       if (modal_id) {
          if (modal_id IS Self->OverObjectID) {

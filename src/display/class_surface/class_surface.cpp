@@ -901,8 +901,7 @@ static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
 
    FOCUSMSG("Focussing...  HasFocus: %c", (Self->Flags & RNF_HAS_FOCUS) ? 'Y' : 'N');
 
-   OBJECTID modal;
-   if ((modal = gfxGetModalSurface(Self->ownerTask()))) {
+   if (auto modal = gfxGetModalSurface()) {
       if (modal != Self->UID) {
          ERROR error;
          error = gfxCheckIfChild(modal, Self->UID);
