@@ -1458,11 +1458,6 @@ extern "C" {
 }
 #endif
 
-#define PRIVATE_FIELDS
-
-#undef  NULL    // Turn off any previous definition of NULL
-#define NULL 0  // NULL is a value of 0
-
 #define skipwhitespace(a) while ((*(a) > 0) && (*(a) <= 0x20)) (a)++;
 
 #define ARRAYSIZE(a) ((LONG)(sizeof(a)/sizeof(a[0])))
@@ -1643,16 +1638,9 @@ struct OpenInfo {
 #define TSTRING   TSTR
 #define TREL      TRELATIVE
 
-#define ResolveAddress(a,b)  ((APTR)(((BYTE *)(a)) + (b)))
-
-#define FreeFromLL(a,b,c) if ((a)->Prev) (a)->Prev->Next = (a)->Next; \
-                          if ((a)->Next) (a)->Next->Prev = (a)->Prev; \
-                          if ((a) == (b)) { \
-                             (c) = (void *)((a)->Next); \
-                             if ((a)->Next) (a)->Next->Prev = 0; \
-                          } \
-                          (a)->Prev = 0; \
-                          (a)->Next = 0;
+template <class T> inline APTR ResolveAddress(T *Pointer, LONG Offset) {
+   return APTR(((BYTE *)Pointer) + Offset);
+}
 
 #define nextutf8(str) if (*(str)) for (++(str); (*(str) & 0xc0) IS 0x80; (str)++);
 
@@ -2302,11 +2290,11 @@ template<class... Args> ERROR SetVolume(Args... Tags) { return CoreBase->_SetVol
 #endif
 
 
+//********************************************************************************************************************
+
 #define PRIME_HASH 2654435761UL
 #define END_FIELD { NULL, 0, 0, NULL, NULL }
 #define FDEF static const struct FunctionField
-
-//********************************************************************************************************************
 
 #define DeregisterFD(a)   RegisterFD((a), RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL, 0, 0)
 #define DeleteMsg(a,b)    UpdateMessage(a,b,(APTR)-1,0,0)
@@ -2346,6 +2334,10 @@ inline ERROR StrMatch(CSTRING A, CSTRING B) {
 
 inline ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args) {
    return ActionMsg(Action, Object, Args, 0, 0);
+}
+
+inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address) {
+   return AllocMemory(Size, Flags, Address, NULL);
 }
 
 template<class T> inline ERROR NewObject(LARGE ClassID, T **Result) {
@@ -2447,7 +2439,6 @@ struct BaseClass { // Must be 64-bit aligned
    OBJECTID UID;                // Unique object identifier
    OBJECTID OwnerID;            // Refers to the owner of this object
    NF       Flags;              // Object flags
-   WORD     MemFlags;           // Recommended memory allocation flags
    OBJECTID TaskID;             // The process that this object belongs to
    volatile LONG  ThreadID;     // Managed by locking functions
    #ifdef _WIN32
@@ -2466,7 +2457,6 @@ struct BaseClass { // Must be 64-bit aligned
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
    inline OBJECTID ownerTask() { return TaskID; }
    inline OBJECTID ownerID() { return OwnerID; }
-   inline LONG memflags() { return MemFlags; }
    inline NF flags() { return Flags; }
 
    CSTRING className();

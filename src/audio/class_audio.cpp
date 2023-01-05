@@ -137,14 +137,14 @@ static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
    Self->MixElements   = Self->MixBufferSize / Self->MixBitSize;
 
    LONG i;
-   if (!AllocMemory(Self->MixBufferSize + 1024, Self->MemFlags, &Self->BufferMemory, &Self->BufferMemoryMID)) {
+   if (!AllocMemory(Self->MixBufferSize + 1024, MEM_DATA, &Self->BufferMemory)) {
       // Align to 1024 bytes
       Self->MixBuffer = (APTR)((((UMAXINT)Self->BufferMemory) + 1023) & (~1023));
 
       // Allocate the sample byte->float conversion table, align it at a 1024-byte boundary and initialize it.  The
       // values in the table range from -32768 to +32768.
 
-      if (!AllocMemory(1024 + 256 * sizeof(FLOAT), Self->MemFlags, &Self->BFMemory, &Self->BFMemoryMID)) {
+      if (!AllocMemory(1024 + 256 * sizeof(FLOAT), MEM_DATA, &Self->BFMemory)) {
          ByteFloatTable = (FLOAT *)((((UMAXINT)Self->BFMemory) + 1023) & (~1023));
          for (i=0; i < 256; i++) ByteFloatTable[i] = 256 * (i-128);
 
@@ -285,7 +285,7 @@ ERROR AUDIO_AddSample(extAudio *Self, struct sndAddSample *Args)
    if ((!sample->SampleType) or (Args->DataSize <= 0) or (!Args->Data)) {
       sample->Data = NULL;
    }
-   else if (!AllocMemory(Args->DataSize, MEM_DATA|MEM_NO_CLEAR, &sample->Data, NULL)) {
+   else if (!AllocMemory(Args->DataSize, MEM_DATA|MEM_NO_CLEAR, &sample->Data)) {
       CopyMemory(Args->Data, sample->Data, Args->DataSize);
    }
    else return log.warning(ERR_AllocMemory);
@@ -469,7 +469,7 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
       sample->Free = TRUE;
    }
 
-   if (AllocMemory(sample->BufferLength, MEM_DATA, &sample->Data, NULL) != ERR_Okay) {
+   if (AllocMemory(sample->BufferLength, MEM_DATA, &sample->Data) != ERR_Okay) {
       return ERR_AllocMemory;
    }
 
@@ -964,12 +964,12 @@ static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
    // Allocate sample array
 
    Self->TotalSamples = 30;
-   if (AllocMemory(Self->TotalSamples * sizeof(AudioSample), Self->MemFlags, &Self->Samples, &Self->SamplesMID) != ERR_Okay) {
+   if (AllocMemory(Self->TotalSamples * sizeof(AudioSample), MEM_DATA, &Self->Samples) != ERR_Okay) {
       return ERR_AllocMemory;
    }
 
 #ifdef __linux__
-   if (!AllocMemory(sizeof(VolumeCtl) * 3, Self->MemFlags|MEM_NO_CLEAR, &Self->VolumeCtl, &Self->VolumeCtlMID)) {
+   if (!AllocMemory(sizeof(VolumeCtl) * 3, MEM_DATA|MEM_NO_CLEAR, &Self->VolumeCtl)) {
       StrCopy("Master", Self->VolumeCtl[0].Name, sizeof(Self->VolumeCtl[0].Name));
       Self->VolumeCtl[0].Flags = 0;
       for (LONG i=0; i < ARRAYSIZE(Self->VolumeCtl[0].Channels); i++) Self->VolumeCtl[0].Channels[i] = 75;
@@ -981,7 +981,7 @@ static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
       Self->VolumeCtl[2].Name[0] = 0;
    }
 #else
-   if (!AllocMemory(sizeof(VolumeCtl) * 2, Self->MemFlags|MEM_NO_CLEAR, &Self->VolumeCtl, &Self->VolumeCtlMID)) {
+   if (!AllocMemory(sizeof(VolumeCtl) * 2, MEM_DATA|MEM_NO_CLEAR, &Self->VolumeCtl)) {
       StrCopy("Master", Self->VolumeCtl[0].Name, sizeof(Self->VolumeCtl[0].Name));
       Self->VolumeCtl[0].Flags = 0;
       Self->VolumeCtl[0].Channels[0] = 75;
@@ -1083,7 +1083,7 @@ static ERROR AUDIO_OpenChannels(extAudio *Self, struct sndOpenChannels *Args)
    if (Self->Flags & ADF_OVER_SAMPLING) total = Args->Total * 2;
    else total = Args->Total;
 
-   if (!AllocMemory(sizeof(AudioChannel) * total, Self->MemFlags|MEM_TASK, &Self->Channels[index].Channel, &Self->Channels[index].ChannelMID)) {
+   if (!AllocMemory(sizeof(AudioChannel) * total, MEM_DATA|MEM_TASK, &Self->Channels[index].Channel)) {
       Self->Channels[index].Total = Args->Total;
       Self->Channels[index].Actual = total;
       Self->Channels[index].TaskID = CurrentTaskID();
@@ -1094,7 +1094,7 @@ static ERROR AUDIO_OpenChannels(extAudio *Self, struct sndOpenChannels *Args)
       // Allocate the command buffer
 
       if (Args->Commands > 0) {
-         if (!AllocMemory(sizeof(AudioCommand) * Args->Commands, Self->MemFlags|MEM_CALLER, &Self->Channels[index].Commands, &Self->Channels[index].CommandMID)) {
+         if (!AllocMemory(sizeof(AudioCommand) * Args->Commands, MEM_DATA|MEM_CALLER, &Self->Channels[index].Commands)) {
             Self->Channels[index].TotalCommands = Args->Commands;
             Self->Channels[index].Position      = 0;
             Self->Channels[index].UpdateRate    = 125;  // Default update rate of 125ms (equates to 5000Hz)
@@ -2208,7 +2208,7 @@ static void load_config(extAudio *Self)
                   Self->VolumeCtlMID = 0;
                }
 
-               if (!AllocMemory(sizeof(VolumeCtl) * (keys.size() + 1), Self->memflags()|MEM_NO_CLEAR, &Self->VolumeCtl, &Self->VolumeCtlMID)) {
+               if (!AllocMemory(sizeof(VolumeCtl) * (keys.size() + 1), MEM_NO_CLEAR, &Self->VolumeCtl)) {
                   Self->VolumeCtlTotal = keys.size();
 
                   for (auto& [k, v] : keys) {
@@ -2446,7 +2446,7 @@ next_card:
       return ERR_NoSupport;
    }
 
-   if (!AllocMemory(sizeof(VolumeCtl) * (voltotal + 1), Self->memflags()|MEM_NO_CLEAR, &volctl, &volmid)) {
+   if (!AllocMemory(sizeof(VolumeCtl) * (voltotal + 1), MEM_NO_CLEAR, &volctl)) {
       index = 0;
       for (elem=snd_mixer_first_elem(Self->MixHandle); elem; elem=snd_mixer_elem_next(elem)) {
          snd_mixer_selem_get_id(elem, sid);
@@ -2715,7 +2715,7 @@ next_card:
 
    if (Self->AudioBuffer) { FreeResource(Self->AudioBuffer); Self->AudioBuffer = NULL; }
 
-   if (!AllocMemory(Self->AudioBufferSize, MEM_DATA, &Self->AudioBuffer, NULL)) {
+   if (!AllocMemory(Self->AudioBufferSize, MEM_DATA, &Self->AudioBuffer)) {
       VolumeCtl *oldctl;
       MEMORYID oldmid;
 

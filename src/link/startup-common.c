@@ -19,7 +19,7 @@ static ERROR PROGRAM_DataFeed(OBJECTPTR Task, struct acDataFeed *Args)
 {
    if (Args->DataType IS DATA_TEXT) {
       STRING buffer;
-      if (!AllocMemory(Args->Size+1, MEM_NO_CLEAR|MEM_STRING, &buffer, NULL)) {
+      if (!AllocMemory(Args->Size+1, MEM_NO_CLEAR|MEM_STRING, &buffer)) {
          LONG i;
          for (i=0; i < Args->Size; i++) buffer[i] = ((UBYTE *)Args->Buffer)[i];
          buffer[i] = 0;

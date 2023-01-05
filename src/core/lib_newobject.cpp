@@ -103,7 +103,6 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
    if (!AllocMemory(mc->Size + sizeof(Stats), MEM_OBJECT|MEM_NO_LOCK|(((Flags & NF::UNTRACKED) != NF::NIL) ? MEM_UNTRACKED : 0), (APTR *)&head, &head_id)) {
       head->Stats     = (Stats *)ResolveAddress(head, mc->Size);
       head->UID       = head_id;
-      head->MemFlags |= MEM_NO_LOCK; // Prevents private memory allocations made by this class from being automatically locked.
       head->ClassID   = mc->BaseClassID;
       if (mc->BaseClassID IS mc->SubClassID) { // Object derived from a base class
          head->SubID = 0;
@@ -319,7 +318,6 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
    if ((Flags & NF::PUBLIC) != NF::NIL) {
       if (!AllocMemory(mc->Size + sizeof(Stats), MEM_PUBLIC|MEM_OBJECT, (void **)&head, &head_id)) {
          head->Stats = (Stats *)ResolveAddress(head, mc->Size);
-         head->MemFlags |= MEM_PUBLIC;
          head->UID = head_id;
       }
       else error = ERR_AllocMemory;
@@ -327,7 +325,6 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
    else if (!AllocMemory(mc->Size + sizeof(Stats), MEM_OBJECT|MEM_NO_LOCK, (APTR *)&head, &head_id)) {
       head->Stats = (Stats *)ResolveAddress(head, mc->Size);
       head->UID = head_id;
-      head->MemFlags |= MEM_NO_LOCK; // Prevents private memory allocations made by this class from being automatically locked.
    }
    else error = ERR_AllocMemory;
 

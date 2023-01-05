@@ -322,7 +322,7 @@ struct FunctionField argsResize[] = {
 <pre>
 APTR address;
 
-if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
+if (!AllocMemory(1000, MEM_DATA, &amp;address)) {
    ...
    FreeResource(address);
 }

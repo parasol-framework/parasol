@@ -86,7 +86,7 @@ static ERROR read_points(extVectorPoly *Self, VectorPoint **Array, LONG *PointCo
    if (count >= 2) {
       LONG points = count>>1; // A point consists of 2 values.
       if (PointCount) *PointCount = points;
-      if (!AllocMemory(sizeof(VectorPoint) * count, MEM_DATA, Array, NULL)) {
+      if (!AllocMemory(sizeof(VectorPoint) * count, MEM_DATA, Array)) {
          LONG point = 0;
          LONG index = 0;
          for (LONG pos=0; (Value[pos]) and (point < points);) {
@@ -208,7 +208,7 @@ static ERROR POLYGON_NewObject(extVectorPoly *Self, APTR Void)
    Self->GeneratePath = (void (*)(extVector *))&generate_polygon;
    Self->Closed       = TRUE;
    Self->TotalPoints  = 2;
-   if (AllocMemory(sizeof(VectorPoint) * Self->TotalPoints, MEM_DATA, &Self->Points, NULL)) return ERR_AllocMemory;
+   if (AllocMemory(sizeof(VectorPoint) * Self->TotalPoints, MEM_DATA, &Self->Points)) return ERR_AllocMemory;
    return ERR_Okay;
 }
 
@@ -315,7 +315,7 @@ static ERROR POLY_SET_PointsArray(extVectorPoly *Self, VectorPoint *Value, LONG 
 {
    if (Elements >= 2) {
       VectorPoint *points;
-      if (!AllocMemory(sizeof(VectorPoint) * Elements, MEM_DATA|MEM_NO_CLEAR, &points, NULL)) {
+      if (!AllocMemory(sizeof(VectorPoint) * Elements, MEM_DATA|MEM_NO_CLEAR, &points)) {
          CopyMemory(Value, points, sizeof(VectorPoint) * Elements);
          Self->Points = points;
          Self->TotalPoints = Elements;

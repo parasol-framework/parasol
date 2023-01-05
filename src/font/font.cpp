@@ -402,7 +402,7 @@ static ERROR fntGetList(FontList **Result)
       }
 
       FontList *list, *last_list = NULL;
-      if (!AllocMemory(size, MEM_DATA, &list, NULL)) {
+      if (!AllocMemory(size, MEM_DATA, &list)) {
          STRING buffer = (STRING)(list + groups->size());
          *Result = list;
 

@@ -248,7 +248,7 @@ static void read_stdin(objTask *Task, APTR Buffer, LONG Size, ERROR Status)
 
    if (!glScriptBuffer) {
       glScriptBufferSize = Size + 1;
-      if (!AllocMemory(glScriptBufferSize, MEM_STRING, &glScriptBuffer, NULL)) {
+      if (!AllocMemory(glScriptBufferSize, MEM_STRING, &glScriptBuffer)) {
          CopyMemory(Buffer, glScriptBuffer, glScriptBufferSize);
          glScriptBufferLength = Size;
       }

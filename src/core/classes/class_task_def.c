@@ -21,7 +21,6 @@ static const struct ActionArray clTaskActions[] = {
    { AC_GetVar, (APTR)TASK_GetVar },
    { AC_Init, (APTR)TASK_Init },
    { AC_NewObject, (APTR)TASK_NewObject },
-   { AC_ReleaseObject, (APTR)TASK_ReleaseObject },
    { AC_SetVar, (APTR)TASK_SetVar },
    { AC_Write, (APTR)TASK_Write },
    { 0, 0 }

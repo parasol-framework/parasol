@@ -124,7 +124,7 @@ extern "C" void program(void)
 
             if (Args[i+1]) {
                for (j=0; Args[i+1][j]; j++);
-               if (!AllocMemory(j+1, MEM_STRING|MEM_NO_CLEAR, &procedure, NULL)) {
+               if (!AllocMemory(j+1, MEM_STRING|MEM_NO_CLEAR, &procedure)) {
                   for (j=0; Args[i+1][j]; j++) procedure[j] = Args[i+1][j];
                   procedure[j] = 0;
                }
@@ -446,7 +446,7 @@ static ERROR decompress_archive(STRING Location)
    ERROR error = ERR_Okay;
    OBJECTPTR compress;
    if (!(error = PrivateObject(ID_COMPRESSION, 0, &compress, FID_Path|TSTR, Location, TAGEND))) {
-      if (!(error = AllocMemory(sizeof(STR_UNPACK) + len + sizeof(STR_MAIN) + 2, MEM_STRING, &glDirectory, NULL))) {
+      if (!(error = AllocMemory(sizeof(STR_UNPACK) + len + sizeof(STR_MAIN) + 2, MEM_STRING, &glDirectory))) {
          for (i=0; STR_UNPACK[i]; i++) glDirectory[i] = STR_UNPACK[i];
          for (j=len; (j > 1) and (Location[j-1] != '/') and (Location[j-1] != '\\') and (Location[j-1] != ':'); j--);
          while (Location[j]) {

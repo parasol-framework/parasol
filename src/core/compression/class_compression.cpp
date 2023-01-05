@@ -143,8 +143,6 @@ static const UBYTE glTail[TAIL_LENGTH] = {
    // End of file comment follows
 };
 
-#undef FreeFromLL
-
 void FreeFromLL(CompressedFile *a, CompressedFile *b, CompressedFile **c)
 {
    if (a->Prev) a->Prev->Next = a->Next;

@@ -767,7 +767,7 @@ static int object_subscribe(lua_State *Lua)
    ERROR error;
    if (!(error = SubscribeActionTags(obj, action_id, TAGEND))) {
       actionmonitor *acsub;
-      if (!AllocMemory(sizeof(actionmonitor), MEM_DATA, &acsub, NULL)) {
+      if (!AllocMemory(sizeof(actionmonitor), MEM_DATA, &acsub)) {
          if (!lua_isnil(Lua, 3)) { // A custom reference for the callback can be specified in arg 3.
             lua_settop(prv->Lua, 3);
             acsub->Reference = luaL_ref(prv->Lua, LUA_REGISTRYINDEX); // Pops value from stack and returns it as a reference that can be used later.

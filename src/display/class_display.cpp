@@ -345,7 +345,7 @@ static ERROR DISPLAY_DataFeed(extDisplay *Self, struct acDataFeed *Args)
          }
 
          STRING xml;
-         if (!AllocMemory(xmlsize, MEM_STRING|MEM_NO_CLEAR, &xml, NULL)) {
+         if (!AllocMemory(xmlsize, MEM_STRING|MEM_NO_CLEAR, &xml)) {
             LONG pos = snprintf(xml, xmlsize, "<receipt totalitems=\"%d\" id=\"%d\">", total_items, request->Item);
 
             for (LONG i=0; i < total_items; i++) {
@@ -3090,7 +3090,7 @@ static ERROR GET_Title(extDisplay *Self, CSTRING *Value)
 
    buffer[0] = 0;
    winGetWindowTitle(Self->WindowHandle, buffer, sizeof(buffer));
-   if (!AllocMemory(StrLength(buffer) + 1, MEM_STRING|MEM_UNTRACKED, &str, NULL)) {
+   if (!AllocMemory(StrLength(buffer) + 1, MEM_STRING|MEM_UNTRACKED, &str)) {
       StrCopy(buffer, str, COPY_ALL);
       if (glWindowTitle) FreeResource(glWindowTitle);
       glWindowTitle = str;
