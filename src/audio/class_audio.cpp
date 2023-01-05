@@ -234,14 +234,6 @@ ERROR AUDIO_AddSample(extAudio *Self, struct sndAddSample *Args)
 
    log.branch("Data: %p, Length: %d", Args->Data, Args->DataSize);
 
-   // Check that the use of AddSample() is legal.  We cannot allow foreign tasks to call us directly, because private
-   // allocation of the sample memory means that the sample data will end up belonging to the wrong task in such a case.
-
-   if (CurrentTaskID() != Self->ownerTask()) {
-      log.warning("Illegal call - use WaitMsg() to add samples to Audio Servers.");
-      return ERR_IllegalActionAttempt;
-   }
-
    // Find an unused sample block.  If there is none, increase the size of the sample management area.
 
    LONG handle;
@@ -372,15 +364,6 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
 
    if (Args->Path) log.branch("Path: %s, Length: %d", Args->Path, Args->SampleLength);
    else log.branch("Object: %d, Length: %d", Args->ObjectID, Args->SampleLength);
-
-   // Check that the use of AddStream() is legal.  We cannot allow foreign tasks to call us directly, because private
-   // allocation of the sample memory means that the sample data will end up belonging to the wrong task in
-   // such a case.
-
-   if (CurrentTaskID() != Self->ownerTask()) {
-      log.warning("Illegal call - use WaitMsg() to add streams to Audio Servers.");
-      return ERR_IllegalActionAttempt;
-   }
 
    // Find an unused sample block.  If there is none, increase the size of the sample management area.
 
@@ -1177,15 +1160,6 @@ static ERROR AUDIO_RemoveSample(extAudio *Self, struct sndRemoveSample *Args)
    log.branch("Sample: %d", Args->Handle);
 
    if ((Args->Handle < 0) or (Args->Handle >= Self->TotalSamples)) return log.warning(ERR_OutOfRange);
-
-   // Check that the use of RemoveSample() is legal.  We cannot allow foreign tasks
-   // to call us directly, because private allocation of the sample memory
-   // means that the sample data can belong to different tasks.
-
-   if (CurrentTaskID() != Self->ownerTask()) {
-      log.warning("Illegal call - use WaitMsg() to remove samples from Audio Servers.");
-      return ERR_IllegalActionAttempt;
-   }
 
    if (Self->Samples) {
       if ((sample = &Self->Samples[Args->Handle])) {

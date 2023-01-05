@@ -199,10 +199,6 @@ static ERROR COMMAND_SetPosition(extAudio *Self, LONG Handle, LONG Position)
 
    log.trace("SetPosition($%.8x, %d)", Handle, Position);
 
-   if (CurrentTaskID() != Self->ownerTask()) {
-      log.warning("Illegal attempt to use SetPosition directly (please use command messaging).");
-   }
-
    if (!Handle) return ERR_NullArgs;
 
    AudioChannel *channel = GetChannel(Handle);
