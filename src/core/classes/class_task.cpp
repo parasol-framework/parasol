@@ -10,8 +10,7 @@ Please refer to it for further information on licensing.
 Task: System processes are managed by the Task class.
 
 Tasks, also known as processes, form the basis of process execution in an operating system.  By creating a task object,
-it is possible to execute a program from within the host system.  Programs that are compliant with Parasol may also
-reveal additional meta information such as #Author and #Copyright strings in the task object.
+it is possible to execute a program from within the host system.
 
 To execute a compiled program, set the #Location field to point to the executable file before initialising the
 task.  Arguments can be passed to the executable by setting the #Parameters field.  Once the task object is
@@ -1470,7 +1469,6 @@ static ERROR TASK_Free(extTask *Self, APTR Void)
    if (Self->Path)        { FreeResource(Self->Path);        Self->Path        = NULL; }
    if (Self->ProcessPath) { FreeResource(Self->ProcessPath); Self->ProcessPath = NULL; }
    if (Self->Parameters)  { FreeResource(Self->Parameters);  Self->Parameters  = NULL; }
-   if (Self->Copyright)   { FreeResource(Self->Copyright);   Self->Copyright   = NULL; }
    if (Self->MessageMID)  { FreeResourceID(Self->MessageMID); Self->MessageMID  = 0; }
 
    if (Self->MsgAction)          { FreeResource(Self->MsgAction);          Self->MsgAction          = NULL; }
@@ -2221,91 +2219,6 @@ static ERROR SET_Parameters(extTask *Self, CSTRING *Value, LONG Elements)
 /*****************************************************************************
 
 -FIELD-
-Author: Describes the person that wrote the program.
-
-This field gives information about the author of the program/task. If the author is not determinable from the
-#Location, this field will usually be set to NULL.
-
-*****************************************************************************/
-
-static ERROR GET_Author(extTask *Self, STRING *Value)
-{
-   *Value = Self->Author;
-   return ERR_Okay;
-}
-
-static ERROR SET_Author(extTask *Self, CSTRING Value)
-{
-   StrCopy(Value, Self->Author, sizeof(Self->Author));
-   return ERR_Okay;
-}
-
-/*****************************************************************************
-
--FIELD-
-Copyright: Copyright/licensing details.
-
-*****************************************************************************/
-
-static ERROR GET_Copyright(extTask *Self, STRING *Value)
-{
-   *Value = Self->Copyright;
-   return ERR_Okay;
-}
-
-static ERROR SET_Copyright(extTask *Self, CSTRING Value)
-{
-   parasol::Log log;
-
-   if (Self->Copyright) { FreeResource(Self->Copyright); Self->Copyright = NULL; }
-
-   if ((Value) and (*Value)) {
-      LONG len = strlen(Value);
-      if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->Copyright, NULL)) {
-         CopyMemory(Value, Self->Copyright, len+1);
-      }
-      else return log.warning(ERR_AllocMemory);
-   }
-   return ERR_Okay;
-}
-
-/*****************************************************************************
-
--FIELD-
-Date: The date that the program was last updated or compiled.
-
-The Date usually specifies the date on which the program was compiled for public release. It is up to the developer of
-the program to set this string correctly and keep it current.
-
-The correct specification for this string is `Day Month Year` or `Month Year` as in the following
-examples:
-
-<pre>
-"14 February 1998"
-"6 May 1997"
-"January 2000"
-</pre>
-
-Please do not use shorthand dates such as `14/2/98`.  Do not include the time or any other information besides that
-which is outlined here.
-
-****************************************************************************/
-
-static ERROR GET_Date(extTask *Self, STRING *Value)
-{
-   *Value = Self->Date;
-   return ERR_Okay;
-}
-
-static ERROR SET_Date(extTask *Self, CSTRING Value)
-{
-   StrCopy(Value, Self->Date, sizeof(Self->Date));
-   return ERR_Okay;
-}
-
-/*****************************************************************************
-
--FIELD-
 ExitCallback: The callback is activated when the process is terminated.
 
 The ExitCallback field can be set with a function reference that will be called when the executed process is
@@ -2786,30 +2699,6 @@ static ERROR SET_ReturnCode(extTask *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
-
--FIELD-
-Short: A short description of the process' purpose.
-
-This field allows for the specification of a short description for the process. The description should be under 80
-characters (one sentence).  The description is typically useful for occasions where the user is debugging the
-system or trying to get a quick overview of the processes that are currently running.
--END-
-
-*****************************************************************************/
-
-static ERROR GET_Short(extTask *Self, CSTRING *Value)
-{
-   *Value = Self->Short;
-   return ERR_Okay;
-}
-
-static ERROR SET_Short(extTask *Self, CSTRING Value)
-{
-   StrCopy(Value, Self->Short, sizeof(Self->Short));
-   return ERR_Okay;
-}
-
 //****************************************************************************
 
 static const FieldArray clFields[] = {
@@ -2821,9 +2710,6 @@ static const FieldArray clFields[] = {
    { "Actions",        FDF_POINTER|FDF_R,      0, (APTR)GET_Actions,          NULL },
    { "Args",           FDF_STRING|FDF_W,       0, NULL,                       (APTR)SET_Args },
    { "Parameters",     FDF_ARRAY|FDF_STRING|FDF_RW, 0, (APTR)GET_Parameters, (APTR)SET_Parameters },
-   { "Author",         FDF_STRING|FDF_RW,      0, (APTR)GET_Author,           (APTR)SET_Author },
-   { "Copyright",      FDF_STRING|FDF_RW,      0, (APTR)GET_Copyright,        (APTR)SET_Copyright },
-   { "Date",           FDF_STRING|FDF_RW,      0, (APTR)GET_Date,             (APTR)SET_Date },
    { "ErrorCallback",  FDF_FUNCTIONPTR|FDF_RI, 0, (APTR)GET_ErrorCallback, (APTR)SET_ErrorCallback }, // STDERR
    { "ExitCallback",   FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_ExitCallback,  (APTR)SET_ExitCallback },
    { "Instance",       FDF_LONG|FDF_R,         0, (APTR)GET_Instance,         NULL },
@@ -2836,7 +2722,6 @@ static const FieldArray clFields[] = {
    { "Path",           FDF_STRING|FDF_RW,      0, (APTR)GET_Path,              (APTR)SET_Path },
    { "ProcessPath",    FDF_STRING|FDF_R,       0, (APTR)GET_ProcessPath,       NULL },
    { "Priority",       FDF_LONG|FDF_W,         0, NULL,                        (APTR)SET_Priority },
-   { "Short",          FDF_STRING|FDF_RW,      0, (APTR)GET_Short,             (APTR)SET_Short },
    // Synonyms
    { "Src",            FDF_SYNONYM|FDF_STRING|FDF_RW, 0, (APTR)GET_Location, (APTR)SET_Location },
    { "ArgsList",       FDF_ARRAY|FDF_STRING|FDF_SYSTEM|FDF_RW, 0, (APTR)GET_Parameters, (APTR)SET_Parameters }, // OBSOLETE
