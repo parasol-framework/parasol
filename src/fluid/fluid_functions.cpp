@@ -823,6 +823,8 @@ const char * code_reader_buffer(lua_State *Lua, void *Source, size_t *ResultSize
 
 //****************************************************************************
 // Usage: arg = arg("Width", IfNullValue)
+//
+// NB: Arguments are set as variables and this is managed in the base Script class.
 
 int fcmd_arg(lua_State *Lua)
 {
