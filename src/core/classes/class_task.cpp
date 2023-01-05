@@ -1471,7 +1471,7 @@ static ERROR TASK_Free(extTask *Self, APTR Void)
    if (Self->ProcessPath) { FreeResource(Self->ProcessPath); Self->ProcessPath = NULL; }
    if (Self->Parameters)  { FreeResource(Self->Parameters);  Self->Parameters  = NULL; }
    if (Self->Copyright)   { FreeResource(Self->Copyright);   Self->Copyright   = NULL; }
-   if (Self->MessageMID)  { FreeResourceID(Self->MessageMID); Self->MessageMID  = NULL; }
+   if (Self->MessageMID)  { FreeResourceID(Self->MessageMID); Self->MessageMID  = 0; }
 
    if (Self->MsgAction)          { FreeResource(Self->MsgAction);          Self->MsgAction          = NULL; }
    if (Self->MsgGetField)        { FreeResource(Self->MsgGetField);        Self->MsgGetField        = NULL; }

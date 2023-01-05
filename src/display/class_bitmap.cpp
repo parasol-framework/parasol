@@ -1765,7 +1765,7 @@ setfields:
       XSync(XDisplay, False);
 
       MemInfo meminfo;
-      if ((!MemoryIDInfo(datamid, &meminfo)) and (meminfo.Handle)) {
+      if ((!MemoryPtrInfo(Self->Data, &meminfo)) and (meminfo.Handle)) {
          ClearMemory(&Self->x11.ShmInfo, sizeof(Self->x11.ShmInfo));
          Self->x11.ShmInfo.shmid    = meminfo.Handle;
          Self->x11.ShmInfo.readOnly = False;
