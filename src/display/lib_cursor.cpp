@@ -588,15 +588,8 @@ ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, O
 
          #elif _WIN32
 
-            if (pointer->ownerTask() IS CurrentTask()->UID) {
-               winSetCursor(GetWinCursor(CursorID));
-               pointer->CursorID = CursorID;
-            }
-            else {
-               struct ptrSetWinCursor set;
-               set.Cursor = CursorID;
-               DelayMsg(MT_PtrSetWinCursor, pointer->UID, &set);
-            }
+            winSetCursor(GetWinCursor(CursorID));
+            pointer->CursorID = CursorID;
 
          #endif
       }
