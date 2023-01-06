@@ -40,6 +40,7 @@ class extAudio : public objAudio {
    LONG  AudioBufferSize;
    snd_pcm_t *Handle;
    snd_mixer_t *MixHandle;
+   snd_output_t *sndlog;
 #endif
    MEMORYID VolumeCtlMID;
    LONG VolumeCtlTotal;

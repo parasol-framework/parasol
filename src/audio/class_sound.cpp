@@ -611,7 +611,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 {
    parasol::Log log;
    struct sndAddSample add;
-   OBJECTPTR audio, filestream;
+   OBJECTPTR filestream;
    LONG id, len, sampleformat, result, pos;
    BYTE *buffer;
    ERROR error;
@@ -658,32 +658,16 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
       if (!Self->Frequency) Self->Frequency = 44192;
       if (!Self->Playback) Self->Playback = Self->Frequency;
 
-      // Create a public file object that will handle the decoded audio stream
+      // Create a file object that will handle the decoded audio stream
 
-      if (NewLockedObject(ID_FILE, NF::PUBLIC, &filestream, &Self->StreamFileID)) {
-         SetFields(filestream,
-            FID_Flags|TLONG, FL_BUFFER|FL_LOOP,
-            FID_Size|TLONG,  Self->BufferLength,
-            TAGEND);
-
-         if (!acInit(filestream)) {
-            // Subscribe to the virtual file, so that we can detect when the audio system reads information from it.
-
-            SubscribeActionTags(filestream, AC_Read, AC_Seek, TAGEND);
-
-            error = ERR_Okay;
-         }
-         else error = ERR_Init;
-
-         if (error) { acFree(filestream); Self->StreamFileID = 0; }
-
-         ReleaseObject(filestream);
+      if ((filestream = objFile::create::integral(fl::Flags(FL_BUFFER|FL_LOOP), fl::Size(Self->BufferLength)))) {
+         Self->StreamFileID = filestream->UID;
+         // Subscribe to the virtual file, so that we can detect when the audio system reads information from it.
+         SubscribeActionTags(filestream, AC_Read, AC_Seek, TAGEND);
       }
-      else error = ERR_NewObject;
-
-      if ((error) and (Self->Flags & SDF_TERMINATE)) {
-         DelayMsg(AC_Free, Self->UID);
-         return error;
+      else {
+         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
+         return ERR_CreateObject;
       }
 
       // Create the audio stream and activate it

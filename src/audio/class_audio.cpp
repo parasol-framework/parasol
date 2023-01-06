@@ -723,6 +723,8 @@ static ERROR AUDIO_Free(extAudio *Self, APTR Void)
       AUDIO_SaveSettings(Self, NULL);
    }
 
+   if (Self->Timer) { UpdateTimer(Self->Timer, 0); Self->Timer = NULL; }
+
    if (Self->TaskRemovedHandle) { UnsubscribeEvent(Self->TaskRemovedHandle); Self->TaskRemovedHandle = NULL; }
    if (Self->UserLoginHandle)   { UnsubscribeEvent(Self->UserLoginHandle);   Self->UserLoginHandle = NULL; }
 
@@ -2061,6 +2063,7 @@ static void load_config(extAudio *Self)
 #ifdef ALSA_ENABLED
 static void free_alsa(extAudio *Self)
 {
+   if (Self->sndlog) { snd_output_close(Self->sndlog); Self->sndlog = NULL; }
    if (Self->Handle) { snd_pcm_close(Self->Handle); Self->Handle = NULL; }
    if (Self->MixHandle) { snd_mixer_close(Self->MixHandle); Self->MixHandle = NULL; }
    if (Self->AudioBuffer) { FreeResource(Self->AudioBuffer); Self->AudioBuffer = NULL; }
@@ -2080,7 +2083,6 @@ static ERROR init_audio(extAudio *Self)
    snd_pcm_hw_params_t *hwparams;
    snd_pcm_stream_t stream;
    snd_ctl_t *ctlhandle;
-   snd_output_t *sndlog;
    snd_pcm_t *pcmhandle;
    snd_mixer_elem_t *elem;
    snd_mixer_selem_id_t *sid;
@@ -2210,7 +2212,7 @@ next_card:
       }
    }
 
-   snd_output_stdio_attach(&sndlog, stderr, 0);
+   snd_output_stdio_attach(&Self->sndlog, stderr, 0);
 
    // If a mix handle is open from a previous Activate() attempt, close it
 

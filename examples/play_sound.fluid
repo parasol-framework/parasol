@@ -1,8 +1,4 @@
 
-   if (obj.find("SystemAudio") == nil) then
-      obj.new("@audio", { name="SystemAudio", flags="!AutoSave" })
-   end
-
    local src = arg("src")
    if (src == nil) then
       print("Please supply a source audio file with the 'src' parameter.")
