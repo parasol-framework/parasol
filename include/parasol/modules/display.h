@@ -1090,7 +1090,7 @@ struct DisplayBase {
    ERROR (*_GetDisplayInfo)(OBJECTID Display, struct DisplayInfoV3 ** Info);
    LONG (*_GetDisplayType)(void);
    CSTRING (*_GetInputTypeName)(LONG Type);
-   OBJECTID (*_GetModalSurface)(OBJECTID Task);
+   OBJECTID (*_GetModalSurface)(void);
    ERROR (*_GetRelativeCursorPos)(OBJECTID Surface, DOUBLE * X, DOUBLE * Y);
    ERROR (*_GetSurfaceCoords)(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height);
    ERROR (*_GetSurfaceFlags)(OBJECTID Surface, LONG * Flags);
@@ -1139,7 +1139,7 @@ inline ERROR gfxGetCursorPos(DOUBLE * X, DOUBLE * Y) { return DisplayBase->_GetC
 inline ERROR gfxGetDisplayInfo(OBJECTID Display, struct DisplayInfoV3 ** Info) { return DisplayBase->_GetDisplayInfo(Display,Info); }
 inline LONG gfxGetDisplayType(void) { return DisplayBase->_GetDisplayType(); }
 inline CSTRING gfxGetInputTypeName(LONG Type) { return DisplayBase->_GetInputTypeName(Type); }
-inline OBJECTID gfxGetModalSurface(OBJECTID Task) { return DisplayBase->_GetModalSurface(Task); }
+inline OBJECTID gfxGetModalSurface(void) { return DisplayBase->_GetModalSurface(); }
 inline ERROR gfxGetRelativeCursorPos(OBJECTID Surface, DOUBLE * X, DOUBLE * Y) { return DisplayBase->_GetRelativeCursorPos(Surface,X,Y); }
 inline ERROR gfxGetSurfaceCoords(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height) { return DisplayBase->_GetSurfaceCoords(Surface,X,Y,AbsX,AbsY,Width,Height); }
 inline ERROR gfxGetSurfaceFlags(OBJECTID Surface, LONG * Flags) { return DisplayBase->_GetSurfaceFlags(Surface,Flags); }

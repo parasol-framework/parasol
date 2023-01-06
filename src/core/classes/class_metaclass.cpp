@@ -35,7 +35,6 @@ static ERROR OBJECT_GetName(OBJECTPTR, STRING *);
 static ERROR OBJECT_GetOwner(OBJECTPTR, OBJECTID *);
 static ERROR OBJECT_SetOwner(OBJECTPTR, OBJECTID);
 static ERROR OBJECT_SetName(OBJECTPTR, CSTRING);
-static ERROR OBJECT_GetTask(OBJECTPTR, OBJECTID *);
 
 static ERROR field_setup(extMetaClass *);
 
@@ -964,7 +963,6 @@ static ERROR field_setup(extMetaClass *Class)
 
       WORD namefield  = 1;
       WORD ownerfield = 1;
-      WORD taskfield  = 1;
 
       FieldArray *class_fields;
       if ((class_fields = (FieldArray *)Class->Fields)) {
@@ -979,7 +977,7 @@ static ERROR field_setup(extMetaClass *Class)
       // The +3 is for the Class & ClassID fields and an extra NULL entry at the end.
 
       Field *fields;
-      if (AllocMemory(sizeof(Field) * (Class->TotalFields + namefield + ownerfield + taskfield + 3), 0, (APTR *)&fields, NULL) != ERR_Okay) {
+      if (AllocMemory(sizeof(Field) * (Class->TotalFields + namefield + ownerfield + 3), 0, (APTR *)&fields, NULL) != ERR_Okay) {
          return ERR_AllocMemory;
       }
 
@@ -990,7 +988,6 @@ static ERROR field_setup(extMetaClass *Class)
 
          if (fields[i].FieldID IS FID_Name) namefield = 0;
          else if (fields[i].FieldID IS FID_Owner) ownerfield = 0;
-         else if (fields[i].FieldID IS FID_Task) taskfield = 0;
       }
 
       Class->prvFields = fields;
@@ -1015,17 +1012,6 @@ static ERROR field_setup(extMetaClass *Class)
          fields[Class->TotalFields].Arg      = 0;
          fields[Class->TotalFields].GetValue = (ERROR (*)(APTR, APTR))&OBJECT_GetOwner;
          fields[Class->TotalFields].SetValue = (APTR)&OBJECT_SetOwner;
-         fields[Class->TotalFields].WriteValue = &writeval_default;
-         Class->TotalFields++;
-      }
-
-      if (taskfield) {
-         fields[Class->TotalFields].Name     = "Task";
-         fields[Class->TotalFields].FieldID  = FID_Task;
-         fields[Class->TotalFields].Flags    = FDF_OBJECTID|FDF_R|FDF_SYSTEM;
-         fields[Class->TotalFields].Arg      = 0;
-         fields[Class->TotalFields].GetValue = (ERROR (*)(APTR, APTR))&OBJECT_GetTask;
-         fields[Class->TotalFields].SetValue = NULL;
          fields[Class->TotalFields].WriteValue = &writeval_default;
          Class->TotalFields++;
       }
@@ -1271,14 +1257,6 @@ static ERROR OBJECT_SetOwner(OBJECTPTR Self, OBJECTID OwnerID)
       else return log.warning(ERR_ExclusiveDenied);
    }
    else return log.warning(ERR_NullArgs);
-}
-
-//********************************************************************************************************************
-
-static ERROR OBJECT_GetTask(OBJECTPTR Self, OBJECTID *TaskID)
-{
-   *TaskID = Self->TaskID;
-   return ERR_Okay;
 }
 
 //********************************************************************************************************************

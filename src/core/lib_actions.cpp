@@ -290,26 +290,6 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
 
    obj->threadLock();
 
-   // If the object is private, check that the task making this call has ownership of its memory.  If not, we must fail
-   // as foreign exclusive access does not allow use of Action().
-
-   #ifdef DEBUG
-   if ((ActionID != AC_AccessObject) and (ActionID != AC_ReleaseObject)) {
-      if (!obj->defined(NF::PUBLIC)) {
-         if ((obj->TaskID) and (glCurrentTaskID != obj->TaskID) and (obj->TaskID != SystemTaskID)) {
-            if (object_id < 0) {
-               log.warning("Public object #%d corrupt - missing the NF::PUBLIC flag ($%.8x)", object_id, obj->Flags);
-               obj->threadRelease();
-               return ERR_ObjectCorrupt;
-            }
-            log.warning("Cannot execute action %s on non-public object #%d, class $%.8x (belongs to task %d, I am %d).", action_name(obj, ActionID), object_id, obj->ClassID, obj->TaskID, glCurrentTaskID);
-            obj->threadRelease();
-            return ERR_IllegalActionAttempt;
-         }
-      }
-   }
-   #endif
-
    ObjectContext new_context(obj, ActionID);
 
    obj->ActionDepth++;
@@ -524,14 +504,14 @@ ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args, MEMORYID MessageMID
    // If the ClassID has been passed as -1, this indicates that the DelayMsg() function macro has been used to call this
    // function.  Delaying the call guarantees that the action is queued if the object is in our process space.
 
-   BYTE wait = FALSE;
-   BYTE delay = FALSE;
+   bool wait = false;
+   bool delay = false;
    if (ClassID IS (CLASSID)-1) {
-      delay = TRUE;
+      delay = true;
       ClassID = 0;
    }
    else if (ClassID IS (CLASSID)-2) {
-      wait = TRUE;
+      wait = true;
       ClassID = 0;
    }
 
@@ -577,7 +557,7 @@ ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args, MEMORYID MessageMID
 #endif
 
    ERROR error;
-   if ((MessageMID IS glTaskMessageMID) and (delay IS FALSE)) {
+   if ((MessageMID IS glTaskMessageMID) and (!delay)) {
       OBJECTPTR object;
       if (!(error = AccessObject(ObjectID, 1000, &object))) {
          if ((ObjectID > 0) and ((thread_msg = object->ThreadMsg) != tlThreadWriteMsg)) {
@@ -658,8 +638,7 @@ ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args, MEMORYID MessageMID
    }
    else msgsize = sizeof(ActionMessage);
 
-   if (wait IS TRUE) msg.Action.ReturnResult = TRUE;
-   else msg.Action.ReturnResult = FALSE;
+   msg.Action.ReturnResult = wait;
 
 retry:
    if (thread_msg) error = send_thread_msg(thread_msg, MSGID_ACTION, &msg.Action, msgsize);
@@ -701,7 +680,7 @@ retry:
 
       if (ActionID > 0) {
          if (ActionID IS AC_ActionNotify) {
-            struct acActionNotify *notify = (struct acActionNotify *)Args;
+            auto notify = (struct acActionNotify *)Args;
             log.warning("Action %s on object #%d failed, SendMsg error: %s", ActionTable[notify->ActionID].Name, ObjectID, glMessages[error]);
          }
          else log.warning("Action %s on object #%d failed, SendMsg error: %s", ActionTable[ActionID].Name, ObjectID, glMessages[error]);
@@ -716,7 +695,7 @@ retry:
    // Wait for the other task to send back a result if we are required to do so.  If the task disappears or does not
    // respond within 10 seconds we cancel the wait and return a time-out error.
 
-   if ((wait IS TRUE) and (glTaskMessageMID != MessageMID)) {
+   if ((wait) and (glTaskMessageMID != MessageMID)) {
       msgAction receive;
       if (!GetMessage(glTaskMessageMID, MSGID_ACTION_RESULT, MSF_WAIT, &receive, msgsize + sizeof(Message))) {
          LONG j;

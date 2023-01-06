@@ -315,6 +315,8 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
 
    LONG type = lua_type(Lua, ValueIndex);
 
+   if (FName[0] IS '_') return acSetVar(obj, FName+1, lua_tostring(Lua, ValueIndex));
+
    OBJECTPTR target;
    if (auto field = FindField(obj, StrHash(FName, FALSE), &target)) {
       log.traceBranch("Field: %s, Flags: $%.8x, (set value: %s)", FName, field->Flags, lua_typename(Lua, type));

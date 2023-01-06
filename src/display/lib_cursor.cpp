@@ -230,50 +230,41 @@ ERROR gfxGetCursorPos(DOUBLE *X, DOUBLE *Y)
 /*****************************************************************************
 
 -FUNCTION-
-GetModalSurface: Returns the current modal surface (if defined) for a task.
+GetModalSurface: Returns the current modal surface (if defined).
 
-This function returns the modal surface that is set for a specific task.  If no modal surface has been assigned to the
-task, zero is returned.
-
--INPUT-
-oid Task: The task from which to retrieve the modal surface ID.  If zero, the modal surface for the current task is returned.
+This function returns the modal surface for the running process.  Returns zero if no modal surface is active.
 
 -RESULT-
-oid: The modal surface for the indicated task is returned.
+oid: The UID of the modal surface, or zero.
 
 *****************************************************************************/
 
-OBJECTID gfxGetModalSurface(OBJECTID TaskID)
+OBJECTID gfxGetModalSurface(void)
 {
-   if (!TaskID) TaskID = CurrentTaskID();
+   parasol::ScopedSysLock proc(PL_PROCESSES, 3000);
 
-   if (!SysLock(PL_PROCESSES, 3000)) {
-      OBJECTID result;
-      TaskList *tasks;
+   if (proc.granted()) {
       LONG maxtasks = GetResource(RES_MAX_PROCESSES);
-      if ((tasks = (TaskList *)GetResourcePtr(RES_TASK_LIST))) {
+      if (auto tasks = (TaskList *)GetResourcePtr(RES_TASK_LIST)) {
          LONG i;
+         auto tid = CurrentTaskID();
          for (i=0; i < maxtasks; i++) {
-            if (tasks[i].TaskID IS TaskID) break;
+            if (tasks[i].TaskID IS tid) break;
          }
 
          if (i < maxtasks) {
-            result = tasks[i].ModalID;
+            auto result = tasks[i].ModalID;
 
             // Safety check: Confirm that the object still exists
             if ((result) and (CheckObjectExists(result) != ERR_True)) {
                tasks[i].ModalID = 0;
-               result = 0;
+               return result;
             }
          }
-         else result = 0;
       }
-      else result = 0;
-
-      SysUnlock(PL_PROCESSES);
-      return result;
    }
-   else return 0;
+
+   return 0;
 }
 
 /******************************************************************************
@@ -597,15 +588,8 @@ ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, O
 
          #elif _WIN32
 
-            if (pointer->ownerTask() IS CurrentTask()->UID) {
-               winSetCursor(GetWinCursor(CursorID));
-               pointer->CursorID = CursorID;
-            }
-            else {
-               struct ptrSetWinCursor set;
-               set.Cursor = CursorID;
-               DelayMsg(MT_PtrSetWinCursor, pointer->UID, &set);
-            }
+            winSetCursor(GetWinCursor(CursorID));
+            pointer->CursorID = CursorID;
 
          #endif
       }

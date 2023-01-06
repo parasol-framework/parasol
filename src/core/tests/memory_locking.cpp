@@ -16,10 +16,6 @@ Use parameter '-public' to test public memory locking.
 #include <parasol/startup.h>
 
 STRING ProgName      = "MemoryLocking";
-STRING ProgAuthor    = "Paul Manias";
-STRING ProgDate      = "July 2014";
-STRING ProgCopyright = "Paul Manias (c) 2014";
-
 static struct StringsBase *StringsBase;
 static struct FileSystemBase *FileSystemBase;
 extern struct CoreBase *CoreBase;

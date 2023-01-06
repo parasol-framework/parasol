@@ -15,10 +15,6 @@ This program tests the locking of private objects between threads.
 #include <parasol/startup.h>
 
 STRING ProgName      = "ObjectLocking";
-STRING ProgAuthor    = "Paul Manias";
-STRING ProgDate      = "February 2014";
-STRING ProgCopyright = "Paul Manias (c) 2014";
-
 extern struct CoreBase *CoreBase;
 static volatile OBJECTPTR glConfig = NULL;
 static LONG glTotalThreads = 8;

@@ -16,10 +16,7 @@ Please refer to it for further information on licensing.
 
 #include <parasol/modules/filesystem.h>
 
-CSTRING ProgName      = "Parasol";
-CSTRING ProgAuthor    = "Paul Manias";
-CSTRING ProgDate      = "February 2022";
-CSTRING ProgCopyright = "Paul Manias © 2000-2022";
+CSTRING ProgName = "Parasol";
 
 extern struct CoreBase *CoreBase;
 struct FileSystemBase *FileSystemBase;
@@ -27,8 +24,7 @@ struct FileSystemBase *FileSystemBase;
 #define STR_UNPACK "temp:scripts/"
 #define STR_MAIN   "main.fluid"
 
-static OBJECTID TargetID = 0;
-static OBJECTID glSystemPointerID;
+static OBJECTID glTargetID = 0;
 static STRING glDirectory = NULL, *glArgs = NULL;
 static char glBind[40] = { 0 };
 
@@ -137,7 +133,7 @@ extern "C" void program(void)
                if (FindObject(Args[i+1], 0, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &TargetID, &count) != ERR_Okay) {
                   print("Warning - could not find target object \"%s\".", Args[i+1]);
                }
-               else LogMsg("Using target %d", TargetID);
+               else log.msg("Using target %d", TargetID);
             }
          }
          else if (!StrMatch(Args[i], "--hash")) {
@@ -187,7 +183,7 @@ extern "C" void program(void)
    ProcessMessages(0, 0);
 
 exit:
-   LogMsg("parasol now exiting...");
+   log.msg("parasol now exiting...");
 
    if (CoreObjectID) {
       OBJECTPTR object;
@@ -223,55 +219,23 @@ exit:
 
 ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)
 {
-   LogF("prep_env()","Win: %d, Size: %dx%d", WindowHandle, Width, Height);
+   parasol::Log log(__FUNCTION__);
 
-   OBJECTPTR target;
-   ERROR error;
+   log.branch("Win: %d, Size: %dx%d", WindowHandle, Width, Height);
 
-   if (!NewObject(ID_SURFACE, &target, &TargetID)) {
-      SetFields(target,
-         FID_Name|TSTRING,       "SystemSurface",
-         FID_WindowHandle|TLONG, WindowHandle,
-         FID_XCoord|TLONG,       0,
-         FID_YCoord|TLONG,       0,
-         FID_Width|TLONG,        Width,
-         FID_Height|TLONG,       Height,
-         TAGEND);
-      if (!acInit(target)) {
-         OBJECTPTR pointer;
-         if (!NewObject(ID_POINTER, NF::PUBLIC, &pointer, &glSystemPointerID)) {
-            SetFields(pointer,
-               FID_Owner|TLONG,  TargetID,
-               FID_Name|TSTRING, "SystemPointer",
-               TAGEND);
+   objSurface::create target = { fl::Name("SystemSurface"), fl::WindowHandle(WindowHandle),
+      fl::XCoord(0), fl::YCoord(0), fl::Width(Width), fl::Height(Height) };
 
-            if (!acInit(pointer)) {
-               OBJECTPTR script;
-               if (!PrivateObject(ID_SCRIPT, &script,
-                     FID_Path|TSTR, "templates:defaultvariables.fluid",
-                     FID_Target|TLONG,  TargetID,
-                     TAGEND)) {
-
-                  error = acActivate(script);
-                  acFree(script);
-               }
-               else error = ERR_CreateObject;
-            }
-            else error = ERR_Init;
-
-            if (error) { acFree(pointer); glSystemPointerID = 0; }
-            ReleaseObject(pointer);
-         }
-         else error = ERR_NewObject;
+   if (target.ok()) {
+      objPointer::create pointer = { fl::Owner(target->UID), fl::Name("SystemPointer") }
+      if (pointer.ok()) {
+         objScript::create script = { fl::Path("templates:defaultvariables.fluid"), fl::Target(target->UID) };
+         if (script.ok()) return acActivate(script);
+         else return ERR_CreateObject;
       }
-      else error = ERR_Init;
-
-      if (error) { acFree(target); TargetID = 0;
-      ReleaseObject(target);
+      else return ERR_CreateObject;
    }
-   else error = ERR_NewObject;
-
-   return(error);
+   else return ERR_CreateObject;
 }
 
 /*****************************************************************************
@@ -422,7 +386,7 @@ ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRI
          return(ERR_Failed);
       }
 
-      LogMsg("Script initialised.");
+      log.msg("Script initialised.");
    }
    else {
       print("Internal Failure: Failed to create a new Script object for file processing.");
@@ -443,9 +407,8 @@ static ERROR decompress_archive(STRING Location)
    LONG len, i, j;
    for (len=0; Location[len]; len++);
 
-   ERROR error = ERR_Okay;
-   OBJECTPTR compress;
-   if (!(error = PrivateObject(ID_COMPRESSION, 0, &compress, FID_Path|TSTR, Location, TAGEND))) {
+   objCompression::create compress = { fl::Path(Location) };
+   if (compress.ok()) {
       if (!(error = AllocMemory(sizeof(STR_UNPACK) + len + sizeof(STR_MAIN) + 2, MEM_STRING, &glDirectory))) {
          for (i=0; STR_UNPACK[i]; i++) glDirectory[i] = STR_UNPACK[i];
          for (j=len; (j > 1) and (Location[j-1] != '/') and (Location[j-1] != '\\') and (Location[j-1] != ':'); j--);
@@ -459,6 +422,8 @@ static ERROR decompress_archive(STRING Location)
          if (!(error = cmpDecompressFile(compress, "*", glDirectory, 0))) {
             for (j=0; STR_MAIN[j]; j++) glDirectory[i++] = STR_MAIN[j];
             glDirectory[i] = 0;
+
+            return ERR_Okay;
          }
          else print("Failed to decompress the file contents.");
       }
@@ -466,6 +431,5 @@ static ERROR decompress_archive(STRING Location)
    }
    else print("Failed to open the compressed file.");
 
-   if (compress) acFree(compress);
-   return(error);
+   return ERR_Failed;
 }

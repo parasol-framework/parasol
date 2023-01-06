@@ -21,7 +21,7 @@ ERROR gfxGetCursorPos(DOUBLE * X, DOUBLE * Y);
 ERROR gfxGetDisplayInfo(OBJECTID Display, struct DisplayInfoV3 ** Info);
 LONG gfxGetDisplayType();
 CSTRING gfxGetInputTypeName(LONG Type);
-OBJECTID gfxGetModalSurface(OBJECTID Task);
+OBJECTID gfxGetModalSurface();
 ERROR gfxGetRelativeCursorPos(OBJECTID Surface, DOUBLE * X, DOUBLE * Y);
 ERROR gfxGetSurfaceCoords(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height);
 ERROR gfxGetSurfaceFlags(OBJECTID Surface, LONG * Flags);

@@ -3825,11 +3825,8 @@ end
 
     <constants lookup="OPF">
       <const name="ARGS"/>
-      <const name="AUTHOR"/>
       <const name="COMPILED_AGAINST"/>
-      <const name="COPYRIGHT"/>
       <const name="CORE_VERSION"/>
-      <const name="DATE"/>
       <const name="DETAIL"/>
       <const name="ERROR"/>
       <const name="GLOBAL_INSTANCE"/>

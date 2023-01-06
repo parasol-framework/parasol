@@ -385,16 +385,11 @@ static ERROR SCRIPT_SetVar(objScript *Self, struct acSetVar *Args)
 
    log.trace("%s = %s", Args->Field, Args->Value);
 
-   CSTRING field = Args->Field;
-   if (*field IS '%') field++;
-   if (*field IS '&') field++;
-   if (*field IS '$') field++;
-
    if (!Self->Vars) {
       if (!(Self->Vars = VarNew(0, 0))) return ERR_AllocMemory;
    }
 
-   return VarSetString(Self->Vars, field, Args->Value);
+   return VarSetString(Self->Vars, Args->Field, Args->Value);
 }
 /*****************************************************************************
 
