@@ -10,17 +10,14 @@ void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes)
 {
 #ifdef WIN_DRAGDROP
    parasol::Log log(__FUNCTION__);
-   objPointer *pointer;
-   OBJECTID modal_id;
-   extern OBJECTID glOverTaskID;
 
    log.branch("Surface: %d", SurfaceID);
 
-   if ((pointer = gfxAccessPointer())) {
+   if (auto pointer = gfxAccessPointer()) {
       // Pass AC_DragDrop to the surface underneath the mouse cursor.  If a surface subscriber accepts the data, it
       // will send a DATA_REQUEST to the relevant display object.  See DISPLAY_DataFeed() and winGetData().
 
-      modal_id = gfxGetModalSurface(glOverTaskID);
+      OBJECTID modal_id = gfxGetModalSurface();
       if (modal_id IS SurfaceID) modal_id = 0;
 
       if (!modal_id) {
@@ -1509,8 +1506,8 @@ OBJECTID gfxGetUserFocus(void)
 GetVisibleArea: Returns the visible region of a surface.
 
 The GetVisibleArea() function returns the visible area of a surface, which is based on its position within its parent
-surfaces. The resulting coordinates are relative to point 0,0 of the queried surface. If the surface is not obscured,
-then the resulting coordinates will be (0,0),(Width,Height).
+surfaces. The resulting coordinates are relative to point `0,0` of the queried surface. If the surface is not obscured,
+then the resulting coordinates will be `(0,0),(Width,Height)`.
 
 -INPUT-
 oid Surface: The surface to query.  If zero, the top-level display will be queried.

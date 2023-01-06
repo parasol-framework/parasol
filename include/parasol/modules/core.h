@@ -928,27 +928,24 @@ inline ENUMTYPE &operator |= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 #define STT_STRING 4
 
 #define OPF_NAME 0x00000001
-#define OPF_COPYRIGHT 0x00000002
-#define OPF_DATE 0x00000004
-#define OPF_AUTHOR 0x00000008
-#define OPF_CORE_VERSION 0x00000010
-#define OPF_JUMPTABLE 0x00000020
-#define OPF_MAX_DEPTH 0x00000040
-#define OPF_DETAIL 0x00000080
-#define OPF_SHOW_MEMORY 0x00000100
-#define OPF_SHOW_IO 0x00000200
-#define OPF_SHOW_ERRORS 0x00000400
-#define OPF_ARGS 0x00000800
-#define OPF_ERROR 0x00001000
-#define OPF_COMPILED_AGAINST 0x00002000
-#define OPF_PRIVILEGED 0x00004000
-#define OPF_SYSTEM_PATH 0x00008000
-#define OPF_MODULE_PATH 0x00010000
-#define OPF_ROOT_PATH 0x00020000
-#define OPF_SCAN_MODULES 0x00040000
-#define OPF_GLOBAL_INSTANCE 0x00080000
-#define OPF_OPTIONS 0x00100000
-#define OPF_SHOW_PUBLIC_MEM 0x00200000
+#define OPF_CORE_VERSION 0x00000002
+#define OPF_JUMPTABLE 0x00000004
+#define OPF_MAX_DEPTH 0x00000008
+#define OPF_DETAIL 0x00000010
+#define OPF_SHOW_MEMORY 0x00000020
+#define OPF_SHOW_IO 0x00000040
+#define OPF_SHOW_ERRORS 0x00000080
+#define OPF_ARGS 0x00000100
+#define OPF_ERROR 0x00000200
+#define OPF_COMPILED_AGAINST 0x00000400
+#define OPF_PRIVILEGED 0x00000800
+#define OPF_SYSTEM_PATH 0x00001000
+#define OPF_MODULE_PATH 0x00002000
+#define OPF_ROOT_PATH 0x00004000
+#define OPF_SCAN_MODULES 0x00008000
+#define OPF_GLOBAL_INSTANCE 0x00010000
+#define OPF_OPTIONS 0x00020000
+#define OPF_SHOW_PUBLIC_MEM 0x00040000
 
 #define TOI_LOCAL_CACHE 0
 #define TOI_LOCAL_STORAGE 1
@@ -1537,9 +1534,6 @@ struct OpenTag {
 struct OpenInfo {
    LONG    Flags;           // OPF flags need to be set for fields that have been defined in this structure.
    CSTRING Name;            // OPF_NAME
-   CSTRING Copyright;       // OPF_COPYRIGHT
-   CSTRING Date;            // OPF_DATE
-   CSTRING Author;          // OPF_AUTHOR
    FLOAT   CoreVersion;     // OPF_CORE_VERSION
    LONG    JumpTable;       // OPF_JUMPTABLE
    LONG    MaxDepth;        // OPF_MAX_DEPTH
@@ -2428,16 +2422,16 @@ inline ERROR ClearMemory(APTR Memory, LONG Length) {
 
 struct BaseClass { // Must be 64-bit aligned
    union {
-      objMetaClass *Class;          // Class pointer, resolved on AccessObject()
-      class extMetaClass *ExtClass; // Internal class reference
+      objMetaClass *Class;          // [Public] Class pointer
+      class extMetaClass *ExtClass; // [Private] Internal version of the class pointer
    };
-   struct Stats *Stats;         // Stats pointer, resolved on AccessObject() [Private]
+   struct Stats *Stats;         // [Private] Stats pointer
    APTR     ChildPrivate;       // Address for the ChildPrivate structure, if allocated
    APTR     CreatorMeta;        // The creator (via NewObject) is permitted to store a custom data pointer here.
    CLASSID  ClassID;            // Reference to the object's class, used to resolve the Class pointer
    CLASSID  SubID;              // Reference to the object's sub-class, used to resolve the Class pointer
    OBJECTID UID;                // Unique object identifier
-   OBJECTID OwnerID;            // Refers to the owner of this object
+   OBJECTID OwnerID;            // The owner of this object
    NF       Flags;              // Object flags
    OBJECTID TaskID;             // The process that this object belongs to
    volatile LONG  ThreadID;     // Managed by locking functions

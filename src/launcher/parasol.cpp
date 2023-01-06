@@ -12,22 +12,19 @@ only.
 *****************************************************************************/
 
 #include <parasol/main.h>
-#include <parasol/modules/parc.h>
-#include <startup.h>
 #include <parasol/modules/core.h>
+#include <parasol/modules/parc.h>
+#include <parasol/modules/display.h>
+#include <startup.h>
 #include <string.h>
 
 #include "common.h"
 
-CSTRING ProgName      = "Parasol";
-CSTRING ProgAuthor    = "Paul Manias";
-CSTRING ProgDate      = "February 2022";
-CSTRING ProgCopyright = "Copyright Paul Manias © 2000-2022";
+CSTRING ProgName = "Parasol";
 
 extern struct CoreBase *CoreBase;
 
-static OBJECTID glTargetID = 0;
-static OBJECTID glSystemPointerID;
+static objSurface *glTarget = NULL;
 static CSTRING *glArgs = NULL;
 static STRING glAllow = NULL;
 static BYTE glSandbox = FALSE;
@@ -142,15 +139,6 @@ static ERROR process_args(void)
                i++;
             }
          }
-         else if (!StrMatch(args[i], "--target")) {
-            if (args[i+1]) {
-               LONG count = 1;
-               if (FindObject(args[i+1], 0, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &glTargetID, &count) != ERR_Okay) {
-                  print("Warning - could not find target object \"%s\".", args[i+1]);
-               }
-               else log.msg("Using target %d", glTargetID);
-            }
-         }
          else if (!StrMatch(args[i], "--relaunch")) {
             glRelaunched = TRUE;
          }
@@ -238,42 +226,17 @@ ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)
    parasol::Log log("Parasol");
    log.branch("Win: %d, Size: %dx%d", WindowHandle, Width, Height);
 
-   OBJECTPTR target;
    ERROR error;
-   if (!NewLockedObject(ID_SURFACE, &target, &glTargetID)) {
-      SetFields(target,
-         FID_Name|TSTR,    "SystemSurface",
-         FID_WindowHandle|TLONG, WindowHandle,
-         FID_X|TLONG,      0,
-         FID_Y|TLONG,      0,
-         FID_Width|TLONG,  Width,
-         FID_Height|TLONG, Height,
-         TAGEND);
-      if (!acInit(target)) {
-         OBJECTPTR pointer;
-         if (!NewLockedObject(ID_POINTER, NF::PUBLIC, &pointer, &glSystemPointerID)) {
-            SetFields(pointer,
-               FID_Owner|TLONG, glTargetID,
-               FID_Name|TSTR,   "SystemPointer",
-               TAGEND);
-            if (!acInit(pointer)) {
-               objScript::create script = { fl::Path("~templates:defaultvariables"), fl::Target(glTargetID) };
-               if (script.ok()) error = script->activate();
-               else error = ERR_CreateObject;
-            }
-            else error = ERR_Init;
-
-            if (error) { acFree(pointer); glSystemPointerID = 0; }
-
-            ReleaseObject(pointer);
-         }
-         else error = ERR_NewObject;
+   if (auto glTarget = objSurface::create::global(fl::Name("SystemSurface"), fl::WindowHandle(WindowHandle),
+      fl::X(0), fl::Y(0), fl::Width(Width), fl::Height(Height))) {
+      if ((objPointer::create::global(fl::Owner(glTarget->UID), fl::Name("SystemPointer")))) {
+         objScript::create script = { fl::Path("~templates:defaultvariables"), fl::Target(glTarget->UID) };
+         if (script.ok()) error = script->activate();
+         else error = ERR_CreateObject;
       }
-      else error = ERR_Init;
+      else error = ERR_CreateObject;
 
-      if (error) { acFree(target); glTargetID = 0; }
-
-      ReleaseObject(target);
+      if (error) { acFree(glTarget); glTarget = NULL; }
    }
    else error = ERR_NewObject;
 

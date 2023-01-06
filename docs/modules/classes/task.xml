@@ -16,7 +16,7 @@
     <include>modules/task.h</include>
     <copyright>Paul Manias 1996-2022</copyright>
     <description>
-<p>Tasks, also known as processes, form the basis of process execution in an operating system.  By creating a task object, it is possible to execute a program from within the host system.  Programs that are compliant with Parasol may also reveal additional meta information such as <field>Author</field> and <field>Copyright</field> strings in the task object.</p>
+<p>Tasks, also known as processes, form the basis of process execution in an operating system.  By creating a task object, it is possible to execute a program from within the host system.</p>
 <p>To execute a compiled program, set the <field>Location</field> field to point to the executable file before initialising the task.  Arguments can be passed to the executable by setting the <field>Parameters</field> field.  Once the task object is successfully initialised, use the <action>Activate</action> action to run the executable.  If the file executes successfully, a new task object is spawned separately to represent the executable (which means it is safe to destroy your task object immediately afterwards).  If the <action>Activate</action> action returns with ERR_Okay then the executable program was run successfully.</p>
 <p>To find the task object that represents the active process, use the <function module="Core">CurrentTask</function> function to quickly retrieve it.</p>
 <p>To send messages to another task, you need to know its <field>MessageQueue</field> ID so that <function module="Core">SendMessage</function> can be used.  A simple way to initiate interprocess communication is to pass your MessageQueue ID to the other task as a parameter.</p></description>
@@ -207,39 +207,6 @@
     </field>
 
     <field>
-      <name>Author</name>
-      <comment>Describes the person that wrote the program.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>STRING</type>
-      <description>
-<p>This field gives information about the author of the program/task. If the author is not determinable from the <field>Location</field>, this field will usually be set to NULL.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>Copyright</name>
-      <comment>Copyright/licensing details.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>STRING</type>
-    </field>
-
-    <field>
-      <name>Date</name>
-      <comment>The date that the program was last updated or compiled.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>STRING</type>
-      <description>
-<p>The Date usually specifies the date on which the program was compiled for public release. It is up to the developer of the program to set this string correctly and keep it current.</p>
-<p>The correct specification for this string is <code>Day Month Year</code> or <code>Month Year</code> as in the following examples:</p>
-<pre>"14 February 1998"
-"6 May 1997"
-"January 2000"
-</pre>
-<p>Please do not use shorthand dates such as <code>14/2/98</code>.  Do not include the time or any other information besides that which is outlined here.</p>
-      </description>
-    </field>
-
-    <field>
       <name>ErrorCallback</name>
       <comment>This callback returns incoming data from STDERR.</comment>
       <access read="G" write="S">Get/Set</access>
@@ -417,16 +384,6 @@
       <type>INT</type>
       <description>
 <p>Once a process has completed execution then its return code can be read from this field.  If process is still running, the error code ERR_TaskStillExists will be returned.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>Short</name>
-      <comment>A short description of the process' purpose.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>STRING</type>
-      <description>
-<p>This field allows for the specification of a short description for the process. The description should be under 80 characters (one sentence).  The description is typically useful for occasions where the user is debugging the system or trying to get a quick overview of the processes that are currently running.</p>
       </description>
     </field>
 

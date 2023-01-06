@@ -724,7 +724,7 @@ static void free_private_memory(void)
    LONG count = 0;
    for (auto & [ id, mem ] : glPrivateMemory) {
       if ((mem.Address) and (mem.Flags & MEM_STRING)) {
-         if (!glCrashStatus) log.warning("Unfreed private string \"%.80s\" (%p).", (CSTRING)mem.Address, mem.Address);
+         if (!glCrashStatus) log.warning("Unfreed string \"%.80s\" (%p).", (CSTRING)mem.Address, mem.Address);
          mem.AccessCount = 0;
          FreeResource(mem.Address);
          mem.Address = NULL;
@@ -738,11 +738,9 @@ static void free_private_memory(void)
       if (mem.Address) {
          if (!glCrashStatus) {
             if (mem.Flags & MEM_OBJECT) {
-               log.warning("Unfreed private object #%d, Size %d, Class: $%.8x, Container: #%d.", mem.MemoryID, mem.Size, mem.Object->ClassID, mem.OwnerID);
-
-               if (mem.Object->isPublic()) remove_shared_object(mem.MemoryID);
+               log.warning("Unfreed object #%d, Size %d, Class: $%.8x, Container: #%d.", mem.MemoryID, mem.Size, mem.Object->ClassID, mem.OwnerID);
             }
-            else log.warning("Unfreed private memory #%d/%p, Size %d, Container: #%d.", mem.MemoryID, mem.Address, mem.Size, mem.OwnerID);
+            else log.warning("Unfreed memory #%d/%p, Size %d, Container: #%d.", mem.MemoryID, mem.Address, mem.Size, mem.OwnerID);
          }
          mem.AccessCount = 0;
          FreeResource(mem.Address);
@@ -751,7 +749,7 @@ static void free_private_memory(void)
       }
    }
 
-   if ((glCrashStatus) and (count > 0)) log.msg("%d private memory blocks were freed.", count);
+   if ((glCrashStatus) and (count > 0)) log.msg("%d memory blocks were freed.", count);
 }
 
 

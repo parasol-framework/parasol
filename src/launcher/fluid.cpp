@@ -3,18 +3,16 @@
 #include <startup.h>
 #include <parasol/modules/core.h>
 #include <string.h>
+#include <sstream>
 
 #include "common.h"
 
-CSTRING ProgName      = "Fluid";
-CSTRING ProgAuthor    = "Paul Manias";
-CSTRING ProgDate      = "February 2022";
-CSTRING ProgCopyright = "Copyright Paul Manias © 2000-2022";
+CSTRING ProgName = "Fluid";
 
 extern struct CoreBase *CoreBase;
 
 static CSTRING *glArgs = NULL;
-static BYTE glTime = FALSE;
+static bool glTime = false;
 static STRING glProcedure = NULL;
 static STRING glTargetFile = NULL;
 
@@ -195,7 +193,7 @@ static ERROR process_args(void)
             return ERR_Terminate;
          }
          else if (!StrMatch(args[i], "--time")) {
-            glTime = TRUE;
+            glTime = true;
          }
          else if (!StrMatch(args[i], "--procedure")) {
             if (glProcedure) { FreeResource(glProcedure); glProcedure = NULL; }
@@ -231,12 +229,10 @@ static ERROR process_args(void)
 //********************************************************************************************************************
 // Support for stdin
 
-static STRING glScriptBuffer     = NULL;
-static LONG glScriptBufferSize   = 0;
-static LONG glScriptBufferLength = 0;
 static LONG glScriptReceivedMsg  = 0;
+static std::ostringstream glScriptBuffer;
 
-static void read_stdin(objTask *Task, APTR Buffer, LONG Size, ERROR Status)
+static void read_stdin(objTask *Task, char *Buffer, LONG Size, ERROR Status)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -246,32 +242,9 @@ static void read_stdin(objTask *Task, APTR Buffer, LONG Size, ERROR Status)
       return;
    }
 
-   if (!glScriptBuffer) {
-      glScriptBufferSize = Size + 1;
-      if (!AllocMemory(glScriptBufferSize, MEM_STRING, &glScriptBuffer)) {
-         CopyMemory(Buffer, glScriptBuffer, glScriptBufferSize);
-         glScriptBufferLength = Size;
-      }
-      else SendMessage(0, MSGID_QUIT, MSF_WAIT, NULL, 0);
-   }
-   else if (glScriptBufferLength + Size >= glScriptBufferSize-1) {
-      LONG inc = (Size < 4096) ? 4096 : Size;
-      if (!ReallocMemory(glScriptBuffer, glScriptBufferSize + inc, &glScriptBuffer, NULL)) {
-         CopyMemory(Buffer, glScriptBuffer + glScriptBufferLength, Size);
-         glScriptBufferSize += inc;
-         glScriptBufferLength += Size;
-         glScriptBuffer[glScriptBufferLength] = 0;
-      }
-      else SendMessage(0, MSGID_QUIT, MSF_WAIT, NULL, 0);
-   }
-   else {
-      CopyMemory(Buffer, glScriptBuffer + glScriptBufferLength, Size);
-      glScriptBufferLength += Size;
-      glScriptBuffer[glScriptBufferLength] = 0;
-   }
+   glScriptBuffer.write(Buffer, Size);
 
-   if (glScriptBuffer[glScriptBufferLength-1] IS 0x1a) { // Ctrl-Z
-      glScriptBuffer[glScriptBufferLength-1] = 0;
+   if (Buffer[Size-1] IS 0x1a) { // Ctrl-Z
       SendMessage(0, glScriptReceivedMsg, MSF_WAIT, NULL, 0);
       log.msg("EOF received.");
       return;
@@ -321,10 +294,11 @@ int main(int argc, CSTRING *argv)
 
          ProcessMessages(0, -1);
 
-         if (glScriptBuffer) {
+         auto str = glScriptBuffer.str();
+         if (str.length() > 0) {
             objScript *script;
             if (!NewObject(ID_FLUID, &script)) {
-               script->set(FID_Statement, glScriptBuffer);
+               script->set(FID_Statement, str);
                if (glProcedure) script->set(FID_Procedure, glProcedure);
                if (glArgs) set_script_args(script, glArgs);
                result = run_script(script);
@@ -338,7 +312,6 @@ int main(int argc, CSTRING *argv)
       }
    }
 
-   if (glScriptBuffer) { FreeResource(glScriptBuffer); glScriptBuffer = NULL; }
    if (glProcedure)    { FreeResource(glProcedure);    glProcedure = NULL; }
    if (glTargetFile)   { FreeResource(glTargetFile);   glTargetFile = NULL; }
 

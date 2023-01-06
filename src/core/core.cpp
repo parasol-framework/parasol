@@ -918,10 +918,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          StrCopy(Info->Name, glProgName, sizeof(glProgName));
       }
 
-      if (Info->Flags & OPF_AUTHOR)    localtask->set(FID_Author, Info->Author);
-      if (Info->Flags & OPF_COPYRIGHT) localtask->set(FID_Copyright, Info->Copyright);
-      if (Info->Flags & OPF_DATE)      localtask->set(FID_Date, Info->Date);
-
       if (!acInit(localtask)) {
          // NB: The glCurrentTask and glCurrentTaskID variables are set on task initialisation
 
