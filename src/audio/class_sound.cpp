@@ -112,6 +112,39 @@ static LONG sample_format(extSound *Self)
 }
 #endif
 
+static ERROR snd_init_audio(extSound *Self)
+{
+   parasol::Log log;
+
+   LONG count = 1;
+   if (!FindObject("SystemAudio", ID_AUDIO, FOF_INCLUDE_SHARED, &Self->AudioID, &count)) return ERR_Okay;
+
+   objAudio *audio;
+   ERROR error;
+   if (!(error = NewNamedObject(ID_AUDIO, NF::UNIQUE, &audio, &Self->AudioID, "SystemAudio"))) {
+      SetOwner(audio, CurrentTask());
+
+      if (!acInit(audio)) {
+         error = acActivate(audio);
+      }
+      else {
+         acFree(audio);
+         error = ERR_Init;
+      }
+
+      ReleaseObject(audio);
+   }
+   else if (error IS ERR_ObjectExists) return ERR_Okay;
+   else error = ERR_NewObject;
+
+   if (error) {
+      if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
+      return log.warning(ERR_CreateObject);
+   }
+
+   return error;
+}
+
 //********************************************************************************************************************
 
 static ERROR SOUND_ActionNotify(extSound *Self, struct acActionNotify *Args)
@@ -437,33 +470,12 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    LONG id, len;
    STRING path;
    CSTRING strerr;
-   OBJECTPTR audio;
    ERROR error;
 
    // Find the local audio object.  If none is available, create a new audio object to ease the developer's pain.
 
    if (!Self->AudioID) {
-      LONG count = 1;
-      if (FindObject("SystemAudio", ID_AUDIO, FOF_INCLUDE_SHARED, &Self->AudioID, &count) != ERR_Okay) {
-         if (!(error = NewNamedObject(ID_AUDIO, NF::PUBLIC|NF::UNIQUE, &audio, &Self->AudioID, "SystemAudio"))) {
-            SetOwner(audio, CurrentTask());
-
-            if (acInit(audio) != ERR_Okay) {
-               acFree(audio);
-               ReleaseObject(audio);
-               if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
-               return log.warning(ERR_Init);
-            }
-
-            acActivate(audio);
-
-            ReleaseObject(audio);
-         }
-         else if (error != ERR_ObjectExists) {
-            if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
-            return log.warning(ERR_NewObject);
-         }
-      }
+      if ((error = snd_init_audio(Self))) return error;
    }
 
    // Open channels for sound sample playback.  Note that audio channels must be allocated 'locally' so that they
@@ -605,26 +617,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    ERROR error;
 
    if (!Self->AudioID) {
-      LONG count = 1;
-      if (FindObject("SystemAudio", ID_AUDIO, FOF_INCLUDE_SHARED, &Self->AudioID, &count) != ERR_Okay) {
-         if (!(error = NewNamedObject(ID_AUDIO, NF::PUBLIC|NF::UNIQUE, &audio, &Self->AudioID, "SystemAudio"))) {
-            SetOwner(audio, CurrentTask());
-
-            if (acInit(audio) != ERR_Okay) {
-               acFree(audio);
-               ReleaseObject(audio);
-               if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
-               return log.warning(ERR_Init);
-            }
-
-            acActivate(audio);
-            ReleaseObject(audio);
-         }
-         else if (error != ERR_ObjectExists) {
-            if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
-            return log.warning(ERR_NewObject);
-         }
-      }
+      if ((error = snd_init_audio(Self))) return error;
    }
 
    // Open channels for sound sample playback.  Note that audio channels must be allocated 'locally' so that they

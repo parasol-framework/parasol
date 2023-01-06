@@ -931,11 +931,11 @@ static ERROR AUDIO_OpenChannels(extAudio *Self, struct sndOpenChannels *Args)
    if (Self->Flags & ADF_OVER_SAMPLING) total = Args->Total * 2;
    else total = Args->Total;
 
-   if (!AllocMemory(sizeof(AudioChannel) * total, MEM_DATA|MEM_TASK, &Self->Channels[index].Channel)) {
-      Self->Channels[index].Total = Args->Total;
-      Self->Channels[index].Actual = total;
-      Self->Channels[index].Key    = Args->Key;
-      Self->Channels[index].OpenCount = 1;
+   if (!AllocMemory(sizeof(AudioChannel) * total, MEM_DATA, &Self->Channels[index].Channel)) {
+      Self->Channels[index].Total      = Args->Total;
+      Self->Channels[index].Actual     = total;
+      Self->Channels[index].Key        = Args->Key;
+      Self->Channels[index].OpenCount  = 1;
       Self->Channels[index].TaskVolume = glTaskVolume;
 
       // Allocate the command buffer
@@ -1856,7 +1856,13 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
    if (Self->Handle) {
       spaceleft = snd_pcm_avail_update(Self->Handle); // Returns available space in frames (multiply by SampleBitSize for bytes)
    }
-   else spaceleft = 0;
+   else if (Self->AudioBufferSize) { // Run in dummy mode - samples will be buffered but not played
+      spaceleft = Self->AudioBufferSize;
+   }
+   else {
+      log.warning("ALSA not in an initialised state.");
+      return ERR_Terminate;
+   }
 
    // If the audio system is inactive or in a bad state, try to fix it.
 
@@ -2390,8 +2396,7 @@ next_card:
 
    // Set number of channels
 
-   ULONG channels;
-   channels = (Self->Flags & ADF_STEREO) ? 2 : 1;
+   ULONG channels = (Self->Flags & ADF_STEREO) ? 2 : 1;
    if ((err = snd_pcm_hw_params_set_channels_near(pcmhandle, hwparams, &channels)) < 0) {
       log.warning("set_channels_near(%d) %s", channels, snd_strerror(err));
       FreeResource(volctl);

@@ -242,10 +242,10 @@
     <struct name="ChannelSet" comment="Channel set management structure.">
       <field name="Channel" type="struct AudioChannel *">Array of channel objects</field>
       <field name="Commands" type="struct AudioCommand *">Array of buffered commands</field>
+      <field name="TaskVolume" type="DOUBLE"></field>
       <field name="UpdateRate" type="LONG">Update rate, measured in milliseconds</field>
       <field name="MixLeft" type="LONG">Amount of mix elements left before the next command-update occurs</field>
       <field name="Key" type="LONG"></field>
-      <field name="TaskVolume" type="DOUBLE"></field>
       <field name="Total" type="WORD">Total number of base channels</field>
       <field name="Actual" type="WORD">Total number of channels, including oversampling channels</field>
       <field name="TotalCommands" type="WORD">Size of the command buffer</field>

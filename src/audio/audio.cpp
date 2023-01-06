@@ -184,6 +184,11 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
          return ERR_NoSupport;
       }
    }
+#elif ALSA_ENABLED
+   // Nothing required for ALSA
+#else
+   log.warning("No audio support available.");
+   return ERR_Failed;
 #endif
 
    // Allocate public audio variables

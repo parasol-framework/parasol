@@ -195,10 +195,10 @@ struct AudioCommand {
 struct ChannelSet {
    struct AudioChannel * Channel;    // Array of channel objects
    struct AudioCommand * Commands;   // Array of buffered commands
+   DOUBLE TaskVolume;
    LONG   UpdateRate;                // Update rate, measured in milliseconds
    LONG   MixLeft;                   // Amount of mix elements left before the next command-update occurs
    LONG   Key;
-   DOUBLE TaskVolume;
    WORD   Total;                     // Total number of base channels
    WORD   Actual;                    // Total number of channels, including oversampling channels
    WORD   TotalCommands;             // Size of the command buffer

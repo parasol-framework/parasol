@@ -8,10 +8,10 @@
 function testSequentialPlayback()
    local proc = processing.new()
 
-   local snd = obj.new("sound", { path=glFolder .. "low-tone.wav" })
+   local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav' })
    assert(snd, 'Failed to process low-tone wav file.')
 
-   snd.subscribe("deactivate", function(SoundID)
+   snd.subscribe('deactivate', function(SoundID)
       proc.signal()
    end)
 
@@ -29,10 +29,10 @@ function testSequentialPlayback()
 
    -- Second sample
 
-   local snd = obj.new("sound", { path=glFolder .. "high-tone.wav" })
+   local snd = obj.new('sound', { path=glFolder .. 'high-tone.wav' })
    assert(snd, 'Failed to process high-tone wav file.')
 
-   snd.subscribe("deactivate", function(SoundID)
+   snd.subscribe('deactivate', function(SoundID)
       proc.signal()
    end)
 
@@ -59,7 +59,11 @@ end
       },
       init = function(Folder)
          glFolder = Folder
-         glAudio = obj.new("audio", { name="SystemAudio" })
+         glAudio = obj.new('audio', { name='SystemAudio' })
+         if not glAudio then error('Failed to create audio object.')
+         if glAudio.acActivate() != ERR_Okay then
+            error('Failed to initialise audio server.')
+         end
       end,
       cleanup = function()
 
