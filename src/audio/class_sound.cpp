@@ -163,14 +163,15 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
       // We also need the subscription to fulfil the Deactivate contract.
 
       auto call = make_function_stdc(playback_timer);
-      SubscribeTimer(0.25, &call, &Self->Timer);
+      if (!SubscribeTimer(0.25, &call, &Self->Timer)) {
+         // Play the audio buffer
 
-      // Play the audio buffer
+         if (Self->Flags & SDF_LOOP) sndPlay((PlatformData *)Self->prvPlatformData, TRUE, Self->Position);
+         else sndPlay((PlatformData *)Self->prvPlatformData, FALSE, Self->Position);
 
-      if (Self->Flags & SDF_LOOP) sndPlay((PlatformData *)Self->prvPlatformData, TRUE, Self->Position);
-      else sndPlay((PlatformData *)Self->prvPlatformData, FALSE, Self->Position);
-
-      return ERR_Okay;
+         return ERR_Okay;
+      }
+      else return ERR_Failed;
    }
    else log.msg("A independent win32 waveform will not be used for this sample.");
 
@@ -237,8 +238,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
             // We also need the subscription to fulfil the Deactivate contract.
 
             auto call = make_function_stdc(playback_timer);
-            SubscribeTimer(0.25, &call, &Self->Timer);
-            return ERR_Okay;
+            return SubscribeTimer(0.25, &call, &Self->Timer);
          }
          else return log.warning(ERR_Failed);
 

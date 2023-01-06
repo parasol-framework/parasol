@@ -2549,11 +2549,7 @@ next_card:
 
       // Free existing volume measurements and apply the information that we read from alsa.
 
-      if (oldmid) {
-         if (oldctl) ReleaseMemory(oldctl);
-         FreeResourceID(oldmid);
-      }
-
+      if (oldctl) FreeResource(oldctl);
       Self->Handle = pcmhandle;
    }
    else {
