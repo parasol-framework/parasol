@@ -36,3 +36,5 @@ else ()
       target_link_libraries (${MOD} PRIVATE "asound")
    endif ()
 endif ()
+
+flute_test (svg_output "tests/test-audio.fluid")

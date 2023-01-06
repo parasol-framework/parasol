@@ -245,9 +245,6 @@
       <field name="UpdateRate" type="LONG">Update rate, measured in milliseconds</field>
       <field name="MixLeft" type="LONG">Amount of mix elements left before the next command-update occurs</field>
       <field name="Key" type="LONG"></field>
-      <field name="TaskID" type="OBJECTID">Reference to the task that owns this set of channels</field>
-      <field name="ChannelMID" type="MEMORYID">Private</field>
-      <field name="CommandMID" type="MEMORYID">Private</field>
       <field name="TaskVolume" type="DOUBLE"></field>
       <field name="Total" type="WORD">Total number of base channels</field>
       <field name="Actual" type="WORD">Total number of channels, including oversampling channels</field>

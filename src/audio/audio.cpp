@@ -284,7 +284,7 @@ static DOUBLE sndSetTaskVolume(DOUBLE Volume)
       return glTaskVolume * 100.0;
    }
    else {
-      DOUBLE old = glTaskVolume;
+      auto old = glTaskVolume;
       glTaskVolume = Volume * (1.0/100.0);
 
       #ifdef _WIN32
@@ -299,11 +299,8 @@ static DOUBLE sndSetTaskVolume(DOUBLE Volume)
       if (glAudioID) {
          extAudio *audio;
          if (!AccessObject(glAudioID, 3000, &audio)) {
-            OBJECTID taskid = CurrentTaskID();
             for (LONG i=0; i < ARRAYSIZE(audio->Channels); i++) {
-               if (audio->Channels[i].TaskID IS taskid) {
-                  audio->Channels[i].TaskVolume = glTaskVolume;
-               }
+               audio->Channels[i].TaskVolume = glTaskVolume;
             }
             ReleaseObject(audio);
          }

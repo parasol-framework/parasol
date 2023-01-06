@@ -195,18 +195,15 @@ struct AudioCommand {
 struct ChannelSet {
    struct AudioChannel * Channel;    // Array of channel objects
    struct AudioCommand * Commands;   // Array of buffered commands
-   LONG     UpdateRate;              // Update rate, measured in milliseconds
-   LONG     MixLeft;                 // Amount of mix elements left before the next command-update occurs
-   LONG     Key;
-   OBJECTID TaskID;                  // Reference to the task that owns this set of channels
-   MEMORYID ChannelMID;              // Private
-   MEMORYID CommandMID;              // Private
-   DOUBLE   TaskVolume;
-   WORD     Total;                   // Total number of base channels
-   WORD     Actual;                  // Total number of channels, including oversampling channels
-   WORD     TotalCommands;           // Size of the command buffer
-   WORD     Position;                // Index to write the next command to
-   WORD     OpenCount;
+   LONG   UpdateRate;                // Update rate, measured in milliseconds
+   LONG   MixLeft;                   // Amount of mix elements left before the next command-update occurs
+   LONG   Key;
+   DOUBLE TaskVolume;
+   WORD   Total;                     // Total number of base channels
+   WORD   Actual;                    // Total number of channels, including oversampling channels
+   WORD   TotalCommands;             // Size of the command buffer
+   WORD   Position;                  // Index to write the next command to
+   WORD   OpenCount;
 };
 
 struct VolumeCtl {
