@@ -1,20 +1,35 @@
 
-   local src = arg("src")
+   -- Retrieve the sound sample path from the command line arguments
+
+   local src = arg('src')
    if (src == nil) then
-      print("Please supply a source audio file with the 'src' parameter.")
+      print('Please supply a source audio file with "--src=[file]"')
       return
    end
 
+   -- Use the processing API to help us control the program flow
+
+   local proc = processing.new()
+
    catch(function()
-      local snd = obj.new("sound", { path=src })
-      snd.subscribe("deactivate", function(SoundID)
-         mSys.SendMessage(0, MSGID_QUIT)
+      -- The sound class will load the sample file.
+
+      local snd = obj.new('sound', { path=src })
+
+      -- Monitor the deactivate action.  We can use it to exit once the sample has fully played.
+
+      snd.subscribe('deactivate', function(SoundID)
+         proc.signal()
       end)
+
+      -- Play the sound
+
       snd.acActivate()
 
-      print("Press CTRL-C to exit or wait for sound sample to finish.")
-      processing.sleep()
+      print('Press CTRL-C to exit or wait for sound sample to finish.')
+
+      proc.sleep()
    end,
    function(Exception)
-      print("Failed to play sound, error: " .. Exception.message)
+      print('Failed to play sound, error: ' .. Exception.message)
    end)

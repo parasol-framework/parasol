@@ -853,7 +853,7 @@ OpenChannels: Allocates audio channels that can be used for sample playback.
 
 Use the OpenChannels method when you need to open audio channels for sample playback.  Channels are allocated in sets
 that can lie between a range of 1 and 64.  There are global limits as to how many channel sets can be open at any one
-time, so it is recommended that you never call this function more than once for your task.
+time, so it is recommended that you never call this function more than once for your process.
 
 When opening a new channel set, you can provide your own special key if your code is written in such a way that being
 able to reopen channel sets at later stages is of benefit to you.  To do this, provide a randomised number in the Key
