@@ -1589,7 +1589,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     </input>
     <description>
 <p>The OpenDir() function is used to open a folder for scanning via the <function module="Core">ScanDir</function> function.  If the provided Path can be accessed, a DirInfo structure will be returned in the Info parameter, which will need to be passed to <function module="Core">ScanDir</function>.  Once the scanning process is complete, call the <function module="Core">FreeResource</function> function.</p>
-<p>When opening a folder, it is necessary to indicate the type of files that are of interest.  If no flags are defined, the scanner will return file and folder names only.  Only a subset of the available RDF flags may be used, namely SIZE, DATE, PERMISSIONS, FILE, FOLDER, QUALIFY, TAGS.</p>
+<p>When opening a folder, it is necessary to indicate the type of files that are of interest.  If no flags are defined, the scanner will return file and folder names only.  Only a subset of the available <code>RDF</code> flags may be used, namely <code>SIZE</code>, <code>DATE</code>, <code>PERMISSIONS</code>, <code>FILE</code>, <code>FOLDER</code>, <code>QUALIFY</code>, <code>TAGS</code>.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -1883,7 +1883,7 @@ if (!OpenDir(path, RDF_FILE|RDF_FOLDER, &amp;info)) {
 </pre>
 <p>For each item that you scan, you will be able to read the Info structure for information on that item.  The DirInfo structure contains a FileInfo pointer that consists of the following fields:</p>
 <struct lookup="FileInfo"/>
-<p>RDF flags that may be returned in the Flags field are VOLUME, FOLDER, FILE, LINK.</p>
+<p>The <code>RDF</code> flags that may be returned in the Flags field are <code>VOLUME</code>, <code>FOLDER</code>, <code>FILE</code>, <code>LINK</code>.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>

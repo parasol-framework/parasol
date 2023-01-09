@@ -40,8 +40,8 @@ accessed, a DirInfo structure will be returned in the Info parameter, which will
 the scanning process is complete, call the ~FreeResource() function.
 
 When opening a folder, it is necessary to indicate the type of files that are of interest.  If no flags are defined,
-the scanner will return file and folder names only.  Only a subset of the available RDF flags may be used, namely
-SIZE, DATE, PERMISSIONS, FILE, FOLDER, QUALIFY, TAGS.
+the scanner will return file and folder names only.  Only a subset of the available `RDF` flags may be used, namely
+`SIZE`, `DATE`, `PERMISSIONS`, `FILE`, `FOLDER`, `QUALIFY`, `TAGS`.
 
 -INPUT-
 cstr Path: The folder location to be scanned.  Using an empty string will scan for volume names.
@@ -152,7 +152,7 @@ structure contains a FileInfo pointer that consists of the following fields:
 
 <struct lookup="FileInfo"/>
 
-RDF flags that may be returned in the Flags field are VOLUME, FOLDER, FILE, LINK.
+The `RDF` flags that may be returned in the Flags field are `VOLUME`, `FOLDER`, `FILE`, `LINK`.
 
 -INPUT-
 resource(DirInfo) Info: Pointer to a DirInfo structure for storing scan results.
