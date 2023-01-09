@@ -5,15 +5,19 @@
 #define MIX_INTERVAL 0.01
 #endif
 
+typedef void (*MixRoutine)(ULONG, LONG);
+
+#define MAX_CHANNELSETS 8
+#define DEFAULT_BUFFER_SIZE 8096 // Measured in samples, not bytes
+
 class extAudio : public objAudio {
    public:
    struct ChannelSet Channels[MAX_CHANNELSETS]; // Channels are grouped into sets, which are allocated on a per-task basis
    struct AudioSample  *Samples;
    struct VolumeCtl    *VolumeCtl;
-   const MixRoutineSet *MixRoutines;
+   MixRoutine *MixRoutines;
    APTR  BufferMemory;
    APTR  MixBuffer;
-   FLOAT *BFMemory;               // Byte/Float table memory
    APTR  TaskRemovedHandle;
    APTR  UserLoginHandle;
    #ifdef ALSA_ENABLED

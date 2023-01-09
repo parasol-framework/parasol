@@ -78,34 +78,21 @@ static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
    Self->MixBufferSize = (((Self->MixBitSize * Self->OutputRate) / MIXBUFLEN) + 15) & 0xfffffff0;
    Self->MixElements   = Self->MixBufferSize / Self->MixBitSize;
 
-   LONG i;
    if (!AllocMemory(Self->MixBufferSize + 1024, MEM_DATA, &Self->BufferMemory)) {
       // Align to 1024 bytes
       Self->MixBuffer = (APTR)((((UMAXINT)Self->BufferMemory) + 1023) & (~1023));
 
-      // Allocate the sample byte->float conversion table, align it at a 1024-byte boundary and initialize it.  The
-      // values in the table range from -32768 to +32768.
+      // Pick the correct mixing routines
 
-      if (!AllocMemory(1024 + 256 * sizeof(FLOAT), MEM_DATA, &Self->BFMemory)) {
-         ByteFloatTable = (FLOAT *)((((UMAXINT)Self->BFMemory) + 1023) & (~1023));
-         for (i=0; i < 256; i++) ByteFloatTable[i] = 256 * (i-128);
-
-         // Pick the correct mixing routines
-
-         if (Self->Flags & ADF_OVER_SAMPLING) {
-            if (Self->Stereo) Self->MixRoutines = &MixStereoFloatInterp;
-            else Self->MixRoutines = &MixMonoFloatInterp;
-         }
-         else if (Self->Stereo) Self->MixRoutines = &MixStereoFloat;
-         else Self->MixRoutines = &MixMonoFloat;
-
-         Self->Initialising = false;
-         return ERR_Okay;
+      if (Self->Flags & ADF_OVER_SAMPLING) {
+         if (Self->Stereo) Self->MixRoutines = MixStereoFloatInterp;
+         else Self->MixRoutines = MixMonoFloatInterp;
       }
-      else {
-         Self->Initialising = false;
-         return log.warning(ERR_AllocMemory);
-      }
+      else if (Self->Stereo) Self->MixRoutines = MixStereoFloat;
+      else Self->MixRoutines = MixMonoFloat;
+
+      Self->Initialising = false;
+      return ERR_Okay;
    }
    else {
       Self->Initialising = false;
@@ -194,7 +181,7 @@ ERROR AUDIO_AddSample(extAudio *Self, struct sndAddSample *Args)
    AudioSample *sample = &Self->Samples[handle];
    ClearMemory(sample, sizeof(AudioSample));
 
-   LONG shift = SampleShift(Args->SampleFormat);
+   LONG shift = sample_shift(Args->SampleFormat);
 
    sample->SampleType   = Args->SampleFormat;
    sample->SampleLength = Args->DataSize >> shift;
@@ -316,7 +303,7 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
       else return log.warning(ERR_ReallocMemory);
    }
 
-   LONG shift = SampleShift(Args->SampleFormat);
+   LONG shift = sample_shift(Args->SampleFormat);
    LONG bufferlength;
    if (!(bufferlength = Args->BufferLength)) {
       if (Args->SampleLength > 0) {
@@ -482,7 +469,7 @@ will execute five batches per second.
 -INPUT-
 int(CMD) Command: The ID of the command that you want to execute.
 int Handle: Refers to the channel that the command is to be executed against (see the OpenChannels method for information).
-int Data: Special data value relevant to the command being executed.
+double Data: Optional data value relevant to the command being executed.
 
 -ERRORS-
 Okay: The command was successfully buffered or executed.
@@ -705,7 +692,6 @@ static ERROR AUDIO_Free(extAudio *Self, APTR Void)
    }
 
    if (Self->VolumeCtl)    { FreeResource(Self->VolumeCtl); Self->VolumeCtl = NULL; }
-   if (Self->BFMemory)     { FreeResource(Self->BFMemory); Self->BFMemory = NULL; }
    if (Self->BufferMemory) { FreeResource(Self->BufferMemory); Self->BufferMemory = NULL; }
 
    if (Self->Samples) {
@@ -791,11 +777,11 @@ static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
    if (!AllocMemory(sizeof(VolumeCtl) * 3, MEM_DATA|MEM_NO_CLEAR, &Self->VolumeCtl)) {
       StrCopy("Master", Self->VolumeCtl[0].Name, sizeof(Self->VolumeCtl[0].Name));
       Self->VolumeCtl[0].Flags = 0;
-      for (LONG i=0; i < ARRAYSIZE(Self->VolumeCtl[0].Channels); i++) Self->VolumeCtl[0].Channels[i] = 75;
+      for (LONG i=0; i < ARRAYSIZE(Self->VolumeCtl[0].Channels); i++) Self->VolumeCtl[0].Channels[i] = 0.75;
 
       StrCopy("PCM", Self->VolumeCtl[1].Name, sizeof(Self->VolumeCtl[1].Name));
       Self->VolumeCtl[1].Flags = 0;
-      for (LONG i=0; i < ARRAYSIZE(Self->VolumeCtl[1].Channels); i++) Self->VolumeCtl[1].Channels[i] = 80;
+      for (LONG i=0; i < ARRAYSIZE(Self->VolumeCtl[1].Channels); i++) Self->VolumeCtl[1].Channels[i] = 0.80;
 
       Self->VolumeCtl[2].Name[0] = 0;
    }
@@ -803,7 +789,7 @@ static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
    if (!AllocMemory(sizeof(VolumeCtl) * 2, MEM_DATA|MEM_NO_CLEAR, &Self->VolumeCtl)) {
       StrCopy("Master", Self->VolumeCtl[0].Name, sizeof(Self->VolumeCtl[0].Name));
       Self->VolumeCtl[0].Flags = 0;
-      Self->VolumeCtl[0].Channels[0] = 75;
+      Self->VolumeCtl[0].Channels[0] = 0.75;
       for (LONG i=1; i < ARRAYSIZE(Self->VolumeCtl[0].Channels); i++) Self->VolumeCtl[0].Channels[i] = -1;
 
       Self->VolumeCtl[1].Name[0] = 0;
@@ -1072,8 +1058,8 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
       if (pmin >= pmax) continue;
 
       std::ostringstream out;
-      DOUBLE fleft = (DOUBLE)left * 100.0 / (DOUBLE)(pmax - pmin);
-      DOUBLE fright = (DOUBLE)right * 100.0 / (DOUBLE)(pmax - pmin);
+      auto fleft = (DOUBLE)left / (DOUBLE)(pmax - pmin);
+      auto fright = (DOUBLE)right / (DOUBLE)(pmax - pmin);
       out << fleft << ',' << fright << ',' << mute ? 0 : 1;
 
       config->write("MIXER", Self->VolumeCtl[i].Name, out.str());
@@ -1114,7 +1100,7 @@ channels.  The new mixer value is set in the Volume field.  Optional flags may b
 int Index: The index of the mixer that you want to set.
 cstr Name: If the correct index number is unknown, the name of the mixer may be set here.
 int(SVF) Flags: Optional flags.
-double Volume: The volume to set for the mixer.  Ranges between 0 - 100%.  Set to -1 if you do not want to adjust the current volume.
+double Volume: The volume to set for the mixer.  Ranges between 0 - 1.0.  Set to -1 if you do not want to adjust the current volume.
 
 -ERRORS-
 Okay: The new volume was applied successfully.
@@ -1137,7 +1123,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
    long pmin, pmax;
 
    if (!Args) return log.warning(ERR_NullArgs);
-   if (((Args->Volume < 0) or (Args->Volume > 1000)) and (Args->Volume != -1)) {
+   if (((Args->Volume < 0) or (Args->Volume > 1.0)) and (Args->Volume != -1)) {
       return log.warning(ERR_OutOfRange);
    }
    if (!Self->VolumeCtl) return log.warning(ERR_NoSupport);
@@ -1194,22 +1180,22 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
       pmax = pmax - 1; // -1 because the absolute maximum tends to produce distortion...
 
       DOUBLE vol = Args->Volume;
-      if (vol > 100) vol = 100;
-      LONG lvol = (DOUBLE)pmin + ((DOUBLE)(pmax - pmin) * vol / 100.0);
+      if (vol > 1.0) vol = 1.0;
+      LONG lvol = F2T(DOUBLE(pmin) + (DOUBLE(pmax - pmin) * vol));
 
-         if (Self->VolumeCtl[index].Flags & VCF_CAPTURE) {
-            snd_mixer_selem_set_capture_volume_all(elem, lvol);
-         }
-         else snd_mixer_selem_set_playback_volume_all(elem, lvol);
+      if (Self->VolumeCtl[index].Flags & VCF_CAPTURE) {
+         snd_mixer_selem_set_capture_volume_all(elem, lvol);
+      }
+      else snd_mixer_selem_set_playback_volume_all(elem, lvol);
 
-         if (Self->VolumeCtl[index].Flags & VCF_MONO) {
-            Self->VolumeCtl[index].Channels[0] = vol;
+      if (Self->VolumeCtl[index].Flags & VCF_MONO) {
+         Self->VolumeCtl[index].Channels[0] = vol;
+      }
+      else for (LONG channel=0; channel < ARRAYSIZE(Self->VolumeCtl[0].Channels); channel++) {
+         if (Self->VolumeCtl[index].Channels[channel] >= 0) {
+            Self->VolumeCtl[index].Channels[channel] = vol;
          }
-         else for (LONG channel=0; channel < ARRAYSIZE(Self->VolumeCtl[0].Channels); channel++) {
-            if (Self->VolumeCtl[index].Channels[channel] >= 0) {
-               Self->VolumeCtl[index].Channels[channel] = vol;
-            }
-         }
+      }
    }
 
    if (Args->Flags & SVF_UNMUTE) {
@@ -1252,7 +1238,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
    WORD index;
 
    if (!Args) return log.warning(ERR_NullArgs);
-   if (((Args->Volume < 0) or (Args->Volume > 1000)) and (Args->Volume != -1)) {
+   if (((Args->Volume < 0) or (Args->Volume > 1.0)) and (Args->Volume != -1)) {
       return log.warning(ERR_OutOfRange);
    }
    if (!Self->VolumeCtl) return log.warning(ERR_NoSupport);
@@ -1291,7 +1277,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 
    log.branch("%s: %.2f, Flags: $%.8x", Self->VolumeCtl[index].Name, Args->Volume, Args->Flags);
 
-   if ((Args->Volume >= 0) and (Args->Volume <= 100)) {
+   if ((Args->Volume >= 0) and (Args->Volume <= 1.0)) {
       if (Self->VolumeCtl[index].Flags & VCF_MONO) {
          Self->VolumeCtl[index].Channels[0] = Args->Volume;
       }
@@ -1414,14 +1400,14 @@ static ERROR GET_MasterVolume(extAudio *Self, DOUBLE *Value)
 
 static ERROR SET_MasterVolume(extAudio *Self, DOUBLE Value)
 {
-   struct sndSetVolume setvol;
+   if (Value < 0) Value = 0;
+   else if (Value > 1.0) Value = 1.0;
 
+   struct sndSetVolume setvol;
    setvol.Index  = 0;
    setvol.Name   = "Master";
    setvol.Volume = Value;
    setvol.Flags  = 0;
-   if (setvol.Volume < 0) setvol.Volume = 0;
-   if (setvol.Volume > 100) setvol.Volume = 100;
    return DelayMsg(MT_SndSetVolume, Self->UID, &setvol);
 }
 
@@ -1625,11 +1611,11 @@ static ERROR SetInternalVolume(extAudio *Self, AudioChannel *Channel)
 
    if ((!Self) or (!Channel)) return log.warning(ERR_NullArgs);
 
-   if (Channel->Volume > 1000) Channel->Volume = 1000;
+   if (Channel->Volume > 1.0) Channel->Volume = 1.0;
    else if (Channel->Volume < 0) Channel->Volume = 0;
 
-   if (Channel->Pan < -100) Channel->Pan = -100;
-   else if (Channel->Pan > 100) Channel->Pan = 100;
+   if (Channel->Pan < -1.0) Channel->Pan = -1.0;
+   else if (Channel->Pan > 1.0) Channel->Pan = 1.0;
 
    // Convert the volume into left/right volume parameters
 
@@ -1638,22 +1624,12 @@ static ERROR SetInternalVolume(extAudio *Self, AudioChannel *Channel)
       rightvol = 0;
    }
    else {
-      if (!Self->Stereo) {
-         leftvol  = Channel->Volume;
-         rightvol = Channel->Volume;
-      }
-      else if (Channel->Pan < 0) {
-         leftvol  = Channel->Volume;
-         rightvol = (Channel->Volume * (100 + Channel->Pan)) / 100;
-      }
-      else if (Channel->Pan > 0) {
-         leftvol  = (Channel->Volume * (100 - Channel->Pan)) / 100;
-         rightvol = Channel->Volume;
-      }
-      else {
-         leftvol  = Channel->Volume;
-         rightvol = Channel->Volume;
-      }
+      leftvol  = Channel->Volume;
+      rightvol = Channel->Volume;
+
+      if (!Self->Stereo);
+      else if (Channel->Pan < 0) rightvol = (Channel->Volume * (1.0 + Channel->Pan));
+      else if (Channel->Pan > 0) leftvol  = (Channel->Volume * (1.0 - Channel->Pan));
    }
 
    // Start volume ramping if necessary
@@ -1847,7 +1823,7 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
 
       // Produce the audio data
 
-      if (MixData(Self, elements, buffer) != ERR_Okay) break;
+      if (mix_data(Self, elements, buffer) != ERR_Okay) break;
 
       // Drop the mix amount.  This may also update buffered channels for the next round
 
@@ -1977,7 +1953,7 @@ static void load_config(extAudio *Self)
                      }
 
                      while (channel < ARRAYSIZE(Self->VolumeCtl[j].Channels)) {
-                        Self->VolumeCtl[j].Channels[channel] = 75;
+                        Self->VolumeCtl[j].Channels[channel] = 0.75;
                         channel++;
                      }
                   }
@@ -2480,7 +2456,7 @@ next_card:
                setvol.Index   = i;
                setvol.Name    = NULL;
                setvol.Flags   = 0;
-               setvol.Volume  = 80;
+               setvol.Volume  = 0.8;
                Action(MT_SndSetVolume, Self, &setvol);
             }
          }

@@ -250,7 +250,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          auto channel = audio->GetChannel(Self->ChannelIndex);
          channel->SoundID = Self->UID; // Record our object ID against the channel
 
-         COMMAND_SetVolume(*audio, Self->ChannelIndex, Self->Volume * 3.0);
+         COMMAND_SetVolume(*audio, Self->ChannelIndex, Self->Volume);
          COMMAND_SetPan(*audio, Self->ChannelIndex, Self->Pan);
 
          // The Play command must be messaged to the audio object because it needs to be executed by the task that owns
@@ -934,7 +934,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 static ERROR SOUND_NewObject(extSound *Self, APTR Void)
 {
    Self->Compression = 50;     // 50% compression by default
-   Self->Volume      = 100;    // Playback at 100% volume level
+   Self->Volume      = 1.0;    // Playback at 100% volume level
    Self->Pan         = 0;
    Self->Playback    = 0;
    Self->Note        = NOTE_C; // Standard pitch
@@ -969,7 +969,7 @@ static ERROR SOUND_Reset(extSound *Self, APTR Void)
       if (!COMMAND_SetSample(*audio, Self->ChannelIndex, Self->Handle)) {
          channel->SoundID = Self->UID;
 
-         COMMAND_SetVolume(*audio, Self->ChannelIndex, Self->Volume * 3.0);
+         COMMAND_SetVolume(*audio, Self->ChannelIndex, Self->Volume);
          COMMAND_SetPan(*audio, Self->ChannelIndex, Self->Pan);
          COMMAND_Play(*audio, Self->ChannelIndex, Self->Playback);
          return ERR_Okay;
@@ -1441,8 +1441,7 @@ Pan: Determines the horizontal position of a sound when played through stereo sp
 
 The Pan field adjusts the "horizontal position" of a sample that is being played through stereo speakers.
 The default value for this field is zero, which plays the sound through both speakers at an equal level.  The minimum
-value is -100, which forces play through the left speaker and the maximum value is 100, which forces play through the
-right speaker.
+value is -1.0 to force play through the left speaker and the maximum value is 1.0 for the right speaker.
 
 *********************************************************************************************************************/
 
@@ -1450,8 +1449,8 @@ static ERROR SOUND_SET_Pan(extSound *Self, DOUBLE Value)
 {
    Self->Pan = Value;
 
-   if (Self->Pan < -100) Self->Pan = -100;
-   else if (Self->Pan > 100) Self->Pan = 100;
+   if (Self->Pan < -1.0) Self->Pan = -1.0;
+   else if (Self->Pan > 1.0) Self->Pan = 1.0;
 
 #ifdef _WIN32
    if ((!Self->Handle) and (Self->initialised())) {
@@ -1463,7 +1462,7 @@ static ERROR SOUND_SET_Pan(extSound *Self, DOUBLE Value)
    if (Self->ChannelIndex) {
       parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
-         COMMAND_SetPan(*audio, Self->ChannelIndex, (Self->Pan * 64) / 100);
+         COMMAND_SetPan(*audio, Self->ChannelIndex, Self->Pan);
       }
       else return ERR_AccessObject;
    }
@@ -1583,8 +1582,8 @@ is being streamed.
 -FIELD-
 Volume: The volume to use when playing the sound sample.
 
-The field specifies the volume of a sound, which lies in the range 0 - 100%.  A volume of zero will not be heard, while
-a volume of 100 is the loudest.  Setting the field during sample playback will dynamically alter the volume.
+The field specifies the volume of a sound in the range 0 - 1.0 (low to high).  Setting this field during sample
+playback will dynamically alter the volume.
 -END-
 
 *********************************************************************************************************************/
@@ -1593,11 +1592,11 @@ static ERROR SOUND_SET_Volume(extSound *Self, DOUBLE Value)
 {
    Self->Volume = Value;
    if (Self->Volume < 0) Self->Volume = 0;
-   else if (Self->Volume > 100) Self->Volume = 100;
+   else if (Self->Volume > 1.0) Self->Volume = 1.0;
 
 #ifdef _WIN32
    if ((!Self->Handle) and (Self->initialised())) {
-      sndVolume((PlatformData *)Self->PlatformData, glGlobalVolume * Self->Volume * (1.0 / 100.0));
+      sndVolume((PlatformData *)Self->PlatformData, glGlobalVolume * Self->Volume);
       return ERR_Okay;
    }
 #endif

@@ -240,7 +240,7 @@ int dsResume(void)
 
 //****************************************************************************
 
-int MixData(extAudio *, unsigned int, void *);
+int mix_data(extAudio *, int, void *);
 
 int dsPlay(extAudio *Self)
 {
@@ -277,8 +277,8 @@ int dsPlay(extAudio *Self)
          else return 1;
       }
 
-      if (len1) MixData(Self, len1 / mixElemSize, write1);
-      if (len2) MixData(Self, len2 / mixElemSize, write2);
+      if (len1) mix_data(Self, len1 / mixElemSize, write1);
+      if (len2) mix_data(Self, len2 / mixElemSize, write2);
 
       writePos += len1 + len2;
       if (writePos >= bufferLen) writePos -= bufferLen;
@@ -404,7 +404,8 @@ void sndPan(PlatformData *Sound, float Pan)
 {
    if (!glDirectSound) return;
 
-   if (Sound->SoundBuffer) IDirectSoundBuffer_SetPan(Sound->SoundBuffer, (DWORD)(Pan * 100));
+   // Range -10,000 to 10,000 (DSBPAN_LEFT to DSBPAN_RIGHT)
+   if (Sound->SoundBuffer) IDirectSoundBuffer_SetPan(Sound->SoundBuffer, (DWORD)(Pan * 10000));
 }
 
 //****************************************************************************
@@ -549,8 +550,8 @@ void sndVolume(PlatformData *Sound, float Volume)
    if (!glDirectSound) return;
 
    if (Sound->SoundBuffer) {
-      if (Volume <= 1) IDirectSoundBuffer_SetVolume(Sound->SoundBuffer, -10000); // Zero volume
-      else IDirectSoundBuffer_SetVolume(Sound->SoundBuffer, (DWORD)(Volume * 50)-5000);
+      if (Volume <= 0) IDirectSoundBuffer_SetVolume(Sound->SoundBuffer, -10000); // Zero volume
+      else IDirectSoundBuffer_SetVolume(Sound->SoundBuffer, (DWORD)(Volume * 5000)-5000);
    }
 }
 

@@ -101,7 +101,7 @@ static ERROR COMMAND_FadeOut(extAudio *Self, LONG Handle)
 //********************************************************************************************************************
 // Mute: Use this method to mute sound channels.
 
-static ERROR COMMAND_Mute(extAudio *Self, LONG Handle, LONG Mute)
+static ERROR COMMAND_Mute(extAudio *Self, LONG Handle, DOUBLE Mute)
 {
    parasol::Log log("AudioCommand");
 
@@ -110,7 +110,7 @@ static ERROR COMMAND_Mute(extAudio *Self, LONG Handle, LONG Mute)
    if (!Handle) return ERR_NullArgs;
 
    auto channel = Self->GetChannel(Handle);
-   if (Mute IS TRUE) channel->Flags |= CHF_MUTE;
+   if (Mute != 0) channel->Flags |= CHF_MUTE;
    else channel->Flags &= ~CHF_MUTE;
    SetInternalVolume(Self, channel);
    return ERR_Okay;
@@ -119,7 +119,7 @@ static ERROR COMMAND_Mute(extAudio *Self, LONG Handle, LONG Mute)
 //********************************************************************************************************************
 // Play
 
-static ERROR COMMAND_Play(extAudio *Self, LONG Handle, LONG Frequency)
+static ERROR COMMAND_Play(extAudio *Self, LONG Handle, DOUBLE Frequency)
 {
    parasol::Log log("AudioCommand");
 
@@ -149,7 +149,7 @@ static ERROR COMMAND_Play(extAudio *Self, LONG Handle, LONG Frequency)
 //********************************************************************************************************************
 // SetFrequency: Sets the channel playback rate.
 
-static ERROR COMMAND_SetFrequency(extAudio *Self, LONG Handle, ULONG Frequency)
+static ERROR COMMAND_SetFrequency(extAudio *Self, LONG Handle, DOUBLE Frequency)
 {
    parasol::Log log("AudioCommand");
 
@@ -165,7 +165,7 @@ static ERROR COMMAND_SetFrequency(extAudio *Self, LONG Handle, ULONG Frequency)
 //********************************************************************************************************************
 // SetPan: Sets the panning position of a channel.
 
-static ERROR COMMAND_SetPan(extAudio *Self, LONG Handle, LONG Pan)
+static ERROR COMMAND_SetPan(extAudio *Self, LONG Handle, DOUBLE Pan)
 {
    parasol::Log log("AudioCommand");
 
@@ -175,8 +175,8 @@ static ERROR COMMAND_SetPan(extAudio *Self, LONG Handle, LONG Pan)
 
    auto channel = Self->GetChannel(Handle);
 
-   if (Pan < -100) channel->Pan = -100;
-   else if (Pan > 100) channel->Pan = 100;
+   if (Pan < -1.0) channel->Pan = -1.0;
+   else if (Pan > 1.0) channel->Pan = 1.0;
    else channel->Pan = Pan;
 
    SetInternalVolume(Self, channel);
@@ -188,14 +188,15 @@ static ERROR COMMAND_SetPan(extAudio *Self, LONG Handle, LONG Pan)
 //
 // This command can only be executed by the task that owns the audio object.
 
-static ERROR COMMAND_SetPosition(extAudio *Self, LONG Handle, LONG Position)
+static ERROR COMMAND_SetPosition(extAudio *Self, LONG Handle, DOUBLE Position)
 {
    parasol::Log log("AudioCommand");
    OBJECTPTR stream;
    AudioSample *sample;
    LONG bitpos;
+   LONG idx = F2T(Position);
 
-   log.trace("SetPosition($%.8x, %d)", Handle, Position);
+   log.trace("SetPosition($%.8x, %d)", Handle, idx);
 
    if (!Handle) return ERR_NullArgs;
 
@@ -213,7 +214,7 @@ static ERROR COMMAND_SetPosition(extAudio *Self, LONG Handle, LONG Position)
 
    if (channel->Sample.StreamID) {
       if (!AccessObject(channel->Sample.StreamID, 5000, &stream)) {
-         acSeek(stream, (DOUBLE)channel->Sample.SeekStart + Position, SEEK_START);
+         acSeek(stream, (DOUBLE)channel->Sample.SeekStart + idx, SEEK_START);
 
          // Fill our sample buffer with an initial amount of audio information from the stream
 
@@ -224,15 +225,15 @@ static ERROR COMMAND_SetPosition(extAudio *Self, LONG Handle, LONG Position)
          ReleaseObject(stream);
       }
 
-      channel->Sample.StreamPos = channel->Sample.SeekStart + Position;
-      Position = 0; // Internally we want to start from byte position zero in our stream buffer
+      channel->Sample.StreamPos = channel->Sample.SeekStart + idx;
+      idx = 0; // Internally we want to start from byte position zero in our stream buffer
    }
 
    if (Self->Flags & ADF_OVER_SAMPLING) COMMAND_FadeOut(Self, Handle);
 
    // Convert position from bytes to samples
 
-   bitpos = Position >> SampleShift(channel->Sample.SampleType);
+   bitpos = idx >> sample_shift(channel->Sample.SampleType);
 
    // Check if sample has been changed, and if so, set the values to the channel structure
 
@@ -357,7 +358,7 @@ static ERROR COMMAND_SetPosition(extAudio *Self, LONG Handle, LONG Position)
 //********************************************************************************************************************
 // SetRate: Sets a new update rate for buffered channels.
 
-static ERROR COMMAND_SetRate(extAudio *Self, LONG Handle, LONG Rate)
+static ERROR COMMAND_SetRate(extAudio *Self, LONG Handle, DOUBLE Rate)
 {
    parasol::Log log("AudioCommand");
 
@@ -371,8 +372,10 @@ static ERROR COMMAND_SetRate(extAudio *Self, LONG Handle, LONG Rate)
 //********************************************************************************************************************
 // SetSample: Sets the sample number on a channel.
 
-ERROR COMMAND_SetSample(extAudio *Self, LONG Handle, LONG SampleHandle)
+ERROR COMMAND_SetSample(extAudio *Self, LONG Handle, DOUBLE SampleHandle)
 {
+   LONG sample = F2T(SampleHandle);
+
    parasol::Log log("AudioCommand");
 
    log.trace("SetSample($%.8x, %d)", Handle, SampleHandle);
@@ -382,38 +385,38 @@ ERROR COMMAND_SetSample(extAudio *Self, LONG Handle, LONG SampleHandle)
       return ERR_NullArgs;
    }
 
-   if (!SampleHandle) {
+   if (!sample) {
       log.warning("[SetSample] No SampleHandle specified.");
       return ERR_NullArgs;
    }
 
-   if (SampleHandle > Self->TotalSamples) {
-      log.warning("[SetSample] Sample handle %d is out of range ($%.8x max).", SampleHandle, Self->TotalSamples);
+   if (sample > Self->TotalSamples) {
+      log.warning("[SetSample] Sample handle %d is out of range ($%.8x max).", sample, Self->TotalSamples);
       return ERR_Args;
    }
 
-   if (Self->Samples[SampleHandle].Used IS FALSE) {
-      log.warning("[SetSample] Sample handle %d refers to a dead sample.", SampleHandle);
+   if (Self->Samples[sample].Used IS FALSE) {
+      log.warning("[SetSample] Sample handle %d refers to a dead sample.", sample);
       return ERR_Failed;
    }
 
    auto channel = Self->GetChannel(Handle);
 
-   if (channel->SampleHandle IS SampleHandle) return ERR_Okay;
+   if (channel->SampleHandle IS sample) return ERR_Okay;
 
-   channel->SampleHandle = SampleHandle; // Set new sample number to channel
+   channel->SampleHandle = sample; // Set new sample number to channel
    channel->Flags |= CHF_CHANGED;        // Sample has been changed
 
    // If the new sample has one Amiga-compatible loop and playing has ended (not released or stopped), set the new
    // sample and start playing from loop start.
 
-   auto sample = &Self->Samples[SampleHandle];
-   if ((sample->LoopMode IS LOOP_AMIGA) and (channel->State IS CHS_FINISHED)) {
+   auto s = &Self->Samples[sample];
+   if ((s->LoopMode IS LOOP_AMIGA) and (channel->State IS CHS_FINISHED)) {
       // Set Amiga sample and start playing.  We won't do this with interpolated mixing, as this tends to cause clicks.
 
       if (!(Self->Flags & ADF_OVER_SAMPLING)) {
          channel->State = CHS_PLAYING;
-         COMMAND_SetPosition(Self, Handle, sample->Loop1Start);
+         COMMAND_SetPosition(Self, Handle, s->Loop1Start);
       }
    }
 
@@ -423,33 +426,33 @@ ERROR COMMAND_SetSample(extAudio *Self, LONG Handle, LONG SampleHandle)
 //********************************************************************************************************************
 // SetLength: Sets the byte length of the sample playing in the channel.
 
-static ERROR COMMAND_SetLength(extAudio *Self, LONG Handle, LONG Length)
+static ERROR COMMAND_SetLength(extAudio *Self, LONG Handle, DOUBLE Length)
 {
    parasol::Log log("AudioCommand");
 
-   log.trace("SetLength($%.8x, %d)", Handle, Length);
+   log.trace("SetLength($%.8x, %d)", Handle, F2T(Length));
 
    if (!Handle) return ERR_NullArgs;
 
    auto channel = Self->GetChannel(Handle);
-   if (channel->Sample.StreamID) channel->Sample.StreamLength = Length;
-   else channel->Sample.SampleLength = Length;
+   if (channel->Sample.StreamID) channel->Sample.StreamLength = F2T(Length);
+   else channel->Sample.SampleLength = F2T(Length);
    return ERR_Okay;
 }
 
 //********************************************************************************************************************
-// SetVolume: Sets the volume of a specific channel (0 - 100).
+// SetVolume: Sets the volume of a specific channel (0 - 1.0).
 
-static ERROR COMMAND_SetVolume(extAudio *Self, LONG Handle, LONG Volume)
+static ERROR COMMAND_SetVolume(extAudio *Self, LONG Handle, DOUBLE Volume)
 {
    parasol::Log log("AudioCommand");
 
-   log.trace("SetVolume($%.8x, %d)", Handle, Volume);
+   log.trace("SetVolume($%.8x, %.2f)", Handle, Volume);
 
    if (!Handle) return ERR_NullArgs;
 
    auto channel = Self->GetChannel(Handle);
-   if (Volume > 1000) channel->Volume = 1000;
+   if (Volume > 1.0) channel->Volume = 1.0;
    else if (Volume < 0) channel->Volume = 0;
    else channel->Volume = Volume;
    SetInternalVolume(Self, channel);

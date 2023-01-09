@@ -34,7 +34,7 @@
       <param type="DOUBLE" name="Volume">Desired volume, between 0 and 100.</param>
     </input>
     <description>
-<p>The default volume for the current task can be adjusted by calling this function.  The volume is expressed as a percentage between 0 and 100 - if it is set to a value outside of this range then no adjustment is made to the current volume.</p>
+<p>The default volume for the current task can be adjusted by calling this function.  The volume is expressed as a value between 0 and 1.0.  If it is outside of this range then no adjustment is made to the current volume.</p>
     </description>
     <result type="DOUBLE">The previous volume setting is returned by this function, regardless of whether the volume setting is successful or not.</result>
   </function>
@@ -186,16 +186,16 @@
   <structs>
     <struct name="AudioChannel" comment="Audio channel structure">
       <field name="Sample" type="struct AudioSample">Sample structure</field>
+      <field name="LVolume" type="DOUBLE">Current left speaker volume (0 - 1.0)</field>
+      <field name="RVolume" type="DOUBLE">Current right speaker volume (0 - 1.0)</field>
+      <field name="LVolumeTarget" type="DOUBLE">Volume target when fading or ramping</field>
+      <field name="RVolumeTarget" type="DOUBLE">Volume target when fading or ramping</field>
       <field name="SoundID" type="OBJECTID">ID of the sound object set on this channel</field>
       <field name="SampleHandle" type="LONG">Internal handle reference</field>
       <field name="Flags" type="LONG" lookup="CHF">Special flags</field>
       <field name="Position" type="ULONG">Current playing/mixing position</field>
       <field name="Frequency" type="ULONG">Playback frequency</field>
       <field name="PositionLow" type="UWORD">Playing position, lower bits</field>
-      <field name="LVolume" type="WORD">Current left speaker volume (0 - 100)</field>
-      <field name="RVolume" type="WORD">Current right speaker volume (0 - 100)</field>
-      <field name="LVolumeTarget" type="WORD">Volume target when fading or ramping</field>
-      <field name="RVolumeTarget" type="WORD">Volume target when fading or ramping</field>
       <field name="Volume" type="WORD">Playing volume (0-100)</field>
       <field name="Priority" type="BYTE">Priority of the sound that has been assigned to this channel</field>
       <field name="State" type="BYTE" lookup="CHS">Channel state</field>

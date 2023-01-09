@@ -162,11 +162,11 @@
     <method>
       <name>BufferCommand</name>
       <comment>Sends instructions to the audio mixer.</comment>
-      <prototype>ERROR sndBufferCommand(OBJECTPTR Object, LONG Command, LONG Handle, LONG Data)</prototype>
+      <prototype>ERROR sndBufferCommand(OBJECTPTR Object, LONG Command, LONG Handle, DOUBLE Data)</prototype>
       <input>
         <param type="LONG" name="Command" lookup="CMD">The ID of the command that you want to execute.</param>
         <param type="LONG" name="Handle">Refers to the channel that the command is to be executed against (see the OpenChannels method for information).</param>
-        <param type="LONG" name="Data">Special data value relevant to the command being executed.</param>
+        <param type="DOUBLE" name="Data">Optional data value relevant to the command being executed.</param>
       </input>
       <description>
 <p>BufferCommand sends command sequences to an audio object for progressive execution.  This playback method is ideal for music sequencers or any situation requiring audio commands to be executed at precise intervals.</p>
@@ -272,11 +272,11 @@ will execute five batches per second.
         <param type="LONG" name="Index">The index of the mixer that you want to set.</param>
         <param type="CSTRING" name="Name">If the correct index number is unknown, the name of the mixer may be set here.</param>
         <param type="LONG" name="Flags" lookup="SVF">Optional flags.</param>
-        <param type="DOUBLE" name="Volume">The volume to set for the mixer.  Ranges between 0 - 100%.  Set to -1 if you do not want to adjust the current volume.</param>
+        <param type="DOUBLE" name="Volume">The volume to set for the mixer.  Ranges between 0 - 1.0.  Set to -1 if you do not want to adjust the current volume.</param>
       </input>
       <description>
-<p>To change volume and mixer levels, use the SetVolume method.  You can make adjustments to any of the available mixers and for different channels per mixer - for instance you may set different volumes for left and right speakers.  Support is also provided for special options, such as muting.</p>
-<p>To set the volume for a mixer, you need to know its index (by scanning the <field>VolumeCtl</field> field) or you can set its name (to change the Master volume, use a name of <code>Master</code>).  A channel needs to be specified, or you can use <code>CHN_ALL</code> to synchronise the volume for all channels.  The new mixer value is set in the Volume field.  Optional flags may be set as follows:</p>
+<p>To change volume and mixer levels, use the SetVolume method.  It is possible to make adjustments to any of the available mixers and for different channels per mixer - for instance you may set different volumes for left and right speakers.  Support is also provided for special options, such as muting.</p>
+<p>To set the volume for a mixer, use its index (by scanning the <field>VolumeCtl</field> field) or set its name (to change the Master volume, use a name of <code>Master</code>).  A channel needs to be specified, or use <code>CHN_ALL</code> to synchronise the volume for all channels.  The new mixer value is set in the Volume field.  Optional flags may be set as follows:</p>
 <types lookup="SVF"/>
       </description>
       <result>
@@ -350,7 +350,7 @@ will execute five batches per second.
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The MasterVolume field controls the amount of volume applied to all of the audio channels.  Volume is expressed as a percentage, with 0% being no volume and 100% being maximum volume.</p>
+<p>The MasterVolume field controls the amount of volume applied to all of the audio channels.  Volume is expressed as a value between 0 and 1.0.</p>
       </description>
     </field>
 

@@ -23,8 +23,8 @@ function testSequentialPlayback()
 
    local time_taken = mSys.preciseTime() - time
 
-   assert(time_taken >= 480000, 'Sound sample played faster than the anticipated time scale.')
-   assert(time_taken <  550000, 'Sound sample played longer than the anticipated time scale.')
+   assert(time_taken >= 480000, 'Sound sample played faster than the anticipated time scale: ' .. time_taken)
+   assert(time_taken <  550000, 'Sound sample played longer than the anticipated time scale: ' .. time_taken)
 
    -- Second sample
 
@@ -43,8 +43,8 @@ function testSequentialPlayback()
 
    time_taken = mSys.preciseTime() - time
 
-   assert(time_taken >= 480000, 'Second sound sample played faster than the anticipated time scale.')
-   assert(time_taken <  550000, 'Second sound sample played longer than the anticipated time scale.')
+   assert(time_taken >= 480000, 'Second sound sample played faster than the anticipated time scale: ' .. time_taken)
+   assert(time_taken <  550000, 'Second sound sample played longer than the anticipated time scale: ' .. time_taken)
 
    print('Time taken: ' .. time_taken)
 end

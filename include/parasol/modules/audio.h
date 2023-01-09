@@ -128,25 +128,6 @@ class objSound;
 #define CHS_RELEASED 3
 #define CHS_FADE_OUT 4
 
-typedef struct {
-   ULONG numCopyBytes;     // number of bytes to copy
-   ULONG *relocTable;      // relocation table
-   ULONG numRelocEntries;  // number of relocation table entries
-} MixLoopRelocInfo;
-
-typedef struct {
-   ULONG mainLoopAlign;
-   ULONG mainLoopRepeat;
-   void (*mixLoop)(ULONG numSamples, LONG nextSampleOffset);
-   void (*mainMixLoop)(ULONG numSamples, LONG nextSampleOffset);
-} MixRoutine;
-
-typedef struct {
-   const MixRoutine routines[5];
-} MixRoutineSet;
-
-#define MAX_CHANNELSETS 8
-#define DEFAULT_BUFFER_SIZE 8096 // Measured in samples, not bytes
 struct AudioSample {
    UBYTE *  Data;        // Private.  Pointer to the sample data.
    OBJECTID StreamID;    // Reference to an object to use for streaming
@@ -169,16 +150,16 @@ struct AudioSample {
 
 struct AudioChannel {
    struct AudioSample Sample;    // Sample structure
+   DOUBLE   LVolume;             // Current left speaker volume (0 - 1.0)
+   DOUBLE   RVolume;             // Current right speaker volume (0 - 1.0)
+   DOUBLE   LVolumeTarget;       // Volume target when fading or ramping
+   DOUBLE   RVolumeTarget;       // Volume target when fading or ramping
    OBJECTID SoundID;             // ID of the sound object set on this channel
    LONG     SampleHandle;        // Internal handle reference
    LONG     Flags;               // Special flags
    ULONG    Position;            // Current playing/mixing position
    ULONG    Frequency;           // Playback frequency
    UWORD    PositionLow;         // Playing position, lower bits
-   WORD     LVolume;             // Current left speaker volume (0 - 100)
-   WORD     RVolume;             // Current right speaker volume (0 - 100)
-   WORD     LVolumeTarget;       // Volume target when fading or ramping
-   WORD     RVolumeTarget;       // Volume target when fading or ramping
    WORD     Volume;              // Playing volume (0-100)
    BYTE     Priority;            // Priority of the sound that has been assigned to this channel
    BYTE     State;               // Channel state
@@ -250,7 +231,7 @@ struct sndOpenChannels { LONG Total; LONG Commands; LONG Result;  };
 struct sndCloseChannels { LONG Handle;  };
 struct sndAddSample { LONG SampleFormat; APTR Data; LONG DataSize; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
 struct sndRemoveSample { LONG Handle;  };
-struct sndBufferCommand { LONG Command; LONG Handle; LONG Data;  };
+struct sndBufferCommand { LONG Command; LONG Handle; DOUBLE Data;  };
 struct sndAddStream { CSTRING Path; OBJECTID ObjectID; LONG SeekStart; LONG SampleFormat; LONG SampleLength; LONG BufferLength; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
 struct sndBeep { LONG Pitch; LONG Duration; LONG Volume;  };
 struct sndSetVolume { LONG Index; CSTRING Name; LONG Flags; DOUBLE Volume;  };
@@ -279,7 +260,7 @@ INLINE ERROR sndRemoveSample(APTR Ob, LONG Handle) {
    return(Action(MT_SndRemoveSample, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sndBufferCommand(APTR Ob, LONG Command, LONG Handle, LONG Data) {
+INLINE ERROR sndBufferCommand(APTR Ob, LONG Command, LONG Handle, DOUBLE Data) {
    struct sndBufferCommand args = { Command, Handle, Data };
    return(Action(MT_SndBufferCommand, (OBJECTPTR)Ob, &args));
 }

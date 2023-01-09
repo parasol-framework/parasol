@@ -48,7 +48,7 @@ MODULE_COREBASE;
 static OBJECTPTR glAudioModule = NULL;
 static OBJECTPTR clAudio = 0;
 static OBJECTID glAudioID = 0;
-static DOUBLE glGlobalVolume = 80;
+static DOUBLE glGlobalVolume = 0.8;
 static DOUBLE glTaskVolume = 1.0;
 static std::unordered_map<OBJECTID, LONG> glSoundChannels;
 
@@ -60,12 +60,11 @@ static FLOAT MixLeftVolFloat, MixRightVolFloat;
 static LONG  MixSrcPos, MixStep;
 static UBYTE *glMixDest = NULL;
 static UBYTE *MixSample = NULL;
-static FLOAT *ByteFloatTable = NULL;
 static APTR glMixBuffer = NULL;    // DSM mixing buffer. Play() writes the mixed data here. Post-processing is usually necessary.
-extern const MixRoutineSet MixMonoFloat;
-extern const MixRoutineSet MixStereoFloat;
-extern const MixRoutineSet MixMonoFloatInterp;
-extern const MixRoutineSet MixStereoFloatInterp;
+extern MixRoutine MixMonoFloat[5];
+extern MixRoutine MixStereoFloat[5];
+extern MixRoutine MixMonoFloatInterp[5];
+extern MixRoutine MixStereoFloatInterp[5];
 static LONG glMaxSoundChannels = 8;
 
 #ifdef _WIN32
@@ -76,9 +75,8 @@ LONG dsPlay(extAudio *);
 void dsSetVolume(float);
 #endif
 
-LONG MixData(extAudio *, ULONG, void *);
+LONG mix_data(extAudio *, LONG, void *);
 ERROR GetMixAmount(extAudio *, LONG *);
-static LONG SampleShift(LONG);
 static bool handle_sample_end(extAudio *, struct AudioChannel *);
 ERROR add_audio_class(void);
 ERROR add_sound_class(void);
@@ -92,7 +90,7 @@ static ERROR init_audio(extAudio *);
 static void free_alsa(extAudio *);
 static ERROR DropMixAmount(extAudio *, LONG);
 
-static WORD glAlsaConvert[6] = {
+static const WORD glAlsaConvert[6] = {
    SND_MIXER_SCHN_FRONT_LEFT,   // Conversion table must follow the CHN_ order
    SND_MIXER_SCHN_FRONT_RIGHT,
    SND_MIXER_SCHN_FRONT_CENTER,
@@ -107,6 +105,22 @@ ERROR DropMixAmount(extAudio *, LONG);
 #define MixLeft(a) (((100 * (LARGE)Self->OutputRate) / ((a) * 40)) + 1) & 0xfffffffe;
 
 //********************************************************************************************************************
+// Sample shift - value used for converting total data size down to samples.
+
+inline const LONG sample_shift(const LONG sampleType)
+{
+   switch (sampleType) {
+      case SFM_U8_BIT_STEREO:
+      case SFM_S16_BIT_MONO:
+         return 1;
+
+      case SFM_S16_BIT_STEREO:
+         return 2;
+   }
+   return 0;
+}
+
+//********************************************************************************************************************
 
 struct BufferCommand {
    WORD CommandID;
@@ -116,15 +130,15 @@ struct BufferCommand {
 static ERROR COMMAND_Continue(extAudio *, LONG);
 static ERROR COMMAND_FadeIn(extAudio *, LONG);
 static ERROR COMMAND_FadeOut(extAudio *, LONG);
-static ERROR COMMAND_Play(extAudio *, LONG, LONG);
-static ERROR COMMAND_SetFrequency(extAudio *, LONG, ULONG);
-static ERROR COMMAND_Mute(extAudio *, LONG, LONG);
-static ERROR COMMAND_SetLength(extAudio *, LONG, LONG);
-static ERROR COMMAND_SetPan(extAudio *, LONG, LONG);
-static ERROR COMMAND_SetPosition(extAudio *, LONG, LONG);
-static ERROR COMMAND_SetRate(extAudio *, LONG, LONG);
-static ERROR COMMAND_SetSample(extAudio *, LONG, LONG);
-static ERROR COMMAND_SetVolume(extAudio *, LONG, LONG);
+static ERROR COMMAND_Play(extAudio *, LONG, DOUBLE);
+static ERROR COMMAND_SetFrequency(extAudio *, LONG, DOUBLE);
+static ERROR COMMAND_Mute(extAudio *, LONG, DOUBLE);
+static ERROR COMMAND_SetLength(extAudio *, LONG, DOUBLE);
+static ERROR COMMAND_SetPan(extAudio *, LONG, DOUBLE);
+static ERROR COMMAND_SetPosition(extAudio *, LONG, DOUBLE);
+static ERROR COMMAND_SetRate(extAudio *, LONG, DOUBLE);
+static ERROR COMMAND_SetSample(extAudio *, LONG, DOUBLE);
+static ERROR COMMAND_SetVolume(extAudio *, LONG, DOUBLE);
 static ERROR COMMAND_Stop(extAudio *, LONG);
 static ERROR COMMAND_StopLooping(extAudio *, LONG);
 
@@ -229,8 +243,7 @@ static LONG sndSetChannels(LONG Total)
 SetTaskVolume: Set the default volume for the task (not global)
 
 The default volume for the current task can be adjusted by calling this function.  The volume is expressed as a
-percentage between 0 and 100 - if it is set to a value outside of this range then no adjustment is made to the current
-volume.
+value between 0 and 1.0.  If it is outside of this range then no adjustment is made to the current volume.
 
 -INPUT-
 double Volume: Desired volume, between 0 and 100.
@@ -242,12 +255,12 @@ double: The previous volume setting is returned by this function, regardless of 
 
 static DOUBLE sndSetTaskVolume(DOUBLE Volume)
 {
-   if ((Volume < 0) or (Volume > 100)) {
-      return glTaskVolume * 100.0;
+   if ((Volume < 0) or (Volume > 1.0)) {
+      return glTaskVolume;
    }
    else {
       auto old = glTaskVolume;
-      glTaskVolume = Volume * (1.0/100.0);
+      glTaskVolume = Volume;
 
       #ifdef _WIN32
          dsSetVolume(Volume);
@@ -255,16 +268,15 @@ static DOUBLE sndSetTaskVolume(DOUBLE Volume)
 
       if (!glAudioID) {
          LONG count = 1;
-         FindObject("SystemAudio", ID_AUDIO, FOF_INCLUDE_SHARED, &glAudioID, &count);
+         FindObject("SystemAudio", ID_AUDIO, 0, &glAudioID, &count);
       }
 
       if (glAudioID) {
-         extAudio *audio;
-         if (!AccessObject(glAudioID, 3000, &audio)) {
+         parasol::ScopedObjectLock<extAudio> audio(glAudioID, 3000);
+         if (audio.granted()) {
             for (LONG i=0; i < ARRAYSIZE(audio->Channels); i++) {
                audio->Channels[i].TaskVolume = glTaskVolume;
             }
-            ReleaseObject(audio);
          }
       }
 

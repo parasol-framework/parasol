@@ -250,7 +250,7 @@ snd.acActivate()
       <access read="R" write="S">Read/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The Pan field adjusts the "horizontal position" of a sample that is being played through stereo speakers. The default value for this field is zero, which plays the sound through both speakers at an equal level.  The minimum value is -100, which forces play through the left speaker and the maximum value is 100, which forces play through the right speaker.</p>
+<p>The Pan field adjusts the "horizontal position" of a sample that is being played through stereo speakers. The default value for this field is zero, which plays the sound through both speakers at an equal level.  The minimum value is -1.0 to force play through the left speaker and the maximum value is 1.0 for the right speaker.</p>
       </description>
     </field>
 
@@ -321,7 +321,7 @@ snd.acActivate()
       <access read="R" write="S">Read/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The field specifies the volume of a sound, which lies in the range 0 - 100%.  A volume of zero will not be heard, while a volume of 100 is the loudest.  Setting the field during sample playback will dynamically alter the volume.</p>
+<p>The field specifies the volume of a sound in the range 0 - 1.0 (low to high).  Setting this field during sample playback will dynamically alter the volume.</p>
       </description>
     </field>
 
