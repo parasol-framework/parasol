@@ -163,7 +163,7 @@ void SeekData(extSound *Self, DOUBLE Offset) {
 }
 
 void SeekZero(extSound *Self) {
-   struct acSeek seek = { (DOUBLE)Self->prvDataOffset, SEEK_START };
+   struct acSeek seek = { (DOUBLE)Self->DataOffset, SEEK_START };
    Action(AC_Seek, Self->File, &seek);
 }
 #endif

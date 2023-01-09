@@ -161,7 +161,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
 
 #ifdef _WIN32
 
-   if (Self->prvWAVE) {
+   if (Self->WAVE) {
       // Set platform dependent playback parameters
 
       SOUND_SET_Playback(Self, Self->Playback);
@@ -178,8 +178,8 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
       if (!SubscribeTimer(0.25, &call, &Self->Timer)) {
          // Play the audio buffer
 
-         if (Self->Flags & SDF_LOOP) sndPlay((PlatformData *)Self->prvPlatformData, TRUE, Self->Position);
-         else sndPlay((PlatformData *)Self->prvPlatformData, FALSE, Self->Position);
+         if (Self->Flags & SDF_LOOP) sndPlay((PlatformData *)Self->PlatformData, TRUE, Self->Position);
+         else sndPlay((PlatformData *)Self->PlatformData, FALSE, Self->Position);
 
          return ERR_Okay;
       }
@@ -284,7 +284,7 @@ static ERROR SOUND_Deactivate(extSound *Self, APTR Void)
 
 #ifdef _WIN32
    if (!Self->Handle) {
-      sndStop((PlatformData *)Self->prvPlatformData);
+      sndStop((PlatformData *)Self->PlatformData);
       return ERR_Okay;
    }
 #endif
@@ -317,9 +317,9 @@ static ERROR SOUND_Disable(extSound *Self, APTR Void)
 
 #ifdef _WIN32
    if (!Self->Handle) {
-      Self->Position = sndGetPosition((PlatformData *)Self->prvPlatformData);
+      Self->Position = sndGetPosition((PlatformData *)Self->PlatformData);
       log.msg("Position: %d", Self->Position);
-      sndStop((PlatformData *)Self->prvPlatformData);
+      sndStop((PlatformData *)Self->PlatformData);
       return ERR_Okay;
    }
 #endif
@@ -351,8 +351,8 @@ static ERROR SOUND_Enable(extSound *Self, APTR Void)
 
    if (!Self->Handle) {
       log.msg("Playing back from position %d.", Self->Position);
-      if (Self->Flags & SDF_LOOP) sndPlay((PlatformData *)Self->prvPlatformData, TRUE, Self->Position);
-      else sndPlay((PlatformData *)Self->prvPlatformData, FALSE, Self->Position);
+      if (Self->Flags & SDF_LOOP) sndPlay((PlatformData *)Self->PlatformData, TRUE, Self->Position);
+      else sndPlay((PlatformData *)Self->PlatformData, FALSE, Self->Position);
       return ERR_Okay;
    }
 
@@ -381,7 +381,7 @@ static ERROR SOUND_Free(extSound *Self, APTR Void)
    }
 
 #ifdef _WIN32
-   if (!Self->Handle) sndFree((PlatformData *)Self->prvPlatformData);
+   if (!Self->Handle) sndFree((PlatformData *)Self->PlatformData);
 #endif
 
    Self->deactivate();
@@ -394,10 +394,10 @@ static ERROR SOUND_Free(extSound *Self, APTR Void)
       }
    }
 
-   if (Self->prvPath)        { FreeResource(Self->prvPath); Self->prvPath = NULL; }
-   if (Self->prvDescription) { FreeResource(Self->prvDescription); Self->prvDescription = NULL; }
-   if (Self->prvDisclaimer)  { FreeResource(Self->prvDisclaimer); Self->prvDisclaimer = NULL; }
-   if (Self->prvWAVE)        { FreeResource(Self->prvWAVE); Self->prvWAVE = NULL; }
+   if (Self->Path)        { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->Description) { FreeResource(Self->Description); Self->Description = NULL; }
+   if (Self->Disclaimer)  { FreeResource(Self->Disclaimer); Self->Disclaimer = NULL; }
+   if (Self->WAVE)        { FreeResource(Self->WAVE); Self->WAVE = NULL; }
    if (Self->File)           { acFree(Self->File); Self->File = NULL; }
    if (Self->StreamFileID)   { acFree(Self->StreamFileID); Self->StreamFileID = 0; }
 
@@ -488,10 +488,10 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    // Load the sound file's header and test it to see if it matches our supported file format.
 
    if ((Self->File = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_APPROXIMATE)))) {
-      Self->File->read(Self->prvHeader, (LONG)sizeof(Self->prvHeader));
+      Self->File->read(Self->Header, (LONG)sizeof(Self->Header));
 
-      if ((StrCompare((CSTRING)Self->prvHeader, "RIFF", 4, STR_CASE) != ERR_Okay) or
-          (StrCompare((CSTRING)Self->prvHeader + 8, "WAVE", 4, STR_CASE) != ERR_Okay)) {
+      if ((StrCompare((CSTRING)Self->Header, "RIFF", 4, STR_CASE) != ERR_Okay) or
+          (StrCompare((CSTRING)Self->Header + 8, "WAVE", 4, STR_CASE) != ERR_Okay)) {
          if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
          return ERR_NoSupport;
       }
@@ -507,9 +507,9 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    if (flReadLE(Self->File, &id)) return ERR_Read; // Contains the characters "fmt "
    if (flReadLE(Self->File, &len)) return ERR_Read; // Length of data in this chunk
 
-   if (!AllocMemory(len, MEM_DATA, &Self->prvWAVE)) {
+   if (!AllocMemory(len, MEM_DATA, &Self->WAVE)) {
       LONG result;
-      if (Self->File->read(Self->prvWAVE, len, &result) or (result != len)) {
+      if (Self->File->read(Self->WAVE, len, &result) or (result != len)) {
          if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
          return log.warning(ERR_Read);
       }
@@ -521,8 +521,8 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
    // Check the format of the sound file's data
 
-   if ((Self->prvWAVE->Format != WAVE_ADPCM) and (Self->prvWAVE->Format != WAVE_RAW)) {
-      log.msg("This file's WAVE data format is not supported (type %d).", Self->prvWAVE->Format);
+   if ((Self->WAVE->Format != WAVE_ADPCM) and (Self->WAVE->Format != WAVE_RAW)) {
+      log.msg("This file's WAVE data format is not supported (type %d).", Self->WAVE->Format);
       if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
       return ERR_InvalidData;
    }
@@ -540,18 +540,18 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
    // Setup the sound structure
 
-   Self->File->get(FID_Position, &Self->prvDataOffset);
+   Self->File->get(FID_Position, &Self->DataOffset);
 
-   Self->prvFormat      = Self->prvWAVE->Format;
-   Self->BytesPerSecond = Self->prvWAVE->AvgBytesPerSecond;
-   Self->prvAlignment   = Self->prvWAVE->BlockAlign;
-   Self->BitsPerSample  = Self->prvWAVE->BitsPerSample;
-   if (Self->prvWAVE->Channels IS 2) Self->Flags |= SDF_STEREO;
-   if (Self->Frequency <= 0) Self->Frequency = Self->prvWAVE->Frequency;
+   Self->Format      = Self->WAVE->Format;
+   Self->BytesPerSecond = Self->WAVE->AvgBytesPerSecond;
+   Self->Alignment   = Self->WAVE->BlockAlign;
+   Self->BitsPerSample  = Self->WAVE->BitsPerSample;
+   if (Self->WAVE->Channels IS 2) Self->Flags |= SDF_STEREO;
+   if (Self->Frequency <= 0) Self->Frequency = Self->WAVE->Frequency;
    if (Self->Playback <= 0)  Self->Playback  = Self->Frequency;
 
    if (Self->Flags & SDF_NOTE) {
-      Self->set(FID_Note, Self->prvNote);
+      Self->set(FID_Note, Self->Note);
       Self->Flags &= ~SDF_NOTE;
    }
 
@@ -580,11 +580,11 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    if (Self->Length > Self->BufferLength) {
       log.msg("Streaming enabled for playback.");
       Self->Flags |= SDF_STREAM;
-      strerr = sndCreateBuffer(Self, Self->prvWAVE, Self->BufferLength, Self->Length, (PlatformData *)Self->prvPlatformData, TRUE);
+      strerr = sndCreateBuffer(Self, Self->WAVE, Self->BufferLength, Self->Length, (PlatformData *)Self->PlatformData, TRUE);
    }
    else {
       Self->BufferLength = Self->Length;
-      strerr = sndCreateBuffer(Self, Self->prvWAVE, Self->BufferLength, Self->Length, (PlatformData *)Self->prvPlatformData, FALSE);
+      strerr = sndCreateBuffer(Self, Self->WAVE, Self->BufferLength, Self->Length, (PlatformData *)Self->PlatformData, FALSE);
    }
 
    if (strerr) {
@@ -697,9 +697,9 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
       // Load the sound file's header and test it to see if it matches our supported file format.
 
       if ((Self->File = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_APPROXIMATE)))) {
-         if (!Self->File->read(Self->prvHeader, sizeof(Self->prvHeader))) {
-            if ((StrCompare((CSTRING)Self->prvHeader, "RIFF", 4, STR_CASE) != ERR_Okay) or
-                (StrCompare((CSTRING)Self->prvHeader + 8, "WAVE", 4, STR_CASE) != ERR_Okay)) {
+         if (!Self->File->read(Self->Header, sizeof(Self->Header))) {
+            if ((StrCompare((CSTRING)Self->Header, "RIFF", 4, STR_CASE) != ERR_Okay) or
+                (StrCompare((CSTRING)Self->Header + 8, "WAVE", 4, STR_CASE) != ERR_Okay)) {
                if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
                return ERR_NoSupport;
             }
@@ -720,8 +720,8 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
       flReadLE(Self->File, &id); // Contains the characters "fmt "
       flReadLE(Self->File, &len); // Length of data in this chunk
 
-      if (!AllocMemory(len, MEM_DATA, &Self->prvWAVE)) {
-         if (Self->File->read(Self->prvWAVE, len, &result) or (result < len)) {
+      if (!AllocMemory(len, MEM_DATA, &Self->WAVE)) {
+         if (Self->File->read(Self->WAVE, len, &result) or (result < len)) {
             if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
             log.warning("Failed to read WAVE format header (got %d, expected %d)", result, len);
             return ERR_Read;
@@ -734,8 +734,8 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
       // Check the format of the sound file's data
 
-      if ((Self->prvWAVE->Format != WAVE_ADPCM) and (Self->prvWAVE->Format != WAVE_RAW)) {
-         log.warning("This file's WAVE data format is not supported (type %d).", Self->prvWAVE->Format);
+      if ((Self->WAVE->Format != WAVE_ADPCM) and (Self->WAVE->Format != WAVE_RAW)) {
+         log.warning("This file's WAVE data format is not supported (type %d).", Self->WAVE->Format);
          if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
          return ERR_InvalidData;
       }
@@ -770,18 +770,18 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
       flReadLE(Self->File, &Self->Length); // Length of audio data in this chunk
 
-      Self->File->get(FID_Position, &Self->prvDataOffset);
+      Self->File->get(FID_Position, &Self->DataOffset);
 
-      Self->prvFormat      = Self->prvWAVE->Format;
-      Self->BytesPerSecond = Self->prvWAVE->AvgBytesPerSecond;
-      Self->prvAlignment   = Self->prvWAVE->BlockAlign;
-      Self->BitsPerSample  = Self->prvWAVE->BitsPerSample;
-      if (Self->prvWAVE->Channels IS 2) Self->Flags |= SDF_STEREO;
-      if (Self->Frequency <= 0) Self->Frequency = Self->prvWAVE->Frequency;
+      Self->Format      = Self->WAVE->Format;
+      Self->BytesPerSecond = Self->WAVE->AvgBytesPerSecond;
+      Self->Alignment   = Self->WAVE->BlockAlign;
+      Self->BitsPerSample  = Self->WAVE->BitsPerSample;
+      if (Self->WAVE->Channels IS 2) Self->Flags |= SDF_STEREO;
+      if (Self->Frequency <= 0) Self->Frequency = Self->WAVE->Frequency;
       if (Self->Playback <= 0)  Self->Playback  = Self->Frequency;
 
       if (Self->Flags & SDF_NOTE) {
-         SOUND_SET_Note(Self, Self->prvNoteString);
+         SOUND_SET_Note(Self, Self->NoteString);
          Self->Flags &= ~SDF_NOTE;
       }
 
@@ -798,10 +798,10 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
       // Determine the sample type
 
       sampleformat = 0;
-      if ((Self->prvWAVE->Channels IS 1) and (Self->BitsPerSample IS 8)) sampleformat = SFM_U8_BIT_MONO;
-      else if ((Self->prvWAVE->Channels IS 2) and (Self->BitsPerSample IS 8))  sampleformat = SFM_U8_BIT_STEREO;
-      else if ((Self->prvWAVE->Channels IS 1) and (Self->BitsPerSample IS 16)) sampleformat = SFM_S16_BIT_MONO;
-      else if ((Self->prvWAVE->Channels IS 2) and (Self->BitsPerSample IS 16)) sampleformat = SFM_S16_BIT_STEREO;
+      if ((Self->WAVE->Channels IS 1) and (Self->BitsPerSample IS 8)) sampleformat = SFM_U8_BIT_MONO;
+      else if ((Self->WAVE->Channels IS 2) and (Self->BitsPerSample IS 8))  sampleformat = SFM_U8_BIT_STEREO;
+      else if ((Self->WAVE->Channels IS 1) and (Self->BitsPerSample IS 16)) sampleformat = SFM_S16_BIT_MONO;
+      else if ((Self->WAVE->Channels IS 2) and (Self->BitsPerSample IS 16)) sampleformat = SFM_S16_BIT_STEREO;
 
       if (!sampleformat) {
          if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
@@ -846,9 +846,9 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
             stream.LoopSize = 0;
          }
 
-         stream.Path         = Self->prvPath;
+         stream.Path         = Self->Path;
          stream.ObjectID     = 0;
-         stream.SeekStart    = Self->prvDataOffset;
+         stream.SeekStart    = Self->DataOffset;
          stream.SampleFormat = sampleformat;
          stream.SampleLength = Self->Length;
          stream.BufferLength = Self->BufferLength;
@@ -922,7 +922,7 @@ static ERROR SOUND_NewObject(extSound *Self, APTR Void)
    Self->Volume      = 100;    // Playback at 100% volume level
    Self->Pan         = 0;
    Self->Playback    = 0;
-   Self->prvNote     = NOTE_C; // Standard pitch
+   Self->Note     = NOTE_C; // Standard pitch
    Self->Stream      = STREAM_SMART;
    return ERR_Okay;
 }
@@ -1063,7 +1063,7 @@ static ERROR SOUND_GET_Active(extSound *Self, LONG *Value)
 #ifdef _WIN32
 
    if (!Self->Handle) {
-      WORD status = sndCheckActivity((PlatformData *)Self->prvPlatformData);
+      WORD status = sndCheckActivity((PlatformData *)Self->PlatformData);
 
       if (status IS 0) *Value = FALSE;
       else if (status > 0) *Value = TRUE;
@@ -1172,8 +1172,8 @@ The buffer that is referred to by the Header field is not populated until the In
 
 static ERROR SOUND_GET_Header(extSound *Self, BYTE **Value, LONG *Elements)
 {
-   *Value = (BYTE *)Self->prvHeader;
-   *Elements = ARRAYSIZE(Self->prvHeader);
+   *Value = (BYTE *)Self->Header;
+   *Elements = ARRAYSIZE(Self->Header);
    return ERR_Okay;
 }
 
@@ -1188,7 +1188,7 @@ value by the #BytesPerSecond field.
 
 static ERROR SOUND_GET_Path(extSound *Self, STRING *Value)
 {
-   if ((*Value = Self->prvPath)) return ERR_Okay;
+   if ((*Value = Self->Path)) return ERR_Okay;
    else return ERR_FieldNotSet;
 }
 
@@ -1196,13 +1196,13 @@ static ERROR SOUND_SET_Path(extSound *Self, CSTRING Value)
 {
    parasol::Log log;
 
-   if (Self->prvPath) { FreeResource(Self->prvPath); Self->prvPath = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
    if ((Value) and (*Value)) {
       LONG i = strlen(Value);
-      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->prvPath)) {
-         for (i=0; Value[i]; i++) Self->prvPath[i] = Value[i];
-         Self->prvPath[i] = 0;
+      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->Path)) {
+         for (i=0; Value[i]; i++) Self->Path[i] = Value[i];
+         Self->Path[i] = 0;
       }
       else return log.warning(ERR_AllocMemory);
    }
@@ -1250,63 +1250,63 @@ and the lowest is 0.  Use either the `S` character or the `#` character for refe
 
 static ERROR SOUND_GET_Note(extSound *Self, CSTRING *Value)
 {
-   switch(Self->prvNote) {
-      case NOTE_C:  Self->prvNoteString[0] = 'C';
-                    Self->prvNoteString[1] = '5' + Self->Octave;
-                    Self->prvNoteString[2] = 0;
+   switch(Self->Note) {
+      case NOTE_C:  Self->NoteString[0] = 'C';
+                    Self->NoteString[1] = '5' + Self->Octave;
+                    Self->NoteString[2] = 0;
                     break;
-      case NOTE_CS: Self->prvNoteString[0] = 'C';
-                    Self->prvNoteString[1] = '5' + Self->Octave;
-                    Self->prvNoteString[2] = '#';
-                    Self->prvNoteString[3] = 0;
+      case NOTE_CS: Self->NoteString[0] = 'C';
+                    Self->NoteString[1] = '5' + Self->Octave;
+                    Self->NoteString[2] = '#';
+                    Self->NoteString[3] = 0;
                     break;
-      case NOTE_D:  Self->prvNoteString[0] = 'D';
-                    Self->prvNoteString[1] = '5' + Self->Octave;
-                    Self->prvNoteString[2] = 0;
+      case NOTE_D:  Self->NoteString[0] = 'D';
+                    Self->NoteString[1] = '5' + Self->Octave;
+                    Self->NoteString[2] = 0;
                     break;
-      case NOTE_DS: Self->prvNoteString[0] = 'D';
-                    Self->prvNoteString[1] = '5' + Self->Octave;
-                    Self->prvNoteString[2] = '#';
-                    Self->prvNoteString[3] = 0;
+      case NOTE_DS: Self->NoteString[0] = 'D';
+                    Self->NoteString[1] = '5' + Self->Octave;
+                    Self->NoteString[2] = '#';
+                    Self->NoteString[3] = 0;
                     break;
-      case NOTE_E:  Self->prvNoteString[0] = 'E';
-                    Self->prvNoteString[1] = '5' + Self->Octave;
-                    Self->prvNoteString[2] = 0;
+      case NOTE_E:  Self->NoteString[0] = 'E';
+                    Self->NoteString[1] = '5' + Self->Octave;
+                    Self->NoteString[2] = 0;
                     break;
-      case NOTE_F:  Self->prvNoteString[0] = 'F';
-                    Self->prvNoteString[1] = '5' + Self->Octave;
-                    Self->prvNoteString[2] = 0;
+      case NOTE_F:  Self->NoteString[0] = 'F';
+                    Self->NoteString[1] = '5' + Self->Octave;
+                    Self->NoteString[2] = 0;
                     break;
-      case NOTE_FS: Self->prvNoteString[0] = 'F';
-                    Self->prvNoteString[1] = '5' + Self->Octave;
-                    Self->prvNoteString[2] = '#';
-                    Self->prvNoteString[3] = 0;
+      case NOTE_FS: Self->NoteString[0] = 'F';
+                    Self->NoteString[1] = '5' + Self->Octave;
+                    Self->NoteString[2] = '#';
+                    Self->NoteString[3] = 0;
                     break;
-      case NOTE_G:  Self->prvNoteString[0] = 'G';
-                    Self->prvNoteString[1] = '5' + Self->Octave;
-                    Self->prvNoteString[2] = 0;
+      case NOTE_G:  Self->NoteString[0] = 'G';
+                    Self->NoteString[1] = '5' + Self->Octave;
+                    Self->NoteString[2] = 0;
                     break;
-      case NOTE_GS: Self->prvNoteString[0] = 'G';
-                    Self->prvNoteString[1] = '5' + Self->Octave;
-                    Self->prvNoteString[2] = '#';
-                    Self->prvNoteString[3] = 0;
+      case NOTE_GS: Self->NoteString[0] = 'G';
+                    Self->NoteString[1] = '5' + Self->Octave;
+                    Self->NoteString[2] = '#';
+                    Self->NoteString[3] = 0;
                     break;
-      case NOTE_A:  Self->prvNoteString[0] = 'A';
-                    Self->prvNoteString[1] = '5' + Self->Octave;
-                    Self->prvNoteString[2] = 0;
+      case NOTE_A:  Self->NoteString[0] = 'A';
+                    Self->NoteString[1] = '5' + Self->Octave;
+                    Self->NoteString[2] = 0;
                     break;
-      case NOTE_AS: Self->prvNoteString[0] = 'A';
-                    Self->prvNoteString[1] = '5' + Self->Octave;
-                    Self->prvNoteString[2] = '#';
-                    Self->prvNoteString[3] = 0;
+      case NOTE_AS: Self->NoteString[0] = 'A';
+                    Self->NoteString[1] = '5' + Self->Octave;
+                    Self->NoteString[2] = '#';
+                    Self->NoteString[3] = 0;
                     break;
-      case NOTE_B:  Self->prvNoteString[0] = 'B';
-                    Self->prvNoteString[1] = '5' + Self->Octave;
-                    Self->prvNoteString[2] = 0;
+      case NOTE_B:  Self->NoteString[0] = 'B';
+                    Self->NoteString[1] = '5' + Self->Octave;
+                    Self->NoteString[2] = 0;
                     break;
-      default:      Self->prvNoteString[0] = 0;
+      default:      Self->NoteString[0] = 0;
    }
-   *Value = Self->prvNoteString;
+   *Value = Self->NoteString;
 
    return ERR_Okay;
 }
@@ -1318,8 +1318,8 @@ static ERROR SOUND_SET_Note(extSound *Self, CSTRING Value)
    if (!*Value) return ERR_Okay;
 
    LONG i, note;
-   for (i=0; (Value[i]) and (i < 3); i++) Self->prvNoteString[i] = Value[i];
-   Self->prvNoteString[i] = 0;
+   for (i=0; (Value[i]) and (i < 3); i++) Self->NoteString[i] = Value[i];
+   Self->NoteString[i] = 0;
 
    CSTRING str = Value;
    if (((*Value >= '0') and (*Value <= '9')) or (*Value IS '-')) {
@@ -1351,9 +1351,9 @@ static ERROR SOUND_SET_Note(extSound *Self, CSTRING Value)
 
    // Calculate the note value
 
-   if ((Self->prvNote = note) < 0) Self->prvNote = -Self->prvNote;
-   Self->prvNote = Self->prvNote % NOTE_OCTAVE;
-   if (Self->prvNote > NOTE_B) Self->prvNote = NOTE_B;
+   if ((Self->Note = note) < 0) Self->Note = -Self->Note;
+   Self->Note = Self->Note % NOTE_OCTAVE;
+   if (Self->Note > NOTE_B) Self->Note = NOTE_B;
 
    // Calculate the octave value if the note is set outside of the normal range
 
@@ -1378,13 +1378,13 @@ static ERROR SOUND_SET_Note(extSound *Self, CSTRING Value)
 
    // Tune the playback frequency to match the requested note
 
-   Self->Playback = (LONG)(Self->Playback * glScale[Self->prvNote]);
+   Self->Playback = (LONG)(Self->Playback * glScale[Self->Note]);
 
    // If the sound is playing, set the new playback frequency immediately
 
 #ifdef _WIN32
    if ((!Self->Handle) and (Self->initialised())) {
-      sndFrequency((PlatformData *)Self->prvPlatformData, Self->Playback);
+      sndFrequency((PlatformData *)Self->PlatformData, Self->Playback);
       return ERR_Okay;
    }
 #endif
@@ -1417,7 +1417,7 @@ static ERROR SOUND_SET_Octave(extSound *Self, LONG Value)
 {
    if ((Value < -10) or (Value > 10))
    Self->Octave = Value;
-   return Self->set(FID_Note, Self->prvNote);
+   return Self->set(FID_Note, Self->Note);
 }
 
 /*********************************************************************************************************************
@@ -1440,7 +1440,7 @@ static ERROR SOUND_SET_Pan(extSound *Self, DOUBLE Value)
 
 #ifdef _WIN32
    if ((!Self->Handle) and (Self->initialised())) {
-      sndPan((PlatformData *)Self->prvPlatformData, Self->Pan);
+      sndPan((PlatformData *)Self->PlatformData, Self->Pan);
       return ERR_Okay;
    }
 #endif
@@ -1483,7 +1483,7 @@ static ERROR SOUND_SET_Playback(extSound *Self, LONG Value)
 
 #ifdef _WIN32
    if ((!Self->Handle) and (Self->initialised())) {
-      sndFrequency((PlatformData *)Self->prvPlatformData, Self->Playback);
+      sndFrequency((PlatformData *)Self->PlatformData, Self->Playback);
       return ERR_Okay;
    }
 #endif
@@ -1513,7 +1513,7 @@ static ERROR SOUND_GET_Position(extSound *Self, LONG *Value)
 #ifdef _WIN32
 
    if (!Self->Handle) {
-      Self->Position = sndGetPosition((PlatformData *)Self->prvPlatformData);
+      Self->Position = sndGetPosition((PlatformData *)Self->PlatformData);
       *Value = Self->Position;
       return ERR_Okay;
    }
@@ -1582,7 +1582,7 @@ static ERROR SOUND_SET_Volume(extSound *Self, DOUBLE Value)
 
 #ifdef _WIN32
    if ((!Self->Handle) and (Self->initialised())) {
-      sndVolume((PlatformData *)Self->prvPlatformData, glGlobalVolume * Self->Volume * (1.0 / 100.0));
+      sndVolume((PlatformData *)Self->PlatformData, glGlobalVolume * Self->Volume * (1.0 / 100.0));
       return ERR_Okay;
    }
 #endif
@@ -1627,7 +1627,7 @@ static ERROR playback_timer(extSound *Self, LARGE Elapsed, LARGE CurrentTime)
    if ((Self->Flags & SDF_STREAM) and (!Self->Handle)) {
       // See sndStreamAudio() for further information on streaming in Win32
 
-      if (sndStreamAudio((PlatformData *)Self->prvPlatformData)) {
+      if (sndStreamAudio((PlatformData *)Self->PlatformData)) {
          // We have reached the end of the sample.  If looping is turned off, terminate the timer subscription.
 
          if (!(Self->Flags & SDF_LOOP)) {

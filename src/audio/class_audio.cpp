@@ -773,7 +773,7 @@ static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
    Self->Periods    = 4;
    Self->PeriodSize = 2048;
 
-   StrCopy("default", Self->prvDevice, sizeof(Self->prvDevice));
+   StrCopy("default", Self->Device, sizeof(Self->Device));
 
    const SystemState *state = GetSystemState();
    if ((!StrMatch(state->Platform, "Native")) or (!StrMatch(state->Platform, "Linux"))) {
@@ -1017,7 +1017,7 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
       else config->write("AUDIO", "Stereo", "FALSE");
 
 #ifdef __linux__
-      if (Self->prvDevice[0]) config->write("AUDIO", "Device", Self->prvDevice);
+      if (Self->Device[0]) config->write("AUDIO", "Device", Self->Device);
       else config->write("AUDIO", "Device", "default");
 
       if ((Self->VolumeCtl) and (Self->Flags & ADF_SYSTEM_WIDE)) {
@@ -1363,7 +1363,7 @@ The default device can always be referenced with a name of `Default`.
 
 static ERROR GET_Device(extAudio *Self, CSTRING *Value)
 {
-   *Value = Self->prvDevice;
+   *Value = Self->Device;
    return ERR_Okay;
 }
 
@@ -1372,11 +1372,11 @@ static ERROR SET_Device(extAudio *Self, CSTRING Value)
    if ((!Value) or (!*Value)) Value = "Default";
 
    size_t i;
-   for (i=0; Value[i] and i < sizeof(Self->prvDevice)-1; i++) {
-      if ((Value[i] >= 'A') and (Value[i] <= 'Z')) Self->prvDevice[i] = Value[i] - 'A' + 'a';
-      else Self->prvDevice[i] = Value[i];
+   for (i=0; Value[i] and i < sizeof(Self->Device)-1; i++) {
+      if ((Value[i] >= 'A') and (Value[i] <= 'Z')) Self->Device[i] = Value[i] - 'A' + 'a';
+      else Self->Device[i] = Value[i];
    }
-   Self->prvDevice[i] = 0;
+   Self->Device[i] = 0;
 
    return ERR_Okay;
 }
@@ -1939,8 +1939,8 @@ static void load_config(extAudio *Self)
       if (!config->read("AUDIO", "PeriodSize", &value)) SET_PeriodSize(Self, value);
 
       std::string str;
-      if (!config->read("AUDIO", "Device", str)) StrCopy(str.c_str(), Self->prvDevice, sizeof(Self->prvDevice));
-      else StrCopy("default", Self->prvDevice, sizeof(Self->prvDevice));
+      if (!config->read("AUDIO", "Device", str)) StrCopy(str.c_str(), Self->Device, sizeof(Self->Device));
+      else StrCopy("default", Self->Device, sizeof(Self->Device));
 
       Self->Flags |= ADF_STEREO;
       if (!config->read("AUDIO", "Stereo", str)) {
@@ -2048,7 +2048,7 @@ static ERROR init_audio(extAudio *Self)
    // If 'plughw:0,0' is used, we get ALSA's software mixer, which allows us to set any kind of output options.
    // If 'hw:0,0' is used, we get precise hardware information.  Otherwise stick to 'default'.
 
-   if (Self->prvDevice[0]) StrCopy(Self->prvDevice, pcm_name, sizeof(pcm_name));
+   if (Self->Device[0]) StrCopy(Self->Device, pcm_name, sizeof(pcm_name));
    else StrCopy("default", pcm_name, sizeof(pcm_name));
 
    // Convert english pcm_name to the device number
@@ -2132,7 +2132,7 @@ static ERROR init_audio(extAudio *Self)
 
                            if (voltotal > volmax) {
                               volmax = voltotal;
-                              StrCopy(cardid, Self->prvDevice, sizeof(Self->prvDevice));
+                              StrCopy(cardid, Self->Device, sizeof(Self->Device));
                               StrCopy(name, pcm_name, sizeof(pcm_name));
                            }
                         }

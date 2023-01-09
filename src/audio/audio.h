@@ -34,7 +34,7 @@ class extAudio : public objAudio {
    snd_output_t *sndlog;
 #endif
    LONG VolumeCtlTotal;
-   char prvDevice[28];
+   char Device[28];
 
    inline struct AudioChannel * GetChannel(LONG Handle) {
       return &this->Channels[Handle>>16].Channel[Handle & 0xffff];
@@ -44,16 +44,16 @@ class extAudio : public objAudio {
 class extSound : public objSound {
    public:
    struct KeyStore *Fields;
-   UBYTE    prvHeader[128];
-   LONG     prvFormat;         // The format of the sound data
-   LONG     prvDataOffset;     // Start of raw audio data within the source file
+   UBYTE    Header[128];
+   LONG     Format;         // The format of the sound data
+   LONG     DataOffset;     // Start of raw audio data within the source file
    TIMER    Timer;
-   STRING   prvPath;
-   STRING   prvDescription;
-   STRING   prvDisclaimer;
-   LONG     prvNote;               // Note to play back (e.g. C, C#, G...)
-   char     prvNoteString[4];
-   struct WAVEFormat *prvWAVE;
-   UBYTE    prvPlatformData[128];  // Data area for holding platform/hardware specific information
-   LONG     prvAlignment;          // Byte alignment value
+   STRING   Path;
+   STRING   Description;
+   STRING   Disclaimer;
+   LONG     Note;               // Note to play back (e.g. C, C#, G...)
+   char     NoteString[4];
+   struct WAVEFormat *WAVE;
+   UBYTE    PlatformData[128];  // Data area for holding platform/hardware specific information
+   LONG     Alignment;          // Byte alignment value
 };
