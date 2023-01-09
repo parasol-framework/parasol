@@ -617,24 +617,19 @@ static ERROR AUDIO_CloseChannels(extAudio *Self, struct sndCloseChannels *Args)
 
    if ((index < 0) or (index >= ARRAYSIZE(Self->Channels))) log.warning(ERR_Args);
 
-   Self->Channels[index].OpenCount--;
+   if (Self->Channels[index].Channel)  FreeResource(Self->Channels[index].Channel);
+   if (Self->Channels[index].Commands) FreeResource(Self->Channels[index].Commands);
 
-   if (Self->Channels[index].OpenCount <= 0) {
-      if (Self->Channels[index].Channel)  FreeResource(Self->Channels[index].Channel);
-      if (Self->Channels[index].Commands) FreeResource(Self->Channels[index].Commands);
+   Self->TotalChannels -= Self->Channels[index].Total;
 
-      Self->TotalChannels -= Self->Channels[index].Total;
+   ClearMemory(&Self->Channels[index], sizeof(ChannelSet));
 
-      ClearMemory(&Self->Channels[index], sizeof(ChannelSet));
+   // If the total number of channels has been reduced to zero, clear the audio buffer output in order to
+   // immediately stop all playback.
 
-      // If the total number of channels has been reduced to zero, clear the audio buffer output in order to
-      // immediately stop all playback.
+   log.msg("Total number of channels reduced to %d.", Self->TotalChannels);
 
-      log.msg("Total number of channels reduced to %d.", Self->TotalChannels);
-
-      if (Self->TotalChannels <= 0) Action(AC_Clear, Self, NULL);
-   }
-   else log.msg("Channel retains an open count of %d.", Self->Channels[index].OpenCount);
+   if (Self->TotalChannels <= 0) acClear(Self);
 
    return ERR_Okay;
 }
@@ -842,7 +837,6 @@ To destroy allocated channels, use the #CloseChannels() method.
 
 -INPUT-
 int Total: Total of channels to allocate.
-int Key: Special key to associate with the channel allocation (optional).
 int Commands: The total number of command buffers to allocate for real-time processing.
 &int Result: The resulting channel handle is returned in this parameter.
 
@@ -863,25 +857,11 @@ static ERROR AUDIO_OpenChannels(extAudio *Self, struct sndOpenChannels *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   log.branch("Total: %d, Commands: %d, Key: $%.8x", Args->Total, Args->Commands, Args->Key);
+   log.branch("Total: %d, Commands: %d", Args->Total, Args->Commands);
 
    Args->Result = 0;
    if ((Args->Total < 0) or (Args->Total > 64) or (Args->Commands < 0) or (Args->Commands > 1024)) {
       return log.warning(ERR_OutOfRange);
-   }
-
-   // If a key is provided, scan the existing set of channels to see if that key is in use, then return the channel
-   // index for the key if found.
-
-   if (Args->Key) {
-      for (index=1; index < ARRAYSIZE(Self->Channels); index++) {
-         if ((Self->Channels[index].Key IS Args->Key) and (Self->Channels[index].Total IS Args->Total)) {
-            Self->Channels[index].OpenCount++;
-            Args->Result = index<<16;
-            log.msg("Found channels for key %d at handle $%.8x.", Args->Key, Args->Result);
-            return ERR_Okay;
-         }
-      }
    }
 
    // Allocate the channels
@@ -903,8 +883,6 @@ static ERROR AUDIO_OpenChannels(extAudio *Self, struct sndOpenChannels *Args)
    if (!AllocMemory(sizeof(AudioChannel) * total, MEM_DATA, &Self->Channels[index].Channel)) {
       Self->Channels[index].Total      = Args->Total;
       Self->Channels[index].Actual     = total;
-      Self->Channels[index].Key        = Args->Key;
-      Self->Channels[index].OpenCount  = 1;
       Self->Channels[index].TaskVolume = glTaskVolume;
 
       // Allocate the command buffer

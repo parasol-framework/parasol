@@ -198,12 +198,10 @@ struct ChannelSet {
    DOUBLE TaskVolume;
    LONG   UpdateRate;                // Update rate, measured in milliseconds
    LONG   MixLeft;                   // Amount of mix elements left before the next command-update occurs
-   LONG   Key;
    WORD   Total;                     // Total number of base channels
    WORD   Actual;                    // Total number of channels, including oversampling channels
    WORD   TotalCommands;             // Size of the command buffer
    WORD   Position;                  // Index to write the next command to
-   WORD   OpenCount;
 };
 
 struct VolumeCtl {
@@ -248,7 +246,7 @@ typedef struct WAVEFormat {
 #define MT_SndBeep -7
 #define MT_SndSetVolume -8
 
-struct sndOpenChannels { LONG Total; LONG Key; LONG Commands; LONG Result;  };
+struct sndOpenChannels { LONG Total; LONG Commands; LONG Result;  };
 struct sndCloseChannels { LONG Handle;  };
 struct sndAddSample { LONG SampleFormat; APTR Data; LONG DataSize; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
 struct sndRemoveSample { LONG Handle;  };
@@ -257,8 +255,8 @@ struct sndAddStream { CSTRING Path; OBJECTID ObjectID; LONG SeekStart; LONG Samp
 struct sndBeep { LONG Pitch; LONG Duration; LONG Volume;  };
 struct sndSetVolume { LONG Index; CSTRING Name; LONG Flags; DOUBLE Volume;  };
 
-INLINE ERROR sndOpenChannels(APTR Ob, LONG Total, LONG Key, LONG Commands, LONG * Result) {
-   struct sndOpenChannels args = { Total, Key, Commands, 0 };
+INLINE ERROR sndOpenChannels(APTR Ob, LONG Total, LONG Commands, LONG * Result) {
+   struct sndOpenChannels args = { Total, Commands, 0 };
    ERROR error = Action(MT_SndOpenChannels, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);

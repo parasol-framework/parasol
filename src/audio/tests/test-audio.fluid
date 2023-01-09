@@ -60,7 +60,7 @@ end
       init = function(Folder)
          glFolder = Folder
          glAudio = obj.new('audio', { name='SystemAudio' })
-         if not glAudio then error('Failed to create audio object.')
+         if not glAudio then error('Failed to create audio object.') end
          if glAudio.acActivate() != ERR_Okay then
             error('Failed to initialise audio server.')
          end

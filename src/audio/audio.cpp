@@ -45,10 +45,12 @@ static ERROR CMDOpen(OBJECTPTR);
 #include "module_def.c"
 
 MODULE_COREBASE;
+static OBJECTPTR glAudioModule = NULL;
 static OBJECTPTR clAudio = 0;
 static OBJECTID glAudioID = 0;
 static DOUBLE glGlobalVolume = 80;
 static DOUBLE glTaskVolume = 1.0;
+static std::unordered_map<OBJECTID, LONG> glSoundChannels;
 
 #include "audio.h"
 
@@ -173,6 +175,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    parasol::Log log;
 
    CoreBase = argCoreBase;
+   glAudioModule = argModule;
 
 #ifdef _WIN32
    {
@@ -202,6 +205,15 @@ static ERROR CMDOpen(OBJECTPTR Module)
 
 static ERROR CMDExpunge(void)
 {
+   for (auto& [id, handle] : glSoundChannels) {
+      // NB: Most Audio objects will be disposed of prior to this module being expunged.
+      if (handle) {
+         parasol::ScopedObjectLock<extAudio> audio(id, 3000);
+         if (audio.granted()) sndCloseChannels(*audio, handle);
+      }
+   }
+   glSoundChannels.clear();
+
    free_audio_class();
    free_sound_class();
    return ERR_Okay;

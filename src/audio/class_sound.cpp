@@ -37,27 +37,6 @@ struct PlatformData { void *Void; };
 
 #include "windows.h"
 
-inline ERROR sndCloseChannelsID(OBJECTID AudioID, int Handle) {
-   parasol::ScopedObjectLock<extAudio> audio(AudioID);
-   if (audio.granted()) {
-      struct sndCloseChannels close = { Handle };
-      Action(MT_SndCloseChannels, *audio, &close);
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
-}
-
-inline ERROR sndOpenChannelsID(OBJECTID AudioID, LONG Total, LONG Key, LONG Commands, LONG *Handle) {
-   parasol::ScopedObjectLock<extAudio> audio(AudioID);
-   if (audio.granted()) {
-      struct sndOpenChannels open = { Total, Key, Commands };
-      Action(MT_SndOpenChannels, *audio, &open);
-      *Handle = open.Result;
-      return ERR_Okay;
-   }
-   else return ERR_AccessObject;
-}
-
 static ERROR SOUND_GET_Active(extSound *, LONG *);
 static ERROR SOUND_GET_Position(extSound *, LONG *);
 
@@ -206,7 +185,10 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
       }
       else return ERR_Failed;
    }
-   else log.msg("A independent win32 waveform will not be used for this sample.");
+   else {
+      log.msg("A independent win32 waveform will not be used for this sample.");
+      return ERR_Okay;
+   }
 
 #endif
 
@@ -405,12 +387,13 @@ static ERROR SOUND_Free(extSound *Self, APTR Void)
    Self->deactivate();
 
    if (Self->Handle) {
-      struct sndRemoveSample remove = { Self->Handle };
-      ActionMsg(MT_SndRemoveSample, Self->AudioID, &remove);
-      Self->Handle = 0;
+      parasol::ScopedObjectLock<extAudio> audio(Self->AudioID);
+      if (audio.granted()) {
+         sndRemoveSample(*audio, Self->Handle);
+         Self->Handle = 0;
+      }
    }
 
-   if (Self->ChannelIndex)   { sndCloseChannelsID(Self->AudioID, Self->ChannelIndex); Self->ChannelIndex = 0; }
    if (Self->prvPath)        { FreeResource(Self->prvPath); Self->prvPath = NULL; }
    if (Self->prvDescription) { FreeResource(Self->prvDescription); Self->prvDescription = NULL; }
    if (Self->prvDisclaimer)  { FreeResource(Self->prvDisclaimer); Self->prvDisclaimer = NULL; }
@@ -472,19 +455,27 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    CSTRING strerr;
    ERROR error;
 
-   // Find the local audio object.  If none is available, create a new audio object to ease the developer's pain.
+   // Find the local audio object or create one to ease the developer's workload.
 
    if (!Self->AudioID) {
       if ((error = snd_init_audio(Self))) return error;
    }
 
-   // Open channels for sound sample playback.  Note that audio channels must be allocated 'locally' so that they
-   // can be tracked back to our task.
+   // Open channels for sound sample playback.
 
-   if (sndOpenChannelsID(Self->AudioID, glMaxSoundChannels, KEY_SOUNDCHANNELS + CurrentTaskID(), 0, &Self->ChannelIndex) != ERR_Okay) {
-      log.warning("Failed to open channels from Audio device.");
-      if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
-      return ERR_Failed;
+   if (!(Self->ChannelIndex = glSoundChannels[Self->AudioID])) {
+      parasol::ScopedObjectLock<objAudio> audio(Self->AudioID, 3000);
+      if (audio.granted()) {
+         if (!sndOpenChannels(*audio, glMaxSoundChannels, 0, &Self->ChannelIndex)) {
+            glSoundChannels[Self->AudioID] = Self->ChannelIndex;
+         }
+         else {
+            log.warning("Failed to open audio channels.");
+            if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
+            return ERR_Failed;
+         }
+      }
+      else return log.warning(ERR_AccessObject);
    }
 
    if ((Self->Flags & SDF_NEW) or (Self->get(FID_Path, &path) != ERR_Okay) or (!path)) {
@@ -626,7 +617,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    {
       parasol::ScopedObjectLock<extAudio> audio(Self->AudioID);
       if (audio.granted()) {
-         error = sndOpenChannels(*audio, glMaxSoundChannels, KEY_SOUNDCHANNELS + CurrentTaskID(), 0, &Self->ChannelIndex);
+         error = sndOpenChannels(*audio, glMaxSoundChannels, 0, &Self->ChannelHandle);
       }
       else error = ERR_AccessObject;
 

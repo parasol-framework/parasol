@@ -12,7 +12,7 @@ static const struct FieldDef clAudioFlags[] = {
    { NULL, 0 }
 };
 
-FDEF maOpenChannels[] = { { "Total", FD_LONG }, { "Key", FD_LONG }, { "Commands", FD_LONG }, { "Result", FD_LONG|FD_RESULT }, { 0, 0 } };
+FDEF maOpenChannels[] = { { "Total", FD_LONG }, { "Commands", FD_LONG }, { "Result", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF maCloseChannels[] = { { "Handle", FD_LONG }, { 0, 0 } };
 FDEF maAddSample[] = { { "SampleFormat", FD_LONG }, { "Data", FD_BUFFER|FD_PTR }, { "DataSize", FD_LONG|FD_BUFSIZE }, { "AudioLoop:Loop", FD_PTR|FD_STRUCT }, { "LoopSize", FD_LONG|FD_BUFSIZE }, { "Result", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF maRemoveSample[] = { { "Handle", FD_LONG }, { 0, 0 } };

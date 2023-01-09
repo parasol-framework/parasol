@@ -171,12 +171,10 @@ typedef struct {
     double TaskVolume
     int    UpdateRate       # Update rate, measured in milliseconds
     int    MixLeft          # Amount of mix elements left before the next command-update occurs
-    int    Key
     short  Total            # Total number of base channels
     short  Actual           # Total number of channels, including oversampling channels
     short  TotalCommands    # Size of the command buffer
     short  Position         # Index to write the next command to
-    short  OpenCount
   ]])
 
   struct("VolumeCtl", { }, [[
