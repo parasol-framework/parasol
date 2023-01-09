@@ -129,7 +129,7 @@ of the possible variations there are a number of sample formats, as illustrated 
 <types lookup="SFM"/>
 
 By default, all samples are assumed to be in little endian format, as supported by Intel CPU's.  If the data is in big
-endian format, or the SampleFormat value with SFM_BIG_ENDIAN.
+endian format, or the SampleFormat value with `SFM_BIG_ENDIAN`.
 
 It is also possible to supply loop information with the sample data.  The Audio class supports a number of different
 looping formats, allowing you to go beyond simple loops that repeat from the beginning of the sample.  The
@@ -146,7 +146,7 @@ The Loop1Type and Loop2Type fields alter the style of the loop.  These can be se
 &LTYPE
 
 The AddSample method may not be called directly because the audio object is often managed within a separate process.
-If you attempt to grab the audio object and call this method, it returns ERR_IllegalActionAttempt. The only safe means
+If you attempt to grab the audio object and call this method, it returns `ERR_IllegalActionAttempt`. The only safe means
 for calling this method is through the WaitMsg() function.
 
 -INPUT-
@@ -232,42 +232,35 @@ ERROR AUDIO_AddSample(extAudio *Self, struct sndAddSample *Args)
 -METHOD-
 AddStream: Adds a new sample-stream to an Audio object for channel-based playback.
 
-For an audio object to play sound samples, it must have audio samples loaded against it so that it can store them in
-its own local audio memory.  In order to load samples into an audio object you can call either the AddSample or
-AddStream methods.  For small samples under 512k you should use AddSample, while anything over that should be supported
-through AddStream.
+Use AddStream to load large sound samples to an Audio object, allowing it to play those samples on the client
+machine without over-provisioning available resources.  For small samples under 512k consider using AddSample instead.
 
 The data source used for a stream can be located either at an accessible file path (through the Path parameter),
-or you can supply a reference to a public object that has stored the data (through the Object parameter). You also need
-to set the SeekStart parameter, which refers to the byte position at which the audio data starts within the stream
-source.  The SampleLength parameter must also refer to the byte-length of the entire audio stream.
+or via an object that has stored the data (through the Object parameter). Set SeekStart to alter the byte position
+at which the audio data starts within the stream source.  The SampleLength parameter must also refer to the
+byte-length of the entire audio stream.
 
-When creating a new stream, you need to pay attention to the audio format that is being used for the sample data.
-While it is important to differentiate between simple things such as 8-bit, 16-bit, mono and stereo, you should also be
+When creating a new stream, pay attention to the audio format that is being used for the sample data.
+While it is important to differentiate between 8-bit, 16-bit, mono and stereo, you should also be
 aware of whether or not the data is little or big endian, and if the sample data consists of signed or unsigned values.
 Because of the possible variations there are a number of sample formats, as illustrated in the following table:
 
 <types lookup="SFM"/>
 
 By default, all samples are assumed to be in little endian format, as supported by Intel CPU's.  If the data is in big
-endian format, you should or the SampleFormat value with the flag `SFM_BIG_ENDIAN`.
+endian format, logical-or the SampleFormat value with the flag `SFM_BIG_ENDIAN`.
 
 It is also possible to supply loop information with the stream.  The Audio class supports a number of different looping
-formats, rather than just the 'repeat from the beginning once you reach the end' style of looping that you might
-normally find in audio systems.  The &AudioLoop structure illustrates your options:
+formats via the &AudioLoop structure:
 
 &AudioLoop
 
-There are three types of loop modes that you can specify in the LoopMode field:
+There are three types of loop modes that can be specified in the LoopMode field:
 
 &LOOP
 
 The Loop1Type and Loop2Type fields normally determine the style of the loop, however only unidirectional looping is
 currently supported for streams.  For that reason, set the type variables to either NULL or `LTYPE_UNIDIRECTIONAL`.
-
-This method may not be called directly if the audio object in question is located in a foreign task.  If you try to
-grab the audio object and call this method, it will detect the illegal usage and return ERR_IllegalActionAttempt. Thus
-the only safe way to call this method is to use the ~Core.ActionMsg() function.
 
 -INPUT-
 cstr Path: Refers to the file that contains the sample data, or NULL if you will supply an ObjectID.
@@ -354,15 +347,11 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
    sample->SampleType   = Args->SampleFormat;
    sample->SampleLength = bufferlength>>shift;
    sample->SeekStart    = Args->SeekStart;
-
-   if (Args->SampleLength > 0) sample->StreamLength = Args->SampleLength;
-   else sample->StreamLength = 0x7fffffff; // 'Infinite' stream length
-
+   sample->StreamLength = (Args->SampleLength > 0) ? Args->SampleLength : 0x7fffffff; // 'Infinite' stream length
    sample->BufferLength = bufferlength;
-
-   sample->LoopMode  = LOOP_SINGLE;
-   sample->Loop1End  = bufferlength>>shift;
-   sample->Loop1Type = LTYPE_UNIDIRECTIONAL;
+   sample->LoopMode     = LOOP_SINGLE;
+   sample->Loop1End     = bufferlength>>shift;
+   sample->Loop1Type    = LTYPE_UNIDIRECTIONAL;
 
    if (Args->Loop) {
       sample->Loop2Type    = LTYPE_UNIDIRECTIONAL;
@@ -454,49 +443,41 @@ static ERROR AUDIO_Beep(extAudio *Self, struct sndBeep *Args)
 -METHOD-
 BufferCommand: Sends instructions to the audio mixer.
 
-The BufferCommand method is provided so that you can send commands to an audio object, where they can either be
-executed immediately or stored in a sequencing buffer for progressive execution.  The method that you use depends on
-the style of playback that you need for your program.  If you are simply playing an audio sample, immediate execution
-is appropriate.  If you are writing a music player or need to execute audio commands at very precise intervals during
-playback, you need to use command sequencing.
+BufferCommand sends command sequences to an audio object for progressive execution.  This playback method is ideal for
+music sequencers or any situation requiring audio commands to be executed at precise intervals.
 
-Immediate execution is enabled by default.  This involves calling the BufferCommand method whenever you please and the
-commands will be immediately executed for you.  You need to supply the ID of the command that you wish to execute,
-indicate the channel that the command is to be executed against, and provide a special data parameter according to the
-type of command being executed.  The following commands are available:
+By default, execution of commands is immediate.  Commands are constructed from a command ID, a target channel, and an
+optional parameter dependent on the command type.  The following commands are available:
 
 <types lookup="CMD"/>
 
-Command sequencing is enabled only when you open a channel set with a large number of command buffers (refer to
-OpenChannel for details). You also need to organise your code so that it sends commands to the audio object in batches
-rather than drip-feeding commands.  Each batch of commands will be executed at a predetermined rate, as defined by you
-(e.g. every 125 milliseconds). This allows the audio object to process the command sets at regular intervals. This has
-the effect of clearing the command buffers, so you will need to keep feeding it information to make sure that there are
-no pauses in the audio playback.
+Batched sequencing is enabled when a channel set is opened with a large number of command buffers (refer to
+OpenChannel for details).  Call the BufferCommand method with `CMD_START_SEQUENCE`, then send the instructions
+before terminating with `CMD_END_SEQUENCE`.  Each individual batch of commands will be executed at a predetermined
+rate (e.g. every 125 milliseconds).  This allows the audio object to process batched commands at regular intervals.
+The client will need to regularly write information to ensure that there are no pauses in the audio playback.
 
-To send command batches, you need to call the BufferCommand method with CMD_START_SEQUENCE, then send the instructions
-before terminating with CMD_END_SEQUENCE.  You can do this as many times as you like until the command buffers are full.
-The following code illustrates how you might do this:
+The following code illustrates a basic setup for batching commands:
 
 <pre>
-if (!AccessObject(AudioID, 4, &audio)) {
+parasol::ScopedObjectLock<objAudio> audio(AudioID, 4);
+if (audio.granted()) {
    LONG cycles = 0;
-   while ((!sndBufferCommand(audio, CMD_START_SEQUENCE, Self->Channels, NULL)) and
+   while ((!sndBufferCommand(*audio, CMD_START_SEQUENCE, Self->Channels, NULL)) and
       (cycles < MAX_CYCLES)) {
 
        // Add buffered commands in this area.
        // ...
 
-      sndBufferCommand(audio, CMD_END_SEQUENCE, Self->Channels, NULL);
+      sndBufferCommand(*audio, CMD_END_SEQUENCE, Self->Channels, NULL);
       cycles++;
    }
-   ReleaseObject(audio);
 }
 </pre>
 
-To set the command sequencing rate, you need to send the CMD_SET_RATE instruction.  The amount of milliseconds that you
-specify in the Data parameter will determine the rate at which the command sets are executed.  For instance, if you set
-a rate of 200ms then a new sequence will be executed five times every second.
+The command sequencing rate is adjusted via the `CMD_SET_RATE` instruction.  The number of milliseconds specified
+in the Data parameter will determine the rate at which the command sets are executed.  For instance a rate of 200ms
+will execute five batches per second.
 
 -INPUT-
 int(CMD) Command: The ID of the command that you want to execute.
@@ -528,7 +509,6 @@ static ERROR AUDIO_BufferCommand(extAudio *Self, struct sndBufferCommand *Args)
       return ERR_Args;
    }
 
-   LONG i;
    if (Self->Channels[index].Commands) {
       // If this is the start of a sequence of commands and there is not much space in the command buffer, return an
       // overflow error.
@@ -549,15 +529,13 @@ static ERROR AUDIO_BufferCommand(extAudio *Self, struct sndBufferCommand *Args)
          return ERR_BufferOverflow;
       }
 
-      i = Self->Channels[index].Position++;
+      LONG i = Self->Channels[index].Position++;
       Self->Channels[index].Commands[i].CommandID = Args->Command;
       Self->Channels[index].Commands[i].Handle    = Args->Handle;
       Self->Channels[index].Commands[i].Data      = Args->Data;
       return ERR_Okay;
    }
-   else {
-      // Execute the command immediately
-
+   else { // Execute the command immediately
       switch (Args->Command) {
          case CMD_START_SEQUENCE: return ERR_Okay;
          case CMD_END_SEQUENCE:   return ERR_Okay;
@@ -612,10 +590,10 @@ static ERROR AUDIO_Clear(extAudio *Self, APTR Void)
 -METHOD-
 CloseChannels: Frees audio channels that have been allocated for sample playback.
 
-Use the CloseChannels method when you want to destroy a group of channels that you have previously allocated through
-the #OpenChannels() method.  Any audio commands buffered against the channels will be cleared instantly.  Any
-audio data that has already been mixed into the output buffer will remain until it plays out during the next 1 - 2
-seconds, so do not assume that stoppage will be instant.
+Use CloseChannels to destroy a group of channels that have previously been allocated through the #OpenChannels()
+method.  Any audio commands buffered against the channels will be cleared instantly.  Any audio data that has already
+been mixed into the output buffer will continue to play for 1 - 2 seconds.  If this is an issue then the volume should
+be muted at the same time.
 
 -INPUT-
 int Handle: Must refer to a channel handle returned from the #OpenChannels() method.
@@ -692,10 +670,8 @@ static ERROR AUDIO_Deactivate(extAudio *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*********************************************************************************************************************
-** Event: user_login()
-** Reload the user's audio configuration details.
-*/
+//********************************************************************************************************************
+// Reload the user's audio configuration details.
 
 static void user_login(APTR Reference, APTR Info, LONG InfoSize)
 {
@@ -713,12 +689,10 @@ static void user_login(APTR Reference, APTR Info, LONG InfoSize)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR AUDIO_Free(extAudio *Self, APTR Void)
 {
-   parasol::Log log;
-
    if (Self->Flags & ADF_AUTO_SAVE) {
       AUDIO_SaveSettings(Self, NULL);
    }
@@ -770,7 +744,7 @@ static ERROR AUDIO_Free(extAudio *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR AUDIO_Init(extAudio *Self, APTR Void)
 {
@@ -788,7 +762,7 @@ static ERROR AUDIO_Init(extAudio *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
 {
@@ -851,15 +825,8 @@ static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
 -METHOD-
 OpenChannels: Allocates audio channels that can be used for sample playback.
 
-Use the OpenChannels method when you need to open audio channels for sample playback.  Channels are allocated in sets
-that can lie between a range of 1 and 64.  There are global limits as to how many channel sets can be open at any one
-time, so it is recommended that you never call this function more than once for your process.
-
-When opening a new channel set, you can provide your own special key if your code is written in such a way that being
-able to reopen channel sets at later stages is of benefit to you.  To do this, provide a randomised number in the Key
-parameter.  The next time you call OpenChannels with the same key and number of channels, it will return the same
-allocation handle rather than creating a new set of channels.  An internal open counter will also be incremented, so
-multiple calls to #CloseChannels() will be required in order to destroy the channel allocation.
+Use the OpenChannels method to open audio channels for sample playback.  Channels are allocated in sets with a size
+range between 1 and 64.  Channel sets make it easier to segregate playback between users of the same audio object.
 
 You may also indicate to this method how many command sequencing buffers you would like to allocate for your channels.
 This is particularly useful if you are writing a digital music sequencer, or if you want to process a number of
@@ -868,10 +835,10 @@ approximately eight bytes each.
 
 The resulting handle returned from this method is an integer consisting of two parts.  The upper word uniquely
 identifies the channel set that has been provided to you, while the lower word is used to refer to specific channel
-numbers.  With this in mind, if you need to refer to specific channels when using certain functions, you can do so with
-the formula `Channel = (Handle & 0xffff0000) | ChannelNo`.
+numbers.  To refer to specific channels when using some functions, do so with the formula
+`Channel = Handle | ChannelNo`.
 
-To destroy an allocated channel set, use the #CloseChannels() method.
+To destroy allocated channels, use the #CloseChannels() method.
 
 -INPUT-
 int Total: Total of channels to allocate.
@@ -1160,7 +1127,7 @@ and for different channels per mixer - for instance you may set different volume
 is also provided for special options, such as muting.
 
 To set the volume for a mixer, you need to know its index (by scanning the #VolumeCtl field) or you can set
-its name (to change the Master volume, use a name of "Master").  A channel needs to be specified, or you can use
+its name (to change the Master volume, use a name of `Master`).  A channel needs to be specified, or you can use
 `CHN_ALL` to synchronise the volume for all channels.  The new mixer value is set in the Volume field.  Optional flags
 may be set as follows:
 
@@ -1500,8 +1467,7 @@ static ERROR GET_Mute(extAudio *Self, LONG *Value)
 {
    *Value = FALSE;
    if (Self->VolumeCtl) {
-      WORD i;
-      for (i=0; Self->VolumeCtl[i].Name[0]; i++) {
+      for (LONG i=0; Self->VolumeCtl[i].Name[0]; i++) {
          if (!StrMatch("Master", Self->VolumeCtl[i].Name)) {
             if (Self->VolumeCtl[i].Flags & VCF_MUTE) *Value = TRUE;
             break;

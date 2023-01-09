@@ -1,6 +1,5 @@
-/*****************************************************************************
-** Continue: Continues playing a sound sample after it has been stopped earlier.
-*/
+//********************************************************************************************************************
+// Continue: Continues playing a sound sample after it has been stopped earlier.
 
 static ERROR COMMAND_Continue(extAudio *Self, LONG Handle)
 {
@@ -10,7 +9,7 @@ static ERROR COMMAND_Continue(extAudio *Self, LONG Handle)
 
    if (!Handle) return ERR_NullArgs;
 
-   auto channel = GetChannel(Handle);
+   auto channel = Self->GetChannel(Handle);
 
    // Do nothing if the channel is already active
 
@@ -41,9 +40,8 @@ static ERROR COMMAND_Continue(extAudio *Self, LONG Handle)
    return ERR_Okay;
 }
 
-/*****************************************************************************
-** FadeIn: Starts fading in a channel if fadeout channels have been allocated.
-*/
+//********************************************************************************************************************
+// FadeIn: Starts fading in a channel if fadeout channels have been allocated.
 
 static ERROR COMMAND_FadeIn(extAudio *Self, LONG Handle)
 {
@@ -56,7 +54,7 @@ static ERROR COMMAND_FadeIn(extAudio *Self, LONG Handle)
 
       // Ramp back up from zero
 
-      AudioChannel *channel = GetChannel(Handle);
+      auto channel = Self->GetChannel(Handle);
       channel->LVolume = 0;
       channel->RVolume = 0;
       return SetInternalVolume(Self, channel);
@@ -64,9 +62,8 @@ static ERROR COMMAND_FadeIn(extAudio *Self, LONG Handle)
    else return ERR_Failed;
 }
 
-/*****************************************************************************
-** FadeOut: Starts fading out a channel if fadeout channels have been allocated and the channel has data being played.
-*/
+//********************************************************************************************************************
+// FadeOut: Starts fading out a channel if fadeout channels have been allocated and the channel has data being played.
 
 static ERROR COMMAND_FadeOut(extAudio *Self, LONG Handle)
 {
@@ -77,7 +74,7 @@ static ERROR COMMAND_FadeOut(extAudio *Self, LONG Handle)
    if (!Handle) return ERR_NullArgs;
    if (!(Self->Flags & ADF_OVER_SAMPLING)) return ERR_Okay;
 
-   auto channel = GetChannel(Handle);
+   auto channel = Self->GetChannel(Handle);
    auto destchannel = channel + (Self->Channels[Handle>>16].Total);
 
    if ((channel->State IS CHS_STOPPED) or (channel->State IS CHS_FINISHED) or ((channel->LVolume IS 0) and (channel->RVolume IS 0))) return ERR_Okay;
@@ -101,9 +98,8 @@ static ERROR COMMAND_FadeOut(extAudio *Self, LONG Handle)
    return ERR_Okay;
 }
 
-/*****************************************************************************
-** Mute: Use this method to mute sound channels.
-*/
+//********************************************************************************************************************
+// Mute: Use this method to mute sound channels.
 
 static ERROR COMMAND_Mute(extAudio *Self, LONG Handle, LONG Mute)
 {
@@ -113,29 +109,28 @@ static ERROR COMMAND_Mute(extAudio *Self, LONG Handle, LONG Mute)
 
    if (!Handle) return ERR_NullArgs;
 
-   auto channel = GetChannel(Handle);
+   auto channel = Self->GetChannel(Handle);
    if (Mute IS TRUE) channel->Flags |= CHF_MUTE;
    else channel->Flags &= ~CHF_MUTE;
    SetInternalVolume(Self, channel);
    return ERR_Okay;
 }
 
-/*****************************************************************************
-** Play
-*/
+//********************************************************************************************************************
+// Play
 
 static ERROR COMMAND_Play(extAudio *Self, LONG Handle, LONG Frequency)
 {
    parasol::Log log("AudioCommand");
 
    log.trace("Play($%.8x, %d)", Handle, Frequency);
-   if (!Frequency) log.traceWarning("[Play] You should specify a sample frequency.");
+   if (!Frequency) log.traceWarning("[Play] No sample frequency was specified.");
 
    if (!Handle) return ERR_NullArgs;
 
    if (Self->Flags & ADF_OVER_SAMPLING) COMMAND_FadeOut(Self, Handle);
 
-   auto channel = GetChannel(Handle);
+   auto channel = Self->GetChannel(Handle);
    channel->State     = CHS_FINISHED;    // Turn off previous sound
    channel->Frequency = Frequency;
    COMMAND_SetPosition(Self, Handle, 0); // Set playing position to the beginning of the sample
@@ -151,9 +146,8 @@ static ERROR COMMAND_Play(extAudio *Self, LONG Handle, LONG Frequency)
    return ERR_Okay;
 }
 
-/*****************************************************************************
-** SetFrequency: Sets the channel playback rate.
-*/
+//********************************************************************************************************************
+// SetFrequency: Sets the channel playback rate.
 
 static ERROR COMMAND_SetFrequency(extAudio *Self, LONG Handle, ULONG Frequency)
 {
@@ -163,14 +157,13 @@ static ERROR COMMAND_SetFrequency(extAudio *Self, LONG Handle, ULONG Frequency)
 
    if (!Handle) return ERR_NullArgs;
 
-   auto channel = GetChannel(Handle);
+   auto channel = Self->GetChannel(Handle);
    channel->Frequency = Frequency;
    return ERR_Okay;
 }
 
-/*****************************************************************************
-** SetPan: Sets the panning position of a channel.
-*/
+//********************************************************************************************************************
+// SetPan: Sets the panning position of a channel.
 
 static ERROR COMMAND_SetPan(extAudio *Self, LONG Handle, LONG Pan)
 {
@@ -180,7 +173,7 @@ static ERROR COMMAND_SetPan(extAudio *Self, LONG Handle, LONG Pan)
 
    if (!Handle) return ERR_NullArgs;
 
-   auto channel = GetChannel(Handle);
+   auto channel = Self->GetChannel(Handle);
 
    if (Pan < -100) channel->Pan = -100;
    else if (Pan > 100) channel->Pan = 100;
@@ -190,15 +183,14 @@ static ERROR COMMAND_SetPan(extAudio *Self, LONG Handle, LONG Pan)
    return ERR_Okay;
 }
 
-/*****************************************************************************
-** SetPosition: Sets the playing position from the beginning of the currently set sample.
-**
-** This command can only be executed by the task that owns the audio object.
-*/
+//********************************************************************************************************************
+// SetPosition: Sets the playing position from the beginning of the currently set sample.
+//
+// This command can only be executed by the task that owns the audio object.
 
 static ERROR COMMAND_SetPosition(extAudio *Self, LONG Handle, LONG Position)
 {
-   parasol::Log log("SetPosition");
+   parasol::Log log("AudioCommand");
    OBJECTPTR stream;
    AudioSample *sample;
    LONG bitpos;
@@ -207,7 +199,7 @@ static ERROR COMMAND_SetPosition(extAudio *Self, LONG Handle, LONG Position)
 
    if (!Handle) return ERR_NullArgs;
 
-   AudioChannel *channel = GetChannel(Handle);
+   auto channel = Self->GetChannel(Handle);
 
    // Check that sample and playing rate have been set on the channel
 
@@ -362,9 +354,8 @@ static ERROR COMMAND_SetPosition(extAudio *Self, LONG Handle, LONG Position)
    return ERR_Okay;
 }
 
-/*****************************************************************************
-** SetRate: Sets a new update rate for buffered channels.
-*/
+//********************************************************************************************************************
+// SetRate: Sets a new update rate for buffered channels.
 
 static ERROR COMMAND_SetRate(extAudio *Self, LONG Handle, LONG Rate)
 {
@@ -377,9 +368,8 @@ static ERROR COMMAND_SetRate(extAudio *Self, LONG Handle, LONG Rate)
    return ERR_Okay;
 }
 
-/*****************************************************************************
-** SetSample: Sets the sample number on a channel.
-*/
+//********************************************************************************************************************
+// SetSample: Sets the sample number on a channel.
 
 ERROR COMMAND_SetSample(extAudio *Self, LONG Handle, LONG SampleHandle)
 {
@@ -407,7 +397,7 @@ ERROR COMMAND_SetSample(extAudio *Self, LONG Handle, LONG SampleHandle)
       return ERR_Failed;
    }
 
-   auto channel = GetChannel(Handle);
+   auto channel = Self->GetChannel(Handle);
 
    if (channel->SampleHandle IS SampleHandle) return ERR_Okay;
 
@@ -417,7 +407,7 @@ ERROR COMMAND_SetSample(extAudio *Self, LONG Handle, LONG SampleHandle)
    // If the new sample has one Amiga-compatible loop and playing has ended (not released or stopped), set the new
    // sample and start playing from loop start.
 
-   AudioSample *sample = &Self->Samples[SampleHandle];
+   auto sample = &Self->Samples[SampleHandle];
    if ((sample->LoopMode IS LOOP_AMIGA) and (channel->State IS CHS_FINISHED)) {
       // Set Amiga sample and start playing.  We won't do this with interpolated mixing, as this tends to cause clicks.
 
@@ -430,9 +420,8 @@ ERROR COMMAND_SetSample(extAudio *Self, LONG Handle, LONG SampleHandle)
    return ERR_Okay;
 }
 
-/*****************************************************************************
-** SetLength: Sets the byte length of the sample playing in the channel.
-*/
+//********************************************************************************************************************
+// SetLength: Sets the byte length of the sample playing in the channel.
 
 static ERROR COMMAND_SetLength(extAudio *Self, LONG Handle, LONG Length)
 {
@@ -442,15 +431,14 @@ static ERROR COMMAND_SetLength(extAudio *Self, LONG Handle, LONG Length)
 
    if (!Handle) return ERR_NullArgs;
 
-   auto channel = GetChannel(Handle);
+   auto channel = Self->GetChannel(Handle);
    if (channel->Sample.StreamID) channel->Sample.StreamLength = Length;
    else channel->Sample.SampleLength = Length;
    return ERR_Okay;
 }
 
-/*****************************************************************************
-** SetVolume: Sets the volume of a specific channel (0 - 100).
-*/
+//********************************************************************************************************************
+// SetVolume: Sets the volume of a specific channel (0 - 100).
 
 static ERROR COMMAND_SetVolume(extAudio *Self, LONG Handle, LONG Volume)
 {
@@ -460,7 +448,7 @@ static ERROR COMMAND_SetVolume(extAudio *Self, LONG Handle, LONG Volume)
 
    if (!Handle) return ERR_NullArgs;
 
-   auto channel = GetChannel(Handle);
+   auto channel = Self->GetChannel(Handle);
    if (Volume > 1000) channel->Volume = 1000;
    else if (Volume < 0) channel->Volume = 0;
    else channel->Volume = Volume;
@@ -468,9 +456,8 @@ static ERROR COMMAND_SetVolume(extAudio *Self, LONG Handle, LONG Volume)
    return ERR_Okay;
 }
 
-/*****************************************************************************
-** Stop: Stops a channel's audio playback.
-*/
+//********************************************************************************************************************
+// Stop: Stops a channel's audio playback.
 
 ERROR COMMAND_Stop(extAudio *Self, LONG Handle)
 {
@@ -480,7 +467,7 @@ ERROR COMMAND_Stop(extAudio *Self, LONG Handle)
 
    if (!Handle) return ERR_NullArgs;
 
-   auto channel = GetChannel(Handle);
+   auto channel = Self->GetChannel(Handle);
    channel->State = CHS_STOPPED;
 
    if (Self->Flags & ADF_OVER_SAMPLING) {
@@ -490,10 +477,9 @@ ERROR COMMAND_Stop(extAudio *Self, LONG Handle)
    return ERR_Okay;
 }
 
-/*****************************************************************************
-** StopLooping: Stops a sound once it has completed playing.  This method is only useful for stopping sounds that
-** continually loop and you want to stop the loop from occurring.
-*/
+//********************************************************************************************************************
+// StopLooping: Stops a sound once it has completed playing.  This method is only useful for stopping sounds that
+// continually loop and you want to stop the loop from occurring.
 
 static ERROR COMMAND_StopLooping(extAudio *Self, LONG Handle)
 {
@@ -503,7 +489,7 @@ static ERROR COMMAND_StopLooping(extAudio *Self, LONG Handle)
 
    if (!Handle) return ERR_NullArgs;
 
-   auto channel = GetChannel(Handle);
+   auto channel = Self->GetChannel(Handle);
    if (channel->State != CHS_PLAYING) return ERR_Okay;
 
    if ((channel->Sample.LoopMode IS LOOP_SINGLE_RELEASE) or (channel->Sample.LoopMode IS LOOP_DOUBLE)) {

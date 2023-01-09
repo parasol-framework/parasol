@@ -16,9 +16,7 @@ please refer to the @Audio class.
 
 *********************************************************************************************************************/
 
-#define PRV_AUDIO
 #define PRV_AUDIO_MODULE
-#define PRV_SOUND
 
 #ifdef __linux__
  #include <sys/ioctl.h>
@@ -128,7 +126,7 @@ static ERROR COMMAND_SetVolume(extAudio *, LONG, LONG);
 static ERROR COMMAND_Stop(extAudio *, LONG);
 static ERROR COMMAND_StopLooping(extAudio *, LONG);
 
-const struct BufferCommand glCommands[] = {
+static const struct BufferCommand glCommands[] = {
    { CMD_END_SEQUENCE,   NULL },
    { CMD_CONTINUE,       (ERROR (*)(extAudio*, APTR))COMMAND_Continue },
    { CMD_FADE_IN,        (ERROR (*)(extAudio*, APTR))COMMAND_FadeIn },
@@ -333,7 +331,7 @@ static ERROR sndWaitDrivers(LONG TimeOut)
 
    snd_ctl_card_info_alloca(&info);
 
-   bool genuine = FALSE;
+   bool genuine = false;
    LONG card = -1;
    LARGE time = PreciseTime();
    while (PreciseTime() - time < (LARGE)TimeOut * 1000LL) {
@@ -342,7 +340,7 @@ static ERROR sndWaitDrivers(LONG TimeOut)
       if (card >= 0) {
          // Sound card detected.  Ignore modems, we are only interested in genuine soundcards.
 
-         genuine = FALSE;
+         genuine = false;
          while (card >= 0) {
             snprintf(name, sizeof(name), "hw:%d", card);
 

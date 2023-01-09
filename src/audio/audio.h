@@ -1,6 +1,4 @@
 
-#define GetChannel(a) &Self->Channels[(a)>>16].Channel[(a) & 0xffff];
-
 #ifdef _WIN32
 #define MIX_INTERVAL 0.02
 #else
@@ -10,12 +8,9 @@
 class extAudio : public objAudio {
    public:
    struct ChannelSet Channels[MAX_CHANNELSETS]; // Channels are grouped into sets, which are allocated on a per-task basis
-   struct AudioSample *Samples;
-   struct VolumeCtl *VolumeCtl;
+   struct AudioSample  *Samples;
+   struct VolumeCtl    *VolumeCtl;
    const MixRoutineSet *MixRoutines;
-   MEMORYID BFMemoryMID;
-   MEMORYID BufferMemoryMID;
-   MEMORYID SamplesMID;
    LONG     MixBufferSize;
    LONG     TotalSamples;
    TIMER    Timer;
@@ -38,9 +33,12 @@ class extAudio : public objAudio {
    snd_mixer_t *MixHandle;
    snd_output_t *sndlog;
 #endif
-   MEMORYID VolumeCtlMID;
    LONG VolumeCtlTotal;
    char prvDevice[28];
+
+   inline struct AudioChannel * GetChannel(LONG Handle) {
+      return &this->Channels[Handle>>16].Channel[Handle & 0xffff];
+   }
 };
 
 class extSound : public objSound {
