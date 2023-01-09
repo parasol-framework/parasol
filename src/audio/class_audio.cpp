@@ -1138,7 +1138,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
    long pmin, pmax;
 
    if (!Args) return log.warning(ERR_NullArgs);
-   if (((Args->Volume < 0) or (Args->Volume > 100)) and (Args->Volume != -1)) {
+   if (((Args->Volume < 0) or (Args->Volume > 1000)) and (Args->Volume != -1)) {
       return log.warning(ERR_OutOfRange);
    }
    if (!Self->VolumeCtl) return log.warning(ERR_NoSupport);
@@ -1160,7 +1160,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 
    if (!StrMatch("Master", Self->VolumeCtl[index].Name)) {
       if (Args->Volume != -1) {
-         glAudio->Volume = Args->Volume;
+         glGlobalVolume = Args->Volume;
          Self->MasterVolume = Args->Volume;
       }
 
@@ -1254,8 +1254,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
    if (((Args->Volume < 0) or (Args->Volume > 1000)) and (Args->Volume != -1)) {
-      log.warning("Invalid volume: %.2f", Args->Volume);
-      return ERR_OutOfRange;
+      return log.warning(ERR_OutOfRange);
    }
    if (!Self->VolumeCtl) return log.warning(ERR_NoSupport);
 
@@ -1263,9 +1262,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 
    if (Args->Name) {
       for (index=0; Self->VolumeCtl[index].Name[0]; index++) {
-         if (!StrCompare(Args->Name, Self->VolumeCtl[index].Name, 0, STR_MATCH_LEN)) {
-            break;
-         }
+         if (!StrMatch(Args->Name, Self->VolumeCtl[index].Name)) break;
       }
 
       if (!Self->VolumeCtl[index].Name[0]) return ERR_Search;

@@ -611,21 +611,21 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
       if ((error = snd_init_audio(Self))) return error;
    }
 
-   // Open channels for sound sample playback.  Note that audio channels must be allocated 'locally' so that they
-   // can be tracked back to our task.
+   // Open channels for sound sample playback.
 
-   {
-      parasol::ScopedObjectLock<extAudio> audio(Self->AudioID);
+   if (!(Self->ChannelIndex = glSoundChannels[Self->AudioID])) {
+      parasol::ScopedObjectLock<objAudio> audio(Self->AudioID, 3000);
       if (audio.granted()) {
-         error = sndOpenChannels(*audio, glMaxSoundChannels, 0, &Self->ChannelHandle);
+         if (!sndOpenChannels(*audio, glMaxSoundChannels, 0, &Self->ChannelIndex)) {
+            glSoundChannels[Self->AudioID] = Self->ChannelIndex;
+         }
+         else {
+            log.warning("Failed to open audio channels.");
+            if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
+            return ERR_Failed;
+         }
       }
-      else error = ERR_AccessObject;
-
-      if (error) {
-         log.warning("Failed to open channels from Audio device.");
-         if (Self->Flags & SDF_TERMINATE) DelayMsg(AC_Free, Self->UID);
-         return ERR_Failed;
-      }
+      else return log.warning(ERR_AccessObject);
    }
 
    STRING path = NULL;
