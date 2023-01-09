@@ -44,8 +44,7 @@ static int processing_new(lua_State *Lua)
       if (lua_istable(Lua, 1)) {
          lua_pushnil(Lua);  // Access first key for lua_next()
          while (lua_next(Lua, 1) != 0) {
-            CSTRING field_name;
-            if ((field_name = luaL_checkstring(Lua, -2))) {
+            if (auto field_name = luaL_checkstring(Lua, -2)) {
                auto field_hash = StrHash(field_name, 0);
 
                switch (field_hash) {
@@ -106,15 +105,15 @@ static int processing_new(lua_State *Lua)
 
 static int processing_sleep(lua_State *Lua)
 {
-   static std::recursive_mutex recursion; // Intentionally accessible to all threads
-
-   {
+   { // Always collect your garbage before going to sleep
       parasol::Log log;
       log.traceBranch("Collecting garbage.");
       lua_gc(Lua, LUA_GCCOLLECT, 0);
    }
 
    parasol::Log log;
+   static std::recursive_mutex recursion; // Intentionally accessible to all threads
+
    ERROR error;
    LONG timeout;
 
@@ -127,7 +126,13 @@ static int processing_sleep(lua_State *Lua)
 
    log.branch("Timeout: %d", timeout);
 
-   if ((fp) and (fp->Signals) and (not fp->Signals->empty())) { // Use custom signals provided by the client
+   // The Lua signal flag is always reset on entry just in case it has been polluted by prior activity.
+   // All other objects can be pre-signalled legitimately.
+
+   Lua->Script->BaseClass::Flags = Lua->Script->BaseClass::Flags & (~NF::SIGNALLED);
+
+   if ((fp) and (fp->Signals) and (not fp->Signals->empty())) {
+      // Use custom signals provided by the client (or Fluid if no objects were specified).
       ObjectSignal signal_list_c[fp->Signals->size() + 1];
       LONG i = 0;
       for (auto &entry : *fp->Signals) signal_list_c[i++] = entry;

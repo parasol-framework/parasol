@@ -17,8 +17,7 @@ function testSequentialPlayback()
 
    local time = mSys.preciseTime()
 
-   err = snd.acActivate()
-   assert(err == ERR_Okay, 'Failed to playback low-tone sound sample.')
+   assert(snd.acActivate() == ERR_Okay, 'Failed to playback low-tone sound sample.')
 
    proc.sleep()
 
@@ -38,8 +37,7 @@ function testSequentialPlayback()
 
    time = mSys.preciseTime()
 
-   err = snd.acActivate()
-   assert(err == ERR_Okay, 'Failed to playback low-tone sound sample.')
+   assert(snd.acActivate() == ERR_Okay, 'Failed to playback high-tone sound sample.')
 
    proc.sleep()
 
@@ -52,10 +50,62 @@ function testSequentialPlayback()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Test left and right speaker panning
+
+function testPan()
+   local proc = processing.new()
+
+   local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav', pan=-1.0 })
+   assert(snd, 'Failed to process low-tone wav file.')
+
+   snd.subscribe('deactivate', function(SoundID)
+      proc.signal()
+   end)
+
+   print('Play left speaker.')
+
+   assert(snd.acActivate() == ERR_Okay, 'Failed to playback low-tone sound sample.')
+
+   proc.sleep()
+
+   -- Right speaker
+
+   print('Play right speaker.')
+   snd.pan = 1.0
+   err = snd.acActivate()
+   assert(err == ERR_Okay, 'Failed to playback low-tone sound sample.')
+
+   proc.sleep()
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test volume adjustment
+
+function testVolume()
+   local proc = processing.new()
+
+   local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav' })
+   assert(snd, 'Failed to process low-tone wav file.')
+
+   snd.subscribe('deactivate', function(SoundID)
+      proc.signal()
+   end)
+
+   print('Incrementing volume...')
+   for i=1,4 do
+      snd.volume = 1.0 * (i / 4)
+      snd.acActivate()
+      proc.sleep()
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 
    return {
       tests = {
-        'testSequentialPlayback'
+        'testSequentialPlayback',
+        'testPan',
+        'testVolume'
       },
       init = function(Folder)
          glFolder = Folder

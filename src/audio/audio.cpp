@@ -128,46 +128,6 @@ static ERROR COMMAND_SetVolume(extAudio *, LONG, LONG);
 static ERROR COMMAND_Stop(extAudio *, LONG);
 static ERROR COMMAND_StopLooping(extAudio *, LONG);
 
-static const struct BufferCommand glCommands[] = {
-   { CMD_END_SEQUENCE,   NULL },
-   { CMD_CONTINUE,       (ERROR (*)(extAudio*, APTR))COMMAND_Continue },
-   { CMD_FADE_IN,        (ERROR (*)(extAudio*, APTR))COMMAND_FadeIn },
-   { CMD_FADE_OUT,       (ERROR (*)(extAudio*, APTR))COMMAND_FadeOut },
-   { CMD_PLAY,           (ERROR (*)(extAudio*, APTR))COMMAND_Play },
-   { CMD_SET_FREQUENCY,  (ERROR (*)(extAudio*, APTR))COMMAND_SetFrequency },
-   { CMD_MUTE,           (ERROR (*)(extAudio*, APTR))COMMAND_Mute },
-   { CMD_SET_LENGTH,     (ERROR (*)(extAudio*, APTR))COMMAND_SetLength },
-   { CMD_SET_PAN,        (ERROR (*)(extAudio*, APTR))COMMAND_SetPan },
-   { CMD_SET_POSITION,   (ERROR (*)(extAudio*, APTR))COMMAND_SetPosition },
-   { CMD_SET_RATE,       (ERROR (*)(extAudio*, APTR))COMMAND_SetRate },
-   { CMD_SET_SAMPLE,     (ERROR (*)(extAudio*, APTR))COMMAND_SetSample },
-   { CMD_SET_VOLUME,     (ERROR (*)(extAudio*, APTR))COMMAND_SetVolume },
-   { CMD_START_SEQUENCE, NULL },
-   { CMD_STOP,           (ERROR (*)(extAudio*, APTR))COMMAND_Stop },
-   { CMD_STOP_LOOPING,   (ERROR (*)(extAudio*, APTR))COMMAND_StopLooping },
-   { 0, NULL }
-};
-
-//********************************************************************************************************************
-
-#ifdef _WIN32 // Functions for use by dsound.c
-int ReadData(extSound *Self, void *Buffer, int Length) {
-   struct acRead read = { Buffer, Length };
-   if (!Action(AC_Read, Self->File, &read)) return read.Result;
-   return 0;
-}
-
-void SeekData(extSound *Self, DOUBLE Offset) {
-   struct acSeek seek = { Offset, SEEK_START };
-   Action(AC_Seek, Self->File, &seek);
-}
-
-void SeekZero(extSound *Self) {
-   struct acSeek seek = { (DOUBLE)Self->DataOffset, SEEK_START };
-   Action(AC_Seek, Self->File, &seek);
-}
-#endif
-
 //********************************************************************************************************************
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)

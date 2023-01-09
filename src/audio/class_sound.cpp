@@ -66,12 +66,27 @@ static OBJECTPTR clSound = NULL;
 static ERROR find_chunk(extSound *, objFile *, CSTRING);
 static ERROR playback_timer(extSound *, LARGE Elapsed, LARGE CurrentTime);
 
-#undef GetChannel
-inline AudioChannel * GetChannel(extAudio *Audio, LONG Channel) {
-   return &Audio->Channels[Channel>>16].Channel[Channel & 0xffff];
+#define KEY_SOUNDCHANNELS 0x3389f93
+
+//********************************************************************************************************************
+
+#ifdef _WIN32 // Functions for use by dsound.c
+int ReadData(extSound *Self, void *Buffer, int Length) {
+   struct acRead read = { Buffer, Length };
+   if (!Action(AC_Read, Self->File, &read)) return read.Result;
+   return 0;
 }
 
-#define KEY_SOUNDCHANNELS 0x3389f93
+void SeekData(extSound *Self, DOUBLE Offset) {
+   struct acSeek seek = { Offset, SEEK_START };
+   Action(AC_Seek, Self->File, &seek);
+}
+
+void SeekZero(extSound *Self) {
+   struct acSeek seek = { (DOUBLE)Self->DataOffset, SEEK_START };
+   Action(AC_Seek, Self->File, &seek);
+}
+#endif
 
 //********************************************************************************************************************
 // Stubs.
@@ -202,7 +217,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
       if (Self->Flags & (SDF_RESTRICT_PLAY|SDF_STREAM)) {
          Self->ChannelIndex &= 0xffff0000;
          for (i=0; i < glMaxSoundChannels; i++) {
-            channel = GetChannel(*audio, Self->ChannelIndex);
+            channel = audio->GetChannel(Self->ChannelIndex);
             if ((channel) and (channel->SoundID IS Self->UID)) break;
             Self->ChannelIndex++;
          }
@@ -214,7 +229,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          AudioChannel *priority = NULL;
          Self->ChannelIndex &= 0xffff0000;
          for (i=0; i < glMaxSoundChannels; i++) {
-            if (auto channel = GetChannel(*audio, Self->ChannelIndex)) {
+            if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
                if ((channel->State IS CHS_STOPPED) or (channel->State IS CHS_FINISHED)) break;
                else if (channel->Priority < Self->Priority) priority = channel;
             }
@@ -232,7 +247,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
       COMMAND_Stop(*audio, Self->ChannelIndex);
 
       if (!COMMAND_SetSample(*audio, Self->ChannelIndex, Self->Handle)) {
-         auto channel = GetChannel(*audio, Self->ChannelIndex);
+         auto channel = audio->GetChannel(Self->ChannelIndex);
          channel->SoundID = Self->UID; // Record our object ID against the channel
 
          COMMAND_SetVolume(*audio, Self->ChannelIndex, Self->Volume * 3.0);
@@ -294,7 +309,7 @@ static ERROR SOUND_Deactivate(extSound *Self, APTR Void)
       // Get a reference to our sound channel, then check if our unique ID is set against it.  If so, our sound is
       // currently playing and we must send a stop signal to the audio system.
 
-      if (auto channel = GetChannel(*audio, Self->ChannelIndex)) {
+      if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
          if (channel->SoundID IS Self->UID) COMMAND_Stop(*audio, Self->ChannelIndex);
       }
    }
@@ -328,7 +343,7 @@ static ERROR SOUND_Disable(extSound *Self, APTR Void)
 
    parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 5000);
    if (audio.granted()) {
-      if (auto channel = GetChannel(*audio, Self->ChannelIndex)) {
+      if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
          if (channel->SoundID IS Self->UID) COMMAND_Stop(*audio, Self->ChannelIndex);
       }
       return ERR_Okay;
@@ -362,7 +377,7 @@ static ERROR SOUND_Enable(extSound *Self, APTR Void)
 
    parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 5000);
    if (audio.granted()) {
-      if (auto channel = GetChannel(*audio, Self->ChannelIndex)) {
+      if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
          if (channel->SoundID IS Self->UID) COMMAND_Continue(*audio, Self->ChannelIndex);
       }
       return ERR_Okay;
@@ -922,7 +937,7 @@ static ERROR SOUND_NewObject(extSound *Self, APTR Void)
    Self->Volume      = 100;    // Playback at 100% volume level
    Self->Pan         = 0;
    Self->Playback    = 0;
-   Self->Note     = NOTE_C; // Standard pitch
+   Self->Note        = NOTE_C; // Standard pitch
    Self->Stream      = STREAM_SMART;
    return ERR_Okay;
 }
@@ -943,7 +958,7 @@ static ERROR SOUND_Reset(extSound *Self, APTR Void)
    parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 2000);
    if (audio.granted()) {
       Self->Position = 0;
-      auto channel = GetChannel(*audio, Self->ChannelIndex);
+      auto channel = audio->GetChannel(Self->ChannelIndex);
       if ((channel->SoundID != Self->UID) or (channel->State IS CHS_STOPPED) or
           (channel->State IS CHS_FINISHED)) {
          return ERR_Okay;
@@ -1082,7 +1097,7 @@ static ERROR SOUND_GET_Active(extSound *Self, LONG *Value)
    if (Self->ChannelIndex) {
       parasol::ScopedObjectLock<extAudio> audio(Self->AudioID);
       if (audio.granted()) {
-         if (auto channel = GetChannel(*audio, Self->ChannelIndex)) {
+         if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
             if (!((channel->State IS CHS_STOPPED) or (channel->State IS CHS_FINISHED))) {
                *Value = TRUE;
             }

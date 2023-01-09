@@ -119,7 +119,7 @@ static ULONG samples_until_end(extAudio *Self, AudioChannel *Channel, LONG *Next
 
 //********************************************************************************************************************
 
-static LONG AmigaChange(extAudio *Self, AudioChannel *Channel)
+static bool AmigaChange(extAudio *Self, AudioChannel *Channel)
 {
    // A sample end or sample loop end has been reached, the sample has been changed, and both old and new samples use
    // Amiga compatible looping - handle Amiga Loop Emulation sample change
@@ -141,12 +141,12 @@ static LONG AmigaChange(extAudio *Self, AudioChannel *Channel)
       // Looping - start playback from loop beginning
       Channel->Position    = Channel->Sample.Loop1Start;
       Channel->PositionLow = 0;
-      return FALSE;
+      return false;
    }
 
    // Not looping - finish the sample
    Channel->State = CHS_FINISHED;
-   return TRUE;
+   return true;
 }
 
 //********************************************************************************************************************
@@ -339,35 +339,34 @@ static void CalcVolumes(extAudio *Self, ChannelSet *MasterChannel, AudioChannel 
          MixRightVolFloat *= (1.0 / 2.0);
       }
    }
-   //LogF("!VOL","%.5f, %.5f", MixLeftVolFloat, MixRightVolFloat);
 }
 
 //********************************************************************************************************************
 
 static void RampVolume(AudioChannel *Channel)
 {
-   LONG cont = FALSE;
+   bool cont = false;
 
    if (Channel->LVolume < Channel->LVolumeTarget) {
       Channel->LVolume += RAMPSPEED;
       if (Channel->LVolume >= Channel->LVolumeTarget) Channel->LVolume = Channel->LVolumeTarget;
-      else cont = TRUE;
+      else cont = true;
    }
    else if (Channel->LVolume > Channel->LVolumeTarget) {
       Channel->LVolume -= RAMPSPEED;
       if (Channel->LVolume <= Channel->LVolumeTarget) Channel->LVolume = Channel->LVolumeTarget;
-      else cont = TRUE;
+      else cont = true;
    }
 
    if (Channel->RVolume < Channel->RVolumeTarget) {
       Channel->RVolume += RAMPSPEED;
       if (Channel->RVolume >= Channel->RVolumeTarget) Channel->RVolume = Channel->RVolumeTarget;
-      else cont = TRUE;
+      else cont = true;
    }
    else if (Channel->RVolume > Channel->RVolumeTarget) {
       Channel->RVolume -= RAMPSPEED;
       if (Channel->RVolume <= Channel->RVolumeTarget) Channel->RVolume = Channel->RVolumeTarget;
-      else cont = TRUE;
+      else cont = true;
    }
 
    if (cont) Channel->Flags |= CHF_VOL_RAMP;
@@ -539,7 +538,7 @@ static ERROR MixChannel(extAudio *Self, ChannelSet *MasterChannel, AudioChannel 
 
       // Check if we reached loop/sample/whatever end
 
-      if (handle_sample_end(Self, Channel) IS TRUE) return ERR_Okay;
+      if (handle_sample_end(Self, Channel)) return ERR_Okay;
    }
 
    return ERR_Okay;

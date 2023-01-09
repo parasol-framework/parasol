@@ -1043,9 +1043,9 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 
    snd_mixer_selem_id_t *sid;
    snd_mixer_elem_t *elem;
-   long left, right;
-   long pmin, pmax;
-   int mute;
+   LONG left, right;
+   LONG pmin, pmax;
+   LONG mute;
    LONG i;
 
    snd_mixer_selem_id_alloca(&sid);
@@ -1100,14 +1100,13 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 -METHOD-
 SetVolume: Sets the volume for input and output mixers.
 
-To change volume and mixer levels, use the SetVolume method.  You can make adjustments to any of the available mixers
-and for different channels per mixer - for instance you may set different volumes for left and right speakers.  Support
-is also provided for special options, such as muting.
+To change volume and mixer levels, use the SetVolume method.  It is possible to make adjustments to any of the
+available mixers and for different channels per mixer - for instance you may set different volumes for left and right
+speakers.  Support is also provided for special options, such as muting.
 
-To set the volume for a mixer, you need to know its index (by scanning the #VolumeCtl field) or you can set
-its name (to change the Master volume, use a name of `Master`).  A channel needs to be specified, or you can use
-`CHN_ALL` to synchronise the volume for all channels.  The new mixer value is set in the Volume field.  Optional flags
-may be set as follows:
+To set the volume for a mixer, use its index (by scanning the #VolumeCtl field) or set its name (to change the Master
+volume, use a name of `Master`).  A channel needs to be specified, or use `CHN_ALL` to synchronise the volume for all
+channels.  The new mixer value is set in the Volume field.  Optional flags may be set as follows:
 
 <types lookup="SVF"/>
 
@@ -1132,7 +1131,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 
 #ifdef ALSA_ENABLED
 
-   LONG index, chn;
+   LONG index;
    snd_mixer_selem_id_t *sid;
    snd_mixer_elem_t *elem;
    long pmin, pmax;
@@ -1215,12 +1214,12 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 
    if (Args->Flags & SVF_UNMUTE) {
       if ((snd_mixer_selem_has_capture_switch(elem)) and (!snd_mixer_selem_has_playback_switch(elem))) {
-         for (chn=0; chn <= SND_MIXER_SCHN_LAST; chn++) {
+         for (LONG chn=0; chn <= SND_MIXER_SCHN_LAST; chn++) {
             snd_mixer_selem_set_capture_switch(elem, (snd_mixer_selem_channel_id_t)chn, 1);
          }
       }
       else if (snd_mixer_selem_has_playback_switch(elem)) {
-         for (chn=0; chn <= SND_MIXER_SCHN_LAST; chn++) {
+         for (LONG chn=0; chn <= SND_MIXER_SCHN_LAST; chn++) {
             snd_mixer_selem_set_playback_switch(elem, (snd_mixer_selem_channel_id_t)chn, 1);
          }
       }
@@ -1228,12 +1227,12 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
    }
    else if (Args->Flags & SVF_MUTE) {
       if ((snd_mixer_selem_has_capture_switch(elem)) and (!snd_mixer_selem_has_playback_switch(elem))) {
-         for (chn=0; chn <= SND_MIXER_SCHN_LAST; chn++) {
+         for (LONG chn=0; chn <= SND_MIXER_SCHN_LAST; chn++) {
             snd_mixer_selem_set_capture_switch(elem, (snd_mixer_selem_channel_id_t)chn, 0);
          }
       }
       else if (snd_mixer_selem_has_playback_switch(elem)) {
-         for (chn=0; chn <= SND_MIXER_SCHN_LAST; chn++) {
+         for (LONG chn=0; chn <= SND_MIXER_SCHN_LAST; chn++) {
             snd_mixer_selem_set_playback_switch(elem, (snd_mixer_selem_channel_id_t)chn, 0);
          }
       }
@@ -1250,7 +1249,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 
 #else
 
-   WORD index, channel;
+   WORD index;
 
    if (!Args) return log.warning(ERR_NullArgs);
    if (((Args->Volume < 0) or (Args->Volume > 1000)) and (Args->Volume != -1)) {
@@ -1296,7 +1295,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
       if (Self->VolumeCtl[index].Flags & VCF_MONO) {
          Self->VolumeCtl[index].Channels[0] = Args->Volume;
       }
-      else for (channel=0; channel < ARRAYSIZE(Self->VolumeCtl[0].Channels); channel++) {
+      else for (LONG channel=0; channel < ARRAYSIZE(Self->VolumeCtl[0].Channels); channel++) {
          if (Self->VolumeCtl[index].Channels[channel] >= 0) {
             Self->VolumeCtl[index].Channels[channel] = Args->Volume;
          }
@@ -1402,8 +1401,8 @@ of the InputRate shall be ignored.
 -FIELD-
 MasterVolume: The master volume to use for audio playback.
 
-The MasterVolume field controls the amount of volume applied to all of the audio channels.  Volume is expressed as a
-percentage, with 0% being no volume and 100% being maximum volume.
+The MasterVolume field controls the amount of volume applied to all of the audio channels.  Volume is expressed as
+a value between 0 and 1.0.
 
 *********************************************************************************************************************/
 
@@ -1423,9 +1422,7 @@ static ERROR SET_MasterVolume(extAudio *Self, DOUBLE Value)
    setvol.Flags  = 0;
    if (setvol.Volume < 0) setvol.Volume = 0;
    if (setvol.Volume > 100) setvol.Volume = 100;
-   DelayMsg(MT_SndSetVolume, Self->UID, &setvol);
-
-   return ERR_Okay;
+   return DelayMsg(MT_SndSetVolume, Self->UID, &setvol);
 }
 
 /*********************************************************************************************************************
@@ -1461,8 +1458,7 @@ static ERROR SET_Mute(extAudio *Self, LONG Value)
    };
    if (Value) setvol.Flags = SVF_MUTE;
    else setvol.Flags = SVF_UNMUTE;
-   DelayMsg(MT_SndSetVolume, Self->UID, &setvol);
-   return ERR_Okay;
+   return DelayMsg(MT_SndSetVolume, Self->UID, &setvol);
 }
 
 /*********************************************************************************************************************
