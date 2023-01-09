@@ -414,7 +414,6 @@ class extFile : public objFile {
 class extConfig : public objConfig {
    public:
    using create = parasol::Create<extConfig>;
-   ConfigGroups *Groups;
    ULONG    CRC;   // CRC32, for determining if config data has been altered
 };
 

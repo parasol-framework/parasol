@@ -350,7 +350,6 @@ inline ENUMTYPE &operator |= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 
   const("RPM", { comment="Reserved Public Memory identifiers.", restrict="c" }, {
     SharedObjects  = "-1000: Shared object list (struct SharedObject *).",
-    Audio          = "-1001: Global audio settings.",
     Clipboard      = "-1002: Clipboard array.",
     X11            = "-1003: X11 global variables.",
     AlphaBlend     = "-1004: Alpha blending lookup table (Bitmap module).",
@@ -2162,6 +2161,55 @@ inline ERROR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
   ]],
   nil,
   [[
+   ConfigGroups *Groups;
+
+   // For C++ only, these read variants avoid the standard method for speed but apply identical logic.
+
+   inline ERROR read(CSTRING pGroup, CSTRING pKey, DOUBLE *pValue) {
+      for (auto& [group, keys] : Groups[0]) {
+         if ((pGroup) and (group.compare(pGroup))) continue;
+         if (!pKey) {
+            *pValue = strtod(keys.cbegin()->second.c_str(), NULL);
+            return ERR_Okay;
+         }
+         else if (keys.contains(pKey)) {
+            *pValue = strtod(keys[pKey].c_str(), NULL);
+            return ERR_Okay;
+         }
+      }
+      return ERR_Search;
+   }
+
+   inline ERROR read(CSTRING pGroup, CSTRING pKey, LONG *pValue) {
+      for (auto& [group, keys] : Groups[0]) {
+         if ((pGroup) and (group.compare(pGroup))) continue;
+         if (!pKey) {
+            *pValue = strtol(keys.cbegin()->second.c_str(), NULL, 0);
+            return ERR_Okay;
+         }
+         else if (keys.contains(pKey)) {
+            *pValue = strtol(keys[pKey].c_str(), NULL, 0);
+            return ERR_Okay;
+         }
+      }
+      return ERR_Search;
+   }
+
+   inline ERROR read(CSTRING pGroup, CSTRING pKey, std::string &pValue) {
+      for (auto& [group, keys] : Groups[0]) {
+         if ((pGroup) and (group.compare(pGroup))) continue;
+         if (!pKey) {
+            pValue = keys.cbegin()->second;
+            return ERR_Okay;
+         }
+         else if (keys.contains(pKey)) {
+            pValue = keys[pKey];
+            return ERR_Okay;
+         }
+      }
+      return ERR_Search;
+   }
+
    inline ERROR write(CSTRING Group, CSTRING Key, CSTRING Value) {
       struct cfgWriteValue write = { Group, Key, Value };
       return Action(MT_CfgWriteValue, this, &write);

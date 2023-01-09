@@ -1122,7 +1122,6 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 // Reserved Public Memory identifiers.
 
 #define RPM_SharedObjects -1000
-#define RPM_Audio -1001
 #define RPM_Clipboard -1002
 #define RPM_X11 -1003
 #define RPM_AlphaBlend -1004
@@ -3131,15 +3130,15 @@ class objFile : public BaseClass {
    inline ERROR query() { return Action(AC_Query, this, NULL); }
    template <class T> ERROR read(APTR Buffer, T Bytes, LONG *Result) {
       ERROR error;
-      if (Bytes > 0x7fffffff) Bytes = 0x7fffffff;
-      struct acRead read = { (BYTE *)Buffer, (LONG)Bytes };
+      const LONG bytes = (Bytes > 0x7fffffff) ? 0x7fffffff : Bytes;
+      struct acRead read = { (BYTE *)Buffer, bytes };
       if (!(error = Action(AC_Read, this, &read))) *Result = read.Result;
       else *Result = 0;
       return error;
    }
    template <class T> ERROR read(APTR Buffer, T Bytes) {
-      if (Bytes > 0x7fffffff) Bytes = 0x7fffffff;
-      struct acRead read = { (BYTE *)Buffer, (LONG)Bytes };
+      const LONG bytes = (Bytes > 0x7fffffff) ? 0x7fffffff : Bytes;
+      struct acRead read = { (BYTE *)Buffer, bytes };
       return Action(AC_Read, this, &read);
    }
    inline ERROR rename(CSTRING Name) {
@@ -3267,6 +3266,55 @@ class objConfig : public BaseClass {
    STRING GroupFilter;  // Set this field to enable group filtering.
    LONG   Flags;        // Optional flags may be set here.
    public:
+   ConfigGroups *Groups;
+
+   // For C++ only, these read variants avoid the standard method for speed but apply identical logic.
+
+   inline ERROR read(CSTRING pGroup, CSTRING pKey, DOUBLE *pValue) {
+      for (auto& [group, keys] : Groups[0]) {
+         if ((pGroup) and (group.compare(pGroup))) continue;
+         if (!pKey) {
+            *pValue = strtod(keys.cbegin()->second.c_str(), NULL);
+            return ERR_Okay;
+         }
+         else if (keys.contains(pKey)) {
+            *pValue = strtod(keys[pKey].c_str(), NULL);
+            return ERR_Okay;
+         }
+      }
+      return ERR_Search;
+   }
+
+   inline ERROR read(CSTRING pGroup, CSTRING pKey, LONG *pValue) {
+      for (auto& [group, keys] : Groups[0]) {
+         if ((pGroup) and (group.compare(pGroup))) continue;
+         if (!pKey) {
+            *pValue = strtol(keys.cbegin()->second.c_str(), NULL, 0);
+            return ERR_Okay;
+         }
+         else if (keys.contains(pKey)) {
+            *pValue = strtol(keys[pKey].c_str(), NULL, 0);
+            return ERR_Okay;
+         }
+      }
+      return ERR_Search;
+   }
+
+   inline ERROR read(CSTRING pGroup, CSTRING pKey, std::string &pValue) {
+      for (auto& [group, keys] : Groups[0]) {
+         if ((pGroup) and (group.compare(pGroup))) continue;
+         if (!pKey) {
+            pValue = keys.cbegin()->second;
+            return ERR_Okay;
+         }
+         else if (keys.contains(pKey)) {
+            pValue = keys[pKey];
+            return ERR_Okay;
+         }
+      }
+      return ERR_Search;
+   }
+
    inline ERROR write(CSTRING Group, CSTRING Key, CSTRING Value) {
       struct cfgWriteValue write = { Group, Key, Value };
       return Action(MT_CfgWriteValue, this, &write);

@@ -7,10 +7,6 @@
 #define MIX_INTERVAL 0.01
 #endif
 
-struct globalaudio {
-   FLOAT Volume;        // Current system-wide audio volume
-};
-
 class extAudio : public objAudio {
    public:
    struct ChannelSet Channels[MAX_CHANNELSETS]; // Channels are grouped into sets, which are allocated on a per-task basis

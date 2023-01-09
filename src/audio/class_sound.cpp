@@ -1591,7 +1591,7 @@ static ERROR SOUND_SET_Volume(extSound *Self, DOUBLE Value)
 
 #ifdef _WIN32
    if ((!Self->Handle) and (Self->initialised())) {
-      sndVolume((PlatformData *)Self->prvPlatformData, glAudio->Volume * Self->Volume * (1.0 / 100.0));
+      sndVolume((PlatformData *)Self->prvPlatformData, glGlobalVolume * Self->Volume * (1.0 / 100.0));
       return ERR_Okay;
    }
 #endif

@@ -323,7 +323,7 @@ static void CalcVolumes(extAudio *Self, ChannelSet *MasterChannel, AudioChannel 
    DOUBLE mastervol;
    if (Self->Mute) mastervol = 0;
    else if (Self->Flags & ADF_SYSTEM_WIDE) mastervol = 100;
-   else mastervol = glAudio->Volume;
+   else mastervol = glGlobalVolume;
 
 #ifdef __linux__
    MixLeftVolFloat  = (DOUBLE)(mastervol * Channel->LVolume) * MasterChannel->TaskVolume * (1.0 / 51200.0); // Try 64000 if the volume needs to be lowered.

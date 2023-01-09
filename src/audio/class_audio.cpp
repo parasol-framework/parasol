@@ -1237,7 +1237,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
    snd_mixer_selem_id_set_index(sid,0);
    snd_mixer_selem_id_set_name(sid, Self->VolumeCtl[index].Name);
    if (!(elem = snd_mixer_find_selem(Self->MixHandle, sid))) {
-      log.warning("Mixer %s not found.", Self->VolumeCtl[index].Name);
+      log.msg("Mixer \"%s\" not found.", Self->VolumeCtl[index].Name);
       return ERR_Search;
    }
 
@@ -1332,7 +1332,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 
    if (!StrMatch("Master", Self->VolumeCtl[index].Name)) {
       if (Args->Volume != -1) {
-         glAudio->Volume = Args->Volume;
+         glGlobalVolume = Args->Volume;
          Self->MasterVolume = Args->Volume;
       }
 
@@ -1412,7 +1412,7 @@ A computer system may have multiple audio devices installed, but a given audio o
 time.  A new audio object will always represent the default device initially.  You can switch to a different device by
 setting the Device field to the name of the device that you would like to use.
 
-The default device can always be referenced with a name of "Default".
+The default device can always be referenced with a name of `Default`.
 
 *********************************************************************************************************************/
 
@@ -1977,32 +1977,30 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
 static void load_config(extAudio *Self)
 {
    parasol::Log log(__FUNCTION__);
-   CSTRING str;
-   DOUBLE fvalue;
-   LONG value;
-   WORD i;
 
    // Attempt to get the user's preferred pointer settings from the user:config/pointer file.
 
    objConfig::create config = { fl::Path("user:config/audio.cfg") };
 
    if (config.ok()) {
-      cfgRead(*config, "AUDIO", "OutputRate", &Self->OutputRate);
-      cfgRead(*config, "AUDIO", "InputRate", &Self->InputRate);
-      cfgRead(*config, "AUDIO", "Quality", &Self->Quality);
-      if (!cfgRead(*config, "AUDIO", "Bass", &fvalue)) Self->Bass = fvalue;
-      if (!cfgRead(*config, "AUDIO", "Treble", &fvalue)) Self->Treble = fvalue;
-      cfgRead(*config, "AUDIO", "BitDepth", &Self->BitDepth);
+      config->read("AUDIO", "OutputRate", &Self->OutputRate);
+      config->read("AUDIO", "InputRate", &Self->InputRate);
+      config->read("AUDIO", "Quality", &Self->Quality);
+      config->read("AUDIO", "Bass", &Self->Bass);
+      config->read("AUDIO", "Treble", &Self->Treble);
+      config->read("AUDIO", "BitDepth", &Self->BitDepth);
 
-      if (!cfgRead(*config, "AUDIO", "Periods", &value)) SET_Periods(Self, value);
-      if (!cfgRead(*config, "AUDIO", "PeriodSize", &value)) SET_PeriodSize(Self, value);
+      LONG value;
+      if (!config->read("AUDIO", "Periods", &value)) SET_Periods(Self, value);
+      if (!config->read("AUDIO", "PeriodSize", &value)) SET_PeriodSize(Self, value);
 
-      if (!cfgReadValue(*config, "AUDIO", "Device", &str)) StrCopy(str, Self->prvDevice, sizeof(Self->prvDevice));
+      std::string str;
+      if (!config->read("AUDIO", "Device", str)) StrCopy(str.c_str(), Self->prvDevice, sizeof(Self->prvDevice));
       else StrCopy("default", Self->prvDevice, sizeof(Self->prvDevice));
 
       Self->Flags |= ADF_STEREO;
-      if (!cfgReadValue(*config, "AUDIO", "Stereo", &str)) {
-         if (!StrMatch("FALSE", str)) Self->Flags &= ~ADF_STEREO;
+      if (!config->read("AUDIO", "Stereo", str)) {
+         if (!StrMatch("FALSE", str.c_str())) Self->Flags &= ~ADF_STEREO;
       }
 
       if ((Self->BitDepth != 8) and (Self->BitDepth != 16) and (Self->BitDepth != 24)) Self->BitDepth = 16;
@@ -2045,8 +2043,6 @@ static void load_config(extAudio *Self)
                         Self->VolumeCtl[j].Channels[channel] = 75;
                         channel++;
                      }
-
-                     i++;
                   }
 
                   Self->VolumeCtl[j].Name[0] = 0;

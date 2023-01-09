@@ -49,7 +49,7 @@ static ERROR CMDOpen(OBJECTPTR);
 MODULE_COREBASE;
 static OBJECTPTR clAudio = 0;
 static OBJECTID glAudioID = 0;
-static struct globalaudio *glAudio = NULL;
+static DOUBLE glGlobalVolume = 80;
 static DOUBLE glTaskVolume = 1.0;
 
 #include "audio.h"
@@ -191,18 +191,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    return ERR_Failed;
 #endif
 
-   // Allocate public audio variables
-
-   MEMORYID memid = RPM_Audio;
-   ERROR error = AllocMemory(sizeof(struct globalaudio), MEM_UNTRACKED|MEM_RESERVED|MEM_PUBLIC|MEM_NO_BLOCKING, &glAudio, &memid);
-   if (error IS ERR_ResourceExists) {
-      if (AccessMemory(RPM_Audio, MEM_READ_WRITE, 2000, &glAudio) != ERR_Okay) {
-         return ERR_AccessMemory;
-      }
-   }
-   else if (error != ERR_Okay) return ERR_AllocMemory;
-   else glAudio->Volume = 80;
-
    if (add_audio_class() != ERR_Okay) return ERR_AddClass;
    if (add_sound_class() != ERR_Okay) return ERR_AddClass;
    return ERR_Okay;
@@ -216,7 +204,6 @@ static ERROR CMDOpen(OBJECTPTR Module)
 
 static ERROR CMDExpunge(void)
 {
-   if (glAudio) { ReleaseMemory(glAudio); glAudio = NULL; }
    free_audio_class();
    free_sound_class();
    return ERR_Okay;
