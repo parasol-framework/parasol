@@ -33,7 +33,7 @@ function newConfig()
    return cfg
 end
 
---=====================================================================================================================
+----------------------------------------------------------------------------------------------------------------------
 
 function testKeyFilter()
    local cfg = newConfig()
@@ -51,7 +51,7 @@ function testKeyFilter()
    assert(value != 'Yes', 'The [Courier Sans].Scalable value was not filtered out as expected.')
 end
 
---=====================================================================================================================
+----------------------------------------------------------------------------------------------------------------------
 
 function testGroupFilter()
    local cfg = newConfig()
@@ -69,7 +69,7 @@ function testGroupFilter()
    assert(value != '8', 'The [Clean].Points value was not filtered out as expected.')
 end
 
---=====================================================================================================================
+----------------------------------------------------------------------------------------------------------------------
 
 function testDeleteKeyAndGroup()
    local cfg = newConfig()
@@ -90,7 +90,7 @@ function testDeleteKeyAndGroup()
    assert(err != ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
 end
 
---=====================================================================================================================
+----------------------------------------------------------------------------------------------------------------------
 
 function testMerge()
    local cfg = newConfig()
@@ -109,7 +109,7 @@ function testMerge()
    assert(value == 'World', 'Expected the World, received ' .. nz(value,'NIL'))
 end
 
---=====================================================================================================================
+----------------------------------------------------------------------------------------------------------------------
 
 function testWriteValues()
    local cfg = newConfig()
@@ -129,7 +129,7 @@ function testWriteValues()
    assert(value == 'orange', 'Expected an orange, received ' .. nz(value,'NIL'))
 end
 
---=====================================================================================================================
+----------------------------------------------------------------------------------------------------------------------
 -- Test case sensitivity
 
 function testReadValues()
@@ -145,7 +145,7 @@ function testReadValues()
    assert(err == ERR_Okay, 'ReadIValue() returned ' .. mSys.GetErrorMsg(err))
 end
 
---=====================================================================================================================
+----------------------------------------------------------------------------------------------------------------------
 
 function testSorting()
    local cfg = newConfig()
@@ -167,12 +167,47 @@ function testSorting()
    assert(groupName == 'Alpha', 'Third group is incorrect, returned ' .. groupName)
 end
 
---=====================================================================================================================
+----------------------------------------------------------------------------------------------------------------------
+
+function testSave()
+   local cfg = newConfig()
+   local err, value = cfg.mtDeleteGroup('Courier Sans')
+   local err, value = cfg.mtDeleteGroup('Alpha')
+   local file = obj.new('file', { path='temp:test-write.cfg', flags='NEW|WRITE' })
+   assert(cfg.acSaveToObject(file) == ERR_Okay, 'Failed to save config file.')
+   file = nil
+   collectgarbage()
+
+   local file = obj.new('file', { path='temp:test-write.cfg', flags='READ' })
+   local buf = string.rep(' ', file.size)
+   local err, result = file.acRead(buf, file.size)
+   if (err == ERR_Okay) then
+
+   local expected_output = [[
+
+[Clean]
+Fixed:Bold Italic = fonts:fixed/clean.fon
+Fixed:Regular = fonts:fixed/clean.fon
+Name = Clean
+Points = 8
+Sort = 3
+Styles = Bold,Bold Italic,Italic,Regular
+]]
+
+      assert(buf:len() == expected_output:len(), 'Wrote ' .. file.size .. ' bytes, expected ' .. expected_output:len())
+
+      local match = mSys.StrCompare(buf, expected_output, 0, STR_MATCH_CASE)
+      assert(match == ERR_Okay, 'Written output is invalid:\n---\n' .. buf .. '---\n' .. expected_output .. '---\n')
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
 
    return {
       tests = {
          'testKeyFilter', 'testGroupFilter', 'testDeleteKeyAndGroup',
-         'testMerge', 'testWriteValues', 'testSorting', 'testReadValues'
+         'testMerge', 'testWriteValues', 'testSorting', 'testReadValues',
+         'testSave'
       },
       init = function()
 

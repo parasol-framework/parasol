@@ -614,7 +614,7 @@ static ERROR CONFIG_SaveToObject(extConfig *Self, struct acSaveToObject *Args)
 
          for (auto& [k, v] : keys) {
             std::string kv(k + " = " + v + "\n");
-            acWrite(dest, kv.c_str(), k.size(), NULL);
+            acWrite(dest, kv.c_str(), kv.size(), NULL);
          }
       }
 
