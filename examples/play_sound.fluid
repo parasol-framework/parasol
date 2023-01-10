@@ -1,4 +1,16 @@
 
+-- This function identifies the type of file being loaded and uses the correct class to open it.
+
+function id_file(Path)
+   local err, class = mSys.IdentifyFile(Path, 'Open', IDF_IGNORE_HOST)
+
+   if (class == mSys.StrHash('sound')) then
+      return obj.new('sound', { path=Path })
+   elseif (class == mSys.StrHash('music')) then
+      return obj.new('music', { path=Path })
+   end
+end
+
    -- Retrieve the sound sample path from the command line arguments
 
    local src = arg('src')
@@ -7,29 +19,26 @@
       return
    end
 
-   -- Use the processing API to help us control the program flow
+   local player = id_file(src)
+   if not player then
+      print('Failed to identify the type of the source file "' .. src .. '"')
+      return
+   end
+
+   -- Use the processing API to help us manage the program flow
 
    local proc = processing.new()
 
-   catch(function()
-      -- The sound class will load the sample file.
+   -- Monitor the deactivate action.  We can use it to exit once the sample has fully played.
 
-      local snd = obj.new('sound', { path=src })
-
-      -- Monitor the deactivate action.  We can use it to exit once the sample has fully played.
-
-      snd.subscribe('deactivate', function(SoundID)
-         proc.signal()
-      end)
-
-      -- Play the sound
-
-      snd.acActivate()
-
-      print('Press CTRL-C to exit or wait for sound sample to finish.')
-
-      proc.sleep()
-   end,
-   function(Exception)
-      print('Failed to play sound, error: ' .. Exception.message)
+   player.subscribe('deactivate', function(SoundID)
+      proc.signal()
    end)
+
+   -- Play the sound and wait for it to finish
+
+   player.acActivate()
+
+   print('Press CTRL-C to exit or wait for sound sample to finish.')
+
+   proc.sleep() -- This will wake on receipt of a signal.
