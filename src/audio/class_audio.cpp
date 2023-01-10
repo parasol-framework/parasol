@@ -60,17 +60,14 @@ static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
 
    // Allocate a floating-point mixing buffer
 
-   #define MIXBUFLEN 20      // mixing buffer length 1/20th of a second
    if (Self->Stereo) Self->MixBitSize = sizeof(FLOAT) * 2;
    else Self->MixBitSize = sizeof(FLOAT);
 
+   #define MIXBUFLEN 20      // mixing buffer length 1/20th of a second
    Self->MixBufferSize = (((Self->MixBitSize * Self->OutputRate) / MIXBUFLEN) + 15) & 0xfffffff0;
    Self->MixElements   = Self->MixBufferSize / Self->MixBitSize;
 
-   if (!AllocMemory(Self->MixBufferSize + 1024, MEM_DATA, &Self->BufferMemory)) {
-      // Align to 1024 bytes
-      Self->MixBuffer = (APTR)((((UMAXINT)Self->BufferMemory) + 1023) & (~1023));
-
+   if (!AllocMemory(Self->MixBufferSize, MEM_DATA, &Self->BufferMemory)) {
       // Pick the correct mixing routines
 
       if (Self->Flags & ADF_OVER_SAMPLING) {

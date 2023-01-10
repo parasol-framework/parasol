@@ -8,8 +8,8 @@ template <class T> inline DOUBLE b2f(T Value)
    return 256 * (Value-128);
 }
 
-static void filter_float_mono(extAudio *, void *, LONG, void *);
-static void filter_float_stereo(extAudio *, void *, LONG, void *);
+static void filter_float_mono(extAudio *, FLOAT *, LONG);
+static void filter_float_stereo(extAudio *, FLOAT *, LONG);
 static void mix_channel(extAudio *, AudioChannel *, LONG, APTR);
 
 //********************************************************************************************************************
@@ -344,8 +344,8 @@ ERROR mix_data(extAudio *Self, LONG Elements, APTR Destination)
       // Do optional post-processing
 
       if (Self->Flags & (ADF_FILTER_LOW|ADF_FILTER_HIGH)) {
-         if (Self->Stereo) filter_float_stereo(Self, Self->MixBuffer, window, NULL);
-         else filter_float_mono(Self, Self->MixBuffer, window, NULL);
+         if (Self->Stereo) filter_float_stereo(Self, (FLOAT *)Self->MixBuffer, window);
+         else filter_float_mono(Self, (FLOAT *)Self->MixBuffer, window);
       }
 
       // Convert the floating point data to the correct output format
@@ -396,17 +396,17 @@ static void mix_channel(extAudio *Self, AudioChannel *Channel,
    else if (Self->Flags & ADF_SYSTEM_WIDE) mastervol = 1.0 * glTaskVolume * stereo_mul;
    else mastervol = glGlobalVolume * glTaskVolume * stereo_mul;
 
+   switch (Channel->Sample.SampleType) {
+      case SFM_U8_BIT_STEREO:
+      case SFM_S16_BIT_MONO: sampleSize = 2; break;
+      case SFM_S16_BIT_STEREO: sampleSize = 4; break;
+      default: sampleSize = 1; break;
+   }
+
    glMixDest = (UBYTE *)dest;
    while (numSamples) {
       if (Channel->State IS CHS_STOPPED) return;
       else if (Channel->State IS CHS_FINISHED) return;
-
-      switch (Channel->Sample.SampleType) {
-         case SFM_U8_BIT_STEREO:
-         case SFM_S16_BIT_MONO: sampleSize = 2; break;
-         case SFM_S16_BIT_STEREO: sampleSize = 4; break;
-         default: sampleSize = 1; break;
-      }
 
       LONG nextoffset;
       ULONG sue = samples_until_end(Self, Channel, &nextoffset);
@@ -516,10 +516,10 @@ static void mix_channel(extAudio *Self, AudioChannel *Channel,
 //********************************************************************************************************************
 // Mono output filtering routines.
 
-static void filter_float_mono(extAudio *Self, void *data, LONG numSamples, void *dummy)
+static void filter_float_mono(extAudio *Self, FLOAT *data, LONG numSamples)
 {
    static DOUBLE d1l=0, d2l=0;
-   auto p = (FLOAT *)data;
+   auto p = data;
    if (Self->Flags & ADF_FILTER_LOW) {
       while (numSamples) {
          DOUBLE s = (d1l + 2.0 * (*p)) * (1.0 / 3.0);
@@ -542,11 +542,11 @@ static void filter_float_mono(extAudio *Self, void *data, LONG numSamples, void 
 //********************************************************************************************************************
 // Stereo output filtering routines.
 
-static void filter_float_stereo(extAudio *Self, void *data, LONG numSamples, void *dummy)
+static void filter_float_stereo(extAudio *Self, FLOAT *data, LONG numSamples)
 {
    static DOUBLE d1l = 0, d1r = 0, d2l = 0, d2r = 0;
 
-   auto p = (FLOAT *)data;
+   auto p = data;
    if (Self->Flags & ADF_FILTER_LOW) {
       while (numSamples) {
          DOUBLE s = (d1l + 2.0 * (*p)) * (1.0 / 3.0);

@@ -72,19 +72,17 @@ static ERROR playback_timer(extSound *, LARGE Elapsed, LARGE CurrentTime);
 
 #ifdef _WIN32 // Functions for use by dsound.c
 int ReadData(extSound *Self, void *Buffer, int Length) {
-   struct acRead read = { Buffer, Length };
-   if (!Action(AC_Read, Self->File, &read)) return read.Result;
+   LONG result;
+   if (!Self->File->read(Buffer, Length, &result)) return result;
    return 0;
 }
 
 void SeekData(extSound *Self, DOUBLE Offset) {
-   struct acSeek seek = { Offset, SEEK_START };
-   Action(AC_Seek, Self->File, &seek);
+   Self->File->seekStart(Offset);
 }
 
 void SeekZero(extSound *Self) {
-   struct acSeek seek = { (DOUBLE)Self->DataOffset, SEEK_START };
-   Action(AC_Seek, Self->File, &seek);
+   Self->File->seekStart(Self->DataOffset);
 }
 #endif
 
@@ -409,12 +407,12 @@ static ERROR SOUND_Free(extSound *Self, APTR Void)
       }
    }
 
-   if (Self->Path)        { FreeResource(Self->Path); Self->Path = NULL; }
-   if (Self->Description) { FreeResource(Self->Description); Self->Description = NULL; }
-   if (Self->Disclaimer)  { FreeResource(Self->Disclaimer); Self->Disclaimer = NULL; }
-   if (Self->WAVE)        { FreeResource(Self->WAVE); Self->WAVE = NULL; }
-   if (Self->File)           { acFree(Self->File); Self->File = NULL; }
-   if (Self->StreamFileID)   { acFree(Self->StreamFileID); Self->StreamFileID = 0; }
+   if (Self->Path)         { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->Description)  { FreeResource(Self->Description); Self->Description = NULL; }
+   if (Self->Disclaimer)   { FreeResource(Self->Disclaimer); Self->Disclaimer = NULL; }
+   if (Self->WAVE)         { FreeResource(Self->WAVE); Self->WAVE = NULL; }
+   if (Self->File)         { acFree(Self->File); Self->File = NULL; }
+   if (Self->StreamFileID) { acFree(Self->StreamFileID); Self->StreamFileID = 0; }
 
    return ERR_Okay;
 }
@@ -466,8 +464,6 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 {
    parasol::Log log;
    LONG id, len;
-   STRING path;
-   CSTRING strerr;
    ERROR error;
 
    // Find the local audio object or create one to ease the developer's workload.
@@ -493,6 +489,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
       else return log.warning(ERR_AccessObject);
    }
 
+   STRING path;
    if ((Self->Flags & SDF_NEW) or (Self->get(FID_Path, &path) != ERR_Okay) or (!path)) {
       // If the sample is new or no path has been specified, create an audio sample from scratch (e.g. to record
       // audio to disk).
@@ -557,9 +554,9 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
    Self->File->get(FID_Position, &Self->DataOffset);
 
-   Self->Format      = Self->WAVE->Format;
+   Self->Format         = Self->WAVE->Format;
    Self->BytesPerSecond = Self->WAVE->AvgBytesPerSecond;
-   Self->Alignment   = Self->WAVE->BlockAlign;
+   Self->Alignment      = Self->WAVE->BlockAlign;
    Self->BitsPerSample  = Self->WAVE->BitsPerSample;
    if (Self->WAVE->Channels IS 2) Self->Flags |= SDF_STEREO;
    if (Self->Frequency <= 0) Self->Frequency = Self->WAVE->Frequency;
@@ -592,6 +589,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
    // Create the audio buffer and fill it with sample data
 
+   CSTRING strerr;
    if (Self->Length > Self->BufferLength) {
       log.msg("Streaming enabled for playback.");
       Self->Flags |= SDF_STREAM;
@@ -616,7 +614,6 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 static ERROR SOUND_Init(extSound *Self, APTR Void)
 {
    parasol::Log log;
-   struct sndAddSample add;
    OBJECTPTR filestream;
    LONG id, len, sampleformat, result, pos;
    BYTE *buffer;
@@ -881,6 +878,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
          Self->BufferLength = Self->Length;
 
          if (!Self->File->read(buffer, Self->Length, &result)) {
+            struct sndAddSample add;
             AudioLoop loop;
             if (Self->Flags & SDF_LOOP) {
                ClearMemory(&loop, sizeof(loop));
