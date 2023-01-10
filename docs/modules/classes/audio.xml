@@ -253,8 +253,7 @@ will execute five batches per second.
       </input>
       <description>
 <p>You can remove an allocated sample at any time by calling the RemoveSample method.  Once a sample is removed it is permanently deleted from the audio server and it is not possible to reallocate the sample against the same handle number.</p>
-<p>This method may not be called directly if the audio object in question is located in a foreign task.  If you try to grab the audio object and call this method, it will detect the illegal usage and return ERR_IllegalActionAttempt.  Thus the only safe way to call this method is to use the <function module="Core">ActionMsg</function> function.</p>
-<p>Over time, the continued allocation of audio samples will mean that freed handle numbers will become available again through the <method>AddSample</method> and <method>AddStream</method> methods.  For this reason, you should clear all references to the sample handle after removing it.</p>
+<p>Over time, the continued allocation of audio samples will mean that freed handle numbers will become available again through the <method>AddSample</method> and <method>AddStream</method> methods.  For this reason you should clear all references to the sample handle after removing it.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>

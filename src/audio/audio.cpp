@@ -47,17 +47,11 @@ static ERROR CMDOpen(OBJECTPTR);
 MODULE_COREBASE;
 static OBJECTPTR glAudioModule = NULL;
 static OBJECTPTR clAudio = 0;
-static DOUBLE glGlobalVolume = 0.8;
-static DOUBLE glTaskVolume = 1.0;
 static std::unordered_map<OBJECTID, LONG> glSoundChannels;
 
 #include "audio.h"
 
 //********************************************************************************************************************
-
-static LONG  MixSrcPos, MixStep;
-static UBYTE *glMixDest = NULL;
-static UBYTE *MixSample = NULL;
 
 static LONG glMaxSoundChannels = 8;
 
@@ -229,39 +223,6 @@ static LONG sndSetChannels(LONG Total)
    else if (Total < 1) Total = 1;
    glMaxSoundChannels = Total;
    return previous;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-SetTaskVolume: Set the default volume for the task (not global)
-
-The default volume for the current task can be adjusted by calling this function.  The volume is expressed as a
-value between 0 and 1.0.  If it is outside of this range then no adjustment is made to the current volume.
-
--INPUT-
-double Volume: Desired volume, between 0 and 1.0.
-
--RESULT-
-double: The previous volume setting is returned by this function, regardless of whether the volume setting is successful or not.
-
-*********************************************************************************************************************/
-
-static DOUBLE sndSetTaskVolume(DOUBLE Volume)
-{
-   if ((Volume < 0) or (Volume > 1.0)) {
-      return glTaskVolume;
-   }
-   else {
-      auto old = glTaskVolume;
-      glTaskVolume = Volume;
-
-      #ifdef _WIN32
-         dsSetVolume(Volume);
-      #endif
-
-      return old;
-   }
 }
 
 /*********************************************************************************************************************

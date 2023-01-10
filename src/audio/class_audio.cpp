@@ -171,7 +171,6 @@ ERROR AUDIO_AddSample(extAudio *Self, struct sndAddSample *Args)
 
    sample->SampleType   = Args->SampleFormat;
    sample->SampleLength = Args->DataSize >> shift;
-   sample->Used         = true;
 
    if (auto loop = Args->Loop) {
       sample->LoopMode     = loop->LoopMode;
@@ -316,7 +315,6 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
 
    AudioSample *sample = &Self->Samples[handle];
    ClearMemory(sample, sizeof(AudioSample));
-   sample->Used         = true;
    sample->SampleType   = Args->SampleFormat;
    sample->SampleLength = bufferlength>>shift;
    sample->SeekStart    = Args->SeekStart;
@@ -917,9 +915,6 @@ static ERROR AUDIO_RemoveSample(extAudio *Self, struct sndRemoveSample *Args)
 
    if (Self->Samples) {
       if (auto sample = &Self->Samples[Args->Handle]) {
-         if (!sample->Used) return ERR_Okay;
-
-         sample->Used = false;
          if (sample->Data) { FreeResource(sample->Data); sample->Data = NULL; }
          if (sample->Free) { acFree(sample->StreamID); sample->StreamID = 0; }
       }
@@ -1126,7 +1121,6 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 
    if (!StrMatch("Master", Self->VolumeCtl[index].Name)) {
       if (Args->Volume != -1) {
-         glGlobalVolume = Args->Volume;
          Self->MasterVolume = Args->Volume;
       }
 
@@ -1240,7 +1234,6 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 
    if (!StrMatch("Master", Self->VolumeCtl[index].Name)) {
       if (Args->Volume != -1) {
-         glGlobalVolume = Args->Volume;
          Self->MasterVolume = Args->Volume;
       }
 

@@ -26,15 +26,15 @@ class extAudio : public objAudio {
    snd_output_t *sndlog;
    LONG  AudioBufferSize;
    #endif
+   DOUBLE MasterVolume;
    LONG  MixBufferSize;
    LONG  TotalSamples;
    LONG  MixElements;
    TIMER Timer;
    WORD  SampleBitSize;
    WORD  MixBitSize;
-   UBYTE Stereo;                  // TRUE/FALSE for active stereo mode
-   BYTE  Mute;
-   BYTE  MasterVolume;
+   bool  Stereo;                  // TRUE/FALSE for active stereo mode
+   bool  Mute;
    BYTE  Initialising;
    LONG  VolumeCtlTotal;
    char  Device[28];

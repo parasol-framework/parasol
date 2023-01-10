@@ -1,12 +1,14 @@
 
-#define VUBLOCK   128   // VU meter calculation block size in bytes
-#define VUBSHIFT  7     // Amount to shift right to convert from bytes to blocks: (log2 VUBLOCK)
 #define RAMPSPEED 0.01  // Default ramping speed - volume steps per output sample.  Keeping this value very low prevents clicks from occurring
 
 template <class T> inline DOUBLE b2f(T Value)
 {
    return 256 * (Value-128);
 }
+
+static LONG MixSrcPos, MixStep;
+static UBYTE *glMixDest = NULL;
+static UBYTE *MixSample = NULL;
 
 static void filter_float_mono(extAudio *, FLOAT *, LONG);
 static void filter_float_stereo(extAudio *, FLOAT *, LONG);
@@ -371,10 +373,9 @@ ERROR mix_data(extAudio *Self, LONG Elements, APTR Destination)
 
 //********************************************************************************************************************
 
-static void mix_channel(extAudio *Self, AudioChannel *Channel,
-   LONG numSamples, APTR dest)
+static void mix_channel(extAudio *Self, AudioChannel *Channel, LONG numSamples, APTR Dest)
 {
-   ULONG sampleSize, prevMix = 1;
+   LONG sampleSize;
 
    // Check that we have something to mix
 
@@ -391,10 +392,8 @@ static void mix_channel(extAudio *Self, AudioChannel *Channel,
       }
    }
 
-   DOUBLE mastervol;
-   if (Self->Mute) mastervol = 0;
-   else if (Self->Flags & ADF_SYSTEM_WIDE) mastervol = 1.0 * glTaskVolume * stereo_mul;
-   else mastervol = glGlobalVolume * glTaskVolume * stereo_mul;
+   DOUBLE mastervol = 0;
+   if (!Self->Mute) mastervol = Self->MasterVolume * stereo_mul;
 
    switch (Channel->Sample.SampleType) {
       case SFM_U8_BIT_STEREO:
@@ -403,7 +402,8 @@ static void mix_channel(extAudio *Self, AudioChannel *Channel,
       default: sampleSize = 1; break;
    }
 
-   glMixDest = (UBYTE *)dest;
+   LONG prevMix = 1;
+   glMixDest = (UBYTE *)Dest;
    while (numSamples) {
       if (Channel->State IS CHS_STOPPED) return;
       else if (Channel->State IS CHS_FINISHED) return;
@@ -417,7 +417,7 @@ static void mix_channel(extAudio *Self, AudioChannel *Channel,
       if (sue % step) mixUntilEnd++;
 
       ULONG mixNow;
-      if (mixUntilEnd > (ULONG)numSamples ) mixNow = numSamples;
+      if (mixUntilEnd > (ULONG)numSamples) mixNow = numSamples;
       else mixNow = mixUntilEnd;
       numSamples -= mixNow;
 
@@ -578,9 +578,6 @@ static void filter_float_stereo(extAudio *Self, FLOAT *data, LONG numSamples)
 }
 
 //********************************************************************************************************************
-// MONO MIXING
-
-//********************************************************************************************************************
 // Mix 8-bit mono samples.
 
 static void mixmf8Mono(unsigned numSamples, LONG nextSampleOffset, FLOAT LeftVol, FLOAT RightVol)
@@ -648,16 +645,7 @@ static void mixmf16Stereo(unsigned numSamples, LONG nextSampleOffset, FLOAT Left
    glMixDest = (UBYTE*) dest;
 }
 
-static MixRoutine MixMonoFloat[5] = {
-   NULL,            // no sample
-   &mixmf8Mono,     // 8-bit mono
-   &mixmf16Mono,    // 16-bit mono
-   &mixmf8Stereo,   // 8-bit stereo
-   &mixmf16Stereo,  // 16-bit stereo
-};
-
-//********************************************************************************************************************
-// STEREO MIXING
+static MixRoutine MixMonoFloat[5] = { NULL, &mixmf8Mono, &mixmf16Mono, &mixmf8Stereo, &mixmf16Stereo };
 
 //********************************************************************************************************************
 // Mix 8-bit mono samples.
@@ -739,19 +727,10 @@ static void mixsf16Stereo(unsigned numSamples, int nextSampleOffset, FLOAT LeftV
    glMixDest = (UBYTE*) dest;
 }
 
-static MixRoutine MixStereoFloat[5] = {
-   NULL,            // no sample
-   &mixsf8Mono,     // 8-bit mono
-   &mixsf16Mono,    // 16-bit mono
-   &mixsf8Stereo,   // 8-bit stereo
-   &mixsf16Stereo,  // 16-bit stereo
-};
+static MixRoutine MixStereoFloat[5] = { NULL, &mixsf8Mono, &mixsf16Mono, &mixsf8Stereo, &mixsf16Stereo };
 
 //********************************************************************************************************************
-// MONO-INTERPOLATED MIXING
-
-//********************************************************************************************************************
-// Mix 8-bit mono samples.
+// Mix interploated 8-bit mono samples.
 
 static void mixmi8Mono(unsigned numSamples, LONG nextSampleOffset, FLOAT LeftVol, FLOAT RightVol)
 {
@@ -782,7 +761,7 @@ static void mixmi8Mono(unsigned numSamples, LONG nextSampleOffset, FLOAT LeftVol
 }
 
 //********************************************************************************************************************
-// Mix 16-bit mono samples.
+// Mix interploated 16-bit mono samples.
 
 static void mixmi16Mono(unsigned numSamples, LONG nextSampleOffset, FLOAT LeftVol, FLOAT RightVol)
 {
@@ -813,7 +792,7 @@ static void mixmi16Mono(unsigned numSamples, LONG nextSampleOffset, FLOAT LeftVo
 }
 
 //********************************************************************************************************************
-// Mix 8-bit stereo samples.
+// Mix interploated 8-bit stereo samples.
 
 static void mixmi8Stereo(unsigned numSamples, LONG nextSampleOffset, FLOAT LeftVol, FLOAT RightVol)
 {
@@ -824,8 +803,8 @@ static void mixmi8Stereo(unsigned numSamples, LONG nextSampleOffset, FLOAT LeftV
 
    if (nextSampleOffset != 1) {
        while (numSamples) {
-         DOUBLE i0 = 65536 - (mixPos & 0xffff);
-         DOUBLE i1 = mixPos & 0xffff;
+         auto i0 = DOUBLE(65536 - (mixPos & 0xffff));
+         auto i1 = DOUBLE(mixPos & 0xffff);
          *(dest++) += volMul *
             ((i0 * b2f(sample[2 * (mixPos>>16)]) + i1 * b2f(sample[2 * (mixPos>>16) + 2 * nextSampleOffset])) +
              (i0 * b2f(sample[2 * (mixPos>>16) + 1]) + i1 * b2f(sample[2 * (mixPos>>16) + 2 * nextSampleOffset + 1])));
@@ -834,8 +813,8 @@ static void mixmi8Stereo(unsigned numSamples, LONG nextSampleOffset, FLOAT LeftV
       }
    }
    else while (numSamples) {
-      DOUBLE i0 = (DOUBLE)(65536 - (mixPos & 0xffff));
-      DOUBLE i1 = (DOUBLE)(mixPos & 0xffff);
+      auto i0 = DOUBLE(65536 - (mixPos & 0xffff));
+      auto i1 = DOUBLE(mixPos & 0xffff);
       *(dest++) += volMul *
          ((i0 * b2f(sample[2 * (mixPos>>16)]) +
            i1 * b2f(sample[2 * (mixPos>>16) + 2])) +
@@ -850,7 +829,7 @@ static void mixmi8Stereo(unsigned numSamples, LONG nextSampleOffset, FLOAT LeftV
 }
 
 //********************************************************************************************************************
-// Mix 16-bit stereo samples.
+// Mix interploated 16-bit stereo samples.
 
 static void mixmi16Stereo(unsigned numSamples, LONG nextSampleOffset, FLOAT LeftVol, FLOAT RightVol)
 {
@@ -861,21 +840,21 @@ static void mixmi16Stereo(unsigned numSamples, LONG nextSampleOffset, FLOAT Left
 
    if (nextSampleOffset != 1) {
       while (numSamples) {
-         DOUBLE i0 = (DOUBLE) (65536 - (mixPos & 0xffff));
-         DOUBLE i1 = (DOUBLE) (mixPos & 0xffff);
+         auto i0 = DOUBLE(65536 - (mixPos & 0xffff));
+         auto i1 = DOUBLE(mixPos & 0xffff);
          *(dest++) += volMul *
-             ((i0 * ((DOUBLE) sample[2 * (mixPos>>16)]) + i1 * ((DOUBLE)sample[2 * (mixPos>>16) + 2 * nextSampleOffset])) +
-              (i0 * ((DOUBLE) sample[2 * (mixPos>>16) + 1]) + i1 * ((DOUBLE)sample[2 * (mixPos>>16) + 2 * nextSampleOffset + 1])));
+            ((i0 * ((DOUBLE) sample[2 * (mixPos>>16)]) + i1 * ((DOUBLE)sample[2 * (mixPos>>16) + 2 * nextSampleOffset])) +
+             (i0 * ((DOUBLE) sample[2 * (mixPos>>16) + 1]) + i1 * ((DOUBLE)sample[2 * (mixPos>>16) + 2 * nextSampleOffset + 1])));
          mixPos += MixStep;
          numSamples--;
       }
    }
    else while (numSamples) {
-      DOUBLE i0 = (DOUBLE)(65536 - (mixPos & 0xffff));
-      DOUBLE i1 = (DOUBLE)(mixPos & 0xffff);
+      auto i0 = DOUBLE(65536 - (mixPos & 0xffff));
+      auto i1 = DOUBLE(mixPos & 0xffff);
       *(dest++) += volMul *
-          ((i0 * ((DOUBLE)sample[2 * (mixPos>>16)]) + i1 * ((DOUBLE)sample[2 * (mixPos>>16) + 2])) +
-           (i0 * ((DOUBLE)sample[2 * (mixPos>>16) + 1]) + i1 * ((DOUBLE)sample[2 * (mixPos>>16) + 3])));
+         ((i0 * ((DOUBLE)sample[2 * (mixPos>>16)]) + i1 * ((DOUBLE)sample[2 * (mixPos>>16) + 2])) +
+          (i0 * ((DOUBLE)sample[2 * (mixPos>>16) + 1]) + i1 * ((DOUBLE)sample[2 * (mixPos>>16) + 3])));
       mixPos += MixStep;
       numSamples--;
    }
@@ -884,19 +863,10 @@ static void mixmi16Stereo(unsigned numSamples, LONG nextSampleOffset, FLOAT Left
    glMixDest = (UBYTE *)dest;
 }
 
-static MixRoutine MixMonoFloatInterp[5] = {
-   NULL,           // no sample
-   &mixmi8Mono,    // 8-bit mono
-   &mixmi16Mono,   // 16-bit mono
-   &mixmi8Stereo,  // 8-bit stereo
-   &mixmi16Stereo, // 16-bit stereo
-};
+static MixRoutine MixMonoFloatInterp[5] = { NULL, &mixmi8Mono, &mixmi16Mono, &mixmi8Stereo, &mixmi16Stereo };
 
 //********************************************************************************************************************
-// STEREO-INTERPOLATED MIXING
-
-//********************************************************************************************************************
-// Mix 8-bit mono samples.
+// Mix interploated 8-bit mono samples.
 
 static void mixsi8Mono(unsigned numSamples, LONG nextSampleOffset, FLOAT LeftVol, FLOAT RightVol)
 {
@@ -934,7 +904,7 @@ static void mixsi8Mono(unsigned numSamples, LONG nextSampleOffset, FLOAT LeftVol
 }
 
 //********************************************************************************************************************
-// Mix 16-bit mono samples.
+// Mix interploated 16-bit mono samples.
 
 static void mixsi16Mono(unsigned numSamples, LONG nextSampleOffset, FLOAT LeftVol, FLOAT RightVol)
 {
@@ -974,7 +944,7 @@ static void mixsi16Mono(unsigned numSamples, LONG nextSampleOffset, FLOAT LeftVo
 }
 
 //********************************************************************************************************************
-// Mix 8-bit stereo samples.
+// Mix interploated 8-bit stereo samples.
 
 static void mixsi8Stereo(unsigned numSamples, LONG nextSampleOffset, FLOAT LeftVol, FLOAT RightVol)
 {
@@ -1012,7 +982,7 @@ static void mixsi8Stereo(unsigned numSamples, LONG nextSampleOffset, FLOAT LeftV
 }
 
 //********************************************************************************************************************
-// Mix 16-bit stereo samples.
+// Mix interploated 16-bit stereo samples.
 
 static void mixsi16Stereo(unsigned numSamples, LONG nextSampleOffset, FLOAT LeftVol, FLOAT RightVol)
 {
@@ -1039,11 +1009,11 @@ static void mixsi16Stereo(unsigned numSamples, LONG nextSampleOffset, FLOAT Left
          auto i0 = DOUBLE(65536 - (mixPos & 0xffff));
          auto i1 = DOUBLE(mixPos & 0xffff);
          *dest += volMulL *
-             (i0 * ((DOUBLE) sample[2 * (mixPos>>16)]) +
-              i1 * ((DOUBLE) sample[2 * (mixPos>>16) + 2]));
+            (i0 * ((DOUBLE) sample[2 * (mixPos>>16)]) +
+             i1 * ((DOUBLE) sample[2 * (mixPos>>16) + 2]));
          *(dest+1) += volMulR *
-             (i0 * ((DOUBLE) sample[2 * (mixPos>>16) + 1]) +
-              i1 * ((DOUBLE) sample[2 * (mixPos>>16) + 3]));
+            (i0 * ((DOUBLE) sample[2 * (mixPos>>16) + 1]) +
+             i1 * ((DOUBLE) sample[2 * (mixPos>>16) + 3]));
          dest += 2;
          mixPos += MixStep;
          numSamples--;
@@ -1054,10 +1024,4 @@ static void mixsi16Stereo(unsigned numSamples, LONG nextSampleOffset, FLOAT Left
    glMixDest = (UBYTE*) dest;
 }
 
-static MixRoutine MixStereoFloatInterp[5] = {
-   NULL,            // no sample
-   &mixsi8Mono,     // 8-bit mono
-   &mixsi16Mono,    // 16-bit mono
-   &mixsi8Stereo,   // 8-bit stereo
-   &mixsi16Stereo   // 16-bit stereo
-};
+static MixRoutine MixStereoFloatInterp[5] = { NULL, &mixsi8Mono, &mixsi16Mono, &mixsi8Stereo, &mixsi16Stereo };

@@ -144,7 +144,7 @@ struct AudioSample {
    BYTE     LoopMode;    // Loop mode (single, double)
    BYTE     Loop1Type;   // First loop type (unidirectional, bidirectional)
    BYTE     Loop2Type;   // Second loop type (unidirectional, bidirectional)
-   BYTE     Used;
+   BYTE     Used;        // Remains true until freed.
    BYTE     Free;
 };
 
@@ -383,13 +383,11 @@ struct AudioBase {
    ERROR (*_StartDrivers)(void);
    ERROR (*_WaitDrivers)(LONG TimeOut);
    LONG (*_SetChannels)(LONG Total);
-   DOUBLE (*_SetTaskVolume)(DOUBLE Volume);
 };
 
 #ifndef PRV_AUDIO_MODULE
 inline ERROR sndStartDrivers(void) { return AudioBase->_StartDrivers(); }
 inline ERROR sndWaitDrivers(LONG TimeOut) { return AudioBase->_WaitDrivers(TimeOut); }
 inline LONG sndSetChannels(LONG Total) { return AudioBase->_SetChannels(Total); }
-inline DOUBLE sndSetTaskVolume(DOUBLE Volume) { return AudioBase->_SetTaskVolume(Volume); }
 #endif
 

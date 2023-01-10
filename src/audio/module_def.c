@@ -7,7 +7,6 @@ extern "C" {
 static ERROR sndStartDrivers();
 static ERROR sndWaitDrivers(LONG TimeOut);
 static LONG sndSetChannels(LONG Total);
-static DOUBLE sndSetTaskVolume(DOUBLE Volume);
 
 #ifdef  __cplusplus
 }
@@ -17,7 +16,6 @@ static DOUBLE sndSetTaskVolume(DOUBLE Volume);
 #endif
 
 FDEF argsSetChannels[] = { { "Result", FD_LONG }, { "Total", FD_LONG }, { 0, 0 } };
-FDEF argsSetTaskVolume[] = { { "Result", FD_DOUBLE }, { "Volume", FD_DOUBLE }, { 0, 0 } };
 FDEF argsStartDrivers[] = { { "Error", FD_LONG|FD_ERROR }, { 0, 0 } };
 FDEF argsWaitDrivers[] = { { "Error", FD_LONG|FD_ERROR }, { "TimeOut", FD_LONG }, { 0, 0 } };
 
@@ -25,7 +23,6 @@ const struct Function glFunctions[] = {
    { (APTR)sndStartDrivers, "StartDrivers", argsStartDrivers },
    { (APTR)sndWaitDrivers, "WaitDrivers", argsWaitDrivers },
    { (APTR)sndSetChannels, "SetChannels", argsSetChannels },
-   { (APTR)sndSetTaskVolume, "SetTaskVolume", argsSetTaskVolume },
    { NULL, NULL, NULL }
 };
 

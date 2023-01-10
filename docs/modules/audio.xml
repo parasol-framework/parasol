@@ -27,19 +27,6 @@
   </function>
 
   <function>
-    <name>SetTaskVolume</name>
-    <comment>Set the default volume for the task (not global)</comment>
-    <prototype>DOUBLE sndSetTaskVolume(DOUBLE Volume)</prototype>
-    <input>
-      <param type="DOUBLE" name="Volume">Desired volume, between 0 and 1.0.</param>
-    </input>
-    <description>
-<p>The default volume for the current task can be adjusted by calling this function.  The volume is expressed as a value between 0 and 1.0.  If it is outside of this range then no adjustment is made to the current volume.</p>
-    </description>
-    <result type="DOUBLE">The previous volume setting is returned by this function, regardless of whether the volume setting is successful or not.</result>
-  </function>
-
-  <function>
     <name>StartDrivers</name>
     <comment>Starts the audio drivers (platform dependent).</comment>
     <prototype>ERROR sndStartDrivers()</prototype>
@@ -235,7 +222,7 @@
       <field name="LoopMode" type="BYTE">Loop mode (single, double)</field>
       <field name="Loop1Type" type="BYTE">First loop type (unidirectional, bidirectional)</field>
       <field name="Loop2Type" type="BYTE">Second loop type (unidirectional, bidirectional)</field>
-      <field name="Used" type="BYTE"></field>
+      <field name="Used" type="BYTE">Remains true until freed.</field>
       <field name="Free" type="BYTE"></field>
     </struct>
 

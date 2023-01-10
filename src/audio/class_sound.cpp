@@ -109,7 +109,7 @@ static ERROR snd_init_audio(extSound *Self)
    parasol::Log log;
 
    LONG count = 1;
-   if (!FindObject("SystemAudio", ID_AUDIO, FOF_INCLUDE_SHARED, &Self->AudioID, &count)) return ERR_Okay;
+   if (!FindObject("SystemAudio", ID_AUDIO, 0, &Self->AudioID, &count)) return ERR_Okay;
 
    objAudio *audio;
    ERROR error;
@@ -143,16 +143,13 @@ static ERROR SOUND_ActionNotify(extSound *Self, struct acActionNotify *Args)
 {
    parasol::Log log;
 
-   if (Args->ActionID IS AC_Read) {
-      // Streams: When the Audio system calls the Read action, we need to decode more audio information to the stream
-      // buffer.
+   // Streams: When the Audio system calls the Read/Seek actions, we need to decode more audio information to the
+   // stream buffer.
 
+   if (Args->ActionID IS AC_Read) {
       NotifySubscribers(Self, AC_Read, Args->Args, 0, ERR_Okay);
    }
    else if (Args->ActionID IS AC_Seek) {
-      // Streams: If the Audio system calls the Seek action, we need to move our current decode position to the
-      // requested area.
-
       NotifySubscribers(Self, AC_Seek, Args->Args, 0, ERR_Okay);
    }
    else log.msg("Unrecognised action #%d.", Args->ActionID);
@@ -199,7 +196,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
       else return ERR_Failed;
    }
    else {
-      log.msg("A independent win32 waveform will not be used for this sample.");
+      log.msg("An independent win32 waveform will not be used for this sample.");
       return ERR_Okay;
    }
 
@@ -273,7 +270,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
       }
       else {
          log.warning("Failed to set sample %d to channel $%.8x", Self->Handle, Self->ChannelIndex);
-         return log.warning(ERR_Failed);
+         return ERR_Failed;
       }
    }
    else return log.warning(ERR_AccessObject);
@@ -1588,13 +1585,16 @@ playback will dynamically alter the volume.
 
 static ERROR SOUND_SET_Volume(extSound *Self, DOUBLE Value)
 {
+   if (Value < 0) Value = 0;
+   else if (Value > 1.0) Value = 1.0;
    Self->Volume = Value;
-   if (Self->Volume < 0) Self->Volume = 0;
-   else if (Self->Volume > 1.0) Self->Volume = 1.0;
 
 #ifdef _WIN32
    if ((!Self->Handle) and (Self->initialised())) {
-      sndVolume((PlatformData *)Self->PlatformData, glGlobalVolume * Self->Volume);
+      parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
+      if (audio.granted()) {
+         sndVolume((PlatformData *)Self->PlatformData, audio->MasterVolume * Self->Volume);
+      }
       return ERR_Okay;
    }
 #endif

@@ -114,8 +114,7 @@ module({ name="Audio", copyright="Paul Manias © 2002-2022", version=1.0 }, func
     char  LoopMode       # Loop mode (single, double)
     char  Loop1Type      # First loop type (unidirectional, bidirectional)
     char  Loop2Type      # Second loop type (unidirectional, bidirectional)
-    char  Used
-    char  Free
+    char  Free           # Set to true if the StreamID object should be terminated on sample removal.
   ]])
 
   struct("AudioChannel", { comment="Audio channel structure" }, [[
@@ -232,7 +231,6 @@ module({ name="Audio", copyright="Paul Manias © 2002-2022", version=1.0 }, func
   functionNames("snd",
      "StartDrivers",
      "WaitDrivers",
-     "SetChannels",
-     "SetTaskVolume")
+     "SetChannels")
 
 end)
