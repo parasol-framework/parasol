@@ -222,8 +222,8 @@
       <field name="LoopMode" type="BYTE">Loop mode (single, double)</field>
       <field name="Loop1Type" type="BYTE">First loop type (unidirectional, bidirectional)</field>
       <field name="Loop2Type" type="BYTE">Second loop type (unidirectional, bidirectional)</field>
-      <field name="Used" type="BYTE">Remains true until freed.</field>
-      <field name="Free" type="BYTE"></field>
+      <field name="Free" type="BYTE">Set to true if the StreamID object should be terminated on sample removal.</field>
+      <field name="Used" type="BYTE"></field>
     </struct>
 
     <struct name="ChannelSet" comment="Channel set management structure.">

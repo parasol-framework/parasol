@@ -144,8 +144,8 @@ struct AudioSample {
    BYTE     LoopMode;    // Loop mode (single, double)
    BYTE     Loop1Type;   // First loop type (unidirectional, bidirectional)
    BYTE     Loop2Type;   // Second loop type (unidirectional, bidirectional)
-   BYTE     Used;        // Remains true until freed.
-   BYTE     Free;
+   BYTE     Free;        // Set to true if the StreamID object should be terminated on sample removal.
+   BYTE     Used;
 };
 
 struct AudioChannel {
