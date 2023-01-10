@@ -67,7 +67,7 @@ static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
    Self->MixBufferSize = (((Self->MixBitSize * Self->OutputRate) / MIXBUFLEN) + 15) & 0xfffffff0;
    Self->MixElements   = Self->MixBufferSize / Self->MixBitSize;
 
-   if (!AllocMemory(Self->MixBufferSize, MEM_DATA, &Self->BufferMemory)) {
+   if (!AllocMemory(Self->MixBufferSize, MEM_DATA, &Self->MixBuffer)) {
       // Pick the correct mixing routines
 
       if (Self->Flags & ADF_OVER_SAMPLING) {
@@ -677,8 +677,8 @@ static ERROR AUDIO_Free(extAudio *Self, APTR Void)
       if (Self->Channels[i].Commands) { FreeResource(Self->Channels[i].Commands); Self->Channels[i].Commands = NULL; }
    }
 
-   if (Self->VolumeCtl)    { FreeResource(Self->VolumeCtl); Self->VolumeCtl = NULL; }
-   if (Self->BufferMemory) { FreeResource(Self->BufferMemory); Self->BufferMemory = NULL; }
+   if (Self->VolumeCtl) { FreeResource(Self->VolumeCtl); Self->VolumeCtl = NULL; }
+   if (Self->MixBuffer) { FreeResource(Self->MixBuffer); Self->MixBuffer = NULL; }
 
    if (Self->Samples) {
       for (LONG i=0; i < Self->TotalSamples; i++) {

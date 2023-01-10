@@ -16,7 +16,6 @@ class extAudio : public objAudio {
    struct AudioSample *Samples;
    struct VolumeCtl *VolumeCtl;
    MixRoutine *MixRoutines;
-   APTR  BufferMemory;
    APTR  MixBuffer;
    APTR  TaskRemovedHandle;
    APTR  UserLoginHandle;
