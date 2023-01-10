@@ -55,15 +55,10 @@ static std::unordered_map<OBJECTID, LONG> glSoundChannels;
 
 //********************************************************************************************************************
 
-static FLOAT MixLeftVolFloat, MixRightVolFloat;
 static LONG  MixSrcPos, MixStep;
 static UBYTE *glMixDest = NULL;
 static UBYTE *MixSample = NULL;
-static APTR glMixBuffer = NULL;    // DSM mixing buffer. Play() writes the mixed data here. Post-processing is usually necessary.
-extern MixRoutine MixMonoFloat[5];
-extern MixRoutine MixStereoFloat[5];
-extern MixRoutine MixMonoFloatInterp[5];
-extern MixRoutine MixStereoFloatInterp[5];
+
 static LONG glMaxSoundChannels = 8;
 
 #ifdef _WIN32
@@ -344,9 +339,9 @@ static ERROR sndWaitDrivers(LONG TimeOut)
 
 //********************************************************************************************************************
 
+#include "functions.cpp"
 #include "class_audio.cpp"
 #include "commands.cpp"
-#include "functions.cpp"
 #include "class_sound.cpp"
 
 //********************************************************************************************************************

@@ -892,12 +892,8 @@ You can remove an allocated sample at any time by calling the RemoveSample metho
 permanently deleted from the audio server and it is not possible to reallocate the sample against the same handle
 number.
 
-This method may not be called directly if the audio object in question is located in a foreign task.  If you try to
-grab the audio object and call this method, it will detect the illegal usage and return ERR_IllegalActionAttempt.  Thus
-the only safe way to call this method is to use the ~Core.ActionMsg() function.
-
 Over time, the continued allocation of audio samples will mean that freed handle numbers will become available again
-through the #AddSample() and #AddStream() methods.  For this reason, you should clear all references to the sample
+through the #AddSample() and #AddStream() methods.  For this reason you should clear all references to the sample
 handle after removing it.
 
 -INPUT-
