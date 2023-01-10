@@ -149,16 +149,16 @@ struct AudioSample {
 };
 
 struct AudioChannel {
-   struct AudioSample Sample;    // Sample structure
    DOUBLE   LVolume;             // Current left speaker volume (0 - 1.0)
    DOUBLE   RVolume;             // Current right speaker volume (0 - 1.0)
    DOUBLE   LVolumeTarget;       // Volume target when fading or ramping
    DOUBLE   RVolumeTarget;       // Volume target when fading or ramping
+   struct AudioSample Sample;    // Sample structure
    OBJECTID SoundID;             // ID of the sound object set on this channel
    LONG     SampleHandle;        // Internal handle reference
    LONG     Flags;               // Special flags
-   ULONG    Position;            // Current playing/mixing position
-   ULONG    Frequency;           // Playback frequency
+   LONG     Position;            // Current playing/mixing position
+   LONG     Frequency;           // Playback frequency
    UWORD    PositionLow;         // Playing position, lower bits
    WORD     Volume;              // Playing volume (0-100)
    BYTE     Priority;            // Priority of the sound that has been assigned to this channel

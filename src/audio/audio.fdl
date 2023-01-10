@@ -119,16 +119,16 @@ module({ name="Audio", copyright="Paul Manias © 2002-2022", version=1.0 }, func
   ]])
 
   struct("AudioChannel", { comment="Audio channel structure" }, [[
-    struct(AudioSample) Sample  # Sample structure
     double LVolume              # Current left speaker volume (0 - 1.0)
     double RVolume              # Current right speaker volume (0 - 1.0)
     double LVolumeTarget        # Volume target when fading or ramping
     double RVolumeTarget        # Volume target when fading or ramping
+    struct(AudioSample) Sample  # Sample structure
     oid    SoundID              # ID of the sound object set on this channel
     int    SampleHandle         # Internal handle reference
     int(CHF) Flags              # Special flags
-    uint   Position             # Current playing/mixing position
-    uint   Frequency            # Playback frequency
+    int    Position             # Current playing/mixing position
+    int    Frequency            # Playback frequency
     ushort PositionLow          # Playing position, lower bits
     short  Volume               # Playing volume (0-100)
     char   Priority             # Priority of the sound that has been assigned to this channel

@@ -31,6 +31,12 @@ snd.acActivate()
 
 -END-
 
+**********************************************************************************************************************
+
+NOTE: Ideally individual samples should always be played through the host's audio capabilities and not our internal
+mixer.  The mixer is buffered and therefore always has a delay, whereas the host drivers should be able to play
+individual samples with more immediacy.
+
 *********************************************************************************************************************/
 
 struct PlatformData { void *Void; };
@@ -89,7 +95,7 @@ void SeekZero(extSound *Self) {
 //********************************************************************************************************************
 // Stubs.
 
-#ifndef _WIN32
+static LONG sample_format(extSound *Self) __attribute__((unused));
 static LONG sample_format(extSound *Self)
 {
    if (Self->BitsPerSample IS 8) {
@@ -102,7 +108,6 @@ static LONG sample_format(extSound *Self)
    }
    return 0;
 }
-#endif
 
 static ERROR snd_init_audio(extSound *Self)
 {
@@ -169,9 +174,10 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
 
    log.traceBranch("");
 
-#ifdef _WIN32
-
+#if defined(USE_WIN32_PLAYBACK)
    if (Self->WAVE) {
+      // Optimised playback for Windows - this does not use our internal mixer.
+
       // Set platform dependent playback parameters
 
       SOUND_SET_Playback(Self, Self->Playback);
@@ -195,11 +201,6 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
       }
       else return ERR_Failed;
    }
-   else {
-      log.msg("An independent win32 waveform will not be used for this sample.");
-      return ERR_Okay;
-   }
-
 #endif
 
    LONG i;
@@ -292,7 +293,7 @@ static ERROR SOUND_Deactivate(extSound *Self, APTR Void)
 
    Self->Position = 0;
 
-#ifdef _WIN32
+#if defined(USE_WIN32_PLAYBACK)
    if (!Self->Handle) {
       sndStop((PlatformData *)Self->PlatformData);
       return ERR_Okay;
@@ -325,7 +326,7 @@ static ERROR SOUND_Disable(extSound *Self, APTR Void)
 
    log.branch();
 
-#ifdef _WIN32
+#if defined(USE_WIN32_PLAYBACK)
    if (!Self->Handle) {
       Self->Position = sndGetPosition((PlatformData *)Self->PlatformData);
       log.msg("Position: %d", Self->Position);
@@ -357,15 +358,13 @@ static ERROR SOUND_Enable(extSound *Self, APTR Void)
    parasol::Log log;
    log.branch();
 
-#ifdef _WIN32
-
+#if defined(USE_WIN32_PLAYBACK)
    if (!Self->Handle) {
       log.msg("Playing back from position %d.", Self->Position);
       if (Self->Flags & SDF_LOOP) sndPlay((PlatformData *)Self->PlatformData, TRUE, Self->Position);
       else sndPlay((PlatformData *)Self->PlatformData, FALSE, Self->Position);
       return ERR_Okay;
    }
-
 #endif
 
    if (!Self->ChannelIndex) return ERR_Okay;
@@ -390,7 +389,7 @@ static ERROR SOUND_Free(extSound *Self, APTR Void)
       if (Self->Timer) { UpdateTimer(Self->Timer, 0); Self->Timer = 0; }
    }
 
-#ifdef _WIN32
+#if defined(USE_WIN32_PLAYBACK)
    if (!Self->Handle) sndFree((PlatformData *)Self->PlatformData);
 #endif
 
@@ -455,7 +454,7 @@ Init: Prepares a sound object for usage.
 
 #define SIZE_RIFF_CHUNK 12
 
-#ifdef _WIN32
+#if defined(USE_WIN32_PLAYBACK)
 
 static ERROR SOUND_Init(extSound *Self, APTR Void)
 {
@@ -1070,8 +1069,7 @@ static ERROR SOUND_GET_Active(extSound *Self, LONG *Value)
 {
    parasol::Log log;
 
-#ifdef _WIN32
-
+#if defined(USE_WIN32_PLAYBACK)
    if (!Self->Handle) {
       WORD status = sndCheckActivity((PlatformData *)Self->PlatformData);
 
@@ -1084,7 +1082,6 @@ static ERROR SOUND_GET_Active(extSound *Self, LONG *Value)
 
       return ERR_Okay;
    }
-
 #endif
 
    *Value = FALSE;
@@ -1392,7 +1389,7 @@ static ERROR SOUND_SET_Note(extSound *Self, CSTRING Value)
 
    // If the sound is playing, set the new playback frequency immediately
 
-#ifdef _WIN32
+#if defined(USE_WIN32_PLAYBACK)
    if ((!Self->Handle) and (Self->initialised())) {
       sndFrequency((PlatformData *)Self->PlatformData, Self->Playback);
       return ERR_Okay;
@@ -1447,7 +1444,7 @@ static ERROR SOUND_SET_Pan(extSound *Self, DOUBLE Value)
    if (Self->Pan < -1.0) Self->Pan = -1.0;
    else if (Self->Pan > 1.0) Self->Pan = 1.0;
 
-#ifdef _WIN32
+#if defined(USE_WIN32_PLAYBACK)
    if ((!Self->Handle) and (Self->initialised())) {
       sndPan((PlatformData *)Self->PlatformData, Self->Pan);
       return ERR_Okay;
@@ -1490,7 +1487,7 @@ static ERROR SOUND_SET_Playback(extSound *Self, LONG Value)
    Self->Playback = Value;
    Self->Flags &= ~SDF_NOTE;
 
-#ifdef _WIN32
+#if defined(USE_WIN32_PLAYBACK)
    if ((!Self->Handle) and (Self->initialised())) {
       sndFrequency((PlatformData *)Self->PlatformData, Self->Playback);
       return ERR_Okay;
@@ -1519,14 +1516,12 @@ playback position, either when the sample is next played, or immediately if it i
 
 static ERROR SOUND_GET_Position(extSound *Self, LONG *Value)
 {
-#ifdef _WIN32
-
+#if defined(USE_WIN32_PLAYBACK)
    if (!Self->Handle) {
       Self->Position = sndGetPosition((PlatformData *)Self->PlatformData);
       *Value = Self->Position;
       return ERR_Okay;
    }
-
 #endif
 
    *Value = Self->Position;
@@ -1589,7 +1584,7 @@ static ERROR SOUND_SET_Volume(extSound *Self, DOUBLE Value)
    else if (Value > 1.0) Value = 1.0;
    Self->Volume = Value;
 
-#ifdef _WIN32
+#if defined(USE_WIN32_PLAYBACK)
    if ((!Self->Handle) and (Self->initialised())) {
       parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
@@ -1635,7 +1630,7 @@ static ERROR playback_timer(extSound *Self, LARGE Elapsed, LARGE CurrentTime)
    parasol::Log log;
    LONG active;
 
-#ifdef _WIN32
+#if defined(USE_WIN32_PLAYBACK)
    if ((Self->Flags & SDF_STREAM) and (!Self->Handle)) {
       // See sndStreamAudio() for further information on streaming in Win32
 
@@ -1652,7 +1647,6 @@ static ERROR playback_timer(extSound *Self, LARGE Elapsed, LARGE CurrentTime)
       }
       return ERR_Okay;
    }
-
 #endif
 
    // If the sound has stopped playing and the LOOP flag is not in use, either unsubscribe from the timer (because

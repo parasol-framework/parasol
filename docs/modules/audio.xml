@@ -172,16 +172,16 @@
   </types>
   <structs>
     <struct name="AudioChannel" comment="Audio channel structure">
-      <field name="Sample" type="struct AudioSample">Sample structure</field>
       <field name="LVolume" type="DOUBLE">Current left speaker volume (0 - 1.0)</field>
       <field name="RVolume" type="DOUBLE">Current right speaker volume (0 - 1.0)</field>
       <field name="LVolumeTarget" type="DOUBLE">Volume target when fading or ramping</field>
       <field name="RVolumeTarget" type="DOUBLE">Volume target when fading or ramping</field>
+      <field name="Sample" type="struct AudioSample">Sample structure</field>
       <field name="SoundID" type="OBJECTID">ID of the sound object set on this channel</field>
       <field name="SampleHandle" type="LONG">Internal handle reference</field>
       <field name="Flags" type="LONG" lookup="CHF">Special flags</field>
-      <field name="Position" type="ULONG">Current playing/mixing position</field>
-      <field name="Frequency" type="ULONG">Playback frequency</field>
+      <field name="Position" type="LONG">Current playing/mixing position</field>
+      <field name="Frequency" type="LONG">Playback frequency</field>
       <field name="PositionLow" type="UWORD">Playing position, lower bits</field>
       <field name="Volume" type="WORD">Playing volume (0-100)</field>
       <field name="Priority" type="BYTE">Priority of the sound that has been assigned to this channel</field>

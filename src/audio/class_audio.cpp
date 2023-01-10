@@ -56,16 +56,15 @@ static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
    else if (Self->BitDepth IS 24) Self->SampleBitSize = 3;
    else Self->SampleBitSize = 1;
 
-   if (Self->Stereo) Self->SampleBitSize = Self->SampleBitSize<<1;
+   if (Self->Stereo) Self->SampleBitSize *= 2;
 
    // Allocate a floating-point mixing buffer
 
-   if (Self->Stereo) Self->MixBitSize = sizeof(FLOAT) * 2;
-   else Self->MixBitSize = sizeof(FLOAT);
+   BYTE mixbitsize = Self->Stereo ? sizeof(FLOAT) * 2 : sizeof(FLOAT);
 
    #define MIXBUFLEN 20      // mixing buffer length 1/20th of a second
-   Self->MixBufferSize = (((Self->MixBitSize * Self->OutputRate) / MIXBUFLEN) + 15) & 0xfffffff0;
-   Self->MixElements   = Self->MixBufferSize / Self->MixBitSize;
+   Self->MixBufferSize = (((mixbitsize * Self->OutputRate) / MIXBUFLEN) + 15) & 0xfffffff0;
+   Self->MixElements   = Self->MixBufferSize / mixbitsize;
 
    if (!AllocMemory(Self->MixBufferSize, MEM_DATA, &Self->MixBuffer)) {
       // Pick the correct mixing routines
@@ -863,7 +862,7 @@ static ERROR AUDIO_OpenChannels(extAudio *Self, struct sndOpenChannels *Args)
             Self->Channels[index].TotalCommands = Args->Commands;
             Self->Channels[index].Position      = 0;
             Self->Channels[index].UpdateRate    = 125;  // Default update rate of 125ms (equates to 5000Hz)
-            Self->Channels[index].MixLeft       = MixLeft(Self->Channels[index].UpdateRate);
+            Self->Channels[index].MixLeft       = Self->MixLeft(Self->Channels[index].UpdateRate);
          }
       }
       else {
@@ -890,8 +889,8 @@ permanently deleted from the audio server and it is not possible to reallocate t
 number.
 
 Over time, the continued allocation of audio samples will mean that freed handle numbers will become available again
-through the #AddSample() and #AddStream() methods.  For this reason you should clear all references to the sample
-handle after removing it.
+through the #AddSample() and #AddStream() methods.  Clearing all references to sample handles after use is therefore
+recommended.
 
 -INPUT-
 int Handle: The handle of the sample that requires removal.
@@ -1491,7 +1490,7 @@ Quality: Determines the quality of the audio mixing.
 
 Alter the quality of internal audio mixing by adjusting the Quality field.  The value range is from 0 (low quality) and
 100 (high quality).  A setting between 70 and 80 is recommended.  Setting the Quality field results in the following
-flags being automatically adjusted in the audio object: ADF_FILTER_LOW, ADF_FILTER_HIGH and ADF_OVER_SAMPLING.
+flags being automatically adjusted in the audio object: `ADF_FILTER_LOW`, `ADF_FILTER_HIGH` and `ADF_OVER_SAMPLING`.
 
 In general, low quality mixing should only be used when the audio output needs to be raw, or if the audio speaker is
 of low quality.
@@ -1615,7 +1614,6 @@ static ERROR SetInternalVolume(extAudio *Self, AudioChannel *Channel)
 
    Channel->Flags &= ~CHF_VOL_RAMP;
    if ((Self->Flags & ADF_OVER_SAMPLING) and (Self->Flags & ADF_VOL_RAMPING)) {
-
       if ((Channel->LVolume != leftvol) or (Channel->LVolumeTarget != leftvol)) {
          Channel->Flags |= CHF_VOL_RAMP;
          Channel->LVolumeTarget = leftvol;
@@ -1670,7 +1668,7 @@ ERROR DropMixAmount(extAudio *Self, LONG Elements)
          if (Self->Channels[index].MixLeft <= 0) {
             // Reset the amount of mixing elements left and execute the next set of channel commands
 
-            Self->Channels[index].MixLeft = MixLeft(Self->Channels[index].UpdateRate);
+            Self->Channels[index].MixLeft = Self->MixLeft(Self->Channels[index].UpdateRate);
 
             if (Self->Channels[index].Position <= 0) continue;
 

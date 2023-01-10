@@ -20,7 +20,7 @@ static ERROR COMMAND_Continue(extAudio *Self, LONG Handle)
    if ((channel->Sample.StreamID) and (channel->Sample.StreamPos >= channel->Sample.StreamLength)) {
       return ERR_Okay;
    }
-   else if (channel->Position >= (ULONG)channel->Sample.SampleLength) return ERR_Okay;
+   else if (channel->Position >= channel->Sample.SampleLength) return ERR_Okay;
 
    if (Self->Flags & ADF_OVER_SAMPLING) COMMAND_FadeOut(Self, Handle);
 

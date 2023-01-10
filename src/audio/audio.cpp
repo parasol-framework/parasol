@@ -56,6 +56,8 @@ static std::unordered_map<OBJECTID, LONG> glSoundChannels;
 static LONG glMaxSoundChannels = 8;
 
 #ifdef _WIN32
+#define USE_WIN32_PLAYBACK TRUE // If undefined, only the internal mixer is used.
+
 char * dsInitDevice(int);
 void dsCloseDevice(void);
 void dsClear(void);
@@ -89,8 +91,6 @@ static const WORD glAlsaConvert[6] = {
 #else
 ERROR DropMixAmount(extAudio *, LONG);
 #endif
-
-#define MixLeft(a) (((100 * (LARGE)Self->OutputRate) / ((a) * 40)) + 1) & 0xfffffffe;
 
 //********************************************************************************************************************
 // Sample shift - value used for converting total data size down to samples.

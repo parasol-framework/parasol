@@ -5,7 +5,7 @@
 #define MIX_INTERVAL 0.01
 #endif
 
-typedef void (*MixRoutine)(ULONG, LONG, FLOAT, FLOAT);
+typedef void (*MixRoutine)(LONG, LONG, FLOAT, FLOAT);
 
 #define MAX_CHANNELSETS 8
 #define DEFAULT_BUFFER_SIZE 8096 // Measured in samples, not bytes
@@ -31,8 +31,7 @@ class extAudio : public objAudio {
    LONG  TotalSamples;
    LONG  MixElements;
    TIMER Timer;
-   WORD  SampleBitSize;
-   WORD  MixBitSize;
+   BYTE  SampleBitSize;
    bool  Stereo;                  // TRUE/FALSE for active stereo mode
    bool  Mute;
    BYTE  Initialising;
@@ -41,6 +40,10 @@ class extAudio : public objAudio {
 
    inline struct AudioChannel * GetChannel(LONG Handle) {
       return &this->Channels[Handle>>16].Channel[Handle & 0xffff];
+   }
+
+   inline LONG MixLeft(LONG Value) {
+      return (((100 * (LARGE)OutputRate) / (Value * 40)) + 1) & 0xfffffffe;
    }
 };
 
