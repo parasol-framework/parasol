@@ -20,17 +20,6 @@ Support for audio recording is not currently available.
 
 *********************************************************************************************************************/
 
-static ERROR AUDIO_AddSample(extAudio *, struct sndAddSample *);
-static ERROR AUDIO_AddStream(extAudio *, struct sndAddStream *);
-static ERROR AUDIO_Beep(extAudio *, struct sndBeep *);
-static ERROR AUDIO_BufferCommand(extAudio *, struct sndBufferCommand *);
-static ERROR AUDIO_CloseChannels(extAudio *, struct sndCloseChannels *);
-static ERROR AUDIO_OpenChannels(extAudio *, struct sndOpenChannels *);
-static ERROR AUDIO_RemoveSample(extAudio *, struct sndRemoveSample *);
-static ERROR AUDIO_SetVolume(extAudio *, struct sndSetVolume *);
-
-static ERROR AUDIO_SaveSettings(extAudio *, APTR);
-
 /*********************************************************************************************************************
 -ACTION-
 Activate: Enables access to the audio hardware and initialises the mixer.
@@ -676,7 +665,7 @@ static void user_login(APTR Reference, APTR Info, LONG InfoSize)
 static ERROR AUDIO_Free(extAudio *Self, APTR Void)
 {
    if (Self->Flags & ADF_AUTO_SAVE) {
-      AUDIO_SaveSettings(Self, NULL);
+      Self->saveSettings();
    }
 
    if (Self->Timer) { UpdateTimer(Self->Timer, 0); Self->Timer = NULL; }
@@ -869,7 +858,6 @@ static ERROR AUDIO_OpenChannels(extAudio *Self, struct sndOpenChannels *Args)
    if (!AllocMemory(sizeof(AudioChannel) * total, MEM_DATA, &Self->Channels[index].Channel)) {
       Self->Channels[index].Total      = Args->Total;
       Self->Channels[index].Actual     = total;
-      Self->Channels[index].TaskVolume = glTaskVolume;
 
       // Allocate the command buffer
 

@@ -191,9 +191,7 @@ static ERROR COMMAND_SetPan(extAudio *Self, LONG Handle, DOUBLE Pan)
 static ERROR COMMAND_SetPosition(extAudio *Self, LONG Handle, DOUBLE Position)
 {
    parasol::Log log("AudioCommand");
-   OBJECTPTR stream;
-   AudioSample *sample;
-   LONG bitpos;
+
    LONG idx = F2T(Position);
 
    log.trace("SetPosition($%.8x, %d)", Handle, idx);
@@ -213,6 +211,7 @@ static ERROR COMMAND_SetPosition(extAudio *Self, LONG Handle, DOUBLE Position)
    // new audio position and have it feed us new audio data.
 
    if (channel->Sample.StreamID) {
+      OBJECTPTR stream;
       if (!AccessObject(channel->Sample.StreamID, 5000, &stream)) {
          acSeek(stream, (DOUBLE)channel->Sample.SeekStart + idx, SEEK_START);
 
@@ -233,12 +232,12 @@ static ERROR COMMAND_SetPosition(extAudio *Self, LONG Handle, DOUBLE Position)
 
    // Convert position from bytes to samples
 
-   bitpos = idx >> sample_shift(channel->Sample.SampleType);
+   LONG bitpos = idx >> sample_shift(channel->Sample.SampleType);
 
    // Check if sample has been changed, and if so, set the values to the channel structure
 
    if (channel->Flags & CHF_CHANGED) {
-      sample = &Self->Samples[channel->SampleHandle];
+      AudioSample *sample = &Self->Samples[channel->SampleHandle];
       CopyMemory(sample, channel, sizeof(AudioSample));
       channel->Flags &= ~CHF_CHANGED;
 
@@ -325,14 +324,14 @@ static ERROR COMMAND_SetPosition(extAudio *Self, LONG Handle, DOUBLE Position)
 
                if (bitpos < channel->Sample.Loop2End) {
                   channel->Position = bitpos;
-                  channel->Flags &= ~CHF_BACKWARD;
+                  channel->Flags   &= ~CHF_BACKWARD;
                }
                else {
                   channel->Position = channel->Sample.Loop2End;
-                  channel->Flags |= CHF_BACKWARD;
+                  channel->Flags   |= CHF_BACKWARD;
                }
                channel->PositionLow = 0;
-               channel->State = CHS_PLAYING;
+               channel->State       = CHS_PLAYING;
          }
          break;
 

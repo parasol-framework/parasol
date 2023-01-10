@@ -12,7 +12,7 @@ typedef void (*MixRoutine)(ULONG, LONG);
 
 class extAudio : public objAudio {
    public:
-   struct ChannelSet Channels[MAX_CHANNELSETS]; // Channels are grouped into sets, which are allocated on a per-task basis
+   struct ChannelSet Channels[MAX_CHANNELSETS]; // Channels are grouped into sets
    struct AudioSample  *Samples;
    struct VolumeCtl    *VolumeCtl;
    MixRoutine *MixRoutines;

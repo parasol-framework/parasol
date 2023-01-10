@@ -65,7 +65,7 @@ module({ name="Audio", copyright="Paul Manias © 2002-2022", version=1.0 }, func
     "UNIDIRECTIONAL: The sample playback position returns to the byte position specified in the Loop1Start field.",
     "BIDIRECTIONAL: The sample will play in reverse whenever it hits the end marker, then forwards when it hits the start marker.")
 
-  enum("CMD", { comment="Audio channel commands" },
+  enum("CMD", { comment="Audio channel commands", start=1 },
     "START_SEQUENCE: Required to start a new sequence of commands.",
     "END_SEQUENCE: Terminates the current command sequence.",
     "SET_SAMPLE: Sets a new sample against a channel.  You are required to supply the sample handle (as obtained from AddSample or AddStream) in the Data parameter.  The sample will not play until you use the Play command.",
@@ -146,7 +146,6 @@ module({ name="Audio", copyright="Paul Manias © 2002-2022", version=1.0 }, func
   struct("ChannelSet", { comment="Channel set management structure." }, [[
     struct(*AudioChannel) Channel  # Array of channel objects
     struct(*AudioCommand) Commands # Array of buffered commands
-    double TaskVolume
     int    UpdateRate       # Update rate, measured in milliseconds
     int    MixLeft          # Amount of mix elements left before the next command-update occurs
     short  Total            # Total number of base channels

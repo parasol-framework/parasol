@@ -47,7 +47,6 @@ static ERROR CMDOpen(OBJECTPTR);
 MODULE_COREBASE;
 static OBJECTPTR glAudioModule = NULL;
 static OBJECTPTR clAudio = 0;
-static OBJECTID glAudioID = 0;
 static DOUBLE glGlobalVolume = 0.8;
 static DOUBLE glTaskVolume = 1.0;
 static std::unordered_map<OBJECTID, LONG> glSoundChannels;
@@ -246,7 +245,7 @@ The default volume for the current task can be adjusted by calling this function
 value between 0 and 1.0.  If it is outside of this range then no adjustment is made to the current volume.
 
 -INPUT-
-double Volume: Desired volume, between 0 and 100.
+double Volume: Desired volume, between 0 and 1.0.
 
 -RESULT-
 double: The previous volume setting is returned by this function, regardless of whether the volume setting is successful or not.
@@ -265,20 +264,6 @@ static DOUBLE sndSetTaskVolume(DOUBLE Volume)
       #ifdef _WIN32
          dsSetVolume(Volume);
       #endif
-
-      if (!glAudioID) {
-         LONG count = 1;
-         FindObject("SystemAudio", ID_AUDIO, 0, &glAudioID, &count);
-      }
-
-      if (glAudioID) {
-         parasol::ScopedObjectLock<extAudio> audio(glAudioID, 3000);
-         if (audio.granted()) {
-            for (LONG i=0; i < ARRAYSIZE(audio->Channels); i++) {
-               audio->Channels[i].TaskVolume = glTaskVolume;
-            }
-         }
-      }
 
       return old;
    }

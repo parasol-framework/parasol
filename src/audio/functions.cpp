@@ -330,13 +330,8 @@ static void calc_volumes(extAudio *Self, ChannelSet *MasterChannel, AudioChannel
    else if (Self->Flags & ADF_SYSTEM_WIDE) mastervol = 1.0;
    else mastervol = glGlobalVolume;
 
-#ifdef __linux__
-   MixLeftVolFloat  = DOUBLE(mastervol * Channel->LVolume) * MasterChannel->TaskVolume * (1.0 / 512.0); // Try 64000 if the volume needs to be lowered.
-   MixRightVolFloat = DOUBLE(mastervol * Channel->RVolume) * MasterChannel->TaskVolume * (1.0 / 512.0);
-#else
-   MixLeftVolFloat  = DOUBLE(mastervol * Channel->LVolume) * MasterChannel->TaskVolume * (1.0 / 400.0); // 15625, 51200?
-   MixRightVolFloat = DOUBLE(mastervol * Channel->RVolume) * MasterChannel->TaskVolume * (1.0 / 400.0);
-#endif
+   MixLeftVolFloat  = mastervol * Channel->LVolume * glTaskVolume;
+   MixRightVolFloat = mastervol * Channel->RVolume * glTaskVolume;
 
    if (Self->Stereo IS FALSE) {
       if ((Channel->Sample.SampleType IS SFM_U8_BIT_STEREO) or (Channel->Sample.SampleType IS SFM_S16_BIT_STEREO)) {

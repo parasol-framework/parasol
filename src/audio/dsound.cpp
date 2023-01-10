@@ -296,12 +296,13 @@ int dsPlay(extAudio *Self)
 }
 
 //****************************************************************************
+// Volume range is 0 to 10000 (DSBVOLUME_MIN to DSBVOLUME_MAX)
 
 void dsSetVolume(float Volume)
 {
    if (glPrimaryBuffer) {
-      if (Volume <= 1) IDirectSoundBuffer_SetVolume(glPrimaryBuffer, -10000); // zero volume
-      else IDirectSoundBuffer_SetVolume(glPrimaryBuffer, (DWORD)(Volume * 50)-5000);
+      if (Volume <= 0) IDirectSoundBuffer_SetVolume(glPrimaryBuffer, 0); // zero volume
+      else IDirectSoundBuffer_SetVolume(glPrimaryBuffer, (DWORD)(Volume * 10000.0));
    }
 }
 

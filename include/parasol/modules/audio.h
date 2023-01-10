@@ -81,22 +81,22 @@ class objSound;
 
 // Audio channel commands
 
-#define CMD_START_SEQUENCE 0
-#define CMD_END_SEQUENCE 1
-#define CMD_SET_SAMPLE 2
-#define CMD_SET_VOLUME 3
-#define CMD_SET_PAN 4
-#define CMD_SET_FREQUENCY 5
-#define CMD_SET_RATE 6
-#define CMD_STOP 7
-#define CMD_STOP_LOOPING 8
-#define CMD_SET_POSITION 9
-#define CMD_PLAY 10
-#define CMD_FADE_IN 11
-#define CMD_FADE_OUT 12
-#define CMD_MUTE 13
-#define CMD_SET_LENGTH 14
-#define CMD_CONTINUE 15
+#define CMD_START_SEQUENCE 1
+#define CMD_END_SEQUENCE 2
+#define CMD_SET_SAMPLE 3
+#define CMD_SET_VOLUME 4
+#define CMD_SET_PAN 5
+#define CMD_SET_FREQUENCY 6
+#define CMD_SET_RATE 7
+#define CMD_STOP 8
+#define CMD_STOP_LOOPING 9
+#define CMD_SET_POSITION 10
+#define CMD_PLAY 11
+#define CMD_FADE_IN 12
+#define CMD_FADE_OUT 13
+#define CMD_MUTE 14
+#define CMD_SET_LENGTH 15
+#define CMD_CONTINUE 16
 
 // Streaming options
 
@@ -176,13 +176,12 @@ struct AudioCommand {
 struct ChannelSet {
    struct AudioChannel * Channel;    // Array of channel objects
    struct AudioCommand * Commands;   // Array of buffered commands
-   DOUBLE TaskVolume;
-   LONG   UpdateRate;                // Update rate, measured in milliseconds
-   LONG   MixLeft;                   // Amount of mix elements left before the next command-update occurs
-   WORD   Total;                     // Total number of base channels
-   WORD   Actual;                    // Total number of channels, including oversampling channels
-   WORD   TotalCommands;             // Size of the command buffer
-   WORD   Position;                  // Index to write the next command to
+   LONG UpdateRate;                  // Update rate, measured in milliseconds
+   LONG MixLeft;                     // Amount of mix elements left before the next command-update occurs
+   WORD Total;                       // Total number of base channels
+   WORD Actual;                      // Total number of channels, including oversampling channels
+   WORD TotalCommands;               // Size of the command buffer
+   WORD Position;                    // Index to write the next command to
 };
 
 struct VolumeCtl {
