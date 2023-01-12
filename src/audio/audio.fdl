@@ -8,8 +8,7 @@ module({ name="Audio", copyright="Paul Manias © 2002-2022", version=1.0 }, func
     "STEREO: Enable stereo output (set by default if the platform supports stereo).  If not set, output is in mono.",
     "VOL_RAMPING: Enable volume ramping for softer playback when a sample is played multiple times (enabled by default).",
     "AUTO_SAVE: Save configuration information on exit.",
-    "SYSTEM_WIDE: Mixer changes should be applied system-wide.",
-    "SERVICE_MODE: Service mode gives the audio object complete control of the task.")
+    "SYSTEM_WIDE: Mixer changes should be applied system-wide.")
 
   flags("VCF", { comment="Volume control flags" },
     { PLAYBACK = "0x00000001: The mixer supports audio output." },

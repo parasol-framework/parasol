@@ -66,7 +66,6 @@ void dsSetVolume(float);
 
 LONG mix_data(extAudio *, LONG, void *);
 ERROR GetMixAmount(extAudio *, LONG *);
-static bool handle_sample_end(extAudio *, struct AudioChannel *);
 ERROR add_audio_class(void);
 ERROR add_sound_class(void);
 void free_audio_class(void);
@@ -78,7 +77,7 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime);
 
 #ifdef ALSA_ENABLED
 static void free_alsa(extAudio *);
-static ERROR DropMixAmount(extAudio *, LONG);
+static ERROR process_commands(extAudio *, LONG);
 
 static const WORD glAlsaConvert[6] = {
    SND_MIXER_SCHN_FRONT_LEFT,   // Conversion table must follow the CHN_ order
@@ -89,7 +88,7 @@ static const WORD glAlsaConvert[6] = {
    SND_MIXER_SCHN_WOOFER
 };
 #else
-ERROR DropMixAmount(extAudio *, LONG);
+ERROR process_commands(extAudio *, LONG);
 #endif
 
 //********************************************************************************************************************

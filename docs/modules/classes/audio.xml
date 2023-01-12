@@ -413,13 +413,6 @@ will execute five batches per second.
     </field>
 
     <field>
-      <name>TotalChannels</name>
-      <comment>The total number of audio channels allocated by all processes.</comment>
-      <access read="R">Read</access>
-      <type>INT</type>
-    </field>
-
-    <field>
       <name>Treble</name>
       <comment>Sets the amount of treble to use for audio playback.</comment>
       <access read="R" write="W">Read/Write</access>
@@ -451,7 +444,6 @@ will execute five batches per second.
       <const name="FILTER_HIGH">Enable a high level of output filtering to minimise distortion.</const>
       <const name="FILTER_LOW">Enable a low level of output filtering to minimise distortion.</const>
       <const name="OVER_SAMPLING">Enables oversampling for higher quality audio at the cost of slower mixing.</const>
-      <const name="SERVICE_MODE">Service mode gives the audio object complete control of the task.</const>
       <const name="STEREO">Enable stereo output (set by default if the platform supports stereo).  If not set, output is in mono.</const>
       <const name="SYSTEM_WIDE">Mixer changes should be applied system-wide.</const>
       <const name="VOL_RAMPING">Enable volume ramping for softer playback when a sample is played multiple times (enabled by default).</const>

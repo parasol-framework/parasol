@@ -1005,7 +1005,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
    // Determine what mixer we are going to adjust
 
    if (Args->Name) {
-      for (index=0; index < Self->VolumeCtl.size(); index++) {
+      for (index=0; index < (LONG)Self->VolumeCtl.size(); index++) {
          if (!StrMatch(Args->Name, Self->VolumeCtl[index].Name)) break;
       }
 
@@ -1016,7 +1016,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
       if ((index < 0) or (index >= (LONG)Self->VolumeCtl.size())) return ERR_OutOfRange;
    }
 
-   if (!StrMatch("Master", Self->VolumeCtl[index].Name)) {
+   if (!StrMatch("Master", Self->VolumeCtl[index].Name.c_str())) {
       if (Args->Volume != -1) {
          Self->MasterVolume = Args->Volume;
       }
@@ -1039,7 +1039,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
    snd_mixer_selem_id_set_index(sid,0);
    snd_mixer_selem_id_set_name(sid, Self->VolumeCtl[index].Name);
    if (!(elem = snd_mixer_find_selem(Self->MixHandle, sid))) {
-      log.msg("Mixer \"%s\" not found.", Self->VolumeCtl[index].Name);
+      log.msg("Mixer \"%s\" not found.", Self->VolumeCtl[index].Name.c_str());
       return ERR_Search;
    }
 
@@ -1063,7 +1063,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
       if (Self->VolumeCtl[index].Flags & VCF_MONO) {
          Self->VolumeCtl[index].Channels[0] = vol;
       }
-      else for (LONG channel=0; channel < Self->VolumeCtl[0].Channels.size(); channel++) {
+      else for (LONG channel=0; channel < (LONG)Self->VolumeCtl[0].Channels.size(); channel++) {
          if (Self->VolumeCtl[index].Channels[channel] >= 0) {
             Self->VolumeCtl[index].Channels[channel] = vol;
          }
@@ -1100,7 +1100,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
    if (Args->Flags & SVF_UNSYNC) Self->VolumeCtl[index].Flags &= ~VCF_SYNC;
    else if (Args->Flags & SVF_SYNC) Self->VolumeCtl[index].Flags |= VCF_SYNC;
 
-   EVENTID evid = GetEventID(EVG_AUDIO, "volume", Self->VolumeCtl[index].Name);
+   EVENTID evid = GetEventID(EVG_AUDIO, "volume", Self->VolumeCtl[index].Name.c_str());
    evVolume event_volume = { evid, Args->Volume, (Self->VolumeCtl[index].Flags & VCF_MUTE) ? true : false };
    BroadcastEvent(&event_volume, sizeof(event_volume));
    return ERR_Okay;
@@ -1987,7 +1987,7 @@ next_card:
 
       StrCopy((STRING)snd_mixer_selem_id_get_name(sid), volctl[index].Name, sizeof(volctl[index].Name));
 
-      for (channel=0; channel < volctl[index].Channels.size(); channel++) volctl[index].Channels[channel] = -1;
+      for (channel=0; channel < (LONG)volctl[index].Channels.size(); channel++) volctl[index].Channels[channel] = -1;
 
       flags = 0;
       if (snd_mixer_selem_has_playback_volume(elem))        flags |= VCF_PLAYBACK;
@@ -2217,8 +2217,8 @@ next_card:
          auto oldctl = Self->VolumeCtl;
          Self->VolumeCtl = volctl;
 
-         for (i=0; i < volctl.size(); i++) {
-            for (j=0; j < oldctl.size(); j++) {
+         for (i=0; i < (LONG)volctl.size(); i++) {
+            for (j=0; j < (LONG)oldctl.size(); j++) {
                if (!StrMatch(volctl[i].Name, oldctl[j].Name)) {
                   setvol.Index   = i;
                   setvol.Name    = NULL;
@@ -2233,7 +2233,7 @@ next_card:
 
             // If the user has no volume defined for a mixer, set our own.
 
-            if (j IS oldctl.size()) {
+            if (j IS (LONG)oldctl.size()) {
                setvol.Index   = i;
                setvol.Name    = NULL;
                setvol.Flags   = 0;

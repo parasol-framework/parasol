@@ -20,7 +20,6 @@ class objSound;
 #define ADF_VOL_RAMPING 0x00000010
 #define ADF_AUTO_SAVE 0x00000020
 #define ADF_SYSTEM_WIDE 0x00000040
-#define ADF_SERVICE_MODE 0x00000080
 
 // Volume control flags
 
