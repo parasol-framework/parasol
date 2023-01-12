@@ -1799,7 +1799,7 @@ static ERROR init_audio(extAudio *Self)
    snd_mixer_selem_id_t *sid;
    snd_pcm_uframes_t periodsize, buffersize;
    snd_ctl_card_info_t *info;
-   LONG err, index, flags;
+   LONG err, index;
    WORD channel;
    long pmin, pmax;
    int dir;

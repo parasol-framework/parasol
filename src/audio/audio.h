@@ -79,7 +79,7 @@ struct AudioChannel {
    LONG     Position;       // Current playing/mixing position
    LONG     Frequency;      // Playback frequency
    LONG     StreamPos;      // Current read position within the referenced audio stream
-   UWORD    PositionLow;    // Playing position, lower bits
+   LONG     PositionLow;    // Playing position, lower bits
    BYTE     Priority;       // Priority of the sound that has been assigned to this channel
    BYTE     State;          // Channel state
    BYTE     LoopIndex;      // The current active loop (either 0, 1 or 2)

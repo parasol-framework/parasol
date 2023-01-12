@@ -186,7 +186,7 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
          LONG n = ((lpStart - Channel.Position) << 16) - Channel.PositionLow - 1;
          // -1 is compensation for the fudge factor at loop end, see below
          Channel.Position = lpStart + (n>>16);
-         Channel.PositionLow = n;
+         Channel.PositionLow = n & 0xffff;
 
          // Don't die on overshort loops
          if (Channel.Position >= lpEnd) {
@@ -278,11 +278,11 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
 
          if (lpEnd < 0x10000) {
             Channel.Position    = ((lpEnd << 16) - n)>>16;
-            Channel.PositionLow = (lpEnd << 16) - n;
+            Channel.PositionLow = ((lpEnd << 16) - n) & 0xffff;
          }
          else {
             Channel.Position    = ((0xffff0000 - n)>>16) + (lpEnd - 0xffff);
-            Channel.PositionLow = 0xffff0000 - n;
+            Channel.PositionLow = (0xffff0000 - n) & 0xffff;
          }
 
          if (Channel.Position <= lpStart) { // Don't die on overshort loops
@@ -495,8 +495,8 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, LONG numSamples, 
             }
          }
 
-         // Put changed parts of state back to channel structure
-         Channel.PositionLow = MixSrcPos;
+         // Save state back to channel structure
+         Channel.PositionLow = MixSrcPos & 0xffff;
          Channel.Position = (MixSrcPos>>16) + ((MixSample - sample.Data) / sample_size);
       }
       else if (mixNow < 0) log.warning("Detected invalid mixNow value of %d.", mixNow);
