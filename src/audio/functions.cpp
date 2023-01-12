@@ -373,7 +373,7 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, LONG TotalSamples
 
    // Calculate resampling step (16.16 fixed point)
 
-   LONG step = (((Channel.Frequency / Self->OutputRate) << 16) + ((Channel.Frequency % Self->OutputRate) << 16) / Self->OutputRate);
+   LONG step = ((LARGE(Channel.Frequency / Self->OutputRate) << 16) + (LARGE(Channel.Frequency % Self->OutputRate) << 16) / Self->OutputRate);
 
    DOUBLE stereo_mul = 1.0;
    if (!Self->Stereo) {
