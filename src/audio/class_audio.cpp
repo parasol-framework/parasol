@@ -682,20 +682,20 @@ static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
    Self->Samples.reserve(32);
 
 #ifdef __linux__
-   Self->VolumeCtl.resize(2);
-   Self->VolumeCtl[0].Name = "Master";
-   Self->VolumeCtl[0].Flags = 0;
-   for (LONG i=0; i < (LONG)Self->VolumeCtl[0].Channels.size(); i++) Self->VolumeCtl[0].Channels[i] = 0.80;
+   Self->Volumes.resize(2);
+   Self->Volumes[0].Name = "Master";
+   Self->Volumes[0].Flags = 0;
+   for (LONG i=0; i < (LONG)Self->Volumes[0].Channels.size(); i++) Self->Volumes[0].Channels[i] = 0.80;
 
-   Self->VolumeCtl[1].Name = "PCM";
-   Self->VolumeCtl[1].Flags = 0;
-   for (LONG i=0; i < (LONG)Self->VolumeCtl[1].Channels.size(); i++) Self->VolumeCtl[1].Channels[i] = 0.80;
+   Self->Volumes[1].Name = "PCM";
+   Self->Volumes[1].Flags = 0;
+   for (LONG i=0; i < (LONG)Self->Volumes[1].Channels.size(); i++) Self->Volumes[1].Channels[i] = 0.80;
 #else
-   Self->VolumeCtl.resize(1);
-   Self->VolumeCtl[0].Name = "Master";
-   Self->VolumeCtl[0].Flags = 0;
-   Self->VolumeCtl[0].Channels[0] = 0.80;
-   for (LONG i=1; i < (LONG)Self->VolumeCtl[0].Channels.size(); i++) Self->VolumeCtl[0].Channels[i] = -1;
+   Self->Volumes.resize(1);
+   Self->Volumes[0].Name = "Master";
+   Self->Volumes[0].Flags = 0;
+   Self->Volumes[0].Channels[0] = 0.80;
+   for (LONG i=1; i < (LONG)Self->Volumes[0].Channels.size(); i++) Self->Volumes[0].Channels[i] = -1;
 #endif
 
    load_config(Self);
@@ -879,22 +879,22 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
       if (Self->Device[0]) config->write("AUDIO", "Device", Self->Device);
       else config->write("AUDIO", "Device", "default");
 
-      if ((!Self->VolumeCtl.empty()) and (Self->Flags & ADF_SYSTEM_WIDE)) {
-         for (LONG i=0; i < (LONG)Self->VolumeCtl.size(); i++) {
+      if ((!Self->Volumes.empty()) and (Self->Flags & ADF_SYSTEM_WIDE)) {
+         for (LONG i=0; i < (LONG)Self->Volumes.size(); i++) {
             std::ostringstream out;
-            if (Self->VolumeCtl[i].Flags & VCF_MUTE) out << "1,[";
+            if (Self->Volumes[i].Flags & VCF_MUTE) out << "1,[";
             else out << "0,[";
 
-            if (Self->VolumeCtl[i].Flags & VCF_MONO) {
-               out << Self->VolumeCtl[i].Channels[0];
+            if (Self->Volumes[i].Flags & VCF_MONO) {
+               out << Self->Volumes[i].Channels[0];
             }
-            else for (LONG c=0; c < (LONG)Self->VolumeCtl[i].Channels.size(); c++) {
+            else for (LONG c=0; c < (LONG)Self->Volumes[i].Channels.size(); c++) {
                if (c > 0) out << ',';
-               out << Self->VolumeCtl[i].Channels[c];
+               out << Self->Volumes[i].Channels[c];
             }
             out << ']';
 
-            config->write("MIXER", Self->VolumeCtl[i].Name.c_str(), out.str());
+            config->write("MIXER", Self->Volumes[i].Name.c_str(), out.str());
          }
       }
 #if 0
@@ -909,21 +909,21 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 
    snd_mixer_selem_id_alloca(&sid);
    snd_mixer_selem_id_set_index(sid, 0);
-   snd_mixer_selem_id_set_name(sid, Self->VolumeCtl[i].Name);
+   snd_mixer_selem_id_set_name(sid, Self->Volumes[i].Name);
 
    if ((elem = snd_mixer_find_selem(Self->MixHandle, sid))) {
       if (snd_mixer_selem_has_playback_volume(elem)) {
          snd_mixer_selem_get_playback_volume_range(elem, &pmin, &pmax);
          snd_mixer_selem_get_playback_volume(elem, 0, &left);
          snd_mixer_selem_get_playback_switch(elem, 0, &mute);
-         if (Self->VolumeCtl[i].Flags & VCF_MONO) right = left;
+         if (Self->Volumes[i].Flags & VCF_MONO) right = left;
          else snd_mixer_selem_get_playback_volume(elem, 1, &right);
       }
       else if (snd_mixer_selem_has_capture_volume(elem)) {
          snd_mixer_selem_get_capture_volume_range(elem, &pmin, &pmax);
          snd_mixer_selem_get_capture_volume(elem, 0, &left);
          snd_mixer_selem_get_capture_switch(elem, 0, &mute);
-         if (Self->VolumeCtl[i].Flags & VCF_MONO) right = left;
+         if (Self->Volumes[i].Flags & VCF_MONO) right = left;
          else snd_mixer_selem_get_capture_volume(elem, 1, &right);
       }
       else continue;
@@ -935,16 +935,16 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
       auto fright = (DOUBLE)right / (DOUBLE)(pmax - pmin);
       out << fleft << ',' << fright << ',' << mute ? 0 : 1;
 
-      config->write("MIXER", Self->VolumeCtl[i].Name, out.str());
+      config->write("MIXER", Self->Volumes[i].Name, out.str());
    }
 #endif
 
 #else
-      if (!Self->VolumeCtl.empty()) {
-         std::string out((Self->VolumeCtl[0].Flags & VCF_MUTE) ? "1,[" : "0,[");
-         out.append(std::to_string(Self->VolumeCtl[0].Channels[0]));
+      if (!Self->Volumes.empty()) {
+         std::string out((Self->Volumes[0].Flags & VCF_MUTE) ? "1,[" : "0,[");
+         out.append(std::to_string(Self->Volumes[0].Channels[0]));
          out.append("]");
-         config->write("MIXER", Self->VolumeCtl[0].Name.c_str(), out);
+         config->write("MIXER", Self->Volumes[0].Name.c_str(), out);
       }
 #endif
 
@@ -999,52 +999,52 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
    if (((Args->Volume < 0) or (Args->Volume > 1.0)) and (Args->Volume != -1)) {
       return log.warning(ERR_OutOfRange);
    }
-   if (Self->VolumeCtl.empty()) return log.warning(ERR_NoSupport);
+   if (Self->Volumes.empty()) return log.warning(ERR_NoSupport);
    if (!Self->MixHandle) return ERR_NotInitialised;
 
    // Determine what mixer we are going to adjust
 
    if (Args->Name) {
-      for (index=0; index < (LONG)Self->VolumeCtl.size(); index++) {
-         if (!StrMatch(Args->Name, Self->VolumeCtl[index].Name.c_str())) break;
+      for (index=0; index < (LONG)Self->Volumes.size(); index++) {
+         if (!StrMatch(Args->Name, Self->Volumes[index].Name.c_str())) break;
       }
 
-      if (index IS (LONG)Self->VolumeCtl.size()) return ERR_Search;
+      if (index IS (LONG)Self->Volumes.size()) return ERR_Search;
    }
    else {
       index = Args->Index;
-      if ((index < 0) or (index >= (LONG)Self->VolumeCtl.size())) return ERR_OutOfRange;
+      if ((index < 0) or (index >= (LONG)Self->Volumes.size())) return ERR_OutOfRange;
    }
 
-   if (!StrMatch("Master", Self->VolumeCtl[index].Name.c_str())) {
+   if (!StrMatch("Master", Self->Volumes[index].Name.c_str())) {
       if (Args->Volume != -1) {
          Self->MasterVolume = Args->Volume;
       }
 
       if (Args->Flags & SVF_UNMUTE) {
-         Self->VolumeCtl[index].Flags &= ~VCF_MUTE;
+         Self->Volumes[index].Flags &= ~VCF_MUTE;
          Self->Mute = false;
       }
       else if (Args->Flags & SVF_MUTE) {
-         Self->VolumeCtl[index].Flags |= VCF_MUTE;
+         Self->Volumes[index].Flags |= VCF_MUTE;
          Self->Mute = true;
       }
    }
 
    // Apply the volume
 
-   log.branch("%s: %.2f, Flags: $%.8x", Self->VolumeCtl[index].Name.c_str(), Args->Volume, Args->Flags);
+   log.branch("%s: %.2f, Flags: $%.8x", Self->Volumes[index].Name.c_str(), Args->Volume, Args->Flags);
 
    snd_mixer_selem_id_alloca(&sid);
    snd_mixer_selem_id_set_index(sid,0);
-   snd_mixer_selem_id_set_name(sid, Self->VolumeCtl[index].Name.c_str());
+   snd_mixer_selem_id_set_name(sid, Self->Volumes[index].Name.c_str());
    if (!(elem = snd_mixer_find_selem(Self->MixHandle, sid))) {
-      log.msg("Mixer \"%s\" not found.", Self->VolumeCtl[index].Name.c_str());
+      log.msg("Mixer \"%s\" not found.", Self->Volumes[index].Name.c_str());
       return ERR_Search;
    }
 
    if (Args->Volume >= 0) {
-      if (Self->VolumeCtl[index].Flags & VCF_CAPTURE) {
+      if (Self->Volumes[index].Flags & VCF_CAPTURE) {
          snd_mixer_selem_get_capture_volume_range(elem, &pmin, &pmax);
       }
       else snd_mixer_selem_get_playback_volume_range(elem, &pmin, &pmax);
@@ -1055,17 +1055,17 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
       if (vol > 1.0) vol = 1.0;
       LONG lvol = F2T(DOUBLE(pmin) + (DOUBLE(pmax - pmin) * vol));
 
-      if (Self->VolumeCtl[index].Flags & VCF_CAPTURE) {
+      if (Self->Volumes[index].Flags & VCF_CAPTURE) {
          snd_mixer_selem_set_capture_volume_all(elem, lvol);
       }
       else snd_mixer_selem_set_playback_volume_all(elem, lvol);
 
-      if (Self->VolumeCtl[index].Flags & VCF_MONO) {
-         Self->VolumeCtl[index].Channels[0] = vol;
+      if (Self->Volumes[index].Flags & VCF_MONO) {
+         Self->Volumes[index].Channels[0] = vol;
       }
-      else for (LONG channel=0; channel < (LONG)Self->VolumeCtl[0].Channels.size(); channel++) {
-         if (Self->VolumeCtl[index].Channels[channel] >= 0) {
-            Self->VolumeCtl[index].Channels[channel] = vol;
+      else for (LONG channel=0; channel < (LONG)Self->Volumes[0].Channels.size(); channel++) {
+         if (Self->Volumes[index].Channels[channel] >= 0) {
+            Self->Volumes[index].Channels[channel] = vol;
          }
       }
    }
@@ -1081,7 +1081,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
             snd_mixer_selem_set_playback_switch(elem, (snd_mixer_selem_channel_id_t)chn, 1);
          }
       }
-      Self->VolumeCtl[index].Flags &= ~VCF_MUTE;
+      Self->Volumes[index].Flags &= ~VCF_MUTE;
    }
    else if (Args->Flags & SVF_MUTE) {
       if ((snd_mixer_selem_has_capture_switch(elem)) and (!snd_mixer_selem_has_playback_switch(elem))) {
@@ -1094,14 +1094,14 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
             snd_mixer_selem_set_playback_switch(elem, (snd_mixer_selem_channel_id_t)chn, 0);
          }
       }
-      Self->VolumeCtl[index].Flags |= VCF_MUTE;
+      Self->Volumes[index].Flags |= VCF_MUTE;
    }
 
-   if (Args->Flags & SVF_UNSYNC) Self->VolumeCtl[index].Flags &= ~VCF_SYNC;
-   else if (Args->Flags & SVF_SYNC) Self->VolumeCtl[index].Flags |= VCF_SYNC;
+   if (Args->Flags & SVF_UNSYNC) Self->Volumes[index].Flags &= ~VCF_SYNC;
+   else if (Args->Flags & SVF_SYNC) Self->Volumes[index].Flags |= VCF_SYNC;
 
-   EVENTID evid = GetEventID(EVG_AUDIO, "volume", Self->VolumeCtl[index].Name.c_str());
-   evVolume event_volume = { evid, Args->Volume, (Self->VolumeCtl[index].Flags & VCF_MUTE) ? true : false };
+   EVENTID evid = GetEventID(EVG_AUDIO, "volume", Self->Volumes[index].Name.c_str());
+   evVolume event_volume = { evid, Args->Volume, (Self->Volumes[index].Flags & VCF_MUTE) ? true : false };
    BroadcastEvent(&event_volume, sizeof(event_volume));
    return ERR_Okay;
 
@@ -1113,60 +1113,60 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
    if (((Args->Volume < 0) or (Args->Volume > 1.0)) and (Args->Volume != -1)) {
       return log.warning(ERR_OutOfRange);
    }
-   if (Self->VolumeCtl.empty()) return log.warning(ERR_NoSupport);
+   if (Self->Volumes.empty()) return log.warning(ERR_NoSupport);
 
    // Determine what mixer we are going to adjust
 
    if (Args->Name) {
-      for (index=0; index < (LONG)Self->VolumeCtl.size(); index++) {
-         if (!StrMatch(Args->Name, Self->VolumeCtl[index].Name.c_str())) break;
+      for (index=0; index < (LONG)Self->Volumes.size(); index++) {
+         if (!StrMatch(Args->Name, Self->Volumes[index].Name.c_str())) break;
       }
 
-      if (index IS (LONG)Self->VolumeCtl.size()) return ERR_Search;
+      if (index IS (LONG)Self->Volumes.size()) return ERR_Search;
    }
    else {
       index = Args->Index;
-      if ((index < 0) or (index >= (LONG)Self->VolumeCtl.size())) return ERR_OutOfRange;
+      if ((index < 0) or (index >= (LONG)Self->Volumes.size())) return ERR_OutOfRange;
    }
 
-   if (!StrMatch("Master", Self->VolumeCtl[index].Name.c_str())) {
+   if (!StrMatch("Master", Self->Volumes[index].Name.c_str())) {
       if (Args->Volume != -1) {
          Self->MasterVolume = Args->Volume;
       }
 
       if (Args->Flags & SVF_UNMUTE) {
-         Self->VolumeCtl[index].Flags &= ~VCF_MUTE;
+         Self->Volumes[index].Flags &= ~VCF_MUTE;
          Self->Mute = false;
       }
       else if (Args->Flags & SVF_MUTE) {
-         Self->VolumeCtl[index].Flags |= VCF_MUTE;
+         Self->Volumes[index].Flags |= VCF_MUTE;
          Self->Mute = true;
       }
    }
 
    // Apply the volume
 
-   log.branch("%s: %.2f, Flags: $%.8x", Self->VolumeCtl[index].Name.c_str(), Args->Volume, Args->Flags);
+   log.branch("%s: %.2f, Flags: $%.8x", Self->Volumes[index].Name.c_str(), Args->Volume, Args->Flags);
 
    if ((Args->Volume >= 0) and (Args->Volume <= 1.0)) {
-      if (Self->VolumeCtl[index].Flags & VCF_MONO) {
-         Self->VolumeCtl[index].Channels[0] = Args->Volume;
+      if (Self->Volumes[index].Flags & VCF_MONO) {
+         Self->Volumes[index].Channels[0] = Args->Volume;
       }
-      else for (LONG channel=0; channel < (LONG)Self->VolumeCtl[0].Channels.size(); channel++) {
-         if (Self->VolumeCtl[index].Channels[channel] >= 0) {
-            Self->VolumeCtl[index].Channels[channel] = Args->Volume;
+      else for (LONG channel=0; channel < (LONG)Self->Volumes[0].Channels.size(); channel++) {
+         if (Self->Volumes[index].Channels[channel] >= 0) {
+            Self->Volumes[index].Channels[channel] = Args->Volume;
          }
       }
    }
 
-   if (Args->Flags & SVF_UNMUTE) Self->VolumeCtl[index].Flags &= ~VCF_MUTE;
-   else if (Args->Flags & SVF_MUTE) Self->VolumeCtl[index].Flags |= VCF_MUTE;
+   if (Args->Flags & SVF_UNMUTE) Self->Volumes[index].Flags &= ~VCF_MUTE;
+   else if (Args->Flags & SVF_MUTE) Self->Volumes[index].Flags |= VCF_MUTE;
 
-   if (Args->Flags & SVF_UNSYNC) Self->VolumeCtl[index].Flags &= ~VCF_SYNC;
-   else if (Args->Flags & SVF_SYNC) Self->VolumeCtl[index].Flags |= VCF_SYNC;
+   if (Args->Flags & SVF_UNSYNC) Self->Volumes[index].Flags &= ~VCF_SYNC;
+   else if (Args->Flags & SVF_SYNC) Self->Volumes[index].Flags |= VCF_SYNC;
 
-   EVENTID evid = GetEventID(EVG_AUDIO, "volume", Self->VolumeCtl[index].Name.c_str());
-   evVolume event_volume = { evid, Args->Volume, (Self->VolumeCtl[index].Flags & VCF_MUTE) ? true : false };
+   EVENTID evid = GetEventID(EVG_AUDIO, "volume", Self->Volumes[index].Name.c_str());
+   evVolume event_volume = { evid, Args->Volume, (Self->Volumes[index].Flags & VCF_MUTE) ? true : false };
    BroadcastEvent(&event_volume, sizeof(event_volume));
 
    return ERR_Okay;
@@ -1295,9 +1295,9 @@ field to FALSE.  Muting does not disable the audio system, which is achieved by 
 static ERROR GET_Mute(extAudio *Self, LONG *Value)
 {
    *Value = FALSE;
-   for (LONG i=0; i < (LONG)Self->VolumeCtl.size(); i++) {
-      if (!StrMatch("Master", Self->VolumeCtl[i].Name.c_str())) {
-         if (Self->VolumeCtl[i].Flags & VCF_MUTE) *Value = TRUE;
+   for (LONG i=0; i < (LONG)Self->Volumes.size(); i++) {
+      if (!StrMatch("Master", Self->Volumes[i].Name.c_str())) {
+         if (Self->Volumes[i].Flags & VCF_MUTE) *Value = TRUE;
          break;
       }
    }
@@ -1735,15 +1735,15 @@ static void load_config(extAudio *Self)
       if (!config->getPtr(FID_Data, &groups)) {
          for (auto& [group, keys] : groups[0]) {
             if (!StrMatch("MIXER", group.c_str())) {
-               Self->VolumeCtl.clear();
-               Self->VolumeCtl.resize(keys.size());
+               Self->Volumes.clear();
+               Self->Volumes.resize(keys.size());
 
                LONG j = 0;
                for (auto& [k, v] : keys) {
-                  Self->VolumeCtl[j].Name = k;
+                  Self->Volumes[j].Name = k;
 
                   CSTRING str = v.c_str();
-                  if (StrToInt(str) IS 1) Self->VolumeCtl[j].Flags |= VCF_MUTE;
+                  if (StrToInt(str) IS 1) Self->Volumes[j].Flags |= VCF_MUTE;
                   while ((*str) and (*str != ',')) str++;
                   if (*str IS ',') str++;
 
@@ -1751,15 +1751,15 @@ static void load_config(extAudio *Self)
                   if (*str IS '[') { // Read channel volumes
                      str++;
                      while ((*str) and (*str != ']')) {
-                        Self->VolumeCtl[j].Channels[channel] = StrToInt(str);
+                        Self->Volumes[j].Channels[channel] = StrToInt(str);
                         while ((*str) and (*str != ',') and (*str != ']')) str++;
                         if (*str IS ',') str++;
                         channel++;
                      }
                   }
 
-                  while (channel < (LONG)Self->VolumeCtl[j].Channels.size()) {
-                     Self->VolumeCtl[j].Channels[channel] = 0.75;
+                  while (channel < (LONG)Self->Volumes[j].Channels.size()) {
+                     Self->Volumes[j].Channels[channel] = 0.75;
                      channel++;
                   }
                   j++;
@@ -2214,13 +2214,13 @@ next_card:
       if (Self->Flags & ADF_SYSTEM_WIDE) {
          log.msg("Applying user configured volumes.");
 
-         auto oldctl = Self->VolumeCtl;
-         Self->VolumeCtl = volctl;
+         auto oldctl = Self->Volumes;
+         Self->Volumes = volctl;
 
          for (LONG i=0; i < (LONG)volctl.size(); i++) {
             LONG j;
             for (j=0; j < (LONG)oldctl.size(); j++) {
-               if (!StrMatch(volctl[i].Name.c_str(), oldctl[j].Name)) {
+               if (volctl[i].Name == oldctl[j].Name) {
                   setvol.Index   = i;
                   setvol.Name    = NULL;
                   setvol.Flags   = 0;
@@ -2245,7 +2245,7 @@ next_card:
       }
       else {
          log.msg("Skipping preset volumes.");
-         Self->VolumeCtl = volctl;
+         Self->Volumes = volctl;
       }
 
       // Free existing volume measurements and apply the information that we read from alsa.
@@ -2260,10 +2260,10 @@ next_card:
 
    Self->BitDepth     = 16;
    Self->Stereo       = true;
-   Self->MasterVolume = Self->VolumeCtl[0].Channels[0];
-   Self->VolumeCtl[0].Flags |= VCF_MONO;
-   for (LONG i=1; i < (LONG)Self->VolumeCtl[0].Channels.size(); i++) Self->VolumeCtl[0].Channels[i] = -1;
-   if (Self->VolumeCtl[0].Flags & VCF_MUTE) Self->Mute = true;
+   Self->MasterVolume = Self->Volumes[0].Channels[0];
+   Self->Volumes[0].Flags |= VCF_MONO;
+   for (LONG i=1; i < (LONG)Self->Volumes[0].Channels.size(); i++) Self->Volumes[0].Channels[i] = -1;
+   if (Self->Volumes[0].Flags & VCF_MUTE) Self->Mute = true;
    else Self->Mute = false;
 
 #endif

@@ -131,7 +131,7 @@ class extAudio : public objAudio {
    public:
    std::vector<ChannelSet> Sets; // Channels are grouped into sets.  Index 0 is a dummy entry.
    std::vector<AudioSample> Samples; // Buffered samples loaded into the audio object.
-   std::vector<VolumeCtl> VolumeCtl;
+   std::vector<VolumeCtl> Volumes;
    MixRoutine *MixRoutines;
    APTR  MixBuffer;
    APTR  TaskRemovedHandle;
