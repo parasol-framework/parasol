@@ -12,7 +12,7 @@ static UBYTE *MixSample = NULL;
 
 static void filter_float_mono(extAudio *, FLOAT *, LONG);
 static void filter_float_stereo(extAudio *, FLOAT *, LONG);
-static void mix_channel(extAudio *, AudioChannel *, LONG, APTR);
+static void mix_channel(extAudio *, AudioChannel &, LONG, APTR);
 
 //********************************************************************************************************************
 
@@ -40,24 +40,26 @@ static void convert_float16(FLOAT *buf, LONG numSamples, WORD *dest)
 
 //********************************************************************************************************************
 
-static LONG samples_until_end(extAudio *Self, AudioChannel *Channel, LONG *NextOffset)
+static LONG samples_until_end(extAudio *Self, AudioChannel &Channel, LONG *NextOffset)
 {
    LONG num, lpStart, lpEnd;
    LONG lpType;
 
    *NextOffset = 1;
 
+   auto &sample = Self->Samples[Channel.SampleHandle];
+
    // Return a maximum of 32k-1 samples to prevent overflow problems
 
-   if (Channel->LoopIndex IS 2) {
-      lpStart = Channel->Sample.Loop2Start;
-      lpEnd   = Channel->Sample.Loop2End;
-      lpType  = Channel->Sample.Loop2Type;
+   if (Channel.LoopIndex IS 2) {
+      lpStart = sample.Loop2Start;
+      lpEnd   = sample.Loop2End;
+      lpType  = sample.Loop2Type;
    }
    else {
-      lpStart = Channel->Sample.Loop1Start;
-      lpEnd   = Channel->Sample.Loop1End;
-      lpType  = Channel->Sample.Loop1Type;
+      lpStart = sample.Loop1Start;
+      lpEnd   = sample.Loop1End;
+      lpType  = sample.Loop1Type;
    }
 
    // When using interpolating mixing, we'll first mix everything normally until the very last sample of the
@@ -68,158 +70,143 @@ static LONG samples_until_end(extAudio *Self, AudioChannel *Channel, LONG *NextO
    switch (lpType) {
       default:
          if (Self->Flags & ADF_OVER_SAMPLING) {
-            if ((Channel->Position + 1) < Channel->Sample.SampleLength) {
-               num = (Channel->Sample.SampleLength - 1) - Channel->Position;
+            if ((Channel.Position + 1) < sample.SampleLength) {
+               num = (sample.SampleLength - 1) - Channel.Position;
             }
             else { // The last sample
                *NextOffset = 0;
-               num = Channel->Sample.SampleLength - Channel->Position;
+               num = sample.SampleLength - Channel.Position;
             }
          }
-         else num = Channel->Sample.SampleLength - Channel->Position;
+         else num = sample.SampleLength - Channel.Position;
          break;
 
       case LTYPE_UNIDIRECTIONAL:
          if (Self->Flags & ADF_OVER_SAMPLING) {
-            if ((Channel->Position + 1) < lpEnd) num = (lpEnd - 1) - Channel->Position;
+            if ((Channel.Position + 1) < lpEnd) num = (lpEnd - 1) - Channel.Position;
             else { // The last sample of the loop
-               *NextOffset = lpStart - Channel->Position;
-               num = lpEnd - Channel->Position;
+               *NextOffset = lpStart - Channel.Position;
+               num = lpEnd - Channel.Position;
             }
          }
-         else num = lpEnd - Channel->Position;
+         else num = lpEnd - Channel.Position;
          break;
 
       case LTYPE_BIDIRECTIONAL:
-         if (Channel->Flags & CHF_BACKWARD) { // Backwards
+         if (Channel.Flags & CHF_BACKWARD) { // Backwards
             if (Self->Flags & ADF_OVER_SAMPLING) {
-               if (Channel->Position IS (lpEnd-1)) { // First sample of the loop backwards
+               if (Channel.Position IS (lpEnd-1)) { // First sample of the loop backwards
                   *NextOffset = 0;
                   num = 1;
                }
-               else num = Channel->Position - lpStart;
+               else num = Channel.Position - lpStart;
             }
-            else num = Channel->Position - lpStart;
+            else num = Channel.Position - lpStart;
             break;
          }
          else { // Forward
             if (Self->Flags & ADF_OVER_SAMPLING) {
-               if ((Channel->Position + 1) < lpEnd) num = (lpEnd - 1) - Channel->Position;
+               if ((Channel.Position + 1) < lpEnd) num = (lpEnd - 1) - Channel.Position;
                else { // The last sample of the loop
                   *NextOffset = 0;
-                  num = lpEnd - Channel->Position;
+                  num = lpEnd - Channel.Position;
                }
             }
-            else num = lpEnd - Channel->Position;
+            else num = lpEnd - Channel.Position;
             break;
          }
    }
 
    if (num > 0x7FFF) return 0x7FFF0000;
-   return ((num << 16) - Channel->PositionLow);
+   return ((num << 16) - Channel.PositionLow);
 }
 
 //********************************************************************************************************************
 
-static bool AmigaChange(extAudio *Self, AudioChannel *Channel)
+static bool amiga_change(extAudio *Self, AudioChannel &Channel)
 {
    // A sample end or sample loop end has been reached, the sample has been changed, and both old and new samples use
    // Amiga compatible looping - handle Amiga Loop Emulation sample change
 
-   AudioSample *sample = &Self->Samples[Channel->SampleHandle-1];
-   Channel->Sample.Data         = sample->Data;
-   Channel->Sample.SampleType   = sample->SampleType;
-   Channel->Sample.SampleLength = sample->SampleLength;
-   Channel->Sample.LoopMode     = sample->LoopMode;
-   Channel->Sample.Loop1Start   = sample->Loop1Start;
-   Channel->Sample.Loop1End     = sample->Loop1End;
-   Channel->Sample.Loop1Type    = sample->Loop1Type;
-   Channel->Sample.Loop2Start   = sample->Loop2Start;
-   Channel->Sample.Loop2End     = sample->Loop2End;
-   Channel->Sample.Loop2Type    = sample->Loop2Type;
-   Channel->Flags &= ~CHF_CHANGED;
+   if (Channel.SampleHandle > 1) Channel.SampleHandle--;
+   auto &sample = Self->Samples[Channel.SampleHandle];
+   Channel.Flags &= ~CHF_CHANGED;
 
-   if (Channel->Sample.LoopMode IS LOOP_AMIGA) {
+   if (sample.LoopMode IS LOOP_AMIGA) {
       // Looping - start playback from loop beginning
-      Channel->Position    = Channel->Sample.Loop1Start;
-      Channel->PositionLow = 0;
+      Channel.Position    = sample.Loop1Start;
+      Channel.PositionLow = 0;
       return false;
    }
 
    // Not looping - finish the sample
-   Channel->State = CHS_FINISHED;
+   Channel.State = CHS_FINISHED;
    return true;
 }
 
 //********************************************************************************************************************
 
-static bool handle_sample_end(extAudio *Self, AudioChannel *Channel)
+static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
 {
-   parasol::Log log("Audio");
-   struct acRead read;
-   LONG lpStart, lpEnd;
-   LONG lpType, n;
+   parasol::Log log(__FUNCTION__);
+   LONG lpStart, lpEnd, lpType;
 
-   if (!Channel) return false;
+   auto &sample = Self->Samples[Channel.SampleHandle];
 
-   if (Channel->LoopIndex IS 2) {
-      lpStart = Channel->Sample.Loop2Start;
-      lpEnd   = Channel->Sample.Loop2End;
-      lpType  = Channel->Sample.Loop2Type;
+   if (Channel.LoopIndex IS 2) {
+      lpStart = sample.Loop2Start;
+      lpEnd   = sample.Loop2End;
+      lpType  = sample.Loop2Type;
    }
    else {
-      lpStart = Channel->Sample.Loop1Start;
-      lpEnd   = Channel->Sample.Loop1End;
-      lpType  = Channel->Sample.Loop1Type;
+      lpStart = sample.Loop1Start;
+      lpEnd   = sample.Loop1End;
+      lpType  = sample.Loop1Type;
    }
 
    if (!lpType) { // No loop - did we reach sample end?
-      if (Channel->Position >= Channel->Sample.SampleLength) {
-         if ((Channel->Flags & CHF_CHANGED) and
-             ((Channel->Sample.LoopMode IS LOOP_AMIGA) or (Channel->Sample.LoopMode IS LOOP_AMIGA_NONE)) and
-             ((Self->Samples[Channel->SampleHandle-1].LoopMode IS LOOP_AMIGA) or (Self->Samples[Channel->SampleHandle-1].LoopMode IS LOOP_AMIGA_NONE))) {
-            return AmigaChange(Self, Channel);
+      if (Channel.Position >= sample.SampleLength) {
+         auto &prev_sample = Self->Samples[Channel.SampleHandle-1];
+         if ((Channel.Flags & CHF_CHANGED) and
+             ((sample.LoopMode IS LOOP_AMIGA) or (sample.LoopMode IS LOOP_AMIGA_NONE)) and
+             ((prev_sample.LoopMode IS LOOP_AMIGA) or (prev_sample.LoopMode IS LOOP_AMIGA_NONE))) {
+            return amiga_change(Self, Channel);
          }
 
          // No sample change - we are finished
-         Channel->State = CHS_FINISHED;
+         Channel.State = CHS_FINISHED;
          return true;
       }
       else return false;
    }
 
-   if (Channel->Flags & CHF_BACKWARD) {
+   if (Channel.Flags & CHF_BACKWARD) {
       // Going backwards - did we reach loop start? (signed comparison takes care of possible wraparound)
-      if ((Channel->Position < lpStart) or ((Channel->Position IS lpStart) and (Channel->PositionLow IS 0)) ) {
-         Channel->Flags &= ~CHF_BACKWARD;
-         n = ((lpStart - Channel->Position) << 16) - Channel->PositionLow - 1;
+      if ((Channel.Position < lpStart) or ((Channel.Position IS lpStart) and (Channel.PositionLow IS 0)) ) {
+         Channel.Flags &= ~CHF_BACKWARD;
+         LONG n = ((lpStart - Channel.Position) << 16) - Channel.PositionLow - 1;
          // -1 is compensation for the fudge factor at loop end, see below
-         Channel->Position = lpStart + (n>>16);
-         Channel->PositionLow = n;
+         Channel.Position = lpStart + (n>>16);
+         Channel.PositionLow = n;
 
          // Don't die on overshort loops
-         if (Channel->Position >= lpEnd) {
-            Channel->Position = lpStart;
+         if (Channel.Position >= lpEnd) {
+            Channel.Position = lpStart;
             return true;
          }
       }
-      return false;
    }
-
-   // Going forward - did we reach loop end?
-
-   if (Channel->Position >= lpEnd) { // Stream handling
-      if (Channel->Sample.StreamID) {
-         parasol::ScopedObjectLock<BaseClass> stream(Channel->Sample.StreamID, 3000);
+   else if (Channel.Position >= lpEnd) { // Going forward - did we reach loop end?
+      if (sample.StreamID) {
+         parasol::ScopedObjectLock<BaseClass> stream(sample.StreamID, 3000);
 
          if (stream.granted()) {
             // Read the next set of stream data into our sample buffer
 
-            read.Buffer = Channel->Sample.Data;
-            read.Length = Channel->Sample.BufferLength;
-            if (!Action(AC_Read, *stream, &read)) {
+            LONG bytes_read;
+            if (!acRead(*stream, sample.Data, sample.BufferLength, &bytes_read)) {
                // Increment the known stream position
-               Channel->Sample.StreamPos += read.Result;
+               Channel.StreamPos += bytes_read;
 
                // If the stream is a virtual file, clear the audio content for the benefit of our hearing (if the
                // buffer is not refilled in time then we will get an ugly loop/feedback distortion because the
@@ -236,7 +223,7 @@ static bool handle_sample_end(extAudio *Self, AudioChannel *Channel)
                                     FID_Size|TLONG,  &buffersize,
                                     TAGEND);
 
-                  if ((Channel->Sample.SampleType IS SFM_U8_BIT_STEREO) or (Channel->Sample.SampleType IS SFM_U8_BIT_MONO)) {
+                  if ((sample.SampleType IS SFM_U8_BIT_STEREO) or (sample.SampleType IS SFM_U8_BIT_MONO)) {
                      for (i=0; i < buffersize; i++) buffer[i] = 0x80;
                   }
                   else ClearMemory(buffer, buffersize);
@@ -245,69 +232,71 @@ static bool handle_sample_end(extAudio *Self, AudioChannel *Channel)
 
                // Loop back to the beginning of the stream if necessary
 
-               if ((read.Result <= 0) or (Channel->Sample.StreamPos >= Channel->Sample.StreamLength)) {
-                  if (Channel->Sample.Loop2Type) {
-                     acSeek(*stream, (DOUBLE)(Channel->Sample.SeekStart + Channel->Sample.Loop2Start), SEEK_START);
-                     Channel->Sample.StreamPos = 0;
+               if ((bytes_read <= 0) or (Channel.StreamPos >= sample.StreamLength)) {
+                  if (sample.Loop2Type) {
+                     acSeek(*stream, (DOUBLE)(sample.SeekStart + sample.Loop2Start), SEEK_START);
+                     Channel.StreamPos = 0;
                   }
-                  else Channel->State = CHS_FINISHED;
+                  else Channel.State = CHS_FINISHED;
                }
             }
             else {
                log.warning("Failed to stream data from object #%d.", stream.obj->UID);
-               Channel->State = CHS_FINISHED;
+               Channel.State = CHS_FINISHED;
             }
          }
          else {
-            log.msg("Stream object %d has been lost.", Channel->Sample.StreamID);
-            Channel->Sample.StreamID = 0;
+            log.msg("Stream object %d has been lost.", sample.StreamID);
+            sample.StreamID = 0;
          }
       }
 
       // Check for ALE sample change
 
-      if ((Channel->Flags & CHF_CHANGED) and
-          ((Channel->Sample.LoopMode IS LOOP_AMIGA) or (Channel->Sample.LoopMode IS LOOP_AMIGA_NONE)) and
-         ((Self->Samples[Channel->SampleHandle-1].LoopMode IS LOOP_AMIGA) or (Self->Samples[Channel->SampleHandle-1].LoopMode IS LOOP_AMIGA_NONE))) {
-         return AmigaChange(Self, Channel);
+      auto &prev_sample = Self->Samples[Channel.SampleHandle-1];
+
+      if ((Channel.Flags & CHF_CHANGED) and
+          ((sample.LoopMode IS LOOP_AMIGA) or (sample.LoopMode IS LOOP_AMIGA_NONE)) and
+          ((prev_sample.LoopMode IS LOOP_AMIGA) or (prev_sample.LoopMode IS LOOP_AMIGA_NONE))) {
+         return amiga_change(Self, Channel);
       }
 
       // Go to the second loop if the sound has been released
 
-      if ((Channel->LoopIndex IS 1) and (Channel->State IS CHS_RELEASED)) {
-         Channel->LoopIndex = 2;
+      if ((Channel.LoopIndex IS 1) and (Channel.State IS CHS_RELEASED)) {
+         Channel.LoopIndex = 2;
          return false;
       }
 
       if (lpType IS LTYPE_BIDIRECTIONAL ) {
          // Bidirectional loop - change direction
-         Channel->Flags |= CHF_BACKWARD;
-         n = ((Channel->Position - lpEnd) << 16) + Channel->PositionLow + 1;
+         Channel.Flags |= CHF_BACKWARD;
+         LONG n = ((Channel.Position - lpEnd) << 16) + Channel.PositionLow + 1;
 
          // +1 is a fudge factor to make sure we'll access the correct samples all the time - a similar adjustment is
          // also done at the other end of the loop. This screws up interpolation a little when sample rate IS mixing
          // rate, but little enough that it can't be heard.
 
          if (lpEnd < 0x10000) {
-            Channel->Position    = ((lpEnd << 16) - n)>>16;
-            Channel->PositionLow = (lpEnd << 16) - n;
+            Channel.Position    = ((lpEnd << 16) - n)>>16;
+            Channel.PositionLow = (lpEnd << 16) - n;
          }
          else {
-            Channel->Position    = ((0xffff0000 - n)>>16) + (lpEnd - 0xffff);
-            Channel->PositionLow = 0xffff0000 - n;
+            Channel.Position    = ((0xffff0000 - n)>>16) + (lpEnd - 0xffff);
+            Channel.PositionLow = 0xffff0000 - n;
          }
 
-         if (Channel->Position <= lpStart) { // Don't die on overshort loops
-            Channel->Position = lpEnd;
+         if (Channel.Position <= lpStart) { // Don't die on overshort loops
+            Channel.Position = lpEnd;
             return true;
          }
          return false;
       }
       else { // Unidirectional loop - just loop to the beginning
-         Channel->Position = lpStart + (Channel->Position - lpEnd);
+         Channel.Position = lpStart + (Channel.Position - lpEnd);
 
-         if (Channel->Position >= lpEnd) { // Don't die on overshort loops
-            Channel->Position = lpStart;
+         if (Channel.Position >= lpEnd) { // Don't die on overshort loops
+            Channel.Position = lpStart;
             return true;
          }
 
@@ -319,10 +308,12 @@ static bool handle_sample_end(extAudio *Self, AudioChannel *Channel)
 }
 
 //********************************************************************************************************************
-// Entry point for mixing sound data to destination
+// Main entry point for mixing sound data to destination
 
 ERROR mix_data(extAudio *Self, LONG Elements, APTR Destination)
 {
+   parasol::Log log(__FUNCTION__);
+
    auto dest = (UBYTE *)Destination;
    while (Elements) {
       // Mix only as much as we can fit in our mixing buffer
@@ -333,10 +324,12 @@ ERROR mix_data(extAudio *Self, LONG Elements, APTR Destination)
 
       ClearMemory(Self->MixBuffer, sizeof(FLOAT) * (Self->Stereo ? (window<<1) : window));
 
-      for (auto n=0; n < ARRAYSIZE(Self->Channels); n++) {
-         if (Self->Channels[n].Channel) {
-            for (auto i=0; i < Self->Channels[n].Actual; i++) {
-               mix_channel(Self, Self->Channels[n].Channel + i, window, Self->MixBuffer);
+      for (auto n=1; n < (LONG)Self->Sets.size(); n++) {
+         if (Self->Sets[n].Channel) {
+            for (auto i=0; i < Self->Sets[n].Actual; i++) {
+               if (Self->Sets[n].Channel[i].active()) {
+                  mix_channel(Self, Self->Sets[n].Channel[i], window, Self->MixBuffer);
+               }
             }
          }
       }
@@ -371,39 +364,42 @@ ERROR mix_data(extAudio *Self, LONG Elements, APTR Destination)
 
 //********************************************************************************************************************
 
-static void mix_channel(extAudio *Self, AudioChannel *Channel, LONG numSamples, APTR Dest)
+static void mix_channel(extAudio *Self, AudioChannel &Channel, LONG numSamples, APTR Dest)
 {
-   LONG sampleSize;
+   parasol::Log log(__FUNCTION__);
+
+   auto &sample = Self->Samples[Channel.SampleHandle];
 
    // Check that we have something to mix
 
-   if ((!Channel->Frequency) or (!Channel->Sample.Data) or (Channel->Sample.SampleLength <= 0)) return;
+   if ((!Channel.Frequency) or (!sample.Data) or (sample.SampleLength <= 0)) return;
 
    // Calculate resampling step (16.16 fixed point)
 
-   LONG step = (((Channel->Frequency / Self->OutputRate) << 16) + ((Channel->Frequency % Self->OutputRate) << 16) / Self->OutputRate);
+   LONG step = (((Channel.Frequency / Self->OutputRate) << 16) + ((Channel.Frequency % Self->OutputRate) << 16) / Self->OutputRate);
 
    DOUBLE stereo_mul = 1.0;
    if (!Self->Stereo) {
-      if ((Channel->Sample.SampleType IS SFM_U8_BIT_STEREO) or (Channel->Sample.SampleType IS SFM_S16_BIT_STEREO)) {
+      if ((sample.SampleType IS SFM_U8_BIT_STEREO) or (sample.SampleType IS SFM_S16_BIT_STEREO)) {
          stereo_mul = 0.5;
       }
    }
 
    DOUBLE mastervol = Self->Mute ? 0 : Self->MasterVolume * stereo_mul;
 
-   switch (Channel->Sample.SampleType) {
+   LONG sample_size;
+   switch (sample.SampleType) {
       case SFM_U8_BIT_STEREO:
-      case SFM_S16_BIT_MONO: sampleSize = 2; break;
-      case SFM_S16_BIT_STEREO: sampleSize = 4; break;
-      default: sampleSize = 1; break;
+      case SFM_S16_BIT_MONO: sample_size = 2; break;
+      case SFM_S16_BIT_STEREO: sample_size = 4; break;
+      default: sample_size = 1; break;
    }
 
-   LONG prevMix = 1;
+   LONG prev_mix = 1;
    glMixDest = (UBYTE *)Dest;
    while (numSamples) {
-      if (Channel->State IS CHS_STOPPED) return;
-      else if (Channel->State IS CHS_FINISHED) return;
+      if (Channel.State IS CHS_STOPPED) return;
+      else if (Channel.State IS CHS_FINISHED) return;
 
       LONG nextoffset;
       LONG sue = samples_until_end(Self, Channel, &nextoffset);
@@ -420,58 +416,58 @@ static void mix_channel(extAudio *Self, AudioChannel *Channel, LONG numSamples, 
 
       // This should never happen, but prevents any chance of an infinite loop.
 
-      if ((mixNow IS 0) and (prevMix IS 0)) return;
+      if ((mixNow IS 0) and (prev_mix IS 0)) return;
 
-      prevMix = mixNow;
+      prev_mix = mixNow;
 
       if (mixNow) {
-         MixSrcPos = Channel->PositionLow;
-         MixSample = Channel->Sample.Data + (sampleSize * Channel->Position); // source of sample data to mix into destination
+         MixSrcPos = Channel.PositionLow;
+         MixSample = sample.Data + (sample_size * Channel.Position); // source of sample data to mix into destination
 
-         auto mix_routine = Self->MixRoutines[Channel->Sample.SampleType];
+         auto mix_routine = Self->MixRoutines[sample.SampleType];
 
-         if (Channel->Flags & CHF_BACKWARD) MixStep = -step;
+         if (Channel.Flags & CHF_BACKWARD) MixStep = -step;
          else MixStep = step;
 
          // Do possible volume ramping
 
-         while ((Channel->Flags & CHF_VOL_RAMP) and (mixNow)) {
-            mix_routine(1, nextoffset, mastervol * Channel->LVolume, mastervol * Channel->RVolume);
+         while ((Channel.Flags & CHF_VOL_RAMP) and (mixNow)) {
+            mix_routine(1, nextoffset, mastervol * Channel.LVolume, mastervol * Channel.RVolume);
             mixNow--;
 
             bool cont = false;
 
-            if (Channel->LVolume < Channel->LVolumeTarget) {
-               Channel->LVolume += RAMPSPEED;
-               if (Channel->LVolume >= Channel->LVolumeTarget) Channel->LVolume = Channel->LVolumeTarget;
+            if (Channel.LVolume < Channel.LVolumeTarget) {
+               Channel.LVolume += RAMPSPEED;
+               if (Channel.LVolume >= Channel.LVolumeTarget) Channel.LVolume = Channel.LVolumeTarget;
                else cont = true;
             }
-            else if (Channel->LVolume > Channel->LVolumeTarget) {
-               Channel->LVolume -= RAMPSPEED;
-               if (Channel->LVolume <= Channel->LVolumeTarget) Channel->LVolume = Channel->LVolumeTarget;
-               else cont = true;
-            }
-
-            if (Channel->RVolume < Channel->RVolumeTarget) {
-               Channel->RVolume += RAMPSPEED;
-               if (Channel->RVolume >= Channel->RVolumeTarget) Channel->RVolume = Channel->RVolumeTarget;
-               else cont = true;
-            }
-            else if (Channel->RVolume > Channel->RVolumeTarget) {
-               Channel->RVolume -= RAMPSPEED;
-               if (Channel->RVolume <= Channel->RVolumeTarget) Channel->RVolume = Channel->RVolumeTarget;
+            else if (Channel.LVolume > Channel.LVolumeTarget) {
+               Channel.LVolume -= RAMPSPEED;
+               if (Channel.LVolume <= Channel.LVolumeTarget) Channel.LVolume = Channel.LVolumeTarget;
                else cont = true;
             }
 
-            if (!cont) Channel->Flags &= ~CHF_VOL_RAMP;
+            if (Channel.RVolume < Channel.RVolumeTarget) {
+               Channel.RVolume += RAMPSPEED;
+               if (Channel.RVolume >= Channel.RVolumeTarget) Channel.RVolume = Channel.RVolumeTarget;
+               else cont = true;
+            }
+            else if (Channel.RVolume > Channel.RVolumeTarget) {
+               Channel.RVolume -= RAMPSPEED;
+               if (Channel.RVolume <= Channel.RVolumeTarget) Channel.RVolume = Channel.RVolumeTarget;
+               else cont = true;
+            }
+
+            if (!cont) Channel.Flags &= ~CHF_VOL_RAMP;
          }
 
-         if ((Channel->LVolume IS 0) and (Channel->RVolume IS 0)) {
+         if ((Channel.LVolume <= 0.01) and (Channel.RVolume <= 0.01)) {
             // If the volume is zero we can just increment the position and not mix anything
             MixSrcPos += mixNow * MixStep;
-            if (Channel->State IS CHS_FADE_OUT) {
-               Channel->State = CHS_STOPPED;
-               Channel->Flags &= ~CHF_VOL_RAMP;
+            if (Channel.State IS CHS_FADE_OUT) {
+               Channel.State = CHS_STOPPED;
+               Channel.Flags &= ~CHF_VOL_RAMP;
             }
          }
          else {
@@ -484,24 +480,24 @@ static void mix_channel(extAudio *Self, AudioChannel *Channel, LONG numSamples, 
                   num = 1 - (((MAXINT)glMixDest) % 1);
                   if (num > mixNow) num = mixNow;
                }
-               mix_routine(num, nextoffset, mastervol * Channel->LVolume, mastervol * Channel->RVolume);
+               mix_routine(num, nextoffset, mastervol * Channel.LVolume, mastervol * Channel.RVolume);
                mixNow -= num;
             }
 
             // Do the main mixing loop
             if (mixNow > 0) {
                num = mixNow;
-               mix_routine(num, 1, mastervol * Channel->LVolume, mastervol * Channel->RVolume);
+               mix_routine(num, 1, mastervol * Channel.LVolume, mastervol * Channel.RVolume);
                mixNow -= num;
             }
 
             // Mix what's left
-            if (mixNow) mix_routine(mixNow, 1, mastervol * Channel->LVolume, mastervol * Channel->RVolume);
+            if (mixNow) mix_routine(mixNow, 1, mastervol * Channel.LVolume, mastervol * Channel.RVolume);
          }
 
          // Put changed parts of state back to channel structure
-         Channel->PositionLow = MixSrcPos;
-         Channel->Position = (MixSrcPos>>16) + ((MixSample - Channel->Sample.Data) / sampleSize);
+         Channel.PositionLow = MixSrcPos;
+         Channel.Position = (MixSrcPos>>16) + ((MixSample - sample.Data) / sample_size);
       }
 
       // Check if we reached loop/sample/whatever end
@@ -564,7 +560,7 @@ static void filter_float_stereo(extAudio *Self, FLOAT *data, LONG numSamples)
          d2l = *p;
          *(p++) = s;
 
-         s = (d1r + 3.0*d2r + 4.0*(*p)) * (1.0 / 8.0);
+         s = (d1r + 3.0 * d2r + 4.0 * (*p)) * (1.0 / 8.0);
          d1r = d2r;
          d2r = *p;
          *(p++) = s;
@@ -642,7 +638,7 @@ static void mixmf16Stereo(LONG numSamples, LONG nextSampleOffset, FLOAT LeftVol,
    glMixDest = (UBYTE*) dest;
 }
 
-static MixRoutine MixMonoFloat[5] = { NULL, &mixmf8Mono, &mixmf16Mono, &mixmf8Stereo, &mixmf16Stereo };
+static MixRoutine MixMonoFloat[SFM_END] = { NULL, &mixmf8Mono, &mixmf16Mono, &mixmf8Stereo, &mixmf16Stereo };
 
 //********************************************************************************************************************
 // Mix 8-bit mono samples.
@@ -724,7 +720,7 @@ static void mixsf16Stereo(LONG numSamples, int nextSampleOffset, FLOAT LeftVol, 
    glMixDest = (UBYTE*) dest;
 }
 
-static MixRoutine MixStereoFloat[5] = { NULL, &mixsf8Mono, &mixsf16Mono, &mixsf8Stereo, &mixsf16Stereo };
+static MixRoutine MixStereoFloat[SFM_END] = { NULL, &mixsf8Mono, &mixsf16Mono, &mixsf8Stereo, &mixsf16Stereo };
 
 //********************************************************************************************************************
 // Mix interploated 8-bit mono samples.
@@ -860,7 +856,7 @@ static void mixmi16Stereo(LONG numSamples, LONG nextSampleOffset, FLOAT LeftVol,
    glMixDest = (UBYTE *)dest;
 }
 
-static MixRoutine MixMonoFloatInterp[5] = { NULL, &mixmi8Mono, &mixmi16Mono, &mixmi8Stereo, &mixmi16Stereo };
+static MixRoutine MixMonoFloatInterp[SFM_END] = { NULL, &mixmi8Mono, &mixmi16Mono, &mixmi8Stereo, &mixmi16Stereo };
 
 //********************************************************************************************************************
 // Mix interploated 8-bit mono samples.
@@ -1021,4 +1017,4 @@ static void mixsi16Stereo(LONG numSamples, LONG nextSampleOffset, FLOAT LeftVol,
    glMixDest = (UBYTE*) dest;
 }
 
-static MixRoutine MixStereoFloatInterp[5] = { NULL, &mixsi8Mono, &mixsi16Mono, &mixsi8Stereo, &mixsi16Stereo };
+static MixRoutine MixStereoFloatInterp[SFM_END] = { NULL, &mixsi8Mono, &mixsi16Mono, &mixsi8Stereo, &mixsi16Stereo };

@@ -21,7 +21,7 @@
       <param type="LONG" name="Total">The total number of sound channels required by the client.</param>
     </input>
     <description>
-<p>The maximum number of sound channels used for software-based sound mixing can be altered by calling this function.  The recommended number of channels is 8, which would indicate that a maximum of 8 sound samples could be played simultaneously at any given time.</p>
+<p>The maximum number of sound channels used for software-based sound mixing can be altered by calling this function. The recommended number of channels is 8, which would indicate that a maximum of 8 sound samples could be played simultaneously at any given time.</p>
     </description>
     <result type="LONG">The previous setting for the maximum number of sound channels is returned.</result>
   </function>
@@ -171,31 +171,6 @@
 
   </types>
   <structs>
-    <struct name="AudioChannel" comment="Audio channel structure">
-      <field name="LVolume" type="DOUBLE">Current left speaker volume (0 - 1.0)</field>
-      <field name="RVolume" type="DOUBLE">Current right speaker volume (0 - 1.0)</field>
-      <field name="LVolumeTarget" type="DOUBLE">Volume target when fading or ramping</field>
-      <field name="RVolumeTarget" type="DOUBLE">Volume target when fading or ramping</field>
-      <field name="Sample" type="struct AudioSample">Sample structure</field>
-      <field name="SoundID" type="OBJECTID">ID of the sound object set on this channel</field>
-      <field name="SampleHandle" type="LONG">Internal handle reference</field>
-      <field name="Flags" type="LONG" lookup="CHF">Special flags</field>
-      <field name="Position" type="LONG">Current playing/mixing position</field>
-      <field name="Frequency" type="LONG">Playback frequency</field>
-      <field name="PositionLow" type="UWORD">Playing position, lower bits</field>
-      <field name="Volume" type="WORD">Playing volume (0-100)</field>
-      <field name="Priority" type="BYTE">Priority of the sound that has been assigned to this channel</field>
-      <field name="State" type="BYTE" lookup="CHS">Channel state</field>
-      <field name="LoopIndex" type="BYTE">The current active loop (either 0, 1 or 2)</field>
-      <field name="Pan" type="BYTE">Pan value (-100 to +100)</field>
-    </struct>
-
-    <struct name="AudioCommand" comment="Audio command structure.">
-      <field name="CommandID" type="LONG">Command ID</field>
-      <field name="Handle" type="LONG">Channel handle</field>
-      <field name="Data" type="LONG">Special data related to the command ID</field>
-    </struct>
-
     <struct name="AudioLoop" comment="Loop settings for the AddSample() method.">
       <field name="LoopMode" type="WORD" lookup="LOOP">Loop mode (single, double)</field>
       <field name="Loop1Type" type="BYTE" lookup="LTYPE">First loop type (unidirectional, bidirectional)</field>
@@ -204,44 +179,6 @@
       <field name="Loop1End" type="LONG">End of the first loop</field>
       <field name="Loop2Start" type="LONG">Start of the second loop</field>
       <field name="Loop2End" type="LONG">End of the second loop</field>
-    </struct>
-
-    <struct name="AudioSample" comment="Audio sample structure">
-      <field name="Data" type="UBYTE *">Private.  Pointer to the sample data.</field>
-      <field name="StreamID" type="OBJECTID">Reference to an object to use for streaming</field>
-      <field name="SampleLength" type="LONG">Length of the sample data, in bytes</field>
-      <field name="Loop1Start" type="LONG">Start of the first loop</field>
-      <field name="Loop1End" type="LONG">End of the first loop</field>
-      <field name="Loop2Start" type="LONG">Start of the second loop</field>
-      <field name="Loop2End" type="LONG">End of the second loop</field>
-      <field name="SeekStart" type="LONG"></field>
-      <field name="StreamLength" type="LONG"></field>
-      <field name="BufferLength" type="LONG"></field>
-      <field name="StreamPos" type="LONG">Current read position within the audio stream</field>
-      <field name="SampleType" type="UBYTE">Type of sample (bit format)</field>
-      <field name="LoopMode" type="BYTE">Loop mode (single, double)</field>
-      <field name="Loop1Type" type="BYTE">First loop type (unidirectional, bidirectional)</field>
-      <field name="Loop2Type" type="BYTE">Second loop type (unidirectional, bidirectional)</field>
-      <field name="Free" type="BYTE">Set to true if the StreamID object should be terminated on sample removal.</field>
-      <field name="Used" type="BYTE"></field>
-    </struct>
-
-    <struct name="ChannelSet" comment="Channel set management structure.">
-      <field name="Channel" type="struct AudioChannel *">Array of channel objects</field>
-      <field name="Commands" type="struct AudioCommand *">Array of buffered commands</field>
-      <field name="UpdateRate" type="LONG">Update rate, measured in milliseconds</field>
-      <field name="MixLeft" type="LONG">Amount of mix elements left before the next command-update occurs</field>
-      <field name="Total" type="WORD">Total number of base channels</field>
-      <field name="Actual" type="WORD">Total number of channels, including oversampling channels</field>
-      <field name="TotalCommands" type="WORD">Size of the command buffer</field>
-      <field name="Position" type="WORD">Index to write the next command to</field>
-    </struct>
-
-    <struct name="VolumeCtl">
-      <field name="Size" type="WORD">The size of the Channels array.</field>
-      <field name="Name" type="char" size="32">Name of the mixer</field>
-      <field name="Flags" type="LONG" lookup="VCF">Special flags identifying the mixer's attributes.</field>
-      <field name="Channels" type="FLOAT" size="1">A variable length array of channel volumes.</field>
     </struct>
 
   </structs>

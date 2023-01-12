@@ -98,69 +98,6 @@ module({ name="Audio", copyright="Paul Manias © 2002-2022", version=1.0 }, func
    "RELEASED: Sample playing and note has been released.",
    "FADE_OUT: Playback is fading out.")
 
-  struct("AudioSample", { comment="Audio sample structure" }, [[
-    ptr(uchar) Data      # Private.  Pointer to the sample data.
-    oid   StreamID       # Reference to an object to use for streaming
-    int   SampleLength   # Length of the sample data, in bytes
-    int   Loop1Start     # Start of the first loop
-    int   Loop1End       # End of the first loop
-    int   Loop2Start     # Start of the second loop
-    int   Loop2End       # End of the second loop
-    int   SeekStart
-    int   StreamLength
-    int   BufferLength
-    int   StreamPos      # Current read position within the audio stream
-    uchar SampleType     # Type of sample (bit format)
-    char  LoopMode       # Loop mode (single, double)
-    char  Loop1Type      # First loop type (unidirectional, bidirectional)
-    char  Loop2Type      # Second loop type (unidirectional, bidirectional)
-    char  Free           # Set to true if the StreamID object should be terminated on sample removal.
-    char  Used
-  ]])
-
-  struct("AudioChannel", { comment="Audio channel structure" }, [[
-    double LVolume              # Current left speaker volume (0 - 1.0)
-    double RVolume              # Current right speaker volume (0 - 1.0)
-    double LVolumeTarget        # Volume target when fading or ramping
-    double RVolumeTarget        # Volume target when fading or ramping
-    struct(AudioSample) Sample  # Sample structure
-    oid    SoundID              # ID of the sound object set on this channel
-    int    SampleHandle         # Internal handle reference
-    int(CHF) Flags              # Special flags
-    int    Position             # Current playing/mixing position
-    int    Frequency            # Playback frequency
-    ushort PositionLow          # Playing position, lower bits
-    short  Volume               # Playing volume (0-100)
-    char   Priority             # Priority of the sound that has been assigned to this channel
-    char(CHS) State             # Channel state
-    char   LoopIndex            # The current active loop (either 0, 1 or 2)
-    char   Pan                  # Pan value (-100 to +100)
-  ]])
-
-  struct("AudioCommand", { comment="Audio command structure." }, [[
-    int CommandID  # Command ID
-    int Handle     # Channel handle
-    int Data       # Special data related to the command ID
-  ]])
-
-  struct("ChannelSet", { comment="Channel set management structure." }, [[
-    struct(*AudioChannel) Channel  # Array of channel objects
-    struct(*AudioCommand) Commands # Array of buffered commands
-    int    UpdateRate       # Update rate, measured in milliseconds
-    int    MixLeft          # Amount of mix elements left before the next command-update occurs
-    short  Total            # Total number of base channels
-    short  Actual           # Total number of channels, including oversampling channels
-    short  TotalCommands    # Size of the command buffer
-    short  Position         # Index to write the next command to
-  ]])
-
-  struct("VolumeCtl", { }, [[
-    short    Size      # The size of the Channels array.
-    char(32) Name      # Name of the mixer
-    int(VCF) Flags     # Special flags identifying the mixer's attributes.
-    float(1) Channels  # A variable length array of channel volumes.
-  ]])
-
   struct("AudioLoop", { comment="Loop settings for the AddSample() method." }, [[
     short(LOOP) LoopMode    # Loop mode (single, double)
     char(LTYPE) Loop1Type   # First loop type (unidirectional, bidirectional)
@@ -199,7 +136,6 @@ module({ name="Audio", copyright="Paul Manias © 2002-2022", version=1.0 }, func
     int InputRate
     int Quality
     int(ADF) Flags         # Special flags
-    int TotalChannels      # Total number of channels allocated to the audio object
     int BitDepth           # Typically 8 or 16 bit, reflects the active bit depth
     int Periods
     int PeriodSize

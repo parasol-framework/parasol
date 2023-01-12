@@ -8,7 +8,6 @@ static const struct FieldDef clAudioFlags[] = {
    { "VolRamping", 0x00000010 },
    { "AutoSave", 0x00000020 },
    { "SystemWide", 0x00000040 },
-   { "ServiceMode", 0x00000080 },
    { NULL, 0 }
 };
 

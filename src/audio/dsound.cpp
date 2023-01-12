@@ -38,7 +38,7 @@ int ReadData(extSound *, void *, int);
 void SeekData(extSound *, double);
 void SeekZero(extSound *);
 int GetMixAmount(extAudio *, int *);
-int DropMixAmount(extAudio *, int);
+int process_commands(extAudio *, int);
 
 #include "windows.h"
 
@@ -277,8 +277,8 @@ int dsPlay(extAudio *Self)
          else return 1;
       }
 
-      if (len1) mix_data(Self, len1 / mixElemSize, write1);
-      if (len2) mix_data(Self, len2 / mixElemSize, write2);
+      if (len1) { if (mix_data(Self, len1 / mixElemSize, write1)) break; }
+      if (len2) { if (mix_data(Self, len2 / mixElemSize, write2)) break; }
 
       writePos += len1 + len2;
       if (writePos >= bufferLen) writePos -= bufferLen;
@@ -287,7 +287,7 @@ int dsPlay(extAudio *Self)
 
       // Drop the mix amount.  This may also update buffered channels for the next round
 
-      DropMixAmount((extAudio *)Self, elements);
+      process_commands((extAudio *)Self, elements);
 
       spaceleft -= elements;
    }

@@ -252,13 +252,12 @@ will execute five batches per second.
         <param type="LONG" name="Handle">The handle of the sample that requires removal.</param>
       </input>
       <description>
-<p>You can remove an allocated sample at any time by calling the RemoveSample method.  Once a sample is removed it is permanently deleted from the audio server and it is not possible to reallocate the sample against the same handle number.</p>
+<p>Remove an allocated sample at any time by calling the RemoveSample method.  Once a sample is removed it is permanently deleted from the audio server and it is not possible to reallocate the sample against the same handle number.</p>
 <p>Over time, the continued allocation of audio samples will mean that freed handle numbers will become available again through the <method>AddSample</method> and <method>AddStream</method> methods.  Clearing all references to sample handles after use is therefore recommended.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
         <error code="OutOfRange">The provided sample handle is not within the valid range.</error>
-        <error code="IllegalActionAttempt">You attempted to call this method directly using the Action() function.  Use ActionMsg() instead.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
@@ -438,7 +437,7 @@ will execute five batches per second.
       <type>APTR</type>
       <description>
 <p>The VolumeCtl provides an array of all available mixer controls for the audio hardware.  The information is read-only and each entry is structured as follows:</p>
-<struct lookup="VolumeCtl"/>
+&amp;VolumeCtl
 <p>Attribute flags include:</p>
 <types lookup="VCF"/>
 <p>To scan through the list of controls, search until an entry that uses a Name consisting of a single NULL byte is found.</p>
@@ -525,13 +524,6 @@ will execute five batches per second.
       <field name="Loop1End" type="LONG">End of the first loop</field>
       <field name="Loop2Start" type="LONG">Start of the second loop</field>
       <field name="Loop2End" type="LONG">End of the second loop</field>
-    </struct>
-
-    <struct name="VolumeCtl">
-      <field name="Size" type="WORD">The size of the Channels array.</field>
-      <field name="Name" type="char" size="32">Name of the mixer</field>
-      <field name="Flags" type="LONG" lookup="VCF">Special flags identifying the mixer's attributes.</field>
-      <field name="Channels" type="FLOAT" size="1">A variable length array of channel volumes.</field>
     </struct>
 
   </structs>

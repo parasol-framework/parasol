@@ -150,52 +150,44 @@ ERROR AUDIO_AddSample(extAudio *Self, struct sndAddSample *Args)
 
    // Find an unused sample block.  If there is none, increase the size of the sample management area.
 
-   LONG handle;
-   for (handle=1; handle < Self->TotalSamples; handle++) {
-      if (!Self->Samples[handle].Used) break;
+   LONG idx;
+   for (idx=1; idx < (LONG)Self->Samples.size(); idx++) {
+      if (!Self->Samples[idx].Data) break;
    }
 
-   if (handle >= Self->TotalSamples) {
-      if (!ReallocMemory(Self->Samples, sizeof(AudioSample) * (Self->TotalSamples + 10), &Self->Samples, NULL)) {
-         handle = Self->TotalSamples;
-         Self->TotalSamples += 10;
-      }
-      else return log.warning(ERR_ReallocMemory);
-   }
+   if (idx >= (LONG)Self->Samples.size()) Self->Samples.resize(Self->Samples.size()+10);
 
-   AudioSample *sample = &Self->Samples[handle];
-   ClearMemory(sample, sizeof(AudioSample));
+   auto &sample = Self->Samples[idx];
 
    LONG shift = sample_shift(Args->SampleFormat);
 
-   sample->SampleType   = Args->SampleFormat;
-   sample->SampleLength = Args->DataSize >> shift;
-   sample->Used         = true;
+   sample.SampleType   = Args->SampleFormat;
+   sample.SampleLength = Args->DataSize >> shift;
 
    if (auto loop = Args->Loop) {
-      sample->LoopMode     = loop->LoopMode;
-      sample->Loop1Start   = loop->Loop1Start >> shift;
-      sample->Loop1End     = loop->Loop1End >> shift;
-      sample->Loop1Type    = loop->Loop1Type;
-      sample->Loop2Start   = loop->Loop2Start >> shift;
-      sample->Loop2End     = loop->Loop2End >> shift;
-      sample->Loop2Type    = loop->Loop2Type;
+      sample.LoopMode     = loop->LoopMode;
+      sample.Loop1Start   = loop->Loop1Start >> shift;
+      sample.Loop1End     = loop->Loop1End >> shift;
+      sample.Loop1Type    = loop->Loop1Type;
+      sample.Loop2Start   = loop->Loop2Start >> shift;
+      sample.Loop2End     = loop->Loop2End >> shift;
+      sample.Loop2Type    = loop->Loop2Type;
    }
 
    // Eliminate zero-byte loops
 
-   if (sample->Loop1Start IS sample->Loop1End) sample->Loop1Type = 0;
-   if (sample->Loop2Start IS sample->Loop2End) sample->Loop2Type = 0;
+   if (sample.Loop1Start IS sample.Loop1End) sample.Loop1Type = 0;
+   if (sample.Loop2Start IS sample.Loop2End) sample.Loop2Type = 0;
 
-   if ((!sample->SampleType) or (Args->DataSize <= 0) or (!Args->Data)) {
-      sample->Data = NULL;
+   if ((!sample.SampleType) or (Args->DataSize <= 0) or (!Args->Data)) {
+      sample.Data = NULL;
    }
-   else if (!AllocMemory(Args->DataSize, MEM_DATA|MEM_NO_CLEAR, &sample->Data)) {
-      CopyMemory(Args->Data, sample->Data, Args->DataSize);
+   else if (!AllocMemory(Args->DataSize, MEM_DATA|MEM_NO_CLEAR, &sample.Data)) {
+      CopyMemory(Args->Data, sample.Data, Args->DataSize);
    }
    else return log.warning(ERR_AllocMemory);
 
-   Args->Result = handle;
+   Args->Result = idx;
    return ERR_Okay;
 }
 
@@ -271,22 +263,12 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
 
    // Find an unused sample block.  If there is none, increase the size of the sample management area.
 
-   LONG handle;
-   if (Self->Samples) {
-      for (handle=1; handle < Self->TotalSamples; handle++) {
-         if (!Self->Samples[handle].Used) break;
-      }
+   LONG idx;
+   for (idx=1; idx < (LONG)Self->Samples.size(); idx++) {
+      if (!Self->Samples[idx].Data) break;
    }
-   else handle = Self->TotalSamples;
 
-   if (handle >= Self->TotalSamples) {
-      log.msg("Reallocating sample list.");
-      if (!ReallocMemory(Self->Samples, sizeof(AudioSample) * (Self->TotalSamples + 10), &Self->Samples, NULL)) {
-         handle = Self->TotalSamples;
-         Self->TotalSamples += 10;
-      }
-      else return log.warning(ERR_ReallocMemory);
-   }
+   if (idx >= (LONG)Self->Samples.size()) Self->Samples.resize(Self->Samples.size()+10);
 
    LONG shift = sample_shift(Args->SampleFormat);
    LONG bufferlength;
@@ -313,30 +295,28 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
 
    // Setup the audio sample
 
-   AudioSample *sample = &Self->Samples[handle];
-   ClearMemory(sample, sizeof(AudioSample));
-   sample->Used         = true;
-   sample->SampleType   = Args->SampleFormat;
-   sample->SampleLength = bufferlength>>shift;
-   sample->SeekStart    = Args->SeekStart;
-   sample->StreamLength = (Args->SampleLength > 0) ? Args->SampleLength : 0x7fffffff; // 'Infinite' stream length
-   sample->BufferLength = bufferlength;
-   sample->LoopMode     = LOOP_SINGLE;
-   sample->Loop1End     = bufferlength>>shift;
-   sample->Loop1Type    = LTYPE_UNIDIRECTIONAL;
+   auto &sample = Self->Samples[idx];
+   sample.SampleType   = Args->SampleFormat;
+   sample.SampleLength = bufferlength>>shift;
+   sample.SeekStart    = Args->SeekStart;
+   sample.StreamLength = (Args->SampleLength > 0) ? Args->SampleLength : 0x7fffffff; // 'Infinite' stream length
+   sample.BufferLength = bufferlength;
+   sample.LoopMode     = LOOP_SINGLE;
+   sample.Loop1End     = bufferlength>>shift;
+   sample.Loop1Type    = LTYPE_UNIDIRECTIONAL;
 
    if (Args->Loop) {
-      sample->Loop2Type    = LTYPE_UNIDIRECTIONAL;
-      sample->Loop2Start   = Args->Loop->Loop1Start;
-      sample->Loop2End     = Args->Loop->Loop1End;
-      sample->StreamLength = sample->Loop2End;
+      sample.Loop2Type    = LTYPE_UNIDIRECTIONAL;
+      sample.Loop2Start   = Args->Loop->Loop1Start;
+      sample.Loop2End     = Args->Loop->Loop1End;
+      sample.StreamLength = sample.Loop2End;
    }
 
-   if (Args->ObjectID) sample->StreamID = Args->ObjectID;
+   if (Args->ObjectID) sample.StreamID = Args->ObjectID;
    else {
       objFile *stream_file;
       ERROR error;
-      if (!NewLockedObject(ID_FILE, NF::INTEGRAL, &stream_file, &sample->StreamID)) {
+      if (!NewLockedObject(ID_FILE, NF::INTEGRAL, &stream_file, &sample.StreamID)) {
          if (!SetFields(stream_file, FID_Path|TSTR, Args->Path, FID_Flags|TLONG, FL_READ, TAGEND)) {
             if (!acInit(stream_file)) {
                error = ERR_Okay;
@@ -345,7 +325,7 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
          }
          else error = ERR_SetField;
 
-         if (error) { acFree(stream_file); sample->StreamID = 0; }
+         if (error) { acFree(stream_file); sample.StreamID = 0; }
 
          ReleaseObject(stream_file);
       }
@@ -353,25 +333,25 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
 
       if (error) return log.warning(error);
 
-      sample->Free = true;
+      sample.Free = true;
    }
 
-   if (AllocMemory(sample->BufferLength, MEM_DATA, &sample->Data) != ERR_Okay) {
+   if (AllocMemory(sample.BufferLength, MEM_DATA, &sample.Data) != ERR_Okay) {
       return ERR_AllocMemory;
    }
 
    // Fill the buffer with data from the stream object
 
-   parasol::ScopedObjectLock<> stream(sample->StreamID, 5000);
+   parasol::ScopedObjectLock<> stream(sample.StreamID, 5000);
    if (stream.granted()) {
-      log.trace("Filling the buffer with sample data from source object #%d.", sample->StreamID);
+      log.trace("Filling the buffer with sample data from source object #%d.", sample.StreamID);
 
-      acSeek(*stream, sample->SeekStart, SEEK_START);
-      acRead(*stream, sample->Data, sample->BufferLength, NULL);
+      acSeek(*stream, sample.SeekStart, SEEK_START);
+      acRead(*stream, sample.Data, sample.BufferLength, NULL);
    }
-   else log.warning("Failed to access stream source #%d.", sample->StreamID);
+   else log.warning("Failed to access stream source #%d.", sample.StreamID);
 
-   Args->Result = handle;
+   Args->Result = idx;
    return ERR_Okay;
 }
 
@@ -435,13 +415,13 @@ The following code illustrates a basic setup for batching commands:
 parasol::ScopedObjectLock<objAudio> audio(AudioID, 4);
 if (audio.granted()) {
    LONG cycles = 0;
-   while ((!sndBufferCommand(*audio, CMD_START_SEQUENCE, Self->Channels, NULL)) and
+   while ((!sndBufferCommand(*audio, CMD_START_SEQUENCE, Self->Sets, NULL)) and
       (cycles < MAX_CYCLES)) {
 
        // Add buffered commands in this area.
        // ...
 
-      sndBufferCommand(*audio, CMD_END_SEQUENCE, Self->Channels, NULL);
+      sndBufferCommand(*audio, CMD_END_SEQUENCE, Self->Sets, NULL);
       cycles++;
    }
 }
@@ -472,39 +452,21 @@ static ERROR AUDIO_BufferCommand(extAudio *Self, struct sndBufferCommand *Args)
 
    if ((!Args) or (!Args->Handle) or (!Args->Command)) return log.warning(ERR_NullArgs);
 
-   log.trace("Command: %d, Handle: $%.8x, Data: %d", Args->Command, Args->Handle, Args->Data);
+   log.trace("Command: %d, Handle: $%.8x, Data: %.2f", Args->Command, Args->Handle, Args->Data);
 
    LONG index = Args->Handle>>16;
 
-   if (index >= ARRAYSIZE(Self->Channels)) {
+   if (index >= (LONG)Self->Sets.size()) {
       log.warning("Bad channel handle $%.8x.", Args->Handle);
       return ERR_Args;
    }
 
-   if (Self->Channels[index].Commands) {
-      // If this is the start of a sequence of commands and there is not much space in the command buffer, return an
-      // overflow error.
-
-      if ((Args->Command IS CMD_START_SEQUENCE) and
-          (Self->Channels[index].Position >= Self->Channels[index].TotalCommands-16)) {
-         return ERR_BufferOverflow;
-      }
-
-      // If there is not enough space in the buffer for this new command, return an overflow error.
-
-      if (Self->Channels[index].Position >= Self->Channels[index].TotalCommands-1) {
-         if (Args->Command IS CMD_END_SEQUENCE) {
-            // If the command is an endsequence, roll-back to the CMD_START_SEQUENCE identifier so that all
-            // the previous channel alterations are cancelled.
-         }
-
-         return ERR_BufferOverflow;
-      }
-
-      LONG i = Self->Channels[index].Position++;
-      Self->Channels[index].Commands[i].CommandID = Args->Command;
-      Self->Channels[index].Commands[i].Handle    = Args->Handle;
-      Self->Channels[index].Commands[i].Data      = Args->Data;
+   if (Self->Sets[index].Commands.capacity() > 0) {
+      auto i = Self->Sets[index].Commands.size();
+      Self->Sets[index].Commands.resize(i+1);
+      Self->Sets[index].Commands[i].CommandID = Args->Command;
+      Self->Sets[index].Commands[i].Handle    = Args->Handle;
+      Self->Sets[index].Commands[i].Data      = Args->Data;
       return ERR_Okay;
    }
    else { // Execute the command immediately
@@ -583,26 +545,12 @@ static ERROR AUDIO_CloseChannels(extAudio *Self, struct sndCloseChannels *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   LONG index = Args->Handle>>16;
-
    log.branch("Handle: $%.8x", Args->Handle);
 
-   if ((index < 0) or (index >= ARRAYSIZE(Self->Channels))) log.warning(ERR_Args);
+   LONG index = Args->Handle>>16;
+   if ((index < 0) or (index >= (LONG)Self->Sets.size())) log.warning(ERR_Args);
 
-   if (Self->Channels[index].Channel)  FreeResource(Self->Channels[index].Channel);
-   if (Self->Channels[index].Commands) FreeResource(Self->Channels[index].Commands);
-
-   Self->TotalChannels -= Self->Channels[index].Total;
-
-   ClearMemory(&Self->Channels[index], sizeof(ChannelSet));
-
-   // If the total number of channels has been reduced to zero, clear the audio buffer output in order to
-   // immediately stop all playback.
-
-   log.msg("Total number of channels reduced to %d.", Self->TotalChannels);
-
-   if (Self->TotalChannels <= 0) acClear(Self);
-
+   Self->Sets[index].clear(); // We can't erase because that would mess up other channel handles.
    return ERR_Okay;
 }
 
@@ -671,25 +619,7 @@ static ERROR AUDIO_Free(extAudio *Self, APTR Void)
 
    acDeactivate(Self);
 
-   for (LONG i=0; i < ARRAYSIZE(Self->Channels); i++) {
-      if (Self->Channels[i].Channel)  { FreeResource(Self->Channels[i].Channel); Self->Channels[i].Channel = NULL; }
-      if (Self->Channels[i].Commands) { FreeResource(Self->Channels[i].Commands); Self->Channels[i].Commands = NULL; }
-   }
-
-   if (Self->VolumeCtl) { FreeResource(Self->VolumeCtl); Self->VolumeCtl = NULL; }
    if (Self->MixBuffer) { FreeResource(Self->MixBuffer); Self->MixBuffer = NULL; }
-
-   if (Self->Samples) {
-      for (LONG i=0; i < Self->TotalSamples; i++) {
-         if (Self->Samples[i].Used) {
-            if (Self->Samples[i].Data) FreeResource(Self->Samples[i].Data);
-            if (Self->Samples[i].Free) acFree(Self->Samples[i].StreamID);
-         }
-      }
-
-      FreeResource(Self->Samples);
-      Self->Samples = NULL;
-   }
 
 #ifdef ALSA_ENABLED
 
@@ -701,11 +631,7 @@ static ERROR AUDIO_Free(extAudio *Self, APTR Void)
 
 #endif
 
-   // Destroy our task if we are in service mode
-
-   if (Self->Flags & ADF_SERVICE_MODE) {
-      SendMessage(0, MSGID_QUIT, 0, 0, 0);
-   }
+   Self->~extAudio();
 
    return ERR_Okay;
 }
@@ -734,6 +660,8 @@ static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
 {
    parasol::Log log;
 
+   new (Self) extAudio;
+
    Self->OutputRate = 44100;        // Rate for output to speakers
    Self->InputRate  = 44100;        // Input rate for recording
    Self->Quality    = 80;
@@ -751,34 +679,23 @@ static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
       Self->Flags |= ADF_SYSTEM_WIDE;
    }
 
-   // Allocate sample array
-
-   Self->TotalSamples = 30;
-   if (AllocMemory(Self->TotalSamples * sizeof(AudioSample), MEM_DATA, &Self->Samples) != ERR_Okay) {
-      return ERR_AllocMemory;
-   }
+   Self->Samples.reserve(32);
 
 #ifdef __linux__
-   if (!AllocMemory(sizeof(VolumeCtl) * 3, MEM_DATA|MEM_NO_CLEAR, &Self->VolumeCtl)) {
-      StrCopy("Master", Self->VolumeCtl[0].Name, sizeof(Self->VolumeCtl[0].Name));
-      Self->VolumeCtl[0].Flags = 0;
-      for (LONG i=0; i < ARRAYSIZE(Self->VolumeCtl[0].Channels); i++) Self->VolumeCtl[0].Channels[i] = 0.75;
+   Self->VolumeCtl.resize(2);
+   Self->VolumeCtl[0].Name = "Master";
+   Self->VolumeCtl[0].Flags = 0;
+   for (LONG i=0; i < Self->VolumeCtl[0].Channels.size(); i++) Self->VolumeCtl[0].Channels[i] = 0.80;
 
-      StrCopy("PCM", Self->VolumeCtl[1].Name, sizeof(Self->VolumeCtl[1].Name));
-      Self->VolumeCtl[1].Flags = 0;
-      for (LONG i=0; i < ARRAYSIZE(Self->VolumeCtl[1].Channels); i++) Self->VolumeCtl[1].Channels[i] = 0.80;
-
-      Self->VolumeCtl[2].Name[0] = 0;
-   }
+   Self->VolumeCtl[1].Name = "PCM";
+   Self->VolumeCtl[1].Flags = 0;
+   for (LONG i=0; i < Self->VolumeCtl[1].Channels.size(); i++) Self->VolumeCtl[1].Channels[i] = 0.80;
 #else
-   if (!AllocMemory(sizeof(VolumeCtl) * 2, MEM_DATA|MEM_NO_CLEAR, &Self->VolumeCtl)) {
-      StrCopy("Master", Self->VolumeCtl[0].Name, sizeof(Self->VolumeCtl[0].Name));
-      Self->VolumeCtl[0].Flags = 0;
-      Self->VolumeCtl[0].Channels[0] = 0.75;
-      for (LONG i=1; i < ARRAYSIZE(Self->VolumeCtl[0].Channels); i++) Self->VolumeCtl[0].Channels[i] = -1;
-
-      Self->VolumeCtl[1].Name[0] = 0;
-   }
+   Self->VolumeCtl.resize(1);
+   Self->VolumeCtl[0].Name = "Master";
+   Self->VolumeCtl[0].Flags = 0;
+   Self->VolumeCtl[0].Channels[0] = 0.80;
+   for (LONG i=1; i < (LONG)Self->VolumeCtl[0].Channels.size(); i++) Self->VolumeCtl[0].Channels[i] = -1;
 #endif
 
    load_config(Self);
@@ -835,44 +752,29 @@ static ERROR AUDIO_OpenChannels(extAudio *Self, struct sndOpenChannels *Args)
       return log.warning(ERR_OutOfRange);
    }
 
-   // Allocate the channels
+   // Bear in mind that the +1 is for channel 0 being a dummy entry.
 
-   for (index=1; index < ARRAYSIZE(Self->Channels); index++) {
-      if (!Self->Channels[index].Channel) break;
-   }
-
-   if (index >= ARRAYSIZE(Self->Channels)) return log.warning(ERR_ArrayFull);
-
-   // Channels are tracked back to the task responsible for the allocation - this ensures that the channels are
-   // deallocated properly in the event that a task crashes or forgets to deallocate its channels.
-
-   log.msg("Allocating %d channels from index %d.", Args->Total, index);
+   index = Self->Sets.size() + 1;
+   Self->Sets.resize(index+1);
 
    if (Self->Flags & ADF_OVER_SAMPLING) total = Args->Total * 2;
    else total = Args->Total;
 
-   if (!AllocMemory(sizeof(AudioChannel) * total, MEM_DATA, &Self->Channels[index].Channel)) {
-      Self->Channels[index].Total      = Args->Total;
-      Self->Channels[index].Actual     = total;
-
-      // Allocate the command buffer
+   if (!AllocMemory(sizeof(AudioChannel) * total, MEM_DATA, &Self->Sets[index].Channel)) {
+      Self->Sets[index].Total  = Args->Total;
+      Self->Sets[index].Actual = total;
 
       if (Args->Commands > 0) {
-         if (!AllocMemory(sizeof(AudioCommand) * Args->Commands, MEM_DATA|MEM_CALLER, &Self->Channels[index].Commands)) {
-            Self->Channels[index].TotalCommands = Args->Commands;
-            Self->Channels[index].Position      = 0;
-            Self->Channels[index].UpdateRate    = 125;  // Default update rate of 125ms (equates to 5000Hz)
-            Self->Channels[index].MixLeft       = Self->MixLeft(Self->Channels[index].UpdateRate);
-         }
+         Self->Sets[index].Commands.reserve(Args->Commands);
+         Self->Sets[index].UpdateRate = 125;  // Default update rate of 125ms (equates to 5000Hz)
+         Self->Sets[index].MixLeft    = Self->MixLeft(Self->Sets[index].UpdateRate);
       }
       else {
-         Self->Channels[index].TotalCommands = 0;
-         Self->Channels[index].Position      = 0;
-         Self->Channels[index].UpdateRate    = 0;
-         Self->Channels[index].MixLeft       = 0;
+         Self->Sets[index].Commands.clear();
+         Self->Sets[index].UpdateRate = 0;
+         Self->Sets[index].MixLeft    = 0;
       }
 
-      Self->TotalChannels += Args->Total;
       Args->Result = index<<16;
       return ERR_Okay;
    }
@@ -884,7 +786,7 @@ static ERROR AUDIO_OpenChannels(extAudio *Self, struct sndOpenChannels *Args)
 -METHOD-
 RemoveSample: Removes a sample from the global sample list and deallocates its memory usage.
 
-You can remove an allocated sample at any time by calling the RemoveSample method.  Once a sample is removed it is
+Remove an allocated sample at any time by calling the RemoveSample method.  Once a sample is removed it is
 permanently deleted from the audio server and it is not possible to reallocate the sample against the same handle
 number.
 
@@ -899,7 +801,6 @@ int Handle: The handle of the sample that requires removal.
 Okay
 NullArgs
 OutOfRange: The provided sample handle is not within the valid range.
-IllegalActionAttempt: You attempted to call this method directly using the Action() function.  Use ActionMsg() instead.
 -END-
 
 *********************************************************************************************************************/
@@ -908,21 +809,13 @@ static ERROR AUDIO_RemoveSample(extAudio *Self, struct sndRemoveSample *Args)
 {
    parasol::Log log;
 
-   if ((!Args) or (!Args->Handle)) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR_NullArgs);
 
    log.branch("Sample: %d", Args->Handle);
 
-   if ((Args->Handle < 0) or (Args->Handle >= Self->TotalSamples)) return log.warning(ERR_OutOfRange);
+   if ((Args->Handle < 1) or (Args->Handle >= (LONG)Self->Samples.size())) return log.warning(ERR_OutOfRange);
 
-   if (Self->Samples) {
-      if (auto sample = &Self->Samples[Args->Handle]) {
-         if (sample->Used) {
-            sample->Used = false;
-            if (sample->Data) { FreeResource(sample->Data); sample->Data = NULL; }
-            if (sample->Free) { acFree(sample->StreamID); sample->StreamID = 0; }
-         }
-      }
-   }
+   Self->Samples[Args->Handle].clear();
 
    return ERR_Okay;
 }
@@ -986,8 +879,8 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
       if (Self->Device[0]) config->write("AUDIO", "Device", Self->Device);
       else config->write("AUDIO", "Device", "default");
 
-      if ((Self->VolumeCtl) and (Self->Flags & ADF_SYSTEM_WIDE)) {
-         for (LONG i=0; Self->VolumeCtl[i].Name[0]; i++) {
+      if ((!Self->VolumeCtl.empty()) and (Self->Flags & ADF_SYSTEM_WIDE)) {
+         for (LONG i=0; i < Self->VolumeCtl.size(); i++) {
             std::ostringstream out;
             if (Self->VolumeCtl[i].Flags & VCF_MUTE) out << "1,[";
             else out << "0,[";
@@ -995,7 +888,7 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
             if (Self->VolumeCtl[i].Flags & VCF_MONO) {
                out << Self->VolumeCtl[i].Channels[0];
             }
-            else for (LONG c=0; c < ARRAYSIZE(Self->VolumeCtl[i].Channels); c++) {
+            else for (LONG c=0; c < Self->VolumeCtl[i].Channels.size(); c++) {
                if (c > 0) out << ',';
                out << Self->VolumeCtl[i].Channels[c];
             }
@@ -1047,11 +940,11 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 #endif
 
 #else
-      if (Self->VolumeCtl) {
+      if (!Self->VolumeCtl.empty()) {
          std::string out((Self->VolumeCtl[0].Flags & VCF_MUTE) ? "1,[" : "0,[");
          out.append(std::to_string(Self->VolumeCtl[0].Channels[0]));
          out.append("]");
-         config->write("MIXER", Self->VolumeCtl[0].Name, out);
+         config->write("MIXER", Self->VolumeCtl[0].Name.c_str(), out);
       }
 #endif
 
@@ -1106,21 +999,21 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
    if (((Args->Volume < 0) or (Args->Volume > 1.0)) and (Args->Volume != -1)) {
       return log.warning(ERR_OutOfRange);
    }
-   if (!Self->VolumeCtl) return log.warning(ERR_NoSupport);
+   if (Self->VolumeCtl.empty()) return log.warning(ERR_NoSupport);
    if (!Self->MixHandle) return ERR_NotInitialised;
 
    // Determine what mixer we are going to adjust
 
    if (Args->Name) {
-      for (index=0; Self->VolumeCtl[index].Name[0]; index++) {
+      for (index=0; index < Self->VolumeCtl.size(); index++) {
          if (!StrMatch(Args->Name, Self->VolumeCtl[index].Name)) break;
       }
 
-      if (!Self->VolumeCtl[index].Name[0]) return ERR_Search;
+      if (index IS Self->VolumeCtl.size()) return ERR_Search;
    }
    else {
       index = Args->Index;
-      if ((index < 0) or (index >= Self->VolumeCtlTotal)) return ERR_OutOfRange;
+      if ((index < 0) or (index >= Self->VolumeCtl.size())) return ERR_OutOfRange;
    }
 
    if (!StrMatch("Master", Self->VolumeCtl[index].Name)) {
@@ -1170,7 +1063,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
       if (Self->VolumeCtl[index].Flags & VCF_MONO) {
          Self->VolumeCtl[index].Channels[0] = vol;
       }
-      else for (LONG channel=0; channel < ARRAYSIZE(Self->VolumeCtl[0].Channels); channel++) {
+      else for (LONG channel=0; channel < Self->VolumeCtl[0].Channels.size(); channel++) {
          if (Self->VolumeCtl[index].Channels[channel] >= 0) {
             Self->VolumeCtl[index].Channels[channel] = vol;
          }
@@ -1220,23 +1113,23 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
    if (((Args->Volume < 0) or (Args->Volume > 1.0)) and (Args->Volume != -1)) {
       return log.warning(ERR_OutOfRange);
    }
-   if (!Self->VolumeCtl) return log.warning(ERR_NoSupport);
+   if (Self->VolumeCtl.empty()) return log.warning(ERR_NoSupport);
 
    // Determine what mixer we are going to adjust
 
    if (Args->Name) {
-      for (index=0; Self->VolumeCtl[index].Name[0]; index++) {
-         if (!StrMatch(Args->Name, Self->VolumeCtl[index].Name)) break;
+      for (index=0; index < (LONG)Self->VolumeCtl.size(); index++) {
+         if (!StrMatch(Args->Name, Self->VolumeCtl[index].Name.c_str())) break;
       }
 
-      if (!Self->VolumeCtl[index].Name[0]) return ERR_Search;
+      if (index IS (LONG)Self->VolumeCtl.size()) return ERR_Search;
    }
    else {
       index = Args->Index;
-      if ((index < 0) or (index >= Self->VolumeCtlTotal)) return ERR_OutOfRange;
+      if ((index < 0) or (index >= (LONG)Self->VolumeCtl.size())) return ERR_OutOfRange;
    }
 
-   if (!StrMatch("Master", Self->VolumeCtl[index].Name)) {
+   if (!StrMatch("Master", Self->VolumeCtl[index].Name.c_str())) {
       if (Args->Volume != -1) {
          Self->MasterVolume = Args->Volume;
       }
@@ -1253,13 +1146,13 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 
    // Apply the volume
 
-   log.branch("%s: %.2f, Flags: $%.8x", Self->VolumeCtl[index].Name, Args->Volume, Args->Flags);
+   log.branch("%s: %.2f, Flags: $%.8x", Self->VolumeCtl[index].Name.c_str(), Args->Volume, Args->Flags);
 
    if ((Args->Volume >= 0) and (Args->Volume <= 1.0)) {
       if (Self->VolumeCtl[index].Flags & VCF_MONO) {
          Self->VolumeCtl[index].Channels[0] = Args->Volume;
       }
-      else for (LONG channel=0; channel < ARRAYSIZE(Self->VolumeCtl[0].Channels); channel++) {
+      else for (LONG channel=0; channel < (LONG)Self->VolumeCtl[0].Channels.size(); channel++) {
          if (Self->VolumeCtl[index].Channels[channel] >= 0) {
             Self->VolumeCtl[index].Channels[channel] = Args->Volume;
          }
@@ -1272,7 +1165,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
    if (Args->Flags & SVF_UNSYNC) Self->VolumeCtl[index].Flags &= ~VCF_SYNC;
    else if (Args->Flags & SVF_SYNC) Self->VolumeCtl[index].Flags |= VCF_SYNC;
 
-   EVENTID evid = GetEventID(EVG_AUDIO, "volume", Self->VolumeCtl[index].Name);
+   EVENTID evid = GetEventID(EVG_AUDIO, "volume", Self->VolumeCtl[index].Name.c_str());
    evVolume event_volume = { evid, Args->Volume, (Self->VolumeCtl[index].Flags & VCF_MUTE) ? true : false };
    BroadcastEvent(&event_volume, sizeof(event_volume));
 
@@ -1402,12 +1295,10 @@ field to FALSE.  Muting does not disable the audio system, which is achieved by 
 static ERROR GET_Mute(extAudio *Self, LONG *Value)
 {
    *Value = FALSE;
-   if (Self->VolumeCtl) {
-      for (LONG i=0; Self->VolumeCtl[i].Name[0]; i++) {
-         if (!StrMatch("Master", Self->VolumeCtl[i].Name)) {
-            if (Self->VolumeCtl[i].Flags & VCF_MUTE) *Value = TRUE;
-            break;
-         }
+   for (LONG i=0; i < (LONG)Self->VolumeCtl.size(); i++) {
+      if (!StrMatch("Master", Self->VolumeCtl[i].Name.c_str())) {
+         if (Self->VolumeCtl[i].Flags & VCF_MUTE) *Value = TRUE;
+         break;
       }
    }
    return ERR_Okay;
@@ -1544,48 +1435,17 @@ The Treble field controls the amount of treble that is applied when audio is pla
 all platforms support treble adjustment.
 
 The normal setting for treble is a value of 50, minimum treble is 0 and maximum treble is 100.
-
--FIELD-
-VolumeCtl: An array of information for all known audio mixers in the system.
-
-The VolumeCtl provides an array of all available mixer controls for the audio hardware.  The information is read-only
-and each entry is structured as follows:
-
-&VolumeCtl
-
-Attribute flags include:
-
-&VCF
-
-To scan through the list of controls, search until an entry that uses a Name consisting of a single NULL
-byte is found.
 -END-
 
 *********************************************************************************************************************/
 
-static ERROR GET_VolumeCtl(extAudio *Self, struct VolumeCtl **Value)
-{
-#ifdef ALSA_ENABLED
-   if (!Self->Handle) return ERR_NotInitialised;
-#endif
-
-   if (Self->VolumeCtl) {
-      for (WORD i=0; Self->VolumeCtl[i].Name[0]; i++) {
-         Self->VolumeCtl[i].Size = sizeof(VolumeCtl);
-      }
-
-      *Value = Self->VolumeCtl;
-      return ERR_Okay;
-   }
-   else return ERR_FieldNotSet;
-}
-
 //********************************************************************************************************************
+// Defines the L/RVolume and Ramping values for an AudioChannel.  These values are derived from the Volume and Pan.
 
-static ERROR SetInternalVolume(extAudio *Self, AudioChannel *Channel)
+static ERROR set_channel_volume(extAudio *Self, AudioChannel *Channel)
 {
    parasol::Log log(__FUNCTION__);
-   FLOAT leftvol, rightvol;
+   DOUBLE leftvol, rightvol;
 
    if ((!Self) or (!Channel)) return log.warning(ERR_NullArgs);
 
@@ -1643,9 +1503,9 @@ ERROR GetMixAmount(extAudio *Self, LONG *MixLeft)
 #endif
 {
    *MixLeft = 0x7fffffff;
-   for (LONG i=0; i < ARRAYSIZE(Self->Channels); i++) {
-      if ((Self->Channels[i].MixLeft > 0) and (Self->Channels[i].MixLeft < *MixLeft)) {
-         *MixLeft = Self->Channels[i].MixLeft;
+   for (LONG i=1; i < (LONG)Self->Sets.size(); i++) {
+      if ((Self->Sets[i].MixLeft > 0) and (Self->Sets[i].MixLeft < *MixLeft)) {
+         *MixLeft = Self->Sets[i].MixLeft;
       }
    }
 
@@ -1655,76 +1515,52 @@ ERROR GetMixAmount(extAudio *Self, LONG *MixLeft)
 //********************************************************************************************************************
 
 #ifdef ALSA_ENABLED
-static ERROR DropMixAmount(extAudio *Self, LONG Elements)
+static ERROR process_commands(extAudio *Self, LONG Elements)
 #else
-ERROR DropMixAmount(extAudio *Self, LONG Elements)
+ERROR process_commands(extAudio *Self, LONG Elements)
 #endif
 {
    parasol::Log log(__FUNCTION__);
 
-   for (LONG index=0; index < ARRAYSIZE(Self->Channels); index++) {
-      if ((Self->Channels[index].Channel) and (Self->Channels[index].Commands)) {
-         Self->Channels[index].MixLeft -= Elements;
-         if (Self->Channels[index].MixLeft <= 0) {
+   for (LONG index=1; index < (LONG)Self->Sets.size(); index++) {
+      if (Self->Sets[index].Channel) {
+         Self->Sets[index].MixLeft -= Elements;
+         if (Self->Sets[index].MixLeft <= 0) {
             // Reset the amount of mixing elements left and execute the next set of channel commands
 
-            Self->Channels[index].MixLeft = Self->MixLeft(Self->Channels[index].UpdateRate);
+            Self->Sets[index].MixLeft = Self->MixLeft(Self->Sets[index].UpdateRate);
 
-            if (Self->Channels[index].Position <= 0) continue;
+            if (Self->Sets[index].Commands.empty()) continue;
 
-            LONG total = 0;
-            LONG oldpos = Self->Channels[index].Position;
+            auto &cmds = Self->Sets[index].Commands;
+            for (LONG i=0; i < (LONG)cmds.size(); i++) {
+               switch(cmds[i].CommandID) {
+                  case CMD_CONTINUE:       COMMAND_Continue(Self, cmds[i].Handle); break;
+                  case CMD_FADE_IN:        COMMAND_FadeIn(Self, cmds[i].Handle); break;
+                  case CMD_FADE_OUT:       COMMAND_FadeOut(Self, cmds[i].Handle); break;
+                  case CMD_MUTE:           COMMAND_Mute(Self, cmds[i].Handle, cmds[i].Data); break;
+                  case CMD_PLAY:           COMMAND_Play(Self, cmds[i].Handle, cmds[i].Data); break;
+                  case CMD_SET_FREQUENCY:  COMMAND_SetFrequency(Self, cmds[i].Handle, cmds[i].Data); break;
+                  case CMD_SET_LENGTH:     COMMAND_SetLength(Self, cmds[i].Handle, cmds[i].Data); break;
+                  case CMD_SET_PAN:        COMMAND_SetPan(Self, cmds[i].Handle, cmds[i].Data); break;
+                  case CMD_SET_RATE:       COMMAND_SetRate(Self, cmds[i].Handle, cmds[i].Data); break;
+                  case CMD_SET_SAMPLE:     COMMAND_SetSample(Self, cmds[i].Handle, cmds[i].Data); break;
+                  case CMD_SET_VOLUME:     COMMAND_SetVolume(Self, cmds[i].Handle, cmds[i].Data); break;
+                  case CMD_STOP:           COMMAND_Stop(Self, cmds[i].Handle); break;
+                  case CMD_STOP_LOOPING:   COMMAND_StopLooping(Self, cmds[i].Handle); break;
+                  case CMD_SET_POSITION:   COMMAND_SetPosition(Self, cmds[i].Handle, cmds[i].Data); break;
 
-            // Skip start and end signals
-
-            AudioCommand *cmd = Self->Channels[index].Commands;
-            while ((cmd->CommandID IS CMD_START_SEQUENCE) or (cmd->CommandID IS CMD_END_SEQUENCE)) {
-               total++;
-               cmd++;
-            }
-
-            // Process commands
-
-            while ((cmd->CommandID) and (cmd->CommandID != CMD_END_SEQUENCE) and (cmd->CommandID != CMD_START_SEQUENCE)) {
-               switch(cmd->CommandID) {
-                  case CMD_CONTINUE:       COMMAND_Continue(Self, cmd->Handle); break;
-                  case CMD_FADE_IN:        COMMAND_FadeIn(Self, cmd->Handle); break;
-                  case CMD_FADE_OUT:       COMMAND_FadeOut(Self, cmd->Handle); break;
-                  case CMD_MUTE:           COMMAND_Mute(Self, cmd->Handle, cmd->Data); break;
-                  case CMD_PLAY:           COMMAND_Play(Self, cmd->Handle, cmd->Data); break;
-                  case CMD_SET_FREQUENCY:  COMMAND_SetFrequency(Self, cmd->Handle, cmd->Data); break;
-                  case CMD_SET_LENGTH:     COMMAND_SetLength(Self, cmd->Handle, cmd->Data); break;
-                  case CMD_SET_PAN:        COMMAND_SetPan(Self, cmd->Handle, cmd->Data); break;
-                  case CMD_SET_RATE:       COMMAND_SetRate(Self, cmd->Handle, cmd->Data); break;
-                  case CMD_SET_SAMPLE:     COMMAND_SetSample(Self, cmd->Handle, cmd->Data); break;
-                  case CMD_SET_VOLUME:     COMMAND_SetVolume(Self, cmd->Handle, cmd->Data); break;
-                  case CMD_STOP:           COMMAND_Stop(Self, cmd->Handle); break;
-                  case CMD_STOP_LOOPING:   COMMAND_StopLooping(Self, cmd->Handle); break;
-                  case CMD_SET_POSITION:   COMMAND_SetPosition(Self, cmd->Handle, cmd->Data); break;
+                  case CMD_START_SEQUENCE:
+                  case CMD_END_SEQUENCE:
+                     break;
 
                   default:
-                     log.warning("Bad command ID #%d.", cmd->CommandID);
-                     Self->Channels[index].Position = 0;
-                     Self->Channels[index].Commands->CommandID = 0;
-                     return ERR_Failed;
+                     log.warning("Unrecognised command ID #%d at index %d.", cmds[i].CommandID, i);
+                     break;
                }
-
-               total++;
-               cmd++;
             }
 
-            // Skip start and end signals
-
-            while ((cmd->CommandID IS CMD_START_SEQUENCE) or (cmd->CommandID IS CMD_END_SEQUENCE)) {
-               total++;
-               cmd++;
-            }
-
-            CopyMemory(cmd, Self->Channels[index].Commands, ((oldpos - total) * sizeof(AudioCommand)));
-
-            Self->Channels[index].Position -= total;
-            Self->Channels[index].Commands[Self->Channels[index].Position].CommandID = 0;
-            Self->Channels[index].Commands[Self->Channels[index].Position].Handle    = 0;
+            cmds.clear();
          }
       }
    }
@@ -1768,14 +1604,9 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
          acDeactivate(Self);
 
          if (acActivate(Self) != ERR_Okay) {
-            if ((Self->Flags & ADF_SERVICE_MODE) and (errcount < 1000)) {
-               log.warning("Audio error unrecoverable - will keep trying.");
-            }
-            else {
-               log.warning("Audio error is terminal, self-destructing...");
-               DelayMsg(AC_Free, Self->UID);
-               return ERR_Failed;
-            }
+            log.warning("Audio error is terminal, self-destructing...");
+            DelayMsg(AC_Free, Self->UID);
+            return ERR_Failed;
          }
       }
 
@@ -1804,7 +1635,7 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
 
       // Drop the mix amount.  This may also update buffered channels for the next round
 
-      DropMixAmount(Self, elements);
+      process_commands(Self, elements);
 
       buffer = buffer + (elements * Self->SampleBitSize);
       spaceleft -= elements;
@@ -1902,40 +1733,36 @@ static void load_config(extAudio *Self)
 
       ConfigGroups *groups;
       if (!config->getPtr(FID_Data, &groups)) {
-         LONG j = 0;
          for (auto& [group, keys] : groups[0]) {
             if (!StrMatch("MIXER", group.c_str())) {
-               if (Self->VolumeCtl) { FreeResource(Self->VolumeCtl); Self->VolumeCtl = 0; }
+               Self->VolumeCtl.clear();
+               Self->VolumeCtl.resize(keys.size());
 
-               if (!AllocMemory(sizeof(VolumeCtl) * (keys.size() + 1), MEM_NO_CLEAR, &Self->VolumeCtl)) {
-                  Self->VolumeCtlTotal = keys.size();
+               LONG j = 0;
+               for (auto& [k, v] : keys) {
+                  Self->VolumeCtl[j].Name = k;
 
-                  for (auto& [k, v] : keys) {
-                     StrCopy(k.c_str(), Self->VolumeCtl[j].Name, sizeof(Self->VolumeCtl[j].Name));
+                  CSTRING str = v.c_str();
+                  if (StrToInt(str) IS 1) Self->VolumeCtl[j].Flags |= VCF_MUTE;
+                  while ((*str) and (*str != ',')) str++;
+                  if (*str IS ',') str++;
 
-                     CSTRING str = v.c_str();
-                     if (StrToInt(str) IS 1) Self->VolumeCtl[j].Flags |= VCF_MUTE;
-                     while ((*str) and (*str != ',')) str++;
-                     if (*str IS ',') str++;
-
-                     LONG channel = 0;
-                     if (*str IS '[') { // Read channel volumes
-                        str++;
-                        while ((*str) and (*str != ']')) {
-                           Self->VolumeCtl[j].Channels[channel] = StrToInt(str);
-                           while ((*str) and (*str != ',') and (*str != ']')) str++;
-                           if (*str IS ',') str++;
-                           channel++;
-                        }
-                     }
-
-                     while (channel < ARRAYSIZE(Self->VolumeCtl[j].Channels)) {
-                        Self->VolumeCtl[j].Channels[channel] = 0.75;
+                  LONG channel = 0;
+                  if (*str IS '[') { // Read channel volumes
+                     str++;
+                     while ((*str) and (*str != ']')) {
+                        Self->VolumeCtl[j].Channels[channel] = StrToInt(str);
+                        while ((*str) and (*str != ',') and (*str != ']')) str++;
+                        if (*str IS ',') str++;
                         channel++;
                      }
                   }
 
-                  Self->VolumeCtl[j].Name[0] = 0;
+                  while (channel < (LONG)Self->VolumeCtl[j].Channels.size()) {
+                     Self->VolumeCtl[j].Channels[channel] = 0.75;
+                     channel++;
+                  }
+                  j++;
                }
             }
             break;
@@ -1960,8 +1787,6 @@ static void free_alsa(extAudio *Self)
 
 static ERROR init_audio(extAudio *Self)
 {
-   LONG i;
-
 #ifdef ALSA_ENABLED
 
    parasol::Log log(__FUNCTION__);
@@ -2142,78 +1967,77 @@ next_card:
       return ERR_NoSupport;
    }
 
-   if (!AllocMemory(sizeof(VolumeCtl) * (voltotal + 1), MEM_NO_CLEAR, &volctl)) {
-      index = 0;
-      for (elem=snd_mixer_first_elem(Self->MixHandle); elem; elem=snd_mixer_elem_next(elem)) {
-         snd_mixer_selem_get_id(elem, sid);
-         if (!snd_mixer_selem_is_active(elem)) continue;
+   std::vector<VolumeCtl> volctl;
+   volctl.reserve(32);
 
-         if (volctl[index].Flags & VCF_CAPTURE) {
-            snd_mixer_selem_get_capture_volume_range(elem, &pmin, &pmax);
-         }
-         else snd_mixer_selem_get_playback_volume_range(elem, &pmin, &pmax);
+   index = 0;
+   for (elem=snd_mixer_first_elem(Self->MixHandle); elem; elem=snd_mixer_elem_next(elem)) {
+      volctl.resize(volctl.size() + 1);
 
-         if (pmin >= pmax) continue; // Ignore mixers with no range
+      snd_mixer_selem_get_id(elem, sid);
+      if (!snd_mixer_selem_is_active(elem)) continue;
 
-         log.trace("Mixer Control '%s',%i", snd_mixer_selem_id_get_name(sid), snd_mixer_selem_id_get_index(sid));
+      if (volctl[index].Flags & VCF_CAPTURE) {
+         snd_mixer_selem_get_capture_volume_range(elem, &pmin, &pmax);
+      }
+      else snd_mixer_selem_get_playback_volume_range(elem, &pmin, &pmax);
 
-         StrCopy((STRING)snd_mixer_selem_id_get_name(sid), volctl[index].Name, sizeof(volctl[index].Name));
+      if (pmin >= pmax) continue; // Ignore mixers with no range
 
-         for (channel=0; channel < ARRAYSIZE(volctl[index].Channels); channel++) volctl[index].Channels[channel] = -1;
+      log.trace("Mixer Control '%s',%i", snd_mixer_selem_id_get_name(sid), snd_mixer_selem_id_get_index(sid));
 
-         flags = 0;
-         if (snd_mixer_selem_has_playback_volume(elem))        flags |= VCF_PLAYBACK;
-         if (snd_mixer_selem_has_capture_volume(elem))         flags |= VCF_CAPTURE;
-         if (snd_mixer_selem_has_capture_volume_joined(elem))  flags |= VCF_JOINED;
-         if (snd_mixer_selem_has_playback_volume_joined(elem)) flags |= VCF_JOINED;
-         if (snd_mixer_selem_is_capture_mono(elem))            flags |= VCF_MONO;
-         if (snd_mixer_selem_is_playback_mono(elem))           flags |= VCF_MONO;
+      StrCopy((STRING)snd_mixer_selem_id_get_name(sid), volctl[index].Name, sizeof(volctl[index].Name));
 
-         // Get the current channel volumes
+      for (channel=0; channel < volctl[index].Channels.size(); channel++) volctl[index].Channels[channel] = -1;
 
-         if (!(flags & VCF_MONO)) {
-            for (channel=0; channel < ARRAYSIZE(glAlsaConvert); channel++) {
-               if (snd_mixer_selem_has_playback_channel(elem, (snd_mixer_selem_channel_id_t)glAlsaConvert[channel]))   {
-                  long vol;
-                  snd_mixer_selem_get_playback_volume(elem, (snd_mixer_selem_channel_id_t)glAlsaConvert[channel], &vol);
-                  volctl[index].Channels[channel] = vol;
-               }
+      flags = 0;
+      if (snd_mixer_selem_has_playback_volume(elem))        flags |= VCF_PLAYBACK;
+      if (snd_mixer_selem_has_capture_volume(elem))         flags |= VCF_CAPTURE;
+      if (snd_mixer_selem_has_capture_volume_joined(elem))  flags |= VCF_JOINED;
+      if (snd_mixer_selem_has_playback_volume_joined(elem)) flags |= VCF_JOINED;
+      if (snd_mixer_selem_is_capture_mono(elem))            flags |= VCF_MONO;
+      if (snd_mixer_selem_is_playback_mono(elem))           flags |= VCF_MONO;
+
+      // Get the current channel volumes
+
+      if (!(flags & VCF_MONO)) {
+         for (channel=0; channel < ARRAYSIZE(glAlsaConvert); channel++) {
+            if (snd_mixer_selem_has_playback_channel(elem, (snd_mixer_selem_channel_id_t)glAlsaConvert[channel]))   {
+               long vol;
+               snd_mixer_selem_get_playback_volume(elem, (snd_mixer_selem_channel_id_t)glAlsaConvert[channel], &vol);
+               volctl[index].Channels[channel] = vol;
             }
          }
-         else volctl[index].Channels[0] = 0;
+      }
+      else volctl[index].Channels[0] = 0;
 
-         // By default, input channels need to be muted.  This is because some rare PC's have been noted to cause high
-         // pitched feedback, e.g. when the microphone channel is on.  All playback channels are enabled by default.
+      // By default, input channels need to be muted.  This is because some rare PC's have been noted to cause high
+      // pitched feedback, e.g. when the microphone channel is on.  All playback channels are enabled by default.
 
-         if ((snd_mixer_selem_has_capture_switch(elem)) and (!snd_mixer_selem_has_playback_switch(elem))) {
-            for (channel=0; channel < ARRAYSIZE(glAlsaConvert); channel++) {
-               flags |= VCF_MUTE;
-               snd_mixer_selem_set_capture_switch(elem, (snd_mixer_selem_channel_id_t)channel, 0);
-            }
+      if ((snd_mixer_selem_has_capture_switch(elem)) and (!snd_mixer_selem_has_playback_switch(elem))) {
+         for (channel=0; channel < ARRAYSIZE(glAlsaConvert); channel++) {
+            flags |= VCF_MUTE;
+            snd_mixer_selem_set_capture_switch(elem, (snd_mixer_selem_channel_id_t)channel, 0);
          }
-         else if (snd_mixer_selem_has_playback_switch(elem)) {
-            for (channel=0; channel < ARRAYSIZE(glAlsaConvert); channel++) {
-               snd_mixer_selem_set_capture_switch(elem, (snd_mixer_selem_channel_id_t)channel, 1);
-            }
+      }
+      else if (snd_mixer_selem_has_playback_switch(elem)) {
+         for (channel=0; channel < ARRAYSIZE(glAlsaConvert); channel++) {
+            snd_mixer_selem_set_capture_switch(elem, (snd_mixer_selem_channel_id_t)channel, 1);
          }
-
-         volctl[index].Flags = flags;
-
-         index++;
       }
 
-      volctl[index].Name[0] = 0;
-      volctl[index].Flags = 0;
+      volctl[index].Flags = flags;
 
-      log.msg("Configured %d mixer controls.", index);
+      index++;
    }
+
+   log.msg("Configured %d mixer controls.", index);
 
    snd_pcm_hw_params_alloca(&hwparams); // Stack allocation, no need to free it
 
    stream = SND_PCM_STREAM_PLAYBACK;
    if ((err = snd_pcm_open(&pcmhandle, pcm_name, stream, 0)) < 0) {
       log.warning("snd_pcm_open(%s) %s", pcm_name, snd_strerror(err));
-      FreeResource(volctl);
       return ERR_Failed;
    }
 
@@ -2221,13 +2045,11 @@ next_card:
 
    if ((err = snd_pcm_hw_params_any(pcmhandle, hwparams)) < 0) {
       log.warning("Broken configuration for this PCM: no configurations available");
-      FreeResource(volctl);
       return ERR_Failed;
    }
 
    if ((err = snd_pcm_hw_params_set_access(pcmhandle, hwparams, SND_PCM_ACCESS_RW_INTERLEAVED)) < 0) {
       log.warning("set_access() %d %s", err, snd_strerror(err));
-      FreeResource(volctl);
       return ERR_Failed;
    }
 
@@ -2236,13 +2058,11 @@ next_card:
    if (Self->BitDepth IS 16) {
       if ((err = snd_pcm_hw_params_set_format(pcmhandle, hwparams, SND_PCM_FORMAT_S16_LE)) < 0) {
          log.warning("set_format(16) %s", snd_strerror(err));
-         FreeResource(volctl);
          return ERR_Failed;
       }
    }
    else if ((err = snd_pcm_hw_params_set_format(pcmhandle, hwparams, SND_PCM_FORMAT_U8)) < 0) {
       log.warning("set_format(8) %s", snd_strerror(err));
-      FreeResource(volctl);
       return ERR_Failed;
    }
 
@@ -2266,7 +2086,6 @@ next_card:
 
       default:
          log.warning("Hardware uses an unsupported audio format.");
-         FreeResource(volctl);
          return ERR_Failed;
    }
 
@@ -2278,7 +2097,6 @@ next_card:
    dir = 0;
    if ((err = snd_pcm_hw_params_set_rate_near(pcmhandle, hwparams, (ULONG *)&Self->OutputRate, &dir)) < 0) {
       log.warning("set_rate_near() %s", snd_strerror(err));
-      FreeResource(volctl);
       return ERR_Failed;
    }
 
@@ -2287,7 +2105,6 @@ next_card:
    ULONG channels = (Self->Flags & ADF_STEREO) ? 2 : 1;
    if ((err = snd_pcm_hw_params_set_channels_near(pcmhandle, hwparams, &channels)) < 0) {
       log.warning("set_channels_near(%d) %s", channels, snd_strerror(err));
-      FreeResource(volctl);
       return ERR_Failed;
    }
 
@@ -2307,13 +2124,11 @@ next_card:
 
    if ((err = snd_pcm_hw_params_set_period_time_near(handle, hwparams, &period_time, 0)) < 0) {
       log.warning("Period failure: %s", snd_strerror(err));
-      FreeResource(volctl);
       return ERR_Failed;
    }
 
    if ((err = snd_pcm_hw_params_set_buffer_time_near(handle, hwparams, &buffer_time, 0)) < 0) {
       log.warning("Buffer size failure: %s", snd_strerror(err));
-      FreeResource(volctl);
       return ERR_Failed;
    }
 
@@ -2350,13 +2165,11 @@ next_card:
 
    if ((err = snd_pcm_hw_params_set_period_size_near(pcmhandle, hwparams, &periodsize, 0)) < 0) {
       log.warning("Period size failure: %s", snd_strerror(err));
-      FreeResource(volctl);
       return ERR_Failed;
    }
 
    if ((err = snd_pcm_hw_params_set_buffer_size_near(pcmhandle, hwparams, &buffersize)) < 0) {
       log.warning("Buffer size failure: %s", snd_strerror(err));
-      FreeResource(volctl);
       return ERR_Failed;
    }
 #endif
@@ -2365,13 +2178,11 @@ next_card:
 
    if ((err = snd_pcm_hw_params(pcmhandle, hwparams)) < 0) {
       log.warning("snd_pcm_hw_params() %s", snd_strerror(err));
-      FreeResource(volctl);
       return ERR_Failed;
    }
 
    if ((err = snd_pcm_prepare(pcmhandle)) < 0) {
       log.warning("snd_pcm_prepare() %s", snd_strerror(err));
-      FreeResource(volctl);
       return ERR_Failed;
    }
 
@@ -2397,24 +2208,18 @@ next_card:
    if (Self->AudioBuffer) { FreeResource(Self->AudioBuffer); Self->AudioBuffer = NULL; }
 
    if (!AllocMemory(Self->AudioBufferSize, MEM_DATA, &Self->AudioBuffer)) {
-      VolumeCtl *oldctl;
-
       #ifdef DEBUG
          snd_pcm_hw_params_dump(hwparams, log);
       #endif
 
-      // Apply existing volumes to the alsa mixer if we're system-wide
+      if (Self->Flags & ADF_SYSTEM_WIDE) {
+         log.msg("Applying user configured volumes.");
 
-      oldctl = Self->VolumeCtl;
+         auto oldctl = Self->VolumeCtl;
+         Self->VolumeCtl = volctl;
 
-      Self->VolumeCtlTotal = voltotal;
-      Self->VolumeCtl      = volctl;
-
-      if ((oldctl) and (Self->Flags & ADF_SYSTEM_WIDE)) {
-         log.msg("Applying preset volumes to alsa.");
-
-         for (i=0; volctl[i].Name[0]; i++) {
-            for (j=0; oldctl[j].Name[0]; j++) {
+         for (i=0; i < volctl.size(); i++) {
+            for (j=0; j < oldctl.size(); j++) {
                if (!StrMatch(volctl[i].Name, oldctl[j].Name)) {
                   setvol.Index   = i;
                   setvol.Name    = NULL;
@@ -2427,9 +2232,9 @@ next_card:
                }
             }
 
-            // If the user has not defined a default for the mixer, set our own default.
+            // If the user has no volume defined for a mixer, set our own.
 
-            if (!oldctl[j].Name[0]) {
+            if (j IS oldctl.size()) {
                setvol.Index   = i;
                setvol.Name    = NULL;
                setvol.Flags   = 0;
@@ -2438,25 +2243,26 @@ next_card:
             }
          }
       }
-      else log.msg("Skipping preset volumes.");
+      else {
+         log.msg("Skipping preset volumes.");
+         Self->VolumeCtl = volctl;
+      }
 
       // Free existing volume measurements and apply the information that we read from alsa.
 
-      if (oldctl) FreeResource(oldctl);
       Self->Handle = pcmhandle;
    }
    else {
-      FreeResource(volctl);
       return log.warning(ERR_AllocMemory);
    }
 
 #else
 
-   Self->BitDepth = 16;
-   Self->Stereo = true;
+   Self->BitDepth     = 16;
+   Self->Stereo       = true;
    Self->MasterVolume = Self->VolumeCtl[0].Channels[0];
    Self->VolumeCtl[0].Flags |= VCF_MONO;
-   for (i=1; i < ARRAYSIZE(Self->VolumeCtl[0].Channels); i++) Self->VolumeCtl[0].Channels[i] = -1;
+   for (LONG i=1; i < (LONG)Self->VolumeCtl[0].Channels.size(); i++) Self->VolumeCtl[0].Channels[i] = -1;
    if (Self->VolumeCtl[0].Flags & VCF_MUTE) Self->Mute = true;
    else Self->Mute = false;
 
@@ -2479,7 +2285,6 @@ static const FieldArray clAudioFields[] = {
    { "InputRate",     FDF_LONG|FDF_RI,    0, NULL, NULL },
    { "Quality",       FDF_LONG|FDF_RW,    0, NULL, (APTR)SET_Quality },
    { "Flags",         FDF_LONGFLAGS|FDF_RI, (MAXINT)&clAudioFlags, NULL, NULL },
-   { "TotalChannels", FDF_LONG|FDF_R,     0, NULL, NULL },
    { "BitDepth",      FDF_LONG|FDF_RI,    0, NULL, (APTR)SET_BitDepth },
    { "Periods",       FDF_LONG|FDF_RI,    0, NULL, (APTR)SET_Periods },
    { "PeriodSize",    FDF_LONG|FDF_RI,    0, NULL, (APTR)SET_PeriodSize },
@@ -2488,7 +2293,6 @@ static const FieldArray clAudioFields[] = {
    { "MasterVolume",  FDF_DOUBLE|FDF_RW,  0, (APTR)GET_MasterVolume, (APTR)SET_MasterVolume },
    { "Mute",          FDF_LONG|FDF_RW,    0, (APTR)GET_Mute,         (APTR)SET_Mute },
    { "Stereo",        FDF_LONG|FDF_RW,    0, (APTR)GET_Stereo,       (APTR)SET_Stereo },
-   { "VolumeCtl",     FDF_POINTER|FDF_R,  0, (APTR)GET_VolumeCtl,    NULL },
    END_FIELD
 };
 

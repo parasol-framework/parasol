@@ -128,69 +128,6 @@ class objSound;
 #define CHS_RELEASED 3
 #define CHS_FADE_OUT 4
 
-struct AudioSample {
-   UBYTE *  Data;        // Private.  Pointer to the sample data.
-   OBJECTID StreamID;    // Reference to an object to use for streaming
-   LONG     SampleLength; // Length of the sample data, in bytes
-   LONG     Loop1Start;  // Start of the first loop
-   LONG     Loop1End;    // End of the first loop
-   LONG     Loop2Start;  // Start of the second loop
-   LONG     Loop2End;    // End of the second loop
-   LONG     SeekStart;
-   LONG     StreamLength;
-   LONG     BufferLength;
-   LONG     StreamPos;   // Current read position within the audio stream
-   UBYTE    SampleType;  // Type of sample (bit format)
-   BYTE     LoopMode;    // Loop mode (single, double)
-   BYTE     Loop1Type;   // First loop type (unidirectional, bidirectional)
-   BYTE     Loop2Type;   // Second loop type (unidirectional, bidirectional)
-   BYTE     Free;        // Set to true if the StreamID object should be terminated on sample removal.
-   BYTE     Used;
-};
-
-struct AudioChannel {
-   DOUBLE   LVolume;             // Current left speaker volume (0 - 1.0)
-   DOUBLE   RVolume;             // Current right speaker volume (0 - 1.0)
-   DOUBLE   LVolumeTarget;       // Volume target when fading or ramping
-   DOUBLE   RVolumeTarget;       // Volume target when fading or ramping
-   struct AudioSample Sample;    // Sample structure
-   OBJECTID SoundID;             // ID of the sound object set on this channel
-   LONG     SampleHandle;        // Internal handle reference
-   LONG     Flags;               // Special flags
-   LONG     Position;            // Current playing/mixing position
-   LONG     Frequency;           // Playback frequency
-   UWORD    PositionLow;         // Playing position, lower bits
-   WORD     Volume;              // Playing volume (0-100)
-   BYTE     Priority;            // Priority of the sound that has been assigned to this channel
-   BYTE     State;               // Channel state
-   BYTE     LoopIndex;           // The current active loop (either 0, 1 or 2)
-   BYTE     Pan;                 // Pan value (-100 to +100)
-};
-
-struct AudioCommand {
-   LONG CommandID;    // Command ID
-   LONG Handle;       // Channel handle
-   LONG Data;         // Special data related to the command ID
-};
-
-struct ChannelSet {
-   struct AudioChannel * Channel;    // Array of channel objects
-   struct AudioCommand * Commands;   // Array of buffered commands
-   LONG UpdateRate;                  // Update rate, measured in milliseconds
-   LONG MixLeft;                     // Amount of mix elements left before the next command-update occurs
-   WORD Total;                       // Total number of base channels
-   WORD Actual;                      // Total number of channels, including oversampling channels
-   WORD TotalCommands;               // Size of the command buffer
-   WORD Position;                    // Index to write the next command to
-};
-
-struct VolumeCtl {
-   WORD  Size;           // The size of the Channels array.
-   char  Name[32];       // Name of the mixer
-   LONG  Flags;          // Special flags identifying the mixer's attributes.
-   FLOAT Channels[1];    // A variable length array of channel volumes.
-};
-
 struct AudioLoop {
    WORD LoopMode;    // Loop mode (single, double)
    BYTE Loop1Type;   // First loop type (unidirectional, bidirectional)
@@ -289,16 +226,15 @@ class objAudio : public BaseClass {
 
    using create = parasol::Create<objAudio>;
 
-   DOUBLE Bass;           // Sets the amount of bass to use for audio playback.
-   DOUBLE Treble;         // Sets the amount of treble to use for audio playback.
-   LONG   OutputRate;     // Determines the frequency to use for the output of audio data.
-   LONG   InputRate;      // Determines the frequency to use when recording audio data.
-   LONG   Quality;        // Determines the quality of the audio mixing.
-   LONG   Flags;          // Special audio flags can be set here.
-   LONG   TotalChannels;  // The total number of audio channels allocated by all processes.
-   LONG   BitDepth;       // The bit depth affects the overall quality of audio input and output.
-   LONG   Periods;        // Defines the number of periods that make up the internal audio buffer.
-   LONG   PeriodSize;     // Defines the byte size of each period allocated to the internal audio buffer.
+   DOUBLE Bass;        // Sets the amount of bass to use for audio playback.
+   DOUBLE Treble;      // Sets the amount of treble to use for audio playback.
+   LONG   OutputRate;  // Determines the frequency to use for the output of audio data.
+   LONG   InputRate;   // Determines the frequency to use when recording audio data.
+   LONG   Quality;     // Determines the quality of the audio mixing.
+   LONG   Flags;       // Special audio flags can be set here.
+   LONG   BitDepth;    // The bit depth affects the overall quality of audio input and output.
+   LONG   Periods;     // Defines the number of periods that make up the internal audio buffer.
+   LONG   PeriodSize;  // Defines the byte size of each period allocated to the internal audio buffer.
 
    // Action stubs
 

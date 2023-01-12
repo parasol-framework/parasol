@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -72,9 +71,10 @@ ERROR add_audio_class(void);
 ERROR add_sound_class(void);
 void free_audio_class(void);
 void free_sound_class(void);
-static ERROR SetInternalVolume(extAudio *, struct AudioChannel *);
+static ERROR set_channel_volume(extAudio *, struct AudioChannel *);
 static void load_config(extAudio *);
 static ERROR init_audio(extAudio *);
+static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime);
 
 #ifdef ALSA_ENABLED
 static void free_alsa(extAudio *);
@@ -107,28 +107,6 @@ inline const LONG sample_shift(const LONG sampleType)
    }
    return 0;
 }
-
-//********************************************************************************************************************
-
-struct BufferCommand {
-   WORD CommandID;
-   ERROR (*Routine)(extAudio *Self, APTR);
-};
-
-static ERROR COMMAND_Continue(extAudio *, LONG);
-static ERROR COMMAND_FadeIn(extAudio *, LONG);
-static ERROR COMMAND_FadeOut(extAudio *, LONG);
-static ERROR COMMAND_Play(extAudio *, LONG, DOUBLE);
-static ERROR COMMAND_SetFrequency(extAudio *, LONG, DOUBLE);
-static ERROR COMMAND_Mute(extAudio *, LONG, DOUBLE);
-static ERROR COMMAND_SetLength(extAudio *, LONG, DOUBLE);
-static ERROR COMMAND_SetPan(extAudio *, LONG, DOUBLE);
-static ERROR COMMAND_SetPosition(extAudio *, LONG, DOUBLE);
-static ERROR COMMAND_SetRate(extAudio *, LONG, DOUBLE);
-static ERROR COMMAND_SetSample(extAudio *, LONG, DOUBLE);
-static ERROR COMMAND_SetVolume(extAudio *, LONG, DOUBLE);
-static ERROR COMMAND_Stop(extAudio *, LONG);
-static ERROR COMMAND_StopLooping(extAudio *, LONG);
 
 //********************************************************************************************************************
 
@@ -204,8 +182,8 @@ static ERROR sndStartDrivers(void)
 -FUNCTION-
 SetChannels: Defines the maximum number of channels available for sound mixing.
 
-The maximum number of sound channels used for software-based sound mixing can be altered by calling this function.  The
-recommended number of channels is 8, which would indicate that a maximum of 8 sound samples could be played
+The maximum number of sound channels used for software-based sound mixing can be altered by calling this function.
+The recommended number of channels is 8, which would indicate that a maximum of 8 sound samples could be played
 simultaneously at any given time.
 
 -INPUT-
@@ -301,8 +279,8 @@ static ERROR sndWaitDrivers(LONG TimeOut)
 //********************************************************************************************************************
 
 #include "functions.cpp"
-#include "class_audio.cpp"
 #include "commands.cpp"
+#include "class_audio.cpp"
 #include "class_sound.cpp"
 
 //********************************************************************************************************************

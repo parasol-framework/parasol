@@ -43,14 +43,17 @@ struct PlatformData { void *Void; };
 
 #include "windows.h"
 
+#define WAVE_RAW    0x0001    // Uncompressed waveform data.
+#define WAVE_ADPCM  0x0002    // ADPCM compressed waveform data.
+
+#define SECONDS_STREAM_BUFFER 3
+
+#define SIZE_RIFF_CHUNK 12
+
 static ERROR SOUND_GET_Active(extSound *, LONG *);
 static ERROR SOUND_GET_Position(extSound *, LONG *);
 
 static ERROR SOUND_SET_Note(extSound *, CSTRING);
-static ERROR SOUND_SET_Pan(extSound *, DOUBLE);
-static ERROR SOUND_SET_Playback(extSound *, LONG);
-static ERROR SOUND_SET_Position(extSound *, LONG);
-static ERROR SOUND_SET_Volume(extSound *, DOUBLE);
 
 static const DOUBLE glScale[NOTE_B+1] = {
    1.0,         // C
@@ -70,7 +73,7 @@ static const DOUBLE glScale[NOTE_B+1] = {
 static OBJECTPTR clSound = NULL;
 
 static ERROR find_chunk(extSound *, objFile *, CSTRING);
-static ERROR playback_timer(extSound *, LARGE Elapsed, LARGE CurrentTime);
+static ERROR playback_timer(extSound *, LARGE, LARGE);
 
 #define KEY_SOUNDCHANNELS 0x3389f93
 
@@ -116,7 +119,7 @@ static ERROR snd_init_audio(extSound *Self)
    LONG count = 1;
    if (!FindObject("SystemAudio", ID_AUDIO, 0, &Self->AudioID, &count)) return ERR_Okay;
 
-   objAudio *audio;
+   extAudio *audio;
    ERROR error;
    if (!(error = NewNamedObject(ID_AUDIO, NF::UNIQUE, &audio, &Self->AudioID, "SystemAudio"))) {
       SetOwner(audio, CurrentTask());
@@ -180,9 +183,9 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
 
       // Set platform dependent playback parameters
 
-      SOUND_SET_Playback(Self, Self->Playback);
-      SOUND_SET_Volume(Self, Self->Volume);
-      SOUND_SET_Pan(Self, Self->Pan);
+      Self->set(FID_Playback, Self->Playback);
+      Self->set(FID_Volume, Self->Volume);
+      Self->set(FID_Pan, Self->Pan);
 
       // If streaming is enabled, subscribe to the system timer so that we can regularly fill the audio buffer.
       // 1/4 second checks are fine since we are only going to fill the buffer every 1.5 seconds or more (give
@@ -203,15 +206,15 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
    }
 #endif
 
-   LONG i;
    parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 2000);
    if (audio.granted()) {
-      // Restricted and streaming audio can only be played on one channel at any given time.  This search will check
+      // Restricted and streaming audio can be played on only one channel at any given time.  This search will check
       // if the sound object is already active on one of our channels.
 
       AudioChannel *channel = NULL;
       if (Self->Flags & (SDF_RESTRICT_PLAY|SDF_STREAM)) {
          Self->ChannelIndex &= 0xffff0000;
+         LONG i;
          for (i=0; i < glMaxSoundChannels; i++) {
             channel = audio->GetChannel(Self->ChannelIndex);
             if ((channel) and (channel->SoundID IS Self->UID)) break;
@@ -224,6 +227,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          // Find an available channel.  If all channels are in use, check the priorities to see if we can push anyone out.
          AudioChannel *priority = NULL;
          Self->ChannelIndex &= 0xffff0000;
+         LONG i;
          for (i=0; i < glMaxSoundChannels; i++) {
             if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
                if ((channel->State IS CHS_STOPPED) or (channel->State IS CHS_FINISHED)) break;
@@ -246,28 +250,14 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          auto channel = audio->GetChannel(Self->ChannelIndex);
          channel->SoundID = Self->UID; // Record our object ID against the channel
 
-         COMMAND_SetVolume(*audio, Self->ChannelIndex, Self->Volume);
-         COMMAND_SetPan(*audio, Self->ChannelIndex, Self->Pan);
+         if (COMMAND_SetVolume(*audio, Self->ChannelIndex, Self->Volume)) return log.warning(ERR_Failed);
+         if (COMMAND_SetPan(*audio, Self->ChannelIndex, Self->Pan)) return log.warning(ERR_Failed);
+         if (COMMAND_Play(*audio, Self->ChannelIndex, Self->Playback)) return log.warning(ERR_Failed);
 
-         // The Play command must be messaged to the audio object because it needs to be executed by the task that owns
-         // the audio memory.
+         // Use a timer to fulfil the Deactivate and auto-termination contracts.
 
-         struct sndBufferCommand command;
-         command.Command = CMD_PLAY;
-         command.Handle  = Self->ChannelIndex;
-         command.Data    = Self->Playback;
-         if (!ActionMsg(MT_SndBufferCommand, Self->AudioID, &command)) {
-            // If streaming is enabled, subscribe this sound to the system timer so that we can regularly fill the
-            // audio buffer.  1/4 second checks are fine since we are only going to fill the buffer every 1.5 seconds
-            // or more (give consideration to high octave playback).
-            //
-            // We also need the subscription to fulfil the Deactivate contract.
-
-            auto call = make_function_stdc(playback_timer);
-            return SubscribeTimer(0.25, &call, &Self->Timer);
-         }
-         else return log.warning(ERR_Failed);
-
+         auto call = make_function_stdc(playback_timer);
+         return SubscribeTimer(0.25, &call, &Self->Timer);
       }
       else {
          log.warning("Failed to set sample %d to channel $%.8x", Self->Handle, Self->ChannelIndex);
@@ -447,13 +437,6 @@ Init: Prepares a sound object for usage.
 -END-
 *********************************************************************************************************************/
 
-#define WAVE_RAW    0x0001    // Uncompressed waveform data.
-#define WAVE_ADPCM  0x0002    // ADPCM compressed waveform data.
-
-#define SECONDS_STREAM_BUFFER 3
-
-#define SIZE_RIFF_CHUNK 12
-
 #if defined(USE_WIN32_PLAYBACK)
 
 static ERROR SOUND_Init(extSound *Self, APTR Void)
@@ -471,7 +454,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    // Open channels for sound sample playback.
 
    if (!(Self->ChannelIndex = glSoundChannels[Self->AudioID])) {
-      parasol::ScopedObjectLock<objAudio> audio(Self->AudioID, 3000);
+      parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 3000);
       if (audio.granted()) {
          if (!sndOpenChannels(*audio, glMaxSoundChannels, 0, &Self->ChannelIndex)) {
             glSoundChannels[Self->AudioID] = Self->ChannelIndex;
@@ -622,7 +605,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    // Open channels for sound sample playback.
 
    if (!(Self->ChannelIndex = glSoundChannels[Self->AudioID])) {
-      parasol::ScopedObjectLock<objAudio> audio(Self->AudioID, 3000);
+      parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 3000);
       if (audio.granted()) {
          if (!sndOpenChannels(*audio, glMaxSoundChannels, 0, &Self->ChannelIndex)) {
             glSoundChannels[Self->AudioID] = Self->ChannelIndex;
@@ -780,9 +763,9 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
       Self->File->get(FID_Position, &Self->DataOffset);
 
-      Self->Format      = Self->WAVE->Format;
+      Self->Format         = Self->WAVE->Format;
       Self->BytesPerSecond = Self->WAVE->AvgBytesPerSecond;
-      Self->Alignment   = Self->WAVE->BlockAlign;
+      Self->Alignment      = Self->WAVE->BlockAlign;
       Self->BitsPerSample  = Self->WAVE->BitsPerSample;
       if (Self->WAVE->Channels IS 2) Self->Flags |= SDF_STEREO;
       if (Self->Frequency <= 0) Self->Frequency = Self->WAVE->Frequency;
@@ -1221,14 +1204,14 @@ static ERROR SOUND_SET_Path(extSound *Self, CSTRING Value)
 -FIELD-
 LoopEnd: The byte position at which sample looping will end.
 
-When using looped samples (via the SDF_LOOP flag), set the LoopEnd field if the sample should
+When using looped samples (via the `SDF_LOOP` flag), set the LoopEnd field if the sample should
 end at a position that is earlier than the sample's actual length.  The LoopEnd value is specified in bytes and must be
 less or equal to the length of the sample and greater than the #LoopStart value.
 
 -FIELD-
 LoopStart: The byte position at which sample looping begins.
 
-When using looped samples (via the SDF_LOOP flag), set the LoopStart field if the sample should
+When using looped samples (via the `SDF_LOOP` flag), set the LoopStart field if the sample should
 begin at a position other than zero.  The LoopStart value is specified in bytes and must be less than the length of the
 sample and the #LoopEnd value.
 
@@ -1468,7 +1451,7 @@ static ERROR SOUND_SET_Pan(extSound *Self, DOUBLE Value)
 Path: Location of the audio sample data.
 
 This field must refer to a file that contains the audio data that will be loaded.  If creating a new sample
-with the SDF_NEW flag, it is not necessary to define a file source.
+with the `SDF_NEW` flag, it is not necessary to define a file source.
 
 -FIELD-
 Playback: The playback frequency of the sound sample can be defined here.

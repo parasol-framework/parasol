@@ -2537,6 +2537,8 @@ struct BaseClass { // Must be 64-bit aligned
 
 namespace parasol {
 
+// For extremely verbose debug logs, run cmake with -DPARASOL_VLOG=ON
+
 class Log { // C++ wrapper for Parasol's log functionality
    private:
       LONG branches = 0;
