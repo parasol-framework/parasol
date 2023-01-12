@@ -1037,7 +1037,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 
    snd_mixer_selem_id_alloca(&sid);
    snd_mixer_selem_id_set_index(sid,0);
-   snd_mixer_selem_id_set_name(sid, Self->VolumeCtl[index].Name);
+   snd_mixer_selem_id_set_name(sid, Self->VolumeCtl[index].Name.c_str());
    if (!(elem = snd_mixer_find_selem(Self->MixHandle, sid))) {
       log.msg("Mixer \"%s\" not found.", Self->VolumeCtl[index].Name.c_str());
       return ERR_Search;
@@ -2220,7 +2220,7 @@ next_card:
          for (LONG i=0; i < (LONG)volctl.size(); i++) {
             LONG j;
             for (j=0; j < (LONG)oldctl.size(); j++) {
-               if (!StrMatch(volctl[i].Name, oldctl[j].Name)) {
+               if (!StrMatch(volctl[i].Name.c_str(), oldctl[j].Name)) {
                   setvol.Index   = i;
                   setvol.Name    = NULL;
                   setvol.Flags   = 0;
