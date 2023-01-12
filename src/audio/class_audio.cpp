@@ -685,11 +685,11 @@ static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
    Self->VolumeCtl.resize(2);
    Self->VolumeCtl[0].Name = "Master";
    Self->VolumeCtl[0].Flags = 0;
-   for (LONG i=0; i < Self->VolumeCtl[0].Channels.size(); i++) Self->VolumeCtl[0].Channels[i] = 0.80;
+   for (LONG i=0; i < (LONG)Self->VolumeCtl[0].Channels.size(); i++) Self->VolumeCtl[0].Channels[i] = 0.80;
 
    Self->VolumeCtl[1].Name = "PCM";
    Self->VolumeCtl[1].Flags = 0;
-   for (LONG i=0; i < Self->VolumeCtl[1].Channels.size(); i++) Self->VolumeCtl[1].Channels[i] = 0.80;
+   for (LONG i=0; i < (LONG)Self->VolumeCtl[1].Channels.size(); i++) Self->VolumeCtl[1].Channels[i] = 0.80;
 #else
    Self->VolumeCtl.resize(1);
    Self->VolumeCtl[0].Name = "Master";
@@ -880,7 +880,7 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
       else config->write("AUDIO", "Device", "default");
 
       if ((!Self->VolumeCtl.empty()) and (Self->Flags & ADF_SYSTEM_WIDE)) {
-         for (LONG i=0; i < Self->VolumeCtl.size(); i++) {
+         for (LONG i=0; i < (LONG)Self->VolumeCtl.size(); i++) {
             std::ostringstream out;
             if (Self->VolumeCtl[i].Flags & VCF_MUTE) out << "1,[";
             else out << "0,[";
@@ -888,13 +888,13 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
             if (Self->VolumeCtl[i].Flags & VCF_MONO) {
                out << Self->VolumeCtl[i].Channels[0];
             }
-            else for (LONG c=0; c < Self->VolumeCtl[i].Channels.size(); c++) {
+            else for (LONG c=0; c < (LONG)Self->VolumeCtl[i].Channels.size(); c++) {
                if (c > 0) out << ',';
                out << Self->VolumeCtl[i].Channels[c];
             }
             out << ']';
 
-            config->write("MIXER", Self->VolumeCtl[i].Name, out.str());
+            config->write("MIXER", Self->VolumeCtl[i].Name.c_str(), out.str());
          }
       }
 #if 0
@@ -1009,11 +1009,11 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
          if (!StrMatch(Args->Name, Self->VolumeCtl[index].Name)) break;
       }
 
-      if (index IS Self->VolumeCtl.size()) return ERR_Search;
+      if (index IS (LONG)Self->VolumeCtl.size()) return ERR_Search;
    }
    else {
       index = Args->Index;
-      if ((index < 0) or (index >= Self->VolumeCtl.size())) return ERR_OutOfRange;
+      if ((index < 0) or (index >= (LONG)Self->VolumeCtl.size())) return ERR_OutOfRange;
    }
 
    if (!StrMatch("Master", Self->VolumeCtl[index].Name)) {
@@ -1033,7 +1033,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 
    // Apply the volume
 
-   log.branch("%s: %.2f, Flags: $%.8x", Self->VolumeCtl[index].Name, Args->Volume, Args->Flags);
+   log.branch("%s: %.2f, Flags: $%.8x", Self->VolumeCtl[index].Name.c_str(), Args->Volume, Args->Flags);
 
    snd_mixer_selem_id_alloca(&sid);
    snd_mixer_selem_id_set_index(sid,0);
@@ -1803,7 +1803,6 @@ static ERROR init_audio(extAudio *Self)
    WORD j, channel;
    long pmin, pmax;
    int dir;
-   VolumeCtl *volctl;
    WORD voltotal;
    char name[32], pcm_name[32];
 
