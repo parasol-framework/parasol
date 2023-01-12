@@ -1985,11 +1985,11 @@ next_card:
 
       log.trace("Mixer Control '%s',%i", snd_mixer_selem_id_get_name(sid), snd_mixer_selem_id_get_index(sid));
 
-      StrCopy((STRING)snd_mixer_selem_id_get_name(sid), volctl[index].Name, sizeof(volctl[index].Name));
+      volctl[index].Name = snd_mixer_selem_id_get_name(sid);
 
       for (channel=0; channel < (LONG)volctl[index].Channels.size(); channel++) volctl[index].Channels[channel] = -1;
 
-      flags = 0;
+      LONG flags = 0;
       if (snd_mixer_selem_has_playback_volume(elem))        flags |= VCF_PLAYBACK;
       if (snd_mixer_selem_has_capture_volume(elem))         flags |= VCF_CAPTURE;
       if (snd_mixer_selem_has_capture_volume_joined(elem))  flags |= VCF_JOINED;
