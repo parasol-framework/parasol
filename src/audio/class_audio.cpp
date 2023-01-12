@@ -1006,7 +1006,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 
    if (Args->Name) {
       for (index=0; index < (LONG)Self->VolumeCtl.size(); index++) {
-         if (!StrMatch(Args->Name, Self->VolumeCtl[index].Name)) break;
+         if (!StrMatch(Args->Name, Self->VolumeCtl[index].Name.c_str())) break;
       }
 
       if (index IS (LONG)Self->VolumeCtl.size()) return ERR_Search;
@@ -1800,7 +1800,7 @@ static ERROR init_audio(extAudio *Self)
    snd_pcm_uframes_t periodsize, buffersize;
    snd_ctl_card_info_t *info;
    LONG err, index, flags;
-   WORD j, channel;
+   WORD channel;
    long pmin, pmax;
    int dir;
    WORD voltotal;
@@ -2217,7 +2217,8 @@ next_card:
          auto oldctl = Self->VolumeCtl;
          Self->VolumeCtl = volctl;
 
-         for (i=0; i < (LONG)volctl.size(); i++) {
+         for (LONG i=0; i < (LONG)volctl.size(); i++) {
+            LONG j;
             for (j=0; j < (LONG)oldctl.size(); j++) {
                if (!StrMatch(volctl[i].Name, oldctl[j].Name)) {
                   setvol.Index   = i;
