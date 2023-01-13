@@ -5,6 +5,27 @@
 #define MIX_INTERVAL 0.01
 #endif
 
+// Audio channel commands
+
+enum class CMD : LONG {
+   START_SEQUENCE=1,
+   END_SEQUENCE,
+   SAMPLE,
+   VOLUME,
+   PAN,
+   FREQUENCY,
+   RATE,
+   STOP,
+   STOP_LOOPING,
+   POSITION,
+   PLAY,
+   FADE_IN,
+   FADE_OUT,
+   MUTE,
+   SET_LENGTH,
+   CONTINUE
+};
+
 typedef void (*MixRoutine)(LONG, LONG, FLOAT, FLOAT);
 
 #define DEFAULT_BUFFER_SIZE 8096 // Measured in samples, not bytes
@@ -60,7 +81,7 @@ struct AudioSample {
 };
 
 struct AudioCommand {
-   LONG CommandID;    // Command ID
+   CMD  CommandID;    // Command ID
    LONG Handle;       // Channel handle
    LONG Data;         // Special data related to the command ID
 };
@@ -82,6 +103,7 @@ struct AudioChannel {
    BYTE     Priority;       // Priority of the sound that has been assigned to this channel
    BYTE     State;          // Channel state
    BYTE     LoopIndex;      // The current active loop (either 0, 1 or 2)
+   bool     Buffering;
 
    bool active() {
       return Frequency ? true : false;
@@ -180,6 +202,6 @@ class extSound : public objSound {
 };
 
 struct BufferCommand {
-   WORD CommandID;
+   CMD CommandID;
    ERROR (*Routine)(extAudio *Self, APTR);
 };

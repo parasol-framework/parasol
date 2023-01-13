@@ -63,24 +63,6 @@ module({ name="Audio", copyright="Paul Manias © 2002-2022", version=1.0 }, func
     "UNIDIRECTIONAL: The sample playback position returns to the byte position specified in the Loop1Start field.",
     "BIDIRECTIONAL: The sample will play in reverse whenever it hits the end marker, then forwards when it hits the start marker.")
 
-  enum("CMD", { comment="Audio channel commands", start=1 },
-    "START_SEQUENCE: Required to start a new sequence of commands.",
-    "END_SEQUENCE: Terminates the current command sequence.",
-    "SET_SAMPLE: Sets a new sample against a channel.  You are required to supply the sample handle (as obtained from AddSample or AddStream) in the Data parameter.  The sample will not play until you use the Play command.",
-    "SET_VOLUME: Sets a new channel volume.  The Data parameter indicates the new volume and must be in the range of 0 - 500% (100% is normal volume, 0% is silence).",
-    "SET_PAN: Sets a channel's panning position.  The Data parameter indicates the new pan and must be in the range of -100 to +100.  A setting of zero plays the sound at an equal level between both speakers.  If output is in mono, panning has no effect.",
-    "SET_FREQUENCY: Sets the current playback frequency of a channel.",
-    "SET_RATE: Defines the interval between the processing of each command, measured in milliseconds.",
-    "STOP: Immediately stops a channel from playing any audio until the next Play command.",
-    "STOP_LOOPING: Tells the channel to stop performing any more audio loops related to the currently playing sample.  This command does nothing if the current sample has no associated loop information.",
-    "SET_POSITION: Sets the playback position within a channel's currently associated sample (measured in bytes).  Useful for starting playback from a preset position.",
-    "PLAY: Plays the sample associated with the channel.  You are required to set the playback frequency in the Data parameter.  This command does nothing if the channel does not have a sample loaded against it.",
-    "FADE_IN: Fades a channel in from zero to the current volume (as previously determined by the SetVolume command).",
-    "FADE_OUT: Fade out a channel.",
-    "MUTE: Mutes the channel so that no further audio will play until you unmute it.  The Data parameter needs to be set to either TRUE or FALSE to indicate the required mute status.",
-    "SET_LENGTH: Sets the byte length of the sample playing in the channel.",
-    "CONTINUE: Continue a sound sample that has been stopped.")
-
   enum("STREAM", { start=1, comment="Streaming options" },
     "NEVER: No streaming - load all data into memory.",
     "SMART: Smart streaming is the default.  If the sample appears to be relatively small with respect to available system RAM, it will be loaded into memory.  Otherwise it will be streamed.",
@@ -121,7 +103,6 @@ module({ name="Audio", copyright="Paul Manias © 2002-2022", version=1.0 }, func
     { id=2, name="CloseChannels" },
     { id=3, name="AddSample" },
     { id=4, name="RemoveSample" },
-    { id=5, name="BufferCommand" },
     { id=6, name="AddStream" },
     { id=7, name="Beep" },
     { id=8, name="SetVolume" },
@@ -178,7 +159,9 @@ module({ name="Audio", copyright="Paul Manias © 2002-2022", version=1.0 }, func
      "MixRate",
      "MixSample",
      "MixStop",
-     "MixStopLooping",
-     "MixVolume")
+     "MixStopLoop",
+     "MixVolume",
+     "MixStartSequence",
+     "MixEndSequence")
 
 end)

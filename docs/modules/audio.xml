@@ -31,6 +31,23 @@
   </function>
 
   <function>
+    <name>MixEndSequence</name>
+    <comment>Ends the buffering of mix commands.</comment>
+    <prototype>ERROR sndMixEndSequence(objAudio * Audio, LONG Handle)</prototype>
+    <input>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
+    </input>
+    <description>
+<p>Use this function to end a buffered command sequence that was started by <action>MixStartSequence</action>.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
     <name>MixFadeIn</name>
     <comment>Fade in a channel from zero volume.</comment>
     <prototype>ERROR sndMixFadeIn(objAudio * Audio, LONG Handle)</prototype>
@@ -193,6 +210,24 @@
   </function>
 
   <function>
+    <name>MixStartSequence</name>
+    <comment>Initiates buffering of mix commands.</comment>
+    <prototype>ERROR sndMixStartSequence(objAudio * Audio, LONG Handle)</prototype>
+    <input>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
+    </input>
+    <description>
+<p>Use this function to initiate the buffering of mix commands, up until a call to <function module="Audio">MixEndSequence</function> is made.  The buffering of mix commands makes it possible to create batches of commands that are executed at timed intervals as determined by <function module="Audio">MixRate</function>.</p>
+<p>This feature can be used to implement complex sound mixes and digital music players.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
     <name>MixStop</name>
     <comment>Stops all playback on a channel.</comment>
     <prototype>ERROR sndMixStop(objAudio * Audio, LONG Handle)</prototype>
@@ -210,9 +245,9 @@
   </function>
 
   <function>
-    <name>MixStopLooping</name>
+    <name>MixStopLoop</name>
     <comment>Cancels any playback loop configured for a channel.</comment>
-    <prototype>ERROR sndMixStopLooping(objAudio * Audio, LONG Handle)</prototype>
+    <prototype>ERROR sndMixStopLoop(objAudio * Audio, LONG Handle)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
       <param type="LONG" name="Handle">The target channel.</param>
@@ -308,25 +343,6 @@
       <const name="PLAYING">Sample playing and not released.</const>
       <const name="RELEASED">Sample playing and note has been released.</const>
       <const name="STOPPED">Playing is stopped.</const>
-    </constants>
-
-    <constants lookup="CMD" comment="Audio channel commands">
-      <const name="CONTINUE">Continue a sound sample that has been stopped.</const>
-      <const name="END_SEQUENCE">Terminates the current command sequence.</const>
-      <const name="FADE_IN">Fades a channel in from zero to the current volume (as previously determined by the SetVolume command).</const>
-      <const name="FADE_OUT">Fade out a channel.</const>
-      <const name="MUTE">Mutes the channel so that no further audio will play until you unmute it.  The Data parameter needs to be set to either TRUE or FALSE to indicate the required mute status.</const>
-      <const name="PLAY">Plays the sample associated with the channel.  You are required to set the playback frequency in the Data parameter.  This command does nothing if the channel does not have a sample loaded against it.</const>
-      <const name="SET_FREQUENCY">Sets the current playback frequency of a channel.</const>
-      <const name="SET_LENGTH">Sets the byte length of the sample playing in the channel.</const>
-      <const name="SET_PAN">Sets a channel's panning position.  The Data parameter indicates the new pan and must be in the range of -100 to +100.  A setting of zero plays the sound at an equal level between both speakers.  If output is in mono, panning has no effect.</const>
-      <const name="SET_POSITION">Sets the playback position within a channel's currently associated sample (measured in bytes).  Useful for starting playback from a preset position.</const>
-      <const name="SET_RATE">Defines the interval between the processing of each command, measured in milliseconds.</const>
-      <const name="SET_SAMPLE">Sets a new sample against a channel.  You are required to supply the sample handle (as obtained from AddSample or AddStream) in the Data parameter.  The sample will not play until you use the Play command.</const>
-      <const name="SET_VOLUME">Sets a new channel volume.  The Data parameter indicates the new volume and must be in the range of 0 - 500% (100% is normal volume, 0% is silence).</const>
-      <const name="START_SEQUENCE">Required to start a new sequence of commands.</const>
-      <const name="STOP">Immediately stops a channel from playing any audio until the next Play command.</const>
-      <const name="STOP_LOOPING">Tells the channel to stop performing any more audio loops related to the currently playing sample.  This command does nothing if the current sample has no associated loop information.</const>
     </constants>
 
     <constants lookup="LOOP" comment="Loop modes for the AudioLoop structure.">

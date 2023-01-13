@@ -160,50 +160,6 @@
     </method>
 
     <method>
-      <name>BufferCommand</name>
-      <comment>Sends instructions to the audio mixer.</comment>
-      <prototype>ERROR sndBufferCommand(OBJECTPTR Object, LONG Command, LONG Handle, DOUBLE Data)</prototype>
-      <input>
-        <param type="LONG" name="Command" lookup="CMD">The ID of the command that you want to execute.</param>
-        <param type="LONG" name="Handle">Refers to the channel that the command is to be executed against (see the OpenChannels method for information).</param>
-        <param type="DOUBLE" name="Data">Optional data value relevant to the command being executed.</param>
-      </input>
-      <description>
-<p>BufferCommand sends command sequences to an audio object for progressive execution.  This playback method is ideal for music sequencers or any situation requiring audio commands to be executed at precise intervals.</p>
-<p>By default, execution of commands is immediate.  Commands are constructed from a command ID, a target channel, and an optional parameter dependent on the command type.  The following commands are available:</p>
-<types lookup="CMD"/>
-<p>Batched sequencing is enabled when a channel set is opened with a large number of command buffers (refer to OpenChannel for details).  Call the BufferCommand method with <code>CMD_START_SEQUENCE</code>, then send the instructions before terminating with <code>CMD_END_SEQUENCE</code>.  Each individual batch of commands will be executed at a predetermined rate (e.g. every 125 milliseconds).  This allows the audio object to process batched commands at regular intervals. The client will need to regularly write information to ensure that there are no pauses in the audio playback.</p>
-<p>The following code illustrates a basic setup for batching commands:</p>
-<pre>parasol::ScopedObjectLock<objAudio> audio(AudioID, 4);
-if (audio.granted()) {
-   LONG cycles = 0;
-   while ((!sndBufferCommand(*audio, CMD_START_SEQUENCE, Self-&gt;Sets, NULL)) and
-      (cycles &lt; MAX_CYCLES)) {
-
-       // Add buffered commands in this area.
-       // ...
-
-      sndBufferCommand(*audio, CMD_END_SEQUENCE, Self-&gt;Sets, NULL);
-      cycles++;
-   }
-}
-</objAudio>
-
-The command sequencing rate is adjusted via the <code>CMD_SET_RATE</code> instruction.  The number of milliseconds specified
-in the Data parameter will determine the rate at which the command sets are executed.  For instance a rate of 200ms
-will execute five batches per second.
-</pre>
-      </description>
-      <result>
-        <error code="Okay">The command was successfully buffered or executed.</error>
-        <error code="Args">Invalid arguments passed to function.</error>
-        <error code="NoSupport">The Command is not supported.</error>
-        <error code="BufferOverflow">The command buffer is full.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-      </result>
-    </method>
-
-    <method>
       <name>CloseChannels</name>
       <comment>Frees audio channels that have been allocated for sample playback.</comment>
       <prototype>ERROR sndCloseChannels(OBJECTPTR Object, LONG Handle)</prototype>
@@ -433,25 +389,6 @@ will execute five batches per second.
       <const name="STEREO">Enable stereo output (set by default if the platform supports stereo).  If not set, output is in mono.</const>
       <const name="SYSTEM_WIDE">Mixer changes should be applied system-wide.</const>
       <const name="VOL_RAMPING">Enable volume ramping for softer playback when a sample is played multiple times (enabled by default).</const>
-    </constants>
-
-    <constants lookup="CMD" comment="Audio channel commands">
-      <const name="CONTINUE">Continue a sound sample that has been stopped.</const>
-      <const name="END_SEQUENCE">Terminates the current command sequence.</const>
-      <const name="FADE_IN">Fades a channel in from zero to the current volume (as previously determined by the SetVolume command).</const>
-      <const name="FADE_OUT">Fade out a channel.</const>
-      <const name="MUTE">Mutes the channel so that no further audio will play until you unmute it.  The Data parameter needs to be set to either TRUE or FALSE to indicate the required mute status.</const>
-      <const name="PLAY">Plays the sample associated with the channel.  You are required to set the playback frequency in the Data parameter.  This command does nothing if the channel does not have a sample loaded against it.</const>
-      <const name="SET_FREQUENCY">Sets the current playback frequency of a channel.</const>
-      <const name="SET_LENGTH">Sets the byte length of the sample playing in the channel.</const>
-      <const name="SET_PAN">Sets a channel's panning position.  The Data parameter indicates the new pan and must be in the range of -100 to +100.  A setting of zero plays the sound at an equal level between both speakers.  If output is in mono, panning has no effect.</const>
-      <const name="SET_POSITION">Sets the playback position within a channel's currently associated sample (measured in bytes).  Useful for starting playback from a preset position.</const>
-      <const name="SET_RATE">Defines the interval between the processing of each command, measured in milliseconds.</const>
-      <const name="SET_SAMPLE">Sets a new sample against a channel.  You are required to supply the sample handle (as obtained from AddSample or AddStream) in the Data parameter.  The sample will not play until you use the Play command.</const>
-      <const name="SET_VOLUME">Sets a new channel volume.  The Data parameter indicates the new volume and must be in the range of 0 - 500% (100% is normal volume, 0% is silence).</const>
-      <const name="START_SEQUENCE">Required to start a new sequence of commands.</const>
-      <const name="STOP">Immediately stops a channel from playing any audio until the next Play command.</const>
-      <const name="STOP_LOOPING">Tells the channel to stop performing any more audio loops related to the currently playing sample.  This command does nothing if the current sample has no associated loop information.</const>
     </constants>
 
     <constants lookup="LOOP" comment="Loop modes for the AudioLoop structure.">

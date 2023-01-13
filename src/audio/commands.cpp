@@ -1,3 +1,107 @@
+//********************************************************************************************************************
+// Buffered command handling.  The execution of these commands is managed by process_commands()
+
+template <class T> void add_mix_cmd(objAudio *Audio, CMD Command, LONG Handle, T Data)
+{
+   auto ea = (extAudio *)Audio;
+   LONG index = Handle>>16;
+
+   if ((index < 1) or (index >= (LONG)ea->Sets.size())) return;
+
+   if (ea->Sets[index].Commands.capacity() > 0) {
+      auto i = ea->Sets[index].Commands.size();
+      ea->Sets[index].Commands.resize(i+1);
+      ea->Sets[index].Commands[i].CommandID = Command;
+      ea->Sets[index].Commands[i].Handle    = Handle;
+      ea->Sets[index].Commands[i].Data      = Data;
+   }
+}
+
+static void add_mix_cmd(objAudio *Audio, CMD Command, LONG Handle)
+{
+   auto ea = (extAudio *)Audio;
+   LONG index = Handle>>16;
+
+   if ((index < 1) or (index >= (LONG)ea->Sets.size())) return;
+
+   if (ea->Sets[index].Commands.capacity() > 0) {
+      auto i = ea->Sets[index].Commands.size();
+      ea->Sets[index].Commands.resize(i+1);
+      ea->Sets[index].Commands[i].CommandID = Command;
+      ea->Sets[index].Commands[i].Handle    = Handle;
+   }
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+MixStartSequence: Initiates buffering of mix commands.
+
+Use this function to initiate the buffering of mix commands, up until a call to ~MixEndSequence() is made.  The
+buffering of mix commands makes it possible to create batches of commands that are executed at timed intervals
+as determined by ~MixRate().
+
+This feature can be used to implement complex sound mixes and digital music players.
+
+-INPUT-
+obj(Audio) Audio: The target Audio object.
+int Handle: The target channel.
+
+-ERRORS-
+Okay
+NullArgs
+-END-
+
+*********************************************************************************************************************/
+
+static ERROR sndMixStartSequence(objAudio *Audio, LONG Handle)
+{
+   parasol::Log log("Mix:StartSequence");
+
+   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
+
+   log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
+
+   auto channel = ((extAudio *)Audio)->GetChannel(Handle);
+
+   channel->Buffering = true;
+
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+MixEndSequence: Ends the buffering of mix commands.
+
+Use this function to end a buffered command sequence that was started by ~MixStartSequence().
+
+-INPUT-
+obj(Audio) Audio: The target Audio object.
+int Handle: The target channel.
+
+-ERRORS-
+Okay
+NullArgs
+-END-
+
+*********************************************************************************************************************/
+
+static ERROR sndMixEndSequence(objAudio *Audio, LONG Handle)
+{
+   parasol::Log log("Mix:EndSequence");
+
+   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
+
+   log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
+
+   auto channel = ((extAudio *)Audio)->GetChannel(Handle);
+
+   channel->Buffering = false;
+
+   return ERR_Okay;
+}
+
 /*********************************************************************************************************************
 
 -FUNCTION-
@@ -18,7 +122,7 @@ NullArgs
 
 static ERROR sndMixFadeOut(objAudio *Audio, LONG Handle)
 {
-   parasol::Log log("Cmd:FadeOut");
+   parasol::Log log("Mix:FadeOut");
 
    if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
@@ -27,6 +131,12 @@ static ERROR sndMixFadeOut(objAudio *Audio, LONG Handle)
    if (!(Audio->Flags & ADF_OVER_SAMPLING)) return ERR_Okay;
 
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
+
+   if (channel->Buffering) {
+      add_mix_cmd(Audio, CMD::FADE_OUT, Handle);
+      return ERR_Okay;
+   }
+
    auto destchannel = channel + ((extAudio *)Audio)->Sets[Handle>>16].Total;
 
    if ((channel->State IS CHS_STOPPED) or (channel->State IS CHS_FINISHED) or
@@ -71,13 +181,18 @@ NullArgs
 
 static ERROR sndMixContinue(objAudio *Audio, LONG Handle)
 {
-   parasol::Log log("Cmd:Continue");
+   parasol::Log log("Mix:Continue");
 
    log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
+
+   if (channel->Buffering) {
+      add_mix_cmd(Audio, CMD::CONTINUE, Handle);
+      return ERR_Okay;
+   }
 
    // Do nothing if the channel is already active
 
@@ -131,7 +246,7 @@ NullArgs
 
 static ERROR sndMixFadeIn(objAudio *Audio, LONG Handle)
 {
-   parasol::Log log("Cmd:FadeIn");
+   parasol::Log log("Mix:FadeIn");
 
    log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
@@ -139,9 +254,13 @@ static ERROR sndMixFadeIn(objAudio *Audio, LONG Handle)
 
    if ((!(Audio->Flags & ADF_VOL_RAMPING)) or (!(Audio->Flags & ADF_OVER_SAMPLING))) return ERR_Okay;
 
-   // Ramp back up from zero
-
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
+
+   if (channel->Buffering) {
+      add_mix_cmd(Audio, CMD::FADE_IN, Handle);
+      return ERR_Okay;
+   }
+
    channel->LVolume = 0;
    channel->RVolume = 0;
    return set_channel_volume((extAudio *)Audio, channel);
@@ -169,13 +288,19 @@ NullArgs
 
 static ERROR sndMixMute(objAudio *Audio, LONG Handle, LONG Mute)
 {
-   parasol::Log log("Cmd:Mute");
+   parasol::Log log("Mix:Mute");
 
    log.trace("Audio: #%d, Channel: $%.8x, Mute: %c", Audio->UID, Handle, Mute ? 'Y' : 'N');
 
    if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
+
+   if (channel->Buffering) {
+      add_mix_cmd(Audio, CMD::MUTE, Handle, Mute);
+      return ERR_Okay;
+   }
+
    if (Mute != 0) channel->Flags |= CHF_MUTE;
    else channel->Flags &= ~CHF_MUTE;
    set_channel_volume((extAudio *)Audio, channel);
@@ -203,13 +328,19 @@ NullArgs
 
 static ERROR sndMixFrequency(objAudio *Audio, LONG Handle, LONG Frequency)
 {
-   parasol::Log log("Cmd:SetFrequency");
+   parasol::Log log("Mix:SetFrequency");
 
-   log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
+   log.trace("Audio: #%d, Channel: $%.8x, Frequency: %d", Audio->UID, Handle, Frequency);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
+
+   if (channel->Buffering) {
+      add_mix_cmd(Audio, CMD::FREQUENCY, Handle, Frequency);
+      return ERR_Okay;
+   }
+
    channel->Frequency = Frequency;
    return ERR_Okay;
 }
@@ -235,13 +366,18 @@ NullArgs
 
 static ERROR sndMixPan(objAudio *Audio, LONG Handle, DOUBLE Pan)
 {
-   parasol::Log log("Cmd:SetPan");
+   parasol::Log log("Mix:SetPan");
 
    log.trace("Audio: #%d, Channel: $%.8x, Pan: %.2f", Audio->UID, Handle, Pan);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
+
+   if (channel->Buffering) {
+      add_mix_cmd(Audio, CMD::PAN, Handle, Pan);
+      return ERR_Okay;
+   }
 
    if (Pan < -1.0) channel->Pan = -1.0;
    else if (Pan > 1.0) channel->Pan = 1.0;
@@ -273,7 +409,7 @@ OutOfRange
 
 static ERROR sndMixPosition(objAudio *Audio, LONG Handle, LONG Position)
 {
-   parasol::Log log("Cmd:SetPosition");
+   parasol::Log log("Mix:SetPosition");
 
    log.trace("Audio: #%d, Channel: $%.8x, Position: %d", Audio->UID, Handle, Position);
 
@@ -281,6 +417,11 @@ static ERROR sndMixPosition(objAudio *Audio, LONG Handle, LONG Position)
    if (Position < 0) return log.warning(ERR_OutOfRange);
 
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
+
+   if (channel->Buffering) {
+      add_mix_cmd(Audio, CMD::POSITION, Handle, Position);
+      return ERR_Okay;
+   }
 
    if (!channel->SampleHandle) { // A sample must be defined for the channel.
       log.warning("Channel not associated with a sample.");
@@ -456,16 +597,21 @@ NullArgs
 
 static ERROR sndMixPlay(objAudio *Audio, LONG Handle, LONG Frequency)
 {
-   parasol::Log log("Cmd:Play");
+   parasol::Log log("Mix:Play");
 
    log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
    if (Frequency <= 0) return log.warning(ERR_Args);
 
-   if (Audio->Flags & ADF_OVER_SAMPLING) sndMixFadeOut(Audio, Handle);
-
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
+
+   if (channel->Buffering) {
+      add_mix_cmd(Audio, CMD::PLAY, Frequency);
+      return ERR_Okay;
+   }
+
+   if (Audio->Flags & ADF_OVER_SAMPLING) sndMixFadeOut(Audio, Handle);
 
    channel->State     = CHS_FINISHED; // Turn off previous sound
    channel->Frequency = Frequency; // New frequency
@@ -495,11 +641,18 @@ NullArgs
 
 static ERROR sndMixRate(objAudio *Audio, LONG Handle, LONG Rate)
 {
-   parasol::Log log("Cmd:SetRate");
+   parasol::Log log("Mix:SetRate");
 
    log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
+
+   auto channel = ((extAudio *)Audio)->GetChannel(Handle);
+
+   if (channel->Buffering) {
+      add_mix_cmd(Audio, CMD::RATE, Handle, Rate);
+      return ERR_Okay;
+   }
 
    WORD index = Handle>>16;
    ((extAudio *)Audio)->Sets[index].UpdateRate = Rate;
@@ -531,7 +684,7 @@ NullArgs
 
 ERROR sndMixSample(objAudio *Audio, LONG Handle, LONG SampleIndex)
 {
-   parasol::Log log("Cmd:SetSample");
+   parasol::Log log("Mix:SetSample");
 
    LONG idx = SampleIndex;
 
@@ -552,6 +705,11 @@ ERROR sndMixSample(objAudio *Audio, LONG Handle, LONG SampleIndex)
    }
 
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
+
+   if (channel->Buffering) {
+      add_mix_cmd(Audio, CMD::SAMPLE, Handle, SampleIndex);
+      return ERR_Okay;
+   }
 
    if (channel->SampleHandle IS idx) return ERR_Okay; // Already associated?
 
@@ -595,13 +753,18 @@ NullArgs
 
 static ERROR sndMixVolume(objAudio *Audio, LONG Handle, DOUBLE Volume)
 {
-   parasol::Log log("Cmd:SetVolume");
+   parasol::Log log("Mix:SetVolume");
 
    log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
+
+   if (channel->Buffering) {
+      add_mix_cmd(Audio, CMD::VOLUME, Volume);
+      return ERR_Okay;
+   }
 
    if (Volume > 1.0) channel->Volume = 1.0;
    else if (Volume < 0) channel->Volume = 0;
@@ -631,13 +794,19 @@ NullArgs
 
 ERROR sndMixStop(objAudio *Audio, LONG Handle)
 {
-   parasol::Log log("Cmd:Stop");
+   parasol::Log log("Mix:Stop");
 
    log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
+
+   if (channel->Buffering) {
+      add_mix_cmd(Audio, CMD::STOP, Handle);
+      return ERR_Okay;
+   }
+
    channel->State = CHS_STOPPED;
 
    if (Audio->Flags & ADF_OVER_SAMPLING) {
@@ -650,7 +819,7 @@ ERROR sndMixStop(objAudio *Audio, LONG Handle)
 /*********************************************************************************************************************
 
 -FUNCTION-
-MixStopLooping: Cancels any playback loop configured for a channel.
+MixStopLoop: Cancels any playback loop configured for a channel.
 
 This function will cancel any loop that is associated with a mixer channel in playback mode.  This does not affect the
 loop configuration if playback is restarted for the active sample.
@@ -666,15 +835,21 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR sndMixStopLooping(objAudio *Audio, LONG Handle)
+static ERROR sndMixStopLoop(objAudio *Audio, LONG Handle)
 {
-   parasol::Log log("Cmd:StopLooping");
+   parasol::Log log("Mix:StopLoop");
 
    log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
+
+   if (channel->Buffering) {
+      add_mix_cmd(Audio, CMD::STOP_LOOPING, Handle);
+      return ERR_Okay;
+   }
+
    if (channel->State != CHS_PLAYING) return ERR_Okay;
 
    auto &sample = ((extAudio *)Audio)->Samples[channel->SampleHandle];

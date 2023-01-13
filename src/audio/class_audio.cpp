@@ -392,109 +392,6 @@ static ERROR AUDIO_Beep(extAudio *Self, struct sndBeep *Args)
 
 /*********************************************************************************************************************
 
--METHOD-
-BufferCommand: Sends instructions to the audio mixer.
-
-BufferCommand sends command sequences to an audio object for progressive execution.  This playback method is ideal for
-music sequencers or any situation requiring audio commands to be executed at precise intervals.
-
-By default, execution of commands is immediate.  Commands are constructed from a command ID, a target channel, and an
-optional parameter dependent on the command type.  The following commands are available:
-
-<types lookup="CMD"/>
-
-Batched sequencing is enabled when a channel set is opened with a large number of command buffers (refer to
-OpenChannel for details).  Call the BufferCommand method with `CMD_START_SEQUENCE`, then send the instructions
-before terminating with `CMD_END_SEQUENCE`.  Each individual batch of commands will be executed at a predetermined
-rate (e.g. every 125 milliseconds).  This allows the audio object to process batched commands at regular intervals.
-The client will need to regularly write information to ensure that there are no pauses in the audio playback.
-
-The following code illustrates a basic setup for batching commands:
-
-<pre>
-parasol::ScopedObjectLock<objAudio> audio(AudioID, 4);
-if (audio.granted()) {
-   LONG cycles = 0;
-   while ((!sndBufferCommand(*audio, CMD_START_SEQUENCE, Self->Sets, NULL)) and
-      (cycles < MAX_CYCLES)) {
-
-       // Add buffered commands in this area.
-       // ...
-
-      sndBufferCommand(*audio, CMD_END_SEQUENCE, Self->Sets, NULL);
-      cycles++;
-   }
-}
-</pre>
-
-The command sequencing rate is adjusted via the `CMD_SET_RATE` instruction.  The number of milliseconds specified
-in the Data parameter will determine the rate at which the command sets are executed.  For instance a rate of 200ms
-will execute five batches per second.
-
--INPUT-
-int(CMD) Command: The ID of the command that you want to execute.
-int Handle: Refers to the channel that the command is to be executed against (see the OpenChannels method for information).
-double Data: Optional data value relevant to the command being executed.
-
--ERRORS-
-Okay: The command was successfully buffered or executed.
-Args
-NullArgs
-BufferOverflow: The command buffer is full.
-NoSupport: The Command is not supported.
--END-
-
-*********************************************************************************************************************/
-
-static ERROR AUDIO_BufferCommand(extAudio *Self, struct sndBufferCommand *Args)
-{
-   parasol::Log log;
-
-   if ((!Args) or (!Args->Handle) or (!Args->Command)) return log.warning(ERR_NullArgs);
-
-   log.trace("Command: %d, Handle: $%.8x, Data: %.2f", Args->Command, Args->Handle, Args->Data);
-
-   LONG index = Args->Handle>>16;
-
-   if (index >= (LONG)Self->Sets.size()) {
-      log.warning("Bad channel handle $%.8x.", Args->Handle);
-      return ERR_Args;
-   }
-
-   if (Self->Sets[index].Commands.capacity() > 0) {
-      auto i = Self->Sets[index].Commands.size();
-      Self->Sets[index].Commands.resize(i+1);
-      Self->Sets[index].Commands[i].CommandID = Args->Command;
-      Self->Sets[index].Commands[i].Handle    = Args->Handle;
-      Self->Sets[index].Commands[i].Data      = Args->Data;
-      return ERR_Okay;
-   }
-   else { // Execute the command immediately
-      switch (Args->Command) {
-         case CMD_START_SEQUENCE: return ERR_Okay;
-         case CMD_END_SEQUENCE:   return ERR_Okay;
-         case CMD_CONTINUE:       return sndMixContinue(Self, Args->Handle);
-         case CMD_FADE_IN:        return sndMixFadeIn(Self, Args->Handle);
-         case CMD_FADE_OUT:       return sndMixFadeOut(Self, Args->Handle);
-         case CMD_MUTE:           return sndMixMute(Self, Args->Handle, Args->Data);
-         case CMD_PLAY:           return sndMixPlay(Self, Args->Handle, Args->Data);
-         case CMD_SET_FREQUENCY:  return sndMixFrequency(Self, Args->Handle, Args->Data);
-         case CMD_SET_PAN:        return sndMixPan(Self, Args->Handle, Args->Data);
-         case CMD_SET_RATE:       return sndMixRate(Self, Args->Handle, Args->Data);
-         case CMD_SET_SAMPLE:     return sndMixSample(Self, Args->Handle, Args->Data);
-         case CMD_SET_VOLUME:     return sndMixVolume(Self, Args->Handle, Args->Data);
-         case CMD_STOP:           return sndMixStop(Self, Args->Handle);
-         case CMD_STOP_LOOPING:   return sndMixStopLooping(Self, Args->Handle);
-         case CMD_SET_POSITION:   return sndMixPosition(Self, Args->Handle, Args->Data);
-      }
-   }
-
-   log.warning("Unsupported command ID #%d.", Args->Command);
-   return ERR_NoSupport;
-}
-
-/*********************************************************************************************************************
-
 -ACTION-
 Clear: Clears the audio buffers.
 
@@ -1531,26 +1428,26 @@ ERROR process_commands(extAudio *Self, LONG Elements)
             auto &cmds = Self->Sets[index].Commands;
             for (LONG i=0; i < (LONG)cmds.size(); i++) {
                switch(cmds[i].CommandID) {
-                  case CMD_CONTINUE:       sndMixContinue(Self, cmds[i].Handle); break;
-                  case CMD_FADE_IN:        sndMixFadeIn(Self, cmds[i].Handle); break;
-                  case CMD_FADE_OUT:       sndMixFadeOut(Self, cmds[i].Handle); break;
-                  case CMD_MUTE:           sndMixMute(Self, cmds[i].Handle, cmds[i].Data); break;
-                  case CMD_PLAY:           sndMixPlay(Self, cmds[i].Handle, cmds[i].Data); break;
-                  case CMD_SET_FREQUENCY:  sndMixFrequency(Self, cmds[i].Handle, cmds[i].Data); break;
-                  case CMD_SET_PAN:        sndMixPan(Self, cmds[i].Handle, cmds[i].Data); break;
-                  case CMD_SET_RATE:       sndMixRate(Self, cmds[i].Handle, cmds[i].Data); break;
-                  case CMD_SET_SAMPLE:     sndMixSample(Self, cmds[i].Handle, cmds[i].Data); break;
-                  case CMD_SET_VOLUME:     sndMixVolume(Self, cmds[i].Handle, cmds[i].Data); break;
-                  case CMD_STOP:           sndMixStop(Self, cmds[i].Handle); break;
-                  case CMD_STOP_LOOPING:   sndMixStopLooping(Self, cmds[i].Handle); break;
-                  case CMD_SET_POSITION:   sndMixPosition(Self, cmds[i].Handle, cmds[i].Data); break;
+                  case CMD::CONTINUE:     sndMixContinue(Self, cmds[i].Handle); break;
+                  case CMD::FADE_IN:      sndMixFadeIn(Self, cmds[i].Handle); break;
+                  case CMD::FADE_OUT:     sndMixFadeOut(Self, cmds[i].Handle); break;
+                  case CMD::MUTE:         sndMixMute(Self, cmds[i].Handle, cmds[i].Data); break;
+                  case CMD::PLAY:         sndMixPlay(Self, cmds[i].Handle, cmds[i].Data); break;
+                  case CMD::FREQUENCY:    sndMixFrequency(Self, cmds[i].Handle, cmds[i].Data); break;
+                  case CMD::PAN:          sndMixPan(Self, cmds[i].Handle, cmds[i].Data); break;
+                  case CMD::RATE:         sndMixRate(Self, cmds[i].Handle, cmds[i].Data); break;
+                  case CMD::SAMPLE:       sndMixSample(Self, cmds[i].Handle, cmds[i].Data); break;
+                  case CMD::VOLUME:       sndMixVolume(Self, cmds[i].Handle, cmds[i].Data); break;
+                  case CMD::STOP:         sndMixStop(Self, cmds[i].Handle); break;
+                  case CMD::STOP_LOOPING: sndMixStopLoop(Self, cmds[i].Handle); break;
+                  case CMD::POSITION:     sndMixPosition(Self, cmds[i].Handle, cmds[i].Data); break;
 
-                  case CMD_START_SEQUENCE:
-                  case CMD_END_SEQUENCE:
+                  case CMD::START_SEQUENCE:
+                  case CMD::END_SEQUENCE:
                      break;
 
                   default:
-                     log.warning("Unrecognised command ID #%d at index %d.", cmds[i].CommandID, i);
+                     log.warning("Unrecognised command ID #%d at index %d.", LONG(cmds[i].CommandID), i);
                      break;
                }
             }

@@ -77,25 +77,6 @@ class objSound;
 #define LTYPE_UNIDIRECTIONAL 1
 #define LTYPE_BIDIRECTIONAL 2
 
-// Audio channel commands
-
-#define CMD_START_SEQUENCE 1
-#define CMD_END_SEQUENCE 2
-#define CMD_SET_SAMPLE 3
-#define CMD_SET_VOLUME 4
-#define CMD_SET_PAN 5
-#define CMD_SET_FREQUENCY 6
-#define CMD_SET_RATE 7
-#define CMD_STOP 8
-#define CMD_STOP_LOOPING 9
-#define CMD_SET_POSITION 10
-#define CMD_PLAY 11
-#define CMD_FADE_IN 12
-#define CMD_FADE_OUT 13
-#define CMD_MUTE 14
-#define CMD_SET_LENGTH 15
-#define CMD_CONTINUE 16
-
 // Streaming options
 
 #define STREAM_NEVER 1
@@ -156,7 +137,6 @@ typedef struct WAVEFormat {
 #define MT_SndCloseChannels -2
 #define MT_SndAddSample -3
 #define MT_SndRemoveSample -4
-#define MT_SndBufferCommand -5
 #define MT_SndAddStream -6
 #define MT_SndBeep -7
 #define MT_SndSetVolume -8
@@ -165,7 +145,6 @@ struct sndOpenChannels { LONG Total; LONG Commands; LONG Result;  };
 struct sndCloseChannels { LONG Handle;  };
 struct sndAddSample { LONG SampleFormat; APTR Data; LONG DataSize; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
 struct sndRemoveSample { LONG Handle;  };
-struct sndBufferCommand { LONG Command; LONG Handle; DOUBLE Data;  };
 struct sndAddStream { CSTRING Path; OBJECTID ObjectID; LONG SeekStart; LONG SampleFormat; LONG SampleLength; LONG BufferLength; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
 struct sndBeep { LONG Pitch; LONG Duration; LONG Volume;  };
 struct sndSetVolume { LONG Index; CSTRING Name; LONG Flags; DOUBLE Volume;  };
@@ -192,11 +171,6 @@ INLINE ERROR sndAddSample(APTR Ob, LONG SampleFormat, APTR Data, LONG DataSize, 
 INLINE ERROR sndRemoveSample(APTR Ob, LONG Handle) {
    struct sndRemoveSample args = { Handle };
    return(Action(MT_SndRemoveSample, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR sndBufferCommand(APTR Ob, LONG Command, LONG Handle, DOUBLE Data) {
-   struct sndBufferCommand args = { Command, Handle, Data };
-   return(Action(MT_SndBufferCommand, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR sndAddStream(APTR Ob, CSTRING Path, OBJECTID ObjectID, LONG SeekStart, LONG SampleFormat, LONG SampleLength, LONG BufferLength, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) {
@@ -328,8 +302,10 @@ struct AudioBase {
    ERROR (*_MixRate)(objAudio * Audio, LONG Handle, LONG Rate);
    ERROR (*_MixSample)(objAudio * Audio, LONG Handle, LONG Sample);
    ERROR (*_MixStop)(objAudio * Audio, LONG Handle);
-   ERROR (*_MixStopLooping)(objAudio * Audio, LONG Handle);
+   ERROR (*_MixStopLoop)(objAudio * Audio, LONG Handle);
    ERROR (*_MixVolume)(objAudio * Audio, LONG Handle, DOUBLE Volume);
+   ERROR (*_MixStartSequence)(objAudio * Audio, LONG Handle);
+   ERROR (*_MixEndSequence)(objAudio * Audio, LONG Handle);
 };
 
 #ifndef PRV_AUDIO_MODULE
@@ -347,7 +323,9 @@ inline ERROR sndMixPosition(objAudio * Audio, LONG Handle, LONG Position) { retu
 inline ERROR sndMixRate(objAudio * Audio, LONG Handle, LONG Rate) { return AudioBase->_MixRate(Audio,Handle,Rate); }
 inline ERROR sndMixSample(objAudio * Audio, LONG Handle, LONG Sample) { return AudioBase->_MixSample(Audio,Handle,Sample); }
 inline ERROR sndMixStop(objAudio * Audio, LONG Handle) { return AudioBase->_MixStop(Audio,Handle); }
-inline ERROR sndMixStopLooping(objAudio * Audio, LONG Handle) { return AudioBase->_MixStopLooping(Audio,Handle); }
+inline ERROR sndMixStopLoop(objAudio * Audio, LONG Handle) { return AudioBase->_MixStopLoop(Audio,Handle); }
 inline ERROR sndMixVolume(objAudio * Audio, LONG Handle, DOUBLE Volume) { return AudioBase->_MixVolume(Audio,Handle,Volume); }
+inline ERROR sndMixStartSequence(objAudio * Audio, LONG Handle) { return AudioBase->_MixStartSequence(Audio,Handle); }
+inline ERROR sndMixEndSequence(objAudio * Audio, LONG Handle) { return AudioBase->_MixEndSequence(Audio,Handle); }
 #endif
 
