@@ -177,13 +177,13 @@
 <pre>parasol::ScopedObjectLock<objAudio> audio(AudioID, 4);
 if (audio.granted()) {
    LONG cycles = 0;
-   while ((!sndBufferCommand(*audio, CMD_START_SEQUENCE, Self-&gt;Channels, NULL)) and
+   while ((!sndBufferCommand(*audio, CMD_START_SEQUENCE, Self-&gt;Sets, NULL)) and
       (cycles &lt; MAX_CYCLES)) {
 
        // Add buffered commands in this area.
        // ...
 
-      sndBufferCommand(*audio, CMD_END_SEQUENCE, Self-&gt;Channels, NULL);
+      sndBufferCommand(*audio, CMD_END_SEQUENCE, Self-&gt;Sets, NULL);
       cycles++;
    }
 }
@@ -274,7 +274,7 @@ will execute five batches per second.
       </input>
       <description>
 <p>To change volume and mixer levels, use the SetVolume method.  It is possible to make adjustments to any of the available mixers and for different channels per mixer - for instance you may set different volumes for left and right speakers.  Support is also provided for special options, such as muting.</p>
-<p>To set the volume for a mixer, use its index (by scanning the <field>VolumeCtl</field> field) or set its name (to change the Master volume, use a name of <code>Master</code>).  A channel needs to be specified, or use <code>CHN_ALL</code> to synchronise the volume for all channels.  The new mixer value is set in the Volume field.  Optional flags may be set as follows:</p>
+<p>To set the volume for a mixer, use its index or set its name (to change the Master volume, use a name of <code>Master</code>). A channel needs to be specified, or use <code>CHN_ALL</code> to synchronise the volume for all channels.  The new mixer value is set in the Volume field.  Optional flags may be set as follows:</p>
 <types lookup="SVF"/>
       </description>
       <result>
@@ -423,20 +423,6 @@ will execute five batches per second.
       </description>
     </field>
 
-    <field>
-      <name>VolumeCtl</name>
-      <comment>An array of information for all known audio mixers in the system.</comment>
-      <access read="G">Get</access>
-      <type>APTR</type>
-      <description>
-<p>The VolumeCtl provides an array of all available mixer controls for the audio hardware.  The information is read-only and each entry is structured as follows:</p>
-&amp;VolumeCtl
-<p>Attribute flags include:</p>
-<types lookup="VCF"/>
-<p>To scan through the list of controls, search until an entry that uses a Name consisting of a single NULL byte is found.</p>
-      </description>
-    </field>
-
   </fields>
   <types>
     <constants lookup="ADF" comment="Optional flags for the Audio object.">
@@ -495,15 +481,6 @@ will execute five batches per second.
       <const name="SYNC">Synchronise volume settings between channels.</const>
       <const name="UNMUTE">Unmute the audio for this channel.</const>
       <const name="UNSYNC">Allow un-synchronised volume settings.</const>
-    </constants>
-
-    <constants lookup="VCF" comment="Volume control flags">
-      <const name="CAPTURE">The mixer supports audio input.</const>
-      <const name="JOINED">The mixer channels are joined (e.g. left and right speakers cannot be adjusted separately).</const>
-      <const name="MONO">The mixer is restricted to mono input/output.</const>
-      <const name="MUTE">The mixer is muted.</const>
-      <const name="PLAYBACK">The mixer supports audio output.</const>
-      <const name="SYNC">The mixer is synchronised.</const>
     </constants>
 
   </types>

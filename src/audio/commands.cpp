@@ -1,52 +1,83 @@
-//********************************************************************************************************************
-// FadeOut: Starts fading out a channel if fadeout channels have been allocated and the channel has data being played.
+/*********************************************************************************************************************
 
-static ERROR COMMAND_FadeOut(extAudio *Self, LONG Handle)
+-FUNCTION-
+MixFadeOut: Fade a channel to zero volume.
+
+This function will fade out a mixer channel if in oversampling mode and the channel has data being played.
+
+-INPUT-
+obj(Audio) Audio: The target Audio object.
+int Handle: The target channel.
+
+-ERRORS-
+Okay
+NullArgs
+-END-
+
+*********************************************************************************************************************/
+
+static ERROR sndMixFadeOut(objAudio *Audio, LONG Handle)
 {
    parasol::Log log("Cmd:FadeOut");
 
-   log.trace("FadeOut($%.8x)", Handle);
+   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
-   if (!Handle) return ERR_NullArgs;
-   if (!(Self->Flags & ADF_OVER_SAMPLING)) return ERR_Okay;
+   log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
-   auto channel = Self->GetChannel(Handle);
-   auto destchannel = channel + (Self->Sets[Handle>>16].Total);
+   if (!(Audio->Flags & ADF_OVER_SAMPLING)) return ERR_Okay;
 
-   if ((channel->State IS CHS_STOPPED) or (channel->State IS CHS_FINISHED) or ((channel->LVolume IS 0) and (channel->RVolume IS 0))) return ERR_Okay;
-   if (destchannel->State IS CHS_FADE_OUT) return ERR_Okay;
+   auto channel = ((extAudio *)Audio)->GetChannel(Handle);
+   auto destchannel = channel + ((extAudio *)Audio)->Sets[Handle>>16].Total;
+
+   if ((channel->State IS CHS_STOPPED) or (channel->State IS CHS_FINISHED) or
+       (destchannel->State IS CHS_FADE_OUT) or
+       ((channel->LVolume < 0.01) and (channel->RVolume < 0.01))) return ERR_Okay;
 
    destchannel->State = CHS_FADE_OUT;
 
    // Copy the channel information
 
-   LONG oldstatus = channel->State;
+   auto oldstatus = channel->State;
    channel->State = CHS_STOPPED;
-   CopyMemory(channel, destchannel, sizeof(AudioChannel));
+   destchannel = channel;
    channel->State = oldstatus;
 
    // Start ramping
 
    destchannel->Volume = 0;
    destchannel->State = CHS_FADE_OUT;
-   set_channel_volume(Self, destchannel);
+   set_channel_volume((extAudio *)Audio, destchannel);
    destchannel->Flags |= CHF_VOL_RAMP;
    return ERR_Okay;
 }
 
-//********************************************************************************************************************
-// Continue: Continues playing a sound sample after it has been stopped earlier.
+/*********************************************************************************************************************
 
-static ERROR COMMAND_Continue(extAudio *Self, LONG Handle)
+-FUNCTION-
+MixContinue: Continue playing a stopped channel.
+
+This function will continue playback on a channel that has previously been stopped.
+
+-INPUT-
+obj(Audio) Audio: The target Audio object.
+int Handle: The target channel.
+
+-ERRORS-
+Okay
+NullArgs
+-END-
+
+*********************************************************************************************************************/
+
+static ERROR sndMixContinue(objAudio *Audio, LONG Handle)
 {
    parasol::Log log("Cmd:Continue");
 
-   log.trace("Continue($%.8x)", Handle);
+   log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
-   if (!Handle) return ERR_NullArgs;
+   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
-   auto channel = Self->GetChannel(Handle);
-   auto &sample = Self->Samples[channel->SampleHandle];
+   auto channel = ((extAudio *)Audio)->GetChannel(Handle);
 
    // Do nothing if the channel is already active
 
@@ -54,136 +85,215 @@ static ERROR COMMAND_Continue(extAudio *Self, LONG Handle)
 
    // Check if the read position is already at the end of the sample
 
-   if ((sample.StreamID) and (channel->StreamPos >= sample.StreamLength)) {
-      return ERR_Okay;
-   }
+   auto &sample = ((extAudio *)Audio)->Samples[channel->SampleHandle];
+
+   if ((sample.StreamID) and (channel->StreamPos >= sample.StreamLength)) return ERR_Okay;
    else if (channel->Position >= sample.SampleLength) return ERR_Okay;
 
-   if (Self->Flags & ADF_OVER_SAMPLING) COMMAND_FadeOut(Self, Handle);
+   if (Audio->Flags & ADF_OVER_SAMPLING) sndMixFadeOut(Audio, Handle);
 
    channel->State = CHS_PLAYING;
 
-   if (Self->Flags & ADF_OVER_SAMPLING) {
-      channel += Self->Sets[Handle>>16].Total;
+   if (Audio->Flags & ADF_OVER_SAMPLING) {
+      channel += ((extAudio *)Audio)->Sets[Handle>>16].Total;
       channel->State = CHS_PLAYING;
    }
 
-   parasol::SwitchContext context(Self);
+   parasol::SwitchContext context(Audio);
 
-   if (Self->Timer) UpdateTimer(Self->Timer, -MIX_INTERVAL);
+   if (((extAudio *)Audio)->Timer) UpdateTimer(((extAudio *)Audio)->Timer, -MIX_INTERVAL);
    else {
       auto call = make_function_stdc(audio_timer);
-      SubscribeTimer(MIX_INTERVAL, &call, &Self->Timer);
+      SubscribeTimer(MIX_INTERVAL, &call, &((extAudio *)Audio)->Timer);
    }
 
    return ERR_Okay;
 }
 
-//********************************************************************************************************************
-// FadeIn: Starts fading in a channel if fadeout channels have been allocated.
+/*********************************************************************************************************************
 
-static ERROR COMMAND_FadeIn(extAudio *Self, LONG Handle)
+-FUNCTION-
+MixFadeIn: Fade in a channel from zero volume.
+
+This function will fade in a mixer channel that has previously been faded out with MixFadeOut.  It is a requirement
+that `VOL_RAMPING` or `OVER_SAMPLING` flags have been set in the target Audio object.
+
+-INPUT-
+obj(Audio) Audio: The target Audio object.
+int Handle: The target channel.
+
+-ERRORS-
+Okay
+NullArgs
+-END-
+
+*********************************************************************************************************************/
+
+static ERROR sndMixFadeIn(objAudio *Audio, LONG Handle)
 {
    parasol::Log log("Cmd:FadeIn");
 
-   log.trace("FadeIn($%.8x)", Handle);
+   log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
-   if (Handle) {
-      if ((!(Self->Flags & ADF_VOL_RAMPING)) or (!(Self->Flags & ADF_OVER_SAMPLING))) return ERR_Okay;
+   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
-      // Ramp back up from zero
+   if ((!(Audio->Flags & ADF_VOL_RAMPING)) or (!(Audio->Flags & ADF_OVER_SAMPLING))) return ERR_Okay;
 
-      auto channel = Self->GetChannel(Handle);
-      channel->LVolume = 0;
-      channel->RVolume = 0;
-      return set_channel_volume(Self, channel);
-   }
-   else return ERR_Failed;
+   // Ramp back up from zero
+
+   auto channel = ((extAudio *)Audio)->GetChannel(Handle);
+   channel->LVolume = 0;
+   channel->RVolume = 0;
+   return set_channel_volume((extAudio *)Audio, channel);
 }
 
-//********************************************************************************************************************
-// Mute: Use this method to mute sound channels.
 
-static ERROR COMMAND_Mute(extAudio *Self, LONG Handle, DOUBLE Mute)
+/*********************************************************************************************************************
+
+-FUNCTION-
+MixMute: Mutes the audio of a channel.
+
+Use this function to mute the audio of a mixer channel.
+
+-INPUT-
+obj(Audio) Audio: The target Audio object.
+int Handle: The target channel.
+int Mute: Set to any value to mute the channel.  A value of 0 will undo the mute setting.
+
+-ERRORS-
+Okay
+NullArgs
+-END-
+
+*********************************************************************************************************************/
+
+static ERROR sndMixMute(objAudio *Audio, LONG Handle, LONG Mute)
 {
    parasol::Log log("Cmd:Mute");
 
-   log.trace("Mute($%.8x, %d)", Handle, Mute);
+   log.trace("Audio: #%d, Channel: $%.8x, Mute: %c", Audio->UID, Handle, Mute ? 'Y' : 'N');
 
-   if (!Handle) return ERR_NullArgs;
+   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
-   auto channel = Self->GetChannel(Handle);
+   auto channel = ((extAudio *)Audio)->GetChannel(Handle);
    if (Mute != 0) channel->Flags |= CHF_MUTE;
    else channel->Flags &= ~CHF_MUTE;
-   set_channel_volume(Self, channel);
+   set_channel_volume((extAudio *)Audio, channel);
    return ERR_Okay;
 }
 
-//********************************************************************************************************************
-// SetFrequency: Sets the channel playback rate.
+/*********************************************************************************************************************
 
-static ERROR COMMAND_SetFrequency(extAudio *Self, LONG Handle, DOUBLE Frequency)
+-FUNCTION-
+MixFrequency: Sets a channel's playback rate.
+
+Use this function to set the playback rate of a mixer channel.
+
+-INPUT-
+obj(Audio) Audio: The target Audio object.
+int Handle: The target channel.
+int Frequency: The desired frequency.
+
+-ERRORS-
+Okay
+NullArgs
+-END-
+
+*********************************************************************************************************************/
+
+static ERROR sndMixFrequency(objAudio *Audio, LONG Handle, LONG Frequency)
 {
    parasol::Log log("Cmd:SetFrequency");
 
-   log.trace("SetFrequency($%.8x, %d)", Handle, Frequency);
+   log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
-   if (!Handle) return ERR_NullArgs;
+   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
-   auto channel = Self->GetChannel(Handle);
+   auto channel = ((extAudio *)Audio)->GetChannel(Handle);
    channel->Frequency = Frequency;
    return ERR_Okay;
 }
 
-//********************************************************************************************************************
-// SetPan: Sets the panning position of a channel.
+/*********************************************************************************************************************
 
-static ERROR COMMAND_SetPan(extAudio *Self, LONG Handle, DOUBLE Pan)
+-FUNCTION-
+MixPan: Sets a channel's panning value.
+
+Use this function to set a mixer channel's panning value.  Accepted values are between -1.0 (left) and 1.0 (right).
+
+-INPUT-
+obj(Audio) Audio: The target Audio object.
+int Handle: The target channel.
+double Pan: The desired pan value between -1.0 and 1.0.
+
+-ERRORS-
+Okay
+NullArgs
+-END-
+
+*********************************************************************************************************************/
+
+static ERROR sndMixPan(objAudio *Audio, LONG Handle, DOUBLE Pan)
 {
    parasol::Log log("Cmd:SetPan");
 
-   log.trace("SetPan($%.8x, %d)", Handle, Pan);
+   log.trace("Audio: #%d, Channel: $%.8x, Pan: %.2f", Audio->UID, Handle, Pan);
 
-   if (!Handle) return ERR_NullArgs;
+   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
-   auto channel = Self->GetChannel(Handle);
+   auto channel = ((extAudio *)Audio)->GetChannel(Handle);
 
    if (Pan < -1.0) channel->Pan = -1.0;
    else if (Pan > 1.0) channel->Pan = 1.0;
    else channel->Pan = Pan;
 
-   set_channel_volume(Self, channel);
+   set_channel_volume((extAudio *)Audio, channel);
    return ERR_Okay;
 }
 
-//********************************************************************************************************************
-// SetPosition: Sets the playing position from the beginning of the currently set sample.
-//
-// This command can only be executed by the task that owns the audio object.
+/*********************************************************************************************************************
 
-static ERROR COMMAND_SetPosition(extAudio *Self, LONG Handle, DOUBLE Position)
+-FUNCTION-
+MixPosition: Sets a channel's playing position relative to the current sample.
+
+This function will change the playing position of a mixer channel for the current sound sample.
+
+-INPUT-
+obj(Audio) Audio: The target Audio object.
+int Handle: The target channel.
+int Position: The new playing position, measured in bytes.
+
+-ERRORS-
+Okay
+NullArgs
+OutOfRange
+-END-
+
+*********************************************************************************************************************/
+
+static ERROR sndMixPosition(objAudio *Audio, LONG Handle, LONG Position)
 {
    parasol::Log log("Cmd:SetPosition");
 
-   LONG pos = F2T(Position);
+   log.trace("Audio: #%d, Channel: $%.8x, Position: %d", Audio->UID, Handle, Position);
 
-   log.trace("SetPosition($%.8x, %d)", Handle, pos);
+   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
+   if (Position < 0) return log.warning(ERR_OutOfRange);
 
-   if (!Handle) return ERR_NullArgs;
-
-   auto channel = Self->GetChannel(Handle);
+   auto channel = ((extAudio *)Audio)->GetChannel(Handle);
 
    if (!channel->SampleHandle) { // A sample must be defined for the channel.
       log.warning("Channel not associated with a sample.");
       return ERR_Failed;
    }
 
-   const auto &sample = Self->Samples[channel->SampleHandle];
+   const auto &sample = ((extAudio *)Audio)->Samples[channel->SampleHandle];
 
    if (!sample.Data) { // The sample reference must be valid and not stale.
       log.warning("On channel %d, referenced sample %d is unconfigured.", Handle, channel->SampleHandle);
       return ERR_Failed;
    }
+   else if (Position > sample.SampleLength) return log.warning(ERR_OutOfRange);
 
    // If the sample is a stream object, we just need to send a Seek action to have the Stream owner acknowledge the
    // new audio position and have it feed us new audio data.
@@ -191,19 +301,19 @@ static ERROR COMMAND_SetPosition(extAudio *Self, LONG Handle, DOUBLE Position)
    if (sample.StreamID) {
       parasol::ScopedObjectLock<> stream(sample.StreamID, 5000);
       if (stream.granted()) {
-         acSeekStart(*stream, sample.SeekStart + pos);
+         acSeekStart(*stream, sample.SeekStart + Position);
          acRead(*stream, sample.Data, sample.BufferLength, NULL);
       }
 
-      channel->StreamPos = sample.SeekStart + pos;
-      pos = 0; // Internally we want to start from byte position zero in our stream buffer
+      channel->StreamPos = sample.SeekStart + Position;
+      Position = 0; // Internally we want to start from byte position zero in our stream buffer
    }
 
-   if (Self->Flags & ADF_OVER_SAMPLING) COMMAND_FadeOut(Self, Handle);
+   if (Audio->Flags & ADF_OVER_SAMPLING) sndMixFadeOut(Audio, Handle);
 
    // Convert position from bytes to samples
 
-   LONG bitpos = pos >> sample_shift(sample.SampleType);
+   LONG bitpos = Position >> sample_shift(sample.SampleType);
 
    // Check if sample has been changed, and if so, set the values to the channel structure
 
@@ -310,93 +420,138 @@ static ERROR COMMAND_SetPosition(extAudio *Self, LONG Handle, DOUBLE Position)
          break;
    }
 
-   if (Self->Flags & ADF_OVER_SAMPLING) COMMAND_FadeIn(Self, Handle);
-
-   parasol::SwitchContext context(Self);
+   if (Audio->Flags & ADF_OVER_SAMPLING) sndMixFadeIn(Audio, Handle);
 
    if (channel->State IS CHS_PLAYING) {
-      if (Self->Timer) UpdateTimer(Self->Timer, -MIX_INTERVAL);
+      parasol::SwitchContext context(Audio);
+      if (((extAudio *)Audio)->Timer) UpdateTimer(((extAudio *)Audio)->Timer, -MIX_INTERVAL);
       else {
          auto call = make_function_stdc(audio_timer);
-         SubscribeTimer(MIX_INTERVAL, &call, &Self->Timer);
+         SubscribeTimer(MIX_INTERVAL, &call, &((extAudio *)Audio)->Timer);
       }
    }
 
    return ERR_Okay;
 }
 
-//********************************************************************************************************************
-// Play
+/*********************************************************************************************************************
 
-static ERROR COMMAND_Play(extAudio *Self, LONG Handle, DOUBLE Frequency)
+-FUNCTION-
+MixPlay: Commences channel playback at a set frequency..
+
+This function will start playback of the sound sample associated with the target mixer channel.  If the channel is
+already in playback mode, it will be stopped to facilitate the new playback request.
+
+-INPUT-
+obj(Audio) Audio: The target Audio object.
+int Handle: The target channel.
+int Frequency: The new playing position, measured in bytes.
+
+-ERRORS-
+Okay
+NullArgs
+-END-
+
+*********************************************************************************************************************/
+
+static ERROR sndMixPlay(objAudio *Audio, LONG Handle, LONG Frequency)
 {
    parasol::Log log("Cmd:Play");
 
-   log.trace("Play($%.8x, %d)", Handle, Frequency);
-   if (!Frequency) log.warning("[Play] No sample frequency was specified.");
-   if (!Handle) return log.warning(ERR_NullArgs);
+   log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
-   if (Self->Flags & ADF_OVER_SAMPLING) COMMAND_FadeOut(Self, Handle);
+   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
+   if (Frequency <= 0) return log.warning(ERR_Args);
 
-   auto channel = Self->GetChannel(Handle);
-   channel->State     = CHS_FINISHED;    // Turn off previous sound
-   channel->Frequency = Frequency;
-   COMMAND_SetPosition(Self, Handle, 0); // Set playing position to the beginning of the sample
+   if (Audio->Flags & ADF_OVER_SAMPLING) sndMixFadeOut(Audio, Handle);
 
-   parasol::SwitchContext context(Self);
+   auto channel = ((extAudio *)Audio)->GetChannel(Handle);
 
-   if (channel->State IS CHS_PLAYING) {
-      if (Self->Timer) UpdateTimer(Self->Timer, -MIX_INTERVAL);
-      else {
-         auto call = make_function_stdc(audio_timer);
-         SubscribeTimer(MIX_INTERVAL, &call, &Self->Timer);
-      }
-   }
+   channel->State     = CHS_FINISHED; // Turn off previous sound
+   channel->Frequency = Frequency; // New frequency
 
-   return ERR_Okay;
+   return sndMixPosition(Audio, Handle, 0); // Setting position to the beginning of the sample also initiates playback
 }
 
-//********************************************************************************************************************
-// SetRate: Sets a new update rate for buffered channels.
+/*********************************************************************************************************************
 
-static ERROR COMMAND_SetRate(extAudio *Self, LONG Handle, DOUBLE Rate)
+-FUNCTION-
+MixRate: Sets a new update rate for a channel.
+
+This function will set a new update rate for all channels, measured in milliseconds.  The default update rate is 125,
+which is equivalent to 5000Hz.
+
+-INPUT-
+obj(Audio) Audio: The target Audio object.
+int Handle: The target channel.
+int Rate: The new update rate in milliseconds.
+
+-ERRORS-
+Okay
+NullArgs
+-END-
+
+*********************************************************************************************************************/
+
+static ERROR sndMixRate(objAudio *Audio, LONG Handle, LONG Rate)
 {
    parasol::Log log("Cmd:SetRate");
 
-   log.trace("SetRate($%.8x, %d)", Handle, Rate);
-   if (!Handle) return ERR_NullArgs;
+   log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
+
+   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
+
    WORD index = Handle>>16;
-   Self->Sets[index].UpdateRate = Rate;
+   ((extAudio *)Audio)->Sets[index].UpdateRate = Rate;
    return ERR_Okay;
 }
 
-//********************************************************************************************************************
-// SetSample: Associates a sample with a channel.  Configuration should then follow (e.g. volume and pan values)
+/*********************************************************************************************************************
 
-ERROR COMMAND_SetSample(extAudio *Self, LONG Handle, DOUBLE SampleHandle)
+-FUNCTION-
+MixSample: Associate a sound sample with a mixer channel.
+
+This function will associate a sound sample with a mixer channel.  Configuration should then follow (e.g. volume and
+pan values).
+
+The referenced Sample must have been added to the audio server via the @Audio.AddSample() or @Audio.AddStream()
+methods.
+
+-INPUT-
+obj(Audio) Audio: The target Audio object.
+int Handle: The target channel.
+int Sample: A sample handle allocated from #Audio.AddSample() or #Audio.AddStream().
+
+-ERRORS-
+Okay
+NullArgs
+-END-
+
+*********************************************************************************************************************/
+
+ERROR sndMixSample(objAudio *Audio, LONG Handle, LONG SampleIndex)
 {
-   LONG idx = F2T(SampleHandle);
-
    parasol::Log log("Cmd:SetSample");
 
-   log.trace("Handle: $%.8x, Sample: %d", Handle, idx);
+   LONG idx = SampleIndex;
 
-   if (!Handle) {
-      return log.warning(ERR_NullArgs);
-   }
-   else if ((idx <= 0) or (idx >= (LONG)Self->Samples.size())) {
+   log.trace("Audio: #%d, Channel: $%.8x, Sample: %d", Audio->UID, Handle, idx);
+
+   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
+
+   if ((idx <= 0) or (idx >= (LONG)((extAudio *)Audio)->Samples.size())) {
       return log.warning(ERR_OutOfRange);
    }
-   else if (!Self->Samples[idx].Data) {
+   else if (!((extAudio *)Audio)->Samples[idx].Data) {
       log.warning("Sample #%d refers to a dead sample.", idx);
       return ERR_Failed;
    }
-   else if (Self->Samples[idx].SampleLength <= 0) {
-      log.warning("Sample #%d has invalid sample length %d", idx, Self->Samples[idx].SampleLength);
+   else if (((extAudio *)Audio)->Samples[idx].SampleLength <= 0) {
+      log.warning("Sample #%d has invalid sample length %d", idx, ((extAudio *)Audio)->Samples[idx].SampleLength);
       return ERR_Failed;
    }
 
-   auto channel = Self->GetChannel(Handle);
+   auto channel = ((extAudio *)Audio)->GetChannel(Handle);
 
    if (channel->SampleHandle IS idx) return ERR_Okay; // Already associated?
 
@@ -406,94 +561,123 @@ ERROR COMMAND_SetSample(extAudio *Self, LONG Handle, DOUBLE SampleHandle)
    // If the new sample has one Amiga-compatible loop and playing has ended (not released or stopped), set the new
    // sample and start playing from loop start.
 
-   auto &s = Self->Samples[idx];
+   auto &s = ((extAudio *)Audio)->Samples[idx];
    if ((s.LoopMode IS LOOP_AMIGA) and (channel->State IS CHS_FINISHED)) {
       // Set Amiga sample and start playing.  We won't do this with interpolated mixing, as this tends to cause clicks.
 
-      if (!(Self->Flags & ADF_OVER_SAMPLING)) {
+      if (!(Audio->Flags & ADF_OVER_SAMPLING)) {
          channel->State = CHS_PLAYING;
-         COMMAND_SetPosition(Self, Handle, s.Loop1Start);
+         sndMixPosition(Audio, Handle, s.Loop1Start);
       }
    }
 
    return ERR_Okay;
 }
 
-//********************************************************************************************************************
-// SetLength: Sets the byte length of the sample playing in the channel.
+/*********************************************************************************************************************
 
-static ERROR COMMAND_SetLength(extAudio *Self, LONG Handle, DOUBLE Length)
-{
-   parasol::Log log("Cmd:SetLength");
+-FUNCTION-
+MixVolume: Changes the volume of a channel.
 
-   log.trace("SetLength($%.8x, %d)", Handle, F2T(Length));
+This function will change the volume of a mixer channel.  Valid values are between 0 and 1.0.
 
-   if (!Handle) return ERR_NullArgs;
+-INPUT-
+obj(Audio) Audio: The target Audio object.
+int Handle: The target channel.
+double Volume: The new volume for the channel.
 
-   auto channel = Self->GetChannel(Handle);
-   auto &sample = Self->Samples[channel->SampleHandle];
+-ERRORS-
+Okay
+NullArgs
+-END-
 
-   if (sample.StreamID) sample.StreamLength = F2T(Length);
-   else sample.SampleLength = F2T(Length);
-   return ERR_Okay;
-}
+*********************************************************************************************************************/
 
-//********************************************************************************************************************
-// SetVolume: Sets the volume of a specific channel (0 - 1.0).
-
-static ERROR COMMAND_SetVolume(extAudio *Self, LONG Handle, DOUBLE Volume)
+static ERROR sndMixVolume(objAudio *Audio, LONG Handle, DOUBLE Volume)
 {
    parasol::Log log("Cmd:SetVolume");
 
-   log.trace("SetVolume($%.8x, %.2f)", Handle, Volume);
+   log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
-   if (!Handle) return ERR_NullArgs;
+   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
-   auto channel = Self->GetChannel(Handle);
+   auto channel = ((extAudio *)Audio)->GetChannel(Handle);
+
    if (Volume > 1.0) channel->Volume = 1.0;
    else if (Volume < 0) channel->Volume = 0;
    else channel->Volume = Volume;
-   set_channel_volume(Self, channel);
+
+   set_channel_volume((extAudio *)Audio, channel);
    return ERR_Okay;
 }
 
-//********************************************************************************************************************
-// Stop: Stops a channel's audio playback.
+/*********************************************************************************************************************
 
-ERROR COMMAND_Stop(extAudio *Self, LONG Handle)
+-FUNCTION-
+MixStop: Stops all playback on a channel.
+
+This function will stop a channel that is currently playing.
+
+-INPUT-
+obj(Audio) Audio: The target Audio object.
+int Handle: The target channel.
+
+-ERRORS-
+Okay
+NullArgs
+-END-
+
+*********************************************************************************************************************/
+
+ERROR sndMixStop(objAudio *Audio, LONG Handle)
 {
    parasol::Log log("Cmd:Stop");
 
-   log.trace("Stop($%.8x)", Handle);
+   log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
-   if (!Handle) return ERR_NullArgs;
+   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
-   auto channel = Self->GetChannel(Handle);
+   auto channel = ((extAudio *)Audio)->GetChannel(Handle);
    channel->State = CHS_STOPPED;
 
-   if (Self->Flags & ADF_OVER_SAMPLING) {
-      channel += Self->Sets[Handle>>16].Total;
+   if (Audio->Flags & ADF_OVER_SAMPLING) {
+      channel += ((extAudio *)Audio)->Sets[Handle>>16].Total;
       channel->State = CHS_STOPPED;
    }
    return ERR_Okay;
 }
 
-//********************************************************************************************************************
-// StopLooping: Stops a sound once it has completed playing.  This method is only useful for stopping sounds that
-// continually loop and you want to stop the loop from occurring.
+/*********************************************************************************************************************
 
-static ERROR COMMAND_StopLooping(extAudio *Self, LONG Handle)
+-FUNCTION-
+MixStopLooping: Cancels any playback loop configured for a channel.
+
+This function will cancel any loop that is associated with a mixer channel in playback mode.  This does not affect the
+loop configuration if playback is restarted for the active sample.
+
+-INPUT-
+obj(Audio) Audio: The target Audio object.
+int Handle: The target channel.
+
+-ERRORS-
+Okay
+NullArgs
+-END-
+
+*********************************************************************************************************************/
+
+static ERROR sndMixStopLooping(objAudio *Audio, LONG Handle)
 {
    parasol::Log log("Cmd:StopLooping");
 
-   log.trace("StopLooping($%.8x)", Handle);
+   log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
-   if (!Handle) return ERR_NullArgs;
+   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
-   auto channel = Self->GetChannel(Handle);
+   auto channel = ((extAudio *)Audio)->GetChannel(Handle);
    if (channel->State != CHS_PLAYING) return ERR_Okay;
 
-   auto &sample = Self->Samples[channel->SampleHandle];
+   auto &sample = ((extAudio *)Audio)->Samples[channel->SampleHandle];
 
    if ((sample.LoopMode IS LOOP_SINGLE_RELEASE) or (sample.LoopMode IS LOOP_DOUBLE)) {
       channel->State = CHS_RELEASED;

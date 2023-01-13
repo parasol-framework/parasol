@@ -7,7 +7,6 @@
 
 typedef void (*MixRoutine)(LONG, LONG, FLOAT, FLOAT);
 
-#define MAX_CHANNELSETS 8
 #define DEFAULT_BUFFER_SIZE 8096 // Measured in samples, not bytes
 
 struct AudioSample {

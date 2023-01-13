@@ -38,7 +38,6 @@ module({ name="Audio", copyright="Paul Manias © 2002-2022", version=1.0 }, func
     "NEW: Create the sample from scratch (e.g. for audio recording purposes).",
     "QUERY: Query the meta data of the sample source; do not load sample data.",
     "STEREO: Indicates that the sound has multiple audio channels.",
-    "TERMINATE: Self-terminate when the sound sample has finished playback.",
     "RESTRICT_PLAY: Restricts playback so that the sound can never play on more than one channel at any given time.",
     { STREAM = "0x40000000: Read-Only. Indicates that streaming is enabled." },
     { NOTE = "0x80000000: Internal. Used for managing playback." }
@@ -167,6 +166,19 @@ module({ name="Audio", copyright="Paul Manias © 2002-2022", version=1.0 }, func
   functionNames("snd",
      "StartDrivers",
      "WaitDrivers",
-     "SetChannels")
+     "SetChannels",
+     "MixContinue",
+     "MixFadeIn",
+     "MixFadeOut",
+     "MixFrequency",
+     "MixMute",
+     "MixPan",
+     "MixPlay",
+     "MixPosition",
+     "MixRate",
+     "MixSample",
+     "MixStop",
+     "MixStopLooping",
+     "MixVolume")
 
 end)

@@ -473,20 +473,19 @@ static ERROR AUDIO_BufferCommand(extAudio *Self, struct sndBufferCommand *Args)
       switch (Args->Command) {
          case CMD_START_SEQUENCE: return ERR_Okay;
          case CMD_END_SEQUENCE:   return ERR_Okay;
-         case CMD_CONTINUE:       return COMMAND_Continue(Self, Args->Handle);
-         case CMD_FADE_IN:        return COMMAND_FadeIn(Self, Args->Handle);
-         case CMD_FADE_OUT:       return COMMAND_FadeOut(Self, Args->Handle);
-         case CMD_MUTE:           return COMMAND_Mute(Self, Args->Handle, Args->Data);
-         case CMD_PLAY:           return COMMAND_Play(Self, Args->Handle, Args->Data);
-         case CMD_SET_FREQUENCY:  return COMMAND_SetFrequency(Self, Args->Handle, Args->Data);
-         case CMD_SET_LENGTH:     return COMMAND_SetLength(Self, Args->Handle, Args->Data);
-         case CMD_SET_PAN:        return COMMAND_SetPan(Self, Args->Handle, Args->Data);
-         case CMD_SET_RATE:       return COMMAND_SetRate(Self, Args->Handle, Args->Data);
-         case CMD_SET_SAMPLE:     return COMMAND_SetSample(Self, Args->Handle, Args->Data);
-         case CMD_SET_VOLUME:     return COMMAND_SetVolume(Self, Args->Handle, Args->Data);
-         case CMD_STOP:           return COMMAND_Stop(Self, Args->Handle);
-         case CMD_STOP_LOOPING:   return COMMAND_StopLooping(Self, Args->Handle);
-         case CMD_SET_POSITION:   return COMMAND_SetPosition(Self, Args->Handle, Args->Data);
+         case CMD_CONTINUE:       return sndMixContinue(Self, Args->Handle);
+         case CMD_FADE_IN:        return sndMixFadeIn(Self, Args->Handle);
+         case CMD_FADE_OUT:       return sndMixFadeOut(Self, Args->Handle);
+         case CMD_MUTE:           return sndMixMute(Self, Args->Handle, Args->Data);
+         case CMD_PLAY:           return sndMixPlay(Self, Args->Handle, Args->Data);
+         case CMD_SET_FREQUENCY:  return sndMixFrequency(Self, Args->Handle, Args->Data);
+         case CMD_SET_PAN:        return sndMixPan(Self, Args->Handle, Args->Data);
+         case CMD_SET_RATE:       return sndMixRate(Self, Args->Handle, Args->Data);
+         case CMD_SET_SAMPLE:     return sndMixSample(Self, Args->Handle, Args->Data);
+         case CMD_SET_VOLUME:     return sndMixVolume(Self, Args->Handle, Args->Data);
+         case CMD_STOP:           return sndMixStop(Self, Args->Handle);
+         case CMD_STOP_LOOPING:   return sndMixStopLooping(Self, Args->Handle);
+         case CMD_SET_POSITION:   return sndMixPosition(Self, Args->Handle, Args->Data);
       }
    }
 
@@ -963,9 +962,9 @@ To change volume and mixer levels, use the SetVolume method.  It is possible to 
 available mixers and for different channels per mixer - for instance you may set different volumes for left and right
 speakers.  Support is also provided for special options, such as muting.
 
-To set the volume for a mixer, use its index (by scanning the #VolumeCtl field) or set its name (to change the Master
-volume, use a name of `Master`).  A channel needs to be specified, or use `CHN_ALL` to synchronise the volume for all
-channels.  The new mixer value is set in the Volume field.  Optional flags may be set as follows:
+To set the volume for a mixer, use its index or set its name (to change the Master volume, use a name of `Master`).
+A channel needs to be specified, or use `CHN_ALL` to synchronise the volume for all channels.  The new mixer value is
+set in the Volume field.  Optional flags may be set as follows:
 
 <types lookup="SVF"/>
 
@@ -1426,9 +1425,6 @@ static ERROR SET_Stereo(extAudio *Self, LONG Value)
 /*********************************************************************************************************************
 
 -FIELD-
-TotalChannels: The total number of audio channels allocated by all processes.
-
--FIELD-
 Treble: Sets the amount of treble to use for audio playback.
 
 The Treble field controls the amount of treble that is applied when audio is played back over the user's speakers.  Not
@@ -1535,20 +1531,19 @@ ERROR process_commands(extAudio *Self, LONG Elements)
             auto &cmds = Self->Sets[index].Commands;
             for (LONG i=0; i < (LONG)cmds.size(); i++) {
                switch(cmds[i].CommandID) {
-                  case CMD_CONTINUE:       COMMAND_Continue(Self, cmds[i].Handle); break;
-                  case CMD_FADE_IN:        COMMAND_FadeIn(Self, cmds[i].Handle); break;
-                  case CMD_FADE_OUT:       COMMAND_FadeOut(Self, cmds[i].Handle); break;
-                  case CMD_MUTE:           COMMAND_Mute(Self, cmds[i].Handle, cmds[i].Data); break;
-                  case CMD_PLAY:           COMMAND_Play(Self, cmds[i].Handle, cmds[i].Data); break;
-                  case CMD_SET_FREQUENCY:  COMMAND_SetFrequency(Self, cmds[i].Handle, cmds[i].Data); break;
-                  case CMD_SET_LENGTH:     COMMAND_SetLength(Self, cmds[i].Handle, cmds[i].Data); break;
-                  case CMD_SET_PAN:        COMMAND_SetPan(Self, cmds[i].Handle, cmds[i].Data); break;
-                  case CMD_SET_RATE:       COMMAND_SetRate(Self, cmds[i].Handle, cmds[i].Data); break;
-                  case CMD_SET_SAMPLE:     COMMAND_SetSample(Self, cmds[i].Handle, cmds[i].Data); break;
-                  case CMD_SET_VOLUME:     COMMAND_SetVolume(Self, cmds[i].Handle, cmds[i].Data); break;
-                  case CMD_STOP:           COMMAND_Stop(Self, cmds[i].Handle); break;
-                  case CMD_STOP_LOOPING:   COMMAND_StopLooping(Self, cmds[i].Handle); break;
-                  case CMD_SET_POSITION:   COMMAND_SetPosition(Self, cmds[i].Handle, cmds[i].Data); break;
+                  case CMD_CONTINUE:       sndMixContinue(Self, cmds[i].Handle); break;
+                  case CMD_FADE_IN:        sndMixFadeIn(Self, cmds[i].Handle); break;
+                  case CMD_FADE_OUT:       sndMixFadeOut(Self, cmds[i].Handle); break;
+                  case CMD_MUTE:           sndMixMute(Self, cmds[i].Handle, cmds[i].Data); break;
+                  case CMD_PLAY:           sndMixPlay(Self, cmds[i].Handle, cmds[i].Data); break;
+                  case CMD_SET_FREQUENCY:  sndMixFrequency(Self, cmds[i].Handle, cmds[i].Data); break;
+                  case CMD_SET_PAN:        sndMixPan(Self, cmds[i].Handle, cmds[i].Data); break;
+                  case CMD_SET_RATE:       sndMixRate(Self, cmds[i].Handle, cmds[i].Data); break;
+                  case CMD_SET_SAMPLE:     sndMixSample(Self, cmds[i].Handle, cmds[i].Data); break;
+                  case CMD_SET_VOLUME:     sndMixVolume(Self, cmds[i].Handle, cmds[i].Data); break;
+                  case CMD_STOP:           sndMixStop(Self, cmds[i].Handle); break;
+                  case CMD_STOP_LOOPING:   sndMixStopLooping(Self, cmds[i].Handle); break;
+                  case CMD_SET_POSITION:   sndMixPosition(Self, cmds[i].Handle, cmds[i].Data); break;
 
                   case CMD_START_SEQUENCE:
                   case CMD_END_SEQUENCE:

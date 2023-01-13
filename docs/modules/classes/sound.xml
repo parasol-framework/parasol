@@ -350,7 +350,6 @@ snd.acActivate()
       <const name="RESTRICT_PLAY">Restricts playback so that the sound can never play on more than one channel at any given time.</const>
       <const name="STEREO">Indicates that the sound has multiple audio channels.</const>
       <const name="STREAM">Read-Only. Indicates that streaming is enabled.</const>
-      <const name="TERMINATE">Self-terminate when the sound sample has finished playback.</const>
     </constants>
 
     <constants lookup="STREAM" comment="Streaming options">

@@ -51,8 +51,7 @@ class objSound;
 #define SDF_NEW 0x00000002
 #define SDF_QUERY 0x00000004
 #define SDF_STEREO 0x00000008
-#define SDF_TERMINATE 0x00000010
-#define SDF_RESTRICT_PLAY 0x00000020
+#define SDF_RESTRICT_PLAY 0x00000010
 #define SDF_STREAM 0x40000000
 #define SDF_NOTE 0x80000000
 
@@ -318,11 +317,37 @@ struct AudioBase {
    ERROR (*_StartDrivers)(void);
    ERROR (*_WaitDrivers)(LONG TimeOut);
    LONG (*_SetChannels)(LONG Total);
+   ERROR (*_MixContinue)(objAudio * Audio, LONG Handle);
+   ERROR (*_MixFadeIn)(objAudio * Audio, LONG Handle);
+   ERROR (*_MixFadeOut)(objAudio * Audio, LONG Handle);
+   ERROR (*_MixFrequency)(objAudio * Audio, LONG Handle, LONG Frequency);
+   ERROR (*_MixMute)(objAudio * Audio, LONG Handle, LONG Mute);
+   ERROR (*_MixPan)(objAudio * Audio, LONG Handle, DOUBLE Pan);
+   ERROR (*_MixPlay)(objAudio * Audio, LONG Handle, LONG Frequency);
+   ERROR (*_MixPosition)(objAudio * Audio, LONG Handle, LONG Position);
+   ERROR (*_MixRate)(objAudio * Audio, LONG Handle, LONG Rate);
+   ERROR (*_MixSample)(objAudio * Audio, LONG Handle, LONG Sample);
+   ERROR (*_MixStop)(objAudio * Audio, LONG Handle);
+   ERROR (*_MixStopLooping)(objAudio * Audio, LONG Handle);
+   ERROR (*_MixVolume)(objAudio * Audio, LONG Handle, DOUBLE Volume);
 };
 
 #ifndef PRV_AUDIO_MODULE
 inline ERROR sndStartDrivers(void) { return AudioBase->_StartDrivers(); }
 inline ERROR sndWaitDrivers(LONG TimeOut) { return AudioBase->_WaitDrivers(TimeOut); }
 inline LONG sndSetChannels(LONG Total) { return AudioBase->_SetChannels(Total); }
+inline ERROR sndMixContinue(objAudio * Audio, LONG Handle) { return AudioBase->_MixContinue(Audio,Handle); }
+inline ERROR sndMixFadeIn(objAudio * Audio, LONG Handle) { return AudioBase->_MixFadeIn(Audio,Handle); }
+inline ERROR sndMixFadeOut(objAudio * Audio, LONG Handle) { return AudioBase->_MixFadeOut(Audio,Handle); }
+inline ERROR sndMixFrequency(objAudio * Audio, LONG Handle, LONG Frequency) { return AudioBase->_MixFrequency(Audio,Handle,Frequency); }
+inline ERROR sndMixMute(objAudio * Audio, LONG Handle, LONG Mute) { return AudioBase->_MixMute(Audio,Handle,Mute); }
+inline ERROR sndMixPan(objAudio * Audio, LONG Handle, DOUBLE Pan) { return AudioBase->_MixPan(Audio,Handle,Pan); }
+inline ERROR sndMixPlay(objAudio * Audio, LONG Handle, LONG Frequency) { return AudioBase->_MixPlay(Audio,Handle,Frequency); }
+inline ERROR sndMixPosition(objAudio * Audio, LONG Handle, LONG Position) { return AudioBase->_MixPosition(Audio,Handle,Position); }
+inline ERROR sndMixRate(objAudio * Audio, LONG Handle, LONG Rate) { return AudioBase->_MixRate(Audio,Handle,Rate); }
+inline ERROR sndMixSample(objAudio * Audio, LONG Handle, LONG Sample) { return AudioBase->_MixSample(Audio,Handle,Sample); }
+inline ERROR sndMixStop(objAudio * Audio, LONG Handle) { return AudioBase->_MixStop(Audio,Handle); }
+inline ERROR sndMixStopLooping(objAudio * Audio, LONG Handle) { return AudioBase->_MixStopLooping(Audio,Handle); }
+inline ERROR sndMixVolume(objAudio * Audio, LONG Handle, DOUBLE Volume) { return AudioBase->_MixVolume(Audio,Handle,Volume); }
 #endif
 

@@ -14,6 +14,237 @@
   </info>
 
   <function>
+    <name>MixContinue</name>
+    <comment>Continue playing a stopped channel.</comment>
+    <prototype>ERROR sndMixContinue(objAudio * Audio, LONG Handle)</prototype>
+    <input>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
+    </input>
+    <description>
+<p>This function will continue playback on a channel that has previously been stopped.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>MixFadeIn</name>
+    <comment>Fade in a channel from zero volume.</comment>
+    <prototype>ERROR sndMixFadeIn(objAudio * Audio, LONG Handle)</prototype>
+    <input>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
+    </input>
+    <description>
+<p>This function will fade in a mixer channel that has previously been faded out with MixFadeOut.  It is a requirement that <code>VOL_RAMPING</code> or <code>OVER_SAMPLING</code> flags have been set in the target Audio object.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>MixFadeOut</name>
+    <comment>Fade a channel to zero volume.</comment>
+    <prototype>ERROR sndMixFadeOut(objAudio * Audio, LONG Handle)</prototype>
+    <input>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
+    </input>
+    <description>
+<p>This function will fade out a mixer channel if in oversampling mode and the channel has data being played.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>MixFrequency</name>
+    <comment>Sets a channel's playback rate.</comment>
+    <prototype>ERROR sndMixFrequency(objAudio * Audio, LONG Handle, LONG Frequency)</prototype>
+    <input>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
+      <param type="LONG" name="Frequency">The desired frequency.</param>
+    </input>
+    <description>
+<p>Use this function to set the playback rate of a mixer channel.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>MixMute</name>
+    <comment>Mutes the audio of a channel.</comment>
+    <prototype>ERROR sndMixMute(objAudio * Audio, LONG Handle, LONG Mute)</prototype>
+    <input>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
+      <param type="LONG" name="Mute">Set to any value to mute the channel.  A value of 0 will undo the mute setting.</param>
+    </input>
+    <description>
+<p>Use this function to mute the audio of a mixer channel.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>MixPan</name>
+    <comment>Sets a channel's panning value.</comment>
+    <prototype>ERROR sndMixPan(objAudio * Audio, LONG Handle, DOUBLE Pan)</prototype>
+    <input>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
+      <param type="DOUBLE" name="Pan">The desired pan value between -1.0 and 1.0.</param>
+    </input>
+    <description>
+<p>Use this function to set a mixer channel's panning value.  Accepted values are between -1.0 (left) and 1.0 (right).</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>MixPlay</name>
+    <comment>Commences channel playback at a set frequency..</comment>
+    <prototype>ERROR sndMixPlay(objAudio * Audio, LONG Handle, LONG Frequency)</prototype>
+    <input>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
+      <param type="LONG" name="Frequency">The new playing position, measured in bytes.</param>
+    </input>
+    <description>
+<p>This function will start playback of the sound sample associated with the target mixer channel.  If the channel is already in playback mode, it will be stopped to facilitate the new playback request.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>MixPosition</name>
+    <comment>Sets a channel's playing position relative to the current sample.</comment>
+    <prototype>ERROR sndMixPosition(objAudio * Audio, LONG Handle, LONG Position)</prototype>
+    <input>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
+      <param type="LONG" name="Position">The new playing position, measured in bytes.</param>
+    </input>
+    <description>
+<p>This function will change the playing position of a mixer channel for the current sound sample.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="OutOfRange">A specified number is outside of the valid range.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>MixRate</name>
+    <comment>Sets a new update rate for a channel.</comment>
+    <prototype>ERROR sndMixRate(objAudio * Audio, LONG Handle, LONG Rate)</prototype>
+    <input>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
+      <param type="LONG" name="Rate">The new update rate in milliseconds.</param>
+    </input>
+    <description>
+<p>This function will set a new update rate for all channels, measured in milliseconds.  The default update rate is 125, which is equivalent to 5000Hz.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>MixSample</name>
+    <comment>Associate a sound sample with a mixer channel.</comment>
+    <prototype>ERROR sndMixSample(objAudio * Audio, LONG Handle, LONG Sample)</prototype>
+    <input>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
+      <param type="LONG" name="Sample">A sample handle allocated from <field>_Audio_</field>.AddSample() or <field>_Audio_</field>.AddStream().</param>
+    </input>
+    <description>
+<p>This function will associate a sound sample with a mixer channel.  Configuration should then follow (e.g. volume and pan values).</p>
+<p>The referenced Sample must have been added to the audio server via the <class name="Audio" index="AddSample()">Audio:AddSample()</class> or <class name="Audio" index="AddStream()">Audio:AddStream()</class> methods.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>MixStop</name>
+    <comment>Stops all playback on a channel.</comment>
+    <prototype>ERROR sndMixStop(objAudio * Audio, LONG Handle)</prototype>
+    <input>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
+    </input>
+    <description>
+<p>This function will stop a channel that is currently playing.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>MixStopLooping</name>
+    <comment>Cancels any playback loop configured for a channel.</comment>
+    <prototype>ERROR sndMixStopLooping(objAudio * Audio, LONG Handle)</prototype>
+    <input>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
+    </input>
+    <description>
+<p>This function will cancel any loop that is associated with a mixer channel in playback mode.  This does not affect the loop configuration if playback is restarted for the active sample.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>MixVolume</name>
+    <comment>Changes the volume of a channel.</comment>
+    <prototype>ERROR sndMixVolume(objAudio * Audio, LONG Handle, DOUBLE Volume)</prototype>
+    <input>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
+      <param type="DOUBLE" name="Volume">The new volume for the channel.</param>
+    </input>
+    <description>
+<p>This function will change the volume of a mixer channel.  Valid values are between 0 and 1.0.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
     <name>SetChannels</name>
     <comment>Defines the maximum number of channels available for sound mixing.</comment>
     <prototype>LONG sndSetChannels(LONG Total)</prototype>
@@ -134,7 +365,6 @@
       <const name="RESTRICT_PLAY">Restricts playback so that the sound can never play on more than one channel at any given time.</const>
       <const name="STEREO">Indicates that the sound has multiple audio channels.</const>
       <const name="STREAM">Read-Only. Indicates that streaming is enabled.</const>
-      <const name="TERMINATE">Self-terminate when the sound sample has finished playback.</const>
     </constants>
 
     <constants lookup="SFM" comment="These audio bit formats are supported by AddSample and AddStream.">
