@@ -139,25 +139,25 @@ static ERROR sndMixFadeOut(objAudio *Audio, LONG Handle)
 
    auto destchannel = channel + ((extAudio *)Audio)->Sets[Handle>>16].Total;
 
-   if ((channel->State IS CHS_STOPPED) or (channel->State IS CHS_FINISHED) or
-       (destchannel->State IS CHS_FADE_OUT) or
+   if ((channel->State IS CHS::STOPPED) or (channel->State IS CHS::FINISHED) or
+       (destchannel->State IS CHS::FADE_OUT) or
        ((channel->LVolume < 0.01) and (channel->RVolume < 0.01))) return ERR_Okay;
 
-   destchannel->State = CHS_FADE_OUT;
+   destchannel->State = CHS::FADE_OUT;
 
    // Copy the channel information
 
    auto oldstatus = channel->State;
-   channel->State = CHS_STOPPED;
+   channel->State = CHS::STOPPED;
    destchannel = channel;
    channel->State = oldstatus;
 
    // Start ramping
 
    destchannel->Volume = 0;
-   destchannel->State = CHS_FADE_OUT;
+   destchannel->State = CHS::FADE_OUT;
    set_channel_volume((extAudio *)Audio, destchannel);
-   destchannel->Flags |= CHF_VOL_RAMP;
+   destchannel->Flags |= CHF::VOL_RAMP;
    return ERR_Okay;
 }
 
@@ -196,7 +196,7 @@ static ERROR sndMixContinue(objAudio *Audio, LONG Handle)
 
    // Do nothing if the channel is already active
 
-   if (channel->State IS CHS_PLAYING) return ERR_Okay;
+   if (channel->State IS CHS::PLAYING) return ERR_Okay;
 
    // Check if the read position is already at the end of the sample
 
@@ -207,11 +207,11 @@ static ERROR sndMixContinue(objAudio *Audio, LONG Handle)
 
    if (Audio->Flags & ADF_OVER_SAMPLING) sndMixFadeOut(Audio, Handle);
 
-   channel->State = CHS_PLAYING;
+   channel->State = CHS::PLAYING;
 
    if (Audio->Flags & ADF_OVER_SAMPLING) {
       channel += ((extAudio *)Audio)->Sets[Handle>>16].Total;
-      channel->State = CHS_PLAYING;
+      channel->State = CHS::PLAYING;
    }
 
    parasol::SwitchContext context(Audio);
@@ -301,8 +301,8 @@ static ERROR sndMixMute(objAudio *Audio, LONG Handle, LONG Mute)
       return ERR_Okay;
    }
 
-   if (Mute != 0) channel->Flags |= CHF_MUTE;
-   else channel->Flags &= ~CHF_MUTE;
+   if (Mute != 0) channel->Flags |= CHF::MUTE;
+   else channel->Flags &= ~CHF::MUTE;
    set_channel_volume((extAudio *)Audio, channel);
    return ERR_Okay;
 }
@@ -458,104 +458,104 @@ static ERROR sndMixPosition(objAudio *Audio, LONG Handle, LONG Position)
 
    // Check if sample has been changed, and if so, set the values to the channel structure
 
-   if (channel->Flags & CHF_CHANGED) {
-      channel->Flags &= ~CHF_CHANGED;
+   if ((channel->Flags & CHF::CHANGED) != CHF::NIL) {
+      channel->Flags &= ~CHF::CHANGED;
 
       // If channel status is released and the new sample does not have two loops, end the sample
 
-      if ((sample.LoopMode != LOOP_SINGLE_RELEASE) and (sample.LoopMode != LOOP_DOUBLE) and (channel->State IS CHS_RELEASED)) {
-         channel->State = CHS_FINISHED;
+      if ((sample.LoopMode != LOOP::SINGLE_RELEASE) and (sample.LoopMode != LOOP::DOUBLE) and (channel->State IS CHS::RELEASED)) {
+         channel->State = CHS::FINISHED;
          return ERR_Okay;
       }
    }
 
    switch (channel->State) {
-      case CHS_FINISHED:
-      case CHS_PLAYING:
+      case CHS::FINISHED:
+      case CHS::PLAYING:
          // Either playing sample before releasing or playing has ended - check the first loop type.
 
          channel->LoopIndex = 1;
          switch (sample.Loop1Type) {
-            case 0:
+            case LTYPE::NIL:
                // No looping - if position is below sample end, set it and start playing there
                if (bitpos < sample.SampleLength) {
                   channel->Position    = bitpos;
                   channel->PositionLow = 0;
-                  channel->State       = CHS_PLAYING;
-                  channel->Flags       &= ~CHF_BACKWARD;
+                  channel->State       = CHS::PLAYING;
+                  channel->Flags       &= ~CHF::BACKWARD;
                }
-               else channel->State = CHS_FINISHED;
+               else channel->State = CHS::FINISHED;
                break;
 
-            case LTYPE_UNIDIRECTIONAL:
+            case LTYPE::UNIDIRECTIONAL:
                // Unidirectional looping - if position is below loop end, set it, otherwise set loop start as the
                // new position. Start playing in any case.
                if ( bitpos < sample.Loop1End ) channel->Position = bitpos;
                else channel->Position = sample.Loop1Start;
                channel->PositionLow = 0;
-               channel->State       = CHS_PLAYING;
-               channel->Flags      &= ~CHF_BACKWARD;
+               channel->State       = CHS::PLAYING;
+               channel->Flags      &= ~CHF::BACKWARD;
                break;
 
-            case LTYPE_BIDIRECTIONAL:
+            case LTYPE::BIDIRECTIONAL:
                // Bidirectional looping - if position is below loop end, set it and start playing forward, otherwise
                // set loop end as the new position and start playing backwards.
                if (bitpos < sample.Loop1End ) {
                   channel->Position = bitpos;
-                  channel->Flags &= ~CHF_BACKWARD;
+                  channel->Flags &= ~CHF::BACKWARD;
                }
                else {
                   channel->Position = sample.Loop1End;
-                  channel->Flags |= CHF_BACKWARD;
+                  channel->Flags |= CHF::BACKWARD;
                }
                channel->PositionLow = 0;
-               channel->State = CHS_PLAYING;
+               channel->State = CHS::PLAYING;
          }
          break;
 
-      case CHS_RELEASED: // Playing after sample has been released - check second loop type.
+      case CHS::RELEASED: // Playing after sample has been released - check second loop type.
          channel->LoopIndex = 2;
          switch (sample.Loop2Type) {
-            case 0:
+            case LTYPE::NIL:
                // No looping - if position is below sample end, set it and start playing there.
 
                if (bitpos < sample.SampleLength ) {
                   channel->Position    = bitpos;
                   channel->PositionLow = 0;
-                  channel->State       = CHS_PLAYING;
-                  channel->Flags       &= ~CHF_BACKWARD;
+                  channel->State       = CHS::PLAYING;
+                  channel->Flags       &= ~CHF::BACKWARD;
                }
-               else channel->State = CHS_FINISHED;
+               else channel->State = CHS::FINISHED;
                break;
 
-            case LTYPE_UNIDIRECTIONAL:
+            case LTYPE::UNIDIRECTIONAL:
                // Unidirectional looping - if position is below loop end, set it, otherwise set loop start as the
                // new position. Start playing in any case.
                if (bitpos < sample.Loop2End) channel->Position = bitpos;
                else channel->Position = sample.Loop2Start;
                channel->PositionLow = 0;
-               channel->State = CHS_PLAYING;
-               channel->Flags &= ~CHF_BACKWARD;
+               channel->State = CHS::PLAYING;
+               channel->Flags &= ~CHF::BACKWARD;
                break;
 
-            case LTYPE_BIDIRECTIONAL:
+            case LTYPE::BIDIRECTIONAL:
                // Bidirectional looping - if position is below loop end, set it and start playing forward, otherwise
                // set loop end as the new position and start playing backwards.
 
                if (bitpos < sample.Loop2End) {
                   channel->Position = bitpos;
-                  channel->Flags   &= ~CHF_BACKWARD;
+                  channel->Flags   &= ~CHF::BACKWARD;
                }
                else {
                   channel->Position = sample.Loop2End;
-                  channel->Flags   |= CHF_BACKWARD;
+                  channel->Flags   |= CHF::BACKWARD;
                }
                channel->PositionLow = 0;
-               channel->State       = CHS_PLAYING;
+               channel->State       = CHS::PLAYING;
          }
          break;
 
-      case CHS_STOPPED:
+      case CHS::STOPPED:
       default:
          // If sound has been stopped do nothing
          break;
@@ -563,7 +563,7 @@ static ERROR sndMixPosition(objAudio *Audio, LONG Handle, LONG Position)
 
    if (Audio->Flags & ADF_OVER_SAMPLING) sndMixFadeIn(Audio, Handle);
 
-   if (channel->State IS CHS_PLAYING) {
+   if (channel->State IS CHS::PLAYING) {
       parasol::SwitchContext context(Audio);
       if (((extAudio *)Audio)->Timer) UpdateTimer(((extAudio *)Audio)->Timer, -MIX_INTERVAL);
       else {
@@ -613,7 +613,7 @@ static ERROR sndMixPlay(objAudio *Audio, LONG Handle, LONG Frequency)
 
    if (Audio->Flags & ADF_OVER_SAMPLING) sndMixFadeOut(Audio, Handle);
 
-   channel->State     = CHS_FINISHED; // Turn off previous sound
+   channel->State     = CHS::FINISHED; // Turn off previous sound
    channel->Frequency = Frequency; // New frequency
 
    return sndMixPosition(Audio, Handle, 0); // Setting position to the beginning of the sample also initiates playback
@@ -714,17 +714,17 @@ ERROR sndMixSample(objAudio *Audio, LONG Handle, LONG SampleIndex)
    if (channel->SampleHandle IS idx) return ERR_Okay; // Already associated?
 
    channel->SampleHandle = idx;    // Set new sample number to channel
-   channel->Flags |= CHF_CHANGED;  // Sample has been changed
+   channel->Flags |= CHF::CHANGED;  // Sample has been changed
 
    // If the new sample has one Amiga-compatible loop and playing has ended (not released or stopped), set the new
    // sample and start playing from loop start.
 
    auto &s = ((extAudio *)Audio)->Samples[idx];
-   if ((s.LoopMode IS LOOP_AMIGA) and (channel->State IS CHS_FINISHED)) {
+   if ((s.LoopMode IS LOOP::AMIGA) and (channel->State IS CHS::FINISHED)) {
       // Set Amiga sample and start playing.  We won't do this with interpolated mixing, as this tends to cause clicks.
 
       if (!(Audio->Flags & ADF_OVER_SAMPLING)) {
-         channel->State = CHS_PLAYING;
+         channel->State = CHS::PLAYING;
          sndMixPosition(Audio, Handle, s.Loop1Start);
       }
    }
@@ -807,11 +807,11 @@ ERROR sndMixStop(objAudio *Audio, LONG Handle)
       return ERR_Okay;
    }
 
-   channel->State = CHS_STOPPED;
+   channel->State = CHS::STOPPED;
 
    if (Audio->Flags & ADF_OVER_SAMPLING) {
       channel += ((extAudio *)Audio)->Sets[Handle>>16].Total;
-      channel->State = CHS_STOPPED;
+      channel->State = CHS::STOPPED;
    }
    return ERR_Okay;
 }
@@ -850,12 +850,12 @@ static ERROR sndMixStopLoop(objAudio *Audio, LONG Handle)
       return ERR_Okay;
    }
 
-   if (channel->State != CHS_PLAYING) return ERR_Okay;
+   if (channel->State != CHS::PLAYING) return ERR_Okay;
 
    auto &sample = ((extAudio *)Audio)->Samples[channel->SampleHandle];
 
-   if ((sample.LoopMode IS LOOP_SINGLE_RELEASE) or (sample.LoopMode IS LOOP_DOUBLE)) {
-      channel->State = CHS_RELEASED;
+   if ((sample.LoopMode IS LOOP::SINGLE_RELEASE) or (sample.LoopMode IS LOOP::DOUBLE)) {
+      channel->State = CHS::RELEASED;
    }
 
    return ERR_Okay;

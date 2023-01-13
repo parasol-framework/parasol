@@ -43,7 +43,8 @@ static void convert_float16(FLOAT *buf, LONG TotalSamples, WORD *dest)
 
 static LONG samples_until_end(extAudio *Self, AudioChannel &Channel, LONG *NextOffset)
 {
-   LONG num, lpStart, lpEnd, lpType;
+   LONG num, lpStart, lpEnd;
+   LTYPE lpType;
 
    *NextOffset = 1;
 
@@ -79,7 +80,7 @@ static LONG samples_until_end(extAudio *Self, AudioChannel &Channel, LONG *NextO
          else num = sample.SampleLength - Channel.Position;
          break;
 
-      case LTYPE_UNIDIRECTIONAL:
+      case LTYPE::UNIDIRECTIONAL:
          if (Self->Flags & ADF_OVER_SAMPLING) {
             if ((Channel.Position + 1) < lpEnd) num = (lpEnd - 1) - Channel.Position;
             else { // The last sample of the loop
@@ -90,8 +91,8 @@ static LONG samples_until_end(extAudio *Self, AudioChannel &Channel, LONG *NextO
          else num = lpEnd - Channel.Position;
          break;
 
-      case LTYPE_BIDIRECTIONAL:
-         if (Channel.Flags & CHF_BACKWARD) { // Backwards
+      case LTYPE::BIDIRECTIONAL:
+         if ((Channel.Flags & CHF::BACKWARD) != CHF::NIL) { // Backwards
             if (Self->Flags & ADF_OVER_SAMPLING) {
                if (Channel.Position IS (lpEnd-1)) { // First sample of the loop backwards
                   *NextOffset = 0;
@@ -128,9 +129,9 @@ static bool amiga_change(extAudio *Self, AudioChannel &Channel)
 
    if (Channel.SampleHandle > 1) Channel.SampleHandle--;
    auto &sample = Self->Samples[Channel.SampleHandle];
-   Channel.Flags &= ~CHF_CHANGED;
+   Channel.Flags &= ~CHF::CHANGED;
 
-   if (sample.LoopMode IS LOOP_AMIGA) {
+   if (sample.LoopMode IS LOOP::AMIGA) {
       // Looping - start playback from loop beginning
       Channel.Position    = sample.Loop1Start;
       Channel.PositionLow = 0;
@@ -138,7 +139,7 @@ static bool amiga_change(extAudio *Self, AudioChannel &Channel)
    }
 
    // Not looping - finish the sample
-   Channel.State = CHS_FINISHED;
+   Channel.State = CHS::FINISHED;
    return true;
 }
 
@@ -147,7 +148,8 @@ static bool amiga_change(extAudio *Self, AudioChannel &Channel)
 static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
 {
    parasol::Log log(__FUNCTION__);
-   LONG lpStart, lpEnd, lpType;
+   LONG lpStart, lpEnd;
+   LTYPE lpType;
 
    auto &sample = Self->Samples[Channel.SampleHandle];
 
@@ -162,26 +164,26 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
       lpType  = sample.Loop1Type;
    }
 
-   if (!lpType) { // No loop - did we reach sample end?
+   if (lpType IS LTYPE::NIL) { // No loop - did we reach sample end?
       if (Channel.Position >= sample.SampleLength) {
          auto &prev_sample = Self->Samples[Channel.SampleHandle-1];
-         if ((Channel.Flags & CHF_CHANGED) and
-             ((sample.LoopMode IS LOOP_AMIGA) or (sample.LoopMode IS LOOP_AMIGA_NONE)) and
-             ((prev_sample.LoopMode IS LOOP_AMIGA) or (prev_sample.LoopMode IS LOOP_AMIGA_NONE))) {
+         if (((Channel.Flags & CHF::CHANGED) != CHF::NIL) and
+             ((sample.LoopMode IS LOOP::AMIGA) or (sample.LoopMode IS LOOP::AMIGA_NONE)) and
+             ((prev_sample.LoopMode IS LOOP::AMIGA) or (prev_sample.LoopMode IS LOOP::AMIGA_NONE))) {
             return amiga_change(Self, Channel);
          }
 
          // No sample change - we are finished
-         Channel.State = CHS_FINISHED;
+         Channel.State = CHS::FINISHED;
          return true;
       }
       else return false;
    }
 
-   if (Channel.Flags & CHF_BACKWARD) {
+   if ((Channel.Flags & CHF::BACKWARD) != CHF::NIL) {
       // Going backwards - did we reach loop start? (signed comparison takes care of possible wraparound)
       if ((Channel.Position < lpStart) or ((Channel.Position IS lpStart) and (Channel.PositionLow IS 0)) ) {
-         Channel.Flags &= ~CHF_BACKWARD;
+         Channel.Flags &= ~CHF::BACKWARD;
          LONG n = ((lpStart - Channel.Position) << 16) - Channel.PositionLow - 1;
          // -1 is compensation for the fudge factor at loop end, see below
          Channel.Position = lpStart + (n>>16);
@@ -231,16 +233,16 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
                // Loop back to the beginning of the stream if necessary
 
                if ((bytes_read <= 0) or (Channel.StreamPos >= sample.StreamLength)) {
-                  if (sample.Loop2Type) {
+                  if (sample.Loop2Type != LTYPE::NIL) {
                      acSeek(*stream, (DOUBLE)(sample.SeekStart + sample.Loop2Start), SEEK_START);
                      Channel.StreamPos = 0;
                   }
-                  else Channel.State = CHS_FINISHED;
+                  else Channel.State = CHS::FINISHED;
                }
             }
             else {
                log.warning("Failed to stream data from object #%d.", stream.obj->UID);
-               Channel.State = CHS_FINISHED;
+               Channel.State = CHS::FINISHED;
             }
          }
          else {
@@ -253,22 +255,22 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
 
       auto &prev_sample = Self->Samples[Channel.SampleHandle-1];
 
-      if ((Channel.Flags & CHF_CHANGED) and
-          ((sample.LoopMode IS LOOP_AMIGA) or (sample.LoopMode IS LOOP_AMIGA_NONE)) and
-          ((prev_sample.LoopMode IS LOOP_AMIGA) or (prev_sample.LoopMode IS LOOP_AMIGA_NONE))) {
+      if (((Channel.Flags & CHF::CHANGED) != CHF::NIL) and
+          ((sample.LoopMode IS LOOP::AMIGA) or (sample.LoopMode IS LOOP::AMIGA_NONE)) and
+          ((prev_sample.LoopMode IS LOOP::AMIGA) or (prev_sample.LoopMode IS LOOP::AMIGA_NONE))) {
          return amiga_change(Self, Channel);
       }
 
       // Go to the second loop if the sound has been released
 
-      if ((Channel.LoopIndex IS 1) and (Channel.State IS CHS_RELEASED)) {
+      if ((Channel.LoopIndex IS 1) and (Channel.State IS CHS::RELEASED)) {
          Channel.LoopIndex = 2;
          return false;
       }
 
-      if (lpType IS LTYPE_BIDIRECTIONAL ) {
+      if (lpType IS LTYPE::BIDIRECTIONAL ) {
          // Bidirectional loop - change direction
-         Channel.Flags |= CHF_BACKWARD;
+         Channel.Flags |= CHF::BACKWARD;
          LONG n = ((Channel.Position - lpEnd) << 16) + Channel.PositionLow + 1;
 
          // +1 is a fudge factor to make sure we'll access the correct samples all the time - a similar adjustment is
@@ -394,8 +396,8 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, LONG TotalSamples
 
    glMixDest = (UBYTE *)Dest;
    while (TotalSamples > 0) {
-      if (Channel.State IS CHS_STOPPED) return;
-      else if (Channel.State IS CHS_FINISHED) return;
+      if (Channel.State IS CHS::STOPPED) return;
+      else if (Channel.State IS CHS::FINISHED) return;
 
       LONG nextoffset;
       LONG sue = samples_until_end(Self, Channel, &nextoffset);
@@ -419,12 +421,12 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, LONG TotalSamples
 
          auto mix_routine = Self->MixRoutines[sample.SampleType];
 
-         if (Channel.Flags & CHF_BACKWARD) MixStep = -step;
+         if ((Channel.Flags & CHF::BACKWARD) != CHF::NIL) MixStep = -step;
          else MixStep = step;
 
          // If volume ramping is enabled, mix one sample element at a time and adjust volume by RAMPSPEED.
 
-         while ((Channel.Flags & CHF_VOL_RAMP) and (mix_now > 0)) {
+         while (((Channel.Flags & CHF::VOL_RAMP) != CHF::NIL) and (mix_now > 0)) {
             mix_routine(1, nextoffset, mastervol * Channel.LVolume, mastervol * Channel.RVolume);
             mix_now--;
 
@@ -452,15 +454,15 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, LONG TotalSamples
                else cont = true;
             }
 
-            if (!cont) Channel.Flags &= ~CHF_VOL_RAMP;
+            if (!cont) Channel.Flags &= ~CHF::VOL_RAMP;
          }
 
          if ((Channel.LVolume <= 0.01) and (Channel.RVolume <= 0.01)) {
             // If the volume is zero we can just increment the position and not mix anything
             MixSrcPos += mix_now * MixStep;
-            if (Channel.State IS CHS_FADE_OUT) {
-               Channel.State = CHS_STOPPED;
-               Channel.Flags &= ~CHF_VOL_RAMP;
+            if (Channel.State IS CHS::FADE_OUT) {
+               Channel.State = CHS::STOPPED;
+               Channel.Flags &= ~CHF::VOL_RAMP;
             }
          }
          else {

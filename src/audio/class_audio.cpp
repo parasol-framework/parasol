@@ -176,8 +176,8 @@ ERROR AUDIO_AddSample(extAudio *Self, struct sndAddSample *Args)
 
    // Eliminate zero-byte loops
 
-   if (sample.Loop1Start IS sample.Loop1End) sample.Loop1Type = 0;
-   if (sample.Loop2Start IS sample.Loop2End) sample.Loop2Type = 0;
+   if (sample.Loop1Start IS sample.Loop1End) sample.Loop1Type = LTYPE::NIL;
+   if (sample.Loop2Start IS sample.Loop2End) sample.Loop2Type = LTYPE::NIL;
 
    if ((!sample.SampleType) or (Args->DataSize <= 0) or (!Args->Data)) {
       sample.Data = NULL;
@@ -224,7 +224,8 @@ There are three types of loop modes that can be specified in the LoopMode field:
 &LOOP
 
 The Loop1Type and Loop2Type fields normally determine the style of the loop, however only unidirectional looping is
-currently supported for streams.  For that reason, set the type variables to either NULL or `LTYPE_UNIDIRECTIONAL`.
+currently supported for streams.  For that reason, set the type variables to either `LTYPE::NIL` or
+`LTYPE::UNIDIRECTIONAL`.
 
 -INPUT-
 cstr Path: Refers to the file that contains the sample data, or NULL if you will supply an ObjectID.
@@ -301,12 +302,12 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
    sample.SeekStart    = Args->SeekStart;
    sample.StreamLength = (Args->SampleLength > 0) ? Args->SampleLength : 0x7fffffff; // 'Infinite' stream length
    sample.BufferLength = bufferlength;
-   sample.LoopMode     = LOOP_SINGLE;
+   sample.LoopMode     = LOOP::SINGLE;
    sample.Loop1End     = bufferlength>>shift;
-   sample.Loop1Type    = LTYPE_UNIDIRECTIONAL;
+   sample.Loop1Type    = LTYPE::UNIDIRECTIONAL;
 
    if (Args->Loop) {
-      sample.Loop2Type    = LTYPE_UNIDIRECTIONAL;
+      sample.Loop2Type    = LTYPE::UNIDIRECTIONAL;
       sample.Loop2Start   = Args->Loop->Loop1Start;
       sample.Loop2End     = Args->Loop->Loop1End;
       sample.StreamLength = sample.Loop2End;
@@ -1350,7 +1351,7 @@ static ERROR set_channel_volume(extAudio *Self, AudioChannel *Channel)
 
    // Convert the volume into left/right volume parameters
 
-   if (Channel->Flags & CHF_MUTE) {
+   if ((Channel->Flags & CHF::MUTE) != CHF::NIL) {
       leftvol  = 0;
       rightvol = 0;
    }
@@ -1365,15 +1366,15 @@ static ERROR set_channel_volume(extAudio *Self, AudioChannel *Channel)
 
    // Start volume ramping if necessary
 
-   Channel->Flags &= ~CHF_VOL_RAMP;
+   Channel->Flags &= ~CHF::VOL_RAMP;
    if ((Self->Flags & ADF_OVER_SAMPLING) and (Self->Flags & ADF_VOL_RAMPING)) {
       if ((Channel->LVolume != leftvol) or (Channel->LVolumeTarget != leftvol)) {
-         Channel->Flags |= CHF_VOL_RAMP;
+         Channel->Flags |= CHF::VOL_RAMP;
          Channel->LVolumeTarget = leftvol;
       }
 
       if ((Channel->RVolume != rightvol) or (Channel->RVolumeTarget != rightvol)) {
-         Channel->Flags |= CHF_VOL_RAMP;
+         Channel->Flags |= CHF::VOL_RAMP;
          Channel->RVolumeTarget = rightvol;
       }
    }

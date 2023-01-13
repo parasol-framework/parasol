@@ -41,10 +41,10 @@ struct AudioSample {
    LONG     SeekStart;    // Offset to use when seeking to the start of sample data.
    LONG     StreamLength; // Total byte-length of the sample data that is being streamed.
    LONG     BufferLength; // Total byte-length of the stream buffer.
+   LOOP     LoopMode;     // Loop mode (single, double)
    UBYTE    SampleType;   // Type of sample (bit format)
-   BYTE     LoopMode;     // Loop mode (single, double)
-   BYTE     Loop1Type;    // First loop type (unidirectional, bidirectional)
-   BYTE     Loop2Type;    // Second loop type (unidirectional, bidirectional)
+   LTYPE    Loop1Type;    // First loop type (unidirectional, bidirectional)
+   LTYPE    Loop2Type;    // Second loop type (unidirectional, bidirectional)
    bool     Free;         // Set to true if the StreamID object should be terminated on sample removal.
 
    AudioSample() {
@@ -73,9 +73,9 @@ struct AudioSample {
       StreamLength = 0;
       BufferLength = 0;
       SampleType   = 0;
-      LoopMode     = 0;
-      Loop1Type    = 0;
-      Loop2Type    = 0;
+      LoopMode     = LOOP::NIL;
+      Loop1Type    = LTYPE::NIL;
+      Loop2Type    = LTYPE::NIL;
       Free         = false;
    }
 };
@@ -95,13 +95,13 @@ struct AudioChannel {
    DOUBLE   Pan;            // Pan value (-1.0 - 1.0)
    OBJECTID SoundID;        // ID of the sound object using this channel, if relevant
    LONG     SampleHandle;   // Sample index, direct lookup into extAudio->Samples
-   LONG     Flags;          // Special flags
+   CHF      Flags;          // Special flags
    LONG     Position;       // Current playing/mixing position
    LONG     Frequency;      // Playback frequency
    LONG     StreamPos;      // Current read position within the referenced audio stream
    LONG     PositionLow;    // Playing position, lower bits
    BYTE     Priority;       // Priority of the sound that has been assigned to this channel
-   BYTE     State;          // Channel state
+   CHS      State;          // Channel state
    BYTE     LoopIndex;      // The current active loop (either 0, 1 or 2)
    bool     Buffering;
 

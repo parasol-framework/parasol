@@ -299,7 +299,7 @@ snd.acActivate()
       <name>Stream</name>
       <comment>Defines the preferred streaming method for the sample.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="STREAM">INT</type>
+      <type lookup="STREAM">STREAM</type>
       <description>
 <types lookup="STREAM"/>
       </description>

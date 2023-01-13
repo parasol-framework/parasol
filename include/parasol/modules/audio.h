@@ -32,10 +32,15 @@ class objSound;
 
 // Optional flags for the AudioChannel structure.
 
-#define CHF_MUTE 0x00000001
-#define CHF_BACKWARD 0x00000002
-#define CHF_VOL_RAMP 0x00000004
-#define CHF_CHANGED 0x00000008
+enum class CHF : ULONG {
+   NIL = 0,
+   MUTE = 0x00000001,
+   BACKWARD = 0x00000002,
+   VOL_RAMP = 0x00000004,
+   CHANGED = 0x00000008,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(CHF)
 
 // Flags for the SetVolume() method.
 
@@ -66,22 +71,31 @@ class objSound;
 
 // Loop modes for the AudioLoop structure.
 
-#define LOOP_SINGLE 1
-#define LOOP_SINGLE_RELEASE 2
-#define LOOP_DOUBLE 3
-#define LOOP_AMIGA_NONE 4
-#define LOOP_AMIGA 5
+enum class LOOP : WORD {
+   NIL = 0,
+   SINGLE = 1,
+   SINGLE_RELEASE = 2,
+   DOUBLE = 3,
+   AMIGA_NONE = 4,
+   AMIGA = 5,
+};
 
 // Loop types for the AudioLoop structure.
 
-#define LTYPE_UNIDIRECTIONAL 1
-#define LTYPE_BIDIRECTIONAL 2
+enum class LTYPE : BYTE {
+   NIL = 0,
+   UNIDIRECTIONAL = 1,
+   BIDIRECTIONAL = 2,
+};
 
 // Streaming options
 
-#define STREAM_NEVER 1
-#define STREAM_SMART 2
-#define STREAM_ALWAYS 3
+enum class STREAM : LONG {
+   NIL = 0,
+   NEVER = 1,
+   SMART = 2,
+   ALWAYS = 3,
+};
 
 // Definitions for the Note field.  An 'S' indicates a sharp note.
 
@@ -101,20 +115,23 @@ class objSound;
 
 // Channel status types for the AudioChannel structure.
 
-#define CHS_STOPPED 0
-#define CHS_FINISHED 1
-#define CHS_PLAYING 2
-#define CHS_RELEASED 3
-#define CHS_FADE_OUT 4
+enum class CHS : BYTE {
+   NIL = 0,
+   STOPPED = 0,
+   FINISHED = 1,
+   PLAYING = 2,
+   RELEASED = 3,
+   FADE_OUT = 4,
+};
 
 struct AudioLoop {
-   WORD LoopMode;    // Loop mode (single, double)
-   BYTE Loop1Type;   // First loop type (unidirectional, bidirectional)
-   BYTE Loop2Type;   // Second loop type (unidirectional, bidirectional)
-   LONG Loop1Start;  // Start of the first loop
-   LONG Loop1End;    // End of the first loop
-   LONG Loop2Start;  // Start of the second loop
-   LONG Loop2End;    // End of the second loop
+   LOOP  LoopMode;   // Loop mode (single, double)
+   LTYPE Loop1Type;  // First loop type (unidirectional, bidirectional)
+   LTYPE Loop2Type;  // Second loop type (unidirectional, bidirectional)
+   LONG  Loop1Start; // Start of the first loop
+   LONG  Loop1End;   // End of the first loop
+   LONG  Loop2Start; // Start of the second loop
+   LONG  Loop2End;   // End of the second loop
 };
 
 typedef struct WAVEFormat {
@@ -247,7 +264,7 @@ class objSound : public BaseClass {
    OBJECTID  AudioID;      // Refers to the audio object/device to use for playback.
    LONG      LoopStart;    // The byte position at which sample looping begins.
    LONG      LoopEnd;      // The byte position at which sample looping will end.
-   LONG      Stream;       // Defines the preferred streaming method for the sample.
+   STREAM    Stream;       // Defines the preferred streaming method for the sample.
    LONG      BufferLength; // Defines the size of the buffer to use when streaming is enabled.
    OBJECTID  StreamFileID; // Refers to a File object that is being streamed for playback.
    LONG      Position;     // The current playback position.

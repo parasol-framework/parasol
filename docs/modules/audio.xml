@@ -39,7 +39,7 @@
       <param type="LONG" name="Handle">The target channel.</param>
     </input>
     <description>
-<p>Use this function to end a buffered command sequence that was started by <action>MixStartSequence</action>.</p>
+<p>Use this function to end a buffered command sequence that was started by <function module="Audio">MixStartSequence</function>.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -417,9 +417,9 @@
   </types>
   <structs>
     <struct name="AudioLoop" comment="Loop settings for the AddSample() method.">
-      <field name="LoopMode" type="WORD" lookup="LOOP">Loop mode (single, double)</field>
-      <field name="Loop1Type" type="BYTE" lookup="LTYPE">First loop type (unidirectional, bidirectional)</field>
-      <field name="Loop2Type" type="BYTE" lookup="LTYPE">Second loop type (unidirectional, bidirectional)</field>
+      <field name="LoopMode" type="LOOP" lookup="LOOP">Loop mode (single, double)</field>
+      <field name="Loop1Type" type="LTYPE" lookup="LTYPE">First loop type (unidirectional, bidirectional)</field>
+      <field name="Loop2Type" type="LTYPE" lookup="LTYPE">Second loop type (unidirectional, bidirectional)</field>
       <field name="Loop1Start" type="LONG">Start of the first loop</field>
       <field name="Loop1End" type="LONG">End of the first loop</field>
       <field name="Loop2Start" type="LONG">Start of the second loop</field>

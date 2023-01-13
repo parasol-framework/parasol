@@ -227,7 +227,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          LONG i;
          for (i=0; i < glMaxSoundChannels; i++) {
             if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
-               if ((channel->State IS CHS_STOPPED) or (channel->State IS CHS_FINISHED)) break;
+               if ((channel->State IS CHS::STOPPED) or (channel->State IS CHS::FINISHED)) break;
                else if (channel->Priority < Self->Priority) priority = channel;
             }
             Self->ChannelIndex++;
@@ -619,7 +619,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    if (Self->Length IS -1) {
       log.msg("Enabling continuous audio streaming mode.");
 
-      Self->Stream = STREAM_ALWAYS;
+      Self->Stream = STREAM::ALWAYS;
       if (Self->BufferLength <= 0) Self->BufferLength = 32768;
       else if (Self->BufferLength < 256) Self->BufferLength = 256;
 
@@ -770,10 +770,10 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
       // Determine if we are going to use streaming to play this sample
 
       if (!Self->BufferLength) {
-         if ((Self->Stream IS STREAM_ALWAYS) and (Self->Length > 32768)) {
+         if ((Self->Stream IS STREAM::ALWAYS) and (Self->Length > 32768)) {
             Self->BufferLength = Self->BytesPerSecond * SECONDS_STREAM_BUFFER;
          }
-         else if ((Self->Stream IS STREAM_SMART) and (Self->Length > 524288)) {
+         else if ((Self->Stream IS STREAM::SMART) and (Self->Length > 524288)) {
             Self->BufferLength = Self->BytesPerSecond * SECONDS_STREAM_BUFFER;
          }
          else Self->BufferLength = Self->Length;
@@ -791,8 +791,8 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
          AudioLoop loop;
          if (Self->Flags & SDF_LOOP) {
             ClearMemory(&loop, sizeof(loop));
-            loop.LoopMode   = LOOP_SINGLE;
-            loop.Loop1Type  = LTYPE_UNIDIRECTIONAL;
+            loop.LoopMode   = LOOP::SINGLE;
+            loop.Loop1Type  = LTYPE::UNIDIRECTIONAL;
             loop.Loop1Start = Self->LoopStart;
             if (Self->LoopEnd) loop.Loop1End = Self->LoopEnd;
             else loop.Loop1End = Self->Length;
@@ -828,8 +828,8 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
             AudioLoop loop;
             if (Self->Flags & SDF_LOOP) {
                ClearMemory(&loop, sizeof(loop));
-               loop.LoopMode   = LOOP_SINGLE;
-               loop.Loop1Type  = LTYPE_UNIDIRECTIONAL;
+               loop.LoopMode   = LOOP::SINGLE;
+               loop.Loop1Type  = LTYPE::UNIDIRECTIONAL;
                loop.Loop1Start = Self->LoopStart;
                if (Self->LoopEnd) loop.Loop1End = Self->LoopEnd;
                else loop.Loop1End = Self->Length;
@@ -877,7 +877,7 @@ static ERROR SOUND_NewObject(extSound *Self, APTR Void)
    Self->Pan         = 0;
    Self->Playback    = 0;
    Self->Note        = NOTE_C; // Standard pitch
-   Self->Stream      = STREAM_SMART;
+   Self->Stream      = STREAM::SMART;
    return ERR_Okay;
 }
 
@@ -898,8 +898,8 @@ static ERROR SOUND_Reset(extSound *Self, APTR Void)
    if (audio.granted()) {
       Self->Position = 0;
       auto channel = audio->GetChannel(Self->ChannelIndex);
-      if ((channel->SoundID != Self->UID) or (channel->State IS CHS_STOPPED) or
-          (channel->State IS CHS_FINISHED)) {
+      if ((channel->SoundID != Self->UID) or (channel->State IS CHS::STOPPED) or
+          (channel->State IS CHS::FINISHED)) {
          return ERR_Okay;
       }
 
@@ -1035,7 +1035,7 @@ static ERROR SOUND_GET_Active(extSound *Self, LONG *Value)
       parasol::ScopedObjectLock<extAudio> audio(Self->AudioID);
       if (audio.granted()) {
          if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
-            if (!((channel->State IS CHS_STOPPED) or (channel->State IS CHS_FINISHED))) {
+            if (!((channel->State IS CHS::STOPPED) or (channel->State IS CHS::FINISHED))) {
                *Value = TRUE;
             }
          }
@@ -1622,9 +1622,9 @@ static const FieldDef clFlags[] = {
 };
 
 static const FieldDef clStream[] = {
-   { "Always", STREAM_ALWAYS },
-   { "Smart",  STREAM_SMART },
-   { "Never",  STREAM_NEVER },
+   { "Always", (LONG)STREAM::ALWAYS },
+   { "Smart",  (LONG)STREAM::SMART },
+   { "Never",  (LONG)STREAM::NEVER },
    { NULL, 0 }
 };
 
