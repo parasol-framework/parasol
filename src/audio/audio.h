@@ -83,7 +83,10 @@ struct AudioSample {
 struct AudioCommand {
    CMD  CommandID;    // Command ID
    LONG Handle;       // Channel handle
-   LONG Data;         // Special data related to the command ID
+   DOUBLE Data;       // Special data related to the command ID
+
+   AudioCommand(CMD pCommandID, LONG pHandle, LONG pData = 0) :
+      CommandID(pCommandID), Handle(pHandle), Data(pData) { }
 };
 
 struct AudioChannel {
