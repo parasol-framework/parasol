@@ -108,8 +108,6 @@ ERROR process_commands(extAudio *Self, LONG Elements)
          for (i=0; (i < (LONG)cmds.size()) and (!stop); i++) {
             switch(cmds[i].CommandID) {
                case CMD::CONTINUE:     sndMixContinue(Self, cmds[i].Handle); break;
-               case CMD::FADE_IN:      sndMixFadeIn(Self, cmds[i].Handle); break;
-               case CMD::FADE_OUT:     sndMixFadeOut(Self, cmds[i].Handle); break;
                case CMD::MUTE:         sndMixMute(Self, cmds[i].Handle, cmds[i].Data); break;
                case CMD::PLAY:         sndMixPlay(Self, cmds[i].Handle, cmds[i].Data); break;
                case CMD::FREQUENCY:    sndMixFrequency(Self, cmds[i].Handle, cmds[i].Data); break;
@@ -290,6 +288,7 @@ static void convert_float16(FLOAT *buf, LONG TotalSamples, WORD *dest)
 
 static LONG samples_until_end(extAudio *Self, AudioChannel &Channel, LONG *NextOffset)
 {
+   parasol::Log log(__FUNCTION__);
    LONG num, lp_start, lp_end;
    LTYPE lp_type;
 
@@ -363,8 +362,15 @@ static LONG samples_until_end(extAudio *Self, AudioChannel &Channel, LONG *NextO
          }
    }
 
-   if (num > 0x7FFF) return 0x7FFF0000; // 16.16 fixed point
-   else return ((num << 16) - Channel.PositionLow);
+   LONG result;
+   if (num > 0x7FFF) result = 0x7FFF0000; // 16.16 fixed point
+   else result = ((num << 16) - Channel.PositionLow);
+
+   if (result < 0) {
+      log.warning("Computed invalid SUE value of %d", result);
+      return 0;
+   }
+   else return result;
 }
 
 //********************************************************************************************************************
@@ -572,6 +578,10 @@ ERROR mix_data(extAudio *Self, LONG Elements, APTR Dest)
 
       for (auto n=1; n < (LONG)Self->Sets.size(); n++) {
          for (auto &c : Self->Sets[n].Channel) {
+            if (c.active()) mix_channel(Self, c, window, Self->MixBuffer);
+         }
+
+         for (auto &c : Self->Sets[n].Shadow) {
             if (c.active()) mix_channel(Self, c, window, Self->MixBuffer);
          }
       }

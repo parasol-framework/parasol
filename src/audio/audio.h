@@ -19,8 +19,6 @@ enum class CMD : LONG {
    STOP_LOOPING,
    POSITION,
    PLAY,
-   FADE_IN,
-   FADE_OUT,
    MUTE,
    SET_LENGTH,
    CONTINUE
@@ -125,10 +123,10 @@ struct AudioChannel {
 
 struct ChannelSet {
    std::vector<AudioChannel> Channel;  // Array of channel objects
+   std::vector<AudioChannel> Shadow;   // Array of shadow channels for oversampling
    std::vector<AudioCommand> Commands; // Buffered commands.
-   LONG UpdateRate;           // Update rate, measured in milliseconds
-   LONG MixLeft;              // Amount of mix elements left before the next command-update occurs
-   WORD Total;                // Total number of base channels (not including oversampling)
+   LONG UpdateRate; // Update rate, measured in milliseconds
+   LONG MixLeft;    // Amount of mix elements left before the next command-update occurs
 
    ChannelSet() {
       clear();
@@ -140,9 +138,9 @@ struct ChannelSet {
 
    void clear() {
       Channel.clear();
+      Shadow.clear();
       UpdateRate = 0;
       MixLeft    = 0;
-      Total      = 0;
    }
 };
 
@@ -191,6 +189,10 @@ class extAudio : public objAudio {
 
    inline struct AudioChannel * GetChannel(LONG Handle) {
       return &this->Sets[Handle>>16].Channel[Handle & 0xffff];
+   }
+
+   inline struct AudioChannel * GetShadow(LONG Handle) {
+      return &this->Sets[Handle>>16].Shadow[Handle & 0xffff];
    }
 
    inline LONG MixLeft(LONG Value) {

@@ -3,26 +3,68 @@
 
 template <class T> void add_mix_cmd(objAudio *Audio, CMD Command, LONG Handle, T Data)
 {
+   parasol::Log log(__FUNCTION__);
    auto ea = (extAudio *)Audio;
    LONG index = Handle>>16;
 
    if ((index < 1) or (index >= (LONG)ea->Sets.size())) return;
 
    if (ea->Sets[index].Commands.capacity() > 0) {
-      ea->Sets[index].Commands.emplace_back(Command, Handle, Data);
+      if (ea->Sets[index].Commands.size() > 1024) {
+         log.warning("Command buffer overflow detected.");
+      }
+      else ea->Sets[index].Commands.emplace_back(Command, Handle, Data);
    }
 }
 
 static void add_mix_cmd(objAudio *Audio, CMD Command, LONG Handle)
 {
+   parasol::Log log(__FUNCTION__);
    auto ea = (extAudio *)Audio;
    LONG index = Handle>>16;
 
    if ((index < 1) or (index >= (LONG)ea->Sets.size())) return;
 
    if (ea->Sets[index].Commands.capacity() > 0) {
-      ea->Sets[index].Commands.emplace_back(Command, Handle, 0);
+      if (ea->Sets[index].Commands.size() > 1024) {
+         log.warning("Command buffer overflow detected.");
+      }
+      else ea->Sets[index].Commands.emplace_back(Command, Handle, 0);
    }
+}
+
+//********************************************************************************************************************
+// It is a requirement that VOL_RAMPING or OVER_SAMPLING flags have been set in the target Audio object.
+
+static ERROR fade_in(extAudio *Audio, AudioChannel *channel)
+{
+   if ((!(Audio->Flags & ADF_VOL_RAMPING)) or (!(Audio->Flags & ADF_OVER_SAMPLING))) return ERR_Okay;
+
+   channel->LVolume = 0;
+   channel->RVolume = 0;
+   return set_channel_volume(Audio, channel);
+}
+
+//********************************************************************************************************************
+// In oversampling mode, active samples are faded-out on a shadow channel rather than stopped abruptly.
+
+static ERROR fade_out(extAudio *Audio, LONG Handle)
+{
+   if (!(Audio->Flags & ADF_OVER_SAMPLING)) return ERR_Okay;
+
+   auto channel = Audio->GetChannel(Handle);
+   auto shadow  = Audio->GetShadow(Handle);
+
+   if ((channel->State IS CHS::STOPPED) or (channel->State IS CHS::FINISHED) or
+       (shadow->State IS CHS::FADE_OUT) or
+       ((channel->LVolume < 0.01) and (channel->RVolume < 0.01))) return ERR_Okay;
+
+   *shadow = *channel;
+   shadow->Volume = 0;
+   shadow->State  = CHS::FADE_OUT;
+   set_channel_volume(Audio, shadow);
+   shadow->Flags |= CHF::VOL_RAMP;
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
@@ -56,9 +98,7 @@ static ERROR sndMixStartSequence(objAudio *Audio, LONG Handle)
    log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
-
    channel->Buffering = true;
-
    return ERR_Okay;
 }
 
@@ -89,72 +129,12 @@ static ERROR sndMixEndSequence(objAudio *Audio, LONG Handle)
    log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
-
    channel->Buffering = false;
 
    // Inserting an END_SEQUENCE informs the mixer that the instructions for this period have concluded.
 
    add_mix_cmd(Audio, CMD::END_SEQUENCE, Handle);
 
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-MixFadeOut: Fade a channel to zero volume.
-
-This function will fade out a mixer channel if in oversampling mode and the channel has data being played.
-
--INPUT-
-obj(Audio) Audio: The target Audio object.
-int Handle: The target channel.
-
--ERRORS-
-Okay
-NullArgs
--END-
-
-*********************************************************************************************************************/
-
-static ERROR sndMixFadeOut(objAudio *Audio, LONG Handle)
-{
-   parasol::Log log("Mix:FadeOut");
-
-   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
-
-   log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
-
-   if (!(Audio->Flags & ADF_OVER_SAMPLING)) return ERR_Okay;
-
-   auto channel = ((extAudio *)Audio)->GetChannel(Handle);
-
-   if (channel->Buffering) {
-      add_mix_cmd(Audio, CMD::FADE_OUT, Handle);
-      return ERR_Okay;
-   }
-
-   auto destchannel = channel + ((extAudio *)Audio)->Sets[Handle>>16].Total;
-
-   if ((channel->State IS CHS::STOPPED) or (channel->State IS CHS::FINISHED) or
-       (destchannel->State IS CHS::FADE_OUT) or
-       ((channel->LVolume < 0.01) and (channel->RVolume < 0.01))) return ERR_Okay;
-
-   destchannel->State = CHS::FADE_OUT;
-
-   // Copy the channel information
-
-   auto oldstatus = channel->State;
-   channel->State = CHS::STOPPED;
-   destchannel = channel;
-   channel->State = oldstatus;
-
-   // Start ramping
-
-   destchannel->Volume = 0;
-   destchannel->State = CHS::FADE_OUT;
-   set_channel_volume((extAudio *)Audio, destchannel);
-   destchannel->Flags |= CHF::VOL_RAMP;
    return ERR_Okay;
 }
 
@@ -200,13 +180,13 @@ static ERROR sndMixContinue(objAudio *Audio, LONG Handle)
    if ((sample.StreamID) and (channel->StreamPos >= sample.StreamLength)) return ERR_Okay;
    else if (channel->Position >= sample.SampleLength) return ERR_Okay;
 
-   if (Audio->Flags & ADF_OVER_SAMPLING) sndMixFadeOut(Audio, Handle);
+   fade_out((extAudio *)Audio, Handle);
 
    channel->State = CHS::PLAYING;
 
    if (Audio->Flags & ADF_OVER_SAMPLING) {
-      channel += ((extAudio *)Audio)->Sets[Handle>>16].Total;
-      channel->State = CHS::PLAYING;
+      auto shadow = ((extAudio *)Audio)->GetShadow(Handle);
+      shadow->State = CHS::PLAYING;
    }
 
    parasol::SwitchContext context(Audio);
@@ -219,48 +199,6 @@ static ERROR sndMixContinue(objAudio *Audio, LONG Handle)
 
    return ERR_Okay;
 }
-
-/*********************************************************************************************************************
-
--FUNCTION-
-MixFadeIn: Fade in a channel from zero volume.
-
-This function will fade in a mixer channel that has previously been faded out with MixFadeOut.  It is a requirement
-that `VOL_RAMPING` or `OVER_SAMPLING` flags have been set in the target Audio object.
-
--INPUT-
-obj(Audio) Audio: The target Audio object.
-int Handle: The target channel.
-
--ERRORS-
-Okay
-NullArgs
--END-
-
-*********************************************************************************************************************/
-
-static ERROR sndMixFadeIn(objAudio *Audio, LONG Handle)
-{
-   parasol::Log log("Mix:FadeIn");
-
-   log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
-
-   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
-
-   if ((!(Audio->Flags & ADF_VOL_RAMPING)) or (!(Audio->Flags & ADF_OVER_SAMPLING))) return ERR_Okay;
-
-   auto channel = ((extAudio *)Audio)->GetChannel(Handle);
-
-   if (channel->Buffering) {
-      add_mix_cmd(Audio, CMD::FADE_IN, Handle);
-      return ERR_Okay;
-   }
-
-   channel->LVolume = 0;
-   channel->RVolume = 0;
-   return set_channel_volume((extAudio *)Audio, channel);
-}
-
 
 /*********************************************************************************************************************
 
@@ -445,7 +383,7 @@ static ERROR sndMixPosition(objAudio *Audio, LONG Handle, LONG Position)
       Position = 0; // Internally we want to start from byte position zero in our stream buffer
    }
 
-   if (Audio->Flags & ADF_OVER_SAMPLING) sndMixFadeOut(Audio, Handle);
+   fade_out((extAudio *)Audio, Handle);
 
    // Convert position from bytes to samples
 
@@ -556,7 +494,7 @@ static ERROR sndMixPosition(objAudio *Audio, LONG Handle, LONG Position)
          break;
    }
 
-   if (Audio->Flags & ADF_OVER_SAMPLING) sndMixFadeIn(Audio, Handle);
+   fade_in((extAudio *)Audio, channel);
 
    if (channel->State IS CHS::PLAYING) {
       parasol::SwitchContext context(Audio);
@@ -606,7 +544,7 @@ static ERROR sndMixPlay(objAudio *Audio, LONG Handle, LONG Frequency)
       return ERR_Okay;
    }
 
-   if (Audio->Flags & ADF_OVER_SAMPLING) sndMixFadeOut(Audio, Handle);
+   fade_out((extAudio *)Audio, Handle);
 
    channel->State     = CHS::FINISHED; // Turn off previous sound
    channel->Frequency = Frequency; // New frequency
@@ -806,9 +744,10 @@ ERROR sndMixStop(objAudio *Audio, LONG Handle)
    channel->State = CHS::STOPPED;
 
    if (Audio->Flags & ADF_OVER_SAMPLING) {
-      channel += ((extAudio *)Audio)->Sets[Handle>>16].Total;
-      channel->State = CHS::STOPPED;
+      auto shadow = ((extAudio *)Audio)->GetShadow(Handle);
+      shadow->State = CHS::STOPPED;
    }
+
    return ERR_Okay;
 }
 

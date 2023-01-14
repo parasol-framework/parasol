@@ -8,8 +8,6 @@ static ERROR sndStartDrivers();
 static ERROR sndWaitDrivers(LONG TimeOut);
 static LONG sndSetChannels(LONG Total);
 static ERROR sndMixContinue(objAudio * Audio, LONG Handle);
-static ERROR sndMixFadeIn(objAudio * Audio, LONG Handle);
-static ERROR sndMixFadeOut(objAudio * Audio, LONG Handle);
 static ERROR sndMixFrequency(objAudio * Audio, LONG Handle, LONG Frequency);
 static ERROR sndMixMute(objAudio * Audio, LONG Handle, LONG Mute);
 static ERROR sndMixPan(objAudio * Audio, LONG Handle, DOUBLE Pan);
@@ -32,8 +30,6 @@ static ERROR sndMixEndSequence(objAudio * Audio, LONG Handle);
 
 FDEF argsMixContinue[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { 0, 0 } };
 FDEF argsMixEndSequence[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { 0, 0 } };
-FDEF argsMixFadeIn[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { 0, 0 } };
-FDEF argsMixFadeOut[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { 0, 0 } };
 FDEF argsMixFrequency[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { "Frequency", FD_LONG }, { 0, 0 } };
 FDEF argsMixMute[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { "Mute", FD_LONG }, { 0, 0 } };
 FDEF argsMixPan[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { "Pan", FD_DOUBLE }, { 0, 0 } };
@@ -54,8 +50,6 @@ const struct Function glFunctions[] = {
    { (APTR)sndWaitDrivers, "WaitDrivers", argsWaitDrivers },
    { (APTR)sndSetChannels, "SetChannels", argsSetChannels },
    { (APTR)sndMixContinue, "MixContinue", argsMixContinue },
-   { (APTR)sndMixFadeIn, "MixFadeIn", argsMixFadeIn },
-   { (APTR)sndMixFadeOut, "MixFadeOut", argsMixFadeOut },
    { (APTR)sndMixFrequency, "MixFrequency", argsMixFrequency },
    { (APTR)sndMixMute, "MixMute", argsMixMute },
    { (APTR)sndMixPan, "MixPan", argsMixPan },

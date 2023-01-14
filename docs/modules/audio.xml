@@ -48,40 +48,6 @@
   </function>
 
   <function>
-    <name>MixFadeIn</name>
-    <comment>Fade in a channel from zero volume.</comment>
-    <prototype>ERROR sndMixFadeIn(objAudio * Audio, LONG Handle)</prototype>
-    <input>
-      <param type="objAudio *" name="Audio">The target Audio object.</param>
-      <param type="LONG" name="Handle">The target channel.</param>
-    </input>
-    <description>
-<p>This function will fade in a mixer channel that has previously been faded out with MixFadeOut.  It is a requirement that <code>VOL_RAMPING</code> or <code>OVER_SAMPLING</code> flags have been set in the target Audio object.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
-    <name>MixFadeOut</name>
-    <comment>Fade a channel to zero volume.</comment>
-    <prototype>ERROR sndMixFadeOut(objAudio * Audio, LONG Handle)</prototype>
-    <input>
-      <param type="objAudio *" name="Audio">The target Audio object.</param>
-      <param type="LONG" name="Handle">The target channel.</param>
-    </input>
-    <description>
-<p>This function will fade out a mixer channel if in oversampling mode and the channel has data being played.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>MixFrequency</name>
     <comment>Sets a channel's playback rate.</comment>
     <prototype>ERROR sndMixFrequency(objAudio * Audio, LONG Handle, LONG Frequency)</prototype>

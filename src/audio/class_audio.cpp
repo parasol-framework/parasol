@@ -639,7 +639,6 @@ ArrayFull: The maximum number of available channel sets is currently exhausted.
 static ERROR AUDIO_OpenChannels(extAudio *Self, struct sndOpenChannels *Args)
 {
    parasol::Log log;
-   LONG total;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -655,11 +654,11 @@ static ERROR AUDIO_OpenChannels(extAudio *Self, struct sndOpenChannels *Args)
    LONG index = Self->Sets.size() + 1;
    Self->Sets.resize(index+1);
 
-   if (Self->Flags & ADF_OVER_SAMPLING) total = Args->Total * 2;
-   else total = Args->Total;
+   Self->Sets[index].Channel.resize(Args->Total);
 
-   Self->Sets[index].Channel.resize(total);
-   Self->Sets[index].Total      = Args->Total;
+   if (Self->Flags & ADF_OVER_SAMPLING) Self->Sets[index].Shadow.resize(Args->Total);
+   else Self->Sets[index].Shadow.clear();
+
    Self->Sets[index].UpdateRate = 125;  // Default mixer update rate of 125ms
    Self->Sets[index].MixLeft    = Self->MixLeft(Self->Sets[index].UpdateRate);
    Self->Sets[index].Commands.reserve(32);
@@ -1257,7 +1256,7 @@ static ERROR SET_Quality(extAudio *Self, LONG Value)
    if (Self->Quality < 10) return ERR_Okay;
    else if (Self->Quality < 33) Self->Flags |= ADF_FILTER_LOW;
    else if (Self->Quality < 66) Self->Flags |= ADF_FILTER_HIGH;
-   else Self->Flags |= ADF_OVER_SAMPLING;
+   else Self->Flags |= ADF_OVER_SAMPLING|ADF_FILTER_HIGH;
 
    return ERR_Okay;
 }

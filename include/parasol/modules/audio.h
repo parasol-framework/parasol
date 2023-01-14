@@ -301,8 +301,6 @@ struct AudioBase {
    ERROR (*_WaitDrivers)(LONG TimeOut);
    LONG (*_SetChannels)(LONG Total);
    ERROR (*_MixContinue)(objAudio * Audio, LONG Handle);
-   ERROR (*_MixFadeIn)(objAudio * Audio, LONG Handle);
-   ERROR (*_MixFadeOut)(objAudio * Audio, LONG Handle);
    ERROR (*_MixFrequency)(objAudio * Audio, LONG Handle, LONG Frequency);
    ERROR (*_MixMute)(objAudio * Audio, LONG Handle, LONG Mute);
    ERROR (*_MixPan)(objAudio * Audio, LONG Handle, DOUBLE Pan);
@@ -322,8 +320,6 @@ inline ERROR sndStartDrivers(void) { return AudioBase->_StartDrivers(); }
 inline ERROR sndWaitDrivers(LONG TimeOut) { return AudioBase->_WaitDrivers(TimeOut); }
 inline LONG sndSetChannels(LONG Total) { return AudioBase->_SetChannels(Total); }
 inline ERROR sndMixContinue(objAudio * Audio, LONG Handle) { return AudioBase->_MixContinue(Audio,Handle); }
-inline ERROR sndMixFadeIn(objAudio * Audio, LONG Handle) { return AudioBase->_MixFadeIn(Audio,Handle); }
-inline ERROR sndMixFadeOut(objAudio * Audio, LONG Handle) { return AudioBase->_MixFadeOut(Audio,Handle); }
 inline ERROR sndMixFrequency(objAudio * Audio, LONG Handle, LONG Frequency) { return AudioBase->_MixFrequency(Audio,Handle,Frequency); }
 inline ERROR sndMixMute(objAudio * Audio, LONG Handle, LONG Mute) { return AudioBase->_MixMute(Audio,Handle,Mute); }
 inline ERROR sndMixPan(objAudio * Audio, LONG Handle, DOUBLE Pan) { return AudioBase->_MixPan(Audio,Handle,Pan); }
