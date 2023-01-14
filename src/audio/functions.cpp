@@ -94,44 +94,42 @@ ERROR process_commands(extAudio *Self, LONG Elements)
    parasol::Log log(__FUNCTION__);
 
    for (LONG index=1; index < (LONG)Self->Sets.size(); index++) {
-      if (Self->Sets[index].Channel) {
-         Self->Sets[index].MixLeft -= Elements;
-         if (Self->Sets[index].MixLeft <= 0) {
-            // Reset the amount of mixing elements left and execute the next set of channel commands
+      Self->Sets[index].MixLeft -= Elements;
+      if (Self->Sets[index].MixLeft <= 0) {
+         // Reset the amount of mixing elements left and execute the next set of channel commands
 
-            Self->Sets[index].MixLeft = Self->MixLeft(Self->Sets[index].UpdateRate);
+         Self->Sets[index].MixLeft = Self->MixLeft(Self->Sets[index].UpdateRate);
 
-            if (Self->Sets[index].Commands.empty()) continue;
+         if (Self->Sets[index].Commands.empty()) continue;
 
-            LONG i;
-            bool stop = false;
-            auto &cmds = Self->Sets[index].Commands;
-            for (i=0; (i < (LONG)cmds.size()) and (!stop); i++) {
-               switch(cmds[i].CommandID) {
-                  case CMD::CONTINUE:     sndMixContinue(Self, cmds[i].Handle); break;
-                  case CMD::FADE_IN:      sndMixFadeIn(Self, cmds[i].Handle); break;
-                  case CMD::FADE_OUT:     sndMixFadeOut(Self, cmds[i].Handle); break;
-                  case CMD::MUTE:         sndMixMute(Self, cmds[i].Handle, cmds[i].Data); break;
-                  case CMD::PLAY:         sndMixPlay(Self, cmds[i].Handle, cmds[i].Data); break;
-                  case CMD::FREQUENCY:    sndMixFrequency(Self, cmds[i].Handle, cmds[i].Data); break;
-                  case CMD::PAN:          sndMixPan(Self, cmds[i].Handle, cmds[i].Data); break;
-                  case CMD::RATE:         sndMixRate(Self, cmds[i].Handle, cmds[i].Data); break;
-                  case CMD::SAMPLE:       sndMixSample(Self, cmds[i].Handle, cmds[i].Data); break;
-                  case CMD::VOLUME:       sndMixVolume(Self, cmds[i].Handle, cmds[i].Data); break;
-                  case CMD::STOP:         sndMixStop(Self, cmds[i].Handle); break;
-                  case CMD::STOP_LOOPING: sndMixStopLoop(Self, cmds[i].Handle); break;
-                  case CMD::POSITION:     sndMixPosition(Self, cmds[i].Handle, cmds[i].Data); break;
-                  case CMD::END_SEQUENCE: stop = true; break;
+         LONG i;
+         bool stop = false;
+         auto &cmds = Self->Sets[index].Commands;
+         for (i=0; (i < (LONG)cmds.size()) and (!stop); i++) {
+            switch(cmds[i].CommandID) {
+               case CMD::CONTINUE:     sndMixContinue(Self, cmds[i].Handle); break;
+               case CMD::FADE_IN:      sndMixFadeIn(Self, cmds[i].Handle); break;
+               case CMD::FADE_OUT:     sndMixFadeOut(Self, cmds[i].Handle); break;
+               case CMD::MUTE:         sndMixMute(Self, cmds[i].Handle, cmds[i].Data); break;
+               case CMD::PLAY:         sndMixPlay(Self, cmds[i].Handle, cmds[i].Data); break;
+               case CMD::FREQUENCY:    sndMixFrequency(Self, cmds[i].Handle, cmds[i].Data); break;
+               case CMD::PAN:          sndMixPan(Self, cmds[i].Handle, cmds[i].Data); break;
+               case CMD::RATE:         sndMixRate(Self, cmds[i].Handle, cmds[i].Data); break;
+               case CMD::SAMPLE:       sndMixSample(Self, cmds[i].Handle, cmds[i].Data); break;
+               case CMD::VOLUME:       sndMixVolume(Self, cmds[i].Handle, cmds[i].Data); break;
+               case CMD::STOP:         sndMixStop(Self, cmds[i].Handle); break;
+               case CMD::STOP_LOOPING: sndMixStopLoop(Self, cmds[i].Handle); break;
+               case CMD::POSITION:     sndMixPosition(Self, cmds[i].Handle, cmds[i].Data); break;
+               case CMD::END_SEQUENCE: stop = true; break;
 
-                  default:
-                     log.warning("Unrecognised command ID #%d at index %d.", LONG(cmds[i].CommandID), i);
-                     break;
-               }
+               default:
+                  log.warning("Unrecognised command ID #%d at index %d.", LONG(cmds[i].CommandID), i);
+                  break;
             }
-
-            if (i IS (LONG)cmds.size()) cmds.clear();
-            else cmds.erase(cmds.begin(), cmds.begin()+i);
          }
+
+         if (i IS (LONG)cmds.size()) cmds.clear();
+         else cmds.erase(cmds.begin(), cmds.begin()+i);
       }
    }
 
@@ -559,7 +557,7 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
 //********************************************************************************************************************
 // Main entry point for mixing sound data to destination
 
-ERROR mix_data(extAudio *Self, LONG Elements, APTR Destination)
+ERROR mix_data(extAudio *Self, LONG Elements, APTR Dest)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -573,12 +571,8 @@ ERROR mix_data(extAudio *Self, LONG Elements, APTR Destination)
       ClearMemory(Self->MixBuffer, sizeof(FLOAT) * (Self->Stereo ? (window<<1) : window));
 
       for (auto n=1; n < (LONG)Self->Sets.size(); n++) {
-         if (Self->Sets[n].Channel) {
-            for (auto i=0; i < Self->Sets[n].Actual; i++) {
-               if (Self->Sets[n].Channel[i].active()) {
-                  mix_channel(Self, Self->Sets[n].Channel[i], window, Self->MixBuffer);
-               }
-            }
+         for (auto &c : Self->Sets[n].Channel) {
+            if (c.active()) mix_channel(Self, c, window, Self->MixBuffer);
          }
       }
 
@@ -595,15 +589,15 @@ ERROR mix_data(extAudio *Self, LONG Elements, APTR Destination)
 
       }
       else if (Self->BitDepth IS 16) {
-         if (Self->Stereo) convert_float16((FLOAT *)Self->MixBuffer, window<<1, (WORD *)Destination);
-         else convert_float16((FLOAT *)Self->MixBuffer, window, (WORD *)Destination);
+         if (Self->Stereo) convert_float16((FLOAT *)Self->MixBuffer, window<<1, (WORD *)Dest);
+         else convert_float16((FLOAT *)Self->MixBuffer, window, (WORD *)Dest);
       }
       else {
-         if (Self->Stereo) convert_float8((FLOAT *)Self->MixBuffer, window<<1, (UBYTE *)Destination);
-         else convert_float8((FLOAT *)Self->MixBuffer, window, (UBYTE *)Destination);
+         if (Self->Stereo) convert_float8((FLOAT *)Self->MixBuffer, window<<1, (UBYTE *)Dest);
+         else convert_float8((FLOAT *)Self->MixBuffer, window, (UBYTE *)Dest);
       }
 
-      Destination = ((UBYTE *)Destination) + (window * Self->SampleBitSize);
+      Dest = ((UBYTE *)Dest) + (window * Self->SampleBitSize);
       Elements -= window;
    }
 

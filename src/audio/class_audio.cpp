@@ -75,9 +75,9 @@ static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
 
    // Allocate a floating-point mixing buffer
 
-   BYTE mixbitsize = Self->Stereo ? sizeof(FLOAT) * 2 : sizeof(FLOAT);
+   const BYTE mixbitsize = Self->Stereo ? sizeof(FLOAT) * 2 : sizeof(FLOAT);
 
-   #define MIXBUFLEN 20      // mixing buffer length 1/20th of a second
+   #define MIXBUFLEN 20 // Mixing buffer length 1/20th of a second
    Self->MixBufferSize = (((mixbitsize * Self->OutputRate) / MIXBUFLEN) + 15) & 0xfffffff0;
    Self->MixElements   = Self->MixBufferSize / mixbitsize;
 
@@ -216,13 +216,13 @@ machine without over-provisioning available resources.  For small samples under 
 
 The data source used for a stream can be located either at an accessible file path (through the Path parameter),
 or via an object that has stored the data (through the Object parameter). Set SeekStart to alter the byte position
-at which the audio data starts within the stream source.  The SampleLength parameter must also refer to the
+at which the audio data starts within the stream source.  The SampleLength parameter must refer to the
 byte-length of the entire audio stream.
 
 When creating a new stream, pay attention to the audio format that is being used for the sample data.
-While it is important to differentiate between 8-bit, 16-bit, mono and stereo, you should also be
-aware of whether or not the data is little or big endian, and if the sample data consists of signed or unsigned values.
-Because of the possible variations there are a number of sample formats, as illustrated in the following table:
+It is important to differentiate between 8-bit, 16-bit, mono and stereo, but also be aware of whether or not the data
+is little or big endian, and if the sample data consists of signed or unsigned values.  Because of the possible
+variations there are a number of sample formats, as illustrated in the following table:
 
 <types lookup="SFM"/>
 
@@ -520,9 +520,7 @@ static void user_login(APTR Reference, APTR Info, LONG InfoSize)
 
 static ERROR AUDIO_Free(extAudio *Self, APTR Void)
 {
-   if (Self->Flags & ADF_AUTO_SAVE) {
-      Self->saveSettings();
-   }
+   if (Self->Flags & ADF_AUTO_SAVE) Self->saveSettings();
 
    if (Self->Timer) { UpdateTimer(Self->Timer, 0); Self->Timer = NULL; }
 
@@ -581,8 +579,7 @@ static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
    Self->Flags      = ADF_OVER_SAMPLING|ADF_FILTER_HIGH|ADF_VOL_RAMPING|ADF_STEREO;
    Self->Periods    = 4;
    Self->PeriodSize = 2048;
-
-   StrCopy("default", Self->Device, sizeof(Self->Device));
+   Self->Device     = "default";
 
    const SystemState *state = GetSystemState();
    if ((!StrMatch(state->Platform, "Native")) or (!StrMatch(state->Platform, "Linux"))) {
@@ -642,7 +639,7 @@ ArrayFull: The maximum number of available channel sets is currently exhausted.
 static ERROR AUDIO_OpenChannels(extAudio *Self, struct sndOpenChannels *Args)
 {
    parasol::Log log;
-   LONG index, total;
+   LONG total;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -655,23 +652,20 @@ static ERROR AUDIO_OpenChannels(extAudio *Self, struct sndOpenChannels *Args)
 
    // Bear in mind that the +1 is for channel set 0 being a dummy entry.
 
-   index = Self->Sets.size() + 1;
+   LONG index = Self->Sets.size() + 1;
    Self->Sets.resize(index+1);
 
    if (Self->Flags & ADF_OVER_SAMPLING) total = Args->Total * 2;
    else total = Args->Total;
 
-   if (!AllocMemory(sizeof(AudioChannel) * total, MEM_DATA, &Self->Sets[index].Channel)) {
-      Self->Sets[index].Total      = Args->Total;
-      Self->Sets[index].Actual     = total;
-      Self->Sets[index].UpdateRate = 125;  // Default mixer update rate of 125ms
-      Self->Sets[index].MixLeft    = Self->MixLeft(Self->Sets[index].UpdateRate);
-      Self->Sets[index].Commands.reserve(32);
+   Self->Sets[index].Channel.resize(total);
+   Self->Sets[index].Total      = Args->Total;
+   Self->Sets[index].UpdateRate = 125;  // Default mixer update rate of 125ms
+   Self->Sets[index].MixLeft    = Self->MixLeft(Self->Sets[index].UpdateRate);
+   Self->Sets[index].Commands.reserve(32);
 
-      Args->Result = index<<16;
-      return ERR_Okay;
-   }
-   else return log.warning(ERR_AllocMemory);
+   Args->Result = index<<16;
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
@@ -753,7 +747,7 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
       else config->write("AUDIO", "Stereo", "FALSE");
 
 #ifdef __linux__
-      if (Self->Device[0]) config->write("AUDIO", "Device", Self->Device);
+      if (!Self->Device.empty()) config->write("AUDIO", "Device", Self->Device);
       else config->write("AUDIO", "Device", "default");
 
       if ((!Self->Volumes.empty()) and (Self->Flags & ADF_SYSTEM_WIDE)) {
@@ -1085,20 +1079,17 @@ The default device can always be referenced with a name of `Default`.
 
 static ERROR GET_Device(extAudio *Self, CSTRING *Value)
 {
-   *Value = Self->Device;
+   *Value = Self->Device.c_str();
    return ERR_Okay;
 }
 
 static ERROR SET_Device(extAudio *Self, CSTRING Value)
 {
-   if ((!Value) or (!*Value)) Value = "Default";
-
-   size_t i;
-   for (i=0; Value[i] and i < sizeof(Self->Device)-1; i++) {
-      if ((Value[i] >= 'A') and (Value[i] <= 'Z')) Self->Device[i] = Value[i] - 'A' + 'a';
-      else Self->Device[i] = Value[i];
+   if ((!Value) or (!*Value)) Self->Device = "default";
+   else {
+      Self->Device = Value;
+      std::transform(Self->Device.begin(), Self->Device.end(), Self->Device.begin(), ::tolower);
    }
-   Self->Device[i] = 0;
 
    return ERR_Okay;
 }
@@ -1314,10 +1305,9 @@ static void load_config(extAudio *Self)
       if (!config->read("AUDIO", "Periods", &value)) SET_Periods(Self, value);
       if (!config->read("AUDIO", "PeriodSize", &value)) SET_PeriodSize(Self, value);
 
-      std::string str;
-      if (!config->read("AUDIO", "Device", str)) StrCopy(str.c_str(), Self->Device, sizeof(Self->Device));
-      else StrCopy("default", Self->Device, sizeof(Self->Device));
+      if (config->read("AUDIO", "Device", Self->Device)) Self->Device = "default";
 
+      std::string str;
       Self->Flags |= ADF_STEREO;
       if (!config->read("AUDIO", "Stereo", str)) {
          if (!StrMatch("FALSE", str.c_str())) Self->Flags &= ~ADF_STEREO;

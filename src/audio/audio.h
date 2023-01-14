@@ -26,6 +26,16 @@ enum class CMD : LONG {
    CONTINUE
 };
 
+typedef struct WAVEFormat {
+   WORD Format;               // Type of WAVE data in the chunk
+   WORD Channels;             // Number of channels, 1=mono, 2=stereo
+   LONG Frequency;            // Playback frequency
+   LONG AvgBytesPerSecond;    // Channels * SamplesPerSecond * (BitsPerSample / 8)
+   WORD BlockAlign;           // Channels * (BitsPerSample / 8)
+   WORD BitsPerSample;        // Bits per sample
+   WORD ExtraLength;
+} WAVEFORMATEX;
+
 typedef LONG (*MixRoutine)(APTR, LONG, LONG, LONG, FLOAT, FLOAT);
 
 #define DEFAULT_BUFFER_SIZE 8096 // Measured in samples, not bytes
@@ -114,15 +124,13 @@ struct AudioChannel {
 };
 
 struct ChannelSet {
-   AudioChannel * Channel;    // Array of channel objects
-   std::vector<AudioCommand> Commands; // Buffered commands.  Can be empty for immediate command execution
+   std::vector<AudioChannel> Channel;  // Array of channel objects
+   std::vector<AudioCommand> Commands; // Buffered commands.
    LONG UpdateRate;           // Update rate, measured in milliseconds
    LONG MixLeft;              // Amount of mix elements left before the next command-update occurs
-   WORD Total;                // Total number of base channels
-   WORD Actual;               // Total number of channels, including oversampling channels
+   WORD Total;                // Total number of base channels (not including oversampling)
 
    ChannelSet() {
-      Channel = NULL;
       clear();
    }
 
@@ -131,12 +139,10 @@ struct ChannelSet {
    }
 
    void clear() {
-      if (Channel)  FreeResource(Channel);
-      Channel    = NULL;
+      Channel.clear();
       UpdateRate = 0;
       MixLeft    = 0;
       Total      = 0;
-      Actual     = 0;
    }
 };
 
@@ -177,7 +183,7 @@ class extAudio : public objAudio {
    TIMER Timer;
    LONG  MixBufferSize;
    LONG  MixElements;
-   char  Device[28];
+   std::string Device;
    BYTE  SampleBitSize;
    bool  Stereo;
    bool  Mute;

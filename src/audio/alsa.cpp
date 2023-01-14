@@ -29,7 +29,7 @@ static ERROR init_audio(extAudio *Self)
    long pmin, pmax;
    int dir;
    WORD voltotal;
-   char name[32], pcm_name[32];
+   std::string pcm_name;
 
    if (Self->Handle) {
       log.msg("Audio system is already active.");
@@ -43,8 +43,8 @@ static ERROR init_audio(extAudio *Self)
    // If 'plughw:0,0' is used, we get ALSA's software mixer, which allows us to set any kind of output options.
    // If 'hw:0,0' is used, we get precise hardware information.  Otherwise stick to 'default'.
 
-   if (Self->Device[0]) StrCopy(Self->Device, pcm_name, sizeof(pcm_name));
-   else StrCopy("default", pcm_name, sizeof(pcm_name));
+   if (!Self->Device.empty()) pcm_name = Self->Device;
+   else pcm_name = "default";
 
    // Convert english pcm_name to the device number
 
@@ -59,15 +59,15 @@ static ERROR init_audio(extAudio *Self)
       }
 
       while (card >= 0) {
-         snprintf(name, sizeof(name), "hw:%d", card);
+         std::string name = "hw:" + std::to_string(card);
 
-         if ((err = snd_ctl_open(&ctlhandle, name, 0)) >= 0) {
+         if ((err = snd_ctl_open(&ctlhandle, name.c_str(), 0)) >= 0) {
             if ((err = snd_ctl_card_info(ctlhandle, info)) >= 0) {
                cardid = (STRING)snd_ctl_card_info_get_id(info);
                cardname = (STRING)snd_ctl_card_info_get_name(info);
 
                if (!StrMatch(cardid, pcm_name)) {
-                  StrCopy(name, pcm_name, sizeof(pcm_name));
+                  pcm_name = name;
                   snd_ctl_close(ctlhandle);
                   break;
                }
@@ -100,10 +100,10 @@ static ERROR init_audio(extAudio *Self)
 
       volmax = 0;
       while (card >= 0) {
-         snprintf(name, sizeof(name), "hw:%d", card);
-         log.msg("Opening card %s", name);
+         std::string name = "hw:" + std::to_string(card);
+         log.msg("Opening card %s", name.c_str());
 
-         if ((err = snd_ctl_open(&ctlhandle, name, 0)) >= 0) {
+         if ((err = snd_ctl_open(&ctlhandle, name.c_str(), 0)) >= 0) {
             if ((err = snd_ctl_card_info(ctlhandle, info)) >= 0) {
 
                cardid = (STRING)snd_ctl_card_info_get_id(info);
@@ -114,7 +114,7 @@ static ERROR init_audio(extAudio *Self)
                if (!StrMatch("modem", cardid)) goto next_card;
 
                if ((err = snd_mixer_open(&mixhandle, 0)) >= 0) {
-                  if ((err = snd_mixer_attach(mixhandle, name)) >= 0) {
+                  if ((err = snd_mixer_attach(mixhandle, name.c_str())) >= 0) {
                      if ((err = snd_mixer_selem_register(mixhandle, NULL, NULL)) >= 0) {
                         if ((err = snd_mixer_load(mixhandle)) >= 0) {
                            // Build a list of all available volume controls
@@ -128,7 +128,7 @@ static ERROR init_audio(extAudio *Self)
                            if (voltotal > volmax) {
                               volmax = voltotal;
                               StrCopy(cardid, Self->Device, sizeof(Self->Device));
-                              StrCopy(name, pcm_name, sizeof(pcm_name));
+                              pcm_name = name;
                            }
                         }
                         else log.warning("snd_mixer_load() %s", snd_strerror(err));

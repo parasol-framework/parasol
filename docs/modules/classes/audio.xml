@@ -194,14 +194,14 @@
 
     <method>
       <name>RemoveSample</name>
-      <comment>Removes a sample from the global sample list and deallocates its memory usage.</comment>
+      <comment>Removes a sample from the global sample list and deallocates its resources.</comment>
       <prototype>ERROR sndRemoveSample(OBJECTPTR Object, LONG Handle)</prototype>
       <input>
         <param type="LONG" name="Handle">The handle of the sample that requires removal.</param>
       </input>
       <description>
 <p>Remove an allocated sample at any time by calling the RemoveSample method.  Once a sample is removed it is permanently deleted from the audio server and it is not possible to reallocate the sample against the same handle number.</p>
-<p>Over time, the continued allocation of audio samples will mean that freed handle numbers will become available again through the <method>AddSample</method> and <method>AddStream</method> methods.  Clearing all references to sample handles after use is therefore recommended.</p>
+<p>Sample handles can be reused by the API after being removed.  Clearing any old references to sample handles after use is therefore recommended.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>

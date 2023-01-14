@@ -191,8 +191,6 @@ static ERROR sndMixContinue(objAudio *Audio, LONG Handle)
       return ERR_Okay;
    }
 
-   // Do nothing if the channel is already active
-
    if (channel->State IS CHS::PLAYING) return ERR_Okay;
 
    // Check if the read position is already at the end of the sample

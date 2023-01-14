@@ -36,6 +36,7 @@ please refer to the @Audio class.
 #include <parasol/main.h>
 #include <parasol/modules/audio.h>
 #include <sstream>
+#include <algorithm>
 
 static ERROR CMDInit(OBJECTPTR, struct CoreBase *);
 static ERROR CMDExpunge(void);

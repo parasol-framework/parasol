@@ -88,16 +88,6 @@ module({ name="Audio", copyright="Paul Manias © 2002-2022", version=1.0 }, func
     int Loop2End            # End of the second loop
   ]])
 
-  struct("WAVEFormat", { type="waveformatex", restrict="c" }, [[
-    short Format             # Type of WAVE data in the chunk
-    short Channels           # Number of channels, 1=mono, 2=stereo
-    int   Frequency          # Playback frequency
-    int   AvgBytesPerSecond  # Channels * SamplesPerSecond * (BitsPerSample / 8)
-    short BlockAlign         # Channels * (BitsPerSample / 8)
-    short BitsPerSample      # Bits per sample
-    short ExtraLength
-  ]])
-
   methods("Audio", "Snd", {
     { id=1, name="OpenChannels" },
     { id=2, name="CloseChannels" },

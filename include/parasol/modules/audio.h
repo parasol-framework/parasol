@@ -139,16 +139,6 @@ struct AudioLoop {
    LONG  Loop2End;   // End of the second loop
 };
 
-typedef struct WAVEFormat {
-   WORD Format;               // Type of WAVE data in the chunk
-   WORD Channels;             // Number of channels, 1=mono, 2=stereo
-   LONG Frequency;            // Playback frequency
-   LONG AvgBytesPerSecond;    // Channels * SamplesPerSecond * (BitsPerSample / 8)
-   WORD BlockAlign;           // Channels * (BitsPerSample / 8)
-   WORD BitsPerSample;        // Bits per sample
-   WORD ExtraLength;
-} WAVEFORMATEX;
-
 // Audio class definition
 
 #define VER_AUDIO (1.000000)
