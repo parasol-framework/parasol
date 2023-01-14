@@ -16,7 +16,6 @@
     <description>
 <p>The Audio class provides a common audio service that works across multiple platforms and follows a client-server design model.</p>
 <p>Supported features include 8-bit and 16-bit output in stereo or mono, oversampling, streaming, multiple audio channels, sample sharing and command sequencing.  The Audio class functionality is simplified via the <class name="Sound">Sound</class> class interface, which we recommend in most cases where simplified audio playback is satisfactory.</p>
-<p>In some cases the audio server may be managed in a separate process space and allocated with a name of 'SystemAudio'. In this circumstance all communication with the SystemAudio object will typically be achieved by messaging protocols, but field values may be read in the normal manner.</p>
 <p>Support for audio recording is not currently available.</p></description>
     <source>
       <file>class_audio.cpp</file>
@@ -47,11 +46,6 @@
       <description>
 <p>Deactivating an audio object will switch off the mixer, clear the output buffer and return any allocated device resources back to the host system.  The audio object will remain in a suspended state until it is reactivated.</p>
       </description>
-    </action>
-
-    <action>
-      <name>Reset</name>
-      <comment>Resets the audio settings to default values.</comment>
     </action>
 
     <action>
@@ -167,7 +161,7 @@
         <param type="LONG" name="Handle">Must refer to a channel handle returned from the <method>OpenChannels</method> method.</param>
       </input>
       <description>
-<p>Use CloseChannels to destroy a group of channels that have previously been allocated through the <method>OpenChannels</method> method.  Any audio commands buffered against the channels will be cleared instantly.  Any audio data that has already been mixed into the output buffer will continue to play for 1 - 2 seconds.  If this is an issue then the volume should be muted at the same time.</p>
+<p>Use CloseChannels to destroy a group of channels that have previously been allocated through the <method>OpenChannels</method> method.  Any audio commands buffered against the channels will be cleared instantly.  Any audio data that has already been mixed into the output buffer can continue to play for 1 - 2 seconds.  If this is an issue then the volume should be muted at the same time.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -179,15 +173,13 @@
     <method>
       <name>OpenChannels</name>
       <comment>Allocates audio channels that can be used for sample playback.</comment>
-      <prototype>ERROR sndOpenChannels(OBJECTPTR Object, LONG Total, LONG Commands, LONG * Result)</prototype>
+      <prototype>ERROR sndOpenChannels(OBJECTPTR Object, LONG Total, LONG * Result)</prototype>
       <input>
         <param type="LONG" name="Total">Total of channels to allocate.</param>
-        <param type="LONG" name="Commands">The total number of command buffers to allocate for real-time processing.</param>
         <param type="LONG *" name="Result">The resulting channel handle is returned in this parameter.</param>
       </input>
       <description>
 <p>Use the OpenChannels method to open audio channels for sample playback.  Channels are allocated in sets with a size range between 1 and 64.  Channel sets make it easier to segregate playback between users of the same audio object.</p>
-<p>You may also indicate to this method how many command sequencing buffers you would like to allocate for your channels. This is particularly useful if you are writing a digital music sequencer, or if you want to process a number of real-time channel adjustments with precision timing.  You can allocate a maximum of 1024 command buffers at a cost of approximately eight bytes each.</p>
 <p>The resulting handle returned from this method is an integer consisting of two parts.  The upper word uniquely identifies the channel set that has been provided to you, while the lower word is used to refer to specific channel numbers.  To refer to specific channels when using some functions, do so with the formula <code>Channel = Handle | ChannelNo</code>.</p>
 <p>To destroy allocated channels, use the <method>CloseChannels</method> method.</p>
       </description>
@@ -244,17 +236,6 @@
   </methods>
 
   <fields>
-    <field>
-      <name>Bass</name>
-      <comment>Sets the amount of bass to use for audio playback.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>DOUBLE</type>
-      <description>
-<p>The Bass field controls the amount of bass that is applied when audio is played back over the user's speakers.  Not all platforms support bass adjustment.</p>
-<p>The bass value ranges between 0 and 100, with 50 being the default setting.</p>
-      </description>
-    </field>
-
     <field>
       <name>BitDepth</name>
       <comment>The bit depth affects the overall quality of audio input and output.</comment>
@@ -366,17 +347,6 @@
       <comment>Set to TRUE for stereo output and FALSE for mono output.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
-    </field>
-
-    <field>
-      <name>Treble</name>
-      <comment>Sets the amount of treble to use for audio playback.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>DOUBLE</type>
-      <description>
-<p>The Treble field controls the amount of treble that is applied when audio is played back over the user's speakers.  Not all platforms support treble adjustment.</p>
-<p>The normal setting for treble is a value of 50, minimum treble is 0 and maximum treble is 100.</p>
-      </description>
     </field>
 
   </fields>

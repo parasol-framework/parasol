@@ -9,11 +9,7 @@ template <class T> void add_mix_cmd(objAudio *Audio, CMD Command, LONG Handle, T
    if ((index < 1) or (index >= (LONG)ea->Sets.size())) return;
 
    if (ea->Sets[index].Commands.capacity() > 0) {
-      auto i = ea->Sets[index].Commands.size();
-      ea->Sets[index].Commands.resize(i+1);
-      ea->Sets[index].Commands[i].CommandID = Command;
-      ea->Sets[index].Commands[i].Handle    = Handle;
-      ea->Sets[index].Commands[i].Data      = Data;
+      ea->Sets[index].Commands.emplace_back(Command, Handle, Data);
    }
 }
 
@@ -25,10 +21,7 @@ static void add_mix_cmd(objAudio *Audio, CMD Command, LONG Handle)
    if ((index < 1) or (index >= (LONG)ea->Sets.size())) return;
 
    if (ea->Sets[index].Commands.capacity() > 0) {
-      auto i = ea->Sets[index].Commands.size();
-      ea->Sets[index].Commands.resize(i+1);
-      ea->Sets[index].Commands[i].CommandID = Command;
-      ea->Sets[index].Commands[i].Handle    = Handle;
+      ea->Sets[index].Commands.emplace_back(Command, Handle, 0);
    }
 }
 
@@ -98,6 +91,10 @@ static ERROR sndMixEndSequence(objAudio *Audio, LONG Handle)
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
 
    channel->Buffering = false;
+
+   // Inserting an END_SEQUENCE informs the mixer that the instructions for this period have concluded.
+
+   add_mix_cmd(Audio, CMD::END_SEQUENCE, Handle);
 
    return ERR_Okay;
 }
@@ -646,6 +643,7 @@ static ERROR sndMixRate(objAudio *Audio, LONG Handle, LONG Rate)
    log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
+   if ((Rate < 1) or (Rate > 100000)) return log.warning(ERR_OutOfRange);
 
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
 
@@ -673,7 +671,7 @@ methods.
 -INPUT-
 obj(Audio) Audio: The target Audio object.
 int Handle: The target channel.
-int Sample: A sample handle allocated from #Audio.AddSample() or #Audio.AddStream().
+int Sample: A sample handle allocated from @Audio.AddSample() or @Audio.AddStream().
 
 -ERRORS-
 Okay

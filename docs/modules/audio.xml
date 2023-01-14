@@ -197,7 +197,7 @@
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
       <param type="LONG" name="Handle">The target channel.</param>
-      <param type="LONG" name="Sample">A sample handle allocated from <field>_Audio_</field>.AddSample() or <field>_Audio_</field>.AddStream().</param>
+      <param type="LONG" name="Sample">A sample handle allocated from <class name="Audio" index="AddSample()">Audio:AddSample()</class> or <class name="Audio" index="AddStream()">Audio:AddStream()</class>.</param>
     </input>
     <description>
 <p>This function will associate a sound sample with a mixer channel.  Configuration should then follow (e.g. volume and pan values).</p>

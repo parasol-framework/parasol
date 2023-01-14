@@ -109,8 +109,6 @@ module({ name="Audio", copyright="Paul Manias © 2002-2022", version=1.0 }, func
   })
 
   class("Audio", { src="class_audio.cpp", output="audio_def.c" }, [[
-    double Bass            # Bass level
-    double Treble          # Treble level
     int OutputRate
     int InputRate
     int Quality

@@ -10,10 +10,6 @@ Supported features include 8-bit and 16-bit output in stereo or mono, oversampli
 sample sharing and command sequencing.  The Audio class functionality is simplified via the @Sound class interface,
 which we recommend in most cases where simplified audio playback is satisfactory.
 
-In some cases the audio server may be managed in a separate process space and allocated with a name of 'SystemAudio'.
-In this circumstance all communication with the SystemAudio object will typically be achieved by messaging protocols,
-but field values may be read in the normal manner.
-
 Support for audio recording is not currently available.
 
 -END-
@@ -423,7 +419,7 @@ CloseChannels: Frees audio channels that have been allocated for sample playback
 
 Use CloseChannels to destroy a group of channels that have previously been allocated through the #OpenChannels()
 method.  Any audio commands buffered against the channels will be cleared instantly.  Any audio data that has already
-been mixed into the output buffer will continue to play for 1 - 2 seconds.  If this is an issue then the volume should
+been mixed into the output buffer can continue to play for 1 - 2 seconds.  If this is an issue then the volume should
 be muted at the same time.
 
 -INPUT-
@@ -562,8 +558,6 @@ static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
    Self->OutputRate = 44100;        // Rate for output to speakers
    Self->InputRate  = 44100;        // Input rate for recording
    Self->Quality    = 80;
-   Self->Bass       = 50;
-   Self->Treble     = 50;
    Self->BitDepth   = 16;
    Self->Flags      = ADF_OVER_SAMPLING|ADF_FILTER_HIGH|ADF_VOL_RAMPING|ADF_STEREO;
    Self->Periods    = 4;
@@ -608,11 +602,6 @@ OpenChannels: Allocates audio channels that can be used for sample playback.
 Use the OpenChannels method to open audio channels for sample playback.  Channels are allocated in sets with a size
 range between 1 and 64.  Channel sets make it easier to segregate playback between users of the same audio object.
 
-You may also indicate to this method how many command sequencing buffers you would like to allocate for your channels.
-This is particularly useful if you are writing a digital music sequencer, or if you want to process a number of
-real-time channel adjustments with precision timing.  You can allocate a maximum of 1024 command buffers at a cost of
-approximately eight bytes each.
-
 The resulting handle returned from this method is an integer consisting of two parts.  The upper word uniquely
 identifies the channel set that has been provided to you, while the lower word is used to refer to specific channel
 numbers.  To refer to specific channels when using some functions, do so with the formula
@@ -622,7 +611,6 @@ To destroy allocated channels, use the #CloseChannels() method.
 
 -INPUT-
 int Total: Total of channels to allocate.
-int Commands: The total number of command buffers to allocate for real-time processing.
 &int Result: The resulting channel handle is returned in this parameter.
 
 -ERRORS-
@@ -642,10 +630,10 @@ static ERROR AUDIO_OpenChannels(extAudio *Self, struct sndOpenChannels *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   log.branch("Total: %d, Commands: %d", Args->Total, Args->Commands);
+   log.branch("Total: %d", Args->Total);
 
    Args->Result = 0;
-   if ((Args->Total < 0) or (Args->Total > 64) or (Args->Commands < 0) or (Args->Commands > 1024)) {
+   if ((Args->Total < 0) or (Args->Total > 64)) {
       return log.warning(ERR_OutOfRange);
    }
 
@@ -658,19 +646,11 @@ static ERROR AUDIO_OpenChannels(extAudio *Self, struct sndOpenChannels *Args)
    else total = Args->Total;
 
    if (!AllocMemory(sizeof(AudioChannel) * total, MEM_DATA, &Self->Sets[index].Channel)) {
-      Self->Sets[index].Total  = Args->Total;
-      Self->Sets[index].Actual = total;
-
-      if (Args->Commands > 0) {
-         Self->Sets[index].Commands.reserve(Args->Commands);
-         Self->Sets[index].UpdateRate = 125;  // Default update rate of 125ms (equates to 5000Hz)
-         Self->Sets[index].MixLeft    = Self->MixLeft(Self->Sets[index].UpdateRate);
-      }
-      else {
-         Self->Sets[index].Commands.clear();
-         Self->Sets[index].UpdateRate = 0;
-         Self->Sets[index].MixLeft    = 0;
-      }
+      Self->Sets[index].Total      = Args->Total;
+      Self->Sets[index].Actual     = total;
+      Self->Sets[index].UpdateRate = 125;  // Default mixer update rate of 125ms
+      Self->Sets[index].MixLeft    = Self->MixLeft(Self->Sets[index].UpdateRate);
+      Self->Sets[index].Commands.reserve(32);
 
       Args->Result = index<<16;
       return ERR_Okay;
@@ -719,19 +699,6 @@ static ERROR AUDIO_RemoveSample(extAudio *Self, struct sndRemoveSample *Args)
 
 /*********************************************************************************************************************
 -ACTION-
-Reset: Resets the audio settings to default values.
--END-
-*********************************************************************************************************************/
-
-static ERROR AUDIO_Reset(extAudio *Self, APTR Void)
-{
-   Self->Bass   = 50;
-   Self->Treble = 50;
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
--ACTION-
 SaveSettings: Saves the current audio settings.
 -END-
 *********************************************************************************************************************/
@@ -766,8 +733,6 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
       config->write("AUDIO", "BitDepth", Self->BitDepth);
       config->write("AUDIO", "Periods", Self->Periods);
       config->write("AUDIO", "PeriodSize", Self->PeriodSize);
-      config->write("AUDIO", "Bass", Self->Bass);
-      config->write("AUDIO", "Treble", Self->Treble);
 
       if (Self->Flags & ADF_STEREO) config->write("AUDIO", "Stereo", "TRUE");
       else config->write("AUDIO", "Stereo", "FALSE");
@@ -1074,14 +1039,6 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 /*********************************************************************************************************************
 
 -FIELD-
-Bass: Sets the amount of bass to use for audio playback.
-
-The Bass field controls the amount of bass that is applied when audio is played back over the user's speakers.  Not all
-platforms support bass adjustment.
-
-The bass value ranges between 0 and 100, with 50 being the default setting.
-
--FIELD-
 BitDepth: The bit depth affects the overall quality of audio input and output.
 
 This field manages the bit depth for audio mixing and output.  Valid bit depths are 8, 16 and 24, with 16 being the
@@ -1304,6 +1261,8 @@ static ERROR SET_Quality(extAudio *Self, LONG Value)
 -FIELD-
 Stereo: Set to TRUE for stereo output and FALSE for mono output.
 
+-END-
+
 *********************************************************************************************************************/
 
 static ERROR GET_Stereo(extAudio *Self, LONG *Value)
@@ -1319,19 +1278,6 @@ static ERROR SET_Stereo(extAudio *Self, LONG Value)
    else Self->Flags &= ~ADF_STEREO;
    return ERR_Okay;
 }
-
-/*********************************************************************************************************************
-
--FIELD-
-Treble: Sets the amount of treble to use for audio playback.
-
-The Treble field controls the amount of treble that is applied when audio is played back over the user's speakers.  Not
-all platforms support treble adjustment.
-
-The normal setting for treble is a value of 50, minimum treble is 0 and maximum treble is 100.
--END-
-
-*********************************************************************************************************************/
 
 //********************************************************************************************************************
 // Defines the L/RVolume and Ramping values for an AudioChannel.  These values are derived from the Volume and Pan.
@@ -1407,12 +1353,9 @@ ERROR GetMixAmount(extAudio *Self, LONG *MixLeft)
 }
 
 //********************************************************************************************************************
+// Process as many command batches as possible that will fit within MixLeft.
 
-#ifdef ALSA_ENABLED
-static ERROR process_commands(extAudio *Self, LONG Elements)
-#else
 ERROR process_commands(extAudio *Self, LONG Elements)
-#endif
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1426,8 +1369,10 @@ ERROR process_commands(extAudio *Self, LONG Elements)
 
             if (Self->Sets[index].Commands.empty()) continue;
 
+            LONG i;
+            bool stop = false;
             auto &cmds = Self->Sets[index].Commands;
-            for (LONG i=0; i < (LONG)cmds.size(); i++) {
+            for (i=0; (i < (LONG)cmds.size()) and (!stop); i++) {
                switch(cmds[i].CommandID) {
                   case CMD::CONTINUE:     sndMixContinue(Self, cmds[i].Handle); break;
                   case CMD::FADE_IN:      sndMixFadeIn(Self, cmds[i].Handle); break;
@@ -1442,10 +1387,7 @@ ERROR process_commands(extAudio *Self, LONG Elements)
                   case CMD::STOP:         sndMixStop(Self, cmds[i].Handle); break;
                   case CMD::STOP_LOOPING: sndMixStopLoop(Self, cmds[i].Handle); break;
                   case CMD::POSITION:     sndMixPosition(Self, cmds[i].Handle, cmds[i].Data); break;
-
-                  case CMD::START_SEQUENCE:
-                  case CMD::END_SEQUENCE:
-                     break;
+                  case CMD::END_SEQUENCE: stop = true; break;
 
                   default:
                      log.warning("Unrecognised command ID #%d at index %d.", LONG(cmds[i].CommandID), i);
@@ -1453,7 +1395,8 @@ ERROR process_commands(extAudio *Self, LONG Elements)
                }
             }
 
-            cmds.clear();
+            if (i IS (LONG)cmds.size()) cmds.clear();
+            else cmds.erase(cmds.begin(), cmds.begin()+i);
          }
       }
    }
@@ -1600,8 +1543,6 @@ static void load_config(extAudio *Self)
       config->read("AUDIO", "OutputRate", &Self->OutputRate);
       config->read("AUDIO", "InputRate", &Self->InputRate);
       config->read("AUDIO", "Quality", &Self->Quality);
-      config->read("AUDIO", "Bass", &Self->Bass);
-      config->read("AUDIO", "Treble", &Self->Treble);
       config->read("AUDIO", "BitDepth", &Self->BitDepth);
 
       LONG value;
@@ -1618,8 +1559,6 @@ static void load_config(extAudio *Self)
       }
 
       if ((Self->BitDepth != 8) and (Self->BitDepth != 16) and (Self->BitDepth != 24)) Self->BitDepth = 16;
-      if ((Self->Treble < 0) or (Self->Treble > 100)) Self->Treble = 50;
-      if ((Self->Bass < 0) or (Self->Bass > 100)) Self->Bass = 50;
       SET_Quality(Self, Self->Quality);
 
       // Find the mixer section, then load the mixer information
@@ -2172,8 +2111,6 @@ next_card:
 #include "audio_def.c"
 
 static const FieldArray clAudioFields[] = {
-   { "Bass",          FDF_DOUBLE|FDF_RW,  0, NULL, NULL },
-   { "Treble",        FDF_DOUBLE|FDF_RW,  0, NULL, NULL },
    { "OutputRate",    FDF_LONG|FDF_RI,    0, NULL, (APTR)SET_OutputRate },
    { "InputRate",     FDF_LONG|FDF_RI,    0, NULL, NULL },
    { "Quality",       FDF_LONG|FDF_RW,    0, NULL, (APTR)SET_Quality },

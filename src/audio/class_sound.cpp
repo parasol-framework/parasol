@@ -8,25 +8,28 @@ that is distributed with this package.  Please refer to it for further informati
 -CLASS-
 Sound: Plays and records sound samples in a variety of different data formats.
 
-The Sound class provides a simple interface for any program to load and play audio sample files. By default all
+The Sound class provides a simple API for programs to load and play audio sample files. By default all
 loading and saving of sound data is in WAVE format.  Other audio formats can be supported through Sound class
 extensions, if available.
 
-Smart, transparent streaming is enabled by default.  If an attempt is made to play an audio file that is
-considerably large (relative to system resources), it will be streamed from the source location.  You can alter or
-force streaming behaviour through the #Stream field.
+Smart, transparent streaming is enabled by default.  If an attempt is made to play an audio file that exceeds
+the maximum buffer size, it will be streamed from the source location.  Streaming behaviour can be modified via
+the #Stream field.
 
-The following example illustrates playback of a sound sample one octave higher than its normal frequency.  The
-subscription to the Deactivate action will result in the program closing once the sample has finished playback.
+The following example illustrates playback of a sound sample that is one octave higher than its normal frequency.
+The subscription to the Deactivate action will result in the program waking once the sample has finished
+playback.
 
 <pre>
 local snd = obj.new('sound', { path='audio:samples/doorbell.wav', note='C6' })
 
-snd.subscribe("deactivate", function(SoundID)
-   mSys.SendMessage(0, MSGID_QUIT)
+snd.subscribe('deactivate', function(SoundID)
+   proc.signal()
 end)
 
 snd.acActivate()
+
+proc.sleep()
 </pre>
 
 -END-
@@ -453,7 +456,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    if (!(Self->ChannelIndex = glSoundChannels[Self->AudioID])) {
       parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 3000);
       if (audio.granted()) {
-         if (!sndOpenChannels(*audio, glMaxSoundChannels, 0, &Self->ChannelIndex)) {
+         if (!sndOpenChannels(*audio, glMaxSoundChannels, &Self->ChannelIndex)) {
             glSoundChannels[Self->AudioID] = Self->ChannelIndex;
          }
          else {
@@ -594,7 +597,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    if (!(Self->ChannelIndex = glSoundChannels[Self->AudioID])) {
       parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 3000);
       if (audio.granted()) {
-         if (!sndOpenChannels(*audio, glMaxSoundChannels, 0, &Self->ChannelIndex)) {
+         if (!sndOpenChannels(*audio, glMaxSoundChannels, &Self->ChannelIndex)) {
             glSoundChannels[Self->AudioID] = Self->ChannelIndex;
          }
          else {
@@ -1088,10 +1091,11 @@ File: Refers to the file object that contains the audio data for playback.
 This field is maintained internally and is defined post-initialisation.  It refers to the file object that contains
 audio data for playback or recording purposes.
 
-It is intended for use by child classes only.
+It is intended for use by sub classes only.
 
 -FIELD-
 Flags: Optional initialisation flags.
+Lookup: SDF
 
 *********************************************************************************************************************/
 
@@ -1507,6 +1511,7 @@ static ERROR SOUND_SET_Priority(extSound *Self, LONG Value)
 
 -FIELD-
 Stream: Defines the preferred streaming method for the sample.
+Lookup: STREAM
 
 -FIELD-
 StreamFile: Refers to a File object that is being streamed for playback.
@@ -1652,7 +1657,7 @@ static const FieldArray clFields[] = {
    { "File",           FDF_OBJECT|FDF_SYSTEM|FDF_R, ID_FILE, NULL, NULL },
    // Virtual fields
    { "Active",   FDF_LONG|FDF_R,     0, (APTR)SOUND_GET_Active, NULL },
-   { "Header",   FDF_POINTER|FDF_ARRAY|FDF_R, 0, (APTR)SOUND_GET_Header, NULL },
+   { "Header",   FDF_BYTE|FDF_ARRAY|FDF_R, 0, (APTR)SOUND_GET_Header, NULL },
    { "Path",     FDF_STRING|FDF_RI,  0, (APTR)SOUND_GET_Path, (APTR)SOUND_SET_Path },
    { "Note",     FDF_STRING|FDF_RW,  0, (APTR)SOUND_GET_Note, (APTR)SOUND_SET_Note },
    END_FIELD

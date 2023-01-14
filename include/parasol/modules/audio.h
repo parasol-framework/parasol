@@ -158,7 +158,7 @@ typedef struct WAVEFormat {
 #define MT_SndBeep -7
 #define MT_SndSetVolume -8
 
-struct sndOpenChannels { LONG Total; LONG Commands; LONG Result;  };
+struct sndOpenChannels { LONG Total; LONG Result;  };
 struct sndCloseChannels { LONG Handle;  };
 struct sndAddSample { LONG SampleFormat; APTR Data; LONG DataSize; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
 struct sndRemoveSample { LONG Handle;  };
@@ -166,8 +166,8 @@ struct sndAddStream { CSTRING Path; OBJECTID ObjectID; LONG SeekStart; LONG Samp
 struct sndBeep { LONG Pitch; LONG Duration; LONG Volume;  };
 struct sndSetVolume { LONG Index; CSTRING Name; LONG Flags; DOUBLE Volume;  };
 
-INLINE ERROR sndOpenChannels(APTR Ob, LONG Total, LONG Commands, LONG * Result) {
-   struct sndOpenChannels args = { Total, Commands, 0 };
+INLINE ERROR sndOpenChannels(APTR Ob, LONG Total, LONG * Result) {
+   struct sndOpenChannels args = { Total, 0 };
    ERROR error = Action(MT_SndOpenChannels, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
@@ -215,15 +215,13 @@ class objAudio : public BaseClass {
 
    using create = parasol::Create<objAudio>;
 
-   DOUBLE Bass;        // Sets the amount of bass to use for audio playback.
-   DOUBLE Treble;      // Sets the amount of treble to use for audio playback.
-   LONG   OutputRate;  // Determines the frequency to use for the output of audio data.
-   LONG   InputRate;   // Determines the frequency to use when recording audio data.
-   LONG   Quality;     // Determines the quality of the audio mixing.
-   LONG   Flags;       // Special audio flags can be set here.
-   LONG   BitDepth;    // The bit depth affects the overall quality of audio input and output.
-   LONG   Periods;     // Defines the number of periods that make up the internal audio buffer.
-   LONG   PeriodSize;  // Defines the byte size of each period allocated to the internal audio buffer.
+   LONG OutputRate;    // Determines the frequency to use for the output of audio data.
+   LONG InputRate;     // Determines the frequency to use when recording audio data.
+   LONG Quality;       // Determines the quality of the audio mixing.
+   LONG Flags;         // Special audio flags can be set here.
+   LONG BitDepth;      // The bit depth affects the overall quality of audio input and output.
+   LONG Periods;       // Defines the number of periods that make up the internal audio buffer.
+   LONG PeriodSize;    // Defines the byte size of each period allocated to the internal audio buffer.
 
    // Action stubs
 
@@ -231,7 +229,6 @@ class objAudio : public BaseClass {
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
    inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }
    inline ERROR init() { return Action(AC_Init, this, NULL); }
-   inline ERROR reset() { return Action(AC_Reset, this, NULL); }
    inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }
    inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
       struct acSaveToObject args = { { DestID }, { ClassID } };

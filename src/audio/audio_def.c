@@ -11,7 +11,7 @@ static const struct FieldDef clAudioFlags[] = {
    { NULL, 0 }
 };
 
-FDEF maOpenChannels[] = { { "Total", FD_LONG }, { "Commands", FD_LONG }, { "Result", FD_LONG|FD_RESULT }, { 0, 0 } };
+FDEF maOpenChannels[] = { { "Total", FD_LONG }, { "Result", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF maCloseChannels[] = { { "Handle", FD_LONG }, { 0, 0 } };
 FDEF maAddSample[] = { { "SampleFormat", FD_LONG }, { "Data", FD_BUFFER|FD_PTR }, { "DataSize", FD_LONG|FD_BUFSIZE }, { "AudioLoop:Loop", FD_PTR|FD_STRUCT }, { "LoopSize", FD_LONG|FD_BUFSIZE }, { "Result", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF maRemoveSample[] = { { "Handle", FD_LONG }, { 0, 0 } };
@@ -37,7 +37,6 @@ static const struct ActionArray clAudioActions[] = {
    { AC_Free, (APTR)AUDIO_Free },
    { AC_Init, (APTR)AUDIO_Init },
    { AC_NewObject, (APTR)AUDIO_NewObject },
-   { AC_Reset, (APTR)AUDIO_Reset },
    { AC_SaveSettings, (APTR)AUDIO_SaveSettings },
    { AC_SaveToObject, (APTR)AUDIO_SaveToObject },
    { 0, 0 }

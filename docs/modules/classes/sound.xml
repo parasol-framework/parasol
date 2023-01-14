@@ -16,16 +16,18 @@
     <include>modules/sound.h</include>
     <copyright>Paul Manias © 2002-2022</copyright>
     <description>
-<p>The Sound class provides a simple interface for any program to load and play audio sample files. By default all loading and saving of sound data is in WAVE format.  Other audio formats can be supported through Sound class extensions, if available.</p>
-<p>Smart, transparent streaming is enabled by default.  If an attempt is made to play an audio file that is considerably large (relative to system resources), it will be streamed from the source location.  You can alter or force streaming behaviour through the <field>Stream</field> field.</p>
-<p>The following example illustrates playback of a sound sample one octave higher than its normal frequency.  The subscription to the Deactivate action will result in the program closing once the sample has finished playback.</p>
+<p>The Sound class provides a simple API for programs to load and play audio sample files. By default all loading and saving of sound data is in WAVE format.  Other audio formats can be supported through Sound class extensions, if available.</p>
+<p>Smart, transparent streaming is enabled by default.  If an attempt is made to play an audio file that exceeds the maximum buffer size, it will be streamed from the source location.  Streaming behaviour can be modified via the <field>Stream</field> field.</p>
+<p>The following example illustrates playback of a sound sample that is one octave higher than its normal frequency. The subscription to the Deactivate action will result in the program waking once the sample has finished playback.</p>
 <pre>local snd = obj.new('sound', { path='audio:samples/doorbell.wav', note='C6' })
 
-snd.subscribe("deactivate", function(SoundID)
-   mSys.SendMessage(0, MSGID_QUIT)
+snd.subscribe('deactivate', function(SoundID)
+   proc.signal()
 end)
 
 snd.acActivate()
+
+proc.sleep()
 </pre></description>
     <source>
       <file>class_sound.cpp</file>
@@ -181,7 +183,7 @@ snd.acActivate()
       <name>Header</name>
       <comment>Contains the first 128 bytes of data in a sample's file header.</comment>
       <access read="G">Get</access>
-      <type>APTR []</type>
+      <type>BYTE []</type>
       <description>
 <p>The Header field is a pointer to a 128 byte buffer that contains the first 128 bytes of information read from an audio file on initialisation.  This special field is considered to be helpful only to developers writing add-on components for the sound class.</p>
 <p>The buffer that is referred to by the Header field is not populated until the Init action is called on the sound object.</p>
