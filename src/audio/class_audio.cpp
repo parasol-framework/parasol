@@ -759,10 +759,10 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
       if ((!Self->Volumes.empty()) and (Self->Flags & ADF_SYSTEM_WIDE)) {
          for (LONG i=0; i < (LONG)Self->Volumes.size(); i++) {
             std::ostringstream out;
-            if (Self->Volumes[i].Flags & VCF::MUTE) out << "1,[";
+            if ((Self->Volumes[i].Flags & VCF::MUTE) != VCF::NIL) out << "1,[";
             else out << "0,[";
 
-            if (Self->Volumes[i].Flags & VCF::MONO) {
+            if ((Self->Volumes[i].Flags & VCF::MONO) != VCF::NIL) {
                out << Self->Volumes[i].Channels[0];
             }
             else for (LONG c=0; c < (LONG)Self->Volumes[i].Channels.size(); c++) {
