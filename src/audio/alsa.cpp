@@ -201,7 +201,7 @@ next_card:
       snd_mixer_selem_get_id(elem, sid);
       if (!snd_mixer_selem_is_active(elem)) continue;
 
-      if (volctl[index].Flags & VCF_CAPTURE) {
+      if ((volctl[index].Flags & VCF::CAPTURE) != VCF::NIL) {
          snd_mixer_selem_get_capture_volume_range(elem, &pmin, &pmax);
       }
       else snd_mixer_selem_get_playback_volume_range(elem, &pmin, &pmax);
@@ -214,17 +214,17 @@ next_card:
 
       for (channel=0; channel < (LONG)volctl[index].Channels.size(); channel++) volctl[index].Channels[channel] = -1;
 
-      LONG flags = 0;
-      if (snd_mixer_selem_has_playback_volume(elem))        flags |= VCF_PLAYBACK;
-      if (snd_mixer_selem_has_capture_volume(elem))         flags |= VCF_CAPTURE;
-      if (snd_mixer_selem_has_capture_volume_joined(elem))  flags |= VCF_JOINED;
-      if (snd_mixer_selem_has_playback_volume_joined(elem)) flags |= VCF_JOINED;
-      if (snd_mixer_selem_is_capture_mono(elem))            flags |= VCF_MONO;
-      if (snd_mixer_selem_is_playback_mono(elem))           flags |= VCF_MONO;
+      VCF flags = VCF::NIL;
+      if (snd_mixer_selem_has_playback_volume(elem))        flags |= VCF::PLAYBACK;
+      if (snd_mixer_selem_has_capture_volume(elem))         flags |= VCF::CAPTURE;
+      if (snd_mixer_selem_has_capture_volume_joined(elem))  flags |= VCF::JOINED;
+      if (snd_mixer_selem_has_playback_volume_joined(elem)) flags |= VCF::JOINED;
+      if (snd_mixer_selem_is_capture_mono(elem))            flags |= VCF::MONO;
+      if (snd_mixer_selem_is_playback_mono(elem))           flags |= VCF::MONO;
 
       // Get the current channel volumes
 
-      if (!(flags & VCF_MONO)) {
+      if ((flags & VCF::MONO) IS VCF::NIL) {
          for (channel=0; channel < ARRAYSIZE(glAlsaConvert); channel++) {
             if (snd_mixer_selem_has_playback_channel(elem, (snd_mixer_selem_channel_id_t)glAlsaConvert[channel]))   {
                long vol;
@@ -240,7 +240,7 @@ next_card:
 
       if ((snd_mixer_selem_has_capture_switch(elem)) and (!snd_mixer_selem_has_playback_switch(elem))) {
          for (channel=0; channel < ARRAYSIZE(glAlsaConvert); channel++) {
-            flags |= VCF_MUTE;
+            flags |= VCF::MUTE;
             snd_mixer_selem_set_capture_switch(elem, (snd_mixer_selem_channel_id_t)channel, 0);
          }
       }
@@ -427,7 +427,7 @@ next_card:
                   setvol.Name    = NULL;
                   setvol.Flags   = 0;
                   setvol.Volume  = oldctl[j].Channels[0];
-                  if (oldctl[j].Flags & VCF_MUTE) setvol.Flags |= SVF_MUTE;
+                  if ((oldctl[j].Flags & VCF::MUTE) != VCF::NIL) setvol.Flags |= SVF_MUTE;
                   else setvol.Flags |= SVF_UNMUTE;
                   Action(MT_SndSetVolume, Self, &setvol);
                   break;
