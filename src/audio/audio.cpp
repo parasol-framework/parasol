@@ -275,6 +275,7 @@ static ERROR sndWaitDrivers(LONG TimeOut)
 
 //********************************************************************************************************************
 
+#include "alsa.cpp"
 #include "functions.cpp"
 #include "commands.cpp"
 #include "class_audio.cpp"

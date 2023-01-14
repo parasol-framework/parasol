@@ -23,12 +23,17 @@ class objSound;
 
 // Volume control flags
 
-#define VCF_PLAYBACK 0x00000001
-#define VCF_CAPTURE 0x00000010
-#define VCF_JOINED 0x00000100
-#define VCF_MONO 0x00001000
-#define VCF_MUTE 0x00010000
-#define VCF_SYNC 0x00100000
+enum class VCF : ULONG {
+   NIL = 0,
+   PLAYBACK = 0x00000001,
+   CAPTURE = 0x00000010,
+   JOINED = 0x00000100,
+   MONO = 0x00001000,
+   MUTE = 0x00010000,
+   SYNC = 0x00100000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(VCF)
 
 // Optional flags for the AudioChannel structure.
 

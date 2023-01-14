@@ -10,7 +10,7 @@ module({ name="Audio", copyright="Paul Manias © 2002-2022", version=1.0 }, func
     "AUTO_SAVE: Save configuration information on exit.",
     "SYSTEM_WIDE: Mixer changes should be applied system-wide.")
 
-  flags("VCF", { comment="Volume control flags" },
+  flags("VCF", { strict=true, comment="Volume control flags" },
     { PLAYBACK = "0x00000001: The mixer supports audio output." },
     { CAPTURE  = "0x00000010: The mixer supports audio input." },
     { JOINED   = "0x00000100: The mixer channels are joined (e.g. left and right speakers cannot be adjusted separately)." },

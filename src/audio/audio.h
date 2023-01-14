@@ -26,7 +26,7 @@ enum class CMD : LONG {
    CONTINUE
 };
 
-typedef void (*MixRoutine)(LONG, LONG, FLOAT, FLOAT);
+typedef LONG (*MixRoutine)(APTR, LONG, LONG, LONG, FLOAT, FLOAT);
 
 #define DEFAULT_BUFFER_SIZE 8096 // Measured in samples, not bytes
 
@@ -99,7 +99,7 @@ struct AudioChannel {
    OBJECTID SoundID;        // ID of the sound object using this channel, if relevant
    LONG     SampleHandle;   // Sample index, direct lookup into extAudio->Samples
    CHF      Flags;          // Special flags
-   LONG     Position;       // Current playing/mixing position
+   LONG     Position;       // Current playing/mixing byte position within Sample.
    LONG     Frequency;      // Playback frequency
    LONG     StreamPos;      // Current read position within the referenced audio stream
    LONG     PositionLow;    // Playing position, lower bits
@@ -142,12 +142,18 @@ struct ChannelSet {
 
 struct VolumeCtl {
    std::string Name;     // Name of the mixer
-   LONG Flags;           // Special flags identifying the mixer's attributes.
+   VCF Flags;            // Special flags identifying the mixer's attributes.
    std::vector<FLOAT> Channels; // A variable length array of channel volumes.
 
    VolumeCtl() {
-      Flags = 0;
+      Flags = VCF::NIL;
       Channels = { -1 }; // A -1 value leaves the current system volume as-is.
+   }
+
+   VolumeCtl(std::string pName, VCF pFlags = VCF::NIL, DOUBLE pVolume = -1) {
+      Name = pName;
+      Flags = pFlags;
+      Channels = { (FLOAT)pVolume };
    }
 };
 

@@ -12,9 +12,9 @@ The Sound class provides a simple API for programs to load and play audio sample
 loading and saving of sound data is in WAVE format.  Other audio formats can be supported through Sound class
 extensions, if available.
 
-Smart, transparent streaming is enabled by default.  If an attempt is made to play an audio file that exceeds
-the maximum buffer size, it will be streamed from the source location.  Streaming behaviour can be modified via
-the #Stream field.
+Automatic streaming is enabled by default.  If an attempt is made to play an audio file that exceeds the maximum
+buffer size, it will be streamed from the source location.  Streaming behaviour can be modified via the #Stream
+field.
 
 The following example illustrates playback of a sound sample that is one octave higher than its normal frequency.
 The subscription to the Deactivate action will result in the program waking once the sample has finished
@@ -485,9 +485,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
          return ERR_NoSupport;
       }
    }
-   else {
-      return log.warning(ERR_File);
-   }
+   else return log.warning(ERR_File);
 
    // Read the RIFF header
 
