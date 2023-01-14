@@ -793,14 +793,14 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
          snd_mixer_selem_get_playback_volume_range(elem, &pmin, &pmax);
          snd_mixer_selem_get_playback_volume(elem, 0, &left);
          snd_mixer_selem_get_playback_switch(elem, 0, &mute);
-         if (Self->Volumes[i].Flags & VCF::MONO) right = left;
+         if ((Self->Volumes[i].Flags & VCF::MONO) != VCF::NIL) right = left;
          else snd_mixer_selem_get_playback_volume(elem, 1, &right);
       }
       else if (snd_mixer_selem_has_capture_volume(elem)) {
          snd_mixer_selem_get_capture_volume_range(elem, &pmin, &pmax);
          snd_mixer_selem_get_capture_volume(elem, 0, &left);
          snd_mixer_selem_get_capture_switch(elem, 0, &mute);
-         if (Self->Volumes[i].Flags & VCF::MONO) right = left;
+         if ((Self->Volumes[i].Flags & VCF::MONO) != VCF::NIL) right = left;
          else snd_mixer_selem_get_capture_volume(elem, 1, &right);
       }
       else continue;
@@ -921,7 +921,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
    }
 
    if (Args->Volume >= 0) {
-      if (Self->Volumes[index].Flags & VCF::CAPTURE) {
+      if ((Self->Volumes[index].Flags & VCF::CAPTURE) != VCF::NIL) {
          snd_mixer_selem_get_capture_volume_range(elem, &pmin, &pmax);
       }
       else snd_mixer_selem_get_playback_volume_range(elem, &pmin, &pmax);
@@ -932,12 +932,12 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
       if (vol > 1.0) vol = 1.0;
       LONG lvol = F2T(DOUBLE(pmin) + (DOUBLE(pmax - pmin) * vol));
 
-      if (Self->Volumes[index].Flags & VCF::CAPTURE) {
+      if ((Self->Volumes[index].Flags & VCF::CAPTURE) != VCF::NIL) {
          snd_mixer_selem_set_capture_volume_all(elem, lvol);
       }
       else snd_mixer_selem_set_playback_volume_all(elem, lvol);
 
-      if (Self->Volumes[index].Flags & VCF::MONO) {
+      if ((Self->Volumes[index].Flags & VCF::MONO) != VCF::NIL) {
          Self->Volumes[index].Channels[0] = vol;
       }
       else for (LONG channel=0; channel < (LONG)Self->Volumes[0].Channels.size(); channel++) {
@@ -978,7 +978,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
    else if (Args->Flags & SVF_SYNC) Self->Volumes[index].Flags |= VCF::SYNC;
 
    EVENTID evid = GetEventID(EVG_AUDIO, "volume", Self->Volumes[index].Name.c_str());
-   evVolume event_volume = { evid, Args->Volume, (Self->Volumes[index].Flags & VCF::MUTE) ? true : false };
+   evVolume event_volume = { evid, Args->Volume, ((Self->Volumes[index].Flags & VCF::MUTE) != VCF::NIL) ? true : false };
    BroadcastEvent(&event_volume, sizeof(event_volume));
    return ERR_Okay;
 
