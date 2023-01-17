@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      audio.h
-// Copyright: Paul Manias © 2002-2022
+// Copyright: Paul Manias © 2002-2023
 // Generator: idl-c
 
 #include <parasol/main.h>
@@ -149,6 +149,7 @@ struct AudioLoop {
 #define MT_SndCloseChannels -2
 #define MT_SndAddSample -3
 #define MT_SndRemoveSample -4
+#define MT_SndSetSampleLength -5
 #define MT_SndAddStream -6
 #define MT_SndBeep -7
 #define MT_SndSetVolume -8
@@ -157,6 +158,7 @@ struct sndOpenChannels { LONG Total; LONG Result;  };
 struct sndCloseChannels { LONG Handle;  };
 struct sndAddSample { LONG SampleFormat; APTR Data; LONG DataSize; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
 struct sndRemoveSample { LONG Handle;  };
+struct sndSetSampleLength { LONG Sample; LARGE Length;  };
 struct sndAddStream { CSTRING Path; OBJECTID ObjectID; LONG SeekStart; LONG SampleFormat; LONG SampleLength; LONG BufferLength; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
 struct sndBeep { LONG Pitch; LONG Duration; LONG Volume;  };
 struct sndSetVolume { LONG Index; CSTRING Name; LONG Flags; DOUBLE Volume;  };
@@ -183,6 +185,11 @@ INLINE ERROR sndAddSample(APTR Ob, LONG SampleFormat, APTR Data, LONG DataSize, 
 INLINE ERROR sndRemoveSample(APTR Ob, LONG Handle) {
    struct sndRemoveSample args = { Handle };
    return(Action(MT_SndRemoveSample, (OBJECTPTR)Ob, &args));
+}
+
+INLINE ERROR sndSetSampleLength(APTR Ob, LONG Sample, LARGE Length) {
+   struct sndSetSampleLength args = { Sample, Length };
+   return(Action(MT_SndSetSampleLength, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR sndAddStream(APTR Ob, CSTRING Path, OBJECTID ObjectID, LONG SeekStart, LONG SampleFormat, LONG SampleLength, LONG BufferLength, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) {

@@ -36,17 +36,17 @@ typedef struct WAVEFormat {
 
 typedef LONG (*MixRoutine)(APTR, LONG, LONG, LONG, FLOAT, FLOAT);
 
-#define DEFAULT_BUFFER_SIZE 8096 // Measured in samples, not bytes
+const LONG DEFAULT_BUFFER_SIZE = 8096; // Measured in samples, not bytes
 
 struct AudioSample {
    UBYTE *  Data;         // Pointer to the sample data.
    OBJECTID StreamID;     // An object to use for streaming
-   LONG     SampleLength; // Length of the sample data, in bytes
    LONG     Loop1Start;   // Start of the first loop
    LONG     Loop1End;     // End of the first loop
    LONG     Loop2Start;   // Start of the second loop
    LONG     Loop2End;     // End of the second loop
    LONG     SeekStart;    // Offset to use when seeking to the start of sample data.
+   LONG     SampleLength; // Length of the sample data, measured in samples
    LONG     StreamLength; // Total byte-length of the sample data that is being streamed.
    LONG     BufferLength; // Total byte-length of the stream buffer.
    LOOP     LoopMode;     // Loop mode (single, double)
@@ -205,16 +205,13 @@ class extSound : public objSound {
    public:
    UBYTE  Header[128];
    UBYTE  PlatformData[128];  // Data area for holding platform/hardware specific information
-   struct KeyStore *Fields;
+   std::unordered_map<std::string, std::string> Tags;
    struct WAVEFormat *WAVE;
    STRING Path;
-   STRING Description;
-   STRING Disclaimer;
    TIMER  Timer;
    LONG   Format;             // The format of the sound data
    LONG   DataOffset;         // Start of raw audio data within the source file
    LONG   Note;               // Note to play back (e.g. C, C#, G...)
-   LONG   Alignment;          // Byte alignment value
    char   NoteString[4];
 };
 

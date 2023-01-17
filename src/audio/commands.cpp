@@ -562,7 +562,7 @@ which is equivalent to 5000Hz.
 
 -INPUT-
 obj(Audio) Audio: The target Audio object.
-int Handle: The target channel.
+int Handle: The channel set allocated from OpenChannels().
 int Rate: The new update rate in milliseconds.
 
 -ERRORS-
@@ -589,8 +589,11 @@ static ERROR sndMixRate(objAudio *Audio, LONG Handle, LONG Rate)
    }
 
    WORD index = Handle>>16;
-   ((extAudio *)Audio)->Sets[index].UpdateRate = Rate;
-   return ERR_Okay;
+   if ((index >= 0) and (index < (LONG)((extAudio *)Audio)->Sets.size())) {
+      ((extAudio *)Audio)->Sets[index].UpdateRate = Rate;
+      return ERR_Okay;
+   }
+   else return log.warning(ERR_OutOfRange);
 }
 
 /*********************************************************************************************************************

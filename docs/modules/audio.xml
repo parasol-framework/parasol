@@ -6,7 +6,7 @@
     <name>Audio</name>
     <type>module</type>
     <version>1</version>
-    <copyright>Paul Manias © 2002-2022</copyright>
+    <copyright>Paul Manias © 2002-2023</copyright>
     <classes>
       <class>Audio</class>
       <class>Sound</class>
@@ -144,7 +144,7 @@
     <prototype>ERROR sndMixRate(objAudio * Audio, LONG Handle, LONG Rate)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
-      <param type="LONG" name="Handle">The target channel.</param>
+      <param type="LONG" name="Handle">The channel set allocated from OpenChannels().</param>
       <param type="LONG" name="Rate">The new update rate in milliseconds.</param>
     </input>
     <description>

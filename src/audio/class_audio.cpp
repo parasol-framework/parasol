@@ -329,28 +329,11 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
    }
 
    if (Args->ObjectID) sample.StreamID = Args->ObjectID;
-   else {
-      objFile *stream_file;
-      ERROR error;
-      if (!NewLockedObject(ID_FILE, NF::INTEGRAL, &stream_file, &sample.StreamID)) {
-         if (!SetFields(stream_file, FID_Path|TSTR, Args->Path, FID_Flags|TLONG, FL_READ, TAGEND)) {
-            if (!acInit(stream_file)) {
-               error = ERR_Okay;
-            }
-            else error = ERR_Init;
-         }
-         else error = ERR_SetField;
-
-         if (error) { acFree(stream_file); sample.StreamID = 0; }
-
-         ReleaseObject(stream_file);
-      }
-      else error = ERR_NewObject;
-
-      if (error) return log.warning(error);
-
+   else if (auto stream_file = objFile::create::integral(fl::Path(Args->Path), fl::Flags(FL_READ))) {
+      sample.StreamID = stream_file->UID;
       sample.Free = true;
    }
+   else return log.warning(ERR_CreateObject);
 
    if (AllocMemory(sample.BufferLength, MEM_DATA, &sample.Data) != ERR_Okay) {
       return ERR_AllocMemory;
@@ -822,6 +805,49 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
    }
 
    return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+SetSampleLength: Sets the byte length of a streaming sample.
+
+This function will update the byte length of a steaming sample.  Although it is possible to manually stop a stream at
+any point, setting the length is a preferable means to stop playback as it ensures complete accuracy when a sample's
+output is buffered.
+
+Setting a Length of -1 indicates that the stream should be played indefinitely.
+
+-INPUT-
+int Sample: A sample handle from AddStream().
+large Length: Byte length of the sample stream.
+
+-ERRORS-
+Okay
+NullArgs
+Args
+Failed: Sample is not a stream.
+-END-
+
+*********************************************************************************************************************/
+
+static ERROR AUDIO_SetSampleLength(extAudio *Self, struct sndSetSampleLength *Args)
+{
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
+
+   log.msg("Sample: #%d, Length: %" PF64, Args->Sample, Args->Length);
+
+   if ((Args->Sample < 0) or (Args->Sample >= (LONG)Self->Samples.size())) return log.warning(ERR_Args);
+
+   auto &sample = Self->Samples[Args->Sample];
+
+   if (sample.StreamID) {
+      sample.StreamLength = Args->Length;
+      return ERR_Okay;
+   }
+   else return log.warning(ERR_Failed);
 }
 
 /*********************************************************************************************************************

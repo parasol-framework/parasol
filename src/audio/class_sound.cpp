@@ -373,8 +373,6 @@ static ERROR SOUND_Enable(extSound *Self, APTR Void)
 
 static ERROR SOUND_Free(extSound *Self, APTR Void)
 {
-   if (Self->Fields) { FreeResource(Self->Fields); Self->Fields = NULL; }
-
    if (Self->Flags & SDF_STREAM) {
       if (Self->Timer) { UpdateTimer(Self->Timer, 0); Self->Timer = 0; }
    }
@@ -394,12 +392,11 @@ static ERROR SOUND_Free(extSound *Self, APTR Void)
    }
 
    if (Self->Path)         { FreeResource(Self->Path); Self->Path = NULL; }
-   if (Self->Description)  { FreeResource(Self->Description); Self->Description = NULL; }
-   if (Self->Disclaimer)   { FreeResource(Self->Disclaimer); Self->Disclaimer = NULL; }
    if (Self->WAVE)         { FreeResource(Self->WAVE); Self->WAVE = NULL; }
    if (Self->File)         { acFree(Self->File); Self->File = NULL; }
    if (Self->StreamFileID) { acFree(Self->StreamFileID); Self->StreamFileID = 0; }
 
+   Self->~extSound();
    return ERR_Okay;
 }
 
@@ -424,8 +421,9 @@ static ERROR SOUND_GetVar(extSound *Self, struct acGetVar *Args)
 {
    if ((!Args) or (!Args->Field)) return ERR_NullArgs;
 
-   if (auto val = VarGetString(Self->Fields, Args->Field)) {
-      StrCopy(val, Args->Buffer, Args->Size);
+   std::string name(Args->Field);
+   if (Self->Tags.contains(name)) {
+      StrCopy(Self->Tags[name].c_str(), Args->Buffer, Args->Size);
       return ERR_Okay;
    }
    else return ERR_UnsupportedField;
@@ -524,7 +522,6 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
    Self->Format         = Self->WAVE->Format;
    Self->BytesPerSecond = Self->WAVE->AvgBytesPerSecond;
-   Self->Alignment      = Self->WAVE->BlockAlign;
    Self->BitsPerSample  = Self->WAVE->BitsPerSample;
    if (Self->WAVE->Channels IS 2) Self->Flags |= SDF_STEREO;
    if (Self->Frequency <= 0) Self->Frequency = Self->WAVE->Frequency;
@@ -738,7 +735,6 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
       Self->Format         = Self->WAVE->Format;
       Self->BytesPerSecond = Self->WAVE->AvgBytesPerSecond;
-      Self->Alignment      = Self->WAVE->BlockAlign;
       Self->BitsPerSample  = Self->WAVE->BitsPerSample;
       if (Self->WAVE->Channels IS 2) Self->Flags |= SDF_STEREO;
       if (Self->Frequency <= 0) Self->Frequency = Self->WAVE->Frequency;
@@ -873,6 +869,8 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
 static ERROR SOUND_NewObject(extSound *Self, APTR Void)
 {
+   new (Self) extSound;
+
    Self->Compression = 50;     // 50% compression by default
    Self->Volume      = 1.0;    // Playback at 100% volume level
    Self->Pan         = 0;
@@ -998,11 +996,8 @@ static ERROR SOUND_SetVar(extSound *Self, struct acSetVar *Args)
 {
    if ((!Args) or (!Args->Field) or (!Args->Field[0])) return ERR_NullArgs;
 
-   if (!Self->Fields) {
-      if (!(Self->Fields = VarNew(0, 0))) return ERR_AllocMemory;
-   }
-
-   return VarSetString(Self->Fields, Args->Field, Args->Value);
+   Self->Tags[std::string(Args->Field)] = Args->Value;
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
