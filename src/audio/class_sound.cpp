@@ -413,6 +413,7 @@ The following custom tag values are formally recognised and may be defined autom
 <type name="Disclaimer">The disclaimer associated with an audio sample.</type>
 <type name="Software">The name of the application that was used to record the audio sample.</type>
 <type name="Title">The title of the audio sample.</type>
+<type name="VBRQuality">The VBR quality value if the source is a VBR compressed MP3.</type>
 </types>
 
 *********************************************************************************************************************/
@@ -573,7 +574,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    return ERR_Okay;
 }
 
-#else // Linux
+#else // Use the internal mixer
 
 static ERROR SOUND_Init(extSound *Self, APTR Void)
 {
@@ -646,7 +647,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
          .LoopSize     = 0
       };
 
-      if (WaitMsg(MT_SndAddStream, Self->AudioID, &stream) != ERR_Okay) {
+      if (ActionMsg(MT_SndAddStream, Self->AudioID, &stream) != ERR_Okay) {
          log.warning("Failed to add sample to the Audio device.");
          return ERR_Failed;
       }
@@ -737,8 +738,8 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
       Self->BytesPerSecond = Self->WAVE->AvgBytesPerSecond;
       Self->BitsPerSample  = Self->WAVE->BitsPerSample;
       if (Self->WAVE->Channels IS 2) Self->Flags |= SDF_STEREO;
-      if (Self->Frequency <= 0) Self->Frequency = Self->WAVE->Frequency;
-      if (Self->Playback <= 0)  Self->Playback  = Self->Frequency;
+      if (Self->Frequency <= 0)      Self->Frequency = Self->WAVE->Frequency;
+      if (Self->Playback <= 0)       Self->Playback  = Self->Frequency;
 
       if (Self->Flags & SDF_NOTE) {
          SOUND_SET_Note(Self, Self->NoteString);
@@ -808,7 +809,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
          stream.SampleFormat = sampleformat;
          stream.SampleLength = Self->Length;
          stream.BufferLength = Self->BufferLength;
-         if (!WaitMsg(MT_SndAddStream, Self->AudioID, &stream)) {
+         if (!ActionMsg(MT_SndAddStream, Self->AudioID, &stream)) {
             Self->Handle = stream.Result;
             return ERR_Okay;
          }
@@ -843,7 +844,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
             add.Data         = buffer;
             add.DataSize     = Self->Length;
             add.Result       = 0;
-            if (!WaitMsg(MT_SndAddSample, Self->AudioID, &add)) {
+            if (!ActionMsg(MT_SndAddSample, Self->AudioID, &add)) {
                Self->Handle = add.Result;
                FreeResource(buffer);
                return ERR_Okay;
@@ -1135,27 +1136,22 @@ value by the #BytesPerSecond field.
 
 *********************************************************************************************************************/
 
-static ERROR SOUND_GET_Path(extSound *Self, STRING *Value)
-{
-   if ((*Value = Self->Path)) return ERR_Okay;
-   else return ERR_FieldNotSet;
-}
-
-static ERROR SOUND_SET_Path(extSound *Self, CSTRING Value)
+static ERROR SOUND_SET_Length(extSound *Self, LONG Value)
 {
    parasol::Log log;
+   if (Value >= 0) {
+      Self->Length = Value;
 
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
-
-   if ((Value) and (*Value)) {
-      LONG i = strlen(Value);
-      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->Path)) {
-         for (i=0; Value[i]; i++) Self->Path[i] = Value[i];
-         Self->Path[i] = 0;
+      if ((Self->Handle) and (Self->AudioID)) {
+         parasol::ScopedObjectLock<objAudio> audio(Self->AudioID);
+         if (audio.granted()) {
+            return sndSetSampleLength(*audio, Self->Handle, Value);
+         }
+         else return log.warning(ERR_AccessObject);
       }
-      else return log.warning(ERR_AllocMemory);
+      else return ERR_Okay;
    }
-   return ERR_Okay;
+   else return log.warning(ERR_InvalidValue);
 }
 
 /*********************************************************************************************************************
@@ -1412,6 +1408,33 @@ Path: Location of the audio sample data.
 This field must refer to a file that contains the audio data that will be loaded.  If creating a new sample
 with the `SDF_NEW` flag, it is not necessary to define a file source.
 
+*********************************************************************************************************************/
+
+static ERROR SOUND_GET_Path(extSound *Self, STRING *Value)
+{
+   if ((*Value = Self->Path)) return ERR_Okay;
+   else return ERR_FieldNotSet;
+}
+
+static ERROR SOUND_SET_Path(extSound *Self, CSTRING Value)
+{
+   parasol::Log log;
+
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+
+   if ((Value) and (*Value)) {
+      LONG i = strlen(Value);
+      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->Path)) {
+         for (i=0; Value[i]; i++) Self->Path[i] = Value[i];
+         Self->Path[i] = 0;
+      }
+      else return log.warning(ERR_AllocMemory);
+   }
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
 -FIELD-
 Playback: The playback frequency of the sound sample can be defined here.
 
@@ -1630,7 +1653,7 @@ static const FieldArray clFields[] = {
    { "Volume",         FDF_DOUBLE|FDF_RW,    0, NULL, (APTR)SOUND_SET_Volume },
    { "Pan",            FDF_DOUBLE|FDF_RW,    0, NULL, (APTR)SOUND_SET_Pan },
    { "Priority",       FDF_LONG|FDF_RW,      0, NULL, (APTR)SOUND_SET_Priority },
-   { "Length",         FDF_LONG|FDF_RW,      0, NULL, NULL },
+   { "Length",         FDF_LONG|FDF_RW,      0, NULL, (APTR)SOUND_SET_Length },
    { "Octave",         FDF_LONG|FDF_RW,      0, NULL, (APTR)SOUND_SET_Octave },
    { "Flags",          FDF_LONGFLAGS|FDF_RW, (MAXINT)&clFlags, NULL, (APTR)SOUND_SET_Flags },
    { "Frequency",      FDF_LONG|FDF_RI,      0, NULL, NULL },
