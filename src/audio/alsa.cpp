@@ -66,7 +66,7 @@ static ERROR init_audio(extAudio *Self)
                cardid = (STRING)snd_ctl_card_info_get_id(info);
                cardname = (STRING)snd_ctl_card_info_get_name(info);
 
-               if (!StrMatch(cardid, pcm_name)) {
+               if (!StrMatch(cardid, pcm_name.c_str())) {
                   pcm_name = name;
                   snd_ctl_close(ctlhandle);
                   break;
@@ -163,7 +163,7 @@ next_card:
       return ERR_Failed;
    }
 
-   if ((err = snd_mixer_attach(Self->MixHandle, pcm_name)) < 0) {
+   if ((err = snd_mixer_attach(Self->MixHandle, pcm_name.c_str())) < 0) {
       log.warning("snd_mixer_attach() %s", snd_strerror(err));
       return ERR_Failed;
    }
