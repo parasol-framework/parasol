@@ -413,7 +413,7 @@ The following custom tag values are formally recognised and may be defined autom
 <type name="Disclaimer">The disclaimer associated with an audio sample.</type>
 <type name="Software">The name of the application that was used to record the audio sample.</type>
 <type name="Title">The title of the audio sample.</type>
-<type name="VBRQuality">The VBR quality value if the source is a VBR compressed MP3.</type>
+<type name="Quality">The compression quality value if the source is an MP3 stream.</type>
 </types>
 
 *********************************************************************************************************************/
@@ -540,10 +540,10 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    // Determine if we are going to use streaming to play this sample
 
    if (!Self->BufferLength) {
-      if ((Self->Stream IS STREAM_ALWAYS) and (Self->Length >= 65536)) {
+      if ((Self->Stream IS STREAM::ALWAYS) and (Self->Length >= 65536)) {
          Self->BufferLength = Self->BytesPerSecond * SECONDS_STREAM_BUFFER;
       }
-      else if ((Self->Stream IS STREAM_SMART) and (Self->Length > 524288)) {
+      else if ((Self->Stream IS STREAM::SMART) and (Self->Length > 524288)) {
          Self->BufferLength = Self->BytesPerSecond * SECONDS_STREAM_BUFFER;
       }
       else Self->BufferLength = Self->Length;

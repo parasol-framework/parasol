@@ -4003,6 +4003,7 @@ end
     <constants lookup="SEEK" comment="Seek positions">
       <const name="CURRENT">Use an index at the end of the last read/write operation.</const>
       <const name="END">Use an index at the end of the data buffer.</const>
+      <const name="RELATIVE">The index is between 0 and 1.0 and relative to the data size.</const>
       <const name="START">Use an index at position zero.</const>
     </constants>
 

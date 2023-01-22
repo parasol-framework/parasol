@@ -48,6 +48,7 @@ class objCompressedStream;
 #define SEEK_START 0
 #define SEEK_CURRENT 1
 #define SEEK_END 2
+#define SEEK_RELATIVE 3
 
 #define DEVICE_COMPACT_DISC 0x00000001
 #define DEVICE_HARD_DISK 0x00000002
