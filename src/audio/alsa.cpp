@@ -260,7 +260,7 @@ next_card:
    snd_pcm_hw_params_alloca(&hwparams); // Stack allocation, no need to free it
 
    stream = SND_PCM_STREAM_PLAYBACK;
-   if ((err = snd_pcm_open(&pcmhandle, pcm_name, stream, 0)) < 0) {
+   if ((err = snd_pcm_open(&pcmhandle, pcm_name.c_str(), stream, 0)) < 0) {
       log.warning("snd_pcm_open(%s) %s", pcm_name.c_str(), snd_strerror(err));
       return ERR_Failed;
    }
