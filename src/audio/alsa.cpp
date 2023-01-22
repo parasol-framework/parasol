@@ -48,7 +48,7 @@ static ERROR init_audio(extAudio *Self)
 
    // Convert english pcm_name to the device number
 
-   if (StrMatch("default", pcm_name) != ERR_Okay) {
+   if (StrMatch("default", pcm_name.c_str()) != ERR_Okay) {
       STRING cardid, cardname;
       LONG card;
 
@@ -81,7 +81,7 @@ static ERROR init_audio(extAudio *Self)
    // Check if the default ALSA device is a real sound card.  We don't want to use it if it's a modem or other
    // unexpected device.
 
-   if (!StrMatch("default", pcm_name)) {
+   if (!StrMatch("default", pcm_name.c_str())) {
       snd_mixer_t *mixhandle;
       STRING cardid, cardname;
       WORD volmax;
@@ -127,7 +127,7 @@ static ERROR init_audio(extAudio *Self)
 
                            if (voltotal > volmax) {
                               volmax = voltotal;
-                              StrCopy(cardid, Self->Device, sizeof(Self->Device));
+                              Self->Device = cardid;
                               pcm_name = name;
                            }
                         }
@@ -261,7 +261,7 @@ next_card:
 
    stream = SND_PCM_STREAM_PLAYBACK;
    if ((err = snd_pcm_open(&pcmhandle, pcm_name, stream, 0)) < 0) {
-      log.warning("snd_pcm_open(%s) %s", pcm_name, snd_strerror(err));
+      log.warning("snd_pcm_open(%s) %s", pcm_name.c_str(), snd_strerror(err));
       return ERR_Failed;
    }
 
