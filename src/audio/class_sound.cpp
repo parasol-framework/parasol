@@ -49,7 +49,7 @@ struct PlatformData { void *Void; };
 #define WAVE_RAW    0x0001    // Uncompressed waveform data.
 #define WAVE_ADPCM  0x0002    // ADPCM compressed waveform data.
 
-#define SECONDS_STREAM_BUFFER 3
+#define SECONDS_STREAM_BUFFER 2
 
 #define SIZE_RIFF_CHUNK 12
 
@@ -82,19 +82,32 @@ static ERROR playback_timer(extSound *, LARGE, LARGE);
 
 //********************************************************************************************************************
 
-#ifdef _WIN32 // Functions for use by dsound.c
-int ReadData(extSound *Self, void *Buffer, int Length) {
-   LONG result;
-   if (!Self->File->read(Buffer, Length, &result)) return result;
+static LONG SF_Read(objSound *Self, APTR Buffer, LONG Length)
+{
+   if (Length > 0) {
+      LONG result;
+      if (!((extSound *)Self)->File->read(Buffer, Length, &result)) return result;
+   }
    return 0;
 }
 
-void SeekData(extSound *Self, DOUBLE Offset) {
-   Self->File->seekStart(Offset);
+static ERROR SF_Seek(objSound *Self, LONG Offset)
+{
+   ((extSound *)Self)->File->seekStart(((extSound *)Self)->DataOffset + Offset);
+   return ERR_Okay;
 }
 
-void SeekZero(extSound *Self) {
-   Self->File->seekStart(Self->DataOffset);
+static SoundFeed glWAVFeed = { SF_Read, SF_Seek };
+
+//********************************************************************************************************************
+
+#ifdef _WIN32 // Functions for use by dsound.c
+int ReadData(extSound *Self, void *Buffer, int Length) {
+   return Self->Feed->Read(Self, Buffer, Length);
+}
+
+void SeekData(extSound *Self, LONG Offset) {
+   Self->Feed->Seek(Self, Offset);
 }
 #endif
 
@@ -115,6 +128,7 @@ static LONG sample_format(extSound *Self)
    return 0;
 }
 
+static ERROR snd_init_audio(extSound *Self) __attribute__((unused));
 static ERROR snd_init_audio(extSound *Self)
 {
    parasol::Log log;
@@ -175,37 +189,83 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
 {
    parasol::Log log;
 
-   log.traceBranch("");
+   log.traceBranch("Position: %d", Self->Position);
 
-#if defined(USE_WIN32_PLAYBACK)
-   if (Self->WAVE) {
-      // Optimised playback for Windows - this does not use our internal mixer.
+#ifdef USE_WIN32_PLAYBACK
+   // Optimised playback for Windows - this does not use our internal mixer.
 
-      // Set platform dependent playback parameters
+   if (!Self->Length) return log.warning(ERR_FieldNotSet);
 
-      Self->set(FID_Playback, Self->Playback);
-      Self->set(FID_Volume, Self->Volume);
-      Self->set(FID_Pan, Self->Pan);
-
-      // If streaming is enabled, subscribe to the system timer so that we can regularly fill the audio buffer.
-      // 1/4 second checks are fine since we are only going to fill the buffer every 1.5 seconds or more (give
-      // consideration to high octave playback).
-      //
-      // We also need the subscription to fulfil the Deactivate contract.
-
-      auto call = make_function_stdc(playback_timer);
-      if (!SubscribeTimer(0.25, &call, &Self->Timer)) {
-         // Play the audio buffer
-
-         if (Self->Flags & SDF_LOOP) sndPlay((PlatformData *)Self->PlatformData, TRUE, Self->Position);
-         else sndPlay((PlatformData *)Self->PlatformData, FALSE, Self->Position);
-
-         return ERR_Okay;
+   if (!Self->Active) {
+      if (!Self->BufferLength) {
+         if ((Self->Stream IS STREAM::ALWAYS) and (Self->Length >= 65536)) {
+            Self->BufferLength = Self->BytesPerSecond * SECONDS_STREAM_BUFFER;
+         }
+         else if ((Self->Stream IS STREAM::SMART) and (Self->Length > 524288)) {
+            Self->BufferLength = Self->BytesPerSecond * SECONDS_STREAM_BUFFER;
+         }
+         else Self->BufferLength = Self->Length;
       }
-      else return ERR_Failed;
-   }
-#endif
 
+      if (Self->BufferLength > Self->Length) Self->BufferLength = Self->Length;
+
+      WORD channels = (Self->Flags & SDF_STEREO) ? 2 : 1;
+      WAVEFORMATEX wave = {
+         .Format            = WAVE_RAW,
+         .Channels          = channels,
+         .Frequency         = Self->Frequency,
+         .AvgBytesPerSecond = Self->BytesPerSecond,
+         .BlockAlign        = WORD(channels * (Self->BitsPerSample / 8)),
+         .BitsPerSample     = WORD(Self->BitsPerSample),
+         .ExtraLength       = 0
+      };
+
+      CSTRING strerr;
+      if (Self->Length > Self->BufferLength) {
+         log.msg("Streaming enabled because sample length %d exceeds buffer size %d.", Self->Length, Self->BufferLength);
+         Self->Flags |= SDF_STREAM;
+         strerr = sndCreateBuffer(Self, &wave, Self->BufferLength, Self->Length, (PlatformData *)Self->PlatformData, TRUE);
+      }
+      else {
+         Self->BufferLength = Self->Length;
+         Self->Flags &= ~SDF_STREAM;
+         strerr = sndCreateBuffer(Self, &wave, Self->BufferLength, Self->Length, (PlatformData *)Self->PlatformData, FALSE);
+      }
+
+      if (strerr) {
+         log.warning("Failed to create audio buffer, reason: %s (buffer length %d, sample length %d)", strerr, Self->BufferLength, Self->Length);
+         return ERR_Failed;
+      }
+
+      Self->Active = true;
+   }
+
+   if (Self->AudioID) {
+      parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
+      if (audio.granted()) {
+         sndVolume((PlatformData *)Self->PlatformData, audio->MasterVolume * Self->Volume);
+      }
+   }
+   else sndVolume((PlatformData *)Self->PlatformData, Self->Volume);
+
+   sndFrequency((PlatformData *)Self->PlatformData, Self->Playback);
+   sndPan((PlatformData *)Self->PlatformData, Self->Pan);
+
+   // If streaming is enabled, the timer is used to regularly fill the audio buffer.  1/4 second checks are fine
+   // since we are only going to fill the buffer every 1.5 seconds or more (give consideration to high octave
+   // playback).
+   //
+   // We also need the subscription to fulfil the Deactivate contract.
+
+   auto call = make_function_stdc(playback_timer);
+   if (!SubscribeTimer(0.25, &call, &Self->Timer)) {
+      LONG response;
+      if (Self->Flags & SDF_LOOP) response = sndPlay((PlatformData *)Self->PlatformData, TRUE, Self->Position);
+      else response = sndPlay((PlatformData *)Self->PlatformData, FALSE, Self->Position);
+      return response ? log.warning(ERR_Failed) : ERR_Okay;
+   }
+   else return log.warning(ERR_Failed);
+#else
    parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 2000);
    if (audio.granted()) {
       // Restricted and streaming audio can be played on only one channel at any given time.  This search will check
@@ -265,6 +325,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
       }
    }
    else return log.warning(ERR_AccessObject);
+#endif
 }
 
 /*********************************************************************************************************************
@@ -283,13 +344,9 @@ static ERROR SOUND_Deactivate(extSound *Self, APTR Void)
 
    Self->Position = 0;
 
-#if defined(USE_WIN32_PLAYBACK)
-   if (!Self->Handle) {
-      sndStop((PlatformData *)Self->PlatformData);
-      return ERR_Okay;
-   }
-#endif
-
+#ifdef USE_WIN32_PLAYBACK
+   sndStop((PlatformData *)Self->PlatformData);
+#else
    parasol::ScopedObjectLock<extAudio> audio(Self->AudioID);
    if (audio.granted()) {
       // Get a reference to our sound channel, then check if our unique ID is set against it.  If so, our sound is
@@ -300,6 +357,7 @@ static ERROR SOUND_Deactivate(extSound *Self, APTR Void)
       }
    }
    else return log.warning(ERR_AccessObject);
+#endif
 
    return ERR_Okay;
 }
@@ -316,15 +374,10 @@ static ERROR SOUND_Disable(extSound *Self, APTR Void)
 
    log.branch();
 
-#if defined(USE_WIN32_PLAYBACK)
-   if (!Self->Handle) {
-      Self->Position = sndGetPosition((PlatformData *)Self->PlatformData);
-      log.msg("Position: %d", Self->Position);
-      sndStop((PlatformData *)Self->PlatformData);
-      return ERR_Okay;
-   }
-#endif
-
+#ifdef USE_WIN32_PLAYBACK
+   Self->Position = sndGetPosition((PlatformData *)Self->PlatformData);
+   sndStop((PlatformData *)Self->PlatformData);
+#else
    if (!Self->ChannelIndex) return ERR_Okay;
 
    parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 5000);
@@ -332,9 +385,11 @@ static ERROR SOUND_Disable(extSound *Self, APTR Void)
       if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
          if (channel->SoundID IS Self->UID) sndMixStop(*audio, Self->ChannelIndex);
       }
-      return ERR_Okay;
    }
    else return log.warning(ERR_AccessObject);
+#endif
+
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
@@ -348,15 +403,13 @@ static ERROR SOUND_Enable(extSound *Self, APTR Void)
    parasol::Log log;
    log.branch();
 
-#if defined(USE_WIN32_PLAYBACK)
+#ifdef USE_WIN32_PLAYBACK
    if (!Self->Handle) {
       log.msg("Playing back from position %d.", Self->Position);
       if (Self->Flags & SDF_LOOP) sndPlay((PlatformData *)Self->PlatformData, TRUE, Self->Position);
       else sndPlay((PlatformData *)Self->PlatformData, FALSE, Self->Position);
-      return ERR_Okay;
    }
-#endif
-
+#else
    if (!Self->ChannelIndex) return ERR_Okay;
 
    parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 5000);
@@ -364,9 +417,11 @@ static ERROR SOUND_Enable(extSound *Self, APTR Void)
       if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
          if (channel->SoundID IS Self->UID) sndMixContinue(*audio, Self->ChannelIndex);
       }
-      return ERR_Okay;
    }
    else return log.warning(ERR_AccessObject);
+#endif
+
+   return ERR_Okay;
 }
 
 //********************************************************************************************************************
@@ -383,7 +438,7 @@ static ERROR SOUND_Free(extSound *Self, APTR Void)
 
    Self->deactivate();
 
-   if (Self->Handle) {
+   if ((Self->Handle) and (Self->AudioID)) {
       parasol::ScopedObjectLock<extAudio> audio(Self->AudioID);
       if (audio.granted()) {
          sndRemoveSample(*audio, Self->Handle);
@@ -392,7 +447,6 @@ static ERROR SOUND_Free(extSound *Self, APTR Void)
    }
 
    if (Self->Path)         { FreeResource(Self->Path); Self->Path = NULL; }
-   if (Self->WAVE)         { FreeResource(Self->WAVE); Self->WAVE = NULL; }
    if (Self->File)         { acFree(Self->File); Self->File = NULL; }
    if (Self->StreamFileID) { acFree(Self->StreamFileID); Self->StreamFileID = 0; }
 
@@ -436,7 +490,7 @@ Init: Prepares a sound object for usage.
 -END-
 *********************************************************************************************************************/
 
-#if defined(USE_WIN32_PLAYBACK)
+#ifdef USE_WIN32_PLAYBACK
 
 static ERROR SOUND_Init(extSound *Self, APTR Void)
 {
@@ -481,6 +535,8 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
       if ((StrCompare((CSTRING)Self->Header, "RIFF", 4, STR_CASE) != ERR_Okay) or
           (StrCompare((CSTRING)Self->Header + 8, "WAVE", 4, STR_CASE) != ERR_Okay)) {
+         acFree(Self->File);
+         Self->File = NULL;
          return ERR_NoSupport;
       }
    }
@@ -492,18 +548,16 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    if (flReadLE(Self->File, &id)) return ERR_Read; // Contains the characters "fmt "
    if (flReadLE(Self->File, &len)) return ERR_Read; // Length of data in this chunk
 
-   if (!AllocMemory(len, MEM_DATA, &Self->WAVE)) {
-      LONG result;
-      if (Self->File->read(Self->WAVE, len, &result) or (result != len)) {
-         return log.warning(ERR_Read);
-      }
+   WAVEFormat WAVE;
+   LONG result;
+   if (Self->File->read(&WAVE, len, &result) or (result != len)) {
+      return log.warning(ERR_Read);
    }
-   else return ERR_AllocMemory;
 
    // Check the format of the sound file's data
 
-   if ((Self->WAVE->Format != WAVE_ADPCM) and (Self->WAVE->Format != WAVE_RAW)) {
-      log.msg("This file's WAVE data format is not supported (type %d).", Self->WAVE->Format);
+   if ((WAVE.Format != WAVE_ADPCM) and (WAVE.Format != WAVE_RAW)) {
+      log.msg("This file's WAVE data format is not supported (type %d).", WAVE.Format);
       return ERR_InvalidData;
    }
 
@@ -521,11 +575,11 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
    Self->File->get(FID_Position, &Self->DataOffset);
 
-   Self->Format         = Self->WAVE->Format;
-   Self->BytesPerSecond = Self->WAVE->AvgBytesPerSecond;
-   Self->BitsPerSample  = Self->WAVE->BitsPerSample;
-   if (Self->WAVE->Channels IS 2) Self->Flags |= SDF_STEREO;
-   if (Self->Frequency <= 0) Self->Frequency = Self->WAVE->Frequency;
+   Self->Format         = WAVE.Format;
+   Self->BytesPerSecond = WAVE.AvgBytesPerSecond;
+   Self->BitsPerSample  = WAVE.BitsPerSample;
+   if (WAVE.Channels IS 2) Self->Flags |= SDF_STEREO;
+   if (Self->Frequency <= 0) Self->Frequency = WAVE.Frequency;
    if (Self->Playback <= 0)  Self->Playback  = Self->Frequency;
 
    if (Self->Flags & SDF_NOTE) {
@@ -533,43 +587,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
       Self->Flags &= ~SDF_NOTE;
    }
 
-   // If the QUERY flag is set, do not proceed any further as we already have all of the information that we need.
-
-   if (Self->Flags & SDF_QUERY) return ERR_Okay;
-
-   // Determine if we are going to use streaming to play this sample
-
-   if (!Self->BufferLength) {
-      if ((Self->Stream IS STREAM::ALWAYS) and (Self->Length >= 65536)) {
-         Self->BufferLength = Self->BytesPerSecond * SECONDS_STREAM_BUFFER;
-      }
-      else if ((Self->Stream IS STREAM::SMART) and (Self->Length > 524288)) {
-         Self->BufferLength = Self->BytesPerSecond * SECONDS_STREAM_BUFFER;
-      }
-      else Self->BufferLength = Self->Length;
-   }
-
-   if (Self->BufferLength > Self->Length) Self->BufferLength = Self->Length;
-
-   log.trace("Bits: %d, Freq: %d, KBPS: %d, BufLen: %d, SmpLen: %d", Self->BitsPerSample, Self->Frequency, Self->BytesPerSecond, Self->BufferLength, Self->Length);
-
-   // Create the audio buffer and fill it with sample data
-
-   CSTRING strerr;
-   if (Self->Length > Self->BufferLength) {
-      log.msg("Streaming enabled for playback.");
-      Self->Flags |= SDF_STREAM;
-      strerr = sndCreateBuffer(Self, Self->WAVE, Self->BufferLength, Self->Length, (PlatformData *)Self->PlatformData, TRUE);
-   }
-   else {
-      Self->BufferLength = Self->Length;
-      strerr = sndCreateBuffer(Self, Self->WAVE, Self->BufferLength, Self->Length, (PlatformData *)Self->PlatformData, FALSE);
-   }
-
-   if (strerr) {
-      log.warning("Failed to create audio buffer, reason: %s (buffer length %d, sample length %d)", strerr, Self->BufferLength, Self->Length);
-      return ERR_Failed;
-   }
+   log.trace("Bits: %d, Freq: %d, KBPS: %d, BufLen: %d, ByteLength: %d, DataOffset: %d", Self->BitsPerSample, Self->Frequency, Self->BytesPerSecond, Self->BufferLength, Self->Length, Self->DataOffset);
 
    return ERR_Okay;
 }
@@ -625,7 +643,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
       if (!Self->Frequency) Self->Frequency = 44192;
       if (!Self->Playback) Self->Playback = Self->Frequency;
 
-      // Create a file object that will handle the decoded audio stream
+      // Create a virtual file object that will handle the decoded audio stream
 
       if ((filestream = objFile::create::integral(fl::Flags(FL_BUFFER|FL_LOOP), fl::Size(Self->BufferLength)))) {
          Self->StreamFileID = filestream->UID;
@@ -698,8 +716,8 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
       // Check the format of the sound file's data
 
-      if ((Self->WAVE->Format != WAVE_ADPCM) and (Self->WAVE->Format != WAVE_RAW)) {
-         log.warning("This file's WAVE data format is not supported (type %d).", Self->WAVE->Format);
+      if ((WAVE.Format != WAVE_ADPCM) and (WAVE.Format != WAVE_RAW)) {
+         log.warning("This file's WAVE data format is not supported (type %d).", WAVE.Format);
          return ERR_InvalidData;
       }
 
@@ -734,12 +752,12 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
       Self->File->get(FID_Position, &Self->DataOffset);
 
-      Self->Format         = Self->WAVE->Format;
-      Self->BytesPerSecond = Self->WAVE->AvgBytesPerSecond;
-      Self->BitsPerSample  = Self->WAVE->BitsPerSample;
-      if (Self->WAVE->Channels IS 2) Self->Flags |= SDF_STEREO;
-      if (Self->Frequency <= 0)      Self->Frequency = Self->WAVE->Frequency;
-      if (Self->Playback <= 0)       Self->Playback  = Self->Frequency;
+      Self->Format         = WAVE.Format;
+      Self->BytesPerSecond = WAVE.AvgBytesPerSecond;
+      Self->BitsPerSample  = WAVE.BitsPerSample;
+      if (WAVE.Channels IS 2)   Self->Flags |= SDF_STEREO;
+      if (Self->Frequency <= 0) Self->Frequency = WAVE.Frequency;
+      if (Self->Playback <= 0)  Self->Playback  = Self->Frequency;
 
       if (Self->Flags & SDF_NOTE) {
          SOUND_SET_Note(Self, Self->NoteString);
@@ -758,10 +776,10 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
       // Determine the sample type
 
       sampleformat = 0;
-      if ((Self->WAVE->Channels IS 1) and (Self->BitsPerSample IS 8)) sampleformat = SFM_U8_BIT_MONO;
-      else if ((Self->WAVE->Channels IS 2) and (Self->BitsPerSample IS 8))  sampleformat = SFM_U8_BIT_STEREO;
-      else if ((Self->WAVE->Channels IS 1) and (Self->BitsPerSample IS 16)) sampleformat = SFM_S16_BIT_MONO;
-      else if ((Self->WAVE->Channels IS 2) and (Self->BitsPerSample IS 16)) sampleformat = SFM_S16_BIT_STEREO;
+      if ((WAVE.Channels IS 1) and (Self->BitsPerSample IS 8)) sampleformat = SFM_U8_BIT_MONO;
+      else if ((WAVE.Channels IS 2) and (Self->BitsPerSample IS 8))  sampleformat = SFM_U8_BIT_STEREO;
+      else if ((WAVE.Channels IS 1) and (Self->BitsPerSample IS 16)) sampleformat = SFM_S16_BIT_MONO;
+      else if ((WAVE.Channels IS 2) and (Self->BitsPerSample IS 16)) sampleformat = SFM_S16_BIT_STEREO;
 
       if (!sampleformat) return log.warning(ERR_InvalidData);
 
@@ -782,7 +800,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
       // Create the audio buffer and fill it with sample data
 
       if ((Self->Length > Self->BufferLength) or (Self->Flags & SDF_STREAM)) {
-         log.msg("Streaming enabled for playback.");
+         log.msg("Streaming enabled for playback in format $%.8x", sampleformat);
          Self->Flags |= SDF_STREAM;
 
          struct sndAddStream stream;
@@ -878,6 +896,7 @@ static ERROR SOUND_NewObject(extSound *Self, APTR Void)
    Self->Playback    = 0;
    Self->Note        = NOTE_C; // Standard pitch
    Self->Stream      = STREAM::SMART;
+   Self->Feed        = &glWAVFeed;
    return ERR_Okay;
 }
 
@@ -978,13 +997,19 @@ static ERROR SOUND_Seek(extSound *Self, struct acSeek *Args)
    else if (Args->Position IS SEEK_CURRENT) {
       if (!SOUND_GET_Position(Self, &Self->Position)) {
          Self->Position += Args->Offset;
-         if (Self->Position > Self->Length) Self->Position = Self->Length;
       }
    }
+   else if (Args->Position IS SEEK_RELATIVE) {
+      Self->Position = Self->Length * Args->Offset;
+   }
 
-   if (active) Self->activate(); // Restart the audio
+   if (Self->Position < 0) Self->Position = 0;
+   else if (Self->Position > Self->Length) Self->Position = Self->Length;
 
-   return ERR_Okay;
+   // Restart the audio
+
+   if (active) return Self->activate();
+   else return ERR_Okay;
 }
 
 /*********************************************************************************************************************
@@ -1009,10 +1034,10 @@ Active: Returns TRUE if the sound sample is being played back.
 
 static ERROR SOUND_GET_Active(extSound *Self, LONG *Value)
 {
+#ifdef USE_WIN32_PLAYBACK
    parasol::Log log;
 
-#if defined(USE_WIN32_PLAYBACK)
-   if (!Self->Handle) {
+   if (Self->Active) {
       WORD status = sndCheckActivity((PlatformData *)Self->PlatformData);
 
       if (status IS 0) *Value = FALSE;
@@ -1021,11 +1046,11 @@ static ERROR SOUND_GET_Active(extSound *Self, LONG *Value)
          log.warning("Error retrieving active status.");
          *Value = FALSE;
       }
-
-      return ERR_Okay;
    }
-#endif
+   else *Value = FALSE;
 
+   return ERR_Okay;
+#else
    *Value = FALSE;
 
    if (Self->ChannelIndex) {
@@ -1039,6 +1064,7 @@ static ERROR SOUND_GET_Active(extSound *Self, LONG *Value)
       }
       else return ERR_AccessObject;
    }
+#endif
 
    return ERR_Okay;
 }
@@ -1142,14 +1168,21 @@ static ERROR SOUND_SET_Length(extSound *Self, LONG Value)
    if (Value >= 0) {
       Self->Length = Value;
 
-      if ((Self->Handle) and (Self->AudioID)) {
-         parasol::ScopedObjectLock<objAudio> audio(Self->AudioID);
-         if (audio.granted()) {
-            return sndSetSampleLength(*audio, Self->Handle, Value);
+      #ifdef USE_WIN32_PLAYBACK
+         if (Self->initialised()) {
+            sndLength((PlatformData *)Self->PlatformData, Value);
          }
-         else return log.warning(ERR_AccessObject);
-      }
-      else return ERR_Okay;
+         return ERR_Okay;
+      #else
+         if ((Self->Handle) and (Self->AudioID)) {
+            parasol::ScopedObjectLock<objAudio> audio(Self->AudioID);
+            if (audio.granted()) {
+               return sndSetSampleLength(*audio, Self->Handle, Value);
+            }
+            else return log.warning(ERR_AccessObject);
+         }
+         else return ERR_Okay;
+      #endif
    }
    else return log.warning(ERR_InvalidValue);
 }
@@ -1327,13 +1360,11 @@ static ERROR SOUND_SET_Note(extSound *Self, CSTRING Value)
 
    // If the sound is playing, set the new playback frequency immediately
 
-#if defined(USE_WIN32_PLAYBACK)
-   if ((!Self->Handle) and (Self->initialised())) {
+#ifdef USE_WIN32_PLAYBACK
+   if (Self->initialised()) {
       sndFrequency((PlatformData *)Self->PlatformData, Self->Playback);
-      return ERR_Okay;
    }
-#endif
-
+#else
    if (Self->ChannelIndex) {
       parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
@@ -1341,6 +1372,7 @@ static ERROR SOUND_SET_Note(extSound *Self, CSTRING Value)
       }
       else return ERR_AccessObject;
    }
+#endif
 
    return ERR_Okay;
 }
@@ -1382,13 +1414,11 @@ static ERROR SOUND_SET_Pan(extSound *Self, DOUBLE Value)
    if (Self->Pan < -1.0) Self->Pan = -1.0;
    else if (Self->Pan > 1.0) Self->Pan = 1.0;
 
-#if defined(USE_WIN32_PLAYBACK)
-   if ((!Self->Handle) and (Self->initialised())) {
+#ifdef USE_WIN32_PLAYBACK
+   if (Self->initialised()) {
       sndPan((PlatformData *)Self->PlatformData, Self->Pan);
-      return ERR_Okay;
    }
-#endif
-
+#else
    if (Self->ChannelIndex) {
       parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
@@ -1396,6 +1426,7 @@ static ERROR SOUND_SET_Pan(extSound *Self, DOUBLE Value)
       }
       else return ERR_AccessObject;
    }
+#endif
 
    return ERR_Okay;
 }
@@ -1452,13 +1483,11 @@ static ERROR SOUND_SET_Playback(extSound *Self, LONG Value)
    Self->Playback = Value;
    Self->Flags &= ~SDF_NOTE;
 
-#if defined(USE_WIN32_PLAYBACK)
-   if ((!Self->Handle) and (Self->initialised())) {
+#ifdef USE_WIN32_PLAYBACK
+   if (Self->initialised()) {
       sndFrequency((PlatformData *)Self->PlatformData, Self->Playback);
-      return ERR_Okay;
    }
-#endif
-
+#else
    if (Self->ChannelIndex) {
       parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
@@ -1466,6 +1495,7 @@ static ERROR SOUND_SET_Playback(extSound *Self, LONG Value)
       }
       else return log.warning(ERR_AccessObject);
    }
+#endif
 
    return ERR_Okay;
 }
@@ -1481,15 +1511,17 @@ playback position, either when the sample is next played, or immediately if it i
 
 static ERROR SOUND_GET_Position(extSound *Self, LONG *Value)
 {
-#if defined(USE_WIN32_PLAYBACK)
-   if (!Self->Handle) {
+#ifdef USE_WIN32_PLAYBACK
+   if (Self->initialised()) {
       Self->Position = sndGetPosition((PlatformData *)Self->PlatformData);
       *Value = Self->Position;
       return ERR_Okay;
    }
+   else *Value = 0;
+#else
+   *Value = Self->Position;
 #endif
 
-   *Value = Self->Position;
    return ERR_Okay;
 }
 
@@ -1550,16 +1582,14 @@ static ERROR SOUND_SET_Volume(extSound *Self, DOUBLE Value)
    else if (Value > 1.0) Value = 1.0;
    Self->Volume = Value;
 
-#if defined(USE_WIN32_PLAYBACK)
-   if ((!Self->Handle) and (Self->initialised())) {
+#ifdef USE_WIN32_PLAYBACK
+   if (Self->initialised()) {
       parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
          sndVolume((PlatformData *)Self->PlatformData, audio->MasterVolume * Self->Volume);
       }
-      return ERR_Okay;
    }
-#endif
-
+#else
    if (Self->ChannelIndex) {
       parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
@@ -1567,6 +1597,7 @@ static ERROR SOUND_SET_Volume(extSound *Self, DOUBLE Value)
       }
       else return ERR_AccessObject;
    }
+#endif
 
    return ERR_Okay;
 }
@@ -1596,15 +1627,16 @@ static ERROR playback_timer(extSound *Self, LARGE Elapsed, LARGE CurrentTime)
    parasol::Log log;
    LONG active;
 
-#if defined(USE_WIN32_PLAYBACK)
-   if ((Self->Flags & SDF_STREAM) and (!Self->Handle)) {
+#ifdef USE_WIN32_PLAYBACK
+   if (Self->Flags & SDF_STREAM) {
       // See sndStreamAudio() for further information on streaming in Win32
 
-      if (sndStreamAudio((PlatformData *)Self->PlatformData)) {
+      if (auto response = sndStreamAudio((PlatformData *)Self->PlatformData)) {
          // We have reached the end of the sample.  If looping is turned off, terminate the timer subscription.
 
-         if (!(Self->Flags & SDF_LOOP)) {
-            log.extmsg("Sound playback completed.");
+         if ((response IS -1) or (!(Self->Flags & SDF_LOOP))) {
+            if (response IS -1) log.warning("Sound streaming failed.");
+            else log.extmsg("Sound streaming completed.");
             DelayMsg(AC_Deactivate, Self->UID);
             Self->Timer = 0;
             return ERR_Terminate;
@@ -1619,13 +1651,13 @@ static ERROR playback_timer(extSound *Self, LARGE Elapsed, LARGE CurrentTime)
    //
    // We used delayed messages here because we don't want to disturb the System Audio object.
 
-   if (!(Self->Flags & SDF_LOOP)) {
-      if ((!Self->get(FID_Active, &active)) and (active IS FALSE)) {
-         log.extmsg("Sound playback completed.");
-         DelayMsg(AC_Deactivate, Self->UID);
-         Self->Timer = 0;
-         return ERR_Terminate;
-      }
+   if (Self->Flags & SDF_LOOP) return ERR_Okay;
+
+   if ((!Self->get(FID_Active, &active)) and (!active)) {
+      log.extmsg("Sound playback completed.");
+      DelayMsg(AC_Deactivate, Self->UID);
+      Self->Timer = 0;
+      return ERR_Terminate;
    }
 
    return ERR_Okay;

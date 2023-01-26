@@ -40,10 +40,9 @@ end
    if (player.acActivate() == ERR_Okay) then
       print('Press CTRL-C to exit or wait for sound sample to finish.')
 
-
       proc.sleep() -- This will wake on receipt of a signal.
 
-      proc.sleep(1.5)
+      proc.sleep(1) -- Slight pause to flush any buffered audio before exiting
    else
       print('Failed to play audio file.')
    end

@@ -14,7 +14,6 @@ MP3: Sound class extension
 #include <parasol/strings.hpp>
 
 extern "C" {
-//#define MINIMP3_NO_SIMD
 //#define MINIMP3_FLOAT_OUTPUT
 #define MINIMP3_IMPLEMENTATION
 #include "minimp3/minimp3.h"
@@ -38,13 +37,18 @@ const LONG COMMENT_TRACK = 29;
 #define MPF_COPYRIGHT (1<<3)
 #define MPF_ORIGINAL  (1<<2)
 
+const LONG MAX_FRAME_BYTES = MINIMP3_MAX_SAMPLES_PER_FRAME * sizeof(WORD);
+
 struct prvMP3 {
-   UBYTE  Input[16384];        // For incoming MP3 data.  Also needs to be big enough to accomodate the ID3v2 header.
-   std::array<UBYTE, 64 * 1024> Buffer; // Decoded audio data
+   std::array<UBYTE, 16 * 1024> Input;  // For incoming MP3 data.  Also needs to be big enough to accomodate the ID3v2 header.
    std::array<UBYTE, 100> TOC; // Xing Table of Contents
+   std::array<UBYTE, MAX_FRAME_BYTES> Overflow;
    mp3dec_t mp3d;              // Decoder information
    mp3dec_frame_info_t info;   // Retains info on the most recently decoded frame.
+   objFile *File;              // Source MP3 file
    // frame_bytes, frame_offset, channels, hz, layer, bitrate_kbps
+   LONG   OverflowPos;         // Overflow read position
+   LONG   OverflowSize;        // Number of bytes used in the overflow buffer.
    LONG   SamplesPerFrame;     // Last known frame size, measured in samples: 384, 576 or 1152
    LONG   SeekOffset;          // Offset to apply when performing seek operations.
    LONG   WriteOffset;         // Current stream offset in bytes, relative to Sound.Length.
@@ -67,6 +71,8 @@ struct prvMP3 {
       WriteOffset      = 0;
       FramesProcessed  = 0;
       SamplesPerFrame  = 1152;
+      OverflowPos      = 0;
+      OverflowSize     = 0;
       EndOfFile        = false;
    }
 };
@@ -81,7 +87,6 @@ struct id3tag {
    UBYTE genre;
 };
 
-static ERROR decode_mp3(objSound *, bool ProcessHeaders = false);
 static LONG find_frame(objSound *, UBYTE *, LONG);
 
 //********************************************************************************************************************
@@ -130,19 +135,243 @@ static const LONG samplerate_table[3] = { 44100, 48000, 32000 };
 static LONG calc_length(objSound *, LONG);
 
 //********************************************************************************************************************
+
+static LONG SF_Read(objSound *Self, APTR Buffer, LONG Length)
+{
+   parasol::Log log(__FUNCTION__);
+   auto prv = (prvMP3 *)Self->ChildPrivate;
+
+   // Keep decoding until we exhaust space in the output buffer.  Setting the EOF to true indicates that everything
+   // has been output, or an error has occurred.
+
+   LONG pos = 0;
+   auto write_offset = prv->WriteOffset;
+   bool no_more_input = false;
+   while ((prv->WriteOffset < Self->Length) and (!prv->EndOfFile) and (pos < Length)) {
+      // Previously decoded bytes that overflowed have priority.
+
+      if ((prv->OverflowSize) and (prv->OverflowPos < prv->OverflowSize)) {
+         LONG to_copy = prv->OverflowSize - prv->OverflowPos;
+         if (pos + to_copy > Length) to_copy = Length - pos;
+         CopyMemory(prv->Overflow.data() + prv->OverflowPos, (UBYTE *)Buffer + pos, to_copy);
+         prv->OverflowPos += to_copy;
+         pos += to_copy;
+         prv->WriteOffset += to_copy;
+         continue;
+      }
+
+      // Read as much input as possible.
+
+      log.trace("Write %" PF64 " max bytes to %d, Avail. Compressed: %d bytes",  Length, prv->WriteOffset, prv->CompressedOffset);
+
+      if ((prv->CompressedOffset < (LONG)prv->Input.size()) and (!prv->EndOfFile) and (!no_more_input)) {
+         LONG result;
+         if (auto error = prv->File->read(prv->Input.data() + prv->CompressedOffset, prv->Input.size() - prv->CompressedOffset, &result)) {
+            log.warning("File read error: %s", GetErrorMsg(error));
+            prv->EndOfFile = true;
+            break;
+         }
+         else if (!result) {
+            log.extmsg("Reached end of input file.");
+            no_more_input = true; // Don't change the EOF - let the output code do that.
+         }
+
+         prv->CompressedOffset += result;
+      }
+
+      LONG in = 0; // Always start from zero
+
+      while ((prv->WriteOffset < Self->Length) and (in < (LONG)prv->Input.size() - (8 * 1024)) and (pos < Length)) {
+         LONG decoded_samples;
+
+         if (pos + MAX_FRAME_BYTES > Length) {
+            // Buffer overflow management - necessary if we need to decode more data than what the output buffer can support.
+
+            WORD pcm[MINIMP3_MAX_SAMPLES_PER_FRAME];
+            decoded_samples = mp3dec_decode_frame(&prv->mp3d, prv->Input.data() + in, prv->CompressedOffset - in, pcm, &prv->info);
+            if (decoded_samples) {
+               LONG decoded_bytes = decoded_samples * sizeof(WORD) * prv->info.channels;
+
+               if (pos + decoded_bytes > Length) {
+                  // We can't write the full amount, store the rest in overflow.  It is presumed that Length
+                  // is sample-aligned, i.e. sample_size * channel_size; so usually 4 bytes.
+                  prv->OverflowPos  = 0;
+                  prv->OverflowSize = pos + decoded_bytes - Length;
+                  decoded_bytes = Length - pos;
+                  CopyMemory((UBYTE *)pcm + decoded_bytes, prv->Overflow.data(), prv->OverflowSize);
+
+                  log.trace("Overflow detected at %d/%d, wrote %d, stored %d bytes.", pos, Length, decoded_bytes, prv->OverflowSize);
+               }
+
+               CopyMemory(pcm, (UBYTE *)Buffer + pos, decoded_bytes);
+
+               prv->FramesProcessed++;
+               in  += prv->info.frame_bytes;
+               pos += decoded_bytes;
+               prv->WriteOffset += decoded_bytes;
+            }
+         }
+         else {
+            decoded_samples = mp3dec_decode_frame(&prv->mp3d, prv->Input.data() + in, prv->CompressedOffset - in, (WORD *)((UBYTE *)Buffer + pos), &prv->info);
+
+            if (decoded_samples) {
+               prv->FramesProcessed++;
+               const LONG decoded_bytes = decoded_samples * sizeof(WORD) * prv->info.channels;
+               in  += prv->info.frame_bytes;
+               pos += decoded_bytes;
+               prv->WriteOffset += decoded_bytes;
+            }
+         }
+
+         if (prv->WriteOffset >= Self->Length) {
+            prv->WriteOffset = Self->Length;
+            prv->EndOfFile = true;
+         }
+
+         // Decoder results:
+         // 0: No MP3 data found; 384: Layer 1; 576: Layer 3; 1152: All others
+
+         if (!decoded_samples) {
+            if (prv->info.frame_bytes > 0) {
+               // The decoder skipped ID3 or invalid data - do not play this frame
+               log.msg("Skipping MP3 frame at offset %d, size %d.", in, prv->CompressedOffset - in);
+               in += prv->info.frame_bytes;
+            }
+            else if (!prv->info.frame_bytes) {
+               // Insufficient data (read more to obtain a frame) OR end of file
+               if ((!in) or (no_more_input)) prv->EndOfFile = true;
+               break;
+            }
+         }
+      }
+
+      // Shift any remaining data that couldn't be decoded.  This will help maintain the minimum 16k of
+      // data in the buffer as recommended by minimp3.
+
+      if (!in) break;
+      else if (in < prv->CompressedOffset) {
+         CopyMemory((UBYTE *)prv->Input.data() + in, prv->Input.data(), prv->CompressedOffset - in);
+      }
+
+      prv->CompressedOffset -= in;
+   }
+
+   if (prv->EndOfFile) {
+      // We now know the exact length of the decoded audio stream and use that to ensure playback stops
+      // at the correct position.
+
+      if (Self->Length != prv->WriteOffset) {
+         log.extmsg("Decode complete, changing sample length from %d to %d bytes.  Decoded %d frames.", Self->Length, prv->WriteOffset, prv->FramesProcessed);
+         Self->set(FID_Length, prv->WriteOffset);
+      }
+      else log.extmsg("Decoding of %d MP3 frames complete, output %d bytes.", prv->FramesProcessed, prv->WriteOffset);
+   }
+
+   if (pos < Length) {
+      // This null padding comes into effect when the client has seeked to a position and the r/w offsets don't quite
+      // match the sample length.  Consequently the Length is greater than what we can provide.  Padding is the most
+      // effective means of dealing with these slight discrepencies.
+
+      ClearMemory((UBYTE *)Buffer + pos, Length - pos);
+      prv->WriteOffset += Length - pos;
+   }
+
+   return prv->WriteOffset - write_offset;
+}
+
+//********************************************************************************************************************
+// Accuracy when seeking within an MP3 file is not guaranteed.  This means that offsets can be a little too far
+// forward or backward relative to the known length.
+
+static ERROR SF_Seek(objSound *Self, LONG Offset)
+{
+   parasol::Log log;
+   auto prv = (prvMP3 *)Self->ChildPrivate;
+
+   prv->reset();
+   mp3dec_init(&prv->mp3d);
+
+   if (Offset <= 0) {
+      log.traceBranch("Resetting play position to zero.");
+      prv->File->seekStart(prv->SeekOffset);
+      return ERR_Okay;
+   }
+   else {
+      // Seeking via byte position, where the position is relative to the decoded length.
+
+      if (Self->Length <= 0) {
+         log.warning("MP3 stream length unknown, cannot seek.");
+         return ERR_Failed;
+      }
+
+      DOUBLE pct = Offset / DOUBLE(Self->Length);
+
+      if (prv->TOCLoaded) {
+         // The TOC gives us an approx. frame number for a given location in the compressed stream
+         // (relative to TotalFrames).  By knowing the frame number, we can make more accurate calculations
+         // as to time and length remaining.
+
+         LONG idx = F2T(pct * prv->TOC.size());
+         if (idx < 0) idx = 0;
+         else if (idx >= (LONG)prv->TOC.size()) idx = prv->TOC.size() - 1;
+
+         LONG offset = prv->SeekOffset + ((prv->TOC[idx] * prv->StreamSize) / 256);
+         LONG frame = prv->TOC[idx] * prv->TotalFrames / 256;
+         prv->File->seekStart(offset);
+
+         log.extmsg("Seeking to byte offset %d, frame %d of %d", offset, frame, prv->TotalFrames);
+
+         prv->WriteOffset = frame * prv->SamplesPerFrame * prv->info.channels * sizeof(WORD);
+         prv->ReadOffset = prv->WriteOffset;
+         prv->FramesProcessed = frame;
+         return ERR_Okay;
+      }
+      else {
+         // Seeking without a TOC has two approaches: 1) Scan from frame 1 until you reach the frame
+         // you're looking for; 2) Use the average frame size to make a jump and rely on frame syncing to
+         // find the nearest viable frame.  The accuracy of this is largely dependent on the calc_length()
+         // computations.
+
+         if (!prv->StreamSize) {
+            LARGE size;
+            prv->File->get(FID_Size, &size);
+            prv->StreamSize = size - prv->SeekOffset;
+         }
+
+         LONG frame = prv->TotalFrames * pct;
+         LONG offset = prv->StreamSize * pct;
+         if (frame < 0) frame = 0;
+         if (offset < 0) offset = 0;
+         prv->File->seekStart(prv->SeekOffset + offset);
+
+         log.extmsg("Seeking to byte offset %d, frame %d of %d", offset, frame, prv->TotalFrames);
+
+         prv->WriteOffset = frame * prv->SamplesPerFrame * prv->info.channels * sizeof(WORD);
+         prv->ReadOffset = prv->WriteOffset;
+         prv->FramesProcessed = frame;
+         return ERR_Okay;
+      }
+   }
+}
+
+static SoundFeed glMP3Feed = { SF_Read, SF_Seek };
+
+//********************************************************************************************************************
 // The ID3v1 tag can be located at the end of the MP3 file.
 // There may also be an 'Enhanced TAG' just prior to the ID3v1 header - this code does not support it yet.
 
 static bool parse_id3v1(objSound *Self)
 {
-   bool processed = false;
    parasol::Log log(__FUNCTION__);
 
+   auto prv = (prvMP3 *)Self->ChildPrivate;
+   bool processed = false;
+
    id3tag id3;
-   Self->File->seekEnd(sizeof(id3));
+   prv->File->seekEnd(sizeof(id3));
 
    LONG result;
-   if ((!Self->File->read(&id3, sizeof(id3), &result)) and (result IS sizeof(id3))) {
+   if ((!prv->File->read(&id3, sizeof(id3), &result)) and (result IS sizeof(id3))) {
       if (!StrCompare("TAG", (STRING)&id3, 3, STR_CASE)) {
          char buffer[sizeof(id3)];
 
@@ -178,7 +407,7 @@ static bool parse_id3v1(objSound *Self)
       }
    }
 
-   Self->File->seekStart(0);
+   prv->File->seekStart(0);
 
    return processed;
 }
@@ -264,7 +493,8 @@ static int check_xing(objSound *Self, const UBYTE *Frame)
    prv->PaddingEnd   = padding;
    prv->PaddingStart = delay;
 
-   // Calculate the total no of samples for the entire streaam.
+   // Calculate the total no of samples for the entire stream, adjusted for padding at both the start and end.
+
    LARGE detected_samples = prv->info.samples * (LARGE)prv->TotalFrames;
    if (detected_samples >= prv->PaddingStart) detected_samples -= prv->PaddingStart;
    if (detected_samples >= prv->PaddingEnd) detected_samples -= prv->PaddingEnd;
@@ -272,6 +502,8 @@ static int check_xing(objSound *Self, const UBYTE *Frame)
    prv->TotalSamples = detected_samples;
 
    const DOUBLE seconds_len = DOUBLE(detected_samples) / DOUBLE(prv->info.hz);
+
+   // Compute byte length with adjustment for padding at the end, but not the start.
 
    LONG len = prv->TotalFrames * prv->SamplesPerFrame * prv->info.channels * sizeof(WORD);
    len -= prv->PaddingEnd * prv->info.channels * sizeof(WORD);
@@ -297,10 +529,13 @@ static ERROR MP3_Free(objSound *Self, APTR Void)
    prvMP3 *prv;
    if (!(prv = (prvMP3 *)Self->ChildPrivate)) return ERR_Okay;
 
+   if (prv->File) { acFree(prv->File); prv->File = NULL; }
+
    return ERR_Okay;
 }
 
 //********************************************************************************************************************
+// Playback is managed by Sound.acActivate()
 
 static ERROR MP3_Init(objSound *Self, APTR Void)
 {
@@ -316,20 +551,6 @@ static ERROR MP3_Init(objSound *Self, APTR Void)
       return ERR_Okay;
    }
 
-   // Open the source file if the Sound class has not done so already
-
-   if (!Self->File) {
-      if (!(Self->File = objFile::create::integral(fl::Path(location), fl::Flags(FL_READ|FL_APPROXIMATE)))) {
-         return log.warning(ERR_CreateObject);
-      }
-   }
-   else Self->File->seekStart(0);
-
-   // Read the ID3v1 file header, if there is one.
-
-   LONG reduce = 0;
-   if (parse_id3v1(Self)) reduce += sizeof(struct id3tag);
-
    prvMP3 *prv;
    if (!AllocMemory(sizeof(prvMP3), MEM_DATA, &Self->ChildPrivate)) {
       prv = (prvMP3 *)Self->ChildPrivate;
@@ -343,342 +564,61 @@ static ERROR MP3_Init(objSound *Self, APTR Void)
    // Fill the buffer with audio information and parse any MP3 header that is present.  This will also prove whether
    // or not this is really an mp3 file.
 
-   Self->BufferLength = prv->Buffer.size(); // User-defined buffer sizes are not supported.
-   if (decode_mp3(Self, true)) {
+   if (!(prv->File = objFile::create::integral(fl::Path(location), fl::Flags(FL_READ|FL_APPROXIMATE)))) {
+      return log.warning(ERR_CreateObject);
+   }
+
+   // Read the ID3v1 file header, if there is one.
+
+   LONG reduce = 0;
+   if (parse_id3v1(Self)) reduce += sizeof(struct id3tag);
+
+   // Process ID3V2 and Xing VBR headers if present.
+
+   LONG result;
+   if (!prv->File->read(prv->Input.data(), prv->Input.size(), &result)) {
+      if (auto id3size = detect_id3v2((const char *)prv->Input.data())) {
+         log.msg("Detected ID3v2 header of %d bytes.", id3size);
+         prv->SeekOffset = id3size;
+         prv->File->seekStart(prv->SeekOffset);
+         prv->File->read(prv->Input.data(), prv->Input.size(), &result);
+      }
+      else {
+         log.msg("No ID3v2 header found.");
+         prv->SeekOffset = 0;
+      }
+
+      if (find_frame(Self, prv->Input.data(), result) != -1) {
+         if (check_xing(Self, prv->Input.data())) {
+            prv->SeekOffset += prv->info.frame_bytes;
+         }
+         else log.extmsg("No VBR header found.");
+      }
+   }
+   else {
       FreeResource(Self->ChildPrivate); Self->ChildPrivate = NULL;
       return ERR_NoSupport;
    }
 
+   prv->File->seekStart(prv->SeekOffset);
+
+   Self->Feed = &glMP3Feed;
+
    if (prv->info.channels IS 2) Self->Flags |= SDF_STEREO;
+   if (Self->Stream != STREAM::NEVER) Self->Flags |= SDF_STREAM;
 
-   if (Self->Flags & SDF_STEREO) Self->BytesPerSecond = prv->info.hz * 4;
-   else Self->BytesPerSecond = prv->info.hz * 2;
-
-   Self->Flags         |= SDF_STREAM;
+   Self->BytesPerSecond = prv->info.hz * prv->info.channels * sizeof(WORD);
    Self->BitsPerSample  = 16;
    Self->Frequency      = prv->info.hz;
    Self->Playback       = Self->Frequency;
-   Self->Length         = calc_length(Self, reduce);
 
-   log.msg("File is MP3.  Stereo: %c, BytesPerSecond: %d, Freq: %d, Byte Length: %d, Buffer Size: %d", Self->Flags & SDF_STEREO ? 'Y' : 'N', Self->BytesPerSecond, Self->Frequency, Self->Length, Self->BufferLength);
-
-   // If all we are doing is querying the source file, return immediately
-
-   if (Self->Flags & SDF_QUERY) return ERR_Okay;
-
-   // Add our mp3 audio stream to the SystemAudio object
-
-   struct sndAddStream addstream;
-   AudioLoop loop;
-
-   if (Self->Flags & SDF_LOOP) {
-      ClearMemory(&loop, sizeof(loop));
-      loop.LoopMode   = LOOP::SINGLE;
-      loop.Loop1Type  = LTYPE::UNIDIRECTIONAL;
-      loop.Loop1Start = Self->LoopStart;
-      if (Self->LoopEnd) loop.Loop1End = Self->LoopEnd;
-      else loop.Loop1End = Self->Length;
-
-      addstream.Loop     = &loop;
-      addstream.LoopSize = sizeof(struct AudioLoop);
-   }
-   else {
-      addstream.Loop     = 0;
-      addstream.LoopSize = 0;
+   if (Self->Length <= 0) {
+      Self->Length = calc_length(Self, reduce);
+      prv->File->seekStart(prv->SeekOffset);
    }
 
-   addstream.Path      = 0;
-   addstream.ObjectID  = Self->UID;
-   addstream.SeekStart = 0;
-
-   if (Self->Flags & SDF_STEREO) addstream.SampleFormat = SFM_S16_BIT_STEREO;
-   else addstream.SampleFormat = SFM_S16_BIT_MONO;
-
-   addstream.SampleLength = (Self->Length > 0) ? Self->Length : -1;
-   addstream.BufferLength = Self->BufferLength;
-
-   if (!ActionMsg(MT_SndAddStream, Self->AudioID, &addstream)) {
-      Self->Handle = addstream.Result;
-      return ERR_Okay;
-   }
-   else {
-      log.warning("Failed to add sample to the Audio device.");
-      return ERR_Failed;
-   }
-}
-
-//********************************************************************************************************************
-
-static ERROR MP3_Read(objSound *Self, struct acRead *Args)
-{
-   parasol::Log log;
-   auto prv = (prvMP3 *)Self->ChildPrivate;
-
-   if (!Args) return log.warning(ERR_NullArgs);
-
-   decode_mp3(Self); // Generate as much decoded output as possible.
-
-   LONG read_max = Args->Length;
-   auto write_to = (UBYTE *)Args->Buffer;
-
-   if (prv->ReadOffset + read_max > prv->WriteOffset) {
-      // We can't read more than what is already decoded.
-      read_max = prv->WriteOffset - prv->ReadOffset;
-   }
-
-   const LONG read_offset = prv->ReadOffset % Self->BufferLength;
-
-   if (read_offset + read_max <= (LONG)Self->BufferLength) {
-      CopyMemory(prv->Buffer.data() + read_offset, write_to, read_max);
-   }
-   else {
-      const LONG read_tail = Self->BufferLength - read_offset;
-      CopyMemory(prv->Buffer.data() + read_offset, write_to, read_tail);
-      CopyMemory(prv->Buffer.data(), write_to + read_tail, read_max - read_tail);
-   }
-
-   prv->ReadOffset += read_max;
-   Args->Result = read_max;
-   return ERR_Okay;
-}
-
-//********************************************************************************************************************
-
-static ERROR MP3_SaveToObject(objSound *Self, struct acSaveToObject *Args)
-{
-   return ERR_NoSupport;
-}
-
-//********************************************************************************************************************
-
-static ERROR MP3_Seek(objSound *Self, struct acSeek *Args)
-{
-   parasol::Log log;
-   auto prv = (prvMP3 *)Self->ChildPrivate;
-
-   prv->reset();
-   mp3dec_init(&prv->mp3d);
-
-   if ((Args->Offset IS 0) and (Args->Position IS SEEK_START)) {
-      log.traceBranch("Resetting play position to zero.");
-      Self->File->seekStart(prv->SeekOffset);
-      decode_mp3(Self);
-      return ERR_Okay;
-   }
-   else {
-      // Seeking via byte position, where the position is relative to the decoded length.
-
-      if (Self->Length <= 0) {
-         log.warning("MP3 stream length unknown, cannot seek.");
-         return ERR_Failed;
-      }
-
-      DOUBLE pct;
-      if (Args->Position IS SEEK_START) pct = Args->Offset / DOUBLE(Self->Length);
-      else if (Args->Position IS SEEK_END) pct = (Self->Length - Args->Offset) / DOUBLE(Self->Length);
-      else if (Args->Position IS SEEK_CURRENT) pct = (prv->WriteOffset + Args->Offset) / DOUBLE(Self->Length);
-      else if (Args->Position IS SEEK_RELATIVE) pct = Args->Offset;
-      else return ERR_Args;
-
-      if (pct < 0) pct = 0;
-      else if (pct > 1.0) pct = 1.0;
-
-      if (prv->TOCLoaded) {
-         // The TOC gives us an approx. frame number for a given location in the compressed stream
-         // (relative to TotalFrames).  By knowing the frame number, we can make more accurate calculations
-         // as to time and length remaining.
-
-         LONG idx = F2T(pct * prv->TOC.size());
-         if (idx < 0) idx = 0;
-         else if (idx >= (LONG)prv->TOC.size()) idx = prv->TOC.size() - 1;
-
-         LONG offset = prv->SeekOffset + ((prv->TOC[idx] * prv->StreamSize) / 256);
-         LONG frame = prv->TOC[idx] * prv->TotalFrames / 256;
-         Self->File->seekStart(offset);
-
-         log.extmsg("Seeking to byte offset %d, frame %d of %d", offset, frame, prv->TotalFrames);
-
-         prv->WriteOffset = frame * prv->SamplesPerFrame * prv->info.channels * sizeof(WORD);
-         prv->ReadOffset = prv->WriteOffset;
-         prv->FramesProcessed = frame;
-
-         decode_mp3(Self);
-         return ERR_Okay;
-      }
-      else {
-         // Seeking without a TOC has two approaches: 1) Scan from frame 1 until you reach the frame
-         // you're looking for; 2) Use the average frame size to make a jump and rely on frame syncing to
-         // find the nearest viable frame.  The accuracy of this is largely dependent on the calc_length()
-         // computations.
-
-         if (!prv->StreamSize) {
-            LARGE size;
-            Self->File->get(FID_Size, &size);
-            prv->StreamSize = size - prv->SeekOffset;
-         }
-
-         LONG frame = prv->TotalFrames * pct;
-         LONG offset = prv->StreamSize * pct;
-         Self->File->seekStart(prv->SeekOffset + offset);
-
-         log.extmsg("Seeking to byte offset %d, frame %d of %d", offset, frame, prv->TotalFrames);
-
-         prv->WriteOffset = frame * prv->SamplesPerFrame * prv->info.channels * sizeof(WORD);
-         prv->ReadOffset = prv->WriteOffset;
-         prv->FramesProcessed = frame;
-
-         decode_mp3(Self);
-         return ERR_Okay;
-      }
-   }
-
-
-   return ERR_NoSupport;
-}
-
-//********************************************************************************************************************
-// Write as much data as possible to the internal decoding buffer, reading from the compressed MP3 data.
-
-static ERROR decode_mp3(objSound *Self, bool ProcessHeaders)
-{
-   parasol::Log log(__FUNCTION__);
-
-   auto prv = (prvMP3 *)Self->ChildPrivate;
-
-   if (prv->EndOfFile) return ERR_Okay;
-
-   LARGE output_limit = prv->ReadOffset + Self->BufferLength - (8 * 1024); // The limit is determined by the client's read position.
-
-   // Keep decoding until we exhaust space in the output buffer.
-
-   WORD pcm[MINIMP3_MAX_SAMPLES_PER_FRAME];
-
-   bool no_more_input = false;
-   while ((!prv->EndOfFile) and (prv->WriteOffset < output_limit)) {
-      // Read as much input as possible.
-
-      log.trace("Write %" PF64 " max bytes to %d, Avail. Compressed: %d bytes",  output_limit - prv->WriteOffset, prv->WriteOffset, prv->CompressedOffset);
-
-      if ((prv->CompressedOffset < (LONG)sizeof(prv->Input)) and (!prv->EndOfFile)) {
-         LONG result;
-         ERROR error = Self->File->read(prv->Input + prv->CompressedOffset, sizeof(prv->Input) - prv->CompressedOffset, &result);
-
-         if (error != ERR_Okay) {
-            log.warning("File read error: %s", GetErrorMsg(error));
-            prv->EndOfFile = true;
-            break;
-         }
-         else if (!result) {
-            log.extmsg("Reached end of input file.");
-            no_more_input = true;
-            // Don't change the EOF - let the output code do that.
-         }
-
-         prv->CompressedOffset += result;
-      }
-
-      LONG in = 0; // Always start from zero
-
-      if (ProcessHeaders) {
-         // Process ID3V2 and Xing VBR headers if present.
-
-         if (auto id3size = detect_id3v2((const char *)prv->Input)) {
-            log.msg("Detected ID3v2 header of %d bytes.", id3size);
-            if (id3size < prv->CompressedOffset) {
-               in += id3size;
-            }
-            else { // Header too large for our buffer.
-               Self->File->seekStart(id3size);
-               LONG result;
-               if (!Self->File->read(prv->Input, sizeof(prv->Input), &result)) {
-                  prv->CompressedOffset = result;
-               }
-               else {
-                  prv->EndOfFile = true;
-                  break;
-               }
-            }
-            prv->SeekOffset = id3size;
-         }
-         else {
-            log.msg("No ID3v2 header found.");
-            prv->SeekOffset = 0;
-         }
-
-         if (find_frame(Self, prv->Input + in, prv->CompressedOffset - in) != -1) {
-            if (check_xing(Self, prv->Input + in)) {
-               in += prv->info.frame_bytes;
-               prv->SeekOffset += prv->info.frame_bytes;
-            }
-            else log.extmsg("No VBR header found.");
-         }
-
-         ProcessHeaders = false;
-      }
-
-      while (prv->WriteOffset < output_limit) {
-         auto decoded_samples = mp3dec_decode_frame(&prv->mp3d, prv->Input + in, prv->CompressedOffset - in, pcm, &prv->info);
-
-         // Decoder results:
-         // 0: No MP3 data found; 384: Layer 1; 576: Layer 3; 1152: All others
-
-         if (!decoded_samples) {
-            if (prv->info.frame_bytes > 0) {
-               // The decoder skipped ID3 or invalid data - do not play this frame
-               log.msg("Skipping MP3 frame at offset %d, size %d.", in, prv->CompressedOffset - in);
-               in += prv->info.frame_bytes;
-            }
-            else if (!prv->info.frame_bytes) {
-               // Insufficient data (read more to obtain a frame) OR end of file
-               if ((!in) or (no_more_input)) prv->EndOfFile = true;
-               break;
-            }
-         }
-         else {
-            prv->FramesProcessed++;
-            prv->SamplesPerFrame = decoded_samples;
-
-            LONG decoded_bytes = decoded_samples * sizeof(WORD) * prv->info.channels;
-
-            in += prv->info.frame_bytes;
-
-            const LONG target = prv->WriteOffset % Self->BufferLength;
-
-            if (target + decoded_bytes < Self->BufferLength) {
-               CopyMemory(pcm, prv->Buffer.data() + target, decoded_bytes);
-            }
-            else {
-               LONG tail_size = Self->BufferLength - target;
-               CopyMemory(pcm, prv->Buffer.data() + target, tail_size);
-               CopyMemory((UBYTE *)pcm + tail_size, prv->Buffer.data(), decoded_bytes - tail_size);
-            }
-
-            prv->WriteOffset += decoded_bytes;
-         }
-      }
-
-      // Shift any remaining data that couldn't be decoded.  This will help maintain the minimum 16k of
-      // data in the buffer as recommended by minimp3.
-
-      if (in < prv->CompressedOffset) {
-         CopyMemory((UBYTE *)prv->Input + in, prv->Input, prv->CompressedOffset - in);
-      }
-
-      prv->CompressedOffset -= in;
-   }
-
-   if (prv->EndOfFile) {
-      // We now know the exact length of the decoded audio stream, so we pass that information to the Audio
-      // object.  This will cause the Audio server to stop the stream at the correct position.  The Sound
-      // class will remove the stream from the system once the sound is stopped.
-
-      LONG pad_end = prv->PaddingEnd * prv->info.channels * sizeof(WORD);
-      if (Self->Length != prv->WriteOffset - pad_end) {
-         log.msg("Changing sample length from %d to %d bytes.  Decoded %d frames.", Self->Length, prv->WriteOffset - pad_end, prv->FramesProcessed);
-         Self->set(FID_Length, prv->WriteOffset - pad_end);
-      }
-      else log.msg("Stream ending, decoded %d frames.", prv->FramesProcessed);
-   }
+   log.msg("File is MP3.  Stereo: %c, BytesPerSecond: %d, Freq: %d, Byte Length: %d",
+      Self->Flags & SDF_STEREO ? 'Y' : 'N', Self->BytesPerSecond, Self->Frequency, Self->Length);
 
    return ERR_Okay;
 }
@@ -692,13 +632,11 @@ static ERROR decode_mp3(objSound *Self, bool ProcessHeaders)
 
 static LONG calc_length(objSound *Self, LONG ReduceEnd)
 {
+   parasol::Log log(__FUNCTION__);
    LONG buffer_size;
    std::array<UWORD, 16> avg;  // Used to compute the interquartile mean
    std::vector<UWORD> fsizes;  // List of all compressed frame sizes
 
-   if (Self->Length > 0) return Self->Length;
-
-   parasol::Log log(__FUNCTION__);
    log.branch();
 
    auto prv = (prvMP3 *)Self->ChildPrivate;
@@ -710,18 +648,19 @@ static LONG calc_length(objSound *Self, LONG ReduceEnd)
    LONG frame_size      = 0;
    LONG channels        = 1;
    LONG frame_samples   = 1152;
-   BYTE layer = 0;
+   BYTE layer           = 0;
+
    prv->VBR = false;
 
    LONG filesize;
-   Self->File->get(FID_Size, &filesize);
+   prv->File->get(FID_Size, &filesize);
 
    UBYTE *buffer;
    if (!AllocMemory(SIZE_BUFFER, MEM_DATA|MEM_NO_CLEAR, &buffer, NULL)) {
       // Load MP3 data from the file
 
-      Self->File->seekStart(prv->SeekOffset);
-      Self->File->read(buffer, SIZE_CBR_BUFFER, &buffer_size);
+      prv->File->seekStart(prv->SeekOffset);
+      prv->File->read(buffer, SIZE_CBR_BUFFER, &buffer_size);
 
       // Find the start of the frame data
 
@@ -781,7 +720,7 @@ static LONG calc_length(objSound *Self, LONG ReduceEnd)
             if ((prv->VBR) and (buffer_size IS SIZE_CBR_BUFFER)) {
                // Read more file data so that we can calculate the vbr more accurately
                LONG result;
-               Self->File->read(buffer + buffer_size, SIZE_BUFFER - buffer_size, &result);
+               prv->File->read(buffer + buffer_size, SIZE_BUFFER - buffer_size, &result);
                buffer_size += result;
             }
             else break; // File is CBR, no need to scan more data
@@ -823,7 +762,7 @@ static LONG calc_length(objSound *Self, LONG ReduceEnd)
       }
       else {
          // For CBR we guess the total frames from the file size.
-         Self->File->get(FID_Size, &filesize);
+         prv->File->get(FID_Size, &filesize);
          LONG total_frames = F2T((filesize - prv->SeekOffset - frame_start - ReduceEnd) / avg_frame_len);
          DOUBLE seconds = (total_frames * (DOUBLE)avg_frame_len) / (DOUBLE(current_bitrate) / 1000.0 * 125.0);
          prv->TotalFrames = total_frames;
@@ -897,11 +836,8 @@ static LONG find_frame(objSound *Self, UBYTE *Buffer, LONG BufferSize)
 //********************************************************************************************************************
 
 static const struct ActionArray clActions[] = {
-   { AC_Free,         (APTR)MP3_Free },
-   { AC_Init,         (APTR)MP3_Init },
-   { AC_Read,         (APTR)MP3_Read },
-   { AC_SaveToObject, (APTR)MP3_SaveToObject },
-   { AC_Seek,         (APTR)MP3_Seek },
+   { AC_Free, (APTR)MP3_Free },
+   { AC_Init, (APTR)MP3_Init },
    { 0, NULL }
 };
 

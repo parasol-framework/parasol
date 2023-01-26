@@ -1789,32 +1789,6 @@ ERROR MGR_OwnerDestroyed(OBJECTPTR Object, APTR Void)
 }
 
 /*****************************************************************************
-** Action: Seek
-*/
-
-ERROR MGR_Seek(OBJECTPTR Object, struct acSeek *Args)
-{
-   parasol::Log log("Seek");
-
-   if (!Args) return log.warning(ERR_NullArgs);
-
-   ERROR error;
-   if (Object->ExtClass) {
-      if (Object->ExtClass->ActionTable[AC_Seek].PerformAction) {
-         // Check and correct the Pos and Mode if SEEK_END
-
-         if ((Args->Position IS SEEK_END) and (Args->Offset < 0)) Args->Offset = -Args->Offset;
-         else if ((Args->Position IS SEEK_START) and (Args->Position < 0)) return log.warning(ERR_Args);
-         return Object->ExtClass->ActionTable[AC_Seek].PerformAction(Object, Args);
-      }
-      else error = ERR_NoSupport;
-   }
-   else error = ERR_LostClass;
-
-   return log.warning(error);
-}
-
-/*****************************************************************************
 ** Action: Signal
 */
 

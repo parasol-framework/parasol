@@ -61,8 +61,7 @@ static LONG glMaxSoundChannels = 8;
 char * dsInitDevice(int);
 void dsCloseDevice(void);
 void dsClear(void);
-LONG dsPlay(extAudio *);
-void dsSetVolume(float);
+LONG dsMixer(extAudio *);
 #endif
 
 LONG mix_data(extAudio *, LONG, void *);

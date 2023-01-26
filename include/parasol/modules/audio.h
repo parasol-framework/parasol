@@ -139,6 +139,11 @@ struct AudioLoop {
    LONG  Loop2End;   // End of the second loop
 };
 
+struct SoundFeed {
+   LONG (*Read)(objSound *, void *, LONG);
+   LONG (*Seek)(objSound *, LONG);
+};
+
 // Audio class definition
 
 #define VER_AUDIO (1.000000)
@@ -249,27 +254,27 @@ class objSound : public BaseClass {
 
    using create = parasol::Create<objSound>;
 
-   DOUBLE    Volume;       // The volume to use when playing the sound sample.
-   DOUBLE    Pan;          // Determines the horizontal position of a sound when played through stereo speakers.
-   LONG      Priority;     // The priority of a sound in relation to other sound samples being played.
-   LONG      Length;       // Indicates the total byte-length of sample data.
-   LONG      Octave;       // The octave to use for sample playback.
-   LONG      Flags;        // Optional initialisation flags.
-   LONG      Frequency;    // The frequency of a sampled sound is specified here.
-   LONG      Playback;     // The playback frequency of the sound sample can be defined here.
-   LONG      Compression;  // Determines the amount of compression used when saving an audio sample.
-   LONG      BytesPerSecond; // The flow of bytes-per-second when the sample is played at normal frequency.
-   LONG      BitsPerSample; // Indicates the sample rate of the audio sample, typically 8 or 16 bit.
-   OBJECTID  AudioID;      // Refers to the audio object/device to use for playback.
-   LONG      LoopStart;    // The byte position at which sample looping begins.
-   LONG      LoopEnd;      // The byte position at which sample looping will end.
-   STREAM    Stream;       // Defines the preferred streaming method for the sample.
-   LONG      BufferLength; // Defines the size of the buffer to use when streaming is enabled.
-   OBJECTID  StreamFileID; // Refers to a File object that is being streamed for playback.
-   LONG      Position;     // The current playback position.
-   LONG      Handle;       // Audio handle acquired at the audio object [Private - Available to child classes]
-   LONG      ChannelIndex; // Refers to the channel that the sound is playing through.
-   objFile * File;         // Refers to the file object that contains the audio data for playback.
+   DOUBLE   Volume;            // The volume to use when playing the sound sample.
+   DOUBLE   Pan;               // Determines the horizontal position of a sound when played through stereo speakers.
+   LONG     Priority;          // The priority of a sound in relation to other sound samples being played.
+   LONG     Length;            // Indicates the total byte-length of sample data.
+   LONG     Octave;            // The octave to use for sample playback.
+   LONG     Flags;             // Optional initialisation flags.
+   LONG     Frequency;         // The frequency of a sampled sound is specified here.
+   LONG     Playback;          // The playback frequency of the sound sample can be defined here.
+   LONG     Compression;       // Determines the amount of compression used when saving an audio sample.
+   LONG     BytesPerSecond;    // The flow of bytes-per-second when the sample is played at normal frequency.
+   LONG     BitsPerSample;     // Indicates the sample rate of the audio sample, typically 8 or 16 bit.
+   OBJECTID AudioID;           // Refers to the audio object/device to use for playback.
+   LONG     LoopStart;         // The byte position at which sample looping begins.
+   LONG     LoopEnd;           // The byte position at which sample looping will end.
+   STREAM   Stream;            // Defines the preferred streaming method for the sample.
+   LONG     BufferLength;      // Defines the size of the buffer to use when streaming is enabled.
+   OBJECTID StreamFileID;      // Refers to a File object that is being streamed for playback.
+   LONG     Position;          // The current playback position.
+   LONG     Handle;            // Audio handle acquired at the audio object [Private - Available to child classes]
+   LONG     ChannelIndex;      // Refers to the channel that the sound is playing through.
+   struct SoundFeed * Feed;    // Private.  For internal playback management.
 
    // Action stubs
 

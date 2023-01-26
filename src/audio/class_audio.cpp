@@ -574,14 +574,14 @@ static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
 #ifdef __linux__
    Self->Volumes.resize(2);
    Self->Volumes[0].Name = "Master";
-   for (LONG i=0; i < (LONG)Self->Volumes[0].Channels.size(); i++) Self->Volumes[0].Channels[i] = 0.80;
+   for (LONG i=0; i < (LONG)Self->Volumes[0].Channels.size(); i++) Self->Volumes[0].Channels[i] = 1.0;
 
    Self->Volumes[1].Name = "PCM";
-   for (LONG i=0; i < (LONG)Self->Volumes[1].Channels.size(); i++) Self->Volumes[1].Channels[i] = 0.80;
+   for (LONG i=0; i < (LONG)Self->Volumes[1].Channels.size(); i++) Self->Volumes[1].Channels[i] = 1.0;
 #else
    Self->Volumes.resize(1);
    Self->Volumes[0].Name = "Master";
-   Self->Volumes[0].Channels[0] = 0.80;
+   Self->Volumes[0].Channels[0] = 1.0;
    for (LONG i=1; i < (LONG)Self->Volumes[0].Channels.size(); i++) Self->Volumes[0].Channels[i] = -1;
 #endif
 

@@ -25,7 +25,7 @@ enum class CMD : LONG {
 };
 
 typedef struct WAVEFormat {
-   WORD Format;               // Type of WAVE data in the chunk
+   WORD Format;               // Type of WAVE data in the chunk: RAW or ADPCM
    WORD Channels;             // Number of channels, 1=mono, 2=stereo
    LONG Frequency;            // Playback frequency
    LONG AvgBytesPerSecond;    // Channels * SamplesPerSecond * (BitsPerSample / 8)
@@ -206,13 +206,14 @@ class extSound : public objSound {
    UBYTE  Header[128];
    UBYTE  PlatformData[128];  // Data area for holding platform/hardware specific information
    std::unordered_map<std::string, std::string> Tags;
-   struct WAVEFormat *WAVE;
+   objFile *File;
    STRING Path;
    TIMER  Timer;
    LONG   Format;             // The format of the sound data
    LONG   DataOffset;         // Start of raw audio data within the source file
    LONG   Note;               // Note to play back (e.g. C, C#, G...)
    char   NoteString[4];
+   bool   Active;             // True once the sound is registered with the audio driver or mixer.
 };
 
 struct BufferCommand {

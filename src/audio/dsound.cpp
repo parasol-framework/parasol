@@ -3,16 +3,17 @@
 #include <windows.h>
 #include <mmsystem.h>
 #include <dsound.h>
+#include <cstdio>
+#include <math.h>
 
 typedef unsigned char UBYTE;
 
-#define DEBUG_CODE(x)
+#define MSG(...) fprintf(stderr, __VA_ARGS__)
 
 #define IS  ==
 
 static LPDIRECTSOUNDBUFFER glPrimaryBuffer = 0;
 
-#define FILL_NONE   1
 #define FILL_FIRST  2
 #define FILL_SECOND 3
 
@@ -23,10 +24,10 @@ struct PlatformData {
    LPDIRECTSOUNDBUFFER SoundBuffer;
    DWORD BufferLength;
    DWORD Position;      // Total number of bytes that have so far been loaded from the audio data source
-   DWORD PlayPosition;  // Reflects the total number of bytes that have been played via streaming audio
    DWORD SampleLength;  // Total length of the original sample
    DWORD BufferPos;
    DWORD SampleEnd;
+   DWORD Cycles;        // For streaming only, indicates the number of times the playback buffer has cycled.
    char Fill;
    char Stream;
    char Loop;
@@ -35,8 +36,7 @@ struct PlatformData {
 };
 
 int ReadData(extSound *, void *, int);
-void SeekData(extSound *, double);
-void SeekZero(extSound *);
+void SeekData(extSound *, int);
 int GetMixAmount(extAudio *, int *);
 int process_commands(extAudio *, int);
 
@@ -49,7 +49,7 @@ static unsigned bufferLeaveSpace;
 static unsigned writePos;               // write position
 static LPDIRECTSOUND glDirectSound;     // the DirectSound object
 static HMODULE dsModule = NULL;         // dsound.dll module handle
-static HWND glWindow;                  // HWND for DirectSound
+static HWND glWindow;                   // HWND for DirectSound
 static unsigned int targetBufferLen;
 static int mBufferLength = 500;         // buffer length in milliseconds
 
@@ -57,7 +57,16 @@ static HRESULT (WINAPI *dsDirectSoundCreate)(const GUID *, LPDIRECTSOUND *, IUnk
 
 #define OK 0
 
-//****************************************************************************
+//********************************************************************************************************************
+// DirectSound uses logarithmic values for volume.  If there's a need to optimise this, generate a lookup table.
+
+inline int linear2ds(float Volume)
+{
+   if (Volume <= 0.01) return DSBVOLUME_MIN;
+   else return (int)floorf(2000.0 * log10f(Volume) + 0.5);
+}
+
+//********************************************************************************************************************
 
 static const char * dserror(HRESULT error)
 {
@@ -83,7 +92,7 @@ static const char * dserror(HRESULT error)
    return "DirectSound undefined error";
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 const char * dsInitDevice(int mixRate)
 {
@@ -118,7 +127,7 @@ const char * dsInitDevice(int mixRate)
 
    // Create primary output buffer
 
-   memset(&bufferDesc, 0, sizeof(DSBUFFERDESC));
+   ZeroMemory(&bufferDesc, sizeof(DSBUFFERDESC));
    bufferDesc.dwSize  = sizeof(DSBUFFERDESC);
    bufferDesc.dwFlags = DSBCAPS_PRIMARYBUFFER;
    if ((result = glDirectSound->CreateSoundBuffer(&bufferDesc, &glPrimaryBuffer, NULL)) != DS_OK)
@@ -126,13 +135,13 @@ const char * dsInitDevice(int mixRate)
 
    // Set the primary buffer format
 
-   memset(&format, 0, sizeof(WAVEFORMATEX));
+   ZeroMemory(&format, sizeof(WAVEFORMATEX));
 
    format.nChannels       = 2;   // Stereo
    format.wBitsPerSample  = 16;  // 16 bit
    format.wFormatTag      = WAVE_FORMAT_PCM;
    format.nSamplesPerSec  = mixRate;
-   format.nBlockAlign     = format.wBitsPerSample / 8 * format.nChannels;
+   format.nBlockAlign     = (format.wBitsPerSample / 8) * format.nChannels;
    format.nAvgBytesPerSec = format.nSamplesPerSec * format.nBlockAlign;
 
    if ((result = glPrimaryBuffer->SetFormat(&format)) != DS_OK) return dserror(result);
@@ -154,15 +163,15 @@ const char * dsInitDevice(int mixRate)
    bufferLen = targetBufferLen;
    bufferLeaveSpace = 16;
 
-   memset(&format, 0, sizeof(WAVEFORMATEX));
+   ZeroMemory(&format, sizeof(WAVEFORMATEX));
    format.nChannels       = 2;
    format.wBitsPerSample  = 16;
    format.wFormatTag      = WAVE_FORMAT_PCM;
    format.nSamplesPerSec  = mixRate;
-   format.nBlockAlign     = format.wBitsPerSample / 8 * format.nChannels;
+   format.nBlockAlign     = (format.wBitsPerSample / 8) * format.nChannels;
    format.nAvgBytesPerSec = format.nSamplesPerSec * format.nBlockAlign;
 
-   memset(&bufferDesc, 0, sizeof(DSBUFFERDESC));
+   ZeroMemory(&bufferDesc, sizeof(DSBUFFERDESC));
    bufferDesc.dwSize  = sizeof(DSBUFFERDESC);
    bufferDesc.dwFlags = DSBCAPS_GETCURRENTPOSITION2
                         |DSBCAPS_CTRLVOLUME
@@ -182,7 +191,7 @@ const char * dsInitDevice(int mixRate)
    return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void dsCloseDevice(void)
 {
@@ -198,7 +207,7 @@ void dsCloseDevice(void)
    glDirectSound = 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void dsClear(void)
 {
@@ -213,7 +222,7 @@ void dsClear(void)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Resumes sound playback after winSuspend()
 
 int dsResume(void)
@@ -238,25 +247,27 @@ int dsResume(void)
    return OK;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int mix_data(extAudio *, int, void *);
 
-int dsPlay(extAudio *Self)
+int dsMixer(extAudio *Self)
 {
    HRESULT result;
    UBYTE *write1, *write2;
-   DWORD len1, len2, elements, spaceleft, cursor, writeCursor;
-   int mixleft;
+   DWORD spaceleft, play_cursor, write_cursor;
 
    if (!glDirectSound) return 0;
 
-   glPrimaryBuffer->GetCurrentPosition(&cursor, &writeCursor);
+   // The write_cursor always leads the play cursor, typically by about 15 milliseconds.
+   // It is guaranteed to be safe to write behind the play_cursor.
+
+   glPrimaryBuffer->GetCurrentPosition(&play_cursor, &write_cursor);
 
    // Calculate the amount of space left in the buffer:
 
-   if (writePos <= cursor) spaceleft = cursor - writePos;
-   else spaceleft = bufferLen - writePos + cursor;
+   if (writePos <= play_cursor) spaceleft = play_cursor - writePos;
+   else spaceleft = bufferLen - writePos + play_cursor;
 
    if (spaceleft > 16) spaceleft -= 16;
    else spaceleft = 0;
@@ -264,6 +275,8 @@ int dsPlay(extAudio *Self)
    spaceleft = spaceleft / mixElemSize; // Convert to number of elements
 
    while (spaceleft) { // Scan channels to check if an update rate is going to be met
+      DWORD len1, len2, elements;
+      int mixleft;
       GetMixAmount((extAudio *)Self, &mixleft);
 
       if ((DWORD)mixleft < spaceleft) elements = mixleft;
@@ -295,38 +308,17 @@ int dsPlay(extAudio *Self)
    return OK;
 }
 
-//****************************************************************************
-// Volume range is 0 to 10000 (DSBVOLUME_MIN to DSBVOLUME_MAX)
-
-void dsSetVolume(float Volume)
-{
-   if (glPrimaryBuffer) {
-      if (Volume <= 0) IDirectSoundBuffer_SetVolume(glPrimaryBuffer, 0); // zero volume
-      else IDirectSoundBuffer_SetVolume(glPrimaryBuffer, (DWORD)(Volume * 10000.0));
-   }
-}
-
-//****************************************************************************
+//********************************************************************************************************************
 
 int sndCheckActivity(PlatformData *Sound)
 {
-   DWORD status, pos;
+   DWORD status;
 
    if (!glDirectSound) return -1;
    if (!Sound->SoundBuffer) return -1; // Error
 
    if (IDirectSoundBuffer_GetStatus(Sound->SoundBuffer, &status) IS DS_OK) {
       if (status & DSBSTATUS_PLAYING) {
-         // If this is a stream, check if the playback position has passed the end of the sample
-
-         if (Sound->Stream) {
-            pos = sndGetPosition(Sound);
-            if (pos >= Sound->SampleLength) {
-               IDirectSoundBuffer_Stop(Sound->SoundBuffer); // Ensure that the sample is terminated
-               return 0;
-            }
-         }
-
          return 1;
       }
       else return 0;
@@ -334,64 +326,61 @@ int sndCheckActivity(PlatformData *Sound)
    else return -1; // Error
 }
 
-//****************************************************************************
+//********************************************************************************************************************
+// SampleLength: The byte length of the raw audio data, excludes all file headers.
 
 const char * sndCreateBuffer(extSound *File, void *Wave, int BufferLength, int SampleLength, PlatformData *Sound, int Stream)
 {
-   DSBUFFERDESC dsbdesc;
-   int length1, i;
-   unsigned char *write1;
-
    if (!glDirectSound) return 0;
 
    Sound->File         = File;
    Sound->SampleLength = SampleLength;
    Sound->BufferLength = BufferLength;
    Sound->Position     = 0;
-   Sound->PlayPosition = 0;
+   Sound->Cycles       = 0;
    Sound->Stream       = Stream;
    Sound->Fill         = FILL_FIRST; // First half waiting to be filled
 
+   DSBUFFERDESC dsbdesc;
    ZeroMemory(&dsbdesc, sizeof(DSBUFFERDESC));
    dsbdesc.dwSize        = sizeof(DSBUFFERDESC);
    dsbdesc.dwFlags       = DSBCAPS_GETCURRENTPOSITION2|DSBCAPS_GLOBALFOCUS|DSBCAPS_CTRLVOLUME|DSBCAPS_CTRLPAN|DSBCAPS_CTRLFREQUENCY;
    dsbdesc.dwBufferBytes = BufferLength;
    dsbdesc.lpwfxFormat   = (LPWAVEFORMATEX)Wave;
    if ((IDirectSound_CreateSoundBuffer(glDirectSound, &dsbdesc, &Sound->SoundBuffer, NULL) != DS_OK) or (!Sound->SoundBuffer)) {
-      sndFree(Sound);
       return "CreateSoundBuffer() failed to create WAVE audio buffer.";
    }
 
    // Fill the buffer with audio content (unless it is streamed, in which case it will be filled when play occurs).
 
-   if (IDirectSoundBuffer_Lock(Sound->SoundBuffer, 0, BufferLength, (void **)&write1, (DWORD *)&length1, NULL, NULL, 0) IS DS_OK) {
-      if (Sound->Stream) {
-         for (i=0; i < length1; i++) write1[i] = 0;
-      }
-      else Sound->Position = ReadData(File, write1, length1);
-      IDirectSoundBuffer_Unlock(Sound->SoundBuffer, write1, length1, 0, 0);
+   if (Stream) return NULL;
+
+   void *bufA, *bufB;
+   int lenA, lenB;
+   if (IDirectSoundBuffer_Lock(Sound->SoundBuffer, 0, BufferLength, (void **)&bufA, (DWORD *)&lenA, (void **)&bufB, (DWORD *)&lenB, 0) IS DS_OK) {
+      if (lenA) lenA = ReadData(File, bufA, lenA);
+      if (lenB) lenB = ReadData(File, bufB, lenB);
+      Sound->Position += lenA + lenB;
+      IDirectSoundBuffer_Unlock(Sound->SoundBuffer, bufA, lenA, bufB, lenB); // lenA/B inform DSound as to how many bytes were written.
    }
 
    return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void sndFree(PlatformData *Info)
 {
    if (!glDirectSound) return;
 
    if (Info->SoundBuffer) {
-      // Stop the playback buffer
-      IDirectSoundBuffer_Stop(Info->SoundBuffer);
-
-      // Free the playback buffer
-      IDirectSoundBuffer_Release(Info->SoundBuffer);
+      IDirectSoundBuffer_Stop(Info->SoundBuffer);     // Stop the playback buffer
+      IDirectSoundBuffer_Release(Info->SoundBuffer);  // Free the playback buffer
       Info->SoundBuffer = NULL;
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void sndFrequency(PlatformData *Sound, int Frequency)
 {
@@ -399,17 +388,20 @@ void sndFrequency(PlatformData *Sound, int Frequency)
    if (Sound->SoundBuffer) IDirectSoundBuffer_SetFrequency(Sound->SoundBuffer, Frequency);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void sndPan(PlatformData *Sound, float Pan)
 {
    if (!glDirectSound) return;
 
    // Range -10,000 to 10,000 (DSBPAN_LEFT to DSBPAN_RIGHT)
-   if (Sound->SoundBuffer) IDirectSoundBuffer_SetPan(Sound->SoundBuffer, (DWORD)(Pan * 10000));
+   LONG pan = LONG(Pan * DSBPAN_RIGHT);
+   if (pan < DSBPAN_LEFT) pan = DSBPAN_LEFT;
+   else if (pan > DSBPAN_RIGHT) pan = DSBPAN_RIGHT;
+   if (Sound->SoundBuffer) IDirectSoundBuffer_SetPan(Sound->SoundBuffer, pan);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void sndStop(PlatformData *Sound)
 {
@@ -417,39 +409,39 @@ void sndStop(PlatformData *Sound)
    if (Sound->SoundBuffer) IDirectSoundBuffer_Stop(Sound->SoundBuffer);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
+// Used by the Sound class to play WAV or raw audio samples that are independent of our custom mixer.
 
-void sndPlay(PlatformData *Sound, int Loop, int Offset)
+int sndPlay(PlatformData *Sound, int Loop, int Offset)
 {
-   int length1;
-   unsigned char *write1;
+   if ((!Sound) or (!Sound->SoundBuffer)) return -1;
 
-   if ((!Sound) or (!Sound->SoundBuffer)) return;
    if (Offset < 0) Offset = 0;
-   if (Offset >= (int)Sound->SampleLength) return;
+   else if (Offset >= (int)Sound->SampleLength) return -1;
 
-   Sound->Loop = Loop;
+   Sound->Loop      = Loop;
    Sound->SampleEnd = 0;
+   Sound->Cycles    = 0;
 
-   if (Sound->Stream) { // Streamed samples require that we reload sound data from scratch
+   if (Sound->Stream) {
+      // Streamed samples require that we reload sound data from scratch.  This call initiates the streaming playback,
+      // after which sndStreamAudio() needs to be used to keep filling the buffer.
+
       IDirectSoundBuffer_Stop(Sound->SoundBuffer);
 
-      SeekZero(Sound->File);
       Sound->Fill = FILL_FIRST;
       Sound->Stop = 0;
-      Sound->Position = 0;
 
-      if (IDirectSoundBuffer_Lock(Sound->SoundBuffer, 0, Sound->BufferLength, (void **)&write1, (DWORD *)&length1, 0, 0, 0) IS DS_OK) {
-         ZeroMemory(write1, length1);
+      unsigned char *bufA, *bufB;
+      int lenA, lenB;
+      if (IDirectSoundBuffer_Lock(Sound->SoundBuffer, 0, Sound->BufferLength, (void **)&bufA, (DWORD *)&lenA, (void **)&bufB, (DWORD *)&lenB, 0) IS DS_OK) {
          SeekData(Sound->File, Offset);
-         Sound->Position = Offset + ReadData(Sound->File, write1, length1);
-         Sound->PlayPosition = Offset;
-         IDirectSoundBuffer_Unlock(Sound->SoundBuffer, write1, length1, 0, 0);
+         if (lenA > 0) lenA = ReadData(Sound->File, bufA, lenA);
+         if (lenB > 0) lenB = ReadData(Sound->File, bufB, lenB);
+         Sound->Position = Offset + lenA + lenB;
+         IDirectSoundBuffer_Unlock(Sound->SoundBuffer, bufA, lenA, bufB, lenB);
       }
-
-      // Reset the play position within the buffer to zero
-
-      IDirectSoundBuffer_SetCurrentPosition(Sound->SoundBuffer, 0);
+      else return -1;
    }
    else { // For non-streamed samples, start the play position from the proposed offset
       IDirectSoundBuffer_Stop(Sound->SoundBuffer);
@@ -462,78 +454,81 @@ void sndPlay(PlatformData *Sound, int Loop, int Offset)
       IDirectSoundBuffer_Play(Sound->SoundBuffer, 0, 0, DSBPLAY_LOOPING);
    }
    else IDirectSoundBuffer_Play(Sound->SoundBuffer, 0, 0, 0);
+
+   return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
+// Streaming audio process for WAV or raw audio samples played via the Sound class.  This is regularly called by the
+// Sound class' timer.
 
 int sndStreamAudio(PlatformData *Sound)
 {
-   int length, length2, bytesread, i, lockstart, locklength;
    unsigned char *write, *write2;
 
-   if (!glDirectSound) return 0;
-   if (!Sound->SoundBuffer) return 1;
-   if (Sound->Fill IS FILL_NONE) return 1;
+   if (!glDirectSound) return -1;
+   if (!Sound->SoundBuffer) return -1;
 
-   // Get the current play position
+   // Get the current play position.  NB: The BufferPos will cycle.
 
    if (IDirectSoundBuffer_GetCurrentPosition(Sound->SoundBuffer, &Sound->BufferPos, NULL) IS DS_OK) {
-      lockstart = -1;
-      locklength = 0;
+      // If the playback marker is in the buffer's first half, we fill the second half, and vice versa.
+
+      int lock_start = -1;
+      int lock_length = 0;
       if ((Sound->Fill IS FILL_FIRST) and (Sound->BufferPos >= Sound->BufferLength>>1)) {
          Sound->Fill = FILL_SECOND;
-         lockstart  = 0;
-         locklength = Sound->BufferLength>>1;
+         lock_start  = 0;
+         lock_length = Sound->BufferLength>>1;
       }
       else if ((Sound->Fill IS FILL_SECOND) and (Sound->BufferPos < Sound->BufferLength>>1)) {
          Sound->Fill = FILL_FIRST;
-         lockstart  = Sound->BufferLength>>1;
-         locklength = Sound->BufferLength - (Sound->BufferLength>>1);
+         lock_start  = Sound->BufferLength>>1;
+         lock_length = Sound->BufferLength - (Sound->BufferLength>>1);
       }
 
-      if (lockstart != -1) {
+      if (lock_start != -1) {
          // Set the SampleEnd to zero if the sample does not terminate in this current buffer segment.
 
          if ((Sound->Stop > 1) and (Sound->SampleEnd > 0)) Sound->SampleEnd = 0;
 
          // Load more data if we have entered the next audio buffer section
 
-         if (IDirectSoundBuffer_Lock(Sound->SoundBuffer, lockstart, locklength, (void **)&write, (DWORD *)&length, (void **)&write2, (DWORD *)&length2, 0) IS DS_OK) {
+         int length, length2, bytes_out;
+         if (IDirectSoundBuffer_Lock(Sound->SoundBuffer, lock_start, lock_length, (void **)&write, (DWORD *)&length, (void **)&write2, (DWORD *)&length2, 0) IS DS_OK) {
+            auto len = length;
+            if (Sound->Position + len > Sound->SampleLength) len = Sound->SampleLength - Sound->Position;
 
-            if (Sound->Fill IS FILL_FIRST) Sound->PlayPosition += Sound->BufferLength; // Every time the audio position restarts, increase the play position by the buffer length
-
-            bytesread = ReadData(Sound->File, write, length);
-            Sound->Position += bytesread;
-
-            // Check if all bytes have been read from the audio source
+            if (len > 0) {
+               bytes_out = ReadData(Sound->File, write, len);
+               Sound->Position += bytes_out;
+            }
+            else bytes_out = 0;
 
             if (Sound->Position >= Sound->SampleLength) {
-               // All of the bytes have been read from the sample.  We will need to allow this buffer segment to
-               // play through, then we can terminate the playback.
+               // All of the bytes have been read from the sample.
 
                if (Sound->Loop) {
-                  SeekZero(Sound->File);
-                  bytesread = ReadData(Sound->File, write + bytesread, length - bytesread);
-                  Sound->Position = bytesread;
+                  SeekData(Sound->File, 0);
+                  bytes_out = ReadData(Sound->File, write + bytes_out, length - bytes_out);
+                  Sound->Position = bytes_out;
                }
                else {
                   if (!Sound->Stop) { // Set the SampleEnd to indicate where the sample will end within the buffer.
-                     Sound->SampleEnd = lockstart + bytesread;
+                     Sound->SampleEnd = lock_start + bytes_out;
                   }
 
                   Sound->Stop++;
-
-                  // Clear trailing data for a clean exit
-
-                  for (i=bytesread; i < length; i++) write[i] = 0;
+                  if (length - bytes_out > 0) ZeroMemory(write+bytes_out, length-bytes_out); // Clear trailing data for a clean exit
+                  if (length2 > 0) ZeroMemory(write2, length2);
                }
             }
 
-            IDirectSoundBuffer_Unlock(Sound->SoundBuffer, write, length, write2, length2);
+            IDirectSoundBuffer_Unlock(Sound->SoundBuffer, write, bytes_out, write2, 0);
          }
       }
 
-      // Send a stop signal if we have reached the end of the sample data
+      // Send a stop signal if playback reached the end of the sample data
 
       if ((!Sound->Loop) and (Sound->Stop > 1) and (Sound->BufferPos >= Sound->SampleEnd)) {
          IDirectSoundBuffer_Stop(Sound->SoundBuffer);
@@ -541,32 +536,41 @@ int sndStreamAudio(PlatformData *Sound)
       }
       else return 0;
    }
-   else return 1;
+   else return -1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
+// Adjusting the length is supported for streaming samples only.
+
+void sndLength(PlatformData *Sound, int Length)
+{
+   if (!glDirectSound) return;
+
+   Sound->SampleLength = Length;
+}
+
+//********************************************************************************************************************
 
 void sndVolume(PlatformData *Sound, float Volume)
 {
    if (!glDirectSound) return;
 
    if (Sound->SoundBuffer) {
-      if (Volume <= 0) IDirectSoundBuffer_SetVolume(Sound->SoundBuffer, -10000); // Zero volume
-      else IDirectSoundBuffer_SetVolume(Sound->SoundBuffer, (DWORD)(Volume * 5000)-5000);
+      IDirectSoundBuffer_SetVolume(Sound->SoundBuffer, linear2ds(Volume));
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG sndGetPosition(PlatformData *Sound)
 {
-   DWORD position;
+   DWORD current_read, current_write;
 
    if (!glDirectSound) return 0;
 
    if (Sound->SoundBuffer) {
-      IDirectSoundBuffer_GetCurrentPosition(Sound->SoundBuffer, &position, NULL);
-      return Sound->PlayPosition + position;
+      IDirectSoundBuffer_GetCurrentPosition(Sound->SoundBuffer, &current_read, &current_write);
+      return (Sound->Cycles * Sound->BufferLength) + current_read;
    }
    else return 0;
 }

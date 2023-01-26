@@ -67,6 +67,7 @@ proc.sleep()
 <type name="Disclaimer">The disclaimer associated with an audio sample.</type>
 <type name="Software">The name of the application that was used to record the audio sample.</type>
 <type name="Title">The title of the audio sample.</type>
+<type name="Quality">The compression quality value if the source is an MP3 stream.</type>
 </types>
       </description>
     </action>
@@ -193,7 +194,7 @@ proc.sleep()
     <field>
       <name>Length</name>
       <comment>Indicates the total byte-length of sample data.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
 <p>This field specifies the length of the sample data in bytes.  To get the length of the sample in seconds, divide this value by the <field>BytesPerSecond</field> field.</p>
@@ -362,5 +363,10 @@ proc.sleep()
 
   </types>
   <structs>
+    <struct name="SoundFeed" comment="Private structure for managing live audio streaming.">
+      <field name="Read" type="FUNCTION *" prototype="LONG (*Read)(objSound *, void *, LONG)"></field>
+      <field name="Seek" type="FUNCTION *" prototype="LONG (*Seek)(objSound *, LONG)"></field>
+    </struct>
+
   </structs>
 </book>

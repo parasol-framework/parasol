@@ -247,7 +247,7 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
 
 #elif _WIN32
 
-   dsPlay(Self);
+   dsMixer(Self);
 
    return ERR_Okay;
 

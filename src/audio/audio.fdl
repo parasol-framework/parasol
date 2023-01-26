@@ -88,6 +88,11 @@ module({ name="Audio", copyright="Paul Manias © 2002-2023", version=1.0 }, func
     int Loop2End            # End of the second loop
   ]])
 
+  struct("SoundFeed", { comment="Private structure for managing live audio streaming." }, [[
+    fptr(int obj(Sound) ptr(void) int) Read
+    fptr(int obj(Sound) int) Seek
+  ]])
+
   methods("Audio", "Snd", {
     { id=1, name="OpenChannels" },
     { id=2, name="CloseChannels" },
@@ -130,7 +135,7 @@ module({ name="Audio", copyright="Paul Manias © 2002-2023", version=1.0 }, func
     int Position       # Byte position to start playing from
     int Handle         # Audio handle acquired at the audio object [Private - Available to child classes]
     int ChannelIndex   # Channel handle that the sound was last played on
-    obj(File) File     # Private. The file holding the sample data; available to child classes only.
+    struct(*SoundFeed) Feed # Private.  For internal playback management.
   ]])
 
   functionNames("snd",
