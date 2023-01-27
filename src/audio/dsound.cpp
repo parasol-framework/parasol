@@ -39,19 +39,17 @@ int ReadData(extSound *, void *, int);
 void SeekData(extSound *, int);
 int GetMixAmount(extAudio *, int *);
 int process_commands(extAudio *, int);
+int process_commands(extAudio *, int);
 
 #include "windows.h"
 
-extern unsigned outputMode;
-unsigned int mixElemSize;
-static unsigned bufferLen;
-static unsigned bufferLeaveSpace;
-static unsigned writePos;               // write position
+static const unsigned int SAMPLE_SIZE = sizeof(WORD) * 2; // Sample Size * Channels
+static unsigned glMixerPos = 0;         // write position
 static LPDIRECTSOUND glDirectSound;     // the DirectSound object
 static HMODULE dsModule = NULL;         // dsound.dll module handle
 static HWND glWindow;                   // HWND for DirectSound
-static unsigned int targetBufferLen;
-static int mBufferLength = 500;         // buffer length in milliseconds
+static unsigned int glTargetBufferLen;
+static const int BUFFER_LENGTH = 500;   // buffer length in milliseconds
 
 static HRESULT (WINAPI *dsDirectSoundCreate)(const GUID *, LPDIRECTSOUND *, IUnknown FAR *) = NULL;
 
@@ -102,7 +100,6 @@ const char * dsInitDevice(int mixRate)
    DSCAPS      dscaps;
 
    glWindow = GetDesktopWindow();
-   mixElemSize = sizeof(WORD) * 2;
 
    if (!glWindow) return "Failed to get desktop window.";
 
@@ -151,17 +148,12 @@ const char * dsInitDevice(int mixRate)
    dscaps.dwSize = sizeof(DSCAPS);
    if ((result = glDirectSound->GetCaps(&dscaps)) != DS_OK) return dserror(result);
 
-   if (dscaps.dwFlags & DSCAPS_EMULDRIVER) targetBufferLen = (mixRate * mixElemSize * mBufferLength) / 100;
-   else targetBufferLen = (mixRate * mixElemSize * 100) / 100;
+   if (dscaps.dwFlags & DSCAPS_EMULDRIVER) glTargetBufferLen = (mixRate * SAMPLE_SIZE * BUFFER_LENGTH) / 100;
+   else glTargetBufferLen = (mixRate * SAMPLE_SIZE * 100) / 100;
 
-   targetBufferLen = (targetBufferLen + 15) & (~15);
-
-   writePos = 0;
+   glTargetBufferLen = (glTargetBufferLen + 15) & (~15);
 
    // Now create the primary/mix playback buffer
-
-   bufferLen = targetBufferLen;
-   bufferLeaveSpace = 16;
 
    ZeroMemory(&format, sizeof(WAVEFORMATEX));
    format.nChannels       = 2;
@@ -179,7 +171,7 @@ const char * dsInitDevice(int mixRate)
                         |DSBCAPS_CTRLFREQUENCY
                         |DSBCAPS_GLOBALFOCUS         // Allows background playing
                         |DSBCAPS_CTRLPOSITIONNOTIFY; // Needed for notification
-   bufferDesc.dwBufferBytes = bufferLen;
+   bufferDesc.dwBufferBytes = glTargetBufferLen;
    bufferDesc.lpwfxFormat   = &format;
 
    if ((result = glDirectSound->CreateSoundBuffer(&bufferDesc, &glPrimaryBuffer, NULL)) != DS_OK) return dserror(result);
@@ -215,7 +207,7 @@ void dsClear(void)
    DWORD length1, length2;
 
    if (glPrimaryBuffer) {
-      glPrimaryBuffer->Lock(0, targetBufferLen, (void **)&write1, &length1, (void **)&write2, &length2, 0);
+      glPrimaryBuffer->Lock(0, glTargetBufferLen, (void **)&write1, &length1, (void **)&write2, &length2, 0);
       if (write1) for (DWORD i=0; i < length1; i++) write1[i] = 0;
       if (write2) for (DWORD i=0; i < length2; i++) write2[i] = 0;
       glPrimaryBuffer->Unlock(write1, length1, write2, length2);
@@ -234,7 +226,7 @@ int dsResume(void)
 
    if (glPrimaryBuffer) {
       // Clear the playback buffer of any old sampling data
-      glPrimaryBuffer->Lock(0, targetBufferLen, (void **)&write1, &length1, (void **)&write2, &length2, 0);
+      glPrimaryBuffer->Lock(0, glTargetBufferLen, (void **)&write1, &length1, (void **)&write2, &length2, 0);
       if (write1) for (i=0; i < length1; i++) write1[i] = 0;
       if (write2) for (i=0; i < length2; i++) write2[i] = 0;
       glPrimaryBuffer->Unlock(write1, length1, write2, length2);
@@ -253,36 +245,35 @@ int mix_data(extAudio *, int, void *);
 
 int dsMixer(extAudio *Self)
 {
-   HRESULT result;
-   UBYTE *write1, *write2;
-   DWORD spaceleft, play_cursor, write_cursor;
-
    if (!glDirectSound) return 0;
 
    // The write_cursor always leads the play cursor, typically by about 15 milliseconds.
    // It is guaranteed to be safe to write behind the play_cursor.
 
+   DWORD space_left, play_cursor, write_cursor;
    glPrimaryBuffer->GetCurrentPosition(&play_cursor, &write_cursor);
 
    // Calculate the amount of space left in the buffer:
 
-   if (writePos <= play_cursor) spaceleft = play_cursor - writePos;
-   else spaceleft = bufferLen - writePos + play_cursor;
+   if (glMixerPos <= play_cursor) space_left = play_cursor - glMixerPos;
+   else space_left = glTargetBufferLen - glMixerPos + play_cursor;
 
-   if (spaceleft > 16) spaceleft -= 16;
-   else spaceleft = 0;
+   if (space_left > 16) space_left -= 16;
+   else space_left = 0;
 
-   spaceleft = spaceleft / mixElemSize; // Convert to number of elements
+   space_left = space_left / SAMPLE_SIZE; // Convert to number of samples
 
-   while (spaceleft) { // Scan channels to check if an update rate is going to be met
+   while (space_left) { // Scan channels to check if an update rate is going to be met
       DWORD len1, len2, elements;
-      int mixleft;
-      GetMixAmount((extAudio *)Self, &mixleft);
+      int mix_left;
+      GetMixAmount((extAudio *)Self, &mix_left);
 
-      if ((DWORD)mixleft < spaceleft) elements = mixleft;
-      else elements = spaceleft;
+      if ((DWORD)mix_left < space_left) elements = mix_left;
+      else elements = space_left;
 
-      if ((result = glPrimaryBuffer->Lock(writePos, mixElemSize * elements, (void **)&write1, &len1, (void **)&write2, &len2, 0)) != DS_OK) {
+      UBYTE *write1, *write2;
+      HRESULT result;
+      if ((result = glPrimaryBuffer->Lock(glMixerPos, SAMPLE_SIZE * elements, (void **)&write1, &len1, (void **)&write2, &len2, 0)) != DS_OK) {
          if (result IS DSERR_BUFFERLOST) {
             if (glPrimaryBuffer->Restore() != DS_OK) return 1;
             if (glPrimaryBuffer->Play(0, 0, DSBPLAY_LOOPING) != DS_OK) return 1;
@@ -290,11 +281,11 @@ int dsMixer(extAudio *Self)
          else return 1;
       }
 
-      if (len1) { if (mix_data(Self, len1 / mixElemSize, write1)) break; }
-      if (len2) { if (mix_data(Self, len2 / mixElemSize, write2)) break; }
+      if (len1) { if (mix_data(Self, len1 / SAMPLE_SIZE, write1)) break; }
+      if (len2) { if (mix_data(Self, len2 / SAMPLE_SIZE, write2)) break; }
 
-      writePos += len1 + len2;
-      if (writePos >= bufferLen) writePos -= bufferLen;
+      glMixerPos += len1 + len2;
+      if (glMixerPos >= glTargetBufferLen) glMixerPos -= glTargetBufferLen;
 
       glPrimaryBuffer->Unlock((void **)write1, len1, (void **)write2, len2);
 
@@ -302,7 +293,7 @@ int dsMixer(extAudio *Self)
 
       process_commands((extAudio *)Self, elements);
 
-      spaceleft -= elements;
+      space_left -= elements;
    }
 
    return OK;

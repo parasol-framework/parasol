@@ -309,16 +309,6 @@ proc.sleep()
     </field>
 
     <field>
-      <name>StreamFile</name>
-      <comment>Refers to a File object that is being streamed for playback.</comment>
-      <access read="R" write="I">Read/Init</access>
-      <type>OBJECTID</type>
-      <description>
-<p>This field is maintained internally and is defined post-initialisation.  It refers to a <class name="File">File</class> object that is being streamed.</p>
-      </description>
-    </field>
-
-    <field>
       <name>Volume</name>
       <comment>The volume to use when playing the sound sample.</comment>
       <access read="R" write="S">Read/Set</access>

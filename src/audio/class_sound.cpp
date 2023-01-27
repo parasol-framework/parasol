@@ -159,26 +159,6 @@ static ERROR snd_init_audio(extSound *Self)
    return error;
 }
 
-//********************************************************************************************************************
-
-static ERROR SOUND_ActionNotify(extSound *Self, struct acActionNotify *Args)
-{
-   parasol::Log log;
-
-   // Streams: When the Audio system calls the Read/Seek actions, we need to decode more audio information to the
-   // stream buffer.
-
-   if (Args->ActionID IS AC_Read) {
-      NotifySubscribers(Self, AC_Read, Args->Args, 0, ERR_Okay);
-   }
-   else if (Args->ActionID IS AC_Seek) {
-      NotifySubscribers(Self, AC_Seek, Args->Args, 0, ERR_Okay);
-   }
-   else log.msg("Unrecognised action #%d.", Args->ActionID);
-
-   return ERR_Okay;
-}
-
 /*********************************************************************************************************************
 -ACTION-
 Activate: Plays the audio sample.
@@ -314,6 +294,8 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          if (sndMixPan(*audio, Self->ChannelIndex, Self->Pan)) return log.warning(ERR_Failed);
          if (sndMixPlay(*audio, Self->ChannelIndex, Self->Playback)) return log.warning(ERR_Failed);
 
+         Self->Active = true;
+
          // Use a timer to fulfil the Deactivate and auto-termination contracts.
 
          auto call = make_function_stdc(playback_timer);
@@ -446,9 +428,8 @@ static ERROR SOUND_Free(extSound *Self, APTR Void)
       }
    }
 
-   if (Self->Path)         { FreeResource(Self->Path); Self->Path = NULL; }
-   if (Self->File)         { acFree(Self->File); Self->File = NULL; }
-   if (Self->StreamFileID) { acFree(Self->StreamFileID); Self->StreamFileID = 0; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->File) { acFree(Self->File); Self->File = NULL; }
 
    Self->~extSound();
    return ERR_Okay;
@@ -597,7 +578,6 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 static ERROR SOUND_Init(extSound *Self, APTR Void)
 {
    parasol::Log log;
-   OBJECTPTR filestream;
    LONG id, len, sampleformat, result, pos;
    BYTE *buffer;
    ERROR error;
@@ -643,20 +623,11 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
       if (!Self->Frequency) Self->Frequency = 44192;
       if (!Self->Playback) Self->Playback = Self->Frequency;
 
-      // Create a virtual file object that will handle the decoded audio stream
-
-      if ((filestream = objFile::create::integral(fl::Flags(FL_BUFFER|FL_LOOP), fl::Size(Self->BufferLength)))) {
-         Self->StreamFileID = filestream->UID;
-         // Subscribe to the virtual file, so that we can detect when the audio system reads information from it.
-         SubscribeActionTags(filestream, AC_Read, AC_Seek, TAGEND);
-      }
-      else return ERR_CreateObject;
-
       // Create the audio stream and activate it
 
       struct sndAddStream stream = {
          .Path         = NULL,
-         .ObjectID     = Self->StreamFileID,
+         .ObjectID     = Self->UID,
          .SeekStart    = 0,
          .SampleFormat = sample_format(Self),
          .SampleLength = -1,
@@ -706,13 +677,11 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
       if (flReadLE(Self->File, &id)) return ERR_Read; // Contains the characters "fmt "
       if (flReadLE(Self->File, &len)) return ERR_Read; // Length of data in this chunk
 
-      if (!AllocMemory(len, MEM_DATA, &Self->WAVE)) {
-         if (Self->File->read(Self->WAVE, len, &result) or (result < len)) {
-            log.warning("Failed to read WAVE format header (got %d, expected %d)", result, len);
-            return ERR_Read;
-         }
+      WAVEFormat WAVE;
+      if (Self->File->read(&WAVE, len, &result) or (result < len)) {
+         log.warning("Failed to read WAVE format header (got %d, expected %d)", result, len);
+         return ERR_Read;
       }
-      else return log.warning(ERR_AllocMemory);
 
       // Check the format of the sound file's data
 
@@ -821,8 +790,8 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
             stream.LoopSize = 0;
          }
 
-         stream.Path         = Self->Path;
-         stream.ObjectID     = 0;
+         stream.Path         = NULL;
+         stream.ObjectID     = Self->UID;
          stream.SeekStart    = Self->DataOffset;
          stream.SampleFormat = sampleformat;
          stream.SampleLength = Self->Length;
@@ -1104,14 +1073,6 @@ Compression: Determines the amount of compression used when saving an audio samp
 Setting the Compression field will determine how much compression is applied when saving an audio sample.  The range of
 compression is 0 to 100%, with 100% being the strongest level available while 0% is uncompressed and loss-less.  This
 field is ignored if the file format does not support compression.
-
--FIELD-
-File: Refers to the file object that contains the audio data for playback.
-
-This field is maintained internally and is defined post-initialisation.  It refers to the file object that contains
-audio data for playback or recording purposes.
-
-It is intended for use by sub classes only.
 
 -FIELD-
 Flags: Optional initialisation flags.
@@ -1562,12 +1523,6 @@ Stream: Defines the preferred streaming method for the sample.
 Lookup: STREAM
 
 -FIELD-
-StreamFile: Refers to a File object that is being streamed for playback.
-
-This field is maintained internally and is defined post-initialisation.  It refers to a @File object that
-is being streamed.
-
--FIELD-
 Volume: The volume to use when playing the sound sample.
 
 The field specifies the volume of a sound in the range 0 - 1.0 (low to high).  Setting this field during sample
@@ -1698,11 +1653,10 @@ static const FieldArray clFields[] = {
    { "LoopEnd",        FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "Stream",         FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clStream, NULL, NULL },
    { "BufferLength",   FDF_LONG|FDF_RI,      0, NULL, NULL },
-   { "StreamFile",     FDF_OBJECTID|FDF_RI,  0, NULL, NULL },
    { "Position",       FDF_LONG|FDF_RW,      0, (APTR)SOUND_GET_Position, (APTR)SOUND_SET_Position },
    { "Handle",         FDF_LONG|FDF_SYSTEM|FDF_R, 0, NULL, NULL },
    { "ChannelIndex",   FDF_LONG|FDF_R,       0, NULL, NULL },
-   { "File",           FDF_OBJECT|FDF_SYSTEM|FDF_R, ID_FILE, NULL, NULL },
+   { "Feed",           FDF_POINTER|FDF_SYSTEM|FDF_R, 0, NULL, NULL },
    // Virtual fields
    { "Active",   FDF_LONG|FDF_R,     0, (APTR)SOUND_GET_Active, NULL },
    { "Header",   FDF_BYTE|FDF_ARRAY|FDF_R, 0, (APTR)SOUND_GET_Header, NULL },
@@ -1712,7 +1666,6 @@ static const FieldArray clFields[] = {
 };
 
 static const ActionArray clActions[] = {
-   { AC_ActionNotify,  (APTR)SOUND_ActionNotify },
    { AC_Activate,      (APTR)SOUND_Activate },
    { AC_Deactivate,    (APTR)SOUND_Deactivate },
    { AC_Disable,       (APTR)SOUND_Disable },

@@ -392,5 +392,10 @@
       <field name="Loop2End" type="LONG">End of the second loop</field>
     </struct>
 
+    <struct name="SoundFeed" comment="Private structure for managing live audio streaming.">
+      <field name="Read" type="FUNCTION *" prototype="LONG (*Read)(objSound *, void *, LONG)"></field>
+      <field name="Seek" type="FUNCTION *" prototype="LONG (*Seek)(objSound *, LONG)"></field>
+    </struct>
+
   </structs>
 </book>

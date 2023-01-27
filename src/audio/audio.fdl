@@ -108,10 +108,10 @@ module({ name="Audio", copyright="Paul Manias © 2002-2023", version=1.0 }, func
     int OutputRate
     int InputRate
     int Quality
-    int(ADF) Flags         # Special flags
-    int BitDepth           # Typically 8 or 16 bit, reflects the active bit depth
-    int Periods
-    int PeriodSize
+    int(ADF) Flags     # Special flags
+    int BitDepth       # Typically 8 or 16 bit, reflects the active bit depth
+    int Periods        # Number of periods for ALSA audio buffering
+    int PeriodSize     # Period size for ALSA audio buffering
   ]])
 
   class("Sound", { src="class_sound.cpp" }, [[
@@ -131,7 +131,6 @@ module({ name="Audio", copyright="Paul Manias © 2002-2023", version=1.0 }, func
     int LoopEnd        # Byte position of looping end
     int(STREAM) Stream # Streaming type (smart by default)
     int BufferLength   # Length of audio buffer in bytes (relevant if streaming)
-    oid StreamFile     # Object allocated for streaming
     int Position       # Byte position to start playing from
     int Handle         # Audio handle acquired at the audio object [Private - Available to child classes]
     int ChannelIndex   # Channel handle that the sound was last played on

@@ -243,9 +243,9 @@ currently supported for streams.  For that reason, set the type variables to eit
 `LTYPE::UNIDIRECTIONAL`.
 
 -INPUT-
-cstr Path: Refers to the file that contains the sample data, or NULL if you will supply an ObjectID.
-oid ObjectID: Refers to the public object that contains the sample data (if no Path has been specified).  The object must support the Read and Seek actions or it will not be possible to stream data from it.
-int SeekStart: Offset to use when seeking to the start of sample data.
+cstr Path: Refers to a file that contains raw sample data, or NULL if supplying an ObjectID.
+oid ObjectID: Refers to an object that contains the raw sample data (if no Path has been specified).  The object must support the Read and Seek actions for data retrieval.
+int SeekStart: Optional offset to use when seeking to the start of sample data.
 int(SFM) SampleFormat: Indicates the format of the sample data that you are adding.
 int SampleLength: Total byte-length of the sample data that is being streamed.  May be set to zero if the length is infinite or unknown.
 int BufferLength: Total byte-length of the audio stream buffer that you would like to be allocated internally (large buffers affect timing).

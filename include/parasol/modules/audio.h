@@ -270,7 +270,6 @@ class objSound : public BaseClass {
    LONG     LoopEnd;           // The byte position at which sample looping will end.
    STREAM   Stream;            // Defines the preferred streaming method for the sample.
    LONG     BufferLength;      // Defines the size of the buffer to use when streaming is enabled.
-   OBJECTID StreamFileID;      // Refers to a File object that is being streamed for playback.
    LONG     Position;          // The current playback position.
    LONG     Handle;            // Audio handle acquired at the audio object [Private - Available to child classes]
    LONG     ChannelIndex;      // Refers to the channel that the sound is playing through.

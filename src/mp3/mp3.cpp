@@ -155,8 +155,8 @@ static LONG SF_Read(objSound *Self, APTR Buffer, LONG Length)
          if (pos + to_copy > Length) to_copy = Length - pos;
          CopyMemory(prv->Overflow.data() + prv->OverflowPos, (UBYTE *)Buffer + pos, to_copy);
          prv->OverflowPos += to_copy;
-         pos += to_copy;
          prv->WriteOffset += to_copy;
+         pos += to_copy;
          continue;
       }
 
@@ -206,9 +206,9 @@ static LONG SF_Read(objSound *Self, APTR Buffer, LONG Length)
                CopyMemory(pcm, (UBYTE *)Buffer + pos, decoded_bytes);
 
                prv->FramesProcessed++;
+               prv->WriteOffset += decoded_bytes;
                in  += prv->info.frame_bytes;
                pos += decoded_bytes;
-               prv->WriteOffset += decoded_bytes;
             }
          }
          else {
@@ -217,9 +217,9 @@ static LONG SF_Read(objSound *Self, APTR Buffer, LONG Length)
             if (decoded_samples) {
                prv->FramesProcessed++;
                const LONG decoded_bytes = decoded_samples * sizeof(WORD) * prv->info.channels;
+               prv->WriteOffset += decoded_bytes;
                in  += prv->info.frame_bytes;
                pos += decoded_bytes;
-               prv->WriteOffset += decoded_bytes;
             }
          }
 
