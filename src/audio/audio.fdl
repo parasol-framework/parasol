@@ -117,6 +117,7 @@ module({ name="Audio", copyright="Paul Manias © 2002-2023", version=1.0 }, func
   class("Sound", { src="class_sound.cpp" }, [[
     double Volume      # Volume of sample (0 - 100%)
     double Pan         # Horizontal positioning for playback on stereo speakers (-100 to +100)
+    struct(*SoundFeed) Feed # Private.  For internal playback management.
     int Priority       # Priority over other sounds
     int Length         # Length of sample data in bytes (also refer BufferLength)
     int Octave         # Current octave to use for playing back notes (defaults to zero)
@@ -134,7 +135,6 @@ module({ name="Audio", copyright="Paul Manias © 2002-2023", version=1.0 }, func
     int Position       # Byte position to start playing from
     int Handle         # Audio handle acquired at the audio object [Private - Available to child classes]
     int ChannelIndex   # Channel handle that the sound was last played on
-    struct(*SoundFeed) Feed # Private.  For internal playback management.
   ]])
 
   functionNames("snd",

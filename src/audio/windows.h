@@ -4,7 +4,7 @@
 */
 
 int sndCheckActivity(struct PlatformData *);
-const char * sndCreateBuffer(extSound *, void *, int, int, struct PlatformData *, int);
+const char * sndCreateBuffer(struct BaseClass *, void *, int, int, struct PlatformData *, int);
 void sndFree(struct PlatformData *);
 void sndFrequency(struct PlatformData *, int);
 LONG sndGetPosition(struct PlatformData *);

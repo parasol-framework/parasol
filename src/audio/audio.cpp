@@ -57,18 +57,14 @@ static LONG glMaxSoundChannels = 8;
 
 #ifdef _WIN32
 #define USE_WIN32_PLAYBACK TRUE // If undefined, only the internal mixer is used.
+#include "windows.h"
 
 char * dsInitDevice(int);
 void dsCloseDevice(void);
-void dsClear(void);
-LONG dsMixer(extAudio *);
 #endif
 
-LONG mix_data(extAudio *, LONG, void *);
-ERROR GetMixAmount(extAudio *, LONG *);
 ERROR add_audio_class(void);
 ERROR add_sound_class(void);
-ERROR process_commands(extAudio *, LONG);
 void free_audio_class(void);
 void free_sound_class(void);
 static ERROR set_channel_volume(extAudio *, struct AudioChannel *);

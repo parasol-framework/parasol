@@ -42,13 +42,6 @@ individual samples with more immediacy.
 
 *********************************************************************************************************************/
 
-struct PlatformData { void *Void; };
-
-#include "windows.h"
-
-#define WAVE_RAW    0x0001    // Uncompressed waveform data.
-#define WAVE_ADPCM  0x0002    // ADPCM compressed waveform data.
-
 #define SECONDS_STREAM_BUFFER 2
 
 #define SIZE_RIFF_CHUNK 12
@@ -98,18 +91,6 @@ static ERROR SF_Seek(objSound *Self, LONG Offset)
 }
 
 static SoundFeed glWAVFeed = { SF_Read, SF_Seek };
-
-//********************************************************************************************************************
-
-#ifdef _WIN32 // Functions for use by dsound.c
-int ReadData(extSound *Self, void *Buffer, int Length) {
-   return Self->Feed->Read(Self, Buffer, Length);
-}
-
-void SeekData(extSound *Self, LONG Offset) {
-   Self->Feed->Seek(Self, Offset);
-}
-#endif
 
 //********************************************************************************************************************
 // Stubs.
@@ -1639,6 +1620,7 @@ static const FieldDef clStream[] = {
 static const FieldArray clFields[] = {
    { "Volume",         FDF_DOUBLE|FDF_RW,    0, NULL, (APTR)SOUND_SET_Volume },
    { "Pan",            FDF_DOUBLE|FDF_RW,    0, NULL, (APTR)SOUND_SET_Pan },
+   { "Feed",           FDF_POINTER|FDF_SYSTEM|FDF_R, 0, NULL, NULL },
    { "Priority",       FDF_LONG|FDF_RW,      0, NULL, (APTR)SOUND_SET_Priority },
    { "Length",         FDF_LONG|FDF_RW,      0, NULL, (APTR)SOUND_SET_Length },
    { "Octave",         FDF_LONG|FDF_RW,      0, NULL, (APTR)SOUND_SET_Octave },
@@ -1656,7 +1638,6 @@ static const FieldArray clFields[] = {
    { "Position",       FDF_LONG|FDF_RW,      0, (APTR)SOUND_GET_Position, (APTR)SOUND_SET_Position },
    { "Handle",         FDF_LONG|FDF_SYSTEM|FDF_R, 0, NULL, NULL },
    { "ChannelIndex",   FDF_LONG|FDF_R,       0, NULL, NULL },
-   { "Feed",           FDF_POINTER|FDF_SYSTEM|FDF_R, 0, NULL, NULL },
    // Virtual fields
    { "Active",   FDF_LONG|FDF_R,     0, (APTR)SOUND_GET_Active, NULL },
    { "Header",   FDF_BYTE|FDF_ARRAY|FDF_R, 0, (APTR)SOUND_GET_Header, NULL },

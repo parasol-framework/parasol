@@ -36,7 +36,12 @@ typedef struct WAVEFormat {
 
 typedef LONG (*MixRoutine)(APTR, LONG, LONG, LONG, FLOAT, FLOAT);
 
+#define WAVE_RAW    0x0001    // Uncompressed waveform data.
+#define WAVE_ADPCM  0x0002    // ADPCM compressed waveform data.
+
 const LONG DEFAULT_BUFFER_SIZE = 8096; // Measured in samples, not bytes
+
+struct PlatformData { void *Void; };
 
 struct AudioSample {
    UBYTE *  Data;         // Pointer to the sample data.
@@ -170,6 +175,9 @@ class extAudio : public objAudio {
    APTR  MixBuffer;
    APTR  TaskRemovedHandle;
    APTR  UserLoginHandle;
+   #ifdef _WIN32
+   UBYTE  PlatformData[128];  // Data area for holding platform/hardware specific information
+   #endif
    #ifdef ALSA_ENABLED
    UBYTE *AudioBuffer;
    snd_pcm_t    *Handle;

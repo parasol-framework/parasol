@@ -78,7 +78,7 @@ static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
    const BYTE mixbitsize = Self->Stereo ? sizeof(FLOAT) * 2 : sizeof(FLOAT);
 
    #define MIXBUFLEN 20 // Mixing buffer length 1/20th of a second
-   Self->MixBufferSize = (((mixbitsize * Self->OutputRate) / MIXBUFLEN) + 15) & 0xfffffff0;
+   Self->MixBufferSize = (((mixbitsize * Self->OutputRate) / MIXBUFLEN) + 15) & (~15);
    Self->MixElements   = Self->MixBufferSize / mixbitsize;
 
    if (!AllocMemory(Self->MixBufferSize, MEM_DATA, &Self->MixBuffer)) {
@@ -90,6 +90,31 @@ static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
       }
       else if (Self->Stereo) Self->MixRoutines = MixStereoFloat;
       else Self->MixRoutines = MixMonoFloat;
+
+      #ifdef _WIN32
+
+      WAVEFORMATEX wave = {
+         .Format            = WAVE_RAW,
+         .Channels          = 2,
+         .Frequency         = 44100,
+         .AvgBytesPerSecond = 44100 * sizeof(WORD) * 2,
+         .BlockAlign        = sizeof(WORD) * 2, // 16 bit * 2 channels
+         .BitsPerSample     = 16,
+         .ExtraLength       = 0
+      };
+
+      if (auto strerr = sndCreateBuffer(Self, &wave, Self->MixBufferSize, 0x7fffffff, (PlatformData *)Self->PlatformData, TRUE)) {
+         log.warning(strerr);
+         Self->Initialising = false;
+         return ERR_Failed;
+      }
+
+      if (sndPlay((PlatformData *)Self->PlatformData, TRUE, 0)) {
+         Self->Initialising = false;
+         return log.warning(ERR_Failed);
+      }
+
+      #endif
 
       Self->Initialising = false;
       return ERR_Okay;
@@ -387,31 +412,6 @@ static ERROR AUDIO_Beep(extAudio *Self, struct sndBeep *Args)
    }
 #endif
    return ERR_NoSupport;
-}
-
-/*********************************************************************************************************************
-
--ACTION-
-Clear: Clears the audio buffers.
-
-Call this action at any time to clear the internal audio buffers.  This will have the side-effect of temporarily
-stopping all output until the next audio update occurs.
-
-*********************************************************************************************************************/
-
-static ERROR AUDIO_Clear(extAudio *Self, APTR Void)
-{
-   parasol::Log log;
-
-   log.branch();
-
-#ifdef _WIN32
-   dsClear();
-#else
-
-#endif
-
-   return ERR_Okay;
 }
 
 /*********************************************************************************************************************

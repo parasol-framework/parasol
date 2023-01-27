@@ -34,7 +34,6 @@ static const struct MethodArray clAudioMethods[] = {
 
 static const struct ActionArray clAudioActions[] = {
    { AC_Activate, (APTR)AUDIO_Activate },
-   { AC_Clear, (APTR)AUDIO_Clear },
    { AC_Deactivate, (APTR)AUDIO_Deactivate },
    { AC_Free, (APTR)AUDIO_Free },
    { AC_Init, (APTR)AUDIO_Init },

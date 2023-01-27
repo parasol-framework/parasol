@@ -256,6 +256,7 @@ class objSound : public BaseClass {
 
    DOUBLE   Volume;            // The volume to use when playing the sound sample.
    DOUBLE   Pan;               // Determines the horizontal position of a sound when played through stereo speakers.
+   struct SoundFeed * Feed;    // Private.  For internal playback management.
    LONG     Priority;          // The priority of a sound in relation to other sound samples being played.
    LONG     Length;            // Indicates the total byte-length of sample data.
    LONG     Octave;            // The octave to use for sample playback.
@@ -273,7 +274,6 @@ class objSound : public BaseClass {
    LONG     Position;          // The current playback position.
    LONG     Handle;            // Audio handle acquired at the audio object [Private - Available to child classes]
    LONG     ChannelIndex;      // Refers to the channel that the sound is playing through.
-   struct SoundFeed * Feed;    // Private.  For internal playback management.
 
    // Action stubs
 

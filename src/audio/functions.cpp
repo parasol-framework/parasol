@@ -1,17 +1,65 @@
 
 #define RAMPSPEED 0.01  // Default ramping speed - volume steps per output sample.  Keeping this value very low prevents clicks from occurring
 
-template <class T> inline DOUBLE b2f(T Value)
-{
-   return 256 * (Value-128);
-}
-
 static LONG MixStep;
-static FLOAT *glMixDest = NULL;
+static FLOAT *glMixDest = NULL; // TODO: Global requires deprecation
 
 static void filter_float_mono(extAudio *, FLOAT *, LONG);
 static void filter_float_stereo(extAudio *, FLOAT *, LONG);
 static void mix_channel(extAudio *, AudioChannel &, LONG, APTR);
+static ERROR mix_data(extAudio *, LONG, APTR);
+static ERROR process_commands(extAudio *, LONG);
+
+static const unsigned int SAMPLE_SIZE = sizeof(WORD) * 2; // Sample Size * Channels
+
+//********************************************************************************************************************
+
+static ERROR get_mix_amount(extAudio *Self, LONG *MixLeft)
+{
+   LONG ml = 0x7fffffff;
+   for (LONG i=1; i < (LONG)Self->Sets.size(); i++) {
+      if ((Self->Sets[i].MixLeft > 0) and (Self->Sets[i].MixLeft < ml)) {
+         ml = Self->Sets[i].MixLeft;
+      }
+   }
+
+   *MixLeft = ml;
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+// Functions for use by dsound.cpp
+
+#ifdef _WIN32
+int ReadData(BaseClass *Self, void *Buffer, int Length) {
+   if (Self->ClassID IS ID_SOUND) {
+      return ((extSound *)Self)->Feed->Read(((extSound *)Self), Buffer, Length);
+   }
+   else if (Self->ClassID IS ID_AUDIO) {
+      const LONG space_left = Length / SAMPLE_SIZE; // Convert to number of samples
+
+      LONG mix_left;
+      get_mix_amount((extAudio *)Self, &mix_left);
+
+      mix_data((extAudio *)Self, space_left, Buffer);
+
+      // Drop the mix amount.  This may also update buffered channels for the next round
+
+      LONG elements = (mix_left < space_left) ? mix_left : space_left;
+      process_commands((extAudio *)Self, elements);
+
+      return Length;
+   }
+   else return 0;
+}
+
+void SeekData(BaseClass *Self, LONG Offset) {
+   if (Self->ClassID IS ID_SOUND) {
+      ((extSound *)Self)->Feed->Seek(((extSound *)Self), Offset);
+   }
+   else return; // Seeking not applicable for the Audio class.
+}
+#endif
 
 //********************************************************************************************************************
 // Defines the L/RVolume and Ramping values for an AudioChannel.  These values are derived from the Volume and Pan.
@@ -63,24 +111,6 @@ static ERROR set_channel_volume(extAudio *Self, AudioChannel *Channel)
       Channel->LVolumeTarget = leftvol;
       Channel->RVolume       = rightvol;
       Channel->RVolumeTarget = rightvol;
-   }
-
-   return ERR_Okay;
-}
-
-//********************************************************************************************************************
-
-#ifdef __linx__
-static ERROR GetMixAmount(extAudio *Self, LONG *MixLeft)
-#else
-ERROR GetMixAmount(extAudio *Self, LONG *MixLeft)
-#endif
-{
-   *MixLeft = 0x7fffffff;
-   for (LONG i=1; i < (LONG)Self->Sets.size(); i++) {
-      if ((Self->Sets[i].MixLeft > 0) and (Self->Sets[i].MixLeft < *MixLeft)) {
-         *MixLeft = Self->Sets[i].MixLeft;
-      }
    }
 
    return ERR_Okay;
@@ -190,7 +220,7 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
    while (space_left) {
       // Scan channels to check if an update rate is going to be met
 
-      GetMixAmount(Self, &mix_left);
+      get_mix_amount(Self, &mix_left);
 
       if (mix_left < space_left) elements = mix_left;
       else elements = space_left;
@@ -247,7 +277,7 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
 
 #elif _WIN32
 
-   dsMixer(Self);
+   sndStreamAudio((PlatformData *)Self->PlatformData);
    return ERR_Okay;
 
 #else
@@ -552,7 +582,7 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
 //********************************************************************************************************************
 // Main entry point for mixing sound data to destination
 
-ERROR mix_data(extAudio *Self, LONG Elements, APTR Dest)
+static ERROR mix_data(extAudio *Self, LONG Elements, APTR Dest)
 {
    parasol::Log log(__FUNCTION__);
 
