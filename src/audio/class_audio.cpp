@@ -77,8 +77,7 @@ static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
 
    const BYTE mixbitsize = Self->Stereo ? sizeof(FLOAT) * 2 : sizeof(FLOAT);
 
-   #define MIXBUFLEN 20 // Mixing buffer length 1/20th of a second
-   Self->MixBufferSize = (((mixbitsize * Self->OutputRate) / MIXBUFLEN) + 15) & (~15);
+   Self->MixBufferSize = (((mixbitsize * Self->OutputRate) / MIX_BUF_LEN) + 15) & (~15);
    Self->MixElements   = Self->MixBufferSize / mixbitsize;
 
    if (!AllocMemory(Self->MixBufferSize, MEM_DATA, &Self->MixBuffer)) {

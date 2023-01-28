@@ -53,7 +53,7 @@ static ERROR SOUND_GET_Position(extSound *, LONG *);
 
 static ERROR SOUND_SET_Note(extSound *, CSTRING);
 
-static const auto glScale = std::to_array({
+static const std::array<DOUBLE, 12> glScale = {
    1.0,         // C
    1.059435080, // CS
    1.122424798, // D
@@ -66,7 +66,7 @@ static const auto glScale = std::to_array({
    1.681764324, // A
    1.781752857, // AS
    1.887704009  // B
-});
+};
 
 static OBJECTPTR clSound = NULL;
 

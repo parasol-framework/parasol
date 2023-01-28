@@ -1,6 +1,10 @@
 
+static const LONG MIX_BUF_LEN = 4; // Mixing buffer length 1/n of a second
+
+// The mixer interval must trigger more often than the size limit imposed by MIX_BUF_LEN.
+
 #ifdef _WIN32
-#define MIX_INTERVAL 0.02
+#define MIX_INTERVAL 0.2
 #else
 #define MIX_INTERVAL 0.01
 #endif
