@@ -338,8 +338,8 @@ static ERROR SF_Seek(objSound *Self, LONG Offset)
             prv->StreamSize = size - prv->SeekOffset;
          }
 
-         LONG frame = prv->TotalFrames * pct;
-         LONG offset = prv->StreamSize * pct;
+         LONG frame = F2T(prv->TotalFrames * pct);
+         LONG offset = F2T(prv->StreamSize * pct);
          if (frame < 0) frame = 0;
          if (offset < 0) offset = 0;
          prv->File->seekStart(prv->SeekOffset + offset);

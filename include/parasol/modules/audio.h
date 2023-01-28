@@ -59,9 +59,8 @@ DEFINE_ENUM_FLAG_OPERATORS(CHF)
 
 #define SDF_LOOP 0x00000001
 #define SDF_NEW 0x00000002
-#define SDF_QUERY 0x00000004
-#define SDF_STEREO 0x00000008
-#define SDF_RESTRICT_PLAY 0x00000010
+#define SDF_STEREO 0x00000004
+#define SDF_RESTRICT_PLAY 0x00000008
 #define SDF_STREAM 0x40000000
 #define SDF_NOTE 0x80000000
 
@@ -233,7 +232,6 @@ class objAudio : public BaseClass {
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
-   inline ERROR clear() { return Action(AC_Clear, this, NULL); }
    inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }
    inline ERROR init() { return Action(AC_Init, this, NULL); }
    inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }

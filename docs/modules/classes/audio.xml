@@ -33,14 +33,6 @@
     </action>
 
     <action>
-      <name>Clear</name>
-      <comment>Clears the audio buffers.</comment>
-      <description>
-<p>Call this action at any time to clear the internal audio buffers.  This will have the side-effect of temporarily stopping all output until the next audio update occurs.</p>
-      </description>
-    </action>
-
-    <action>
       <name>Deactivate</name>
       <comment>Disables the audio mixer and returns device resources to the system.</comment>
       <description>
