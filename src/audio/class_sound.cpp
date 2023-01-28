@@ -288,7 +288,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          Self->BufferLength = Self->Length;
 
          LONG result;
-         if (!Self->File->read(buffer, Self->Length, &result)) {
+         if ((result = Self->Feed->Read(Self, buffer, Self->Length))) {
             struct sndAddSample add;
             AudioLoop loop;
             if (Self->Flags & SDF_LOOP) {

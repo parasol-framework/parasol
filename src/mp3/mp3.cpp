@@ -145,7 +145,7 @@ static LONG SF_Read(objSound *Self, APTR Buffer, LONG Length)
    // has been output, or an error has occurred.
 
    LONG pos = 0;
-   auto write_offset = prv->WriteOffset;
+   auto write_offset  = prv->WriteOffset;
    bool no_more_input = false;
    while ((prv->WriteOffset < Self->Length) and (!prv->EndOfFile) and (pos < Length)) {
       // Previously decoded bytes that overflowed have priority.
