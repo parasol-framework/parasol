@@ -10,8 +10,6 @@ static void mix_channel(extAudio *, AudioChannel &, LONG, APTR);
 static ERROR mix_data(extAudio *, LONG, APTR);
 static ERROR process_commands(extAudio *, LONG);
 
-static const unsigned int SAMPLE_SIZE = sizeof(WORD) * 2; // Sample Size * Channels
-
 //********************************************************************************************************************
 
 static ERROR get_mix_amount(extAudio *Self, LONG *MixLeft)
@@ -36,17 +34,27 @@ int ReadData(BaseClass *Self, void *Buffer, int Length) {
       return ((extSound *)Self)->Feed->Read(((extSound *)Self), Buffer, Length);
    }
    else if (Self->ClassID IS ID_AUDIO) {
-      const LONG space_left = Length / SAMPLE_SIZE; // Convert to number of samples
+      LONG space_left = Length / ((extAudio *)Self)->SampleBitSize; // Convert to number of samples
 
       LONG mix_left;
-      get_mix_amount((extAudio *)Self, &mix_left);
+      while (space_left > 0) {
+         // Scan channels to check if an update rate is going to be met
 
-      mix_data((extAudio *)Self, space_left, Buffer);
+         get_mix_amount((extAudio *)Self, &mix_left);
 
-      // Drop the mix amount.  This may also update buffered channels for the next round
+         LONG elements;
+         if (mix_left < space_left) elements = mix_left;
+         else elements = space_left;
 
-      LONG elements = (mix_left < space_left) ? mix_left : space_left;
-      process_commands((extAudio *)Self, elements);
+         if (mix_data((extAudio *)Self, elements, Buffer) != ERR_Okay) break;
+
+         // Drop the mix amount.  This may also update buffered channels for the next round
+
+         process_commands((extAudio *)Self, elements);
+
+         Buffer = (UBYTE *)Buffer + (elements * ((extAudio *)Self)->SampleBitSize);
+         space_left -= elements;
+      }
 
       return Length;
    }
@@ -657,6 +665,8 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, LONG TotalSamples
    }
 
    DOUBLE mastervol = Self->Mute ? 0 : Self->MasterVolume * stereo_mul;
+
+   // Determine bit size of the sample, not necessarily a match to that of the mixer.
 
    LONG sample_size;
    switch (sample.SampleType) {

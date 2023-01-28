@@ -145,7 +145,7 @@ static LONG SF_Read(objSound *Self, APTR Buffer, LONG Length)
    // has been output, or an error has occurred.
 
    LONG pos = 0;
-   auto write_offset = prv->WriteOffset;
+   auto write_offset  = prv->WriteOffset;
    bool no_more_input = false;
    while ((prv->WriteOffset < Self->Length) and (!prv->EndOfFile) and (pos < Length)) {
       // Previously decoded bytes that overflowed have priority.
@@ -338,8 +338,8 @@ static ERROR SF_Seek(objSound *Self, LONG Offset)
             prv->StreamSize = size - prv->SeekOffset;
          }
 
-         LONG frame = prv->TotalFrames * pct;
-         LONG offset = prv->StreamSize * pct;
+         LONG frame = F2T(prv->TotalFrames * pct);
+         LONG offset = F2T(prv->StreamSize * pct);
          if (frame < 0) frame = 0;
          if (offset < 0) offset = 0;
          prv->File->seekStart(prv->SeekOffset + offset);

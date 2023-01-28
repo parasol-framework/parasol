@@ -42,6 +42,8 @@ individual samples with more immediacy.
 
 *********************************************************************************************************************/
 
+#include <array>
+
 #define SECONDS_STREAM_BUFFER 2
 
 #define SIZE_RIFF_CHUNK 12
@@ -51,7 +53,7 @@ static ERROR SOUND_GET_Position(extSound *, LONG *);
 
 static ERROR SOUND_SET_Note(extSound *, CSTRING);
 
-static const DOUBLE glScale[NOTE_B+1] = {
+static const std::array<DOUBLE, 12> glScale = {
    1.0,         // C
    1.059435080, // CS
    1.122424798, // D
@@ -70,8 +72,6 @@ static OBJECTPTR clSound = NULL;
 
 static ERROR find_chunk(extSound *, objFile *, CSTRING);
 static ERROR playback_timer(extSound *, LARGE, LARGE);
-
-#define KEY_SOUNDCHANNELS 0x3389f93
 
 //********************************************************************************************************************
 
@@ -152,14 +152,11 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
 
    log.traceBranch("Position: %d", Self->Position);
 
-#ifdef USE_WIN32_PLAYBACK
-   // Optimised playback for Windows - this does not use our internal mixer.
-
    if (!Self->Length) return log.warning(ERR_FieldNotSet);
 
    if (!Self->Active) {
       if (!Self->BufferLength) {
-         if ((Self->Stream IS STREAM::ALWAYS) and (Self->Length >= 65536)) {
+         if ((Self->Stream IS STREAM::ALWAYS) and (Self->Length > 32768)) {
             Self->BufferLength = Self->BytesPerSecond * SECONDS_STREAM_BUFFER;
          }
          else if ((Self->Stream IS STREAM::SMART) and (Self->Length > 524288)) {
@@ -169,7 +166,12 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
       }
 
       if (Self->BufferLength > Self->Length) Self->BufferLength = Self->Length;
+   }
 
+#ifdef USE_WIN32_PLAYBACK
+   // Optimised playback for Windows - this does not use our internal mixer.
+
+   if (!Self->Active) {
       WORD channels = (Self->Flags & SDF_STEREO) ? 2 : 1;
       WAVEFORMATEX wave = {
          .Format            = WAVE_RAW,
@@ -227,6 +229,108 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
    }
    else return log.warning(ERR_Failed);
 #else
+
+   if (!Self->Active) {
+      // Determine the sample type
+
+      LONG sampleformat = 0;
+      if (Self->BitsPerSample IS 8) {
+         if (Self->Flags & SDF_STEREO) sampleformat = SFM_U8_BIT_STEREO;
+         else sampleformat = SFM_U8_BIT_MONO;
+      }
+      else if (Self->BitsPerSample IS 16) {
+         if (Self->Flags & SDF_STEREO) sampleformat = SFM_S16_BIT_STEREO;
+         else sampleformat = SFM_S16_BIT_MONO;
+      }
+
+      if (!sampleformat) return log.warning(ERR_InvalidData);
+
+      // Create the audio buffer and fill it with sample data
+
+      BYTE *buffer;
+      if (Self->Length > Self->BufferLength) {
+         log.msg("Streaming enabled for playback in format $%.8x; Length: %d, Buffer: %d", sampleformat, Self->Length, Self->BufferLength);
+         Self->Flags |= SDF_STREAM;
+
+         struct sndAddStream stream;
+         AudioLoop loop;
+         if (Self->Flags & SDF_LOOP) {
+            ClearMemory(&loop, sizeof(loop));
+            loop.LoopMode   = LOOP::SINGLE;
+            loop.Loop1Type  = LTYPE::UNIDIRECTIONAL;
+            loop.Loop1Start = Self->LoopStart;
+            if (Self->LoopEnd) loop.Loop1End = Self->LoopEnd;
+            else loop.Loop1End = Self->Length;
+
+            stream.Loop     = &loop;
+            stream.LoopSize = sizeof(loop);
+         }
+         else {
+            stream.Loop     = NULL;
+            stream.LoopSize = 0;
+         }
+
+         stream.Path         = NULL;
+         stream.ObjectID     = Self->UID;
+         stream.SeekStart    = Self->DataOffset; // Applicable to WAV only
+         stream.SampleFormat = sampleformat;
+         stream.SampleLength = Self->Length;
+         stream.BufferLength = Self->BufferLength;
+         if (!ActionMsg(MT_SndAddStream, Self->AudioID, &stream)) {
+            Self->Handle = stream.Result;
+         }
+         else {
+            log.warning("Failed to add sample to the Audio device.");
+            return ERR_Failed;
+         }
+      }
+      else if (!AllocMemory(Self->Length, MEM_DATA|MEM_NO_CLEAR, &buffer)) {
+         Self->BufferLength = Self->Length;
+
+         LONG result;
+         if ((result = Self->Feed->Read(Self, buffer, Self->Length))) {
+            struct sndAddSample add;
+            AudioLoop loop;
+            if (Self->Flags & SDF_LOOP) {
+               ClearMemory(&loop, sizeof(loop));
+               loop.LoopMode   = LOOP::SINGLE;
+               loop.Loop1Type  = LTYPE::UNIDIRECTIONAL;
+               loop.Loop1Start = Self->LoopStart;
+               if (Self->LoopEnd) loop.Loop1End = Self->LoopEnd;
+               else loop.Loop1End = Self->Length;
+
+               add.Loop     = &loop;
+               add.LoopSize = sizeof(loop);
+            }
+            else {
+               add.Loop     = NULL;
+               add.LoopSize = 0;
+            }
+
+            add.SampleFormat = sampleformat;
+            add.Data         = buffer;
+            add.DataSize     = Self->Length;
+            add.Result       = 0;
+            if (!ActionMsg(MT_SndAddSample, Self->AudioID, &add)) {
+               Self->Handle = add.Result;
+               FreeResource(buffer);
+            }
+            else {
+               FreeResource(buffer);
+               log.warning("Failed to add sample to the Audio device.");
+               return ERR_Failed;
+            }
+         }
+         else {
+            FreeResource(buffer);
+            return log.warning(ERR_Read);
+         }
+      }
+      else return log.warning(ERR_AllocMemory);
+   }
+
+   Self->Active = true;
+
    parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 2000);
    if (audio.granted()) {
       // Restricted and streaming audio can be played on only one channel at any given time.  This search will check
@@ -274,8 +378,6 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          if (sndMixVolume(*audio, Self->ChannelIndex, Self->Volume)) return log.warning(ERR_Failed);
          if (sndMixPan(*audio, Self->ChannelIndex, Self->Pan)) return log.warning(ERR_Failed);
          if (sndMixPlay(*audio, Self->ChannelIndex, Self->Playback)) return log.warning(ERR_Failed);
-
-         Self->Active = true;
 
          // Use a timer to fulfil the Deactivate and auto-termination contracts.
 
@@ -559,8 +661,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 static ERROR SOUND_Init(extSound *Self, APTR Void)
 {
    parasol::Log log;
-   LONG id, len, sampleformat, result, pos;
-   BYTE *buffer;
+   LONG id, len, result, pos;
    ERROR error;
 
    if (!Self->AudioID) {
@@ -586,250 +687,99 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    STRING path = NULL;
    Self->get(FID_Path, &path);
 
-   // Set the initial sound title
+   if ((Self->Flags & SDF_NEW) or (!path)) {
+      log.msg("Sample created as new (without sample data).");
 
-   if (path) {
-      LONG len = strlen(path);
-      while ((len > 0) and (path[len-1] != '/') and (path[len-1] != ':')) len--;
-      acSetVar(Self, "Title", path+len);
-   }
-
-   if (Self->Length IS -1) {
-      log.msg("Enabling continuous audio streaming mode.");
-
-      Self->Stream = STREAM::ALWAYS;
-      if (Self->BufferLength <= 0) Self->BufferLength = 32768;
-      else if (Self->BufferLength < 256) Self->BufferLength = 256;
-
-      if (!Self->Frequency) Self->Frequency = 44192;
-      if (!Self->Playback) Self->Playback = Self->Frequency;
-
-      // Create the audio stream and activate it
-
-      struct sndAddStream stream = {
-         .Path         = NULL,
-         .ObjectID     = Self->UID,
-         .SeekStart    = 0,
-         .SampleFormat = sample_format(Self),
-         .SampleLength = -1,
-         .BufferLength = Self->BufferLength,
-         .Loop         = 0,
-         .LoopSize     = 0
-      };
-
-      if (ActionMsg(MT_SndAddStream, Self->AudioID, &stream) != ERR_Okay) {
-         log.warning("Failed to add sample to the Audio device.");
-         return ERR_Failed;
-      }
-
-      Self->Handle = stream.Result;
+      // If the sample is new or no path has been specified, create an audio sample from scratch (e.g. to
+      // record audio to disk).
 
       return ERR_Okay;
    }
-   else {
-      if ((Self->Flags & SDF_NEW) or (!path)) {
-         log.msg("Sample created as new (without sample data).");
 
-         // If the sample is new or no path has been specified, create an audio sample from scratch (e.g. to
-         // record audio to disk).
+   // Load the sound file's header and test it to see if it matches our supported file format.
 
-         return ERR_Okay;
-      }
-
-      // Load the sound file's header and test it to see if it matches our supported file format.
-
-      if ((Self->File = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_APPROXIMATE)))) {
-         if (!Self->File->read(Self->Header, sizeof(Self->Header))) {
-            if ((StrCompare((CSTRING)Self->Header, "RIFF", 4, STR_CASE) != ERR_Okay) or
-                (StrCompare((CSTRING)Self->Header + 8, "WAVE", 4, STR_CASE) != ERR_Okay)) {
-               return ERR_NoSupport;
-            }
-         }
-         else {
-            log.warning("Failed to read file header.");
-            return ERR_Read;
+   if ((Self->File = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_APPROXIMATE)))) {
+      if (!Self->File->read(Self->Header, sizeof(Self->Header))) {
+         if ((StrCompare((CSTRING)Self->Header, "RIFF", 4, STR_CASE) != ERR_Okay) or
+             (StrCompare((CSTRING)Self->Header + 8, "WAVE", 4, STR_CASE) != ERR_Okay)) {
+            return ERR_NoSupport;
          }
       }
-      else return log.warning(ERR_File);
-
-      // Read the FMT header
-
-      Self->File->seek(12, SEEK_START);
-      if (flReadLE(Self->File, &id)) return ERR_Read; // Contains the characters "fmt "
-      if (flReadLE(Self->File, &len)) return ERR_Read; // Length of data in this chunk
-
-      WAVEFormat WAVE;
-      if (Self->File->read(&WAVE, len, &result) or (result < len)) {
-         log.warning("Failed to read WAVE format header (got %d, expected %d)", result, len);
+      else {
+         log.warning("Failed to read file header.");
          return ERR_Read;
       }
-
-      // Check the format of the sound file's data
-
-      if ((WAVE.Format != WAVE_ADPCM) and (WAVE.Format != WAVE_RAW)) {
-         log.warning("This file's WAVE data format is not supported (type %d).", WAVE.Format);
-         return ERR_InvalidData;
-      }
-
-      // Look for the cue chunk for loop information
-
-      Self->File->get(FID_Position, &pos);
-#if 0
-      if (find_chunk(Self, Self->File, "cue ") IS ERR_Okay) {
-         data_p += 32;
-         flReadLE(Self->File, &info.loopstart);
-         // if the next chunk is a LIST chunk, look for a cue length marker
-         if (find_chunk(Self, Self->File, "LIST") IS ERR_Okay) {
-            if (!strncmp (data_p + 28, "mark", 4)) {
-               data_p += 24;
-               flReadLE(Self->File, &i);	// samples in loop
-               info.samples = info.loopstart + i;
-            }
-         }
-      }
-#endif
-      Self->File->seekStart(pos);
-
-      // Look for the "data" chunk
-
-      if (find_chunk(Self, Self->File, "data") != ERR_Okay) {
-         return log.warning(ERR_Read);
-      }
-
-      // Setup the sound structure
-
-      flReadLE(Self->File, &Self->Length); // Length of audio data in this chunk
-
-      Self->File->get(FID_Position, &Self->DataOffset);
-
-      Self->Format         = WAVE.Format;
-      Self->BytesPerSecond = WAVE.AvgBytesPerSecond;
-      Self->BitsPerSample  = WAVE.BitsPerSample;
-      if (WAVE.Channels IS 2)   Self->Flags |= SDF_STEREO;
-      if (Self->Frequency <= 0) Self->Frequency = WAVE.Frequency;
-      if (Self->Playback <= 0)  Self->Playback  = Self->Frequency;
-
-      if (Self->Flags & SDF_NOTE) {
-         SOUND_SET_Note(Self, Self->NoteString);
-         Self->Flags &= ~SDF_NOTE;
-      }
-
-      if ((Self->BitsPerSample != 8) and (Self->BitsPerSample != 16)) {
-         log.warning("Bits-Per-Sample of %d not supported.", Self->BitsPerSample);
-         return ERR_InvalidData;
-      }
-
-      // If the QUERY flag is set, do not proceed any further as we already have all of the information that we need.
-
-      if (Self->Flags & SDF_QUERY) return ERR_Okay;
-
-      // Determine the sample type
-
-      sampleformat = 0;
-      if ((WAVE.Channels IS 1) and (Self->BitsPerSample IS 8)) sampleformat = SFM_U8_BIT_MONO;
-      else if ((WAVE.Channels IS 2) and (Self->BitsPerSample IS 8))  sampleformat = SFM_U8_BIT_STEREO;
-      else if ((WAVE.Channels IS 1) and (Self->BitsPerSample IS 16)) sampleformat = SFM_S16_BIT_MONO;
-      else if ((WAVE.Channels IS 2) and (Self->BitsPerSample IS 16)) sampleformat = SFM_S16_BIT_STEREO;
-
-      if (!sampleformat) return log.warning(ERR_InvalidData);
-
-      // Determine if we are going to use streaming to play this sample
-
-      if (!Self->BufferLength) {
-         if ((Self->Stream IS STREAM::ALWAYS) and (Self->Length > 32768)) {
-            Self->BufferLength = Self->BytesPerSecond * SECONDS_STREAM_BUFFER;
-         }
-         else if ((Self->Stream IS STREAM::SMART) and (Self->Length > 524288)) {
-            Self->BufferLength = Self->BytesPerSecond * SECONDS_STREAM_BUFFER;
-         }
-         else Self->BufferLength = Self->Length;
-      }
-
-      if (Self->BufferLength > Self->Length) Self->BufferLength = Self->Length;
-
-      // Create the audio buffer and fill it with sample data
-
-      if ((Self->Length > Self->BufferLength) or (Self->Flags & SDF_STREAM)) {
-         log.msg("Streaming enabled for playback in format $%.8x", sampleformat);
-         Self->Flags |= SDF_STREAM;
-
-         struct sndAddStream stream;
-         AudioLoop loop;
-         if (Self->Flags & SDF_LOOP) {
-            ClearMemory(&loop, sizeof(loop));
-            loop.LoopMode   = LOOP::SINGLE;
-            loop.Loop1Type  = LTYPE::UNIDIRECTIONAL;
-            loop.Loop1Start = Self->LoopStart;
-            if (Self->LoopEnd) loop.Loop1End = Self->LoopEnd;
-            else loop.Loop1End = Self->Length;
-
-            stream.Loop     = &loop;
-            stream.LoopSize = sizeof(loop);
-         }
-         else {
-            stream.Loop     = NULL;
-            stream.LoopSize = 0;
-         }
-
-         stream.Path         = NULL;
-         stream.ObjectID     = Self->UID;
-         stream.SeekStart    = Self->DataOffset;
-         stream.SampleFormat = sampleformat;
-         stream.SampleLength = Self->Length;
-         stream.BufferLength = Self->BufferLength;
-         if (!ActionMsg(MT_SndAddStream, Self->AudioID, &stream)) {
-            Self->Handle = stream.Result;
-            return ERR_Okay;
-         }
-         else {
-            log.warning("Failed to add sample to the Audio device.");
-            return ERR_Failed;
-         }
-      }
-      else if (!AllocMemory(Self->Length, MEM_DATA|MEM_NO_CLEAR, &buffer)) {
-         Self->BufferLength = Self->Length;
-
-         if (!Self->File->read(buffer, Self->Length, &result)) {
-            struct sndAddSample add;
-            AudioLoop loop;
-            if (Self->Flags & SDF_LOOP) {
-               ClearMemory(&loop, sizeof(loop));
-               loop.LoopMode   = LOOP::SINGLE;
-               loop.Loop1Type  = LTYPE::UNIDIRECTIONAL;
-               loop.Loop1Start = Self->LoopStart;
-               if (Self->LoopEnd) loop.Loop1End = Self->LoopEnd;
-               else loop.Loop1End = Self->Length;
-
-               add.Loop     = &loop;
-               add.LoopSize = sizeof(loop);
-            }
-            else {
-               add.Loop     = NULL;
-               add.LoopSize = 0;
-            }
-
-            add.SampleFormat = sampleformat;
-            add.Data         = buffer;
-            add.DataSize     = Self->Length;
-            add.Result       = 0;
-            if (!ActionMsg(MT_SndAddSample, Self->AudioID, &add)) {
-               Self->Handle = add.Result;
-               FreeResource(buffer);
-               return ERR_Okay;
-            }
-            else {
-               FreeResource(buffer);
-               log.warning("Failed to add sample to the Audio device.");
-               return ERR_Failed;
-            }
-         }
-         else {
-            FreeResource(buffer);
-            return log.warning(ERR_Read);
-         }
-      }
-      else return log.warning(ERR_AllocMemory);
    }
+   else return log.warning(ERR_File);
+
+   // Read the FMT header
+
+   Self->File->seek(12, SEEK_START);
+   if (flReadLE(Self->File, &id)) return ERR_Read; // Contains the characters "fmt "
+   if (flReadLE(Self->File, &len)) return ERR_Read; // Length of data in this chunk
+
+   WAVEFormat WAVE;
+   if (Self->File->read(&WAVE, len, &result) or (result < len)) {
+      log.warning("Failed to read WAVE format header (got %d, expected %d)", result, len);
+      return ERR_Read;
+   }
+
+   // Check the format of the sound file's data
+
+   if ((WAVE.Format != WAVE_ADPCM) and (WAVE.Format != WAVE_RAW)) {
+      log.warning("This file's WAVE data format is not supported (type %d).", WAVE.Format);
+      return ERR_InvalidData;
+   }
+
+   // Look for the cue chunk for loop information
+
+   Self->File->get(FID_Position, &pos);
+#if 0
+   if (find_chunk(Self, Self->File, "cue ") IS ERR_Okay) {
+      data_p += 32;
+      flReadLE(Self->File, &info.loopstart);
+      // if the next chunk is a LIST chunk, look for a cue length marker
+      if (find_chunk(Self, Self->File, "LIST") IS ERR_Okay) {
+         if (!strncmp (data_p + 28, "mark", 4)) {
+            data_p += 24;
+            flReadLE(Self->File, &i);	// samples in loop
+            info.samples = info.loopstart + i;
+         }
+      }
+   }
+#endif
+   Self->File->seekStart(pos);
+
+   // Look for the "data" chunk
+
+   if (find_chunk(Self, Self->File, "data") != ERR_Okay) {
+      return log.warning(ERR_Read);
+   }
+
+   // Setup the sound structure
+
+   flReadLE(Self->File, &Self->Length); // Length of audio data in this chunk
+
+   Self->File->get(FID_Position, &Self->DataOffset);
+
+   Self->Format         = WAVE.Format;
+   Self->BytesPerSecond = WAVE.AvgBytesPerSecond;
+   Self->BitsPerSample  = WAVE.BitsPerSample;
+   if (WAVE.Channels IS 2)   Self->Flags |= SDF_STEREO;
+   if (Self->Frequency <= 0) Self->Frequency = WAVE.Frequency;
+   if (Self->Playback <= 0)  Self->Playback  = Self->Frequency;
+
+   if (Self->Flags & SDF_NOTE) {
+      SOUND_SET_Note(Self, Self->NoteString);
+      Self->Flags &= ~SDF_NOTE;
+   }
+
+   if ((Self->BitsPerSample != 8) and (Self->BitsPerSample != 16)) {
+      log.warning("Bits-Per-Sample of %d not supported.", Self->BitsPerSample);
+      return ERR_InvalidData;
+   }
+
+   return ERR_Okay;
 }
 
 #endif
@@ -912,7 +862,7 @@ static ERROR SOUND_SaveToObject(extSound *Self, struct acSaveToObject *Args)
       else return log.warning(ERR_GetField);
    }
 
-   // Save the sound data as a wave file
+   // TODO: Save the sound data as a wave file
 
 
 
@@ -1604,7 +1554,6 @@ static ERROR playback_timer(extSound *Self, LARGE Elapsed, LARGE CurrentTime)
 static const FieldDef clFlags[] = {
    { "Loop",         SDF_LOOP },
    { "New",          SDF_NEW },
-   { "Query",        SDF_QUERY },
    { "Stereo",       SDF_STEREO },
    { "RestrictPlay", SDF_RESTRICT_PLAY },
    { NULL, 0 }

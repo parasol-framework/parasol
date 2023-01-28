@@ -343,7 +343,6 @@
     <constants lookup="SDF" comment="Sound flags">
       <const name="LOOP">Enables sample looping. The LoopStart and LoopEnd fields determine where the looping area lies within the sample data.</const>
       <const name="NEW">Create the sample from scratch (e.g. for audio recording purposes).</const>
-      <const name="QUERY">Query the meta data of the sample source; do not load sample data.</const>
       <const name="RESTRICT_PLAY">Restricts playback so that the sound can never play on more than one channel at any given time.</const>
       <const name="STEREO">Indicates that the sound has multiple audio channels.</const>
       <const name="STREAM">Read-Only. Indicates that streaming is enabled.</const>

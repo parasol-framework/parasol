@@ -36,7 +36,6 @@ module({ name="Audio", copyright="Paul Manias © 2002-2023", version=1.0 }, func
   flags("SDF", { comment="Sound flags" },
     "LOOP: Enables sample looping. The LoopStart and LoopEnd fields determine where the looping area lies within the sample data.",
     "NEW: Create the sample from scratch (e.g. for audio recording purposes).",
-    "QUERY: Query the meta data of the sample source; do not load sample data.",
     "STEREO: Indicates that the sound has multiple audio channels.",
     "RESTRICT_PLAY: Restricts playback so that the sound can never play on more than one channel at any given time.",
     { STREAM = "0x40000000: Read-Only. Indicates that streaming is enabled." },
