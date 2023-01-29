@@ -75,22 +75,36 @@ static ERROR playback_timer(extSound *, LARGE, LARGE);
 
 //********************************************************************************************************************
 
-static LONG SF_Read(objSound *Self, APTR Buffer, LONG Length)
+static LONG SF_Read(extSound *Self, APTR Buffer, LONG Length)
 {
-   if (Length > 0) {
-      LONG result;
-      if (!((extSound *)Self)->File->read(Buffer, Length, &result)) return result;
-   }
-   return 0;
+   parasol::Log log;
+
+   if (Length <= 0) return 0;
+
+   LONG result, len = Length;
+
+   // Don't read more than the known raw sample length
+   if (Self->ReadPos + len > Self->Length) len = Self->Length - Self->ReadPos;
+
+   if (Self->File->read(Buffer, len, &result)) return 0;
+
+   Self->ReadPos += result;
+   return result;
 }
 
-static ERROR SF_Seek(objSound *Self, LONG Offset)
+static ERROR SF_Seek(extSound *Self, LONG Offset)
 {
-   ((extSound *)Self)->File->seekStart(((extSound *)Self)->DataOffset + Offset);
+   parasol::Log log;
+   log.trace("Seek to %d + %d", Offset, Self->DataOffset);
+   ((extSound *)Self)->File->seekStart(Self->DataOffset + Offset);
+   Self->ReadPos = Offset;
    return ERR_Okay;
 }
 
-static SoundFeed glWAVFeed = { SF_Read, SF_Seek };
+static SoundFeed glWAVFeed = {
+   (LONG (*)(objSound*, void*, LONG))SF_Read,
+   (LONG (*)(objSound*, LONG))SF_Seek
+};
 
 //********************************************************************************************************************
 // Stubs.
@@ -154,20 +168,6 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
 
    if (!Self->Length) return log.warning(ERR_FieldNotSet);
 
-   if (!Self->Active) {
-      if (!Self->BufferLength) {
-         if ((Self->Stream IS STREAM::ALWAYS) and (Self->Length > 32768)) {
-            Self->BufferLength = Self->BytesPerSecond * SECONDS_STREAM_BUFFER;
-         }
-         else if ((Self->Stream IS STREAM::SMART) and (Self->Length > 524288)) {
-            Self->BufferLength = Self->BytesPerSecond * SECONDS_STREAM_BUFFER;
-         }
-         else Self->BufferLength = Self->Length;
-      }
-
-      if (Self->BufferLength > Self->Length) Self->BufferLength = Self->Length;
-   }
-
 #ifdef USE_WIN32_PLAYBACK
    // Optimised playback for Windows - this does not use our internal mixer.
 
@@ -183,20 +183,31 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          .ExtraLength       = 0
       };
 
+      LONG buffer_len;
+      if ((Self->Stream IS STREAM::ALWAYS) and (Self->Length > 16 * 1024)) {
+         buffer_len = Self->BytesPerSecond * SECONDS_STREAM_BUFFER;
+      }
+      else if ((Self->Stream IS STREAM::SMART) and (Self->Length > 256 * 1024)) {
+         buffer_len = Self->BytesPerSecond * SECONDS_STREAM_BUFFER;
+      }
+      else buffer_len = Self->Length;
+
+      if (buffer_len > Self->Length) buffer_len = Self->Length;
+
       CSTRING strerr;
-      if (Self->Length > Self->BufferLength) {
-         log.msg("Streaming enabled because sample length %d exceeds buffer size %d.", Self->Length, Self->BufferLength);
+      if (Self->Length > buffer_len) {
+         log.msg("Streaming enabled because sample length %d exceeds buffer size %d.", Self->Length, buffer_len);
          Self->Flags |= SDF_STREAM;
-         strerr = sndCreateBuffer(Self, &wave, Self->BufferLength, Self->Length, (PlatformData *)Self->PlatformData, TRUE);
+         strerr = sndCreateBuffer(Self, &wave, buffer_len, Self->Length, (PlatformData *)Self->PlatformData, TRUE);
       }
       else {
-         Self->BufferLength = Self->Length;
+         buffer_len = Self->Length;
          Self->Flags &= ~SDF_STREAM;
-         strerr = sndCreateBuffer(Self, &wave, Self->BufferLength, Self->Length, (PlatformData *)Self->PlatformData, FALSE);
+         strerr = sndCreateBuffer(Self, &wave, buffer_len, Self->Length, (PlatformData *)Self->PlatformData, FALSE);
       }
 
       if (strerr) {
-         log.warning("Failed to create audio buffer, reason: %s (buffer length %d, sample length %d)", strerr, Self->BufferLength, Self->Length);
+         log.warning("Failed to create audio buffer, reason: %s (sample length %d)", strerr, Self->Length);
          return ERR_Failed;
       }
 
@@ -247,10 +258,12 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
 
       // Create the audio buffer and fill it with sample data
 
+      if ((Self->Stream IS STREAM::ALWAYS) and (Self->Length > 16 * 1024)) Self->Flags |= SDF_STREAM;
+      else if ((Self->Stream IS STREAM::SMART) and (Self->Length > 256 * 1024)) Self->Flags |= SDF_STREAM;
+
       BYTE *buffer;
-      if (Self->Length > Self->BufferLength) {
-         log.msg("Streaming enabled for playback in format $%.8x; Length: %d, Buffer: %d", sampleformat, Self->Length, Self->BufferLength);
-         Self->Flags |= SDF_STREAM;
+      if (Self->Flags & SDF_STREAM) {
+         log.msg("Streaming enabled for playback in format $%.8x; Length: %d", sampleformat, Self->Length);
 
          struct sndAddStream stream;
          AudioLoop loop;
@@ -272,10 +285,8 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
 
          stream.Path         = NULL;
          stream.ObjectID     = Self->UID;
-         stream.SeekStart    = Self->DataOffset; // Applicable to WAV only
          stream.SampleFormat = sampleformat;
          stream.SampleLength = Self->Length;
-         stream.BufferLength = Self->BufferLength;
          if (!ActionMsg(MT_SndAddStream, Self->AudioID, &stream)) {
             Self->Handle = stream.Result;
          }
@@ -285,8 +296,6 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          }
       }
       else if (!AllocMemory(Self->Length, MEM_DATA|MEM_NO_CLEAR, &buffer)) {
-         Self->BufferLength = Self->Length;
-
          LONG result;
          if ((result = Self->Feed->Read(Self, buffer, Self->Length))) {
             struct sndAddSample add;
@@ -651,7 +660,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
       Self->Flags &= ~SDF_NOTE;
    }
 
-   log.trace("Bits: %d, Freq: %d, KBPS: %d, BufLen: %d, ByteLength: %d, DataOffset: %d", Self->BitsPerSample, Self->Frequency, Self->BytesPerSecond, Self->BufferLength, Self->Length, Self->DataOffset);
+   log.trace("Bits: %d, Freq: %d, KBPS: %d, ByteLength: %d, DataOffset: %d", Self->BitsPerSample, Self->Frequency, Self->BytesPerSecond, Self->Length, Self->DataOffset);
 
    return ERR_Okay;
 }
@@ -905,6 +914,7 @@ static ERROR SOUND_Seek(extSound *Self, struct acSeek *Args)
 
    if (Self->Position < 0) Self->Position = 0;
    else if (Self->Position > Self->Length) Self->Position = Self->Length;
+   else Self->Position &= ~7; // Retain correct byte alignment.
 
    // Restart the audio
 
@@ -978,13 +988,6 @@ Set this field if a specific @Audio object should be targeted when playing the s
 
 -FIELD-
 BitsPerSample: Indicates the sample rate of the audio sample, typically 8 or 16 bit.
-
--FIELD-
-BufferLength: Defines the size of the buffer to use when streaming is enabled.
-
-This field fine-tunes the size of the buffer that is used when streaming.  When manually choosing a buffer size, it is
-usually best to keep the size between 64 and 128k.  Some systems may ignore the BufferLength field if the audio
-driver is incompatible with manually defined buffer lengths.
 
 -FIELD-
 BytesPerSecond: The flow of bytes-per-second when the sample is played at normal frequency.
@@ -1583,7 +1586,6 @@ static const FieldArray clFields[] = {
    { "LoopStart",      FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "LoopEnd",        FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "Stream",         FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clStream, NULL, NULL },
-   { "BufferLength",   FDF_LONG|FDF_RI,      0, NULL, NULL },
    { "Position",       FDF_LONG|FDF_RW,      0, (APTR)SOUND_GET_Position, (APTR)SOUND_SET_Position },
    { "Handle",         FDF_LONG|FDF_SYSTEM|FDF_R, 0, NULL, NULL },
    { "ChannelIndex",   FDF_LONG|FDF_R,       0, NULL, NULL },

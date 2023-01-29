@@ -120,16 +120,6 @@ proc.sleep()
     </field>
 
     <field>
-      <name>BufferLength</name>
-      <comment>Defines the size of the buffer to use when streaming is enabled.</comment>
-      <access read="R" write="I">Read/Init</access>
-      <type>INT</type>
-      <description>
-<p>This field fine-tunes the size of the buffer that is used when streaming.  When manually choosing a buffer size, it is usually best to keep the size between 64 and 128k.  Some systems may ignore the BufferLength field if the audio driver is incompatible with manually defined buffer lengths.</p>
-      </description>
-    </field>
-
-    <field>
       <name>BytesPerSecond</name>
       <comment>The flow of bytes-per-second when the sample is played at normal frequency.</comment>
       <access read="R" write="W">Read/Write</access>

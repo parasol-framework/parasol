@@ -91,7 +91,7 @@ NullArgs
 
 static ERROR sndMixStartSequence(objAudio *Audio, LONG Handle)
 {
-   parasol::Log log("Mix:StartSequence");
+   parasol::Log log(__FUNCTION__);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
@@ -122,7 +122,7 @@ NullArgs
 
 static ERROR sndMixEndSequence(objAudio *Audio, LONG Handle)
 {
-   parasol::Log log("Mix:EndSequence");
+   parasol::Log log(__FUNCTION__);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
@@ -158,7 +158,7 @@ NullArgs
 
 static ERROR sndMixContinue(objAudio *Audio, LONG Handle)
 {
-   parasol::Log log("Mix:Continue");
+   parasol::Log log(__FUNCTION__);
 
    log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
@@ -177,7 +177,7 @@ static ERROR sndMixContinue(objAudio *Audio, LONG Handle)
 
    auto &sample = ((extAudio *)Audio)->Samples[channel->SampleHandle];
 
-   if ((sample.StreamID) and (channel->StreamPos >= sample.StreamLength)) return ERR_Okay;
+   if ((sample.StreamID) and (sample.StreamPos >= sample.StreamLength)) return ERR_Okay;
    else if (channel->Position >= sample.SampleLength) return ERR_Okay;
 
    fade_out((extAudio *)Audio, Handle);
@@ -221,7 +221,7 @@ NullArgs
 
 static ERROR sndMixMute(objAudio *Audio, LONG Handle, LONG Mute)
 {
-   parasol::Log log("Mix:Mute");
+   parasol::Log log(__FUNCTION__);
 
    log.trace("Audio: #%d, Channel: $%.8x, Mute: %c", Audio->UID, Handle, Mute ? 'Y' : 'N');
 
@@ -261,7 +261,7 @@ NullArgs
 
 static ERROR sndMixFrequency(objAudio *Audio, LONG Handle, LONG Frequency)
 {
-   parasol::Log log("Mix:SetFrequency");
+   parasol::Log log(__FUNCTION__);
 
    log.trace("Audio: #%d, Channel: $%.8x, Frequency: %d", Audio->UID, Handle, Frequency);
 
@@ -299,7 +299,7 @@ NullArgs
 
 static ERROR sndMixPan(objAudio *Audio, LONG Handle, DOUBLE Pan)
 {
-   parasol::Log log("Mix:SetPan");
+   parasol::Log log(__FUNCTION__);
 
    log.trace("Audio: #%d, Channel: $%.8x, Pan: %.2f", Audio->UID, Handle, Pan);
 
@@ -342,7 +342,7 @@ OutOfRange
 
 static ERROR sndMixPosition(objAudio *Audio, LONG Handle, LONG Position)
 {
-   parasol::Log log("Mix:SetPosition");
+   parasol::Log log(__FUNCTION__);
 
    log.trace("Audio: #%d, Channel: $%.8x, Position: %d", Audio->UID, Handle, Position);
 
@@ -361,13 +361,17 @@ static ERROR sndMixPosition(objAudio *Audio, LONG Handle, LONG Position)
       return ERR_Failed;
    }
 
-   const auto &sample = ((extAudio *)Audio)->Samples[channel->SampleHandle];
+   auto &sample = ((extAudio *)Audio)->Samples[channel->SampleHandle];
+
+   // Convert position from bytes to samples
+
+   auto bitpos = SAMPLE(Position >> sample_shift(sample.SampleType));
 
    if (!sample.Data) { // The sample reference must be valid and not stale.
       log.warning("On channel %d, referenced sample %d is unconfigured.", Handle, channel->SampleHandle);
       return ERR_Failed;
    }
-   else if (Position > sample.SampleLength) return log.warning(ERR_OutOfRange);
+   else if (bitpos > sample.SampleLength) return log.warning(ERR_OutOfRange);
 
    // If the sample is a stream object, we just need to send a Seek action to have the Stream owner acknowledge the
    // new audio position and have it feed us new audio data.
@@ -375,19 +379,25 @@ static ERROR sndMixPosition(objAudio *Audio, LONG Handle, LONG Position)
    if (sample.StreamID) {
       parasol::ScopedObjectLock<> stream(sample.StreamID, 5000);
       if (stream.granted()) {
-         acSeekStart(*stream, sample.SeekStart + Position);
-         acRead(*stream, sample.Data, sample.BufferLength, NULL);
+         if (stream->ClassID IS ID_SOUND) {
+            auto snd = (extSound *)*stream;
+            snd->Feed->Seek(snd, Position);
+            sample.StreamPos = Position + snd->Feed->Read(snd, sample.Data, sample.BufferLength);
+         }
+         else {
+            acSeekStart(*stream, Position);
+            LONG bytes_read;
+            if (!acRead(*stream, sample.Data, sample.BufferLength, &bytes_read)) {
+               sample.StreamPos = Position + bytes_read;
+            }
+            else log.warning(ERR_Read);
+         }
       }
 
-      channel->StreamPos = sample.SeekStart + Position;
       Position = 0; // Internally we want to start from byte position zero in our stream buffer
    }
 
    fade_out((extAudio *)Audio, Handle);
-
-   // Convert position from bytes to samples
-
-   LONG bitpos = Position >> sample_shift(sample.SampleType);
 
    // Check if sample has been changed, and if so, set the values to the channel structure
 
@@ -423,7 +433,7 @@ static ERROR sndMixPosition(objAudio *Audio, LONG Handle, LONG Position)
             case LTYPE::UNIDIRECTIONAL:
                // Unidirectional looping - if position is below loop end, set it, otherwise set loop start as the
                // new position. Start playing in any case.
-               if ( bitpos < sample.Loop1End ) channel->Position = bitpos;
+               if (bitpos < sample.Loop1End) channel->Position = bitpos;
                else channel->Position = sample.Loop1Start;
                channel->PositionLow = 0;
                channel->State       = CHS::PLAYING;
@@ -530,7 +540,7 @@ NullArgs
 
 static ERROR sndMixPlay(objAudio *Audio, LONG Handle, LONG Frequency)
 {
-   parasol::Log log("Mix:Play");
+   parasol::Log log(__FUNCTION__);
 
    log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
@@ -574,7 +584,7 @@ NullArgs
 
 static ERROR sndMixRate(objAudio *Audio, LONG Handle, LONG Rate)
 {
-   parasol::Log log("Mix:SetRate");
+   parasol::Log log(__FUNCTION__);
 
    log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
@@ -621,7 +631,7 @@ NullArgs
 
 ERROR sndMixSample(objAudio *Audio, LONG Handle, LONG SampleIndex)
 {
-   parasol::Log log("Mix:SetSample");
+   parasol::Log log(__FUNCTION__);
 
    LONG idx = SampleIndex;
 
@@ -650,7 +660,7 @@ ERROR sndMixSample(objAudio *Audio, LONG Handle, LONG SampleIndex)
 
    if (channel->SampleHandle IS idx) return ERR_Okay; // Already associated?
 
-   channel->SampleHandle = idx;    // Set new sample number to channel
+   channel->SampleHandle = idx;     // Set new sample number to channel
    channel->Flags |= CHF::CHANGED;  // Sample has been changed
 
    // If the new sample has one Amiga-compatible loop and playing has ended (not released or stopped), set the new
@@ -690,7 +700,7 @@ NullArgs
 
 static ERROR sndMixVolume(objAudio *Audio, LONG Handle, DOUBLE Volume)
 {
-   parasol::Log log("Mix:SetVolume");
+   parasol::Log log(__FUNCTION__);
 
    log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
@@ -731,7 +741,7 @@ NullArgs
 
 ERROR sndMixStop(objAudio *Audio, LONG Handle)
 {
-   parasol::Log log("Mix:Stop");
+   parasol::Log log(__FUNCTION__);
 
    log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
@@ -775,7 +785,7 @@ NullArgs
 
 static ERROR sndMixStopLoop(objAudio *Audio, LONG Handle)
 {
-   parasol::Log log("Mix:StopLoop");
+   parasol::Log log(__FUNCTION__);
 
    log.trace("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 

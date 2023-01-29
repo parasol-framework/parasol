@@ -9,6 +9,8 @@ static const LONG MIX_BUF_LEN = 4; // Mixing buffer length 1/n of a second
 #define MIX_INTERVAL 0.01
 #endif
 
+enum SAMPLE : int {};
+
 // Audio channel commands
 
 enum class CMD : LONG {
@@ -50,13 +52,13 @@ struct PlatformData { void *Void; };
 struct AudioSample {
    UBYTE *  Data;         // Pointer to the sample data.
    OBJECTID StreamID;     // An object to use for streaming
-   LONG     Loop1Start;   // Start of the first loop
-   LONG     Loop1End;     // End of the first loop
-   LONG     Loop2Start;   // Start of the second loop
-   LONG     Loop2End;     // End of the second loop
-   LONG     SeekStart;    // Offset to use when seeking to the start of sample data.
-   LONG     SampleLength; // Length of the sample data, measured in samples
+   SAMPLE   Loop1Start;   // Start of the first loop
+   SAMPLE   Loop1End;     // End of the first loop
+   SAMPLE   Loop2Start;   // Start of the second loop
+   SAMPLE   Loop2End;     // End of the second loop
+   SAMPLE   SampleLength; // Length of the sample data, measured in samples
    LONG     StreamLength; // Total byte-length of the sample data that is being streamed.
+   LONG     StreamPos;    // Current read position within the stream
    LONG     BufferLength; // Total byte-length of the stream buffer.
    LOOP     LoopMode;     // Loop mode (single, double)
    UBYTE    SampleType;   // Type of sample (bit format)
@@ -81,12 +83,11 @@ struct AudioSample {
 
       Data         = NULL;
       StreamID     = 0;
-      SampleLength = 0;
-      Loop1Start   = 0;
-      Loop1End     = 0;
-      Loop2Start   = 0;
-      Loop2End     = 0;
-      SeekStart    = 0;
+      SampleLength = SAMPLE(0);
+      Loop1Start   = SAMPLE(0);
+      Loop1End     = SAMPLE(0);
+      Loop2Start   = SAMPLE(0);
+      Loop2End     = SAMPLE(0);
       StreamLength = 0;
       BufferLength = 0;
       SampleType   = 0;
@@ -118,7 +119,6 @@ struct AudioChannel {
    CHF      Flags;          // Special flags
    LONG     Position;       // Current playing/mixing byte position within Sample.
    LONG     Frequency;      // Playback frequency
-   LONG     StreamPos;      // Current read position within the referenced audio stream
    LONG     PositionLow;    // Playing position, lower bits
    BYTE     Priority;       // Priority of the sound that has been assigned to this channel
    CHS      State;          // Channel state
@@ -224,6 +224,7 @@ class extSound : public objSound {
    LONG   Format;             // The format of the sound data
    LONG   DataOffset;         // Start of raw audio data within the source file
    LONG   Note;               // Note to play back (e.g. C, C#, G...)
+   LONG   ReadPos;            // Current byte position for reading data
    char   NoteString[4];
    bool   Active;             // True once the sound is registered with the audio driver or mixer.
 };

@@ -75,7 +75,6 @@ void SeekData(BaseClass *Self, LONG Offset) {
 static ERROR set_channel_volume(extAudio *Self, AudioChannel *Channel)
 {
    parasol::Log log(__FUNCTION__);
-   DOUBLE leftvol, rightvol;
 
    if ((!Self) or (!Channel)) return log.warning(ERR_NullArgs);
 
@@ -87,6 +86,7 @@ static ERROR set_channel_volume(extAudio *Self, AudioChannel *Channel)
 
    // Convert the volume into left/right volume parameters
 
+   DOUBLE leftvol, rightvol;
    if ((Channel->Flags & CHF::MUTE) != CHF::NIL) {
       leftvol  = 0;
       rightvol = 0;
@@ -179,12 +179,11 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
 #ifdef ALSA_ENABLED
 
    parasol::Log log(__FUNCTION__);
-   LONG elements, mix_left, space_left, err, space;
-   UBYTE *buffer;
    static WORD errcount = 0;
 
    // Get the amount of bytes available for output
 
+   LONG space_left;
    if (Self->Handle) {
       space_left = snd_pcm_avail_update(Self->Handle); // Returns available space in frames (multiply by SampleBitSize for bytes)
    }
@@ -223,13 +222,15 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
 
    // Fill our entire audio buffer with data to be sent to alsa
 
-   space = space_left;
-   buffer = Self->AudioBuffer;
+   LONG space = space_left;
+   UBYTE *buffer = Self->AudioBuffer;
    while (space_left) {
       // Scan channels to check if an update rate is going to be met
 
+      LONG mix_left;
       get_mix_amount(Self, &mix_left);
 
+      LONG elements;
       if (mix_left < space_left) elements = mix_left;
       else elements = space_left;
 
@@ -248,21 +249,19 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
    // Write the audio to alsa
 
    if (Self->Handle) {
-      if ((err = snd_pcm_writei(Self->Handle, Self->AudioBuffer, space)) < 0) {
+      if ((LONG err = snd_pcm_writei(Self->Handle, Self->AudioBuffer, space)) < 0) {
          // If an EPIPE error is returned, a buffer underrun has probably occurred
 
          if (err IS -EPIPE) {
-            snd_pcm_status_t *status;
-            LONG code;
-
             log.msg("A buffer underrun has occurred.");
 
+            snd_pcm_status_t *status;
             snd_pcm_status_alloca(&status);
             if (snd_pcm_status(Self->Handle, status) < 0) {
                return ERR_Okay;
             }
 
-            code = snd_pcm_status_get_state(status);
+            LONG code = snd_pcm_status_get_state(status);
             if (code IS SND_PCM_STATE_XRUN) {
                // Reset the output device
                if ((err = snd_pcm_prepare(Self->Handle)) >= 0) {
@@ -496,29 +495,33 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
             LONG bytes_read;
             ERROR error;
             if (stream->ClassID IS ID_SOUND) {
-               extSound *snd = (extSound *)*stream;
+               auto snd = (extSound *)*stream;
                bytes_read = snd->Feed->Read(snd, sample.Data, sample.BufferLength);
                error = ERR_Okay;
             }
             else error = acRead(*stream, sample.Data, sample.BufferLength, &bytes_read);
 
-            if (!error) {
-               Channel.StreamPos += bytes_read;
+            if (bytes_read < sample.BufferLength) {
+               ClearMemory(sample.Data + bytes_read, sample.BufferLength - bytes_read);
+            }
 
+            if (!error) {
                // Loop back to the beginning of the stream if necessary
 
-               if ((bytes_read <= 0) or (Channel.StreamPos >= sample.StreamLength)) {
+               if ((bytes_read <= 0) or (sample.StreamPos >= sample.StreamLength)) {
                   if (sample.Loop2Type != LTYPE::NIL) {
+                     // Client has defined a loop
                      if (stream->ClassID IS ID_SOUND) {
-                        extSound *snd = (extSound *)*stream;
-                        snd->Feed->Seek(snd, sample.SeekStart + sample.Loop2Start);
+                        auto snd = (extSound *)*stream;
+                        snd->Feed->Seek(snd, sample.Loop2Start);
                      }
-                     else acSeek(*stream, (DOUBLE)(sample.SeekStart + sample.Loop2Start), SEEK_START);
+                     else acSeek(*stream, DOUBLE(sample.Loop2Start), SEEK_START);
 
-                     Channel.StreamPos = 0;
+                     sample.StreamPos = 0;
                   }
                   else Channel.State = CHS::FINISHED;
                }
+               else sample.StreamPos += bytes_read;
             }
             else {
                log.warning("Failed to stream data from object #%d.", stream.obj->UID);
@@ -671,9 +674,9 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, LONG TotalSamples
    LONG sample_size;
    switch (sample.SampleType) {
       case SFM_U8_BIT_STEREO:
-      case SFM_S16_BIT_MONO: sample_size = 2; break;
+      case SFM_S16_BIT_MONO:   sample_size = 2; break;
       case SFM_S16_BIT_STEREO: sample_size = 4; break;
-      default: sample_size = 1; break;
+      default:                 sample_size = 1; break;
    }
 
    glMixDest = (FLOAT *)Dest;

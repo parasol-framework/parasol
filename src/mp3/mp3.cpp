@@ -267,15 +267,6 @@ static LONG SF_Read(objSound *Self, APTR Buffer, LONG Length)
       else log.extmsg("Decoding of %d MP3 frames complete, output %d bytes.", prv->FramesProcessed, prv->WriteOffset);
    }
 
-   if (pos < Length) {
-      // This null padding comes into effect when the client has seeked to a position and the r/w offsets don't quite
-      // match the sample length.  Consequently the Length is greater than what we can provide.  Padding is the most
-      // effective means of dealing with these slight discrepencies.
-
-      ClearMemory((UBYTE *)Buffer + pos, Length - pos);
-      prv->WriteOffset += Length - pos;
-   }
-
    return prv->WriteOffset - write_offset;
 }
 

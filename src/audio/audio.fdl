@@ -118,7 +118,7 @@ module({ name="Audio", copyright="Paul Manias © 2002-2023", version=1.0 }, func
     double Pan         # Horizontal positioning for playback on stereo speakers (-100 to +100)
     struct(*SoundFeed) Feed # Private.  For internal playback management.
     int Priority       # Priority over other sounds
-    int Length         # Length of sample data in bytes (also refer BufferLength)
+    int Length         # Length of sample data in bytes
     int Octave         # Current octave to use for playing back notes (defaults to zero)
     int(SDF) Flags     # Sound flags
     int Frequency      # Frequency of sampled sound (nb: does not affect playback - use the Playback field)
@@ -130,7 +130,6 @@ module({ name="Audio", copyright="Paul Manias © 2002-2023", version=1.0 }, func
     int LoopStart      # Byte position of looping start
     int LoopEnd        # Byte position of looping end
     int(STREAM) Stream # Streaming type (smart by default)
-    int BufferLength   # Length of audio buffer in bytes (relevant if streaming)
     int Position       # Byte position to start playing from
     int Handle         # Audio handle acquired at the audio object [Private - Available to child classes]
     int ChannelIndex   # Channel handle that the sound was last played on

@@ -67,15 +67,15 @@ static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
 
    // Calculate one mixing element size
 
-   if (Self->BitDepth IS 16) Self->SampleBitSize = 2;
+   if (Self->BitDepth IS 16) Self->SampleBitSize = sizeof(WORD);
    else if (Self->BitDepth IS 24) Self->SampleBitSize = 3;
-   else Self->SampleBitSize = 1;
+   else Self->SampleBitSize = sizeof(BYTE);
 
    if (Self->Stereo) Self->SampleBitSize *= 2;
 
    // Allocate a floating-point mixing buffer
 
-   const BYTE mixbitsize = Self->Stereo ? sizeof(FLOAT) * 2 : sizeof(FLOAT);
+   const LONG mixbitsize = Self->Stereo ? sizeof(FLOAT) * 2 : sizeof(FLOAT);
 
    Self->MixBufferSize = (((mixbitsize * Self->OutputRate) / MIX_BUF_LEN) + 15) & (~15);
    Self->MixElements   = Self->MixBufferSize / mixbitsize;
@@ -91,28 +91,26 @@ static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
       else Self->MixRoutines = MixMonoFloat;
 
       #ifdef _WIN32
+         WAVEFORMATEX wave = {
+            .Format            = WAVE_RAW,
+            .Channels          = WORD(Self->Stereo ? 2 : 1),
+            .Frequency         = 44100,
+            .AvgBytesPerSecond = 44100 * Self->SampleBitSize,
+            .BlockAlign        = Self->SampleBitSize,
+            .BitsPerSample     = WORD(Self->BitDepth),
+            .ExtraLength       = 0
+         };
 
-      WAVEFORMATEX wave = {
-         .Format            = WAVE_RAW,
-         .Channels          = 2,
-         .Frequency         = 44100,
-         .AvgBytesPerSecond = 44100 * sizeof(WORD) * 2,
-         .BlockAlign        = sizeof(WORD) * 2, // 16 bit * 2 channels
-         .BitsPerSample     = 16,
-         .ExtraLength       = 0
-      };
+         if (auto strerr = sndCreateBuffer(Self, &wave, Self->MixBufferSize, 0x7fffffff, (PlatformData *)Self->PlatformData, TRUE)) {
+            log.warning(strerr);
+            Self->Initialising = false;
+            return ERR_Failed;
+         }
 
-      if (auto strerr = sndCreateBuffer(Self, &wave, Self->MixBufferSize, 0x7fffffff, (PlatformData *)Self->PlatformData, TRUE)) {
-         log.warning(strerr);
-         Self->Initialising = false;
-         return ERR_Failed;
-      }
-
-      if (sndPlay((PlatformData *)Self->PlatformData, TRUE, 0)) {
-         Self->Initialising = false;
-         return log.warning(ERR_Failed);
-      }
-
+         if (sndPlay((PlatformData *)Self->PlatformData, TRUE, 0)) {
+            Self->Initialising = false;
+            return log.warning(ERR_Failed);
+         }
       #endif
 
       Self->Initialising = false;
@@ -196,27 +194,29 @@ ERROR AUDIO_AddSample(extAudio *Self, struct sndAddSample *Args)
 
    if (idx >= (LONG)Self->Samples.size()) Self->Samples.resize(Self->Samples.size()+10);
 
-   auto &sample = Self->Samples[idx];
-
    LONG shift = sample_shift(Args->SampleFormat);
 
+   auto &sample = Self->Samples[idx];
    sample.SampleType   = Args->SampleFormat;
-   sample.SampleLength = Args->DataSize >> shift;
+   sample.SampleLength = SAMPLE(Args->DataSize >> shift);
 
    if (auto loop = Args->Loop) {
       sample.LoopMode     = loop->LoopMode;
-      sample.Loop1Start   = loop->Loop1Start >> shift;
-      sample.Loop1End     = loop->Loop1End >> shift;
+      sample.Loop1Start   = SAMPLE(loop->Loop1Start >> shift);
+      sample.Loop1End     = SAMPLE(loop->Loop1End >> shift);
       sample.Loop1Type    = loop->Loop1Type;
-      sample.Loop2Start   = loop->Loop2Start >> shift;
-      sample.Loop2End     = loop->Loop2End >> shift;
+      sample.Loop2Start   = SAMPLE(loop->Loop2Start >> shift);
+      sample.Loop2End     = SAMPLE(loop->Loop2End >> shift);
       sample.Loop2Type    = loop->Loop2Type;
+      // Eliminate zero-byte loops
+
+      if (sample.Loop1Start IS sample.Loop1End) sample.Loop1Type = LTYPE::NIL;
+      if (sample.Loop2Start IS sample.Loop2End) sample.Loop2Type = LTYPE::NIL;
    }
-
-   // Eliminate zero-byte loops
-
-   if (sample.Loop1Start IS sample.Loop1End) sample.Loop1Type = LTYPE::NIL;
-   if (sample.Loop2Start IS sample.Loop2End) sample.Loop2Type = LTYPE::NIL;
+   else {
+      sample.Loop1Type = LTYPE::NIL;
+      sample.Loop2Type = LTYPE::NIL;
+   }
 
    if ((!sample.SampleType) or (Args->DataSize <= 0) or (!Args->Data)) {
       sample.Data = NULL;
@@ -239,8 +239,7 @@ Use AddStream to load large sound samples to an Audio object, allowing it to pla
 machine without over-provisioning available resources.  For small samples under 512k consider using AddSample instead.
 
 The data source used for a stream can be located either at an accessible file path (through the Path parameter),
-or via an object that has stored the data (through the Object parameter). Set SeekStart to alter the byte position
-at which the audio data starts within the stream source.  The SampleLength parameter must refer to the
+or via an object that has stored the data (through the Object parameter). The SampleLength parameter must refer to the
 byte-length of the entire audio stream.
 
 When creating a new stream, pay attention to the audio format that is being used for the sample data.
@@ -269,10 +268,8 @@ currently supported for streams.  For that reason, set the type variables to eit
 -INPUT-
 cstr Path: Refers to a file that contains raw sample data, or NULL if supplying an ObjectID.
 oid ObjectID: Refers to an object that contains the raw sample data (if no Path has been specified).  The object must support the Read and Seek actions for data retrieval.
-int SeekStart: Optional offset to use when seeking to the start of sample data.
 int(SFM) SampleFormat: Indicates the format of the sample data that you are adding.
 int SampleLength: Total byte-length of the sample data that is being streamed.  May be set to zero if the length is infinite or unknown.
-int BufferLength: Total byte-length of the audio stream buffer that you would like to be allocated internally (large buffers affect timing).
 struct(*AudioLoop) Loop: Refers to sample loop information, or NULL if no loop is required.
 structsize LoopSize: Must be set to sizeof(AudioLoop).
 &int Result: The resulting sample handle will be returned in this parameter.
@@ -289,7 +286,7 @@ CreateObject: Failed to create a file object based on the supplied Path.
 
 *********************************************************************************************************************/
 
-#define MAX_STREAM_BUFFER 32768  // Max stream buffer length in bytes
+static const LONG MAX_STREAM_BUFFER = 16 * 1024; // Max stream buffer length in bytes
 
 static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
 {
@@ -311,45 +308,38 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
    if (idx >= (LONG)Self->Samples.size()) Self->Samples.resize(Self->Samples.size()+10);
 
    LONG shift = sample_shift(Args->SampleFormat);
-   LONG bufferlength;
-   if (!(bufferlength = Args->BufferLength)) {
-      if (Args->SampleLength > 0) {
-         // Calculate the length of the stream buffer as half of the sample length.
-         // (This will be limited by the maximum possible amount of stream space).
 
-         bufferlength = Args->SampleLength / 2;
-      }
-      else bufferlength = MAX_STREAM_BUFFER; // Use the recommended amount of buffer space
+   LONG buffer_len;
+   if (Args->SampleLength > 0) {
+      buffer_len = Args->SampleLength / 2;
+      if (buffer_len > MAX_STREAM_BUFFER) buffer_len = MAX_STREAM_BUFFER;
    }
-
-   if (bufferlength > MAX_STREAM_BUFFER) bufferlength = MAX_STREAM_BUFFER;
-
-   if (bufferlength < 256) {
-      log.msg("Warning: Buffer length of %d is less than minimum byte size of 256.", bufferlength);
-      bufferlength = 256;
-   }
+   else buffer_len = MAX_STREAM_BUFFER; // Use the recommended amount of buffer space
 
    #ifdef ALSA_ENABLED
-      if (bufferlength < Self->AudioBufferSize) log.warning("Warning: Buffer length of %d is less than audio buffer size of %d.", bufferlength, Self->AudioBufferSize);
+      if (buffer_len < Self->AudioBufferSize) log.warning("Warning: Buffer length of %d is less than audio buffer size of %d.", buffer_len, Self->AudioBufferSize);
    #endif
 
    // Setup the audio sample
 
    auto &sample = Self->Samples[idx];
    sample.SampleType   = Args->SampleFormat;
-   sample.SampleLength = bufferlength>>shift;
-   sample.SeekStart    = Args->SeekStart;
+   sample.SampleLength = SAMPLE(buffer_len>>shift);
    sample.StreamLength = (Args->SampleLength > 0) ? Args->SampleLength : 0x7fffffff; // 'Infinite' stream length
-   sample.BufferLength = bufferlength;
+   sample.BufferLength = buffer_len;
+
    sample.LoopMode     = LOOP::SINGLE;
-   sample.Loop1End     = bufferlength>>shift;
    sample.Loop1Type    = LTYPE::UNIDIRECTIONAL;
+   sample.Loop1Start   = SAMPLE(0);
+   sample.Loop1End     = SAMPLE(buffer_len>>shift);
 
    if (Args->Loop) {
       sample.Loop2Type    = LTYPE::UNIDIRECTIONAL;
-      sample.Loop2Start   = Args->Loop->Loop1Start;
-      sample.Loop2End     = Args->Loop->Loop1End;
+      sample.Loop2Start   = SAMPLE(Args->Loop->Loop1Start);
+      sample.Loop2End     = SAMPLE(Args->Loop->Loop1End);
       sample.StreamLength = sample.Loop2End;
+
+      if (sample.Loop2Start IS sample.Loop2End) sample.Loop2Type = LTYPE::NIL;
    }
 
    if (Args->ObjectID) sample.StreamID = Args->ObjectID;
@@ -359,7 +349,7 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
    }
    else return log.warning(ERR_CreateObject);
 
-   if (AllocMemory(sample.BufferLength, MEM_DATA, &sample.Data) != ERR_Okay) {
+   if (AllocMemory(buffer_len, MEM_DATA|MEM_NO_CLEAR, &sample.Data) != ERR_Okay) {
       return ERR_AllocMemory;
    }
 
@@ -367,12 +357,22 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
 
    parasol::ScopedObjectLock<> stream(sample.StreamID, 5000);
    if (stream.granted()) {
-      log.trace("Filling the buffer with sample data from source object #%d.", sample.StreamID);
+      log.trace("Filling the buffer with %d bytes from source object #%d.", sample.BufferLength, sample.StreamID);
 
-      acSeek(*stream, sample.SeekStart, SEEK_START);
-      acRead(*stream, sample.Data, sample.BufferLength, NULL);
+      if (stream->ClassID IS ID_SOUND) {
+         auto snd = (extSound *)*stream;
+         snd->Feed->Seek(snd, 0);
+         sample.StreamPos = snd->Feed->Read(snd, sample.Data, sample.BufferLength);
+      }
+      else {
+         acSeek(*stream, 0, SEEK_START);
+         if (acRead(*stream, sample.Data, sample.BufferLength, &sample.StreamPos)) {
+            FreeResource(sample.Data);
+            return log.warning(ERR_Read);
+         }
+      }
    }
-   else log.warning("Failed to access stream source #%d.", sample.StreamID);
+   else log.warning(ERR_AccessObject);
 
    Args->Result = idx;
    return ERR_Okay;

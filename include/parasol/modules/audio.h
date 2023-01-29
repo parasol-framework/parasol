@@ -163,7 +163,7 @@ struct sndCloseChannels { LONG Handle;  };
 struct sndAddSample { LONG SampleFormat; APTR Data; LONG DataSize; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
 struct sndRemoveSample { LONG Handle;  };
 struct sndSetSampleLength { LONG Sample; LARGE Length;  };
-struct sndAddStream { CSTRING Path; OBJECTID ObjectID; LONG SeekStart; LONG SampleFormat; LONG SampleLength; LONG BufferLength; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
+struct sndAddStream { CSTRING Path; OBJECTID ObjectID; LONG SampleFormat; LONG SampleLength; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
 struct sndBeep { LONG Pitch; LONG Duration; LONG Volume;  };
 struct sndSetVolume { LONG Index; CSTRING Name; LONG Flags; DOUBLE Volume;  };
 
@@ -196,8 +196,8 @@ INLINE ERROR sndSetSampleLength(APTR Ob, LONG Sample, LARGE Length) {
    return(Action(MT_SndSetSampleLength, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sndAddStream(APTR Ob, CSTRING Path, OBJECTID ObjectID, LONG SeekStart, LONG SampleFormat, LONG SampleLength, LONG BufferLength, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) {
-   struct sndAddStream args = { Path, ObjectID, SeekStart, SampleFormat, SampleLength, BufferLength, Loop, LoopSize, 0 };
+INLINE ERROR sndAddStream(APTR Ob, CSTRING Path, OBJECTID ObjectID, LONG SampleFormat, LONG SampleLength, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) {
+   struct sndAddStream args = { Path, ObjectID, SampleFormat, SampleLength, Loop, LoopSize, 0 };
    ERROR error = Action(MT_SndAddStream, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
@@ -268,7 +268,6 @@ class objSound : public BaseClass {
    LONG     LoopStart;         // The byte position at which sample looping begins.
    LONG     LoopEnd;           // The byte position at which sample looping will end.
    STREAM   Stream;            // Defines the preferred streaming method for the sample.
-   LONG     BufferLength;      // Defines the size of the buffer to use when streaming is enabled.
    LONG     Position;          // The current playback position.
    LONG     Handle;            // Audio handle acquired at the audio object [Private - Available to child classes]
    LONG     ChannelIndex;      // Refers to the channel that the sound is playing through.
