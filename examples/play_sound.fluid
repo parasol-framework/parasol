@@ -1,15 +1,19 @@
+-- This script will play WAV and MP3 files for the user.
 
+----------------------------------------------------------------------------------------------------------------------
 -- This function identifies the type of file being loaded and uses the correct class to open it.
 
 function id_file(Path)
    local err, class = mSys.IdentifyFile(Path, 'Open', IDF_IGNORE_HOST)
 
    if (class == mSys.StrHash('sound')) then
-      return obj.new('sound', { path=Path })
+      return obj.new('sound', { path=Path, stream='never' })
    elseif (class == mSys.StrHash('music')) then
       return obj.new('music', { path=Path })
    end
 end
+
+----------------------------------------------------------------------------------------------------------------------
 
    -- Retrieve the sound sample path from the command line arguments
 
@@ -18,6 +22,8 @@ end
       print('Please supply a source audio file with "--src=[file]"')
       return
    end
+
+   local seek = arg('seek')
 
    local player = id_file(src)
    if not player then
@@ -35,6 +41,17 @@ end
       proc.signal()
    end)
 
+   -- User can request seeking to a position expressed as 0.0 - 1.0
+
+   if (seek) then
+      seek = tonumber(seek)
+      if (seek >= 0) and (seek <= 1.0) then
+         player.acSeek(seek, SEEK_RELATIVE)
+      else
+         print('Seek must be expressed as a value from 0.0 to 1.0')
+      end
+   end
+
    -- Play the sound and wait for it to finish
 
    if (player.acActivate() == ERR_Okay) then
@@ -42,7 +59,7 @@ end
 
       proc.sleep() -- This will wake on receipt of a signal.
 
-      proc.sleep(1) -- Slight pause to flush any buffered audio before exiting
+      proc.sleep(0.5) -- Slight pause to flush any buffered audio before exiting
    else
       print('Failed to play audio file.')
    end

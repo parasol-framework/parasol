@@ -74,14 +74,13 @@
       </input>
       <description>
 <p>The following example searches for all proxies available for use on port 80 (HTTP).</p>
-<pre>if (!(CreateObject(ID_PROXY, 0, &amp;proxy, TAGEND))) {
-   if (!prxFind(proxy, 80)) {
+<pre>objProxy::create proxy;
+if (proxy.ok()) {
+   if (!prxFind(*proxy, 80)) {
       do {
          ...
-      } while (!prxFindNext(proxy));
-      FreeResource(proxy);
+      } while (!prxFindNext(*proxy));
    }
-   acFree(proxy);
 }
 </pre>
       </description>

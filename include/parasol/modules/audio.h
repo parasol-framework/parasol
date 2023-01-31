@@ -138,11 +138,6 @@ struct AudioLoop {
    LONG  Loop2End;   // End of the second loop
 };
 
-struct SoundFeed {
-   LONG (*Read)(objSound *, void *, LONG);
-   LONG (*Seek)(objSound *, LONG);
-};
-
 // Audio class definition
 
 #define VER_AUDIO (1.000000)
@@ -163,7 +158,7 @@ struct sndCloseChannels { LONG Handle;  };
 struct sndAddSample { LONG SampleFormat; APTR Data; LONG DataSize; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
 struct sndRemoveSample { LONG Handle;  };
 struct sndSetSampleLength { LONG Sample; LARGE Length;  };
-struct sndAddStream { CSTRING Path; OBJECTID ObjectID; LONG SampleFormat; LONG SampleLength; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
+struct sndAddStream { FUNCTION Callback; LONG SampleFormat; LONG SampleLength; LONG PlayOffset; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
 struct sndBeep { LONG Pitch; LONG Duration; LONG Volume;  };
 struct sndSetVolume { LONG Index; CSTRING Name; LONG Flags; DOUBLE Volume;  };
 
@@ -196,8 +191,8 @@ INLINE ERROR sndSetSampleLength(APTR Ob, LONG Sample, LARGE Length) {
    return(Action(MT_SndSetSampleLength, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sndAddStream(APTR Ob, CSTRING Path, OBJECTID ObjectID, LONG SampleFormat, LONG SampleLength, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) {
-   struct sndAddStream args = { Path, ObjectID, SampleFormat, SampleLength, Loop, LoopSize, 0 };
+INLINE ERROR sndAddStream(APTR Ob, FUNCTION Callback, LONG SampleFormat, LONG SampleLength, LONG PlayOffset, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) {
+   struct sndAddStream args = { Callback, SampleFormat, SampleLength, PlayOffset, Loop, LoopSize, 0 };
    ERROR error = Action(MT_SndAddStream, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
@@ -252,25 +247,24 @@ class objSound : public BaseClass {
 
    using create = parasol::Create<objSound>;
 
-   DOUBLE   Volume;            // The volume to use when playing the sound sample.
-   DOUBLE   Pan;               // Determines the horizontal position of a sound when played through stereo speakers.
-   struct SoundFeed * Feed;    // Private.  For internal playback management.
-   LONG     Priority;          // The priority of a sound in relation to other sound samples being played.
-   LONG     Length;            // Indicates the total byte-length of sample data.
-   LONG     Octave;            // The octave to use for sample playback.
-   LONG     Flags;             // Optional initialisation flags.
-   LONG     Frequency;         // The frequency of a sampled sound is specified here.
-   LONG     Playback;          // The playback frequency of the sound sample can be defined here.
-   LONG     Compression;       // Determines the amount of compression used when saving an audio sample.
-   LONG     BytesPerSecond;    // The flow of bytes-per-second when the sample is played at normal frequency.
-   LONG     BitsPerSample;     // Indicates the sample rate of the audio sample, typically 8 or 16 bit.
-   OBJECTID AudioID;           // Refers to the audio object/device to use for playback.
-   LONG     LoopStart;         // The byte position at which sample looping begins.
-   LONG     LoopEnd;           // The byte position at which sample looping will end.
-   STREAM   Stream;            // Defines the preferred streaming method for the sample.
-   LONG     Position;          // The current playback position.
-   LONG     Handle;            // Audio handle acquired at the audio object [Private - Available to child classes]
-   LONG     ChannelIndex;      // Refers to the channel that the sound is playing through.
+   DOUBLE   Volume;        // The volume to use when playing the sound sample.
+   DOUBLE   Pan;           // Determines the horizontal position of a sound when played through stereo speakers.
+   LONG     Priority;      // The priority of a sound in relation to other sound samples being played.
+   LONG     Length;        // Indicates the total byte-length of sample data.
+   LONG     Octave;        // The octave to use for sample playback.
+   LONG     Flags;         // Optional initialisation flags.
+   LONG     Frequency;     // The frequency of a sampled sound is specified here.
+   LONG     Playback;      // The playback frequency of the sound sample can be defined here.
+   LONG     Compression;   // Determines the amount of compression used when saving an audio sample.
+   LONG     BytesPerSecond; // The flow of bytes-per-second when the sample is played at normal frequency.
+   LONG     BitsPerSample; // Indicates the sample rate of the audio sample, typically 8 or 16 bit.
+   OBJECTID AudioID;       // Refers to the audio object/device to use for playback.
+   LONG     LoopStart;     // The byte position at which sample looping begins.
+   LONG     LoopEnd;       // The byte position at which sample looping will end.
+   STREAM   Stream;        // Defines the preferred streaming method for the sample.
+   LONG     Position;      // The current playback position.
+   LONG     Handle;        // Audio handle acquired at the audio object [Private - Available to child classes]
+   LONG     ChannelIndex;  // Refers to the channel that the sound is playing through.
 
    // Action stubs
 
@@ -285,6 +279,19 @@ class objSound : public BaseClass {
       return error;
    }
    inline ERROR init() { return Action(AC_Init, this, NULL); }
+   template <class T> ERROR read(APTR Buffer, T Bytes, LONG *Result) {
+      ERROR error;
+      const LONG bytes = (Bytes > 0x7fffffff) ? 0x7fffffff : Bytes;
+      struct acRead read = { (BYTE *)Buffer, bytes };
+      if (!(error = Action(AC_Read, this, &read))) *Result = read.Result;
+      else *Result = 0;
+      return error;
+   }
+   template <class T> ERROR read(APTR Buffer, T Bytes) {
+      const LONG bytes = (Bytes > 0x7fffffff) ? 0x7fffffff : Bytes;
+      struct acRead read = { (BYTE *)Buffer, bytes };
+      return Action(AC_Read, this, &read);
+   }
    inline ERROR reset() { return Action(AC_Reset, this, NULL); }
    inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
       struct acSaveToObject args = { { DestID }, { ClassID } };
@@ -305,9 +312,6 @@ class objSound : public BaseClass {
 
 extern struct AudioBase *AudioBase;
 struct AudioBase {
-   ERROR (*_StartDrivers)(void);
-   ERROR (*_WaitDrivers)(LONG TimeOut);
-   LONG (*_SetChannels)(LONG Total);
    ERROR (*_MixContinue)(objAudio * Audio, LONG Handle);
    ERROR (*_MixFrequency)(objAudio * Audio, LONG Handle, LONG Frequency);
    ERROR (*_MixMute)(objAudio * Audio, LONG Handle, LONG Mute);
@@ -324,9 +328,6 @@ struct AudioBase {
 };
 
 #ifndef PRV_AUDIO_MODULE
-inline ERROR sndStartDrivers(void) { return AudioBase->_StartDrivers(); }
-inline ERROR sndWaitDrivers(LONG TimeOut) { return AudioBase->_WaitDrivers(TimeOut); }
-inline LONG sndSetChannels(LONG Total) { return AudioBase->_SetChannels(Total); }
 inline ERROR sndMixContinue(objAudio * Audio, LONG Handle) { return AudioBase->_MixContinue(Audio,Handle); }
 inline ERROR sndMixFrequency(objAudio * Audio, LONG Handle, LONG Frequency) { return AudioBase->_MixFrequency(Audio,Handle,Frequency); }
 inline ERROR sndMixMute(objAudio * Audio, LONG Handle, LONG Mute) { return AudioBase->_MixMute(Audio,Handle,Mute); }

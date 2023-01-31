@@ -28,11 +28,11 @@ struct PlatformData {
    char   Stream;
    char   Loop;
    char   Stop;
-   struct BaseClass *File;
+   struct BaseClass *Object;
 };
 
-int ReadData(struct BaseClass *, void *, int);
-void SeekData(struct BaseClass *, int);
+int dsReadData(struct BaseClass *, void *, int);
+void dsSeekData(struct BaseClass *, int);
 
 #include "windows.h"
 
@@ -111,11 +111,11 @@ int sndCheckActivity(PlatformData *Sound)
 //********************************************************************************************************************
 // SampleLength: The byte length of the raw audio data, excludes all file headers.
 
-const char * sndCreateBuffer(struct BaseClass *File, void *Wave, int BufferLength, int SampleLength, PlatformData *Sound, int Stream)
+const char * sndCreateBuffer(struct BaseClass *Object, void *Wave, int BufferLength, int SampleLength, PlatformData *Sound, int Stream)
 {
    if (!glDirectSound) return 0;
 
-   Sound->File         = File;
+   Sound->Object       = Object;
    Sound->SampleLength = SampleLength;
    Sound->BufferLength = BufferLength;
    Sound->Position     = 0;
@@ -138,16 +138,15 @@ const char * sndCreateBuffer(struct BaseClass *File, void *Wave, int BufferLengt
       return "CreateSoundBuffer() failed to create WAVE audio buffer.";
    }
 
-   // Fill the buffer with audio content (unless it is streamed, in which case it will be filled when play occurs).
-
    if (Stream) return NULL;
+
+   // Fill the buffer with audio content completely if it's not streamed.
 
    void *bufA, *bufB;
    int lenA, lenB;
    if (IDirectSoundBuffer_Lock(Sound->SoundBuffer, 0, BufferLength, (void **)&bufA, (DWORD *)&lenA, (void **)&bufB, (DWORD *)&lenB, 0) IS DS_OK) {
-      if (lenA) lenA = ReadData(File, bufA, lenA);
-      if (lenB) lenB = ReadData(File, bufB, lenB);
-      Sound->Position += lenA + lenB;
+      if (lenA) lenA = dsReadData(Object, bufA, lenA);
+      if (lenB) lenB = dsReadData(Object, bufB, lenB);
       IDirectSoundBuffer_Unlock(Sound->SoundBuffer, bufA, lenA, bufB, lenB); // lenA/B inform DSound as to how many bytes were written.
    }
 
@@ -222,9 +221,9 @@ int sndPlay(PlatformData *Sound, int Loop, int Offset)
       unsigned char *bufA, *bufB;
       int lenA, lenB;
       if (IDirectSoundBuffer_Lock(Sound->SoundBuffer, 0, Sound->BufferLength, (void **)&bufA, (DWORD *)&lenA, (void **)&bufB, (DWORD *)&lenB, 0) IS DS_OK) {
-         SeekData(Sound->File, Offset);
-         if (lenA > 0) lenA = ReadData(Sound->File, bufA, lenA);
-         if (lenB > 0) lenB = ReadData(Sound->File, bufB, lenB);
+         dsSeekData(Sound->Object, Offset);
+         if (lenA > 0) lenA = dsReadData(Sound->Object, bufA, lenA);
+         if (lenB > 0) lenB = dsReadData(Sound->Object, bufB, lenB);
          Sound->Position = Offset + lenA + lenB;
          IDirectSoundBuffer_Unlock(Sound->SoundBuffer, bufA, lenA, bufB, lenB);
       }
@@ -287,7 +286,7 @@ int sndStreamAudio(PlatformData *Sound)
             if (Sound->Position + len > Sound->SampleLength) len = Sound->SampleLength - Sound->Position;
 
             if (len > 0) {
-               bytes_out = ReadData(Sound->File, write, len);
+               bytes_out = dsReadData(Sound->Object, write, len);
                Sound->Position += bytes_out;
             }
             else bytes_out = 0;
@@ -296,8 +295,8 @@ int sndStreamAudio(PlatformData *Sound)
                // All of the bytes have been read from the sample.
 
                if (Sound->Loop) {
-                  SeekData(Sound->File, 0);
-                  bytes_out = ReadData(Sound->File, write + bytes_out, length - bytes_out);
+                  dsSeekData(Sound->Object, 0);
+                  bytes_out = dsReadData(Sound->Object, write + bytes_out, length - bytes_out);
                   Sound->Position = bytes_out;
                }
                else {
@@ -359,4 +358,15 @@ LONG sndGetPosition(PlatformData *Sound)
       return (Sound->Cycles * Sound->BufferLength) + current_read;
    }
    else return 0;
+}
+
+//********************************************************************************************************************
+
+void sndSetPosition(PlatformData *Sound, int Offset)
+{
+   if (!glDirectSound) return;
+
+   if (Sound->SoundBuffer) {
+      IDirectSoundBuffer_SetCurrentPosition(Sound->SoundBuffer, Offset);
+   }
 }

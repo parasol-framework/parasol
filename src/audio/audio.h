@@ -10,6 +10,10 @@ static const LONG MIX_BUF_LEN = 4; // Mixing buffer length 1/n of a second
 #endif
 
 enum SAMPLE : int {};
+enum BYTELEN : int {};
+
+inline BYTELEN operator + (BYTELEN a, BYTELEN b) { return BYTELEN(((int)a) + ((int)b)); }
+inline BYTELEN &operator += (BYTELEN &a, BYTELEN b) { return (BYTELEN &)(((int &)a) += ((int)b)); }
 
 // Audio channel commands
 
@@ -50,26 +54,25 @@ const LONG DEFAULT_BUFFER_SIZE = 8096; // Measured in samples, not bytes
 struct PlatformData { void *Void; };
 
 struct AudioSample {
+   FUNCTION Callback;     // For feeding audio streams.
    UBYTE *  Data;         // Pointer to the sample data.
-   OBJECTID StreamID;     // An object to use for streaming
    SAMPLE   Loop1Start;   // Start of the first loop
    SAMPLE   Loop1End;     // End of the first loop
    SAMPLE   Loop2Start;   // Start of the second loop
    SAMPLE   Loop2End;     // End of the second loop
    SAMPLE   SampleLength; // Length of the sample data, measured in samples
-   LONG     StreamLength; // Total byte-length of the sample data that is being streamed.
-   LONG     StreamPos;    // Current read position within the stream
-   LONG     BufferLength; // Total byte-length of the stream buffer.
+   BYTELEN  StreamLength; // Total byte-length of the sample data that is being streamed.
+   BYTELEN  PlayPos;      // Current read position relative to StreamLength/SampleLength, measured in bytes
+   BYTELEN  BufferLength; // Total byte-length of the stream buffer.
    LOOP     LoopMode;     // Loop mode (single, double)
    UBYTE    SampleType;   // Type of sample (bit format)
    LTYPE    Loop1Type;    // First loop type (unidirectional, bidirectional)
    LTYPE    Loop2Type;    // Second loop type (unidirectional, bidirectional)
-   bool     Free;         // Set to true if the StreamID object should be terminated on sample removal.
+   bool     Stream;       // True if this is a stream
 
    AudioSample() {
       Data     = NULL;
-      StreamID = 0;
-      Free     = false;
+      Stream   = false;
       clear();
    }
 
@@ -79,22 +82,19 @@ struct AudioSample {
 
    void clear() {
       if (Data) FreeResource(Data);
-      if ((Free) and (StreamID)) acFree(StreamID);
 
       Data         = NULL;
-      StreamID     = 0;
       SampleLength = SAMPLE(0);
       Loop1Start   = SAMPLE(0);
       Loop1End     = SAMPLE(0);
       Loop2Start   = SAMPLE(0);
       Loop2End     = SAMPLE(0);
-      StreamLength = 0;
-      BufferLength = 0;
+      StreamLength = BYTELEN(0);
+      BufferLength = BYTELEN(0);
       SampleType   = 0;
       LoopMode     = LOOP::NIL;
       Loop1Type    = LTYPE::NIL;
       Loop2Type    = LTYPE::NIL;
-      Free         = false;
    }
 };
 
@@ -180,19 +180,20 @@ class extAudio : public objAudio {
    APTR  TaskRemovedHandle;
    APTR  UserLoginHandle;
    #ifdef _WIN32
-   UBYTE  PlatformData[128];  // Data area for holding platform/hardware specific information
+      UBYTE  PlatformData[128];  // Data area for holding platform/hardware specific information
    #endif
    #ifdef ALSA_ENABLED
-   UBYTE *AudioBuffer;
-   snd_pcm_t    *Handle;
-   snd_mixer_t  *MixHandle;
-   snd_output_t *sndlog;
-   LONG  AudioBufferSize;
+      UBYTE *AudioBuffer;
+      snd_pcm_t    *Handle;
+      snd_mixer_t  *MixHandle;
+      snd_output_t *sndlog;
+      LONG  AudioBufferSize;
    #endif
    DOUBLE MasterVolume;
    TIMER Timer;
    LONG  MixBufferSize;
    LONG  MixElements;
+   LONG  MaxChannels;    // Recommended maximum mixing channels for Sound class
    std::string Device;
    BYTE  SampleBitSize;
    bool  Stereo;
@@ -224,7 +225,6 @@ class extSound : public objSound {
    LONG   Format;             // The format of the sound data
    LONG   DataOffset;         // Start of raw audio data within the source file
    LONG   Note;               // Note to play back (e.g. C, C#, G...)
-   LONG   ReadPos;            // Current byte position for reading data
    char   NoteString[4];
    bool   Active;             // True once the sound is registered with the audio driver or mixer.
 };

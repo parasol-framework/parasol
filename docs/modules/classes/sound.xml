@@ -47,7 +47,7 @@ proc.sleep()
 
     <action>
       <name>Disable</name>
-      <comment>Disable playback of an active audio sample.</comment>
+      <comment>Disable playback of an active audio sample, equivalent to pausing.</comment>
     </action>
 
     <action>
@@ -73,6 +73,14 @@ proc.sleep()
     </action>
 
     <action>
+      <name>Read</name>
+      <comment>Read decoded audio from the sound sample.</comment>
+      <description>
+<p>This action will read decoded audio from the sound sample.  Decoding is a live process and it may take some time for all data to be returned if the requested amount of data is considerable.  The starting point for the decoded data is determined by the <field>Position</field> value.</p>
+      </description>
+    </action>
+
+    <action>
       <name>Reset</name>
       <comment>Stops audio playback, resets configuration details and restores the playback position to the start of the sample.</comment>
     </action>
@@ -84,7 +92,10 @@ proc.sleep()
 
     <action>
       <name>Seek</name>
-      <comment>Moves sample playback to a new position.</comment>
+      <comment>Moves the cursor position for reading data.</comment>
+      <description>
+<p>Use Seek to move the read cursor within the decoded audio stream and update <field>Position</field>.  This will affect the Read action.  If the sample is in active playback at the time of the call, the playback position will also be moved.</p>
+      </description>
     </action>
 
     <action>
@@ -342,10 +353,5 @@ proc.sleep()
 
   </types>
   <structs>
-    <struct name="SoundFeed" comment="Private structure for managing live audio streaming.">
-      <field name="Read" type="FUNCTION *" prototype="LONG (*Read)(objSound *, void *, LONG)"></field>
-      <field name="Seek" type="FUNCTION *" prototype="LONG (*Seek)(objSound *, LONG)"></field>
-    </struct>
-
   </structs>
 </book>

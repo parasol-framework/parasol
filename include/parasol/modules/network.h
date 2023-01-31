@@ -153,15 +153,15 @@ class objClientSocket : public BaseClass {
    inline ERROR init() { return Action(AC_Init, this, NULL); }
    template <class T> ERROR read(APTR Buffer, T Bytes, LONG *Result) {
       ERROR error;
-      if (Bytes > 0x7fffffff) Bytes = 0x7fffffff;
-      struct acRead read = { (BYTE *)Buffer, (LONG)Bytes };
+      const LONG bytes = (Bytes > 0x7fffffff) ? 0x7fffffff : Bytes;
+      struct acRead read = { (BYTE *)Buffer, bytes };
       if (!(error = Action(AC_Read, this, &read))) *Result = read.Result;
       else *Result = 0;
       return error;
    }
    template <class T> ERROR read(APTR Buffer, T Bytes) {
-      if (Bytes > 0x7fffffff) Bytes = 0x7fffffff;
-      struct acRead read = { (BYTE *)Buffer, (LONG)Bytes };
+      const LONG bytes = (Bytes > 0x7fffffff) ? 0x7fffffff : Bytes;
+      struct acRead read = { (BYTE *)Buffer, bytes };
       return Action(AC_Read, this, &read);
    }
    inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result) {
@@ -366,15 +366,15 @@ class objNetSocket : public BaseClass {
    inline ERROR init() { return Action(AC_Init, this, NULL); }
    template <class T> ERROR read(APTR Buffer, T Bytes, LONG *Result) {
       ERROR error;
-      if (Bytes > 0x7fffffff) Bytes = 0x7fffffff;
-      struct acRead read = { (BYTE *)Buffer, (LONG)Bytes };
+      const LONG bytes = (Bytes > 0x7fffffff) ? 0x7fffffff : Bytes;
+      struct acRead read = { (BYTE *)Buffer, bytes };
       if (!(error = Action(AC_Read, this, &read))) *Result = read.Result;
       else *Result = 0;
       return error;
    }
    template <class T> ERROR read(APTR Buffer, T Bytes) {
-      if (Bytes > 0x7fffffff) Bytes = 0x7fffffff;
-      struct acRead read = { (BYTE *)Buffer, (LONG)Bytes };
+      const LONG bytes = (Bytes > 0x7fffffff) ? 0x7fffffff : Bytes;
+      struct acRead read = { (BYTE *)Buffer, bytes };
       return Action(AC_Read, this, &read);
    }
    inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result) {

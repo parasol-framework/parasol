@@ -245,46 +245,6 @@
     </result>
   </function>
 
-  <function>
-    <name>SetChannels</name>
-    <comment>Defines the maximum number of channels available for sound mixing.</comment>
-    <prototype>LONG sndSetChannels(LONG Total)</prototype>
-    <input>
-      <param type="LONG" name="Total">The total number of sound channels required by the client.</param>
-    </input>
-    <description>
-<p>The maximum number of sound channels used for software-based sound mixing can be altered by calling this function. The recommended number of channels is 8, which would indicate that a maximum of 8 sound samples could be played simultaneously at any given time.</p>
-    </description>
-    <result type="LONG">The previous setting for the maximum number of sound channels is returned.</result>
-  </function>
-
-  <function>
-    <name>StartDrivers</name>
-    <comment>Starts the audio drivers (platform dependent).</comment>
-    <prototype>ERROR sndStartDrivers()</prototype>
-    <description>
-<p>This function will start the audio drivers if they have not already been loaded and initialised.  This feature is platform specific and is typically used on boot-up only.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-    </result>
-  </function>
-
-  <function>
-    <name>WaitDrivers</name>
-    <comment>Wait for audio drivers to become initialised on boot-up.</comment>
-    <prototype>ERROR sndWaitDrivers(LONG TimeOut)</prototype>
-    <input>
-      <param type="LONG" name="TimeOut">The desired timeout value indicated in 1/1000ths of a second.</param>
-    </input>
-    <description>
-<p>This is an internal function used by the audio server to wait for audio drivers to start.  It does not return until the drivers have been initialised or the indicated TimeOut has expired.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-    </result>
-  </function>
-
   <types>
     <constants lookup="ADF" comment="Optional flags for the Audio object.">
       <const name="AUTO_SAVE">Save configuration information on exit.</const>
@@ -389,11 +349,6 @@
       <field name="Loop1End" type="LONG">End of the first loop</field>
       <field name="Loop2Start" type="LONG">Start of the second loop</field>
       <field name="Loop2End" type="LONG">End of the second loop</field>
-    </struct>
-
-    <struct name="SoundFeed" comment="Private structure for managing live audio streaming.">
-      <field name="Read" type="FUNCTION *" prototype="LONG (*Read)(objSound *, void *, LONG)"></field>
-      <field name="Seek" type="FUNCTION *" prototype="LONG (*Seek)(objSound *, LONG)"></field>
     </struct>
 
   </structs>

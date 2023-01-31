@@ -8,6 +8,7 @@ const char * sndCreateBuffer(struct BaseClass *, void *, int, int, struct Platfo
 void sndFree(struct PlatformData *);
 void sndFrequency(struct PlatformData *, int);
 LONG sndGetPosition(struct PlatformData *);
+void sndSetPosition(struct PlatformData *, int);
 const char * sndInitialiseAudio(void);
 void sndPan(struct PlatformData *, float);
 int sndPlay(struct PlatformData *, int, int);

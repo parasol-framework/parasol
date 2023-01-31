@@ -75,36 +75,22 @@ static ERROR playback_timer(extSound *, LARGE, LARGE);
 
 //********************************************************************************************************************
 
-static LONG SF_Read(extSound *Self, APTR Buffer, LONG Length)
+#ifndef USE_WIN32_PLAYBACK
+static LONG read_stream(LONG Handle, LONG Offset, APTR Buffer, LONG Length)
 {
-   parasol::Log log;
+   auto Self = (extSound *)CurrentContext();
 
-   if (Length <= 0) return 0;
+   if ((Offset >= 0) and (Self->Position != Offset)) Self->seek(Offset, SEEK_START);
 
-   LONG result, len = Length;
+   if (Length > 0) {
+      LONG result;
+      Self->read(Buffer, Length, &result);
+      return result;
+   }
 
-   // Don't read more than the known raw sample length
-   if (Self->ReadPos + len > Self->Length) len = Self->Length - Self->ReadPos;
-
-   if (Self->File->read(Buffer, len, &result)) return 0;
-
-   Self->ReadPos += result;
-   return result;
+   return 0;
 }
-
-static ERROR SF_Seek(extSound *Self, LONG Offset)
-{
-   parasol::Log log;
-   log.trace("Seek to %d + %d", Offset, Self->DataOffset);
-   ((extSound *)Self)->File->seekStart(Self->DataOffset + Offset);
-   Self->ReadPos = Offset;
-   return ERR_Okay;
-}
-
-static SoundFeed glWAVFeed = {
-   (LONG (*)(objSound*, void*, LONG))SF_Read,
-   (LONG (*)(objSound*, LONG))SF_Seek
-};
+#endif
 
 //********************************************************************************************************************
 // Stubs.
@@ -178,7 +164,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          .Channels          = channels,
          .Frequency         = Self->Frequency,
          .AvgBytesPerSecond = Self->BytesPerSecond,
-         .BlockAlign        = WORD(channels * (Self->BitsPerSample / 8)),
+         .BlockAlign        = WORD(channels * (Self->BitsPerSample>>3)),
          .BitsPerSample     = WORD(Self->BitsPerSample),
          .ExtraLength       = 0
       };
@@ -201,9 +187,13 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          strerr = sndCreateBuffer(Self, &wave, buffer_len, Self->Length, (PlatformData *)Self->PlatformData, TRUE);
       }
       else {
+         // This will create the buffer and fill it completely with sample data.
          buffer_len = Self->Length;
          Self->Flags &= ~SDF_STREAM;
+         auto client_pos = Self->Position; // Save the seek position from pollution
+         if (client_pos) Self->seek(0, SEEK_START);
          strerr = sndCreateBuffer(Self, &wave, buffer_len, Self->Length, (PlatformData *)Self->PlatformData, FALSE);
+         Self->seek(client_pos, SEEK_START);
       }
 
       if (strerr) {
@@ -268,7 +258,6 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          struct sndAddStream stream;
          AudioLoop loop;
          if (Self->Flags & SDF_LOOP) {
-            ClearMemory(&loop, sizeof(loop));
             loop.LoopMode   = LOOP::SINGLE;
             loop.Loop1Type  = LTYPE::UNIDIRECTIONAL;
             loop.Loop1Start = Self->LoopStart;
@@ -283,10 +272,12 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
             stream.LoopSize = 0;
          }
 
-         stream.Path         = NULL;
-         stream.ObjectID     = Self->UID;
+         stream.PlayOffset   = Self->Position;
+         stream.Callback     = make_function_stdc(&read_stream);
+         stream.UID          = Self->UID;
          stream.SampleFormat = sampleformat;
          stream.SampleLength = Self->Length;
+
          if (!ActionMsg(MT_SndAddStream, Self->AudioID, &stream)) {
             Self->Handle = stream.Result;
          }
@@ -296,12 +287,17 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          }
       }
       else if (!AllocMemory(Self->Length, MEM_DATA|MEM_NO_CLEAR, &buffer)) {
+         auto client_pos = Self->Position;
+         if (Self->Position) Self->seek(0, SEEK_START); // Ensure we're reading the entire sample from the start
+
          LONG result;
-         if ((result = Self->Feed->Read(Self, buffer, Self->Length))) {
+         if (!Self->read(buffer, Self->Length, &result)) {
+            if (result != Self->Length) log.warning("Expected %d bytes, read %d", Self->Length, result);
+
             struct sndAddSample add;
             AudioLoop loop;
+
             if (Self->Flags & SDF_LOOP) {
-               ClearMemory(&loop, sizeof(loop));
                loop.LoopMode   = LOOP::SINGLE;
                loop.Loop1Type  = LTYPE::UNIDIRECTIONAL;
                loop.Loop1Start = Self->LoopStart;
@@ -319,9 +315,10 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
             add.SampleFormat = sampleformat;
             add.Data         = buffer;
             add.DataSize     = Self->Length;
-            add.Result       = 0;
             if (!ActionMsg(MT_SndAddSample, Self->AudioID, &add)) {
                Self->Handle = add.Result;
+
+               if (client_pos) Self->seek(client_pos, SEEK_START);
                FreeResource(buffer);
             }
             else {
@@ -349,12 +346,12 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
       if (Self->Flags & (SDF_RESTRICT_PLAY|SDF_STREAM)) {
          Self->ChannelIndex &= 0xffff0000;
          LONG i;
-         for (i=0; i < glMaxSoundChannels; i++) {
+         for (i=0; i < audio->MaxChannels; i++) {
             channel = audio->GetChannel(Self->ChannelIndex);
             if ((channel) and (channel->SoundID IS Self->UID)) break;
             Self->ChannelIndex++;
          }
-         if (i >= glMaxSoundChannels) channel = NULL;
+         if (i >= audio->MaxChannels) channel = NULL;
       }
 
       if (!channel) {
@@ -362,7 +359,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          AudioChannel *priority = NULL;
          Self->ChannelIndex &= 0xffff0000;
          LONG i;
-         for (i=0; i < glMaxSoundChannels; i++) {
+         for (i=0; i < audio->MaxChannels; i++) {
             if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
                if ((channel->State IS CHS::STOPPED) or (channel->State IS CHS::FINISHED)) break;
                else if (channel->Priority < Self->Priority) priority = channel;
@@ -370,7 +367,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
             Self->ChannelIndex++;
          }
 
-         if (i >= glMaxSoundChannels) {
+         if (i >= audio->MaxChannels) {
             if (!(channel = priority)) {
                log.msg("Audio channel not available for playback.");
                return ERR_Failed;
@@ -438,7 +435,7 @@ static ERROR SOUND_Deactivate(extSound *Self, APTR Void)
 
 /*********************************************************************************************************************
 -ACTION-
-Disable: Disable playback of an active audio sample.
+Disable: Disable playback of an active audio sample, equivalent to pausing.
 -END-
 *********************************************************************************************************************/
 
@@ -582,7 +579,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    if (!(Self->ChannelIndex = glSoundChannels[Self->AudioID])) {
       parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 3000);
       if (audio.granted()) {
-         if (!sndOpenChannels(*audio, glMaxSoundChannels, &Self->ChannelIndex)) {
+         if (!sndOpenChannels(*audio, audio->MaxChannels, &Self->ChannelIndex)) {
             glSoundChannels[Self->AudioID] = Self->ChannelIndex;
          }
          else {
@@ -682,7 +679,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    if (!(Self->ChannelIndex = glSoundChannels[Self->AudioID])) {
       parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 3000);
       if (audio.granted()) {
-         if (!sndOpenChannels(*audio, glMaxSoundChannels, &Self->ChannelIndex)) {
+         if (!sndOpenChannels(*audio, audio->MaxChannels, &Self->ChannelIndex)) {
             glSoundChannels[Self->AudioID] = Self->ChannelIndex;
          }
          else {
@@ -805,7 +802,44 @@ static ERROR SOUND_NewObject(extSound *Self, APTR Void)
    Self->Playback    = 0;
    Self->Note        = NOTE_C; // Standard pitch
    Self->Stream      = STREAM::SMART;
-   Self->Feed        = &glWAVFeed;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+-ACTION-
+Read: Read decoded audio from the sound sample.
+
+This action will read decoded audio from the sound sample.  Decoding is a live process and it may take some time for
+all data to be returned if the requested amount of data is considerable.  The starting point for the decoded data
+is determined by the #Position value.
+
+-END-
+*********************************************************************************************************************/
+
+static ERROR SOUND_Read(extSound *Self, struct acRead *Args)
+{
+   parasol::Log log;
+
+   if (!Args) return log.warning(ERR_NullArgs);
+
+   if (Args->Length <= 0) {
+      Args->Result = 0;
+      return ERR_Okay;
+   }
+
+   // Don't read more than the known raw sample length
+
+   log.traceBranch("Length: %d, Offset: %d", Args->Length, Self->Position);
+
+   LONG result;
+   if (Self->Position + Args->Length > Self->Length) {
+      if (auto error = Self->File->read(Args->Buffer, Self->Length - Self->Position, &result)) return error;
+   }
+   else if (auto error = Self->File->read(Args->Buffer, Args->Length, &result)) return error;
+
+   Self->Position += result;
+   Args->Result = result;
+
    return ERR_Okay;
 }
 
@@ -881,45 +915,67 @@ static ERROR SOUND_SaveToObject(extSound *Self, struct acSaveToObject *Args)
 
 /*********************************************************************************************************************
 -ACTION-
-Seek: Moves sample playback to a new position.
+Seek: Moves the cursor position for reading data.
+
+Use Seek to move the read cursor within the decoded audio stream and update #Position.  This will affect the
+Read action.  If the sample is in active playback at the time of the call, the playback position will also be moved.
+
 -END-
 *********************************************************************************************************************/
 
 static ERROR SOUND_Seek(extSound *Self, struct acSeek *Args)
 {
-   // Switch off the audio playback if active
+   parasol::Log log;
 
-   LONG active;
-   if ((!SOUND_GET_Active(Self, &active)) and (active)) {
-      Self->deactivate();
-   }
-   else active = FALSE;
+   // NB: Sub-classes may divert their functionality to this routine if the sample is fully buffered.
 
-   // Set the new sample position
+   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Self->initialised()) return log.warning(ERR_NotInitialised);
 
-   if (Args->Position IS SEEK_START) {
-      Self->Position = Args->Offset;
-   }
-   else if (Args->Position IS SEEK_END) {
-      Self->Position = Self->Length - Args->Offset;
-   }
-   else if (Args->Position IS SEEK_CURRENT) {
-      if (!SOUND_GET_Position(Self, &Self->Position)) {
-         Self->Position += Args->Offset;
-      }
-   }
-   else if (Args->Position IS SEEK_RELATIVE) {
-      Self->Position = Self->Length * Args->Offset;
-   }
+   if (Args->Position IS SEEK_START)         Self->Position = F2T(Args->Offset);
+   else if (Args->Position IS SEEK_END)      Self->Position = Self->Length - F2T(Args->Offset);
+   else if (Args->Position IS SEEK_CURRENT)  Self->Position += F2T(Args->Offset);
+   else if (Args->Position IS SEEK_RELATIVE) Self->Position = Self->Length * Args->Offset;
+   else return log.warning(ERR_Args);
 
    if (Self->Position < 0) Self->Position = 0;
    else if (Self->Position > Self->Length) Self->Position = Self->Length;
-   else Self->Position &= ~7; // Retain correct byte alignment.
+   else { // Retain correct byte alignment.
+      LONG align = (((Self->Flags & SDF_STEREO) ? 2 : 1) * (Self->BitsPerSample>>3)) - 1;
+      Self->Position &= ~align;
+   }
 
-   // Restart the audio
+   log.traceBranch("Seek to %d + %d", Self->Position, Self->DataOffset);
 
-   if (active) return Self->activate();
-   else return ERR_Okay;
+   parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 2000);
+   if (audio.granted()) {
+      if ((Self->File) and (!Self->isSubClass())) {
+         Self->File->seekStart(Self->DataOffset + Self->Position);
+      }
+
+      auto &sample = audio->Samples[Self->Handle];
+      sample.PlayPos = BYTELEN(Self->Position);
+
+      if ((!sample.Stream) and (Self->Active)) {
+         // Sample is fully buffered.  Adjust position now if it's in playback.
+         #ifdef USE_WIN32_PLAYBACK
+            if (sndCheckActivity((PlatformData *)Self->PlatformData) > 0) {
+               sndSetPosition((PlatformData *)Self->PlatformData, Self->Position);
+            }
+         #else
+            if (Self->ChannelIndex) {
+               if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
+                  if (!((channel->State IS CHS::STOPPED) or (channel->State IS CHS::FINISHED))) {
+                     sndMixPosition(*audio, Self->ChannelIndex, Self->Position);
+                  }
+               }
+            }
+         #endif
+      }
+   }
+   else return log.warning(ERR_AccessObject);
+
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
@@ -1406,28 +1462,13 @@ playback position, either when the sample is next played, or immediately if it i
 
 static ERROR SOUND_GET_Position(extSound *Self, LONG *Value)
 {
-#ifdef USE_WIN32_PLAYBACK
-   if (Self->initialised()) {
-      Self->Position = sndGetPosition((PlatformData *)Self->PlatformData);
-      *Value = Self->Position;
-      return ERR_Okay;
-   }
-   else *Value = 0;
-#else
    *Value = Self->Position;
-#endif
-
    return ERR_Okay;
 }
 
 static ERROR SOUND_SET_Position(extSound *Self, LONG Value)
 {
-   if (!Self->seek(Value, SEEK_START)) return ERR_Okay;
-   else {
-      parasol::Log log;
-      log.msg("Failed to seek to byte position %d.", Value);
-      return ERR_Seek;
-   }
+   return Self->seek(Value, SEEK_START);
 }
 
 /*********************************************************************************************************************
@@ -1572,7 +1613,6 @@ static const FieldDef clStream[] = {
 static const FieldArray clFields[] = {
    { "Volume",         FDF_DOUBLE|FDF_RW,    0, NULL, (APTR)SOUND_SET_Volume },
    { "Pan",            FDF_DOUBLE|FDF_RW,    0, NULL, (APTR)SOUND_SET_Pan },
-   { "Feed",           FDF_POINTER|FDF_SYSTEM|FDF_R, 0, NULL, NULL },
    { "Priority",       FDF_LONG|FDF_RW,      0, NULL, (APTR)SOUND_SET_Priority },
    { "Length",         FDF_LONG|FDF_RW,      0, NULL, (APTR)SOUND_SET_Length },
    { "Octave",         FDF_LONG|FDF_RW,      0, NULL, (APTR)SOUND_SET_Octave },
@@ -1606,6 +1646,7 @@ static const ActionArray clActions[] = {
    { AC_GetVar,        (APTR)SOUND_GetVar },
    { AC_Init,          (APTR)SOUND_Init },
    { AC_NewObject,     (APTR)SOUND_NewObject },
+   { AC_Read,          (APTR)SOUND_Read },
    { AC_Reset,         (APTR)SOUND_Reset },
    { AC_SaveToObject,  (APTR)SOUND_SaveToObject },
    { AC_Seek,          (APTR)SOUND_Seek },

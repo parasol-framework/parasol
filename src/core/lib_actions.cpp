@@ -307,8 +307,15 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
 
       if (ActionID > glActionCount) error = log.warning(ERR_IllegalActionID);
       else if (ManagedActions[ActionID]) error = ManagedActions[ActionID](obj, Parameters);
-      else if (cl->ActionTable[ActionID].PerformAction) error = cl->ActionTable[ActionID].PerformAction(obj, Parameters);
-      else if ((cl->Base) and (cl->Base->ActionTable[ActionID].PerformAction)) {
+      else if (cl->ActionTable[ActionID].PerformAction) { // Can be base or sub-class
+         error = cl->ActionTable[ActionID].PerformAction(obj, Parameters);
+         if (error IS ERR_NoAction) {
+            if ((cl->Base) and (cl->Base->ActionTable[ActionID].PerformAction)) { // Base is set only if this is a sub-class
+               error = cl->Base->ActionTable[ActionID].PerformAction(obj, Parameters);
+            }
+         }
+      }
+      else if ((cl->Base) and (cl->Base->ActionTable[ActionID].PerformAction)) { // Base is set only if this is a sub-class
          error = cl->Base->ActionTable[ActionID].PerformAction(obj, Parameters);
       }
       else error = ERR_NoAction;
@@ -380,12 +387,14 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
 
    obj->threadRelease();
 
+#ifdef DEBUG
    if (log_depth != tlDepth) {
       if (ActionID >= 0) {
          log.warning("Call to #%d.%s() failed to debranch the log correctly (%d <> %d).", object_id, ActionTable[ActionID].Name, log_depth, tlDepth);
       }
       else log.warning("Call to #%d.%s() failed to debranch the log correctly (%d <> %d).", object_id, cl->Base->Methods[-ActionID].Name, log_depth, tlDepth);
    }
+#endif
 
    return error;
 }

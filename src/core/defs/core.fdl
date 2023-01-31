@@ -1518,8 +1518,8 @@ struct BaseClass { // Must be 64-bit aligned
    struct Stats *Stats;         // [Private] Stats pointer
    APTR     ChildPrivate;       // Address for the ChildPrivate structure, if allocated
    APTR     CreatorMeta;        // The creator (via NewObject) is permitted to store a custom data pointer here.
-   CLASSID  ClassID;            // Reference to the object's class, used to resolve the Class pointer
-   CLASSID  SubID;              // Reference to the object's sub-class, used to resolve the Class pointer
+   CLASSID  ClassID;            // The object's class ID
+   CLASSID  SubID;              // The object's sub-class ID, or zero if irrelevant.
    OBJECTID UID;                // Unique object identifier
    OBJECTID OwnerID;            // The owner of this object
    NF       Flags;              // Object flags
@@ -1539,6 +1539,7 @@ struct BaseClass { // Must be 64-bit aligned
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
    inline bool isPublic() { return (Flags & NF::PUBLIC) != NF::NIL; }
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
+   inline bool isSubClass() { return SubID != 0; }
    inline OBJECTID ownerTask() { return TaskID; }
    inline OBJECTID ownerID() { return OwnerID; }
    inline NF flags() { return Flags; }

@@ -11,6 +11,36 @@ static ERROR mix_data(extAudio *, LONG, APTR);
 static ERROR process_commands(extAudio *, LONG);
 
 //********************************************************************************************************************
+// The callback must return the number of bytes written to the buffer.
+
+static BYTELEN fill_stream_buffer(LONG Handle, AudioSample &Sample, LONG Offset)
+{
+   if (Sample.Callback.Type IS CALL_STDC) {
+      parasol::SwitchContext context(Sample.Callback.StdC.Context);
+      auto routine = (BYTELEN (*)(LONG, LONG, UBYTE *, LONG))Sample.Callback.StdC.Routine;
+      return routine(Handle, Offset, Sample.Data, Sample.BufferLength);
+   }
+   else if (Sample.Callback.Type IS CALL_SCRIPT) {
+      OBJECTPTR script;
+      if ((script = Sample.Callback.Script.Script)) {
+         const ScriptArg args[] = {
+            { "Handle", FD_LONG,    { .Long = Handle } },
+            { "Offset", FD_LONG,    { .Long = Offset } },
+            { "Buffer", FD_BUFFER,  { .Address = Sample.Data } },
+            { "Length", FD_BUFSIZE|FD_LONG, { .Long = Sample.BufferLength } }
+         };
+
+         LONG result = 0;
+         ERROR error;
+         if (scCallback(script, Sample.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result)) error = ERR_Failed;
+         return BYTELEN(result);
+      }
+   }
+
+   return BYTELEN(0);
+}
+
+//********************************************************************************************************************
 
 static ERROR get_mix_amount(extAudio *Self, LONG *MixLeft)
 {
@@ -29,9 +59,11 @@ static ERROR get_mix_amount(extAudio *Self, LONG *MixLeft)
 // Functions for use by dsound.cpp
 
 #ifdef _WIN32
-int ReadData(BaseClass *Self, void *Buffer, int Length) {
+int dsReadData(BaseClass *Self, void *Buffer, int Length) {
    if (Self->ClassID IS ID_SOUND) {
-      return ((extSound *)Self)->Feed->Read(((extSound *)Self), Buffer, Length);
+      LONG result;
+      if (((objSound *)Self)->read(Buffer, Length, &result)) return 0;
+      else return result;
    }
    else if (Self->ClassID IS ID_AUDIO) {
       LONG space_left = Length / ((extAudio *)Self)->SampleBitSize; // Convert to number of samples
@@ -61,9 +93,9 @@ int ReadData(BaseClass *Self, void *Buffer, int Length) {
    else return 0;
 }
 
-void SeekData(BaseClass *Self, LONG Offset) {
+void dsSeekData(BaseClass *Self, LONG Offset) {
    if (Self->ClassID IS ID_SOUND) {
-      ((extSound *)Self)->Feed->Seek(((extSound *)Self), Offset);
+      ((objSound *)Self)->seek(Offset, SEEK_START);
    }
    else return; // Seeking not applicable for the Audio class.
 }
@@ -486,52 +518,22 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
       }
    }
    else if (Channel.Position >= lp_end) { // Going forward - did we reach loop end?
-      if (sample.StreamID) {
-         parasol::ScopedObjectLock<BaseClass> stream(sample.StreamID, 3000);
+      if (sample.Stream) {
+         // Read the next set of stream data into our sample buffer
+         BYTELEN bytes_read = fill_stream_buffer(Channel.SampleHandle, sample, -1);
 
-         if (stream.granted()) {
-            // Read the next set of stream data into our sample buffer
-
-            LONG bytes_read;
-            ERROR error;
-            if (stream->ClassID IS ID_SOUND) {
-               auto snd = (extSound *)*stream;
-               bytes_read = snd->Feed->Read(snd, sample.Data, sample.BufferLength);
-               error = ERR_Okay;
-            }
-            else error = acRead(*stream, sample.Data, sample.BufferLength, &bytes_read);
-
-            if (bytes_read < sample.BufferLength) {
-               ClearMemory(sample.Data + bytes_read, sample.BufferLength - bytes_read);
-            }
-
-            if (!error) {
-               // Loop back to the beginning of the stream if necessary
-
-               if ((bytes_read <= 0) or (sample.StreamPos >= sample.StreamLength)) {
-                  if (sample.Loop2Type != LTYPE::NIL) {
-                     // Client has defined a loop
-                     if (stream->ClassID IS ID_SOUND) {
-                        auto snd = (extSound *)*stream;
-                        snd->Feed->Seek(snd, sample.Loop2Start);
-                     }
-                     else acSeek(*stream, DOUBLE(sample.Loop2Start), SEEK_START);
-
-                     sample.StreamPos = 0;
-                  }
-                  else Channel.State = CHS::FINISHED;
-               }
-               else sample.StreamPos += bytes_read;
-            }
-            else {
-               log.warning("Failed to stream data from object #%d.", stream.obj->UID);
-               Channel.State = CHS::FINISHED;
-            }
+         if (bytes_read < sample.BufferLength) {
+            ClearMemory(sample.Data + bytes_read, sample.BufferLength - bytes_read);
          }
-         else {
-            log.msg("Stream object %d has been lost.", sample.StreamID);
-            sample.StreamID = 0;
+
+         if ((bytes_read <= 0) or (sample.PlayPos >= sample.StreamLength)) {
+            // Loop back to the beginning if the client has defined a loop.  Otherwise finish.
+            if (sample.Loop2Type != LTYPE::NIL) {
+               sample.PlayPos = BYTELEN(0);
+            }
+            else Channel.State = CHS::FINISHED;
          }
+         else sample.PlayPos += bytes_read;
       }
 
       // Check for ALE sample change

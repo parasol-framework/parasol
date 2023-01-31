@@ -236,11 +236,14 @@ ERROR AUDIO_AddSample(extAudio *Self, struct sndAddSample *Args)
 AddStream: Adds a new sample-stream to an Audio object for channel-based playback.
 
 Use AddStream to load large sound samples to an Audio object, allowing it to play those samples on the client
-machine without over-provisioning available resources.  For small samples under 512k consider using AddSample instead.
+machine without over-provisioning available resources.  For small samples under 256k consider using AddSample instead.
 
-The data source used for a stream can be located either at an accessible file path (through the Path parameter),
-or via an object that has stored the data (through the Object parameter). The SampleLength parameter must refer to the
-byte-length of the entire audio stream.
+The data source used for a stream will need to be provided by a client provided Callback function.  The synopsis is
+`LONG callback(LONG SampleHandle, LONG Offset, UBYTE *Buffer, LONG BufferSize)`.
+
+The Offset reflects the retrieval point of the decoded data and is measured in bytes.  The Buffer and BufferSize reflect
+the target for the decoded data.  The function must return the total number of bytes that were written to the Buffer.
+If an error occurs, return zero.
 
 When creating a new stream, pay attention to the audio format that is being used for the sample data.
 It is important to differentiate between 8-bit, 16-bit, mono and stereo, but also be aware of whether or not the data
@@ -266,10 +269,10 @@ currently supported for streams.  For that reason, set the type variables to eit
 `LTYPE::UNIDIRECTIONAL`.
 
 -INPUT-
-cstr Path: Refers to a file that contains raw sample data, or NULL if supplying an ObjectID.
-oid ObjectID: Refers to an object that contains the raw sample data (if no Path has been specified).  The object must support the Read and Seek actions for data retrieval.
+func Callback: This callback function must be able to return raw audio data for streaming.
 int(SFM) SampleFormat: Indicates the format of the sample data that you are adding.
 int SampleLength: Total byte-length of the sample data that is being streamed.  May be set to zero if the length is infinite or unknown.
+int PlayOffset: Offset the playing position by this byte index.
 struct(*AudioLoop) Loop: Refers to sample loop information, or NULL if no loop is required.
 structsize LoopSize: Must be set to sizeof(AudioLoop).
 &int Result: The resulting sample handle will be returned in this parameter.
@@ -293,10 +296,9 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
    parasol::Log log;
 
    if ((!Args) or (!Args->SampleFormat)) return log.warning(ERR_NullArgs);
-   if ((!Args->Path) and (!Args->ObjectID)) return log.warning(ERR_NullArgs);
+   if (!Args->Callback.Type) return log.warning(ERR_NullArgs);
 
-   if (Args->Path) log.branch("Path: %s, Length: %d", Args->Path, Args->SampleLength);
-   else log.branch("Object: %d, Length: %d", Args->ObjectID, Args->SampleLength);
+   log.branch("Length: %d", Args->SampleLength);
 
    // Find an unused sample block.  If there is none, increase the size of the sample management area.
 
@@ -325,8 +327,11 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
    auto &sample = Self->Samples[idx];
    sample.SampleType   = Args->SampleFormat;
    sample.SampleLength = SAMPLE(buffer_len>>shift);
-   sample.StreamLength = (Args->SampleLength > 0) ? Args->SampleLength : 0x7fffffff; // 'Infinite' stream length
-   sample.BufferLength = buffer_len;
+   sample.StreamLength = BYTELEN((Args->SampleLength > 0) ? Args->SampleLength : 0x7fffffff); // 'Infinite' stream length
+   sample.BufferLength = BYTELEN(buffer_len);
+   sample.Callback     = Args->Callback;
+   sample.Stream       = true;
+   sample.PlayPos      = BYTELEN(Args->PlayOffset);
 
    sample.LoopMode     = LOOP::SINGLE;
    sample.Loop1Type    = LTYPE::UNIDIRECTIONAL;
@@ -337,42 +342,14 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
       sample.Loop2Type    = LTYPE::UNIDIRECTIONAL;
       sample.Loop2Start   = SAMPLE(Args->Loop->Loop1Start);
       sample.Loop2End     = SAMPLE(Args->Loop->Loop1End);
-      sample.StreamLength = sample.Loop2End;
+      sample.StreamLength = BYTELEN(sample.Loop2End<<shift);
 
       if (sample.Loop2Start IS sample.Loop2End) sample.Loop2Type = LTYPE::NIL;
    }
 
-   if (Args->ObjectID) sample.StreamID = Args->ObjectID;
-   else if (auto stream_file = objFile::create::integral(fl::Path(Args->Path), fl::Flags(FL_READ))) {
-      sample.StreamID = stream_file->UID;
-      sample.Free = true;
-   }
-   else return log.warning(ERR_CreateObject);
-
    if (AllocMemory(buffer_len, MEM_DATA|MEM_NO_CLEAR, &sample.Data) != ERR_Okay) {
       return ERR_AllocMemory;
    }
-
-   // Fill the buffer with data from the stream object
-
-   parasol::ScopedObjectLock<> stream(sample.StreamID, 5000);
-   if (stream.granted()) {
-      log.trace("Filling the buffer with %d bytes from source object #%d.", sample.BufferLength, sample.StreamID);
-
-      if (stream->ClassID IS ID_SOUND) {
-         auto snd = (extSound *)*stream;
-         snd->Feed->Seek(snd, 0);
-         sample.StreamPos = snd->Feed->Read(snd, sample.Data, sample.BufferLength);
-      }
-      else {
-         acSeek(*stream, 0, SEEK_START);
-         if (acRead(*stream, sample.Data, sample.BufferLength, &sample.StreamPos)) {
-            FreeResource(sample.Data);
-            return log.warning(ERR_Read);
-         }
-      }
-   }
-   else log.warning(ERR_AccessObject);
 
    Args->Result = idx;
    return ERR_Okay;
@@ -554,14 +531,15 @@ static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
 
    new (Self) extAudio;
 
-   Self->OutputRate = 44100;        // Rate for output to speakers
-   Self->InputRate  = 44100;        // Input rate for recording
-   Self->Quality    = 80;
-   Self->BitDepth   = 16;
-   Self->Flags      = ADF_OVER_SAMPLING|ADF_FILTER_HIGH|ADF_VOL_RAMPING|ADF_STEREO;
-   Self->Periods    = 4;
-   Self->PeriodSize = 2048;
-   Self->Device     = "default";
+   Self->OutputRate  = 44100;        // Rate for output to speakers
+   Self->InputRate   = 44100;        // Input rate for recording
+   Self->Quality     = 80;
+   Self->BitDepth    = 16;
+   Self->Flags       = ADF_OVER_SAMPLING|ADF_FILTER_HIGH|ADF_VOL_RAMPING|ADF_STEREO;
+   Self->Periods     = 4;
+   Self->PeriodSize  = 2048;
+   Self->Device      = "default";
+   Self->MaxChannels = 8;
 
    const SystemState *state = GetSystemState();
    if ((!StrMatch(state->Platform, "Native")) or (!StrMatch(state->Platform, "Linux"))) {
@@ -842,8 +820,8 @@ static ERROR AUDIO_SetSampleLength(extAudio *Self, struct sndSetSampleLength *Ar
 
    auto &sample = Self->Samples[Args->Sample];
 
-   if (sample.StreamID) {
-      sample.StreamLength = Args->Length;
+   if (sample.Stream) {
+      sample.StreamLength = BYTELEN(Args->Length);
       return ERR_Okay;
    }
    else return log.warning(ERR_Failed);

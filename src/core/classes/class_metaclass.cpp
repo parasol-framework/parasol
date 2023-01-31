@@ -309,10 +309,7 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
 
          Self->Flags |= base->Flags; // Allow flag inheritance, e.g. PROMOTE_CHILDREN
 
-         // Sub-classes can override the base-class size on the basis that they may have a custom-sized private
-         // variable area.
-
-         if (!Self->Size) Self->Size = base->Size;
+         Self->Size = base->Size;
          Self->Base = base;
 
          // Note: Sub-classes can define their own custom methods independent of the base class, but care must be taken
