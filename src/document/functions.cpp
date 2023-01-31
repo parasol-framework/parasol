@@ -7608,7 +7608,7 @@ static void deselect_text(extDocument *Self)
       else break;
    }
 
-   LONG endseg = mid; // End is now set to the segment rather than stream index
+   //LONG endseg = mid; // End is now set to the segment rather than stream index
 
    Self->SelectIndex = -1;
 

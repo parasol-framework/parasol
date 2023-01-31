@@ -206,7 +206,7 @@ void SurfacePan::Polygon(Scintilla::Point *pts, int npts, Scintilla::ColourAlloc
 
       DBGDRAW("panPolygon","");
 
-      ULONG col = to_pan_col(bitmap, fore);
+      //ULONG col = to_pan_col(bitmap, fore);
 
       LONG i;
       for (i=0; i<npts-1; ++i) {

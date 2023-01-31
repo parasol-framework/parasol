@@ -16,13 +16,13 @@ static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG *Level)
    while (Vector) {
       if (Vector->ClassID IS ID_VECTORSCENE) {
          log.msg("Scene: %p", Vector);
-         if (((objVectorScene *)Vector)->Viewport) debug_branch(Header, &((objVectorScene *)Vector)->Viewport->Head, Level);
+         if (((objVectorScene *)Vector)->Viewport) debug_branch(Header, ((objVectorScene *)Vector)->Viewport, Level);
       }
       else if (Vector->ClassID IS ID_VECTOR) {
          objVector *shape = (objVector *)Vector;
-         log.msg("%p<-%p->%p Child %p %s%s", shape->Prev, shape, shape->Next, shape->Child, spacing, shape->Head.Class->ClassName);
+         log.msg("%p<-%p->%p Child %p %s%s", shape->Prev, shape, shape->Next, shape->Child, spacing, shape->className());
          if (shape->Child) debug_branch(Header, shape->Child, Level);
-         Vector = &shape->Next->Head;
+         Vector = shape->Next;
       }
       else break;
    }
@@ -36,7 +36,7 @@ static void debug_tree(CSTRING Header, OBJECTPTR Vector)
    while (Vector) {
       debug_branch(Header, Vector, &level);
       if (Vector->ClassID IS ID_VECTOR) {
-         Vector = &(((objVector *)Vector)->Next->Head);
+         Vector = (((objVector *)Vector)->Next);
       }
       else break;
    }
