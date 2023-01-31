@@ -33,6 +33,11 @@ inline void rtrim(std::string &s, const std::string &match) {
    }).base(), s.end());
 }
 
+inline void trim(std::string &s, const std::string &match) {
+   ltrim(s, match);
+   rtrim(s, match);
+}
+
 inline void camelcase(std::string &s) {
    bool raise = true;
    for (ULONG i=0; i < s.size(); i++) {

@@ -8,7 +8,8 @@ flags("CLIPMODE", { comment="Clipboard modes" },
 enum("SEEK", { start=0, comment="Seek positions" },
     "START: Use an index at position zero.",
     "CURRENT: Use an index at the end of the last read/write operation.",
-    "END: Use an index at the end of the data buffer.")
+    "END: Use an index at the end of the data buffer.",
+    "RELATIVE: The index is between 0 and 1.0 and relative to the data size.")
 
 flags("DEVICE", { bits=64 },
     "COMPACT_DISC: Compact disc style device",

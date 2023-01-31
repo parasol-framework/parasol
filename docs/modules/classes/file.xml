@@ -473,7 +473,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>BIGINT</type>
       <description>
-<p>The current byte size of a file is indicated by this field.  If the file object represents a folder, the Size value will be set to zero.  You can also truncate a file by setting the Size; this will result in the current read/write position being set to the end of the file.</p>
+<p>The current byte size of a file is indicated by this field.  If the file object represents a folder, the Size value will be zero.  You can also truncate a file by setting the Size; this will result in the current read/write position being set to the end of the file.</p>
       </description>
     </field>
 

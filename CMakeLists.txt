@@ -47,7 +47,7 @@ option (BUILD_DEFS       "Generate IDL files, C/C++ headers and documentation" O
 option (DISABLE_SSL      "Disable built-in SSL support even if available on this system" OFF)
 option (DISABLE_X11      "Disable X11 even if available on this system" OFF)
 option (INSTALL_EXAMPLES "Install the example scripts, typically for compiling a distribution" OFF)
-option (ENABLE_ANALYSIS  "Enable run-time program analysis (with performance penalties) if available." OFF)
+option (ENABLE_ANALYSIS  "Enable run-time program analysis (with performance penalties) if available.  May negatively affect gdb." OFF)
 
 set (CMAKE_CXX_STANDARD 20)
 set (CMAKE_CXX_STANDARD_REQUIRED True)
@@ -360,6 +360,7 @@ endif ()
 
 if (ENABLE_ANALYSIS)
    # NB: The use of dlclose() is not permitted when analysis is enabled because it upsets the log output.
+   # In addition, gdb breakpoints are unlikely to work with these features enabled.
 	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fsanitize=leak -DANALYSIS_ENABLED")
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize=leak -DANALYSIS_ENABLED")
 endif ()
@@ -397,6 +398,7 @@ add_subdirectory (src/fluid)
 add_subdirectory (src/font)
 add_subdirectory (src/http)
 add_subdirectory (src/json)
+add_subdirectory (src/mp3)
 add_subdirectory (src/network)
 add_subdirectory (src/parc)
 add_subdirectory (src/picture)
@@ -405,6 +407,7 @@ add_subdirectory (src/scintilla)
 add_subdirectory (src/svg)
 add_subdirectory (src/vector)
 add_subdirectory (src/xml)
+
 if (X11_Xrandr_FOUND)
    add_subdirectory (src/xrandr)
 endif ()

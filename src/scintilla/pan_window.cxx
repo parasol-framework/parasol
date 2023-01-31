@@ -1,11 +1,9 @@
-/*
-** Window class (see include/Platform.h)
-**
-** The 'id' member of the Window class references the Parasol Scintilla object.
-**
-** The Window class is not the application window, but the target surface
-** for scintilla draw operations.
-*/
+// Window class (see include/Platform.h)
+//
+// The 'id' member of the Window class references the Parasol Scintilla object.
+//
+// The Window class is not the application window, but the target surface
+// for scintilla draw operations.
 
 inline OBJECTID getSurfaceID(Scintilla::Window* win)
 {
@@ -13,29 +11,33 @@ inline OBJECTID getSurfaceID(Scintilla::Window* win)
    return scintilla->SurfaceID;
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 Scintilla::Window::~Window()
 {
-   LogF("Window::~Window()","");
+   parasol::Log log(__FUNCTION__);
+   log.branch();
    Destroy();
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 void Scintilla::Window::Destroy()
 {
-   LogF("Window::Destroy()","");
-   wid = 0; /* this object doesn't actually own the Scintilla drawable */
+   parasol::Log log(__FUNCTION__);
+   log.branch();
+
+   wid = 0; // this object doesn't actually own the Scintilla drawable
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 bool Scintilla::Window::HasFocus()
 {
+   parasol::Log log(__FUNCTION__);
    SURFACEINFO *info;
 
-   LogF("Window::HasFocus()","");
+   log.branch();
 
    if (!gfxGetSurfaceInfo(getSurfaceID(this), &info)) {
       if (info->Flags & RNF_HAS_FOCUS) return 1;
@@ -44,12 +46,12 @@ bool Scintilla::Window::HasFocus()
    return 0;
 }
 
-/*****************************************************************************
-** We're returning the position in absolute screen coordinates
-*/
+//********************************************************************************************************************
+// We're returning the position in absolute screen coordinates
 
 Scintilla::PRectangle Scintilla::Window::GetPosition()
 {
+   parasol::Log log(__FUNCTION__);
    SURFACEINFO *info;
 
    // Before any size allocated pretend its 1000 wide so not scrolled
@@ -62,28 +64,30 @@ Scintilla::PRectangle Scintilla::Window::GetPosition()
       rc.bottom = info->AbsY + info->Height;
    }
 
-   LogF("Window::GetPosition()","%dx%d,%dx%d", rc.left, rc.top, rc.right, rc.bottom);
+   log.msg("%dx%d,%dx%d", rc.left, rc.top, rc.right, rc.bottom);
 
    return rc;
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 void Scintilla::Window::SetPosition(Scintilla::PRectangle rc)
 {
-   LogF("Window::SetPosition()","");
+   parasol::Log log(__FUNCTION__);
+   log.branch();
 
    // Surface class supports the redimension action
    acRedimension(getSurfaceID(this), rc.left, rc.top, 0, rc.Width(), rc.Height(), 0);
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 void Scintilla::Window::SetPositionRelative(Scintilla::PRectangle rc, Scintilla::Window relativeTo)
 {
+   parasol::Log log(__FUNCTION__);
    SURFACEINFO *info;
 
-   LogF("Window::SetPositionRelative()","");
+   log.branch();
 
    if (!relativeTo.wid) return;
    if (!wid) return;
@@ -98,7 +102,7 @@ void Scintilla::Window::SetPositionRelative(Scintilla::PRectangle rc, Scintilla:
    SetPosition(rc);
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 Scintilla::PRectangle Scintilla::Window::GetClientPosition()
 {
@@ -108,7 +112,7 @@ Scintilla::PRectangle Scintilla::Window::GetClientPosition()
    return Scintilla::PRectangle(0, 0, scintilla->Surface.Width, scintilla->Surface.Height);
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 Scintilla::PRectangle Scintilla::Window::GetMonitorRect(Scintilla::Point)
 {
@@ -119,60 +123,62 @@ Scintilla::PRectangle Scintilla::Window::GetMonitorRect(Scintilla::Point)
    else return 0;
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 void Scintilla::Window::Show(bool show)
 {
-   LogF("Window::Show()","");
+   parasol::Log log(__FUNCTION__);
+   log.branch();
 
    if (show) acShow(getSurfaceID(this));
    else acHide(getSurfaceID(this));
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 void Scintilla::Window::InvalidateAll()
 {
+   parasol::Log log(__FUNCTION__);
+
    auto scintilla = (extScintilla *)this->GetID();
 
    // Scintilla expects the invalidation to be buffered, so a delayed message is appropriate.
 
    if (scintilla->Visible IS FALSE) return;
 
-   FMSG("~Window::InvalidateAll()","");
+   log.traceBranch();
    DelayMsg(AC_Draw, getSurfaceID(this));
-   LOGRETURN();
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 void Scintilla::Window::InvalidateRectangle(Scintilla::PRectangle rc)
 {
+   parasol::Log log(__FUNCTION__);
+
    auto scintilla = (extScintilla *)this->GetID();
 
-   if (scintilla->Visible IS FALSE) return;
+   if (!scintilla->Visible) return;
 
-   FMSG("~Window::InvalidateRectangle()","%dx%d,%dx%d", rc.left, rc.top, rc.Width(), rc.Height());
+   log.traceBranch("%dx%d,%dx%d", rc.left, rc.top, rc.Width(), rc.Height());
 
    // Scintilla expects the invalidation to be buffered, so a delayed message is appropriate.
 
    struct acDraw draw = { rc.left, rc.top, rc.Width(), rc.Height() };
    DelayMsg(AC_Draw, getSurfaceID(this), &draw);
-
-   LOGRETURN();
 }
 
-/****************************************************************************/
+//********************************************************************************************************************
 
 void Scintilla::Window::SetFont(Scintilla::Font &)
 {
-   LogF("Window::SetFont()","[UNSUPPORTED]");
+   parasol::Log log(__FUNCTION__);
+   log.branch("[UNSUPPORTED]");
    // Can not be done generically but only needed for ListBox
 }
 
-/*****************************************************************************
-** Change the cursor for the drawable.
-*/
+//********************************************************************************************************************
+// Change the cursor for the drawable.
 
 void Scintilla::Window::SetCursor(Cursor curs)
 {
@@ -201,9 +207,8 @@ void Scintilla::Window::SetCursor(Cursor curs)
    }
 }
 
-/*****************************************************************************
-** Report the title string to Scintilla, do not actively attempt to change the title of the nearest window.
-*/
+//********************************************************************************************************************
+// Report the title string to Scintilla, do not actively attempt to change the title of the nearest window.
 
 void Scintilla::Window::SetTitle(const char *s)
 {

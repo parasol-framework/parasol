@@ -295,7 +295,10 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
    obj->ActionDepth++;
 
    auto cl = obj->ExtClass;
+
+#ifdef DEBUG
    auto log_depth = tlDepth;
+#endif
 
    ERROR error;
    if (ActionID > 0) {
@@ -307,8 +310,15 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
 
       if (ActionID > glActionCount) error = log.warning(ERR_IllegalActionID);
       else if (ManagedActions[ActionID]) error = ManagedActions[ActionID](obj, Parameters);
-      else if (cl->ActionTable[ActionID].PerformAction) error = cl->ActionTable[ActionID].PerformAction(obj, Parameters);
-      else if ((cl->Base) and (cl->Base->ActionTable[ActionID].PerformAction)) {
+      else if (cl->ActionTable[ActionID].PerformAction) { // Can be base or sub-class
+         error = cl->ActionTable[ActionID].PerformAction(obj, Parameters);
+         if (error IS ERR_NoAction) {
+            if ((cl->Base) and (cl->Base->ActionTable[ActionID].PerformAction)) { // Base is set only if this is a sub-class
+               error = cl->Base->ActionTable[ActionID].PerformAction(obj, Parameters);
+            }
+         }
+      }
+      else if ((cl->Base) and (cl->Base->ActionTable[ActionID].PerformAction)) { // Base is set only if this is a sub-class
          error = cl->Base->ActionTable[ActionID].PerformAction(obj, Parameters);
       }
       else error = ERR_NoAction;
@@ -380,12 +390,14 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
 
    obj->threadRelease();
 
+#ifdef DEBUG
    if (log_depth != tlDepth) {
       if (ActionID >= 0) {
          log.warning("Call to #%d.%s() failed to debranch the log correctly (%d <> %d).", object_id, ActionTable[ActionID].Name, log_depth, tlDepth);
       }
       else log.warning("Call to #%d.%s() failed to debranch the log correctly (%d <> %d).", object_id, cl->Base->Methods[-ActionID].Name, log_depth, tlDepth);
    }
+#endif
 
    return error;
 }
@@ -1786,32 +1798,6 @@ ERROR MGR_OwnerDestroyed(OBJECTPTR Object, APTR Void)
    log.function("Owner %d has been destroyed.", Object->UID);
    acFree(Object);
    return ERR_Okay;
-}
-
-/*****************************************************************************
-** Action: Seek
-*/
-
-ERROR MGR_Seek(OBJECTPTR Object, struct acSeek *Args)
-{
-   parasol::Log log("Seek");
-
-   if (!Args) return log.warning(ERR_NullArgs);
-
-   ERROR error;
-   if (Object->ExtClass) {
-      if (Object->ExtClass->ActionTable[AC_Seek].PerformAction) {
-         // Check and correct the Pos and Mode if SEEK_END
-
-         if ((Args->Position IS SEEK_END) and (Args->Offset < 0)) Args->Offset = -Args->Offset;
-         else if ((Args->Position IS SEEK_START) and (Args->Position < 0)) return log.warning(ERR_Args);
-         return Object->ExtClass->ActionTable[AC_Seek].PerformAction(Object, Args);
-      }
-      else error = ERR_NoSupport;
-   }
-   else error = ERR_LostClass;
-
-   return log.warning(error);
 }
 
 /*****************************************************************************

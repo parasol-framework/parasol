@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      audio.h
-// Copyright: Paul Manias © 2002-2022
+// Copyright: Paul Manias © 2002-2023
 // Generator: idl-c
 
 #include <parasol/main.h>
@@ -20,23 +20,32 @@ class objSound;
 #define ADF_VOL_RAMPING 0x00000010
 #define ADF_AUTO_SAVE 0x00000020
 #define ADF_SYSTEM_WIDE 0x00000040
-#define ADF_SERVICE_MODE 0x00000080
 
 // Volume control flags
 
-#define VCF_PLAYBACK 0x00000001
-#define VCF_CAPTURE 0x00000010
-#define VCF_JOINED 0x00000100
-#define VCF_MONO 0x00001000
-#define VCF_MUTE 0x00010000
-#define VCF_SYNC 0x00100000
+enum class VCF : ULONG {
+   NIL = 0,
+   PLAYBACK = 0x00000001,
+   CAPTURE = 0x00000010,
+   JOINED = 0x00000100,
+   MONO = 0x00001000,
+   MUTE = 0x00010000,
+   SYNC = 0x00100000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(VCF)
 
 // Optional flags for the AudioChannel structure.
 
-#define CHF_MUTE 0x00000001
-#define CHF_BACKWARD 0x00000002
-#define CHF_VOL_RAMP 0x00000004
-#define CHF_CHANGED 0x00000008
+enum class CHF : ULONG {
+   NIL = 0,
+   MUTE = 0x00000001,
+   BACKWARD = 0x00000002,
+   VOL_RAMP = 0x00000004,
+   CHANGED = 0x00000008,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(CHF)
 
 // Flags for the SetVolume() method.
 
@@ -50,10 +59,8 @@ class objSound;
 
 #define SDF_LOOP 0x00000001
 #define SDF_NEW 0x00000002
-#define SDF_QUERY 0x00000004
-#define SDF_STEREO 0x00000008
-#define SDF_TERMINATE 0x00000010
-#define SDF_RESTRICT_PLAY 0x00000020
+#define SDF_STEREO 0x00000004
+#define SDF_RESTRICT_PLAY 0x00000008
 #define SDF_STREAM 0x40000000
 #define SDF_NOTE 0x80000000
 
@@ -68,41 +75,31 @@ class objSound;
 
 // Loop modes for the AudioLoop structure.
 
-#define LOOP_SINGLE 1
-#define LOOP_SINGLE_RELEASE 2
-#define LOOP_DOUBLE 3
-#define LOOP_AMIGA_NONE 4
-#define LOOP_AMIGA 5
+enum class LOOP : WORD {
+   NIL = 0,
+   SINGLE = 1,
+   SINGLE_RELEASE = 2,
+   DOUBLE = 3,
+   AMIGA_NONE = 4,
+   AMIGA = 5,
+};
 
 // Loop types for the AudioLoop structure.
 
-#define LTYPE_UNIDIRECTIONAL 1
-#define LTYPE_BIDIRECTIONAL 2
-
-// Audio channel commands
-
-#define CMD_START_SEQUENCE 0
-#define CMD_END_SEQUENCE 1
-#define CMD_SET_SAMPLE 2
-#define CMD_SET_VOLUME 3
-#define CMD_SET_PAN 4
-#define CMD_SET_FREQUENCY 5
-#define CMD_SET_RATE 6
-#define CMD_STOP 7
-#define CMD_STOP_LOOPING 8
-#define CMD_SET_POSITION 9
-#define CMD_PLAY 10
-#define CMD_FADE_IN 11
-#define CMD_FADE_OUT 12
-#define CMD_MUTE 13
-#define CMD_SET_LENGTH 14
-#define CMD_CONTINUE 15
+enum class LTYPE : BYTE {
+   NIL = 0,
+   UNIDIRECTIONAL = 1,
+   BIDIRECTIONAL = 2,
+};
 
 // Streaming options
 
-#define STREAM_NEVER 1
-#define STREAM_SMART 2
-#define STREAM_ALWAYS 3
+enum class STREAM : LONG {
+   NIL = 0,
+   NEVER = 1,
+   SMART = 2,
+   ALWAYS = 3,
+};
 
 // Definitions for the Note field.  An 'S' indicates a sharp note.
 
@@ -122,119 +119,24 @@ class objSound;
 
 // Channel status types for the AudioChannel structure.
 
-#define CHS_STOPPED 0
-#define CHS_FINISHED 1
-#define CHS_PLAYING 2
-#define CHS_RELEASED 3
-#define CHS_FADE_OUT 4
-
-typedef struct {
-   ULONG numCopyBytes;     // number of bytes to copy
-   ULONG *relocTable;      // relocation table
-   ULONG numRelocEntries;  // number of relocation table entries
-} MixLoopRelocInfo;
-
-typedef struct {
-   ULONG mainLoopAlign;
-   ULONG mainLoopRepeat;
-   void (*mixLoop)(ULONG numSamples, LONG nextSampleOffset);
-   void (*mainMixLoop)(ULONG numSamples, LONG nextSampleOffset);
-} MixRoutine;
-
-typedef struct {
-   const MixRoutine routines[5];
-} MixRoutineSet;
-
-#define MAX_CHANNELSETS 8
-#define DEFAULT_BUFFER_SIZE 8096 // Measured in samples, not bytes
-struct AudioSample {
-   UBYTE *  Data;        // Private.  Pointer to the sample data.
-   OBJECTID StreamID;    // Reference to an object to use for streaming
-   LONG     SampleLength; // Length of the sample data, in bytes
-   LONG     Loop1Start;  // Start of the first loop
-   LONG     Loop1End;    // End of the first loop
-   LONG     Loop2Start;  // Start of the second loop
-   LONG     Loop2End;    // End of the second loop
-   LONG     SeekStart;
-   LONG     StreamLength;
-   LONG     BufferLength;
-   LONG     StreamPos;   // Current read position within the audio stream
-   UBYTE    SampleType;  // Type of sample (bit format)
-   BYTE     LoopMode;    // Loop mode (single, double)
-   BYTE     Loop1Type;   // First loop type (unidirectional, bidirectional)
-   BYTE     Loop2Type;   // Second loop type (unidirectional, bidirectional)
-   BYTE     Used;
-   BYTE     Free;
-};
-
-struct AudioChannel {
-   struct AudioSample Sample;    // Sample structure
-   OBJECTID SoundID;             // ID of the sound object set on this channel
-   LONG     SampleHandle;        // Internal handle reference
-   LONG     Flags;               // Special flags
-   ULONG    Position;            // Current playing/mixing position
-   ULONG    Frequency;           // Playback frequency
-   UWORD    PositionLow;         // Playing position, lower bits
-   WORD     LVolume;             // Current left speaker volume (0 - 100)
-   WORD     RVolume;             // Current right speaker volume (0 - 100)
-   WORD     LVolumeTarget;       // Volume target when fading or ramping
-   WORD     RVolumeTarget;       // Volume target when fading or ramping
-   WORD     Volume;              // Playing volume (0-100)
-   BYTE     Priority;            // Priority of the sound that has been assigned to this channel
-   BYTE     State;               // Channel state
-   BYTE     LoopIndex;           // The current active loop (either 0, 1 or 2)
-   BYTE     Pan;                 // Pan value (-100 to +100)
-};
-
-struct AudioCommand {
-   LONG CommandID;    // Command ID
-   LONG Handle;       // Channel handle
-   LONG Data;         // Special data related to the command ID
-};
-
-struct ChannelSet {
-   struct AudioChannel * Channel;    // Array of channel objects
-   struct AudioCommand * Commands;   // Array of buffered commands
-   LONG     UpdateRate;              // Update rate, measured in milliseconds
-   LONG     MixLeft;                 // Amount of mix elements left before the next command-update occurs
-   LONG     Key;
-   OBJECTID TaskID;                  // Reference to the task that owns this set of channels
-   MEMORYID ChannelMID;              // Private
-   MEMORYID CommandMID;              // Private
-   DOUBLE   TaskVolume;
-   WORD     Total;                   // Total number of base channels
-   WORD     Actual;                  // Total number of channels, including oversampling channels
-   WORD     TotalCommands;           // Size of the command buffer
-   WORD     Position;                // Index to write the next command to
-   WORD     OpenCount;
-};
-
-struct VolumeCtl {
-   WORD  Size;           // The size of the Channels array.
-   char  Name[32];       // Name of the mixer
-   LONG  Flags;          // Special flags identifying the mixer's attributes.
-   FLOAT Channels[1];    // A variable length array of channel volumes.
+enum class CHS : BYTE {
+   NIL = 0,
+   STOPPED = 0,
+   FINISHED = 1,
+   PLAYING = 2,
+   RELEASED = 3,
+   FADE_OUT = 4,
 };
 
 struct AudioLoop {
-   WORD LoopMode;    // Loop mode (single, double)
-   BYTE Loop1Type;   // First loop type (unidirectional, bidirectional)
-   BYTE Loop2Type;   // Second loop type (unidirectional, bidirectional)
-   LONG Loop1Start;  // Start of the first loop
-   LONG Loop1End;    // End of the first loop
-   LONG Loop2Start;  // Start of the second loop
-   LONG Loop2End;    // End of the second loop
+   LOOP  LoopMode;   // Loop mode (single, double)
+   LTYPE Loop1Type;  // First loop type (unidirectional, bidirectional)
+   LTYPE Loop2Type;  // Second loop type (unidirectional, bidirectional)
+   LONG  Loop1Start; // Start of the first loop
+   LONG  Loop1End;   // End of the first loop
+   LONG  Loop2Start; // Start of the second loop
+   LONG  Loop2End;   // End of the second loop
 };
-
-typedef struct WAVEFormat {
-   WORD Format;               // Type of WAVE data in the chunk
-   WORD Channels;             // Number of channels, 1=mono, 2=stereo
-   LONG Frequency;            // Playback frequency
-   LONG AvgBytesPerSecond;    // Channels * SamplesPerSecond * (BitsPerSample / 8)
-   WORD BlockAlign;           // Channels * (BitsPerSample / 8)
-   WORD BitsPerSample;        // Bits per sample
-   WORD ExtraLength;
-} WAVEFORMATEX;
 
 // Audio class definition
 
@@ -246,22 +148,22 @@ typedef struct WAVEFormat {
 #define MT_SndCloseChannels -2
 #define MT_SndAddSample -3
 #define MT_SndRemoveSample -4
-#define MT_SndBufferCommand -5
+#define MT_SndSetSampleLength -5
 #define MT_SndAddStream -6
 #define MT_SndBeep -7
 #define MT_SndSetVolume -8
 
-struct sndOpenChannels { LONG Total; LONG Key; LONG Commands; LONG Result;  };
+struct sndOpenChannels { LONG Total; LONG Result;  };
 struct sndCloseChannels { LONG Handle;  };
 struct sndAddSample { LONG SampleFormat; APTR Data; LONG DataSize; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
 struct sndRemoveSample { LONG Handle;  };
-struct sndBufferCommand { LONG Command; LONG Handle; LONG Data;  };
-struct sndAddStream { CSTRING Path; OBJECTID ObjectID; LONG SeekStart; LONG SampleFormat; LONG SampleLength; LONG BufferLength; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
+struct sndSetSampleLength { LONG Sample; LARGE Length;  };
+struct sndAddStream { FUNCTION Callback; LONG SampleFormat; LONG SampleLength; LONG PlayOffset; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
 struct sndBeep { LONG Pitch; LONG Duration; LONG Volume;  };
 struct sndSetVolume { LONG Index; CSTRING Name; LONG Flags; DOUBLE Volume;  };
 
-INLINE ERROR sndOpenChannels(APTR Ob, LONG Total, LONG Key, LONG Commands, LONG * Result) {
-   struct sndOpenChannels args = { Total, Key, Commands, 0 };
+INLINE ERROR sndOpenChannels(APTR Ob, LONG Total, LONG * Result) {
+   struct sndOpenChannels args = { Total, 0 };
    ERROR error = Action(MT_SndOpenChannels, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
@@ -284,13 +186,13 @@ INLINE ERROR sndRemoveSample(APTR Ob, LONG Handle) {
    return(Action(MT_SndRemoveSample, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sndBufferCommand(APTR Ob, LONG Command, LONG Handle, LONG Data) {
-   struct sndBufferCommand args = { Command, Handle, Data };
-   return(Action(MT_SndBufferCommand, (OBJECTPTR)Ob, &args));
+INLINE ERROR sndSetSampleLength(APTR Ob, LONG Sample, LARGE Length) {
+   struct sndSetSampleLength args = { Sample, Length };
+   return(Action(MT_SndSetSampleLength, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sndAddStream(APTR Ob, CSTRING Path, OBJECTID ObjectID, LONG SeekStart, LONG SampleFormat, LONG SampleLength, LONG BufferLength, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) {
-   struct sndAddStream args = { Path, ObjectID, SeekStart, SampleFormat, SampleLength, BufferLength, Loop, LoopSize, 0 };
+INLINE ERROR sndAddStream(APTR Ob, FUNCTION Callback, LONG SampleFormat, LONG SampleLength, LONG PlayOffset, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) {
+   struct sndAddStream args = { Callback, SampleFormat, SampleLength, PlayOffset, Loop, LoopSize, 0 };
    ERROR error = Action(MT_SndAddStream, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
@@ -314,24 +216,19 @@ class objAudio : public BaseClass {
 
    using create = parasol::Create<objAudio>;
 
-   DOUBLE Bass;           // Sets the amount of bass to use for audio playback.
-   DOUBLE Treble;         // Sets the amount of treble to use for audio playback.
-   LONG   OutputRate;     // Determines the frequency to use for the output of audio data.
-   LONG   InputRate;      // Determines the frequency to use when recording audio data.
-   LONG   Quality;        // Determines the quality of the audio mixing.
-   LONG   Flags;          // Special audio flags can be set here.
-   LONG   TotalChannels;  // The total number of audio channels allocated by all processes.
-   LONG   BitDepth;       // The bit depth affects the overall quality of audio input and output.
-   LONG   Periods;        // Defines the number of periods that make up the internal audio buffer.
-   LONG   PeriodSize;     // Defines the byte size of each period allocated to the internal audio buffer.
+   LONG OutputRate;    // Determines the frequency to use for the output of audio data.
+   LONG InputRate;     // Determines the frequency to use when recording audio data.
+   LONG Quality;       // Determines the quality of the audio mixing.
+   LONG Flags;         // Special audio flags can be set here.
+   LONG BitDepth;      // The bit depth affects the overall quality of audio input and output.
+   LONG Periods;       // Defines the number of periods that make up the internal audio buffer.
+   LONG PeriodSize;    // Defines the byte size of each period allocated to the internal audio buffer.
 
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
-   inline ERROR clear() { return Action(AC_Clear, this, NULL); }
    inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }
    inline ERROR init() { return Action(AC_Init, this, NULL); }
-   inline ERROR reset() { return Action(AC_Reset, this, NULL); }
    inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }
    inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
       struct acSaveToObject args = { { DestID }, { ClassID } };
@@ -350,27 +247,24 @@ class objSound : public BaseClass {
 
    using create = parasol::Create<objSound>;
 
-   DOUBLE    Volume;       // The volume to use when playing the sound sample.
-   DOUBLE    Pan;          // Determines the horizontal position of a sound when played through stereo speakers.
-   LONG      Priority;     // The priority of a sound in relation to other sound samples being played.
-   LONG      Length;       // Indicates the total byte-length of sample data.
-   LONG      Octave;       // The octave to use for sample playback.
-   LONG      Flags;        // Optional initialisation flags.
-   LONG      Frequency;    // The frequency of a sampled sound is specified here.
-   LONG      Playback;     // The playback frequency of the sound sample can be defined here.
-   LONG      Compression;  // Determines the amount of compression used when saving an audio sample.
-   LONG      BytesPerSecond; // The flow of bytes-per-second when the sample is played at normal frequency.
-   LONG      BitsPerSample; // Indicates the sample rate of the audio sample, typically 8 or 16 bit.
-   OBJECTID  AudioID;      // Refers to the audio object/device to use for playback.
-   LONG      LoopStart;    // The byte position at which sample looping begins.
-   LONG      LoopEnd;      // The byte position at which sample looping will end.
-   LONG      Stream;       // Defines the preferred streaming method for the sample.
-   LONG      BufferLength; // Defines the size of the buffer to use when streaming is enabled.
-   OBJECTID  StreamFileID; // Refers to a File object that is being streamed for playback.
-   LONG      Position;     // The current playback position.
-   LONG      Handle;       // Audio handle acquired at the audio object [Private - Available to child classes]
-   LONG      ChannelIndex; // Refers to the channel that the sound is playing through.
-   objFile * File;         // Refers to the file object that contains the audio data for playback.
+   DOUBLE   Volume;        // The volume to use when playing the sound sample.
+   DOUBLE   Pan;           // Determines the horizontal position of a sound when played through stereo speakers.
+   LONG     Priority;      // The priority of a sound in relation to other sound samples being played.
+   LONG     Length;        // Indicates the total byte-length of sample data.
+   LONG     Octave;        // The octave to use for sample playback.
+   LONG     Flags;         // Optional initialisation flags.
+   LONG     Frequency;     // The frequency of a sampled sound is specified here.
+   LONG     Playback;      // The playback frequency of the sound sample can be defined here.
+   LONG     Compression;   // Determines the amount of compression used when saving an audio sample.
+   LONG     BytesPerSecond; // The flow of bytes-per-second when the sample is played at normal frequency.
+   LONG     BitsPerSample; // Indicates the sample rate of the audio sample, typically 8 or 16 bit.
+   OBJECTID AudioID;       // Refers to the audio object/device to use for playback.
+   LONG     LoopStart;     // The byte position at which sample looping begins.
+   LONG     LoopEnd;       // The byte position at which sample looping will end.
+   STREAM   Stream;        // Defines the preferred streaming method for the sample.
+   LONG     Position;      // The current playback position.
+   LONG     Handle;        // Audio handle acquired at the audio object [Private - Available to child classes]
+   LONG     ChannelIndex;  // Refers to the channel that the sound is playing through.
 
    // Action stubs
 
@@ -385,6 +279,19 @@ class objSound : public BaseClass {
       return error;
    }
    inline ERROR init() { return Action(AC_Init, this, NULL); }
+   template <class T> ERROR read(APTR Buffer, T Bytes, LONG *Result) {
+      ERROR error;
+      const LONG bytes = (Bytes > 0x7fffffff) ? 0x7fffffff : Bytes;
+      struct acRead read = { (BYTE *)Buffer, bytes };
+      if (!(error = Action(AC_Read, this, &read))) *Result = read.Result;
+      else *Result = 0;
+      return error;
+   }
+   template <class T> ERROR read(APTR Buffer, T Bytes) {
+      const LONG bytes = (Bytes > 0x7fffffff) ? 0x7fffffff : Bytes;
+      struct acRead read = { (BYTE *)Buffer, bytes };
+      return Action(AC_Read, this, &read);
+   }
    inline ERROR reset() { return Action(AC_Reset, this, NULL); }
    inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
       struct acSaveToObject args = { { DestID }, { ClassID } };
@@ -405,16 +312,34 @@ class objSound : public BaseClass {
 
 extern struct AudioBase *AudioBase;
 struct AudioBase {
-   ERROR (*_StartDrivers)(void);
-   ERROR (*_WaitDrivers)(LONG TimeOut);
-   LONG (*_SetChannels)(LONG Total);
-   DOUBLE (*_SetTaskVolume)(DOUBLE Volume);
+   ERROR (*_MixContinue)(objAudio * Audio, LONG Handle);
+   ERROR (*_MixFrequency)(objAudio * Audio, LONG Handle, LONG Frequency);
+   ERROR (*_MixMute)(objAudio * Audio, LONG Handle, LONG Mute);
+   ERROR (*_MixPan)(objAudio * Audio, LONG Handle, DOUBLE Pan);
+   ERROR (*_MixPlay)(objAudio * Audio, LONG Handle, LONG Frequency);
+   ERROR (*_MixPosition)(objAudio * Audio, LONG Handle, LONG Position);
+   ERROR (*_MixRate)(objAudio * Audio, LONG Handle, LONG Rate);
+   ERROR (*_MixSample)(objAudio * Audio, LONG Handle, LONG Sample);
+   ERROR (*_MixStop)(objAudio * Audio, LONG Handle);
+   ERROR (*_MixStopLoop)(objAudio * Audio, LONG Handle);
+   ERROR (*_MixVolume)(objAudio * Audio, LONG Handle, DOUBLE Volume);
+   ERROR (*_MixStartSequence)(objAudio * Audio, LONG Handle);
+   ERROR (*_MixEndSequence)(objAudio * Audio, LONG Handle);
 };
 
 #ifndef PRV_AUDIO_MODULE
-inline ERROR sndStartDrivers(void) { return AudioBase->_StartDrivers(); }
-inline ERROR sndWaitDrivers(LONG TimeOut) { return AudioBase->_WaitDrivers(TimeOut); }
-inline LONG sndSetChannels(LONG Total) { return AudioBase->_SetChannels(Total); }
-inline DOUBLE sndSetTaskVolume(DOUBLE Volume) { return AudioBase->_SetTaskVolume(Volume); }
+inline ERROR sndMixContinue(objAudio * Audio, LONG Handle) { return AudioBase->_MixContinue(Audio,Handle); }
+inline ERROR sndMixFrequency(objAudio * Audio, LONG Handle, LONG Frequency) { return AudioBase->_MixFrequency(Audio,Handle,Frequency); }
+inline ERROR sndMixMute(objAudio * Audio, LONG Handle, LONG Mute) { return AudioBase->_MixMute(Audio,Handle,Mute); }
+inline ERROR sndMixPan(objAudio * Audio, LONG Handle, DOUBLE Pan) { return AudioBase->_MixPan(Audio,Handle,Pan); }
+inline ERROR sndMixPlay(objAudio * Audio, LONG Handle, LONG Frequency) { return AudioBase->_MixPlay(Audio,Handle,Frequency); }
+inline ERROR sndMixPosition(objAudio * Audio, LONG Handle, LONG Position) { return AudioBase->_MixPosition(Audio,Handle,Position); }
+inline ERROR sndMixRate(objAudio * Audio, LONG Handle, LONG Rate) { return AudioBase->_MixRate(Audio,Handle,Rate); }
+inline ERROR sndMixSample(objAudio * Audio, LONG Handle, LONG Sample) { return AudioBase->_MixSample(Audio,Handle,Sample); }
+inline ERROR sndMixStop(objAudio * Audio, LONG Handle) { return AudioBase->_MixStop(Audio,Handle); }
+inline ERROR sndMixStopLoop(objAudio * Audio, LONG Handle) { return AudioBase->_MixStopLoop(Audio,Handle); }
+inline ERROR sndMixVolume(objAudio * Audio, LONG Handle, DOUBLE Volume) { return AudioBase->_MixVolume(Audio,Handle,Volume); }
+inline ERROR sndMixStartSequence(objAudio * Audio, LONG Handle) { return AudioBase->_MixStartSequence(Audio,Handle); }
+inline ERROR sndMixEndSequence(objAudio * Audio, LONG Handle) { return AudioBase->_MixEndSequence(Audio,Handle); }
 #endif
 
