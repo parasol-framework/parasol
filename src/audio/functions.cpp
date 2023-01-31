@@ -281,7 +281,8 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
    // Write the audio to alsa
 
    if (Self->Handle) {
-      if ((LONG err = snd_pcm_writei(Self->Handle, Self->AudioBuffer, space)) < 0) {
+      LONG err;
+      if ((err = snd_pcm_writei(Self->Handle, Self->AudioBuffer, space)) < 0) {
          // If an EPIPE error is returned, a buffer underrun has probably occurred
 
          if (err IS -EPIPE) {

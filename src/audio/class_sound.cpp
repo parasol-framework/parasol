@@ -274,7 +274,6 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
 
          stream.PlayOffset   = Self->Position;
          stream.Callback     = make_function_stdc(&read_stream);
-         stream.UID          = Self->UID;
          stream.SampleFormat = sampleformat;
          stream.SampleLength = Self->Length;
 
