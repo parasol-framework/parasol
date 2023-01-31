@@ -17,7 +17,7 @@ extern "C" {
 #include "hashes.h"
 #include "defs.h"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void clear_subscriptions(objScript *Self)
 {
@@ -64,7 +64,7 @@ void clear_subscriptions(objScript *Self)
    prv->Requests = NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // check() is the equivalent of an assert() for error codes.  Any major error code will be converted to an
 // exception containing a readable string for the error code.  It is most powerful when used in conjunction with
 // the catch() function, which will apply the line number of the exception to the result.  The error code will
@@ -86,7 +86,7 @@ int fcmd_check(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // raise() will raise an error immediately from an error code.  Unlike check(), all codes have coverage, including
 // minor codes.  The error code will also be propagated to the Script object's Error field.
 
@@ -101,7 +101,7 @@ int fcmd_raise(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Use catch() to switch on exception handling for functions that return an error code other than ERR_Okay, as well as
 // normal exceptions that would otherwise be caught by pcall().  Areas affected include obj.new(); any module function
 // that returns an ERROR; any method or action called on an object.
@@ -299,7 +299,7 @@ int fcmd_catch(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // The event callback will be called with the following synopsis:
 //
 // function callback(EventID, Args)
@@ -327,7 +327,7 @@ static void receive_event(eventsub *Event, APTR Info, LONG InfoSize)
    lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: unsubscribeEvent(handle)
 
 int fcmd_unsubscribe_event(lua_State *Lua)
@@ -361,7 +361,7 @@ int fcmd_unsubscribe_event(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: error, handle = subscribeEvent("group.subgroup.name", function)
 
 int fcmd_subscribe_event(lua_State *Lua)
@@ -462,7 +462,7 @@ int fcmd_subscribe_event(lua_State *Lua)
    return 2;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: msg("Message")
 // Prints a debug message, with no support for input parameters.  This is the safest way to call LogF().
 
@@ -487,7 +487,7 @@ int fcmd_msg(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: print(...)
 // Prints a message to stderr.  On Android stderr is unavailable, so the message is printed in the debug output.
 
@@ -517,9 +517,8 @@ int fcmd_print(lua_State *Lua)
    return 0;
 }
 
-/*****************************************************************************
-** Usage: include "File1","File2","File3",...
-*/
+//********************************************************************************************************************
+// Usage: include "File1","File2","File3",...
 
 int fcmd_include(lua_State *Lua)
 {
@@ -542,12 +541,11 @@ int fcmd_include(lua_State *Lua)
    return 0;
 }
 
-/*****************************************************************************
-** Usage: require "Module"
-**
-** Loads a Fluid language file from "scripts:" and executes it.  Differs from loadFile() in that registration
-** prevents multiple executions, and the volume restriction improves security.
-*/
+//********************************************************************************************************************
+// Usage: require "Module"
+//
+// Loads a Fluid language file from "scripts:" and executes it.  Differs from loadFile() in that registration
+// prevents multiple executions, and the volume restriction improves security.
 
 int fcmd_require(lua_State *Lua)
 {
@@ -613,11 +611,10 @@ int fcmd_require(lua_State *Lua)
    return 0;
 }
 
-/*****************************************************************************
-** Usage: state = getExecutionState()
-**
-** Returns miscellaneous information about the code's current state of execution.
-*/
+//********************************************************************************************************************
+// Usage: state = getExecutionState()
+//
+// Returns miscellaneous information about the code's current state of execution.
 
 int fcmd_get_execution_state(lua_State *Lua)
 {
@@ -629,12 +626,11 @@ int fcmd_get_execution_state(lua_State *Lua)
    return 1;
 }
 
-/*****************************************************************************
-** Usage: results = loadFile("Path")
-**
-** Loads a Fluid language file from any location and executes it.  Any return values from the script will be returned
-** as-is.  Any error that occurs will be thrown with a descriptive string.
-*/
+//********************************************************************************************************************
+// Usage: results = loadFile("Path")
+//
+// Loads a Fluid language file from any location and executes it.  Any return values from the script will be returned
+// as-is.  Any error that occurs will be thrown with a descriptive string.
 
 int fcmd_loadfile(lua_State *Lua)
 {
@@ -760,7 +756,7 @@ int fcmd_loadfile(lua_State *Lua)
    return results;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: exec(Statement)
 
 struct luaReader {
@@ -811,7 +807,7 @@ int fcmd_exec(lua_State *Lua)
    return results;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 const char * code_reader_buffer(lua_State *Lua, void *Source, size_t *ResultSize)
 {
@@ -821,7 +817,7 @@ const char * code_reader_buffer(lua_State *Lua, void *Source, size_t *ResultSize
    return lr->String;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: arg = arg("Width", IfNullValue)
 //
 // NB: Arguments are set as variables and this is managed in the base Script class.
@@ -846,18 +842,17 @@ int fcmd_arg(lua_State *Lua)
    }
 }
 
-/*****************************************************************************
-** Returns the 2nd argument if the 1st argument is evaluated as nil, zero, an empty string, table or array.  Otherwise
-** the 1st argument is returned.
-**
-** If the 2nd argument is not given, nil is returned if the 1st argument is evaluated as being empty, otherwise 1 is
-** returned.
-**
-** Usage: result = nz(checkval, zeroval)
-**
-** 'nz' is short for 'nonzero' and its use can be described as 'if checkval is non zero then return checkval, else
-** return zeroval'.
-*/
+//********************************************************************************************************************
+// Returns the 2nd argument if the 1st argument is evaluated as nil, zero, an empty string, table or array.  Otherwise
+// the 1st argument is returned.
+//
+// If the 2nd argument is not given, nil is returned if the 1st argument is evaluated as being empty, otherwise 1 is
+// returned.
+//
+// Usage: result = nz(checkval, zeroval)
+//
+// 'nz' is short for 'nonzero' and its use can be described as 'if checkval is non zero then return checkval, else
+// return zeroval'.
 
 int fcmd_nz(lua_State *Lua)
 {

@@ -8,10 +8,11 @@ Scintilla::Menu::Menu() {}
 
 void Scintilla::Menu::CreatePopUp()
 {
+   parasol::Log log(__FUNCTION__);
    OBJECTID display_id;
    //OBJECTPTR menu;
 
-   LogF("Menu::CreatePopUp","");
+   log.branch();
 
    Destroy();
 
