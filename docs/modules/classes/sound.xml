@@ -14,18 +14,20 @@
     <idstring>ID_SOUND</idstring>
     <category>Audio</category>
     <include>modules/sound.h</include>
-    <copyright>Paul Manias © 2002-2022</copyright>
+    <copyright>Paul Manias © 2002-2023</copyright>
     <description>
-<p>The Sound class provides a simple interface for any program to load and play audio sample files. By default all loading and saving of sound data is in WAVE format.  Other audio formats can be supported through Sound class extensions, if available.</p>
-<p>Smart, transparent streaming is enabled by default.  If an attempt is made to play an audio file that is considerably large (relative to system resources), it will be streamed from the source location.  You can alter or force streaming behaviour through the <field>Stream</field> field.</p>
-<p>The following example illustrates playback of a sound sample one octave higher than its normal frequency.  The subscription to the Deactivate action will result in the program closing once the sample has finished playback.</p>
+<p>The Sound class provides a simple API for programs to load and play audio sample files. By default all loading and saving of sound data is in WAVE format.  Other audio formats can be supported through Sound class extensions, if available.</p>
+<p>Automatic streaming is enabled by default.  If an attempt is made to play an audio file that exceeds the maximum buffer size, it will be streamed from the source location.  Streaming behaviour can be modified via the <field>Stream</field> field.</p>
+<p>The following example illustrates playback of a sound sample that is one octave higher than its normal frequency. The subscription to the Deactivate action will result in the program waking once the sample has finished playback.</p>
 <pre>local snd = obj.new('sound', { path='audio:samples/doorbell.wav', note='C6' })
 
-snd.subscribe("deactivate", function(SoundID)
-   mSys.SendMessage(0, MSGID_QUIT)
+snd.subscribe('deactivate', function(SoundID)
+   proc.signal()
 end)
 
 snd.acActivate()
+
+proc.sleep()
 </pre></description>
     <source>
       <file>class_sound.cpp</file>
@@ -45,7 +47,7 @@ snd.acActivate()
 
     <action>
       <name>Disable</name>
-      <comment>Disable playback of an active audio sample.</comment>
+      <comment>Disable playback of an active audio sample, equivalent to pausing.</comment>
     </action>
 
     <action>
@@ -65,7 +67,16 @@ snd.acActivate()
 <type name="Disclaimer">The disclaimer associated with an audio sample.</type>
 <type name="Software">The name of the application that was used to record the audio sample.</type>
 <type name="Title">The title of the audio sample.</type>
+<type name="Quality">The compression quality value if the source is an MP3 stream.</type>
 </types>
+      </description>
+    </action>
+
+    <action>
+      <name>Read</name>
+      <comment>Read decoded audio from the sound sample.</comment>
+      <description>
+<p>This action will read decoded audio from the sound sample.  Decoding is a live process and it may take some time for all data to be returned if the requested amount of data is considerable.  The starting point for the decoded data is determined by the <field>Position</field> value.</p>
       </description>
     </action>
 
@@ -81,7 +92,10 @@ snd.acActivate()
 
     <action>
       <name>Seek</name>
-      <comment>Moves sample playback to a new position.</comment>
+      <comment>Moves the cursor position for reading data.</comment>
+      <description>
+<p>Use Seek to move the read cursor within the decoded audio stream and update <field>Position</field>.  This will affect the Read action.  If the sample is in active playback at the time of the call, the playback position will also be moved.</p>
+      </description>
     </action>
 
     <action>
@@ -114,16 +128,6 @@ snd.acActivate()
       <comment>Indicates the sample rate of the audio sample, typically 8 or 16 bit.</comment>
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
-    </field>
-
-    <field>
-      <name>BufferLength</name>
-      <comment>Defines the size of the buffer to use when streaming is enabled.</comment>
-      <access read="R" write="I">Read/Init</access>
-      <type>INT</type>
-      <description>
-<p>This field fine-tunes the size of the buffer that is used when streaming.  When manually choosing a buffer size, it is usually best to keep the size between 64 and 128k.  Some systems may ignore the BufferLength field if the audio driver is incompatible with manually defined buffer lengths.</p>
-      </description>
     </field>
 
     <field>
@@ -181,7 +185,7 @@ snd.acActivate()
       <name>Header</name>
       <comment>Contains the first 128 bytes of data in a sample's file header.</comment>
       <access read="G">Get</access>
-      <type>APTR []</type>
+      <type>BYTE []</type>
       <description>
 <p>The Header field is a pointer to a 128 byte buffer that contains the first 128 bytes of information read from an audio file on initialisation.  This special field is considered to be helpful only to developers writing add-on components for the sound class.</p>
 <p>The buffer that is referred to by the Header field is not populated until the Init action is called on the sound object.</p>
@@ -191,7 +195,7 @@ snd.acActivate()
     <field>
       <name>Length</name>
       <comment>Indicates the total byte-length of sample data.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
 <p>This field specifies the length of the sample data in bytes.  To get the length of the sample in seconds, divide this value by the <field>BytesPerSecond</field> field.</p>
@@ -204,7 +208,7 @@ snd.acActivate()
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
       <description>
-<p>When using looped samples (via the SDF_LOOP flag), set the LoopEnd field if the sample should end at a position that is earlier than the sample's actual length.  The LoopEnd value is specified in bytes and must be less or equal to the length of the sample and greater than the <field>LoopStart</field> value.</p>
+<p>When using looped samples (via the <code>SDF_LOOP</code> flag), set the LoopEnd field if the sample should end at a position that is earlier than the sample's actual length.  The LoopEnd value is specified in bytes and must be less or equal to the length of the sample and greater than the <field>LoopStart</field> value.</p>
       </description>
     </field>
 
@@ -214,7 +218,7 @@ snd.acActivate()
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
       <description>
-<p>When using looped samples (via the SDF_LOOP flag), set the LoopStart field if the sample should begin at a position other than zero.  The LoopStart value is specified in bytes and must be less than the length of the sample and the <field>LoopEnd</field> value.</p>
+<p>When using looped samples (via the <code>SDF_LOOP</code> flag), set the LoopStart field if the sample should begin at a position other than zero.  The LoopStart value is specified in bytes and must be less than the length of the sample and the <field>LoopEnd</field> value.</p>
 <p>Note that the LoopStart variable does not affect the position at which playback occurs for the first time - it only affects the restart position when the end of the sample is reached.</p>
       </description>
     </field>
@@ -250,7 +254,7 @@ snd.acActivate()
       <access read="R" write="S">Read/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The Pan field adjusts the "horizontal position" of a sample that is being played through stereo speakers. The default value for this field is zero, which plays the sound through both speakers at an equal level.  The minimum value is -100, which forces play through the left speaker and the maximum value is 100, which forces play through the right speaker.</p>
+<p>The Pan field adjusts the "horizontal position" of a sample that is being played through stereo speakers. The default value for this field is zero, which plays the sound through both speakers at an equal level.  The minimum value is -1.0 to force play through the left speaker and the maximum value is 1.0 for the right speaker.</p>
       </description>
     </field>
 
@@ -260,7 +264,7 @@ snd.acActivate()
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>This field must refer to a file that contains the audio data that will be loaded.  If creating a new sample with the SDF_NEW flag, it is not necessary to define a file source.</p>
+<p>This field must refer to a file that contains the audio data that will be loaded.  If creating a new sample with the <code>SDF_NEW</code> flag, it is not necessary to define a file source.</p>
       </description>
     </field>
 
@@ -299,19 +303,9 @@ snd.acActivate()
       <name>Stream</name>
       <comment>Defines the preferred streaming method for the sample.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="STREAM">INT</type>
+      <type lookup="STREAM">STREAM</type>
       <description>
 <types lookup="STREAM"/>
-      </description>
-    </field>
-
-    <field>
-      <name>StreamFile</name>
-      <comment>Refers to a File object that is being streamed for playback.</comment>
-      <access read="R" write="I">Read/Init</access>
-      <type>OBJECTID</type>
-      <description>
-<p>This field is maintained internally and is defined post-initialisation.  It refers to a <class name="File">File</class> object that is being streamed.</p>
       </description>
     </field>
 
@@ -321,7 +315,7 @@ snd.acActivate()
       <access read="R" write="S">Read/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The field specifies the volume of a sound, which lies in the range 0 - 100%.  A volume of zero will not be heard, while a volume of 100 is the loudest.  Setting the field during sample playback will dynamically alter the volume.</p>
+<p>The field specifies the volume of a sound in the range 0 - 1.0 (low to high).  Setting this field during sample playback will dynamically alter the volume.</p>
       </description>
     </field>
 
@@ -346,11 +340,9 @@ snd.acActivate()
     <constants lookup="SDF" comment="Sound flags">
       <const name="LOOP">Enables sample looping. The LoopStart and LoopEnd fields determine where the looping area lies within the sample data.</const>
       <const name="NEW">Create the sample from scratch (e.g. for audio recording purposes).</const>
-      <const name="QUERY">Query the meta data of the sample source; do not load sample data.</const>
       <const name="RESTRICT_PLAY">Restricts playback so that the sound can never play on more than one channel at any given time.</const>
       <const name="STEREO">Indicates that the sound has multiple audio channels.</const>
       <const name="STREAM">Read-Only. Indicates that streaming is enabled.</const>
-      <const name="TERMINATE">Self-terminate when the sound sample has finished playback.</const>
     </constants>
 
     <constants lookup="STREAM" comment="Streaming options">

@@ -826,7 +826,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    ManageAction(AC_Init, (APTR)MGR_Init);
    ManageAction(AC_Free, (APTR)MGR_Free);
-   ManageAction(AC_Seek, (APTR)MGR_Seek);
    ManageAction(AC_Signal, (APTR)MGR_Signal);
 
    if (!(glClassMap = VarNew(0, KSF_THREAD_SAFE))) {

@@ -309,8 +309,8 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
 
          Self->Flags |= base->Flags; // Allow flag inheritance, e.g. PROMOTE_CHILDREN
 
-         // Sub-classes can override the base-class size on the basis that they may have a custom-sized private
-         // variable area.
+         // In tightly controlled configurations, a sub-class can define a structure that is larger than the base
+         // class.  Vector filter effects are one example.
 
          if (!Self->Size) Self->Size = base->Size;
          Self->Base = base;

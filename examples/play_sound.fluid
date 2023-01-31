@@ -1,24 +1,65 @@
+-- This script will play WAV and MP3 files for the user.
 
-   if (obj.find("SystemAudio") == nil) then
-      obj.new("@audio", { name="SystemAudio", flags="!AutoSave" })
+----------------------------------------------------------------------------------------------------------------------
+-- This function identifies the type of file being loaded and uses the correct class to open it.
+
+function id_file(Path)
+   local err, class = mSys.IdentifyFile(Path, 'Open', IDF_IGNORE_HOST)
+
+   if (class == mSys.StrHash('sound')) then
+      return obj.new('sound', { path=Path, stream='never' })
+   elseif (class == mSys.StrHash('music')) then
+      return obj.new('music', { path=Path })
    end
+end
 
-   local src = arg("src")
+----------------------------------------------------------------------------------------------------------------------
+
+   -- Retrieve the sound sample path from the command line arguments
+
+   local src = arg('src')
    if (src == nil) then
-      print("Please supply a source audio file with the 'src' parameter.")
+      print('Please supply a source audio file with "--src=[file]"')
       return
    end
 
-   catch(function()
-      local snd = obj.new("sound", { path=src })
-      snd.subscribe("deactivate", function(SoundID)
-         mSys.SendMessage(0, MSGID_QUIT)
-      end)
-      snd.acActivate()
+   local seek = arg('seek')
 
-      print("Press CTRL-C to exit or wait for sound sample to finish.")
-      processing.sleep()
-   end,
-   function(Exception)
-      print("Failed to play sound, error: " .. Exception.message)
+   local player = id_file(src)
+   if not player then
+      print('Failed to identify the type of the source file "' .. src .. '"')
+      return
+   end
+
+   -- Use the processing API to help us manage the program flow
+
+   local proc = processing.new()
+
+   -- Monitor the deactivate action.  We can use it to exit once the sample has fully played.
+
+   player.subscribe('deactivate', function(SoundID)
+      proc.signal()
    end)
+
+   -- User can request seeking to a position expressed as 0.0 - 1.0
+
+   if (seek) then
+      seek = tonumber(seek)
+      if (seek >= 0) and (seek <= 1.0) then
+         player.acSeek(seek, SEEK_RELATIVE)
+      else
+         print('Seek must be expressed as a value from 0.0 to 1.0')
+      end
+   end
+
+   -- Play the sound and wait for it to finish
+
+   if (player.acActivate() == ERR_Okay) then
+      print('Press CTRL-C to exit or wait for sound sample to finish.')
+
+      proc.sleep() -- This will wake on receipt of a signal.
+
+      proc.sleep(0.5) -- Slight pause to flush any buffered audio before exiting
+   else
+      print('Failed to play audio file.')
+   end

@@ -414,7 +414,6 @@ class extFile : public objFile {
 class extConfig : public objConfig {
    public:
    using create = parasol::Create<extConfig>;
-   ConfigGroups *Groups;
    ULONG    CRC;   // CRC32, for determining if config data has been altered
 };
 
@@ -932,7 +931,6 @@ ERROR MGR_Init(OBJECTPTR, APTR);
 ERROR MGR_Free(OBJECTPTR, APTR);
 ERROR MGR_GetField(OBJECTPTR, struct acGetVar *);
 ERROR MGR_OwnerDestroyed(OBJECTPTR, APTR);
-ERROR MGR_Seek(OBJECTPTR, struct acSeek *);
 ERROR MGR_SetField(OBJECTPTR, struct acSetVar *);
 ERROR MGR_Signal(OBJECTPTR, APTR);
 

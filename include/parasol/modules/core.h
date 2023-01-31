@@ -48,6 +48,7 @@ class objCompressedStream;
 #define SEEK_START 0
 #define SEEK_CURRENT 1
 #define SEEK_END 2
+#define SEEK_RELATIVE 3
 
 #define DEVICE_COMPACT_DISC 0x00000001
 #define DEVICE_HARD_DISK 0x00000002
@@ -668,7 +669,8 @@ inline ENUMTYPE operator | (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FL
 inline ENUMTYPE operator & (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) & ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
 inline ENUMTYPE operator ~ (ENUMTYPE a) { return ENUMTYPE(~((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a)); } \
 inline ENUMTYPE operator ^ (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) ^ ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
-inline ENUMTYPE &operator |= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) |= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); }
+inline ENUMTYPE &operator |= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) |= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) &= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); }
 #endif
 // Script flags
 
@@ -1122,7 +1124,6 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 // Reserved Public Memory identifiers.
 
 #define RPM_SharedObjects -1000
-#define RPM_Audio -1001
 #define RPM_Clipboard -1002
 #define RPM_X11 -1003
 #define RPM_AlphaBlend -1004
@@ -2428,8 +2429,8 @@ struct BaseClass { // Must be 64-bit aligned
    struct Stats *Stats;         // [Private] Stats pointer
    APTR     ChildPrivate;       // Address for the ChildPrivate structure, if allocated
    APTR     CreatorMeta;        // The creator (via NewObject) is permitted to store a custom data pointer here.
-   CLASSID  ClassID;            // Reference to the object's class, used to resolve the Class pointer
-   CLASSID  SubID;              // Reference to the object's sub-class, used to resolve the Class pointer
+   CLASSID  ClassID;            // The object's class ID
+   CLASSID  SubID;              // The object's sub-class ID, or zero if irrelevant.
    OBJECTID UID;                // Unique object identifier
    OBJECTID OwnerID;            // The owner of this object
    NF       Flags;              // Object flags
@@ -2449,6 +2450,7 @@ struct BaseClass { // Must be 64-bit aligned
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
    inline bool isPublic() { return (Flags & NF::PUBLIC) != NF::NIL; }
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
+   inline bool isSubClass() { return SubID != 0; }
    inline OBJECTID ownerTask() { return TaskID; }
    inline OBJECTID ownerID() { return OwnerID; }
    inline NF flags() { return Flags; }
@@ -2537,6 +2539,8 @@ struct BaseClass { // Must be 64-bit aligned
 } __attribute__ ((aligned (8)));
 
 namespace parasol {
+
+// For extremely verbose debug logs, run cmake with -DPARASOL_VLOG=ON
 
 class Log { // C++ wrapper for Parasol's log functionality
    private:
@@ -3131,15 +3135,15 @@ class objFile : public BaseClass {
    inline ERROR query() { return Action(AC_Query, this, NULL); }
    template <class T> ERROR read(APTR Buffer, T Bytes, LONG *Result) {
       ERROR error;
-      if (Bytes > 0x7fffffff) Bytes = 0x7fffffff;
-      struct acRead read = { (BYTE *)Buffer, (LONG)Bytes };
+      const LONG bytes = (Bytes > 0x7fffffff) ? 0x7fffffff : Bytes;
+      struct acRead read = { (BYTE *)Buffer, bytes };
       if (!(error = Action(AC_Read, this, &read))) *Result = read.Result;
       else *Result = 0;
       return error;
    }
    template <class T> ERROR read(APTR Buffer, T Bytes) {
-      if (Bytes > 0x7fffffff) Bytes = 0x7fffffff;
-      struct acRead read = { (BYTE *)Buffer, (LONG)Bytes };
+      const LONG bytes = (Bytes > 0x7fffffff) ? 0x7fffffff : Bytes;
+      struct acRead read = { (BYTE *)Buffer, bytes };
       return Action(AC_Read, this, &read);
    }
    inline ERROR rename(CSTRING Name) {
@@ -3267,6 +3271,55 @@ class objConfig : public BaseClass {
    STRING GroupFilter;  // Set this field to enable group filtering.
    LONG   Flags;        // Optional flags may be set here.
    public:
+   ConfigGroups *Groups;
+
+   // For C++ only, these read variants avoid the standard method for speed but apply identical logic.
+
+   inline ERROR read(CSTRING pGroup, CSTRING pKey, DOUBLE *pValue) {
+      for (auto& [group, keys] : Groups[0]) {
+         if ((pGroup) and (group.compare(pGroup))) continue;
+         if (!pKey) {
+            *pValue = strtod(keys.cbegin()->second.c_str(), NULL);
+            return ERR_Okay;
+         }
+         else if (keys.contains(pKey)) {
+            *pValue = strtod(keys[pKey].c_str(), NULL);
+            return ERR_Okay;
+         }
+      }
+      return ERR_Search;
+   }
+
+   inline ERROR read(CSTRING pGroup, CSTRING pKey, LONG *pValue) {
+      for (auto& [group, keys] : Groups[0]) {
+         if ((pGroup) and (group.compare(pGroup))) continue;
+         if (!pKey) {
+            *pValue = strtol(keys.cbegin()->second.c_str(), NULL, 0);
+            return ERR_Okay;
+         }
+         else if (keys.contains(pKey)) {
+            *pValue = strtol(keys[pKey].c_str(), NULL, 0);
+            return ERR_Okay;
+         }
+      }
+      return ERR_Search;
+   }
+
+   inline ERROR read(CSTRING pGroup, CSTRING pKey, std::string &pValue) {
+      for (auto& [group, keys] : Groups[0]) {
+         if ((pGroup) and (group.compare(pGroup))) continue;
+         if (!pKey) {
+            pValue = keys.cbegin()->second;
+            return ERR_Okay;
+         }
+         else if (keys.contains(pKey)) {
+            pValue = keys[pKey];
+            return ERR_Okay;
+         }
+      }
+      return ERR_Search;
+   }
+
    inline ERROR write(CSTRING Group, CSTRING Key, CSTRING Value) {
       struct cfgWriteValue write = { Group, Key, Value };
       return Action(MT_CfgWriteValue, this, &write);

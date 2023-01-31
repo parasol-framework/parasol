@@ -2541,7 +2541,7 @@ static ERROR GET_ResolvedPath(extFile *Self, CSTRING *Value)
 Size: The byte size of a file.
 
 The current byte size of a file is indicated by this field.  If the file object represents a folder, the Size value
-will be set to zero.  You can also truncate a file by setting the Size; this will result in the current read/write
+will be zero.  You can also truncate a file by setting the Size; this will result in the current read/write
 position being set to the end of the file.
 
 *****************************************************************************/
@@ -2554,14 +2554,17 @@ static ERROR GET_Size(extFile *Self, LARGE *Size)
       *Size = 0;
       return ERR_Okay;
    }
-
-   if (Self->Handle != -1) {
+   else if (Self->Handle != -1) {
       struct stat64 stats;
       if (!fstat64(Self->Handle, &stats)) {
          *Size = stats.st_size;
          return ERR_Okay;
       }
       else return convert_errno(errno, ERR_SystemCall);
+   }
+   else if (Self->Buffer) {
+      *Size = Self->Size;
+      return ERR_Okay;
    }
 
    CSTRING path;

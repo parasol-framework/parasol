@@ -1,0 +1,121 @@
+-- $FLUID
+-- Flute tests for the Audio server and associated classes.
+-- These are audible tests that require human verification to confirm a full pass.
+
+-----------------------------------------------------------------------------------------------------------------------
+-- This test must result in playback of a low-tone, then followed by a high tone.
+
+function testSequentialPlayback()
+   local proc = processing.new()
+
+   local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav' })
+   assert(snd, 'Failed to process low-tone wav file.')
+
+   snd.subscribe('deactivate', function(SoundID)
+      proc.signal()
+   end)
+
+   local time = mSys.preciseTime()
+
+   assert(snd.acActivate() == ERR_Okay, 'Failed to playback low-tone sound sample.')
+
+   proc.sleep()
+
+   local time_taken = mSys.preciseTime() - time
+
+   assert(time_taken >= 480000, 'Sound sample played faster than the anticipated time scale: ' .. time_taken)
+   assert(time_taken <  550000, 'Sound sample played longer than the anticipated time scale: ' .. time_taken)
+
+   -- Second sample
+
+   local snd = obj.new('sound', { path=glFolder .. 'high-tone.wav' })
+   assert(snd, 'Failed to process high-tone wav file.')
+
+   snd.subscribe('deactivate', function(SoundID)
+      proc.signal()
+   end)
+
+   time = mSys.preciseTime()
+
+   assert(snd.acActivate() == ERR_Okay, 'Failed to playback high-tone sound sample.')
+
+   proc.sleep()
+
+   time_taken = mSys.preciseTime() - time
+
+   assert(time_taken >= 480000, 'Second sound sample played faster than the anticipated time scale: ' .. time_taken)
+   assert(time_taken <  550000, 'Second sound sample played longer than the anticipated time scale: ' .. time_taken)
+
+   print('Time taken: ' .. time_taken)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test left and right speaker panning
+
+function testPan()
+   local proc = processing.new()
+
+   local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav', pan=-1.0 })
+   assert(snd, 'Failed to process low-tone wav file.')
+
+   snd.subscribe('deactivate', function(SoundID)
+      proc.signal()
+   end)
+
+   print('Play left speaker.')
+
+   assert(snd.acActivate() == ERR_Okay, 'Failed to playback low-tone sound sample.')
+
+   proc.sleep()
+
+   -- Right speaker
+
+   print('Play right speaker.')
+   snd.pan = 1.0
+   err = snd.acActivate()
+   assert(err == ERR_Okay, 'Failed to playback low-tone sound sample.')
+
+   proc.sleep()
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test volume adjustment
+
+function testVolume()
+   local proc = processing.new()
+
+   local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav' })
+   assert(snd, 'Failed to process low-tone wav file.')
+
+   snd.subscribe('deactivate', function(SoundID)
+      proc.signal()
+   end)
+
+   print('Incrementing volume...')
+   for i=1,4 do
+      snd.volume = 1.0 * (i / 4)
+      snd.acActivate()
+      proc.sleep()
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+   return {
+      tests = {
+        'testSequentialPlayback',
+        'testPan',
+        'testVolume'
+      },
+      init = function(Folder)
+         glFolder = Folder
+         glAudio = obj.new('audio', { name='SystemAudio' })
+         if not glAudio then error('Failed to create audio object.') end
+         if glAudio.acActivate() != ERR_Okay then
+            error('Failed to initialise audio server.')
+         end
+      end,
+      cleanup = function()
+
+      end
+   }

@@ -6,7 +6,7 @@
     <name>Audio</name>
     <type>module</type>
     <version>1</version>
-    <copyright>Paul Manias © 2002-2022</copyright>
+    <copyright>Paul Manias © 2002-2023</copyright>
     <classes>
       <class>Audio</class>
       <class>Sound</class>
@@ -14,55 +14,234 @@
   </info>
 
   <function>
-    <name>SetChannels</name>
-    <comment>Defines the maximum number of channels available for sound mixing.</comment>
-    <prototype>LONG sndSetChannels(LONG Total)</prototype>
+    <name>MixContinue</name>
+    <comment>Continue playing a stopped channel.</comment>
+    <prototype>ERROR sndMixContinue(objAudio * Audio, LONG Handle)</prototype>
     <input>
-      <param type="LONG" name="Total">The total number of sound channels required by the client.</param>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
     </input>
     <description>
-<p>The maximum number of sound channels used for software-based sound mixing can be altered by calling this function.  The recommended number of channels is 8, which would indicate that a maximum of 8 sound samples could be played simultaneously at any given time.</p>
-    </description>
-    <result type="LONG">The previous setting for the maximum number of sound channels is returned.</result>
-  </function>
-
-  <function>
-    <name>SetTaskVolume</name>
-    <comment>Set the default volume for the task (not global)</comment>
-    <prototype>DOUBLE sndSetTaskVolume(DOUBLE Volume)</prototype>
-    <input>
-      <param type="DOUBLE" name="Volume">Desired volume, between 0 and 100.</param>
-    </input>
-    <description>
-<p>The default volume for the current task can be adjusted by calling this function.  The volume is expressed as a percentage between 0 and 100 - if it is set to a value outside of this range then no adjustment is made to the current volume.</p>
-    </description>
-    <result type="DOUBLE">The previous volume setting is returned by this function, regardless of whether the volume setting is successful or not.</result>
-  </function>
-
-  <function>
-    <name>StartDrivers</name>
-    <comment>Starts the audio drivers (platform dependent).</comment>
-    <prototype>ERROR sndStartDrivers()</prototype>
-    <description>
-<p>This function will start the audio drivers if they have not already been loaded and initialised.  This feature is platform specific and is typically used on boot-up only.</p>
+<p>This function will continue playback on a channel that has previously been stopped.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
   <function>
-    <name>WaitDrivers</name>
-    <comment>Wait for audio drivers to become initialised on boot-up.</comment>
-    <prototype>ERROR sndWaitDrivers(LONG TimeOut)</prototype>
+    <name>MixEndSequence</name>
+    <comment>Ends the buffering of mix commands.</comment>
+    <prototype>ERROR sndMixEndSequence(objAudio * Audio, LONG Handle)</prototype>
     <input>
-      <param type="LONG" name="TimeOut">The desired timeout value indicated in 1/1000ths of a second.</param>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
     </input>
     <description>
-<p>This is an internal function used by the audio server to wait for audio drivers to start.  It does not return until the drivers have been initialised or the indicated TimeOut has expired.</p>
+<p>Use this function to end a buffered command sequence that was started by <function module="Audio">MixStartSequence</function>.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>MixFrequency</name>
+    <comment>Sets a channel's playback rate.</comment>
+    <prototype>ERROR sndMixFrequency(objAudio * Audio, LONG Handle, LONG Frequency)</prototype>
+    <input>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
+      <param type="LONG" name="Frequency">The desired frequency.</param>
+    </input>
+    <description>
+<p>Use this function to set the playback rate of a mixer channel.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>MixMute</name>
+    <comment>Mutes the audio of a channel.</comment>
+    <prototype>ERROR sndMixMute(objAudio * Audio, LONG Handle, LONG Mute)</prototype>
+    <input>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
+      <param type="LONG" name="Mute">Set to any value to mute the channel.  A value of 0 will undo the mute setting.</param>
+    </input>
+    <description>
+<p>Use this function to mute the audio of a mixer channel.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>MixPan</name>
+    <comment>Sets a channel's panning value.</comment>
+    <prototype>ERROR sndMixPan(objAudio * Audio, LONG Handle, DOUBLE Pan)</prototype>
+    <input>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
+      <param type="DOUBLE" name="Pan">The desired pan value between -1.0 and 1.0.</param>
+    </input>
+    <description>
+<p>Use this function to set a mixer channel's panning value.  Accepted values are between -1.0 (left) and 1.0 (right).</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>MixPlay</name>
+    <comment>Commences channel playback at a set frequency..</comment>
+    <prototype>ERROR sndMixPlay(objAudio * Audio, LONG Handle, LONG Frequency)</prototype>
+    <input>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
+      <param type="LONG" name="Frequency">The new playing position, measured in bytes.</param>
+    </input>
+    <description>
+<p>This function will start playback of the sound sample associated with the target mixer channel.  If the channel is already in playback mode, it will be stopped to facilitate the new playback request.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>MixPosition</name>
+    <comment>Sets a channel's playing position relative to the current sample.</comment>
+    <prototype>ERROR sndMixPosition(objAudio * Audio, LONG Handle, LONG Position)</prototype>
+    <input>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
+      <param type="LONG" name="Position">The new playing position, measured in bytes.</param>
+    </input>
+    <description>
+<p>This function will change the playing position of a mixer channel for the current sound sample.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="OutOfRange">A specified number is outside of the valid range.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>MixRate</name>
+    <comment>Sets a new update rate for a channel.</comment>
+    <prototype>ERROR sndMixRate(objAudio * Audio, LONG Handle, LONG Rate)</prototype>
+    <input>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The channel set allocated from OpenChannels().</param>
+      <param type="LONG" name="Rate">The new update rate in milliseconds.</param>
+    </input>
+    <description>
+<p>This function will set a new update rate for all channels, measured in milliseconds.  The default update rate is 125, which is equivalent to 5000Hz.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>MixSample</name>
+    <comment>Associate a sound sample with a mixer channel.</comment>
+    <prototype>ERROR sndMixSample(objAudio * Audio, LONG Handle, LONG Sample)</prototype>
+    <input>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
+      <param type="LONG" name="Sample">A sample handle allocated from <class name="Audio" index="AddSample()">Audio:AddSample()</class> or <class name="Audio" index="AddStream()">Audio:AddStream()</class>.</param>
+    </input>
+    <description>
+<p>This function will associate a sound sample with a mixer channel.  Configuration should then follow (e.g. volume and pan values).</p>
+<p>The referenced Sample must have been added to the audio server via the <class name="Audio" index="AddSample()">Audio:AddSample()</class> or <class name="Audio" index="AddStream()">Audio:AddStream()</class> methods.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>MixStartSequence</name>
+    <comment>Initiates buffering of mix commands.</comment>
+    <prototype>ERROR sndMixStartSequence(objAudio * Audio, LONG Handle)</prototype>
+    <input>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
+    </input>
+    <description>
+<p>Use this function to initiate the buffering of mix commands, up until a call to <function module="Audio">MixEndSequence</function> is made.  The buffering of mix commands makes it possible to create batches of commands that are executed at timed intervals as determined by <function module="Audio">MixRate</function>.</p>
+<p>This feature can be used to implement complex sound mixes and digital music players.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>MixStop</name>
+    <comment>Stops all playback on a channel.</comment>
+    <prototype>ERROR sndMixStop(objAudio * Audio, LONG Handle)</prototype>
+    <input>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
+    </input>
+    <description>
+<p>This function will stop a channel that is currently playing.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>MixStopLoop</name>
+    <comment>Cancels any playback loop configured for a channel.</comment>
+    <prototype>ERROR sndMixStopLoop(objAudio * Audio, LONG Handle)</prototype>
+    <input>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
+    </input>
+    <description>
+<p>This function will cancel any loop that is associated with a mixer channel in playback mode.  This does not affect the loop configuration if playback is restarted for the active sample.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>MixVolume</name>
+    <comment>Changes the volume of a channel.</comment>
+    <prototype>ERROR sndMixVolume(objAudio * Audio, LONG Handle, DOUBLE Volume)</prototype>
+    <input>
+      <param type="objAudio *" name="Audio">The target Audio object.</param>
+      <param type="LONG" name="Handle">The target channel.</param>
+      <param type="DOUBLE" name="Volume">The new volume for the channel.</param>
+    </input>
+    <description>
+<p>This function will change the volume of a mixer channel.  Valid values are between 0 and 1.0.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -72,7 +251,6 @@
       <const name="FILTER_HIGH">Enable a high level of output filtering to minimise distortion.</const>
       <const name="FILTER_LOW">Enable a low level of output filtering to minimise distortion.</const>
       <const name="OVER_SAMPLING">Enables oversampling for higher quality audio at the cost of slower mixing.</const>
-      <const name="SERVICE_MODE">Service mode gives the audio object complete control of the task.</const>
       <const name="STEREO">Enable stereo output (set by default if the platform supports stereo).  If not set, output is in mono.</const>
       <const name="SYSTEM_WIDE">Mixer changes should be applied system-wide.</const>
       <const name="VOL_RAMPING">Enable volume ramping for softer playback when a sample is played multiple times (enabled by default).</const>
@@ -91,25 +269,6 @@
       <const name="PLAYING">Sample playing and not released.</const>
       <const name="RELEASED">Sample playing and note has been released.</const>
       <const name="STOPPED">Playing is stopped.</const>
-    </constants>
-
-    <constants lookup="CMD" comment="Audio channel commands">
-      <const name="CONTINUE">Continue a sound sample that has been stopped.</const>
-      <const name="END_SEQUENCE">Terminates the current command sequence.</const>
-      <const name="FADE_IN">Fades a channel in from zero to the current volume (as previously determined by the SetVolume command).</const>
-      <const name="FADE_OUT">Fade out a channel.</const>
-      <const name="MUTE">Mutes the channel so that no further audio will play until you unmute it.  The Data parameter needs to be set to either TRUE or FALSE to indicate the required mute status.</const>
-      <const name="PLAY">Plays the sample associated with the channel.  You are required to set the playback frequency in the Data parameter.  This command does nothing if the channel does not have a sample loaded against it.</const>
-      <const name="SET_FREQUENCY">Sets the current playback frequency of a channel.</const>
-      <const name="SET_LENGTH">Sets the byte length of the sample playing in the channel.</const>
-      <const name="SET_PAN">Sets a channel's panning position.  The Data parameter indicates the new pan and must be in the range of -100 to +100.  A setting of zero plays the sound at an equal level between both speakers.  If output is in mono, panning has no effect.</const>
-      <const name="SET_POSITION">Sets the playback position within a channel's currently associated sample (measured in bytes).  Useful for starting playback from a preset position.</const>
-      <const name="SET_RATE">Defines the interval between the processing of each command, measured in milliseconds.</const>
-      <const name="SET_SAMPLE">Sets a new sample against a channel.  You are required to supply the sample handle (as obtained from AddSample or AddStream) in the Data parameter.  The sample will not play until you use the Play command.</const>
-      <const name="SET_VOLUME">Sets a new channel volume.  The Data parameter indicates the new volume and must be in the range of 0 - 500% (100% is normal volume, 0% is silence).</const>
-      <const name="START_SEQUENCE">Required to start a new sequence of commands.</const>
-      <const name="STOP">Immediately stops a channel from playing any audio until the next Play command.</const>
-      <const name="STOP_LOOPING">Tells the channel to stop performing any more audio loops related to the currently playing sample.  This command does nothing if the current sample has no associated loop information.</const>
     </constants>
 
     <constants lookup="LOOP" comment="Loop modes for the AudioLoop structure.">
@@ -144,11 +303,9 @@
     <constants lookup="SDF" comment="Sound flags">
       <const name="LOOP">Enables sample looping. The LoopStart and LoopEnd fields determine where the looping area lies within the sample data.</const>
       <const name="NEW">Create the sample from scratch (e.g. for audio recording purposes).</const>
-      <const name="QUERY">Query the meta data of the sample source; do not load sample data.</const>
       <const name="RESTRICT_PLAY">Restricts playback so that the sound can never play on more than one channel at any given time.</const>
       <const name="STEREO">Indicates that the sound has multiple audio channels.</const>
       <const name="STREAM">Read-Only. Indicates that streaming is enabled.</const>
-      <const name="TERMINATE">Self-terminate when the sound sample has finished playback.</const>
     </constants>
 
     <constants lookup="SFM" comment="These audio bit formats are supported by AddSample and AddStream.">
@@ -184,83 +341,14 @@
 
   </types>
   <structs>
-    <struct name="AudioChannel" comment="Audio channel structure">
-      <field name="Sample" type="struct AudioSample">Sample structure</field>
-      <field name="SoundID" type="OBJECTID">ID of the sound object set on this channel</field>
-      <field name="SampleHandle" type="LONG">Internal handle reference</field>
-      <field name="Flags" type="LONG" lookup="CHF">Special flags</field>
-      <field name="Position" type="ULONG">Current playing/mixing position</field>
-      <field name="Frequency" type="ULONG">Playback frequency</field>
-      <field name="PositionLow" type="UWORD">Playing position, lower bits</field>
-      <field name="LVolume" type="WORD">Current left speaker volume (0 - 100)</field>
-      <field name="RVolume" type="WORD">Current right speaker volume (0 - 100)</field>
-      <field name="LVolumeTarget" type="WORD">Volume target when fading or ramping</field>
-      <field name="RVolumeTarget" type="WORD">Volume target when fading or ramping</field>
-      <field name="Volume" type="WORD">Playing volume (0-100)</field>
-      <field name="Priority" type="BYTE">Priority of the sound that has been assigned to this channel</field>
-      <field name="State" type="BYTE" lookup="CHS">Channel state</field>
-      <field name="LoopIndex" type="BYTE">The current active loop (either 0, 1 or 2)</field>
-      <field name="Pan" type="BYTE">Pan value (-100 to +100)</field>
-    </struct>
-
-    <struct name="AudioCommand" comment="Audio command structure.">
-      <field name="CommandID" type="LONG">Command ID</field>
-      <field name="Handle" type="LONG">Channel handle</field>
-      <field name="Data" type="LONG">Special data related to the command ID</field>
-    </struct>
-
     <struct name="AudioLoop" comment="Loop settings for the AddSample() method.">
-      <field name="LoopMode" type="WORD" lookup="LOOP">Loop mode (single, double)</field>
-      <field name="Loop1Type" type="BYTE" lookup="LTYPE">First loop type (unidirectional, bidirectional)</field>
-      <field name="Loop2Type" type="BYTE" lookup="LTYPE">Second loop type (unidirectional, bidirectional)</field>
+      <field name="LoopMode" type="LOOP" lookup="LOOP">Loop mode (single, double)</field>
+      <field name="Loop1Type" type="LTYPE" lookup="LTYPE">First loop type (unidirectional, bidirectional)</field>
+      <field name="Loop2Type" type="LTYPE" lookup="LTYPE">Second loop type (unidirectional, bidirectional)</field>
       <field name="Loop1Start" type="LONG">Start of the first loop</field>
       <field name="Loop1End" type="LONG">End of the first loop</field>
       <field name="Loop2Start" type="LONG">Start of the second loop</field>
       <field name="Loop2End" type="LONG">End of the second loop</field>
-    </struct>
-
-    <struct name="AudioSample" comment="Audio sample structure">
-      <field name="Data" type="UBYTE *">Private.  Pointer to the sample data.</field>
-      <field name="StreamID" type="OBJECTID">Reference to an object to use for streaming</field>
-      <field name="SampleLength" type="LONG">Length of the sample data, in bytes</field>
-      <field name="Loop1Start" type="LONG">Start of the first loop</field>
-      <field name="Loop1End" type="LONG">End of the first loop</field>
-      <field name="Loop2Start" type="LONG">Start of the second loop</field>
-      <field name="Loop2End" type="LONG">End of the second loop</field>
-      <field name="SeekStart" type="LONG"></field>
-      <field name="StreamLength" type="LONG"></field>
-      <field name="BufferLength" type="LONG"></field>
-      <field name="StreamPos" type="LONG">Current read position within the audio stream</field>
-      <field name="SampleType" type="UBYTE">Type of sample (bit format)</field>
-      <field name="LoopMode" type="BYTE">Loop mode (single, double)</field>
-      <field name="Loop1Type" type="BYTE">First loop type (unidirectional, bidirectional)</field>
-      <field name="Loop2Type" type="BYTE">Second loop type (unidirectional, bidirectional)</field>
-      <field name="Used" type="BYTE"></field>
-      <field name="Free" type="BYTE"></field>
-    </struct>
-
-    <struct name="ChannelSet" comment="Channel set management structure.">
-      <field name="Channel" type="struct AudioChannel *">Array of channel objects</field>
-      <field name="Commands" type="struct AudioCommand *">Array of buffered commands</field>
-      <field name="UpdateRate" type="LONG">Update rate, measured in milliseconds</field>
-      <field name="MixLeft" type="LONG">Amount of mix elements left before the next command-update occurs</field>
-      <field name="Key" type="LONG"></field>
-      <field name="TaskID" type="OBJECTID">Reference to the task that owns this set of channels</field>
-      <field name="ChannelMID" type="MEMORYID">Private</field>
-      <field name="CommandMID" type="MEMORYID">Private</field>
-      <field name="TaskVolume" type="DOUBLE"></field>
-      <field name="Total" type="WORD">Total number of base channels</field>
-      <field name="Actual" type="WORD">Total number of channels, including oversampling channels</field>
-      <field name="TotalCommands" type="WORD">Size of the command buffer</field>
-      <field name="Position" type="WORD">Index to write the next command to</field>
-      <field name="OpenCount" type="WORD"></field>
-    </struct>
-
-    <struct name="VolumeCtl">
-      <field name="Size" type="WORD">The size of the Channels array.</field>
-      <field name="Name" type="char" size="32">Name of the mixer</field>
-      <field name="Flags" type="LONG" lookup="VCF">Special flags identifying the mixer's attributes.</field>
-      <field name="Channels" type="FLOAT" size="1">A variable length array of channel volumes.</field>
     </struct>
 
   </structs>

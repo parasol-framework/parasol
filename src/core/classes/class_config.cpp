@@ -1,10 +1,9 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -CLASS-
 Config: Manages the reading and writing of configuration files.
@@ -45,7 +44,7 @@ is recommended as the default naming format.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include "../defs.h"
 #include <parasol/main.h>
@@ -74,7 +73,7 @@ static const FieldDef clFlags[] = {
 #define CF_FAILED   0
 #define CF_KEY_FAIL -1
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static bool check_for_key(CSTRING);
 static ERROR parse_config(extConfig *, CSTRING);
@@ -84,7 +83,7 @@ static void apply_group_filter(extConfig *, CSTRING);
 static class FilterConfig parse_filter(std::string, bool);
 static void merge_groups(ConfigGroups &Dest, ConfigGroups &Source);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 template <class T>
 T next_line(T Data)
@@ -94,7 +93,7 @@ T next_line(T Data)
    return Data;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Searches for the next group in a text buffer, returns its name and the start of the first key value.
 
 template <class T>
@@ -117,7 +116,7 @@ T next_group(T Data, std::string &GroupName)
    return Data;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static std::pair<std::string, std::map<std::string, std::string>> * find_group(extConfig *Self, std::string GroupName)
 {
@@ -127,7 +126,7 @@ static std::pair<std::string, std::map<std::string, std::string>> * find_group(e
    return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ULONG calc_crc(extConfig *Self)
 {
@@ -142,7 +141,7 @@ static ULONG calc_crc(extConfig *Self)
    return crc;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Open a file with read only and exclusive flags, then read all of the data into a buffer.  Terminate the buffer,
 // then free the file.
 //
@@ -180,11 +179,11 @@ static ERROR parse_file(extConfig *Self, CSTRING Path)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Clear: Clears all configuration data.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CONFIG_Clear(extConfig *Self, APTR Void)
 {
@@ -194,14 +193,14 @@ static ERROR CONFIG_Clear(extConfig *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 DataFeed: Data can be added to a Config object through this action.
 
 This action will accept configuration data in TEXT format.  Any existing data that matches to the new group keys will
 be overwritten with new values.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CONFIG_DataFeed(extConfig *Self, struct acDataFeed *Args)
 {
@@ -221,7 +220,7 @@ static ERROR CONFIG_DataFeed(extConfig *Self, struct acDataFeed *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 DeleteKey: Deletes single key entries.
@@ -238,7 +237,7 @@ NullArgs
 Search
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CONFIG_DeleteKey(extConfig *Self, struct cfgDeleteKey *Args)
 {
@@ -258,7 +257,7 @@ static ERROR CONFIG_DeleteKey(extConfig *Self, struct cfgDeleteKey *Args)
    return ERR_Search;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 DeleteGroup: Deletes entire groups of configuration data.
@@ -273,7 +272,7 @@ Okay: The group was deleted or does not exist.
 NullArgs
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CONFIG_DeleteGroup(extConfig *Self, struct cfgDeleteGroup *Args)
 {
@@ -289,18 +288,18 @@ static ERROR CONFIG_DeleteGroup(extConfig *Self, struct cfgDeleteGroup *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Flush: Diverts to #SaveSettings().
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CONFIG_Flush(extConfig *Self, APTR Void)
 {
    return CONFIG_SaveSettings(Self, NULL);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CONFIG_Free(extConfig *Self, APTR Void)
 {
@@ -327,7 +326,7 @@ static ERROR CONFIG_Free(extConfig *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 GetGroupFromIndex: Converts an index number into its matching group string.
@@ -344,7 +343,7 @@ Args
 OutOfRange: The index number is out of range of the available groups.
 NoData: There is no data loaded into the config object.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CONFIG_GetGroupFromIndex(extConfig *Self, struct cfgGetGroupFromIndex *Args)
 {
@@ -359,7 +358,7 @@ static ERROR CONFIG_GetGroupFromIndex(extConfig *Self, struct cfgGetGroupFromInd
    else return log.warning(ERR_OutOfRange);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CONFIG_Init(extConfig *Self, APTR Void)
 {
@@ -380,7 +379,7 @@ static ERROR CONFIG_Init(extConfig *Self, APTR Void)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Merge: Merges two config objects together.
@@ -397,7 +396,7 @@ NullArgs
 AccessObject: The source configuration object could not be accessed.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CONFIG_Merge(extConfig *Self, struct cfgMerge *Args)
 {
@@ -409,7 +408,7 @@ static ERROR CONFIG_Merge(extConfig *Self, struct cfgMerge *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 MergeFile: Merges a foreign configuration file into existing configuration data.
@@ -427,7 +426,7 @@ NullArgs
 File: Failed to load the source file.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CONFIG_MergeFile(extConfig *Self, struct cfgMergeFile *Args)
 {
@@ -454,7 +453,7 @@ static ERROR CONFIG_NewObject(extConfig *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 ReadValue: Reads a key-value string.
@@ -479,7 +478,7 @@ NullArgs
 Search: The requested configuration entry does not exist.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CONFIG_ReadValue(extConfig *Self, struct cfgReadValue *Args)
 {
@@ -505,7 +504,7 @@ static ERROR CONFIG_ReadValue(extConfig *Self, struct cfgReadValue *Args)
    return ERR_Search;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 ReadIValue: Reads a key-value string (case insensitive lookup).
@@ -530,7 +529,7 @@ NullArgs
 Search: The requested configuration entry does not exist.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CONFIG_ReadIValue(extConfig *Self, struct cfgReadValue *Args)
 {
@@ -560,14 +559,14 @@ static ERROR CONFIG_ReadIValue(extConfig *Self, struct cfgReadValue *Args)
    return ERR_Search;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 SaveSettings: Saves data to the file that the configuration data was loaded from.
 
 This action will save the configuration data back to its original file source (assuming the #Path remains unchanged).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CONFIG_SaveSettings(extConfig *Self, APTR Void)
 {
@@ -594,11 +593,11 @@ static ERROR CONFIG_SaveSettings(extConfig *Self, APTR Void)
    else return ERR_MissingPath;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 SaveToObject: Saves configuration data to an object, using standard config text format.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CONFIG_SaveToObject(extConfig *Self, struct acSaveToObject *Args)
 {
@@ -615,7 +614,7 @@ static ERROR CONFIG_SaveToObject(extConfig *Self, struct acSaveToObject *Args)
 
          for (auto& [k, v] : keys) {
             std::string kv(k + " = " + v + "\n");
-            acWrite(dest, kv.c_str(), k.size(), NULL);
+            acWrite(dest, kv.c_str(), kv.size(), NULL);
          }
       }
 
@@ -625,7 +624,7 @@ static ERROR CONFIG_SaveToObject(extConfig *Self, struct acSaveToObject *Args)
    else return ERR_AccessObject;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Set: Sets keys in existing config groups (aborts if the group does not exist).
@@ -647,7 +646,7 @@ AllocMemory
 GetField: The Entries field could not be retrieved.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CONFIG_Set(extConfig *Self, struct cfgSet *Args)
 {
@@ -660,11 +659,11 @@ static ERROR CONFIG_Set(extConfig *Self, struct cfgSet *Args)
    else return ERR_Search;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Sort: Sorts config groups into alphabetical order.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CONFIG_Sort(extConfig *Self, APTR Void)
 {
@@ -681,7 +680,7 @@ static ERROR CONFIG_Sort(extConfig *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SortByKey: Sorts config data using a sequence of sort instructions.
@@ -697,7 +696,7 @@ Okay
 NoData
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CONFIG_SortByKey(extConfig *Self, struct cfgSortByKey *Args)
 {
@@ -725,7 +724,7 @@ static ERROR CONFIG_SortByKey(extConfig *Self, struct cfgSortByKey *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 WriteValue: Adds new entries to config objects.
@@ -749,7 +748,7 @@ AllocMemory: The additional memory required for the new entry could not be alloc
 GetField: The Entries field could not be retrieved.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CONFIG_WriteValue(extConfig *Self, struct cfgWriteValue *Args)
 {
@@ -776,7 +775,7 @@ static ERROR CONFIG_WriteValue(extConfig *Self, struct cfgWriteValue *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Data: Reference to the raw data values.
@@ -784,7 +783,7 @@ Data: Reference to the raw data values.
 This field points to C++ object that contains all key-values for the config object.  It is intended to be used only by system code
 that is included with the standard framework.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Data(extConfig *Self, ConfigGroups **Value)
 {
@@ -792,7 +791,7 @@ static ERROR GET_Data(extConfig *Self, ConfigGroups **Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Flags: Optional flags may be set here.
@@ -825,7 +824,7 @@ use the exclamation character as shown in these examples:
 
 To create a filter based on group names, refer to the #GroupFilter field.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_KeyFilter(extConfig *Self, CSTRING *Value)
 {
@@ -852,7 +851,7 @@ static ERROR SET_KeyFilter(extConfig *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 GroupFilter: Set this field to enable group filtering.
@@ -879,7 +878,7 @@ exclamation character, as in the following examples:
 
 To create a filter based on key names, refer to the #KeyFilter field.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_GroupFilter(extConfig *Self, CSTRING *Value)
 {
@@ -906,11 +905,11 @@ static ERROR SET_GroupFilter(extConfig *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Path: Set this field to the location of the source configuration file.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Path(extConfig *Self, CSTRING Value)
 {
@@ -923,11 +922,11 @@ static ERROR SET_Path(extConfig *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 TotalGroups: Returns the total number of groups in a config object.
--END-
-*****************************************************************************/
+
+*********************************************************************************************************************/
 
 static ERROR GET_TotalGroups(extConfig *Self, LONG *Value)
 {
@@ -935,13 +934,13 @@ static ERROR GET_TotalGroups(extConfig *Self, LONG *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 TotalKeys: The total number of key values loaded into the config object.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_TotalKeys(extConfig *Self, LONG *Value)
 {
@@ -953,7 +952,7 @@ static ERROR GET_TotalKeys(extConfig *Self, LONG *Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Checks the next line in a buffer to see if it is a valid key.
 
 static bool check_for_key(CSTRING Data)
@@ -970,7 +969,7 @@ static bool check_for_key(CSTRING Data)
    return false;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void merge_groups(ConfigGroups &Dest, ConfigGroups &Source)
 {
@@ -996,7 +995,7 @@ static void merge_groups(ConfigGroups &Dest, ConfigGroups &Source)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static FilterConfig parse_filter(std::string Filter, bool KeyValue = false)
 {
@@ -1037,7 +1036,7 @@ static FilterConfig parse_filter(std::string Filter, bool KeyValue = false)
    return f;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR parse_config(extConfig *Self, CSTRING Buffer)
 {
@@ -1103,7 +1102,7 @@ static ERROR parse_config(extConfig *Self, CSTRING Buffer)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void apply_key_filter(extConfig *Self, CSTRING Filter)
 {
@@ -1133,7 +1132,7 @@ static void apply_key_filter(extConfig *Self, CSTRING Filter)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void apply_group_filter(extConfig *Self, CSTRING Filter)
 {
@@ -1158,7 +1157,7 @@ static void apply_group_filter(extConfig *Self, CSTRING Filter)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Returns the key-values for a group, given a group name.  Supports wild-cards.
 
 static ConfigKeys * find_group_wild(extConfig *Self, CSTRING Group)
@@ -1172,7 +1171,7 @@ static ConfigKeys * find_group_wild(extConfig *Self, CSTRING Group)
    return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "class_config_def.c"
 
@@ -1188,7 +1187,7 @@ static const FieldArray clFields[] = {
    END_FIELD
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 extern "C" ERROR add_config_class(void)
 {
