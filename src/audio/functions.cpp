@@ -18,7 +18,7 @@ static BYTELEN fill_stream_buffer(LONG Handle, AudioSample &Sample, LONG Offset)
    if (Sample.Callback.Type IS CALL_STDC) {
       parasol::SwitchContext context(Sample.Callback.StdC.Context);
       auto routine = (BYTELEN (*)(LONG, LONG, UBYTE *, LONG))Sample.Callback.StdC.Routine;
-      return routine(Handle, Offset, Sample.Data, Sample.BufferLength);
+      return routine(Handle, Offset, Sample.Data, Sample.SampleLength<<sample_shift(Sample.SampleType));
    }
    else if (Sample.Callback.Type IS CALL_SCRIPT) {
       OBJECTPTR script;
@@ -27,7 +27,7 @@ static BYTELEN fill_stream_buffer(LONG Handle, AudioSample &Sample, LONG Offset)
             { "Handle", FD_LONG,    { .Long = Handle } },
             { "Offset", FD_LONG,    { .Long = Offset } },
             { "Buffer", FD_BUFFER,  { .Address = Sample.Data } },
-            { "Length", FD_BUFSIZE|FD_LONG, { .Long = Sample.BufferLength } }
+            { "Length", FD_BUFSIZE|FD_LONG, { .Long = Sample.SampleLength<<sample_shift(Sample.SampleType) } }
          };
 
          LONG result = 0;
@@ -522,9 +522,9 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
       if (sample.Stream) {
          // Read the next set of stream data into our sample buffer
          BYTELEN bytes_read = fill_stream_buffer(Channel.SampleHandle, sample, -1);
-
-         if (bytes_read < sample.BufferLength) {
-            ClearMemory(sample.Data + bytes_read, sample.BufferLength - bytes_read);
+         auto buffer_len = sample.SampleLength<<sample_shift(sample.SampleType);
+         if (bytes_read < buffer_len) {
+            ClearMemory(sample.Data + bytes_read, buffer_len - bytes_read);
          }
 
          if ((bytes_read <= 0) or (sample.PlayPos >= sample.StreamLength)) {

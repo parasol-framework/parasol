@@ -34,6 +34,18 @@ enum class CMD : LONG {
    CONTINUE
 };
 
+// Sample shift - value used for converting total data size down to samples.
+
+inline const LONG sample_shift(const LONG Type)
+{
+   switch (Type) {
+      case SFM_U8_BIT_STEREO:
+      case SFM_S16_BIT_MONO: return 1;
+      case SFM_S16_BIT_STEREO: return 2;
+   }
+   return 0;
+}
+
 typedef struct WAVEFormat {
    WORD Format;               // Type of WAVE data in the chunk: RAW or ADPCM
    WORD Channels;             // Number of channels, 1=mono, 2=stereo
@@ -60,10 +72,9 @@ struct AudioSample {
    SAMPLE   Loop1End;     // End of the first loop
    SAMPLE   Loop2Start;   // Start of the second loop
    SAMPLE   Loop2End;     // End of the second loop
-   SAMPLE   SampleLength; // Length of the sample data, measured in samples
+   SAMPLE   SampleLength; // Length of the sample/buffer in Data, measured in samples
    BYTELEN  StreamLength; // Total byte-length of the sample data that is being streamed.
    BYTELEN  PlayPos;      // Current read position relative to StreamLength/SampleLength, measured in bytes
-   BYTELEN  BufferLength; // Total byte-length of the stream buffer.
    LOOP     LoopMode;     // Loop mode (single, double)
    UBYTE    SampleType;   // Type of sample (bit format)
    LTYPE    Loop1Type;    // First loop type (unidirectional, bidirectional)
@@ -90,7 +101,6 @@ struct AudioSample {
       Loop2Start   = SAMPLE(0);
       Loop2End     = SAMPLE(0);
       StreamLength = BYTELEN(0);
-      BufferLength = BYTELEN(0);
       SampleType   = 0;
       LoopMode     = LOOP::NIL;
       Loop1Type    = LTYPE::NIL;

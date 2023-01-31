@@ -328,7 +328,6 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
    sample.SampleType   = Args->SampleFormat;
    sample.SampleLength = SAMPLE(buffer_len>>shift);
    sample.StreamLength = BYTELEN((Args->SampleLength > 0) ? Args->SampleLength : 0x7fffffff); // 'Infinite' stream length
-   sample.BufferLength = BYTELEN(buffer_len);
    sample.Callback     = Args->Callback;
    sample.Stream       = true;
    sample.PlayPos      = BYTELEN(Args->PlayOffset);

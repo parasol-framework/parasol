@@ -84,22 +84,6 @@ static const WORD glAlsaConvert[6] = {
 #endif
 
 //********************************************************************************************************************
-// Sample shift - value used for converting total data size down to samples.
-
-inline const LONG sample_shift(const LONG sampleType)
-{
-   switch (sampleType) {
-      case SFM_U8_BIT_STEREO:
-      case SFM_S16_BIT_MONO:
-         return 1;
-
-      case SFM_S16_BIT_STEREO:
-         return 2;
-   }
-   return 0;
-}
-
-//********************************************************************************************************************
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
