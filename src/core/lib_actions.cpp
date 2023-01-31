@@ -295,7 +295,10 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
    obj->ActionDepth++;
 
    auto cl = obj->ExtClass;
+
+#ifdef DEBUG
    auto log_depth = tlDepth;
+#endif
 
    ERROR error;
    if (ActionID > 0) {
