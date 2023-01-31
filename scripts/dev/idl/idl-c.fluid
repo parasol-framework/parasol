@@ -1,4 +1,4 @@
--- This program produces C/C++ headers and documentation from Parasol FDL files.
+-- This program produces C++ headers, auto-generated values and documentation from Parasol FDL files.
 --
 -- Usage: fluid sdk:scripts/dev/idl/idl-c.fluid src=source.fdl
 -- Example: fluid sdk:scripts/dev/idl/idl-c.fluid src=sdk:core/modules/core/core.fdl
@@ -578,6 +578,12 @@ function enum(Prefix, Options, ...)
       table.insert(out, '')
    end
 
+   if (Options.type) then -- Strong typing enabled, convert via cType()
+      Options.type = cType({ type=Options.type }, Prefix)
+      table.insert(out, string.format('enum class %s : ' .. Options.type.type .. ' {', Prefix))
+      table.insert(out, '   NIL = 0,')
+   end
+
    local list = { }
    local inc = nz(Options.start, 0)
    for k,va in ipairs({...}) do
@@ -586,7 +592,9 @@ function enum(Prefix, Options, ...)
          if (key == nil) then key = va end
          local synonym = false
          for _, name in ipairs(key:split('|')) do
-            if (Options.bits == 64) then
+            if (Options.type) then
+               table.insert(out, '   ' .. name .. ' = ' .. inc .. ',')
+            elseif (Options.bits == 64) then
                table.insert(out, '#define ' .. Prefix .. '_' .. name .. ' ' .. inc .. 'LL')
             else
                table.insert(out, '#define ' .. Prefix .. '_' .. name .. ' ' .. inc)
@@ -599,6 +607,11 @@ function enum(Prefix, Options, ...)
       end
       inc = inc + 1
    end
+
+   if (Options.type) then
+      table.insert(out, '};')
+   end
+
    table.insert(out, '')
 
    if (glRestrict == nil) then
@@ -608,7 +621,8 @@ function enum(Prefix, Options, ...)
    glCustomTypes[Prefix] = {
       prefix=Prefix, grouping='constants', list=list, comment=Options.comment,
       restrict=nz(glRestrict, Options.restrict),
-      bits=Options.bits
+      bits=Options.bits,
+      type=Options.type -- Promotes strong-typing to other C++ definitions
    }
 end
 
@@ -1659,6 +1673,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Conversion table for FDL types to their C/C++ and Field Definition equivalents.
+-- Use cType() to perform conversion and don't access glTypes directly.
 
 glTypes = {
    arraysize  = { fd='FD_LONG|FD_ARRAYSIZE',  c_type='LONG' },
@@ -1846,7 +1861,14 @@ function cType(Field, Origin)
          Field.ref      = glCustomTypes[prefix]
          Field.lookup   = prefix
 
-         glActiveRefs['TYPE:' .. prefix] = 1
+         if (glCustomTypes[prefix]) then
+            glActiveRefs['TYPE:' .. prefix] = 1
+            if (glCustomTypes[prefix].type) then -- Strongly typed
+               Field.type = prefix
+            end
+         else
+            print('Unknown custom type "' .. prefix .. '"')
+         end
          goto finalise
       end
    end
@@ -1861,6 +1883,9 @@ function cType(Field, Origin)
 
          if (glCustomTypes[prefix]) then
             glActiveRefs['TYPE:' .. prefix] = 1
+            if (glCustomTypes[prefix].type) then -- Strongly typed
+               Field.type = prefix
+            end
          else
             print('Unknown custom type "' .. prefix .. '"')
          end
@@ -1868,7 +1893,7 @@ function cType(Field, Origin)
       end
    end
 
-   do -- Integer flags type reference, used for strongly typed enum flags
+   do -- Integer flags type reference, can be used for strongly typed enum flags
       local prefix = Field.type:match("^flags%((%a+)%)")
       if (prefix != nil) then
          Field.type     = prefix
@@ -1895,6 +1920,9 @@ function cType(Field, Origin)
 
          if (glCustomTypes[prefix] != nil) then
             glActiveRefs['TYPE:' .. prefix] = 1
+            if (glCustomTypes[prefix].type) then -- Strongly typed
+               Field.type = prefix
+            end
          else
             print('Unknown custom type "' .. prefix .. '"')
          end
@@ -2707,8 +2735,15 @@ end
 
    if (glSource == nil) then
       print("This command is used to compile self-documenting source files.  Provide a reference to a")
-      print("source '.fdl' file in the SRC parameter.  The resulting data will be saved to the file")
-      print("referenced in the OUTPUT parameter.")
+      print("source '.fdl' file in the src parameter.  The resulting data will be saved to the file")
+      print("referenced in the output parameter.")
+      print("")
+      print("  --src          Source FDL file.")
+      print("  --output       Target file for generated C++ headers.")
+      print("  --feedback     Set to 'verbose' to print debug messages.")
+      print("  --output-defs  Target file for generated C++ value definitions.")
+      print("  --output-proto Target file for generated C++ function prototypes.")
+      print("  --prototypes   Set to 'static' to output static prototype functions.")
       return
    end
 
