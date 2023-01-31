@@ -265,10 +265,10 @@
 
     <constants lookup="CHS" comment="Channel status types for the AudioChannel structure.">
       <const name="FADE_OUT">Playback is fading out.</const>
-      <const name="FINISHED">Playing has ended (not force stopped).</const>
+      <const name="FINISHED">Playback concluded by reaching the sample end.</const>
       <const name="PLAYING">Sample playing and not released.</const>
       <const name="RELEASED">Sample playing and note has been released.</const>
-      <const name="STOPPED">Playing is stopped.</const>
+      <const name="STOPPED">Playing was stopped by the client.</const>
     </constants>
 
     <constants lookup="LOOP" comment="Loop modes for the AudioLoop structure.">

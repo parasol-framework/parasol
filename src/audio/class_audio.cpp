@@ -40,8 +40,7 @@ to lock the device hardware, which on some platforms may lead to failure if anot
 device.  The resources and any device locks obtained by this action can be released with a call to
 #Deactivate().
 
-An inactive audio object can operate in a limited fashion but will not otherwise interact directly with the audio
-hardware.
+An inactive audio object can operate in a limited fashion but is without access to the audio hardware.
 
 *********************************************************************************************************************/
 
@@ -113,6 +112,9 @@ static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
          }
       #endif
 
+      // Note: The audio feed is managed by audio_timer() and is not started until an audio playback command
+      // is executed by the client.
+
       Self->Initialising = false;
       return ERR_Okay;
    }
@@ -159,6 +161,7 @@ If you attempt to grab the audio object and call this method, it returns `ERR_Il
 for calling this method is through the WaitMsg() function.
 
 -INPUT-
+func OnStop: This optional callback function will be called when the stream stops playing.
 int(SFM) SampleFormat: Indicates the format of the sample data that you are adding.
 buf(ptr) Data: Points to the address of the sample data.
 bufsize DataSize: Size of the sample data, in bytes.
@@ -270,6 +273,7 @@ currently supported for streams.  For that reason, set the type variables to eit
 
 -INPUT-
 func Callback: This callback function must be able to return raw audio data for streaming.
+func OnStop: This optional callback function will be called when the stream stops playing.
 int(SFM) SampleFormat: Indicates the format of the sample data that you are adding.
 int SampleLength: Total byte-length of the sample data that is being streamed.  May be set to zero if the length is infinite or unknown.
 int PlayOffset: Offset the playing position by this byte index.
@@ -329,6 +333,7 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
    sample.SampleLength = SAMPLE(buffer_len>>shift);
    sample.StreamLength = BYTELEN((Args->SampleLength > 0) ? Args->SampleLength : 0x7fffffff); // 'Infinite' stream length
    sample.Callback     = Args->Callback;
+   sample.OnStop       = Args->OnStop;
    sample.Stream       = true;
    sample.PlayPos      = BYTELEN(Args->PlayOffset);
 
@@ -979,7 +984,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 
 #else
 
-   WORD index;
+   LONG index;
 
    if (!Args) return log.warning(ERR_NullArgs);
    if (((Args->Volume < 0) or (Args->Volume > 1.0)) and (Args->Volume != -1)) {

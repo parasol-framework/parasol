@@ -17,15 +17,17 @@ buffer size, it will be streamed from the source location.  Streaming behaviour 
 field.
 
 The following example illustrates playback of a sound sample that is one octave higher than its normal frequency.
-The subscription to the Deactivate action will result in the program waking once the sample has finished
+The subscription to the OnStop callback will result in the program waking once the sample has finished
 playback.
 
 <pre>
-local snd = obj.new('sound', { path='audio:samples/doorbell.wav', note='C6' })
-
-snd.subscribe('deactivate', function(SoundID)
-   proc.signal()
-end)
+local snd = obj.new('sound', {
+   path = 'audio:samples/doorbell.wav',
+   note = 'C6',
+   onStop = function(Sound)
+      proc.signal()
+   end
+})
 
 snd.acActivate()
 
@@ -72,6 +74,26 @@ static OBJECTPTR clSound = NULL;
 
 static ERROR find_chunk(extSound *, objFile *, CSTRING);
 static ERROR playback_timer(extSound *, LARGE, LARGE);
+//********************************************************************************************************************
+
+static void playback_stopped_event(extSound *Self)
+{
+   if (Self->OnStop.Type IS CALL_STDC) {
+      parasol::SwitchContext context(Self->OnStop.StdC.Context);
+      auto routine = (void (*)(extSound *))Self->OnStop.StdC.Routine;
+      routine(Self);
+   }
+   else if (Self->OnStop.Type IS CALL_SCRIPT) {
+      OBJECTPTR script;
+      if ((script = Self->OnStop.Script.Script)) {
+         const ScriptArg args[] = {
+            { "Sound",  FD_OBJECTPTR, { .Address = Self } }
+         };
+         ERROR error;
+         scCallback(script, Self->OnStop.Script.ProcedureID, args, ARRAYSIZE(args), &error);
+      }
+   }
+}
 
 //********************************************************************************************************************
 
@@ -273,6 +295,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          }
 
          stream.PlayOffset   = Self->Position;
+         stream.OnStop       = make_function_stdc(&onstop_stream);
          stream.Callback     = make_function_stdc(&read_stream);
          stream.SampleFormat = sampleformat;
          stream.SampleLength = Self->Length;
@@ -311,6 +334,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
                add.LoopSize = 0;
             }
 
+            add.OnStop       = make_function_stdc(&onstop_sample);
             add.SampleFormat = sampleformat;
             add.Data         = buffer;
             add.DataSize     = Self->Length;
@@ -1629,14 +1653,16 @@ static const FieldArray clFields[] = {
    { "Handle",         FDF_LONG|FDF_SYSTEM|FDF_R, 0, NULL, NULL },
    { "ChannelIndex",   FDF_LONG|FDF_R,       0, NULL, NULL },
    // Virtual fields
-   { "Active",   FDF_LONG|FDF_R,     0, (APTR)SOUND_GET_Active, NULL },
+   { "Active",   FDF_LONG|FDF_R,           0, (APTR)SOUND_GET_Active, NULL },
    { "Header",   FDF_BYTE|FDF_ARRAY|FDF_R, 0, (APTR)SOUND_GET_Header, NULL },
-   { "Path",     FDF_STRING|FDF_RI,  0, (APTR)SOUND_GET_Path, (APTR)SOUND_SET_Path },
-   { "Note",     FDF_STRING|FDF_RW,  0, (APTR)SOUND_GET_Note, (APTR)SOUND_SET_Note },
+   { "OnStop",   FDF_FUNCTIONPTR|FDF_RW,   0, (APTR)SOUND_GET_OnStop, (APTR)SOUND_SET_OnStop },
+   { "Path",     FDF_STRING|FDF_RI,        0, (APTR)SOUND_GET_Path, (APTR)SOUND_SET_Path },
+   { "Note",     FDF_STRING|FDF_RW,        0, (APTR)SOUND_GET_Note, (APTR)SOUND_SET_Note },
    END_FIELD
 };
 
 static const ActionArray clActions[] = {
+   { AC_ActionNotify,  (APTR)SOUND_ActionNotify },
    { AC_Activate,      (APTR)SOUND_Activate },
    { AC_Deactivate,    (APTR)SOUND_Deactivate },
    { AC_Disable,       (APTR)SOUND_Disable },

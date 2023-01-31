@@ -71,8 +71,8 @@ module({ name="Audio", copyright="Paul Manias © 2002-2023", version=1.0 }, func
     "C", "CS", "D", "DS", "E", "F", "FS", "G", "GS", "A", "AS", "B", "OCTAVE")
 
   enum("CHS", { type='char', start=0, comment="Channel status types for the AudioChannel structure." },
-   "STOPPED: Playing is stopped.",
-   "FINISHED: Playing has ended (not force stopped).",
+   "STOPPED: Playing was stopped by the client.",
+   "FINISHED: Playback concluded by reaching the sample end.",
    "PLAYING: Sample playing and not released.",
    "RELEASED: Sample playing and note has been released.",
    "FADE_OUT: Playback is fading out.")

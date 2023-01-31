@@ -67,6 +67,7 @@ struct PlatformData { void *Void; };
 
 struct AudioSample {
    FUNCTION Callback;     // For feeding audio streams.
+   FUNCTION OnStop;       // Called when playback stops.
    UBYTE *  Data;         // Pointer to the sample data.
    SAMPLE   Loop1Start;   // Start of the first loop
    SAMPLE   Loop1End;     // End of the first loop
@@ -137,6 +138,10 @@ struct AudioChannel {
 
    bool active() {
       return Frequency ? true : false;
+   }
+
+   inline bool isStopped() {
+      return ((State IS CHS::STOPPED) or (State IS CHS::FINISHED));
    }
 };
 
@@ -226,6 +231,7 @@ class extAudio : public objAudio {
 
 class extSound : public objSound {
    public:
+   FUNCTION OnStop;
    UBYTE  Header[128];
    UBYTE  PlatformData[128];  // Data area for holding platform/hardware specific information
    std::unordered_map<std::string, std::string> Tags;

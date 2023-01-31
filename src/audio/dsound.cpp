@@ -26,7 +26,7 @@ struct PlatformData {
    DWORD  Cycles;        // For streaming only, indicates the number of times the playback buffer has cycled.
    char   Fill;
    char   Stream;
-   char   Loop;
+   bool   Loop;
    char   Stop;
    struct BaseClass *Object;
 };
@@ -198,7 +198,7 @@ void sndStop(PlatformData *Sound)
 //********************************************************************************************************************
 // Used by the Sound class to play WAV or raw audio samples that are independent of our custom mixer.
 
-int sndPlay(PlatformData *Sound, int Loop, int Offset)
+int sndPlay(PlatformData *Sound, bool Loop, int Offset)
 {
    if ((!Sound) or (!Sound->SoundBuffer)) return -1;
 
@@ -361,6 +361,7 @@ LONG sndGetPosition(PlatformData *Sound)
 }
 
 //********************************************************************************************************************
+// Intended for calls from Sound.Seek() exclusively.
 
 void sndSetPosition(PlatformData *Sound, int Offset)
 {
