@@ -22,7 +22,6 @@ struct PlatformData {
    DWORD  Position;      // Total number of bytes that have so far been loaded from the audio data source
    DWORD  SampleLength;  // Total length of the original sample
    DWORD  BufferPos;
-   DWORD  SampleEnd;
    char   Fill;
    char   Stream;
    bool   Loop;
@@ -202,8 +201,7 @@ int sndPlay(PlatformData *Sound, bool Loop, int Offset)
    if (Offset < 0) Offset = 0;
    else if (Offset >= (int)Sound->SampleLength) return -1;
 
-   Sound->Loop      = Loop;
-   Sound->SampleEnd = 0;
+   Sound->Loop = Loop;
 
    if (Sound->Stream) {
       // Streamed samples require that we reload sound data from scratch.  This call initiates the streaming playback,
@@ -265,18 +263,22 @@ int sndStreamAudio(PlatformData *Sound)
          Sound->Fill = FILL_SECOND;
          lock_start  = 0;
          lock_length = Sound->BufferLength>>1;
+         if (Sound->Stop > 1) {
+            IDirectSoundBuffer_Stop(Sound->SoundBuffer);
+            return 1;
+         }
       }
       else if ((Sound->Fill IS FILL_SECOND) and (Sound->BufferPos < Sound->BufferLength>>1)) {
          Sound->Fill = FILL_FIRST;
          lock_start  = Sound->BufferLength>>1;
          lock_length = Sound->BufferLength - (Sound->BufferLength>>1);
+         if (Sound->Stop > 1) {
+            IDirectSoundBuffer_Stop(Sound->SoundBuffer);
+            return 1;
+         }
       }
 
       if (lock_start != -1) {
-         // Set the SampleEnd to zero if the sample does not terminate in this current buffer segment.
-
-         if ((Sound->Stop > 1) and (Sound->SampleEnd > 0)) Sound->SampleEnd = 0;
-
          // Load more data if we have entered the next audio buffer section
 
          int length, length2, bytes_out;
@@ -299,10 +301,6 @@ int sndStreamAudio(PlatformData *Sound)
                   Sound->Position = bytes_out;
                }
                else {
-                  if (!Sound->Stop) { // Set the SampleEnd to indicate where the sample will end within the buffer.
-                     Sound->SampleEnd = lock_start + bytes_out;
-                  }
-
                   Sound->Stop++;
                   if (length - bytes_out > 0) ZeroMemory(write+bytes_out, length-bytes_out); // Clear trailing data for a clean exit
                   if (length2 > 0) ZeroMemory(write2, length2);
@@ -312,14 +310,7 @@ int sndStreamAudio(PlatformData *Sound)
             IDirectSoundBuffer_Unlock(Sound->SoundBuffer, write, bytes_out, write2, 0);
          }
       }
-
-      // Send a stop signal if playback reached the end of the sample data
-
-      if ((!Sound->Loop) and (Sound->Stop > 1) and (Sound->BufferPos >= Sound->SampleEnd)) {
-         IDirectSoundBuffer_Stop(Sound->SoundBuffer);
-         return 1;
-      }
-      else return 0;
+      return 0;
    }
    else return -1;
 }
@@ -358,5 +349,6 @@ void sndSetPosition(PlatformData *Sound, int Offset)
    }
    else {
       IDirectSoundBuffer_SetCurrentPosition(Sound->SoundBuffer, Offset);
+      Sound->Position = Offset;
    }
 }
