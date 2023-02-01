@@ -249,6 +249,7 @@ class objSound : public BaseClass {
 
    DOUBLE   Volume;        // The volume to use when playing the sound sample.
    DOUBLE   Pan;           // Determines the horizontal position of a sound when played through stereo speakers.
+   LARGE    Position;      // The current playback position.
    LONG     Priority;      // The priority of a sound in relation to other sound samples being played.
    LONG     Length;        // Indicates the total byte-length of sample data.
    LONG     Octave;        // The octave to use for sample playback.
@@ -262,7 +263,6 @@ class objSound : public BaseClass {
    LONG     LoopStart;     // The byte position at which sample looping begins.
    LONG     LoopEnd;       // The byte position at which sample looping will end.
    STREAM   Stream;        // Defines the preferred streaming method for the sample.
-   LONG     Position;      // The current playback position.
    LONG     Handle;        // Audio handle acquired at the audio object [Private - Available to child classes]
    LONG     ChannelIndex;  // Refers to the channel that the sound is playing through.
 
@@ -292,7 +292,6 @@ class objSound : public BaseClass {
       struct acRead read = { (BYTE *)Buffer, bytes };
       return Action(AC_Read, this, &read);
    }
-   inline ERROR reset() { return Action(AC_Reset, this, NULL); }
    inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
       struct acSaveToObject args = { { DestID }, { ClassID } };
       return Action(AC_SaveToObject, this, &args);

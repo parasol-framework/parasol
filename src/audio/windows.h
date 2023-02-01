@@ -11,7 +11,7 @@ LONG sndGetPosition(struct PlatformData *);
 void sndSetPosition(struct PlatformData *, int);
 const char * sndInitialiseAudio(void);
 void sndPan(struct PlatformData *, float);
-int sndPlay(struct PlatformData *, int, int);
+int sndPlay(struct PlatformData *, bool, int);
 void sndReleaseAudio(void);
 void sndStop(struct PlatformData *);
 int sndStreamAudio(struct PlatformData *);
