@@ -513,7 +513,6 @@ static ERROR SOUND_Disable(extSound *Self, APTR Void)
    log.branch();
 
 #ifdef USE_WIN32_PLAYBACK
-   Self->Position = sndGetPosition((PlatformData *)Self->PlatformData);
    sndStop((PlatformData *)Self->PlatformData);
 #else
    if (!Self->ChannelIndex) return ERR_Okay;

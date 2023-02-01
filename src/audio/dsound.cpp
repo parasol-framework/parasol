@@ -355,20 +355,6 @@ void sndVolume(PlatformData *Sound, float Volume)
 }
 
 //********************************************************************************************************************
-
-LONG sndGetPosition(PlatformData *Sound)
-{
-   if (!glDirectSound) return 0;
-
-   if (Sound->SoundBuffer) {
-      DWORD current_read, current_write;
-      IDirectSoundBuffer_GetCurrentPosition(Sound->SoundBuffer, &current_read, &current_write);
-      return (Sound->Cycles * Sound->BufferLength) + current_read;
-   }
-   else return 0;
-}
-
-//********************************************************************************************************************
 // Intended for calls from Sound.Seek() exclusively.
 
 void sndSetPosition(PlatformData *Sound, int Offset)
