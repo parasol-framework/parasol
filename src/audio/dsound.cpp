@@ -22,8 +22,6 @@ struct PlatformData {
    DWORD  Position;      // Total number of bytes that have so far been loaded from the audio data source
    DWORD  SampleLength;  // Total length of the original sample
    DWORD  BufferPos;
-   DWORD  SampleEnd;
-   DWORD  Cycles;        // For streaming only, indicates the number of times the playback buffer has cycled.
    char   Fill;
    char   Stream;
    bool   Loop;
@@ -119,7 +117,6 @@ const char * sndCreateBuffer(struct BaseClass *Object, void *Wave, int BufferLen
    Sound->SampleLength = SampleLength;
    Sound->BufferLength = BufferLength;
    Sound->Position     = 0;
-   Sound->Cycles       = 0;
    Sound->Stream       = Stream;
    Sound->Fill         = FILL_FIRST; // First half waiting to be filled
 
@@ -205,9 +202,7 @@ int sndPlay(PlatformData *Sound, bool Loop, int Offset)
    if (Offset < 0) Offset = 0;
    else if (Offset >= (int)Sound->SampleLength) return -1;
 
-   Sound->Loop      = Loop;
-   Sound->SampleEnd = 0;
-   Sound->Cycles    = 0;
+   Sound->Loop = Loop;
 
    if (Sound->Stream) {
       // Streamed samples require that we reload sound data from scratch.  This call initiates the streaming playback,
@@ -268,67 +263,69 @@ int sndStreamAudio(PlatformData *Sound)
    if (IDirectSoundBuffer_GetCurrentPosition(Sound->SoundBuffer, &Sound->BufferPos, NULL) IS DS_OK) {
       // If the playback marker is in the buffer's first half, we fill the second half, and vice versa.
 
-      int lock_start = -1;
-      int lock_length = 0;
+      int write_start = -1;
       if ((Sound->Fill IS FILL_FIRST) and (Sound->BufferPos >= Sound->BufferLength>>1)) {
          Sound->Fill = FILL_SECOND;
-         lock_start  = 0;
-         lock_length = Sound->BufferLength>>1;
+         write_start = 0;
+         if (Sound->Stop) {
+            IDirectSoundBuffer_Stop(Sound->SoundBuffer);
+            return 1;
+         }
       }
       else if ((Sound->Fill IS FILL_SECOND) and (Sound->BufferPos < Sound->BufferLength>>1)) {
          Sound->Fill = FILL_FIRST;
-         lock_start  = Sound->BufferLength>>1;
-         lock_length = Sound->BufferLength - (Sound->BufferLength>>1);
+         write_start = Sound->BufferLength>>1;
+         if (Sound->Stop) {
+            IDirectSoundBuffer_Stop(Sound->SoundBuffer);
+            return 1;
+         }
       }
 
-      if (lock_start != -1) {
-         // Set the SampleEnd to zero if the sample does not terminate in this current buffer segment.
+      DWORD length, length2;
 
-         if ((Sound->Stop > 1) and (Sound->SampleEnd > 0)) Sound->SampleEnd = 0;
-
+      if (write_start != -1) {
          // Load more data if we have entered the next audio buffer section
 
-         int length, length2, bytes_out;
-         if (IDirectSoundBuffer_Lock(Sound->SoundBuffer, lock_start, lock_length, (void **)&write, (DWORD *)&length, (void **)&write2, (DWORD *)&length2, 0) IS DS_OK) {
-            auto len = length;
-            if (Sound->Position + len > Sound->SampleLength) len = Sound->SampleLength - Sound->Position;
-
-            if (len > 0) {
-               bytes_out = dsReadData(Sound->Object, write, len);
+         const int write_len = Sound->BufferLength - (Sound->BufferLength>>1);
+         if (IDirectSoundBuffer_Lock(Sound->SoundBuffer, 0, Sound->BufferLength, (void **)&write, (DWORD *)&length, (void **)&write2, (DWORD *)&length2, 0) IS DS_OK) {
+            int bytes_out;
+            if (!Sound->Stop) {
+               bytes_out = dsReadData(Sound->Object, write+write_start, write_len);
                Sound->Position += bytes_out;
             }
             else bytes_out = 0;
+
+            if (write_len - bytes_out > 0) ZeroMemory(write + write_start + bytes_out, write_len - bytes_out);
 
             if ((Sound->Position >= Sound->SampleLength) or (!bytes_out)) {
                // All of the bytes have been read from the sample.
 
                if (Sound->Loop) {
                   dsSeekData(Sound->Object, 0);
-                  bytes_out = dsReadData(Sound->Object, write + bytes_out, length - bytes_out);
-                  Sound->Position = bytes_out;
+                  if (bytes_out < write_len) {
+                     bytes_out = dsReadData(Sound->Object, write + write_start + bytes_out, write_len - bytes_out);
+                     Sound->Position += bytes_out;
+                  }
                }
                else {
-                  if (!Sound->Stop) { // Set the SampleEnd to indicate where the sample will end within the buffer.
-                     Sound->SampleEnd = lock_start + bytes_out;
-                  }
-
                   Sound->Stop++;
-                  if (length - bytes_out > 0) ZeroMemory(write+bytes_out, length-bytes_out); // Clear trailing data for a clean exit
-                  if (length2 > 0) ZeroMemory(write2, length2);
+                  end_of_stream(Sound->Object, Sound->BufferLength - Sound->BufferPos);
                }
             }
 
-            IDirectSoundBuffer_Unlock(Sound->SoundBuffer, write, bytes_out, write2, 0);
+            IDirectSoundBuffer_Unlock(Sound->SoundBuffer, write, length, write2, 0);
          }
       }
 
-      // Send a stop signal if playback reached the end of the sample data
-
-      if ((!Sound->Loop) and (Sound->Stop > 1) and (Sound->BufferPos >= Sound->SampleEnd)) {
-         IDirectSoundBuffer_Stop(Sound->SoundBuffer);
-         return 1;
+      if (Sound->Stop) {
+         // If the sample is stopping, keeping the first half of the buffer clear will help to avoid loop glitches.
+         if (IDirectSoundBuffer_Lock(Sound->SoundBuffer, 0, Sound->BufferLength, (void **)&write, (DWORD *)&length, (void **)&write2, (DWORD *)&length2, 0) IS DS_OK) {
+            ZeroMemory(write, Sound->BufferPos);
+            IDirectSoundBuffer_Unlock(Sound->SoundBuffer, write, length, write2, 0);
+         }
       }
-      else return 0;
+
+      return 0;
    }
    else return -1;
 }

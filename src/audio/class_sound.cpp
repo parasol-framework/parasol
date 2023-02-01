@@ -51,7 +51,6 @@ individual samples with more immediacy.
 #define SIZE_RIFF_CHUNK 12
 
 static ERROR SOUND_GET_Active(extSound *, LONG *);
-static ERROR SOUND_GET_Position(extSound *, LONG *);
 
 static ERROR SOUND_SET_Note(extSound *, CSTRING);
 
@@ -132,9 +131,9 @@ static ERROR timer_playback_ended(extSound *Self, LARGE Elapsed, LARGE CurrentTi
 {
    parasol::Log log;
    log.trace("Sound streaming completed.");
-   if (Self->StreamTimer) { UpdateTimer(Self->StreamTimer, 0); Self->StreamTimer = 0; }
    playback_stopped_event(Self);
    Self->PlaybackTimer = 0;
+   // NB: We don't manually stop the audio streamer, it will automatically stop once buffers are clear.
    return ERR_Terminate;
 }
 #endif
@@ -146,15 +145,37 @@ static ERROR timer_playback_ended(extSound *Self, LARGE Elapsed, LARGE CurrentTi
 #ifdef USE_WIN32_PLAYBACK
 static ERROR set_playback_trigger(extSound *Self)
 {
-   parasol::Log log(__FUNCTION__);
-   auto call = make_function_stdc(&timer_playback_ended);
-   const LONG bytes_per_sample = (((Self->Flags & SDF_STEREO) ? 2 : 1) * (Self->BitsPerSample>>3));
-   const DOUBLE playback_time = DOUBLE((Self->Length - Self->Position) / bytes_per_sample) / DOUBLE(Self->Playback);
-   log.trace("Playback time period set to %.2fs", playback_time);
-   if (Self->PlaybackTimer) return UpdateTimer(Self->PlaybackTimer, playback_time + 0.01);
-   else return SubscribeTimer(playback_time + 0.01, &call, &Self->PlaybackTimer);
+   if (Self->OnStop.Type) {
+      parasol::Log log(__FUNCTION__);
+      auto call = make_function_stdc(&timer_playback_ended);
+      const LONG bytes_per_sample = (((Self->Flags & SDF_STEREO) ? 2 : 1) * (Self->BitsPerSample>>3));
+      const DOUBLE playback_time = DOUBLE((Self->Length - Self->Position) / bytes_per_sample) / DOUBLE(Self->Playback);
+      log.trace("Playback time period set to %.2fs", playback_time);
+      if (Self->PlaybackTimer) return UpdateTimer(Self->PlaybackTimer, playback_time + 0.01);
+      else return SubscribeTimer(playback_time + 0.01, &call, &Self->PlaybackTimer);
+   }
+   else return ERR_Okay;
 }
 #endif
+
+void end_of_stream(OBJECTPTR Object, LONG BytesRemaining)
+{
+   if (Object->ClassID IS ID_SOUND) {
+      auto Self = (extSound *)Object;
+      if (Self->OnStop.Type) {
+         parasol::Log log(__FUNCTION__);
+         parasol::SwitchContext context(Object);
+         auto call = make_function_stdc(&timer_playback_ended);
+         const LONG bytes_per_sample = (((Self->Flags & SDF_STEREO) ? 2 : 1) * (Self->BitsPerSample>>3));
+         const DOUBLE playback_time = (DOUBLE(BytesRemaining / bytes_per_sample) / DOUBLE(Self->Playback)) + 0.01;
+
+         if (!Self->PlaybackTimer) {
+            log.trace("Remaining time period set to %.2fs", playback_time);
+            SubscribeTimer(playback_time, &call, &Self->PlaybackTimer);
+         }
+      }
+   }
+}
 
 //********************************************************************************************************************
 // Stubs.
@@ -283,8 +304,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
       auto call = make_function_stdc(win32_audio_stream);
       if (SubscribeTimer(0.25, &call, &Self->StreamTimer)) return log.warning(ERR_Failed);
    }
-
-   if (set_playback_trigger(Self)) return log.warning(ERR_Failed);
+   else if (set_playback_trigger(Self)) return log.warning(ERR_Failed);
 
    auto response = sndPlay((PlatformData *)Self->PlatformData, (Self->Flags & SDF_LOOP) ? TRUE : FALSE, Self->Position);
    return response ? log.warning(ERR_Failed) : ERR_Okay;
@@ -331,8 +351,10 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
             stream.LoopSize = 0;
          }
 
+         if (Self->OnStop.Type) stream.OnStop = make_function_stdc(&onstop_event);
+         else stream.OnStop.Type = 0;
+
          stream.PlayOffset   = Self->Position;
-         stream.OnStop       = make_function_stdc(&onstop_event);
          stream.Callback     = make_function_stdc(&read_stream);
          stream.SampleFormat = sampleformat;
          stream.SampleLength = Self->Length;
@@ -371,7 +393,9 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
                add.LoopSize = 0;
             }
 
-            add.OnStop       = make_function_stdc(&onstop_event);
+            if (Self->OnStop.Type) add.OnStop = make_function_stdc(&onstop_event);
+            else add.OnStop.Type = 0;
+
             add.SampleFormat = sampleformat;
             add.Data         = buffer;
             add.DataSize     = Self->Length;
@@ -1527,13 +1551,13 @@ playback position, either when the sample is next played, or immediately if it i
 
 *********************************************************************************************************************/
 
-static ERROR SOUND_GET_Position(extSound *Self, LONG *Value)
+static ERROR SOUND_GET_Position(extSound *Self, LARGE *Value)
 {
    *Value = Self->Position;
    return ERR_Okay;
 }
 
-static ERROR SOUND_SET_Position(extSound *Self, LONG Value)
+static ERROR SOUND_SET_Position(extSound *Self, LARGE Value)
 {
    return Self->seek(Value, SEEK_START);
 }
@@ -1622,14 +1646,19 @@ static ERROR find_chunk(extSound *Self, objFile *File, CSTRING ChunkName)
 #ifdef USE_WIN32_PLAYBACK
 static ERROR win32_audio_stream(extSound *Self, LARGE Elapsed, LARGE CurrentTime)
 {
-   parasol::Log log;
+   parasol::Log log(__FUNCTION__);
 
    // See sndStreamAudio() for further information on streaming in Win32
 
-   if (sndStreamAudio((PlatformData *)Self->PlatformData) IS -1) {
+   auto response = sndStreamAudio((PlatformData *)Self->PlatformData);
+   if (response IS -1) {
       log.warning("Sound streaming failed.");
       playback_stopped_event(Self);
       if (Self->PlaybackTimer) { UpdateTimer(Self->PlaybackTimer, 0); Self->PlaybackTimer = 0; }
+      Self->StreamTimer = 0;
+      return ERR_Terminate;
+   }
+   else if (response IS 1) {
       Self->StreamTimer = 0;
       return ERR_Terminate;
    }
@@ -1671,7 +1700,7 @@ static const FieldArray clFields[] = {
    { "LoopStart",      FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "LoopEnd",        FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "Stream",         FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clStream, NULL, NULL },
-   { "Position",       FDF_LONG|FDF_RW,      0, (APTR)SOUND_GET_Position, (APTR)SOUND_SET_Position },
+   { "Position",       FDF_LARGE|FDF_RW,     0, (APTR)SOUND_GET_Position, (APTR)SOUND_SET_Position },
    { "Handle",         FDF_LONG|FDF_SYSTEM|FDF_R, 0, NULL, NULL },
    { "ChannelIndex",   FDF_LONG|FDF_R,       0, NULL, NULL },
    // Virtual fields

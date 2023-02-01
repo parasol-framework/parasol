@@ -433,7 +433,7 @@ static ERROR MP3_Read(objSound *Self, struct acRead *Args)
 
       // Read as much input as possible.
 
-      log.trace("Write %" PF64 " max bytes to %d, Avail. Compressed: %d bytes", Args->Length, prv->WriteOffset, prv->CompressedOffset);
+      log.trace("Writing %" PF64 " max bytes to %d, Avail. Compressed: %d bytes", Args->Length-pos, prv->WriteOffset, prv->CompressedOffset);
 
       if ((prv->CompressedOffset < (LONG)prv->Input.size()) and (!prv->EndOfFile) and (!no_more_input)) {
          LONG result;
@@ -536,6 +536,7 @@ static ERROR MP3_Read(objSound *Self, struct acRead *Args)
       else log.extmsg("Decoding of %d MP3 frames complete, output %" PF64 " bytes.", prv->FramesProcessed, prv->WriteOffset);
    }
 
+   Self->Position = prv->WriteOffset;
    Args->Result = prv->WriteOffset - write_offset;
    return ERR_Okay;
 }
@@ -559,6 +560,8 @@ static ERROR MP3_Seek(objSound *Self, struct acSeek *Args)
    else if (Args->Position IS SEEK_CURRENT)  offset = prv->ReadOffset + F2T(Args->Offset);
    else if (Args->Position IS SEEK_RELATIVE) offset = Self->Length * Args->Offset;
    else return log.warning(ERR_Args);
+
+   if (offset IS Self->Position) return ERR_Okay;
 
    if (Self->Flags & SDF_STREAM) {
       prv->reset();
@@ -622,6 +625,16 @@ static ERROR MP3_Seek(objSound *Self, struct acSeek *Args)
             prv->ReadOffset = prv->WriteOffset;
             prv->FramesProcessed = frame;
             Self->Position = prv->WriteOffset;
+         }
+      }
+
+      LONG active;
+      if (!Self->get(FID_Active, &active)) {
+         if (active) {
+            log.branch("Resetting state of active sample.");
+            Self->deactivate();
+            Self->Position = prv->WriteOffset;
+            Self->activate();
          }
       }
 

@@ -16,3 +16,4 @@ void sndStop(struct PlatformData *);
 int sndStreamAudio(struct PlatformData *);
 void sndVolume(struct PlatformData *, float);
 void sndLength(struct PlatformData *, int);
+void end_of_stream(BaseClass *, int);
