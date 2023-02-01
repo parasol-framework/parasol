@@ -24,7 +24,7 @@ Parasol's ongoing development is focused on enhancing vector graphics programmin
 * Data handling APIs (XML, JSON, ZIP, PNG, JPEG, SVG)
 * Hundreds of standardised scalable icons are included for application building.
 * Full system abstraction for building cross-platform applications (file I/O, clipboards, threads, object management)
-* Multi-channel audio playback
+* Multi-channel audio playback supporting WAV and MP3 files.
 * WIP: Extensive text editing widget implemented with scintilla.org.
 
 ### Application Example
@@ -55,7 +55,7 @@ Here's an example of a simple client application written in Fluid.  It loads an 
    })
 
    glViewport = glWindow.scene.new('VectorViewport', {
-      aspectRatio = 'MEET', x=glWindow.client.left, y=glWindow.client.top,
+      aspectRatio='MEET', x=glWindow.client.left, y=glWindow.client.top,
       xOffset=glWindow.client.right, yOffset=glWindow.client.bottom
    })
 
