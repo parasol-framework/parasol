@@ -202,6 +202,7 @@ ERROR AUDIO_AddSample(extAudio *Self, struct sndAddSample *Args)
    auto &sample = Self->Samples[idx];
    sample.SampleType   = Args->SampleFormat;
    sample.SampleLength = SAMPLE(Args->DataSize >> shift);
+   sample.OnStop       = Args->OnStop;
 
    if (auto loop = Args->Loop) {
       sample.LoopMode     = loop->LoopMode;

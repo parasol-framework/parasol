@@ -125,7 +125,6 @@ struct AudioChannel {
    DOUBLE   RVolumeTarget;  // Volume target when fading or ramping
    DOUBLE   Volume;         // Playing volume (0 - 1.0)
    DOUBLE   Pan;            // Pan value (-1.0 - 1.0)
-   OBJECTID SoundID;        // ID of the sound object using this channel, if relevant
    LONG     SampleHandle;   // Sample index, direct lookup into extAudio->Samples
    CHF      Flags;          // Special flags
    LONG     Position;       // Current playing/mixing byte position within Sample.
@@ -227,6 +226,32 @@ class extAudio : public objAudio {
       if (!Value) return 0;
       return (((100 * (LARGE)OutputRate) / (Value * 40)) + 1) & 0xfffffffe;
    }
+
+   inline void finish(AudioChannel &Channel, bool Notify) {
+      if (!Channel.isStopped()) {
+         Channel.State = CHS::FINISHED;
+         if ((Channel.SampleHandle) and (Notify)) {
+            auto &sample = Samples[Channel.SampleHandle];
+            if (sample.OnStop.Type IS CALL_STDC) {
+               parasol::SwitchContext context(sample.OnStop.StdC.Context);
+               auto routine = (void (*)(extAudio *, LONG))sample.OnStop.StdC.Routine;
+               routine(this, Channel.SampleHandle);
+            }
+            else if (sample.OnStop.Type IS CALL_SCRIPT) {
+               OBJECTPTR script;
+               if ((script = sample.OnStop.Script.Script)) {
+                  const ScriptArg args[] = {
+                     { "Audio", FD_OBJECTPTR, { .Address = this } },
+                     { "Handle", FD_LONG, { .Long = Channel.SampleHandle } }
+                  };
+                  ERROR error;
+                  scCallback(script, sample.OnStop.Script.ProcedureID, args, ARRAYSIZE(args), &error);
+               }
+            }
+         }
+      }
+      else Channel.State = CHS::FINISHED;
+   }
 };
 
 class extSound : public objSound {
@@ -237,7 +262,8 @@ class extSound : public objSound {
    std::unordered_map<std::string, std::string> Tags;
    objFile *File;
    STRING Path;
-   TIMER  Timer;
+   TIMER  StreamTimer;        // Timer to regularly trigger for provisioning streaming data.
+   TIMER  PlaybackTimer;      // Timer to trigger when playback ends.
    LONG   Format;             // The format of the sound data
    LONG   DataOffset;         // Start of raw audio data within the source file
    LONG   Note;               // Note to play back (e.g. C, C#, G...)

@@ -73,8 +73,12 @@ static const std::array<DOUBLE, 12> glScale = {
 static OBJECTPTR clSound = NULL;
 
 static ERROR find_chunk(extSound *, objFile *, CSTRING);
-static ERROR playback_timer(extSound *, LARGE, LARGE);
+#ifdef USE_WIN32_PLAYBACK
+static ERROR win32_audio_stream(extSound *, LARGE, LARGE);
+#endif
+
 //********************************************************************************************************************
+// Send a callback to the client when playback stops.
 
 static void playback_stopped_event(extSound *Self)
 {
@@ -111,6 +115,44 @@ static LONG read_stream(LONG Handle, LONG Offset, APTR Buffer, LONG Length)
    }
 
    return 0;
+}
+
+static void onstop_event(LONG SampleHandle)
+{
+   playback_stopped_event((extSound *)CurrentContext());
+}
+
+#endif
+
+//********************************************************************************************************************
+// Called when the estimated time for playback is over.
+
+#ifdef USE_WIN32_PLAYBACK
+static ERROR timer_playback_ended(extSound *Self, LARGE Elapsed, LARGE CurrentTime)
+{
+   parasol::Log log;
+   log.trace("Sound streaming completed.");
+   if (Self->StreamTimer) { UpdateTimer(Self->StreamTimer, 0); Self->StreamTimer = 0; }
+   playback_stopped_event(Self);
+   Self->PlaybackTimer = 0;
+   return ERR_Terminate;
+}
+#endif
+
+//********************************************************************************************************************
+// Configure a timer that will trigger when the playback is finished.  The Position cursor will be taken into account
+// in determining playback length.
+
+#ifdef USE_WIN32_PLAYBACK
+static ERROR set_playback_trigger(extSound *Self)
+{
+   parasol::Log log(__FUNCTION__);
+   auto call = make_function_stdc(&timer_playback_ended);
+   const LONG bytes_per_sample = (((Self->Flags & SDF_STEREO) ? 2 : 1) * (Self->BitsPerSample>>3));
+   const DOUBLE playback_time = DOUBLE((Self->Length - Self->Position) / bytes_per_sample) / DOUBLE(Self->Playback);
+   log.trace("Playback time period set to %.2fs", playback_time);
+   if (Self->PlaybackTimer) return UpdateTimer(Self->PlaybackTimer, playback_time + 0.01);
+   else return SubscribeTimer(playback_time + 0.01, &call, &Self->PlaybackTimer);
 }
 #endif
 
@@ -237,20 +279,15 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
    sndFrequency((PlatformData *)Self->PlatformData, Self->Playback);
    sndPan((PlatformData *)Self->PlatformData, Self->Pan);
 
-   // If streaming is enabled, the timer is used to regularly fill the audio buffer.  1/4 second checks are fine
-   // since we are only going to fill the buffer every 1.5 seconds or more (give consideration to high octave
-   // playback).
-   //
-   // We also need the subscription to fulfil the Deactivate contract.
-
-   auto call = make_function_stdc(playback_timer);
-   if (!SubscribeTimer(0.25, &call, &Self->Timer)) {
-      LONG response;
-      if (Self->Flags & SDF_LOOP) response = sndPlay((PlatformData *)Self->PlatformData, TRUE, Self->Position);
-      else response = sndPlay((PlatformData *)Self->PlatformData, FALSE, Self->Position);
-      return response ? log.warning(ERR_Failed) : ERR_Okay;
+   if (Self->Flags & SDF_STREAM) {
+      auto call = make_function_stdc(win32_audio_stream);
+      if (SubscribeTimer(0.25, &call, &Self->StreamTimer)) return log.warning(ERR_Failed);
    }
-   else return log.warning(ERR_Failed);
+
+   if (set_playback_trigger(Self)) return log.warning(ERR_Failed);
+
+   auto response = sndPlay((PlatformData *)Self->PlatformData, (Self->Flags & SDF_LOOP) ? TRUE : FALSE, Self->Position);
+   return response ? log.warning(ERR_Failed) : ERR_Okay;
 #else
 
    if (!Self->Active) {
@@ -295,7 +332,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          }
 
          stream.PlayOffset   = Self->Position;
-         stream.OnStop       = make_function_stdc(&onstop_stream);
+         stream.OnStop       = make_function_stdc(&onstop_event);
          stream.Callback     = make_function_stdc(&read_stream);
          stream.SampleFormat = sampleformat;
          stream.SampleLength = Self->Length;
@@ -334,7 +371,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
                add.LoopSize = 0;
             }
 
-            add.OnStop       = make_function_stdc(&onstop_sample);
+            add.OnStop       = make_function_stdc(&onstop_event);
             add.SampleFormat = sampleformat;
             add.Data         = buffer;
             add.DataSize     = Self->Length;
@@ -371,7 +408,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          LONG i;
          for (i=0; i < audio->MaxChannels; i++) {
             channel = audio->GetChannel(Self->ChannelIndex);
-            if ((channel) and (channel->SoundID IS Self->UID)) break;
+            if ((channel) and (channel->SampleHandle IS Self->Handle)) break;
             Self->ChannelIndex++;
          }
          if (i >= audio->MaxChannels) channel = NULL;
@@ -384,7 +421,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          LONG i;
          for (i=0; i < audio->MaxChannels; i++) {
             if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
-               if ((channel->State IS CHS::STOPPED) or (channel->State IS CHS::FINISHED)) break;
+               if (channel->isStopped()) break;
                else if (channel->Priority < Self->Priority) priority = channel;
             }
             Self->ChannelIndex++;
@@ -401,17 +438,11 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
       sndMixStop(*audio, Self->ChannelIndex);
 
       if (!sndMixSample(*audio, Self->ChannelIndex, Self->Handle)) {
-         auto channel = audio->GetChannel(Self->ChannelIndex);
-         channel->SoundID = Self->UID; // Record our object ID against the channel
-
          if (sndMixVolume(*audio, Self->ChannelIndex, Self->Volume)) return log.warning(ERR_Failed);
          if (sndMixPan(*audio, Self->ChannelIndex, Self->Pan)) return log.warning(ERR_Failed);
          if (sndMixPlay(*audio, Self->ChannelIndex, Self->Playback)) return log.warning(ERR_Failed);
 
-         // Use a timer to fulfil the Deactivate and auto-termination contracts.
-
-         auto call = make_function_stdc(playback_timer);
-         return SubscribeTimer(0.25, &call, &Self->Timer);
+         return ERR_Okay;
       }
       else {
          log.warning("Failed to set sample %d to channel $%.8x", Self->Handle, Self->ChannelIndex);
@@ -420,6 +451,21 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
    }
    else return log.warning(ERR_AccessObject);
 #endif
+}
+
+//****************************************************************************
+
+static ERROR SOUND_ActionNotify(extSound *Self, struct acActionNotify *Args)
+{
+   if (!Args) return ERR_NullArgs;
+
+   if (Args->ActionID IS AC_Free) {
+      if ((Self->OnStop.Type IS CALL_SCRIPT) and (Self->OnStop.Script.Script->UID IS Args->ObjectID)) {
+         Self->OnStop.Type = CALL_NONE;
+      }
+   }
+
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
@@ -434,7 +480,8 @@ static ERROR SOUND_Deactivate(extSound *Self, APTR Void)
 
    log.branch();
 
-   if (Self->Timer) { UpdateTimer(Self->Timer, 0); Self->Timer = 0; }
+   if (Self->StreamTimer) { UpdateTimer(Self->StreamTimer, 0); Self->StreamTimer = 0; }
+   if (Self->PlaybackTimer) { UpdateTimer(Self->PlaybackTimer, 0); Self->PlaybackTimer = 0; }
 
    Self->Position = 0;
 
@@ -442,12 +489,9 @@ static ERROR SOUND_Deactivate(extSound *Self, APTR Void)
    sndStop((PlatformData *)Self->PlatformData);
 #else
    parasol::ScopedObjectLock<extAudio> audio(Self->AudioID);
-   if (audio.granted()) {
-      // Get a reference to our sound channel, then check if our unique ID is set against it.  If so, our sound is
-      // currently playing and we must send a stop signal to the audio system.
-
+   if (audio.granted()) { // Stop the sample if it's live.
       if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
-         if (channel->SoundID IS Self->UID) sndMixStop(*audio, Self->ChannelIndex);
+         if (channel->SampleHandle IS Self->Handle) sndMixStop(*audio, Self->ChannelIndex);
       }
    }
    else return log.warning(ERR_AccessObject);
@@ -477,7 +521,7 @@ static ERROR SOUND_Disable(extSound *Self, APTR Void)
    parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 5000);
    if (audio.granted()) {
       if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
-         if (channel->SoundID IS Self->UID) sndMixStop(*audio, Self->ChannelIndex);
+         if (channel->SampleHandle IS Self->Handle) sndMixStop(*audio, Self->ChannelIndex);
       }
    }
    else return log.warning(ERR_AccessObject);
@@ -509,7 +553,7 @@ static ERROR SOUND_Enable(extSound *Self, APTR Void)
    parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 5000);
    if (audio.granted()) {
       if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
-         if (channel->SoundID IS Self->UID) sndMixContinue(*audio, Self->ChannelIndex);
+         if (channel->SampleHandle IS Self->Handle) sndMixContinue(*audio, Self->ChannelIndex);
       }
    }
    else return log.warning(ERR_AccessObject);
@@ -522,9 +566,8 @@ static ERROR SOUND_Enable(extSound *Self, APTR Void)
 
 static ERROR SOUND_Free(extSound *Self, APTR Void)
 {
-   if (Self->Flags & SDF_STREAM) {
-      if (Self->Timer) { UpdateTimer(Self->Timer, 0); Self->Timer = 0; }
-   }
+   if (Self->StreamTimer)   { UpdateTimer(Self->StreamTimer, 0); Self->StreamTimer = 0; }
+   if (Self->PlaybackTimer) { UpdateTimer(Self->PlaybackTimer, 0); Self->PlaybackTimer = 0; }
 
 #if defined(USE_WIN32_PLAYBACK)
    if (!Self->Handle) sndFree((PlatformData *)Self->PlatformData);
@@ -845,14 +888,14 @@ static ERROR SOUND_Read(extSound *Self, struct acRead *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
+   log.traceBranch("Length: %d, Offset: %d", Args->Length, Self->Position);
+
    if (Args->Length <= 0) {
       Args->Result = 0;
       return ERR_Okay;
    }
 
    // Don't read more than the known raw sample length
-
-   log.traceBranch("Length: %d, Offset: %d", Args->Length, Self->Position);
 
    LONG result;
    if (Self->Position + Args->Length > Self->Length) {
@@ -864,43 +907,6 @@ static ERROR SOUND_Read(extSound *Self, struct acRead *Args)
    Args->Result = result;
 
    return ERR_Okay;
-}
-
-/*********************************************************************************************************************
--ACTION-
-Reset: Stops audio playback, resets configuration details and restores the playback position to the start of the sample.
--END-
-*********************************************************************************************************************/
-
-static ERROR SOUND_Reset(extSound *Self, APTR Void)
-{
-   parasol::Log log;
-   log.branch();
-
-   if (!Self->ChannelIndex) return ERR_Okay;
-
-   parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 2000);
-   if (audio.granted()) {
-      Self->Position = 0;
-      auto channel = audio->GetChannel(Self->ChannelIndex);
-      if ((channel->SoundID != Self->UID) or (channel->State IS CHS::STOPPED) or
-          (channel->State IS CHS::FINISHED)) {
-         return ERR_Okay;
-      }
-
-      sndMixStop(*audio, Self->ChannelIndex);
-
-      if (!sndMixSample(*audio, Self->ChannelIndex, Self->Handle)) {
-         channel->SoundID = Self->UID;
-
-         sndMixVolume(*audio, Self->ChannelIndex, Self->Volume);
-         sndMixPan(*audio, Self->ChannelIndex, Self->Pan);
-         sndMixPlay(*audio, Self->ChannelIndex, Self->Playback);
-         return ERR_Okay;
-      }
-      else return log.warning(ERR_Failed);
-   }
-   else return log.warning(ERR_AccessObject);
 }
 
 /*********************************************************************************************************************
@@ -976,25 +982,28 @@ static ERROR SOUND_Seek(extSound *Self, struct acSeek *Args)
          Self->File->seekStart(Self->DataOffset + Self->Position);
       }
 
-      auto &sample = audio->Samples[Self->Handle];
-      sample.PlayPos = BYTELEN(Self->Position);
+      #ifdef USE_WIN32_PLAYBACK
+         if (sndCheckActivity((PlatformData *)Self->PlatformData) > 0) {
+            set_playback_trigger(Self);
+            sndSetPosition((PlatformData *)Self->PlatformData, Self->Position);
+         }
+      #else
+         if (Self->Handle) {
+            audio->Samples[Self->Handle].PlayPos = BYTELEN(Self->Position);
 
-      if ((!sample.Stream) and (Self->Active)) {
-         // Sample is fully buffered.  Adjust position now if it's in playback.
-         #ifdef USE_WIN32_PLAYBACK
-            if (sndCheckActivity((PlatformData *)Self->PlatformData) > 0) {
-               sndSetPosition((PlatformData *)Self->PlatformData, Self->Position);
-            }
-         #else
-            if (Self->ChannelIndex) {
-               if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
-                  if (!((channel->State IS CHS::STOPPED) or (channel->State IS CHS::FINISHED))) {
-                     sndMixPosition(*audio, Self->ChannelIndex, Self->Position);
+            if ((!audio->Samples[Self->Handle].Stream) and (Self->Active)) {
+               // Sample is fully buffered.  Adjust position now if it's in playback.
+
+               if (Self->ChannelIndex) {
+                  if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
+                     if (!channel->isStopped()) {
+                        sndMixPosition(*audio, Self->ChannelIndex, Self->Position);
+                     }
                   }
                }
             }
-         #endif
-      }
+         }
+      #endif
    }
    else return log.warning(ERR_AccessObject);
 
@@ -1046,9 +1055,7 @@ static ERROR SOUND_GET_Active(extSound *Self, LONG *Value)
       parasol::ScopedObjectLock<extAudio> audio(Self->AudioID);
       if (audio.granted()) {
          if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
-            if (!((channel->State IS CHS::STOPPED) or (channel->State IS CHS::FINISHED))) {
-               *Value = TRUE;
-            }
+            if (!channel->isStopped()) *Value = TRUE;
          }
       }
       else return ERR_AccessObject;
@@ -1372,6 +1379,43 @@ static ERROR SOUND_SET_Octave(extSound *Self, LONG Value)
 }
 
 /*********************************************************************************************************************
+
+-FIELD-
+OnStop: This callback is triggered when sample playback stops.
+
+Set OnStop to a callback function to receive an event trigger when sample playback stops.  The synopsis for the
+function is as follows:
+
+<pre>
+void OnStop(*Sound)
+</pre>
+
+The timing of this event does not guarantee precision, but should be accurate to approximately 1/100th of a second
+in most cases.
+
+*********************************************************************************************************************/
+
+static ERROR SOUND_GET_OnStop(extSound *Self, FUNCTION **Value)
+{
+   if (Self->OnStop.Type != CALL_NONE) {
+      *Value = &Self->OnStop;
+      return ERR_Okay;
+   }
+   else return ERR_FieldNotSet;
+}
+
+static ERROR SOUND_SET_OnStop(extSound *Self, FUNCTION *Value)
+{
+   if (Value) {
+      if (Self->OnStop.Type IS CALL_SCRIPT) UnsubscribeAction(Self->OnStop.Script.Script, AC_Free);
+      Self->OnStop = *Value;
+      if (Self->OnStop.Type IS CALL_SCRIPT) SubscribeAction(Self->OnStop.Script.Script, AC_Free);
+   }
+   else Self->OnStop.Type = CALL_NONE;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
 -FIELD-
 Pan: Determines the horizontal position of a sound when played through stereo speakers.
 
@@ -1460,6 +1504,7 @@ static ERROR SOUND_SET_Playback(extSound *Self, LONG Value)
 #ifdef USE_WIN32_PLAYBACK
    if (Self->initialised()) {
       sndFrequency((PlatformData *)Self->PlatformData, Self->Playback);
+      if (Self->PlaybackTimer) set_playback_trigger(Self);
    }
 #else
    if (Self->ChannelIndex) {
@@ -1575,46 +1620,24 @@ static ERROR find_chunk(extSound *Self, objFile *File, CSTRING ChunkName)
 
 //********************************************************************************************************************
 
-static ERROR playback_timer(extSound *Self, LARGE Elapsed, LARGE CurrentTime)
+#ifdef USE_WIN32_PLAYBACK
+static ERROR win32_audio_stream(extSound *Self, LARGE Elapsed, LARGE CurrentTime)
 {
    parasol::Log log;
-   LONG active;
 
-#ifdef USE_WIN32_PLAYBACK
-   if (Self->Flags & SDF_STREAM) {
-      // See sndStreamAudio() for further information on streaming in Win32
+   // See sndStreamAudio() for further information on streaming in Win32
 
-      if (auto response = sndStreamAudio((PlatformData *)Self->PlatformData)) {
-         // We have reached the end of the sample.  If looping is turned off, terminate the timer subscription.
-
-         if ((response IS -1) or (!(Self->Flags & SDF_LOOP))) {
-            if (response IS -1) log.warning("Sound streaming failed.");
-            else log.extmsg("Sound streaming completed.");
-            DelayMsg(AC_Deactivate, Self->UID);
-            Self->Timer = 0;
-            return ERR_Terminate;
-         }
-      }
-      return ERR_Okay;
-   }
-#endif
-
-   // If the sound has stopped playing and the LOOP flag is not in use, either unsubscribe from the timer (because
-   // we don't need timing) or terminate if AUTO_TERMINATE is in use.
-   //
-   // We used delayed messages here because we don't want to disturb the System Audio object.
-
-   if (Self->Flags & SDF_LOOP) return ERR_Okay;
-
-   if ((!Self->get(FID_Active, &active)) and (!active)) {
-      log.extmsg("Sound playback completed.");
-      DelayMsg(AC_Deactivate, Self->UID);
-      Self->Timer = 0;
+   if (sndStreamAudio((PlatformData *)Self->PlatformData) IS -1) {
+      log.warning("Sound streaming failed.");
+      playback_stopped_event(Self);
+      if (Self->PlaybackTimer) { UpdateTimer(Self->PlaybackTimer, 0); Self->PlaybackTimer = 0; }
+      Self->StreamTimer = 0;
       return ERR_Terminate;
    }
 
    return ERR_Okay;
 }
+#endif
 
 //********************************************************************************************************************
 
@@ -1672,7 +1695,6 @@ static const ActionArray clActions[] = {
    { AC_Init,          (APTR)SOUND_Init },
    { AC_NewObject,     (APTR)SOUND_NewObject },
    { AC_Read,          (APTR)SOUND_Read },
-   { AC_Reset,         (APTR)SOUND_Reset },
    { AC_SaveToObject,  (APTR)SOUND_SaveToObject },
    { AC_Seek,          (APTR)SOUND_Seek },
    { AC_SetVar,        (APTR)SOUND_SetVar },

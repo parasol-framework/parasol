@@ -222,9 +222,17 @@ int sndPlay(PlatformData *Sound, bool Loop, int Offset)
       int lenA, lenB;
       if (IDirectSoundBuffer_Lock(Sound->SoundBuffer, 0, Sound->BufferLength, (void **)&bufA, (DWORD *)&lenA, (void **)&bufB, (DWORD *)&lenB, 0) IS DS_OK) {
          dsSeekData(Sound->Object, Offset);
-         if (lenA > 0) lenA = dsReadData(Sound->Object, bufA, lenA);
-         if (lenB > 0) lenB = dsReadData(Sound->Object, bufB, lenB);
-         Sound->Position = Offset + lenA + lenB;
+         Sound->Position = Offset;
+         if (lenA > 0) {
+            auto lenA2 = dsReadData(Sound->Object, bufA, lenA);
+            if (lenA2 < lenA) ZeroMemory(bufA + lenA2, lenA - lenA2);
+            Sound->Position += lenA2;
+         }
+         if (lenB > 0) {
+            auto lenB2 = dsReadData(Sound->Object, bufB, lenB);
+            if (lenB2 < lenB) ZeroMemory(bufB + lenB2, lenB - lenB2);
+            Sound->Position += lenB2;
+         }
          IDirectSoundBuffer_Unlock(Sound->SoundBuffer, bufA, lenA, bufB, lenB);
       }
       else return -1;
@@ -291,7 +299,7 @@ int sndStreamAudio(PlatformData *Sound)
             }
             else bytes_out = 0;
 
-            if (Sound->Position >= Sound->SampleLength) {
+            if ((Sound->Position >= Sound->SampleLength) or (!bytes_out)) {
                // All of the bytes have been read from the sample.
 
                if (Sound->Loop) {
@@ -366,8 +374,13 @@ LONG sndGetPosition(PlatformData *Sound)
 void sndSetPosition(PlatformData *Sound, int Offset)
 {
    if (!glDirectSound) return;
+   if (!Sound->SoundBuffer) return;
 
-   if (Sound->SoundBuffer) {
+   if (Sound->Stream) { // Streams require resetting because the buffer will be stale.
+      sndPlay(Sound, Sound->Loop, Offset);
+   }
+   else {
       IDirectSoundBuffer_SetCurrentPosition(Sound->SoundBuffer, Offset);
+      Sound->Position = Offset;
    }
 }

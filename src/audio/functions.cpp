@@ -461,7 +461,7 @@ static bool amiga_change(extAudio *Self, AudioChannel &Channel)
    }
 
    // Not looping - finish the sample
-   Channel.State = CHS::FINISHED;
+   Self->finish(Channel, true);
    return true;
 }
 
@@ -496,7 +496,7 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
          }
 
          // No sample change - we are finished
-         Channel.State = CHS::FINISHED;
+         Self->finish(Channel, true);
          return true;
       }
       else return false;
@@ -532,7 +532,7 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
             if (sample.Loop2Type != LTYPE::NIL) {
                sample.PlayPos = BYTELEN(0);
             }
-            else Channel.State = CHS::FINISHED;
+            else Self->finish(Channel, true);
          }
          else sample.PlayPos += bytes_read;
       }
@@ -684,8 +684,7 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, LONG TotalSamples
 
    glMixDest = (FLOAT *)Dest;
    while (TotalSamples > 0) {
-      if (Channel.State IS CHS::STOPPED) return;
-      else if (Channel.State IS CHS::FINISHED) return;
+      if (Channel.isStopped()) return;
 
       LONG next_offset;
       LONG sue = samples_until_end(Self, Channel, &next_offset);
@@ -749,7 +748,7 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, LONG TotalSamples
             // If the volume is zero we can just increment the position and not mix anything
             mix_pos += mix_now * MixStep;
             if (Channel.State IS CHS::FADE_OUT) {
-               Channel.State = CHS::STOPPED;
+               Self->finish(Channel, true);
                Channel.Flags &= ~CHF::VOL_RAMP;
             }
          }
