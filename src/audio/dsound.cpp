@@ -23,10 +23,9 @@ struct PlatformData {
    DWORD  SampleLength;  // Total length of the original sample
    DWORD  BufferPos;
    DWORD  SampleEnd;
-   DWORD  Cycles;        // For streaming only, indicates the number of times the playback buffer has cycled.
    char   Fill;
    char   Stream;
-   char   Loop;
+   bool   Loop;
    char   Stop;
    struct BaseClass *Object;
 };
@@ -39,7 +38,6 @@ void dsSeekData(struct BaseClass *, int);
 static LPDIRECTSOUND glDirectSound;     // the DirectSound object
 static HMODULE dsModule = NULL;         // dsound.dll module handle
 static HWND glWindow;                   // HWND for DirectSound
-static const int BUFFER_LENGTH = 500;   // buffer length in milliseconds
 
 static HRESULT (WINAPI *dsDirectSoundCreate)(const GUID *, LPDIRECTSOUND *, IUnknown FAR *) = NULL;
 
@@ -119,7 +117,6 @@ const char * sndCreateBuffer(struct BaseClass *Object, void *Wave, int BufferLen
    Sound->SampleLength = SampleLength;
    Sound->BufferLength = BufferLength;
    Sound->Position     = 0;
-   Sound->Cycles       = 0;
    Sound->Stream       = Stream;
    Sound->Fill         = FILL_FIRST; // First half waiting to be filled
 
@@ -198,7 +195,7 @@ void sndStop(PlatformData *Sound)
 //********************************************************************************************************************
 // Used by the Sound class to play WAV or raw audio samples that are independent of our custom mixer.
 
-int sndPlay(PlatformData *Sound, int Loop, int Offset)
+int sndPlay(PlatformData *Sound, bool Loop, int Offset)
 {
    if ((!Sound) or (!Sound->SoundBuffer)) return -1;
 
@@ -207,7 +204,6 @@ int sndPlay(PlatformData *Sound, int Loop, int Offset)
 
    Sound->Loop      = Loop;
    Sound->SampleEnd = 0;
-   Sound->Cycles    = 0;
 
    if (Sound->Stream) {
       // Streamed samples require that we reload sound data from scratch.  This call initiates the streaming playback,
@@ -222,10 +218,13 @@ int sndPlay(PlatformData *Sound, int Loop, int Offset)
       int lenA, lenB;
       if (IDirectSoundBuffer_Lock(Sound->SoundBuffer, 0, Sound->BufferLength, (void **)&bufA, (DWORD *)&lenA, (void **)&bufB, (DWORD *)&lenB, 0) IS DS_OK) {
          dsSeekData(Sound->Object, Offset);
-         if (lenA > 0) lenA = dsReadData(Sound->Object, bufA, lenA);
-         if (lenB > 0) lenB = dsReadData(Sound->Object, bufB, lenB);
-         Sound->Position = Offset + lenA + lenB;
-         IDirectSoundBuffer_Unlock(Sound->SoundBuffer, bufA, lenA, bufB, lenB);
+         Sound->Position = Offset;
+         if (lenA > 0) {
+            auto lenA2 = dsReadData(Sound->Object, bufA, lenA);
+            if (lenA2 < lenA) ZeroMemory(bufA + lenA2, lenA - lenA2);
+            Sound->Position += lenA2;
+         }
+         IDirectSoundBuffer_Unlock(Sound->SoundBuffer, bufA, lenA, bufB, 0);
       }
       else return -1;
    }
@@ -347,26 +346,17 @@ void sndVolume(PlatformData *Sound, float Volume)
 }
 
 //********************************************************************************************************************
-
-LONG sndGetPosition(PlatformData *Sound)
-{
-   if (!glDirectSound) return 0;
-
-   if (Sound->SoundBuffer) {
-      DWORD current_read, current_write;
-      IDirectSoundBuffer_GetCurrentPosition(Sound->SoundBuffer, &current_read, &current_write);
-      return (Sound->Cycles * Sound->BufferLength) + current_read;
-   }
-   else return 0;
-}
-
-//********************************************************************************************************************
+// Intended for calls from Sound.Seek() exclusively.
 
 void sndSetPosition(PlatformData *Sound, int Offset)
 {
    if (!glDirectSound) return;
+   if (!Sound->SoundBuffer) return;
 
-   if (Sound->SoundBuffer) {
+   if (Sound->Stream) { // Streams require resetting because the buffer will be stale.
+      sndPlay(Sound, Sound->Loop, Offset);
+   }
+   else {
       IDirectSoundBuffer_SetCurrentPosition(Sound->SoundBuffer, Offset);
    }
 }
