@@ -18,12 +18,14 @@
     <description>
 <p>The Sound class provides a simple API for programs to load and play audio sample files. By default all loading and saving of sound data is in WAVE format.  Other audio formats can be supported through Sound class extensions, if available.</p>
 <p>Automatic streaming is enabled by default.  If an attempt is made to play an audio file that exceeds the maximum buffer size, it will be streamed from the source location.  Streaming behaviour can be modified via the <field>Stream</field> field.</p>
-<p>The following example illustrates playback of a sound sample that is one octave higher than its normal frequency. The subscription to the Deactivate action will result in the program waking once the sample has finished playback.</p>
-<pre>local snd = obj.new('sound', { path='audio:samples/doorbell.wav', note='C6' })
-
-snd.subscribe('deactivate', function(SoundID)
-   proc.signal()
-end)
+<p>The following example illustrates playback of a sound sample that is one octave higher than its normal frequency. The subscription to the OnStop callback will result in the program waking once the sample has finished playback.</p>
+<pre>local snd = obj.new('sound', {
+   path = 'audio:samples/doorbell.wav',
+   note = 'C6',
+   onStop = function(Sound)
+      proc.signal()
+   end
+})
 
 snd.acActivate()
 

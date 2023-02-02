@@ -69,6 +69,7 @@ static ERROR set_channel_volume(extAudio *, struct AudioChannel *);
 static void load_config(extAudio *);
 static ERROR init_audio(extAudio *);
 static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime);
+void end_of_stream(OBJECTPTR Object, LONG BytesRemaining);
 
 #ifdef ALSA_ENABLED
 static void free_alsa(extAudio *);

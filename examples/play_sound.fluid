@@ -7,7 +7,7 @@ function id_file(Path)
    local err, class = mSys.IdentifyFile(Path, 'Open', IDF_IGNORE_HOST)
 
    if (class == mSys.StrHash('sound')) then
-      return obj.new('sound', { path=Path, stream='never' })
+      return obj.new('sound', { path=Path })
    elseif (class == mSys.StrHash('music')) then
       return obj.new('music', { path=Path })
    end
@@ -35,11 +35,11 @@ end
 
    local proc = processing.new()
 
-   -- Monitor the deactivate action.  We can use it to exit once the sample has fully played.
+   -- Subscribe to OnStop so that we can exit once the sample has fully played.
 
-   player.subscribe('deactivate', function(SoundID)
+   player.onStop = function(Sound)
       proc.signal()
-   end)
+   end
 
    -- User can request seeking to a position expressed as 0.0 - 1.0
 
