@@ -3,30 +3,27 @@
 #include <windows.h>
 #include <mmsystem.h>
 #include <dsound.h>
-#include <cstdio>
 #include <math.h>
-
-#define MSG(...) fprintf(stderr, __VA_ARGS__)
 
 #define IS  ==
 
-#define FILL_FIRST  2
-#define FILL_SECOND 3
+#define FILL_FIRST  1
+#define FILL_SECOND 2
 
 class BaseClass;
 class extAudio;
 
 struct PlatformData {
    LPDIRECTSOUNDBUFFER SoundBuffer;
+   struct BaseClass *Object;
    DWORD  BufferLength;
    DWORD  Position;      // Total number of bytes that have so far been loaded from the audio data source
    DWORD  SampleLength;  // Total length of the original sample
    DWORD  BufferPos;
    char   Fill;
    char   Stream;
-   bool   Loop;
    char   Stop;
-   struct BaseClass *Object;
+   bool   Loop;
 };
 
 int dsReadData(struct BaseClass *, void *, int);
@@ -304,6 +301,13 @@ int sndStreamAudio(PlatformData *Sound)
                   Sound->Stop++;
                   if (length - bytes_out > 0) ZeroMemory(write+bytes_out, length-bytes_out); // Clear trailing data for a clean exit
                   if (length2 > 0) ZeroMemory(write2, length2);
+
+                  if (Sound->Stop IS 1) {
+                     if (Sound->Fill IS FILL_FIRST) {
+                        end_of_stream(Sound->Object, (Sound->BufferLength>>1) - Sound->BufferPos + bytes_out);
+                     }
+                     else end_of_stream(Sound->Object, (Sound->BufferLength - Sound->BufferPos) + bytes_out);
+                  }
                }
             }
 

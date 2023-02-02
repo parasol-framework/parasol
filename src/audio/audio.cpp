@@ -8,8 +8,17 @@ that is distributed with this package.  Please refer to it for further informati
 -MODULE-
 Audio: Audio support is managed by this module.
 
-The audio module exports a small number of functions that impact audio on a global basis.  For extensive audio support,
-please refer to the @Audio class.
+The audio module manages the @Audio and @Sound classes.  Functionality for sample mixing is also provided for
+modifying playback on the fly.
+
+Audio functionality and performance can differ between platforms.  On Linux, all audio samples are mixed ahead of time
+and channeled through a single output.  On Windows this same feature is implemented, but where possible the @Sound
+class will assign an independent channel to samples that are played.  This gives a slight edge in reducing lag when
+playback is requested.  In general, Linux is considered the baseline implementation and other platforms should meet or
+exceed its performance level.
+
+For the general playback of audio samples, we strongly encourage use of the @Sound class.  Use the @Audio class and
+its low-level mixer capabilities only if your needs are not met by the @Sound class.
 
 -END-
 
@@ -69,6 +78,7 @@ static ERROR set_channel_volume(extAudio *, struct AudioChannel *);
 static void load_config(extAudio *);
 static ERROR init_audio(extAudio *);
 static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime);
+void end_of_stream(OBJECTPTR Object, LONG BytesRemaining);
 
 #ifdef ALSA_ENABLED
 static void free_alsa(extAudio *);

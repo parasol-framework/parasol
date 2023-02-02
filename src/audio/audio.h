@@ -4,7 +4,7 @@ static const LONG MIX_BUF_LEN = 4; // Mixing buffer length 1/n of a second
 // The mixer interval must trigger more often than the size limit imposed by MIX_BUF_LEN.
 
 #ifdef _WIN32
-#define MIX_INTERVAL 0.2
+#define MIX_INTERVAL 0.1
 #else
 #define MIX_INTERVAL 0.01
 #endif
@@ -67,6 +67,7 @@ struct PlatformData { void *Void; };
 
 struct AudioSample {
    FUNCTION Callback;     // For feeding audio streams.
+   FUNCTION OnStop;       // Called when playback stops.
    UBYTE *  Data;         // Pointer to the sample data.
    SAMPLE   Loop1Start;   // Start of the first loop
    SAMPLE   Loop1End;     // End of the first loop
@@ -226,12 +227,27 @@ class extAudio : public objAudio {
       return (((100 * (LARGE)OutputRate) / (Value * 40)) + 1) & 0xfffffffe;
    }
 
-
    inline void finish(AudioChannel &Channel, bool Notify) {
       if (!Channel.isStopped()) {
          Channel.State = CHS::FINISHED;
          if ((Channel.SampleHandle) and (Notify)) {
-
+            auto &sample = Samples[Channel.SampleHandle];
+            if (sample.OnStop.Type IS CALL_STDC) {
+               parasol::SwitchContext context(sample.OnStop.StdC.Context);
+               auto routine = (void (*)(extAudio *, LONG))sample.OnStop.StdC.Routine;
+               routine(this, Channel.SampleHandle);
+            }
+            else if (sample.OnStop.Type IS CALL_SCRIPT) {
+               OBJECTPTR script;
+               if ((script = sample.OnStop.Script.Script)) {
+                  const ScriptArg args[] = {
+                     { "Audio", FD_OBJECTPTR, { .Address = this } },
+                     { "Handle", FD_LONG, { .Long = Channel.SampleHandle } }
+                  };
+                  ERROR error;
+                  scCallback(script, sample.OnStop.Script.ProcedureID, args, ARRAYSIZE(args), &error);
+               }
+            }
          }
       }
       else Channel.State = CHS::FINISHED;
@@ -240,12 +256,16 @@ class extAudio : public objAudio {
 
 class extSound : public objSound {
    public:
-   UBYTE  Header[128];
-   UBYTE  PlatformData[128];  // Data area for holding platform/hardware specific information
+   FUNCTION OnStop;
+   UBYTE  Header[32];
+   #ifdef _WIN32
+   UBYTE  PlatformData[64];   // Data area for holding platform/hardware specific information
+   #endif
    std::unordered_map<std::string, std::string> Tags;
    objFile *File;
    STRING Path;
-   TIMER  Timer;
+   TIMER  StreamTimer;        // Timer to regularly trigger for provisioning streaming data.
+   TIMER  PlaybackTimer;      // Timer to trigger when playback ends.
    LONG   Format;             // The format of the sound data
    LONG   DataOffset;         // Start of raw audio data within the source file
    LONG   Note;               // Note to play back (e.g. C, C#, G...)
