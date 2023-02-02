@@ -56,8 +56,9 @@
     <method>
       <name>AddSample</name>
       <comment>Adds a new sample to an audio object for channel-based playback.</comment>
-      <prototype>ERROR sndAddSample(OBJECTPTR Object, LONG SampleFormat, APTR Data, LONG DataSize, struct AudioLoop * Loop, LONG LoopSize, LONG * Result)</prototype>
+      <prototype>ERROR sndAddSample(OBJECTPTR Object, FUNCTION OnStop, LONG SampleFormat, APTR Data, LONG DataSize, struct AudioLoop * Loop, LONG LoopSize, LONG * Result)</prototype>
       <input>
+        <param type="FUNCTION" name="OnStop">This optional callback function will be called when the stream stops playing.</param>
         <param type="LONG" name="SampleFormat" lookup="SFM">Indicates the format of the sample data that you are adding.</param>
         <param type="APTR" name="Data">Points to the address of the sample data.</param>
         <param type="LONG" name="DataSize">Size of the sample data, in bytes.</param>
@@ -91,9 +92,10 @@
     <method>
       <name>AddStream</name>
       <comment>Adds a new sample-stream to an Audio object for channel-based playback.</comment>
-      <prototype>ERROR sndAddStream(OBJECTPTR Object, FUNCTION Callback, LONG SampleFormat, LONG SampleLength, LONG PlayOffset, struct AudioLoop * Loop, LONG LoopSize, LONG * Result)</prototype>
+      <prototype>ERROR sndAddStream(OBJECTPTR Object, FUNCTION Callback, FUNCTION OnStop, LONG SampleFormat, LONG SampleLength, LONG PlayOffset, struct AudioLoop * Loop, LONG LoopSize, LONG * Result)</prototype>
       <input>
         <param type="FUNCTION" name="Callback">This callback function must be able to return raw audio data for streaming.</param>
+        <param type="FUNCTION" name="OnStop">This optional callback function will be called when the stream stops playing.</param>
         <param type="LONG" name="SampleFormat" lookup="SFM">Indicates the format of the sample data that you are adding.</param>
         <param type="LONG" name="SampleLength">Total byte-length of the sample data that is being streamed.  May be set to zero if the length is infinite or unknown.</param>
         <param type="LONG" name="PlayOffset">Offset the playing position by this byte index.</param>
@@ -297,6 +299,16 @@
       <type>DOUBLE</type>
       <description>
 <p>The MasterVolume field controls the amount of volume applied to all of the audio channels.  Volume is expressed as a value between 0 and 1.0.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>MixerLag</name>
+      <comment>Returns the lag time of the internal mixer, measured in seconds.</comment>
+      <access read="G">Get</access>
+      <type>DOUBLE</type>
+      <description>
+<p>This field will return the worst-case value for lag time imposed by the internal audio mixer.  The value is measured in seconds and will differ between platforms and user configurations.</p>
       </description>
     </field>
 

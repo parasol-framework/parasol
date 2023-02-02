@@ -398,7 +398,7 @@ static ERROR sndMixPosition(objAudio *Audio, LONG Handle, LONG Position)
    switch (channel->State) {
       case CHS::FINISHED:
       case CHS::PLAYING:
-         // Either playing sample before releasing or playing has ended - check the first loop type.
+         // Either playing sample before releasing, or playing has ended - check the first loop type.
 
          channel->LoopIndex = 1;
          switch (sample.Loop1Type) {

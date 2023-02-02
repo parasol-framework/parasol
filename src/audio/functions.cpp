@@ -236,9 +236,9 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
       if (!(errcount % 50)) {
          log.warning("Broken audio - attempting fix...");
 
-         acDeactivate(Self);
+         Self->deactivate();
 
-         if (acActivate(Self) != ERR_Okay) {
+         if (Self->activate() != ERR_Okay) {
             log.warning("Audio error is terminal, self-destructing...");
             DelayMsg(AC_Free, Self->UID);
             return ERR_Failed;
@@ -249,12 +249,14 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
    }
 
    if (Self->SampleBitSize) {
-      if (space_left > Self->AudioBufferSize / Self->SampleBitSize) space_left = Self->AudioBufferSize / Self->SampleBitSize;
+      if (space_left > Self->AudioBufferSize / Self->SampleBitSize) {
+         space_left = Self->AudioBufferSize / Self->SampleBitSize;
+      }
    }
 
    // Fill our entire audio buffer with data to be sent to alsa
 
-   LONG space = space_left;
+   auto space = space_left;
    UBYTE *buffer = Self->AudioBuffer;
    while (space_left) {
       // Scan channels to check if an update rate is going to be met
@@ -262,9 +264,7 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
       LONG mix_left;
       get_mix_amount(Self, &mix_left);
 
-      LONG elements;
-      if (mix_left < space_left) elements = mix_left;
-      else elements = space_left;
+      LONG elements = (mix_left < space_left) ? mix_left : space_left;
 
       // Produce the audio data
 
@@ -294,7 +294,7 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
                return ERR_Okay;
             }
 
-            LONG code = snd_pcm_status_get_state(status);
+            auto code = snd_pcm_status_get_state(status);
             if (code IS SND_PCM_STATE_XRUN) {
                // Reset the output device
                if ((err = snd_pcm_prepare(Self->Handle)) >= 0) {

@@ -37,4 +37,4 @@ else ()
    endif ()
 endif ()
 
-flute_test (svg_output "tests/test-audio.fluid")
+flute_test (audio "tests/test-audio.fluid")

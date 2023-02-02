@@ -161,6 +161,7 @@ If you attempt to grab the audio object and call this method, it returns `ERR_Il
 for calling this method is through the WaitMsg() function.
 
 -INPUT-
+func OnStop: This optional callback function will be called when the stream stops playing.
 int(SFM) SampleFormat: Indicates the format of the sample data that you are adding.
 buf(ptr) Data: Points to the address of the sample data.
 bufsize DataSize: Size of the sample data, in bytes.
@@ -201,6 +202,7 @@ ERROR AUDIO_AddSample(extAudio *Self, struct sndAddSample *Args)
    auto &sample = Self->Samples[idx];
    sample.SampleType   = Args->SampleFormat;
    sample.SampleLength = SAMPLE(Args->DataSize >> shift);
+   sample.OnStop       = Args->OnStop;
 
    if (auto loop = Args->Loop) {
       sample.LoopMode     = loop->LoopMode;
@@ -272,6 +274,7 @@ currently supported for streams.  For that reason, set the type variables to eit
 
 -INPUT-
 func Callback: This callback function must be able to return raw audio data for streaming.
+func OnStop: This optional callback function will be called when the stream stops playing.
 int(SFM) SampleFormat: Indicates the format of the sample data that you are adding.
 int SampleLength: Total byte-length of the sample data that is being streamed.  May be set to zero if the length is infinite or unknown.
 int PlayOffset: Offset the playing position by this byte index.
@@ -331,6 +334,7 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
    sample.SampleLength = SAMPLE(buffer_len>>shift);
    sample.StreamLength = BYTELEN((Args->SampleLength > 0) ? Args->SampleLength : 0x7fffffff); // 'Infinite' stream length
    sample.Callback     = Args->Callback;
+   sample.OnStop       = Args->OnStop;
    sample.Stream       = true;
    sample.PlayPos      = BYTELEN(Args->PlayOffset);
 
@@ -1148,6 +1152,27 @@ static ERROR SET_MasterVolume(extAudio *Self, DOUBLE Value)
 /*********************************************************************************************************************
 
 -FIELD-
+MixerLag: Returns the lag time of the internal mixer, measured in seconds.
+
+This field will return the worst-case value for lag time imposed by the internal audio mixer.  The value is measured
+in seconds and will differ between platforms and user configurations.
+
+*********************************************************************************************************************/
+
+static ERROR GET_MixerLag(extAudio *Self, DOUBLE *Value)
+{
+#ifdef _WIN32
+   // Windows uses a split buffer technique, so the write cursor is always 1/2 a buffer ahead.
+   *Value = MIX_INTERVAL + (DOUBLE(Self->MixElements>>1) / DOUBLE(Self->OutputRate));
+#else
+   *Value = MIX_INTERVAL + (Self->AudioBufferSize / Self->SampleBitSize) / DOUBLE(Self->OutputRate);
+#endif
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
 Mute:  Mutes all audio output.
 
 Audio output can be muted at any time by setting this value to TRUE.  To restart audio output after muting, set the
@@ -1375,6 +1400,7 @@ static const FieldArray clAudioFields[] = {
    { "PeriodSize",    FDF_LONG|FDF_RI,    0, NULL, (APTR)SET_PeriodSize },
    // VIRTUAL FIELDS
    { "Device",        FDF_STRING|FDF_RW,  0, (APTR)GET_Device,       (APTR)SET_Device },
+   { "MixerLag",      FDF_DOUBLE|FDF_R,   0, (APTR)GET_MixerLag,     NULL },
    { "MasterVolume",  FDF_DOUBLE|FDF_RW,  0, (APTR)GET_MasterVolume, (APTR)SET_MasterVolume },
    { "Mute",          FDF_LONG|FDF_RW,    0, (APTR)GET_Mute,         (APTR)SET_Mute },
    { "Stereo",        FDF_LONG|FDF_RW,    0, (APTR)GET_Stereo,       (APTR)SET_Stereo },
