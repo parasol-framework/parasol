@@ -81,11 +81,6 @@ proc.sleep()
     </action>
 
     <action>
-      <name>Reset</name>
-      <comment>Stops audio playback, resets configuration details and restores the playback position to the start of the sample.</comment>
-    </action>
-
-    <action>
       <name>SaveToObject</name>
       <comment>Saves audio sample data to an object.</comment>
     </action>
@@ -281,8 +276,8 @@ proc.sleep()
     <field>
       <name>Position</name>
       <comment>The current playback position.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>INT</type>
+      <access read="R" write="S">Read/Set</access>
+      <type>BIGINT</type>
       <description>
 <p>The current playback position of the audio sample is indicated by this field.  Writing to the field will alter the playback position, either when the sample is next played, or immediately if it is currently playing.</p>
       </description>

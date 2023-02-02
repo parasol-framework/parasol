@@ -51,8 +51,8 @@ struct prvMP3 {
    LONG   OverflowSize;        // Number of bytes used in the overflow buffer.
    LONG   SamplesPerFrame;     // Last known frame size, measured in samples: 384, 576 or 1152
    LONG   SeekOffset;          // Offset to apply when performing seek operations.
-   LONG   WriteOffset;         // Current stream offset in bytes, relative to Sound.Length.
-   LONG   ReadOffset;          // Current seek position for the Read() action.  Max value is Sound.Length
+   LARGE  WriteOffset;         // Current stream offset in bytes, relative to Sound.Length.
+   LARGE  ReadOffset;          // Current seek position for the Read() action.  Max value is Sound.Length
    LONG   CompressedOffset;    // Next byte position for reading compressed input
    LONG   FramesProcessed;     // Count of frames processed by the decoder.
    LONG   TotalFrames;         // Total frames for the entire stream (known if CBR data, or VBR header is present).
@@ -132,7 +132,7 @@ static const LONG bitrate_table[5][15] = {
 
 static const LONG samplerate_table[3] = { 44100, 48000, 32000 };
 
-static LONG calc_length(objSound *, LONG);
+static LARGE calc_length(objSound *, LONG);
 
 //********************************************************************************************************************
 // The ID3v1 tag can be located at the end of the MP3 file.
@@ -283,11 +283,11 @@ static int check_xing(objSound *Self, const UBYTE *Frame)
 
    // Compute byte length with adjustment for padding at the end, but not the start.
 
-   LONG len = prv->TotalFrames * prv->SamplesPerFrame * prv->info.channels * sizeof(WORD);
+   LARGE len = prv->TotalFrames * prv->SamplesPerFrame * prv->info.channels * sizeof(WORD);
    len -= prv->PaddingEnd * prv->info.channels * sizeof(WORD);
    Self->set(FID_Length, len);
 
-   log.msg("Info header detected.  Total Frames: %d, Samples: %d, Track Time: %.2fs, Byte Length: %d, Padding: %d/%d", prv->TotalFrames, prv->TotalSamples, seconds_len, len, prv->PaddingStart, prv->PaddingEnd);
+   log.msg("Info header detected.  Total Frames: %d, Samples: %d, Track Time: %.2fs, Byte Length: %" PF64 ", Padding: %d/%d", prv->TotalFrames, prv->TotalSamples, seconds_len, len, prv->PaddingStart, prv->PaddingEnd);
 
    return 1;
 }
@@ -383,7 +383,7 @@ static ERROR MP3_Init(objSound *Self, APTR Void)
    if (prv->info.channels IS 2) Self->Flags |= SDF_STEREO;
    if (Self->Stream != STREAM::NEVER) Self->Flags |= SDF_STREAM;
 
-   Self->BytesPerSecond = prv->info.hz * prv->info.channels * sizeof(WORD);
+   Self->BytesPerSecond = LONG(prv->info.hz * prv->info.channels * sizeof(WORD));
    Self->BitsPerSample  = 16;
    Self->Frequency      = prv->info.hz;
    Self->Playback       = Self->Frequency;
@@ -433,7 +433,7 @@ static ERROR MP3_Read(objSound *Self, struct acRead *Args)
 
       // Read as much input as possible.
 
-      log.trace("Write %" PF64 " max bytes to %d, Avail. Compressed: %d bytes", Args->Length, prv->WriteOffset, prv->CompressedOffset);
+      log.trace("Writing %" PF64 " max bytes to %d, Avail. Compressed: %d bytes", Args->Length-pos, prv->WriteOffset, prv->CompressedOffset);
 
       if ((prv->CompressedOffset < (LONG)prv->Input.size()) and (!prv->EndOfFile) and (!no_more_input)) {
          LONG result;
@@ -530,12 +530,13 @@ static ERROR MP3_Read(objSound *Self, struct acRead *Args)
       // at the correct position.
 
       if (Self->Length != prv->WriteOffset) {
-         log.extmsg("Decode complete, changing sample length from %d to %d bytes.  Decoded %d frames.", Self->Length, prv->WriteOffset, prv->FramesProcessed);
+         log.extmsg("Decode complete, changing sample length from %d to %" PF64 " bytes.  Decoded %d frames.", Self->Length, prv->WriteOffset, prv->FramesProcessed);
          Self->set(FID_Length, prv->WriteOffset);
       }
-      else log.extmsg("Decoding of %d MP3 frames complete, output %d bytes.", prv->FramesProcessed, prv->WriteOffset);
+      else log.extmsg("Decoding of %d MP3 frames complete, output %" PF64 " bytes.", prv->FramesProcessed, prv->WriteOffset);
    }
 
+   Self->Position = prv->WriteOffset;
    Args->Result = prv->WriteOffset - write_offset;
    return ERR_Okay;
 }
@@ -559,6 +560,8 @@ static ERROR MP3_Seek(objSound *Self, struct acSeek *Args)
    else if (Args->Position IS SEEK_CURRENT)  offset = prv->ReadOffset + F2T(Args->Offset);
    else if (Args->Position IS SEEK_RELATIVE) offset = Self->Length * Args->Offset;
    else return log.warning(ERR_Args);
+
+   if (offset IS Self->Position) return ERR_Okay;
 
    if (Self->Flags & SDF_STREAM) {
       prv->reset();
@@ -625,6 +628,16 @@ static ERROR MP3_Seek(objSound *Self, struct acSeek *Args)
          }
       }
 
+      LONG active;
+      if (!Self->get(FID_Active, &active)) {
+         if (active) {
+            log.branch("Resetting state of active sample.");
+            Self->deactivate();
+            Self->Position = prv->WriteOffset;
+            Self->activate();
+         }
+      }
+
       return ERR_Okay;
    }
    else {
@@ -640,7 +653,7 @@ static ERROR MP3_Seek(objSound *Self, struct acSeek *Args)
 #define SIZE_BUFFER     256000  // Load up to this many bytes to determine if the file is in variable bit-rate
 #define SIZE_CBR_BUFFER 51200   // Load at least this many bytes to determine if the file is in constant bit-rate
 
-static LONG calc_length(objSound *Self, LONG ReduceEnd)
+static LARGE calc_length(objSound *Self, LONG ReduceEnd)
 {
    parasol::Log log(__FUNCTION__);
    LONG buffer_size;

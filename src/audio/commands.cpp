@@ -55,7 +55,7 @@ static ERROR fade_out(extAudio *Audio, LONG Handle)
    auto channel = Audio->GetChannel(Handle);
    auto shadow  = Audio->GetShadow(Handle);
 
-   if ((channel->State IS CHS::STOPPED) or (channel->State IS CHS::FINISHED) or
+   if (channel->isStopped() or
        (shadow->State IS CHS::FADE_OUT) or
        ((channel->LVolume < 0.01) and (channel->RVolume < 0.01))) return ERR_Okay;
 
@@ -390,7 +390,7 @@ static ERROR sndMixPosition(objAudio *Audio, LONG Handle, LONG Position)
       // If channel status is released and the new sample does not have two loops, end the sample
 
       if ((sample.LoopMode != LOOP::SINGLE_RELEASE) and (sample.LoopMode != LOOP::DOUBLE) and (channel->State IS CHS::RELEASED)) {
-         channel->State = CHS::FINISHED;
+         ((extAudio *)Audio)->finish(*channel, true);
          return ERR_Okay;
       }
    }
@@ -410,7 +410,7 @@ static ERROR sndMixPosition(objAudio *Audio, LONG Handle, LONG Position)
                   channel->State       = CHS::PLAYING;
                   channel->Flags       &= ~CHF::BACKWARD;
                }
-               else channel->State = CHS::FINISHED;
+               else ((extAudio *)Audio)->finish(*channel, true);
                break;
 
             case LTYPE::UNIDIRECTIONAL:
@@ -451,7 +451,7 @@ static ERROR sndMixPosition(objAudio *Audio, LONG Handle, LONG Position)
                   channel->State       = CHS::PLAYING;
                   channel->Flags       &= ~CHF::BACKWARD;
                }
-               else channel->State = CHS::FINISHED;
+               else ((extAudio *)Audio)->finish(*channel, true);
                break;
 
             case LTYPE::UNIDIRECTIONAL:
@@ -540,7 +540,7 @@ static ERROR sndMixPlay(objAudio *Audio, LONG Handle, LONG Frequency)
 
    fade_out((extAudio *)Audio, Handle);
 
-   channel->State     = CHS::FINISHED; // Turn off previous sound
+   ((extAudio *)Audio)->finish(*channel, false); // Turn off previous sound
    channel->Frequency = Frequency; // New frequency
 
    auto &sample = ((extAudio *)Audio)->Samples[channel->SampleHandle];
@@ -741,6 +741,7 @@ ERROR sndMixStop(objAudio *Audio, LONG Handle)
       return ERR_Okay;
    }
 
+   ((extAudio *)Audio)->finish(*channel, true);
    channel->State = CHS::STOPPED;
 
    if (Audio->Flags & ADF_OVER_SAMPLING) {

@@ -40,8 +40,7 @@ to lock the device hardware, which on some platforms may lead to failure if anot
 device.  The resources and any device locks obtained by this action can be released with a call to
 #Deactivate().
 
-An inactive audio object can operate in a limited fashion but will not otherwise interact directly with the audio
-hardware.
+An inactive audio object can operate in a limited fashion but is without access to the audio hardware.
 
 *********************************************************************************************************************/
 
@@ -112,6 +111,9 @@ static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
             return log.warning(ERR_Failed);
          }
       #endif
+
+      // Note: The audio feed is managed by audio_timer() and is not started until an audio playback command
+      // is executed by the client.
 
       Self->Initialising = false;
       return ERR_Okay;
@@ -979,7 +981,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 
 #else
 
-   WORD index;
+   LONG index;
 
    if (!Args) return log.warning(ERR_NullArgs);
    if (((Args->Volume < 0) or (Args->Volume > 1.0)) and (Args->Volume != -1)) {
