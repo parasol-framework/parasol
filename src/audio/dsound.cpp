@@ -304,6 +304,13 @@ int sndStreamAudio(PlatformData *Sound)
                   Sound->Stop++;
                   if (length - bytes_out > 0) ZeroMemory(write+bytes_out, length-bytes_out); // Clear trailing data for a clean exit
                   if (length2 > 0) ZeroMemory(write2, length2);
+
+                  if (Sound->Stop IS 1) {
+                     if (Sound->Fill IS FILL_FIRST) {
+                        end_of_stream(Sound->Object, (Sound->BufferLength>>1) - Sound->BufferPos + bytes_out);
+                     }
+                     else end_of_stream(Sound->Object, (Sound->BufferLength - Sound->BufferPos) + bytes_out);
+                  }
                }
             }
 

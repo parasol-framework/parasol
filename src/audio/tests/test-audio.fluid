@@ -11,40 +11,43 @@ function testSequentialPlayback()
    local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav' })
    assert(snd, 'Failed to process low-tone wav file.')
 
-   snd.subscribe('deactivate', function(SoundID)
+   snd.onStop = function(SoundID)
       proc.signal()
-   end)
+   end
 
    local time = mSys.preciseTime()
+
+   local duration = snd.duration
 
    assert(snd.acActivate() == ERR_Okay, 'Failed to playback low-tone sound sample.')
 
    proc.sleep()
 
-   local time_taken = mSys.preciseTime() - time
+   local time_taken = (mSys.preciseTime() - time) / 1000000
 
-   assert(time_taken >= 480000, 'Sound sample played faster than the anticipated time scale: ' .. time_taken)
-   assert(time_taken <  550000, 'Sound sample played longer than the anticipated time scale: ' .. time_taken)
+   assert(time_taken >= duration, 'Sample played faster than the anticipated time scale of ' .. duration .. ': ' .. time_taken)
+   assert(time_taken <  duration+0.1, 'Sample played longer than the anticipated time scale of ' .. duration .. ': ' .. time_taken)
 
    -- Second sample
 
    local snd = obj.new('sound', { path=glFolder .. 'high-tone.wav' })
    assert(snd, 'Failed to process high-tone wav file.')
 
-   snd.subscribe('deactivate', function(SoundID)
+   snd.onStop = function(SoundID)
       proc.signal()
-   end)
+   end
 
    time = mSys.preciseTime()
+   duration = snd.duration
 
    assert(snd.acActivate() == ERR_Okay, 'Failed to playback high-tone sound sample.')
 
    proc.sleep()
 
-   time_taken = mSys.preciseTime() - time
+   time_taken = (mSys.preciseTime() - time) / 1000000
 
-   assert(time_taken >= 480000, 'Second sound sample played faster than the anticipated time scale: ' .. time_taken)
-   assert(time_taken <  550000, 'Second sound sample played longer than the anticipated time scale: ' .. time_taken)
+   assert(time_taken >= duration, 'Sample played faster than the anticipated time scale of ' .. duration .. ': ' .. time_taken)
+   assert(time_taken <  duration+0.1, 'Sample played longer than the anticipated time scale of ' .. duration .. ': ' .. time_taken)
 
    print('Time taken: ' .. time_taken)
 end
@@ -58,9 +61,9 @@ function testPan()
    local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav', pan=-1.0 })
    assert(snd, 'Failed to process low-tone wav file.')
 
-   snd.subscribe('deactivate', function(SoundID)
+   snd.onStop = function(SoundID)
       proc.signal()
-   end)
+   end
 
    print('Play left speaker.')
 
@@ -87,9 +90,9 @@ function testVolume()
    local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav' })
    assert(snd, 'Failed to process low-tone wav file.')
 
-   snd.subscribe('deactivate', function(SoundID)
+   snd.onStop = function(SoundID)
       proc.signal()
-   end)
+   end
 
    print('Incrementing volume...')
    for i=1,4 do

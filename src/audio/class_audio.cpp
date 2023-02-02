@@ -161,6 +161,7 @@ If you attempt to grab the audio object and call this method, it returns `ERR_Il
 for calling this method is through the WaitMsg() function.
 
 -INPUT-
+func OnStop: This optional callback function will be called when the stream stops playing.
 int(SFM) SampleFormat: Indicates the format of the sample data that you are adding.
 buf(ptr) Data: Points to the address of the sample data.
 bufsize DataSize: Size of the sample data, in bytes.
@@ -201,6 +202,7 @@ ERROR AUDIO_AddSample(extAudio *Self, struct sndAddSample *Args)
    auto &sample = Self->Samples[idx];
    sample.SampleType   = Args->SampleFormat;
    sample.SampleLength = SAMPLE(Args->DataSize >> shift);
+   sample.OnStop       = Args->OnStop;
 
    if (auto loop = Args->Loop) {
       sample.LoopMode     = loop->LoopMode;
@@ -272,6 +274,7 @@ currently supported for streams.  For that reason, set the type variables to eit
 
 -INPUT-
 func Callback: This callback function must be able to return raw audio data for streaming.
+func OnStop: This optional callback function will be called when the stream stops playing.
 int(SFM) SampleFormat: Indicates the format of the sample data that you are adding.
 int SampleLength: Total byte-length of the sample data that is being streamed.  May be set to zero if the length is infinite or unknown.
 int PlayOffset: Offset the playing position by this byte index.
@@ -331,6 +334,7 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
    sample.SampleLength = SAMPLE(buffer_len>>shift);
    sample.StreamLength = BYTELEN((Args->SampleLength > 0) ? Args->SampleLength : 0x7fffffff); // 'Infinite' stream length
    sample.Callback     = Args->Callback;
+   sample.OnStop       = Args->OnStop;
    sample.Stream       = true;
    sample.PlayPos      = BYTELEN(Args->PlayOffset);
 
