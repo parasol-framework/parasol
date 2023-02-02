@@ -49,7 +49,6 @@ individual samples with more immediacy.
 #define SIZE_RIFF_CHUNK 12
 
 static ERROR SOUND_GET_Active(extSound *, LONG *);
-static ERROR SOUND_GET_Position(extSound *, LONG *);
 
 static ERROR SOUND_SET_Note(extSound *, CSTRING);
 
@@ -150,7 +149,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
 {
    parasol::Log log;
 
-   log.traceBranch("Position: %d", Self->Position);
+   log.traceBranch("Position: %" PF64, Self->Position);
 
    if (!Self->Length) return log.warning(ERR_FieldNotSet);
 
@@ -347,7 +346,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          LONG i;
          for (i=0; i < audio->MaxChannels; i++) {
             channel = audio->GetChannel(Self->ChannelIndex);
-            if ((channel) and (channel->SoundID IS Self->UID)) break;
+            if ((channel) and (channel->SampleHandle IS Self->Handle)) break;
             Self->ChannelIndex++;
          }
          if (i >= audio->MaxChannels) channel = NULL;
@@ -360,7 +359,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          LONG i;
          for (i=0; i < audio->MaxChannels; i++) {
             if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
-               if ((channel->State IS CHS::STOPPED) or (channel->State IS CHS::FINISHED)) break;
+               if (channel->isStopped()) break;
                else if (channel->Priority < Self->Priority) priority = channel;
             }
             Self->ChannelIndex++;
@@ -377,9 +376,6 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
       sndMixStop(*audio, Self->ChannelIndex);
 
       if (!sndMixSample(*audio, Self->ChannelIndex, Self->Handle)) {
-         auto channel = audio->GetChannel(Self->ChannelIndex);
-         channel->SoundID = Self->UID; // Record our object ID against the channel
-
          if (sndMixVolume(*audio, Self->ChannelIndex, Self->Volume)) return log.warning(ERR_Failed);
          if (sndMixPan(*audio, Self->ChannelIndex, Self->Pan)) return log.warning(ERR_Failed);
          if (sndMixPlay(*audio, Self->ChannelIndex, Self->Playback)) return log.warning(ERR_Failed);
@@ -418,12 +414,9 @@ static ERROR SOUND_Deactivate(extSound *Self, APTR Void)
    sndStop((PlatformData *)Self->PlatformData);
 #else
    parasol::ScopedObjectLock<extAudio> audio(Self->AudioID);
-   if (audio.granted()) {
-      // Get a reference to our sound channel, then check if our unique ID is set against it.  If so, our sound is
-      // currently playing and we must send a stop signal to the audio system.
-
+   if (audio.granted()) { // Stop the sample if it's live.
       if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
-         if (channel->SoundID IS Self->UID) sndMixStop(*audio, Self->ChannelIndex);
+         if (channel->SampleHandle IS Self->Handle) sndMixStop(*audio, Self->ChannelIndex);
       }
    }
    else return log.warning(ERR_AccessObject);
@@ -445,7 +438,6 @@ static ERROR SOUND_Disable(extSound *Self, APTR Void)
    log.branch();
 
 #ifdef USE_WIN32_PLAYBACK
-   Self->Position = sndGetPosition((PlatformData *)Self->PlatformData);
    sndStop((PlatformData *)Self->PlatformData);
 #else
    if (!Self->ChannelIndex) return ERR_Okay;
@@ -453,7 +445,7 @@ static ERROR SOUND_Disable(extSound *Self, APTR Void)
    parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 5000);
    if (audio.granted()) {
       if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
-         if (channel->SoundID IS Self->UID) sndMixStop(*audio, Self->ChannelIndex);
+         if (channel->SampleHandle IS Self->Handle) sndMixStop(*audio, Self->ChannelIndex);
       }
    }
    else return log.warning(ERR_AccessObject);
@@ -475,7 +467,7 @@ static ERROR SOUND_Enable(extSound *Self, APTR Void)
 
 #ifdef USE_WIN32_PLAYBACK
    if (!Self->Handle) {
-      log.msg("Playing back from position %d.", Self->Position);
+      log.msg("Playing back from position %" PF64, Self->Position);
       if (Self->Flags & SDF_LOOP) sndPlay((PlatformData *)Self->PlatformData, TRUE, Self->Position);
       else sndPlay((PlatformData *)Self->PlatformData, FALSE, Self->Position);
    }
@@ -485,7 +477,7 @@ static ERROR SOUND_Enable(extSound *Self, APTR Void)
    parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 5000);
    if (audio.granted()) {
       if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
-         if (channel->SoundID IS Self->UID) sndMixContinue(*audio, Self->ChannelIndex);
+         if (channel->SampleHandle IS Self->Handle) sndMixContinue(*audio, Self->ChannelIndex);
       }
    }
    else return log.warning(ERR_AccessObject);
@@ -821,14 +813,14 @@ static ERROR SOUND_Read(extSound *Self, struct acRead *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
+   log.traceBranch("Length: %d, Offset: %" PF64, Args->Length, Self->Position);
+
    if (Args->Length <= 0) {
       Args->Result = 0;
       return ERR_Okay;
    }
 
    // Don't read more than the known raw sample length
-
-   log.traceBranch("Length: %d, Offset: %d", Args->Length, Self->Position);
 
    LONG result;
    if (Self->Position + Args->Length > Self->Length) {
@@ -840,43 +832,6 @@ static ERROR SOUND_Read(extSound *Self, struct acRead *Args)
    Args->Result = result;
 
    return ERR_Okay;
-}
-
-/*********************************************************************************************************************
--ACTION-
-Reset: Stops audio playback, resets configuration details and restores the playback position to the start of the sample.
--END-
-*********************************************************************************************************************/
-
-static ERROR SOUND_Reset(extSound *Self, APTR Void)
-{
-   parasol::Log log;
-   log.branch();
-
-   if (!Self->ChannelIndex) return ERR_Okay;
-
-   parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 2000);
-   if (audio.granted()) {
-      Self->Position = 0;
-      auto channel = audio->GetChannel(Self->ChannelIndex);
-      if ((channel->SoundID != Self->UID) or (channel->State IS CHS::STOPPED) or
-          (channel->State IS CHS::FINISHED)) {
-         return ERR_Okay;
-      }
-
-      sndMixStop(*audio, Self->ChannelIndex);
-
-      if (!sndMixSample(*audio, Self->ChannelIndex, Self->Handle)) {
-         channel->SoundID = Self->UID;
-
-         sndMixVolume(*audio, Self->ChannelIndex, Self->Volume);
-         sndMixPan(*audio, Self->ChannelIndex, Self->Pan);
-         sndMixPlay(*audio, Self->ChannelIndex, Self->Playback);
-         return ERR_Okay;
-      }
-      else return log.warning(ERR_Failed);
-   }
-   else return log.warning(ERR_AccessObject);
 }
 
 /*********************************************************************************************************************
@@ -944,7 +899,7 @@ static ERROR SOUND_Seek(extSound *Self, struct acSeek *Args)
       Self->Position &= ~align;
    }
 
-   log.traceBranch("Seek to %d + %d", Self->Position, Self->DataOffset);
+   log.traceBranch("Seek to %" PF64 " + %d", Self->Position, Self->DataOffset);
 
    parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 2000);
    if (audio.granted()) {
@@ -1022,9 +977,7 @@ static ERROR SOUND_GET_Active(extSound *Self, LONG *Value)
       parasol::ScopedObjectLock<extAudio> audio(Self->AudioID);
       if (audio.granted()) {
          if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
-            if (!((channel->State IS CHS::STOPPED) or (channel->State IS CHS::FINISHED))) {
-               *Value = TRUE;
-            }
+            if (!channel->isStopped()) *Value = TRUE;
          }
       }
       else return ERR_AccessObject;
@@ -1459,13 +1412,7 @@ playback position, either when the sample is next played, or immediately if it i
 
 *********************************************************************************************************************/
 
-static ERROR SOUND_GET_Position(extSound *Self, LONG *Value)
-{
-   *Value = Self->Position;
-   return ERR_Okay;
-}
-
-static ERROR SOUND_SET_Position(extSound *Self, LONG Value)
+static ERROR SOUND_SET_Position(extSound *Self, LARGE Value)
 {
    return Self->seek(Value, SEEK_START);
 }
@@ -1612,6 +1559,7 @@ static const FieldDef clStream[] = {
 static const FieldArray clFields[] = {
    { "Volume",         FDF_DOUBLE|FDF_RW,    0, NULL, (APTR)SOUND_SET_Volume },
    { "Pan",            FDF_DOUBLE|FDF_RW,    0, NULL, (APTR)SOUND_SET_Pan },
+   { "Position",       FDF_LARGE|FDF_RW,     0, NULL, (APTR)SOUND_SET_Position },
    { "Priority",       FDF_LONG|FDF_RW,      0, NULL, (APTR)SOUND_SET_Priority },
    { "Length",         FDF_LONG|FDF_RW,      0, NULL, (APTR)SOUND_SET_Length },
    { "Octave",         FDF_LONG|FDF_RW,      0, NULL, (APTR)SOUND_SET_Octave },
@@ -1625,14 +1573,13 @@ static const FieldArray clFields[] = {
    { "LoopStart",      FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "LoopEnd",        FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "Stream",         FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clStream, NULL, NULL },
-   { "Position",       FDF_LONG|FDF_RW,      0, (APTR)SOUND_GET_Position, (APTR)SOUND_SET_Position },
    { "Handle",         FDF_LONG|FDF_SYSTEM|FDF_R, 0, NULL, NULL },
    { "ChannelIndex",   FDF_LONG|FDF_R,       0, NULL, NULL },
    // Virtual fields
-   { "Active",   FDF_LONG|FDF_R,     0, (APTR)SOUND_GET_Active, NULL },
+   { "Active",   FDF_LONG|FDF_R,           0, (APTR)SOUND_GET_Active, NULL },
    { "Header",   FDF_BYTE|FDF_ARRAY|FDF_R, 0, (APTR)SOUND_GET_Header, NULL },
-   { "Path",     FDF_STRING|FDF_RI,  0, (APTR)SOUND_GET_Path, (APTR)SOUND_SET_Path },
-   { "Note",     FDF_STRING|FDF_RW,  0, (APTR)SOUND_GET_Note, (APTR)SOUND_SET_Note },
+   { "Path",     FDF_STRING|FDF_RI,        0, (APTR)SOUND_GET_Path, (APTR)SOUND_SET_Path },
+   { "Note",     FDF_STRING|FDF_RW,        0, (APTR)SOUND_GET_Note, (APTR)SOUND_SET_Note },
    END_FIELD
 };
 
@@ -1646,7 +1593,6 @@ static const ActionArray clActions[] = {
    { AC_Init,          (APTR)SOUND_Init },
    { AC_NewObject,     (APTR)SOUND_NewObject },
    { AC_Read,          (APTR)SOUND_Read },
-   { AC_Reset,         (APTR)SOUND_Reset },
    { AC_SaveToObject,  (APTR)SOUND_SaveToObject },
    { AC_Seek,          (APTR)SOUND_Seek },
    { AC_SetVar,        (APTR)SOUND_SetVar },

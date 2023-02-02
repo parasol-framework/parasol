@@ -124,7 +124,6 @@ struct AudioChannel {
    DOUBLE   RVolumeTarget;  // Volume target when fading or ramping
    DOUBLE   Volume;         // Playing volume (0 - 1.0)
    DOUBLE   Pan;            // Pan value (-1.0 - 1.0)
-   OBJECTID SoundID;        // ID of the sound object using this channel, if relevant
    LONG     SampleHandle;   // Sample index, direct lookup into extAudio->Samples
    CHF      Flags;          // Special flags
    LONG     Position;       // Current playing/mixing byte position within Sample.
@@ -137,6 +136,10 @@ struct AudioChannel {
 
    bool active() {
       return Frequency ? true : false;
+   }
+
+   inline bool isStopped() {
+      return ((State IS CHS::STOPPED) or (State IS CHS::FINISHED));
    }
 };
 
@@ -221,6 +224,17 @@ class extAudio : public objAudio {
    inline LONG MixLeft(LONG Value) {
       if (!Value) return 0;
       return (((100 * (LARGE)OutputRate) / (Value * 40)) + 1) & 0xfffffffe;
+   }
+
+
+   inline void finish(AudioChannel &Channel, bool Notify) {
+      if (!Channel.isStopped()) {
+         Channel.State = CHS::FINISHED;
+         if ((Channel.SampleHandle) and (Notify)) {
+
+         }
+      }
+      else Channel.State = CHS::FINISHED;
    }
 };
 
