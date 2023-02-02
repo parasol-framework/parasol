@@ -37,7 +37,6 @@ void dsSeekData(struct BaseClass *, int);
 static LPDIRECTSOUND glDirectSound;     // the DirectSound object
 static HMODULE dsModule = NULL;         // dsound.dll module handle
 static HWND glWindow;                   // HWND for DirectSound
-static const int BUFFER_LENGTH = 500;   // buffer length in milliseconds
 
 static HRESULT (WINAPI *dsDirectSoundCreate)(const GUID *, LPDIRECTSOUND *, IUnknown FAR *) = NULL;
 

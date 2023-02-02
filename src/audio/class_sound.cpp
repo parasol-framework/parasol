@@ -235,7 +235,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
 {
    parasol::Log log;
 
-   log.traceBranch("Position: %d", Self->Position);
+   log.traceBranch("Position: %" PF64, Self->Position);
 
    if (!Self->Length) return log.warning(ERR_FieldNotSet);
 
@@ -566,7 +566,7 @@ static ERROR SOUND_Enable(extSound *Self, APTR Void)
 
 #ifdef USE_WIN32_PLAYBACK
    if (!Self->Handle) {
-      log.msg("Playing back from position %d.", Self->Position);
+      log.msg("Playing back from position %" PF64, Self->Position);
       if (Self->Flags & SDF_LOOP) sndPlay((PlatformData *)Self->PlatformData, TRUE, Self->Position);
       else sndPlay((PlatformData *)Self->PlatformData, FALSE, Self->Position);
    }
@@ -911,7 +911,7 @@ static ERROR SOUND_Read(extSound *Self, struct acRead *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   log.traceBranch("Length: %d, Offset: %d", Args->Length, Self->Position);
+   log.traceBranch("Length: %d, Offset: %" PF64, Args->Length, Self->Position);
 
    if (Args->Length <= 0) {
       Args->Result = 0;
@@ -997,7 +997,7 @@ static ERROR SOUND_Seek(extSound *Self, struct acSeek *Args)
       Self->Position &= ~align;
    }
 
-   log.traceBranch("Seek to %d + %d", Self->Position, Self->DataOffset);
+   log.traceBranch("Seek to %" PF64 " + %d", Self->Position, Self->DataOffset);
 
    parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 2000);
    if (audio.granted()) {
@@ -1551,12 +1551,6 @@ playback position, either when the sample is next played, or immediately if it i
 
 *********************************************************************************************************************/
 
-static ERROR SOUND_GET_Position(extSound *Self, LARGE *Value)
-{
-   *Value = Self->Position;
-   return ERR_Okay;
-}
-
 static ERROR SOUND_SET_Position(extSound *Self, LARGE Value)
 {
    return Self->seek(Value, SEEK_START);
@@ -1687,6 +1681,7 @@ static const FieldDef clStream[] = {
 static const FieldArray clFields[] = {
    { "Volume",         FDF_DOUBLE|FDF_RW,    0, NULL, (APTR)SOUND_SET_Volume },
    { "Pan",            FDF_DOUBLE|FDF_RW,    0, NULL, (APTR)SOUND_SET_Pan },
+   { "Position",       FDF_LARGE|FDF_RW,     0, NULL, (APTR)SOUND_SET_Position },
    { "Priority",       FDF_LONG|FDF_RW,      0, NULL, (APTR)SOUND_SET_Priority },
    { "Length",         FDF_LONG|FDF_RW,      0, NULL, (APTR)SOUND_SET_Length },
    { "Octave",         FDF_LONG|FDF_RW,      0, NULL, (APTR)SOUND_SET_Octave },
@@ -1700,7 +1695,6 @@ static const FieldArray clFields[] = {
    { "LoopStart",      FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "LoopEnd",        FDF_LONG|FDF_RW,      0, NULL, NULL },
    { "Stream",         FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clStream, NULL, NULL },
-   { "Position",       FDF_LARGE|FDF_RW,     0, (APTR)SOUND_GET_Position, (APTR)SOUND_SET_Position },
    { "Handle",         FDF_LONG|FDF_SYSTEM|FDF_R, 0, NULL, NULL },
    { "ChannelIndex",   FDF_LONG|FDF_R,       0, NULL, NULL },
    // Virtual fields

@@ -28,7 +28,7 @@
       <comment>Enables access to the audio hardware and initialises the mixer.</comment>
       <description>
 <p>An audio object will not play or record until it has been activated.  Activating the object will result in an attempt to lock the device hardware, which on some platforms may lead to failure if another process has permanently locked the device.  The resources and any device locks obtained by this action can be released with a call to <action>Deactivate</action>.</p>
-<p>An inactive audio object can operate in a limited fashion but will not otherwise interact directly with the audio hardware.</p>
+<p>An inactive audio object can operate in a limited fashion but is without access to the audio hardware.</p>
       </description>
     </action>
 
