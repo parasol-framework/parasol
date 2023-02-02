@@ -147,12 +147,20 @@ static ERROR set_playback_trigger(extSound *Self)
 {
    if (Self->OnStop.Type) {
       parasol::Log log(__FUNCTION__);
-      auto call = make_function_stdc(&timer_playback_ended);
       const LONG bytes_per_sample = (((Self->Flags & SDF_STEREO) ? 2 : 1) * (Self->BitsPerSample>>3));
       const DOUBLE playback_time = DOUBLE((Self->Length - Self->Position) / bytes_per_sample) / DOUBLE(Self->Playback);
-      log.trace("Playback time period set to %.2fs", playback_time);
-      if (Self->PlaybackTimer) return UpdateTimer(Self->PlaybackTimer, playback_time + 0.01);
-      else return SubscribeTimer(playback_time + 0.01, &call, &Self->PlaybackTimer);
+      if (playback_time < 0.01) {
+         if (Self->PlaybackTimer) { UpdateTimer(Self->PlaybackTimer, 0); Self->PlaybackTimer = 0; }
+         timer_playback_ended(Self, 0, 0);
+      }
+      else {
+         log.trace("Playback time period set to %.2fs", playback_time);
+         if (Self->PlaybackTimer) return UpdateTimer(Self->PlaybackTimer, playback_time + 0.01);
+         else {
+            auto call = make_function_stdc(&timer_playback_ended);
+            return SubscribeTimer(playback_time + 0.01, &call, &Self->PlaybackTimer);
+         }
+      }
    }
    else return ERR_Okay;
 }
@@ -166,13 +174,18 @@ void end_of_stream(OBJECTPTR Object, LONG BytesRemaining)
       if (Self->OnStop.Type) {
          parasol::Log log(__FUNCTION__);
          parasol::SwitchContext context(Object);
-         auto call = make_function_stdc(&timer_playback_ended);
          const LONG bytes_per_sample = (((Self->Flags & SDF_STEREO) ? 2 : 1) * (Self->BitsPerSample>>3));
          const DOUBLE playback_time = (DOUBLE(BytesRemaining / bytes_per_sample) / DOUBLE(Self->Playback)) + 0.01;
 
          if (!Self->PlaybackTimer) {
-            log.trace("Remaining time period set to %.2fs", playback_time);
-            SubscribeTimer(playback_time, &call, &Self->PlaybackTimer);
+            if (playback_time < 0.01) {
+               timer_playback_ended(Self, 0, 0);
+            }
+            else {
+               log.trace("Remaining time period set to %.2fs", playback_time);
+               auto call = make_function_stdc(&timer_playback_ended);
+               SubscribeTimer(playback_time, &call, &Self->PlaybackTimer);
+            }
          }
       }
    }
@@ -274,10 +287,10 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          strerr = sndCreateBuffer(Self, &wave, buffer_len, Self->Length, (PlatformData *)Self->PlatformData, TRUE);
       }
       else {
-         // This will create the buffer and fill it completely with sample data.
+         // Create the buffer and fill it completely with sample data.
          buffer_len = Self->Length;
          Self->Flags &= ~SDF_STREAM;
-         auto client_pos = Self->Position; // Save the seek position from pollution
+         auto client_pos = Self->Position; // Save the seek cursor from pollution
          if (client_pos) Self->seek(0, SEEK_START);
          strerr = sndCreateBuffer(Self, &wave, buffer_len, Self->Length, (PlatformData *)Self->PlatformData, FALSE);
          Self->seek(client_pos, SEEK_START);

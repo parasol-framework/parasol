@@ -15,15 +15,15 @@ class extAudio;
 
 struct PlatformData {
    LPDIRECTSOUNDBUFFER SoundBuffer;
+   struct BaseClass *Object;
    DWORD  BufferLength;
    DWORD  Position;      // Total number of bytes that have so far been loaded from the audio data source
    DWORD  SampleLength;  // Total length of the original sample
    DWORD  BufferPos;
    char   Fill;
    char   Stream;
-   bool   Loop;
    char   Stop;
-   struct BaseClass *Object;
+   bool   Loop;
 };
 
 int dsReadData(struct BaseClass *, void *, int);

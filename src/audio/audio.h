@@ -257,8 +257,10 @@ class extAudio : public objAudio {
 class extSound : public objSound {
    public:
    FUNCTION OnStop;
-   UBYTE  Header[128];
-   UBYTE  PlatformData[128];  // Data area for holding platform/hardware specific information
+   UBYTE  Header[32];
+   #ifdef _WIN32
+   UBYTE  PlatformData[64];   // Data area for holding platform/hardware specific information
+   #endif
    std::unordered_map<std::string, std::string> Tags;
    objFile *File;
    STRING Path;
