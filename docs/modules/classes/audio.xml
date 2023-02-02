@@ -303,6 +303,16 @@
     </field>
 
     <field>
+      <name>MixerLag</name>
+      <comment>Returns the lag time of the internal mixer, measured in seconds.</comment>
+      <access read="G">Get</access>
+      <type>DOUBLE</type>
+      <description>
+<p>This field will return the worst-case value for lag time imposed by the internal audio mixer.  The value is measured in seconds and will differ between platforms and user configurations.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Mute</name>
       <comment>Mutes all audio output.</comment>
       <access read="G" write="S">Get/Set</access>

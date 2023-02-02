@@ -158,6 +158,13 @@ proc.sleep()
     </field>
 
     <field>
+      <name>Duration</name>
+      <comment>Returns the duration of the sample, measured in seconds.</comment>
+      <access read="G">Get</access>
+      <type>DOUBLE</type>
+    </field>
+
+    <field>
       <name>Flags</name>
       <comment>Optional initialisation flags.</comment>
       <access read="R" write="S">Read/Set</access>
@@ -242,6 +249,19 @@ proc.sleep()
       <description>
 <p>The Octave field determines the octave to use when playing back a sound sample.  The default setting is zero, which represents the octave at which the sound was sampled.  Setting a negative octave will lower the playback rate, while positive values raise the playback rate.  The minimum octave setting is -5 and the highest setting is +5.</p>
 <p>The octave can also be adjusted by setting the <field>Note</field> field.  Setting the Octave field directly is useful if you need to quickly double or halve the playback rate.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>OnStop</name>
+      <comment>This callback is triggered when sample playback stops.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>FUNCTION</type>
+      <description>
+<p>Set OnStop to a callback function to receive an event trigger when sample playback stops.  The synopsis for the function is as follows:</p>
+<pre>void OnStop(*Sound)
+</pre>
+<p>The timing of this event does not guarantee precision, but should be accurate to approximately 1/100th of a second in most cases.</p>
       </description>
     </field>
 

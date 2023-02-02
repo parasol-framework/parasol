@@ -3,15 +3,12 @@
 #include <windows.h>
 #include <mmsystem.h>
 #include <dsound.h>
-#include <cstdio>
 #include <math.h>
-
-#define MSG(...) fprintf(stderr, __VA_ARGS__)
 
 #define IS  ==
 
-#define FILL_FIRST  2
-#define FILL_SECOND 3
+#define FILL_FIRST  1
+#define FILL_SECOND 2
 
 class BaseClass;
 class extAudio;

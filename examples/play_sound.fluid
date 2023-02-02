@@ -55,11 +55,11 @@ end
    -- Play the sound and wait for it to finish
 
    if (player.acActivate() == ERR_Okay) then
-      print('Press CTRL-C to exit or wait for sound sample to finish.')
+      print('Press CTRL-C to exit or wait for sound sample to finish.  Duration: ' .. string.format('%.2fs', player.duration))
 
       proc.sleep() -- This will wake on receipt of a signal.
 
-      proc.sleep(0.5) -- Slight pause to flush any buffered audio before exiting
+      proc.sleep(player.audio.mixerLag) -- Slight pause to flush any buffered audio before exiting
    else
       print('Failed to play audio file.')
    end

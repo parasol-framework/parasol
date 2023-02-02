@@ -1152,6 +1152,27 @@ static ERROR SET_MasterVolume(extAudio *Self, DOUBLE Value)
 /*********************************************************************************************************************
 
 -FIELD-
+MixerLag: Returns the lag time of the internal mixer, measured in seconds.
+
+This field will return the worst-case value for lag time imposed by the internal audio mixer.  The value is measured
+in seconds and will differ between platforms and user configurations.
+
+*********************************************************************************************************************/
+
+static ERROR GET_MixerLag(extAudio *Self, DOUBLE *Value)
+{
+#ifdef _WIN32
+   // Windows uses a split buffer technique, so the write cursor is always 1/2 a buffer ahead.
+   *Value = MIX_INTERVAL + (DOUBLE(Self->MixElements>>1) / DOUBLE(Self->OutputRate));
+#else
+   *Value = MIX_INTERVAL + (Self->AudioBufferSize / Self->SampleBitSize) / DOUBLE(Self->OutputRate);
+#endif
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
 Mute:  Mutes all audio output.
 
 Audio output can be muted at any time by setting this value to TRUE.  To restart audio output after muting, set the
@@ -1379,6 +1400,7 @@ static const FieldArray clAudioFields[] = {
    { "PeriodSize",    FDF_LONG|FDF_RI,    0, NULL, (APTR)SET_PeriodSize },
    // VIRTUAL FIELDS
    { "Device",        FDF_STRING|FDF_RW,  0, (APTR)GET_Device,       (APTR)SET_Device },
+   { "MixerLag",      FDF_DOUBLE|FDF_R,   0, (APTR)GET_MixerLag,     NULL },
    { "MasterVolume",  FDF_DOUBLE|FDF_RW,  0, (APTR)GET_MasterVolume, (APTR)SET_MasterVolume },
    { "Mute",          FDF_LONG|FDF_RW,    0, (APTR)GET_Mute,         (APTR)SET_Mute },
    { "Stereo",        FDF_LONG|FDF_RW,    0, (APTR)GET_Stereo,       (APTR)SET_Stereo },

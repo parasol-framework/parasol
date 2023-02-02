@@ -249,7 +249,9 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
    }
 
    if (Self->SampleBitSize) {
-      if (space_left > Self->AudioBufferSize / Self->SampleBitSize) space_left = Self->AudioBufferSize / Self->SampleBitSize;
+      if (space_left > Self->AudioBufferSize / Self->SampleBitSize) {
+         space_left = Self->AudioBufferSize / Self->SampleBitSize;
+      }
    }
 
    // Fill our entire audio buffer with data to be sent to alsa

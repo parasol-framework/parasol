@@ -8,48 +8,44 @@
 function testSequentialPlayback()
    local proc = processing.new()
 
-   local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav' })
+   local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav', volume=0.33 })
    assert(snd, 'Failed to process low-tone wav file.')
 
+   local time, time_taken
    snd.onStop = function(SoundID)
+      time_taken = (mSys.preciseTime() - time) / 1000000
       proc.signal()
    end
 
-   local time = mSys.preciseTime()
-
    local duration = snd.duration
+   collectgarbage()
 
    assert(snd.acActivate() == ERR_Okay, 'Failed to playback low-tone sound sample.')
+   time = mSys.preciseTime()
 
    proc.sleep()
 
-   local time_taken = (mSys.preciseTime() - time) / 1000000
-
-   assert(time_taken >= duration, 'Sample played faster than the anticipated time scale of ' .. duration .. ': ' .. time_taken)
-   assert(time_taken <  duration+0.1, 'Sample played longer than the anticipated time scale of ' .. duration .. ': ' .. time_taken)
+   assert(time_taken >= duration, 'End-of-sample occurred earlier than duration of ' .. duration .. ': ' .. time_taken)
+   assert(time_taken <  duration+glLag+0.02, 'End-of-sample exceeded duration of ' .. duration .. ': ' .. time_taken)
 
    -- Second sample
 
-   local snd = obj.new('sound', { path=glFolder .. 'high-tone.wav' })
+   local snd = obj.new('sound', { path=glFolder .. 'high-tone.wav', volume=0.33 })
    assert(snd, 'Failed to process high-tone wav file.')
 
    snd.onStop = function(SoundID)
+      time_taken = (mSys.preciseTime() - time) / 1000000
       proc.signal()
    end
 
-   time = mSys.preciseTime()
    duration = snd.duration
-
    assert(snd.acActivate() == ERR_Okay, 'Failed to playback high-tone sound sample.')
+   time = mSys.preciseTime()
 
    proc.sleep()
 
-   time_taken = (mSys.preciseTime() - time) / 1000000
-
-   assert(time_taken >= duration, 'Sample played faster than the anticipated time scale of ' .. duration .. ': ' .. time_taken)
-   assert(time_taken <  duration+0.1, 'Sample played longer than the anticipated time scale of ' .. duration .. ': ' .. time_taken)
-
-   print('Time taken: ' .. time_taken)
+   assert(time_taken >= duration, 'End-of-sample occurred earlier than duration of ' .. duration .. ': ' .. time_taken)
+   assert(time_taken <  duration+glLag+0.02, 'End-of-sample exceeded duration of ' .. duration .. ': ' .. time_taken)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -58,7 +54,7 @@ end
 function testPan()
    local proc = processing.new()
 
-   local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav', pan=-1.0 })
+   local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav', pan=-1.0, volume=0.33 })
    assert(snd, 'Failed to process low-tone wav file.')
 
    snd.onStop = function(SoundID)
@@ -117,6 +113,7 @@ end
          if glAudio.acActivate() != ERR_Okay then
             error('Failed to initialise audio server.')
          end
+         glLag = glAudio.mixerLag
       end,
       cleanup = function()
 
