@@ -79,7 +79,7 @@ static ERROR win32_audio_stream(extSound *, LARGE, LARGE);
 //********************************************************************************************************************
 // Send a callback to the client when playback stops.
 
-static void playback_stopped_event(extSound *Self)
+static void sound_stopped_event(extSound *Self)
 {
    if (Self->OnStop.Type IS CALL_STDC) {
       parasol::SwitchContext context(Self->OnStop.StdC.Context);
@@ -118,7 +118,7 @@ static LONG read_stream(LONG Handle, LONG Offset, APTR Buffer, LONG Length)
 
 static void onstop_event(LONG SampleHandle)
 {
-   playback_stopped_event((extSound *)CurrentContext());
+   sound_stopped_event((extSound *)CurrentContext());
 }
 
 #endif
@@ -131,7 +131,7 @@ static ERROR timer_playback_ended(extSound *Self, LARGE Elapsed, LARGE CurrentTi
 {
    parasol::Log log;
    log.trace("Sound streaming completed.");
-   playback_stopped_event(Self);
+   sound_stopped_event(Self);
    Self->PlaybackTimer = 0;
    // NB: We don't manually stop the audio streamer, it will automatically stop once buffers are clear.
    return ERR_Terminate;
@@ -1679,7 +1679,7 @@ static ERROR win32_audio_stream(extSound *Self, LARGE Elapsed, LARGE CurrentTime
    auto response = sndStreamAudio((PlatformData *)Self->PlatformData);
    if (response IS -1) {
       log.warning("Sound streaming failed.");
-      playback_stopped_event(Self);
+      sound_stopped_event(Self);
       if (Self->PlaybackTimer) { UpdateTimer(Self->PlaybackTimer, 0); Self->PlaybackTimer = 0; }
       Self->StreamTimer = 0;
       return ERR_Terminate;

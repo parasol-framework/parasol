@@ -11,6 +11,29 @@ static ERROR mix_data(extAudio *, LONG, APTR);
 static ERROR process_commands(extAudio *, LONG);
 
 //********************************************************************************************************************
+
+static void audio_stopped_event(extAudio &Audio, LONG SampleHandle)
+{
+   auto &sample = Audio.Samples[SampleHandle];
+   if (sample.OnStop.Type IS CALL_STDC) {
+      parasol::SwitchContext context(sample.OnStop.StdC.Context);
+      auto routine = (void (*)(extAudio *, LONG))sample.OnStop.StdC.Routine;
+      routine(&Audio, SampleHandle);
+   }
+   else if (sample.OnStop.Type IS CALL_SCRIPT) {
+      OBJECTPTR script;
+      if ((script = sample.OnStop.Script.Script)) {
+         const ScriptArg args[] = {
+            { "Audio", FD_OBJECTPTR, { .Address = &Audio } },
+            { "Handle", FD_LONG, { .Long = SampleHandle } }
+         };
+         ERROR error;
+         scCallback(script, sample.OnStop.Script.ProcedureID, args, ARRAYSIZE(args), &error);
+      }
+   }
+}
+
+//********************************************************************************************************************
 // The callback must return the number of bytes written to the buffer.
 
 static BYTELEN fill_stream_buffer(LONG Handle, AudioSample &Sample, LONG Offset)
@@ -212,6 +235,18 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
 
    parasol::Log log(__FUNCTION__);
    static WORD errcount = 0;
+
+   if (!Self->MixTimers.empty()) {
+      LARGE time = PreciseTime();
+      for (auto it=Self->MixTimers.begin(); it != Self->MixTimers.end(); ) {
+         if (entry.first >= CurrentTime) {
+            log.trace("Sample playback completed.");
+            audio_stopped_event(Audio, entry.second);
+            it = Self->MixTimers.erase(it);
+         }
+         else it++;
+      }
+   }
 
    // Get the amount of bytes available for output
 

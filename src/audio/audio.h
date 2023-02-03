@@ -125,6 +125,7 @@ struct AudioChannel {
    DOUBLE   RVolumeTarget;  // Volume target when fading or ramping
    DOUBLE   Volume;         // Playing volume (0 - 1.0)
    DOUBLE   Pan;            // Pan value (-1.0 - 1.0)
+   LARGE    EndTime;        // Anticipated end-time of playing the current sample, if OnStop is defined in the sample.
    LONG     SampleHandle;   // Sample index, direct lookup into extAudio->Samples
    CHF      Flags;          // Special flags
    LONG     Position;       // Current playing/mixing byte position within Sample.
@@ -189,6 +190,7 @@ class extAudio : public objAudio {
    std::vector<ChannelSet> Sets; // Channels are grouped into sets.  Index 0 is a dummy entry.
    std::vector<AudioSample> Samples; // Buffered samples loaded into the audio object.
    std::vector<VolumeCtl> Volumes;
+   std::vector<std::pair<LARGE, LONG>> MixTimers;
    MixRoutine *MixRoutines;
    APTR  MixBuffer;
    APTR  TaskRemovedHandle;
@@ -231,23 +233,10 @@ class extAudio : public objAudio {
       if (!Channel.isStopped()) {
          Channel.State = CHS::FINISHED;
          if ((Channel.SampleHandle) and (Notify)) {
-            auto &sample = Samples[Channel.SampleHandle];
-            if (sample.OnStop.Type IS CALL_STDC) {
-               parasol::SwitchContext context(sample.OnStop.StdC.Context);
-               auto routine = (void (*)(extAudio *, LONG))sample.OnStop.StdC.Routine;
-               routine(this, Channel.SampleHandle);
+            if (PreciseTime() < Channel.EndTime) {
+               this->MixTimers.emplace_back(Channel.EndTime, Channel.SampleHandle);
             }
-            else if (sample.OnStop.Type IS CALL_SCRIPT) {
-               OBJECTPTR script;
-               if ((script = sample.OnStop.Script.Script)) {
-                  const ScriptArg args[] = {
-                     { "Audio", FD_OBJECTPTR, { .Address = this } },
-                     { "Handle", FD_LONG, { .Long = Channel.SampleHandle } }
-                  };
-                  ERROR error;
-                  scCallback(script, sample.OnStop.Script.ProcedureID, args, ARRAYSIZE(args), &error);
-               }
-            }
+            else audio_stopped_event(*this, Channel.SampleHandle);
          }
       }
       else Channel.State = CHS::FINISHED;
