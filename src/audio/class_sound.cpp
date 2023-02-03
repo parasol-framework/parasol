@@ -162,7 +162,7 @@ static ERROR set_playback_trigger(extSound *Self)
          }
       }
    }
-   else return ERR_Okay;
+   return ERR_Okay;
 }
 #endif
 
