@@ -57,6 +57,18 @@ MODULE_COREBASE;
 static OBJECTPTR glAudioModule = NULL;
 static OBJECTPTR clAudio = 0;
 static std::unordered_map<OBJECTID, LONG> glSoundChannels;
+class extAudio;
+
+ERROR add_audio_class(void);
+ERROR add_sound_class(void);
+void free_audio_class(void);
+void free_sound_class(void);
+static void audio_stopped_event(extAudio &, LONG);
+static ERROR set_channel_volume(extAudio *, struct AudioChannel *);
+static void load_config(extAudio *);
+static ERROR init_audio(extAudio *);
+static ERROR audio_timer(extAudio *, LARGE, LARGE);
+void end_of_stream(OBJECTPTR, LONG);
 
 #include "audio.h"
 
@@ -69,16 +81,6 @@ static std::unordered_map<OBJECTID, LONG> glSoundChannels;
 char * dsInitDevice(int);
 void dsCloseDevice(void);
 #endif
-
-ERROR add_audio_class(void);
-ERROR add_sound_class(void);
-void free_audio_class(void);
-void free_sound_class(void);
-static ERROR set_channel_volume(extAudio *, struct AudioChannel *);
-static void load_config(extAudio *);
-static ERROR init_audio(extAudio *);
-static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime);
-void end_of_stream(OBJECTPTR Object, LONG BytesRemaining);
 
 #ifdef ALSA_ENABLED
 static void free_alsa(extAudio *);

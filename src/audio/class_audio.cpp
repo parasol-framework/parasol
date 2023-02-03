@@ -1164,8 +1164,10 @@ static ERROR GET_MixerLag(extAudio *Self, DOUBLE *Value)
 #ifdef _WIN32
    // Windows uses a split buffer technique, so the write cursor is always 1/2 a buffer ahead.
    *Value = MIX_INTERVAL + (DOUBLE(Self->MixElements>>1) / DOUBLE(Self->OutputRate));
-#else
+#elif ALSA_ENABLED
    *Value = MIX_INTERVAL + (Self->AudioBufferSize / Self->SampleBitSize) / DOUBLE(Self->OutputRate);
+#else
+   *Value = 0;
 #endif
    return ERR_Okay;
 }
