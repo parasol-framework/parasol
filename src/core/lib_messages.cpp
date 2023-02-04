@@ -1116,8 +1116,6 @@ ERROR WaitForObjects(LONG Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
    // Refer to the Task class for the message interception routines
    parasol::Log log(__FUNCTION__);
 
-   if (!ObjectSignals) return log.warning(ERR_NullArgs);
-
    if (!glWFOList.empty()) return log.warning(ERR_Recursion);
 
    // Message processing is only possible from the main thread (for system design and synchronisation reasons)
