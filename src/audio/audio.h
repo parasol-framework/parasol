@@ -281,6 +281,7 @@ class extAudio : public objAudio {
                   this->MixTimers.emplace_back(Channel.EndTime, Channel.SampleHandle);
                   Channel.EndTime = 0;
                }
+               else audio_stopped_event(*this, Channel.SampleHandle);
             #else
                audio_stopped_event(*this, Channel.SampleHandle);
             #endif
