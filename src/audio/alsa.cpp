@@ -399,8 +399,8 @@ next_card:
    snd_pcm_hw_params_get_buffer_size(hwparams, &buffersize);
    Self->AudioBufferSize = BYTELEN(buffersize);
 
-   if (Self->Stereo) Self->AudioBufferSize = Self->AudioBufferSize<<1;
-   Self->AudioBufferSize = Self->AudioBufferSize * (Self->BitDepth/8);
+   if (Self->Stereo) Self->AudioBufferSize = BYTELEN(Self->AudioBufferSize<<1);
+   Self->AudioBufferSize = BYTELEN(Self->AudioBufferSize * (Self->BitDepth/8));
 
    log.msg("Total Periods: %d, Period Size: %d, Buffer Size: %d (bytes)", Self->Periods, Self->PeriodSize, Self->AudioBufferSize);
 
