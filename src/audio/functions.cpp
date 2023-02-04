@@ -234,14 +234,15 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
    parasol::Log log(__FUNCTION__);
    static WORD errcount = 0;
 
-   if (!Self->MixTimers.empty()) {
-      for (auto it=Self->MixTimers.begin(); it != Self->MixTimers.end(); ) {
-         if (CurrentTime > it->first) {
-            audio_stopped_event(*Self, it->second);
-            it = Self->MixTimers.erase(it);
-         }
-         else it++;
+   // Check if we need to send out any OnStop events
+
+   for (auto it=Self->MixTimers.begin(); it != Self->MixTimers.end(); ) {
+      auto &mt = *it;
+      if (CurrentTime > mt.Time) {
+         audio_stopped_event(*Self, mt.SampleHandle);
+         it = Self->MixTimers.erase(it);
       }
+      else it++;
    }
 
    // Get the amount of bytes available for output

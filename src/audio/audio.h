@@ -208,12 +208,18 @@ struct VolumeCtl {
    }
 };
 
+struct MixTimer {
+   LARGE Time;
+   LONG  SampleHandle;
+   MixTimer(LARGE pTime, LONG pHandle) : Time(pTime), SampleHandle(pHandle) { }
+};
+
 class extAudio : public objAudio {
    public:
    std::vector<ChannelSet> Sets; // Channels are grouped into sets.  Index 0 is a dummy entry.
    std::vector<AudioSample> Samples; // Buffered samples loaded into the audio object.
    std::vector<VolumeCtl> Volumes;
-   std::vector<std::pair<LARGE, LONG>> MixTimers;
+   std::vector<MixTimer> MixTimers;
    MixRoutine *MixRoutines;
    APTR  MixBuffer;
    APTR  TaskRemovedHandle;
@@ -271,12 +277,10 @@ class extAudio : public objAudio {
          Channel.State = CHS::FINISHED;
          if ((Channel.SampleHandle) and (Notify)) {
             #ifdef ALSA_ENABLED
-               if (PreciseTime() < Channel.EndTime) {
-                  parasol::Log log(__FUNCTION__);
-                  log.warning("Defining a stop event trigger for sample $%.8x", Channel.SampleHandle);
+               if ((Channel.EndTime) and (PreciseTime() < Channel.EndTime)) {
                   this->MixTimers.emplace_back(Channel.EndTime, Channel.SampleHandle);
+                  Channel.EndTime = 0;
                }
-               else audio_stopped_event(*this, Channel.SampleHandle);
             #else
                audio_stopped_event(*this, Channel.SampleHandle);
             #endif
