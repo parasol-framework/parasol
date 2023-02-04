@@ -527,13 +527,15 @@ static ERROR SOUND_Deactivate(extSound *Self, APTR Void)
 #ifdef USE_WIN32_PLAYBACK
    sndStop((PlatformData *)Self->PlatformData);
 #else
-   parasol::ScopedObjectLock<extAudio> audio(Self->AudioID);
-   if (audio.granted()) { // Stop the sample if it's live.
-      if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
-         if (channel->SampleHandle IS Self->Handle) sndMixStop(*audio, Self->ChannelIndex);
+   if (Self->ChannelIndex) {
+      parasol::ScopedObjectLock<extAudio> audio(Self->AudioID);
+      if (audio.granted()) { // Stop the sample if it's live.
+         if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
+            if (channel->SampleHandle IS Self->Handle) sndMixStop(*audio, Self->ChannelIndex);
+         }
       }
+      else return log.warning(ERR_AccessObject);
    }
-   else return log.warning(ERR_AccessObject);
 #endif
 
    return ERR_Okay;

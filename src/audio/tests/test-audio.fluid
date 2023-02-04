@@ -46,6 +46,8 @@ function testSequentialPlayback()
 
    assert(time_taken >= duration, 'End-of-sample occurred earlier than duration of ' .. duration .. ': ' .. time_taken)
    assert(time_taken <  duration+glLag+0.02, 'End-of-sample exceeded duration of ' .. duration .. ': ' .. time_taken)
+
+   proc.sleep(0.5)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -75,6 +77,8 @@ function testPan()
    assert(err == ERR_Okay, 'Failed to playback low-tone sound sample.')
 
    proc.sleep()
+
+   proc.sleep(0.5)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -96,6 +100,8 @@ function testVolume()
       snd.acActivate()
       proc.sleep()
    end
+
+   proc.sleep(0.5)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -114,6 +120,7 @@ end
             error('Failed to initialise audio server.')
          end
          glLag = glAudio.mixerLag
+         print('Audio mixer lag time measured as ' .. string.format('%.2fs', glLag))
       end,
       cleanup = function()
 

@@ -15,6 +15,8 @@ enum BYTELEN : int {};
 inline BYTELEN operator + (BYTELEN a, BYTELEN b) { return BYTELEN(((int)a) + ((int)b)); }
 inline BYTELEN &operator += (BYTELEN &a, BYTELEN b) { return (BYTELEN &)(((int &)a) += ((int)b)); }
 
+inline SAMPLE &operator -= (SAMPLE &a, SAMPLE b) { return (SAMPLE &)(((int &)a) -= ((int)b)); }
+
 // Audio channel commands
 
 enum class CMD : LONG {
@@ -46,6 +48,13 @@ inline const LONG sample_shift(const LONG Type)
    return 0;
 }
 
+typedef struct _GUID {
+  unsigned long  Data1;
+  unsigned short Data2;
+  unsigned short Data3;
+  unsigned char  Data4[8];
+} GUID;
+
 typedef struct WAVEFormat {
    WORD Format;               // Type of WAVE data in the chunk: RAW or ADPCM
    WORD Channels;             // Number of channels, 1=mono, 2=stereo
@@ -56,10 +65,24 @@ typedef struct WAVEFormat {
    WORD ExtraLength;
 } WAVEFORMATEX;
 
+typedef struct {
+  WAVEFORMATEX Format;
+  union {
+    WORD wValidBitsPerSample;
+    WORD wSamplesPerBlock;
+    WORD wReserved;
+  } Samples;
+  LONG dwChannelMask;         // Set to 0x3 for the left and right speakers
+  GUID SubFormat;
+} WAVEFORMATEXTENSIBLE;
+
 typedef LONG (*MixRoutine)(APTR, LONG, LONG, LONG, FLOAT, FLOAT);
 
-#define WAVE_RAW    0x0001    // Uncompressed waveform data.
-#define WAVE_ADPCM  0x0002    // ADPCM compressed waveform data.
+static const WORD WAVE_RAW   = 0x0001;  // Uncompressed waveform data.
+static const WORD WAVE_ADPCM = 0x0002;  // ADPCM compressed waveform data.
+static const WORD WAVE_FLOAT = 0x0003;  // Uncompressed floating point waveform
+
+static const WORD WAVE_FORMAT_EXTENSIBLE = 0xfffe;
 
 const LONG DEFAULT_BUFFER_SIZE = 8096; // Measured in samples, not bytes
 
@@ -149,8 +172,8 @@ struct ChannelSet {
    std::vector<AudioChannel> Channel;  // Array of channel objects
    std::vector<AudioChannel> Shadow;   // Array of shadow channels for oversampling
    std::vector<AudioCommand> Commands; // Buffered commands.
-   LONG UpdateRate; // Update rate, measured in milliseconds
-   LONG MixLeft;    // Amount of mix elements left before the next command-update occurs
+   LONG UpdateRate;   // Update rate, measured in milliseconds
+   SAMPLE MixLeft;    // Amount of mix elements left before the next command-update occurs
 
    ChannelSet() {
       clear();
@@ -164,7 +187,7 @@ struct ChannelSet {
       Channel.clear();
       Shadow.clear();
       UpdateRate = 0;
-      MixLeft    = 0;
+      MixLeft    = SAMPLE(0);
    }
 };
 
@@ -203,15 +226,15 @@ class extAudio : public objAudio {
       snd_pcm_t    *Handle;
       snd_mixer_t  *MixHandle;
       snd_output_t *sndlog;
-      LONG  AudioBufferSize;
+      BYTELEN AudioBufferSize;    // Buffer size measured in bytes
    #endif
-   DOUBLE MasterVolume;
-   TIMER Timer;
-   LONG  MixBufferSize;
-   LONG  MixElements;
-   LONG  MaxChannels;    // Recommended maximum mixing channels for Sound class
+   DOUBLE  MasterVolume;
+   TIMER   Timer;
+   BYTELEN MixBufferSize;
+   SAMPLE  MixElements;
+   LONG    MaxChannels;    // Recommended maximum mixing channels for Sound class
    std::string Device;
-   BYTE  SampleBitSize;
+   BYTE  DriverBitSize;  // Target sample bit size; accounts for stereo channel
    bool  Stereo;
    bool  Mute;
    bool  Initialising;
@@ -224,23 +247,46 @@ class extAudio : public objAudio {
       return &this->Sets[Handle>>16].Shadow[Handle & 0xffff];
    }
 
-   inline LONG MixLeft(LONG Value) {
-      if (!Value) return 0;
-      return (((100 * (LARGE)OutputRate) / (Value * 40)) + 1) & 0xfffffffe;
+   inline SAMPLE MixLeft(LONG Value) {
+      if (!Value) return SAMPLE(0);
+      return SAMPLE((((100 * (LARGE)OutputRate) / (Value * 40)) + 1) & 0xfffffffe);
+   }
+
+   inline DOUBLE MixerLag() {
+      if (!mixerLag) {
+         parasol::Log log(__FUNCTION__);
+         #ifdef _WIN32
+            // Windows uses a split buffer technique, so the write cursor is always 1/2 a buffer ahead.
+            mixerLag = MIX_INTERVAL + (DOUBLE(MixElements>>1) / DOUBLE(OutputRate));
+         #elif ALSA_ENABLED
+            mixerLag = MIX_INTERVAL + (AudioBufferSize / DriverBitSize) / DOUBLE(OutputRate);
+         #endif
+         log.trace("Mixer lag: %.2f", mixerLag);
+      }
+      return mixerLag;
    }
 
    inline void finish(AudioChannel &Channel, bool Notify) {
       if (!Channel.isStopped()) {
          Channel.State = CHS::FINISHED;
          if ((Channel.SampleHandle) and (Notify)) {
-            if (PreciseTime() < Channel.EndTime) {
-               this->MixTimers.emplace_back(Channel.EndTime, Channel.SampleHandle);
-            }
-            else audio_stopped_event(*this, Channel.SampleHandle);
+            #ifdef ALSA_ENABLED
+               if (PreciseTime() < Channel.EndTime) {
+                  parasol::Log log(__FUNCTION__);
+                  log.warning("Defining a stop event trigger for sample $%.8x", Channel.SampleHandle);
+                  this->MixTimers.emplace_back(Channel.EndTime, Channel.SampleHandle);
+               }
+               else audio_stopped_event(*this, Channel.SampleHandle);
+            #else
+               audio_stopped_event(*this, Channel.SampleHandle);
+            #endif
          }
       }
       else Channel.State = CHS::FINISHED;
    }
+
+   private:
+      DOUBLE mixerLag;
 };
 
 class extSound : public objSound {
