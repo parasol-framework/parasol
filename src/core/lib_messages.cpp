@@ -1129,20 +1129,23 @@ ERROR WaitForObjects(LONG Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
 
    ERROR error = ERR_Okay;
    glWFOList.clear();
-   for (LONG i=0; ((error IS ERR_Okay) and (ObjectSignals[i].Object)); i++) {
-      parasol::ScopedObjectLock<OBJECTPTR> lock(ObjectSignals[i].Object); // For thread safety
 
-      // Refer to TASK_ActionNotify() for notification handling and clearing of signals
-      if (ObjectSignals[i].Object->defined(NF::SIGNALLED)) {
-         // Objects that have already been signalled do not require monitoring
-         ObjectSignals[i].Object->Flags = ObjectSignals[i].Object->Flags & (~NF::SIGNALLED);
+   if (ObjectSignals) {
+      for (LONG i=0; ((error IS ERR_Okay) and (ObjectSignals[i].Object)); i++) {
+         parasol::ScopedObjectLock<OBJECTPTR> lock(ObjectSignals[i].Object); // For thread safety
+
+         // Refer to TASK_ActionNotify() for notification handling and clearing of signals
+         if (ObjectSignals[i].Object->defined(NF::SIGNALLED)) {
+            // Objects that have already been signalled do not require monitoring
+            ObjectSignals[i].Object->Flags = ObjectSignals[i].Object->Flags & (~NF::SIGNALLED);
+         }
+         else if (!SubscribeAction(ObjectSignals[i].Object, AC_Free)) {
+            log.debug("Monitoring object #%d", ObjectSignals[i].Object->UID);
+            if (SubscribeAction(ObjectSignals[i].Object, AC_Signal)) error = ERR_Failed;
+            glWFOList.insert(std::make_pair(ObjectSignals[i].Object->UID, ObjectSignals[i]));
+         }
+         else error = ERR_Failed;
       }
-      else if (!SubscribeAction(ObjectSignals[i].Object, AC_Free)) {
-         log.debug("Monitoring object #%d", ObjectSignals[i].Object->UID);
-         if (SubscribeAction(ObjectSignals[i].Object, AC_Signal)) error = ERR_Failed;
-         glWFOList.insert(std::make_pair(ObjectSignals[i].Object->UID, ObjectSignals[i]));
-      }
-      else error = ERR_Failed;
    }
 
    if (!error) {
