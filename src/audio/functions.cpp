@@ -235,11 +235,9 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
    static WORD errcount = 0;
 
    if (!Self->MixTimers.empty()) {
-      LARGE time = PreciseTime();
       for (auto it=Self->MixTimers.begin(); it != Self->MixTimers.end(); ) {
-         if (entry.first >= CurrentTime) {
-            log.trace("Sample playback completed.");
-            audio_stopped_event(Audio, entry.second);
+         if (CurrentTime > it->first) {
+            audio_stopped_event(*Self, it->second);
             it = Self->MixTimers.erase(it);
          }
          else it++;
@@ -250,10 +248,10 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
 
    SAMPLE space_left;
    if (Self->Handle) {
-      space_left = snd_pcm_avail_update(Self->Handle); // Returns available space measured in samples
+      space_left = SAMPLE(snd_pcm_avail_update(Self->Handle)); // Returns available space measured in samples
    }
    else if (Self->AudioBufferSize) { // Run in dummy mode - samples will be processed but not played
-      space_left = Self->AudioBufferSize / Self->DriverBitSize;
+      space_left = SAMPLE(Self->AudioBufferSize / Self->DriverBitSize);
    }
    else {
       log.warning("ALSA not in an initialised state.");

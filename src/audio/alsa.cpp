@@ -22,7 +22,7 @@ static ERROR init_audio(extAudio *Self)
    snd_pcm_t *pcmhandle;
    snd_mixer_elem_t *elem;
    snd_mixer_selem_id_t *sid;
-   snd_pcm_uframes_t periodsize, buffersize;
+   snd_pcm_uframes_t periodsize;
    snd_ctl_card_info_t *info;
    LONG err, index;
    WORD channel;
@@ -350,8 +350,7 @@ next_card:
 
    // NOTE: Audio buffersize is measured in samples, not bytes
 
-   if (!Self->AudioBufferSize) buffersize = DEFAULT_BUFFER_SIZE;
-   else buffersize = Self->AudioBufferSize;
+   snd_pcm_uframes_t buffersize = DEFAULT_BUFFER_SIZE;
 
    if (buffersize > buffersize_max) buffersize = buffersize_max;
    else if (buffersize < buffersize_min) buffersize = buffersize_min;
@@ -398,10 +397,10 @@ next_card:
    // Note that ALSA reports the audio buffer size in samples, not bytes
 
    snd_pcm_hw_params_get_buffer_size(hwparams, &buffersize);
-   Self->AudioBufferSize = buffersize;
+   Self->AudioBufferSize = BYTELEN(buffersize);
 
    if (Self->Stereo) Self->AudioBufferSize = Self->AudioBufferSize<<1;
-   if (Self->BitDepth IS 16) Self->AudioBufferSize = Self->AudioBufferSize<<1;
+   Self->AudioBufferSize = Self->AudioBufferSize * (Self->BitDepth/8);
 
    log.msg("Total Periods: %d, Period Size: %d, Buffer Size: %d (bytes)", Self->Periods, Self->PeriodSize, Self->AudioBufferSize);
 
