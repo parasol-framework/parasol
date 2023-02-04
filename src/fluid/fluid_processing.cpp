@@ -96,7 +96,7 @@ static int processing_new(lua_State *Lua)
 }
 
 //****************************************************************************
-// Usage: err = proc.sleep([Seconds])
+// Usage: err = proc.sleep([Seconds], [WakeOnSignal=true])
 //
 // Puts a process to sleep with message processing in the background.  Can be woken early with a signal.
 // Setting seconds to zero will process outstanding messages and return immediately.
@@ -124,30 +124,41 @@ static int processing_sleep(lua_State *Lua)
    if (lua_type(Lua, 1) IS LUA_TNUMBER) timeout = F2T(lua_tonumber(Lua, 1) * 1000.0);
    if (timeout < 0) timeout = -1; // Wait indefinitely
 
-   log.branch("Timeout: %d", timeout);
+   bool wake_on_signal;
+   if (lua_type(Lua, 2) IS LUA_TBOOLEAN) wake_on_signal = lua_toboolean(Lua, 2);
+   else wake_on_signal = true;
+
+   log.branch("Timeout: %d, WakeOnSignal: %c", timeout, wake_on_signal ? 'Y' : 'N');
 
    // The Lua signal flag is always reset on entry just in case it has been polluted by prior activity.
    // All other objects can be pre-signalled legitimately.
 
    Lua->Script->BaseClass::Flags = Lua->Script->BaseClass::Flags & (~NF::SIGNALLED);
 
-   if ((fp) and (fp->Signals) and (not fp->Signals->empty())) {
-      // Use custom signals provided by the client (or Fluid if no objects were specified).
-      ObjectSignal signal_list_c[fp->Signals->size() + 1];
-      LONG i = 0;
-      for (auto &entry : *fp->Signals) signal_list_c[i++] = entry;
-      signal_list_c[i].Object = NULL;
+   if (wake_on_signal) {
+      if ((fp) and (fp->Signals) and (not fp->Signals->empty())) {
+         // Use custom signals provided by the client (or Fluid if no objects were specified).
+         ObjectSignal signal_list_c[fp->Signals->size() + 1];
+         LONG i = 0;
+         for (auto &entry : *fp->Signals) signal_list_c[i++] = entry;
+         signal_list_c[i].Object = NULL;
 
-      std::scoped_lock lock(recursion);
-      error = WaitForObjects(0, timeout, signal_list_c);
+         std::scoped_lock lock(recursion);
+         error = WaitForObjects(0, timeout, signal_list_c);
+      }
+      else { // Default behaviour: Sleeping can be broken with a signal to the Fluid object.
+         ObjectSignal signal_list_c[2];
+         signal_list_c[0].Object   = Lua->Script;
+         signal_list_c[1].Object   = NULL;
+
+         std::scoped_lock lock(recursion);
+         error = WaitForObjects(0, timeout, signal_list_c);
+      }
    }
-   else { // Default behaviour: Sleeping can be broken with a signal to the Fluid object.
-      ObjectSignal signal_list_c[2];
-      signal_list_c[0].Object   = Lua->Script;
-      signal_list_c[1].Object   = NULL;
-
+   else {
       std::scoped_lock lock(recursion);
-      error = WaitForObjects(0, timeout, signal_list_c);
+      WaitTime(timeout / 1000, (timeout % 1000) * 1000);
+      error = ERR_Okay;
    }
 
    lua_pushinteger(Lua, error);
