@@ -8,7 +8,30 @@ static void filter_float_mono(extAudio *, FLOAT *, LONG);
 static void filter_float_stereo(extAudio *, FLOAT *, LONG);
 static void mix_channel(extAudio *, AudioChannel &, LONG, APTR);
 static ERROR mix_data(extAudio *, LONG, APTR);
-static ERROR process_commands(extAudio *, LONG);
+static ERROR process_commands(extAudio *, SAMPLE);
+
+//********************************************************************************************************************
+
+static void audio_stopped_event(extAudio &Audio, LONG SampleHandle)
+{
+   auto &sample = Audio.Samples[SampleHandle];
+   if (sample.OnStop.Type IS CALL_STDC) {
+      parasol::SwitchContext context(sample.OnStop.StdC.Context);
+      auto routine = (void (*)(extAudio *, LONG))sample.OnStop.StdC.Routine;
+      routine(&Audio, SampleHandle);
+   }
+   else if (sample.OnStop.Type IS CALL_SCRIPT) {
+      OBJECTPTR script;
+      if ((script = sample.OnStop.Script.Script)) {
+         const ScriptArg args[] = {
+            { "Audio", FD_OBJECTPTR, { .Address = &Audio } },
+            { "Handle", FD_LONG, { .Long = SampleHandle } }
+         };
+         ERROR error;
+         scCallback(script, sample.OnStop.Script.ProcedureID, args, ARRAYSIZE(args), &error);
+      }
+   }
+}
 
 //********************************************************************************************************************
 // The callback must return the number of bytes written to the buffer.
@@ -42,9 +65,9 @@ static BYTELEN fill_stream_buffer(LONG Handle, AudioSample &Sample, LONG Offset)
 
 //********************************************************************************************************************
 
-static ERROR get_mix_amount(extAudio *Self, LONG *MixLeft)
+static ERROR get_mix_amount(extAudio *Self, SAMPLE *MixLeft)
 {
-   LONG ml = 0x7fffffff;
+   auto ml = SAMPLE(0x7fffffff);
    for (LONG i=1; i < (LONG)Self->Sets.size(); i++) {
       if ((Self->Sets[i].MixLeft > 0) and (Self->Sets[i].MixLeft < ml)) {
          ml = Self->Sets[i].MixLeft;
@@ -66,17 +89,15 @@ int dsReadData(BaseClass *Self, void *Buffer, int Length) {
       else return result;
    }
    else if (Self->ClassID IS ID_AUDIO) {
-      LONG space_left = Length / ((extAudio *)Self)->SampleBitSize; // Convert to number of samples
+      auto space_left = SAMPLE(Length / ((extAudio *)Self)->DriverBitSize); // Convert to number of samples
 
-      LONG mix_left;
+      SAMPLE mix_left;
       while (space_left > 0) {
          // Scan channels to check if an update rate is going to be met
 
          get_mix_amount((extAudio *)Self, &mix_left);
 
-         LONG elements;
-         if (mix_left < space_left) elements = mix_left;
-         else elements = space_left;
+         SAMPLE elements = (mix_left < space_left) ? mix_left : space_left;
 
          if (mix_data((extAudio *)Self, elements, Buffer) != ERR_Okay) break;
 
@@ -84,7 +105,7 @@ int dsReadData(BaseClass *Self, void *Buffer, int Length) {
 
          process_commands((extAudio *)Self, elements);
 
-         Buffer = (UBYTE *)Buffer + (elements * ((extAudio *)Self)->SampleBitSize);
+         Buffer = (UBYTE *)Buffer + (elements * ((extAudio *)Self)->DriverBitSize);
          space_left -= elements;
       }
 
@@ -159,7 +180,7 @@ static ERROR set_channel_volume(extAudio *Self, AudioChannel *Channel)
 //********************************************************************************************************************
 // Process as many command batches as possible that will fit within MixLeft.
 
-ERROR process_commands(extAudio *Self, LONG Elements)
+ERROR process_commands(extAudio *Self, SAMPLE Elements)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -213,14 +234,25 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
    parasol::Log log(__FUNCTION__);
    static WORD errcount = 0;
 
+   // Check if we need to send out any OnStop events
+
+   for (auto it=Self->MixTimers.begin(); it != Self->MixTimers.end(); ) {
+      auto &mt = *it;
+      if (CurrentTime > mt.Time) {
+         audio_stopped_event(*Self, mt.SampleHandle);
+         it = Self->MixTimers.erase(it);
+      }
+      else it++;
+   }
+
    // Get the amount of bytes available for output
 
-   LONG space_left;
+   SAMPLE space_left;
    if (Self->Handle) {
-      space_left = snd_pcm_avail_update(Self->Handle); // Returns available space in frames (multiply by SampleBitSize for bytes)
+      space_left = SAMPLE(snd_pcm_avail_update(Self->Handle)); // Returns available space measured in samples
    }
    else if (Self->AudioBufferSize) { // Run in dummy mode - samples will be processed but not played
-      space_left = Self->AudioBufferSize;
+      space_left = SAMPLE(Self->AudioBufferSize / Self->DriverBitSize);
    }
    else {
       log.warning("ALSA not in an initialised state.");
@@ -248,10 +280,8 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
       return ERR_Okay;
    }
 
-   if (Self->SampleBitSize) {
-      if (space_left > Self->AudioBufferSize / Self->SampleBitSize) {
-         space_left = Self->AudioBufferSize / Self->SampleBitSize;
-      }
+   if (space_left > SAMPLE(Self->AudioBufferSize / Self->DriverBitSize)) {
+      space_left = SAMPLE(Self->AudioBufferSize / Self->DriverBitSize);
    }
 
    // Fill our entire audio buffer with data to be sent to alsa
@@ -261,10 +291,10 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
    while (space_left) {
       // Scan channels to check if an update rate is going to be met
 
-      LONG mix_left;
+      SAMPLE mix_left;
       get_mix_amount(Self, &mix_left);
 
-      LONG elements = (mix_left < space_left) ? mix_left : space_left;
+      SAMPLE elements = (mix_left < space_left) ? mix_left : space_left;
 
       // Produce the audio data
 
@@ -274,7 +304,7 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
 
       process_commands(Self, elements);
 
-      buffer = buffer + (elements * Self->SampleBitSize);
+      buffer = buffer + (elements * Self->DriverBitSize);
       space_left -= elements;
    }
 
@@ -348,6 +378,20 @@ static void convert_float16(FLOAT *buf, LONG TotalSamples, WORD *dest)
       if (n < -32768) n = -32768;
       else if (n > 32767) n = 32767;
       *dest++ = (WORD)n;
+      TotalSamples--;
+   }
+}
+
+// No conversion is necessary if the output is float, but we do ensure that values are clamped.
+
+static void convert_float(FLOAT *buf, LONG TotalSamples, FLOAT *dest)
+{
+   while (TotalSamples) {
+      FLOAT n = buf[0];
+      if (n < -1.0) *dest++ = -1.0;
+      else if (n > 1.0) *dest++ = 1.0;
+      else *dest++ = n;
+      buf++;
       TotalSamples--;
    }
 }
@@ -607,7 +651,8 @@ static ERROR mix_data(extAudio *Self, LONG Elements, APTR Dest)
 
       // Clear the mix buffer, then mix all channels to the buffer
 
-      ClearMemory(Self->MixBuffer, sizeof(FLOAT) * (Self->Stereo ? (window<<1) : window));
+      LONG window_size = sizeof(FLOAT) * (Self->Stereo ? (window<<1) : window);
+      ClearMemory(Self->MixBuffer, window_size);
 
       for (auto n=1; n < (LONG)Self->Sets.size(); n++) {
          for (auto &c : Self->Sets[n].Channel) {
@@ -628,19 +673,20 @@ static ERROR mix_data(extAudio *Self, LONG Elements, APTR Dest)
 
       // Convert the floating point data to the correct output format
 
-      if (Self->BitDepth IS 24) {
+      if (Self->BitDepth IS 32) { // Presumes a floating point target identical to our own
+         convert_float((FLOAT *)Self->MixBuffer, (Self->Stereo) ? window<<1 : window, (FLOAT *)Dest);
+      }
+      else if (Self->BitDepth IS 24) {
 
       }
       else if (Self->BitDepth IS 16) {
-         if (Self->Stereo) convert_float16((FLOAT *)Self->MixBuffer, window<<1, (WORD *)Dest);
-         else convert_float16((FLOAT *)Self->MixBuffer, window, (WORD *)Dest);
+         convert_float16((FLOAT *)Self->MixBuffer, (Self->Stereo) ? window<<1 : window, (WORD *)Dest);
       }
       else {
-         if (Self->Stereo) convert_float8((FLOAT *)Self->MixBuffer, window<<1, (UBYTE *)Dest);
-         else convert_float8((FLOAT *)Self->MixBuffer, window, (UBYTE *)Dest);
+         convert_float8((FLOAT *)Self->MixBuffer,  (Self->Stereo) ? window<<1 : window, (UBYTE *)Dest);
       }
 
-      Dest = ((UBYTE *)Dest) + (window * Self->SampleBitSize);
+      Dest = ((UBYTE *)Dest) + (window * Self->DriverBitSize);
       Elements -= window;
    }
 
@@ -674,12 +720,20 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, LONG TotalSamples
 
    // Determine bit size of the sample, not necessarily a match to that of the mixer.
 
+   DOUBLE conversion;
    LONG sample_size;
    switch (sample.SampleType) {
-      case SFM_U8_BIT_STEREO:
-      case SFM_S16_BIT_MONO:   sample_size = 2; break;
-      case SFM_S16_BIT_STEREO: sample_size = 4; break;
-      default:                 sample_size = 1; break;
+      case SFM_S16_BIT_STEREO: sample_size = sizeof(WORD) * 2; conversion = 1.0 / 32767.0; break;
+      case SFM_S16_BIT_MONO:   sample_size = sizeof(WORD); conversion = 1.0 / 32767.0; break;
+      case SFM_U8_BIT_STEREO:  sample_size = sizeof(BYTE) * 2; conversion = 1.0 / 127.0; break;
+      default:                 sample_size = sizeof(BYTE); conversion = 1.0 / 127.0; break;
+   }
+
+   if (Self->BitDepth IS 32) {
+      // If our hardware output format is floating point, the values need to range from -1.0 to 1.0.
+      // The application of the conversion value to mastervol allows us to achieve this optimally
+      // and we won't need to apply any further conversions.
+      mastervol *= conversion;
    }
 
    glMixDest = (FLOAT *)Dest;

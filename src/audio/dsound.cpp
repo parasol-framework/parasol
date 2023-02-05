@@ -2,6 +2,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <mmsystem.h>
+#include <mmreg.h>
 #include <dsound.h>
 #include <math.h>
 
@@ -101,6 +102,9 @@ int sndCheckActivity(PlatformData *Sound)
    }
    else return -1; // Error
 }
+
+static const GUID pa_KSDATAFORMAT_SUBTYPE_WAVEFORMATEX = { STATIC_KSDATAFORMAT_SUBTYPE_WAVEFORMATEX }; // Standard PCM
+static const GUID pa_KSDATAFORMAT_SUBTYPE_IEEE_FLOAT = { STATIC_KSDATAFORMAT_SUBTYPE_IEEE_FLOAT }; // 32-bit floats
 
 //********************************************************************************************************************
 // SampleLength: The byte length of the raw audio data, excludes all file headers.

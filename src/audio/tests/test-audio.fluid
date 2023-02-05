@@ -1,6 +1,7 @@
 -- $FLUID
 -- Flute tests for the Audio server and associated classes.
 -- These are audible tests that require human verification to confirm a full pass.
+-- NB: Latency differs between platforms.  Do not expect playback gaps to match between Windows and Linux.
 
 -----------------------------------------------------------------------------------------------------------------------
 -- This test must result in playback of a low-tone, then followed by a high tone.
@@ -46,6 +47,8 @@ function testSequentialPlayback()
 
    assert(time_taken >= duration, 'End-of-sample occurred earlier than duration of ' .. duration .. ': ' .. time_taken)
    assert(time_taken <  duration+glLag+0.02, 'End-of-sample exceeded duration of ' .. duration .. ': ' .. time_taken)
+
+   proc.sleep(0.5)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -75,10 +78,12 @@ function testPan()
    assert(err == ERR_Okay, 'Failed to playback low-tone sound sample.')
 
    proc.sleep()
+
+   proc.sleep(0.5)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test volume adjustment
+-- Test volume adjustment and OnStop trigger rates.
 
 function testVolume()
    local proc = processing.new()
@@ -86,16 +91,25 @@ function testVolume()
    local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav' })
    assert(snd, 'Failed to process low-tone wav file.')
 
+   print('Sample duration is ' .. string.format('%.2fs', snd.duration))
+
+   local active_time = 0
+   local elapsed = 0
    snd.onStop = function(SoundID)
+      elapsed = (mSys.PreciseTime() - active_time) / 1000000
       proc.signal()
    end
 
-   print('Incrementing volume...')
    for i=1,4 do
       snd.volume = 1.0 * (i / 4)
+      active_time = mSys.PreciseTime()
       snd.acActivate()
       proc.sleep()
+      assert(elapsed >= snd.duration, 'OnStop triggered faster than the sample\'s duration.')
+      print('Playback latency measured as ' .. string.format('%.2fs', elapsed - snd.duration))
    end
+
+   proc.sleep(0.5)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -114,6 +128,7 @@ end
             error('Failed to initialise audio server.')
          end
          glLag = glAudio.mixerLag
+         print('Audio mixer lag time measured as ' .. string.format('%.2fs', glLag))
       end,
       cleanup = function()
 

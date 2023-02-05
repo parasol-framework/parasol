@@ -15,7 +15,7 @@
     <copyright>Paul Manias © 2002-2023</copyright>
     <description>
 <p>The Audio class provides a common audio service that works across multiple platforms and follows a client-server design model.</p>
-<p>Supported features include 8-bit and 16-bit output in stereo or mono, oversampling, streaming, multiple audio channels, sample sharing and command sequencing.  The Audio class functionality is simplified via the <class name="Sound">Sound</class> class interface, which we recommend in most cases where simplified audio playback is satisfactory.</p>
+<p>Supported features include 8/16/32 bit output in stereo or mono, oversampling, streaming, multiple audio channels and command sequencing.  The Audio class functionality is simplified via the <class name="Sound">Sound</class> class interface, which we recommend in most cases where simplified audio playback is satisfactory.</p>
 <p>Support for audio recording is not currently available.</p></description>
     <source>
       <file>class_audio.cpp</file>
