@@ -208,7 +208,6 @@ ERROR process_commands(extAudio *Self, SAMPLE Elements)
                case CMD::VOLUME:       sndMixVolume(Self, cmds[i].Handle, cmds[i].Data); break;
                case CMD::STOP:         sndMixStop(Self, cmds[i].Handle); break;
                case CMD::STOP_LOOPING: sndMixStopLoop(Self, cmds[i].Handle); break;
-               case CMD::POSITION:     sndMixPosition(Self, cmds[i].Handle, cmds[i].Data); break;
                case CMD::END_SEQUENCE: stop = true; break;
 
                default:

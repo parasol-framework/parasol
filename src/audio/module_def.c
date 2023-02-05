@@ -8,8 +8,7 @@ static ERROR sndMixContinue(objAudio * Audio, LONG Handle);
 static ERROR sndMixFrequency(objAudio * Audio, LONG Handle, LONG Frequency);
 static ERROR sndMixMute(objAudio * Audio, LONG Handle, LONG Mute);
 static ERROR sndMixPan(objAudio * Audio, LONG Handle, DOUBLE Pan);
-static ERROR sndMixPlay(objAudio * Audio, LONG Handle, LONG Frequency);
-static ERROR sndMixPosition(objAudio * Audio, LONG Handle, LONG Position);
+static ERROR sndMixPlay(objAudio * Audio, LONG Handle, LONG Position);
 static ERROR sndMixRate(objAudio * Audio, LONG Handle, LONG Rate);
 static ERROR sndMixSample(objAudio * Audio, LONG Handle, LONG Sample);
 static ERROR sndMixStop(objAudio * Audio, LONG Handle);
@@ -30,8 +29,7 @@ FDEF argsMixEndSequence[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJEC
 FDEF argsMixFrequency[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { "Frequency", FD_LONG }, { 0, 0 } };
 FDEF argsMixMute[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { "Mute", FD_LONG }, { 0, 0 } };
 FDEF argsMixPan[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { "Pan", FD_DOUBLE }, { 0, 0 } };
-FDEF argsMixPlay[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { "Frequency", FD_LONG }, { 0, 0 } };
-FDEF argsMixPosition[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { "Position", FD_LONG }, { 0, 0 } };
+FDEF argsMixPlay[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { "Position", FD_LONG }, { 0, 0 } };
 FDEF argsMixRate[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { "Rate", FD_LONG }, { 0, 0 } };
 FDEF argsMixSample[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { "Sample", FD_LONG }, { 0, 0 } };
 FDEF argsMixStartSequence[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { 0, 0 } };
@@ -45,7 +43,6 @@ const struct Function glFunctions[] = {
    { (APTR)sndMixMute, "MixMute", argsMixMute },
    { (APTR)sndMixPan, "MixPan", argsMixPan },
    { (APTR)sndMixPlay, "MixPlay", argsMixPlay },
-   { (APTR)sndMixPosition, "MixPosition", argsMixPosition },
    { (APTR)sndMixRate, "MixRate", argsMixRate },
    { (APTR)sndMixSample, "MixSample", argsMixSample },
    { (APTR)sndMixStop, "MixStop", argsMixStop },

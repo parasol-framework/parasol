@@ -323,9 +323,10 @@ static ERROR sndMixPan(objAudio *Audio, LONG Handle, DOUBLE Pan)
 /*********************************************************************************************************************
 
 -FUNCTION-
-MixPosition: Sets a channel's playing position relative to the current sample.
+MixPlay: Commences channel playback at a set frequency..
 
-This function will change the playing position of a mixer channel for the current sound sample.
+This function will start playback of the sound sample associated with the target mixer channel.  If the channel is
+already in playback mode, it will be stopped to facilitate the new playback request.
 
 -INPUT-
 obj(Audio) Audio: The target Audio object.
@@ -335,25 +336,24 @@ int Position: The new playing position, measured in bytes.
 -ERRORS-
 Okay
 NullArgs
-OutOfRange
 -END-
 
 *********************************************************************************************************************/
 
-static ERROR sndMixPosition(objAudio *Audio, LONG Handle, LONG Position)
+static ERROR sndMixPlay(objAudio *Audio, LONG Handle, LONG Position)
 {
    parasol::Log log(__FUNCTION__);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
-   log.traceBranch("Audio: #%d, Channel: $%.8x, Position: %d", Audio->UID, Handle, Position);
-
    if (Position < 0) return log.warning(ERR_OutOfRange);
 
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
 
+   log.traceBranch("Audio: #%d, Channel: $%.8x, Position: %d", Audio->UID, Handle, Position);
+
    if (channel->Buffering) {
-      add_mix_cmd(Audio, CMD::POSITION, Handle, Position);
+      add_mix_cmd(Audio, CMD::PLAY, Position);
       return ERR_Okay;
    }
 
@@ -361,6 +361,8 @@ static ERROR sndMixPosition(objAudio *Audio, LONG Handle, LONG Position)
       log.warning("Channel not associated with a sample.");
       return ERR_Failed;
    }
+
+   ((extAudio *)Audio)->finish(*channel, false); // Turn off previous sound
 
    auto &sample = ((extAudio *)Audio)->Samples[channel->SampleHandle];
 
@@ -510,53 +512,6 @@ static ERROR sndMixPosition(objAudio *Audio, LONG Handle, LONG Position)
 /*********************************************************************************************************************
 
 -FUNCTION-
-MixPlay: Commences channel playback at a set frequency..
-
-This function will start playback of the sound sample associated with the target mixer channel.  If the channel is
-already in playback mode, it will be stopped to facilitate the new playback request.
-
--INPUT-
-obj(Audio) Audio: The target Audio object.
-int Handle: The target channel.
-int Frequency: The new playing position, measured in bytes.
-
--ERRORS-
-Okay
-NullArgs
--END-
-
-*********************************************************************************************************************/
-
-static ERROR sndMixPlay(objAudio *Audio, LONG Handle, LONG Frequency)
-{
-   parasol::Log log(__FUNCTION__);
-
-   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
-
-   log.traceBranch("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
-
-   if (Frequency <= 0) return log.warning(ERR_Args);
-
-   auto channel = ((extAudio *)Audio)->GetChannel(Handle);
-
-   if (channel->Buffering) {
-      add_mix_cmd(Audio, CMD::PLAY, Frequency);
-      return ERR_Okay;
-   }
-
-   fade_out((extAudio *)Audio, Handle);
-
-   ((extAudio *)Audio)->finish(*channel, false); // Turn off previous sound
-   channel->Frequency = Frequency; // New frequency
-
-   auto &sample = ((extAudio *)Audio)->Samples[channel->SampleHandle];
-
-   return sndMixPosition(Audio, Handle, sample.PlayPos); // Setting position also initiates playback
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
 MixRate: Sets a new update rate for a channel.
 
 This function will set a new update rate for all channels, measured in milliseconds.  The default update rate is 125,
@@ -665,7 +620,7 @@ ERROR sndMixSample(objAudio *Audio, LONG Handle, LONG SampleIndex)
 
       if (!(Audio->Flags & ADF_OVER_SAMPLING)) {
          channel->State = CHS::PLAYING;
-         sndMixPosition(Audio, Handle, s.Loop1Start);
+         sndMixPlay(Audio, Handle, s.Loop1Start);
       }
    }
 
