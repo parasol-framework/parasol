@@ -77,7 +77,7 @@ static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
 
    const LONG mixbitsize = Self->Stereo ? sizeof(FLOAT) * 2 : sizeof(FLOAT);
 
-   Self->MixBufferSize = BYTELEN((((mixbitsize * Self->OutputRate) / MIX_BUF_LEN) + 15) & (~15));
+   Self->MixBufferSize = BYTELEN((F2T((mixbitsize * Self->OutputRate) * (MIX_INTERVAL * 1.5)) + 15) & (~15));
    Self->MixElements   = SAMPLE(Self->MixBufferSize / mixbitsize);
 
    if (!AllocMemory(Self->MixBufferSize, MEM_DATA, &Self->MixBuffer)) {
