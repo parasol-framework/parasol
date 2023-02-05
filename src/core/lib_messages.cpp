@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol Framework is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -8,7 +8,7 @@ Please refer to it for further information on licensing.
 Name: Messages
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #ifdef __unix__
 #include <signal.h>
@@ -69,7 +69,7 @@ static THREADVAR UBYTE tlMsgSent = FALSE;
 
 #define MAX_MSEC 1000
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 AddMsgHandler: Adds a new message handler for processing incoming messages.
@@ -106,7 +106,7 @@ NullArgs
 AllocMemory
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION *Routine, MsgHandler **Handle)
 {
@@ -144,7 +144,7 @@ ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION *Routine, MsgHandler **H
    else return log.warning(ERR_Lock);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetMessage: Reads messages from message queues.
@@ -175,7 +175,7 @@ AccessMemory: Failed to gain access to the message queue.
 Search: No more messages are left on the queue, or no messages that match the given Type are on the queue.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR GetMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Buffer, LONG BufferSize)
 {
@@ -254,7 +254,7 @@ next:
    return ERR_Search;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ProcessMessages: Processes system messages that are queued in the task's message buffer.
@@ -286,7 +286,7 @@ Terminate: A MSGID_QUIT message type was found on the message queue.
 TimeOut:
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR ProcessMessages(LONG Flags, LONG TimeOut)
 {
@@ -747,7 +747,7 @@ timer_cycle:
    return returncode;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ScanMessages: Scans a message queue for multiple occurrences of a message type.
@@ -788,7 +788,7 @@ NullArgs:
 Search: No more messages are left on the queue, or no messages that match the given Type are on the queue.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR ScanMessages(APTR MessageQueue, LONG *Index, LONG Type, APTR Buffer, LONG BufferSize)
 {
@@ -847,7 +847,7 @@ ERROR ScanMessages(APTR MessageQueue, LONG *Index, LONG Type, APTR Buffer, LONG 
    return ERR_Search;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SendMessage: Send messages to message queues.
@@ -876,7 +876,7 @@ TimeOut:      The message queue is full and the queue handler has failed to proc
 AccessMemory: Access to the message queue memory was denied.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static LONG glUniqueMsgID = 1;
 
@@ -1082,22 +1082,22 @@ ERROR SendMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Data, LONG Si
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 WaitForObjects: Process incoming messages while waiting on objects to complete their activities.
 
-The WaitForObjects() function acts as a front-end to ~ProcessMessages(), with the extension of being
-able to wait for a series of objects that must signal an end to their activities.  An object can be signalled via
-the Signal() action.  Termination of a monitored object is also treated as a signal.  The function will return once
-ALL of the objects are signalled or a time-out occurs.
+The WaitForObjects() function acts as a front-end to ~ProcessMessages(), with the capability of being able to wait for
+a series of objects that must signal an end to their activities.  An object can be signalled via the Signal() action.
+Termination of a monitored object is also treated as a signal.  The function will return once ALL of the objects are
+signalled or a time-out occurs.
 
 Note that if an object has been signalled prior to entry to this function, its signal flag will be cleared and the
 object will not be monitored.
 
 -INPUT-
 int Flags:   Optional flags are specified here (currently no flags are provided).
-int TimeOut: A time-out value measured in milliseconds.  If this value is negative then the function will not return until an incoming message or signal breaks it.
+int TimeOut: A time-out value measured in milliseconds.  If this value is negative then no time-out applies and the function will not return until an incoming message or signal breaks it.
 struct(*ObjectSignal) ObjectSignals: A null-terminated array of objects to monitor for signals.
 
 -ERRORS-
@@ -1109,7 +1109,7 @@ OutsideMainThread
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR WaitForObjects(LONG Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
 {
@@ -1147,9 +1147,13 @@ ERROR WaitForObjects(LONG Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
    }
 
    if (!error) {
-      if (TimeOut < 0) {
+      if (TimeOut < 0) { // No time-out will apply
          if (glWFOList.empty()) error = ProcessMessages(Flags, 0);
-         else error = ProcessMessages(Flags, -1);
+         else {
+            while ((not glWFOList.empty()) and (!error)) {
+               error = ProcessMessages(Flags, -1);
+            }
+         }
       }
       else {
          auto current_time = PreciseTime();
@@ -1177,9 +1181,8 @@ ERROR WaitForObjects(LONG Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
    return error;
 }
 
-/*****************************************************************************
-** This is the equivalent internal routine to SendMessage(), for the purpose of sending messages to other threads.
-*/
+//********************************************************************************************************************
+// This is the equivalent internal routine to SendMessage(), for the purpose of sending messages to other threads.
 
 #ifdef _WIN32
 ERROR send_thread_msg(WINHANDLE Handle, LONG Type, APTR Data, LONG Size)
@@ -1225,7 +1228,7 @@ ERROR send_thread_msg(LONG Handle, LONG Type, APTR Data, LONG Size)
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Simplifies the process of writing to an FD that is set to non-blocking mode (typically a socket or pipe).  An
 // end-time is required so that a timeout will be signalled if the reader isn't keeping the buffer clear.
 
@@ -1271,7 +1274,7 @@ ERROR write_nonblock(LONG Handle, APTR Data, LONG Size, LARGE EndTime)
 }
 #endif
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 UpdateMessage: Updates the data of any message that is queued.
@@ -1299,7 +1302,7 @@ NullArgs:
 Search: The ID that you supplied does not refer to a message in the queue.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR UpdateMessage(APTR Queue, LONG MessageID, LONG Type, APTR Buffer, LONG BufferSize)
 {
@@ -1337,7 +1340,7 @@ ERROR UpdateMessage(APTR Queue, LONG MessageID, LONG Type, APTR Buffer, LONG Buf
    return log.warning(ERR_Search);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 WakeProcess: Wake a sleeping process to check for queued activities.  For internal use only.
@@ -1355,7 +1358,7 @@ Search: The referenced process was not found.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR WakeProcess(LONG ProcessID)
 {
@@ -1372,9 +1375,8 @@ ERROR WakeProcess(LONG ProcessID)
    return log.warning(ERR_Search);
 }
 
-/*****************************************************************************
-** Function: sleep_task() - Unix version
-*/
+//********************************************************************************************************************
+// sleep_task() - Unix version
 
 #ifdef __unix__
 ERROR sleep_task(LONG Timeout)
@@ -1538,9 +1540,8 @@ ERROR sleep_task(LONG Timeout)
 }
 #endif
 
-/*****************************************************************************
-** Function: sleep_task() - Windows version
-*/
+//********************************************************************************************************************
+// sleep_task() - Windows version
 
 #ifdef _WIN32
 ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
@@ -1683,7 +1684,7 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
 
 #endif // _WIN32
 
-//****************************************************************************
+//********************************************************************************************************************
 // This function complements sleep_task().  It is useful for waking the main thread of a process when it is waiting for
 // new messages to come in.
 //
