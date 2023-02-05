@@ -104,36 +104,17 @@
   <function>
     <name>MixPlay</name>
     <comment>Commences channel playback at a set frequency..</comment>
-    <prototype>ERROR sndMixPlay(objAudio * Audio, LONG Handle, LONG Frequency)</prototype>
-    <input>
-      <param type="objAudio *" name="Audio">The target Audio object.</param>
-      <param type="LONG" name="Handle">The target channel.</param>
-      <param type="LONG" name="Frequency">The new playing position, measured in bytes.</param>
-    </input>
-    <description>
-<p>This function will start playback of the sound sample associated with the target mixer channel.  If the channel is already in playback mode, it will be stopped to facilitate the new playback request.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
-    <name>MixPosition</name>
-    <comment>Sets a channel's playing position relative to the current sample.</comment>
-    <prototype>ERROR sndMixPosition(objAudio * Audio, LONG Handle, LONG Position)</prototype>
+    <prototype>ERROR sndMixPlay(objAudio * Audio, LONG Handle, LONG Position)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
       <param type="LONG" name="Handle">The target channel.</param>
       <param type="LONG" name="Position">The new playing position, measured in bytes.</param>
     </input>
     <description>
-<p>This function will change the playing position of a mixer channel for the current sound sample.</p>
+<p>This function will start playback of the sound sample associated with the target mixer channel.  If the channel is already in playback mode, it will be stopped to facilitate the new playback request.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
-      <error code="OutOfRange">A specified number is outside of the valid range.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>

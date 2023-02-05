@@ -135,7 +135,6 @@ module({ name="Audio", copyright="Paul Manias © 2002-2023", version=1.0 }, func
      "MixMute",
      "MixPan",
      "MixPlay",
-     "MixPosition",
      "MixRate",
      "MixSample",
      "MixStop",

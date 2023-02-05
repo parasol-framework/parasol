@@ -315,8 +315,7 @@ struct AudioBase {
    ERROR (*_MixFrequency)(objAudio * Audio, LONG Handle, LONG Frequency);
    ERROR (*_MixMute)(objAudio * Audio, LONG Handle, LONG Mute);
    ERROR (*_MixPan)(objAudio * Audio, LONG Handle, DOUBLE Pan);
-   ERROR (*_MixPlay)(objAudio * Audio, LONG Handle, LONG Frequency);
-   ERROR (*_MixPosition)(objAudio * Audio, LONG Handle, LONG Position);
+   ERROR (*_MixPlay)(objAudio * Audio, LONG Handle, LONG Position);
    ERROR (*_MixRate)(objAudio * Audio, LONG Handle, LONG Rate);
    ERROR (*_MixSample)(objAudio * Audio, LONG Handle, LONG Sample);
    ERROR (*_MixStop)(objAudio * Audio, LONG Handle);
@@ -331,8 +330,7 @@ inline ERROR sndMixContinue(objAudio * Audio, LONG Handle) { return AudioBase->_
 inline ERROR sndMixFrequency(objAudio * Audio, LONG Handle, LONG Frequency) { return AudioBase->_MixFrequency(Audio,Handle,Frequency); }
 inline ERROR sndMixMute(objAudio * Audio, LONG Handle, LONG Mute) { return AudioBase->_MixMute(Audio,Handle,Mute); }
 inline ERROR sndMixPan(objAudio * Audio, LONG Handle, DOUBLE Pan) { return AudioBase->_MixPan(Audio,Handle,Pan); }
-inline ERROR sndMixPlay(objAudio * Audio, LONG Handle, LONG Frequency) { return AudioBase->_MixPlay(Audio,Handle,Frequency); }
-inline ERROR sndMixPosition(objAudio * Audio, LONG Handle, LONG Position) { return AudioBase->_MixPosition(Audio,Handle,Position); }
+inline ERROR sndMixPlay(objAudio * Audio, LONG Handle, LONG Position) { return AudioBase->_MixPlay(Audio,Handle,Position); }
 inline ERROR sndMixRate(objAudio * Audio, LONG Handle, LONG Rate) { return AudioBase->_MixRate(Audio,Handle,Rate); }
 inline ERROR sndMixSample(objAudio * Audio, LONG Handle, LONG Sample) { return AudioBase->_MixSample(Audio,Handle,Sample); }
 inline ERROR sndMixStop(objAudio * Audio, LONG Handle) { return AudioBase->_MixStop(Audio,Handle); }

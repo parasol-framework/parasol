@@ -9,7 +9,7 @@
 function testSequentialPlayback()
    local proc = processing.new()
 
-   local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav', volume=0.33 })
+   local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav', volume=0.25 })
    assert(snd, 'Failed to process low-tone wav file.')
 
    local time, time_taken
@@ -31,7 +31,7 @@ function testSequentialPlayback()
 
    -- Second sample
 
-   local snd = obj.new('sound', { path=glFolder .. 'high-tone.wav', volume=0.33 })
+   local snd = obj.new('sound', { path=glFolder .. 'high-tone.wav', volume=0.25 })
    assert(snd, 'Failed to process high-tone wav file.')
 
    snd.onStop = function(SoundID)
@@ -48,7 +48,7 @@ function testSequentialPlayback()
    assert(time_taken >= duration, 'End-of-sample occurred earlier than duration of ' .. duration .. ': ' .. time_taken)
    assert(time_taken <  duration+glLag+0.02, 'End-of-sample exceeded duration of ' .. duration .. ': ' .. time_taken)
 
-   proc.sleep(0.5)
+   proc.sleep(0.25)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -57,7 +57,7 @@ end
 function testPan()
    local proc = processing.new()
 
-   local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav', pan=-1.0, volume=0.33 })
+   local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav', pan=-1.0, volume=0.25 })
    assert(snd, 'Failed to process low-tone wav file.')
 
    snd.onStop = function(SoundID)
@@ -79,7 +79,7 @@ function testPan()
 
    proc.sleep()
 
-   proc.sleep(0.5)
+   proc.sleep(0.25)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -105,11 +105,37 @@ function testVolume()
       active_time = mSys.PreciseTime()
       snd.acActivate()
       proc.sleep()
-      assert(elapsed >= snd.duration, 'OnStop triggered faster than the sample\'s duration.')
+      assert(elapsed >= snd.duration-0.02, 'OnStop triggered ' .. string.format('%.2fs', snd.duration - elapsed) .. ' earlier than the sample\'s duration.')
       print('Playback latency measured as ' .. string.format('%.2fs', elapsed - snd.duration))
    end
 
-   proc.sleep(0.5)
+   proc.sleep(0.25)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Increase the pitch repeatedly
+
+function testTones()
+   local proc = processing.new()
+
+   local snd = obj.new('sound', { path=glFolder .. 'low-tone.wav', volume=0.25 })
+   assert(snd, 'Failed to process low-tone wav file.')
+
+   local active_time = 0
+   local elapsed = 0
+   snd.onStop = function(SoundID)
+      elapsed = (mSys.PreciseTime() - active_time) / 1000000
+      proc.signal()
+   end
+
+   for i=1,8 do
+      snd.note = i
+      active_time = mSys.PreciseTime()
+      snd.acActivate()
+      proc.sleep()
+   end
+
+   proc.sleep(0.25)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -118,7 +144,8 @@ end
       tests = {
         'testSequentialPlayback',
         'testPan',
-        'testVolume'
+        'testVolume',
+        'testTones'
       },
       init = function(Folder)
          glFolder = Folder

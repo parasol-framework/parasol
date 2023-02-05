@@ -390,6 +390,8 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          if (!Self->read(buffer, Self->Length, &result)) {
             if (result != Self->Length) log.warning("Expected %d bytes, read %d", Self->Length, result);
 
+            Self->seek(client_pos, SEEK_START);
+
             struct sndAddSample add;
             AudioLoop loop;
 
@@ -417,7 +419,6 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
             if (!ActionMsg(MT_SndAddSample, Self->AudioID, &add)) {
                Self->Handle = add.Result;
 
-               if (client_pos) Self->seek(client_pos, SEEK_START);
                FreeResource(buffer);
             }
             else {
@@ -479,7 +480,8 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
       if (!sndMixSample(*audio, Self->ChannelIndex, Self->Handle)) {
          if (sndMixVolume(*audio, Self->ChannelIndex, Self->Volume)) return log.warning(ERR_Failed);
          if (sndMixPan(*audio, Self->ChannelIndex, Self->Pan)) return log.warning(ERR_Failed);
-         if (sndMixPlay(*audio, Self->ChannelIndex, Self->Playback)) return log.warning(ERR_Failed);
+         if (sndMixFrequency(*audio, Self->ChannelIndex, Self->Playback)) return log.warning(ERR_Failed);
+         if (sndMixPlay(*audio, Self->ChannelIndex, Self->Position)) return log.warning(ERR_Failed);
 
          return ERR_Okay;
       }
@@ -1037,7 +1039,7 @@ static ERROR SOUND_Seek(extSound *Self, struct acSeek *Args)
                if (Self->ChannelIndex) {
                   if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
                      if (!channel->isStopped()) {
-                        sndMixPosition(*audio, Self->ChannelIndex, Self->Position);
+                        sndMixPlay(*audio, Self->ChannelIndex, Self->Position);
                      }
                   }
                }
@@ -1248,11 +1250,11 @@ affects the restart position when the end of the sample is reached.
 Note: The musical note to use when playing a sound sample.
 Lookup: NOTE
 
-Set the Note field to alter the playback frequency of a sound sample.  By setting this field as opposed
-to the #Playback frequency, you can be assured that the sample is played as a correctly scaled note.
+Set the Note field to alter the playback frequency of a sound sample.  Setting this field as opposed
+to the #Playback frequency will assure that the sample is played at a correctly scaled tone.
 
-The Note field can be set using either string or integer based format.  If you are using the integer format, the number
-that you choose reflects on the position on a musical keyboard.  A value of zero refers to the middle C key.  Each
+The Note field can be set using either string or integer based format.  If using the integer format, the chosen
+value will reflect the position on a musical keyboard.  A value of zero refers to the middle C key.  Each
 octave is measured in sets of 12 notes, so a value of 24 would indicate a C note at 3 times normal playback.  To play
 at lower values, simply choose a negative integer to slow down sample playback.
 
