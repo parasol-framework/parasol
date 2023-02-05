@@ -403,8 +403,13 @@ static ERROR sndMixPlay(objAudio *Audio, LONG Handle, LONG Position)
          // Either playing sample before releasing, or playing has ended - check the first loop type.
 
          if (sample.OnStop.Type) {
-            channel->EndTime = PreciseTime();
-            channel->EndTime += F2I((DOUBLE(sample.SampleLength) / DOUBLE(channel->Frequency)) * 1000000.0);
+            DOUBLE sec;
+            if (sample.Stream) {
+               // NB: Accuracy is dependent on the StreamLength value being correct.
+               sec = DOUBLE((sample.StreamLength - sample.PlayPos)>>sample_shift(sample.SampleType)) / DOUBLE(channel->Frequency);
+            }
+            else sec = DOUBLE(sample.SampleLength - Position) / DOUBLE(channel->Frequency);
+            channel->EndTime = PreciseTime() + F2I(sec * 1000000.0);
          }
          else channel->EndTime = 0;
 

@@ -92,8 +92,8 @@ struct AudioSample {
    SAMPLE   Loop1End;     // End of the first loop
    SAMPLE   Loop2Start;   // Start of the second loop
    SAMPLE   Loop2End;     // End of the second loop
-   SAMPLE   SampleLength; // Length of the sample/buffer in Data, measured in samples
-   BYTELEN  StreamLength; // Total byte-length of the sample data that is being streamed.
+   SAMPLE   SampleLength; // Length of the Data sample/buffer.  Measured in samples
+   BYTELEN  StreamLength; // Streams only.  Total byte-length of the sample data that is being streamed.
    BYTELEN  PlayPos;      // Current read position relative to StreamLength/SampleLength, measured in bytes
    LOOP     LoopMode;     // Loop mode (single, double)
    UBYTE    SampleType;   // Type of sample (bit format)

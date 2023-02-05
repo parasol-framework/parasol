@@ -74,8 +74,7 @@ function testPan()
 
    print('Play right speaker.')
    snd.pan = 1.0
-   err = snd.acActivate()
-   assert(err == ERR_Okay, 'Failed to playback low-tone sound sample.')
+   assert(snd.acActivate() == ERR_Okay, 'Failed to playback low-tone sound sample.')
 
    proc.sleep()
 
