@@ -23,7 +23,7 @@ void Scintilla::Menu::CreatePopUp()
       FID_Name|TSTRING,    "ScintillaPopup",
       TAGEND) != ERR_Okay) {
 
-      LogF("@Menu::CreatePopUp: ", "Surface creation failed.");
+      log.warning("Surface creation failed.");
       return;
    }*/
 
@@ -39,7 +39,7 @@ void Scintilla::Menu::CreatePopUp()
       //FID_Font|TPTR,        menufont,
       TAGEND) != ERR_Okay) {
 
-      LogF("@Menu::CreatePopUp: ", "Menu creation failed.");
+      log.warning("Menu creation failed.");
       return;
    }
 */
@@ -49,24 +49,25 @@ void Scintilla::Menu::CreatePopUp()
 
 void Scintilla::Menu::Destroy()
 {
-   LogF("Menu::Destroy", "");
+   parasol::Log log(__FUNCTION__);
+   log.traceBranch();
 
-      //OBJECTID surface_id;
-      //GetField(menu, FID_Drawable, FT_LONG, &surface_id);
+   //OBJECTID surface_id;
+   //GetField(menu, FID_Drawable, FT_LONG, &surface_id);
 
-      //ActionMsg(AC_Free, *reinterpret_cast<OBJECTID *>(&id), NULL);
-      //acFree(menu);
+   //ActionMsg(AC_Free, *reinterpret_cast<OBJECTID *>(&id), NULL);
+   //acFree(menu);
 
-      //if (surface_id)
-      //   ActionMsg(AC_Free, surface_id, NULL);
-
+   //if (surface_id)
+   //   ActionMsg(AC_Free, surface_id, NULL);
 }
 
 /****************************************************************************/
 
 void Scintilla::Menu::Show(Scintilla::Point pt, Window &Window)
 {
-   LogF("Menu::Show:","%dx%d", pt.x, pt.y);
+   parasol::Log log(__FUNCTION__);
+   log.branch("%dx%d", pt.x, pt.y);
 
 #if 0
    OBJECTPTR menu;

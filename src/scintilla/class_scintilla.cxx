@@ -449,7 +449,6 @@ static ERROR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
 
       objXML::create xml = { fl::Statement((CSTRING)Args->Buffer) };
       if (xml.ok()) {
-         LONG count = 0;
          for (LONG i=0; i < xml->TagCount; i++) {
             auto tag = xml->Tags[i];
             if (!StrMatch("file", tag->Attrib->Name)) {
