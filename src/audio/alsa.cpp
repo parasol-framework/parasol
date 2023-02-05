@@ -22,7 +22,7 @@ static ERROR init_audio(extAudio *Self)
    snd_pcm_t *pcmhandle;
    snd_mixer_elem_t *elem;
    snd_mixer_selem_id_t *sid;
-   snd_pcm_uframes_t periodsize, buffersize;
+   snd_pcm_uframes_t periodsize;
    snd_ctl_card_info_t *info;
    LONG err, index;
    WORD channel;
@@ -50,9 +50,8 @@ static ERROR init_audio(extAudio *Self)
 
    if (StrMatch("default", pcm_name.c_str()) != ERR_Okay) {
       STRING cardid, cardname;
-      LONG card;
 
-      card = -1;
+      LONG card = -1;
       if ((snd_card_next(&card) < 0) or (card < 0)) {
          log.warning("There are no sound cards supported by audio drivers.");
          return ERR_NoSupport;
@@ -82,14 +81,9 @@ static ERROR init_audio(extAudio *Self)
    // unexpected device.
 
    if (!StrMatch("default", pcm_name.c_str())) {
-      snd_mixer_t *mixhandle;
-      STRING cardid, cardname;
-      WORD volmax;
-      LONG card;
-
       // If there are no sound devices in the system, abort
 
-      card = -1;
+      LONG card = -1;
       if ((snd_card_next(&card) < 0) or (card < 0)) {
          log.warning("There are no sound cards supported by audio drivers.");
          return ERR_NoSupport;
@@ -98,7 +92,7 @@ static ERROR init_audio(extAudio *Self)
       // Check the number of mixer controls for all cards that support output.  We'll choose the card that has the most
       // mixer controls as the default.
 
-      volmax = 0;
+      WORD volmax = 0;
       while (card >= 0) {
          std::string name = "hw:" + std::to_string(card);
          log.msg("Opening card %s", name.c_str());
@@ -106,13 +100,14 @@ static ERROR init_audio(extAudio *Self)
          if ((err = snd_ctl_open(&ctlhandle, name.c_str(), 0)) >= 0) {
             if ((err = snd_ctl_card_info(ctlhandle, info)) >= 0) {
 
-               cardid = (STRING)snd_ctl_card_info_get_id(info);
-               cardname = (STRING)snd_ctl_card_info_get_name(info);
+               auto cardid   = (STRING)snd_ctl_card_info_get_id(info);
+               auto cardname = (STRING)snd_ctl_card_info_get_name(info);
 
                log.msg("Identified card %s, name %s", cardid, cardname);
 
                if (!StrMatch("modem", cardid)) goto next_card;
 
+               snd_mixer_t *mixhandle;
                if ((err = snd_mixer_open(&mixhandle, 0)) >= 0) {
                   if ((err = snd_mixer_attach(mixhandle, name.c_str())) >= 0) {
                      if ((err = snd_mixer_selem_register(mixhandle, NULL, NULL)) >= 0) {
@@ -279,7 +274,13 @@ next_card:
 
    // Set the preferred audio bit format
 
-   if (Self->BitDepth IS 16) {
+   if (Self->BitDepth IS 32) {
+      if ((err = snd_pcm_hw_params_set_format(pcmhandle, hwparams, SND_PCM_FORMAT_FLOAT_LE)) < 0) {
+         log.warning("set_format(32) %s", snd_strerror(err));
+         return ERR_Failed;
+      }
+   }
+   else if (Self->BitDepth IS 16) {
       if ((err = snd_pcm_hw_params_set_format(pcmhandle, hwparams, SND_PCM_FORMAT_S16_LE)) < 0) {
          log.warning("set_format(16) %s", snd_strerror(err));
          return ERR_Failed;
@@ -349,8 +350,7 @@ next_card:
 
    // NOTE: Audio buffersize is measured in samples, not bytes
 
-   if (!Self->AudioBufferSize) buffersize = DEFAULT_BUFFER_SIZE;
-   else buffersize = Self->AudioBufferSize;
+   snd_pcm_uframes_t buffersize = DEFAULT_BUFFER_SIZE;
 
    if (buffersize > buffersize_max) buffersize = buffersize_max;
    else if (buffersize < buffersize_min) buffersize = buffersize_min;
@@ -397,10 +397,10 @@ next_card:
    // Note that ALSA reports the audio buffer size in samples, not bytes
 
    snd_pcm_hw_params_get_buffer_size(hwparams, &buffersize);
-   Self->AudioBufferSize = buffersize;
+   Self->AudioBufferSize = BYTELEN(buffersize);
 
-   if (Self->Stereo) Self->AudioBufferSize = Self->AudioBufferSize<<1;
-   if (Self->BitDepth IS 16) Self->AudioBufferSize = Self->AudioBufferSize<<1;
+   if (Self->Stereo) Self->AudioBufferSize = BYTELEN(Self->AudioBufferSize<<1);
+   Self->AudioBufferSize = BYTELEN(Self->AudioBufferSize * (Self->BitDepth/8));
 
    log.msg("Total Periods: %d, Period Size: %d, Buffer Size: %d (bytes)", Self->Periods, Self->PeriodSize, Self->AudioBufferSize);
 

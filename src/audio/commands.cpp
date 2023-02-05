@@ -400,6 +400,12 @@ static ERROR sndMixPosition(objAudio *Audio, LONG Handle, LONG Position)
       case CHS::PLAYING:
          // Either playing sample before releasing, or playing has ended - check the first loop type.
 
+         if (sample.OnStop.Type) {
+            channel->EndTime = PreciseTime();
+            channel->EndTime += F2I((DOUBLE(sample.SampleLength) / DOUBLE(channel->Frequency)) * 1000000.0);
+         }
+         else channel->EndTime = 0;
+
          channel->LoopIndex = 1;
          switch (sample.Loop1Type) {
             case LTYPE::NIL:

@@ -6,9 +6,9 @@ Audio: Supports a machine's audio hardware and provides a client-server audio ma
 The Audio class provides a common audio service that works across multiple platforms and follows a client-server
 design model.
 
-Supported features include 8-bit and 16-bit output in stereo or mono, oversampling, streaming, multiple audio channels,
-sample sharing and command sequencing.  The Audio class functionality is simplified via the @Sound class interface,
-which we recommend in most cases where simplified audio playback is satisfactory.
+Supported features include 8/16/32 bit output in stereo or mono, oversampling, streaming, multiple audio channels
+and command sequencing.  The Audio class functionality is simplified via the @Sound class interface, which we
+recommend in most cases where simplified audio playback is satisfactory.
 
 Support for audio recording is not currently available.
 
@@ -64,20 +64,21 @@ static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
 
    acSaveSettings(Self);
 
-   // Calculate one mixing element size
+   // Calculate one mixing element size for the hardware driver (not our floating point mixer).
 
-   if (Self->BitDepth IS 16) Self->SampleBitSize = sizeof(WORD);
-   else if (Self->BitDepth IS 24) Self->SampleBitSize = 3;
-   else Self->SampleBitSize = sizeof(BYTE);
+   if (Self->BitDepth IS 16) Self->DriverBitSize = sizeof(WORD);
+   else if (Self->BitDepth IS 24) Self->DriverBitSize = 3;
+   else if (Self->BitDepth IS 32) Self->DriverBitSize = sizeof(FLOAT);
+   else Self->DriverBitSize = sizeof(BYTE);
 
-   if (Self->Stereo) Self->SampleBitSize *= 2;
+   if (Self->Stereo) Self->DriverBitSize *= 2;
 
    // Allocate a floating-point mixing buffer
 
    const LONG mixbitsize = Self->Stereo ? sizeof(FLOAT) * 2 : sizeof(FLOAT);
 
-   Self->MixBufferSize = (((mixbitsize * Self->OutputRate) / MIX_BUF_LEN) + 15) & (~15);
-   Self->MixElements   = Self->MixBufferSize / mixbitsize;
+   Self->MixBufferSize = BYTELEN((((mixbitsize * Self->OutputRate) / MIX_BUF_LEN) + 15) & (~15));
+   Self->MixElements   = SAMPLE(Self->MixBufferSize / mixbitsize);
 
    if (!AllocMemory(Self->MixBufferSize, MEM_DATA, &Self->MixBuffer)) {
       // Pick the correct mixing routines
@@ -91,11 +92,11 @@ static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
 
       #ifdef _WIN32
          WAVEFORMATEX wave = {
-            .Format            = WAVE_RAW,
+            .Format            = WORD((Self->BitDepth IS 32) ? WAVE_FLOAT : WAVE_RAW),
             .Channels          = WORD(Self->Stereo ? 2 : 1),
             .Frequency         = 44100,
-            .AvgBytesPerSecond = 44100 * Self->SampleBitSize,
-            .BlockAlign        = Self->SampleBitSize,
+            .AvgBytesPerSecond = 44100 * Self->DriverBitSize,
+            .BlockAlign        = Self->DriverBitSize,
             .BitsPerSample     = WORD(Self->BitDepth),
             .ExtraLength       = 0
          };
@@ -1161,14 +1162,7 @@ in seconds and will differ between platforms and user configurations.
 
 static ERROR GET_MixerLag(extAudio *Self, DOUBLE *Value)
 {
-#ifdef _WIN32
-   // Windows uses a split buffer technique, so the write cursor is always 1/2 a buffer ahead.
-   *Value = MIX_INTERVAL + (DOUBLE(Self->MixElements>>1) / DOUBLE(Self->OutputRate));
-#elif ALSA_ENABLED
-   *Value = MIX_INTERVAL + (Self->AudioBufferSize / Self->SampleBitSize) / DOUBLE(Self->OutputRate);
-#else
-   *Value = 0;
-#endif
+   *Value = Self->MixerLag();
    return ERR_Okay;
 }
 

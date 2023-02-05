@@ -103,7 +103,7 @@ module({ name="Audio", copyright="Paul Manias © 2002-2023", version=1.0 }, func
     int InputRate
     int Quality
     int(ADF) Flags     # Special flags
-    int BitDepth       # Typically 8 or 16 bit, reflects the active bit depth
+    int BitDepth       # Typically 8 or 16 bit, reflects the hardware driver's bit depth
     int Periods        # Number of periods for ALSA audio buffering
     int PeriodSize     # Period size for ALSA audio buffering
   ]])
