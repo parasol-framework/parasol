@@ -894,11 +894,11 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
          Self->MasterVolume = Args->Volume;
       }
 
-      if (Args->Flags & SVF_UNMUTE) {
+      if (Args->Flags & SVF::UNMUTE) {
          Self->Volumes[index].Flags &= ~VCF::MUTE;
          Self->Mute = false;
       }
-      else if (Args->Flags & SVF_MUTE) {
+      else if (Args->Flags & SVF::MUTE) {
          Self->Volumes[index].Flags |= VCF::MUTE;
          Self->Mute = true;
       }
@@ -950,7 +950,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
       }
    }
 
-   if (Args->Flags & SVF_UNMUTE) {
+   if ((Args->Flags & SVF::UNMUTE) != SVF::NIL) {
       if ((snd_mixer_selem_has_capture_switch(elem)) and (!snd_mixer_selem_has_playback_switch(elem))) {
          for (LONG chn=0; chn <= SND_MIXER_SCHN_LAST; chn++) {
             snd_mixer_selem_set_capture_switch(elem, (snd_mixer_selem_channel_id_t)chn, 1);
@@ -963,7 +963,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
       }
       Self->Volumes[index].Flags &= ~VCF::MUTE;
    }
-   else if (Args->Flags & SVF_MUTE) {
+   else if ((Args->Flags & SVF::MUTE) != SVF::NIL) {
       if ((snd_mixer_selem_has_capture_switch(elem)) and (!snd_mixer_selem_has_playback_switch(elem))) {
          for (LONG chn=0; chn <= SND_MIXER_SCHN_LAST; chn++) {
             snd_mixer_selem_set_capture_switch(elem, (snd_mixer_selem_channel_id_t)chn, 0);
@@ -1011,11 +1011,11 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
          Self->MasterVolume = Args->Volume;
       }
 
-      if (Args->Flags & SVF_UNMUTE) {
+      if ((Args->Flags & SVF::UNMUTE) != SVF::NIL) {
          Self->Volumes[index].Flags &= ~VCF::MUTE;
          Self->Mute = false;
       }
-      else if (Args->Flags & SVF_MUTE) {
+      else if ((Args->Flags & SVF::MUTE) != SVF::NIL) {
          Self->Volumes[index].Flags |= VCF::MUTE;
          Self->Mute = true;
       }
@@ -1023,7 +1023,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 
    // Apply the volume
 
-   log.branch("%s: %.2f, Flags: $%.8x", Self->Volumes[index].Name.c_str(), Args->Volume, Args->Flags);
+   log.branch("%s: %.2f, Flags: $%.8x", Self->Volumes[index].Name.c_str(), Args->Volume, (LONG)Args->Flags);
 
    if ((Args->Volume >= 0) and (Args->Volume <= 1.0)) {
       if ((Self->Volumes[index].Flags & VCF::MONO) != VCF::NIL) {
@@ -1043,8 +1043,8 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
       }
    }
 
-   if (Args->Flags & SVF_UNMUTE) Self->Volumes[index].Flags &= ~VCF::MUTE;
-   else if (Args->Flags & SVF_MUTE) Self->Volumes[index].Flags |= VCF::MUTE;
+   if ((Args->Flags & SVF::UNMUTE) != SVF::NIL) Self->Volumes[index].Flags &= ~VCF::MUTE;
+   else if ((Args->Flags & SVF::MUTE) != SVF::NIL) Self->Volumes[index].Flags |= VCF::MUTE;
 
    EVENTID evid = GetEventID(EVG_AUDIO, "volume", Self->Volumes[index].Name.c_str());
    evVolume event_volume = { evid, Args->Volume, ((Self->Volumes[index].Flags & VCF::MUTE) != VCF::NIL) ? true : false };
@@ -1145,11 +1145,12 @@ static ERROR SET_MasterVolume(extAudio *Self, DOUBLE Value)
    else if (Value > 1.0) Value = 1.0;
 
    struct sndSetVolume setvol;
-   setvol.Index  = 0;
-   setvol.Name   = "Master";
-   setvol.Volume = Value;
-   setvol.Flags  = 0;
-   return DelayMsg(MT_SndSetVolume, Self->UID, &setvol);
+   setvol.Index   = 0;
+   setvol.Name    = "Master";
+   setvol.Volume  = Value;
+   setvol.Channel = -1;
+   setvol.Flags   = SVF::NIL;
+   return Action(MT_SndSetVolume, Self, &setvol);
 }
 
 /*********************************************************************************************************************
@@ -1197,9 +1198,9 @@ static ERROR SET_Mute(extAudio *Self, LONG Value)
       .Name    = "Master",
       .Volume  = -1
    };
-   if (Value) setvol.Flags = SVF_MUTE;
-   else setvol.Flags = SVF_UNMUTE;
-   return DelayMsg(MT_SndSetVolume, Self->UID, &setvol);
+   if (Value) setvol.Flags = SVF::MUTE;
+   else setvol.Flags = SVF::UNMUTE;
+   return Action(MT_SndSetVolume, Self, &setvol);
 }
 
 /*********************************************************************************************************************

@@ -49,18 +49,28 @@ DEFINE_ENUM_FLAG_OPERATORS(CHF)
 
 // Flags for the SetVolume() method.
 
-#define SVF_MUTE 0x00000100
-#define SVF_UNMUTE 0x00001000
-#define SVF_CAPTURE 0x00010000
+enum class SVF : ULONG {
+   NIL = 0,
+   MUTE = 0x00000100,
+   UNMUTE = 0x00001000,
+   CAPTURE = 0x00010000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(SVF)
 
 // Sound flags
 
-#define SDF_LOOP 0x00000001
-#define SDF_NEW 0x00000002
-#define SDF_STEREO 0x00000004
-#define SDF_RESTRICT_PLAY 0x00000008
-#define SDF_STREAM 0x40000000
-#define SDF_NOTE 0x80000000
+enum class SDF : ULONG {
+   NIL = 0,
+   LOOP = 0x00000001,
+   NEW = 0x00000002,
+   STEREO = 0x00000004,
+   RESTRICT_PLAY = 0x00000008,
+   STREAM = 0x40000000,
+   NOTE = 0x80000000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(SDF)
 
 // These audio bit formats are supported by AddSample and AddStream.
 
@@ -158,7 +168,7 @@ struct sndRemoveSample { LONG Handle;  };
 struct sndSetSampleLength { LONG Sample; LARGE Length;  };
 struct sndAddStream { FUNCTION Callback; FUNCTION OnStop; LONG SampleFormat; LONG SampleLength; LONG PlayOffset; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
 struct sndBeep { LONG Pitch; LONG Duration; LONG Volume;  };
-struct sndSetVolume { LONG Index; CSTRING Name; LONG Flags; LONG Channel; DOUBLE Volume;  };
+struct sndSetVolume { LONG Index; CSTRING Name; SVF Flags; LONG Channel; DOUBLE Volume;  };
 
 INLINE ERROR sndOpenChannels(APTR Ob, LONG Total, LONG * Result) {
    struct sndOpenChannels args = { Total, 0 };
@@ -201,7 +211,7 @@ INLINE ERROR sndBeep(APTR Ob, LONG Pitch, LONG Duration, LONG Volume) {
    return(Action(MT_SndBeep, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sndSetVolume(APTR Ob, LONG Index, CSTRING Name, LONG Flags, LONG Channel, DOUBLE Volume) {
+INLINE ERROR sndSetVolume(APTR Ob, LONG Index, CSTRING Name, SVF Flags, LONG Channel, DOUBLE Volume) {
    struct sndSetVolume args = { Index, Name, Flags, Channel, Volume };
    return(Action(MT_SndSetVolume, (OBJECTPTR)Ob, &args));
 }
@@ -251,7 +261,7 @@ class objSound : public BaseClass {
    LONG     Priority;      // The priority of a sound in relation to other sound samples being played.
    LONG     Length;        // Indicates the total byte-length of sample data.
    LONG     Octave;        // The octave to use for sample playback.
-   LONG     Flags;         // Optional initialisation flags.
+   SDF      Flags;         // Optional initialisation flags.
    LONG     Frequency;     // The frequency of a sampled sound is specified here.
    LONG     Playback;      // The playback frequency of the sound sample can be defined here.
    LONG     Compression;   // Determines the amount of compression used when saving an audio sample.

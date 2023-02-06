@@ -147,7 +147,7 @@ static ERROR set_playback_trigger(extSound *Self)
 {
    if (Self->OnStop.Type) {
       parasol::Log log(__FUNCTION__);
-      const LONG bytes_per_sample = (((Self->Flags & SDF_STEREO) ? 2 : 1) * (Self->BitsPerSample>>3));
+      const LONG bytes_per_sample = ((((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1) * (Self->BitsPerSample>>3));
       const DOUBLE playback_time = DOUBLE((Self->Length - Self->Position) / bytes_per_sample) / DOUBLE(Self->Playback);
       if (playback_time < 0.01) {
          if (Self->PlaybackTimer) { UpdateTimer(Self->PlaybackTimer, 0); Self->PlaybackTimer = 0; }
@@ -174,7 +174,7 @@ void end_of_stream(OBJECTPTR Object, LONG BytesRemaining)
       if (Self->OnStop.Type) {
          parasol::Log log(__FUNCTION__);
          parasol::SwitchContext context(Object);
-         const LONG bytes_per_sample = (((Self->Flags & SDF_STEREO) ? 2 : 1) * (Self->BitsPerSample>>3));
+         const LONG bytes_per_sample = ((((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1) * (Self->BitsPerSample>>3));
          const DOUBLE playback_time = (DOUBLE(BytesRemaining / bytes_per_sample) / DOUBLE(Self->Playback)) + 0.01;
 
          if (!Self->PlaybackTimer) {
@@ -199,11 +199,11 @@ static LONG sample_format(extSound *Self) __attribute__((unused));
 static LONG sample_format(extSound *Self)
 {
    if (Self->BitsPerSample IS 8) {
-      if (Self->Flags & SDF_STEREO) return SFM_U8_BIT_STEREO;
+      if ((Self->Flags & SDF::STEREO) != SDF::NIL) return SFM_U8_BIT_STEREO;
       else return SFM_U8_BIT_MONO;
    }
    else if (Self->BitsPerSample IS 16) {
-      if (Self->Flags & SDF_STEREO) return SFM_S16_BIT_STEREO;
+      if ((Self->Flags & SDF::STEREO) != SDF::NIL) return SFM_S16_BIT_STEREO;
       else return SFM_S16_BIT_MONO;
    }
    return 0;
@@ -258,7 +258,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
    // Optimised playback for Windows - this does not use our internal mixer.
 
    if (!Self->Active) {
-      WORD channels = (Self->Flags & SDF_STEREO) ? 2 : 1;
+      WORD channels = ((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1;
       WAVEFORMATEX wave = {
          .Format            = WAVE_RAW,
          .Channels          = channels,
@@ -283,13 +283,13 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
       CSTRING strerr;
       if (Self->Length > buffer_len) {
          log.msg("Streaming enabled because sample length %d exceeds buffer size %d.", Self->Length, buffer_len);
-         Self->Flags |= SDF_STREAM;
+         Self->Flags |= SDF::STREAM;
          strerr = sndCreateBuffer(Self, &wave, buffer_len, Self->Length, (PlatformData *)Self->PlatformData, TRUE);
       }
       else {
          // Create the buffer and fill it completely with sample data.
          buffer_len = Self->Length;
-         Self->Flags &= ~SDF_STREAM;
+         Self->Flags &= ~SDF::STREAM;
          auto client_pos = Self->Position; // Save the seek cursor from pollution
          if (client_pos) Self->seek(0, SEEK_START);
          strerr = sndCreateBuffer(Self, &wave, buffer_len, Self->Length, (PlatformData *)Self->PlatformData, FALSE);
@@ -315,13 +315,13 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
    sndFrequency((PlatformData *)Self->PlatformData, Self->Playback);
    sndPan((PlatformData *)Self->PlatformData, Self->Pan);
 
-   if (Self->Flags & SDF_STREAM) {
+   if ((Self->Flags & SDF::STREAM) != SDF::NIL) {
       auto call = make_function_stdc(win32_audio_stream);
       if (SubscribeTimer(0.25, &call, &Self->StreamTimer)) return log.warning(ERR_Failed);
    }
    else if (set_playback_trigger(Self)) return log.warning(ERR_Failed);
 
-   auto response = sndPlay((PlatformData *)Self->PlatformData, (Self->Flags & SDF_LOOP) ? TRUE : FALSE, Self->Position);
+   auto response = sndPlay((PlatformData *)Self->PlatformData, ((Self->Flags & SDF::LOOP) != SDF::NIL) ? TRUE : FALSE, Self->Position);
    return response ? log.warning(ERR_Failed) : ERR_Okay;
 #else
 
@@ -330,11 +330,11 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
 
       LONG sampleformat = 0;
       if (Self->BitsPerSample IS 8) {
-         if (Self->Flags & SDF_STEREO) sampleformat = SFM_U8_BIT_STEREO;
+         if (Self->Flags & SDF::STEREO) sampleformat = SFM_U8_BIT_STEREO;
          else sampleformat = SFM_U8_BIT_MONO;
       }
       else if (Self->BitsPerSample IS 16) {
-         if (Self->Flags & SDF_STEREO) sampleformat = SFM_S16_BIT_STEREO;
+         if (Self->Flags & SDF::STEREO) sampleformat = SFM_S16_BIT_STEREO;
          else sampleformat = SFM_S16_BIT_MONO;
       }
 
@@ -342,16 +342,16 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
 
       // Create the audio buffer and fill it with sample data
 
-      if ((Self->Stream IS STREAM::ALWAYS) and (Self->Length > 16 * 1024)) Self->Flags |= SDF_STREAM;
-      else if ((Self->Stream IS STREAM::SMART) and (Self->Length > 256 * 1024)) Self->Flags |= SDF_STREAM;
+      if ((Self->Stream IS STREAM::ALWAYS) and (Self->Length > 16 * 1024)) Self->Flags |= SDF::STREAM;
+      else if ((Self->Stream IS STREAM::SMART) and (Self->Length > 256 * 1024)) Self->Flags |= SDF::STREAM;
 
       BYTE *buffer;
-      if (Self->Flags & SDF_STREAM) {
+      if (Self->Flags & SDF::STREAM) {
          log.msg("Streaming enabled for playback in format $%.8x; Length: %d", sampleformat, Self->Length);
 
          struct sndAddStream stream;
          AudioLoop loop;
-         if (Self->Flags & SDF_LOOP) {
+         if (Self->Flags & SDF::LOOP) {
             loop.LoopMode   = LOOP::SINGLE;
             loop.Loop1Type  = LTYPE::UNIDIRECTIONAL;
             loop.Loop1Start = Self->LoopStart;
@@ -395,7 +395,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
             struct sndAddSample add;
             AudioLoop loop;
 
-            if (Self->Flags & SDF_LOOP) {
+            if (Self->Flags & SDF::LOOP) {
                loop.LoopMode   = LOOP::SINGLE;
                loop.Loop1Type  = LTYPE::UNIDIRECTIONAL;
                loop.Loop1Start = Self->LoopStart;
@@ -443,7 +443,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
       // if the sound object is already active on one of our channels.
 
       AudioChannel *channel = NULL;
-      if (Self->Flags & (SDF_RESTRICT_PLAY|SDF_STREAM)) {
+      if (Self->Flags & (SDF::RESTRICT_PLAY|SDF::STREAM)) {
          Self->ChannelIndex &= 0xffff0000;
          LONG i;
          for (i=0; i < audio->MaxChannels; i++) {
@@ -586,7 +586,7 @@ static ERROR SOUND_Enable(extSound *Self, APTR Void)
 #ifdef USE_WIN32_PLAYBACK
    if (!Self->Handle) {
       log.msg("Playing back from position %" PF64, Self->Position);
-      if (Self->Flags & SDF_LOOP) sndPlay((PlatformData *)Self->PlatformData, TRUE, Self->Position);
+      if ((Self->Flags & SDF::LOOP) != SDF::NIL) sndPlay((PlatformData *)Self->PlatformData, TRUE, Self->Position);
       else sndPlay((PlatformData *)Self->PlatformData, FALSE, Self->Position);
    }
 #else
@@ -699,7 +699,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    }
 
    STRING path;
-   if ((Self->Flags & SDF_NEW) or (Self->get(FID_Path, &path) != ERR_Okay) or (!path)) {
+   if (((Self->Flags & SDF::NEW) != SDF::NIL) or (Self->get(FID_Path, &path) != ERR_Okay) or (!path)) {
       // If the sample is new or no path has been specified, create an audio sample from scratch (e.g. to record
       // audio to disk).
 
@@ -756,13 +756,13 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    Self->Format         = WAVE.Format;
    Self->BytesPerSecond = WAVE.AvgBytesPerSecond;
    Self->BitsPerSample  = WAVE.BitsPerSample;
-   if (WAVE.Channels IS 2) Self->Flags |= SDF_STEREO;
+   if (WAVE.Channels IS 2) Self->Flags |= SDF::STEREO;
    if (Self->Frequency <= 0) Self->Frequency = WAVE.Frequency;
    if (Self->Playback <= 0)  Self->Playback  = Self->Frequency;
 
-   if (Self->Flags & SDF_NOTE) {
+   if ((Self->Flags & SDF::NOTE) != SDF::NIL) {
       Self->set(FID_Note, Self->Note);
-      Self->Flags &= ~SDF_NOTE;
+      Self->Flags &= ~SDF::NOTE;
    }
 
    log.trace("Bits: %d, Freq: %d, KBPS: %d, ByteLength: %d, DataOffset: %d", Self->BitsPerSample, Self->Frequency, Self->BytesPerSecond, Self->Length, Self->DataOffset);
@@ -801,7 +801,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    STRING path = NULL;
    Self->get(FID_Path, &path);
 
-   if ((Self->Flags & SDF_NEW) or (!path)) {
+   if ((Self->Flags & SDF::NEW) or (!path)) {
       log.msg("Sample created as new (without sample data).");
 
       // If the sample is new or no path has been specified, create an audio sample from scratch (e.g. to
@@ -879,13 +879,13 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    Self->Format         = WAVE.Format;
    Self->BytesPerSecond = WAVE.AvgBytesPerSecond;
    Self->BitsPerSample  = WAVE.BitsPerSample;
-   if (WAVE.Channels IS 2)   Self->Flags |= SDF_STEREO;
+   if (WAVE.Channels IS 2)   Self->Flags |= SDF::STEREO;
    if (Self->Frequency <= 0) Self->Frequency = WAVE.Frequency;
    if (Self->Playback <= 0)  Self->Playback  = Self->Frequency;
 
-   if (Self->Flags & SDF_NOTE) {
+   if (Self->Flags & SDF::NOTE) {
       SOUND_SET_Note(Self, Self->NoteString);
-      Self->Flags &= ~SDF_NOTE;
+      Self->Flags &= ~SDF::NOTE;
    }
 
    if ((Self->BitsPerSample != 8) and (Self->BitsPerSample != 16)) {
@@ -1012,7 +1012,7 @@ static ERROR SOUND_Seek(extSound *Self, struct acSeek *Args)
    if (Self->Position < 0) Self->Position = 0;
    else if (Self->Position > Self->Length) Self->Position = Self->Length;
    else { // Retain correct byte alignment.
-      LONG align = (((Self->Flags & SDF_STEREO) ? 2 : 1) * (Self->BitsPerSample>>3)) - 1;
+      LONG align = ((((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1) * (Self->BitsPerSample>>3)) - 1;
       Self->Position &= ~align;
    }
 
@@ -1144,7 +1144,7 @@ Duration: Returns the duration of the sample, measured in seconds.
 static ERROR SOUND_GET_Duration(extSound *Self, DOUBLE *Value)
 {
    if (Self->Length) {
-      const LONG bytes_per_sample = (((Self->Flags & SDF_STEREO) ? 2 : 1) * (Self->BitsPerSample>>3));
+      const LONG bytes_per_sample = ((((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1) * (Self->BitsPerSample>>3));
       *Value = DOUBLE(Self->Length / bytes_per_sample) / DOUBLE(Self->Playback ? Self->Playback : Self->Frequency);
       return ERR_Okay;
    }
@@ -1161,7 +1161,7 @@ Lookup: SDF
 
 static ERROR SOUND_SET_Flags(extSound *Self, LONG Value)
 {
-   Self->Flags = (Self->Flags & 0xffff0000) | (Value & 0x0000ffff);
+   Self->Flags = SDF((LONG(Self->Flags) & 0xffff0000) | (Value & 0x0000ffff));
    return ERR_Okay;
 }
 
@@ -1232,14 +1232,14 @@ static ERROR SOUND_SET_Length(extSound *Self, LONG Value)
 -FIELD-
 LoopEnd: The byte position at which sample looping will end.
 
-When using looped samples (via the `SDF_LOOP` flag), set the LoopEnd field if the sample should end at a position
+When using looped samples (via the `SDF::LOOP` flag), set the LoopEnd field if the sample should end at a position
 that is earlier than the sample's actual length.  The LoopEnd value is specified in bytes and must be less or equal
 to the length of the sample and greater than the #LoopStart value.
 
 -FIELD-
 LoopStart: The byte position at which sample looping begins.
 
-When using looped samples (via the `SDF_LOOP` flag), set the LoopStart field if the sample should begin at a position
+When using looped samples (via the `SDF::LOOP` flag), set the LoopStart field if the sample should begin at a position
 other than zero.  The LoopStart value is specified in bytes and must be less than the length of the sample and the
 #LoopEnd value.
 
@@ -1365,7 +1365,7 @@ static ERROR SOUND_SET_Note(extSound *Self, CSTRING Value)
 
    if ((note > NOTE_OCTAVE * 5) or (note < -(NOTE_OCTAVE * 5))) return log.warning(ERR_OutOfRange);
 
-   Self->Flags |= SDF_NOTE;
+   Self->Flags |= SDF::NOTE;
 
    // Calculate the note value
 
@@ -1514,7 +1514,7 @@ static ERROR SOUND_SET_Pan(extSound *Self, DOUBLE Value)
 Path: Location of the audio sample data.
 
 This field must refer to a file that contains the audio data that will be loaded.  If creating a new sample
-with the `SDF_NEW` flag, it is not necessary to define a file source.
+with the `SDF::NEW` flag, it is not necessary to define a file source.
 
 *********************************************************************************************************************/
 
@@ -1558,7 +1558,7 @@ static ERROR SOUND_SET_Playback(extSound *Self, LONG Value)
    if ((Value < 0) or (Value > 500000)) return ERR_OutOfRange;
 
    Self->Playback = Value;
-   Self->Flags &= ~SDF_NOTE;
+   Self->Flags &= ~SDF::NOTE;
 
 #ifdef USE_WIN32_PLAYBACK
    if (Self->initialised()) {
@@ -1700,10 +1700,10 @@ static ERROR win32_audio_stream(extSound *Self, LARGE Elapsed, LARGE CurrentTime
 //********************************************************************************************************************
 
 static const FieldDef clFlags[] = {
-   { "Loop",         SDF_LOOP },
-   { "New",          SDF_NEW },
-   { "Stereo",       SDF_STEREO },
-   { "RestrictPlay", SDF_RESTRICT_PLAY },
+   { "Loop",         (LONG)SDF::LOOP },
+   { "New",          (LONG)SDF::NEW },
+   { "Stereo",       (LONG)SDF::STEREO },
+   { "RestrictPlay", (LONG)SDF::RESTRICT_PLAY },
    { NULL, 0 }
 };
 
