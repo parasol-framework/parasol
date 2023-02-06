@@ -38,6 +38,25 @@
     </xsl:choose>
   </xsl:template>
 
+  <xsl:template match="struct">
+    <xsl:choose>
+      <xsl:when test="@lookup"> <!-- Build a table of field values from the dictionary -->
+        <xsl:variable name="prefix"><xsl:value-of select="@lookup"/></xsl:variable>
+        <table class="table">
+          <thead><tr><th class="col-md-1">Field</th><th>Type</th><th>Description</th></tr></thead>
+          <tbody>
+            <xsl:for-each select="/book/structs/struct[@name=$prefix]/field">
+              <tr><th class="col-md-1"><xsl:value-of select="@name"/></th><td><xsl:value-of select="@type"/></td><td><xsl:value-of select="."/></td></tr>
+            </xsl:for-each>
+          </tbody>
+        </table>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:value-of select="."/>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+
   <xsl:template match="p">
     <xsl:copy>
       <xsl:copy-of select="@*"/>

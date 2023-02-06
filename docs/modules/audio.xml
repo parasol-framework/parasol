@@ -72,7 +72,7 @@
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
       <param type="LONG" name="Handle">The target channel.</param>
-      <param type="LONG" name="Mute">Set to any value to mute the channel.  A value of 0 will undo the mute setting.</param>
+      <param type="LONG" name="Mute">Set to true to mute the channel.  A value of 0 will undo the mute setting.</param>
     </input>
     <description>
 <p>Use this function to mute the audio of a mixer channel.</p>
@@ -104,36 +104,17 @@
   <function>
     <name>MixPlay</name>
     <comment>Commences channel playback at a set frequency..</comment>
-    <prototype>ERROR sndMixPlay(objAudio * Audio, LONG Handle, LONG Frequency)</prototype>
-    <input>
-      <param type="objAudio *" name="Audio">The target Audio object.</param>
-      <param type="LONG" name="Handle">The target channel.</param>
-      <param type="LONG" name="Frequency">The new playing position, measured in bytes.</param>
-    </input>
-    <description>
-<p>This function will start playback of the sound sample associated with the target mixer channel.  If the channel is already in playback mode, it will be stopped to facilitate the new playback request.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
-    <name>MixPosition</name>
-    <comment>Sets a channel's playing position relative to the current sample.</comment>
-    <prototype>ERROR sndMixPosition(objAudio * Audio, LONG Handle, LONG Position)</prototype>
+    <prototype>ERROR sndMixPlay(objAudio * Audio, LONG Handle, LONG Position)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
       <param type="LONG" name="Handle">The target channel.</param>
       <param type="LONG" name="Position">The new playing position, measured in bytes.</param>
     </input>
     <description>
-<p>This function will change the playing position of a mixer channel for the current sound sample.</p>
+<p>This function will start playback of the sound sample associated with the target mixer channel.  If the channel is already in playback mode, it will be stopped to facilitate the new playback request.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
-      <error code="OutOfRange">A specified number is outside of the valid range.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -166,7 +147,7 @@
       <param type="LONG" name="Sample">A sample handle allocated from <class name="Audio" index="AddSample()">Audio:AddSample()</class> or <class name="Audio" index="AddStream()">Audio:AddStream()</class>.</param>
     </input>
     <description>
-<p>This function will associate a sound sample with a mixer channel.  Configuration should then follow (e.g. volume and pan values).</p>
+<p>This function will associate a sound sample with the channel identified by Handle.  The client should follow this by setting configuration details (e.g. volume and pan values).</p>
 <p>The referenced Sample must have been added to the audio server via the <class name="Audio" index="AddSample()">Audio:AddSample()</class> or <class name="Audio" index="AddStream()">Audio:AddStream()</class> methods.</p>
     </description>
     <result type="ERROR">
@@ -219,7 +200,7 @@
       <param type="LONG" name="Handle">The target channel.</param>
     </input>
     <description>
-<p>This function will cancel any loop that is associated with a mixer channel in playback mode.  This does not affect the loop configuration if playback is restarted for the active sample.</p>
+<p>This function will cancel the loop that is associated with the channel identified by Handle if in playback mode. The existing loop configuration will remain intact if playback is restarted.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -237,7 +218,7 @@
       <param type="DOUBLE" name="Volume">The new volume for the channel.</param>
     </input>
     <description>
-<p>This function will change the volume of a mixer channel.  Valid values are between 0 and 1.0.</p>
+<p>This function will change the volume of the mixer channel identified by Handle.  Valid values are from 0 (silent) to 1.0 (maximum).</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -325,9 +306,7 @@
     <constants lookup="SVF" comment="Flags for the SetVolume() method.">
       <const name="CAPTURE">Set input, not output.</const>
       <const name="MUTE">Mute the audio for this channel.</const>
-      <const name="SYNC">Synchronise volume settings between channels.</const>
       <const name="UNMUTE">Unmute the audio for this channel.</const>
-      <const name="UNSYNC">Allow un-synchronised volume settings.</const>
     </constants>
 
     <constants lookup="VCF" comment="Volume control flags">

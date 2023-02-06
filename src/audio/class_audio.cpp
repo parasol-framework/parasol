@@ -7,8 +7,8 @@ The Audio class provides a common audio service that works across multiple platf
 design model.
 
 Supported features include 8/16/32 bit output in stereo or mono, oversampling, streaming, multiple audio channels
-and command sequencing.  The Audio class functionality is simplified via the @Sound class interface, which we
-recommend in most cases where simplified audio playback is satisfactory.
+and command sequencing.  Audio functionality is simplified in the @Sound class interface, which we recommend when
+straight-forward audio playback is sufficient.
 
 Support for audio recording is not currently available.
 
@@ -36,8 +36,8 @@ static ERROR init_audio(extAudio *Self)
 Activate: Enables access to the audio hardware and initialises the mixer.
 
 An audio object will not play or record until it has been activated.  Activating the object will result in an attempt
-to lock the device hardware, which on some platforms may lead to failure if another process has permanently locked the
-device.  The resources and any device locks obtained by this action can be released with a call to
+to access the device hardware, which on some platforms may lead to failure if another process has permanently locked
+the audio device.  The resources and any device locks obtained by this action can be released with a call to
 #Deactivate().
 
 An inactive audio object can operate in a limited fashion but is without access to the audio hardware.
@@ -77,7 +77,7 @@ static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
 
    const LONG mixbitsize = Self->Stereo ? sizeof(FLOAT) * 2 : sizeof(FLOAT);
 
-   Self->MixBufferSize = BYTELEN((((mixbitsize * Self->OutputRate) / MIX_BUF_LEN) + 15) & (~15));
+   Self->MixBufferSize = BYTELEN((F2T((mixbitsize * Self->OutputRate) * (MIX_INTERVAL * 1.5)) + 15) & (~15));
    Self->MixElements   = SAMPLE(Self->MixBufferSize / mixbitsize);
 
    if (!AllocMemory(Self->MixBufferSize, MEM_DATA, &Self->MixBuffer)) {
@@ -130,10 +130,10 @@ static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
 -METHOD-
 AddSample: Adds a new sample to an audio object for channel-based playback.
 
-Audio samples can be loaded into an Audio object for playback via the AddSample or #AddStream() method.  For small
-samples under 512k we recommend AddSample, while anything larger should be supported through AddStream.
+Audio samples can be loaded into an Audio object for playback via the AddSample() or #AddStream() methods.  For small
+samples under 512k we recommend AddSample(), while anything larger should be supported through #AddStream().
 
-When adding a sample, is is essential to select the correct bit format for the sample data.  While it is important to
+When adding a sample, it is essential to select the correct bit format for the sample data.  While it is important to
 differentiate between simple attributes such as 8 or 16 bit data, mono or stereo format, you should also be aware of
 whether or not the data is little or big endian, and if the sample data consists of signed or unsigned values.  Because
 of the possible variations there are a number of sample formats, as illustrated in the following table:
@@ -141,15 +141,14 @@ of the possible variations there are a number of sample formats, as illustrated 
 <types lookup="SFM"/>
 
 By default, all samples are assumed to be in little endian format, as supported by Intel CPU's.  If the data is in big
-endian format, or the SampleFormat value with `SFM_BIG_ENDIAN`.
+endian format, logical-or the SampleFormat value with `SFM_BIG_ENDIAN`.
 
-It is also possible to supply loop information with the sample data.  The Audio class supports a number of different
-looping formats, allowing you to go beyond simple loops that repeat from the beginning of the sample.  The
-&AudioLoop structure illustrates your options:
+It is also possible to supply loop information with the sample data.  This is achieved by configuring the &AudioLoop
+structure:
 
 &AudioLoop
 
-The types of that can be specified in the LoopMode field are:
+The types that can be specified in the LoopMode field are:
 
 &LOOP
 
@@ -157,25 +156,19 @@ The Loop1Type and Loop2Type fields alter the style of the loop.  These can be se
 
 &LTYPE
 
-The AddSample method may not be called directly because the audio object is often managed within a separate process.
-If you attempt to grab the audio object and call this method, it returns `ERR_IllegalActionAttempt`. The only safe means
-for calling this method is through the WaitMsg() function.
-
 -INPUT-
 func OnStop: This optional callback function will be called when the stream stops playing.
 int(SFM) SampleFormat: Indicates the format of the sample data that you are adding.
 buf(ptr) Data: Points to the address of the sample data.
 bufsize DataSize: Size of the sample data, in bytes.
-struct(*AudioLoop) Loop: Points to the sample information that you want to add.
-structsize LoopSize: Must be set to sizeof(AudioLoop).
+struct(*AudioLoop) Loop: Optional sample loop information.
+structsize LoopSize: Must be set to sizeof(AudioLoop) if Loop is defined.
 &int Result: The resulting sample handle will be returned in this parameter.
 
 -ERRORS-
 Okay
 Args
 NullArgs
-IllegalActionAttempt: You attempted to call this method directly using the Action() function.  Use ActionMsg() instead.
-ReallocMemory: The existing sample handle array could not be expanded.
 AllocMemory: Failed to allocate enough memory to hold the sample data.
 -END-
 
@@ -287,10 +280,7 @@ structsize LoopSize: Must be set to sizeof(AudioLoop).
 Okay
 Args
 NullArgs
-IllegalActionAttempt: You attempted to call this method directly using the Action() function.  Use ActionMsg() instead.
-ReallocMemory: The existing sample handle array could not be expanded.
 AllocMemory: Failed to allocate the stream buffer.
-CreateObject: Failed to create a file object based on the supplied Path.
 -END-
 
 *********************************************************************************************************************/
@@ -583,8 +573,7 @@ range between 1 and 64.  Channel sets make it easier to segregate playback betwe
 
 The resulting handle returned from this method is an integer consisting of two parts.  The upper word uniquely
 identifies the channel set that has been provided to you, while the lower word is used to refer to specific channel
-numbers.  To refer to specific channels when using some functions, do so with the formula
-`Channel = Handle | ChannelNo`.
+numbers.  If referring to a specific channel is required for a function, use the formula `Channel = Handle | ChannelNo`.
 
 To destroy allocated channels, use the #CloseChannels() method.
 
@@ -597,7 +586,6 @@ Okay
 NullArgs
 OutOfRange: The amount of requested channels or commands is outside of acceptable range.
 AllocMemory: Memory for the audio channels could not be allocated.
-ArrayFull: The maximum number of available channel sets is currently exhausted.
 -END-
 
 *********************************************************************************************************************/
@@ -840,11 +828,16 @@ SetVolume: Sets the volume for input and output mixers.
 
 To change volume and mixer levels, use the SetVolume method.  It is possible to make adjustments to any of the
 available mixers and for different channels per mixer - for instance you may set different volumes for left and right
-speakers.  Support is also provided for special options, such as muting.
+speakers.  Support is also provided for special options such as muting.
 
 To set the volume for a mixer, use its index or set its name (to change the Master volume, use a name of `Master`).
-A channel needs to be specified, or use `CHN_ALL` to synchronise the volume for all channels.  The new mixer value is
-set in the Volume field.  Optional flags may be set as follows:
+
+A target Channel such as the left (0) or right (1) speaker can be specified.  Set the Channel to -1 if all channels
+should be the same value.
+
+The new mixer value is set in the Volume field.
+
+Optional flags may be set as follows:
 
 <types lookup="SVF"/>
 
@@ -852,7 +845,8 @@ set in the Volume field.  Optional flags may be set as follows:
 int Index: The index of the mixer that you want to set.
 cstr Name: If the correct index number is unknown, the name of the mixer may be set here.
 int(SVF) Flags: Optional flags.
-double Volume: The volume to set for the mixer.  Ranges between 0 - 1.0.  Set to -1 if you do not want to adjust the current volume.
+int Channel: A specific channel to modify (e.g. 0 for left, 1 for right).  If -1, all channels are affected.
+double Volume: The volume to set for the mixer, from 0 - 1.0.  If -1, the current volume values are retained.
 
 -ERRORS-
 Okay: The new volume was applied successfully.
@@ -942,9 +936,16 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
       if ((Self->Volumes[index].Flags & VCF::MONO) != VCF::NIL) {
          Self->Volumes[index].Channels[0] = vol;
       }
-      else for (LONG channel=0; channel < (LONG)Self->Volumes[0].Channels.size(); channel++) {
-         if (Self->Volumes[index].Channels[channel] >= 0) {
-            Self->Volumes[index].Channels[channel] = vol;
+      else {
+         if (Args->Channel IS -1) {
+            for (LONG channel=0; channel < (LONG)Self->Volumes[index].Channels.size(); channel++) {
+               if (Self->Volumes[index].Channels[channel] >= 0) {
+                  Self->Volumes[index].Channels[channel] = vol;
+               }
+            }
+         }
+         else if ((Args->Channel >= 0) and (Args->Channel < LONG(Self->Volumes[index].Channels.size()))) {
+            Self->Volumes[index].Channels[Args->Channel] = vol;
          }
       }
    }
@@ -975,9 +976,6 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
       }
       Self->Volumes[index].Flags |= VCF::MUTE;
    }
-
-   if (Args->Flags & SVF_UNSYNC) Self->Volumes[index].Flags &= ~VCF::SYNC;
-   else if (Args->Flags & SVF_SYNC) Self->Volumes[index].Flags |= VCF::SYNC;
 
    EVENTID evid = GetEventID(EVG_AUDIO, "volume", Self->Volumes[index].Name.c_str());
    evVolume event_volume = { evid, Args->Volume, ((Self->Volumes[index].Flags & VCF::MUTE) != VCF::NIL) ? true : false };
@@ -1031,18 +1029,22 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
       if ((Self->Volumes[index].Flags & VCF::MONO) != VCF::NIL) {
          Self->Volumes[index].Channels[0] = Args->Volume;
       }
-      else for (LONG channel=0; channel < (LONG)Self->Volumes[0].Channels.size(); channel++) {
-         if (Self->Volumes[index].Channels[channel] >= 0) {
-            Self->Volumes[index].Channels[channel] = Args->Volume;
+      else {
+         if (Args->Channel IS -1) {
+            for (LONG channel=0; channel < (LONG)Self->Volumes[0].Channels.size(); channel++) {
+               if (Self->Volumes[index].Channels[channel] >= 0) {
+                  Self->Volumes[index].Channels[channel] = Args->Volume;
+               }
+            }
+         }
+         else if ((Args->Channel >= 0) and (Args->Channel < LONG(Self->Volumes[index].Channels.size()))) {
+            Self->Volumes[index].Channels[Args->Channel] = Args->Volume;
          }
       }
    }
 
    if (Args->Flags & SVF_UNMUTE) Self->Volumes[index].Flags &= ~VCF::MUTE;
    else if (Args->Flags & SVF_MUTE) Self->Volumes[index].Flags |= VCF::MUTE;
-
-   if (Args->Flags & SVF_UNSYNC) Self->Volumes[index].Flags &= ~VCF::SYNC;
-   else if (Args->Flags & SVF_SYNC) Self->Volumes[index].Flags |= VCF::SYNC;
 
    EVENTID evid = GetEventID(EVG_AUDIO, "volume", Self->Volumes[index].Name.c_str());
    evVolume event_volume = { evid, Args->Volume, ((Self->Volumes[index].Flags & VCF::MUTE) != VCF::NIL) ? true : false };
@@ -1077,11 +1079,11 @@ static ERROR SET_BitDepth(extAudio *Self, LONG Value)
 -FIELD-
 Device: The name of the audio device used by this audio object.
 
-A computer system may have multiple audio devices installed, but a given audio object can represent only one device at a
-time.  A new audio object will always represent the default device initially.  You can switch to a different device by
-setting the Device field to the name of the device that you would like to use.
+A host platform may have multiple audio devices installed, but a given audio object can represent only one device
+at a time.  A new audio object will always represent the default device initially.  Choose a different device by
+setting the Device field to a valid alternative.
 
-The default device can always be referenced with a name of `Default`.
+The default device can always be referenced with a name of `default`.
 
 *********************************************************************************************************************/
 
@@ -1155,7 +1157,7 @@ static ERROR SET_MasterVolume(extAudio *Self, DOUBLE Value)
 -FIELD-
 MixerLag: Returns the lag time of the internal mixer, measured in seconds.
 
-This field will return the worst-case value for lag time imposed by the internal audio mixer.  The value is measured
+This field will return the worst-case value for latency imposed by the internal audio mixer.  The value is measured
 in seconds and will differ between platforms and user configurations.
 
 *********************************************************************************************************************/
