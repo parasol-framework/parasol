@@ -51,14 +51,16 @@ private:
 
 ListBoxImp::ListBoxImp()
 {
-   LogF("ListBoxImp::ListBoxImp", "");
+   parasol::Log log(__FUNCTION__);
+   log.branch();
 
    menu = NULL;
 }
 
 ListBoxImp::~ListBoxImp()
 {
-   LogF("ListBoxImp::~ListBoxImp", "");
+   parasol::Log log(__FUNCTION__);
+   log.branch();
 
    if (menu) {
       acFree(menu);
@@ -74,9 +76,11 @@ Scintilla::ListBox * Scintilla::ListBox::Allocate()
 
 void ListBoxImp::Create(Scintilla::Window &Window, int, Scintilla::Point, int, bool)
 {
+   parasol::Log log(__FUNCTION__);
+
    OBJECTID surface_id = getSurfaceID(&Window);
 
-   LogF("ListBoxImp::Create()","Surface: %d", surface_id);
+   log.branch("Surface: %d", surface_id);
 /*
    if (CreateObject(ID_MENU, 0, &menu,
          FID_Surface|TLONG,  surface_id,
