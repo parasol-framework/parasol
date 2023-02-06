@@ -764,7 +764,8 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
          SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &call, Self, &Self->prvKeyEvent);
       }
 
-      SubscribeActionTags(surface, AC_Focus, AC_LostFocus, TAGEND);
+      SubscribeAction(surface, AC_Focus);
+      SubscribeAction(surface, AC_LostFocus);
 
       ReleaseObject(surface);
    }
@@ -777,11 +778,9 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 
       surface->set(FID_Colour, "255,255,255");
 
-      SubscribeActionTags(surface,
-         AC_Disable,
-         AC_Enable,
-         AC_Redimension,
-         TAGEND);
+      SubscribeAction(surface, AC_Disable);
+      SubscribeAction(surface, AC_Enable);
+      SubscribeAction(surface, AC_Redimension);
 
       if (Self->Border.Alpha > 0) {
          if (!Self->BorderEdge) Self->BorderEdge = DBE_TOP|DBE_BOTTOM|DBE_RIGHT|DBE_LEFT;

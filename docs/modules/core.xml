@@ -2384,9 +2384,9 @@ SetField(Object, FID_Statement|TSTR, "string");
     <description>
 <p>The SubscribeAction() function is provided for objects that need to be notified when actions are being executed on foreign objects.  This is referred to as "action monitoring".  Action monitoring is used for a wide variety of purposes and is especially useful for responding to events in the user interface, including pointer movement, window resizing and graphics drawing.</p>
 <p>To subscribe to the actions of another object, acquire its address pointer and then call this function with the action ID to monitor.  The object that has the current context will be registered for receiving the notifications.</p>
-<p>The following example illustrates how to listen to a Surface object's Draw action for the purposes of drawing graphics to it:</p>
+<p>The following example illustrates how to listen to a Surface object's Redimension action to be alerted to resize events:</p>
 <pre>if (!AccessObject(SurfaceID, 3000, &amp;surface)) {
-   SubscribeAction(surface, AC_Draw, Self);
+   SubscribeAction(surface, AC_Redimension, Self);
    ReleaseObject(surface);
 }
 </pre>
@@ -2399,28 +2399,6 @@ SetField(Object, FID_Statement|TSTR, "string");
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="AccessMemory">Access to a shared memory block was denied.</error>
       <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-    </result>
-  </function>
-
-  <function>
-    <name>SubscribeActionTags</name>
-    <category>Objects</category>
-    <comment>Listens for actions that may be performed on an object.</comment>
-    <prototype>ERROR SubscribeActionTags(OBJECTPTR Object, ...)</prototype>
-    <input>
-      <param type="OBJECTPTR" name="Object">The target object to subscribe to.</param>
-      <param type="..." name="Actions">The ID of the action(s) that will be monitored.  The action list must be terminated with TAGEND.</param>
-    </input>
-    <description>
-<p>This function is identical to SubscribeAction() in every aspect except that it is tag based.  The following example illustrates typical usage <code>SubscribeActionTags(object, AC_Draw, AC_Redimension, TAGEND)</code>.</p>
-<p>Two special tags are also available: <code>SUB_WARN_EXISTS</code> will result in an error of <code>ERR_Exists</code> being returned if it is discovered that there is an existing match for the Subscriber and at least one of the actions.  <code>SUB_FAIL_EXISTS</code> will return with <code>ERR_Exists</code> immediately if an action is already subscribed, meaning no further tags (if present) will be processed.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-      <error code="Exists">Resource exists.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -4063,11 +4041,6 @@ end
       <const name="FOCUS"/>
       <const name="LOST_FOCUS"/>
       <const name="RESIZE"/>
-    </constants>
-
-    <constants lookup="SUB" comment="Special tags for SubscribeActionTags()">
-      <const name="FAIL_EXISTS">As for WARN_EXISTS, but aborts immediately when a conflict is discovered.</const>
-      <const name="WARN_EXISTS">An error of ERR_Exists will be returned if there was an existing match for the subscriber and at least one of the following actions.</const>
     </constants>
 
     <constants lookup="THF" comment="Thread flags">

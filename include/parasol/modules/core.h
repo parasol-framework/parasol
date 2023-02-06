@@ -1169,11 +1169,6 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 
 #define LTF_CURRENT_PROCESS 1
 
-// Special tags for SubscribeActionTags()
-
-#define SUB_FAIL_EXISTS 0x7ffffffe
-#define SUB_WARN_EXISTS 0x7fffffff
-
 // Types for AllocateID()
 
 #define IDTYPE_MESSAGE 1
@@ -2060,7 +2055,7 @@ struct CoreBase {
    ERROR (*_SysUnlock)(LONG Index);
    ERROR (*_CopyMemory)(const void * Src, APTR Dest, LONG Size);
    ERROR (*_LoadFile)(CSTRING Path, LONG Flags, struct CacheFile ** Cache);
-   ERROR (*_SubscribeActionTags)(OBJECTPTR Object, ...);
+   ERROR (*_SetVolume)(...);
    ERROR (*_DeleteVolume)(CSTRING Name);
    ERROR (*_NewLockedObject)(LARGE ClassID, NF Flags, APTR Object, OBJECTID * ID, CSTRING Name);
    ERROR (*_UpdateMessage)(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size);
@@ -2131,7 +2126,6 @@ struct CoreBase {
    ERROR (*_CreateFolder)(CSTRING Path, LONG Permissions);
    ERROR (*_MoveFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
    ERROR (*_ResolvePath)(CSTRING Path, LONG Flags, STRING * Result);
-   ERROR (*_SetVolume)(...);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2210,7 +2204,7 @@ inline ERROR SysLock(LONG Index, LONG MilliSeconds) { return CoreBase->_SysLock(
 inline ERROR SysUnlock(LONG Index) { return CoreBase->_SysUnlock(Index); }
 inline ERROR CopyMemory(const void * Src, APTR Dest, LONG Size) { return CoreBase->_CopyMemory(Src,Dest,Size); }
 inline ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile ** Cache) { return CoreBase->_LoadFile(Path,Flags,Cache); }
-template<class... Args> ERROR SubscribeActionTags(OBJECTPTR Object, Args... Tags) { return CoreBase->_SubscribeActionTags(Object,Tags...); }
+template<class... Args> ERROR SetVolume(Args... Tags) { return CoreBase->_SetVolume(Tags...); }
 inline ERROR DeleteVolume(CSTRING Name) { return CoreBase->_DeleteVolume(Name); }
 inline ERROR NewLockedObject(LARGE ClassID, NF Flags, APTR Object, OBJECTID * ID, CSTRING Name) { return CoreBase->_NewLockedObject(ClassID,Flags,Object,ID,Name); }
 inline ERROR UpdateMessage(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size) { return CoreBase->_UpdateMessage(Queue,Message,Type,Data,Size); }
@@ -2281,7 +2275,6 @@ inline ERROR AnalysePath(CSTRING Path, LONG * Type) { return CoreBase->_AnalyseP
 inline ERROR CreateFolder(CSTRING Path, LONG Permissions) { return CoreBase->_CreateFolder(Path,Permissions); }
 inline ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_MoveFile(Source,Dest,Callback); }
 inline ERROR ResolvePath(CSTRING Path, LONG Flags, STRING * Result) { return CoreBase->_ResolvePath(Path,Flags,Result); }
-template<class... Args> ERROR SetVolume(Args... Tags) { return CoreBase->_SetVolume(Tags...); }
 #endif
 
 

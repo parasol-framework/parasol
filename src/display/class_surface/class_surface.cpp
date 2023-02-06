@@ -1296,7 +1296,8 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
       // Subscribe to the surface parent's Resize and Redimension actions
 
-      SubscribeActionTags(parent, AC_Free, AC_Redimension, TAGEND);
+      SubscribeAction(parent, AC_Free);
+      SubscribeAction(parent, AC_Redimension);
 
       // If the surface object is transparent, subscribe to the Draw action of the parent object.
 
@@ -1566,7 +1567,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
             if (Self->DisplayWindow) {
                FUNCTION func = { .Type = CALL_STDC, .StdC = { .Context = NULL, .Routine = (APTR)&display_resized } };
                display->set(FID_ResizeFeedback, &func);
-               SubscribeActionTags(display, AC_Draw, TAGEND);
+               SubscribeAction(display, AC_Draw);
             }
 
             error = ERR_Okay;

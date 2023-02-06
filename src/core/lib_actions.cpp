@@ -1177,12 +1177,12 @@ movement, window resizing and graphics drawing.
 To subscribe to the actions of another object, acquire its address pointer and then call this function with
 the action ID to monitor.  The object that has the current context will be registered for receiving the notifications.
 
-The following example illustrates how to listen to a Surface object's Draw action for the purposes of drawing
-graphics to it:
+The following example illustrates how to listen to a Surface object's Redimension action to be alerted to resize
+events:
 
 <pre>
 if (!AccessObject(SurfaceID, 3000, &surface)) {
-   SubscribeAction(surface, AC_Draw, Self);
+   SubscribeAction(surface, AC_Redimension, Self);
    ReleaseObject(surface);
 }
 </pre>
@@ -1210,37 +1210,6 @@ AllocMemory:  A subscription list could not be allocated for the object.
 
 ERROR SubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
 {
-   return SubscribeActionTags(Object, ActionID, TAGEND);
-}
-
-/*****************************************************************************
-
--FUNCTION-
-SubscribeActionTags: Listens for actions that may be performed on an object.
-
-This function is identical to SubscribeAction() in every aspect except that it is tag based.  The following example
-illustrates typical usage `SubscribeActionTags(object, AC_Draw, AC_Redimension, TAGEND)`.
-
-Two special tags are also available: `SUB_WARN_EXISTS` will result in an error of `ERR_Exists` being returned if it is
-discovered that there is an existing match for the Subscriber and at least one of the actions.  `SUB_FAIL_EXISTS`
-will return with `ERR_Exists` immediately if an action is already subscribed, meaning no further tags (if
-present) will be processed.
-
--INPUT-
-obj Object: The target object to subscribe to.
-tags Actions: The ID of the action(s) that will be monitored.  The action list must be terminated with TAGEND.
-
--ERRORS-
-Okay:
-NullArgs:
-AccessMemory: Access to the Object's subscription list was denied.
-AllocMemory:  A subscription list could not be allocated for the object.
-Exists:       A matching subscription already exists.
-
-*****************************************************************************/
-
-ERROR SubscribeActionTags(OBJECTPTR Object, ...)
-{
    parasol::Log log(__FUNCTION__);
 
    if (!Object) return log.warning(ERR_NullArgs);
@@ -1249,153 +1218,90 @@ ERROR SubscribeActionTags(OBJECTPTR Object, ...)
 
    Object->threadLock();
 
-   LONG memflags = 0;
-   if (Object->defined(NF::PUBLIC)) memflags = MEM_PUBLIC;
-
-   LONG count = 0;  // Count the total number of actions to add
-   va_list vlist;
-   va_start(vlist, Object);
-   while (va_arg(vlist, ACTIONID)) count++;
-   va_end(vlist);
-
-   ERROR error;
    if (!Object->Stats->ActionSubscriptions.Ptr) { // Allocate the subscription array if it does not exist
-      OBJECTPTR context = SetContext(Object);
-      if (count < 10) count = 10; // Allocate at least 10 slots
+      parasol::SwitchContext context(Object);
 
-      if (Object->UID < 0) {
-         error = AllocMemory(sizeof(ActionSubscription) * count, memflags, NULL, &Object->Stats->ActionSubscriptions.ID);
-      }
-      else error = AllocMemory(sizeof(ActionSubscription) * count, memflags, &Object->Stats->ActionSubscriptions.Ptr, NULL);
-
-      if (error) {
-         SetContext(context);
+      if (AllocMemory(sizeof(ActionSubscription) * 10, 0, &Object->Stats->ActionSubscriptions.Ptr, NULL)) {
          Object->threadRelease();
          return log.warning(ERR_AllocMemory);
       }
 
-      Object->Stats->SubscriptionSize = count;
-      SetContext(context);
+      Object->Stats->SubscriptionSize = 10;
    }
 
-
    LONG i, j;
-   ERROR warnerror = ERR_Okay;
-   LONG warntag = 0;
-   ActionSubscription *list;
-   if ((list = lock_subscribers(Object))) {
-      va_start(vlist, Object);
-      ACTIONID actionid;
-      while ((actionid = va_arg(vlist, ACTIONID))) {
-         if (actionid IS SUB_WARN_EXISTS) {
-            warntag = SUB_WARN_EXISTS;
-            continue;
-         }
-         else if (actionid IS SUB_FAIL_EXISTS) {
-            warntag = SUB_FAIL_EXISTS;
-            continue;
-         }
-         else if (actionid < 0) {
-            log.warning("Method subscriptions are not supported.");
-            continue;
-         }
+   if (auto list = lock_subscribers(Object)) {
+      if (ActionID < 0) {
+         log.warning("Method subscriptions are not supported.");
+         return ERR_Args;
+      }
 
-         // Scan the subscription array.  If the subscription already exists (the action ID and subscriber ID are
-         // identical), we move it to the bottom of the list.
+      // Scan the subscription array.  If the subscription already exists (the action ID and subscriber ID are
+      // identical), we move it to the bottom of the list.
 
-         for (i=0; (i < Object->Stats->SubscriptionSize) and (list[i].ActionID); i++) {
-            if ((list[i].ActionID IS actionid) and (list[i].SubscriberID IS tlContext->resource()->UID)) {
-               if (warntag IS SUB_WARN_EXISTS) {
-                  // Return ERR_Exists to warn the caller that there is already a subscription against this action.
-                  // We will not shift the subscription to the front of the queue.
-                  warnerror = ERR_Exists;
-                  continue;
-               }
-               else if (warntag IS SUB_FAIL_EXISTS) { // Return ERR_Exists immediately
-                  unlock_subscribers(Object);
-                  Object->threadRelease();
-                  return ERR_Exists;
-               }
+      for (i=0; (i < Object->Stats->SubscriptionSize) and (list[i].ActionID); i++) {
+         if ((list[i].ActionID IS ActionID) and (list[i].SubscriberID IS tlContext->resource()->UID)) {
+            // Check if there are other actions in front of this location
+            if ((i < Object->Stats->SubscriptionSize-1) and (list[i+1].ActionID)) {
+               for (j=i; (j < Object->Stats->SubscriptionSize-1) and (list[j].ActionID); j++);
+               // Shift the actions down a notch
+               CopyMemory(list+i+1, list+i, sizeof(ActionSubscription) * (Object->Stats->SubscriptionSize - i));
+               i = j; // Set the insertion point to the end of the list
+            }
+            break;
+         }
+      }
 
-               // Check if there are other actions in front of this location
-               if ((i < Object->Stats->SubscriptionSize-1) and (list[i+1].ActionID)) {
-                  for (j=i; (j < Object->Stats->SubscriptionSize-1) and (list[j].ActionID); j++);
-                  // Shift the actions down a notch
-                  CopyMemory(list+i+1, list+i, sizeof(ActionSubscription) * (Object->Stats->SubscriptionSize - i));
-                  i = j; // Set the insertion point to the end of the list
+      if (i >= Object->Stats->SubscriptionSize) { // Enlarge the size of the object's subscription list
+         log.debug("Extending array for object %d to %d entries.", Object->UID, Object->Stats->SubscriptionSize);
+         if (glLogLevel >= 5) { // Report any dead subscribers if we're in log mode
+            for (i=0; (i < Object->Stats->SubscriptionSize) and (list[i].ActionID); i++) {
+               if (CheckObjectExists(list[i].SubscriberID) != ERR_True) {
+                  log.warning("Dead subscriber @ index %d, Action %d, Object %d - Fix your code!", i, list[i].ActionID, list[i].SubscriberID);
                }
-               break;
             }
          }
 
-         if (i >= Object->Stats->SubscriptionSize) { // Enlarge the size of the object's subscription list
-            log.debug("Extending array for object %d to %d entries.", Object->UID, Object->Stats->SubscriptionSize);
-            if (glLogLevel >= 5) { // Report any dead subscribers if we're in log mode
-               for (i=0; (i < Object->Stats->SubscriptionSize) and (list[i].ActionID); i++) {
-                  if (CheckObjectExists(list[i].SubscriberID) != ERR_True) {
-                     log.warning("Dead subscriber @ index %d, Action %d, Object %d - Fix your code!", i, list[i].ActionID, list[i].SubscriberID);
-                  }
-               }
-            }
+         parasol::SwitchContext context(Object);
 
-            ActionSubscription *newlist;
+         ActionSubscription *newlist;
+         if (!AllocMemory(sizeof(ActionSubscription)*(Object->Stats->SubscriptionSize+10), 0, (APTR *)&newlist, NULL)) {
+            CopyMemory(list, newlist, Object->Stats->SubscriptionSize * sizeof(ActionSubscription));
 
-            {
-               parasol::SwitchContext context(Object);
+            unlock_subscribers(Object);
 
-               MEMORYID newlistid;
-               if (Object->UID < 0) error = AllocMemory(sizeof(ActionSubscription)*(Object->Stats->SubscriptionSize+10), memflags, (APTR *)&newlist, &newlistid);
-               else error = AllocMemory(sizeof(ActionSubscription)*(Object->Stats->SubscriptionSize+10), memflags, (APTR *)&newlist, NULL);
+            FreeResource(Object->Stats->ActionSubscriptions.Ptr);
+            Object->Stats->ActionSubscriptions.Ptr = newlist;
 
-               if (!error) {
-                  CopyMemory(list, newlist, Object->Stats->SubscriptionSize * sizeof(ActionSubscription));
-
-                  unlock_subscribers(Object);
-
-                  if (Object->UID < 0) {
-                     FreeResourceID(Object->Stats->ActionSubscriptions.ID);
-                     Object->Stats->ActionSubscriptions.ID = newlistid;
-                  }
-                  else {
-                     FreeResource(Object->Stats->ActionSubscriptions.Ptr);
-                     Object->Stats->ActionSubscriptions.Ptr = newlist;
-                  }
-
-                  Object->Stats->SubscriptionSize += 10;
-                  list = newlist;
-               }
-            }
-
-            if (error) {
-               unlock_subscribers(Object);
-               va_end(vlist);
-               Object->threadRelease();
-               return log.warning(ERR_AllocMemory);
-            }
+            Object->Stats->SubscriptionSize += 10;
+            list = newlist;
          }
-
-         list[i].ActionID       = actionid;
-         list[i].SubscriberID   = tlContext->object()->UID;
-         list[i].ClassID        = tlContext->object()->ClassID;
-         list[i].MessagePortMID = glTaskMessageMID;
-
-         i = actionid>>5;
-         if ((i >= 0) and (i < ARRAYSIZE(Object->Stats->NotifyFlags))) {
-            Object->Stats->NotifyFlags[i] |= 1<<(actionid & 31);
+         else {
+            unlock_subscribers(Object);
+            Object->threadRelease();
+            return log.warning(ERR_AllocMemory);
          }
+      }
+
+      list[i].ActionID       = ActionID;
+      list[i].SubscriberID   = tlContext->object()->UID;
+      list[i].ClassID        = tlContext->object()->ClassID;
+      list[i].MessagePortMID = glTaskMessageMID;
+
+      i = ActionID>>5;
+      if ((i >= 0) and (i < ARRAYSIZE(Object->Stats->NotifyFlags))) {
+         Object->Stats->NotifyFlags[i] |= 1<<(ActionID & 31);
       }
 
       unlock_subscribers(Object);
    }
    else {
-      va_end(vlist);
       Object->threadRelease();
       return log.warning(ERR_AccessMemory);
    }
 
-   va_end(vlist);
    Object->threadRelease();
-   return warnerror;
+   return ERR_Okay;
 }
 
 /*****************************************************************************

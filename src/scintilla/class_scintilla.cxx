@@ -775,10 +775,8 @@ static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
 
    OBJECTPTR object;
    if (!AccessObject(Self->FocusID, 5000, &object)) {
-      SubscribeActionTags(object,
-         AC_Focus,
-         AC_LostFocus,
-         TAGEND);
+      SubscribeAction(object, AC_Focus);
+      SubscribeAction(object, AC_LostFocus);
       ReleaseObject(object);
    }
 
@@ -799,15 +797,13 @@ static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
 
       //SubscribeFeed(surface); TODO: Deprecated
 
-      SubscribeActionTags(surface,
-         AC_DataFeed,
-         AC_DragDrop,
-         AC_Disable,
-         AC_Enable,
-         AC_Hide,
-         AC_Redimension,
-         AC_Show,
-         TAGEND);
+      SubscribeAction(surface, AC_DataFeed);
+      SubscribeAction(surface, AC_DragDrop);
+      SubscribeAction(surface, AC_Disable);
+      SubscribeAction(surface, AC_Enable);
+      SubscribeAction(surface, AC_Hide);
+      SubscribeAction(surface, AC_Redimension);
+      SubscribeAction(surface, AC_Show);
 
       if (surface->Flags & RNF_HAS_FOCUS) {
          auto callback = make_function_stdc(key_event);
@@ -2215,7 +2211,7 @@ static ERROR load_file(extScintilla *Self, CSTRING Path)
          if (!flStartStream(file, Self->UID, FL_READ, 0)) {
             acClear(Self);
 
-            SubscribeActionTags(file, AC_Write, TAGEND);
+            SubscribeAction(file, AC_Write);
             Self->FileStream = file;
             file = NULL;
          }
