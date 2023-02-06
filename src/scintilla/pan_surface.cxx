@@ -192,7 +192,8 @@ void SurfacePan::LineTo(int x, int y)
 
 void SurfacePan::DrawRGBAImage(Scintilla::PRectangle rc, int width, int height, const unsigned char *pixelsImage)
 {
-   LogF("@DrawRGBAImage()","Unsupported.");
+   parasol::Log log(__FUNCTION__);
+   log.warning("Unsupported.");
 }
 
 /****************************************************************************/
@@ -289,6 +290,7 @@ void SurfacePan::Ellipse(Scintilla::PRectangle rc, Scintilla::ColourAllocated fo
 
 void SurfacePan::Copy(Scintilla::PRectangle rc, Scintilla::Point from, Scintilla::Surface &surfaceSource)
 {
+   parasol::Log log(__FUNCTION__);
    SurfacePan &src_surface = static_cast<SurfacePan&>(surfaceSource);
 
    if ((bitmap) and (src_surface.bitmap)) {
@@ -302,13 +304,14 @@ void SurfacePan::Copy(Scintilla::PRectangle rc, Scintilla::Point from, Scintilla
 
       //bmpDrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), PackPixel(bitmap, 255, 0, 0, 255), 0);
    }
-   else LogF("@panCopy","Bad arguments.");
+   else log.warning(ERR_Args);
 }
 
 /****************************************************************************/
 
 void SurfacePan::DrawTextBase(Scintilla::PRectangle rc, Scintilla::Font &font_, int ybase, const char *String, int len, Scintilla::ColourAllocated fore)
 {
+   parasol::Log log(__FUNCTION__);
    objFont *font;
    ULONG col32;
    LONG i;
@@ -326,7 +329,7 @@ void SurfacePan::DrawTextBase(Scintilla::PRectangle rc, Scintilla::Font &font_, 
    font = (objFont *)GetFont(font_);//static_cast<OBJECTPTR>(font_.GetID());
 
    if (!font) {
-      LogF("@panDrawTextBase","Font was NULL.");
+      log.warning("Font is NULL.");
       return;
    }
 
@@ -580,7 +583,9 @@ OBJECTPTR SurfacePan::GetFont(Scintilla::Font& font_)
 void SurfacePan::AlphaRectangle(Scintilla::PRectangle rc, int cornerSize, Scintilla::ColourAllocated fill, int alphaFill,
 		Scintilla::ColourAllocated outline, int alphaOutline, int flags)
 {
-   FMSG("panAlpharectangle()","UNSUPPORTED");
+   parasol::Log log(__FUNCTION__);
+
+   log.trace("UNSUPPORTED");
 
    if (bitmap) {
       BitmapClipper clipper(bitmap, cliprect);
@@ -589,7 +594,7 @@ void SurfacePan::AlphaRectangle(Scintilla::PRectangle rc, int cornerSize, Scinti
 
       gfxDrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), to_pan_col(bitmap, outline), FALSE);
    }
-   else LogF("@panAlphaRectangle","Bitmap was NULL.");
+   else log.warning("Bitmap was NULL.");
 
 #if 0
 		int width = rc.Width();
