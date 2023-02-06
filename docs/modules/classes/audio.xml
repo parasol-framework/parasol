@@ -15,7 +15,7 @@
     <copyright>Paul Manias © 2002-2023</copyright>
     <description>
 <p>The Audio class provides a common audio service that works across multiple platforms and follows a client-server design model.</p>
-<p>Supported features include 8/16/32 bit output in stereo or mono, oversampling, streaming, multiple audio channels and command sequencing.  The Audio class functionality is simplified via the <class name="Sound">Sound</class> class interface, which we recommend in most cases where simplified audio playback is satisfactory.</p>
+<p>Supported features include 8/16/32 bit output in stereo or mono, oversampling, streaming, multiple audio channels and command sequencing.  Audio functionality is simplified in the <class name="Sound">Sound</class> class interface, which we recommend when straight-forward audio playback is sufficient.</p>
 <p>Support for audio recording is not currently available.</p></description>
     <source>
       <file>class_audio.cpp</file>
@@ -27,7 +27,7 @@
       <name>Activate</name>
       <comment>Enables access to the audio hardware and initialises the mixer.</comment>
       <description>
-<p>An audio object will not play or record until it has been activated.  Activating the object will result in an attempt to lock the device hardware, which on some platforms may lead to failure if another process has permanently locked the device.  The resources and any device locks obtained by this action can be released with a call to <action>Deactivate</action>.</p>
+<p>An audio object will not play or record until it has been activated.  Activating the object will result in an attempt to access the device hardware, which on some platforms may lead to failure if another process has permanently locked the audio device.  The resources and any device locks obtained by this action can be released with a call to <action>Deactivate</action>.</p>
 <p>An inactive audio object can operate in a limited fashion but is without access to the audio hardware.</p>
       </description>
     </action>
@@ -62,29 +62,26 @@
         <param type="LONG" name="SampleFormat" lookup="SFM">Indicates the format of the sample data that you are adding.</param>
         <param type="APTR" name="Data">Points to the address of the sample data.</param>
         <param type="LONG" name="DataSize">Size of the sample data, in bytes.</param>
-        <param type="struct AudioLoop *" name="Loop">Points to the sample information that you want to add.</param>
-        <param type="LONG" name="LoopSize">Must be set to sizeof(AudioLoop).</param>
+        <param type="struct AudioLoop *" name="Loop">Optional sample loop information.</param>
+        <param type="LONG" name="LoopSize">Must be set to sizeof(AudioLoop) if Loop is defined.</param>
         <param type="LONG *" name="Result">The resulting sample handle will be returned in this parameter.</param>
       </input>
       <description>
-<p>Audio samples can be loaded into an Audio object for playback via the AddSample or <method>AddStream</method> method.  For small samples under 512k we recommend AddSample, while anything larger should be supported through AddStream.</p>
-<p>When adding a sample, is is essential to select the correct bit format for the sample data.  While it is important to differentiate between simple attributes such as 8 or 16 bit data, mono or stereo format, you should also be aware of whether or not the data is little or big endian, and if the sample data consists of signed or unsigned values.  Because of the possible variations there are a number of sample formats, as illustrated in the following table:</p>
+<p>Audio samples can be loaded into an Audio object for playback via the AddSample() or <method>AddStream</method> methods.  For small samples under 512k we recommend AddSample(), while anything larger should be supported through <method>AddStream</method>.</p>
+<p>When adding a sample, it is essential to select the correct bit format for the sample data.  While it is important to differentiate between simple attributes such as 8 or 16 bit data, mono or stereo format, you should also be aware of whether or not the data is little or big endian, and if the sample data consists of signed or unsigned values.  Because of the possible variations there are a number of sample formats, as illustrated in the following table:</p>
 <types lookup="SFM"/>
-<p>By default, all samples are assumed to be in little endian format, as supported by Intel CPU's.  If the data is in big endian format, or the SampleFormat value with <code>SFM_BIG_ENDIAN</code>.</p>
-<p>It is also possible to supply loop information with the sample data.  The Audio class supports a number of different looping formats, allowing you to go beyond simple loops that repeat from the beginning of the sample.  The <struct>AudioLoop</struct> structure illustrates your options:</p>
+<p>By default, all samples are assumed to be in little endian format, as supported by Intel CPU's.  If the data is in big endian format, logical-or the SampleFormat value with <code>SFM_BIG_ENDIAN</code>.</p>
+<p>It is also possible to supply loop information with the sample data.  This is achieved by configuring the <struct>AudioLoop</struct> structure:</p>
 <struct lookup="AudioLoop"/>
-<p>The types of that can be specified in the LoopMode field are:</p>
+<p>The types that can be specified in the LoopMode field are:</p>
 <types lookup="LOOP"/>
 <p>The Loop1Type and Loop2Type fields alter the style of the loop.  These can be set to the following:</p>
 <types lookup="LTYPE"/>
-<p>The AddSample method may not be called directly because the audio object is often managed within a separate process. If you attempt to grab the audio object and call this method, it returns <code>ERR_IllegalActionAttempt</code>. The only safe means for calling this method is through the WaitMsg() function.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
         <error code="Args">Invalid arguments passed to function.</error>
-        <error code="IllegalActionAttempt">You attempted to call this method directly using the Action() function.  Use ActionMsg() instead.</error>
         <error code="AllocMemory">Failed to allocate enough memory to hold the sample data.</error>
-        <error code="ReallocMemory">The existing sample handle array could not be expanded.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
@@ -119,10 +116,7 @@
       <result>
         <error code="Okay">Operation successful.</error>
         <error code="Args">Invalid arguments passed to function.</error>
-        <error code="IllegalActionAttempt">You attempted to call this method directly using the Action() function.  Use ActionMsg() instead.</error>
         <error code="AllocMemory">Failed to allocate the stream buffer.</error>
-        <error code="ReallocMemory">The existing sample handle array could not be expanded.</error>
-        <error code="CreateObject">Failed to create a file object based on the supplied Path.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
@@ -173,13 +167,12 @@
       </input>
       <description>
 <p>Use the OpenChannels method to open audio channels for sample playback.  Channels are allocated in sets with a size range between 1 and 64.  Channel sets make it easier to segregate playback between users of the same audio object.</p>
-<p>The resulting handle returned from this method is an integer consisting of two parts.  The upper word uniquely identifies the channel set that has been provided to you, while the lower word is used to refer to specific channel numbers.  To refer to specific channels when using some functions, do so with the formula <code>Channel = Handle | ChannelNo</code>.</p>
+<p>The resulting handle returned from this method is an integer consisting of two parts.  The upper word uniquely identifies the channel set that has been provided to you, while the lower word is used to refer to specific channel numbers.  If referring to a specific channel is required for a function, use the formula <code>Channel = Handle | ChannelNo</code>.</p>
 <p>To destroy allocated channels, use the <method>CloseChannels</method> method.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
         <error code="OutOfRange">The amount of requested channels or commands is outside of acceptable range.</error>
-        <error code="ArrayFull">The maximum number of available channel sets is currently exhausted.</error>
         <error code="AllocMemory">Memory for the audio channels could not be allocated.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
@@ -226,16 +219,20 @@
     <method>
       <name>SetVolume</name>
       <comment>Sets the volume for input and output mixers.</comment>
-      <prototype>ERROR sndSetVolume(OBJECTPTR Object, LONG Index, CSTRING Name, LONG Flags, DOUBLE Volume)</prototype>
+      <prototype>ERROR sndSetVolume(OBJECTPTR Object, LONG Index, CSTRING Name, LONG Flags, LONG Channel, DOUBLE Volume)</prototype>
       <input>
         <param type="LONG" name="Index">The index of the mixer that you want to set.</param>
         <param type="CSTRING" name="Name">If the correct index number is unknown, the name of the mixer may be set here.</param>
         <param type="LONG" name="Flags" lookup="SVF">Optional flags.</param>
-        <param type="DOUBLE" name="Volume">The volume to set for the mixer.  Ranges between 0 - 1.0.  Set to -1 if you do not want to adjust the current volume.</param>
+        <param type="LONG" name="Channel">A specific channel to modify (e.g. 0 for left, 1 for right).  If -1, all channels are affected.</param>
+        <param type="DOUBLE" name="Volume">The volume to set for the mixer, from 0 - 1.0.  If -1, the current volume values are retained.</param>
       </input>
       <description>
-<p>To change volume and mixer levels, use the SetVolume method.  It is possible to make adjustments to any of the available mixers and for different channels per mixer - for instance you may set different volumes for left and right speakers.  Support is also provided for special options, such as muting.</p>
-<p>To set the volume for a mixer, use its index or set its name (to change the Master volume, use a name of <code>Master</code>). A channel needs to be specified, or use <code>CHN_ALL</code> to synchronise the volume for all channels.  The new mixer value is set in the Volume field.  Optional flags may be set as follows:</p>
+<p>To change volume and mixer levels, use the SetVolume method.  It is possible to make adjustments to any of the available mixers and for different channels per mixer - for instance you may set different volumes for left and right speakers.  Support is also provided for special options such as muting.</p>
+<p>To set the volume for a mixer, use its index or set its name (to change the Master volume, use a name of <code>Master</code>).</p>
+<p>A target Channel such as the left (0) or right (1) speaker can be specified.  Set the Channel to -1 if all channels should be the same value.</p>
+<p>The new mixer value is set in the Volume field.</p>
+<p>Optional flags may be set as follows:</p>
 <types lookup="SVF"/>
       </description>
       <result>
@@ -265,8 +262,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>A computer system may have multiple audio devices installed, but a given audio object can represent only one device at a time.  A new audio object will always represent the default device initially.  You can switch to a different device by setting the Device field to the name of the device that you would like to use.</p>
-<p>The default device can always be referenced with a name of <code>Default</code>.</p>
+<p>A host platform may have multiple audio devices installed, but a given audio object can represent only one device at a time.  A new audio object will always represent the default device initially.  Choose a different device by setting the Device field to a valid alternative.</p>
+<p>The default device can always be referenced with a name of <code>default</code>.</p>
       </description>
     </field>
 
@@ -308,7 +305,7 @@
       <access read="G">Get</access>
       <type>DOUBLE</type>
       <description>
-<p>This field will return the worst-case value for lag time imposed by the internal audio mixer.  The value is measured in seconds and will differ between platforms and user configurations.</p>
+<p>This field will return the worst-case value for latency imposed by the internal audio mixer.  The value is measured in seconds and will differ between platforms and user configurations.</p>
       </description>
     </field>
 
@@ -408,9 +405,7 @@
     <constants lookup="SVF" comment="Flags for the SetVolume() method.">
       <const name="CAPTURE">Set input, not output.</const>
       <const name="MUTE">Mute the audio for this channel.</const>
-      <const name="SYNC">Synchronise volume settings between channels.</const>
       <const name="UNMUTE">Unmute the audio for this channel.</const>
-      <const name="UNSYNC">Allow un-synchronised volume settings.</const>
     </constants>
 
   </types>

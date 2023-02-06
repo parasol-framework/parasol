@@ -210,7 +210,7 @@ Use this function to mute the audio of a mixer channel.
 -INPUT-
 obj(Audio) Audio: The target Audio object.
 int Handle: The target channel.
-int Mute: Set to any value to mute the channel.  A value of 0 will undo the mute setting.
+int Mute: Set to true to mute the channel.  A value of 0 will undo the mute setting.
 
 -ERRORS-
 Okay
@@ -564,8 +564,8 @@ static ERROR sndMixRate(objAudio *Audio, LONG Handle, LONG Rate)
 -FUNCTION-
 MixSample: Associate a sound sample with a mixer channel.
 
-This function will associate a sound sample with a mixer channel.  Configuration should then follow (e.g. volume and
-pan values).
+This function will associate a sound sample with the channel identified by Handle.  The client should follow this by
+setting configuration details (e.g. volume and pan values).
 
 The referenced Sample must have been added to the audio server via the @Audio.AddSample() or @Audio.AddStream()
 methods.
@@ -635,48 +635,6 @@ ERROR sndMixSample(objAudio *Audio, LONG Handle, LONG SampleIndex)
 /*********************************************************************************************************************
 
 -FUNCTION-
-MixVolume: Changes the volume of a channel.
-
-This function will change the volume of a mixer channel.  Valid values are between 0 and 1.0.
-
--INPUT-
-obj(Audio) Audio: The target Audio object.
-int Handle: The target channel.
-double Volume: The new volume for the channel.
-
--ERRORS-
-Okay
-NullArgs
--END-
-
-*********************************************************************************************************************/
-
-static ERROR sndMixVolume(objAudio *Audio, LONG Handle, DOUBLE Volume)
-{
-   parasol::Log log(__FUNCTION__);
-
-   log.traceBranch("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
-
-   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
-
-   auto channel = ((extAudio *)Audio)->GetChannel(Handle);
-
-   if (channel->Buffering) {
-      add_mix_cmd(Audio, CMD::VOLUME, Volume);
-      return ERR_Okay;
-   }
-
-   if (Volume > 1.0) channel->Volume = 1.0;
-   else if (Volume < 0) channel->Volume = 0;
-   else channel->Volume = Volume;
-
-   set_channel_volume((extAudio *)Audio, channel);
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
 MixStop: Stops all playback on a channel.
 
 This function will stop a channel that is currently playing.
@@ -723,8 +681,8 @@ ERROR sndMixStop(objAudio *Audio, LONG Handle)
 -FUNCTION-
 MixStopLoop: Cancels any playback loop configured for a channel.
 
-This function will cancel any loop that is associated with a mixer channel in playback mode.  This does not affect the
-loop configuration if playback is restarted for the active sample.
+This function will cancel the loop that is associated with the channel identified by Handle if in playback mode.
+The existing loop configuration will remain intact if playback is restarted.
 
 -INPUT-
 obj(Audio) Audio: The target Audio object.
@@ -763,3 +721,45 @@ static ERROR sndMixStopLoop(objAudio *Audio, LONG Handle)
    return ERR_Okay;
 }
 
+/*********************************************************************************************************************
+
+-FUNCTION-
+MixVolume: Changes the volume of a channel.
+
+This function will change the volume of the mixer channel identified by Handle.  Valid values are from 0 (silent)
+to 1.0 (maximum).
+
+-INPUT-
+obj(Audio) Audio: The target Audio object.
+int Handle: The target channel.
+double Volume: The new volume for the channel.
+
+-ERRORS-
+Okay
+NullArgs
+-END-
+
+*********************************************************************************************************************/
+
+static ERROR sndMixVolume(objAudio *Audio, LONG Handle, DOUBLE Volume)
+{
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
+
+   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
+
+   auto channel = ((extAudio *)Audio)->GetChannel(Handle);
+
+   if (channel->Buffering) {
+      add_mix_cmd(Audio, CMD::VOLUME, Volume);
+      return ERR_Okay;
+   }
+
+   if (Volume > 1.0) channel->Volume = 1.0;
+   else if (Volume < 0) channel->Volume = 0;
+   else channel->Volume = Volume;
+
+   set_channel_volume((extAudio *)Audio, channel);
+   return ERR_Okay;
+}
