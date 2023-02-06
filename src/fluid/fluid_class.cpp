@@ -877,12 +877,13 @@ static ERROR save_binary(objScript *Self, OBJECTID FileID)
 
    return ERR_NoSupport;
 /*
+   parasol::Log log(__FUNCTION__);
    prvFluid *prv;
    OBJECTPTR dest;
    const Proto *f;
    LONG i;
 
-   LogF("~save_binary()","Save Symbols: %d", Self->Flags & SCF_DEBUG);
+   log.branch("Save Symbols: %d", Self->Flags & SCF_DEBUG);
 
    if (!(prv = Self->ChildPrivate)) return LogReturnError(0, ERR_ObjectCorrupt);
 

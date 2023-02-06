@@ -302,7 +302,8 @@ public:
 
    ~BitmapCache() {
       if (OpenCount) {
-         LogF("@BitmapCache","Removing \"%s : %d : $%.8x\" with an open count of %d", Path.c_str(), Header.nominal_point_size, StyleFlags, OpenCount);
+         parasol::Log log(__FUNCTION__);
+         log.warning("Removing \"%s : %d : $%.8x\" with an open count of %d", Path.c_str(), Header.nominal_point_size, StyleFlags, OpenCount);
       }
       if (mData) { FreeResource(mData); mData = NULL; }
       if (mOutline) { FreeResource(mOutline); mOutline = NULL; }
