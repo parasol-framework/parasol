@@ -9,8 +9,8 @@ that is distributed with this package.  Please refer to it for further informati
 Sound: Plays and records sound samples in a variety of different data formats.
 
 The Sound class provides a simple API for programs to load and play audio sample files. By default all
-loading and saving of sound data is in WAVE format.  Other audio formats can be supported through Sound class
-extensions, if available.
+loading and saving of sound data is in WAVE format.  Other audio formats such as MP3 can be supported through Sound
+class extensions, if available.
 
 Automatic streaming is enabled by default.  If an attempt is made to play an audio file that exceeds the maximum
 buffer size, it will be streamed from the source location.  Streaming behaviour can be modified via the #Stream

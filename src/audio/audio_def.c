@@ -18,7 +18,7 @@ FDEF maRemoveSample[] = { { "Handle", FD_LONG }, { 0, 0 } };
 FDEF maSetSampleLength[] = { { "Sample", FD_LONG }, { "Length", FD_LARGE }, { 0, 0 } };
 FDEF maAddStream[] = { { "Callback", FD_FUNCTION }, { "OnStop", FD_FUNCTION }, { "SampleFormat", FD_LONG }, { "SampleLength", FD_LONG }, { "PlayOffset", FD_LONG }, { "AudioLoop:Loop", FD_PTR|FD_STRUCT }, { "LoopSize", FD_LONG|FD_BUFSIZE }, { "Result", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF maBeep[] = { { "Pitch", FD_LONG }, { "Duration", FD_LONG }, { "Volume", FD_LONG }, { 0, 0 } };
-FDEF maSetVolume[] = { { "Index", FD_LONG }, { "Name", FD_STR }, { "Flags", FD_LONG }, { "Volume", FD_DOUBLE }, { 0, 0 } };
+FDEF maSetVolume[] = { { "Index", FD_LONG }, { "Name", FD_STR }, { "Flags", FD_LONG }, { "Channel", FD_LONG }, { "Volume", FD_DOUBLE }, { 0, 0 } };
 
 static const struct MethodArray clAudioMethods[] = {
    { -1, (APTR)AUDIO_OpenChannels, "OpenChannels", maOpenChannels, sizeof(struct sndOpenChannels) },

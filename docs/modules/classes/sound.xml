@@ -16,7 +16,7 @@
     <include>modules/sound.h</include>
     <copyright>Paul Manias © 2002-2023</copyright>
     <description>
-<p>The Sound class provides a simple API for programs to load and play audio sample files. By default all loading and saving of sound data is in WAVE format.  Other audio formats can be supported through Sound class extensions, if available.</p>
+<p>The Sound class provides a simple API for programs to load and play audio sample files. By default all loading and saving of sound data is in WAVE format.  Other audio formats such as MP3 can be supported through Sound class extensions, if available.</p>
 <p>Automatic streaming is enabled by default.  If an attempt is made to play an audio file that exceeds the maximum buffer size, it will be streamed from the source location.  Streaming behaviour can be modified via the <field>Stream</field> field.</p>
 <p>The following example illustrates playback of a sound sample that is one octave higher than its normal frequency. The subscription to the OnStop callback will result in the program waking once the sample has finished playback.</p>
 <pre>local snd = obj.new('sound', {
@@ -233,8 +233,8 @@ proc.sleep()
       <access read="G" write="S">Get/Set</access>
       <type lookup="NOTE">STRING</type>
       <description>
-<p>Set the Note field to alter the playback frequency of a sound sample.  By setting this field as opposed to the <field>Playback</field> frequency, you can be assured that the sample is played as a correctly scaled note.</p>
-<p>The Note field can be set using either string or integer based format.  If you are using the integer format, the number that you choose reflects on the position on a musical keyboard.  A value of zero refers to the middle C key.  Each octave is measured in sets of 12 notes, so a value of 24 would indicate a C note at 3 times normal playback.  To play at lower values, simply choose a negative integer to slow down sample playback.</p>
+<p>Set the Note field to alter the playback frequency of a sound sample.  Setting this field as opposed to the <field>Playback</field> frequency will assure that the sample is played at a correctly scaled tone.</p>
+<p>The Note field can be set using either string or integer based format.  If using the integer format, the chosen value will reflect the position on a musical keyboard.  A value of zero refers to the middle C key.  Each octave is measured in sets of 12 notes, so a value of 24 would indicate a C note at 3 times normal playback.  To play at lower values, simply choose a negative integer to slow down sample playback.</p>
 <p>Setting the Note field with the string format is useful if human readability is valuable.  The correct format is <code>KEY OCTAVE SHARP</code>.  Here are some examples: <code>C5, D7#, G2, E3S</code>.</p>
 <p>The middle C key for this format is <code>C5</code>.  The maximum octave that you can achieve for the string format is 9 and the lowest is 0.  Use either the <code>S</code> character or the <code>#</code> character for referral to a sharp note.</p>
 <types lookup="NOTE"/>
