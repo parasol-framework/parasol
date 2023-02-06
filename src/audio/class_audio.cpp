@@ -894,11 +894,11 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
          Self->MasterVolume = Args->Volume;
       }
 
-      if (Args->Flags & SVF::UNMUTE) {
+      if ((Args->Flags & SVF::UNMUTE) != SVF::NIL) {
          Self->Volumes[index].Flags &= ~VCF::MUTE;
          Self->Mute = false;
       }
-      else if (Args->Flags & SVF::MUTE) {
+      else if ((Args->Flags & SVF::MUTE) != SVF::NIL) {
          Self->Volumes[index].Flags |= VCF::MUTE;
          Self->Mute = true;
       }
@@ -906,7 +906,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 
    // Apply the volume
 
-   log.branch("%s: %.2f, Flags: $%.8x", Self->Volumes[index].Name.c_str(), Args->Volume, Args->Flags);
+   log.branch("%s: %.2f, Flags: $%.8x", Self->Volumes[index].Name.c_str(), Args->Volume, (LONG)Args->Flags);
 
    snd_mixer_selem_id_alloca(&sid);
    snd_mixer_selem_id_set_index(sid,0);

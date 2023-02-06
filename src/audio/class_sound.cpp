@@ -330,11 +330,11 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
 
       LONG sampleformat = 0;
       if (Self->BitsPerSample IS 8) {
-         if (Self->Flags & SDF::STEREO) sampleformat = SFM_U8_BIT_STEREO;
+         if ((Self->Flags & SDF::STEREO) != SDF::NIL) sampleformat = SFM_U8_BIT_STEREO;
          else sampleformat = SFM_U8_BIT_MONO;
       }
       else if (Self->BitsPerSample IS 16) {
-         if (Self->Flags & SDF::STEREO) sampleformat = SFM_S16_BIT_STEREO;
+         if ((Self->Flags & SDF::STEREO) != SDF::NIL) sampleformat = SFM_S16_BIT_STEREO;
          else sampleformat = SFM_S16_BIT_MONO;
       }
 
@@ -346,12 +346,12 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
       else if ((Self->Stream IS STREAM::SMART) and (Self->Length > 256 * 1024)) Self->Flags |= SDF::STREAM;
 
       BYTE *buffer;
-      if (Self->Flags & SDF::STREAM) {
+      if ((Self->Flags & SDF::STREAM) != SDF::NIL) {
          log.msg("Streaming enabled for playback in format $%.8x; Length: %d", sampleformat, Self->Length);
 
          struct sndAddStream stream;
          AudioLoop loop;
-         if (Self->Flags & SDF::LOOP) {
+         if ((Self->Flags & SDF::LOOP) != SDF::NIL) {
             loop.LoopMode   = LOOP::SINGLE;
             loop.Loop1Type  = LTYPE::UNIDIRECTIONAL;
             loop.Loop1Start = Self->LoopStart;
@@ -395,7 +395,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
             struct sndAddSample add;
             AudioLoop loop;
 
-            if (Self->Flags & SDF::LOOP) {
+            if ((Self->Flags & SDF::LOOP) != SDF::NIL) {
                loop.LoopMode   = LOOP::SINGLE;
                loop.Loop1Type  = LTYPE::UNIDIRECTIONAL;
                loop.Loop1Start = Self->LoopStart;
@@ -443,7 +443,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
       // if the sound object is already active on one of our channels.
 
       AudioChannel *channel = NULL;
-      if (Self->Flags & (SDF::RESTRICT_PLAY|SDF::STREAM)) {
+      if ((Self->Flags & (SDF::RESTRICT_PLAY|SDF::STREAM)) != SDF::NIL) {
          Self->ChannelIndex &= 0xffff0000;
          LONG i;
          for (i=0; i < audio->MaxChannels; i++) {
@@ -801,7 +801,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    STRING path = NULL;
    Self->get(FID_Path, &path);
 
-   if ((Self->Flags & SDF::NEW) or (!path)) {
+   if (((Self->Flags & SDF::NEW) != SDF::NIL) or (!path)) {
       log.msg("Sample created as new (without sample data).");
 
       // If the sample is new or no path has been specified, create an audio sample from scratch (e.g. to
@@ -883,7 +883,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    if (Self->Frequency <= 0) Self->Frequency = WAVE.Frequency;
    if (Self->Playback <= 0)  Self->Playback  = Self->Frequency;
 
-   if (Self->Flags & SDF::NOTE) {
+   if ((Self->Flags & SDF::NOTE) != SDF::NIL) {
       SOUND_SET_Note(Self, Self->NoteString);
       Self->Flags &= ~SDF::NOTE;
    }
