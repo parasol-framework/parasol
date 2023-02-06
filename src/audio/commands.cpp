@@ -210,7 +210,7 @@ Use this function to mute the audio of a mixer channel.
 -INPUT-
 obj(Audio) Audio: The target Audio object.
 int Handle: The target channel.
-int Mute: Set to any value to mute the channel.  A value of 0 will undo the mute setting.
+int Mute: Set to true to mute the channel.  A value of 0 will undo the mute setting.
 
 -ERRORS-
 Okay
@@ -323,9 +323,10 @@ static ERROR sndMixPan(objAudio *Audio, LONG Handle, DOUBLE Pan)
 /*********************************************************************************************************************
 
 -FUNCTION-
-MixPosition: Sets a channel's playing position relative to the current sample.
+MixPlay: Commences channel playback at a set frequency..
 
-This function will change the playing position of a mixer channel for the current sound sample.
+This function will start playback of the sound sample associated with the target mixer channel.  If the channel is
+already in playback mode, it will be stopped to facilitate the new playback request.
 
 -INPUT-
 obj(Audio) Audio: The target Audio object.
@@ -335,25 +336,24 @@ int Position: The new playing position, measured in bytes.
 -ERRORS-
 Okay
 NullArgs
-OutOfRange
 -END-
 
 *********************************************************************************************************************/
 
-static ERROR sndMixPosition(objAudio *Audio, LONG Handle, LONG Position)
+static ERROR sndMixPlay(objAudio *Audio, LONG Handle, LONG Position)
 {
    parasol::Log log(__FUNCTION__);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
-   log.traceBranch("Audio: #%d, Channel: $%.8x, Position: %d", Audio->UID, Handle, Position);
-
    if (Position < 0) return log.warning(ERR_OutOfRange);
 
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
 
+   log.traceBranch("Audio: #%d, Channel: $%.8x, Position: %d", Audio->UID, Handle, Position);
+
    if (channel->Buffering) {
-      add_mix_cmd(Audio, CMD::POSITION, Handle, Position);
+      add_mix_cmd(Audio, CMD::PLAY, Position);
       return ERR_Okay;
    }
 
@@ -361,6 +361,8 @@ static ERROR sndMixPosition(objAudio *Audio, LONG Handle, LONG Position)
       log.warning("Channel not associated with a sample.");
       return ERR_Failed;
    }
+
+   ((extAudio *)Audio)->finish(*channel, false); // Turn off previous sound
 
    auto &sample = ((extAudio *)Audio)->Samples[channel->SampleHandle];
 
@@ -401,8 +403,13 @@ static ERROR sndMixPosition(objAudio *Audio, LONG Handle, LONG Position)
          // Either playing sample before releasing, or playing has ended - check the first loop type.
 
          if (sample.OnStop.Type) {
-            channel->EndTime = PreciseTime();
-            channel->EndTime += F2I((DOUBLE(sample.SampleLength) / DOUBLE(channel->Frequency)) * 1000000.0);
+            DOUBLE sec;
+            if (sample.Stream) {
+               // NB: Accuracy is dependent on the StreamLength value being correct.
+               sec = DOUBLE((sample.StreamLength - sample.PlayPos)>>sample_shift(sample.SampleType)) / DOUBLE(channel->Frequency);
+            }
+            else sec = DOUBLE(sample.SampleLength - Position) / DOUBLE(channel->Frequency);
+            channel->EndTime = PreciseTime() + F2I(sec * 1000000.0);
          }
          else channel->EndTime = 0;
 
@@ -510,53 +517,6 @@ static ERROR sndMixPosition(objAudio *Audio, LONG Handle, LONG Position)
 /*********************************************************************************************************************
 
 -FUNCTION-
-MixPlay: Commences channel playback at a set frequency..
-
-This function will start playback of the sound sample associated with the target mixer channel.  If the channel is
-already in playback mode, it will be stopped to facilitate the new playback request.
-
--INPUT-
-obj(Audio) Audio: The target Audio object.
-int Handle: The target channel.
-int Frequency: The new playing position, measured in bytes.
-
--ERRORS-
-Okay
-NullArgs
--END-
-
-*********************************************************************************************************************/
-
-static ERROR sndMixPlay(objAudio *Audio, LONG Handle, LONG Frequency)
-{
-   parasol::Log log(__FUNCTION__);
-
-   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
-
-   log.traceBranch("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
-
-   if (Frequency <= 0) return log.warning(ERR_Args);
-
-   auto channel = ((extAudio *)Audio)->GetChannel(Handle);
-
-   if (channel->Buffering) {
-      add_mix_cmd(Audio, CMD::PLAY, Frequency);
-      return ERR_Okay;
-   }
-
-   fade_out((extAudio *)Audio, Handle);
-
-   ((extAudio *)Audio)->finish(*channel, false); // Turn off previous sound
-   channel->Frequency = Frequency; // New frequency
-
-   auto &sample = ((extAudio *)Audio)->Samples[channel->SampleHandle];
-
-   return sndMixPosition(Audio, Handle, sample.PlayPos); // Setting position also initiates playback
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
 MixRate: Sets a new update rate for a channel.
 
 This function will set a new update rate for all channels, measured in milliseconds.  The default update rate is 125,
@@ -604,8 +564,8 @@ static ERROR sndMixRate(objAudio *Audio, LONG Handle, LONG Rate)
 -FUNCTION-
 MixSample: Associate a sound sample with a mixer channel.
 
-This function will associate a sound sample with a mixer channel.  Configuration should then follow (e.g. volume and
-pan values).
+This function will associate a sound sample with the channel identified by Handle.  The client should follow this by
+setting configuration details (e.g. volume and pan values).
 
 The referenced Sample must have been added to the audio server via the @Audio.AddSample() or @Audio.AddStream()
 methods.
@@ -665,52 +625,10 @@ ERROR sndMixSample(objAudio *Audio, LONG Handle, LONG SampleIndex)
 
       if (!(Audio->Flags & ADF_OVER_SAMPLING)) {
          channel->State = CHS::PLAYING;
-         sndMixPosition(Audio, Handle, s.Loop1Start);
+         sndMixPlay(Audio, Handle, s.Loop1Start);
       }
    }
 
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-MixVolume: Changes the volume of a channel.
-
-This function will change the volume of a mixer channel.  Valid values are between 0 and 1.0.
-
--INPUT-
-obj(Audio) Audio: The target Audio object.
-int Handle: The target channel.
-double Volume: The new volume for the channel.
-
--ERRORS-
-Okay
-NullArgs
--END-
-
-*********************************************************************************************************************/
-
-static ERROR sndMixVolume(objAudio *Audio, LONG Handle, DOUBLE Volume)
-{
-   parasol::Log log(__FUNCTION__);
-
-   log.traceBranch("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
-
-   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
-
-   auto channel = ((extAudio *)Audio)->GetChannel(Handle);
-
-   if (channel->Buffering) {
-      add_mix_cmd(Audio, CMD::VOLUME, Volume);
-      return ERR_Okay;
-   }
-
-   if (Volume > 1.0) channel->Volume = 1.0;
-   else if (Volume < 0) channel->Volume = 0;
-   else channel->Volume = Volume;
-
-   set_channel_volume((extAudio *)Audio, channel);
    return ERR_Okay;
 }
 
@@ -763,8 +681,8 @@ ERROR sndMixStop(objAudio *Audio, LONG Handle)
 -FUNCTION-
 MixStopLoop: Cancels any playback loop configured for a channel.
 
-This function will cancel any loop that is associated with a mixer channel in playback mode.  This does not affect the
-loop configuration if playback is restarted for the active sample.
+This function will cancel the loop that is associated with the channel identified by Handle if in playback mode.
+The existing loop configuration will remain intact if playback is restarted.
 
 -INPUT-
 obj(Audio) Audio: The target Audio object.
@@ -803,3 +721,45 @@ static ERROR sndMixStopLoop(objAudio *Audio, LONG Handle)
    return ERR_Okay;
 }
 
+/*********************************************************************************************************************
+
+-FUNCTION-
+MixVolume: Changes the volume of a channel.
+
+This function will change the volume of the mixer channel identified by Handle.  Valid values are from 0 (silent)
+to 1.0 (maximum).
+
+-INPUT-
+obj(Audio) Audio: The target Audio object.
+int Handle: The target channel.
+double Volume: The new volume for the channel.
+
+-ERRORS-
+Okay
+NullArgs
+-END-
+
+*********************************************************************************************************************/
+
+static ERROR sndMixVolume(objAudio *Audio, LONG Handle, DOUBLE Volume)
+{
+   parasol::Log log(__FUNCTION__);
+
+   log.traceBranch("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
+
+   if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
+
+   auto channel = ((extAudio *)Audio)->GetChannel(Handle);
+
+   if (channel->Buffering) {
+      add_mix_cmd(Audio, CMD::VOLUME, Volume);
+      return ERR_Okay;
+   }
+
+   if (Volume > 1.0) channel->Volume = 1.0;
+   else if (Volume < 0) channel->Volume = 0;
+   else channel->Volume = Volume;
+
+   set_channel_volume((extAudio *)Audio, channel);
+   return ERR_Okay;
+}

@@ -219,6 +219,7 @@ next_card:
 
       // Get the current channel volumes
 
+      volctl[index].Channels.resize(ARRAYSIZE(glAlsaConvert));
       if ((flags & VCF::MONO) IS VCF::NIL) {
          for (channel=0; channel < ARRAYSIZE(glAlsaConvert); channel++) {
             if (snd_mixer_selem_has_playback_channel(elem, (snd_mixer_selem_channel_id_t)glAlsaConvert[channel]))   {

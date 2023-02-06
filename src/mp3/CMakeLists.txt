@@ -8,4 +8,4 @@ set_module_defaults (${MOD})
 
 target_sources (${MOD} PRIVATE "mp3.cpp")
 
-#flute_test (svg_output "tests/test-mp3.fluid")
+flute_test (mp3_audio "tests/test-mp3.fluid")

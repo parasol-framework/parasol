@@ -631,7 +631,7 @@ static ERROR MP3_Seek(objSound *Self, struct acSeek *Args)
       LONG active;
       if (!Self->get(FID_Active, &active)) {
          if (active) {
-            log.branch("Resetting state of active sample.");
+            log.branch("Resetting state of active sample, seek to byte %" PF64, prv->WriteOffset);
             Self->deactivate();
             Self->Position = prv->WriteOffset;
             Self->activate();

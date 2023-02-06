@@ -28,9 +28,7 @@ module({ name="Audio", copyright="Paul Manias © 2002-2023", version=1.0 }, func
   flags("SVF", { comment="Flags for the SetVolume() method." },
     { MUTE    = "0x00000100: Mute the audio for this channel." },
     { UNMUTE  = "0x00001000: Unmute the audio for this channel." },
-    { CAPTURE = "0x00010000: Set input, not output." },
-    { SYNC    = "0x00100000: Synchronise volume settings between channels." },
-    { UNSYNC  = "0x01000000: Allow un-synchronised volume settings." }
+    { CAPTURE = "0x00010000: Set input, not output." }
   )
 
   flags("SDF", { comment="Sound flags" },
@@ -135,7 +133,6 @@ module({ name="Audio", copyright="Paul Manias © 2002-2023", version=1.0 }, func
      "MixMute",
      "MixPan",
      "MixPlay",
-     "MixPosition",
      "MixRate",
      "MixSample",
      "MixStop",
