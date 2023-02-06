@@ -397,11 +397,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
      CURRENT_PROCESS = 0x0000001
   })
 
-  const("SUB", { comment="Special tags for SubscribeActionTags()" }, {
-    WARN_EXISTS = "0x7fffffff: An error of ERR_Exists will be returned if there was an existing match for the subscriber and at least one of the following actions.",
-    FAIL_EXISTS = "0x7ffffffe: As for WARN_EXISTS, but aborts immediately when a conflict is discovered."
-  })
-
   enum("IDTYPE", { start=1, comment="Types for AllocateID()" },
     "MESSAGE: Message ID's are allocated for the purpose of sending uniquely identifiable messages between tasks.",
     "GLOBAL: Global ID's have no specific association with anything.",
@@ -1299,7 +1294,7 @@ extern struct CoreBase *CoreBase;
     "SysUnlock",
     "CopyMemory",
     "LoadFile",
-    "SubscribeActionTags",
+    "SetVolume",
     "DeleteVolume",
     "NewLockedObject",
     "UpdateMessage",
@@ -1369,8 +1364,7 @@ extern struct CoreBase *CoreBase;
     "AnalysePath",
     "CreateFolder",
     "MoveFile",
-    "ResolvePath",
-    "SetVolume")
+    "ResolvePath")
 
   c_insert([[
 

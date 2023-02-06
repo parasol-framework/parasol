@@ -370,7 +370,10 @@ static ERROR VECTORSCENE_Init(extVectorScene *Self, APTR Void)
             surface->get(FID_Height, &Self->PageHeight);
          }
 
-         SubscribeActionTags(*surface, AC_Redimension, AC_Free, AC_Focus, AC_LostFocus, TAGEND);
+         SubscribeAction(*surface, AC_Redimension);
+         SubscribeAction(*surface, AC_Free);
+         SubscribeAction(*surface, AC_Focus);
+         SubscribeAction(*surface, AC_LostFocus);
 
          if (surface->Flags & RNF_HAS_FOCUS) {
             auto callback = make_function_stdc(scene_key_event);

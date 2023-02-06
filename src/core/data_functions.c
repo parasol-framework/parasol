@@ -114,7 +114,6 @@ FDEF argsStrHash[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "String", FD_STR }, 
 FDEF argsStrReadLocale[] = { { "Error", FD_LONG|FD_ERROR }, { "Key", FD_STR }, { "Value", FD_STR|FD_RESULT }, { 0, 0 } };
 FDEF argsStrSearch[] = { { "Result", FD_LONG }, { "Keyword", FD_STR }, { "String", FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsSubscribeAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { 0, 0 } };
-FDEF argsSubscribeActionTags[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Actions", FD_TAGS }, { 0, 0 } };
 FDEF argsSubscribeEvent[] = { { "Error", FD_LONG|FD_ERROR }, { "Event", FD_LARGE }, { "Callback", FD_FUNCTIONPTR }, { "Custom", FD_PTR }, { "Handle", FD_PTR|FD_RESULT }, { 0, 0 } };
 FDEF argsSubscribeTimer[] = { { "Error", FD_LONG|FD_ERROR }, { "Interval", FD_DOUBLE }, { "Callback", FD_FUNCTIONPTR }, { "Subscription", FD_PTR|FD_RESULT }, { 0, 0 } };
 FDEF argsSysLock[] = { { "Error", FD_LONG|FD_ERROR }, { "Index", FD_LONG }, { "MilliSeconds", FD_LONG }, { 0, 0 } };
@@ -228,7 +227,7 @@ const struct Function glFunctions[] = {
    { (APTR)SysUnlock, "SysUnlock", argsSysUnlock },
    { (APTR)CopyMemory, "CopyMemory", argsCopyMemory },
    { (APTR)LoadFile, "LoadFile", argsLoadFile },
-   { (APTR)SubscribeActionTags, "SubscribeActionTags", argsSubscribeActionTags },
+   { (APTR)SetVolume, "SetVolume", argsSetVolume },
    { (APTR)DeleteVolume, "DeleteVolume", argsDeleteVolume },
    { (APTR)NewLockedObject, "NewLockedObject", argsNewLockedObject },
    { (APTR)UpdateMessage, "UpdateMessage", argsUpdateMessage },
@@ -299,7 +298,6 @@ const struct Function glFunctions[] = {
    { (APTR)CreateFolder, "CreateFolder", argsCreateFolder },
    { (APTR)MoveFile, "MoveFile", argsMoveFile },
    { (APTR)ResolvePath, "ResolvePath", argsResolvePath },
-   { (APTR)SetVolume, "SetVolume", argsSetVolume },
    { NULL, NULL, NULL }
 };
 
