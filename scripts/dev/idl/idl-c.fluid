@@ -474,7 +474,14 @@ function flags(Prefix, Options, ...)
       for k,v in pairs(out) do table.insert(glOutput, v) end
    end
 
-   glCustomTypes[Prefix] = { prefix=Prefix, grouping='flags', list=lookup, comment=Options.comment, restrict=glRestrict }
+   glCustomTypes[Prefix] = {
+      prefix=Prefix, grouping='flags', list=lookup, comment=Options.comment,
+      restrict=glRestrict
+   }
+
+   if (Options.strict) then -- Promote strong-typing to other C++ definitions
+      glCustomTypes[Prefix].type = 'int'
+   end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -798,6 +805,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- FDL Function
+-- Refer to outputClassHeader() for output of the class structure.
 
 function class(Name, Options, Blueprint, Private, Custom)
    if (glFeedback == 'verbose') then print('Processing class ' .. nz(Name,'NIL')) end
@@ -1035,7 +1043,7 @@ function class(Name, Options, Blueprint, Private, Custom)
 
    outputClassHeader(class, Private, Custom)
 
-   -- Output internal C definitions for this class, if an output file has been specified.
+   -- Output internal C definitions for class methods & actions, if an output file has been specified.
 
    if nz(Options.output) then
       local mdef = ''
@@ -1078,22 +1086,22 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
 function processClassEntry(Class, Type, Extract)
-   if (Type == "-CLASS-") then
+   if (Type == '-CLASS-') then
       processClassHeader(Class, Extract)
-   elseif (Type == "-METHOD-") then
+   elseif (Type == '-METHOD-') then
       processMethod(Class, Extract)
-   elseif (Type == "-ACTION-") then
+   elseif (Type == '-ACTION-') then
       processAction(Class, Extract)
-   elseif (Type == "-FIELD-") then
+   elseif (Type == '-FIELD-') then
       processField(Class, Extract)
    end
 end
 
 function processClassHeader(Class, Extract)
-   Extract = "-CLASS-\n" .. Extract:trim() .. "\n-END-\n"
+   Extract = '-CLASS-\n' .. Extract:trim() .. '\n-END-\n'
    local name
-   name, Class.comment = Extract:match("\n(%w+):%s+(.-)\n")
-   Class.status = Extract:match("\n[Ss]tatus:%s+(.-)\n")
+   name, Class.comment = Extract:match('\n(%w+):%s+(.-)\n')
+   Class.status = Extract:match('\n[Ss]tatus:%s+(.-)\n')
 
    if (name:lower() != Class.name:lower()) then
       error("The name specified in the -CLASS- header '" .. name .. "' does not match the name specified in the class() call '" .. Class.name .. "'")
@@ -1103,32 +1111,32 @@ function processClassHeader(Class, Extract)
 end
 
 function processAction(class, extract)
-   extract = "-ACTION-\n" .. extract:trim() .. "\n-END-\n"
+   extract = '-ACTION-\n' .. extract:trim() .. '\n-END-\n'
 
-   local name    = extract:match("\n[Nn]ame:%s+(.-)\n")
-   local comment = extract:match("\n[Cc]omment:%s+(.-)\n")
+   local name    = extract:match('\n[Nn]ame:%s+(.-)\n')
+   local comment = extract:match('\n[Cc]omment:%s+(.-)\n')
    if (name == nil) then
-      name, comment = extract:match("\n(%w+):%s+(.-)\n")
+      name, comment = extract:match('\n(%w+):%s+(.-)\n')
    end
 
    local action = class.actions[name]
    if (action == nil) then action = { } end
    action.name = name
    action.comment = comment
-   action.description = extract:match("\n\n(.-)\n%-[A-Z]+%-\n")
+   action.description = extract:match('\n\n(.-)\n%-[A-Z]+%-\n')
 
-   local errors = extract:match("\n%-ERRORS%-\n(.-)%-END%-")
+   local errors = extract:match('\n%-ERRORS%-\n(.-)%-END%-')
    if nz(errors) then
       action.results = { }
 
-      for line in string.gmatch(errors, "(.-)\n") do
+      for line in string.gmatch(errors, '(.-)\n') do
          if not nz(line) then break end -- A double line-break forces a premature end to error processing.
 
-         local ecode, comment = line:match("(%a-):%s+(.+)")
+         local ecode, comment = line:match('(%a-):%s+(.+)')
          if (ecode != nil) then
             table.insert(action.results, { code = _G['ERR_' .. ecode], codeName = ecode, msg = comment })
          else
-            ecode = line:match("(%a+):?")
+            ecode = line:match('(%a+):?')
             if nz(ecode) then
                table.insert(action.results, { code = _G['ERR_' .. ecode], codeName = ecode, msg = mSys.GetErrorMsg(_G['ERR_' .. ecode]) })
             end
@@ -1140,14 +1148,14 @@ function processAction(class, extract)
 end
 
 function processField(class, extract)
-   extract = "-FIELD-\n" .. extract:trim() .. "\n-END-\n"
-   local lookup  = extract:match("\n[Ll]ookup:%s+(.-)\n")
-   local status  = extract:match("\n[Ss]tatus:%s+(.-)\n")
-   local name, comment = extract:match("\n(%w+):%s+(.-)\n")
+   extract = '-FIELD-\n' .. extract:trim() .. '\n-END-\n'
+   local lookup  = extract:match('\n[Ll]ookup:%s+(.-)\n')
+   local status  = extract:match('\n[Ss]tatus:%s+(.-)\n')
+   local name, comment = extract:match('\n(%w+):%s+(.-)\n')
 
-   local description = extract:match("\n\n(.-)\n%-[A-Z]+%-\n")
+   local description = extract:match('\n\n(.-)\n%-[A-Z]+%-\n')
 
-   if (status != nil) and (status:lower() == "variable") then
+   if (status != nil) and (status:lower() == 'variable') then
       return -- Variable fields are ignored.
    end
 
@@ -1162,9 +1170,9 @@ function processField(class, extract)
             print('Requested lookup "' .. lookup .. '" is not known.')
          end
       end
-      if string.match(nz(status,''), "^[Pp]rivate") or string.match(nz(comment,''), "^[Pp]rivate") then
+      if string.match(nz(status,''), '^[Pp]rivate') or string.match(nz(comment,''), '^[Pp]rivate') then
          f.private = true
-         f.access = "Private"
+         f.access = 'Private'
       end
       f.description = description
    elseif (class.meta != nil) then
@@ -1173,26 +1181,26 @@ function processField(class, extract)
 end
 
 function processMethod(class, extract)
-   extract = "-METHOD-\n" .. extract:trim() .. "\n-END-\n"
+   extract = '-METHOD-\n' .. extract:trim() .. '\n-END-\n'
 
-   local name    = extract:match("\n[Nn]ame:%s+(.-)\n")
-   local comment = extract:match("\n[Cc]omment:%s+(.-)\n")
+   local name    = extract:match('\n[Nn]ame:%s+(.-)\n')
+   local comment = extract:match('\n[Cc]omment:%s+(.-)\n')
    if (name == nil) then
-      name, comment = extract:match("\n(%w+):%s+(.-)\n")
+      name, comment = extract:match('\n(%w+):%s+(.-)\n')
    end
 
-   local status      = extract:match("\n[Ss]tatus:%s+(.-)\n")
-   local description = extract:match("\n\n(.-)\n%-[A-Z]+%-\n")
+   local status      = extract:match('\n[Ss]tatus:%s+(.-)\n')
+   local description = extract:match('\n\n(.-)\n%-[A-Z]+%-\n')
 
-   if (name:find("%(%)") != nil) then
-      name = name:match("(%a+)()")
+   if (name:find('%(%)') != nil) then
+      name = name:match('(%a+)()')
    end
 
-   if not nz(name) then error("Failed to extract a name tag from -METHOD- definition.") end
+   if not nz(name) then error('Failed to extract a name tag from -METHOD- definition.') end
    if not nz(comment) then error("Failed to extract a comment tag from -METHOD- definition of '" .. name .. "'")  end
    if not nz(description) then error("Failed to extract a description from -METHOD- definition of '" .. name .. "'") end
 
-   if (glFeedback == "verbose") then print("Processing method " .. name) end
+   if (glFeedback == 'verbose') then print('Processing method ' .. name) end
 
    local method -- Retrieve the definition for this method
    if (class.methods != nil) then
@@ -1207,20 +1215,20 @@ function processMethod(class, extract)
    method.comment = comment
    method.status = status
 
-   local input = extract:match("\n%-INPUT%-\n(.-)\n\n%-[A-Z]+%-\n")
+   local input = extract:match('\n%-INPUT%-\n(.-)\n\n%-[A-Z]+%-\n')
 
-   local errors = extract:match("\n%-ERRORS%-\n(.-)%-END%-")
+   local errors = extract:match('\n%-ERRORS%-\n(.-)%-END%-')
    if nz(errors) then
       method.results = { }
 
-      for line in string.gmatch(errors, "(.-)\n") do
+      for line in string.gmatch(errors, '(.-)\n') do
          if not nz(line) then break end -- A double line-break forces a premature end to error processing.
 
-         local ecode, comment = line:match("(%a-):%s+(.+)")
+         local ecode, comment = line:match('(%a-):%s+(.+)')
          if (ecode != nil) then
             table.insert(method.results, { code = _G['ERR_' .. ecode], codeName = ecode, msg = comment })
          else
-            ecode = line:match("(%a+):?")
+            ecode = line:match('(%a+):?')
             if nz(ecode) then
                table.insert(method.results, { code = _G['ERR_' .. ecode], codeName = ecode, msg = mSys.GetErrorMsg(_G['ERR_' .. ecode]) })
             end
@@ -1231,11 +1239,11 @@ function processMethod(class, extract)
    end
 
    if nz(input) then
-      for line, content in ipairs(input:split("\n")) do
+      for line, content in ipairs(input:split('\n')) do
          local param = { }
-         param.comment = content:match("^.+:%s-(.+)$")
-         if nz(param.comment) then content = content:match("^(.+):%s-.+$") end
-         param.type, param.name = content:match("^%s*(.+)%s+([^%s]+)%s-$")
+         param.comment = content:match('^.+:%s-(.+)$')
+         if nz(param.comment) then content = content:match('^(.+):%s-.+$') end
+         param.type, param.name = content:match('^%s*(.+)%s+([^%s]+)%s-$')
          if (param.type != nil) then
             param.type = param.type:trim()
             param.name = param.name:trim()
@@ -1293,7 +1301,7 @@ function processClassFields(class, Blueprint)
                f.read   = def.read
                f.access = nz(def.access, def.access)
                f.private = nz(f.private, def.private)
-               if (f.type == nil) then f.type = nz(def.type,"NIL") end
+               if (f.type == nil) then f.type = nz(def.type,'NIL') end
             else
                def.virtual = true
                def.fullType = glTypes.void -- Dummy
@@ -1317,7 +1325,7 @@ function processClassFields(class, Blueprint)
    -- NB: FieldArray is not output because as yet fields (including virtual fields) cannot be accurately
    -- described without the developer writing a custom field configuration in C.
 
-   local fdef = "static const struct FieldArray cl" .. class.name .. "Fields[] = {\n"
+   local fdef = 'static const struct FieldArray cl' .. class.name .. 'Fields[] = {\n'
    class.longestType = 0
    local name_len = 0
    class.longestFieldType = 0  -- Holds the longest field + type string
@@ -1338,7 +1346,7 @@ function processClassFields(class, Blueprint)
          end
 
          if (f.ref != nil) then
-            cdef = cdef .. "static const struct FieldDef cl" .. class.name .. f.name .. "[] = {\n"
+            cdef = cdef .. 'static const struct FieldDef cl' .. class.name .. f.name .. '[] = {\n'
 
             local sorted = { }
             for _, v in pairs(f.ref.list) do
@@ -1353,22 +1361,22 @@ function processClassFields(class, Blueprint)
             end)
 
             for _, v in ipairs(sorted) do
-               if (v.name:upper() != "PRIVATE") and (v.name:upper() != "END") then
+               if (v.name:upper() != 'PRIVATE') and (v.name:upper() != 'END') then
                   -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
-                  local hash_id = '0x' .. string.format("%08x", v.value):sub(-8)
+                  local hash_id = '0x' .. string.format('%08x', v.value):sub(-8)
                   if hash_id:match('^0x[8f][%dabcdef]+') != nil then hash_id = '(LONG)' .. hash_id end
                   cdef = cdef .. string.format("   { \"%s\", %s },\n", shortName(v.name), hash_id)
                end
             end
-            cdef = cdef .. "   { NULL, 0 }\n};\n\n"
+            cdef = cdef .. '   { NULL, 0 }\n};\n\n'
          end
 
-         if not nz(f.fullType) then error("The fullType is not defined for field " .. nz(f.name,"NIL")) end
+         if not nz(f.fullType) then error('The fullType is not defined for field ' .. nz(f.name,'NIL')) end
 
          fdef = fdef .. "   { \"" .. f.name .. "\", " .. f.fullType.fd .. ", 0, NULL, NULL },\n"
       end
    end
-   fdef = fdef .. "};\n\n"
+   fdef = fdef .. '};\n\n'
 
    return cdef
 end
@@ -1383,16 +1391,16 @@ function outputClassHeader(class, Private, Custom)
          if not f.virtual then physicalFields = true end
       end
 
-      priority("class obj" .. class.name .. ";") -- Forward declaration
-      output("class obj" .. class.name ..  " : public " .. nz(class.base, "BaseClass") .. " {")
-      output("   public:")
-      output("   static constexpr CLASSID CLASS_ID = ID_" .. class.name:upper() .. ";")
+      priority('class obj' .. class.name .. ';') -- Forward declaration
+      output('class obj' .. class.name ..  ' : public ' .. nz(class.base, 'BaseClass') .. ' {')
+      output('   public:')
+      output('   static constexpr CLASSID CLASS_ID = ID_' .. class.name:upper() .. ';')
       output("   static constexpr CSTRING CLASS_NAME = \"" .. class.name .. "\";")
-      output("")
-      output("   using create = parasol::Create<obj" .. class.name .. ">;")
+      output('')
+      output('   using create = parasol::Create<obj' .. class.name .. '>;')
 
       if physicalFields then
-         output("")
+         output('')
 
          local max_len = 3 + class.longestFieldType + 1 + 2
 
@@ -1416,21 +1424,21 @@ function outputClassHeader(class, Private, Custom)
 
          if (Private != nil) then
             output()
-            output("#ifdef PRV_" .. class.name:upper())
+            output('#ifdef PRV_' .. class.name:upper())
             output(Private)
-            output("#endif")
+            output('#endif')
          end
 
          if (Custom != nil) then
-            output("   public:")
+            output('   public:')
             output(Custom)
          end
 
          -- Insert registered actions
 
          if nz(class.sortedActions) then
-            output("")
-            output("   // Action stubs\n")
+            output('')
+            output('   // Action stubs\n')
             for _, action in ipairs(class.sortedActions) do
                if glActionStubs[action.name] then
                   if (glActionStubs[action.name]:len() != 0) then
@@ -1439,7 +1447,7 @@ function outputClassHeader(class, Private, Custom)
                      output(stub)
                   end
                else
-                  output("   // " .. action.name .. "\n")
+                  output('   // ' .. action.name .. '\n')
                end
             end
 
@@ -1448,7 +1456,7 @@ function outputClassHeader(class, Private, Custom)
             end
          end
       end
-      output("};")
+      output('};')
       output()
    end
 end

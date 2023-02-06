@@ -25,13 +25,13 @@ module({ name="Audio", copyright="Paul Manias © 2002-2023", version=1.0 }, func
     "VOL_RAMP: Volume ramping is enabled.",
     "CHANGED: Sample change")
 
-  flags("SVF", { comment="Flags for the SetVolume() method." },
+  flags("SVF", { strict=true, comment="Flags for the SetVolume() method." },
     { MUTE    = "0x00000100: Mute the audio for this channel." },
     { UNMUTE  = "0x00001000: Unmute the audio for this channel." },
     { CAPTURE = "0x00010000: Set input, not output." }
   )
 
-  flags("SDF", { comment="Sound flags" },
+  flags("SDF", { strict=true, type='int', comment="Sound flags" },
     "LOOP: Enables sample looping. The LoopStart and LoopEnd fields determine where the looping area lies within the sample data.",
     "NEW: Create the sample from scratch (e.g. for audio recording purposes).",
     "STEREO: Indicates that the sound has multiple audio channels.",
@@ -40,7 +40,7 @@ module({ name="Audio", copyright="Paul Manias © 2002-2023", version=1.0 }, func
     { NOTE = "0x80000000: Internal. Used for managing playback." }
   )
 
-  const("SFM", { comment="These audio bit formats are supported by AddSample and AddStream." }, {
+  const("SFM", { strict=true, comment="These audio bit formats are supported by AddSample and AddStream." }, {
     U8_BIT_MONO    = "1: 8-bit mono unsigned sample.",
     S16_BIT_MONO   = "2: 16-bit mono signed sample.",
     U8_BIT_STEREO  = "3: 8-bit stereo unsigned sample.",

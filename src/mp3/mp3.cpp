@@ -322,7 +322,7 @@ static ERROR MP3_Init(objSound *Self, APTR Void)
    STRING location;
    Self->get(FID_Path, &location);
 
-   if ((!location) or (Self->Flags & SDF_NEW)) {
+   if ((!location) or ((Self->Flags & SDF::NEW) != SDF::NIL)) {
       // If no location has been specified, assume that the sound is being
       // created from scratch (e.g. to record an mp3 file to disk).
 
@@ -380,8 +380,8 @@ static ERROR MP3_Init(objSound *Self, APTR Void)
 
    prv->File->seekStart(prv->SeekOffset);
 
-   if (prv->info.channels IS 2) Self->Flags |= SDF_STEREO;
-   if (Self->Stream != STREAM::NEVER) Self->Flags |= SDF_STREAM;
+   if (prv->info.channels IS 2) Self->Flags |= SDF::STEREO;
+   if (Self->Stream != STREAM::NEVER) Self->Flags |= SDF::STREAM;
 
    Self->BytesPerSecond = LONG(prv->info.hz * prv->info.channels * sizeof(WORD));
    Self->BitsPerSample  = 16;
@@ -394,7 +394,7 @@ static ERROR MP3_Init(objSound *Self, APTR Void)
    }
 
    log.msg("File is MP3.  Stereo: %c, BytesPerSecond: %d, Freq: %d, Byte Length: %d",
-      Self->Flags & SDF_STEREO ? 'Y' : 'N', Self->BytesPerSecond, Self->Frequency, Self->Length);
+      ((Self->Flags & SDF::STEREO) != SDF::NIL) ? 'Y' : 'N', Self->BytesPerSecond, Self->Frequency, Self->Length);
 
    return ERR_Okay;
 }
@@ -563,7 +563,7 @@ static ERROR MP3_Seek(objSound *Self, struct acSeek *Args)
 
    if (offset IS Self->Position) return ERR_Okay;
 
-   if (Self->Flags & SDF_STREAM) {
+   if ((Self->Flags & SDF::STREAM) != SDF::NIL) {
       prv->reset();
       mp3dec_init(&prv->mp3d);
 

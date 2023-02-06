@@ -426,10 +426,11 @@ next_card:
                if (volctl[i].Name == oldctl[j].Name) {
                   setvol.Index   = i;
                   setvol.Name    = NULL;
-                  setvol.Flags   = 0;
+                  setvol.Flags   = SVF::NIL;
+                  setvol.Channel = -1;
                   setvol.Volume  = oldctl[j].Channels[0];
-                  if ((oldctl[j].Flags & VCF::MUTE) != VCF::NIL) setvol.Flags |= SVF_MUTE;
-                  else setvol.Flags |= SVF_UNMUTE;
+                  if ((oldctl[j].Flags & VCF::MUTE) != VCF::NIL) setvol.Flags |= SVF::MUTE;
+                  else setvol.Flags |= SVF::UNMUTE;
                   Action(MT_SndSetVolume, Self, &setvol);
                   break;
                }
@@ -440,7 +441,8 @@ next_card:
             if (j IS (LONG)oldctl.size()) {
                setvol.Index   = i;
                setvol.Name    = NULL;
-               setvol.Flags   = 0;
+               setvol.Flags   = SVF::NIL;
+               setvol.Channel = -1;
                setvol.Volume  = 0.8;
                Action(MT_SndSetVolume, Self, &setvol);
             }
