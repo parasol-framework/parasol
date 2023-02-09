@@ -96,44 +96,50 @@ namespace agg
                rewind(0);
 
             case ready:
-               if (m_num_dashes < 2 || m_src_vertices.size() < 2) {
+               if ((m_num_dashes < 2) or (m_src_vertices.size() < 2)) {
                   cmd = path_cmd_stop;
                   break;
                }
-               m_status = polyline;
+
+               m_status     = polyline;
                m_src_vertex = 1;
-               m_v1 = &m_src_vertices[0];
-               m_v2 = &m_src_vertices[1];
-               m_curr_rest = m_v1->dist;
+               m_v1         = &m_src_vertices[0];
+               m_v2         = &m_src_vertices[1];
+               m_curr_rest  = m_v1->dist;
+
                *x = m_v1->x;
                *y = m_v1->y;
+
                if (m_dash_start >= 0.0) calc_dash_start(m_dash_start);
+
                return path_cmd_move_to;
 
             case polyline: {
                double dash_rest = m_dashes[m_curr_dash] - m_curr_dash_start;
                unsigned cmd = (m_curr_dash & 1) ? path_cmd_move_to : path_cmd_line_to;
+
                if (m_curr_rest > dash_rest) {
                   m_curr_rest -= dash_rest;
                   ++m_curr_dash;
                   if (m_curr_dash >= m_num_dashes) m_curr_dash = 0;
                   m_curr_dash_start = 0.0;
+
                   *x = m_v2->x - (m_v2->x - m_v1->x) * m_curr_rest / m_v1->dist;
                   *y = m_v2->y - (m_v2->y - m_v1->y) * m_curr_rest / m_v1->dist;
                }
                else {
                   m_curr_dash_start += m_curr_rest;
+
                   *x = m_v2->x;
                   *y = m_v2->y;
+
                   ++m_src_vertex;
                   m_v1 = m_v2;
                   m_curr_rest = m_v1->dist;
+
                   if (m_closed) {
                      if (m_src_vertex > m_src_vertices.size()) m_status = stop;
-                     else {
-                        m_v2 = &m_src_vertices
-                        [ (m_src_vertex >= m_src_vertices.size()) ? 0 : m_src_vertex ];
-                     }
+                     else m_v2 = &m_src_vertices[ (m_src_vertex >= m_src_vertices.size()) ? 0 : m_src_vertex ];
                   }
                   else if (m_src_vertex >= m_src_vertices.size()) m_status = stop;
                   else m_v2 = &m_src_vertices[m_src_vertex];
