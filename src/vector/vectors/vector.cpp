@@ -1124,6 +1124,8 @@ static ERROR VECTOR_GET_DashArray(extVector *Self, DOUBLE **Value, LONG *Element
 
 static ERROR VECTOR_SET_DashArray(extVector *Self, DOUBLE *Value, LONG Elements)
 {
+   parasol::Log log;
+
    if (Self->DashArray) { delete Self->DashArray; Self->DashArray = NULL; }
 
    if ((Value) and (Elements >= 2)) {
@@ -1137,6 +1139,13 @@ static ERROR VECTOR_SET_DashArray(extVector *Self, DOUBLE *Value, LONG Elements)
 
          DOUBLE total_length = 0;
          for (LONG i=0; i < total-1; i+=2) {
+            if (Value[i] < 0) { // Negative values can cause an infinite drawing cycle.
+               log.warning("Invalid dash array value %f", Value[i]);
+               delete Self->DashArray;
+               Self->DashArray = NULL;
+               return ERR_InvalidValue;
+            }
+
             Self->DashArray->path.add_dash(Value[i], Value[i+1]);
             total_length += Value[i] + Value[i+1];
          }

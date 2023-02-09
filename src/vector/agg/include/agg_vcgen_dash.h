@@ -56,20 +56,20 @@ private:
    const vcgen_dash& operator = (const vcgen_dash&);
    void calc_dash_start(double ds);
 
-   double             m_dashes[max_dashes];
-   double             m_total_dash_len;
-   unsigned           m_num_dashes;
-   double             m_dash_start;
-   double             m_shorten;
-   double             m_curr_dash_start;
-   unsigned           m_curr_dash;
-   double             m_curr_rest;
+   vertex_storage m_src_vertices;
    const vertex_dist* m_v1;
    const vertex_dist* m_v2;
-   vertex_storage m_src_vertices;
-   unsigned       m_closed;
-   status_e       m_status;
-   unsigned       m_src_vertex;
+   double    m_dashes[max_dashes];
+   double    m_total_dash_len;
+   double    m_curr_rest;
+   double    m_dash_start;
+   double    m_shorten;
+   double    m_curr_dash_start;
+   unsigned  m_num_dashes;
+   unsigned  m_curr_dash;
+   unsigned  m_closed;
+   status_e  m_status;
+   unsigned  m_src_vertex;
 };
 
 }
