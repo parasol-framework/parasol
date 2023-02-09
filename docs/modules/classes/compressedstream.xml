@@ -238,7 +238,6 @@
 
     <constants lookup="NF" comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word.">
       <const name="COLLECT">Marked for garbage collection.</const>
-      <const name="FOREIGN_OWNER">Read-only indicator for when an object's parent is in a foreign process.</const>
       <const name="FREE">Read-only indicator for when the object is being freed.</const>
       <const name="INITIALISED">Read-only indicator if the object has been initialised.</const>
       <const name="INTEGRAL">Integral objects can only be allocated by classes that need to adopt the functionality of said object.  Integral objects do not appear in the object tree, effectively making them hidden from view.</const>
@@ -254,15 +253,6 @@
       <const name="UNIQUE">Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating shared objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.</const>
       <const name="UNLOCK_FREE">Read-only indicator for when the object is marked for deletion.</const>
       <const name="UNTRACKED">An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.</const>
-    </constants>
-
-    <constants lookup="NSF" comment="Flags for NotifySubscribers">
-      <const name="DELAY">Place all notifications on the message queue.</const>
-      <const name="EXCLUSIVE">Instead of messaging each object, the function will attempt to gain exclusive access to each of the subscribed objects and send the notification directly.</const>
-      <const name="FORCE_DELAY">Place all notifications on the message queue.</const>
-      <const name="LOCAL">Only send messages to objects that are owned by the current process.</const>
-      <const name="LOCAL_TASK">Only send messages to objects that are owned by the current process.</const>
-      <const name="OTHER_TASKS">Only send messages to objects that are owned by other processes.</const>
     </constants>
 
     <constants lookup="PERMIT" comment="Permission flags">

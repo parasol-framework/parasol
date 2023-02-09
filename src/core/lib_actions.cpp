@@ -1072,16 +1072,16 @@ void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR E
 
    if (!Object) {
       log.warning(ERR_NullArgs);
-      return 0;
+      return;
    }
 
-   if (!Object->Stats->ActionSubscriptions.Ptr) return 0;
+   if (!Object->Stats->ActionSubscriptions.Ptr) return;
 
    LONG result;
    if (ActionID >= 0) result = Object->Stats->NotifyFlags[ActionID>>5] & (1<<(ActionID & 31));
-   else return 0;
+   else return;
 
-   if (!result) return 0;
+   if (!result) return;
 
    auto recursionsave = tlMsgRecursion;
    tlMsgRecursion = 255; // This prevents ProcessMessages() from being used while inside notification routines
@@ -1111,36 +1111,7 @@ void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR E
 
       if (count) {
          for (LONG i=0; i < count; i++) {
-            ERROR error = ERR_Okay;
-            if (Flags & NSF_LOCAL_TASK) { // The LOCALTASK option means that only objects that are within the local task's address space will be sent the message.
-               if ((shadow[i].MessagePortMID) and (glTaskMessageMID) and (shadow[i].MessagePortMID != glTaskMessageMID)) {
-                  //log.warning("Subscriber %d skipped, belongs to port %d (we are %d).", shadow[i].SubscriberID, shadow[i].MessagePortMID, glTaskMessageMID);
-                  continue;
-               }
-            }
-            else if (Flags & NSF_OTHER_TASKS) {
-               if (!((shadow[i].MessagePortMID) and (glTaskMessageMID) and (shadow[i].MessagePortMID != glTaskMessageMID))) {
-                  continue;
-               }
-            }
-
-            if (Flags & NSF_EXCLUSIVE) {
-               if ((shadow[i].MessagePortMID) and (glTaskMessageMID) and (shadow[i].MessagePortMID != glTaskMessageMID)) {
-                  // Use this routine for objects that belong to foreign tasks.  This involves sending a message to the
-                  // other Task to perform the ActionNotify process, then we wait for it to respond before continuing.
-
-                  error = ActionMsg(AC_ActionNotify, shadow[i].SubscriberID, &notify, shadow[i].MessagePortMID, -2);
-               }
-               else { // Use this routine for objects that belong to our task or are public
-                  OBJECTPTR subscriber;
-                  if (!(error = AccessObject(shadow[i].SubscriberID, 4000, &subscriber))) {
-                     Action(AC_ActionNotify, subscriber, &notify);
-                     ReleaseObject(subscriber);
-                  }
-               }
-            }
-            else if (Flags & NSF_FORCE_DELAY) error = ActionMsg(AC_ActionNotify, shadow[i].SubscriberID, &notify, shadow[i].MessagePortMID, -1);
-            else error = ActionMsg(AC_ActionNotify, shadow[i].SubscriberID, &notify, shadow[i].MessagePortMID, shadow[i].ClassID);
+            ERROR error = ActionMsg(AC_ActionNotify, shadow[i].SubscriberID, &notify, shadow[i].MessagePortMID, shadow[i].ClassID);
 
             // If the message port or the object does not exist, remove the object from the list.
 
@@ -1158,7 +1129,7 @@ void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR E
 
    tlMsgRecursion = recursionsave;
 
-   return count;
+   return;
 }
 
 /*********************************************************************************************************************
