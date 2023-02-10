@@ -919,12 +919,6 @@ struct FieldValue {
   rkBase64Encode() : Step(0), Result(0), StepCount(0) { };
   ]])
 
-  struct("FeedSubscription", { }, [[
-    oid SubscriberID    # Subscriber ID
-    mem MessagePortMID  # Message port for the subscriber
-    cid ClassID         # Class of the subscriber
-  ]])
-
   struct("FunctionField", { comment="Used by ActionTable and Function structures to declare lists of parameters." }, [[
     cstr Name   # Name of the field
     uint Type   # Type of the field

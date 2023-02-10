@@ -192,9 +192,8 @@ struct Stats {
 
 typedef struct ActionSubscription {
    ACTIONID ActionID;       // Monitored action
-   OBJECTID SubscriberID;   // Object to be notified
-   MEMORYID MessagePortMID; // Message port for the object
-   CLASSID  ClassID;        // Class of the subscribed object
+   OBJECTPTR Subscriber;    // Object to be notified
+   void (*Callback)(OBJECTPTR, ACTIONID, ERROR, APTR);
 } ActionSubscription;
 
 struct virtual_drive {
@@ -1034,7 +1033,6 @@ ERROR  threadpool_get(extThread **);
 void   threadpool_release(extThread *);
 ERROR  unpage_memory(APTR);
 ERROR  unpage_memory_id(MEMORYID MemoryID);
-ERROR  UnsubscribeActionByID(OBJECTPTR Object, ACTIONID ActionID, OBJECTID SubscriberID);
 void   wake_sleepers(LONG ResourceID, LONG ResourceType);
 ERROR  write_class_item(struct ClassItem *);
 ERROR  writeval_default(OBJECTPTR, struct Field *, LONG, const void *, LONG);

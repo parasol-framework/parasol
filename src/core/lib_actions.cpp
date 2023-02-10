@@ -347,34 +347,14 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
    else if ((ActionID > 0) and (obj->Stats->ActionSubscriptions.Ptr)) {  // Check if there are any objects subscribed to this action before continuing
       if (obj->Stats->NotifyFlags[ActionID>>5] & (1<<(ActionID & 31))) {
          if (auto list = lock_subscribers(obj)) {
-            acActionNotify notify;
-            notify.ObjectID = object_id;
-            notify.Args     = Parameters;
-            if (ActionID > 0) notify.Size = ActionTable[ActionID].Size;
-            else if (cl->Base) {
-               if (cl->Base->Methods) notify.Size = cl->Base->Methods[-ActionID].Size;
-               else notify.Size = 0;
-            }
-            else if (cl->Methods) notify.Size = cl->Methods[-ActionID].Size;
-            else notify.Size = 0;
-            notify.ActionID = ActionID;
-            if (error IS ERR_NoAction) notify.Error = ERR_Okay;
-            else notify.Error = error;
-
             LONG recursionsave = tlMsgRecursion;
             tlMsgRecursion = 255; // This prevents ProcessMessages() from being used while inside notification routines
 
             for (WORD i=0; (i < obj->Stats->SubscriptionSize); i++) {
                if (list[i].ActionID IS ActionID) {
-                  if (ActionMsg(AC_ActionNotify, list[i].SubscriberID, &notify, list[i].MessagePortMID, list[i].ClassID) IS ERR_MemoryDoesNotExist) {
-                     // If the message port does not exist, remove the object from the list.
-
-                     log.trace("Removing object #%d from the notification list for object #%d.", list[i].SubscriberID, object_id);
-                     list[i].SubscriberID   = 0;
-                     list[i].ActionID       = 0;
-                     list[i].MessagePortMID = 0;
-                     list[i].ClassID        = 0;
-                  }
+                  parasol::SwitchContext ctx(list[i].Subscriber);
+                  auto routine = (void (*)(OBJECTPTR, ACTIONID, ERROR, APTR))list[i].Callback;
+                  routine(obj, ActionID, error, Parameters);
                }
             }
 
@@ -691,11 +671,7 @@ retry:
       }
 
       if (ActionID > 0) {
-         if (ActionID IS AC_ActionNotify) {
-            auto notify = (struct acActionNotify *)Args;
-            log.warning("Action %s on object #%d failed, SendMsg error: %s", ActionTable[notify->ActionID].Name, ObjectID, glMessages[error]);
-         }
-         else log.warning("Action %s on object #%d failed, SendMsg error: %s", ActionTable[ActionID].Name, ObjectID, glMessages[error]);
+         log.warning("Action %s on object #%d failed, SendMsg error: %s", ActionTable[ActionID].Name, ObjectID, glMessages[error]);
       }
       else log.warning("Method %d on object #%d failed, SendMsg error: %s", ActionID, ObjectID, glMessages[error]);
 
@@ -1088,14 +1064,6 @@ void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR E
 
    LONG count = 0;
    if (auto list = lock_subscribers(Object)) {
-      struct acActionNotify notify = {
-         .ActionID = ActionID,
-         .ObjectID = Object->UID,
-         .Args     = Parameters,
-         .Error    = ErrorCode
-      };
-      notify.Size = ActionTable[ActionID].Size;
-
       // Generate a shadow copy of the list - this is required in case calls to SubscribeAction() or
       // UnsubscribeAction() are made during the execution of the subscriber routines.
 
@@ -1111,14 +1079,8 @@ void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR E
 
       if (count) {
          for (LONG i=0; i < count; i++) {
-            ERROR error = ActionMsg(AC_ActionNotify, shadow[i].SubscriberID, &notify, shadow[i].MessagePortMID, shadow[i].ClassID);
-
-            // If the message port or the object does not exist, remove the object from the list.
-
-            if ((error IS ERR_MemoryDoesNotExist) or (error IS ERR_NoMatchingObject) or (error IS ERR_MarkedForDeletion)) {
-               log.trace("Removing object #%d (port %d) from #%d's notification list (%s).", shadow[i].SubscriberID, shadow[i].MessagePortMID, Object->UID, glMessages[error]);
-               UnsubscribeActionByID(Object, 0, shadow[i].SubscriberID);
-            }
+            parasol::SwitchContext ctx(shadow[i].Subscriber);
+            shadow[i].Callback(Object, ActionID, ErrorCode, Parameters);
          }
       }
       else { // If there are no subscribers for the indicated action ID, clear the associated bit flag for that action.
@@ -1167,6 +1129,7 @@ To terminate an action subscription, use the ~UnsubscribeAction() function.
 -INPUT-
 obj Object: The target object.
 int Action: The ID of the action that will be monitored.
+ptr(func) Callback: A C/C++ function to callback when the action is triggered.
 
 -ERRORS-
 Okay:
@@ -1176,7 +1139,7 @@ AllocMemory:  A subscription list could not be allocated for the object.
 
 *********************************************************************************************************************/
 
-ERROR SubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
+ERROR SubscribeAction(OBJECTPTR Object, ACTIONID ActionID, FUNCTION *Callback)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1208,7 +1171,7 @@ ERROR SubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
       // identical), we move it to the bottom of the list.
 
       for (i=0; (i < Object->Stats->SubscriptionSize) and (list[i].ActionID); i++) {
-         if ((list[i].ActionID IS ActionID) and (list[i].SubscriberID IS tlContext->resource()->UID)) {
+         if ((list[i].ActionID IS ActionID) and (list[i].Subscriber IS tlContext->resource())) {
             // Check if there are other actions in front of this location
             if ((i < Object->Stats->SubscriptionSize-1) and (list[i+1].ActionID)) {
                for (j=i; (j < Object->Stats->SubscriptionSize-1) and (list[j].ActionID); j++);
@@ -1221,15 +1184,6 @@ ERROR SubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
       }
 
       if (i >= Object->Stats->SubscriptionSize) { // Enlarge the size of the object's subscription list
-         log.debug("Extending array for object %d to %d entries.", Object->UID, Object->Stats->SubscriptionSize);
-         if (glLogLevel >= 5) { // Report any dead subscribers if we're in log mode
-            for (i=0; (i < Object->Stats->SubscriptionSize) and (list[i].ActionID); i++) {
-               if (CheckObjectExists(list[i].SubscriberID) != ERR_True) {
-                  log.warning("Dead subscriber @ index %d, Action %d, Object %d - Fix your code!", i, list[i].ActionID, list[i].SubscriberID);
-               }
-            }
-         }
-
          parasol::SwitchContext context(Object);
 
          ActionSubscription *newlist;
@@ -1251,10 +1205,9 @@ ERROR SubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
          }
       }
 
-      list[i].ActionID       = ActionID;
-      list[i].SubscriberID   = tlContext->object()->UID;
-      list[i].ClassID        = tlContext->object()->ClassID;
-      list[i].MessagePortMID = glTaskMessageMID;
+      list[i].ActionID   = ActionID;
+      list[i].Subscriber = tlContext->object();
+      list[i].Callback   = (void (*)(OBJECTPTR, ACTIONID, ERROR, APTR))Callback->StdC.Routine;
 
       i = ActionID>>5;
       if ((i >= 0) and (i < ARRAYSIZE(Object->Stats->NotifyFlags))) {
@@ -1297,11 +1250,8 @@ AccessMemory: Access to the internal subscription array was denied.
 
 ERROR UnsubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
 {
-   return UnsubscribeActionByID(Object, ActionID, tlContext->object()->UID);
-}
+   auto SubscriberID = tlContext->object()->UID;
 
-ERROR UnsubscribeActionByID(OBJECTPTR Object, ACTIONID ActionID, OBJECTID SubscriberID)
-{
    parasol::Log log(__FUNCTION__);
 
    if (!Object) return log.warning(ERR_NullArgs);
@@ -1315,7 +1265,7 @@ ERROR UnsubscribeActionByID(OBJECTPTR Object, ACTIONID ActionID, OBJECTID Subscr
 
       LONG j = 0;
       for (LONG i=0; i < Object->Stats->SubscriptionSize; i++) {
-         if ((list[i].SubscriberID IS SubscriberID) and ((!ActionID) or (ActionID IS list[i].ActionID))) {
+         if ((list[i].Subscriber) and (list[i].Subscriber->UID IS SubscriberID) and ((!ActionID) or (ActionID IS list[i].ActionID))) {
             list[i].ActionID = 0;
          }
          else if (list[i].ActionID) { // Compact the array by moving the current entry back a few places, then clear the reference.

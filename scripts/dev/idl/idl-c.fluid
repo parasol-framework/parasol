@@ -19,7 +19,6 @@
 
 glActionStubs = {
    -- Hidden actions
-   ActionNotify  = "",
    Free          = "",
    FreeWarning   = "",
    NewChild      = "",
