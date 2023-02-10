@@ -92,7 +92,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "PIPE: Enable the output pipe to the launched process so that it can read data.")
 
   hash("AHASH", "0x%s",
-    "ACTIONNOTIFY", "ACTIVATE",      "ACCESSOBJECT", "CLEAR",    "FREEWARNING",  "OWNERDESTROYED", "COPYDATA",
+    "ACTIVATE",     "ACCESSOBJECT", "CLEAR",    "FREEWARNING",  "OWNERDESTROYED", "COPYDATA",
     "DATAFEED",     "DEACTIVATE",    "DRAW",         "FLUSH",    "FOCUS",        "FREE",         "RELEASEOBJECT",
     "GETVAR",       "DRAGDROP",      "HIDE",         "INIT",     "LOCK",         "LOSTFOCUS",    "MOVE",
     "MOVETOBACK",   "MOVETOFRONT",   "NEWCHILD",     "NEWOWNER", "NEWOBJECT",    "REDO",         "QUERY",
@@ -1893,7 +1893,6 @@ inline BYTE CMP_DATETIME(DateTime *one, DateTime *two)
 
 // Action and Notification Structures
 
-struct acActionNotify  { union { ACTIONID ActionID; ACTIONID Action; }; union { OBJECTID ObjectID; OBJECTID Object; }; APTR Args; LONG Size; ERROR Error; LONG Time; };
 struct acClipboard     { LONG Mode; };
 struct acCopyData      { union { OBJECTID DestID; OBJECTID Dest; }; };
 struct acCustom        { LONG Number; CSTRING String; };

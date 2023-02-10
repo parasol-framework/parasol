@@ -69,6 +69,33 @@ static THREADVAR UBYTE tlMsgSent = FALSE;
 
 #define MAX_MSEC 1000
 
+//********************************************************************************************************************
+// Handler for WaitForObjects().  If an object on the list is signalled then it is removed from the list.  A
+// message is sent once the list of objects that require signalling has been exhausted.
+
+static void notify_signal_wfo(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+{
+   auto lref = glWFOList.find(Object->UID);
+   if (lref != glWFOList.end()) {
+      parasol::Log log;
+      auto &ref = lref->second;
+      log.trace("Object #%d has been signalled from action %d.", Object->UID, ActionID);
+
+      // Clean up subscriptions and clear the signal
+
+      UnsubscribeAction(ref.Object, AC_Free);
+      UnsubscribeAction(ref.Object, AC_Signal);
+      ref.Object->Flags = ref.Object->Flags & (~NF::SIGNALLED);
+
+      glWFOList.erase(lref);
+
+      if (glWFOList.empty()) {
+         log.trace("All objects signalled.");
+         SendMessage(0, MSGID_WAIT_FOR_OBJECTS, MSF_WAIT, NULL, 0); // Will result in ProcessMessages() terminating
+      }
+   }
+}
+
 /*********************************************************************************************************************
 
 -FUNCTION-
@@ -1132,17 +1159,21 @@ ERROR WaitForObjects(LONG Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
       for (LONG i=0; ((error IS ERR_Okay) and (ObjectSignals[i].Object)); i++) {
          parasol::ScopedObjectLock<OBJECTPTR> lock(ObjectSignals[i].Object); // For thread safety
 
-         // Refer to TASK_ActionNotify() for notification handling and clearing of signals
          if (ObjectSignals[i].Object->defined(NF::SIGNALLED)) {
             // Objects that have already been signalled do not require monitoring
             ObjectSignals[i].Object->Flags = ObjectSignals[i].Object->Flags & (~NF::SIGNALLED);
          }
-         else if (!SubscribeAction(ObjectSignals[i].Object, AC_Free)) {
+         else {
+            // NB: An object being freed is treated as equivalent to it receiving a signal.
+            // Refer to notify_signal_wfo() for notification handling and clearing of signals.
             log.debug("Monitoring object #%d", ObjectSignals[i].Object->UID);
-            if (SubscribeAction(ObjectSignals[i].Object, AC_Signal)) error = ERR_Failed;
-            glWFOList.insert(std::make_pair(ObjectSignals[i].Object->UID, ObjectSignals[i]));
+            auto callback = make_function_stdc(notify_signal_wfo);
+            if ((!SubscribeAction(ObjectSignals[i].Object, AC_Free, &callback)) and
+                (!SubscribeAction(ObjectSignals[i].Object, AC_Signal, &callback))) {
+               glWFOList.insert(std::make_pair(ObjectSignals[i].Object->UID, ObjectSignals[i]));
+            }
+            else error = ERR_Failed;
          }
-         else error = ERR_Failed;
       }
    }
 

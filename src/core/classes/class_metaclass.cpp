@@ -168,24 +168,24 @@ void init_metaclass(void)
 {
    ClearMemory(&glMetaClass, sizeof(glMetaClass));
 
-   glMetaClass.BaseClass::Class         = &glMetaClass;
-   glMetaClass.BaseClass::Stats         = &glMetaClass_Stats;
-   glMetaClass.BaseClass::ClassID       = ID_METACLASS;
-   glMetaClass.BaseClass::SubID         = ID_METACLASS;
-   glMetaClass.BaseClass::UID           = 123;
-   glMetaClass.BaseClass::Flags         = NF::INITIALISED;
+   glMetaClass.BaseClass::Class   = &glMetaClass;
+   glMetaClass.BaseClass::Stats   = &glMetaClass_Stats;
+   glMetaClass.BaseClass::ClassID = ID_METACLASS;
+   glMetaClass.BaseClass::SubID   = ID_METACLASS;
+   glMetaClass.BaseClass::UID     = 123;
+   glMetaClass.BaseClass::Flags   = NF::INITIALISED;
 
-   glMetaClass.ClassVersion    = 1;
-   glMetaClass.Methods         = glMetaMethods;
-   glMetaClass.Fields          = glMetaFields;
-   glMetaClass.ClassName       = "MetaClass";
-   glMetaClass.Size            = sizeof(extMetaClass);
-   glMetaClass.SubClassID      = ID_METACLASS;
-   glMetaClass.BaseClassID     = ID_METACLASS;
-   glMetaClass.TotalMethods    = TOTAL_METAMETHODS;
-   glMetaClass.TotalFields     = TOTAL_METAFIELDS;
-   glMetaClass.Category        = CCF_SYSTEM;
-   glMetaClass.prvFields       = glMetaFieldsPreset;
+   glMetaClass.ClassVersion       = 1;
+   glMetaClass.Methods            = glMetaMethods;
+   glMetaClass.Fields             = glMetaFields;
+   glMetaClass.ClassName          = "MetaClass";
+   glMetaClass.Size               = sizeof(extMetaClass);
+   glMetaClass.SubClassID         = ID_METACLASS;
+   glMetaClass.BaseClassID        = ID_METACLASS;
+   glMetaClass.TotalMethods       = TOTAL_METAMETHODS;
+   glMetaClass.TotalFields        = TOTAL_METAFIELDS;
+   glMetaClass.Category           = CCF_SYSTEM;
+   glMetaClass.prvFields          = glMetaFieldsPreset;
    glMetaClass.OriginalFieldTotal = ARRAYSIZE(glMetaFields)-1;
 }
 
@@ -390,16 +390,16 @@ will serve no further purpose.
 The following example shows an action list array taken from the @Picture class:
 
 <pre>
-struct ActionArray clActions[] = {
-   { AC_Free,          PIC_Free },
-   { AC_NewObject,     PIC_NewObject },
-   { AC_Init,          PIC_Init },
-   { AC_Query,         PIC_Query },
-   { AC_Read,          PIC_Read },
-   { AC_SaveToObject,  PIC_SaveToObject },
-   { AC_Seek,          PIC_Seek },
-   { AC_Write,         PIC_Write },
-   { NULL, NULL }
+ActionArray clActions[] = {
+   { AC_Free,          (APTR)PIC_Free },
+   { AC_NewObject,     (APTR)PIC_NewObject },
+   { AC_Init,          (APTR)PIC_Init },
+   { AC_Query,         (APTR)PIC_Query },
+   { AC_Read,          (APTR)PIC_Read },
+   { AC_SaveToObject,  (APTR)PIC_SaveToObject },
+   { AC_Seek,          (APTR)PIC_Seek },
+   { AC_Write,         (APTR)PIC_Write },
+   { 0, NULL }
 };
 </pre>
 

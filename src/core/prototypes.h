@@ -60,7 +60,7 @@ ERROR ScanDir(struct DirInfo * Info);
 ERROR SetName(OBJECTPTR Object, CSTRING Name);
 void LogReturn();
 ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags);
-ERROR SubscribeAction(OBJECTPTR Object, LONG Action);
+ERROR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION * Callback);
 ERROR VarGet(struct KeyStore * Store, CSTRING Name, APTR * Data, LONG * Size);
 ERROR SubscribeEvent(LARGE Event, FUNCTION * Callback, APTR Custom, APTR * Handle);
 ERROR SubscribeTimer(DOUBLE Interval, FUNCTION * Callback, APTR * Subscription);

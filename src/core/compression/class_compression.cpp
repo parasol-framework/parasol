@@ -179,17 +179,10 @@ ERROR convert_zip_error(struct z_stream_s *Stream, LONG Result)
 
 //********************************************************************************************************************
 
-static ERROR COMPRESSION_ActionNotify(extCompression *Self, struct acActionNotify *Args)
+static void notify_free_feedback(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   if (!Args) return ERR_NullArgs;
-
-   if (Args->ActionID IS AC_Free) {
-      if ((Self->Feedback.Type IS CALL_SCRIPT) and (Self->Feedback.Script.Script->UID IS Args->ObjectID)) {
-         Self->Feedback.Type = CALL_NONE;
-      }
-   }
-
-   return ERR_Okay;
+   auto Self = (extCompression *)CurrentContext();
+   Self->Feedback.Type = CALL_NONE;
 }
 
 /*********************************************************************************************************************

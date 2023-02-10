@@ -76,23 +76,19 @@ static ERROR write_queue(extNetSocket *, NetQueue *, CPTR, LONG);
 
 //****************************************************************************
 
-static ERROR NETSOCKET_ActionNotify(extNetSocket *Self, struct acActionNotify *Args)
+static void notify_free_feedback(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   if (!Args) return ERR_NullArgs;
+   ((extNetSocket *)CurrentContext())->Feedback.Type = CALL_NONE;
+}
 
-   if (Args->ActionID IS AC_Free) {
-      if ((Self->Feedback.Type IS CALL_SCRIPT) and (Self->Feedback.Script.Script->UID IS Args->ObjectID)) {
-         Self->Feedback.Type = CALL_NONE;
-      }
-      else if ((Self->Incoming.Type IS CALL_SCRIPT) and (Self->Incoming.Script.Script->UID IS Args->ObjectID)) {
-         Self->Incoming.Type = CALL_NONE;
-      }
-      else if ((Self->Outgoing.Type IS CALL_SCRIPT) and (Self->Outgoing.Script.Script->UID IS Args->ObjectID)) {
-         Self->Outgoing.Type = CALL_NONE;
-      }
-   }
+static void notify_free_incoming(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+{
+   ((extNetSocket *)CurrentContext())->Incoming.Type = CALL_NONE;
+}
 
-   return ERR_Okay;
+static void notify_free_outgoing(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+{
+   ((extNetSocket *)CurrentContext())->Outgoing.Type = CALL_NONE;
 }
 
 /*****************************************************************************
@@ -980,7 +976,10 @@ static ERROR SET_Feedback(extNetSocket *Self, FUNCTION *Value)
    if (Value) {
       if (Self->Feedback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Feedback.Script.Script, AC_Free);
       Self->Feedback = *Value;
-      if (Self->Feedback.Type IS CALL_SCRIPT) SubscribeAction(Self->Feedback.Script.Script, AC_Free);
+      if (Self->Feedback.Type IS CALL_SCRIPT) {
+         auto callback = make_function_stdc(notify_free_feedback);
+         SubscribeAction(Self->Feedback.Script.Script, AC_Free, &callback);
+      }
    }
    else Self->Feedback.Type = CALL_NONE;
 
@@ -1021,7 +1020,10 @@ static ERROR SET_Incoming(extNetSocket *Self, FUNCTION *Value)
    if (Value) {
       if (Self->Incoming.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Incoming.Script.Script, AC_Free);
       Self->Incoming = *Value;
-      if (Self->Incoming.Type IS CALL_SCRIPT) SubscribeAction(Self->Incoming.Script.Script, AC_Free);
+      if (Self->Incoming.Type IS CALL_SCRIPT) {
+         auto callback = make_function_stdc(notify_free_incoming);
+         SubscribeAction(Self->Incoming.Script.Script, AC_Free, &callback);
+      }
    }
    else Self->Incoming.Type = CALL_NONE;
    return ERR_Okay;
@@ -1064,7 +1066,10 @@ static ERROR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
    else {
       if (Self->Outgoing.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Outgoing.Script.Script, AC_Free);
       Self->Outgoing = *Value;
-      if (Self->Outgoing.Type IS CALL_SCRIPT) SubscribeAction(Self->Outgoing.Script.Script, AC_Free);
+      if (Self->Outgoing.Type IS CALL_SCRIPT) {
+         auto callback = make_function_stdc(notify_free_outgoing);
+         SubscribeAction(Self->Outgoing.Script.Script, AC_Free, &callback);
+      }
 
       if (Self->initialised()) {
          if ((Self->SocketHandle != NOHANDLE) and (Self->State IS NTC_CONNECTED)) {

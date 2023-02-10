@@ -765,7 +765,8 @@ static int object_subscribe(lua_State *Lua)
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    ERROR error;
-   if (!(error = SubscribeAction(obj, action_id))) {
+   auto callback = make_function_stdc(notify_action);
+   if (!(error = SubscribeAction(obj, action_id, &callback))) {
       actionmonitor *acsub;
       if (!AllocMemory(sizeof(actionmonitor), MEM_DATA, &acsub)) {
          if (!lua_isnil(Lua, 3)) { // A custom reference for the callback can be specified in arg 3.

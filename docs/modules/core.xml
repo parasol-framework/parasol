@@ -2374,10 +2374,11 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>SubscribeAction</name>
     <category>Objects</category>
     <comment>Listens for actions that may be performed on an object.</comment>
-    <prototype>ERROR SubscribeAction(OBJECTPTR Object, LONG Action)</prototype>
+    <prototype>ERROR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION * Callback)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">The target object.</param>
       <param type="LONG" name="Action">The ID of the action that will be monitored.</param>
+      <param type="FUNCTION *" name="Callback">A C/C++ function to callback when the action is triggered.</param>
     </input>
     <description>
 <p>The SubscribeAction() function is provided for objects that need to be notified when actions are being executed on foreign objects.  This is referred to as "action monitoring".  Action monitoring is used for a wide variety of purposes and is especially useful for responding to events in the user interface, including pointer movement, window resizing and graphics drawing.</p>

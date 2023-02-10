@@ -62,7 +62,6 @@ static const struct MethodArray clDisplayMethods[] = {
 
 static const struct ActionArray clDisplayActions[] = {
    { AC_AccessObject, (APTR)DISPLAY_AccessObject },
-   { AC_ActionNotify, (APTR)DISPLAY_ActionNotify },
    { AC_Activate, (APTR)DISPLAY_Activate },
    { AC_Clear, (APTR)DISPLAY_Clear },
    { AC_DataFeed, (APTR)DISPLAY_DataFeed },

@@ -37,10 +37,9 @@ class extSourceFX : public extFilterEffect {
 
 //********************************************************************************************************************
 
-static ERROR SOURCEFX_ActionNotify(extSourceFX *Self, struct acActionNotify *Args)
+static void notify_free_source(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   if (Args->ActionID IS AC_Free) Self->Source = NULL;
-   return ERR_Okay;
+   ((extSourceFX *)CurrentContext())->Source = NULL;
 }
 
 /*********************************************************************************************************************
@@ -255,7 +254,8 @@ static ERROR SOURCEFX_SET_Source(extSourceFX *Self, objVector *Value)
 
    if (Self->Source) UnsubscribeAction(Self->Source, AC_Free);
    Self->Source = Value;
-   SubscribeAction(Value, AC_Free);
+   auto callback = make_function_stdc(notify_free_source);
+   SubscribeAction(Value, AC_Free, &callback);
    Self->Render = true;
    return ERR_Okay;
 }
@@ -287,7 +287,8 @@ static ERROR SOURCEFX_SET_SourceName(extSourceFX *Self, CSTRING Value)
    if (!scFindDef(Self->Filter->Scene, Value, (OBJECTPTR *)&src)) {
       if (src->ClassID != ID_VECTOR) return log.warning(ERR_WrongClass);
       Self->Source = src;
-      SubscribeAction(src, AC_Free);
+      auto callback = make_function_stdc(notify_free_source);
+      SubscribeAction(src, AC_Free, &callback);
       Self->Render = true;
       return ERR_Okay;
    }

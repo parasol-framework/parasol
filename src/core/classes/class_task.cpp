@@ -102,7 +102,6 @@ static LONG glProcessBreak = 0;
 
 static ERROR GET_LaunchPath(extTask *, STRING *);
 
-static ERROR TASK_ActionNotify(extTask *, struct acActionNotify *);
 static ERROR TASK_Activate(extTask *, APTR);
 static ERROR TASK_Free(extTask *, APTR);
 static ERROR TASK_GetEnv(extTask *, struct taskGetEnv *);
@@ -134,7 +133,6 @@ static const FieldDef clFlags[] = {
 };
 
 static const ActionArray clActions[] = {
-   { AC_ActionNotify,  (APTR)TASK_ActionNotify },
    { AC_Activate,      (APTR)TASK_Activate },
    { AC_Free,          (APTR)TASK_Free },
    { AC_GetVar,        (APTR)TASK_GetVar },
@@ -549,22 +547,6 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
             if (action->ActionID > 0) log.warning("Could not gain access to object %d to execute action %s.", action->ObjectID, action_id_name(action->ActionID));
             else log.warning("Could not gain access to object %d to execute method %d.", action->ObjectID, action->ActionID);
          }
-         else {
-            if (action->ActionID IS AC_ActionNotify) {
-               auto notify = (struct acActionNotify *)(action + 1);
-
-               log.debug("ActionNotify(%d, %s) from object %d cancelled, object does not exist.", action->ObjectID, action_id_name(notify->ActionID), notify->ObjectID);
-
-               // This helpful little subroutine will remove the redundant subscription from the calling object
-
-               OBJECTPTR object;
-               if ((notify->ObjectID) and (!AccessObject(notify->ObjectID, 3000, &object))) {
-                  UnsubscribeActionByID(object, 0, action->ObjectID);
-                  ReleaseObject(object);
-               }
-            }
-            else log.debug("Action %s cancelled, object #%d does not exist or marked for deletion.", action_id_name(action->ActionID), action->ObjectID);
-         }
       }
    }
    else log.warning("Action message %s specifies an object ID of #%d.", action_id_name(action->ActionID), action->ObjectID);
@@ -720,41 +702,6 @@ static ERROR InterceptedAction(extTask *Self, APTR Args)
       return Self->Actions[tlContext->Action].PerformAction(Self, Args);
    }
    else return ERR_NoSupport;
-}
-
-//****************************************************************************
-
-static ERROR TASK_ActionNotify(extTask *Self, struct acActionNotify *Args)
-{
-   if (!Args) return ERR_NullArgs;
-
-   // Handler for WaitForObjects().  If an object on the list is signalled then it is removed from the list.  A
-   // message is sent once the list of objects that require signalling has been exhausted.
-
-   if ((Args->ActionID IS AC_Signal) or (Args->ActionID IS AC_Free)) {
-      if (!glWFOList.empty()) {
-         parasol::Log log;
-         auto lref = glWFOList.find(Args->Object);
-         if (lref != glWFOList.end()) {
-            auto &ref = lref->second;
-            log.trace("Object #%d has been signalled from action %d.", Args->Object, Args->ActionID);
-
-            // Clean up subscriptions and clear the signal
-
-            UnsubscribeAction(ref.Object, AC_Free);
-            UnsubscribeAction(ref.Object, AC_Signal);
-            ref.Object->Flags = ref.Object->Flags & (~NF::SIGNALLED);
-
-            glWFOList.erase(lref);
-            if (glWFOList.empty()) {
-               log.trace("All objects signalled.");
-               SendMessage(0, MSGID_WAIT_FOR_OBJECTS, MSF_WAIT, NULL, 0); // Will result in ProcessMessages() terminating
-            }
-         }
-      }
-   }
-
-   return InterceptedAction(Self, Args);
 }
 
 /*****************************************************************************
