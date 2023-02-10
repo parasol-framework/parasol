@@ -1995,7 +1995,7 @@ struct CoreBase {
    ERROR (*_ListChildren)(OBJECTID Object, LONG IncludeShared, struct ChildEntry * List, LONG * Count);
    ERROR (*_Base64Decode)(struct rkBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
    ERROR (*_RegisterFD)(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
-   ERROR (*_ManageAction)(LONG Action, APTR Routine);
+   ERROR (*_ResolvePath)(CSTRING Path, LONG Flags, STRING * Result);
    ERROR (*_MemoryIDInfo)(MEMORYID ID, struct MemInfo * MemInfo, LONG Size);
    ERROR (*_MemoryPtrInfo)(APTR Address, struct MemInfo * MemInfo, LONG Size);
    ERROR (*_NewObject)(LARGE ClassID, NF Flags, APTR Object);
@@ -2107,7 +2107,6 @@ struct CoreBase {
    ERROR (*_AnalysePath)(CSTRING Path, LONG * Type);
    ERROR (*_CreateFolder)(CSTRING Path, LONG Permissions);
    ERROR (*_MoveFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
-   ERROR (*_ResolvePath)(CSTRING Path, LONG Flags, STRING * Result);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2144,7 +2143,7 @@ inline CSTRING GetName(OBJECTPTR Object) { return CoreBase->_GetName(Object); }
 inline ERROR ListChildren(OBJECTID Object, LONG IncludeShared, struct ChildEntry * List, LONG * Count) { return CoreBase->_ListChildren(Object,IncludeShared,List,Count); }
 inline ERROR Base64Decode(struct rkBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written) { return CoreBase->_Base64Decode(State,Input,InputSize,Output,Written); }
 inline ERROR RegisterFD(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data) { return CoreBase->_RegisterFD(FD,Flags,Routine,Data); }
-inline ERROR ManageAction(LONG Action, APTR Routine) { return CoreBase->_ManageAction(Action,Routine); }
+inline ERROR ResolvePath(CSTRING Path, LONG Flags, STRING * Result) { return CoreBase->_ResolvePath(Path,Flags,Result); }
 inline ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size) { return CoreBase->_MemoryIDInfo(ID,MemInfo,Size); }
 inline ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size) { return CoreBase->_MemoryPtrInfo(Address,MemInfo,Size); }
 inline ERROR NewObject(LARGE ClassID, NF Flags, APTR Object) { return CoreBase->_NewObject(ClassID,Flags,Object); }
@@ -2256,7 +2255,6 @@ inline CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding) { return Core
 inline ERROR AnalysePath(CSTRING Path, LONG * Type) { return CoreBase->_AnalysePath(Path,Type); }
 inline ERROR CreateFolder(CSTRING Path, LONG Permissions) { return CoreBase->_CreateFolder(Path,Permissions); }
 inline ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_MoveFile(Source,Dest,Callback); }
-inline ERROR ResolvePath(CSTRING Path, LONG Flags, STRING * Result) { return CoreBase->_ResolvePath(Path,Flags,Result); }
 #endif
 
 

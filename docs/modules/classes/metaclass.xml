@@ -54,7 +54,7 @@
 
     <field>
       <name>Actions</name>
-      <comment>Set this field to define the actions supported by the class.</comment>
+      <comment>Defines the actions supported by the class.</comment>
       <access write="I">Init</access>
       <type>APTR</type>
       <description>

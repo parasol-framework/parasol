@@ -368,13 +368,6 @@ EXPORT void CloseCore(void)
       if (glClassMap) { FreeResource(glClassMap); glClassMap = NULL; }
    }
 
-   // Remove the action management structure
-
-   if (glCodeIndex < CP_FREE_ACTION_MANAGEMENT) {
-      glCodeIndex = CP_FREE_ACTION_MANAGEMENT;
-      if (ManagedActions) { FreeResource(ManagedActions); ManagedActions = NULL; }
-   }
-
    // Free the program's personal function base as it won't be making any more calls.
 
    if (glCodeIndex < CP_FREE_COREBASE) {

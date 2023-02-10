@@ -160,7 +160,7 @@ static MethodArray glMetaMethods[TOTAL_METAMETHODS+2] = {
    { 0, 0, 0, 0, 0 }
 };
 
-struct Stats glMetaClass_Stats = { .ActionSubscriptions = { .Ptr = 0 }, .NotifyFlags = { 0, 0 }, .Name = { 'M','e','t','a','C','l','a','s','s' } , .SubscriptionSize = 0 };
+struct Stats glMetaClass_Stats = { .NotifyFlags = { 0, 0 }, .Name = { 'M','e','t','a','C','l','a','s','s' } };
 
 extMetaClass glMetaClass;
 
@@ -377,7 +377,7 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
 /*****************************************************************************
 
 -FIELD-
-Actions: Set this field to define the actions supported by the class.
+Actions: Defines the actions supported by the class.
 
 It is common practice when developing classes to support a number of actions that help to flesh-out the class
 functionality.  To define the actions that your class will support, you need to create a pre-defined action list in

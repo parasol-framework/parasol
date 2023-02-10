@@ -37,7 +37,7 @@ CSTRING GetName(OBJECTPTR Object);
 ERROR ListChildren(OBJECTID Object, LONG IncludeShared, struct ChildEntry * List, LONG * Count);
 ERROR Base64Decode(struct rkBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
 ERROR RegisterFD(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
-ERROR ManageAction(LONG Action, APTR Routine);
+ERROR ResolvePath(CSTRING Path, LONG Flags, STRING * Result);
 ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size);
 ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size);
 ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR * Object);
@@ -149,7 +149,6 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding);
 ERROR AnalysePath(CSTRING Path, LONG * Type);
 ERROR CreateFolder(CSTRING Path, LONG Permissions);
 ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
-ERROR ResolvePath(CSTRING Path, LONG Flags, STRING * Result);
 
 #ifdef  __cplusplus
 }

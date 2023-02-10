@@ -7,6 +7,7 @@
 
 #include <set>
 #include <functional>
+#include <mutex>
 
 #define PRV_CORE
 #define PRV_CORE_MODULE
@@ -178,23 +179,18 @@ enum {
 //********************************************************************************************************************
 
 struct Stats {
-   union {
-      MEMORYID ID; // Action subscriptions (struct ActionSubscription)
-      APTR Ptr;
-   } ActionSubscriptions;
-   LONG     NotifyFlags[2];     // Action notification flags - space for 64 actions max
-   char     Name[MAX_NAME_LEN]; // The name of the object (optional)
-   UWORD    SubscriptionSize;   // Size of the ActionSubscriptions array
-   UWORD    Empty;
+   LONG NotifyFlags[2];     // Action subscription flags - space for 64 actions max
+   char Name[MAX_NAME_LEN]; // The name of the object (optional)
 };
 
-// Subscription structures
-
-typedef struct ActionSubscription {
-   ACTIONID ActionID;       // Monitored action
-   OBJECTPTR Subscriber;    // Object to be notified
+struct ActionSubscription {
+   OBJECTPTR Context;
    void (*Callback)(OBJECTPTR, ACTIONID, ERROR, APTR);
-} ActionSubscription;
+
+   ActionSubscription() : Context(NULL), Callback(NULL) { }
+   ActionSubscription(OBJECTPTR pContext, void (*pCallback)(OBJECTPTR, ACTIONID, ERROR, APTR)) : Context(pContext), Callback(pCallback) { }
+   ActionSubscription(OBJECTPTR pContext, APTR pCallback) : Context(pContext), Callback((void (*)(OBJECTPTR, ACTIONID, ERROR, APTR))pCallback) { }
+};
 
 struct virtual_drive {
    ULONG VirtualID;  // Hash name of the volume, not including the trailing colon
@@ -630,7 +626,7 @@ extern THREADVAR LONG glForceUID, glForceGID, glDefaultPermissions;
 
 //********************************************************************************************************************
 
-extern LONG (**ManagedActions)(OBJECTPTR Object, APTR Parameters);
+extern std::array<LONG (*)(struct BaseClass *, APTR), AC_END> ManagedActions;
 extern ERROR (*glMessageHandler)(struct Message *);
 extern void (*glVideoRecovery)(void);
 extern void (*glKeyboardRecovery)(void);

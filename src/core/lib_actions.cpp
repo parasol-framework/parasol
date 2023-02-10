@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol Framework is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol Framework is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 -CATEGORY-
 Name: Objects
@@ -25,28 +24,45 @@ using namespace parasol;
 
 #define SIZE_ACTIONBUFFER 2048
 
-//****************************************************************************
-// Action subscription array locking.
+//********************************************************************************************************************
+// These globals pertain to action subscriptions.  Variables are global to all threads, so need to be locked via
+// glSubLock.
 
-static ActionSubscription * lock_subscribers(OBJECTPTR Object)
+struct subscription {
+   OBJECTPTR Object;
+   ACTIONID ActionID;
+   FUNCTION Callback;
+};
+
+struct unsubscription {
+   OBJECTPTR Object;
+   ACTIONID ActionID;
+};
+
+static std::recursive_mutex glSubLock; // The following variables are locked by this mutex
+static std::unordered_map<OBJECTID, std::unordered_map<ACTIONID, std::vector<ActionSubscription> > > glSubscriptions;
+static std::vector<unsubscription> glDelayedUnsubscribe;
+static std::vector<subscription> glDelayedSubscribe;
+static LONG glSubReadOnly = 0; // To prevent modification of glSubscriptions
+
+//********************************************************************************************************************
+// Deal with any un/subscriptions that occurred inside a client callback.
+
+static void process_delayed_subs(void)
 {
-   ActionSubscription *list;
-
-   if (Object->UID < 0) {
-      if (Object->Stats->ActionSubscriptions.ID) {
-         if (!AccessMemory(Object->Stats->ActionSubscriptions.ID, MEM_READ, 2000, (APTR *)&list)) {
-            return list;
-         }
-         else return NULL;
+   if (!glDelayedSubscribe.empty()) {
+      for (auto &entry : glDelayedSubscribe) {
+         SubscribeAction(entry.Object, entry.ActionID, &entry.Callback);
       }
-      else return NULL;
+      glDelayedSubscribe.clear();
    }
-   else return (ActionSubscription *)Object->Stats->ActionSubscriptions.Ptr;
-}
 
-INLINE void unlock_subscribers(OBJECTPTR Object)
-{
-   if (Object->UID < 0) ReleaseMemoryID(Object->Stats->ActionSubscriptions.ID);
+   if (!glDelayedUnsubscribe.empty()) {
+      for (auto &entry : glDelayedUnsubscribe) {
+         UnsubscribeAction(entry.Object, entry.ActionID);
+      }
+      glDelayedUnsubscribe.clear();
+   }
 }
 
 //********************************************************************************************************************
@@ -344,26 +360,19 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
    if (error & ERF_Notified) {
       error &= ~ERF_Notified;
    }
-   else if ((ActionID > 0) and (obj->Stats->ActionSubscriptions.Ptr)) {  // Check if there are any objects subscribed to this action before continuing
-      if (obj->Stats->NotifyFlags[ActionID>>5] & (1<<(ActionID & 31))) {
-         if (auto list = lock_subscribers(obj)) {
-            LONG recursionsave = tlMsgRecursion;
-            tlMsgRecursion = 255; // This prevents ProcessMessages() from being used while inside notification routines
+   else if ((ActionID > 0) and (obj->Stats->NotifyFlags[ActionID>>5] & (1<<(ActionID & 31)))) {
+      std::lock_guard<std::recursive_mutex> lock(glSubLock);
 
-            for (WORD i=0; (i < obj->Stats->SubscriptionSize); i++) {
-               if (list[i].ActionID IS ActionID) {
-                  parasol::SwitchContext ctx(list[i].Subscriber);
-                  auto routine = (void (*)(OBJECTPTR, ACTIONID, ERROR, APTR))list[i].Callback;
-                  routine(obj, ActionID, error, Parameters);
-               }
-            }
+      glSubReadOnly++;
 
-            tlMsgRecursion = recursionsave;
-
-            unlock_subscribers(obj);
+      if ((glSubscriptions.contains(object_id)) and (glSubscriptions[object_id].contains(ActionID))) {
+         for (auto &list : glSubscriptions[object_id][ActionID]) {
+            parasol::SwitchContext ctx(list.Context);
+            list.Callback(obj, ActionID, (error IS ERR_NoAction) ? ERR_Okay : error, Parameters);
          }
-         else log.traceWarning("Denied access to ActionSubscriptions #%d of object #%d.", obj->Stats->ActionSubscriptions.ID, object_id);
       }
+
+      glSubReadOnly--;
    }
 
    if (ActionID != AC_Free) obj->ActionDepth--;
@@ -385,7 +394,7 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
 /*********************************************************************************************************************
 
 -FUNCTION-
-ActionList: Returns a pointer to the system's action table.
+ActionList: Returns a pointer to the global action table.
 
 This function returns an array of all actions supported by the Core, including name, arguments and structure
 size.  The ID of each action is indicated by its index within the array.
@@ -954,181 +963,105 @@ Message * GetActionMsg(void)
 /*********************************************************************************************************************
 
 -FUNCTION-
-ManageAction: Allows modules to intercept and manage action calls.
-Status: Private
-
-Any module can manage an action of its choosing by calling this function with a pointer to a management routine.  To
-remove management of an action, call this function with NULL in the Routine argument.
-
-The routine that is used to manage the action must be in the format `ERROR Routine(OBJECTPTR, APTR Parameters)`.
-An incorrectly defined routine could crash the system if it mis-reads the stack arguments.
-
-This function is not intended to be called by executable based programs, as the 'area of effect' will be limited to
-the program itself rather than having a global impact.
-
--INPUT-
-int Action: The action that is to be managed.
-ptr Routine:  Pointer to the routine that will manage the object.
-
--ERRORS-
-Okay
-Args
-AllocMemory: The management array could not be expanded to accommodate the management routine (internal error).
-
-*********************************************************************************************************************/
-
-ERROR ManageAction(LONG ActionID, APTR Routine)
-{
-   parasol::Log log(__FUNCTION__);
-
-   log.branch("ActionID: %d, Routine: %p", ActionID, Routine);
-
-   if (ActionID > 0) {
-      // Check if the ActionID extends the amount of registered actions.  If so, reallocate the action management table.
-
-      ThreadLock lock(TL_GENERIC, 50);
-      if (lock.granted()) {
-         if (ActionID > glActionCount) {
-            glActionCount = ActionID;
-            if (ManagedActions) {
-               if (ReallocMemory((ULONG *)ManagedActions, sizeof(APTR) * glActionCount, (APTR *)&ManagedActions, NULL) != ERR_Okay) {
-                  return log.warning(ERR_AllocMemory);
-               }
-            }
-         }
-
-         // Allocate the action management table if it has not been allocated already.  (NB: This address will be freed
-         // in the expunge sequence).
-
-         if (!ManagedActions) {
-            if (AllocMemory(sizeof(APTR) * glActionCount, MEM_TASK, (APTR *)&ManagedActions, NULL) != ERR_Okay) {
-               return log.warning(ERR_AllocMemory);
-            }
-         }
-      }
-
-      // Set the action management routine
-
-      ManagedActions[ActionID] = (LONG (*)(OBJECTPTR, APTR))Routine;
-
-      return ERR_Okay;
-   }
-   else return log.warning(ERR_Args);
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
 NotifySubscribers: Used to send notification messages to action subscribers.
 
-This function can be used by classes that need total control over the timing of action subscriber notification.  The
-system default for notifying action subscribers is to call them after an action has taken place.  However, this can
-be inconvenient if the code for an action wants to perform some extra procedures after the subscribers have been
-notified.  The solution is to use NotifySubscribers(), then continue on with the rest of the routine.
+This function can be used by classes that need total control over notification management.  The system default for
+notifying action subscribers is to call them immediately after an action has taken place.  This may be inconvenient
+if the code for an action needs to perform a procedure after the subscribers have been notified.  Using
+NotifySubscribers() allows for such a scenario.  Another possible use is customising the parameter values of the
+called action so that the original values are not sent to the subscriber(s).
 
-The Flags argument currently accepts the following options:
-
-<types lookup="NSF"/>
+NOTE: Calling NotifySubscribers() does nothing to prevent the core from sending out an action notification as it
+normally would, thus causing duplication.  To prevent this scenario, you must logical-or the return code of your
+action support function with `ERF_Notified`, e.g. `ERR_Okay|ERF_Notified`.
 
 -INPUT-
 obj Object: Pointer to the object that is to receive the notification message.
 int(AC) Action: The action ID for notification.
-ptr Args: Pointer to the action arguments relevant to the ActionID.
+ptr Args: Pointer to an action parameter structure that is relevant to the ActionID.
 error Error: The error code that is associated with the action result.
 
 -END-
 
 *********************************************************************************************************************/
 
-// No need for prv_access() since this function is called from within class action code only.
-
 void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR ErrorCode)
 {
    parasol::Log log(__FUNCTION__);
 
-   if (!Object) {
-      log.warning(ERR_NullArgs);
-      return;
-   }
+   // No need for prv_access() since this function is called from within class action code only.
 
-   if (!Object->Stats->ActionSubscriptions.Ptr) return;
+   if (!Object) { log.warning(ERR_NullArgs); return; }
+   if ((ActionID <= 0) or (ActionID >= AC_END)) { log.warning(ERR_Args); return; }
 
-   LONG result;
-   if (ActionID >= 0) result = Object->Stats->NotifyFlags[ActionID>>5] & (1<<(ActionID & 31));
-   else return;
+   if (!(Object->Stats->NotifyFlags[ActionID>>5] & (1<<(ActionID & 31)))) return;
 
-   if (!result) return;
+   const std::lock_guard<std::recursive_mutex> lock(glSubLock);
+   glSubReadOnly++;
 
-   auto recursionsave = tlMsgRecursion;
-   tlMsgRecursion = 255; // This prevents ProcessMessages() from being used while inside notification routines
-
-   LONG count = 0;
-   if (auto list = lock_subscribers(Object)) {
-      // Generate a shadow copy of the list - this is required in case calls to SubscribeAction() or
-      // UnsubscribeAction() are made during the execution of the subscriber routines.
-
-      ActionSubscription shadow[Object->Stats->SubscriptionSize];
-
-      count = 0;
-      for (LONG i=0; (i < Object->Stats->SubscriptionSize); i++) {
-         if (list[i].ActionID IS ActionID) shadow[count++] = list[i];
-         else if (!list[i].ActionID) break; // End of array
-      }
-
-      unlock_subscribers(Object);
-
-      if (count) {
-         for (LONG i=0; i < count; i++) {
-            parasol::SwitchContext ctx(shadow[i].Subscriber);
-            shadow[i].Callback(Object, ActionID, ErrorCode, Parameters);
+   if ((!glSubscriptions[Object->UID].empty()) and (!glSubscriptions[Object->UID][ActionID].empty())) {
+      for (auto &sub : glSubscriptions[Object->UID][ActionID]) {
+         if (sub.Context) {
+            parasol::SwitchContext ctx(sub.Context);
+            sub.Callback(Object, ActionID, ErrorCode, Parameters);
          }
       }
-      else { // If there are no subscribers for the indicated action ID, clear the associated bit flag for that action.
-         Object->Stats->NotifyFlags[ActionID>>5] &= (~(1<<(ActionID & 31)));
-      }
+
+      process_delayed_subs();
    }
-   else log.warning(ERR_AccessMemory);
+   else {
+      log.warning("Unstable subscription flags discovered for object #%d, action %d: %.8x %.8x", Object->UID, ActionID, Object->Stats->NotifyFlags[0], Object->Stats->NotifyFlags[1]);
+      __atomic_and_fetch(&Object->Stats->NotifyFlags[ActionID>>5], ~(1<<(ActionID & 31)), __ATOMIC_RELAXED);
+   }
 
-   tlMsgRecursion = recursionsave;
-
-   return;
+   glSubReadOnly--;
 }
 
 /*********************************************************************************************************************
 
 -FUNCTION-
-SubscribeAction: Listens for actions that may be performed on an object.
+SubscribeAction: Monitor action calls made against an object.
 
-The SubscribeAction() function is provided for objects that need to be notified when actions are being executed on
-foreign objects.  This is referred to as "action monitoring".  Action monitoring is used for a wide
-variety of purposes and is especially useful for responding to events in the user interface, including pointer
-movement, window resizing and graphics drawing.
+The SubscribeAction() function provides a means for receiving an immediate notification after an action is called on
+an object.  We refer to this as "action monitoring".  Action monitoring is especially useful for responding to
+events in the UI and the termination of objects.
 
-To subscribe to the actions of another object, acquire its address pointer and then call this function with
-the action ID to monitor.  The object that has the current context will be registered for receiving the notifications.
+Subscriptions are context sensitive and thus owned by the caller.
 
 The following example illustrates how to listen to a Surface object's Redimension action to be alerted to resize
 events:
 
 <pre>
-if (!AccessObject(SurfaceID, 3000, &surface)) {
-   SubscribeAction(surface, AC_Redimension, Self);
-   ReleaseObject(surface);
+auto callback = make_function_stdc(notify_resize);
+SubscribeAction(surface, AC_Redimension, &callback);
+</pre>
+
+The template below illustrates how the Callback function should be constructed:
+
+<pre>
+void notify_resize(OBJECTPTR Object, ACTIONID Action, ERROR Result, APTR Parameters)
+{
+   auto Self = (objClassType *)CurrentContext();
+
+   // Code here...
+   if ((Result == ERR_Okay) and (Parameters)) {
+      auto resize = (struct acRedimension *)Parameters;
+   }
 }
 </pre>
 
-When a process calls an action with subscriptions, the object's code will be executed first, then
-all relevant action subscribers will be notified of the event.  This is done by sending each subscriber an action
-message (AC_ActionNotify) with information on the action ID, the ID of the object that was called, and a copy of the
-arguments that were used.  For more detail, refer to the technical support for #ActionNotify().
+The Object is the original subscription target, as-is the Action ID.  The Result is the error code that was generated
+at the end of the action call.  If this is not set to `ERR_Okay`, assume that the action did not have an effect on
+state.  The Parameters are the original arguments provided by the client - be aware that these can legitimately be
+NULL even if an action specifies a required parameter structure.  Notice that because subscriptions are context
+sensitive, we can use ~CurrentContext() to get a reference to the object that initiated the subscription.
 
-This function does not support subscriptions to methods.
-
-To terminate an action subscription, use the ~UnsubscribeAction() function.
+To terminate an action subscription, use the ~UnsubscribeAction() function.  Subscriptions are not resource tracked,
+so it is critical to match the original call with an unsubscription.
 
 -INPUT-
 obj Object: The target object.
-int Action: The ID of the action that will be monitored.
+int Action: The ID of the action that will be monitored.  Methods are not supported.
 ptr(func) Callback: A C/C++ function to callback when the action is triggered.
 
 -ERRORS-
@@ -1143,165 +1076,98 @@ ERROR SubscribeAction(OBJECTPTR Object, ACTIONID ActionID, FUNCTION *Callback)
 {
    parasol::Log log(__FUNCTION__);
 
-   if (!Object) return log.warning(ERR_NullArgs);
+   if ((!Object) or (!Callback)) return log.warning(ERR_NullArgs);
+   if ((ActionID < 0) or (ActionID >= AC_END)) return log.warning(ERR_OutOfRange);
+   if (Callback->Type != CALL_STDC) return log.warning(ERR_Args);
 
-   if (Object IS &glMetaClass) return ERR_NoSupport; // Monitoring the MetaClass is prohibited.
-
-   Object->threadLock();
-
-   if (!Object->Stats->ActionSubscriptions.Ptr) { // Allocate the subscription array if it does not exist
-      parasol::SwitchContext context(Object);
-
-      if (AllocMemory(sizeof(ActionSubscription) * 10, 0, &Object->Stats->ActionSubscriptions.Ptr, NULL)) {
-         Object->threadRelease();
-         return log.warning(ERR_AllocMemory);
-      }
-
-      Object->Stats->SubscriptionSize = 10;
-   }
-
-   LONG i, j;
-   if (auto list = lock_subscribers(Object)) {
-      if (ActionID < 0) {
-         log.warning("Method subscriptions are not supported.");
-         return ERR_Args;
-      }
-
-      // Scan the subscription array.  If the subscription already exists (the action ID and subscriber ID are
-      // identical), we move it to the bottom of the list.
-
-      for (i=0; (i < Object->Stats->SubscriptionSize) and (list[i].ActionID); i++) {
-         if ((list[i].ActionID IS ActionID) and (list[i].Subscriber IS tlContext->resource())) {
-            // Check if there are other actions in front of this location
-            if ((i < Object->Stats->SubscriptionSize-1) and (list[i+1].ActionID)) {
-               for (j=i; (j < Object->Stats->SubscriptionSize-1) and (list[j].ActionID); j++);
-               // Shift the actions down a notch
-               CopyMemory(list+i+1, list+i, sizeof(ActionSubscription) * (Object->Stats->SubscriptionSize - i));
-               i = j; // Set the insertion point to the end of the list
-            }
-            break;
-         }
-      }
-
-      if (i >= Object->Stats->SubscriptionSize) { // Enlarge the size of the object's subscription list
-         parasol::SwitchContext context(Object);
-
-         ActionSubscription *newlist;
-         if (!AllocMemory(sizeof(ActionSubscription)*(Object->Stats->SubscriptionSize+10), 0, (APTR *)&newlist, NULL)) {
-            CopyMemory(list, newlist, Object->Stats->SubscriptionSize * sizeof(ActionSubscription));
-
-            unlock_subscribers(Object);
-
-            FreeResource(Object->Stats->ActionSubscriptions.Ptr);
-            Object->Stats->ActionSubscriptions.Ptr = newlist;
-
-            Object->Stats->SubscriptionSize += 10;
-            list = newlist;
-         }
-         else {
-            unlock_subscribers(Object);
-            Object->threadRelease();
-            return log.warning(ERR_AllocMemory);
-         }
-      }
-
-      list[i].ActionID   = ActionID;
-      list[i].Subscriber = tlContext->object();
-      list[i].Callback   = (void (*)(OBJECTPTR, ACTIONID, ERROR, APTR))Callback->StdC.Routine;
-
-      i = ActionID>>5;
-      if ((i >= 0) and (i < ARRAYSIZE(Object->Stats->NotifyFlags))) {
-         Object->Stats->NotifyFlags[i] |= 1<<(ActionID & 31);
-      }
-
-      unlock_subscribers(Object);
+   if (glSubReadOnly) {
+      glDelayedSubscribe.emplace_back(Object, ActionID, *Callback);
    }
    else {
-      Object->threadRelease();
-      return log.warning(ERR_AccessMemory);
+      std::lock_guard<std::recursive_mutex> lock(glSubLock);
+
+      glSubscriptions[Object->UID][ActionID].emplace_back(Callback->StdC.Context, Callback->StdC.Routine);
+      __atomic_or_fetch(&Object->Stats->NotifyFlags[ActionID>>5], 1<<(ActionID & 31), __ATOMIC_RELAXED);
    }
 
-   Object->threadRelease();
    return ERR_Okay;
 }
 
 /*********************************************************************************************************************
 
 -FUNCTION-
-UnsubscribeAction: Removes action subscriptions from external objects.
+UnsubscribeAction: Terminates action subscriptions.
 
-If you have subscribed to the action/s of a foreign object using the ~SubscribeAction() function, you can
-terminate the subscription by calling the UnsubscribeAction() function. Simply provide the ID of the action that you
-want to unsubscribe from as well as the unique ID of the subscriber that you used in the original subscription call.
+The UnsubscribeAction() function will terminate subscriptions made by ~SubscribeAction().
 
-If you have more than one subscription and you want to terminate them all, set the Action argument to NULL.
+To terminate multiple subscriptions in a single call, set the Action parameter to zero.
 
 -INPUT-
 obj Object: The object that you are unsubscribing from.
-int(AC) Action: The ID of the action that will be unsubscribed, or NULL for all actions.
+int(AC) Action: The ID of the action that will be unsubscribed, or zero for all actions.
 
 -ERRORS-
-Okay: The termination of service was successful.
+Okay:
 NullArgs:
-AccessMemory: Access to the internal subscription array was denied.
+Args:
 -END-
 
 *********************************************************************************************************************/
 
 ERROR UnsubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
 {
-   auto SubscriberID = tlContext->object()->UID;
-
    parasol::Log log(__FUNCTION__);
 
    if (!Object) return log.warning(ERR_NullArgs);
+   if ((ActionID < 0) or (ActionID >= AC_END)) return log.warning(ERR_Args);
 
-   Object->threadLock();
-
-   //log.msg("UnsubscribeAction(%d, Subscriber %d, Action %d)", Object->UID, ActionID);
-
-   if (auto list = lock_subscribers(Object)) {
-      // Clear matching array entries and perform compaction of the array so that there are no gaps.
-
-      LONG j = 0;
-      for (LONG i=0; i < Object->Stats->SubscriptionSize; i++) {
-         if ((list[i].Subscriber) and (list[i].Subscriber->UID IS SubscriberID) and ((!ActionID) or (ActionID IS list[i].ActionID))) {
-            list[i].ActionID = 0;
-         }
-         else if (list[i].ActionID) { // Compact the array by moving the current entry back a few places, then clear the reference.
-            if (i > j) {
-               list[j] = list[i];
-               list[i].ActionID = 0;
-            }
-            j++;
-         }
-         else break; // If no ActionID present then the end of the list has been reached
-      }
-
-      // If there is nothing left in this list, destroy it
-
-      if (!list[0].ActionID) {
-         //log.msg("Object %d list empty - removing list.", Object->UID);
-         unlock_subscribers(Object);
-
-         parasol::SwitchContext context(Object);
-
-         if (Object->UID < 0) {
-            FreeResourceID(Object->Stats->ActionSubscriptions.ID);
-            Object->Stats->ActionSubscriptions.ID = 0;
-         }
-         else {
-            FreeResource(Object->Stats->ActionSubscriptions.Ptr);
-            Object->Stats->ActionSubscriptions.Ptr = NULL;
-         }
-
-         Object->Stats->SubscriptionSize  = 0;
-         for (WORD i=0; i < ARRAYSIZE(Object->Stats->NotifyFlags); i++) Object->Stats->NotifyFlags[i] = 0;
-      }
-      else unlock_subscribers(Object);
+   if (glSubReadOnly) {
+      glDelayedUnsubscribe.emplace_back(Object, ActionID);
+      return ERR_Okay;
    }
 
-   Object->threadRelease();
+   std::lock_guard<std::recursive_mutex> lock(glSubLock);
+
+   if (!ActionID) { // Unsubscribe all actions associated with the subscriber.
+      if (glSubscriptions.contains(Object->UID)) {
+         auto subscriber = tlContext->object()->UID;
+
+         for (auto & [action, list] : glSubscriptions[Object->UID]) {
+            for (auto it = list.begin(); it != list.end(); ) {
+               if (it->Context->UID IS subscriber) it = list.erase(it);
+               else it++;
+            }
+
+            if (list.empty()) {
+               __atomic_and_fetch(&Object->Stats->NotifyFlags[action>>5], ~(1<<(action & 31)), __ATOMIC_RELAXED);
+
+               if ((!Object->Stats->NotifyFlags[0]) and (!Object->Stats->NotifyFlags[1])) {
+                  glSubscriptions.erase(Object->UID);
+               }
+               else glSubscriptions[Object->UID].erase(action);
+            }
+         }
+      }
+   }
+   else if ((glSubscriptions.contains(Object->UID)) and (glSubscriptions[Object->UID].contains(ActionID))) {
+      auto subscriber = tlContext->object()->UID;
+
+      auto &list = glSubscriptions[Object->UID][ActionID];
+      for (auto it = list.begin(); it != list.end(); ) {
+         if (it->Context->UID IS subscriber) it = list.erase(it);
+         else it++;
+      }
+
+      if (list.empty()) {
+         __atomic_and_fetch(&Object->Stats->NotifyFlags[ActionID>>5], ~(1<<(ActionID & 31)), __ATOMIC_RELAXED);
+
+         if ((!Object->Stats->NotifyFlags[0]) and (!Object->Stats->NotifyFlags[1])) {
+            glSubscriptions.erase(Object->UID);
+         }
+         else glSubscriptions[Object->UID].erase(ActionID);
+      }
+   }
+
    return ERR_Okay;
 }
 
@@ -1402,11 +1268,9 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
       }
    }
 
-   if (Object->Stats->ActionSubscriptions.ID) { // Close the action subscription list
-      if (Object->UID < 0) FreeResourceID(Object->Stats->ActionSubscriptions.ID);
-      else if (FreeResource(Object->Stats->ActionSubscriptions.Ptr)) log.warning("Invalid ActionSubscriptions address %p.", Object->Stats->ActionSubscriptions.Ptr);
-
-      Object->Stats->ActionSubscriptions.Ptr = NULL;
+   if ((Object->Stats->NotifyFlags[0]) or (Object->Stats->NotifyFlags[1])) {
+      const std::lock_guard<std::recursive_mutex> lock(glSubLock);
+      glSubscriptions.erase(Object->UID);
    }
 
    // If a private child structure is present, remove it

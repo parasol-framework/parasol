@@ -822,11 +822,9 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       return NULL;
    }
 
-   // Local action management routines
-
-   ManageAction(AC_Init, (APTR)MGR_Init);
-   ManageAction(AC_Free, (APTR)MGR_Free);
-   ManageAction(AC_Signal, (APTR)MGR_Signal);
+   ManagedActions[AC_Init] = (LONG (*)(OBJECTPTR, APTR))MGR_Init;
+   ManagedActions[AC_Free] = (LONG (*)(OBJECTPTR, APTR))MGR_Free;
+   ManagedActions[AC_Signal] = (LONG (*)(OBJECTPTR, APTR))MGR_Signal;
 
    if (!(glClassMap = VarNew(0, KSF_THREAD_SAFE))) {
       fprintf(stderr, "Failed to allocate glClassMap.\n");
