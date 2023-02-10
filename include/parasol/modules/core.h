@@ -698,15 +698,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 #define ALF_SHARED 0x0001
 #define ALF_RECURSIVE 0x0002
 
-// Flags for NotifySubscribers
-
-#define NSF_EXCLUSIVE 0x00000001
-#define NSF_LOCAL 0x00000002
-#define NSF_LOCAL_TASK 0x00000002
-#define NSF_OTHER_TASKS 0x00000004
-#define NSF_DELAY 0x00000008
-#define NSF_FORCE_DELAY 0x00000008
-
 // Flags for semaphores
 
 #define SMF_NO_BLOCKING 0x00000001
@@ -1102,19 +1093,18 @@ enum class NF : ULONG {
    NO_TRACK = 0x00000001,
    SHARED = 0x00000002,
    PUBLIC = 0x00000002,
-   FOREIGN_OWNER = 0x00000004,
-   INITIALISED = 0x00000008,
-   INTEGRAL = 0x00000010,
-   UNLOCK_FREE = 0x00000020,
-   FREE = 0x00000040,
-   TIMER_SUB = 0x00000080,
-   SUPPRESS_LOG = 0x00000100,
-   COLLECT = 0x00000200,
-   NEW_OBJECT = 0x00000400,
-   RECLASSED = 0x00000800,
-   MESSAGE = 0x00001000,
-   SIGNALLED = 0x00002000,
-   HAS_SHARED_RESOURCES = 0x00004000,
+   INITIALISED = 0x00000004,
+   INTEGRAL = 0x00000008,
+   UNLOCK_FREE = 0x00000010,
+   FREE = 0x00000020,
+   TIMER_SUB = 0x00000040,
+   SUPPRESS_LOG = 0x00000080,
+   COLLECT = 0x00000100,
+   NEW_OBJECT = 0x00000200,
+   RECLASSED = 0x00000400,
+   MESSAGE = 0x00000800,
+   SIGNALLED = 0x00001000,
+   HAS_SHARED_RESOURCES = 0x00002000,
    UNIQUE = 0x40000000,
    NAME = 0x80000000,
 };
@@ -2017,7 +2007,7 @@ struct CoreBase {
    ERROR (*_MemoryIDInfo)(MEMORYID ID, struct MemInfo * MemInfo, LONG Size);
    ERROR (*_MemoryPtrInfo)(APTR Address, struct MemInfo * MemInfo, LONG Size);
    ERROR (*_NewObject)(LARGE ClassID, NF Flags, APTR Object);
-   LONG (*_NotifySubscribers)(OBJECTPTR Object, LONG Action, APTR Args, LONG Flags, ERROR Error);
+   void (*_NotifySubscribers)(OBJECTPTR Object, LONG Action, APTR Args, ERROR Error);
    ERROR (*_StrReadLocale)(CSTRING Key, CSTRING * Value);
    APTR (*_GetMemAddress)(MEMORYID ID);
    ERROR (*_ProcessMessages)(LONG Flags, LONG TimeOut);
@@ -2166,7 +2156,7 @@ inline ERROR ManageAction(LONG Action, APTR Routine) { return CoreBase->_ManageA
 inline ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size) { return CoreBase->_MemoryIDInfo(ID,MemInfo,Size); }
 inline ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size) { return CoreBase->_MemoryPtrInfo(Address,MemInfo,Size); }
 inline ERROR NewObject(LARGE ClassID, NF Flags, APTR Object) { return CoreBase->_NewObject(ClassID,Flags,Object); }
-inline LONG NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, LONG Flags, ERROR Error) { return CoreBase->_NotifySubscribers(Object,Action,Args,Flags,Error); }
+inline void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERROR Error) { return CoreBase->_NotifySubscribers(Object,Action,Args,Error); }
 inline ERROR StrReadLocale(CSTRING Key, CSTRING * Value) { return CoreBase->_StrReadLocale(Key,Value); }
 inline APTR GetMemAddress(MEMORYID ID) { return CoreBase->_GetMemAddress(ID); }
 inline ERROR ProcessMessages(LONG Flags, LONG TimeOut) { return CoreBase->_ProcessMessages(Flags,TimeOut); }
@@ -2807,12 +2797,6 @@ inline BYTE CMP_DATETIME(DateTime *one, DateTime *two)
    if (one->Second > two->Second) return 1;
    return 0;
 }
-
-// Macro based actions.
-
-#define SetRead(a,b,c)  a.Buffer=(b);   a.Length=(c);
-#define SetSeek(a,b,c)  a.Position=(b); a.Offset=(c);
-#define SetWrite(a,b,c) a.Buffer=(b);   a.Length=(c);
 
 // Action and Notification Structures
 

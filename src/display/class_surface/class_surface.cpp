@@ -461,7 +461,7 @@ static void display_resized(OBJECTID DisplayID, LONG X, LONG Y, LONG Width, LONG
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR SURFACE_ActionNotify(extSurface *Self, struct acActionNotify *NotifyArgs)
 {
@@ -1234,7 +1234,7 @@ static ERROR SURFACE_InheritedFocus(extSurface *Self, struct gfxInheritedFocus *
 
       //UpdateSurfaceField(Self, Flags); // Not necessary because SURFACE_Focus sets the surfacelist
 
-      NotifySubscribers(Self, AC_Focus, NULL, NULL, ERR_Okay);
+      NotifySubscribers(Self, AC_Focus, NULL, ERR_Okay);
       return ERR_Okay;
    }
 }
@@ -1913,7 +1913,7 @@ static ERROR SURFACE_Move(extSurface *Self, struct acMove *Args)
 
    log.traceBranch("Sending redimension notifications");
    struct acRedimension redimension = { (DOUBLE)Self->X, (DOUBLE)Self->Y, 0, (DOUBLE)Self->Width, (DOUBLE)Self->Height, 0 };
-   NotifySubscribers(Self, AC_Redimension, &redimension, NULL, ERR_Okay);
+   NotifySubscribers(Self, AC_Redimension, &redimension, ERR_Okay);
    return ERR_Okay|ERF_Notified;
 }
 

@@ -523,7 +523,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
          }
          else {
             struct acMoveToPoint moveto = { Self->X, Self->Y, 0, MTF_X|MTF_Y };
-            NotifySubscribers(Self, AC_MoveToPoint, &moveto, NULL, ERR_Okay);
+            NotifySubscribers(Self, AC_MoveToPoint, &moveto, ERR_Okay);
 
             // Recalculate the OverObject due to cursor movement
 
@@ -847,7 +847,7 @@ static ERROR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
    // Customised notification (ensures that both X and Y coordinates are reported).
 
    struct acMoveToPoint moveto = { Self->X, Self->Y, 0, MTF_X|MTF_Y };
-   NotifySubscribers(Self, AC_MoveToPoint, &moveto, NULL, ERR_Okay);
+   NotifySubscribers(Self, AC_MoveToPoint, &moveto, ERR_Okay);
 
    return ERR_Okay|ERF_Notified;
 }

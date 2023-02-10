@@ -1561,16 +1561,6 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 
    //if (Object->OwnerID) log.trace("SetOwner:","Changing the owner for object %d from %d to %d.", Object->UID, Object->OwnerID, Owner->UID);
 
-   if (Object->defined(NF::FOREIGN_OWNER)) { // Remove subscription to AC_OwnerDestroyed
-      OBJECTPTR obj;
-      if (!AccessObject(Object->OwnerID, 3000, &obj)) {
-         auto context = SetContext(Object);
-         UnsubscribeAction(obj, AC_OwnerDestroyed);
-         SetContext(context);
-         ReleaseObject(obj);
-      }
-   }
-
    if (Object->UID < 0) { // Public object
       ScopedAccessMemory<SharedObjectHeader> header(RPM_SharedObjects, MEM_READ, 2000);
       if (header.granted()) {
@@ -1618,19 +1608,6 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
             glObjectChildren[Owner->UID].insert(Object->UID);
          }
          else return log.warning(ERR_Lock);
-      }
-
-      // If the owner is public and belongs to another task, subscribe to the FreeResources action so
-      // that we can receive notification when the owner is destroyed.
-      //
-      // TODO: Would it be better if public object termination was broadcast via events and processes could
-      // check their own glObjectChildren for any references?
-
-      if ((Owner->UID < 0) and (Owner->TaskID) and (Owner->TaskID != glCurrentTaskID) and (Owner->TaskID != SystemTaskID)) {
-         log.msg("Owner %d is in task %d, will monitor for termination.", Owner->UID, Owner->TaskID);
-         parasol::SwitchContext ctx(Object);
-         SubscribeAction(Owner, AC_OwnerDestroyed);
-         Object->Flags |= NF::FOREIGN_OWNER;
       }
    }
 

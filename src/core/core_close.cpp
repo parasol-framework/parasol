@@ -224,27 +224,6 @@ EXPORT void CloseCore(void)
          //free_shared_objects();
       }
 
-      // Free objects that are owned by an object in a foreign process (such objects fall out of the natural object
-      // hierarchy, so they can be left in limbo if their owner is freed in the foreign process).
-
-      {
-         parasol::Log log("Shutdown");
-         log.branch("Freeing objects owned by foreign processes.");
-
-         for (const auto & [id, mem ] : glPrivateMemory) {
-            if (mem.Flags & MEM_OBJECT) {
-               auto obj = mem.Object;
-               if (obj) {
-                  if ((obj->Stats) and obj->defined(NF::FOREIGN_OWNER)) {
-                     acFree(obj);
-                     // Don't be concerned about the stability of glPrivateMemory.  FreeResource() takes measures
-                     // to avoid destabilising it during shutdown.
-                  }
-               }
-            }
-         }
-      }
-
       // Remove locks on any private objects that have not been unlocked yet
 
       for (const auto & [ id, mem ] : glPrivateMemory) {

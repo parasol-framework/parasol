@@ -56,12 +56,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
      "SHARED: The lock will be shared between foreign processes.",
      "RECURSIVE: Set if support for recursive locking within the same thread is required.")
 
-  flags("NSF", { comment="Flags for NotifySubscribers" },
-     "EXCLUSIVE: Instead of messaging each object, the function will attempt to gain exclusive access to each of the subscribed objects and send the notification directly.",
-     "LOCAL|LOCAL_TASK: Only send messages to objects that are owned by the current process.",
-     "OTHER_TASKS: Only send messages to objects that are owned by other processes.",
-     "DELAY|FORCE_DELAY: Place all notifications on the message queue.")
-
   flags("SMF", { comment="Flags for semaphores" },
      "NO_BLOCKING|NON_BLOCKING: Do not block when locking the semaphore unless its counter has reached zero.",
      "EXISTS: When allocating a semaphore, declares that the named semaphore already exists and should not be recreated.")
@@ -330,7 +324,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
   flags("NF", { strict=true, comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word." },
     "NO_TRACK|UNTRACKED: An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.",
     "PUBLIC|SHARED: Allocates a shared object using shareable resources, allowing it to be accessed directly by any process.  Access is granted via exclusive access locks  - refer to the AccessObject() and ReleaseObject() functions.",
-    "FOREIGN_OWNER: Read-only indicator for when an object's parent is in a foreign process.",
     "INITIALISED: Read-only indicator if the object has been initialised.",
     "INTEGRAL: Integral objects can only be allocated by classes that need to adopt the functionality of said object.  Integral objects do not appear in the object tree, effectively making them hidden from view.",
     "UNLOCK_FREE: Read-only indicator for when the object is marked for deletion.",
@@ -1897,12 +1890,6 @@ inline BYTE CMP_DATETIME(DateTime *one, DateTime *two)
    if (one->Second > two->Second) return 1;
    return 0;
 }
-
-// Macro based actions.
-
-#define SetRead(a,b,c)  a.Buffer=(b);   a.Length=(c);
-#define SetSeek(a,b,c)  a.Position=(b); a.Offset=(c);
-#define SetWrite(a,b,c) a.Buffer=(b);   a.Length=(c);
 
 // Action and Notification Structures
 

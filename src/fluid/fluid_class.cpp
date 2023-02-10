@@ -169,7 +169,7 @@ void process_error(objScript *Self, CSTRING Procedure)
 }
 
 /*****************************************************************************
-** This routine is intended for handling ActionNotify() messages only.  It takes the FunctionField list provided by the
+** This routine is intended for handling action notifications only.  It takes the FunctionField list provided by the
 ** action and copies them into a table.  Each value is represented by the relevant parameter name for ease of use.
 */
 
@@ -191,7 +191,7 @@ static ERROR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *
 
       // Note: If the object is public and the call was messaged from a foreign process, all strings/pointers are
       // invalid because the message handlers cannot do deep pointer resolution of the structure we receive from
-      // ActionNotify.
+      // action notifications.
 
       if (args[i].Type & FD_STR) {
          if (ObjectID > 0) lua_pushstring(Lua, ((STRING *)Buffer)[0]);

@@ -137,12 +137,6 @@ public|untracked and private memory flags as necessary.  Example:
 
 *****************************************************************************/
 
-/***
-NOTE: THIS ROUTINE REQUIRES BETTER SUPPORT FOR MESSAGING AC_ACTIONNOTIFY ACTIONS, AS THE ACTIONNOTIFY STRUCTURE
-CONTAINS AN ACTION STRUCTURE POINTER.  THIS SITUATION COULD BE SOLVED BY INTRODUCING AN 'FD_ACTION' FLAG FOR THE
-ACTIONNOTIFY ARGS ARRAY IN DATA.C, WHICH WE COULD DETECT and DEAL WITH IN THIS ROUTINE.
-***/
-
 ERROR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffer, BYTE *Buffer, LONG BufferSize,
                     LONG *NewSize, WORD *WaitResult, CSTRING ActionName)
 {

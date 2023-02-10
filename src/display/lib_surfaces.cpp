@@ -750,7 +750,7 @@ ERROR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
    forbidDrawing();
 
    struct acRedimension redimension = { (DOUBLE)X, (DOUBLE)Y, 0, (DOUBLE)Width, (DOUBLE)Height, (DOUBLE)BPP };
-   NotifySubscribers(Self, AC_Redimension, &redimension, NULL, ERR_Okay);
+   NotifySubscribers(Self, AC_Redimension, &redimension, ERR_Okay);
 
    permitDrawing();
 

@@ -41,7 +41,7 @@ ERROR ManageAction(LONG Action, APTR Routine);
 ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size);
 ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size);
 ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR * Object);
-LONG NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, LONG Flags, ERROR Error);
+void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERROR Error);
 ERROR StrReadLocale(CSTRING Key, CSTRING * Value);
 APTR GetMemAddress(MEMORYID ID);
 ERROR ProcessMessages(LONG Flags, LONG TimeOut);
