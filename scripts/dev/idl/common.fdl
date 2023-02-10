@@ -47,15 +47,15 @@ flags("CCF", { comment="Class categories" },
     "MULTIMEDIA")
 
 enum("AC", { start=1, comment="Action identifiers." },
-    "ActionNotify", "Activate",       "AccessObject", "Clear",    "FreeWarning",  "OwnerDestroyed",   "CopyData",
+    "Signal",       "Activate",       "AccessObject", "Clear",    "FreeWarning",  "OwnerDestroyed", "CopyData",
     "DataFeed",     "Deactivate",     "Draw",         "Flush",    "Focus",        "Free",         "ReleaseObject",
     "GetVar",       "DragDrop",       "Hide",         "Init",     "Lock",         "LostFocus",    "Move",
     "MoveToBack",   "MoveToFront",    "NewChild",     "NewOwner", "NewObject",    "Redo",         "Query",
     "Read",         "Rename",         "Reset",        "Resize",   "SaveImage",    "SaveToObject", "Scroll",
     "Seek",         "SetVar",         "Show",         "Undo",     "Unlock",       "Next",         "Prev",
     "Write",        "SetField",       "Clipboard",    "Refresh",  "Disable",      "Enable",       "Redimension",
-    "MoveToPoint",  "ScrollToPoint",  "Custom",       "Sort",     "SaveSettings", "SelectArea",   "Signal",
-    "END") -- NB: Stats.ActionNotify is currently limited to providing support for 64 actions max
+    "MoveToPoint",  "ScrollToPoint",  "Custom",       "Sort",     "SaveSettings", "SelectArea",
+    "END")
 
 flags("PERMIT", { comment="Permission flags" },
     "READ: User/Owner has read access.  This will not allow compiled code to be executed.",

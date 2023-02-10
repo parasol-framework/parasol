@@ -88,7 +88,7 @@ class objCompressedStream;
 
 // Action identifiers.
 
-#define AC_ActionNotify 1
+#define AC_Signal 1
 #define AC_Activate 2
 #define AC_AccessObject 3
 #define AC_Clear 4
@@ -143,8 +143,7 @@ class objCompressedStream;
 #define AC_Sort 53
 #define AC_SaveSettings 54
 #define AC_SelectArea 55
-#define AC_Signal 56
-#define AC_END 57
+#define AC_END 56
 
 // Permission flags
 
@@ -738,7 +737,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 #define TSF_ATTACHED 0x00000200
 #define TSF_PIPE 0x00000400
 
-#define AHASH_ACTIONNOTIFY 0xa04a409c
 #define AHASH_ACTIVATE 0xdbaf4876
 #define AHASH_ACCESSOBJECT 0xbcf3b98e
 #define AHASH_CLEAR 0x0f3b6d8c
@@ -1679,12 +1677,6 @@ typedef struct rkBase64Encode {
   rkBase64Encode() : Step(0), Result(0), StepCount(0) { };
 } BASE64ENCODE;
 
-struct FeedSubscription {
-   OBJECTID SubscriberID;    // Subscriber ID
-   MEMORYID MessagePortMID;  // Message port for the subscriber
-   CLASSID  ClassID;         // Class of the subscriber
-};
-
 struct FunctionField {
    CSTRING Name;    // Name of the field
    ULONG   Type;    // Type of the field
@@ -2026,7 +2018,7 @@ struct CoreBase {
    ERROR (*_SetName)(OBJECTPTR Object, CSTRING Name);
    void (*_LogReturn)(void);
    ERROR (*_StrCompare)(CSTRING String1, CSTRING String2, LONG Length, LONG Flags);
-   ERROR (*_SubscribeAction)(OBJECTPTR Object, LONG Action);
+   ERROR (*_SubscribeAction)(OBJECTPTR Object, LONG Action, FUNCTION * Callback);
    ERROR (*_VarGet)(struct KeyStore * Store, CSTRING Name, APTR Data, LONG * Size);
    ERROR (*_SubscribeEvent)(LARGE Event, FUNCTION * Callback, APTR Custom, APTR Handle);
    ERROR (*_SubscribeTimer)(DOUBLE Interval, FUNCTION * Callback, APTR Subscription);
@@ -2175,7 +2167,7 @@ inline ERROR ScanDir(struct DirInfo * Info) { return CoreBase->_ScanDir(Info); }
 inline ERROR SetName(OBJECTPTR Object, CSTRING Name) { return CoreBase->_SetName(Object,Name); }
 inline void LogReturn(void) { return CoreBase->_LogReturn(); }
 inline ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags) { return CoreBase->_StrCompare(String1,String2,Length,Flags); }
-inline ERROR SubscribeAction(OBJECTPTR Object, LONG Action) { return CoreBase->_SubscribeAction(Object,Action); }
+inline ERROR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION * Callback) { return CoreBase->_SubscribeAction(Object,Action,Callback); }
 inline ERROR VarGet(struct KeyStore * Store, CSTRING Name, APTR Data, LONG * Size) { return CoreBase->_VarGet(Store,Name,Data,Size); }
 inline ERROR SubscribeEvent(LARGE Event, FUNCTION * Callback, APTR Custom, APTR Handle) { return CoreBase->_SubscribeEvent(Event,Callback,Custom,Handle); }
 inline ERROR SubscribeTimer(DOUBLE Interval, FUNCTION * Callback, APTR Subscription) { return CoreBase->_SubscribeTimer(Interval,Callback,Subscription); }
@@ -2800,7 +2792,6 @@ inline BYTE CMP_DATETIME(DateTime *one, DateTime *two)
 
 // Action and Notification Structures
 
-struct acActionNotify  { union { ACTIONID ActionID; ACTIONID Action; }; union { OBJECTID ObjectID; OBJECTID Object; }; APTR Args; LONG Size; ERROR Error; LONG Time; };
 struct acClipboard     { LONG Mode; };
 struct acCopyData      { union { OBJECTID DestID; OBJECTID Dest; }; };
 struct acCustom        { LONG Number; CSTRING String; };

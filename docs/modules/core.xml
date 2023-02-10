@@ -2994,7 +2994,6 @@ end
   <types>
     <constants lookup="AC" comment="Action identifiers.">
       <const name="AccessObject"/>
-      <const name="ActionNotify"/>
       <const name="Activate"/>
       <const name="Clear"/>
       <const name="Clipboard"/>
@@ -4212,12 +4211,6 @@ end
       <field name="Green" type="FLOAT">Green component value</field>
       <field name="Blue" type="FLOAT">Blue component value</field>
       <field name="Alpha" type="FLOAT">Alpha component value</field>
-    </struct>
-
-    <struct name="FeedSubscription">
-      <field name="SubscriberID" type="OBJECTID">Subscriber ID</field>
-      <field name="MessagePortMID" type="MEMORYID">Message port for the subscriber</field>
-      <field name="ClassID" type="CLASSID">Class of the subscriber</field>
     </struct>
 
     <struct name="Field" comment="Used to describe the public fields of a class.">

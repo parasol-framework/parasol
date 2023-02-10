@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      network.h
-// Copyright: Paul Manias © 2005-2022
+// Copyright: Paul Manias © 2005-2023
 // Generator: idl-c
 
 #include <parasol/main.h>
@@ -357,6 +357,8 @@ class objNetSocket : public BaseClass {
    LONG   MsgLimit;               // Limits the size of incoming and outgoing messages.
 
    // Action stubs
+
+   // ActionNotify
 
    inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
       struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
