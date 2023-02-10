@@ -1133,9 +1133,9 @@ ptr(func) Callback: A C/C++ function to callback when the action is triggered.
 
 -ERRORS-
 Okay:
+NullArgs:
 Args:
-AccessMemory: Access to the Object's subscription list was denied.
-AllocMemory:  A subscription list could not be allocated for the object.
+OutOfRange: The Action parameter is invalid.
 
 *********************************************************************************************************************/
 
@@ -1386,6 +1386,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
 
    NotifySubscribers(Object, AC_Free, NULL, ERR_Okay);
 
+   // TODO: Candidate for deprecation as only ModuleMaster has used this feature.
    // AC_OwnerDestroyed is internal, it notifies objects in foreign tasks that are resource-linked to the object.
    // Refer to SetOwner() for more info.
 

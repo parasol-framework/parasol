@@ -2396,8 +2396,8 @@ SetField(Object, FID_Statement|TSTR, "string");
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+      <error code="OutOfRange">A specified number is outside of the valid range.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
