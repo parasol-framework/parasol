@@ -2067,8 +2067,7 @@ Actions: Used to gain direct access to a task's actions.
 
 This field provides direct access to the actions of a task.  You can use it in the development of an executable program
 to hook into the Core action system.  This allows you to create a program that blends in seamlessly with the
-system's object oriented design.  In some cases this is a necessity, for example, use of some functions will require you
-to hook into the ActionNotify action.
+system's object oriented design.
 
 The Actions field itself points to a list of action routines that are arranged into a lookup table, sorted by action ID.
 You can hook into an action simply by writing to its index in the table with a pointer to the routine that you want to
@@ -2077,16 +2076,10 @@ use for that action.  For example:
 <pre>
 if (!AccessObject(CurrentTask(), 5000, &task)) {
    task->getPtr(FID_Actions, &amp;actions);
-   actions[AC_ActionNotify] = PROGRAM_ActionNotify;
+   actions[AC_Seek] = PROGRAM_Seek;
    ReleaseObject(task);
 }
 </pre>
-
-The synopsis of the routines that you use for hooking into the action list must match
-`ERROR PROGRAM_ActionNotify(*Task, APTR Args)`.
-
-It is recommended that you refer to the Action Support Guide before hooking into any action that you have not written
-code for before.
 
 *****************************************************************************/
 

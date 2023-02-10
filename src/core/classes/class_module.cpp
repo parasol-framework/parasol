@@ -14,7 +14,7 @@ are available in the core platform as standard, which you can use in the develop
 Examples of existing modules can be found in both the `modules:` folder.
 
 To load a module and interact with its API, create a module object and initialise it.  The following code segment
-illustrates:
+illustrates in C++:
 
 <pre>
 DisplayBase *DisplayBase;
@@ -22,7 +22,13 @@ auto modDisplay = objModule::create::global(fl::Name("display"));
 if (modDisplay) modDisplay->getPtr(FID_ModBase, &amp;DisplayBase);
 </pre>
 
-It is critical that the module object is not terminated until the program no longer needs its functionality.
+To do the same in Fluid:
+
+<pre>
+mGfx = mod.load('display')
+</pre>
+
+It is critical that the module object is permanently retained until the program no longer needs its functionality.
 -END-
 
 **********************************************************************************************************************/

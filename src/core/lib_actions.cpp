@@ -1,4 +1,4 @@
-/****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol Framework is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -8,7 +8,7 @@ Please refer to it for further information on licensing.
 Name: Objects
 -END-
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 #ifdef __unix__
 #include <unistd.h>
@@ -49,7 +49,7 @@ INLINE void unlock_subscribers(OBJECTPTR Object)
    if (Object->UID < 0) ReleaseMemoryID(Object->Stats->ActionSubscriptions.ID);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 CSTRING action_name(OBJECTPTR Object, LONG ActionID)
 {
@@ -63,7 +63,7 @@ CSTRING action_name(OBJECTPTR Object, LONG ActionID)
    else return "Method";
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Refer to ActionThread() to see how this is used.  It calls an action on a target object and then sends a callback
 // notification via the internal message queue.
 
@@ -222,7 +222,7 @@ static void free_public_children(OBJECTPTR Object)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 Action: This function is responsible for executing action routines.
@@ -277,7 +277,7 @@ NoAction:        The action is not supported by the object's supporting class.
 ObjectCorrupt:   The object that was received is badly corrupted in a critical area.
 -END-
 
-*****************************************************************************/
+**********************************************************************************************************************/
 
 ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
 {
@@ -286,7 +286,7 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
    if (!argObject) return log.warning(ERR_NullArgs);
 
    auto obj = argObject;
-   OBJECTID object_id = obj->UID;
+   const OBJECTID object_id = obj->UID;
 
    obj->threadLock();
 
@@ -402,7 +402,7 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ActionList: Returns a pointer to the system's action table.
@@ -446,7 +446,7 @@ The argument types that can be used by actions are limited to those listed in th
 &array(struct(ActionTable)) Actions: A pointer to the Core's action table (struct ActionTable *) is returned. Please note that the first entry in the ActionTable list has all fields driven to NULL, because valid action ID's start from one, not zero.  The final action in the list is also terminated with NULL fields in order to indicate an end to the list.  Knowing this is helpful when scanning the list or calculating the total number of actions supported by the Core.
 &arraysize Size: Total number of elements in the returned list.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void ActionList(struct ActionTable **List, LONG *Size)
 {
@@ -454,7 +454,7 @@ void ActionList(struct ActionTable **List, LONG *Size)
    if (Size) *Size = AC_END;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ActionMsg: Provides a mechanism for sending actions to objects that belong to other tasks.
@@ -490,7 +490,7 @@ NoMatchingObject: There is no object for the given Object.
 TimeOut: Timeout limit reached while waiting for a result from the foreign process.  Applies to WaitMsg() only.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 struct msgAction {
    struct Message Message;
@@ -778,7 +778,7 @@ retry:
    else return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ActionThread: Execute an action in parallel, via a separate thread.
@@ -816,7 +816,7 @@ NewObject
 Init
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *Callback, LONG Key)
 {
@@ -902,7 +902,7 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 CheckAction: Checks objects to see whether or not they support certain actions.
@@ -925,7 +925,7 @@ False: The action is not supported.
 NullArgs:
 LostClass: The object has lost its class reference (object corrupt).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR CheckAction(OBJECTPTR Object, LONG ActionID)
 {
@@ -948,7 +948,7 @@ ERROR CheckAction(OBJECTPTR Object, LONG ActionID)
    else return log.warning(ERR_NullArgs);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetActionMsg: Returns a message structure if called from an action that was executed by the message system.
@@ -963,7 +963,7 @@ the Time field, which indicates the time-stamp at which the action message was o
 -RESULT-
 resource(Message): A Message structure is returned if the function is called in valid circumstances, otherwise NULL.  The Message structure's fields are described in the ~GetMessage() function.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 Message * GetActionMsg(void)
 {
@@ -975,7 +975,7 @@ Message * GetActionMsg(void)
    return NULL;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ManageAction: Allows modules to intercept and manage action calls.
@@ -999,7 +999,7 @@ Okay
 Args
 AllocMemory: The management array could not be expanded to accommodate the management routine (internal error).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR ManageAction(LONG ActionID, APTR Routine)
 {
@@ -1040,7 +1040,7 @@ ERROR ManageAction(LONG ActionID, APTR Routine)
    else return log.warning(ERR_Args);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 NotifySubscribers: Used to send notification messages to action subscribers.
@@ -1058,33 +1058,30 @@ The Flags argument currently accepts the following options:
 obj Object: Pointer to the object that is to receive the notification message.
 int(AC) Action: The action ID for notification.
 ptr Args: Pointer to the action arguments relevant to the ActionID.
-int(NSF) Flags: Optional flags are specified here.
 error Error: The error code that is associated with the action result.
 
--RESULT-
-int: The total number of subscribers that were called is returned.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 // No need for prv_access() since this function is called from within class action code only.
 
-LONG NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, LONG Flags, ERROR ErrorCode)
+void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR ErrorCode)
 {
    parasol::Log log(__FUNCTION__);
 
    if (!Object) {
       log.warning(ERR_NullArgs);
-      return 0;
+      return;
    }
 
-   if (!Object->Stats->ActionSubscriptions.Ptr) return 0;
+   if (!Object->Stats->ActionSubscriptions.Ptr) return;
 
    LONG result;
    if (ActionID >= 0) result = Object->Stats->NotifyFlags[ActionID>>5] & (1<<(ActionID & 31));
-   else return 0;
+   else return;
 
-   if (!result) return 0;
+   if (!result) return;
 
    auto recursionsave = tlMsgRecursion;
    tlMsgRecursion = 255; // This prevents ProcessMessages() from being used while inside notification routines
@@ -1114,36 +1111,7 @@ LONG NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, LONG Fl
 
       if (count) {
          for (LONG i=0; i < count; i++) {
-            ERROR error = ERR_Okay;
-            if (Flags & NSF_LOCAL_TASK) { // The LOCALTASK option means that only objects that are within the local task's address space will be sent the message.
-               if ((shadow[i].MessagePortMID) and (glTaskMessageMID) and (shadow[i].MessagePortMID != glTaskMessageMID)) {
-                  //log.warning("Subscriber %d skipped, belongs to port %d (we are %d).", shadow[i].SubscriberID, shadow[i].MessagePortMID, glTaskMessageMID);
-                  continue;
-               }
-            }
-            else if (Flags & NSF_OTHER_TASKS) {
-               if (!((shadow[i].MessagePortMID) and (glTaskMessageMID) and (shadow[i].MessagePortMID != glTaskMessageMID))) {
-                  continue;
-               }
-            }
-
-            if (Flags & NSF_EXCLUSIVE) {
-               if ((shadow[i].MessagePortMID) and (glTaskMessageMID) and (shadow[i].MessagePortMID != glTaskMessageMID)) {
-                  // Use this routine for objects that belong to foreign tasks.  This involves sending a message to the
-                  // other Task to perform the ActionNotify process, then we wait for it to respond before continuing.
-
-                  error = ActionMsg(AC_ActionNotify, shadow[i].SubscriberID, &notify, shadow[i].MessagePortMID, -2);
-               }
-               else { // Use this routine for objects that belong to our task or are public
-                  OBJECTPTR subscriber;
-                  if (!(error = AccessObject(shadow[i].SubscriberID, 4000, &subscriber))) {
-                     Action(AC_ActionNotify, subscriber, &notify);
-                     ReleaseObject(subscriber);
-                  }
-               }
-            }
-            else if (Flags & NSF_FORCE_DELAY) error = ActionMsg(AC_ActionNotify, shadow[i].SubscriberID, &notify, shadow[i].MessagePortMID, -1);
-            else error = ActionMsg(AC_ActionNotify, shadow[i].SubscriberID, &notify, shadow[i].MessagePortMID, shadow[i].ClassID);
+            ERROR error = ActionMsg(AC_ActionNotify, shadow[i].SubscriberID, &notify, shadow[i].MessagePortMID, shadow[i].ClassID);
 
             // If the message port or the object does not exist, remove the object from the list.
 
@@ -1161,10 +1129,10 @@ LONG NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, LONG Fl
 
    tlMsgRecursion = recursionsave;
 
-   return count;
+   return;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SubscribeAction: Listens for actions that may be performed on an object.
@@ -1206,7 +1174,7 @@ Args:
 AccessMemory: Access to the Object's subscription list was denied.
 AllocMemory:  A subscription list could not be allocated for the object.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR SubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
 {
@@ -1304,7 +1272,7 @@ ERROR SubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 UnsubscribeAction: Removes action subscriptions from external objects.
@@ -1325,7 +1293,7 @@ NullArgs:
 AccessMemory: Access to the internal subscription array was denied.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR UnsubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
 {
@@ -1387,7 +1355,7 @@ ERROR UnsubscribeActionByID(OBJECTPTR Object, ACTIONID ActionID, OBJECTID Subscr
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Action: Free()
 */
 
@@ -1466,12 +1434,12 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
 
    set_object_flags(Object, (Object->Flags|NF::FREE) & (~NF::UNLOCK_FREE));
 
-   NotifySubscribers(Object, AC_Free, NULL, 0, ERR_Okay);
+   NotifySubscribers(Object, AC_Free, NULL, ERR_Okay);
 
    // AC_OwnerDestroyed is internal, it notifies objects in foreign tasks that are resource-linked to the object.
    // Refer to SetOwner() for more info.
 
-   NotifySubscribers(Object, AC_OwnerDestroyed, NULL, 0, ERR_Okay);
+   NotifySubscribers(Object, AC_OwnerDestroyed, NULL, ERR_Okay);
 
    if (mc->ActionTable[AC_Free].PerformAction) {  // If the class that formed the object is a sub-class, we call its Free() support first, and then the base-class to clean up.
       mc->ActionTable[AC_Free].PerformAction(Object, NULL);
@@ -1538,7 +1506,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
    return ERR_Okay|ERF_Notified;  // On returning we set the ERF_Notified flag to prevent Action() from trying to interact with the Object->Stats structure (which no longer exists after the object memory is freed).
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Action: Init()
 */
 
@@ -1694,7 +1662,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Action: OwnerDestroyed
 */
 
@@ -1706,7 +1674,7 @@ ERROR MGR_OwnerDestroyed(OBJECTPTR Object, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Action: Signal
 */
 

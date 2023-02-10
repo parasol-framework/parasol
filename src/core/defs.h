@@ -226,7 +226,6 @@ extern struct virtual_drive glVirtual[20];
 //********************************************************************************************************************
 // Resource definitions.
 
-#define PRIVATE_TABLE_CHUNK  300
 #define PUBLIC_TABLE_CHUNK   1000  // Maximum number of public objects (system-wide)
 #define PAGE_TABLE_CHUNK     32
 #define MEMHEADER            12    // 8 bytes at start for MEMH and MemoryID, 4 at end for MEMT

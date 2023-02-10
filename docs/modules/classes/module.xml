@@ -17,12 +17,15 @@
     <copyright>Paul Manias 1996-2022</copyright>
     <description>
 <p>The Module class is used to load and maintain the modules that are installed on the user's system.  A number of modules are available in the core platform as standard, which you can use in the development of your programs. Examples of existing modules can be found in both the <code>modules:</code> folder.</p>
-<p>To load a module and interact with its API, create a module object and initialise it.  The following code segment illustrates:</p>
+<p>To load a module and interact with its API, create a module object and initialise it.  The following code segment illustrates in C++:</p>
 <pre>DisplayBase *DisplayBase;
 auto modDisplay = objModule::create::global(fl::Name("display"));
 if (modDisplay) modDisplay-&gt;getPtr(FID_ModBase, &amp;DisplayBase);
 </pre>
-<p>It is critical that the module object is not terminated until the program no longer needs its functionality.</p></description>
+<p>To do the same in Fluid:</p>
+<pre>mGfx = mod.load('display')
+</pre>
+<p>It is critical that the module object is permanently retained until the program no longer needs its functionality.</p></description>
     <source>
       <file path="../classes/">class_module.cpp</file>
     </source>
@@ -65,24 +68,6 @@ if (modDisplay) modDisplay-&gt;getPtr(FID_ModBase, &amp;DisplayBase);
   </methods>
 
   <fields>
-    <field>
-      <name>Actions</name>
-      <comment>Used to gain direct access to a module's actions.</comment>
-      <access read="G">Get</access>
-      <type>APTR</type>
-      <description>
-<p>This field provides direct access to the actions of a module.  You can use it in the development of a class or function based module so that your code can hook into the action system.  This allows you to create a module that blends in seamlessly with the system's object oriented design.</p>
-<p>The Actions field itself points to a list of action routines that are arranged into a lookup table, sorted by action ID. You can hook into an action simply by writing to its index in the table with a pointer to the routine that you want to use for that action.  For example:</p>
-<pre>APTR *actions;
-
-Module-&gt;getPtr(FID_Actions, &amp;actions);
-actions[AC_ActionNotify] = MODULE_ActionNotify;
-</pre>
-<p>The synopsis of the routines that you use for hooking into the action list must match <code>ERROR MODULE_ActionNotify(OBJECTPTR Module, APTR Args)</code></p>
-<p>It is recommended that you refer to the Action Support Guide before hooking into any action that you have not written code for before.</p>
-      </description>
-    </field>
-
     <field>
       <name>Flags</name>
       <comment>Optional flags.</comment>

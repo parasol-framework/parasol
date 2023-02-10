@@ -262,7 +262,7 @@ static void * thread_entry(extThread *Self)
       tlThreadRef = NULL;
 
       if (!AccessPrivateObject(Self, 10000)) {
-         NotifySubscribers(Self, AC_Signal, NULL, 0, ERR_Okay); // Signalling thread completion is required by THREAD_Wait()
+         NotifySubscribers(Self, AC_Signal, NULL, ERR_Okay); // Signalling thread completion is required by THREAD_Wait()
 
          if (Self->Callback.Type) {
             // A message needs to be placed on the process' message queue with a reference to the thread object
