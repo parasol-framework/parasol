@@ -81,7 +81,6 @@ static ConfigKeys * find_group_wild(extConfig *Self, CSTRING Group);
 static void apply_key_filter(extConfig *, CSTRING);
 static void apply_group_filter(extConfig *, CSTRING);
 static class FilterConfig parse_filter(std::string, bool);
-static void merge_groups(ConfigGroups &Dest, ConfigGroups &Source);
 
 //********************************************************************************************************************
 
@@ -971,7 +970,7 @@ static bool check_for_key(CSTRING Data)
 
 //********************************************************************************************************************
 
-static void merge_groups(ConfigGroups &Dest, ConfigGroups &Source)
+void merge_groups(ConfigGroups &Dest, ConfigGroups &Source)
 {
    for (auto& [src_group, src_keys] : Source) {
       bool processed = FALSE;

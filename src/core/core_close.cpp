@@ -218,10 +218,6 @@ EXPORT void CloseCore(void)
          parasol::Log log("Shutdown");
          log.branch("Freeing the task object and its resources.");
          acFree(glCurrentTask);
-
-         // Remove allocated objects that are public/shared
-
-         //free_shared_objects();
       }
 
       // Remove locks on any private objects that have not been unlocked yet
@@ -253,8 +249,6 @@ EXPORT void CloseCore(void)
       Expunge(TRUE);
 
       VirtualVolume("archive", VAS_DEREGISTER, TAGEND);
-
-      if (glVolumes) { acFree(glVolumes); glVolumes = NULL; }
 
       // Remove all message handlers
 
@@ -417,11 +411,10 @@ EXPORT void CloseCore(void)
 
       if (glSharedControlID) { winCloseHandle(glSharedControlID); glSharedControlID = 0; }
 
-      //winDeathBringer(1); // Doesn't work properly if you CTRL-C to exit...
-
       winShutdown();
    #endif
 
+   free_private_lock(TL_VOLUMES);
    free_private_lock(TL_GENERIC);
    free_private_lock(TL_TIMER);
    free_private_lock(TL_MSGHANDLER);

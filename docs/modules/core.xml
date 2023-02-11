@@ -1839,7 +1839,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="FileNotFound">File not found.</error>
-      <error code="ExclusiveDenied">An attempt to gain exclusive access to a shared object failed.</error>
+      <error code="LockFailed">Failed to lock a required resource.</error>
       <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
       <error code="Loop">An infinite loop was detected.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>

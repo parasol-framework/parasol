@@ -167,6 +167,7 @@ enum {
    TL_PRIVATE_OBJECTS,
    TL_MSGHANDLER,
    TL_THREADPOOL,
+   TL_VOLUMES,
    TL_END
 };
 
@@ -577,7 +578,7 @@ extern class ObjectContext glTopContext; // Read-only, not a threading concern.
 extern OBJECTPTR modIconv;
 extern OBJECTPTR glLocale;
 extern objTime *glTime;
-extern objConfig *glVolumes; // Volume management object, contains all FS volume names and their meta data.  Use AccessPrivateObject() to lock.
+extern ConfigGroups glVolumes;
 extern objConfig *glDatatypes;
 extern struct KeyStore *glClassMap; // Register of all classes.
 extern struct KeyStore *glFields; // Reverse lookup for converting field hashes back to their respective names.
@@ -1092,6 +1093,7 @@ void  plUnlockSemaphore(APTR);
 ERROR check_paths(CSTRING, LONG);
 
 ERROR convert_errno(LONG Error, ERROR Default);
+void merge_groups(ConfigGroups &Dest, ConfigGroups &Source);
 
 #ifdef _WIN32
 void activate_console(BYTE);

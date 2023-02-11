@@ -2017,24 +2017,21 @@ static ERROR GET_Icon(extFile *Self, CSTRING *Value)
    if ((Self->Path[i] IS ':') and (!Self->Path[i+1])) {
       std::string icon("icons:folders/folder");
 
-      if (!AccessPrivateObject(glVolumes, 8000)) {
-         ConfigGroups *groups;
-         if ((!glVolumes->getPtr(FID_Data, &groups)) and (groups)) {
-            if (groups->size() > 0) {
-               std::string volume(Self->Path, i);
+      ThreadLock lock(TL_VOLUMES, 6000);
+      if (lock.granted()) {
+         if (glVolumes.size() > 0) {
+            std::string volume(Self->Path, i);
 
-               for (auto& [group, keys] : groups[0]) {
-                  if (!StrMatch(volume.c_str(), keys["Name"].c_str())) {
-                     if (keys.contains("Icon")) {
-                        icon = "icons:";
-                        icon += keys["Icon"];
-                        break;
-                     }
+            for (auto& [group, keys] : glVolumes) {
+               if (!StrMatch(volume.c_str(), keys["Name"].c_str())) {
+                  if (keys.contains("Icon")) {
+                     icon = "icons:";
+                     icon += keys["Icon"];
+                     break;
                   }
                }
             }
          }
-         ReleasePrivateObject(glVolumes);
       }
 
       *Value = Self->prvIcon = StrClone(icon.c_str());

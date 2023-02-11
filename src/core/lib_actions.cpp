@@ -526,9 +526,7 @@ ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args, MEMORYID MessageMID
 
    // Get the message port that manages this object
 
-   SharedObjectHeader *header;
-   SharedObject *list;
-   LONG pos, msgsize;
+   LONG msgsize;
 
    if (!MessageMID) {
       MessageMID = glTaskMessageMID;
