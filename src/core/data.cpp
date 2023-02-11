@@ -83,10 +83,10 @@ struct MsgHandler     *glMsgHandlers   = 0, *glLastMsgHandler = 0;
 std::list<CoreTimer> glTimers;
 OBJECTID glClassFileID = 0;
 APTR glJNIEnv = 0;
-UWORD glFunctionID = 3333;
+UWORD glFunctionID = 3333; // IDTYPE_FUNCTION
 objTask *glCurrentTask = 0;
-OBJECTID  glCurrentTaskID  = 0;
-OBJECTID  SystemTaskID     = 0;
+OBJECTID glCurrentTaskID = 0;
+OBJECTID SystemTaskID    = 0;
 struct KeyStore *glClassMap = NULL;
 struct KeyStore *glFields = NULL;
 LONG glPageSize = 4096; // Default page size is 4k
@@ -99,8 +99,6 @@ LONG glTaskMessageMID = 0;
 LONG glValidateProcessID = 0;
 LONG glProcessID  = 0;
 LONG glInstanceID = 0;
-LONG glMemRegSize = 0;
-LONG glActionCount = AC_END;
 LONG glEUID = -1, glEGID = -1, glGID = -1, glUID = -1;
 ConfigGroups glVolumes;
 objConfig *glDatatypes = NULL;

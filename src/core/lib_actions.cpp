@@ -329,7 +329,7 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
       // 2. If applicable, the object's sub-class (e.g. Picture:JPEG).
       // 3. The base-class.
 
-      if (ActionID > glActionCount) error = log.warning(ERR_IllegalActionID);
+      if (ActionID >= AC_END) error = log.warning(ERR_IllegalActionID);
       else if (ManagedActions[ActionID]) error = ManagedActions[ActionID](obj, Parameters);
       else if (cl->ActionTable[ActionID].PerformAction) { // Can be base or sub-class
          error = cl->ActionTable[ActionID].PerformAction(obj, Parameters);
