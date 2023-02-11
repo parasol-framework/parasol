@@ -32,11 +32,16 @@ struct subscription {
    OBJECTPTR Object;
    ACTIONID ActionID;
    FUNCTION Callback;
+
+   subscription(OBJECTPTR pObject, ACTIONID pAction, FUNCTION pCallback) :
+      Object(pObject), ActionID(pAction), Callback(pCallback) { }
 };
 
 struct unsubscription {
    OBJECTPTR Object;
    ACTIONID ActionID;
+
+   unsubscription(OBJECTPTR pObject, ACTIONID pAction) : Object(pObject), ActionID(pAction) { }
 };
 
 static std::recursive_mutex glSubLock; // The following variables are locked by this mutex
@@ -1131,7 +1136,7 @@ ERROR UnsubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
    if (!ActionID) { // Unsubscribe all actions associated with the subscriber.
       if (glSubscriptions.contains(Object->UID)) {
          auto subscriber = tlContext->object()->UID;
-
+restart:
          for (auto & [action, list] : glSubscriptions[Object->UID]) {
             for (auto it = list.begin(); it != list.end(); ) {
                if (it->Context->UID IS subscriber) it = list.erase(it);
@@ -1143,8 +1148,12 @@ ERROR UnsubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
 
                if ((!Object->Stats->NotifyFlags[0]) and (!Object->Stats->NotifyFlags[1])) {
                   glSubscriptions.erase(Object->UID);
+                  break;
                }
-               else glSubscriptions[Object->UID].erase(action);
+               else {
+                  glSubscriptions[Object->UID].erase(action);
+                  goto restart;
+               }
             }
          }
       }
