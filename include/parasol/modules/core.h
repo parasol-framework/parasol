@@ -2395,7 +2395,6 @@ struct BaseClass { // Must be 64-bit aligned
    OBJECTID UID;                // Unique object identifier
    OBJECTID OwnerID;            // The owner of this object
    NF       Flags;              // Object flags
-   OBJECTID TaskID;             // The process that this object belongs to
    volatile LONG  ThreadID;     // Managed by locking functions
    #ifdef _WIN32
       WINHANDLE ThreadMsg;      // Pipe for sending messages to the owner thread.
@@ -2412,7 +2411,6 @@ struct BaseClass { // Must be 64-bit aligned
    inline bool isPublic() { return (Flags & NF::PUBLIC) != NF::NIL; }
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
    inline bool isSubClass() { return SubID != 0; }
-   inline OBJECTID ownerTask() { return TaskID; }
    inline OBJECTID ownerID() { return OwnerID; }
    inline NF flags() { return Flags; }
 

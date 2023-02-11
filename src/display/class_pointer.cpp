@@ -38,7 +38,6 @@ static FunctionField mthGrabX11Pointer[] = { { "Surface", FD_LONG }, { NULL, 0 }
 static LONG glDefaultSpeed = 160;
 static FLOAT glDefaultAcceleration = 0.8;
 static TIMER glRepeatTimer = 0;
-OBJECTID glOverTaskID = 0; // Task that owns the surface that the cursor is positioned over
 
 static ERROR repeat_timer(extPointer *, LARGE, LARGE);
 static void set_pointer_defaults(extPointer *);
@@ -220,7 +219,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
 {
    parasol::Log log(__FUNCTION__);
    InputEvent userinput;
-   OBJECTID modal_id, target;
+   OBJECTID target;
    LONG buttonflag, bi;
 
    ClearMemory(&userinput, sizeof(userinput));
@@ -286,23 +285,19 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
    // positioned over that surface (or its children).  The modal_id is therefore zero if the pointer is over the modal
    // surface, or if no modal surface is defined.
 
-   if (glOverTaskID) {
-      modal_id = gfxGetModalSurface();
+   auto modal_id = gfxGetModalSurface();
 
-      if (modal_id) {
-         if (modal_id IS Self->OverObjectID) {
-            modal_id = 0;
-         }
-         else {
-            // Check if the OverObject is one of the children of modal_id.
+   if (modal_id) {
+      if (modal_id IS Self->OverObjectID) {
+         modal_id = 0;
+      }
+      else {
+         // Check if the OverObject is one of the children of modal_id.
 
-            ERROR error;
-            error = gfxCheckIfChild(modal_id, Self->OverObjectID);
-            if ((error IS ERR_True) or (error IS ERR_LimitedSuccess)) modal_id = 0;
-         }
+         ERROR error = gfxCheckIfChild(modal_id, Self->OverObjectID);
+         if ((error IS ERR_True) or (error IS ERR_LimitedSuccess)) modal_id = 0;
       }
    }
-   else modal_id = 0;
 
    // Button Press Handler
 
@@ -1288,7 +1283,6 @@ static BYTE get_over_object(extPointer *Self)
       DOUBLE li_left = list[i].Left;
       DOUBLE li_top  = list[i].Top;
       LONG cursor_image = list[i].Cursor; // Preferred cursor ID
-      glOverTaskID = list[i].TaskID;   // Task that owns the surface
       ReleaseMemory(ctl);
 
       if (Self->OverObjectID != li_objectid) {

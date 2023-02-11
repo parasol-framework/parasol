@@ -225,19 +225,11 @@ ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG To
             if ((list[i].Right > abs.Left) and (list[i].Bottom > abs.Top) and
                 (list[i].Left < abs.Right) and (list[i].Top < abs.Bottom)) {
 
-               if ((list[i].TaskID != CurrentTaskID()) and (!(list[i].Flags & RNF_COMPOSITE))) {
-                  // If the surface belongs to a different task, just post a redraw message to it.
-                  // There is no point in performing an expose until it redraws itself.
-
+               if (!(list[i].Flags & RNF_COMPOSITE)) { // Composites never require redrawing because they are not completely volatile, but we will expose them
                   _redraw_surface(list[i].SurfaceID, list, i, Total, abs.Left, abs.Top, abs.Right, abs.Bottom, IRF_IGNORE_CHILDREN); // Redraw the volatile surface, ignore children
                }
-               else {
-                  if (!(list[i].Flags & RNF_COMPOSITE)) { // Composites never require redrawing because they are not completely volatile, but we will expose them
-                     _redraw_surface(list[i].SurfaceID, list, i, Total, abs.Left, abs.Top, abs.Right, abs.Bottom, IRF_IGNORE_CHILDREN); // Redraw the volatile surface, ignore children
-                  }
 
-                  _expose_surface(list[i].SurfaceID, list, i, Total, abs.Left, abs.Top, abs.Right, abs.Bottom, EXF_ABSOLUTE); // Redraw the surface, ignore children
-               }
+               _expose_surface(list[i].SurfaceID, list, i, Total, abs.Left, abs.Top, abs.Right, abs.Bottom, EXF_ABSOLUTE); // Redraw the surface, ignore children
 
                //while (list[i].BitmapID IS list[i+1].BitmapID) i++; This only works if the surfaces being skipped are completely intersecting one another.
             }

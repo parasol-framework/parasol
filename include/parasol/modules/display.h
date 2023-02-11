@@ -299,7 +299,6 @@ struct SurfaceList {
    OBJECTID SurfaceID;   // ID of the surface area
    OBJECTID BitmapID;    // Shared bitmap buffer, if available
    OBJECTID DisplayID;   // Display
-   OBJECTID TaskID;      // Task that owns the surface
    OBJECTID RootID;      // RootLayer
    OBJECTID PopOverID;
    LONG     Flags;       // Surface flags (RNF_VISIBLE etc)

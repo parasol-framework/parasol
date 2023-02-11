@@ -690,8 +690,6 @@ static ERROR SURFACE_AddCallback(extSurface *Self, struct drwAddCallback *Args)
 
    if (call_context) context = call_context;
 
-   if (Self->ownerTask() != CurrentTaskID()) return log.warning(ERR_ExecViolation);
-
    if (Self->Callback) {
       // Check if the subscription is already on the list for our surface context.
 
@@ -1133,9 +1131,7 @@ static ERROR SURFACE_Free(extSurface *Self, APTR Void)
    if (Self->Flags & RNF_AUTO_QUIT) {
       parasol::Log log;
       log.msg("Posting a quit message due to use of AUTOQUIT.");
-      if (Self->ownerTask() IS CurrentTask()->UID) {
-         SendMessage(NULL, MSGID_QUIT, NULL, NULL, NULL);
-      }
+      SendMessage(NULL, MSGID_QUIT, NULL, NULL, NULL);
    }
 
    if (Self->InputHandle) gfxUnsubscribeInput(Self->InputHandle);
@@ -1604,13 +1600,6 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
          DISPLAYINFO *info;
          if (!gfxGetDisplayInfo(Self->DisplayID, &info)) {
             if (info->BitsPerPixel != Self->BitsPerPixel) require_store = TRUE;
-         }
-      }
-
-      if ((require_store IS FALSE) and (Self->ParentID)) {
-         MemInfo info;
-         if (!MemoryIDInfo(Self->ParentID, &info)) {
-            if (info.TaskID != CurrentTaskID()) require_store = TRUE;
          }
       }
    }

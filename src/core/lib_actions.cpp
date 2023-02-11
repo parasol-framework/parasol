@@ -531,27 +531,8 @@ ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args, MEMORYID MessageMID
    LONG pos, msgsize;
 
    if (!MessageMID) {
-      if (ObjectID > 0) { // Object is private (local)
-         MessageMID = glTaskMessageMID;
-         ClassID = 0;
-      }
-      else if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-         if (!find_public_object_entry(header, ObjectID, &pos)) {
-            list = (SharedObject *)ResolveAddress(header, header->Offset);
-            MessageMID = list[pos].MessageMID;
-            ClassID    = list[pos].ClassID;
-            ReleaseMemoryID(RPM_SharedObjects);
-
-            // The MessageMID can be zero if the object is not assigned an owner (e.g. CLF_NO_OWNERSHIP is defined by the object's class).
-
-            if (!MessageMID) MessageMID = glTaskMessageMID;
-         }
-         else {
-            ReleaseMemoryID(RPM_SharedObjects);
-            return ERR_NoMatchingObject;
-         }
-      }
-      else return log.warning(ERR_AccessMemory);
+      MessageMID = glTaskMessageMID;
+      ClassID = 0;
    }
 
    // If the object belongs to the message port of our task, execute the action immediately (unless a delay has been requested).
@@ -651,39 +632,6 @@ retry:
    else error = SendMessage(MessageMID, MSGID_ACTION, 0, &msg.Action, msgsize);
 
    if (error) {
-      if ((error IS ERR_MemoryDoesNotExist) and (ObjectID < 0)) {
-         // If the message queue does not exist for a shared object, the object can still remain in memory if it is
-         // untracked - so try to execute the action directly.
-
-         log.warning("Object #%d is orphaned and will now be disowned.", ObjectID);
-
-         if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-            // Wipe the message MID so that all future executions are within the caller's process space
-            if (find_public_object_entry(header, ObjectID, &pos) IS ERR_Okay) {
-               list = (SharedObject *)ResolveAddress(header, header->Offset);
-               list[pos].MessageMID = 0;
-            }
-            ReleaseMemoryID(RPM_SharedObjects);
-         }
-
-         OBJECTPTR object;
-         if (delay) {  // Since a delay is enforced, try again but with our task message queue.
-            if (!AccessObject(ObjectID, 1000, &object)) {
-               object->TaskID = 0; // The originating task no longer exists
-               ReleaseObject(object);
-            }
-            MessageMID = glTaskMessageMID;
-            goto retry;
-         }
-
-         if (!AccessObject(ObjectID, 1000, &object)) {
-            object->TaskID = 0; // The originating task no longer exists
-            error = Action(ActionID, object, Args);
-            ReleaseObject(object);
-            return error;
-         }
-      }
-
       if (ActionID > 0) {
          log.warning("Action %s on object #%d failed, SendMsg error: %s", ActionTable[ActionID].Name, ObjectID, glMessages[error]);
       }

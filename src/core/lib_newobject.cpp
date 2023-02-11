@@ -106,9 +106,6 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
       }
 
       head->Class = (extMetaClass *)mc;
-      if ((glCurrentTaskID != SystemTaskID) and (!(mc->Flags & CLF_NO_OWNERSHIP))) {
-         head->TaskID = glCurrentTaskID;
-      }
 
       if ((Flags & NF::UNTRACKED) IS NF::NIL) { // Don't track untracked objects to specific threads.
          head->ThreadMsg = tlThreadWriteMsg; // If the object needs to belong to a thread, this will record it.
@@ -318,9 +315,6 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
       else head->SubID = mc->SubClassID; // Object derived from a sub-class
 
       head->Class = mc;
-      if ((glCurrentTaskID != SystemTaskID) and (!(mc->Flags & CLF_NO_OWNERSHIP))) {
-         head->TaskID = glCurrentTaskID;
-      }
 
       if ((Flags & NF::UNTRACKED) IS NF::NIL) {
          head->ThreadMsg = tlThreadWriteMsg; // If the object needs to belong to a thread, this will record it.
