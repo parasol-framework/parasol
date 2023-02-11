@@ -2272,66 +2272,63 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
 
 #if defined(__linux__) && !defined(__ANDROID__)
 
-      if (!hd_set) {
-         // /proc/mounts contains a list of all mounted file systems, one for each line.
-         //
-         // Format:  devicename mountpoint fstype access 0 0
-         // Example: /dev/hda1  /winnt     ntfs   ro     0 0
-         //
-         // We extract all lines with /dev/hd** and convert those into drives.
+      // /proc/mounts contains a list of all mounted file systems, one for each line.
+      //
+      // Format:  devicename mountpoint fstype access 0 0
+      // Example: /dev/hda1  /winnt     ntfs   ro     0 0
+      //
+      // We extract all lines with /dev/hd** and convert those into drives.
 
-         char mount[80], drivename[] = "driveXXX", devpath[40];
-         LONG file;
+      char mount[80], drivename[] = "driveXXX", devpath[40];
+      LONG file;
 
-         log.msg("Scanning /proc/mounts for hard disks");
+      log.msg("Scanning /proc/mounts for hard disks");
 
-         LONG driveno = 2; // Drive 1 is already assigned to root, so start from #2
-         if ((file = open("/proc/mounts", O_RDONLY)) != -1) {
-            LONG size = lseek(file, 0, SEEK_END);
-            lseek(file, 0, SEEK_SET);
-            if (size < 1) size = 8192;
+      LONG driveno = 2; // Drive 1 is already assigned to root, so start from #2
+      if ((file = open("/proc/mounts", O_RDONLY)) != -1) {
+         LONG size = lseek(file, 0, SEEK_END);
+         lseek(file, 0, SEEK_SET);
+         if (size < 1) size = 8192;
 
-            STRING buffer;
-            if (!AllocMemory(size, MEM_NO_CLEAR, (APTR *)&buffer, NULL)) {
-               size = read(file, buffer, size);
-               buffer[size] = 0;
+         STRING buffer;
+         if (!AllocMemory(size, MEM_NO_CLEAR, (APTR *)&buffer, NULL)) {
+            size = read(file, buffer, size);
+            buffer[size] = 0;
 
-               CSTRING str = buffer;
-               while (*str) {
-                  if (!StrCompare("/dev/hd", str, 0, 0)) {
-                     // Extract mount point
+            CSTRING str = buffer;
+            while (*str) {
+               if (!StrCompare("/dev/hd", str, 0, 0)) {
+                  // Extract mount point
 
-                     i = 0;
-                     while ((*str) and (*str > 0x20)) {
-                        if (i < (LONG)sizeof(devpath)-1) devpath[i++] = *str;
-                        str++;
-                     }
-                     devpath[i] = 0;
-
-                     while ((*str) and (*str <= 0x20)) str++;
-                     for (i=0; (*str) and (*str > 0x20) and (i < (LONG)sizeof(mount)-1); i++) mount[i] = *str++;
-                     mount[i] = 0;
-
-                     if ((mount[0] IS '/') and (!mount[1]));
-                     else {
-                        IntToStr(driveno++, drivename+5, 3);
-                        SetVolume(AST_NAME, drivename, AST_DEVICE_PATH, devpath, AST_PATH, mount, AST_ICON, "devices/storage", AST_DEVICE, "hd", TAGEND);
-                     }
+                  LONG i = 0;
+                  while ((*str) and (*str > 0x20)) {
+                     if (i < (LONG)sizeof(devpath)-1) devpath[i++] = *str;
+                     str++;
                   }
+                  devpath[i] = 0;
 
-                  // Next line
-                  while ((*str) and (*str != '\n')) str++;
                   while ((*str) and (*str <= 0x20)) str++;
-               }
-               FreeResource(buffer);
-            }
-            else log.warning(ERR_AllocMemory);
+                  for (i=0; (*str) and (*str > 0x20) and (i < (LONG)sizeof(mount)-1); i++) mount[i] = *str++;
+                  mount[i] = 0;
 
-            close(file);
+                  if ((mount[0] IS '/') and (!mount[1]));
+                  else {
+                     IntToStr(driveno++, drivename+5, 3);
+                     SetVolume(AST_NAME, drivename, AST_DEVICE_PATH, devpath, AST_PATH, mount, AST_ICON, "devices/storage", AST_DEVICE, "hd", TAGEND);
+                  }
+               }
+
+               // Next line
+               while ((*str) and (*str != '\n')) str++;
+               while ((*str) and (*str <= 0x20)) str++;
+            }
+            FreeResource(buffer);
          }
-         else log.warning(ERR_File);
+         else log.warning(ERR_AllocMemory);
+
+         close(file);
       }
-      else log.msg("Not scanning for hard disks because user has defined drive1.");
+      else log.warning(ERR_File);
 
       const CSTRING cdroms[] = {
          "/mnt/cdrom", "/mnt/cdrom0", "/mnt/cdrom1", "/mnt/cdrom2", "/mnt/cdrom3", "/mnt/cdrom4", "/mnt/cdrom5", "/mnt/cdrom6", // RedHat
@@ -2339,7 +2336,7 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
       };
       char cdname[] = "cd1";
 
-      for (i=0; i < ARRAYSIZE(cdroms); i++) {
+      for (LONG i=0; i < ARRAYSIZE(cdroms); i++) {
          if (!access(cdroms[i], F_OK)) {
             SetVolume(AST_Name, cdname, AST_Path, cdroms[i], AST_ICON, "devices/compactdisc", AST_DEVICE, "cd", TAGEND);
             cdname[2] = cdname[2] + 1;
