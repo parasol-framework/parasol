@@ -984,7 +984,6 @@ APTR   build_jump_table(LONG, const struct Function *, LONG);
 ERROR  copy_args(const struct FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, WORD *, CSTRING);
 ERROR  copy_field_to_buffer(OBJECTPTR Object, struct Field *Field, LONG DestFlags, APTR Result, CSTRING Option, LONG *TotalElements);
 ERROR  create_archive_volume(void);
-ERROR  critical_janitor(OBJECTID, LONG, LONG);
 ERROR  delete_tree(STRING, LONG, FUNCTION *, struct FileFeedback *);
 struct ClassItem * find_class(CLASSID);
 struct ModuleItem * find_module(ULONG);

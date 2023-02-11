@@ -546,62 +546,6 @@ void fix_core_table(struct CoreBase *CoreBase, FLOAT Version)
 */
 }
 
-/*****************************************************************************
-** This internal routine is executed periodically if this is the master task.
-*/
-
-ERROR critical_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
-{
-#ifdef __unix__
-   parasol::Log log(__FUNCTION__);
-   LONG diff, limit;
-
-   log.traceBranch("");
-
-   // Check if any process has locked out any *system critical* memory blocks for an unacceptable amount of time.  System critical blocks are in the
-   // range of -1000 to -2000.  Processes that lock these memory blocks excessively are subject to being killed.
-
-   for (LONG task=0; task < MAX_TASKS; task++) {
-      LONG murder = 0;
-
-      if (!LOCK_PUBLIC_MEMORY(5000)) {
-         LARGE time = (PreciseTime() / 1000LL);
-         for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
-            if ((glSharedBlocks[i].AccessCount > 0) and (glSharedBlocks[i].ProcessLockID) and
-                (glSharedBlocks[i].MemoryID <= -1000) and (glSharedBlocks[i].MemoryID > -2000)) {
-
-               if (glSharedBlocks[i].AccessTime) diff = time - glSharedBlocks[i].AccessTime;
-               else diff = 0;
-
-               if (glSharedBlocks[i].MemoryID IS glSharedControl->SurfacesMID) limit = 3000;
-               else limit = 3000;
-
-               if (diff > limit) {
-                  log.warning("Killing process %d for holding onto block %d for %d usec.", glSharedBlocks[i].ProcessLockID, glSharedBlocks[i].MemoryID, diff);
-                  murder = glSharedBlocks[i].ProcessLockID;
-                  break;
-               }
-            }
-         }
-         UNLOCK_PUBLIC_MEMORY();
-      }
-
-      if (murder) {
-         // Send a safe kill signal, then followup with the most severe signal if the process didn't listen.
-
-         log.trace("Killing process %d", murder);
-         kill(murder, SIGUSR1); // Diagnosis signal
-         print_diagnosis(murder, 0);
-         kill(murder, SIGHUP); // Safe kill signal
-         WaitTime(0,-200000);
-         kill(murder, SIGKILL); // Force kill signal
-      }
-   }
-#endif
-
-   return ERR_Okay;
-}
-
 //****************************************************************************
 
 TaskList * find_process(LONG ProcessID)
