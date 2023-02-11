@@ -980,7 +980,7 @@ anchor.
 -FIELD-
 Bitmap: Refers to bitmap in which custom cursor images can be drawn.
 
-The pointer graphic can be changed to a custom image if the PTR_CUSTOM #CursorID type is defined and an image is
+The pointer graphic can be changed to a custom image if the `PTR_CUSTOM` #CursorID type is defined and an image is
 drawn to the @Bitmap object referenced by this field.
 
 -FIELD-
@@ -989,11 +989,11 @@ ButtonOrder: Defines the order in which mouse buttons are interpreted.
 This field defines the order of interpretation of the mouse buttons when they are pressed.  This allows a right handed
 device to have its buttons remapped to mimic a left-handed device for instance.
 
-The default button order is defined as "123456789AB".  The left, right and middle mouse buttons are defined as 1, 2 and
+The default button order is defined as `123456789AB`.  The left, right and middle mouse buttons are defined as 1, 2 and
 3 respectively.  The rest of the buttons are assigned by the device, preferably starting from the left of the device and
 moving clockwise.
 
-It is legal for buttons to be referenced more than once, for instance a setting of "111" will force the middle and right
+It is legal for buttons to be referenced more than once, for instance a setting of `111` will force the middle and right
 mouse buttons to translate to the left mouse button.
 
 Changes to this field will have an immediate impact on the pointing device's behaviour.
@@ -1224,12 +1224,12 @@ static ERROR PTR_SET_Y(extPointer *Self, DOUBLE Value)
 
 static void set_pointer_defaults(extPointer *Self)
 {
-   DOUBLE speed         = glDefaultSpeed;
-   DOUBLE acceleration  = glDefaultAcceleration;
-   DOUBLE maxspeed      = 100;
-   DOUBLE wheelspeed    = DEFAULT_WHEELSPEED;
-   DOUBLE doubleclick   = 0.36;
-   CSTRING buttonorder   = "123456789ABCDEF";
+   DOUBLE speed        = glDefaultSpeed;
+   DOUBLE acceleration = glDefaultAcceleration;
+   DOUBLE maxspeed     = 100;
+   DOUBLE wheelspeed   = DEFAULT_WHEELSPEED;
+   DOUBLE doubleclick  = 0.36;
+   CSTRING buttonorder = "123456789ABCDEF";
 
    objConfig::create config = { fl::Path("user:config/pointer.cfg") };
 
@@ -1691,7 +1691,6 @@ ERROR create_pointer_class(void)
       fl::Methods(clPointerMethods),
       fl::Fields(clPointerFields),
       fl::Size(sizeof(extPointer)),
-      fl::Flags(CLF_SHARED_ONLY),
       fl::Path(MOD_PATH));
 
    return clPointer ? ERR_Okay : ERR_AddClass;

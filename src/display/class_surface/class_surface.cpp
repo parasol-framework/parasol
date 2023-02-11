@@ -2978,11 +2978,6 @@ static const FieldArray clSurfaceFields[] = {
 
 ERROR create_surface_class(void)
 {
-   LONG flags = 0;
-
-   // When operating stand-alone, do not share surfaces by default.
-   if (GetResource(RES_GLOBAL_INSTANCE)) flags = CLF_SHARED_ONLY|CLF_PUBLIC_OBJECTS;
-
    clSurface = objMetaClass::create::global(
       fl::ClassVersion(VER_SURFACE),
       fl::Name("Surface"),
@@ -2991,7 +2986,6 @@ ERROR create_surface_class(void)
       fl::Methods(clSurfaceMethods),
       fl::Fields(clSurfaceFields),
       fl::Size(sizeof(extSurface)),
-      fl::Flags(flags),
       fl::Path(MOD_PATH));
 
    return clSurface ? ERR_Okay : ERR_AddClass;

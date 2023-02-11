@@ -846,7 +846,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    // Allocate the System Task
 
-   if (!(error = NewLockedObject(ID_TASK, NF::NO_TRACK|NF::PUBLIC|NF::UNIQUE, &SystemTask, &SystemTaskID, "SystemTask"))) {
+   if (!(error = NewLockedObject(ID_TASK, NF::UNTRACKED|NF::PUBLIC|NF::UNIQUE, &SystemTask, &SystemTaskID, "SystemTask"))) {
       if (Action(AC_Init, SystemTask, NULL) != ERR_Okay) {
          if (Info->Flags & OPF_ERROR) Info->Error = ERR_Init;
          ReleaseObject(SystemTask);
@@ -907,7 +907,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    // Create our task object.  This is expected to be local to our process, so do not allocate this object publicly.
 
-   if (!NewObject(ID_TASK, NF::NO_TRACK, (OBJECTPTR *)&localtask)) {
+   if (!NewObject(ID_TASK, NF::UNTRACKED, (OBJECTPTR *)&localtask)) {
       localtask->Flags |= TSF_DUMMY;
 
       if (Info->Flags & OPF_NAME) {
@@ -2065,7 +2065,7 @@ static ERROR init_filesystem(std::forward_list<CSTRING> &Volumes)
    log.trace("Attempting to create SystemVolumes object.");
 
    ERROR error;
-   if (!(error = NewObject(ID_CONFIG, NF::NO_TRACK, (OBJECTPTR *)&glVolumes))) {
+   if (!(error = NewObject(ID_CONFIG, NF::UNTRACKED, (OBJECTPTR *)&glVolumes))) {
       SetName(glVolumes, "SystemVolumes");
       if (acInit(glVolumes) != ERR_Okay) {
          acFree(glVolumes);

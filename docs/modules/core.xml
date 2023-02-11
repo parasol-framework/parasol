@@ -3109,12 +3109,7 @@ end
 
     <constants lookup="CLF" comment="Flags for the MetaClass.">
       <const name="NO_OWNERSHIP">Objects created will not be tracked to the creating process, nor any parent object (SetOwner() will not work either).</const>
-      <const name="PRIVATE_ONLY">Do not allow shared-memory instances of the class (private-shared objects will still be possible).</const>
       <const name="PROMOTE_INTEGRAL">Promote class support for any integral object defined in the class definition structure.</const>
-      <const name="PUBLIC_OBJECTS">Forces all class objects to be allocated in shared memory.</const>
-      <const name="SHARED_OBJECTS">Forces all objects of this class to be shared.</const>
-      <const name="SHARED_ONLY">Forces all objects of this class to be shared.</const>
-      <const name="XML_CONTENT">Script processing should treat any object content as XML.</const>
     </constants>
 
     <constants lookup="CLIPMODE" comment="Clipboard modes">
@@ -3782,13 +3777,12 @@ end
       <const name="INTEGRAL">Integral objects can only be allocated by classes that need to adopt the functionality of said object.  Integral objects do not appear in the object tree, effectively making them hidden from view.</const>
       <const name="MESSAGE">Action has been called against the object through the message system (managed by ProcessMessages()).</const>
       <const name="NAME">Use the Name parameter to name the created object.  This flag is not required if using NF_UNIQUE.</const>
-      <const name="NO_TRACK">An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.</const>
       <const name="PRIVATE"/>
       <const name="PUBLIC">Allocates a shared object using shareable resources, allowing it to be accessed directly by any process.  Access is granted via exclusive access locks  - refer to the AccessObject() and ReleaseObject() functions.</const>
       <const name="RECLASSED">The object switched from the base-class to a sub-class during initialisation.</const>
       <const name="SHARED">Allocates a shared object using shareable resources, allowing it to be accessed directly by any process.  Access is granted via exclusive access locks  - refer to the AccessObject() and ReleaseObject() functions.</const>
       <const name="SIGNALLED">The object has been signalled and is awaiting processing.</const>
-      <const name="TIMER_SUB">Indicates that the object is subscribed to a timer interval.</const>
+      <const name="TIMER_SUB">The object is subscribed to a timer interval.</const>
       <const name="UNIQUE">Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating shared objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.</const>
       <const name="UNLOCK_FREE">Read-only indicator for when the object is marked for deletion.</const>
       <const name="UNTRACKED">An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.</const>

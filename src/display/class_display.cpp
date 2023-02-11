@@ -2015,7 +2015,7 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
    OBJECTID pointer_id;
    LONG count = 1;
    if (FindObject("SystemPointer", ID_POINTER, 0, &pointer_id, &count) != ERR_Okay) {
-      if (!NewNamedObject(ID_POINTER, NF::NO_TRACK|NF::PUBLIC|NF::UNIQUE, &pointer, &pointer_id, "SystemPointer")) {
+      if (!NewNamedObject(ID_POINTER, NF::UNTRACKED|NF::UNIQUE, &pointer, &pointer_id, "SystemPointer")) {
          OBJECTID owner = Self->ownerID();
          if (GetClassID(owner) IS ID_SURFACE) pointer->set(FID_Surface, owner);
 

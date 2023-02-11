@@ -1086,7 +1086,6 @@ enum class NF : ULONG {
    NIL = 0,
    PRIVATE = 0x00000000,
    UNTRACKED = 0x00000001,
-   NO_TRACK = 0x00000001,
    SHARED = 0x00000002,
    PUBLIC = 0x00000002,
    INITIALISED = 0x00000004,
@@ -1218,13 +1217,8 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 
 // Flags for the MetaClass.
 
-#define CLF_SHARED_ONLY 0x00000001
-#define CLF_SHARED_OBJECTS 0x00000001
-#define CLF_PRIVATE_ONLY 0x00000002
-#define CLF_PROMOTE_INTEGRAL 0x00000004
-#define CLF_PUBLIC_OBJECTS 0x00000008
-#define CLF_XML_CONTENT 0x00000010
-#define CLF_NO_OWNERSHIP 0x00000020
+#define CLF_PROMOTE_INTEGRAL 0x00000001
+#define CLF_NO_OWNERSHIP 0x00000002
 
 // Flags for the Config class.
 
@@ -2327,10 +2321,6 @@ inline ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo) {
 }
 
 #endif
-
-inline ERROR NewPublicObject(LARGE ClassID, NF Flags, OBJECTID *ID) {
-  return NewLockedObject(ClassID, Flags|NF::PUBLIC, NULL, ID, NULL);
-}
 
 template<class T> inline ERROR NewNamedObject(LARGE ClassID, NF Flags, T **Object, OBJECTID *ID, CSTRING Name) {
   return NewLockedObject(ClassID, Flags|NF::NAME, Object, ID, Name);

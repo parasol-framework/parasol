@@ -1198,7 +1198,6 @@ extern "C" ERROR add_config_class(void)
       fl::Category(CCF_DATA),
       fl::FileExtension("*.cfg|*.cnf|*.config"),
       fl::FileDescription("Config File"),
-      fl::Flags(CLF_PRIVATE_ONLY),
       fl::Actions(clConfigActions),
       fl::Methods(clConfigMethods),
       fl::Fields(clFields),

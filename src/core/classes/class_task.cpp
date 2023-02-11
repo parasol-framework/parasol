@@ -1352,9 +1352,6 @@ Expunge: Forces a Task to expunge unused code.
 
 The Expunge method releases all loaded libraries that are no longer in use by the active process.
 
-If the Expunge method is called on the System Task, it will message all Tasks to perform the expunge sequence.
-The System Task object can be found by searching for the "SystemTask" object.
-
 -ERRORS-
 Okay
 
@@ -1362,18 +1359,7 @@ Okay
 
 static ERROR TASK_Expunge(extTask *Self, APTR Void)
 {
-   if (Self->UID IS SystemTaskID) {
-      parasol::ScopedSysLock lock(PL_PROCESSES, 4000);
-      if (lock.granted()) {
-         for (LONG i=0; i < MAX_TASKS; i++) {
-            if ((shTasks[i].TaskID) and (shTasks[i].TaskID != Self->UID)) {
-               ActionMsg(MT_TaskExpunge, shTasks[i].TaskID, NULL, 0, 0);
-            }
-         }
-      }
-   }
-   else Expunge(FALSE);
-
+   Expunge(FALSE);
    return ERR_Okay;
 }
 

@@ -322,13 +322,13 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "INCLUDE_SHARED: Include shared objects when searching.")
 
   flags("NF", { strict=true, comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word." },
-    "NO_TRACK|UNTRACKED: An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.",
+    "UNTRACKED: An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.",
     "PUBLIC|SHARED: Allocates a shared object using shareable resources, allowing it to be accessed directly by any process.  Access is granted via exclusive access locks  - refer to the AccessObject() and ReleaseObject() functions.",
     "INITIALISED: Read-only indicator if the object has been initialised.",
     "INTEGRAL: Integral objects can only be allocated by classes that need to adopt the functionality of said object.  Integral objects do not appear in the object tree, effectively making them hidden from view.",
     "UNLOCK_FREE: Read-only indicator for when the object is marked for deletion.",
     "FREE: Read-only indicator for when the object is being freed.",
-    "TIMER_SUB: Indicates that the object is subscribed to a timer interval.",
+    "TIMER_SUB: The object is subscribed to a timer interval.",
     "SUPPRESS_LOG: Private.  Turns off the initial log message.",
     "COLLECT: Marked for garbage collection.",
     "NEW_OBJECT: Private. The object is in the process of being created.",
@@ -453,11 +453,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "ROOT_PATH: Overrides the root path, which defaults to the location at which Parasol is installed.")
 
   flags("CLF", { comment="Flags for the MetaClass." },
-    "SHARED_ONLY|SHARED_OBJECTS: Forces all objects of this class to be shared.",
-    "PRIVATE_ONLY: Do not allow shared-memory instances of the class (private-shared objects will still be possible).",
     "PROMOTE_INTEGRAL: Promote class support for any integral object defined in the class definition structure.",
-    "PUBLIC_OBJECTS: Forces all class objects to be allocated in shared memory.",
-    "XML_CONTENT: Script processing should treat any object content as XML.",
     "NO_OWNERSHIP: Objects created will not be tracked to the creating process, nor any parent object (SetOwner() will not work either).")
 
   flags("CNF", { comment="Flags for the Config class." },
@@ -1425,10 +1421,6 @@ inline ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo) {
 }
 
 #endif
-
-inline ERROR NewPublicObject(LARGE ClassID, NF Flags, OBJECTID *ID) {
-  return NewLockedObject(ClassID, Flags|NF::PUBLIC, NULL, ID, NULL);
-}
 
 template<class T> inline ERROR NewNamedObject(LARGE ClassID, NF Flags, T **Object, OBJECTID *ID, CSTRING Name) {
   return NewLockedObject(ClassID, Flags|NF::NAME, Object, ID, Name);

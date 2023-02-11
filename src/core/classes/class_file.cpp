@@ -2869,7 +2869,6 @@ extern "C" ERROR add_file_class(void)
       fl::ClassVersion(VER_FILE),
       fl::Name("File"),
       fl::Category(CCF_SYSTEM),
-      fl::Flags(CLF_PRIVATE_ONLY),
       fl::Actions(clFileActions),
       fl::Methods(clFileMethods),
       fl::Fields(FileFields),

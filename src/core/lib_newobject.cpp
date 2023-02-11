@@ -86,13 +86,7 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
 
    // Force certain flags on the class' behalf
 
-   if (mc->Flags & CLF_PUBLIC_OBJECTS) Flags |= NF::PUBLIC;
    if (mc->Flags & CLF_NO_OWNERSHIP)   Flags |= NF::UNTRACKED;
-
-   if ((Flags & NF::PUBLIC) != NF::NIL) {
-      log.warning("Request to allocate public object denied, use NewLockedObject().");
-      return ERR_Args;
-   }
 
    if ((Flags & NF::SUPPRESS_LOG) IS NF::NIL) log.branch("%s #%d, Flags: $%x", mc->ClassName, glSharedControl->PrivateIDCounter, LONG(Flags));
 
@@ -282,23 +276,16 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
 
    // Force certain flags on the class' behalf
 
-   if (mc->Flags & CLF_PUBLIC_OBJECTS) Flags |= NF::PUBLIC;
    if (mc->Flags & CLF_NO_OWNERSHIP)   Flags |= NF::UNTRACKED;
 
-   log.branch("%s #%d, Flags: $%x", mc->ClassName, ((Flags & NF::PUBLIC) != NF::NIL) ? glSharedControl->IDCounter : glSharedControl->PrivateIDCounter, LONG(Flags));
+   log.branch("%s #%d, Flags: $%x", mc->ClassName, glSharedControl->PrivateIDCounter, LONG(Flags));
 
    OBJECTPTR head   = NULL;
    MEMORYID head_id = 0;
-   APTR sharelock   = NULL;
    bool resourced   = false;
    ERROR error      = ERR_Okay;
 
    if ((((Flags & NF::UNIQUE) != NF::NIL) and (Name)) or ((Flags & NF::PUBLIC) != NF::NIL)) {
-      // Locking RPM_SharedObjects for the duration of this function will ensure that other tasks do not create shared
-      // objects with the same name when NF::UNIQUE is in use.
-
-      if (AccessMemory(RPM_SharedObjects, MEM_READ_WRITE, 2000, &sharelock)) return log.warning(ERR_AccessMemory);
-
       if ((Flags & NF::UNIQUE) != NF::NIL) {
          OBJECTID search_id;
          LONG count = 1;
@@ -310,19 +297,14 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
       }
    }
 
-   if (((Flags & NF::PUBLIC) != NF::NIL) and (mc->Flags & CLF_PRIVATE_ONLY)) {
-      log.warning("Public objects cannot be allocated from class $%.8x.", class_id);
-      Flags = Flags & (~NF::PUBLIC);
-   }
-
    if ((Flags & NF::PUBLIC) != NF::NIL) {
-      if (!AllocMemory(mc->Size + sizeof(Stats), MEM_PUBLIC|MEM_OBJECT, (void **)&head, &head_id)) {
+      if (!AllocMemory(mc->Size + sizeof(Stats), MEM_OBJECT|MEM_PUBLIC, (void **)&head, &head_id)) {
          head->Stats = (Stats *)ResolveAddress(head, mc->Size);
          head->UID = head_id;
       }
       else error = ERR_AllocMemory;
    }
-   else if (!AllocMemory(mc->Size + sizeof(Stats), MEM_OBJECT|MEM_NO_LOCK, (APTR *)&head, &head_id)) {
+   else if (!AllocMemory(mc->Size + sizeof(Stats), MEM_OBJECT|MEM_NO_LOCK|(((Flags & NF::UNTRACKED) != NF::NIL) ? MEM_UNTRACKED : 0), (APTR *)&head, &head_id)) {
       head->Stats = (Stats *)ResolveAddress(head, mc->Size);
       head->UID = head_id;
    }
@@ -340,7 +322,7 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
          head->TaskID = glCurrentTaskID;
       }
 
-      if ((Flags & (NF::PUBLIC|NF::UNTRACKED)) IS NF::NIL) { // Don't track public and untracked objects to specific threads.
+      if ((Flags & NF::UNTRACKED) IS NF::NIL) {
          head->ThreadMsg = tlThreadWriteMsg; // If the object needs to belong to a thread, this will record it.
       }
 
@@ -448,7 +430,6 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
       }
       else if (Object) *Object = head;
 
-      if (sharelock) ReleaseMemoryID(RPM_SharedObjects);
       return ERR_Okay;
    }
    else {
@@ -466,7 +447,6 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
          }
       }
 
-      if (sharelock) ReleaseMemoryID(RPM_SharedObjects);
       *ObjectID = 0;
       return error;
    }
@@ -645,23 +625,6 @@ static ERROR add_shared_object(OBJECTPTR Object, OBJECTID ObjectID, NF Flags)
    }
    else objects[hdr->NextEntry].MessageMID = glTaskMessageMID;
 
-/* We should use this routine to set the message ID in case the object is going to be a child of another that is
-public and belongs to a different task.
-
-   if (Object->TaskID IS glCurrentTaskID) {
-      objects[hdr->NextEntry].MessageMID = glTaskMessageMID;
-   }
-   else if (LOCK_TASKS() IS ERR_Okay) {
-      for (i=0; i < MAX_TASKS; i++) {
-         if (shTasks[i].TaskID IS Object->TaskID) {
-            objects[hdr->NextEntry].MessageMID = shTasks[i].MessageID;
-            break;
-         }
-      }
-      if (i IS MAX_TASKS) objects[hdr->NextEntry].MessageMID = glTaskMessageMID;
-      UNLOCK_TASKS();
-   }
-*/
    if ((Flags & NF::PUBLIC) != NF::NIL) objects[hdr->NextEntry].Address = NULL;
    else objects[hdr->NextEntry].Address = Object;
 
