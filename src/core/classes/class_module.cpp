@@ -61,12 +61,10 @@ static ModHeader glCoreHeader;
 
 static LONG cmp_mod_names(CSTRING, CSTRING);
 static ModuleMaster * check_resident(extModule *, CSTRING);
-static ERROR intercepted_master(ModuleMaster *, APTR);
 static void free_module(MODHANDLE handle);
 
 //********************************************************************************************************************
 
-static ERROR GET_Actions(extModule *, ActionEntry **);
 static ERROR GET_IDL(extModule *, CSTRING *);
 static ERROR GET_Name(extModule *, CSTRING *);
 
@@ -87,7 +85,6 @@ static const FieldArray glModuleFields[] = {
    { "Header",       FDF_POINTER|FDF_RI, 0, NULL, (APTR)SET_Header },
    { "Flags",        FDF_LONG|FDF_RI,    (MAXINT)&clFlags, NULL, NULL },
    // Virtual fields
-   { "Actions",      FDF_POINTER|FDF_R, 0, (APTR)GET_Actions, NULL },
    { "Name",         FDF_STRING|FDF_RI, 0, (APTR)GET_Name, (APTR)SET_Name },
    { "IDL",          FDF_STRING|FDF_R,  0, (APTR)GET_IDL, NULL },
    END_FIELD
@@ -119,56 +116,14 @@ static const MethodArray glModuleMethods[] = {
 
 //********************************************************************************************************************
 
-static ERROR GET_MMActions(ModuleMaster *, ActionEntry **);
-
 static const FieldArray glModuleMasterFields[] = {
-   // Virtual fields
-   { "Actions", FDF_POINTER|FDF_R, 0, (APTR)GET_MMActions, NULL },
    END_FIELD
 };
 
 static ERROR MODULEMASTER_Free(ModuleMaster *, APTR);
 
 static const ActionArray glModuleMasterActions[] = {
-   { AC_Free,             (APTR)MODULEMASTER_Free },
-   // The following actions are program dependent
-   { AC_ActionNotify,     (APTR)intercepted_master },
-   { AC_Clear,            (APTR)intercepted_master },
-   { AC_DataFeed,         (APTR)intercepted_master },
-   { AC_Deactivate,       (APTR)intercepted_master },
-   { AC_Draw,             (APTR)intercepted_master },
-   { AC_Flush,            (APTR)intercepted_master },
-   { AC_Focus,            (APTR)intercepted_master },
-   { AC_GetVar,           (APTR)intercepted_master },
-   { AC_Hide,             (APTR)intercepted_master },
-   { AC_Lock,             (APTR)intercepted_master },
-   { AC_LostFocus,        (APTR)intercepted_master },
-   { AC_Move,             (APTR)intercepted_master },
-   { AC_MoveToBack,       (APTR)intercepted_master },
-   { AC_MoveToFront,      (APTR)intercepted_master },
-   { AC_NewChild,         (APTR)intercepted_master },
-   { AC_NewOwner,         (APTR)intercepted_master },
-   { AC_Query,            (APTR)intercepted_master },
-   { AC_Read,             (APTR)intercepted_master },
-   { AC_Rename,           (APTR)intercepted_master },
-   { AC_Reset,            (APTR)intercepted_master },
-   { AC_Resize,           (APTR)intercepted_master },
-   { AC_SaveImage,        (APTR)intercepted_master },
-   { AC_SaveToObject,     (APTR)intercepted_master },
-   { AC_Scroll,           (APTR)intercepted_master },
-   { AC_Seek,             (APTR)intercepted_master },
-   { AC_SetVar,           (APTR)intercepted_master },
-   { AC_Show,             (APTR)intercepted_master },
-   { AC_Unlock,           (APTR)intercepted_master },
-   { AC_Write,            (APTR)intercepted_master },
-   { AC_Clipboard,        (APTR)intercepted_master },
-   { AC_Refresh,          (APTR)intercepted_master },
-   { AC_Disable,          (APTR)intercepted_master },
-   { AC_Enable,           (APTR)intercepted_master },
-   { AC_Redimension,      (APTR)intercepted_master },
-   { AC_MoveToPoint,      (APTR)intercepted_master },
-   { AC_ScrollToPoint,    (APTR)intercepted_master },
-   { AC_Custom,           (APTR)intercepted_master },
+   { AC_Free, (APTR)MODULEMASTER_Free },
    { 0, NULL }
 };
 
@@ -199,25 +154,6 @@ extern "C" ERROR add_module_class(void)
       fl::Size(sizeof(ModuleMaster)),
       fl::Path("modules:core")))) return ERR_AddClass;
 
-   return ERR_Okay;
-}
-
-//********************************************************************************************************************
-// Action interception routine.
-
-static ERROR intercepted_master(ModuleMaster *Self, APTR Args)
-{
-   if (Self->prvActions[tlContext->Action].PerformAction) {
-      return Self->prvActions[tlContext->Action].PerformAction(Self, Args);
-   }
-   else return ERR_NoSupport;
-}
-
-//********************************************************************************************************************
-
-static ERROR GET_MMActions(ModuleMaster *Self, ActionEntry **Value)
-{
-   *Value = Self->prvActions;
    return ERR_Okay;
 }
 
@@ -794,45 +730,6 @@ static ERROR MODULE_SetVar(extModule *Self, struct acSetVar *Args)
    }
 
    return VarSetString(Self->Vars, Args->Field, Args->Value);
-}
-
-/*********************************************************************************************************************
-
--FIELD-
-Actions: Used to gain direct access to a module's actions.
-
-This field provides direct access to the actions of a module.  You can use it in the development of a class or function
-based module so that your code can hook into the action system.  This allows you to create a module that blends in
-seamlessly with the system's object oriented design.
-
-The Actions field itself points to a list of action routines that are arranged into a lookup table, sorted by action ID.
-You can hook into an action simply by writing to its index in the table with a pointer to the routine that you want to
-use for that action.  For example:
-
-<pre>
-APTR *actions;
-
-Module->getPtr(FID_Actions, &actions);
-actions[AC_ActionNotify] = MODULE_ActionNotify;
-</pre>
-
-The synopsis of the routines that you use for hooking into the action list must match `ERROR MODULE_ActionNotify(OBJECTPTR Module, APTR Args)`
-
-It is recommended that you refer to the Action Support Guide before hooking into any action that you have not written
-code for before.
--END-
-
-**********************************************************************************************************************/
-
-static ERROR GET_Actions(extModule *Self, ActionEntry **Value)
-{
-   parasol::Log log;
-
-   if (Self->Master) {
-      *Value = Self->Master->prvActions;
-      return ERR_Okay;
-   }
-   else return log.warning(ERR_FieldNotSet);
 }
 
 /*********************************************************************************************************************

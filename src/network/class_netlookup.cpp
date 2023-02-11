@@ -134,17 +134,9 @@ static ERROR thread_resolve_addr(objThread *Thread)
 
 //****************************************************************************
 
-static ERROR NETLOOKUP_ActionNotify(extNetLookup *Self, struct acActionNotify *Args)
+static void notify_free_callback(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   if (!Args) return ERR_NullArgs;
-
-   if (Args->ActionID IS AC_Free) {
-      if ((Self->Callback.Type IS CALL_SCRIPT) and (Self->Callback.Script.Script->UID IS Args->ObjectID)) {
-         Self->Callback.Type = CALL_NONE;
-      }
-   }
-
-   return ERR_Okay;
+   ((extNetLookup *)CurrentContext())->Callback.Type = CALL_NONE;
 }
 
 /*****************************************************************************
@@ -467,7 +459,10 @@ static ERROR SET_Callback(extNetLookup *Self, FUNCTION *Value)
    if (Value) {
       if (Self->Callback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Callback.Script.Script, AC_Free);
       Self->Callback = *Value;
-      if (Self->Callback.Type IS CALL_SCRIPT) SubscribeAction(Self->Callback.Script.Script, AC_Free);
+      if (Self->Callback.Type IS CALL_SCRIPT) {
+         auto callback = make_function_stdc(notify_free_callback);
+         SubscribeAction(Self->Callback.Script.Script, AC_Free, &callback);
+      }
    }
    else Self->Callback.Type = CALL_NONE;
 

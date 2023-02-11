@@ -154,6 +154,8 @@ class objHTTP : public BaseClass {
 
    // Action stubs
 
+   // ActionNotify
+
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
    inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }
    inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {

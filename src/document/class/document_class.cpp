@@ -9,24 +9,6 @@ features for creating complex documents and manuals.
 -END-
 
 *****************************************************************************/
-
-static ERROR DOCUMENT_ActionNotify(extDocument *Self, struct acActionNotify *Args)
-{
-   parasol::Log log;
-
-   if (!Args) return ERR_NullArgs;
-
-   if (Args->Error != ERR_Okay) {
-      log.trace("Action %d returned error %d", Args->ActionID, Args->Error);
-      return ERR_Okay;
-   }
-
-   if (Args->ActionID IS AC_Disable) {
-      acDisable(Self);
-   }
-   else if (Args->ActionID IS AC_Enable) {
-      acEnable(Self);
-   }
 /*
    else if (Args->ActionID IS MT_DrwInheritedFocus) {
       // Check that the FocusIndex is accurate (it may have changed if the user clicked on a gadget).
@@ -41,87 +23,108 @@ static ERROR DOCUMENT_ActionNotify(extDocument *Self, struct acActionNotify *Arg
       }
    }
 */
-   else if (Args->ActionID IS AC_Focus) {
-      Self->HasFocus = TRUE;
 
-      if (!Self->prvKeyEvent) {
-         auto callback = make_function_stdc(key_event);
-         SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
-      }
+static void notify_disable_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+{
+   if (!Result) acDisable(CurrentContext());
+}
 
-      if (Self->FocusIndex != -1) set_focus(Self, Self->FocusIndex, "FocusNotify");
+static void notify_enable_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+{
+   if (!Result) acEnable(CurrentContext());
+}
+
+static void notify_focus_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+{
+   auto Self = (extDocument *)CurrentContext();
+
+   if (Result) return;
+
+   Self->HasFocus = TRUE;
+
+   if (!Self->prvKeyEvent) {
+      auto callback = make_function_stdc(key_event);
+      SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
    }
-   else if (Args->ActionID IS AC_Free) {
-      if ((Self->EventCallback.Type IS CALL_SCRIPT) and (Self->EventCallback.Script.Script->UID IS Args->ObjectID)) {
-         Self->EventCallback.Type = CALL_NONE;
-      }
-   }
-   else if (Args->ActionID IS AC_LostFocus) {
-      if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
 
-      Self->HasFocus = FALSE;
+   if (Self->FocusIndex != -1) set_focus(Self, Self->FocusIndex, "FocusNotify");
+}
 
-      // Redraw any selected link so that it is unhighlighted
+static void notify_free_event(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+{
+   ((extDocument *)CurrentContext())->EventCallback.Type = CALL_NONE;
+}
 
-      if ((Self->FocusIndex >= 0) and (Self->FocusIndex < Self->TabIndex)) {
-         if (Self->Tabs[Self->FocusIndex].Type IS TT_LINK) {
-            for (LONG i=0; i < Self->TotalLinks; i++) {
-               if ((Self->Links[i].EscapeCode IS ESC_LINK) and (Self->Links[i].Link->ID IS Self->Tabs[Self->FocusIndex].Ref)) {
-                  acDrawArea(Self->PageID, Self->Links[i].X, Self->Links[i].Y, Self->Links[i].Width, Self->Links[i].Height);
-                  break;
-               }
+static void notify_lostfocus_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+{
+   parasol::Log log(__FUNCTION__);
+   auto Self = (extDocument *)CurrentContext();
+
+   if (Result) return;
+
+   if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
+
+   Self->HasFocus = FALSE;
+
+   // Redraw any selected link so that it is unhighlighted
+
+   if ((Self->FocusIndex >= 0) and (Self->FocusIndex < Self->TabIndex)) {
+      if (Self->Tabs[Self->FocusIndex].Type IS TT_LINK) {
+         for (LONG i=0; i < Self->TotalLinks; i++) {
+            if ((Self->Links[i].EscapeCode IS ESC_LINK) and (Self->Links[i].Link->ID IS Self->Tabs[Self->FocusIndex].Ref)) {
+               acDrawArea(Self->PageID, Self->Links[i].X, Self->Links[i].Y, Self->Links[i].Width, Self->Links[i].Height);
+               break;
             }
          }
       }
    }
-   else if (Args->ActionID IS AC_Redimension) {
-      struct acRedimension *redimension;
+}
 
-      if ((redimension = (struct acRedimension *)Args->Args)) {
-         gfxGetSurfaceCoords(Self->SurfaceID, NULL, NULL, NULL, NULL, &Self->SurfaceWidth, &Self->SurfaceHeight);
+static void notify_redimension_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, struct acRedimension *Args)
+{
+   parasol::Log log(__FUNCTION__);
+   auto Self = (extDocument *)CurrentContext();
 
-         log.traceBranch("Redimension: %dx%d", Self->SurfaceWidth, Self->SurfaceHeight);
+   gfxGetSurfaceCoords(Self->SurfaceID, NULL, NULL, NULL, NULL, &Self->SurfaceWidth, &Self->SurfaceHeight);
 
-         Self->AreaX = (Self->BorderEdge & DBE_LEFT) ? BORDER_SIZE : 0;
-         Self->AreaY = (Self->BorderEdge & DBE_TOP) ? BORDER_SIZE : 0;
-         Self->AreaWidth  = Self->SurfaceWidth - (((Self->BorderEdge & DBE_RIGHT) ? BORDER_SIZE : 0)<<1);
-         Self->AreaHeight = Self->SurfaceHeight - (((Self->BorderEdge & DBE_BOTTOM) ? BORDER_SIZE : 0)<<1);
+   log.traceBranch("Redimension: %dx%d", Self->SurfaceWidth, Self->SurfaceHeight);
 
-         acRedimension(Self->ViewID, Self->AreaX, Self->AreaY, 0, Self->AreaWidth, Self->AreaHeight, 0);
+   Self->AreaX = (Self->BorderEdge & DBE_LEFT) ? BORDER_SIZE : 0;
+   Self->AreaY = (Self->BorderEdge & DBE_TOP) ? BORDER_SIZE : 0;
+   Self->AreaWidth  = Self->SurfaceWidth - (((Self->BorderEdge & DBE_RIGHT) ? BORDER_SIZE : 0)<<1);
+   Self->AreaHeight = Self->SurfaceHeight - (((Self->BorderEdge & DBE_BOTTOM) ? BORDER_SIZE : 0)<<1);
 
-         DocTrigger *trigger;
-         for (trigger=Self->Triggers[DRT_BEFORE_LAYOUT]; trigger; trigger=trigger->Next) {
-            if (trigger->Function.Type IS CALL_SCRIPT) {
-               // The resize event is triggered just prior to the layout of the document.  This allows the trigger
-               // function to resize elements on the page in preparation of the new layout.
+   acRedimension(Self->ViewID, Self->AreaX, Self->AreaY, 0, Self->AreaWidth, Self->AreaHeight, 0);
 
-               OBJECTPTR script;
-               if ((script = trigger->Function.Script.Script)) {
-                  const ScriptArg args[] = {
-                     { "ViewWidth",  FD_LONG, { .Long = Self->AreaWidth } },
-                     { "ViewHeight", FD_LONG, { .Long = Self->AreaHeight } }
-                  };
-                  scCallback(script, trigger->Function.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-               }
-            }
-            else if (trigger->Function.Type IS CALL_STDC) {
-               auto routine = (void (*)(APTR, extDocument *, LONG Width, LONG Height))trigger->Function.StdC.Routine;
-               if (routine) {
-                  parasol::SwitchContext context(trigger->Function.StdC.Context);
-                  routine(trigger->Function.StdC.Context, Self, Self->AreaWidth, Self->AreaHeight);
-               }
-            }
+   DocTrigger *trigger;
+   for (trigger=Self->Triggers[DRT_BEFORE_LAYOUT]; trigger; trigger=trigger->Next) {
+      if (trigger->Function.Type IS CALL_SCRIPT) {
+         // The resize event is triggered just prior to the layout of the document.  This allows the trigger
+         // function to resize elements on the page in preparation of the new layout.
+
+         OBJECTPTR script;
+         if ((script = trigger->Function.Script.Script)) {
+            const ScriptArg args[] = {
+               { "ViewWidth",  FD_LONG, { .Long = Self->AreaWidth } },
+               { "ViewHeight", FD_LONG, { .Long = Self->AreaHeight } }
+            };
+            scCallback(script, trigger->Function.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
          }
-
-         Self->UpdateLayout = TRUE;
-
-         AdjustLogLevel(2);
-         layout_doc(Self);
-         AdjustLogLevel(-2);
+      }
+      else if (trigger->Function.Type IS CALL_STDC) {
+         auto routine = (void (*)(APTR, extDocument *, LONG Width, LONG Height))trigger->Function.StdC.Routine;
+         if (routine) {
+            parasol::SwitchContext context(trigger->Function.StdC.Context);
+            routine(trigger->Function.StdC.Context, Self, Self->AreaWidth, Self->AreaHeight);
+         }
       }
    }
 
-   return ERR_Okay;
+   Self->UpdateLayout = TRUE;
+
+   AdjustLogLevel(2);
+   layout_doc(Self);
+   AdjustLogLevel(-2);
 }
 
 /*****************************************************************************
@@ -764,8 +767,11 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
          SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &call, Self, &Self->prvKeyEvent);
       }
 
-      SubscribeAction(surface, AC_Focus);
-      SubscribeAction(surface, AC_LostFocus);
+      auto callback = make_function_stdc(notify_focus_surface);
+      SubscribeAction(surface, AC_Focus, &callback);
+
+      callback = make_function_stdc(notify_lostfocus_surface);
+      SubscribeAction(surface, AC_LostFocus, &callback);
 
       ReleaseObject(surface);
    }
@@ -778,9 +784,14 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 
       surface->set(FID_Colour, "255,255,255");
 
-      SubscribeAction(surface, AC_Disable);
-      SubscribeAction(surface, AC_Enable);
-      SubscribeAction(surface, AC_Redimension);
+      auto callback = make_function_stdc(notify_disable_surface);
+      SubscribeAction(surface, AC_Disable, &callback);
+
+      callback = make_function_stdc(notify_enable_surface);
+      SubscribeAction(surface, AC_Enable, &callback);
+
+      callback = make_function_stdc(notify_redimension_surface);
+      SubscribeAction(surface, AC_Redimension, &callback);
 
       if (Self->Border.Alpha > 0) {
          if (!Self->BorderEdge) Self->BorderEdge = DBE_TOP|DBE_BOTTOM|DBE_RIGHT|DBE_LEFT;

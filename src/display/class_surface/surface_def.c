@@ -153,7 +153,6 @@ static const struct MethodArray clSurfaceMethods[] = {
 };
 
 static const struct ActionArray clSurfaceActions[] = {
-   { AC_ActionNotify, (APTR)SURFACE_ActionNotify },
    { AC_Activate, (APTR)SURFACE_Activate },
    { AC_Disable, (APTR)SURFACE_Disable },
    { AC_Draw, (APTR)SURFACE_Draw },

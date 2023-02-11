@@ -77,7 +77,10 @@ static ERROR SET_Feedback(extCompression *Self, FUNCTION *Value)
    if (Value) {
       if (Self->Feedback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Feedback.Script.Script, AC_Free);
       Self->Feedback = *Value;
-      if (Self->Feedback.Type IS CALL_SCRIPT) SubscribeAction(Self->Feedback.Script.Script, AC_Free);
+      if (Self->Feedback.Type IS CALL_SCRIPT) {
+         auto callback = make_function_stdc(notify_free_feedback);
+         SubscribeAction(Self->Feedback.Script.Script, AC_Free, &callback);
+      }
    }
    else Self->Feedback.Type = CALL_NONE;
    return ERR_Okay;

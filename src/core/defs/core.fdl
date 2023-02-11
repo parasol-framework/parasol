@@ -92,7 +92,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "PIPE: Enable the output pipe to the launched process so that it can read data.")
 
   hash("AHASH", "0x%s",
-    "ACTIONNOTIFY", "ACTIVATE",      "ACCESSOBJECT", "CLEAR",    "FREEWARNING",  "OWNERDESTROYED", "COPYDATA",
+    "ACTIVATE",     "ACCESSOBJECT", "CLEAR",    "FREEWARNING",  "OWNERDESTROYED", "COPYDATA",
     "DATAFEED",     "DEACTIVATE",    "DRAW",         "FLUSH",    "FOCUS",        "FREE",         "RELEASEOBJECT",
     "GETVAR",       "DRAGDROP",      "HIDE",         "INIT",     "LOCK",         "LOSTFOCUS",    "MOVE",
     "MOVETOBACK",   "MOVETOFRONT",   "NEWCHILD",     "NEWOWNER", "NEWOBJECT",    "REDO",         "QUERY",
@@ -919,12 +919,6 @@ struct FieldValue {
   rkBase64Encode() : Step(0), Result(0), StepCount(0) { };
   ]])
 
-  struct("FeedSubscription", { }, [[
-    oid SubscriberID    # Subscriber ID
-    mem MessagePortMID  # Message port for the subscriber
-    cid ClassID         # Class of the subscriber
-  ]])
-
   struct("FunctionField", { comment="Used by ActionTable and Function structures to declare lists of parameters." }, [[
     cstr Name   # Name of the field
     uint Type   # Type of the field
@@ -1245,7 +1239,7 @@ extern struct CoreBase *CoreBase;
     "ListChildren",
     "Base64Decode",
     "RegisterFD",
-    "ManageAction",
+    "ResolvePath",
     "MemoryIDInfo",
     "MemoryPtrInfo",
     "NewObject",
@@ -1356,8 +1350,7 @@ extern struct CoreBase *CoreBase;
     "UTF8ValidEncoding",
     "AnalysePath",
     "CreateFolder",
-    "MoveFile",
-    "ResolvePath")
+    "MoveFile")
 
   c_insert([[
 
@@ -1893,7 +1886,6 @@ inline BYTE CMP_DATETIME(DateTime *one, DateTime *two)
 
 // Action and Notification Structures
 
-struct acActionNotify  { union { ACTIONID ActionID; ACTIONID Action; }; union { OBJECTID ObjectID; OBJECTID Object; }; APTR Args; LONG Size; ERROR Error; LONG Time; };
 struct acClipboard     { LONG Mode; };
 struct acCopyData      { union { OBJECTID DestID; OBJECTID Dest; }; };
 struct acCustom        { LONG Number; CSTRING String; };

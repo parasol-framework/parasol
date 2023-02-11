@@ -463,164 +463,170 @@ static void display_resized(OBJECTID DisplayID, LONG X, LONG Y, LONG Width, LONG
 
 //********************************************************************************************************************
 
-static ERROR SURFACE_ActionNotify(extSurface *Self, struct acActionNotify *NotifyArgs)
+static void notify_free_parent(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Void)
 {
-   parasol::Log log;
+   parasol::Log log(__FUNCTION__);
+   auto Self = (extSurface *)CurrentContext();
 
-   if (Self->collecting()) return ERR_Okay;
+   // Free ourselves in advance if our parent is in the process of being killed.  This causes a chain reaction
+   // that results in a clean deallocation of the surface hierarchy.
 
-   if (NotifyArgs->ActionID IS AC_Free) {
-      if (NotifyArgs->ObjectID IS Self->ParentID) {
-         // Free ourselves in advance if our parent is in the process of being killed.  This causes a chain reaction
-         // that results in a clean deallocation of the surface hierarchy.
+   Self->Flags &= ~RNF_VISIBLE;
+   UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
+   if (Self->defined(NF::INTEGRAL)) DelayMsg(AC_Free, Self->UID); // If the object is a child of something, give the parent object time to do the deallocation itself
+   else acFree(Self);
+}
 
-         Self->Flags &= ~RNF_VISIBLE;
-         UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
-         if (Self->defined(NF::INTEGRAL)) DelayMsg(AC_Free, Self->UID); // If the object is a child of something, give the parent object time to do the deallocation itself
-         else acFree(Self);
-      }
-      else {
-         for (LONG i=0; i < Self->CallbackCount; i++) {
-            if (Self->Callback[i].Function.Type IS CALL_SCRIPT) {
-               if (Self->Callback[i].Function.Script.Script->UID IS NotifyArgs->ObjectID) {
-                  Self->Callback[i].Function.Type = CALL_NONE;
+static void notify_free_callback(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Void)
+{
+   parasol::Log log(__FUNCTION__);
+   auto Self = (extSurface *)CurrentContext();
 
-                  LONG j;
-                  for (j=i; j < Self->CallbackCount-1; j++) { // Shorten the array
-                     Self->Callback[j] = Self->Callback[j+1];
-                  }
-                  i--;
-                  Self->CallbackCount--;
-               }
+   for (LONG i=0; i < Self->CallbackCount; i++) {
+      if (Self->Callback[i].Function.Type IS CALL_SCRIPT) {
+         if (Self->Callback[i].Function.Script.Script->UID IS Object->UID) {
+            Self->Callback[i].Function.Type = CALL_NONE;
+
+            LONG j;
+            for (j=i; j < Self->CallbackCount-1; j++) { // Shorten the array
+               Self->Callback[j] = Self->Callback[j+1];
             }
+            i--;
+            Self->CallbackCount--;
          }
       }
    }
-   else if ((NotifyArgs->ActionID IS AC_Draw) and (NotifyArgs->Error IS ERR_Okay)) {
-      // Hosts will sometimes call Draw to indicate that the display has been exposed.
+}
 
-      if (NotifyArgs->ObjectID IS Self->DisplayID) {
-         auto draw = (struct acDraw *)NotifyArgs->Args;
+static void notify_draw_display(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, struct acDraw *Args)
+{
+   parasol::Log log(__FUNCTION__);
+   auto Self = (extSurface *)CurrentContext();
 
-         log.traceBranch("Display exposure received - redrawing display.");
+   if (Self->collecting()) return;
 
-         if (draw) {
-            struct drwExpose expose = { draw->X, draw->Y, draw->Width, draw->Height, EXF_CHILDREN };
-            Action(MT_DrwExpose, Self, &expose);
-         }
-         else {
-            struct drwExpose expose = { 0, 0, 20000, 20000, EXF_CHILDREN };
-            Action(MT_DrwExpose, Self, &expose);
-         }
-      }
+   // Hosts will sometimes call Draw to indicate that the display has been exposed.
+
+   log.traceBranch("Display exposure received - redrawing display.");
+
+   if (Args) {
+      struct drwExpose expose = { Args->X, Args->Y, Args->Width, Args->Height, EXF_CHILDREN };
+      Action(MT_DrwExpose, Self, &expose);
    }
-   else if ((NotifyArgs->ActionID IS AC_Redimension) and (NotifyArgs->Error IS ERR_Okay)) {
-      auto resize = (struct acRedimension *)NotifyArgs->Args;
+   else {
+      struct drwExpose expose = { 0, 0, 20000, 20000, EXF_CHILDREN };
+      Action(MT_DrwExpose, Self, &expose);
+   }
+}
 
-      if (Self->Document) return ERR_Okay;
+static void notify_redimension_parent(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, struct acRedimension *Args)
+{
+   parasol::Log log(__FUNCTION__);
+   auto Self = (extSurface *)CurrentContext();
 
-      log.traceBranch("Redimension notification from parent #%d, currently %dx%d,%dx%d.", Self->ParentID, Self->X, Self->Y, Self->Width, Self->Height);
+   if (Self->Document) return;
+   if (Self->collecting()) return;
 
-      // Get the width and height of our parent surface
+   log.traceBranch("Redimension notification from parent #%d, currently %dx%d,%dx%d.", Self->ParentID, Self->X, Self->Y, Self->Width, Self->Height);
 
-      DOUBLE parentwidth, parentheight, width, height, x, y;
+   // Get the width and height of our parent surface
 
-      if (Self->ParentID) {
-         SurfaceControl *ctl;
-         if ((ctl = gfxAccessList(ARF_READ))) {
-            auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-            LONG i;
-            for (i=0; (i < ctl->Total) and (list[i].SurfaceID != Self->ParentID); i++);
-            if (i >= ctl->Total) {
-               gfxReleaseList(ARF_READ);
-               return log.warning(ERR_Search);
-            }
-            parentwidth  = list[i].Width;
-            parentheight = list[i].Height;
+   DOUBLE parentwidth, parentheight, width, height, x, y;
+
+   if (Self->ParentID) {
+      SurfaceControl *ctl;
+      if ((ctl = gfxAccessList(ARF_READ))) {
+         auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+         LONG i;
+         for (i=0; (i < ctl->Total) and (list[i].SurfaceID != Self->ParentID); i++);
+         if (i >= ctl->Total) {
             gfxReleaseList(ARF_READ);
+            log.warning(ERR_Search);
+            return;
          }
-         else return log.warning(ERR_AccessMemory);
+         parentwidth  = list[i].Width;
+         parentheight = list[i].Height;
+         gfxReleaseList(ARF_READ);
       }
-      else {
-         DISPLAYINFO *display;
-         if (!gfxGetDisplayInfo(0, &display)) {
-            parentwidth  = display->Width;
-            parentheight = display->Height;
-         }
-         else return ERR_Okay;
+      else { log.warning(ERR_AccessMemory); return; }
+   }
+   else {
+      DISPLAYINFO *display;
+      if (!gfxGetDisplayInfo(0, &display)) {
+         parentwidth  = display->Width;
+         parentheight = display->Height;
       }
-
-      // Convert relative offsets to their fixed equivalent
-
-      if (Self->Dimensions & DMF_RELATIVE_X_OFFSET) Self->XOffset = (parentwidth * Self->XOffsetPercent) * 0.01;
-      if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) Self->YOffset = (parentheight * Self->YOffsetPercent) * 0.01;
-
-      // Calculate absolute width and height values
-
-      if (Self->Dimensions & DMF_RELATIVE_WIDTH)   width = parentwidth * Self->WidthPercent * 0.01;
-      else if (Self->Dimensions & DMF_FIXED_WIDTH) width = Self->Width;
-      else if (Self->Dimensions & DMF_X_OFFSET) {
-         if (Self->Dimensions & DMF_FIXED_X) {
-            width = parentwidth - Self->X - Self->XOffset;
-         }
-         else if (Self->Dimensions & DMF_RELATIVE_X) {
-            width = parentwidth - (parentwidth * Self->XPercent * 0.01) - Self->XOffset;
-         }
-         else width = parentwidth - Self->XOffset;
-      }
-      else width = Self->Width;
-
-      if (Self->Dimensions & DMF_RELATIVE_HEIGHT)   height = parentheight * Self->HeightPercent * 0.01;
-      else if (Self->Dimensions & DMF_FIXED_HEIGHT) height = Self->Height;
-      else if (Self->Dimensions & DMF_Y_OFFSET) {
-         if (Self->Dimensions & DMF_FIXED_Y) {
-            height = parentheight - Self->Y - Self->YOffset;
-         }
-         else if (Self->Dimensions & DMF_RELATIVE_Y) {
-            height = parentheight - (parentheight * Self->YPercent * 0.01) - Self->YOffset;
-         }
-         else height = parentheight - Self->YOffset;
-      }
-      else height = Self->Height;
-
-      // Calculate new coordinates
-
-      if (Self->Dimensions & DMF_RELATIVE_X) x = (parentwidth * Self->XPercent * 0.01);
-      else if (Self->Dimensions & DMF_X_OFFSET) x = parentwidth - Self->XOffset - width;
-      else x = Self->X;
-
-      if (Self->Dimensions & DMF_RELATIVE_Y) y = (parentheight * Self->YPercent * 0.01);
-      else if (Self->Dimensions & DMF_Y_OFFSET) y = parentheight - Self->YOffset - height;
-      else y = Self->Y;
-
-      // Alignment adjustments
-
-      if (Self->Align & ALIGN_LEFT) x = 0;
-      else if (Self->Align & ALIGN_RIGHT) x = parentwidth - width;
-      else if (Self->Align & ALIGN_HORIZONTAL) x = (parentwidth - width) * 0.5;
-
-      if (Self->Align & ALIGN_TOP) y = 0;
-      else if (Self->Align & ALIGN_BOTTOM) y = parentheight - height;
-      else if (Self->Align & ALIGN_VERTICAL) y = (parentheight - height) * 0.5;
-
-      if (width > Self->MaxWidth) {
-         log.trace("Calculated width of %.0f exceeds max limit of %d", width, Self->MaxWidth);
-         width = Self->MaxWidth;
-      }
-
-      if (height > Self->MaxHeight) {
-         log.trace("Calculated height of %.0f exceeds max limit of %d", height, Self->MaxHeight);
-         height = Self->MaxHeight;
-      }
-
-      // Perform the resize
-
-      if ((Self->X != x) or (Self->Y != y) or (Self->Width != width) or (Self->Height != height) or (resize->Depth)) {
-         acRedimension(Self, x, y, 0, width, height, resize->Depth);
-      }
+      else return;
    }
 
-   return ERR_Okay;
+   // Convert relative offsets to their fixed equivalent
+
+   if (Self->Dimensions & DMF_RELATIVE_X_OFFSET) Self->XOffset = (parentwidth * Self->XOffsetPercent) * 0.01;
+   if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) Self->YOffset = (parentheight * Self->YOffsetPercent) * 0.01;
+
+   // Calculate absolute width and height values
+
+   if (Self->Dimensions & DMF_RELATIVE_WIDTH)   width = parentwidth * Self->WidthPercent * 0.01;
+   else if (Self->Dimensions & DMF_FIXED_WIDTH) width = Self->Width;
+   else if (Self->Dimensions & DMF_X_OFFSET) {
+      if (Self->Dimensions & DMF_FIXED_X) {
+         width = parentwidth - Self->X - Self->XOffset;
+      }
+      else if (Self->Dimensions & DMF_RELATIVE_X) {
+         width = parentwidth - (parentwidth * Self->XPercent * 0.01) - Self->XOffset;
+      }
+      else width = parentwidth - Self->XOffset;
+   }
+   else width = Self->Width;
+
+   if (Self->Dimensions & DMF_RELATIVE_HEIGHT)   height = parentheight * Self->HeightPercent * 0.01;
+   else if (Self->Dimensions & DMF_FIXED_HEIGHT) height = Self->Height;
+   else if (Self->Dimensions & DMF_Y_OFFSET) {
+      if (Self->Dimensions & DMF_FIXED_Y) {
+         height = parentheight - Self->Y - Self->YOffset;
+      }
+      else if (Self->Dimensions & DMF_RELATIVE_Y) {
+         height = parentheight - (parentheight * Self->YPercent * 0.01) - Self->YOffset;
+      }
+      else height = parentheight - Self->YOffset;
+   }
+   else height = Self->Height;
+
+   // Calculate new coordinates
+
+   if (Self->Dimensions & DMF_RELATIVE_X) x = (parentwidth * Self->XPercent * 0.01);
+   else if (Self->Dimensions & DMF_X_OFFSET) x = parentwidth - Self->XOffset - width;
+   else x = Self->X;
+
+   if (Self->Dimensions & DMF_RELATIVE_Y) y = (parentheight * Self->YPercent * 0.01);
+   else if (Self->Dimensions & DMF_Y_OFFSET) y = parentheight - Self->YOffset - height;
+   else y = Self->Y;
+
+   // Alignment adjustments
+
+   if (Self->Align & ALIGN_LEFT) x = 0;
+   else if (Self->Align & ALIGN_RIGHT) x = parentwidth - width;
+   else if (Self->Align & ALIGN_HORIZONTAL) x = (parentwidth - width) * 0.5;
+
+   if (Self->Align & ALIGN_TOP) y = 0;
+   else if (Self->Align & ALIGN_BOTTOM) y = parentheight - height;
+   else if (Self->Align & ALIGN_VERTICAL) y = (parentheight - height) * 0.5;
+
+   if (width > Self->MaxWidth) {
+      log.trace("Calculated width of %.0f exceeds max limit of %d", width, Self->MaxWidth);
+      width = Self->MaxWidth;
+   }
+
+   if (height > Self->MaxHeight) {
+      log.trace("Calculated height of %.0f exceeds max limit of %d", height, Self->MaxHeight);
+      height = Self->MaxHeight;
+   }
+
+   // Perform the resize
+
+   if ((Self->X != x) or (Self->Y != y) or (Self->Width != width) or (Self->Height != height) or (Args->Depth)) {
+      acRedimension(Self, x, y, 0, width, height, Args->Depth);
+   }
 }
 
 /*****************************************************************************
@@ -748,7 +754,10 @@ static ERROR SURFACE_AddCallback(extSurface *Self, struct drwAddCallback *Args)
       Self->Callback[0].Function = *Args->Callback;
    }
 
-   if (Args->Callback->Type IS CALL_SCRIPT) SubscribeAction(Args->Callback->Script.Script, AC_Free);
+   if (Args->Callback->Type IS CALL_SCRIPT) {
+      auto callback = make_function_stdc(notify_free_callback);
+      SubscribeAction(Args->Callback->Script.Script, AC_Free, &callback);
+   }
 
    return ERR_Okay;
 }
@@ -1296,8 +1305,11 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
       // Subscribe to the surface parent's Resize and Redimension actions
 
-      SubscribeAction(parent, AC_Free);
-      SubscribeAction(parent, AC_Redimension);
+      auto callback = make_function_stdc(notify_free_parent);
+      SubscribeAction(parent, AC_Free, &callback);
+
+      callback = make_function_stdc(notify_redimension_parent);
+      SubscribeAction(parent, AC_Redimension, &callback);
 
       // If the surface object is transparent, subscribe to the Draw action of the parent object.
 
@@ -1567,7 +1579,9 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
             if (Self->DisplayWindow) {
                FUNCTION func = { .Type = CALL_STDC, .StdC = { .Context = NULL, .Routine = (APTR)&display_resized } };
                display->set(FID_ResizeFeedback, &func);
-               SubscribeAction(display, AC_Draw);
+
+               auto callback = make_function_stdc(notify_draw_display);
+               SubscribeAction(display, AC_Draw, &callback);
             }
 
             error = ERR_Okay;

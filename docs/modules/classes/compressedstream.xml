@@ -78,7 +78,6 @@
   <types>
     <constants lookup="AC" comment="Action identifiers.">
       <const name="AccessObject"/>
-      <const name="ActionNotify"/>
       <const name="Activate"/>
       <const name="Clear"/>
       <const name="Clipboard"/>

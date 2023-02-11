@@ -11,7 +11,6 @@ end
 
 glIgnoreList = { }
 glIgnoreList[AC_AccessObject] = true
-glIgnoreList[AC_ActionNotify] = true
 glIgnoreList[AC_DataFeed] = true
 glIgnoreList[AC_Free] = true
 glIgnoreList[AC_FreeWarning] = true
@@ -24,7 +23,6 @@ glIgnoreList[AC_ReleaseObject] = true
 
 glActionComments = { }
 glActionComments[AC_AccessObject]   = 'Intercepts exclusive lock requests.'
-glActionComments[AC_ActionNotify]   = 'Used for supporting subscriptions originating from the SubscribeAction() function.'
 glActionComments[AC_Activate]       = 'Performs the native action of the object.'
 glActionComments[AC_Clear]          = 'Clears an object\'s data.'
 glActionComments[AC_Clipboard]      = 'Copy and paste information to and from clipboard objects.'

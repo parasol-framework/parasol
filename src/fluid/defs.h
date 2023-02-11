@@ -249,6 +249,7 @@ ERROR named_struct_to_table(lua_State *, CSTRING, CPTR);
 void make_struct_ptr_table(lua_State *, CSTRING, LONG, CPTR *);
 void make_struct_serial_table(lua_State *, CSTRING, LONG, CPTR);
 CSTRING next_line(CSTRING String);
+void notify_action(OBJECTPTR, ACTIONID, ERROR, APTR);
 void process_error(objScript *Self, CSTRING Procedure);
 struct object * push_object(lua_State *, OBJECTPTR Object);
 ERROR push_object_id(lua_State *, OBJECTID ObjectID);

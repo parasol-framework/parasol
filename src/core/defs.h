@@ -7,6 +7,7 @@
 
 #include <set>
 #include <functional>
+#include <mutex>
 
 #define PRV_CORE
 #define PRV_CORE_MODULE
@@ -178,24 +179,18 @@ enum {
 //********************************************************************************************************************
 
 struct Stats {
-   union {
-      MEMORYID ID; // Action subscriptions (struct ActionSubscription)
-      APTR Ptr;
-   } ActionSubscriptions;
-   LONG     NotifyFlags[2];     // Action notification flags - space for 64 actions max
-   char     Name[MAX_NAME_LEN]; // The name of the object (optional)
-   UWORD    SubscriptionSize;   // Size of the ActionSubscriptions array
-   UWORD    Empty;
+   LONG NotifyFlags[2];     // Action subscription flags - space for 64 actions max
+   char Name[MAX_NAME_LEN]; // The name of the object (optional)
 };
 
-// Subscription structures
+struct ActionSubscription {
+   OBJECTPTR Context;
+   void (*Callback)(OBJECTPTR, ACTIONID, ERROR, APTR);
 
-typedef struct ActionSubscription {
-   ACTIONID ActionID;       // Monitored action
-   OBJECTID SubscriberID;   // Object to be notified
-   MEMORYID MessagePortMID; // Message port for the object
-   CLASSID  ClassID;        // Class of the subscribed object
-} ActionSubscription;
+   ActionSubscription() : Context(NULL), Callback(NULL) { }
+   ActionSubscription(OBJECTPTR pContext, void (*pCallback)(OBJECTPTR, ACTIONID, ERROR, APTR)) : Context(pContext), Callback(pCallback) { }
+   ActionSubscription(OBJECTPTR pContext, APTR pCallback) : Context(pContext), Callback((void (*)(OBJECTPTR, ACTIONID, ERROR, APTR))pCallback) { }
+};
 
 struct virtual_drive {
    ULONG VirtualID;  // Hash name of the volume, not including the trailing colon
@@ -631,7 +626,7 @@ extern THREADVAR LONG glForceUID, glForceGID, glDefaultPermissions;
 
 //********************************************************************************************************************
 
-extern LONG (**ManagedActions)(OBJECTPTR Object, APTR Parameters);
+extern std::array<LONG (*)(struct BaseClass *, APTR), AC_END> ManagedActions;
 extern ERROR (*glMessageHandler)(struct Message *);
 extern void (*glVideoRecovery)(void);
 extern void (*glKeyboardRecovery)(void);
@@ -1034,7 +1029,6 @@ ERROR  threadpool_get(extThread **);
 void   threadpool_release(extThread *);
 ERROR  unpage_memory(APTR);
 ERROR  unpage_memory_id(MEMORYID MemoryID);
-ERROR  UnsubscribeActionByID(OBJECTPTR Object, ACTIONID ActionID, OBJECTID SubscriberID);
 void   wake_sleepers(LONG ResourceID, LONG ResourceType);
 ERROR  write_class_item(struct ClassItem *);
 ERROR  writeval_default(OBJECTPTR, struct Field *, LONG, const void *, LONG);

@@ -267,118 +267,140 @@ ERROR CMDExpunge(void)
    return ERR_Okay;
 }
 
-//*****************************************************************************
+//********************************************************************************************************************
 
-static ERROR SCINTILLA_ActionNotify(extScintilla *Self, struct acActionNotify *Args)
+static void notify_dragdrop(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, struct acDragDrop *Args)
 {
-   parasol::Log log;
+   auto Self = (extScintilla *)CurrentContext();
 
-   if (!Args) return ERR_NullArgs;
+   // There are two drag-drop cases - DATA_TEXT and DATA_FILE.  DATA_TEXT is something that we can handle ourselves,
+   // while DATA_FILE is handled via an external function provided by the user.  Refer to the DataFeed action for
+   // further code.
 
-   log.trace("Action: %d, ErrorCode: %d", Args->ActionID, Args->Error);
+   if (!Args) return;
 
-   if (Args->Error != ERR_Okay) {
-      if (Args->ActionID IS AC_Write) {
-         if (Self->FileStream) { acFree(Self->FileStream); Self->FileStream = NULL; }
-      }
-      return ERR_Okay;
+   // Send the source an item request
+
+   struct dcRequest request;
+   request.Item          = Args->Item;
+   request.Preference[0] = DATA_FILE;
+   request.Preference[1] = DATA_TEXT;
+   request.Preference[2] = 0;
+
+   struct acDataFeed dc;
+   dc.ObjectID = Self->UID;
+   dc.Datatype = DATA_REQUEST;
+   dc.Buffer   = &request;
+   dc.Size     = sizeof(request);
+   if (!ActionMsg(AC_DataFeed, Args->SourceID, &dc)) {
+      // The source will return a DATA_RECEIPT for the items that we've asked for (see the DataFeed action).
+   }
+}
+
+//********************************************************************************************************************
+
+static void notify_focus(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+{
+   parasol::Log log(__FUNCTION__);
+   auto Self = (extScintilla *)CurrentContext();
+
+   if (Result) return;
+
+   if (!Self->prvKeyEvent) {
+      auto callback = make_function_stdc(key_event);
+      SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
    }
 
-   if (Args->ActionID IS AC_DragDrop) {
-      // There are two drag-drop cases - DATA_TEXT and DATA_FILE.  DATA_TEXT is something that we can handle ourselves,
-      // while DATA_FILE is handled via an external function provided by the user.  Refer to the DataFeed action for
-      // further code.
-
-      struct acDragDrop *drag = (struct acDragDrop *)Args->Args;
-      if (!drag) return log.warning(ERR_NullArgs);
-
-      // Send the source an item request
-
-      struct dcRequest request;
-      request.Item          = drag->Item;
-      request.Preference[0] = DATA_FILE;
-      request.Preference[1] = DATA_TEXT;
-      request.Preference[2] = 0;
-
-      struct acDataFeed dc;
-      dc.ObjectID = Self->UID;
-      dc.Datatype = DATA_REQUEST;
-      dc.Buffer   = &request;
-      dc.Size     = sizeof(request);
-      if (!ActionMsg(AC_DataFeed, drag->SourceID, &dc)) {
-         // The source will return a DATA_RECEIPT for the items that we've asked for (see the DataFeed action).
-      }
+   if ((Self->Visible) and (!(Self->Flags & SCF_DISABLED))) {
+      Self->API->panGotFocus();
    }
-   else if (Args->ActionID IS AC_Focus) {
-      if (!Self->prvKeyEvent) {
-         auto callback = make_function_stdc(key_event);
-         SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
-      }
+   else log.msg("(Focus) Cannot receive focus, surface not visible or disabled.");
+}
 
-      if ((Self->Visible) and (!(Self->Flags & SCF_DISABLED))) {
-         Self->API->panGotFocus();
-      }
-      else log.msg("(Focus) Cannot receive focus, surface not visible or disabled.");
-   }
-   else if (Args->ActionID IS AC_Free) {
-      if ((Self->EventCallback.Type IS CALL_SCRIPT) and (Self->EventCallback.Script.Script->UID IS Args->ObjectID)) {
-         Self->EventCallback.Type = CALL_NONE;
-      }
-   }
-   else if (Args->ActionID IS AC_Hide) {
-      // Parent surface has been hidden
-      acHide(Self);
-   }
-   else if (Args->ActionID IS AC_LostFocus) {
-      log.branch("LostFocus");
+//********************************************************************************************************************
 
-      if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
+static void notify_free_event(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+{
+   ((extScintilla *)CurrentContext())->EventCallback.Type = CALL_NONE;
+}
 
-      Self->API->panLostFocus();
-   }
-   else if (Args->ActionID IS AC_Show) {
-      // Parent surface now visible
-      acShow(Self);
-   }
-   else if (Args->ActionID IS AC_Redimension) {
-      struct acRedimension *resize;
-      BYTE resized;
+//********************************************************************************************************************
 
-      if (!(resize = (struct acRedimension *)Args->Args)) return ERR_Okay;
+static void notify_hide(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+{
+   // Parent surface has been hidden
+   acHide(CurrentContext());
+}
 
-      if ((Self->Surface.Width != F2T(resize->Width)) or (Self->Surface.Height != F2T(resize->Height))) resized = TRUE;
-      else resized = FALSE;
+//********************************************************************************************************************
 
-      Self->Surface.X = F2T(resize->X);
-      Self->Surface.Y = F2T(resize->Y);
-      Self->Surface.Width  = F2T(resize->Width);
-      Self->Surface.Height = F2T(resize->Height);
+static void notify_lostfocus(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+{
+   parasol::Log log(__FUNCTION__);
+   log.branch();
 
-      if (resized) Self->API->panResized();
-   }
-   else if (Args->ActionID IS AC_Write) {
-      struct acWrite *write;
+   auto Self = (extScintilla *)CurrentContext();
+   if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
 
-      if (!(write = (struct acWrite *)Args->Args)) return ERR_Okay;
+   Self->API->panLostFocus();
+}
 
-      log.msg("%d bytes incoming from file stream.", write->Result);
+//********************************************************************************************************************
 
-      Self->HoldModify = TRUE; // Prevent the file from being marked as modified due to incoming data
+static void notify_show(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+{
+   // Parent surface now visible
+   acShow(CurrentContext());
+}
 
-      SCICALL(SCI_SETUNDOCOLLECTION, 0UL); // Turn off undo
+//********************************************************************************************************************
 
-      if (write->Buffer) {
-         acDataFeed(Self, Self->UID, DATA_TEXT, write->Buffer, write->Result);
-      }
-      else { // We have to read the data from the file stream
-      }
+static void notify_redimension(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, struct acRedimension *Args)
+{
+   if ((!Args) or (Result)) return;
 
-      SCICALL(SCI_SETUNDOCOLLECTION, 1UL); // Turn on undo
+   auto Self = (extScintilla *)CurrentContext();
+   bool resized;
+   if ((Self->Surface.Width != F2T(Args->Width)) or (Self->Surface.Height != F2T(Args->Height))) resized = true;
+   else resized = false;
 
-      Self->HoldModify = FALSE;
+   Self->Surface.X = F2T(Args->X);
+   Self->Surface.Y = F2T(Args->Y);
+   Self->Surface.Width  = F2T(Args->Width);
+   Self->Surface.Height = F2T(Args->Height);
+
+   if (resized) Self->API->panResized();
+}
+
+//********************************************************************************************************************
+
+static void notify_write(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, struct acWrite *Args)
+{
+   parasol::Log log(__FUNCTION__);
+   auto Self = (extScintilla *)CurrentContext();
+
+   if (!Args) return;
+
+   if (Result != ERR_Okay) {
+      if (Self->FileStream) { acFree(Self->FileStream); Self->FileStream = NULL; }
+      return;
    }
 
-   return ERR_Okay;
+   log.msg("%d bytes incoming from file stream.", Args->Result);
+
+   Self->HoldModify = TRUE; // Prevent the file from being marked as modified due to incoming data
+
+   SCICALL(SCI_SETUNDOCOLLECTION, 0UL); // Turn off undo
+
+   if (Args->Buffer) {
+      acDataFeed(Self, Self->UID, DATA_TEXT, Args->Buffer, Args->Result);
+   }
+   else { // We have to read the data from the file stream
+   }
+
+   SCICALL(SCI_SETUNDOCOLLECTION, 1UL); // Turn on undo
+
+   Self->HoldModify = FALSE;
 }
 
 /*****************************************************************************
@@ -775,8 +797,11 @@ static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
 
    OBJECTPTR object;
    if (!AccessObject(Self->FocusID, 5000, &object)) {
-      SubscribeAction(object, AC_Focus);
-      SubscribeAction(object, AC_LostFocus);
+      auto callback = make_function_stdc(notify_focus);
+      SubscribeAction(object, AC_Focus, &callback);
+
+      callback = make_function_stdc(notify_lostfocus);
+      SubscribeAction(object, AC_LostFocus, &callback);
       ReleaseObject(object);
    }
 
@@ -797,13 +822,17 @@ static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
 
       //SubscribeFeed(surface); TODO: Deprecated
 
-      SubscribeAction(surface, AC_DataFeed);
-      SubscribeAction(surface, AC_DragDrop);
-      SubscribeAction(surface, AC_Disable);
-      SubscribeAction(surface, AC_Enable);
-      SubscribeAction(surface, AC_Hide);
-      SubscribeAction(surface, AC_Redimension);
-      SubscribeAction(surface, AC_Show);
+      auto callback = make_function_stdc(notify_dragdrop);
+      SubscribeAction(surface, AC_DragDrop, &callback);
+
+      callback = make_function_stdc(notify_hide);
+      SubscribeAction(surface, AC_Hide, &callback);
+
+      callback = make_function_stdc(notify_redimension);
+      SubscribeAction(surface, AC_Redimension, &callback);
+
+      callback = make_function_stdc(notify_show);
+      SubscribeAction(surface, AC_Show, &callback);
 
       if (surface->Flags & RNF_HAS_FOCUS) {
          auto callback = make_function_stdc(key_event);
@@ -1876,7 +1905,10 @@ static ERROR SET_EventCallback(extScintilla *Self, FUNCTION *Value)
    if (Value) {
       if (Self->EventCallback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->EventCallback.Script.Script, AC_Free);
       Self->EventCallback = *Value;
-      if (Self->EventCallback.Type IS CALL_SCRIPT) SubscribeAction(Self->EventCallback.Script.Script, AC_Free);
+      if (Self->EventCallback.Type IS CALL_SCRIPT) {
+         auto callback = make_function_stdc(notify_free_event);
+         SubscribeAction(Self->EventCallback.Script.Script, AC_Free, &callback);
+      }
    }
    else Self->EventCallback.Type = CALL_NONE;
    return ERR_Okay;
@@ -2211,7 +2243,8 @@ static ERROR load_file(extScintilla *Self, CSTRING Path)
          if (!flStartStream(file, Self->UID, FL_READ, 0)) {
             acClear(Self);
 
-            SubscribeAction(file, AC_Write);
+            auto callback = make_function_stdc(notify_write);
+            SubscribeAction(file, AC_Write, &callback);
             Self->FileStream = file;
             file = NULL;
          }

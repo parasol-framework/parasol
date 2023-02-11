@@ -494,19 +494,11 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
 #endif
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
-static ERROR SOUND_ActionNotify(extSound *Self, struct acActionNotify *Args)
+static void notify_onstop_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   if (!Args) return ERR_NullArgs;
-
-   if (Args->ActionID IS AC_Free) {
-      if ((Self->OnStop.Type IS CALL_SCRIPT) and (Self->OnStop.Script.Script->UID IS Args->ObjectID)) {
-         Self->OnStop.Type = CALL_NONE;
-      }
-   }
-
-   return ERR_Okay;
+   ((extSound *)CurrentContext())->OnStop.Type = CALL_NONE;
 }
 
 /*********************************************************************************************************************
@@ -1468,7 +1460,10 @@ static ERROR SOUND_SET_OnStop(extSound *Self, FUNCTION *Value)
    if (Value) {
       if (Self->OnStop.Type IS CALL_SCRIPT) UnsubscribeAction(Self->OnStop.Script.Script, AC_Free);
       Self->OnStop = *Value;
-      if (Self->OnStop.Type IS CALL_SCRIPT) SubscribeAction(Self->OnStop.Script.Script, AC_Free);
+      if (Self->OnStop.Type IS CALL_SCRIPT) {
+         auto callback = make_function_stdc(notify_onstop_free);
+         SubscribeAction(Self->OnStop.Script.Script, AC_Free, &callback);
+      }
    }
    else Self->OnStop.Type = CALL_NONE;
    return ERR_Okay;
@@ -1739,12 +1734,12 @@ static const FieldArray clFields[] = {
    { "Header",   FDF_BYTE|FDF_ARRAY|FDF_R, 0, (APTR)SOUND_GET_Header, NULL },
    { "OnStop",   FDF_FUNCTIONPTR|FDF_RW,   0, (APTR)SOUND_GET_OnStop, (APTR)SOUND_SET_OnStop },
    { "Path",     FDF_STRING|FDF_RI,        0, (APTR)SOUND_GET_Path, (APTR)SOUND_SET_Path },
+   { "Src",      FDF_SYNONYM|FDF_STRING|FDF_RI, 0, (APTR)SOUND_GET_Path, (APTR)SOUND_SET_Path },
    { "Note",     FDF_STRING|FDF_RW,        0, (APTR)SOUND_GET_Note, (APTR)SOUND_SET_Note },
    END_FIELD
 };
 
 static const ActionArray clActions[] = {
-   { AC_ActionNotify,  (APTR)SOUND_ActionNotify },
    { AC_Activate,      (APTR)SOUND_Activate },
    { AC_Deactivate,    (APTR)SOUND_Deactivate },
    { AC_Disable,       (APTR)SOUND_Disable },

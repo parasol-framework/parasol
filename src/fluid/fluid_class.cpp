@@ -61,7 +61,6 @@ static const FieldArray clFields[] = {
 
 //****************************************************************************
 
-static ERROR FLUID_ActionNotify(objScript *, struct acActionNotify *);
 static ERROR FLUID_Activate(objScript *, APTR);
 static ERROR FLUID_DataFeed(objScript *, struct acDataFeed *);
 static ERROR FLUID_Free(objScript *, APTR);
@@ -69,7 +68,6 @@ static ERROR FLUID_Init(objScript *, APTR);
 static ERROR FLUID_SaveToObject(objScript *, struct acSaveToObject *);
 
 static const ActionArray clActions[] = {
-   { AC_ActionNotify, (APTR)FLUID_ActionNotify },
    { AC_Activate,     (APTR)FLUID_Activate },
    { AC_DataFeed,     (APTR)FLUID_DataFeed },
    { AC_Free,         (APTR)FLUID_Free },
@@ -230,28 +228,28 @@ static ERROR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *
 //
 // function(ObjectID, Args, Reference)
 
-
-static ERROR FLUID_ActionNotify(objScript *Self, struct acActionNotify *Args)
+void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   if (!Args) return ERR_NullArgs;
-   if (Args->Error != ERR_Okay) return ERR_Okay;
+   auto Self = (objScript *)CurrentContext();
+
+   if (Result != ERR_Okay) return;
 
    auto prv = (prvFluid *)Self->ChildPrivate;
-   if (!prv) return ERR_Okay;
+   if (!prv) return;
 
    for (auto scan=prv->ActionList; scan; scan=scan->Next) {
-      if ((Args->ObjectID IS scan->ObjectID) and (Args->ActionID IS scan->ActionID)) {
+      if ((Object->UID IS scan->ObjectID) and (ActionID IS scan->ActionID)) {
          LONG depth = GetResource(RES_LOG_DEPTH); // Required because thrown errors cause the debugger to lose its branch
 
          {
             parasol::Log log;
 
-            log.msg(VLF_BRANCH|VLF_EXTAPI, "Action notification for object #%d, action %d.  Top: %d", Args->ObjectID, Args->ActionID, lua_gettop(prv->Lua));
+            log.msg(VLF_BRANCH|VLF_EXTAPI, "Action notification for object #%d, action %d.  Top: %d", Object->UID, ActionID, lua_gettop(prv->Lua));
 
             lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan->Function); // +1 stack: Get the function reference
-            push_object_id(prv->Lua, Args->ObjectID);  // +1: Pass the object ID
+            push_object_id(prv->Lua, Object->UID);  // +1: Pass the object ID
             lua_newtable(prv->Lua);  // +1: Table to store the parameters
-            if (!stack_args(prv->Lua, Args->ObjectID, scan->Args, (STRING)Args->Args)) {
+            if (!stack_args(prv->Lua, Object->UID, scan->Args, (STRING)Args)) {
                LONG total_args;
                if (scan->Reference) { // +1: Custom reference (optional)
                   lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan->Reference);
@@ -269,11 +267,9 @@ static ERROR FLUID_ActionNotify(objScript *Self, struct acActionNotify *Args)
          }
 
          SetResource(RES_LOG_DEPTH, depth);
-         return ERR_Okay;
+         return;
       }
    }
-
-   return ERR_Okay;
 }
 
 //****************************************************************************

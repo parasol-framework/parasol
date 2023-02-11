@@ -54,17 +54,9 @@ static CSTRING GetDatatype(LONG Datatype)
 
 //****************************************************************************
 
-static ERROR CLIPBOARD_ActionNotify(objClipboard *Self, struct acActionNotify *Args)
+static void notify_script_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   if (Args->Error != ERR_Okay) return ERR_Okay;
-
-   if (Args->ActionID IS AC_Free) {
-      if ((Self->RequestHandler.Type IS CALL_SCRIPT) and (Self->RequestHandler.Script.Script->UID IS Args->ObjectID)) {
-         Self->RequestHandler.Type = CALL_NONE;
-      }
-   }
-
-   return ERR_Okay;
+   ((objClipboard *)CurrentContext())->RequestHandler.Type = CALL_NONE;
 }
 
 /*****************************************************************************
@@ -925,7 +917,10 @@ static ERROR SET_RequestHandler(objClipboard *Self, FUNCTION *Value)
    if (Value) {
       if (Self->RequestHandler.Type IS CALL_SCRIPT) UnsubscribeAction(Self->RequestHandler.Script.Script, AC_Free);
       Self->RequestHandler = *Value;
-      if (Self->RequestHandler.Type IS CALL_SCRIPT) SubscribeAction(Self->RequestHandler.Script.Script, AC_Free);
+      if (Self->RequestHandler.Type IS CALL_SCRIPT) {
+         auto callback = make_function_stdc(notify_script_free);
+         SubscribeAction(Self->RequestHandler.Script.Script, AC_Free, &callback);
+      }
    }
    else Self->RequestHandler.Type = CALL_NONE;
    return ERR_Okay;

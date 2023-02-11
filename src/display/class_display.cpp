@@ -234,19 +234,9 @@ static ERROR DISPLAY_AccessObject(extDisplay *Self, APTR Void)
 
 //****************************************************************************
 
-static ERROR DISPLAY_ActionNotify(extDisplay *Self, struct acActionNotify *Args)
+static void notify_resize_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   if (!Args) return ERR_NullArgs;
-   if (Args->Error != ERR_Okay) return ERR_Okay;
-
-   if (Args->ActionID IS AC_Free) {
-      if ((Self->ResizeFeedback.Type IS CALL_SCRIPT) and (Self->ResizeFeedback.Script.Script->UID IS Args->ObjectID)) {
-         Self->ResizeFeedback.Type = CALL_NONE;
-         return ERR_Okay;
-      }
-   }
-
-   return ERR_NoSupport;
+   ((extDisplay *)CurrentContext())->ResizeFeedback.Type = CALL_NONE;
 }
 
 /*****************************************************************************
@@ -2976,7 +2966,10 @@ static ERROR SET_ResizeFeedback(extDisplay *Self, FUNCTION *Value)
    if (Value) {
       if (Self->ResizeFeedback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->ResizeFeedback.Script.Script, AC_Free);
       Self->ResizeFeedback = *Value;
-      if (Self->ResizeFeedback.Type IS CALL_SCRIPT) SubscribeAction(Self->ResizeFeedback.Script.Script, AC_Free);
+      if (Self->ResizeFeedback.Type IS CALL_SCRIPT) {
+         auto callback = make_function_stdc(notify_resize_free);
+         SubscribeAction(Self->ResizeFeedback.Script.Script, AC_Free, &callback);
+      }
    }
    else Self->ResizeFeedback.Type = CALL_NONE;
    return ERR_Okay;

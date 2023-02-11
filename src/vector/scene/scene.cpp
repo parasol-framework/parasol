@@ -59,41 +59,47 @@ static void render_to_surface(extVectorScene *Self, objSurface *Surface, objBitm
 
 //********************************************************************************************************************
 
-static ERROR VECTORSCENE_ActionNotify(extVectorScene *Self, struct acActionNotify *Args)
+static void notify_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   if (Args->ActionID IS AC_Free) {
-      if (Self->SurfaceID IS Args->ObjectID) {
-         Self->SurfaceID = 0;
-      }
-   }
-   else if (Args->ActionID IS AC_Redimension) {
-      auto resize = (struct acRedimension *)Args->Args;
+   auto Self = (objVectorScene *)CurrentContext();
+   if (Self->SurfaceID IS Object->UID) Self->SurfaceID = 0;
+}
 
-      if (Self->Flags & VPF_RESIZE) {
-         Self->PageWidth  = resize->Width;
-         Self->PageHeight = resize->Height;
+//********************************************************************************************************************
 
-         if (Self->Viewport) {
-            mark_dirty(Self->Viewport, RC_BASE_PATH|RC_TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
-         }
+static void notify_redimension(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, struct acRedimension *Args)
+{
+   auto Self = (objVectorScene *)CurrentContext();
 
-         ActionMsg(MT_DrwScheduleRedraw, Self->SurfaceID, NULL);
-      }
-   }
-   else if (Args->ActionID IS AC_LostFocus) {
-      if (Self->KeyHandle) {
-         UnsubscribeEvent(Self->KeyHandle);
-         Self->KeyHandle = NULL;
-      }
-   }
-   else if (Args->ActionID IS AC_Focus) {
-      if (!Self->KeyHandle) {
-         auto callback = make_function_stdc(scene_key_event);
-         SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->KeyHandle);
-      }
-   }
+   if (Self->Flags & VPF_RESIZE) {
+      Self->PageWidth  = Args->Width;
+      Self->PageHeight = Args->Height;
 
-   return ERR_Okay;
+      if (Self->Viewport) {
+         mark_dirty(Self->Viewport, RC_BASE_PATH|RC_TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
+      }
+
+      ActionMsg(MT_DrwScheduleRedraw, Self->SurfaceID, NULL);
+   }
+}
+
+//********************************************************************************************************************
+
+static void notify_lostfocus(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+{
+   auto Self = (extVectorScene *)CurrentContext();
+   if (Self->KeyHandle) { UnsubscribeEvent(Self->KeyHandle); Self->KeyHandle = NULL; }
+}
+
+//********************************************************************************************************************
+
+static void notify_focus(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+{
+   auto Self = (extVectorScene *)CurrentContext();
+   if (!Self->KeyHandle) {
+      auto callback = make_function_stdc(scene_key_event);
+      SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->KeyHandle);
+   }
 }
 
 /*********************************************************************************************************************
@@ -370,13 +376,20 @@ static ERROR VECTORSCENE_Init(extVectorScene *Self, APTR Void)
             surface->get(FID_Height, &Self->PageHeight);
          }
 
-         SubscribeAction(*surface, AC_Redimension);
-         SubscribeAction(*surface, AC_Free);
-         SubscribeAction(*surface, AC_Focus);
-         SubscribeAction(*surface, AC_LostFocus);
+         callback = make_function_stdc(notify_redimension);
+         SubscribeAction(*surface, AC_Redimension, &callback);
+
+         callback = make_function_stdc(notify_free);
+         SubscribeAction(*surface, AC_Free, &callback);
+
+         callback = make_function_stdc(notify_focus);
+         SubscribeAction(*surface, AC_Focus, &callback);
+
+         callback = make_function_stdc(notify_lostfocus);
+         SubscribeAction(*surface, AC_LostFocus, &callback);
 
          if (surface->Flags & RNF_HAS_FOCUS) {
-            auto callback = make_function_stdc(scene_key_event);
+            callback = make_function_stdc(scene_key_event);
             SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->KeyHandle);
          }
       }

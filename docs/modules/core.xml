@@ -154,7 +154,7 @@
   <function>
     <name>ActionList</name>
     <category>Objects</category>
-    <comment>Returns a pointer to the system's action table.</comment>
+    <comment>Returns a pointer to the global action table.</comment>
     <prototype>void ActionList(struct ActionTable ** Actions, LONG * Size)</prototype>
     <input>
       <param type="struct ActionTable **" name="Actions">A pointer to the Core's action table (struct ActionTable *) is returned. Please note that the first entry in the ActionTable list has all fields driven to NULL, because valid action ID's start from one, not zero.  The final action in the list is also terminated with NULL fields in order to indicate an end to the list.  Knowing this is helpful when scanning the list or calculating the total number of actions supported by the Core.</param>
@@ -1565,13 +1565,12 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <input>
       <param type="OBJECTPTR" name="Object">Pointer to the object that is to receive the notification message.</param>
       <param type="LONG" name="Action" lookup="AC">The action ID for notification.</param>
-      <param type="APTR" name="Args">Pointer to the action arguments relevant to the ActionID.</param>
+      <param type="APTR" name="Args">Pointer to an action parameter structure that is relevant to the ActionID.</param>
       <param type="ERROR" name="Error">The error code that is associated with the action result.</param>
     </input>
     <description>
-<p>This function can be used by classes that need total control over the timing of action subscriber notification.  The system default for notifying action subscribers is to call them after an action has taken place.  However, this can be inconvenient if the code for an action wants to perform some extra procedures after the subscribers have been notified.  The solution is to use NotifySubscribers(), then continue on with the rest of the routine.</p>
-<p>The Flags argument currently accepts the following options:</p>
-<types lookup="NSF"/>
+<p>This function can be used by classes that need total control over notification management.  The system default for notifying action subscribers is to call them immediately after an action has taken place.  This may be inconvenient if the code for an action needs to perform a procedure after the subscribers have been notified.  Using NotifySubscribers() allows for such a scenario.  Another possible use is customising the parameter values of the called action so that the original values are not sent to the subscriber(s).</p>
+<p>NOTE: Calling NotifySubscribers() does nothing to prevent the core from sending out an action notification as it normally would, thus causing duplication.  To prevent this scenario, you must logical-or the return code of your action support function with <code>ERF_Notified</code>, e.g. <code>ERR_Okay|ERF_Notified</code>.</p>
     </description>
   </function>
 
@@ -2373,30 +2372,39 @@ SetField(Object, FID_Statement|TSTR, "string");
   <function>
     <name>SubscribeAction</name>
     <category>Objects</category>
-    <comment>Listens for actions that may be performed on an object.</comment>
-    <prototype>ERROR SubscribeAction(OBJECTPTR Object, LONG Action)</prototype>
+    <comment>Monitor action calls made against an object.</comment>
+    <prototype>ERROR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION * Callback)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">The target object.</param>
-      <param type="LONG" name="Action">The ID of the action that will be monitored.</param>
+      <param type="LONG" name="Action">The ID of the action that will be monitored.  Methods are not supported.</param>
+      <param type="FUNCTION *" name="Callback">A C/C++ function to callback when the action is triggered.</param>
     </input>
     <description>
-<p>The SubscribeAction() function is provided for objects that need to be notified when actions are being executed on foreign objects.  This is referred to as "action monitoring".  Action monitoring is used for a wide variety of purposes and is especially useful for responding to events in the user interface, including pointer movement, window resizing and graphics drawing.</p>
-<p>To subscribe to the actions of another object, acquire its address pointer and then call this function with the action ID to monitor.  The object that has the current context will be registered for receiving the notifications.</p>
+<p>The SubscribeAction() function provides a means for receiving an immediate notification after an action is called on an object.  We refer to this as "action monitoring".  Action monitoring is especially useful for responding to events in the UI and the termination of objects.</p>
+<p>Subscriptions are context sensitive and thus owned by the caller.</p>
 <p>The following example illustrates how to listen to a Surface object's Redimension action to be alerted to resize events:</p>
-<pre>if (!AccessObject(SurfaceID, 3000, &amp;surface)) {
-   SubscribeAction(surface, AC_Redimension, Self);
-   ReleaseObject(surface);
+<pre>auto callback = make_function_stdc(notify_resize);
+SubscribeAction(surface, AC_Redimension, &amp;callback);
+</pre>
+<p>The template below illustrates how the Callback function should be constructed:</p>
+<pre>void notify_resize(OBJECTPTR Object, ACTIONID Action, ERROR Result, APTR Parameters)
+{
+   auto Self = (objClassType *)CurrentContext();
+
+   // Code here...
+   if ((Result == ERR_Okay) and (Parameters)) {
+      auto resize = (struct acRedimension *)Parameters;
+   }
 }
 </pre>
-<p>When a process calls an action with subscriptions, the object's code will be executed first, then all relevant action subscribers will be notified of the event.  This is done by sending each subscriber an action message (AC_ActionNotify) with information on the action ID, the ID of the object that was called, and a copy of the arguments that were used.  For more detail, refer to the technical support for <action>ActionNotify</action>.</p>
-<p>This function does not support subscriptions to methods.</p>
-<p>To terminate an action subscription, use the <function module="Core">UnsubscribeAction</function> function.</p>
+<p>The Object is the original subscription target, as-is the Action ID.  The Result is the error code that was generated at the end of the action call.  If this is not set to <code>ERR_Okay</code>, assume that the action did not have an effect on state.  The Parameters are the original arguments provided by the client - be aware that these can legitimately be NULL even if an action specifies a required parameter structure.  Notice that because subscriptions are context sensitive, we can use <function module="Core">CurrentContext</function> to get a reference to the object that initiated the subscription.</p>
+<p>To terminate an action subscription, use the <function module="Core">UnsubscribeAction</function> function.  Subscriptions are not resource tracked, so it is critical to match the original call with an unsubscription.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+      <error code="OutOfRange">A specified number is outside of the valid range.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -2652,19 +2660,19 @@ SetField(Object, FID_Statement|TSTR, "string");
   <function>
     <name>UnsubscribeAction</name>
     <category>Objects</category>
-    <comment>Removes action subscriptions from external objects.</comment>
+    <comment>Terminates action subscriptions.</comment>
     <prototype>ERROR UnsubscribeAction(OBJECTPTR Object, LONG Action)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">The object that you are unsubscribing from.</param>
-      <param type="LONG" name="Action" lookup="AC">The ID of the action that will be unsubscribed, or NULL for all actions.</param>
+      <param type="LONG" name="Action" lookup="AC">The ID of the action that will be unsubscribed, or zero for all actions.</param>
     </input>
     <description>
-<p>If you have subscribed to the action/s of a foreign object using the <function module="Core">SubscribeAction</function> function, you can terminate the subscription by calling the UnsubscribeAction() function. Simply provide the ID of the action that you want to unsubscribe from as well as the unique ID of the subscriber that you used in the original subscription call.</p>
-<p>If you have more than one subscription and you want to terminate them all, set the Action argument to NULL.</p>
+<p>The UnsubscribeAction() function will terminate subscriptions made by <function module="Core">SubscribeAction</function>.</p>
+<p>To terminate multiple subscriptions in a single call, set the Action parameter to zero.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
+      <error code="Args">Invalid arguments passed to function.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -2993,7 +3001,6 @@ end
   <types>
     <constants lookup="AC" comment="Action identifiers.">
       <const name="AccessObject"/>
-      <const name="ActionNotify"/>
       <const name="Activate"/>
       <const name="Clear"/>
       <const name="Clipboard"/>
@@ -4211,12 +4218,6 @@ end
       <field name="Green" type="FLOAT">Green component value</field>
       <field name="Blue" type="FLOAT">Blue component value</field>
       <field name="Alpha" type="FLOAT">Alpha component value</field>
-    </struct>
-
-    <struct name="FeedSubscription">
-      <field name="SubscriberID" type="OBJECTID">Subscriber ID</field>
-      <field name="MessagePortMID" type="MEMORYID">Message port for the subscriber</field>
-      <field name="ClassID" type="CLASSID">Class of the subscriber</field>
     </struct>
 
     <struct name="Field" comment="Used to describe the public fields of a class.">

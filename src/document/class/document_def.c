@@ -59,7 +59,6 @@ static const struct MethodArray clDocumentMethods[] = {
 };
 
 static const struct ActionArray clDocumentActions[] = {
-   { AC_ActionNotify, (APTR)DOCUMENT_ActionNotify },
    { AC_Activate, (APTR)DOCUMENT_Activate },
    { AC_Clear, (APTR)DOCUMENT_Clear },
    { AC_Clipboard, (APTR)DOCUMENT_Clipboard },

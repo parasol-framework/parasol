@@ -37,7 +37,7 @@ CSTRING GetName(OBJECTPTR Object);
 ERROR ListChildren(OBJECTID Object, LONG IncludeShared, struct ChildEntry * List, LONG * Count);
 ERROR Base64Decode(struct rkBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
 ERROR RegisterFD(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
-ERROR ManageAction(LONG Action, APTR Routine);
+ERROR ResolvePath(CSTRING Path, LONG Flags, STRING * Result);
 ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size);
 ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size);
 ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR * Object);
@@ -60,7 +60,7 @@ ERROR ScanDir(struct DirInfo * Info);
 ERROR SetName(OBJECTPTR Object, CSTRING Name);
 void LogReturn();
 ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags);
-ERROR SubscribeAction(OBJECTPTR Object, LONG Action);
+ERROR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION * Callback);
 ERROR VarGet(struct KeyStore * Store, CSTRING Name, APTR * Data, LONG * Size);
 ERROR SubscribeEvent(LARGE Event, FUNCTION * Callback, APTR Custom, APTR * Handle);
 ERROR SubscribeTimer(DOUBLE Interval, FUNCTION * Callback, APTR * Subscription);
@@ -149,7 +149,6 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding);
 ERROR AnalysePath(CSTRING Path, LONG * Type);
 ERROR CreateFolder(CSTRING Path, LONG Permissions);
 ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
-ERROR ResolvePath(CSTRING Path, LONG Flags, STRING * Result);
 
 #ifdef  __cplusplus
 }
