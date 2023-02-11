@@ -84,7 +84,6 @@ static const struct MethodArray clVectorMethods[] = {
 };
 
 static const struct ActionArray clVectorActions[] = {
-   { AC_ActionNotify, (APTR)VECTOR_ActionNotify },
    { AC_Disable, (APTR)VECTOR_Disable },
    { AC_Draw, (APTR)VECTOR_Draw },
    { AC_Enable, (APTR)VECTOR_Enable },

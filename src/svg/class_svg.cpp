@@ -12,6 +12,13 @@ elements.  Unfortunately we do not support all SVG capabilities at this time, bu
 
 *****************************************************************************/
 
+//****************************************************************************
+
+static void notify_free_frame_callback(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+{
+   ((extSVG *)CurrentContext())->FrameCallback.Type = CALL_NONE;
+}
+
 /*****************************************************************************
 -ACTION-
 Activate: Initiates playback of SVG animations.
@@ -362,7 +369,10 @@ static ERROR SET_FrameCallback(extSVG *Self, FUNCTION *Value)
    if (Value) {
       if (Self->FrameCallback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->FrameCallback.Script.Script, AC_Free);
       Self->FrameCallback = *Value;
-      if (Self->FrameCallback.Type IS CALL_SCRIPT) SubscribeAction(Self->FrameCallback.Script.Script, AC_Free);
+      if (Self->FrameCallback.Type IS CALL_SCRIPT) {
+         auto callback = make_function_stdc(notify_free_frame_callback);
+         SubscribeAction(Self->FrameCallback.Script.Script, AC_Free, &callback);
+      }
    }
    else Self->FrameCallback.Type = CALL_NONE;
    return ERR_Okay;

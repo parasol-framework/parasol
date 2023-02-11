@@ -24,7 +24,6 @@ static const struct MethodArray clClipboardMethods[] = {
 };
 
 static const struct ActionArray clClipboardActions[] = {
-   { AC_ActionNotify, (APTR)CLIPBOARD_ActionNotify },
    { AC_Clear, (APTR)CLIPBOARD_Clear },
    { AC_DataFeed, (APTR)CLIPBOARD_DataFeed },
    { AC_Free, (APTR)CLIPBOARD_Free },

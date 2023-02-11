@@ -747,6 +747,12 @@ static void   layout_doc(extDocument *);
 static LONG   layout_section(extDocument *, LONG, objFont **, LONG, LONG, LONG *, LONG *, LONG, LONG, LONG, LONG, BYTE *);
 static ERROR  load_doc(extDocument *, CSTRING, BYTE, BYTE);
 static objFont * lookup_font(LONG, CSTRING);
+static void   notify_disable_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args);
+static void   notify_enable_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args);
+static void   notify_focus_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args);
+static void   notify_free_event(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args);
+static void   notify_lostfocus_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args);
+static void   notify_redimension_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, struct acRedimension *Args);
 static LONG   parse_tag(extDocument *, objXML *, XMLTag *, LONG *, LONG);
 #ifdef DEBUG
 static void   print_xmltree(XMLTag *, LONG *) __attribute__ ((unused));

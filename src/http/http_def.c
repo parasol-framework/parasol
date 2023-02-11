@@ -124,7 +124,6 @@ static const struct FieldDef clHTTPCurrentState[] = {
 };
 
 static const struct ActionArray clHTTPActions[] = {
-   { AC_ActionNotify, (APTR)HTTP_ActionNotify },
    { AC_Activate, (APTR)HTTP_Activate },
    { AC_Deactivate, (APTR)HTTP_Deactivate },
    { AC_Free, (APTR)HTTP_Free },

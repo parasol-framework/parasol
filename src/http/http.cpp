@@ -180,7 +180,6 @@ class extHTTP : public objHTTP {
    UWORD  ProxyDefined:1;   // TRUE if the ProxyServer has been manually set by the user
 };
 
-static ERROR HTTP_ActionNotify(extHTTP *, struct acActionNotify *);
 static ERROR HTTP_Activate(extHTTP *, APTR);
 static ERROR HTTP_Deactivate(extHTTP *, APTR);
 static ERROR HTTP_Free(extHTTP *, APTR);
@@ -259,6 +258,18 @@ static void  socket_feedback(objNetSocket *, objClientSocket *, LONG);
 static ERROR socket_incoming(objNetSocket *);
 static ERROR socket_outgoing(objNetSocket *);
 
+/*   if (Object->UID IS Self->DialogWindow) {
+      Self->DialogWindow = 0;
+      if ((Self->Username) and (Self->Password)) { // Make a second attempt at resolving the HTTP request
+         HTTP_Activate(Self, NULL);
+      }
+      else {
+         log.msg("No username and password provided, deactivating...");
+         Self->set(FID_CurrentState, HGS_TERMINATED);
+      }
+   }
+*/
+
 //****************************************************************************
 
 INLINE CSTRING GETSTATUS(LONG Code) __attribute__((unused));
@@ -296,43 +307,24 @@ static ERROR CMDExpunge(void)
 
 //****************************************************************************
 
-static ERROR HTTP_ActionNotify(extHTTP *Self, struct acActionNotify *Args)
+static void notify_free_outgoing(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   parasol::Log log;
+   ((extHTTP *)CurrentContext())->Outgoing.Type = CALL_NONE;
+}
 
-   if (!Args) return ERR_NullArgs;
-   if (Args->Error != ERR_Okay) return ERR_Okay;
+static void notify_free_state_changed(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+{
+   ((extHTTP *)CurrentContext())->StateChanged.Type = CALL_NONE;
+}
 
-   if (Args->ActionID IS AC_Free) {
-      if (Args->ObjectID IS Self->DialogWindow) {
-         Self->DialogWindow = 0;
-         if ((Self->Username) and (Self->Password)) { // Make a second attempt at resolving the HTTP request
-            HTTP_Activate(Self, NULL);
-         }
-         else {
-            log.msg("No username and password provided, deactivating...");
-            Self->set(FID_CurrentState, HGS_TERMINATED);
-         }
-         return ERR_Okay;
-      }
-      else if ((Self->Outgoing.Type IS CALL_SCRIPT) and (Self->Outgoing.Script.Script->UID IS Args->ObjectID)) {
-         Self->Outgoing.Type = CALL_NONE;
-         return ERR_Okay;
-      }
-      else if ((Self->StateChanged.Type IS CALL_SCRIPT) and (Self->StateChanged.Script.Script->UID IS Args->ObjectID)) {
-         Self->StateChanged.Type = CALL_NONE;
-         return ERR_Okay;
-      }
-      else if ((Self->Incoming.Type IS CALL_SCRIPT) and (Self->Incoming.Script.Script->UID IS Args->ObjectID)) {
-         Self->Incoming.Type = CALL_NONE;
-         return ERR_Okay;
-      }
-      else if ((Self->AuthCallback.Type IS CALL_SCRIPT) and (Self->AuthCallback.Script.Script->UID IS Args->ObjectID)) {
-         Self->AuthCallback.Type = CALL_NONE;
-         return ERR_Okay;
-      }
-   }
-   return log.warning(ERR_NoSupport);
+static void notify_free_incoming(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+{
+   ((extHTTP *)CurrentContext())->Incoming.Type = CALL_NONE;
+}
+
+static void notify_free_auth_callback(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+{
+   ((extHTTP *)CurrentContext())->AuthCallback.Type = CALL_NONE;
 }
 
 /*****************************************************************************
@@ -923,7 +915,10 @@ static ERROR SET_AuthCallback(extHTTP *Self, FUNCTION *Value)
    if (Value) {
       if (Self->AuthCallback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->AuthCallback.Script.Script, AC_Free);
       Self->AuthCallback = *Value;
-      if (Self->AuthCallback.Type IS CALL_SCRIPT) SubscribeAction(Self->AuthCallback.Script.Script, AC_Free);
+      if (Self->AuthCallback.Type IS CALL_SCRIPT) {
+         auto callback = make_function_stdc(notify_free_auth_callback);
+         SubscribeAction(Self->AuthCallback.Script.Script, AC_Free, &callback);
+      }
    }
    else Self->AuthCallback.Type = CALL_NONE;
    return ERR_Okay;
@@ -1067,7 +1062,10 @@ static ERROR SET_Incoming(extHTTP *Self, FUNCTION *Value)
    if (Value) {
       if (Self->Incoming.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Incoming.Script.Script, AC_Free);
       Self->Incoming = *Value;
-      if (Self->Incoming.Type IS CALL_SCRIPT) SubscribeAction(Self->Incoming.Script.Script, AC_Free);
+      if (Self->Incoming.Type IS CALL_SCRIPT) {
+         auto callback = make_function_stdc(notify_free_incoming);
+         SubscribeAction(Self->Incoming.Script.Script, AC_Free, &callback);
+      }
    }
    else Self->Incoming.Type = CALL_NONE;
    return ERR_Okay;
@@ -1305,7 +1303,10 @@ static ERROR SET_Outgoing(extHTTP *Self, FUNCTION *Value)
    if (Value) {
       if (Self->Outgoing.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Outgoing.Script.Script, AC_Free);
       Self->Outgoing = *Value;
-      if (Self->Outgoing.Type IS CALL_SCRIPT) SubscribeAction(Self->Outgoing.Script.Script, AC_Free);
+      if (Self->Outgoing.Type IS CALL_SCRIPT) {
+         auto callback = make_function_stdc(notify_free_outgoing);
+         SubscribeAction(Self->Outgoing.Script.Script, AC_Free, &callback);
+      }
    }
    else Self->Outgoing.Type = CALL_NONE;
    return ERR_Okay;
@@ -1590,7 +1591,10 @@ static ERROR SET_StateChanged(extHTTP *Self, FUNCTION *Value)
    if (Value) {
       if (Self->StateChanged.Type IS CALL_SCRIPT) UnsubscribeAction(Self->StateChanged.Script.Script, AC_Free);
       Self->StateChanged = *Value;
-      if (Self->StateChanged.Type IS CALL_SCRIPT) SubscribeAction(Self->StateChanged.Script.Script, AC_Free);
+      if (Self->StateChanged.Type IS CALL_SCRIPT) {
+         auto callback = make_function_stdc(notify_free_state_changed);
+         SubscribeAction(Self->StateChanged.Script.Script, AC_Free, &callback);
+      }
    }
    else Self->StateChanged.Type = CALL_NONE;
    return ERR_Okay;

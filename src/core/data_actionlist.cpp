@@ -3,7 +3,6 @@
 
 #define FDEF static const struct FunctionField
 
-FDEF argsActionNotify[]  = { { "Action", FD_LONG }, { "Object", FD_OBJECTID }, { "Args", FD_PTR }, { "Size", FD_LONG|FD_PTRSIZE }, { "Error", FD_LONG }, { "Time", FD_LONG }, { 0, 0 } };
 FDEF argsClipboard[]     = { { "Mode", FD_LONG }, { 0, 0 } };
 FDEF argsCopyData[]      = { { "Dest", FD_OBJECTID  }, { 0, 0 } };
 FDEF argsCustom[]        = { { "Number", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
@@ -32,7 +31,7 @@ FDEF argsSelectArea[]    = { { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { "Width", 
 
 extern "C" const struct ActionTable ActionTable[] = { // Sorted by action ID.
    { 0, 0, 0, 0 },
-   { AHASH_ACTIONNOTIFY,   sizeof(struct acActionNotify), "ActionNotify", argsActionNotify },
+   { AHASH_SIGNAL,         0, "Signal", 0 },
    { AHASH_ACTIVATE,       0, "Activate", 0 },
    { AHASH_ACCESSOBJECT,   0, "AccessObject", 0 },
    { AHASH_CLEAR,          0, "Clear", 0 },
@@ -87,6 +86,5 @@ extern "C" const struct ActionTable ActionTable[] = { // Sorted by action ID.
    { AHASH_SORT,           0, "Sort", 0 },
    { AHASH_SAVESETTINGS,   0, "SaveSettings", 0 },
    { AHASH_SELECTAREA,     sizeof(struct acSelectArea), "SelectArea", argsSelectArea },
-   { AHASH_SIGNAL,         0, "Signal", 0 },
    { 0, 0, 0, 0 }
 };

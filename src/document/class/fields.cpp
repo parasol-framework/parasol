@@ -126,7 +126,10 @@ static ERROR SET_EventCallback(extDocument *Self, FUNCTION *Value)
    if (Value) {
       if (Self->EventCallback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->EventCallback.Script.Script, AC_Free);
       Self->EventCallback = *Value;
-      if (Self->EventCallback.Type IS CALL_SCRIPT) SubscribeAction(Self->EventCallback.Script.Script, AC_Free);
+      if (Self->EventCallback.Type IS CALL_SCRIPT) {
+         auto callback = make_function_stdc(notify_free_event);
+         SubscribeAction(Self->EventCallback.Script.Script, AC_Free, &callback);
+      }
    }
    else Self->EventCallback.Type = CALL_NONE;
    return ERR_Okay;

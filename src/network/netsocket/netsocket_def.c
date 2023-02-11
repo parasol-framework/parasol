@@ -35,7 +35,6 @@ static const struct MethodArray clNetSocketMethods[] = {
 };
 
 static const struct ActionArray clNetSocketActions[] = {
-   { AC_ActionNotify, (APTR)NETSOCKET_ActionNotify },
    { AC_DataFeed, (APTR)NETSOCKET_DataFeed },
    { AC_Disable, (APTR)NETSOCKET_Disable },
    { AC_Free, (APTR)NETSOCKET_Free },

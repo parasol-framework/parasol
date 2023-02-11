@@ -68,7 +68,6 @@ static const struct MethodArray clScintillaMethods[] = {
 };
 
 static const struct ActionArray clScintillaActions[] = {
-   { AC_ActionNotify, (APTR)SCINTILLA_ActionNotify },
    { AC_Clear, (APTR)SCINTILLA_Clear },
    { AC_Clipboard, (APTR)SCINTILLA_Clipboard },
    { AC_DataFeed, (APTR)SCINTILLA_DataFeed },
