@@ -862,6 +862,17 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       return NULL;
    }
 
+   if (!NewObject(ID_TASK, NF::UNTRACKED, (OBJECTPTR *)&localtask)) {
+      if (acInit(localtask)) {
+         CloseCore();
+         return NULL;
+      }
+   }
+   else {
+      CloseCore();
+      return NULL;
+   }
+
    // Register Core classes in the system
 
    {
@@ -884,17 +895,8 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       #endif
    }
 
-   if (!NewObject(ID_TASK, NF::UNTRACKED, (OBJECTPTR *)&localtask)) {
-      // NB: The glCurrentTask and glCurrentTaskID variables are set on task initialisation
-      if (acInit(localtask)) {
-         CloseCore();
-         return NULL;
-      }
-   }
-   else {
-      CloseCore();
-      return NULL;
-   }
+   glCurrentTaskID = localtask->UID;
+   glCurrentTask   = localtask;
 
    if (init_volumes(volumes)) {
       KERR("Failed to initialise the filesystem.");

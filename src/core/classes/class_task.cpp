@@ -1723,13 +1723,10 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
       // Perform the following if this is the System Task
       Self->ProcessID = 0;
    }
-   else if ((!glCurrentTaskID) or (glCurrentTaskID IS SystemTaskID)) {
+   else if (!glCurrentTaskID) {
       // Perform the following if this is a Task representing the current process
 
       Self->ProcessID = glProcessID;
-
-      glCurrentTaskID = Self->UID;
-      glCurrentTask   = Self;
 
       // Allocate the message block for this Task
 
