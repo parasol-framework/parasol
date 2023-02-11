@@ -613,23 +613,7 @@ CLASSID GetClassID(OBJECTID ObjectID)
    if (!ObjectID) return 0;
 
    OBJECTPTR object;
-   if (ObjectID < 0) {
-      SharedObjectHeader *header;
-      CLASSID id;
-      if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-         auto shared_obj = (SharedObject *)ResolveAddress(header, header->Offset);
-         LONG pos;
-         if (!find_public_object_entry(header, ObjectID, &pos)) id = shared_obj[pos].ClassID;
-         else {
-            id = 0;
-            log.function("Object #%d does not exist.", ObjectID);
-         }
-         ReleaseMemoryID(RPM_SharedObjects);
-         return id;
-      }
-      else log.warning(ERR_AccessMemory);
-   }
-   else if ((object = GetObjectPtr(ObjectID))) return object->ClassID;
+   if ((object = GetObjectPtr(ObjectID))) return object->ClassID;
    else log.function("Failed to access private object #%d, no longer exists or ID invalid.", ObjectID);
 
    return 0;
@@ -993,24 +977,11 @@ oid: Returns the ID of the object's owner.  If the object does not have a owner 
 OBJECTID GetOwnerID(OBJECTID ObjectID)
 {
    OBJECTID ownerid = 0;
-   if (ObjectID < 0) {
-      SharedObjectHeader *header;
-      if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-         LONG pos;
-         if (!find_public_object_entry(header, ObjectID, &pos)) {
-            auto list = (SharedObject *)ResolveAddress(header, header->Offset);
-            ownerid = list[pos].OwnerID;
-         }
-         ReleaseMemoryID(RPM_SharedObjects);
-      }
-   }
-   else {
-      ThreadLock lock(TL_PRIVATE_MEM, 4000);
-      if (lock.granted()) {
-         auto mem = glPrivateMemory.find(ObjectID);
-         if (mem != glPrivateMemory.end()) {
-            if (mem->second.Object) return mem->second.Object->OwnerID;
-         }
+   ThreadLock lock(TL_PRIVATE_MEM, 4000);
+   if (lock.granted()) {
+      auto mem = glPrivateMemory.find(ObjectID);
+      if (mem != glPrivateMemory.end()) {
+         if (mem->second.Object) return mem->second.Object->OwnerID;
       }
    }
    return ownerid;
@@ -1561,55 +1532,22 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 
    //if (Object->OwnerID) log.trace("SetOwner:","Changing the owner for object %d from %d to %d.", Object->UID, Object->OwnerID, Owner->UID);
 
-   if (Object->UID < 0) { // Public object
-      ScopedAccessMemory<SharedObjectHeader> header(RPM_SharedObjects, MEM_READ, 2000);
-      if (header.granted()) {
-         LONG pos;
-         if (!find_public_object_entry(header.ptr, Object->UID, &pos)) {
-            auto list = (SharedObject *)ResolveAddress(header.ptr, header.ptr->Offset);
+   // Track the object's memory header to the new owner
 
-            if (Object->OwnerID) { // Remove reference from the now previous owner
-               auto it = glObjectChildren.find(Object->OwnerID);
-               if (it != glObjectChildren.end()) it->second.erase(Object->UID);
-            }
+   ThreadLock lock(TL_PRIVATE_MEM, 4000);
+   if (lock.granted()) {
+      auto mem = glPrivateMemory.find(Object->UID);
+      if (mem IS glPrivateMemory.end()) return log.warning(ERR_SystemCorrupt);
+      mem->second.OwnerID = Owner->UID;
 
-            Object->OwnerID = Owner->UID;
-            list[pos].OwnerID = Owner->UID;
-         }
-         else return log.warning(ERR_Search);
-      }
-      else return log.warning(ERR_AccessMemory);
+      // Remove reference from the now previous owner
+      if (Object->OwnerID) glObjectChildren[Object->OwnerID].erase(Object->UID);
 
-      // Track the object's memory header to the new owner
+      Object->OwnerID = Owner->UID;
 
-      ScopedSysLock lock(PL_PUBLICMEM, 4000);
-      if (lock.granted()) {
-         LONG i;
-         if ((i = find_public_address(glSharedControl, Object)) != -1) {
-            glSharedBlocks[i].ObjectID = Owner->UID;
-         }
-         else return log.warning(ERR_Search);
-      }
-      else return log.warning(ERR_Lock);
+      glObjectChildren[Owner->UID].insert(Object->UID);
    }
-   else {
-      { // Track the object's memory header to the new owner
-         ThreadLock lock(TL_PRIVATE_MEM, 4000);
-         if (lock.granted()) {
-            auto mem = glPrivateMemory.find(Object->UID);
-            if (mem IS glPrivateMemory.end()) return log.warning(ERR_SystemCorrupt);
-            mem->second.OwnerID = Owner->UID;
-
-            // Remove reference from the now previous owner
-            if (Object->OwnerID) glObjectChildren[Object->OwnerID].erase(Object->UID);
-
-            Object->OwnerID = Owner->UID;
-
-            glObjectChildren[Owner->UID].insert(Object->UID);
-         }
-         else return log.warning(ERR_Lock);
-      }
-   }
+   else return log.warning(ERR_Lock);
 
    return ERR_Okay;
 }
@@ -1735,45 +1673,27 @@ ERROR SetName(OBJECTPTR Object, CSTRING NewName)
    }
    Object->Stats->Name[i] = 0;
 
-   if (Object->UID >= 0) {
-      if (Object->Stats->Name[0]) {
-         ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
-         if (lock.granted()) {
-            OBJECTPTR *list;
-            LONG list_size;
-            if (!VarGet(glObjectLookup, Object->Stats->Name, (APTR *)&list, &list_size)) {
-               list_size = list_size / sizeof(OBJECTPTR);
-               OBJECTPTR new_list[list_size + 1];
-               LONG j = 0;
-               for (i=0; i < list_size; i++) {
-                  if (list[i]) new_list[j++] = list[i];
-               }
-               new_list[j++] = Object;
-
-               VarSet(glObjectLookup, Object->Stats->Name, &new_list, sizeof(OBJECTPTR) * j);
+   if (Object->Stats->Name[0]) {
+      ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
+      if (lock.granted()) {
+         OBJECTPTR *list;
+         LONG list_size;
+         if (!VarGet(glObjectLookup, Object->Stats->Name, (APTR *)&list, &list_size)) {
+            list_size = list_size / sizeof(OBJECTPTR);
+            OBJECTPTR new_list[list_size + 1];
+            LONG j = 0;
+            for (i=0; i < list_size; i++) {
+               if (list[i]) new_list[j++] = list[i];
             }
-            else VarSet(glObjectLookup, Object->Stats->Name, &Object, sizeof(OBJECTPTR));
+            new_list[j++] = Object;
+
+            VarSet(glObjectLookup, Object->Stats->Name, &new_list, sizeof(OBJECTPTR) * j);
          }
-         else return log.warning(ERR_Lock);
+         else VarSet(glObjectLookup, Object->Stats->Name, &Object, sizeof(OBJECTPTR));
       }
-      return ERR_Okay;
+      else return log.warning(ERR_Lock);
    }
-   else if (!AccessMemory(RPM_SharedObjects, MEM_READ_WRITE, 2000, (void **)&header)) {
-      if (!find_public_object_entry(header, Object->UID, &pos)) {
-         auto list = (SharedObject *)ResolveAddress(header, header->Offset);
-         for (i=0; (Object->Stats->Name[i]) and (i < (MAX_NAME_LEN-1)); i++) {
-            list[pos].Name[i] = Object->Stats->Name[i];
-         }
-         list[pos].Name[i] = 0;
-         ReleaseMemoryID(RPM_SharedObjects);
-         return ERR_Okay;
-      }
-      else{
-         ReleaseMemoryID(RPM_SharedObjects);
-         return log.warning(ERR_Search);
-      }
-   }
-   else return log.warning(ERR_AccessMemory);
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
@@ -2242,20 +2162,5 @@ void remove_object_hash(OBJECTPTR Object)
 
 void set_object_flags(OBJECTPTR Object, NF Flags)
 {
-   parasol::Log log(__FUNCTION__);
-
    Object->Flags = Flags;
-
-   if (Object->UID < 0) {
-      SharedObjectHeader *header;
-      if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-         auto pubobj = (SharedObject *)ResolveAddress(header, header->Offset);
-         LONG index;
-         if (!find_public_object_entry(header, Object->UID, &index)) {
-            pubobj[index].Flags = Flags;
-         }
-         ReleaseMemoryID(RPM_SharedObjects);
-      }
-      else log.warning("Failed to access the PublicObjects array.");
-   }
 }

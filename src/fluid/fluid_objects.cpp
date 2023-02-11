@@ -132,9 +132,8 @@ static int object_new(lua_State *Lua)
       log.trace("$%.8x", class_id);
    }
    else if ((class_name = luaL_checkstring(Lua, 1))) {
-      if (class_name[0] IS '@') {
+      if (class_name[0] IS '@') { // Deprecated
          class_name++;
-         objflags = objflags | NF::PUBLIC;
       }
       class_id = StrHash(class_name, 0);
       log.trace("%s, $%.8x", class_name, class_id);
@@ -307,9 +306,8 @@ static int object_newchild(lua_State *Lua)
       log.trace("$%.8x", class_id);
    }
    else if ((class_name = luaL_checkstring(Lua, 1))) {
-      if (class_name[0] IS '@') {
+      if (class_name[0] IS '@') { // Deprecated
          class_name++;
-         objflags = objflags | NF::PUBLIC;
       }
       class_id = StrHash(class_name, 0);
       log.trace("%s, $%.8x", class_name, class_id);

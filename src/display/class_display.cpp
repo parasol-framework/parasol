@@ -1196,15 +1196,9 @@ static ERROR DISPLAY_MoveToPoint(extDisplay *Self, struct acMoveToPoint *Args)
 static ERROR DISPLAY_NewObject(extDisplay *Self, APTR Void)
 {
    parasol::Log log;
-   ERROR error;
 
-   if (Self->isPublic()) {
-      error = NewLockedObject(ID_BITMAP, Self->flags()|NF::INTEGRAL, &Self->Bitmap, &Self->BitmapID);
-   }
-   else {
-      error = NewObject(ID_BITMAP, Self->flags()|NF::INTEGRAL, &Self->Bitmap);
-      Self->BitmapID = Self->Bitmap->UID;
-   }
+   ERROR error = NewObject(ID_BITMAP, Self->flags()|NF::INTEGRAL, &Self->Bitmap);
+   Self->BitmapID = Self->Bitmap->UID;
 
    if (!error) {
       OBJECTID id;

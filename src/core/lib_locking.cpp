@@ -1991,14 +1991,6 @@ ERROR ReleaseObject(OBJECTPTR Object)
          return ERR_Okay;
       }
       else {
-         if (Object->isPublic()) {
-            // If a child structure is active, automatically release the block for the developer
-            if (Object->ChildPrivate) {
-               ReleaseMemory(Object->ChildPrivate);
-               Object->ChildPrivate = NULL;
-            }
-         }
-
          // Clean up
 
          if (Object->defined(NF::UNLOCK_FREE)) {
