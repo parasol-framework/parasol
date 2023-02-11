@@ -209,31 +209,6 @@ void resize_feedback(FUNCTION *Feedback, OBJECTID DisplayID, LONG X, LONG Y, LON
 
 //****************************************************************************
 
-static ERROR DISPLAY_AccessObject(extDisplay *Self, APTR Void)
-{
-   parasol::Log log;
-
-   if (Self->BitmapID) {
-      if (AccessObject(Self->BitmapID, 2000, &Self->Bitmap) != ERR_Okay) return log.warning(ERR_AccessObject);
-   }
-   else Self->Bitmap = NULL;
-
-   if (Self->ResolutionsMID) {
-      if (AccessMemory(Self->ResolutionsMID, MEM_READ, 2000, &Self->Resolutions) != ERR_Okay) return ERR_AccessMemory;
-   }
-   else Self->Resolutions = NULL;
-
-   #ifdef _GLES_
-      if (glEGLRefreshDisplay) {
-         refresh_display_from_egl(Self);
-      }
-   #endif
-
-   return ERR_Okay;
-}
-
-//****************************************************************************
-
 static void notify_resize_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
    ((extDisplay *)CurrentContext())->ResizeFeedback.Type = CALL_NONE;
@@ -1316,15 +1291,6 @@ static ERROR DISPLAY_Redimension(extDisplay *Self, struct acRedimension *Args)
 
    struct acResize resize = { Args->Width, Args->Height, Args->Depth };
    DISPLAY_Resize(Self, &resize);
-   return ERR_Okay;
-}
-
-//****************************************************************************
-
-static ERROR DISPLAY_ReleaseObject(extDisplay *Self, APTR Void)
-{
-   if (Self->Bitmap) { ReleaseObject(Self->Bitmap); Self->Bitmap = NULL; }
-   if (Self->Resolutions) { ReleaseMemory(Self->Resolutions); Self->Resolutions = NULL; }
    return ERR_Okay;
 }
 

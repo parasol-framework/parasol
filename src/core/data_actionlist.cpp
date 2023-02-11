@@ -33,7 +33,7 @@ extern "C" const struct ActionTable ActionTable[] = { // Sorted by action ID.
    { 0, 0, 0, 0 },
    { AHASH_SIGNAL,         0, "Signal", 0 },
    { AHASH_ACTIVATE,       0, "Activate", 0 },
-   { AHASH_ACCESSOBJECT,   0, "AccessObject", 0 },
+   { AHASH_SELECTAREA,     sizeof(struct acSelectArea), "SelectArea", argsSelectArea },
    { AHASH_CLEAR,          0, "Clear", 0 },
    { AHASH_FREEWARNING,    0, "FreeWarning", 0 },
    { AHASH_OWNERDESTROYED, 0, "OwnerDestroyed", 0 },
@@ -44,7 +44,7 @@ extern "C" const struct ActionTable ActionTable[] = { // Sorted by action ID.
    { AHASH_FLUSH,          0, "Flush", 0 },
    { AHASH_FOCUS,          0, "Focus", 0 },
    { AHASH_FREE,           0, "Free", 0 },
-   { AHASH_RELEASEOBJECT,  0, "ReleaseObject", 0 },
+   { AHASH_SAVESETTINGS,   0, "SaveSettings", 0 },
    { AHASH_GETVAR,         sizeof(struct acGetVar), "GetVar", argsGetVar },
    { AHASH_DRAGDROP,       sizeof(struct acDragDrop), "DragDrop", argsDragDrop },
    { AHASH_HIDE,           0, "Hide", 0 },
@@ -84,7 +84,5 @@ extern "C" const struct ActionTable ActionTable[] = { // Sorted by action ID.
    { AHASH_SCROLLTOPOINT,  sizeof(struct acScrollToPoint), "ScrollToPoint", argsScrollToPoint },
    { AHASH_CUSTOM,         sizeof(struct acCustom), "Custom", argsCustom },
    { AHASH_SORT,           0, "Sort", 0 },
-   { AHASH_SAVESETTINGS,   0, "SaveSettings", 0 },
-   { AHASH_SELECTAREA,     sizeof(struct acSelectArea), "SelectArea", argsSelectArea },
    { 0, 0, 0, 0 }
 };

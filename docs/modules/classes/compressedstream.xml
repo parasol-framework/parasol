@@ -77,7 +77,6 @@
   </fields>
   <types>
     <constants lookup="AC" comment="Action identifiers.">
-      <const name="AccessObject"/>
       <const name="Activate"/>
       <const name="Clear"/>
       <const name="Clipboard"/>
@@ -114,7 +113,6 @@
       <const name="Redimension"/>
       <const name="Redo"/>
       <const name="Refresh"/>
-      <const name="ReleaseObject"/>
       <const name="Rename"/>
       <const name="Reset"/>
       <const name="Resize"/>

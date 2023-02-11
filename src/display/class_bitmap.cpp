@@ -214,28 +214,6 @@ inline static UBYTE conv_l2r(DOUBLE X) {
    else return ix;
 }
 
-//****************************************************************************
-
-static ERROR BITMAP_AccessObject(extBitmap *Self, APTR Void)
-{
-   if (Self->initialised()) CalculatePixelRoutines(Self);
-
-   Self->Palette      = &Self->prvPaletteArray;
-   Self->ColourFormat = &Self->prvColourFormat;
-
-   #ifdef __xwindows__
-      if (Self->x11.XShmImage IS TRUE) {
-         Self->x11.ximage.obdata = (char *)&Self->x11.ShmInfo;
-      }
-
-      if ((Self->Flags & BMF_X11_DGA) and (glDGAAvailable)) {
-         Self->Data = (UBYTE *)glDGAVideo;
-      }
-   #endif
-
-   return ERR_Okay;
-}
-
 /*****************************************************************************
 
 -ACTION-
@@ -1620,21 +1598,6 @@ static ERROR BITMAP_Read(extBitmap *Self, struct acRead *Args)
    CopyMemory(Self->Data + Self->Position, Args->Buffer, len);
    Self->Position += len;
    Args->Result = len;
-   return ERR_Okay;
-}
-
-//****************************************************************************
-
-static ERROR BITMAP_ReleaseObject(extBitmap *Self, APTR Void)
-{
-#ifdef __xwindows__
-   XSync(XDisplay, False);
-#endif
-
-#ifdef __xwindows__
-   if (Self->x11.readable) { XDestroyImage(Self->x11.readable); Self->x11.readable = NULL; }
-#endif
-
    return ERR_Okay;
 }
 

@@ -2194,13 +2194,6 @@ static ERROR SURFACE_NewObject(extSurface *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
-
-static ERROR SURFACE_ReleaseObject(extSurface *Self, APTR Void)
-{
-   return ERR_Okay;
-}
-
 /*****************************************************************************
 
 -METHOD-

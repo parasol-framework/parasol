@@ -169,7 +169,6 @@ static const struct ActionArray clSurfaceActions[] = {
    { AC_NewObject, (APTR)SURFACE_NewObject },
    { AC_NewOwner, (APTR)SURFACE_NewOwner },
    { AC_Redimension, (APTR)SURFACE_Redimension },
-   { AC_ReleaseObject, (APTR)SURFACE_ReleaseObject },
    { AC_Resize, (APTR)SURFACE_Resize },
    { AC_SaveImage, (APTR)SURFACE_SaveImage },
    { AC_Scroll, (APTR)SURFACE_Scroll },

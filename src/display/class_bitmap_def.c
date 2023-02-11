@@ -59,7 +59,6 @@ static const struct MethodArray clBitmapMethods[] = {
 };
 
 static const struct ActionArray clBitmapActions[] = {
-   { AC_AccessObject, (APTR)BITMAP_AccessObject },
    { AC_Clear, (APTR)BITMAP_Clear },
    { AC_CopyData, (APTR)BITMAP_CopyData },
    { AC_Draw, (APTR)BITMAP_Draw },
@@ -70,7 +69,6 @@ static const struct ActionArray clBitmapActions[] = {
    { AC_NewObject, (APTR)BITMAP_NewObject },
    { AC_Query, (APTR)BITMAP_Query },
    { AC_Read, (APTR)BITMAP_Read },
-   { AC_ReleaseObject, (APTR)BITMAP_ReleaseObject },
    { AC_Resize, (APTR)BITMAP_Resize },
    { AC_SaveImage, (APTR)BITMAP_SaveImage },
    { AC_Seek, (APTR)BITMAP_Seek },

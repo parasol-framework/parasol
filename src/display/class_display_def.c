@@ -61,7 +61,6 @@ static const struct MethodArray clDisplayMethods[] = {
 };
 
 static const struct ActionArray clDisplayActions[] = {
-   { AC_AccessObject, (APTR)DISPLAY_AccessObject },
    { AC_Activate, (APTR)DISPLAY_Activate },
    { AC_Clear, (APTR)DISPLAY_Clear },
    { AC_DataFeed, (APTR)DISPLAY_DataFeed },
@@ -80,7 +79,6 @@ static const struct ActionArray clDisplayActions[] = {
    { AC_MoveToPoint, (APTR)DISPLAY_MoveToPoint },
    { AC_NewObject, (APTR)DISPLAY_NewObject },
    { AC_Redimension, (APTR)DISPLAY_Redimension },
-   { AC_ReleaseObject, (APTR)DISPLAY_ReleaseObject },
    { AC_Resize, (APTR)DISPLAY_Resize },
    { AC_SaveImage, (APTR)DISPLAY_SaveImage },
    { AC_SaveSettings, (APTR)DISPLAY_SaveSettings },

@@ -90,7 +90,7 @@ class objCompressedStream;
 
 #define AC_Signal 1
 #define AC_Activate 2
-#define AC_AccessObject 3
+#define AC_SelectArea 3
 #define AC_Clear 4
 #define AC_FreeWarning 5
 #define AC_OwnerDestroyed 6
@@ -101,7 +101,7 @@ class objCompressedStream;
 #define AC_Flush 11
 #define AC_Focus 12
 #define AC_Free 13
-#define AC_ReleaseObject 14
+#define AC_SaveSettings 14
 #define AC_GetVar 15
 #define AC_DragDrop 16
 #define AC_Hide 17
@@ -141,9 +141,7 @@ class objCompressedStream;
 #define AC_ScrollToPoint 51
 #define AC_Custom 52
 #define AC_Sort 53
-#define AC_SaveSettings 54
-#define AC_SelectArea 55
-#define AC_END 56
+#define AC_END 54
 
 // Permission flags
 

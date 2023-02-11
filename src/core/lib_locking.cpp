@@ -1195,20 +1195,6 @@ ERROR AccessObject(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
          obj->Stats = (Stats *)ResolveAddress(obj, obj->Class->Size);
       }
 
-      // Tell the object that an exclusive call is being made
-
-      if (obj->isPublic()) {
-         if (obj->defined(NF::NEW_OBJECT)) {
-            // If the object is currently in the process of being created for the first time (NF::NEW_OBJECT is set),
-            // do not call the AccessObject support routine if NewObject support has been written by the developer
-            // (the NewObject support routine is expected to do the equivalent of AccessObject).
-
-            if (!obj->ExtClass->ActionTable[AC_NewObject].PerformAction) error = Action(AC_AccessObject, obj, NULL);
-         }
-         else error = Action(AC_AccessObject, obj, NULL);
-      }
-      else error = ERR_Okay;
-
       if ((error IS ERR_Okay) or (error IS ERR_NoAction)) {
          obj->Locked = true; // Set the lock and return the object address
          *Result = obj;
@@ -2004,15 +1990,8 @@ ERROR ReleaseObject(OBJECTPTR Object)
          #endif
          return ERR_Okay;
       }
-      else { // Send a ReleaseObject notification to the object
-
+      else {
          if (Object->isPublic()) {
-            if (Object->defined(NF::UNLOCK_FREE)) {
-               // Objects are not called with ReleaseObject() if they are marked for deletion.  This allows
-               // the developer to maintain locks during the Free() action and release them manually when he is ready.
-            }
-            else Action(AC_ReleaseObject, Object, NULL);
-
             // If a child structure is active, automatically release the block for the developer
             if (Object->ChildPrivate) {
                ReleaseMemory(Object->ChildPrivate);
