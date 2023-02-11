@@ -119,7 +119,6 @@ static ERROR TASK_Quit(extTask *, APTR);
 
 static const FieldDef clFlags[] = {
    { "Foreign",    TSF_FOREIGN },
-   { "Dummy",      TSF_DUMMY },
    { "Wait",       TSF_WAIT },
    { "Shell",      TSF_SHELL },
    { "ResetPath",  TSF_RESET_PATH },
@@ -756,10 +755,6 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
    #endif
 
    Self->ReturnCodeSet = FALSE;
-
-   // If this is a dummy task object then it is being used during the initialisation sequence, so do nothing.
-
-   if (Self->Flags & TSF_DUMMY) return ERR_Okay;
 
    if (Self->Flags & TSF_FOREIGN) Self->Flags |= TSF_SHELL;
 

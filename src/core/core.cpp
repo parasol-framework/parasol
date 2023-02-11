@@ -905,28 +905,9 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       return NULL;
    }
 
-   // Create our task object.  This is expected to be local to our process, so do not allocate this object publicly.
-
    if (!NewObject(ID_TASK, NF::UNTRACKED, (OBJECTPTR *)&localtask)) {
-      localtask->Flags |= TSF_DUMMY;
-
-      if (Info->Flags & OPF_NAME) {
-         localtask->set(FID_Name, Info->Name);
-         StrCopy(Info->Name, glProgName, sizeof(glProgName));
-      }
-
       if (!acInit(localtask)) {
          // NB: The glCurrentTask and glCurrentTaskID variables are set on task initialisation
-
-         if (na > 0) SetArray(localtask, FID_Parameters, newargs, na);
-
-         if (!acActivate(localtask)) {
-
-         }
-         else {
-            CloseCore();
-            return NULL;
-         }
       }
       else {
          CloseCore();
@@ -937,6 +918,13 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       CloseCore();
       return NULL;
    }
+
+   if (Info->Flags & OPF_NAME) {
+      localtask->set(FID_Name, Info->Name);
+      StrCopy(Info->Name, glProgName, sizeof(glProgName));
+   }
+
+   if (na > 0) SetArray(localtask, FID_Parameters, newargs, na);
 
    // In Windows, set the PATH environment variable so that DLL's installed under modules:lib can be found.
 

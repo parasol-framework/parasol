@@ -80,7 +80,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 
   flags("TSF", { comment="Task flags" },
     "FOREIGN: Set this flag when using the task object to execute a foreign process - that is an executable that does not use the Parasol API.",
-    "DUMMY: Private. Marks the object as being for temporary use only.",
     "WAIT: This flag will cause the parent process to halt when the task is activated.  Control is returned to the parent process once the child process terminates.",
     "RESET_PATH: If set, the executed process will start in its own folder rather than the folder of the parent process.",
     "PRIVILEGED: During a normal execution process, any privileges of the parent process will be dropped so that the child process runs unprivileged.  This behaviour can be reversed if he PRIVILEGED flag is set, in which case the child process has the same privileges as the parent.",
