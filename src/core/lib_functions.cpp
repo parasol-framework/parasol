@@ -1639,7 +1639,7 @@ ERROR SetName(OBJECTPTR Object, CSTRING NewName)
 {
    parasol::Log log(__FUNCTION__);
    SharedObjectHeader *header;
-   LONG i, pos;
+   LONG i;
 
    if ((!Object) or (!NewName)) return log.warning(ERR_NullArgs);
 

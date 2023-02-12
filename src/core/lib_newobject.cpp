@@ -10,8 +10,6 @@ Name: Objects
 extern "C" ERROR CLASS_Free(extMetaClass *, APTR);
 extern "C" ERROR CLASS_Init(extMetaClass *, APTR);
 
-static LONG add_shared_object(OBJECTPTR, OBJECTID, NF);
-
 /*****************************************************************************
 
 -FUNCTION-
@@ -279,7 +277,6 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
 
    OBJECTPTR head   = NULL;
    MEMORYID head_id = 0;
-   bool resourced   = false;
    ERROR error      = ERR_Okay;
 
    if ((((Flags & NF::UNIQUE) != NF::NIL) and (Name)) or ((Flags & NF::PUBLIC) != NF::NIL)) {
@@ -318,13 +315,6 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
 
       if ((Flags & NF::UNTRACKED) IS NF::NIL) {
          head->ThreadMsg = tlThreadWriteMsg; // If the object needs to belong to a thread, this will record it.
-      }
-
-      // Add the object to our lists.  This must be done before calling the NewObject action because we will otherwise
-      // risk stuffing up the list order.
-
-      if ((Flags & NF::PUBLIC) != NF::NIL) {
-         if (!(error = add_shared_object(head, head_id, Flags))) resourced = true;
       }
    }
 
@@ -430,15 +420,8 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
       if (head) {
          head->Flags = head->Flags & (~NF::NEW_OBJECT);
 
-         if (head->isPublic()) {
-            if (resourced) remove_shared_object(head_id);
-            ReleaseMemoryID(head_id);
-            FreeResourceID(head_id);
-         }
-         else {
-            if (private_lock) ReleasePrivateObject(head);
-            FreeResource(head);
-         }
+         if (private_lock) ReleasePrivateObject(head);
+         FreeResource(head);
       }
 
       *ObjectID = 0;
@@ -502,156 +485,3 @@ CSTRING ResolveClassID(CLASSID ID)
    log.warning("Failed to resolve ID $%.8x", ID);
    return NULL;
 }
-
-//****************************************************************************
-
-ERROR find_public_object_entry(SharedObjectHeader *Header, OBJECTID ObjectID, LONG *Position)
-{
-   auto array = (SharedObject *)ResolveAddress(Header, Header->Offset);
-
-   LONG floor   = 0;
-   LONG ceiling = Header->NextEntry;
-   LONG i       = ceiling>>1;
-   for (LONG j=0; j < 2; j++) {
-      while ((!array[i].ObjectID) and (i > 0)) i--;
-
-      if (ObjectID < array[i].ObjectID)      floor = i + 1;
-      else if (ObjectID > array[i].ObjectID) ceiling = i;
-      else {
-         *Position = i;
-         return ERR_Okay;
-      }
-      i = floor + ((ceiling - floor)>>1);
-  }
-
-   while ((!array[i].ObjectID) and (i > 0)) i--;
-
-   if (ObjectID < array[i].ObjectID) {
-      while (i < ceiling) {
-         if (array[i].ObjectID IS ObjectID) {
-            *Position = i;
-            return ERR_Okay;
-         }
-         i++;
-      }
-   }
-   else {
-      while (i >= 0) {
-         if (array[i].ObjectID IS ObjectID) {
-            *Position = i;
-            return ERR_Okay;
-         }
-         i--;
-      }
-   }
-
-   return ERR_Search;
-}
-
-/*****************************************************************************
-** These functions are responsible for maintaining the public object list table.
-*/
-
-static ERROR add_shared_object(OBJECTPTR Object, OBJECTID ObjectID, NF Flags)
-{
-   parasol::Log log(__FUNCTION__);
-
-   // This routine guarantees that the public_objects table will be sorted in the order of object creation (ObjectID)
-   // so long as the ObjectID is incremented correctly.
-
-   if (ObjectID >= 0) return log.warning(ERR_Args);
-
-   parasol::ScopedAccessMemory<SharedObjectHeader> lock(RPM_SharedObjects, MEM_READ_WRITE, 2000);
-
-   if (!lock.granted()) return log.warning(ERR_AccessMemory);
-
-   auto hdr = lock.ptr;
-   auto objects = (SharedObject *)ResolveAddress(hdr, hdr->Offset);
-
-   // If the table is at its limit, compact it first by eliminating entries that no longer contain any data.
-
-   if (hdr->NextEntry >= hdr->ArraySize) {
-      LONG last_entry = 0;
-      LONG entry_size = sizeof(SharedObject)>>1;
-      for (LONG i=0; i < hdr->ArraySize; i++) {
-         if (!objects[i].ObjectID) {
-            LONG j;
-            for (j=i+1; (j < hdr->ArraySize) and (!objects[j].ObjectID); j++);
-            if (j < hdr->ArraySize) {
-               // Move the record at position j to position i
-               for (LONG k=0; k < entry_size; k++) {
-                  ((WORD *)(objects+i))[k] = ((WORD *)(objects+j))[k];
-               }
-               // Kill the moved record at its previous position
-               objects[j].ObjectID = 0;
-               objects[j].OwnerID  = 0;
-               last_entry = i;
-            }
-            else break;
-         }
-         else last_entry = i;
-      }
-      if (last_entry < hdr->ArraySize-1) hdr->NextEntry = last_entry + 1;
-      else hdr->NextEntry = hdr->ArraySize;
-      log.msg("Public object array compressed from %d entries to %d entries.", hdr->ArraySize, hdr->NextEntry);
-   }
-
-   // If the table is at capacity, we must allocate more space for new records
-
-   if (hdr->NextEntry >= hdr->ArraySize) {
-      log.warning("The public object array is at capacity (%d blocks)", hdr->ArraySize);
-      return ERR_ArrayFull;
-   }
-
-   // "Pull-back" the NextPublicObject position if there are null entries present at the tail-end of the array (occurs if objects are allocated then quickly freed).
-
-   while ((hdr->NextEntry > 0) and (objects[hdr->NextEntry-1].ObjectID IS 0)) {
-      hdr->NextEntry--;
-   }
-
-   // Add the entry to the next available space
-
-   objects[hdr->NextEntry].ObjectID = ObjectID;
-   objects[hdr->NextEntry].OwnerID  = Object->OwnerID;
-
-   if (Object->ExtClass->Flags & CLF_NO_OWNERSHIP) {
-      objects[hdr->NextEntry].MessageMID = 0;
-   }
-   else objects[hdr->NextEntry].MessageMID = glTaskMessageMID;
-
-   if ((Flags & NF::PUBLIC) != NF::NIL) objects[hdr->NextEntry].Address = NULL;
-   else objects[hdr->NextEntry].Address = Object;
-
-   objects[hdr->NextEntry].ClassID    = Object->ClassID;
-   objects[hdr->NextEntry].Name[0]    = 0;
-   objects[hdr->NextEntry].Flags      = Flags;
-   objects[hdr->NextEntry].InstanceID = glInstanceID;
-   hdr->NextEntry++;
-
-   return ERR_Okay;
-}
-
-//****************************************************************************
-
-void remove_shared_object(OBJECTID ObjectID)
-{
-   parasol::Log log(__FUNCTION__);
-   SharedObjectHeader *publichdr;
-
-   if (!AccessMemory(RPM_SharedObjects, MEM_READ_WRITE, 2000, (void **)&publichdr)) {
-      LONG pos;
-      if (find_public_object_entry(publichdr, ObjectID, &pos) IS ERR_Okay) {
-         SharedObject *obj = (SharedObject *)ResolveAddress(publichdr, publichdr->Offset);
-         obj[pos].ObjectID   = 0;
-         obj[pos].ClassID    = 0;
-         obj[pos].OwnerID    = 0;
-         obj[pos].Name[0]    = 0;
-         obj[pos].Flags      = NF::NIL;
-         obj[pos].InstanceID = 0;
-      }
-      else log.warning("Object #%d is not registered in the public object list.", ObjectID);
-      ReleaseMemoryID(RPM_SharedObjects);
-   }
-   else log.warning(ERR_AccessMemory);
-}
-

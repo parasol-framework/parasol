@@ -1,8 +1,6 @@
 
 static void free_private_memory(void);
 static void remove_private_locks(void);
-static void free_shared_objects(void);
-static ERROR free_shared_object(LONG ObjectID, OBJECTID OwnerID);
 #ifdef __unix__
 static void free_shared_control(void);
 #endif
@@ -196,8 +194,6 @@ EXPORT void CloseCore(void)
       // by our processes first - we need to do this before the expunge because otherwise the module code won't be
       // available to destroy the public objects.
 
-      free_shared_objects();
-
       Expunge(FALSE);
 
       if (glCacheTimer) {
@@ -323,6 +319,11 @@ EXPORT void CloseCore(void)
          free(glFDTable);
          glFDTable = NULL;
          glTotalFDs = 0;
+      }
+
+      if (SystemTaskID) {
+         ActionMsg(AC_Free, SystemTaskID, NULL, 0, 0);
+         SystemTaskID = 0;
       }
 
       log.trace("Removing private and public memory locks.");
@@ -575,107 +576,6 @@ EXPORT void Expunge(WORD Force)
    }
 }
 
-/*****************************************************************************
-** Scans for public/shared objects and kills them if they belong to our process.
-*/
-
-static void free_shared_objects(void)
-{
-   parasol::Log log("Shutdown");
-
-   if ((!glSharedControl) or (!glCurrentTaskID)) return;
-
-   log.branch("Freeing public objects allocated by process %d.", glCurrentTaskID);
-
-   if (!LOCK_PUBLIC_MEMORY(4000)) {
-      // First, remove objects that have no owners (i.e. the top most objects).  This ensures that child objects are
-      // removed correctly, as it means that the deallocation process follows normal hierarchical rules.
-
-      for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
-         if ((glSharedBlocks[i].TaskID IS glCurrentTaskID) and (glSharedBlocks[i].Flags & MEM_OBJECT)) {
-            OBJECTPTR hdr;
-            if (page_memory(glSharedBlocks + i, (APTR *)&hdr) IS ERR_Okay) {
-               if (hdr->OwnerID) {
-                  // The object has an owner, so scan towards the topmost object within our process space
-                  OBJECTID id = hdr->UID;
-                  OBJECTID owner = hdr->OwnerID;
-                  unpage_memory(hdr);
-                  if (free_shared_object(id, owner) != ERR_Okay) break;
-               }
-               else {
-                  unpage_memory(hdr);
-                  OBJECTID id = glSharedBlocks[i].MemoryID;
-                  UNLOCK_PUBLIC_MEMORY();
-                  ActionMsg(AC_Free, id, NULL, 0, 0);
-                  if (LOCK_PUBLIC_MEMORY(4000) != ERR_Okay) break;
-               }
-            }
-         }
-      }
-
-      for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
-         if ((glSharedBlocks[i].TaskID IS glCurrentTaskID) and (glSharedBlocks[i].Flags & MEM_OBJECT)) {
-            OBJECTPTR hdr;
-            if (page_memory(glSharedBlocks + i, (APTR *)&hdr) IS ERR_Okay) {
-               OBJECTID id;
-               if ((!hdr->OwnerID) or (hdr->OwnerID IS glCurrentTaskID)) id = glSharedBlocks[i].MemoryID;
-               else id = 0;
-               unpage_memory(hdr);
-               UNLOCK_PUBLIC_MEMORY();
-
-               if (id) ActionMsg(AC_Free, id, NULL, 0, 0);
-
-               if (LOCK_PUBLIC_MEMORY(4000) != ERR_Okay) break;
-            }
-         }
-      }
-
-      // Now deallocate all objects related to our process regardless of their position in the hierarchy.
-
-      for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
-         if ((glSharedBlocks[i].TaskID IS glCurrentTaskID) and (glSharedBlocks[i].Flags & MEM_OBJECT)) {
-            OBJECTID id = glSharedBlocks[i].MemoryID;
-            UNLOCK_PUBLIC_MEMORY();
-
-            ActionMsg(AC_Free, id, NULL, 0, 0);
-
-            if (LOCK_PUBLIC_MEMORY(4000) != ERR_Okay) break;
-         }
-      }
-      UNLOCK_PUBLIC_MEMORY();
-   }
-}
-
-// This function requires LOCK_PUBLIC_MEMORY() to be in use and can only be called from free_shared_objects()
-
-static ERROR free_shared_object(LONG ObjectID, OBJECTID OwnerID)
-{
-   for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
-      if (glSharedBlocks[i].MemoryID IS OwnerID) { // Owner found
-         if ((glSharedBlocks[i].TaskID IS glCurrentTaskID) and (glSharedBlocks[i].Flags & MEM_OBJECT)) { // Does the owner belong to our process?
-            if (auto header = (OBJECTPTR)resolve_public_address(glSharedBlocks + i)) {
-               if (header->OwnerID) {
-                  return free_shared_object(OwnerID, header->OwnerID);
-               }
-               else {
-                  UNLOCK_PUBLIC_MEMORY();
-                  ActionMsg(AC_Free, ObjectID, NULL, 0, 0);
-                  return LOCK_PUBLIC_MEMORY(4000);
-               }
-            }
-         }
-         else break; // Break loop and free the object because we know that the current object is top-most, relative to our process
-      }
-   }
-
-   // If the owner does not exist or the owner belongs to a different process then the loop drops down to here and we
-   // can free the object.
-
-   UNLOCK_PUBLIC_MEMORY();
-   ActionMsg(AC_Free, ObjectID, NULL, 0, 0);
-   return LOCK_PUBLIC_MEMORY(4000);
-}
-
 //**********************************************************************
 
 static void free_private_memory(void)
@@ -728,36 +628,13 @@ void free_public_resources(OBJECTID TaskID)
 
    if (!TaskID) return;
 
-   log.msg("Freeing all public objects & memory belonging to task #%d", TaskID);
+   log.msg("Freeing all public memory for task %d", TaskID);
 
    parasol::ScopedSysLock lock(PL_PUBLICMEM, 4000);
    if (lock.granted()) {
       for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
          if ((glSharedBlocks[i].TaskID IS TaskID) or (glSharedBlocks[i].ObjectID IS TaskID)) {
-            if (glSharedBlocks[i].Flags & MEM_OBJECT) {
-               if (TaskID IS glCurrentTaskID) {
-                  APTR address;
-                  if ((address = resolve_public_address(glSharedBlocks + i))) {
-                     for (LONG j=glSharedBlocks[i].AccessCount; j > 0; j--) ReleaseMemory(address);
-                  }
-               }
-
-               if (glSharedBlocks[i].AccessCount > 0) { // Forcibly remove locks if ReleaseMemory() couldn't
-                  ClearMemory(glSharedBlocks+i, sizeof(glSharedBlocks[0]));
-               }
-
-               log.msg("Freeing public object header #%d.", glSharedBlocks[i].MemoryID);
-
-               OBJECTID id = glSharedBlocks[i].MemoryID;
-               FreeResourceID(glSharedBlocks[i].MemoryID);
-
-               lock.release();
-
-               remove_shared_object(id);  // Remove the object entry from the shared object list
-
-               if (lock.acquire(5000) != ERR_Okay) break;
-            }
-            else if (glSharedBlocks[i].MemoryID) {
+            if (glSharedBlocks[i].MemoryID) {
                log.msg("Freeing public memory block #%d.", glSharedBlocks[i].MemoryID);
                FreeResourceID(glSharedBlocks[i].MemoryID);
             }
@@ -785,13 +662,7 @@ void remove_public_locks(LONG ProcessID)
 
       for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
          if ((glSharedBlocks[i].ProcessLockID IS ProcessID) and (glSharedBlocks[i].AccessCount > 0)) {
-            if (glSharedBlocks[i].Flags & MEM_OBJECT) {
-               if (auto header = (OBJECTPTR)resolve_public_address(glSharedBlocks + i)) {
-                  header->Locked = 0;
-               }
-               log.msg("Removing %d locks on shared object #%d.", glSharedBlocks[i].AccessCount, glSharedBlocks[i].MemoryID);
-            }
-            else log.msg("Removing %d locks on shared memory block #%d.", glSharedBlocks[i].AccessCount, glSharedBlocks[i].MemoryID);
+            log.msg("Removing %d locks on shared memory block #%d.", glSharedBlocks[i].AccessCount, glSharedBlocks[i].MemoryID);
 
             APTR address;
             if ((address = resolve_public_address(glSharedBlocks + i))) {

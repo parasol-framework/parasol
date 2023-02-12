@@ -847,7 +847,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    // Allocate the System Task
 
-   if (!(error = NewLockedObject(ID_TASK, NF::UNTRACKED|NF::PUBLIC|NF::UNIQUE, &SystemTask, &SystemTaskID, "SystemTask"))) {
+   if (!(error = NewLockedObject(ID_TASK, NF::UNTRACKED|NF::UNIQUE, &SystemTask, &SystemTaskID, "SystemTask"))) {
       if (Action(AC_Init, SystemTask, NULL) != ERR_Okay) {
          if (Info->Flags & OPF_ERROR) Info->Error = ERR_Init;
          ReleaseObject(SystemTask);

@@ -625,7 +625,6 @@ ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args, MEMORYID MessageMID
 
    msg.Action.ReturnResult = wait;
 
-retry:
    if (thread_msg) error = send_thread_msg(thread_msg, MSGID_ACTION, &msg.Action, msgsize);
    else error = SendMessage(MessageMID, MSGID_ACTION, 0, &msg.Action, msgsize);
 
@@ -1250,8 +1249,6 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
          }
       }
    }
-
-   if (Object->defined(NF::PUBLIC)) remove_shared_object(Object->UID);  // If the object is shared, remove it from the shared list
 
    if (!Object->defined(NF::PUBLIC)) { // Decrement the counters associated with the class that this object belongs to.
       if ((mc->Base) and (mc->Base->OpenCount > 0)) mc->Base->OpenCount--; // Child detected
