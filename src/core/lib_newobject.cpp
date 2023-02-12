@@ -75,7 +75,7 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
 
    if (Object) *Object = NULL;
 
-   Flags = Flags & (NF::UNTRACKED|NF::INTEGRAL|NF::UNIQUE|NF::NAME|NF::PUBLIC|NF::SUPPRESS_LOG); // Very important to eliminate any internal flags.
+   Flags = Flags & (NF::UNTRACKED|NF::INTEGRAL|NF::UNIQUE|NF::NAME|NF::SUPPRESS_LOG); // Very important to eliminate any internal flags.
 
    // If the object is integral then turn off use of the UNTRACKED flag (otherwise the child will
    // end up being tracked to its task rather than its parent object).
@@ -262,7 +262,7 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
    if (Object) *Object = NULL;
    *ObjectID = 0;
 
-   Flags = Flags & (NF::UNTRACKED|NF::INTEGRAL|NF::UNIQUE|NF::NAME|NF::PUBLIC|NF::SUPPRESS_LOG); // Very important to eliminate any internal flags.
+   Flags = Flags & (NF::UNTRACKED|NF::INTEGRAL|NF::UNIQUE|NF::NAME|NF::SUPPRESS_LOG); // Very important to eliminate any internal flags.
 
    // If the object is to be a child of a larger object, turn off use of the UNTRACKED flag (otherwise the child will
    // end up being tracked to its task rather than its parent object).
@@ -279,7 +279,7 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
    MEMORYID head_id = 0;
    ERROR error      = ERR_Okay;
 
-   if ((((Flags & NF::UNIQUE) != NF::NIL) and (Name)) or ((Flags & NF::PUBLIC) != NF::NIL)) {
+   if (((Flags & NF::UNIQUE) != NF::NIL) and (Name)) {
       if ((Flags & NF::UNIQUE) != NF::NIL) {
          OBJECTID search_id;
          LONG count = 1;
@@ -291,14 +291,7 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
       }
    }
 
-   if ((Flags & NF::PUBLIC) != NF::NIL) {
-      if (!AllocMemory(mc->Size + sizeof(Stats), MEM_OBJECT|MEM_PUBLIC, (void **)&head, &head_id)) {
-         head->Stats = (Stats *)ResolveAddress(head, mc->Size);
-         head->UID = head_id;
-      }
-      else error = ERR_AllocMemory;
-   }
-   else if (!AllocMemory(mc->Size + sizeof(Stats), MEM_OBJECT|MEM_NO_LOCK|(((Flags & NF::UNTRACKED) != NF::NIL) ? MEM_UNTRACKED : 0), (APTR *)&head, &head_id)) {
+   if (!AllocMemory(mc->Size + sizeof(Stats), MEM_OBJECT|MEM_NO_LOCK|(((Flags & NF::UNTRACKED) != NF::NIL) ? MEM_UNTRACKED : 0), (APTR *)&head, &head_id)) {
       head->Stats = (Stats *)ResolveAddress(head, mc->Size);
       head->UID = head_id;
    }
@@ -331,8 +324,8 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
       if (mc->Flags & CLF_NO_OWNERSHIP); // The class mandates that objects have no owner.
       else if ((Flags & NF::UNTRACKED) != NF::NIL) {
          if (class_id IS ID_MODULE); // Untracked modules have no owner, due to the expunge process.
-         else if ((Flags & NF::PUBLIC) IS NF::NIL) {
-            // If the object is private and untracked, set its owner to the current task.  This will ensure that the object
+         else {
+            // Set the owner to the current task.  This will ensure that the object
             // is deallocated correctly when the Core is closed.
 
             if (glCurrentTaskID) {
@@ -363,7 +356,7 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
       }
    }
 
-   if ((!error) and (Object) and ((Flags & NF::PUBLIC) IS NF::NIL)) {
+   if ((!error) and (Object)) {
       if (AccessPrivateObject(head, 0x7fffffff)) error = ERR_AccessObject;
       else private_lock = TRUE;
    }
@@ -395,10 +388,8 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
       // Increment the class' open count if the object is private.  We do not increment the count for public objects,
       // because this prevents the Core from expunging modules correctly during shutdown.
 
-      if ((Flags & NF::PUBLIC) IS NF::NIL) {
-         head->ExtClass->OpenCount++;
-         if (mc->Base) mc->Base->OpenCount++;
-      }
+      head->ExtClass->OpenCount++;
+      if (mc->Base) mc->Base->OpenCount++;
 
       *ObjectID = head_id;
 
