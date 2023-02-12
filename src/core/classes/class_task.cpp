@@ -2581,21 +2581,21 @@ static const FieldArray clFields[] = {
    { "ReturnCode",      FDF_LONG|FDF_RW,      0, (APTR)GET_ReturnCode, (APTR)SET_ReturnCode },
    { "ProcessID",       FDF_LONG|FDF_RI,      0, NULL, NULL },
    // Virtual fields
-   { "Actions",        FDF_POINTER|FDF_R,      0, (APTR)GET_Actions,          NULL },
-   { "Args",           FDF_STRING|FDF_W,       0, NULL,                       (APTR)SET_Args },
+   { "Actions",        FDF_POINTER|FDF_R,      0, (APTR)GET_Actions,         NULL },
+   { "Args",           FDF_STRING|FDF_W,       0, NULL,                      (APTR)SET_Args },
    { "Parameters",     FDF_ARRAY|FDF_STRING|FDF_RW, 0, (APTR)GET_Parameters, (APTR)SET_Parameters },
-   { "ErrorCallback",  FDF_FUNCTIONPTR|FDF_RI, 0, (APTR)GET_ErrorCallback, (APTR)SET_ErrorCallback }, // STDERR
-   { "ExitCallback",   FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_ExitCallback,  (APTR)SET_ExitCallback },
-   { "Instance",       FDF_LONG|FDF_R,         0, (APTR)GET_Instance,         NULL },
-   { "InputCallback",  FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_InputCallback, (APTR)SET_InputCallback }, // STDIN
-   { "LaunchPath",     FDF_STRING|FDF_RW,      0, (APTR)GET_LaunchPath,       (APTR)SET_LaunchPath },
-   { "Location",       FDF_STRING|FDF_RW,      0, (APTR)GET_Location,         (APTR)SET_Location },
-   { "MessageQueue",   FDF_LONG|FDF_R,         0, (APTR)GET_MessageQueue,     NULL },
-   { "Name",           FDF_STRING|FDF_RW,      0, (APTR)GET_Name,             (APTR)SET_Name },
-   { "OutputCallback", FDF_FUNCTIONPTR|FDF_RI, 0, (APTR)GET_OutputCallback, (APTR)SET_OutputCallback }, // STDOUT
-   { "Path",           FDF_STRING|FDF_RW,      0, (APTR)GET_Path,              (APTR)SET_Path },
-   { "ProcessPath",    FDF_STRING|FDF_R,       0, (APTR)GET_ProcessPath,       NULL },
-   { "Priority",       FDF_LONG|FDF_W,         0, NULL,                        (APTR)SET_Priority },
+   { "ErrorCallback",  FDF_FUNCTIONPTR|FDF_RI, 0, (APTR)GET_ErrorCallback,   (APTR)SET_ErrorCallback }, // STDERR
+   { "ExitCallback",   FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_ExitCallback,    (APTR)SET_ExitCallback },
+   { "Instance",       FDF_LONG|FDF_R,         0, (APTR)GET_Instance,        NULL },
+   { "InputCallback",  FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_InputCallback,   (APTR)SET_InputCallback }, // STDIN
+   { "LaunchPath",     FDF_STRING|FDF_RW,      0, (APTR)GET_LaunchPath,      (APTR)SET_LaunchPath },
+   { "Location",       FDF_STRING|FDF_RW,      0, (APTR)GET_Location,        (APTR)SET_Location },
+   { "MessageQueue",   FDF_LONG|FDF_R,         0, (APTR)GET_MessageQueue,    NULL },
+   { "Name",           FDF_STRING|FDF_RW,      0, (APTR)GET_Name,            (APTR)SET_Name },
+   { "OutputCallback", FDF_FUNCTIONPTR|FDF_RI, 0, (APTR)GET_OutputCallback,  (APTR)SET_OutputCallback }, // STDOUT
+   { "Path",           FDF_STRING|FDF_RW,      0, (APTR)GET_Path,            (APTR)SET_Path },
+   { "ProcessPath",    FDF_STRING|FDF_R,       0, (APTR)GET_ProcessPath,     NULL },
+   { "Priority",       FDF_LONG|FDF_W,         0, NULL,                      (APTR)SET_Priority },
    // Synonyms
    { "Src",            FDF_SYNONYM|FDF_STRING|FDF_RW, 0, (APTR)GET_Location, (APTR)SET_Location },
    { "ArgsList",       FDF_ARRAY|FDF_STRING|FDF_SYSTEM|FDF_RW, 0, (APTR)GET_Parameters, (APTR)SET_Parameters }, // OBSOLETE

@@ -76,7 +76,7 @@
     </input>
     <description>
 <p>This function resolves an object ID to its address and acquires a lock on the object so that other processes and threads cannot use it simultaneously.</p>
-<p>If the object is in shared memory, it will be paged into the calling process.  If the object is locked, the function will wait until the object becomes available.   This must occur within the amount of time specified in the Milliseconds parameter.  If the time expires, the function will return with an ERR_TimeOut error code.  If successful, ERR_Okay is returned and a reference to the object's address is stored in the Result variable.</p>
+<p>If the object is already locked, it will wait until the object becomes available.   This must occur within the amount of time specified in the Milliseconds parameter.  If the time expires, the function will return with an ERR_TimeOut error code.  If successful, ERR_Okay is returned and a reference to the object's address is stored in the Result variable.</p>
 <p>It is crucial that calls to AccessObject() are followed with a call to <function module="Core">ReleaseObject</function> once the lock is no longer required.  Calls to AccessObject() will also nest, so they must be paired with <function module="Core">ReleaseObject</function> correctly.</p>
 <p>If AccessObject() fails, the Result variable will be automatically set to a NULL pointer on return.</p>
 <p>Hint: If the name of the target object is known but not the ID, use <function module="Core">FindObject</function> to resolve it.</p>
@@ -102,7 +102,7 @@
     </input>
     <description>
 <p>Use AccessPrivateObject() to gain exclusivity to an object at thread-level.  This function provides identical behaviour to that of <function module="Core">AccessObject</function>, but with a slight speed advantage as the object ID does not need to be resolved to an address.  Calls to AccessPrivateObject() will nest, and must be matched with a call to <function module="Core">ReleasePrivateObject</function> to unlock the object.</p>
-<p>This function only needs to be called on private objects that are used between more than one thread.  Calling it on public objects (identified by their negative object ID) is an error.</p>
+<p>If it is guaranteed that an object is not being shared between threads, there is no need to acquire a lock via this function.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -350,7 +350,7 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address)) {
     </input>
     <description>
 <p>This function allocates a mutex that is suitable for keeping threads synchronised (inter-process synchronisation is not supported).  Mutexes are locked and unlocked using the <function module="Core">LockMutex</function> and <function module="Core">UnlockMutex</function> functions.</p>
-<p>The underlying implementation is dependent on the host platform.  In Microsoft Windows, critical sections will be used and may nest (ALF_RECURSIVE always applies).  Unix systems employ pthread mutexes and will only nest if the ALF_RECURSIVE option is specified.</p>
+<p>The underlying implementation is dependent on the host platform.  In Microsoft Windows, critical sections will be used and may nest (<code>ALF_RECURSIVE</code> always applies).  Unix systems employ pthread mutexes and will only nest if the <code>ALF_RECURSIVE</code> option is specified.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>

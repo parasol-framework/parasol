@@ -109,8 +109,6 @@ static LONG get_action_info(lua_State *Lua, LONG ClassID, CSTRING action, const 
 **
 ** Variable fields can be denoted with an underscore prefix.
 **
-** An object can be allocated as public by prefixing a '@' to the class name.
-**
 ** Also see object_newchild() for creating objects from a parent.
 **
 ** Errors are immediately thrown.
@@ -133,6 +131,7 @@ static int object_new(lua_State *Lua)
    }
    else if ((class_name = luaL_checkstring(Lua, 1))) {
       if (class_name[0] IS '@') { // Deprecated
+         log.warning("Use of @ for allocating public objects is deprecated.");
          class_name++;
       }
       class_id = StrHash(class_name, 0);
@@ -308,6 +307,7 @@ static int object_newchild(lua_State *Lua)
    else if ((class_name = luaL_checkstring(Lua, 1))) {
       if (class_name[0] IS '@') { // Deprecated
          class_name++;
+         log.warning("Use of @ for allocating public objects is deprecated.");
       }
       class_id = StrHash(class_name, 0);
       log.trace("%s, $%.8x", class_name, class_id);
