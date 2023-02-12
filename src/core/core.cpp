@@ -796,28 +796,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       return NULL;
    }
 
-   // Allocate the public object table
-
-   {
-      SharedObjectHeader *publichdr;
-
-      log.msg("Allocating public object table.");
-
-      MEMORYID memid = RPM_SharedObjects;
-      if (!(error = AllocMemory(sizeof(SharedObjectHeader) + (sizeof(SharedObject) * PUBLIC_TABLE_CHUNK), MEM_UNTRACKED|MEM_RESERVED|MEM_PUBLIC|MEM_READ_WRITE, (void **)&publichdr, &memid))) {
-         publichdr->Offset    = sizeof(SharedObjectHeader);
-         publichdr->NextEntry = 0;
-         publichdr->ArraySize = PUBLIC_TABLE_CHUNK;
-         ReleaseMemoryID(memid);
-      }
-      else if (error != ERR_ResourceExists) {
-         log.warning("Failed to allocate the public object memory table, error %d.", error);
-         if (Info->Flags & OPF_ERROR) Info->Error = ERR_AllocMemory;
-         CloseCore();
-         return NULL;
-      }
-   }
-
    if (AllocSemaphore(NULL, 0, 0, &glSharedControl->ClassSemaphore)) {
       CloseCore();
       return NULL;

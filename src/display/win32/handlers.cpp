@@ -75,7 +75,7 @@ void MsgWheelMovement(OBJECTID SurfaceID, FLOAT Wheel)
 {
    if (!glPointerID) {
       LONG count = 1;
-      if (FindObject("SystemPointer", 0, FOF_INCLUDE_SHARED, &glPointerID, &count) != ERR_Okay) return;
+      if (FindObject("SystemPointer", 0, 0, &glPointerID, &count) != ERR_Okay) return;
    }
 
    struct dcDeviceInput joy;

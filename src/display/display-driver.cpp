@@ -1378,7 +1378,7 @@ ERROR init_egl(void)
 
    if (!glPointerID) {
       LONG count = 1;
-      FindObject("SystemPointer", 0, FOF_INCLUDE_SHARED, &glPointerID, &count);
+      FindObject("SystemPointer", 0, 0, &glPointerID, &count);
    }
 
    if (glPointerID) {

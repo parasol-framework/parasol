@@ -161,7 +161,6 @@
     </constants>
 
     <constants lookup="FOF" comment="Flags that can be passed to FindObject()">
-      <const name="INCLUDE_SHARED">Include shared objects when searching.</const>
       <const name="SMART_NAMES">Parse numeric object names as ID references and support use of the 'Owner' reserved keyword.</const>
     </constants>
 

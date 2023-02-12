@@ -312,26 +312,6 @@ struct WaitLock {
 #define WLF_REMOVED 0x01  // Set if the resource was removed by the thread that was holding it.
 
 //********************************************************************************************************************
-// Shared object management.
-
-struct SharedObjectHeader {
-   LONG Offset;          // Offset of the main array - sizeof(struct PublicObjectHeader)
-   LONG NextEntry;       // Next available entry within the array
-   LONG ArraySize;       // Actual size of the array
-};
-
-struct SharedObject {
-   OBJECTID  ObjectID;           // The object's ID
-   OBJECTID  OwnerID;            // The owner of the object (note: Can be a private or public object)
-   MEMORYID  MessageMID;         // If the object is private, this field refers to the Task MessageMID that owns it
-   OBJECTPTR Address;            // Pointer the object address (if in private memory)
-   CLASSID   ClassID;            // Class ID of the object
-   char      Name[MAX_NAME_LEN]; // Name of the object
-   NF        Flags;              // NF flags
-   LONG      InstanceID;         // Reference to the instance that this object is restricted to
-};
-
-//********************************************************************************************************************
 // This structure is used for internally timed broadcasting.
 
 class CoreTimer {
@@ -989,7 +969,6 @@ struct ClassItem * find_class(CLASSID);
 struct ModuleItem * find_module(ULONG);
 LONG   find_public_address(struct SharedControl *, APTR);
 ERROR  find_private_object_entry(OBJECTID, LONG *);
-ERROR  find_public_object_entry(struct SharedObjectHeader *, OBJECTID, LONG *);
 ERROR  find_public_mem_id(struct SharedControl *, MEMORYID, LONG *);
 void   fix_core_table(struct CoreBase *, FLOAT);
 void   free_events(void);
@@ -1017,7 +996,6 @@ void   remove_object_hash(OBJECTPTR);
 void   remove_process_waitlocks(void);
 void   remove_public_locks(LONG);
 void   remove_semaphores(void);
-void   remove_shared_object(OBJECTID);
 ERROR  resolve_args(APTR, const struct FunctionField *);
 APTR   resolve_public_address(struct PublicAddress *);
 void   scan_classes(void);

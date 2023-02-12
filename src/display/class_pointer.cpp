@@ -679,7 +679,7 @@ static ERROR PTR_Init(extPointer *Self, APTR Void)
 
       if (!Self->SurfaceID) {
          LONG count = 1;
-         FindObject("SystemSurface", 0, FOF_INCLUDE_SHARED, &Self->SurfaceID, &count);
+         FindObject("SystemSurface", 0, 0, &Self->SurfaceID, &count);
       }
    }
 

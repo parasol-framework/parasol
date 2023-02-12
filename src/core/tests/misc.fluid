@@ -98,7 +98,7 @@ function testObjectSearches()
    -- Test ListChildren()
 
    local children = array.new(20, 'ChildEntry')
-   local err, count = mSys.ListChildren(parent.id, false, children)
+   local err, count = mSys.ListChildren(parent.id, children)
    assert(err == ERR_Okay, 'Failed in call to ListChildren(): ' .. mSys.GetErrorMsg(err))
    assert(count == 10, 'Parent object listed ' .. count .. ' objects.')
 

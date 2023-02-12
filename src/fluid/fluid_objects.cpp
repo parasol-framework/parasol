@@ -531,7 +531,7 @@ static int object_find(lua_State *Lua)
       if (!FindPrivateObject(object_name, &obj)) {
          return object_find_ptr(Lua, obj);
       }
-      else if (!FindObject(object_name, class_id, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &object_id, &count)) {
+      else if (!FindObject(object_name, class_id, FOF_SMART_NAMES, &object_id, &count)) {
          return object_find_id(Lua, object_id);
       }
       else log.debug("Unable to find object '%s'", object_name);
@@ -612,7 +612,7 @@ static int object_children(lua_State *Lua)
    LONG id[512];
    LONG count = ARRAYSIZE(list);
 
-   if (!ListChildren(object->ObjectID, TRUE, list, &count)) {
+   if (!ListChildren(object->ObjectID, list, &count)) {
       LONG index = 0;
       for (LONG i=0; i < count; i++) {
          if (class_id) {

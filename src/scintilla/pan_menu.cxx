@@ -28,7 +28,7 @@ void Scintilla::Menu::CreatePopUp()
    }*/
 
    LONG count = 1;
-   FindObject((STRING)"SystemSurface", ID_SURFACE, FOF_INCLUDE_SHARED, &display_id, &count);
+   FindObject((STRING)"SystemSurface", ID_SURFACE, 0, &display_id, &count);
 
    //id = *reinterpret_cast<MenuID *>(&surface_id);
 /*

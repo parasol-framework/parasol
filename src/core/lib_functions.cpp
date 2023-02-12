@@ -301,10 +301,8 @@ FindObject("SystemPointer", ID_POINTER, 0, &id, &count);
 
 If FindObject() cannot find any matching objects then it will return an error code.
 
-The list is sorted so that the oldest private object is placed at the start of the list, and the most recent public object
-is placed at the end.  Take advantage of this fact to get the oldest or youngest object with the Name that is being
-searched for.  Preference is also given to objects that have been created by the calling process, thus foreign objects
-are pushed towards the end of the array.
+The list is sorted so that the oldest private object is placed at the start of the list.  Take advantage of this
+to get the oldest or youngest object with the Name that is being searched for.
 
 -INPUT-
 cstr Name:     The name of an object to search for.
@@ -317,7 +315,6 @@ buf(array(oid)) Array:    Pointer to the array that will store the results.
 Okay: At least one object was found and stored in the supplied array.
 Args:
 Search: No objects matching the given name could be found.
-AccessMemory: Access to the RPM_SharedObjects memory block was denied.
 LockFailed:
 EmptyString:
 DoesNotExist:
@@ -384,8 +381,6 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Arr
 
    std::list<sortobj> objlist;
 
-   // Private object search
-
    {
       ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
       if (lock.granted()) {
@@ -407,50 +402,6 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Arr
             }
          }
       }
-   }
-
-   if ((Flags & FOF_INCLUDE_SHARED) and (objlist.size() < (size_t)Count[0])) {
-      // Public object search.  When looking for publicly named objects we need to keep them arranged so that preference
-      // is given to objects that this process created.  This causes some mild overhead but is vital for ensuring
-      // that programs aren't confused when they use identically named objects.
-
-      LONG i;
-      char name[MAX_NAME_LEN+1];
-      for (i=0; (InitialName[i]) and (i < MAX_NAME_LEN - 1); i++) {
-         char c = InitialName[i];
-         if ((c >= 'A') and (c <= 'Z')) name[i] = c - 'A' + 'a';
-         else name[i] = c;
-      }
-      name[i] = 0;
-
-      SharedObjectHeader *header;
-      if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-         auto entry = (SharedObject *)ResolveAddress(header, header->Offset);
-         for (LONG i=0; i < header->NextEntry; i++) {
-            if (!entry[i].ObjectID) continue;
-            if ((!entry[i].InstanceID) or (entry[i].InstanceID IS glInstanceID)) {
-               if ((ClassID) and (ClassID != entry[i].ClassID));
-               else if (entry[i].Name[0] IS name[0]) {
-                  if (!StrCompare(entry[i].Name, name, 0, STR_CASE|STR_MATCH_LEN)) {
-                     if (objlist.size() < (size_t)Count[0]) {
-                        objlist.emplace_back(entry[i].ObjectID, entry[i].MessageMID);
-                     }
-                     else if (objlist.back().id > entry[i].ObjectID) {
-                        // The discovered object has a more recent ID than the last entry in the list, so replace it
-                        // (assuming that it won't replace something that was created from our own task space).
-
-                        if ((objlist.back().messagemid IS glTaskMessageMID) and (entry[i].MessageMID != glTaskMessageMID)) continue;
-                        objlist.back().id = entry[i].ObjectID;
-                        objlist.back().messagemid = entry[i].MessageMID;
-                     }
-                  }
-               }
-            }
-         }
-
-         ReleaseMemoryID(RPM_SharedObjects);
-      }
-      else return log.warning(ERR_AccessMemory);
    }
 
    if (objlist.size() > 0) {
@@ -1188,7 +1139,6 @@ Objects marked with the `INTEGRAL` flag are not returned as they are private mem
 
 -INPUT-
 oid Object: The ID of the object that you wish to examine.
-int IncludeShared: If TRUE, shared objects will be included in the list.  Penalises performance.
 buf(array(resource(ChildEntry))) List: Must refer to an array of ChildEntry structures.
 &arraysize Count:  Set to the maximum number of elements in ChildEntry.  Before returning, this parameter will be updated with the total number of entries listed in the array.
 
@@ -1199,7 +1149,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERROR ListChildren(OBJECTID ObjectID, LONG IncludeShared, ChildEntry *List, LONG *Count)
+ERROR ListChildren(OBJECTID ObjectID, ChildEntry *List, LONG *Count)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1210,23 +1160,6 @@ ERROR ListChildren(OBJECTID ObjectID, LONG IncludeShared, ChildEntry *List, LONG
 
    ERROR error = ERR_Okay;
    LONG i = 0;
-
-   if (IncludeShared) {
-      SharedObjectHeader *header;
-      if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-         auto list = (SharedObject *)ResolveAddress(header, header->Offset);
-         for (LONG j=0; j < header->NextEntry; j++) {
-            if ((list[j].OwnerID IS ObjectID) and ((list[j].Flags & NF::INTEGRAL) IS NF::NIL)) {
-               List[i].ObjectID = list[j].ObjectID;
-               List[i].ClassID  = list[j].ClassID;
-               if (++i >= *Count) break;
-            }
-         }
-         ReleaseMemoryID(RPM_SharedObjects);
-      }
-   }
-
-   // Build the list of private objects
 
    if (i < *Count) {
       ThreadLock lock(TL_PRIVATE_MEM, 4000);

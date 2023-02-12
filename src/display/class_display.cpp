@@ -916,7 +916,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
          else {
             OBJECTID surface_id;
             LONG count = 1;
-            if (!FindObject("SystemSurface", ID_SURFACE, FOF_INCLUDE_SHARED, &surface_id, &count)) {
+            if (!FindObject("SystemSurface", ID_SURFACE, 0, &surface_id, &count)) {
                if (surface_id IS Self->ownerID()) desktop = TRUE;
             }
          }

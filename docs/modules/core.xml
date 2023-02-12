@@ -792,14 +792,13 @@ LONG count = 1;
 FindObject("SystemPointer", ID_POINTER, 0, &amp;id, &amp;count);
 </pre>
 <p>If FindObject() cannot find any matching objects then it will return an error code.</p>
-<p>The list is sorted so that the oldest private object is placed at the start of the list, and the most recent public object is placed at the end.  Take advantage of this fact to get the oldest or youngest object with the Name that is being searched for.  Preference is also given to objects that have been created by the calling process, thus foreign objects are pushed towards the end of the array.</p>
+<p>The list is sorted so that the oldest private object is placed at the start of the list.  Take advantage of this to get the oldest or youngest object with the Name that is being searched for.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="LockFailed">Failed to lock a required resource.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
       <error code="EmptyString">A required string value contains no characters.</error>
       <error code="DoesNotExist">Resource does not exist.</error>
     </result>
@@ -1328,10 +1327,9 @@ end
     <name>ListChildren</name>
     <category>Objects</category>
     <comment>Returns a list of all children belonging to an object.</comment>
-    <prototype>ERROR ListChildren(OBJECTID Object, LONG IncludeShared, struct ChildEntry * List, LONG * Count)</prototype>
+    <prototype>ERROR ListChildren(OBJECTID Object, struct ChildEntry * List, LONG * Count)</prototype>
     <input>
       <param type="OBJECTID" name="Object">The ID of the object that you wish to examine.</param>
-      <param type="LONG" name="IncludeShared">If TRUE, shared objects will be included in the list.  Penalises performance.</param>
       <param type="struct ChildEntry *" name="List">Must refer to an array of ChildEntry structures.</param>
       <param type="LONG *" name="Count">Set to the maximum number of elements in ChildEntry.  Before returning, this parameter will be updated with the total number of entries listed in the array.</param>
     </input>
@@ -3385,7 +3383,6 @@ end
     </constants>
 
     <constants lookup="FOF" comment="Flags that can be passed to FindObject()">
-      <const name="INCLUDE_SHARED">Include shared objects when searching.</const>
       <const name="SMART_NAMES">Parse numeric object names as ID references and support use of the 'Owner' reserved keyword.</const>
     </constants>
 

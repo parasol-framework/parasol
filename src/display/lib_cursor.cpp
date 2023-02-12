@@ -132,7 +132,7 @@ objPointer * gfxAccessPointer(void)
 
    if (!glPointerID) {
       LONG count = 1;
-      if (!FindObject("SystemPointer", ID_POINTER, FOF_INCLUDE_SHARED, &glPointerID, &count)) {
+      if (!FindObject("SystemPointer", ID_POINTER, 0, &glPointerID, &count)) {
          AccessObject(glPointerID, 2000, &pointer);
       }
       return pointer;
@@ -140,7 +140,7 @@ objPointer * gfxAccessPointer(void)
 
    if (AccessObject(glPointerID, 2000, &pointer) IS ERR_NoMatchingObject) {
       LONG count = 1;
-      if (!FindObject("SystemPointer", ID_POINTER, FOF_INCLUDE_SHARED, &glPointerID, &count)) {
+      if (!FindObject("SystemPointer", ID_POINTER, 0, &glPointerID, &count)) {
          AccessObject(glPointerID, 2000, &pointer);
       }
    }

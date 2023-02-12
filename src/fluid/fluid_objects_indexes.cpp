@@ -498,7 +498,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
             case LUA_TSTRING: {
                OBJECTID array[8];
                LONG count = ARRAYSIZE(array);
-               if (!FindObject(lua_tostring(Lua, ValueIndex), 0, FOF_INCLUDE_SHARED, array, &count)) {
+               if (!FindObject(lua_tostring(Lua, ValueIndex), 0, 0, array, &count)) {
                   target->set(field->FieldID, array[count-1]);
                }
                else {

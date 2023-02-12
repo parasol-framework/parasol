@@ -1265,7 +1265,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
    if ((!Self->ParentID) and (gfxGetDisplayType() IS DT_NATIVE)) {
       if (!(Self->Flags & RNF_FULL_SCREEN)) {
          LONG count = 1;
-         if (FindObject("desktop", ID_SURFACE, FOF_INCLUDE_SHARED, &Self->ParentID, &count) != ERR_Okay) {
+         if (FindObject("desktop", ID_SURFACE, 0, &Self->ParentID, &count) != ERR_Okay) {
             SurfaceControl *ctl;
             if ((ctl = gfxAccessList(ARF_READ))) {
                auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);

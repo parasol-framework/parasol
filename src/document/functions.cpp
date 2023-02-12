@@ -816,7 +816,7 @@ static ERROR eval(extDocument *Self, STRING Buffer, LONG BufferLength, LONG Flag
                   }
                   else {
                      LONG count = 1;
-                     FindObject(name, 0, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &objectid, &count);
+                     FindObject(name, 0, FOF_SMART_NAMES, &objectid, &count);
                   }
                }
 
@@ -1092,7 +1092,7 @@ static BYTE check_tag_conditions(extDocument *Self, XMLTag *Tag)
       else if (!StrMatch("exists", Tag->Attrib[i].Name)) {
          OBJECTID object_id;
          LONG count = 1;
-         if (!FindObject(Tag->Attrib[i].Value, 0, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &object_id, &count)) {
+         if (!FindObject(Tag->Attrib[i].Value, 0, FOF_SMART_NAMES, &object_id, &count)) {
             if (valid_objectid(Self, object_id)) {
                satisfied = TRUE;
             }

@@ -105,10 +105,22 @@ local function columnText(Value, Type)
          return string.format('%.1f TB', Value / (1024 * 1024 * 1024 * 1024))
       end
    elseif (Type == 'date') then
+      -- The date type can be expressed as "YYYY-MM-DD HH:NN", "YYYY-MM-DD", "YYYY-MM-DDTHH:NN".
+
       if (not lDate) then lDate = struct.new('DateTime') end
-      if mSys.StrReadDate(Value, lDate) == ERR_Okay then
-         return string.format('%4d-%02d-%02d %02d:%02d', lDate.year, lDate.month, lDate.day, lDate.hour, lDate.minute)
+
+      local day, time = string.match(Value, '^(%d%d%d%d%-%d%d?%-%d%d?)[%sT]?(.*)$')
+
+      lDate.year, lDate.month, lDate.day = string.match(day, '^(%d+)-(%d+)-(%d+)$')
+
+      local h, min, sec = string.match(time, '^(%d%d):(%d%d):?(%d?%d?)$')
+      if (h != nil) then
+         lDate.hour   = h
+         lDate.minute = min
+         lDate.second = sec
       end
+
+      return string.format('%4d-%02d-%02d %02d:%02d', lDate.year, lDate.month, lDate.day, lDate.hour, lDate.minute)
    elseif (Type == 'numeric') then
       return string.format('%d', nz(tonumber(Value), 0))
    elseif (Type == 'seconds') then
