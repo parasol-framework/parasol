@@ -630,7 +630,7 @@ ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, O
             // is that only the desktop (which does the X11 input handling) is allowed
             // to grab the pointer.
 
-            //DelayMsg(MT_GrabX11Pointer, pointer->Head.UID);
+            //QueueAction(MT_GrabX11Pointer, pointer->Head.UID);
          #endif
       }
       else log.warning("The pointer may only be restricted to public surfaces.");

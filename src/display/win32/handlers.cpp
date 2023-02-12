@@ -217,7 +217,7 @@ void MsgSetFocus(OBJECTID SurfaceID)
    if (!AccessObject(SurfaceID, 3000, &surface)) {
       if ((!(surface->Flags & RNF_HAS_FOCUS)) and (surface->Flags & RNF_VISIBLE)) {
          log.msg("WM_SETFOCUS: Sending focus to surface #%d.", SurfaceID);
-         DelayMsg(AC_Focus, SurfaceID);
+         QueueAction(AC_Focus, SurfaceID);
       }
       else log.trace("WM_SETFOCUS: Surface #%d already has the focus, or is hidden.", SurfaceID);
       ReleaseObject(surface);

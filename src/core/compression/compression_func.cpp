@@ -22,7 +22,7 @@ static void print(extCompression *Self, CSTRING Buffer)
          .Buffer   = Buffer
       };
       feed.Size = StrLength(Buffer) + 1;
-      ActionMsg(AC_DataFeed, Self->OutputID, &feed, 0, 0);
+      ActionMsg(AC_DataFeed, Self->OutputID, &feed);
    }
    else log.msg("%s", Buffer);
 }
@@ -38,7 +38,7 @@ static void print(extCompression *Self, std::string Buffer)
          .Buffer   = Buffer.c_str()
       };
       feed.Size = Buffer.length() + 1;
-      ActionMsg(AC_DataFeed, Self->OutputID, &feed, 0, 0);
+      ActionMsg(AC_DataFeed, Self->OutputID, &feed);
    }
    else log.msg("%s", Buffer.c_str());
 }

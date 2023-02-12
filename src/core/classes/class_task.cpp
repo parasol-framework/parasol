@@ -426,33 +426,6 @@ extern "C" void task_deregister_incoming(WINHANDLE Handle)
 
 //****************************************************************************
 
-static ERROR msg_getfield(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
-{
-   parasol::Log log("ProcessMessages");
-   log.warning("Support for GetField messages not available.");
-   return ERR_Okay;
-}
-
-//****************************************************************************
-
-static ERROR msg_setfield(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
-{
-   parasol::Log log("ProcessMessages");
-   log.warning("Support for SetField messages not available.");
-   return ERR_Okay;
-}
-
-//****************************************************************************
-
-static ERROR msg_actionresult(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
-{
-   parasol::Log log("ProcessMessages");
-   log.warning("Support for ActionResult messages not available.");
-   return ERR_Okay;
-}
-
-//****************************************************************************
-
 static ERROR msg_waitforobjects(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
    return ERR_Terminate;
@@ -494,7 +467,7 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
       if (!(error = AccessObject(action->ObjectID, 5000, &obj))) {
          if (action->SendArgs IS FALSE) {
             obj->Flags |= NF::MESSAGE;
-            action->Error = Action(action->ActionID, obj, NULL);
+            Action(action->ActionID, obj, NULL);
             obj->Flags = obj->Flags & (~NF::MESSAGE);
             ReleaseObject(obj);
          }
@@ -520,22 +493,14 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
             if (fields) {
                if (!resolve_args(action+1, fields)) {
                   obj->Flags |= NF::MESSAGE;
-                  action->Error = Action(action->ActionID, obj, action+1);
+                  Action(action->ActionID, obj, action+1);
                   obj->Flags = obj->Flags & (~NF::MESSAGE);
                   ReleaseObject(obj);
-
-                  if ((action->ReturnResult IS TRUE) and (action->ReturnMessage)) {
-                     SendMessage(action->ReturnMessage, MSGID_ACTION_RESULT, 0, action, MsgSize);
-                  }
 
                   free_ptr_args(action+1, fields, FALSE);
                }
                else {
                   log.warning("Failed to resolve arguments for action %s.", action_id_name(action->ActionID));
-                  if ((action->ReturnResult IS TRUE) and (action->ReturnMessage)) {
-                     action->Error = ERR_Args;
-                     SendMessage(action->ReturnMessage, MSGID_ACTION_RESULT, 0, action, MsgSize);
-                  }
                   ReleaseObject(obj);
                }
             }
@@ -1809,15 +1774,6 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
       call.Type = CALL_STDC;
       call.StdC.Routine = (APTR)msg_action;
       AddMsgHandler(NULL, MSGID_ACTION, &call, &Self->MsgAction);
-
-      call.StdC.Routine = (APTR)msg_getfield;
-      AddMsgHandler(NULL, MSGID_GET_FIELD, &call, &Self->MsgGetField);
-
-      call.StdC.Routine = (APTR)msg_setfield;
-      AddMsgHandler(NULL, MSGID_SET_FIELD, &call, &Self->MsgSetField);
-
-      call.StdC.Routine = (APTR)msg_actionresult;
-      AddMsgHandler(NULL, MSGID_ACTION_RESULT, &call, &Self->MsgActionResult);
 
       call.StdC.Routine = (APTR)msg_debug;
       AddMsgHandler(NULL, MSGID_DEBUG, &call, &Self->MsgDebug);

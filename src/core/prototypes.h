@@ -7,7 +7,7 @@ extern "C" {
 ERROR AccessMemory(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR * Result);
 ERROR Action(LONG Action, OBJECTPTR Object, APTR Parameters);
 void ActionList(struct ActionTable ** Actions, LONG * Size);
-ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args, MEMORYID MessageID, CLASSID ClassID);
+ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args);
 ERROR KeyGet(struct KeyStore * Store, ULONG Key, APTR * Data, LONG * Size);
 CSTRING ResolveClassID(CLASSID ID);
 LONG AllocateID(LONG Type);
@@ -149,6 +149,7 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding);
 ERROR AnalysePath(CSTRING Path, LONG * Type);
 ERROR CreateFolder(CSTRING Path, LONG Permissions);
 ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
+ERROR QueueAction(LONG Action, OBJECTID Object, APTR Args);
 
 #ifdef  __cplusplus
 }

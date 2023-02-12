@@ -28,8 +28,8 @@ static void android_init_window(LONG MsgID)
          }
       }
 
-      DelayMsg(AC_Show, show_id);
-      DelayMsg(AC_Draw, show_id); // Notify the display that a redraw is required (the host, e.g. Surface, has to be hooked in to this to act on it).
+      QueueAction(AC_Show, show_id);
+      QueueAction(AC_Draw, show_id); // Notify the display that a redraw is required (the host, e.g. Surface, has to be hooked in to this to act on it).
    }
 
    LogF("android_init_window","Process complete.");

@@ -110,30 +110,19 @@ ERROR CheckObjectExists(OBJECTID ObjectID)
 {
    parasol::Log log(__FUNCTION__);
 
-   if (ObjectID < 0) {
-      ScopedSysLock lock(PL_PUBLICMEM, 4000);
-      if (lock.granted()) {
-         if (!find_public_mem_id(glSharedControl, ObjectID, NULL)) return ERR_True;
-         else return ERR_False;
-      }
-      else return log.warning(ERR_SystemLocked);
-   }
-   else if (ObjectID > 0) {
-      if (ObjectID IS SystemTaskID) return ERR_True;
+   if (ObjectID IS SystemTaskID) return ERR_True;
 
-      ThreadLock lock(TL_PRIVATE_MEM, 4000);
-      if (lock.granted()) {
-         LONG result = ERR_False;
-         auto mem = glPrivateMemory.find(ObjectID);
-         if ((mem != glPrivateMemory.end()) and (mem->second.Object)) {
-            if (mem->second.Object->defined(NF::UNLOCK_FREE));
-            else result = ERR_True;
-         }
-         return result;
+   ThreadLock lock(TL_PRIVATE_MEM, 4000);
+   if (lock.granted()) {
+      LONG result = ERR_False;
+      auto mem = glPrivateMemory.find(ObjectID);
+      if ((mem != glPrivateMemory.end()) and (mem->second.Object)) {
+         if (mem->second.Object->defined(NF::UNLOCK_FREE));
+         else result = ERR_True;
       }
-      else return log.warning(ERR_LockFailed);
+      return result;
    }
-   else return log.warning(ERR_NullArgs);
+   else return log.warning(ERR_LockFailed);
 }
 
 /*********************************************************************************************************************
@@ -1638,7 +1627,6 @@ AccessMemory: The function could not gain access to the shared objects table (in
 ERROR SetName(OBJECTPTR Object, CSTRING NewName)
 {
    parasol::Log log(__FUNCTION__);
-   SharedObjectHeader *header;
    LONG i;
 
    if ((!Object) or (!NewName)) return log.warning(ERR_NullArgs);
@@ -2135,8 +2123,6 @@ void WaitTime(LONG Seconds, LONG MicroSeconds)
 void remove_object_hash(OBJECTPTR Object)
 {
    parasol::Log log(__FUNCTION__);
-
-   if (Object->UID < 0) return; // Public objects not supported by this function
 
    OBJECTPTR *list;
    LONG list_size;

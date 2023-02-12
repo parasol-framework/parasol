@@ -588,7 +588,7 @@ Disable: Disables the target #Surface.
 static ERROR SCINTILLA_Disable(extScintilla *Self, APTR Void)
 {
    Self->Flags |= SCF_DISABLED;
-   DelayMsg(AC_Draw, Self->SurfaceID);
+   QueueAction(AC_Draw, Self->SurfaceID);
    return ERR_Okay;
 }
 
@@ -613,7 +613,7 @@ Enable: Enables the target #Surface.
 static ERROR SCINTILLA_Enable(extScintilla *Self, APTR Void)
 {
    Self->Flags &= ~SCF_DISABLED;
-   DelayMsg(AC_Draw, Self->SurfaceID);
+   QueueAction(AC_Draw, Self->SurfaceID);
    return ERR_Okay;
 }
 
@@ -883,7 +883,7 @@ static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
       Self->API->SetLexer(Self->Lexer);
    }
 
-   DelayMsg(AC_Draw, Self->SurfaceID);
+   QueueAction(AC_Draw, Self->SurfaceID);
 
    if (Self->LongestWidth) SCICALL(SCI_SETSCROLLWIDTH, Self->LongestWidth);
    else SCICALL(SCI_SETSCROLLWIDTH, 1UL);

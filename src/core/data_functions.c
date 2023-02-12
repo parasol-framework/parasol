@@ -9,7 +9,7 @@ FDEF argsAccessObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECT
 FDEF argsAccessPrivateObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "MilliSeconds", FD_LONG }, { 0, 0 } };
 FDEF argsAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Action", FD_LONG }, { "Object", FD_OBJECTPTR }, { "Parameters", FD_PTR }, { 0, 0 } };
 FDEF argsActionList[] = { { "Void", FD_VOID }, { "ActionTable:Actions", FD_ARRAY|FD_STRUCT|FD_RESULT }, { "Size", FD_LONG|FD_ARRAYSIZE|FD_RESULT }, { 0, 0 } };
-FDEF argsActionMsg[] = { { "Error", FD_LONG|FD_ERROR }, { "Action", FD_LONG }, { "Object", FD_OBJECTID }, { "Args", FD_PTR }, { "MessageID", FD_LONG }, { "ClassID", FD_LONG|FD_UNSIGNED }, { 0, 0 } };
+FDEF argsActionMsg[] = { { "Error", FD_LONG|FD_ERROR }, { "Action", FD_LONG }, { "Object", FD_OBJECTID }, { "Args", FD_PTR }, { 0, 0 } };
 FDEF argsActionThread[] = { { "Error", FD_LONG|FD_ERROR }, { "Action", FD_LONG }, { "Object", FD_OBJECTPTR }, { "Args", FD_PTR }, { "Callback", FD_FUNCTIONPTR }, { "Key", FD_LONG }, { 0, 0 } };
 FDEF argsAddInfoTag[] = { { "Error", FD_LONG|FD_ERROR }, { "FileInfo:Info", FD_PTR|FD_STRUCT }, { "Name", FD_STR }, { "Value", FD_STR }, { 0, 0 } };
 FDEF argsAddMsgHandler[] = { { "Error", FD_LONG|FD_ERROR }, { "Custom", FD_PTR }, { "MsgType", FD_LONG }, { "Routine", FD_FUNCTIONPTR }, { "MsgHandler:Handle", FD_PTR|FD_STRUCT|FD_RESOURCE|FD_ALLOC|FD_RESULT }, { 0, 0 } };
@@ -79,6 +79,7 @@ FDEF argsNotifySubscribers[] = { { "Void", FD_VOID }, { "Object", FD_OBJECTPTR }
 FDEF argsOpenDir[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Flags", FD_LONG }, { "DirInfo:Info", FD_PTR|FD_STRUCT|FD_RESOURCE|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 FDEF argsPreciseTime[] = { { "Result", FD_LARGE }, { 0, 0 } };
 FDEF argsProcessMessages[] = { { "Error", FD_LONG|FD_ERROR }, { "Flags", FD_LONG }, { "TimeOut", FD_LONG }, { 0, 0 } };
+FDEF argsQueueAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Action", FD_LONG }, { "Object", FD_OBJECTID }, { "Args", FD_PTR }, { 0, 0 } };
 FDEF argsReadFileToBuffer[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Buffer", FD_BUFFER|FD_PTR }, { "BufferSize", FD_LONG|FD_BUFSIZE }, { "Result", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsReallocMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Memory", FD_PTR }, { "Size", FD_LONG }, { "Address", FD_PTR|FD_ALLOC|FD_RESULT }, { "ID", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsRegisterFD[] = { { "Error", FD_LONG|FD_ERROR }, { "FD", FD_PTR }, { "Flags", FD_LONG }, { "Routine", FD_PTR }, { "Data", FD_PTR }, { 0, 0 } };
@@ -296,6 +297,7 @@ const struct Function glFunctions[] = {
    { (APTR)AnalysePath, "AnalysePath", argsAnalysePath },
    { (APTR)CreateFolder, "CreateFolder", argsCreateFolder },
    { (APTR)MoveFile, "MoveFile", argsMoveFile },
+   { (APTR)QueueAction, "QueueAction", argsQueueAction },
    { NULL, NULL, NULL }
 };
 

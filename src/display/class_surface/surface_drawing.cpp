@@ -167,7 +167,7 @@ ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG To
             .Height = childexpose.Bottom - childexpose.Top,
             .Flags  = 0
          };
-         DelayMsg(MT_DrwExpose, list[i].SurfaceID, &expose);
+         QueueAction(MT_DrwExpose, list[i].SurfaceID, &expose);
       }
    }
 

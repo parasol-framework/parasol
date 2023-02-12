@@ -1138,9 +1138,6 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 #define MSGID_VALIDATE_PROCESS 93
 #define MSGID_EVENT 94
 #define MSGID_DEBUG 95
-#define MSGID_ACTION_RESULT 96
-#define MSGID_GET_FIELD 97
-#define MSGID_SET_FIELD 98
 #define MSGID_ACTION 99
 #define MSGID_CORE_END 100
 #define MSGID_EXPOSE 100
@@ -1955,7 +1952,7 @@ struct CoreBase {
    ERROR (*_AccessMemory)(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR Result);
    ERROR (*_Action)(LONG Action, OBJECTPTR Object, APTR Parameters);
    void (*_ActionList)(struct ActionTable ** Actions, LONG * Size);
-   ERROR (*_ActionMsg)(LONG Action, OBJECTID Object, APTR Args, MEMORYID MessageID, CLASSID ClassID);
+   ERROR (*_ActionMsg)(LONG Action, OBJECTID Object, APTR Args);
    ERROR (*_KeyGet)(struct KeyStore * Store, ULONG Key, APTR Data, LONG * Size);
    CSTRING (*_ResolveClassID)(CLASSID ID);
    LONG (*_AllocateID)(LONG Type);
@@ -2097,13 +2094,14 @@ struct CoreBase {
    ERROR (*_AnalysePath)(CSTRING Path, LONG * Type);
    ERROR (*_CreateFolder)(CSTRING Path, LONG Permissions);
    ERROR (*_MoveFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
+   ERROR (*_QueueAction)(LONG Action, OBJECTID Object, APTR Args);
 };
 
 #ifndef PRV_CORE_MODULE
 inline ERROR AccessMemory(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessMemory(Memory,Flags,MilliSeconds,Result); }
 inline ERROR Action(LONG Action, OBJECTPTR Object, APTR Parameters) { return CoreBase->_Action(Action,Object,Parameters); }
 inline void ActionList(struct ActionTable ** Actions, LONG * Size) { return CoreBase->_ActionList(Actions,Size); }
-inline ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args, MEMORYID MessageID, CLASSID ClassID) { return CoreBase->_ActionMsg(Action,Object,Args,MessageID,ClassID); }
+inline ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args) { return CoreBase->_ActionMsg(Action,Object,Args); }
 inline ERROR KeyGet(struct KeyStore * Store, ULONG Key, APTR Data, LONG * Size) { return CoreBase->_KeyGet(Store,Key,Data,Size); }
 inline CSTRING ResolveClassID(CLASSID ID) { return CoreBase->_ResolveClassID(ID); }
 inline LONG AllocateID(LONG Type) { return CoreBase->_AllocateID(Type); }
@@ -2245,6 +2243,7 @@ inline CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding) { return Core
 inline ERROR AnalysePath(CSTRING Path, LONG * Type) { return CoreBase->_AnalysePath(Path,Type); }
 inline ERROR CreateFolder(CSTRING Path, LONG Permissions) { return CoreBase->_CreateFolder(Path,Permissions); }
 inline ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_MoveFile(Source,Dest,Callback); }
+inline ERROR QueueAction(LONG Action, OBJECTID Object, APTR Args) { return CoreBase->_QueueAction(Action,Object,Args); }
 #endif
 
 
@@ -2260,39 +2259,11 @@ inline ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { retur
 inline OBJECTPTR GetParentContext() { return (OBJECTPTR)(MAXINT)GetResource(RES_PARENT_CONTEXT); }
 inline APTR GetResourcePtr(LONG ID) { return (APTR)(MAXINT)GetResource(ID); }
 
-template<class T> inline ERROR SendAction(LONG Action, OBJECTID ObjectID, T *Args, MEMORYID MessageID) {
-   return ActionMsg(Action, ObjectID, Args, MessageID, 0);
-}
-
-template<class T> inline ERROR WaitMsg(LONG Action, OBJECTID ObjectID, T *Args) {
-   return ActionMsg(Action, ObjectID, Args, 0, (CLASSID)-2);
-}
-
-template<class T> inline ERROR DelayAction(LONG Action, OBJECTID ObjectID, T *Args) {
-   return ActionMsg(Action, ObjectID, Args, 0, (CLASSID)-1);
-}
-
-inline ERROR DelayMsg(LONG Action, OBJECTID ObjectID) {
-   return ActionMsg(Action, ObjectID, NULL, 0, (CLASSID)-1);
-}
-
-template<class T> inline ERROR DelayMsg(LONG Action, OBJECTID ObjectID, T *Args) {
-   return ActionMsg(Action, ObjectID, Args, 0, (CLASSID)-1);
-}
-
-inline ERROR ActionMsgPort(LONG Action, OBJECTID ObjectID, APTR Args, MEMORYID MessageID, CLASSID ClassID) {
-   return ActionMsg(Action, ObjectID, Args, MessageID, ClassID);
-}
-
 inline ERROR StrMatch(CSTRING A, CSTRING B) {
    return StrCompare(A, B, 0, STR_MATCH_LEN);
 }
 
 #ifndef PRV_CORE_MODULE
-
-inline ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args) {
-   return ActionMsg(Action, Object, Args, 0, 0);
-}
 
 inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address) {
    return AllocMemory(Size, Flags, Address, NULL);
@@ -2316,6 +2287,10 @@ inline ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo) {
 
 inline ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo) {
    return MemoryPtrInfo(Address,MemInfo,sizeof(struct MemInfo));
+}
+
+inline ERROR QueueAction(LONG Action, OBJECTID ObjectID) {
+   return QueueAction(Action, ObjectID, NULL);
 }
 
 #endif
@@ -2406,7 +2381,6 @@ struct BaseClass { // Must be 64-bit aligned
    BYTE ActionDepth;            // Incremented each time an action or method is called on the object
 
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
-   inline bool isPublic() { return (Flags & NF::PUBLIC) != NF::NIL; }
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
    inline bool isSubClass() { return SubID != 0; }
    inline OBJECTID ownerID() { return OwnerID; }
@@ -3937,8 +3911,6 @@ inline ERROR acRefresh(OBJECTID ObjectID) { return ActionMsg(AC_Refresh, ObjectI
 inline ERROR acSaveSettings(OBJECTID ObjectID) { return ActionMsg(AC_SaveSettings, ObjectID, NULL); }
 inline ERROR acShow(OBJECTID ObjectID) { return ActionMsg(AC_Show, ObjectID, NULL); }
 
-// The number of bytes written is not returned (you would need to use DelayMsg() for that).
-
 inline ERROR acWrite(OBJECTID ObjectID, CPTR Buffer, LONG Bytes) {
    struct acWrite write = { (BYTE *)Buffer, Bytes };
    return ActionMsg(AC_Write, ObjectID, &write);
@@ -4012,17 +3984,12 @@ struct SemaphoreEntry {   // The index of each semaphore in the array indicates 
    //LONG     FIFO[10];       // List of processes currently queued for access
 };
 
-// Message structure and internal ID's for standard Task-to-Task messages.
-
 struct ActionMessage {
-   WORD ActionID;            // ID of the action or method to execute
-   UWORD SendArgs:1;         //
-   UWORD ReturnResult:1;     // Set to TRUE if a result is required
-   UWORD Delayed:1;          // TRUE if the message was intentionally delayed
-   MEMORYID ReturnMessage;   // If ReturnResult is TRUE, the message queue for the result message must be set here
    OBJECTID ObjectID;        // The object that is to receive the action
-   ERROR Error;              // If a result is required, the action's error code is returned here by MSGID_ACTIONRESULT
    LONG  Time;
+   ACTIONID ActionID;        // ID of the action or method to execute
+   bool SendArgs;            //
+
    // Action arguments follow this structure in a buffer
 };
 

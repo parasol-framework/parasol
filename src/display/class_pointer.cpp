@@ -306,8 +306,8 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
 
       //if ((modal_id) and (modal_id != Self->OverObjectID)) {
       //   log.branch("Surface %d is modal, button click on %d cancelled.", modal_id, Self->OverObjectID);
-      //   DelayMsg(AC_MoveToFront, modal_id);
-      //   DelayMsg(AC_Focus, modal_id);
+      //   QueueAction(AC_MoveToFront, modal_id);
+      //   QueueAction(AC_Focus, modal_id);
       //}
 
       //if (!modal_id) {
@@ -341,7 +341,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
          }
          else target = Self->OverObjectID;
 
-         DelayMsg(AC_Focus, target);
+         QueueAction(AC_Focus, target);
 
          call_userinput("ButtonPress", &userinput, uiflags, target, Self->OverObjectID,
             Self->X, Self->Y, Self->OverX, Self->OverY);

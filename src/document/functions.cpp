@@ -4902,42 +4902,42 @@ static ERROR keypress(extDocument *Self, LONG Flags, LONG Value, LONG Unicode)
          scroll.DeltaX = 0;
          scroll.DeltaY = Self->AreaHeight;
          scroll.DeltaZ = 0;
-         DelayMsg(AC_Scroll, Self->SurfaceID, &scroll);
+         QueueAction(AC_Scroll, Self->SurfaceID, &scroll);
          break;
 
       case K_PAGE_UP:
          scroll.DeltaX = 0;
          scroll.DeltaY = -Self->AreaHeight;
          scroll.DeltaZ = 0;
-         DelayMsg(AC_Scroll, Self->SurfaceID, &scroll);
+         QueueAction(AC_Scroll, Self->SurfaceID, &scroll);
          break;
 
       case K_LEFT:
          scroll.DeltaX = -10;
          scroll.DeltaY = 0;
          scroll.DeltaZ = 0;
-         DelayMsg(AC_Scroll, Self->SurfaceID, &scroll);
+         QueueAction(AC_Scroll, Self->SurfaceID, &scroll);
          break;
 
       case K_RIGHT:
          scroll.DeltaX = 10;
          scroll.DeltaY = 0;
          scroll.DeltaZ = 0;
-         DelayMsg(AC_Scroll, Self->SurfaceID, &scroll);
+         QueueAction(AC_Scroll, Self->SurfaceID, &scroll);
          break;
 
       case K_DOWN:
          scroll.DeltaX = 0;
          scroll.DeltaY = 10;
          scroll.DeltaZ = 0;
-         DelayMsg(AC_Scroll, Self->SurfaceID, &scroll);
+         QueueAction(AC_Scroll, Self->SurfaceID, &scroll);
          break;
 
       case K_UP:
          scroll.DeltaX = 0;
          scroll.DeltaY = -10;
          scroll.DeltaZ = 0;
-         DelayMsg(AC_Scroll, Self->SurfaceID, &scroll);
+         QueueAction(AC_Scroll, Self->SurfaceID, &scroll);
          break;
    }
 
@@ -5685,11 +5685,11 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
                continue;
             }
             else if (Flags & ULD_TERMINATE) acFree(resource->ObjectID);
-            else DelayMsg(AC_Free, resource->ObjectID);
+            else QueueAction(AC_Free, resource->ObjectID);
          }
          else if (resource->Type IS RT_OBJECT_UNLOAD_DELAY) {
             if (Flags & ULD_TERMINATE) acFree(resource->ObjectID);
-            else DelayMsg(AC_Free, resource->ObjectID);
+            else QueueAction(AC_Free, resource->ObjectID);
          }
          else acFree(resource->ObjectID);
 

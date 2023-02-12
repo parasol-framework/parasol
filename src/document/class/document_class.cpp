@@ -490,7 +490,7 @@ static ERROR DOCUMENT_Disable(extDocument *Self, APTR Void)
 static ERROR DOCUMENT_Draw(extDocument *Self, APTR Void)
 {
    if (Self->SurfaceID) {
-      if (Self->Processing) DelayMsg(AC_Draw, Self->UID);
+      if (Self->Processing) QueueAction(AC_Draw, Self->UID);
       else redraw(Self, FALSE);
       return ERR_Okay;
    }
@@ -1276,7 +1276,7 @@ static ERROR DOCUMENT_Refresh(extDocument *Self, APTR Void)
 
    if (Self->Processing) {
       log.msg("Recursion detected - refresh will be delayed.");
-      DelayMsg(AC_Refresh, Self->UID);
+      QueueAction(AC_Refresh, Self->UID);
       return ERR_Okay;
    }
 

@@ -473,7 +473,7 @@ static void notify_free_parent(OBJECTPTR Object, ACTIONID ActionID, ERROR Result
 
    Self->Flags &= ~RNF_VISIBLE;
    UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
-   if (Self->defined(NF::INTEGRAL)) DelayMsg(AC_Free, Self->UID); // If the object is a child of something, give the parent object time to do the deallocation itself
+   if (Self->defined(NF::INTEGRAL)) QueueAction(AC_Free, Self->UID); // If the object is a child of something, give the parent object time to do the deallocation itself
    else acFree(Self);
 }
 
@@ -2548,7 +2548,7 @@ static ERROR SURFACE_Scroll(extSurface *Self, struct acScroll *Args)
             gfxReleaseList(ARF_READ);
 
             struct acMove move = { -Args->DeltaX, -Args->DeltaY, -Args->DeltaZ };
-            for (LONG i=0; i < t; i++) DelayMsg(AC_Move, surfaces[i], &move);
+            for (LONG i=0; i < t; i++) QueueAction(AC_Move, surfaces[i], &move);
          }
       }
    }
@@ -2583,7 +2583,7 @@ static ERROR SURFACE_ScrollToPoint(extSurface *Self, struct acScrollToPoint *Arg
          gfxReleaseList(ARF_READ);
 
          struct acMoveToPoint move = { -Args->X, -Args->Y, -Args->Z, Args->Flags };
-         for (i=0; i < t; i++) DelayMsg(AC_MoveToPoint, surfaces[i], &move);
+         for (i=0; i < t; i++) QueueAction(AC_MoveToPoint, surfaces[i], &move);
       }
    }
 
@@ -2628,9 +2628,9 @@ static ERROR SURFACE_SetOpacity(extSurface *Self, struct drwSetOpacity *Args)
       SET_Opacity(Self, value);
    }
 
-   // Use the DelayMsg() feature so that we don't end up with major lag problems when SetOpacity is being used for things like fading.
+   // Use the QueueAction() feature so that we don't end up with major lag problems when SetOpacity is being used for things like fading.
 
-   if (Self->Flags & RNF_VISIBLE) DelayMsg(MT_DrwInvalidateRegion, Self->UID);
+   if (Self->Flags & RNF_VISIBLE) QueueAction(MT_DrwInvalidateRegion, Self->UID);
 
    return ERR_Okay;
 }

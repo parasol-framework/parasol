@@ -29,7 +29,7 @@ EXPORT void CloseCore(void)
    tlDepth   = 0;
 
    if (glClassFileID) {
-      ActionMsg(AC_Free, glClassFileID, NULL, 0, 0);
+      ActionMsg(AC_Free, glClassFileID, NULL);
       glClassFileID = 0;
    }
 
@@ -185,7 +185,7 @@ EXPORT void CloseCore(void)
          if (children.size() > 0) {
             log.branch("Freeing %d objects allocated to task #%d.", (LONG)children.size(), glCurrentTask->UID);
 
-            for (const auto id : children) ActionMsg(AC_Free, id, NULL, 0, 0);
+            for (const auto id : children) ActionMsg(AC_Free, id, NULL);
          }
          else log.msg("There are no child objects belonging to task #%d.", glCurrentTask->UID);
       }
@@ -322,7 +322,7 @@ EXPORT void CloseCore(void)
       }
 
       if (SystemTaskID) {
-         ActionMsg(AC_Free, SystemTaskID, NULL, 0, 0);
+         ActionMsg(AC_Free, SystemTaskID, NULL);
          SystemTaskID = 0;
       }
 

@@ -405,14 +405,7 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
       if (((Flags & (NF::UNIQUE|NF::NAME)) != NF::NIL) and (Name)) SetName(head, Name); // Set the object's name if it was specified
 
       head->Flags = head->Flags & (~NF::NEW_OBJECT);
-      if (head->isPublic()) {
-         if (Object) { // All we need to do is set the Locked flag rather than making a call to AccessObject()
-            head->Locked = TRUE;
-            *Object = head;
-         }
-         else ReleaseMemoryID(head_id);
-      }
-      else if (Object) *Object = head;
+      if (Object) *Object = head;
 
       return ERR_Okay;
    }

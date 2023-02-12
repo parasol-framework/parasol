@@ -343,7 +343,7 @@ void handle_exposure(XExposeEvent *event)
       XEvent xevent;
       while (XCheckWindowEvent(XDisplay, event->window, ExposureMask, &xevent) IS True);
       struct drwExpose region = { .X = 0, .Y = 0, .Width = 20000, .Height = 20000, .Flags = EXF_CHILDREN };
-      DelayMsg(MT_DrwExpose, surface_id, &region); // Redraw everything
+      QueueAction(MT_DrwExpose, surface_id, &region); // Redraw everything
    }
    else log.warning("XEvent.Expose: Failed to find a Surface ID for window %u.", (ULONG)event->window);
 }
