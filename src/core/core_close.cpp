@@ -726,39 +726,18 @@ static void free_shared_control(void)
    glTaskEntry = NULL;
 
    if (!SysLock(PL_FORBID, 4000)) {
-      LONG i;
-      LONG taskcount = 0;
-
-      // Check if we are the last active task
-
-      if ((glMasterTask) and (glSharedControl->GlobalInstance) and
-          (glInstanceID IS glSharedControl->GlobalInstance)) {
-         // If we're the master, global task for everything, we're taking all the resources down, no matter what else
-         // we have running.
-      }
-      else for (LONG i=0; i < MAX_TASKS; i++) {
-         if (shTasks[i].ProcessID) {
-            if ((kill(shTasks[i].ProcessID, 0) IS -1) and (errno IS ESRCH));
-            else taskcount++;
-         }
-      }
-
-      if (taskcount < 1) {
-         for (i=1; i < PL_END; i++) free_public_lock(i);
-      }
+      for (LONG i=1; i < PL_END; i++) free_public_lock(i);
 
       #ifdef USE_SHM
-         if (taskcount < 1) {
-            // Mark all shared memory blocks for deletion.
-            //
-            // You can check the success of this routine by running "ipcs", which lists allocated shm blocks.
+         // Mark all shared memory blocks for deletion.
+         //
+         // You can check the success of this routine by running "ipcs", which lists allocated shm blocks.
 
-            for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
-               if (glSharedBlocks[i].MemoryID) {
-                  LONG id;
-                  if ((id = shmget(SHMKEY + glSharedBlocks[i].MemoryID, glSharedBlocks[i].Size, S_IRWXO|S_IRWXG|S_IRWXU)) != -1) {
-                     shmctl(id, IPC_RMID, NULL);
-                  }
+         for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
+            if (glSharedBlocks[i].MemoryID) {
+               LONG id;
+               if ((id = shmget(SHMKEY + glSharedBlocks[i].MemoryID, glSharedBlocks[i].Size, S_IRWXO|S_IRWXG|S_IRWXU)) != -1) {
+                  shmctl(id, IPC_RMID, NULL);
                }
             }
          }
@@ -768,18 +747,14 @@ static void free_shared_control(void)
          shmdt(glSharedControl);
          glSharedControl = NULL;
 
-         if (taskcount < 1) {
-            KMSG("This is the last process - now marking the shared mempool for deletion.\n");
+         KMSG("This is the last process - now marking the shared mempool for deletion.\n");
 
-            if (glSharedControlID != -1) {
-               if (shmctl(glSharedControlID, IPC_RMID, NULL) IS -1) {
-                  KERR("shmctl() failed to kill the public memory pool: %s\n", strerror(errno));
-               }
-               glSharedControlID = -1;
+         if (glSharedControlID != -1) {
+            if (shmctl(glSharedControlID, IPC_RMID, NULL) IS -1) {
+               KERR("shmctl() failed to kill the public memory pool: %s\n", strerror(errno));
             }
+            glSharedControlID = -1;
          }
-         else log.msg("There are %d tasks left in the system.", taskcount);
-
       #else
 
          SysUnlock(PL_FORBID);
@@ -794,15 +769,12 @@ static void free_shared_control(void)
 
          // Delete the memory mapped file if this is the last process to use it
 
-         if (taskcount < 1) {
-            #ifndef __ANDROID__
-               if (glDebugMemory IS FALSE) {
-                  log.msg("I am the last task - now closing the memory mapping.");
-                  unlink(MEMORYFILE);
-               }
-            #endif
-         }
-         else log.msg("There are %d tasks left in the system.", taskcount);
+         #ifndef __ANDROID__
+            if (glDebugMemory IS FALSE) {
+               log.msg("I am the last task - now closing the memory mapping.");
+               unlink(MEMORYFILE);
+            }
+         #endif
 
       #endif
    }

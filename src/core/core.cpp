@@ -108,7 +108,7 @@ extern "C" ERROR add_storage_class(void);
 LONG InitCore(void);
 extern "C" EXPORT void CloseCore(void);
 extern "C" EXPORT struct CoreBase * OpenCore(OpenInfo *);
-static ERROR open_shared_control(BYTE);
+static ERROR open_shared_control(void);
 static ERROR init_shared_control(void);
 static ERROR load_modules(void);
 static ERROR init_volumes(std::forward_list<CSTRING> &);
@@ -177,7 +177,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    LONG i;
    OBJECTPTR SystemTask;
    ERROR error;
-   UBYTE solo;
 
    if (!Info) return NULL;
    if (Info->Flags & OPF_ERROR) Info->Error = ERR_Failed;
@@ -385,18 +384,10 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    }
 #endif
 
-   // Process arguments
-   //
-   // --solo:
-   //   Wait for all other running tasks to stop (unload the main semaphore).  Once this has occurred, continue the Core
-   //   initialisation.  Useful for relaunching the system from a new disk location with new glSemaphore stuff - module
-   //   references etc.
-
    std::forward_list<CSTRING> volumes;
 
    CSTRING newargs[Info->ArgCount];
    LONG na = 0;
-   solo = FALSE;
    if (Info->Flags & OPF_ARGS) {
       for (i=1; i < Info->ArgCount; i++) {
          auto arg = Info->Args[i];
@@ -423,8 +414,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          else if ((!StrMatch(arg, "set-volume")) and (i+1 < Info->ArgCount)) { // --set-volume scripts=my:location/
             volumes.emplace_front(Info->Args[++i]);
          }
-         else if (!StrMatch(arg, "global"))      Info->Flags |= OPF_GLOBAL_INSTANCE;
-         else if (!StrMatch(arg, "solo"))        solo = TRUE;
          else if (!StrMatch(arg, "sync"))        glSync = TRUE;
          else if (!StrMatch(arg, "log-none"))    glLogLevel = 0;
          else if (!StrMatch(arg, "log-error"))   glLogLevel = 1;
@@ -539,64 +528,34 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    }
    else log.msg("A debugger is active.");
 
-   if (!(Info->Flags & OPF_GLOBAL_INSTANCE)) {
-      // This process isn't a global instance, so check if there's an existing global process that we can attach to.
-      // If not, generate resource names that are unique to this process and limit resource access so that they are
-      // only available to child processes.
+   // Process will run standalone - generate unique resource names based on our process ID.
 
+   {
       WINHANDLE handle;
-      bool standalone = true;
-
-      if (!open_public_lock(&handle, glPublicLocks[PL_FORBID].Name)) { // Existing mutex resource is accessible
-         free_public_lock(handle);
-
-         if (!open_public_waitlock(&handle, glPublicLocks[CN_SEMAPHORES].Name)) { // Existing event resource is accessible
-            free_public_waitlock(handle);
-            log.trace("This process will attach to an existing global process.");
-            standalone = false;
-         }
-         else log.trace("Unable to access all parent process' locks, will run standalone");
-      }
-
-      if (standalone) { // Process will run standalone - generate unique resource names based on our process ID.
-         LONG id = glProcessID;
-         static const char lookup[] = "0123456789ABCDEF";
-         while (1) {
-            for (LONG p=1; p < PL_END; p++) {
-               LONG mid = id;
-               for (LONG i=3; i < 11; i++) {
-                  glPublicLocks[p].Name[i] = lookup[mid & 0xf];
-                  mid = mid>>4;
-               }
-            }
-
-            // Check that the resource name is unique, otherwise keep looping.
-            if (open_public_lock(&handle, glPublicLocks[PL_FORBID].Name) != ERR_Okay) break;
-
-            free_public_lock(handle);
-            id += 17; // Alter the id with a prime number
-         }
-      }
-   }
-
-   // If going solo, we need to wait for all other programs using this install to release the shared control semaphore
-
-   if (solo) {
-      log.trace("Process will only run solo - will wait if other processes are running.");
+      LONG id = glProcessID;
+      static const char lookup[] = "0123456789ABCDEF";
       while (1) {
-         WINHANDLE handle;
-         if (!open_public_lock(&handle, glPublicLocks[PL_FORBID].Name)) {
-            free_public_lock(handle);
-            winSleep(20);
+         for (LONG p=1; p < PL_END; p++) {
+            LONG mid = id;
+            for (LONG i=3; i < 11; i++) {
+               glPublicLocks[p].Name[i] = lookup[mid & 0xf];
+               mid = mid>>4;
+            }
          }
-         else break;
+
+         // Check that the resource name is unique, otherwise keep looping.
+         if (open_public_lock(&handle, glPublicLocks[PL_FORBID].Name) != ERR_Okay) break;
+
+         free_public_lock(handle);
+         id += 17; // Alter the id with a prime number
       }
    }
+
 #endif
 
    // Shared memory set-up
 
-   if (open_shared_control((Info->Flags & OPF_GLOBAL_INSTANCE) ? TRUE : FALSE) != ERR_Okay) {
+   if (open_shared_control() != ERR_Okay) {
       CloseCore();
       if (Info->Flags & OPF_ERROR) Info->Error = ERR_Failed;
       return NULL;
@@ -651,23 +610,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    #endif
 
    if (!SysLock(PL_FORBID, 4000)) {
-      if (glSharedControl->GlobalInstance) {
-         if (Info->Flags & OPF_GLOBAL_INSTANCE) {
-            // If a global instance is already active and OPF_GLOBAL_INSTANCE is set, we cannot proceed.
-
-            SysUnlock(PL_FORBID);
-            CloseCore();
-            if (Info->Flags & OPF_ERROR) Info->Error = ERR_GlobalInstanceLocked;
-            return NULL;
-         }
-         else {
-            // When a global instance is active, all tasks must relate to the same instance ID.
-
-            glInstanceID = glSharedControl->GlobalInstance;
-            glMasterTask = FALSE;
-         }
-      }
-
       // Register our process in the task control array.  First, check if a slot has been pre-allocated for our
       // task by the parent that launched us.  Otherwise, allocate a new slot.
 
@@ -746,10 +688,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       if (!glInstanceID) {
          glMasterTask = TRUE;
          if ((glInstanceID = glProcessID) < 0) glInstanceID = -glInstanceID;
-
-         if (Info->Flags & OPF_GLOBAL_INSTANCE) {
-            glSharedControl->GlobalInstance = glInstanceID;
-         }
 
          glSharedControl->InstanceMsgPort = glTaskMessageMID;
 
@@ -962,12 +900,6 @@ EXPORT void CleanSystem(LONG Flags)
 }
 
 //********************************************************************************************************************
-// If GlobalInstance is TRUE (because OPF_GLOBALINSTANCE was specified to OpenCore()), then the permissions and
-// nature of the public memory can be quite different to that of the standalone runtime environment.
-//
-// Basically, a global instance uses loose shared memory permissions and a bigger shared heap because apps will be
-// sharing more information and using common objects as audio and display surfaces.  OTOH a standalone runtime only
-// needs to concern itself with sharing information with the child processes that it creates (if any).
 
 #define MAGICKEY 0x58392712
 
@@ -979,11 +911,11 @@ static LONG glMemorySize = sizeof(SharedControl) +
                            (sizeof(TaskList) * MAX_TASKS);
 
 #ifdef _WIN32
-static ERROR open_shared_control(BYTE GlobalInstance)
+static ERROR open_shared_control(void)
 {
    parasol::Log log(__FUNCTION__);
 
-   log.trace("Global: %d", GlobalInstance);
+   log.trace("");
 
    ERROR error;
 
@@ -1028,7 +960,7 @@ static ERROR open_shared_control(BYTE GlobalInstance)
 
 #else
 
-static ERROR open_shared_control(BYTE GlobalInstance)
+static ERROR open_shared_control(void)
 {
    parasol::Log log("Core");
 
@@ -1045,7 +977,7 @@ static ERROR open_shared_control(BYTE GlobalInstance)
       }
    }
 
-   KMSG("open_shared_control(%d) Key: $%.8x.\n", GlobalInstance, memkey);
+   KMSG("open_shared_control() Key: $%.8x.\n", memkey);
 
    // Allocate the public memory pool
 
@@ -1100,10 +1032,8 @@ static ERROR open_shared_control(BYTE GlobalInstance)
       if ((glSharedControlID = shmget(memkey, 0, SHM_R|SHM_W)) IS -1) {
          KMSG("No existing memory block exists for the given key (will create a new one).  Error: %s\n", strerror(errno));
 
-         if (!GlobalInstance) {
-            // Since there's no global instance running and we've been told on initialisation not to be one, change the memkey with our PID to make it unique.
-            memkey ^= getpid();
-         }
+         // Change the memkey with our PID to make it unique.
+         memkey ^= getpid();
 
          if ((glSharedControlID = shmget(memkey, glMemorySize, IPC_CREAT|IPC_EXCL|SHM_R|SHM_W|S_IRWXO|S_IRWXG|S_IRWXU)) IS -1) {
             if (errno IS EEXIST); // The shared memory block already exists
@@ -1134,41 +1064,6 @@ static ERROR open_shared_control(BYTE GlobalInstance)
       if ((init) or (glSharedControl->MagicKey != MAGICKEY)) {
          KMSG("Initialisation of glSharedControl is required.\n");
          init_shared_control();
-      }
-      else if (glSharedControl->GlobalInstance) {
-         KMSG("Checking existing glSharedControl is valid (instance PID %d).\n", glSharedControl->GlobalInstance);
-
-         bool cleanup = false;
-
-         if ((kill(glSharedControl->GlobalInstance, 0) IS -1) and (errno IS ESRCH)) cleanup = true;
-
-         if (cleanup) {
-            // The global instance no longer exists - this indicates that a crash occurred and the IPC's weren't
-            // terminated correctly.
-
-            log.warning("Cleaning up system failure detected for previous execution.");
-
-            // Mark all previous shared memory blocks for deletion.
-            // You can check the success of this routine by running "ipcs", which lists allocated shm blocks.
-
-            LONG id;
-
-            shSemaphores = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
-            shTasks      = (TaskList *)ResolveAddress(glSharedControl, glSharedControl->TaskOffset);
-
-            if (glSharedControl->BlocksOffset) {
-               glSharedBlocks = (PublicAddress *)ResolveAddress(glSharedControl, glSharedControl->BlocksOffset);
-               for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
-                  if (glSharedBlocks[i].MemoryID) {
-                     if ((id = shmget(SHMKEY + glSharedBlocks[i].MemoryID, glSharedBlocks[i].Size, S_IRWXO|S_IRWXG|S_IRWXU)) != -1) {
-                        shmctl(id, IPC_RMID, NULL);
-                     }
-                  }
-               }
-            }
-
-            init_shared_control();
-         }
       }
 
    #else

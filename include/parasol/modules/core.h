@@ -931,9 +931,8 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 #define OPF_MODULE_PATH 0x00002000
 #define OPF_ROOT_PATH 0x00004000
 #define OPF_SCAN_MODULES 0x00008000
-#define OPF_GLOBAL_INSTANCE 0x00010000
-#define OPF_OPTIONS 0x00020000
-#define OPF_SHOW_PUBLIC_MEM 0x00040000
+#define OPF_OPTIONS 0x00010000
+#define OPF_SHOW_PUBLIC_MEM 0x00020000
 
 #define TOI_LOCAL_CACHE 0
 #define TOI_LOCAL_STORAGE 1
@@ -1172,34 +1171,33 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 
 #define RES_MESSAGE_QUEUE 1
 #define RES_CONSOLE_FD 2
-#define RES_GLOBAL_INSTANCE 3
-#define RES_SHARED_CONTROL 4
-#define RES_USER_ID 5
-#define RES_DISPLAY_DRIVER 6
-#define RES_PRIVILEGED_USER 7
-#define RES_PRIVILEGED 8
-#define RES_CORE_IDL 9
-#define RES_PARENT_CONTEXT 10
-#define RES_LOG_LEVEL 11
-#define RES_TOTAL_SHARED_MEMORY 12
-#define RES_TASK_CONTROL 13
-#define RES_TASK_LIST 14
-#define RES_MAX_PROCESSES 15
-#define RES_LOG_DEPTH 16
-#define RES_JNI_ENV 17
-#define RES_THREAD_ID 18
-#define RES_CURRENT_MSG 19
-#define RES_OPEN_INFO 20
-#define RES_EXCEPTION_HANDLER 21
-#define RES_NET_PROCESSING 22
-#define RES_PROCESS_STATE 23
-#define RES_TOTAL_MEMORY 24
-#define RES_TOTAL_SWAP 25
-#define RES_CPU_SPEED 26
-#define RES_SHARED_BLOCKS 27
-#define RES_FREE_MEMORY 28
-#define RES_FREE_SWAP 29
-#define RES_KEY_STATE 30
+#define RES_SHARED_CONTROL 3
+#define RES_USER_ID 4
+#define RES_DISPLAY_DRIVER 5
+#define RES_PRIVILEGED_USER 6
+#define RES_PRIVILEGED 7
+#define RES_CORE_IDL 8
+#define RES_PARENT_CONTEXT 9
+#define RES_LOG_LEVEL 10
+#define RES_TOTAL_SHARED_MEMORY 11
+#define RES_TASK_CONTROL 12
+#define RES_TASK_LIST 13
+#define RES_MAX_PROCESSES 14
+#define RES_LOG_DEPTH 15
+#define RES_JNI_ENV 16
+#define RES_THREAD_ID 17
+#define RES_CURRENT_MSG 18
+#define RES_OPEN_INFO 19
+#define RES_EXCEPTION_HANDLER 20
+#define RES_NET_PROCESSING 21
+#define RES_PROCESS_STATE 22
+#define RES_TOTAL_MEMORY 23
+#define RES_TOTAL_SWAP 24
+#define RES_CPU_SPEED 25
+#define RES_SHARED_BLOCKS 26
+#define RES_FREE_MEMORY 27
+#define RES_FREE_SWAP 28
+#define RES_KEY_STATE 29
 
 // Path types for SetResourcePath()
 
@@ -4028,7 +4026,6 @@ struct SharedControl {
    LONG TaskOffset;                 // Offset to the task control array
    LONG MemoryOffset;               // Offset to the shared memory allocations
    LONG WLOffset;                   // Offset to the wait-lock array
-   LONG GlobalInstance;             // If glSharedControl belongs to a global instance, this is the PID of the creator.
    LONG SurfaceSemaphore;
    LONG InputSize;                  // Maximum number of subscribers allowed in InputMID
    LONG InstanceMsgPort;            // The message port of the process that created the instance.

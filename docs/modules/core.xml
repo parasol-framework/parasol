@@ -3805,7 +3805,6 @@ end
       <const name="CORE_VERSION"/>
       <const name="DETAIL"/>
       <const name="ERROR"/>
-      <const name="GLOBAL_INSTANCE"/>
       <const name="JUMPTABLE"/>
       <const name="MAX_DEPTH"/>
       <const name="MODULE_PATH"/>
@@ -3920,7 +3919,6 @@ end
       <const name="CURRENT_MSG">Returns a Message structure if the program is currently processing a message - otherwise returns NULL.  This resource type is meaningful only during a ProcessMessages call.</const>
       <const name="FREE_MEMORY">The total amount of free memory.</const>
       <const name="FREE_SWAP">The total amount of free swap memory.</const>
-      <const name="GLOBAL_INSTANCE">If a global instance is active, this resource holds the instance ID.  Otherwise the value is 0.</const>
       <const name="JNI_ENV">Return the current JNI environment string.</const>
       <const name="KEY_STATE">Maintains the state of key qualifiers such as caps-lock and the shift keys.</const>
       <const name="LOG_DEPTH">The current depth of log messages.</const>

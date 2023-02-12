@@ -199,7 +199,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "MODULE_PATH",
     "ROOT_PATH",
     "SCAN_MODULES",
-    "GLOBAL_INSTANCE",
     "OPTIONS",
     "SHOW_PUBLIC_MEM") -- Show shared memory allocations only (ignore private).
 
@@ -410,7 +409,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
   enum("RES", { start=1 },
     "MESSAGE_QUEUE: Use this resource to retrieve the message queue ID of the current task.",
     "CONSOLE_FD: Internal reference to the FD of the console.",
-    "GLOBAL_INSTANCE: If a global instance is active, this resource holds the instance ID.  Otherwise the value is 0.",
     "SHARED_CONTROL: Internal pointer to the SharedControl structure.",
     "USER_ID: Internal",
     "DISPLAY_DRIVER: Internal.  Passes the name of the preferred display driver to the display module.",
@@ -2588,7 +2586,6 @@ struct SharedControl {
    LONG TaskOffset;                 // Offset to the task control array
    LONG MemoryOffset;               // Offset to the shared memory allocations
    LONG WLOffset;                   // Offset to the wait-lock array
-   LONG GlobalInstance;             // If glSharedControl belongs to a global instance, this is the PID of the creator.
    LONG SurfaceSemaphore;
    LONG InputSize;                  // Maximum number of subscribers allowed in InputMID
    LONG InstanceMsgPort;            // The message port of the process that created the instance.

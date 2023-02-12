@@ -973,7 +973,6 @@ LARGE GetResource(LONG Resource)
    switch(Resource) {
       case RES_MESSAGE_QUEUE:   return glTaskMessageMID;
       case RES_SHARED_CONTROL:  return (MAXINT)glSharedControl;
-      case RES_GLOBAL_INSTANCE: return glSharedControl->GlobalInstance;
       case RES_PRIVILEGED:      return glPrivileged;
       case RES_KEY_STATE:       return glKeyState;
       case RES_LOG_LEVEL:       return glLogLevel;
@@ -1754,10 +1753,6 @@ LARGE SetResource(LONG Resource, LARGE Value)
 #else
       case RES_NET_PROCESSING: break;
 #endif
-
-      case RES_GLOBAL_INSTANCE:
-         log.function("Global instance can only be requested on Core initialisation.");
-         break;
 
       case RES_JNI_ENV: glJNIEnv = L64PTR(Value); break;
 
