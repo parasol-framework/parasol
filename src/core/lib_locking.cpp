@@ -1975,7 +1975,7 @@ void ReleasePrivateObject(OBJECTPTR Object)
          // are removed so that no thread will attempt to use it during deallocation.
 
          if (Object->defined(NF::UNLOCK_FREE) and (!Object->defined(NF::FREE))) {
-            set_object_flags(Object, Object->Flags & (~NF::UNLOCK_FREE));
+            Object->Flags &= ~NF::UNLOCK_FREE;
             acFree(Object);
 
             cond_wake_all(CN_OBJECTS);
@@ -1987,7 +1987,7 @@ void ReleasePrivateObject(OBJECTPTR Object)
       else exit(0);
    }
    else if (Object->defined(NF::UNLOCK_FREE) and (!Object->defined(NF::FREE))) {
-      set_object_flags(Object, Object->Flags & (~NF::UNLOCK_FREE));
+      Object->Flags &= ~NF::UNLOCK_FREE;
       acFree(Object);
    }
 }

@@ -999,7 +999,6 @@ void   remove_semaphores(void);
 ERROR  resolve_args(APTR, const struct FunctionField *);
 APTR   resolve_public_address(struct PublicAddress *);
 void   scan_classes(void);
-void   set_object_flags(OBJECTPTR, NF);
 ERROR  sort_class_fields(extMetaClass *, struct Field *);
 void   remove_threadpool(void);
 ERROR  threadpool_get(extThread **);

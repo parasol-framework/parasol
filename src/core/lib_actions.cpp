@@ -1064,7 +1064,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
 
    if ((Object->Locked) or (Object->ThreadPending)) {
       log.debug("Object #%d locked; marking for deletion.", Object->UID);
-      set_object_flags(Object, Object->Flags|NF::UNLOCK_FREE);
+      Object->Flags |= NF::UNLOCK_FREE;
       return ERR_Okay|ERF_Notified;
    }
 
@@ -1078,7 +1078,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
    if (Object->ActionDepth > 0) { // Free() is being called while the object itself is still in use.  This can be an issue with private objects that haven't been locked with AccessObject().
       log.trace("Free() attempt while object is in use.");
       if (!Object->defined(NF::COLLECT)) {
-         set_object_flags(Object, Object->Flags|NF::COLLECT);
+         Object->Flags |= NF::COLLECT;
          ActionMsg(AC_Free, Object->UID, NULL);
       }
       return ERR_Okay|ERF_Notified;
@@ -1120,7 +1120,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
    // Mark the object as being in the free process.  The mark prevents any further access to the object via
    // AccessObject().  Classes may also use the flag to check if an object is in the process of being freed.
 
-   set_object_flags(Object, (Object->Flags|NF::FREE) & (~NF::UNLOCK_FREE));
+   Object->Flags = (Object->Flags|NF::FREE) & (~NF::UNLOCK_FREE);
 
    NotifySubscribers(Object, AC_Free, NULL, ERR_Okay);
 
@@ -1225,7 +1225,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
             error = cl->ActionTable[AC_Init].PerformAction(Object, NULL);
          }
 
-         if (!error) set_object_flags(Object, Object->Flags|NF::INITIALISED);
+         if (!error) Object->Flags |= NF::INITIALISED;
       }
 
       return error;
@@ -1249,7 +1249,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
          else error = ERR_Okay; // If no initialiser defined, auto-OK
 
          if (!error) {
-            set_object_flags(Object, Object->Flags|NF::INITIALISED);
+            Object->Flags |= NF::INITIALISED;
 
             if (Object->ExtClass != cl) {
                // Due to the switch, increase the open count of the sub-class (see NewObject() for details on object
@@ -1317,7 +1317,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
                if (Object->ExtClass->ActionTable[AC_Init].PerformAction) {
                   if (!(error = Object->ExtClass->ActionTable[AC_Init].PerformAction(Object, NULL))) {
                      log.msg("Object class switched to sub-class \"%s\".", Object->className());
-                     set_object_flags(Object, Object->Flags|NF::INITIALISED);
+                     Object->Flags |= NF::INITIALISED;
                      Object->ExtClass->OpenCount++;
                      return ERR_Okay;
                   }

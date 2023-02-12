@@ -109,12 +109,7 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
          head->ThreadMsg = tlThreadWriteMsg; // If the object needs to belong to a thread, this will record it.
       }
 
-      // Note that the untracked flag is turned off because if it is left on, objects will allocate their children as
-      // being untracked (due to use of ObjectFlags as a reference for child allocation).   We don't want our tracking to
-      // be screwed up do we...
-
-      set_object_flags(head, Flags);
-      head->Flags |= NF::NEW_OBJECT;
+      head->Flags = Flags | NF::NEW_OBJECT;
 
       // Tracking for our new object is configured here.
 
@@ -311,11 +306,7 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
    }
 
    if (!error) {
-      // Note that the untracked flag is turned off because if it is left on, objects will allocate their children as
-      // being untracked (due to use of ObjectFlags as a reference for child allocation).
-
-      set_object_flags(head, Flags);
-      head->Flags = head->Flags | NF::NEW_OBJECT;
+      head->Flags = Flags | NF::NEW_OBJECT;
 
       // Tracking for our newly created object is configured here.
 
@@ -394,14 +385,14 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
 
       if (((Flags & (NF::UNIQUE|NF::NAME)) != NF::NIL) and (Name)) SetName(head, Name); // Set the object's name if it was specified
 
-      head->Flags = head->Flags & (~NF::NEW_OBJECT);
+      head->Flags &= ~NF::NEW_OBJECT;
       if (Object) *Object = head;
 
       return ERR_Okay;
    }
    else {
       if (head) {
-         head->Flags = head->Flags & (~NF::NEW_OBJECT);
+         head->Flags &= ~NF::NEW_OBJECT;
 
          if (private_lock) ReleasePrivateObject(head);
          FreeResource(head);

@@ -2071,10 +2071,3 @@ void remove_object_hash(OBJECTPTR Object)
    }
    else log.trace("No hash entry for object '%s'", Object->Stats->Name);
 }
-
-//********************************************************************************************************************
-
-void set_object_flags(OBJECTPTR Object, NF Flags)
-{
-   Object->Flags = Flags;
-}
