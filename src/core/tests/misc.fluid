@@ -92,7 +92,7 @@ function testObjectSearches()
    -- Test FindPrivateObject()
 
    local err, obj = mSys.FindPrivateObject('TestFO')
-   assert(err == ERR_Okay, 'Failed to find private object: ' .. mSys.GetErrorMsg(err))
+   assert(err == ERR_Okay, 'Failed to find object: ' .. mSys.GetErrorMsg(err))
    assert(obj.id == objlist[10], 'Expected the most recently created object of #' .. objlist[10] .. ', got ' .. obj.id)
 
    -- Test ListChildren()

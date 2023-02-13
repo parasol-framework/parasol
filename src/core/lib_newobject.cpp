@@ -266,7 +266,7 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
 
    // Force certain flags on the class' behalf
 
-   if (mc->Flags & CLF_NO_OWNERSHIP)   Flags |= NF::UNTRACKED;
+   if (mc->Flags & CLF_NO_OWNERSHIP) Flags |= NF::UNTRACKED;
 
    log.branch("%s #%d, Flags: $%x", mc->ClassName, glSharedControl->PrivateIDCounter, LONG(Flags));
 
@@ -275,13 +275,11 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
    ERROR error      = ERR_Okay;
 
    if (((Flags & NF::UNIQUE) != NF::NIL) and (Name)) {
-      if ((Flags & NF::UNIQUE) != NF::NIL) {
-         OBJECTID search_id;
-         LONG count = 1;
-         if ((!FindObject(Name, class_id, FOF_SMART_NAMES, &search_id, &count)) and (search_id)) {
-            *ObjectID = search_id;
-            return ERR_ObjectExists; // Must be ERR_ObjectExists for client benefit.
-         }
+      OBJECTID search_id;
+      LONG count = 1;
+      if ((!FindObject(Name, class_id, FOF_SMART_NAMES, &search_id, &count)) and (search_id)) {
+         *ObjectID = search_id;
+         return ERR_ObjectExists; // Must be ERR_ObjectExists for client benefit.
       }
    }
 

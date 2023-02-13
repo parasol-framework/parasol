@@ -437,9 +437,6 @@ class extTask : public objTask {
    FUNCTION ExitCallback;
    FUNCTION InputCallback;
    struct MsgHandler *MsgAction;
-   struct MsgHandler *MsgGetField;
-   struct MsgHandler *MsgSetField;
-   struct MsgHandler *MsgActionResult;
    struct MsgHandler *MsgDebug;
    struct MsgHandler *MsgWaitForObjects;
    struct MsgHandler *MsgValidateProcess;
@@ -470,7 +467,7 @@ class extModule : public objModule {
 //********************************************************************************************************************
 // Class database.
 
-struct ClassEntry {
+struct ClassRecord {
    CLASSID ClassID;
    CLASSID ParentID;
    LONG Category;
@@ -481,9 +478,9 @@ struct ClassEntry {
 
    static const LONG MIN_SIZE = sizeof(CLASSID) + sizeof(CLASSID) + sizeof(LONG) + (sizeof(LONG) * 4);
 
-   ClassEntry() { }
+   ClassRecord() { }
 
-   ClassEntry(extMetaClass *pClass, std::optional<std::string> pPath = std::nullopt) {
+   inline ClassRecord(extMetaClass *pClass, std::optional<std::string> pPath = std::nullopt) {
       ClassID  = pClass->SubClassID;
       ParentID = (pClass->BaseClassID IS pClass->SubClassID) ? 0 : pClass->BaseClassID;
       Category = pClass->Category;
@@ -497,7 +494,7 @@ struct ClassEntry {
       if (pClass->FileHeader) Header.assign(pClass->FileHeader);
    }
 
-   ClassEntry(CLASSID pClassID, std::string pName, CSTRING pMatch = NULL, CSTRING pHeader = NULL) {
+   inline ClassRecord(CLASSID pClassID, std::string pName, CSTRING pMatch = NULL, CSTRING pHeader = NULL) {
       ClassID  = pClassID;
       ParentID = 0;
       Category = CCF_SYSTEM;
@@ -507,13 +504,7 @@ struct ClassEntry {
       if (pHeader) Header = pHeader;
    }
 
-   ERROR write(objFile *File) {
-      if ((Name.empty()) or (!ClassID) or (Path.empty())) {
-         parasol::Log log;
-         log.warning("Cannot save class due to missing Name, ClassID or Path.");
-         return ERR_Failed;
-      }
-
+   inline ERROR write(objFile *File) {
       if (File->write(&ClassID, sizeof(ClassID), NULL)) return ERR_Write;
       if (File->write(&ParentID, sizeof(ParentID), NULL)) return ERR_Write;
       if (File->write(&Category, sizeof(Category), NULL)) return ERR_Write;
@@ -537,7 +528,7 @@ struct ClassEntry {
       return ERR_Okay;
    }
 
-   ERROR read(objFile *File) {
+   inline ERROR read(objFile *File) {
       if (File->read(&ClassID, sizeof(ClassID))) return ERR_Read;
       if (File->read(&ParentID, sizeof(ParentID))) return ERR_Read;
       if (File->read(&Category, sizeof(Category))) return ERR_Read;
@@ -618,7 +609,6 @@ extern LONG glKeyState;
 extern char glSystemPath[SIZE_SYSTEM_PATH];
 extern char glModulePath[SIZE_SYSTEM_PATH];
 extern char glRootPath[SIZE_SYSTEM_PATH];
-extern char glProgName[32];
 extern char glDisplayDriver[28];
 extern OBJECTID SystemTaskID, glCurrentTaskID; // Read-only
 extern WORD glLogLevel, glShowIO, glShowPrivate, glShowPublic, glMaxDepth;
@@ -635,13 +625,13 @@ extern struct KeyStore       *glObjectLookup;  // Locked with TL_OBJECT_LOOKUP
 extern struct ModuleHeader   *glModules;       // Read-only.  Module database.
 extern struct OpenInfo       *glOpenInfo;      // Read-only.  The OpenInfo structure initially passed to OpenCore()
 extern objTask *glCurrentTask;            // Threads should use glCurrentTaskID to manage access.
-extern const struct ActionTable ActionTable[];  // Read only
-extern const struct Function    glFunctions[];  // Read only
+extern const struct ActionTable ActionTable[];
+extern const struct Function    glFunctions[];
 extern std::list<CoreTimer> glTimers;           // Locked with TL_TIMER
 extern std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with TL_PRIVATE_MEM: Note that best performance for looking up ID's is achieved as a sorted array.
 extern std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory; // Locked with TL_PRIVATE_MEM.  Sorted with the most recent private memory first
 extern std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren; // Locked with TL_PRIVATE_MEM.  Sorted with most recent object first
-extern std::unordered_map<CLASSID, ClassEntry> glClassDB;
+extern std::unordered_map<CLASSID, ClassRecord> glClassDB;
 extern CSTRING glMessages[ERR_END];       // Read-only table of error messages.
 extern const LONG glTotalMessages;
 extern LONG glTotalPages; // Read-only
@@ -655,9 +645,7 @@ extern WORD glCrashStatus, glCodeIndex, glLastCodeIndex;
 extern UWORD glFunctionID;
 extern BYTE glMasterTask, glProgramStage, glPrivileged, glSync;
 extern LONG glPageSize; // Read only
-extern LONG glBufferSize;
 extern TIMER glCacheTimer;
-extern STRING glBuffer;
 extern APTR glJNIEnv;
 extern class ObjectContext glTopContext; // Read-only, not a threading concern.
 extern OBJECTPTR modIconv;

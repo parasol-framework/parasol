@@ -362,11 +362,11 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
                while ((i > 0) and (Self->Path[i] != '/') and (Self->Path[i] != '\\') and (Self->Path[i] != ':')) i--;
                if (i > 0) i++; // Skip folder separator.
 
-               return ClassEntry(Self, make_optional(Self->Path.substr(i)));
+               return ClassRecord(Self, make_optional(Self->Path.substr(i)));
             }
-            else return ClassEntry(Self);
+            else return ClassRecord(Self);
          #else
-            return ClassEntry(Self);
+            return ClassRecord(Self);
          #endif
       }();
    }
@@ -731,9 +731,9 @@ static ERROR GET_Module(extMetaClass *Self, CSTRING *Value)
 /*****************************************************************************
 
 -FIELD-
-PrivateObjects: Returns an allocated list of all private objects that belong to this class.
+PrivateObjects: Returns an allocated list of all objects that belong to this class.
 
-This field will compile a list of all private objects that belong to the class.  The list is sorted with the oldest
+This field will compile a list of all objects that belong to the class.  The list is sorted with the oldest
 object appearing first.
 
 The resulting array must be terminated with ~FreeResource() after use.

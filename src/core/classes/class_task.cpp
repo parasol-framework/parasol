@@ -1365,9 +1365,6 @@ static ERROR TASK_Free(extTask *Self, APTR Void)
    if (Self->MessageMID)  { FreeResourceID(Self->MessageMID); Self->MessageMID  = 0; }
 
    if (Self->MsgAction)          { FreeResource(Self->MsgAction);          Self->MsgAction          = NULL; }
-   if (Self->MsgGetField)        { FreeResource(Self->MsgGetField);        Self->MsgGetField        = NULL; }
-   if (Self->MsgSetField)        { FreeResource(Self->MsgSetField);        Self->MsgSetField        = NULL; }
-   if (Self->MsgActionResult)    { FreeResource(Self->MsgActionResult);    Self->MsgActionResult    = NULL; }
    if (Self->MsgDebug)           { FreeResource(Self->MsgDebug);           Self->MsgDebug           = NULL; }
    if (Self->MsgValidateProcess) { FreeResource(Self->MsgValidateProcess); Self->MsgValidateProcess = NULL; }
    if (Self->MsgWaitForObjects)  { FreeResource(Self->MsgWaitForObjects);  Self->MsgWaitForObjects  = NULL; }

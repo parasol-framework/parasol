@@ -183,7 +183,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "STRING: The string represents plain-text.")
 
   flags("OPF", { },
-    "NAME",
+    "SHOW_PUBLIC_MEM",
     "CORE_VERSION",
     "JUMPTABLE",
     "MAX_DEPTH",
@@ -199,8 +199,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "MODULE_PATH",
     "ROOT_PATH",
     "SCAN_MODULES",
-    "OPTIONS",
-    "SHOW_PUBLIC_MEM") -- Show shared memory allocations only (ignore private).
+    "OPTIONS")
 
   enum("TOI", { },
     "LOCAL_CACHE",        -- For Android.  Defines the path of the local cache for assignment to localcache:

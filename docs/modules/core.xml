@@ -792,7 +792,7 @@ LONG count = 1;
 FindObject("SystemPointer", ID_POINTER, 0, &amp;id, &amp;count);
 </pre>
 <p>If FindObject() cannot find any matching objects then it will return an error code.</p>
-<p>The list is sorted so that the oldest private object is placed at the start of the list.  Take advantage of this to get the oldest or youngest object with the Name that is being searched for.</p>
+<p>The list is sorted with the oldest object appearing at the start of the list.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -1150,7 +1150,7 @@ GetFields(screen,
     <description>
 <p>This function translates private object ID's (owned by the process) to their respective address pointers.  Public object ID's are not supported.</p>
     </description>
-    <result type="OBJECTPTR">The address of the object is returned, or NULL if the ID does not relate to a private object.</result>
+    <result type="OBJECTPTR">The address of the object is returned, or NULL if the ID does not relate to an object.</result>
   </function>
 
   <function>
@@ -3808,7 +3808,6 @@ end
       <const name="JUMPTABLE"/>
       <const name="MAX_DEPTH"/>
       <const name="MODULE_PATH"/>
-      <const name="NAME"/>
       <const name="OPTIONS"/>
       <const name="PRIVILEGED"/>
       <const name="ROOT_PATH"/>

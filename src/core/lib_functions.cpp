@@ -300,8 +300,7 @@ FindObject("SystemPointer", ID_POINTER, 0, &id, &count);
 
 If FindObject() cannot find any matching objects then it will return an error code.
 
-The list is sorted so that the oldest private object is placed at the start of the list.  Take advantage of this
-to get the oldest or youngest object with the Name that is being searched for.
+The list is sorted with the oldest object appearing at the start of the list.
 
 -INPUT-
 cstr Name:     The name of an object to search for.
@@ -553,7 +552,7 @@ CLASSID GetClassID(OBJECTID ObjectID)
 
    OBJECTPTR object;
    if ((object = GetObjectPtr(ObjectID))) return object->ClassID;
-   else log.function("Failed to access private object #%d, no longer exists or ID invalid.", ObjectID);
+   else log.function("Failed to access object #%d, no longer exists or ID invalid.", ObjectID);
 
    return 0;
 }
@@ -873,7 +872,7 @@ object ID's are not supported.
 oid Object: The ID of the object to lookup.
 
 -RESULT-
-obj: The address of the object is returned, or NULL if the ID does not relate to a private object.
+obj: The address of the object is returned, or NULL if the ID does not relate to an object.
 
 *********************************************************************************************************************/
 

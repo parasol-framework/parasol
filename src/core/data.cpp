@@ -30,8 +30,6 @@
    #endif
 #endif
 
-char glProgName[32] = "Program";
-
 char glRootPath[SIZE_SYSTEM_PATH] = "" ROOT_PATH "";
 char glSystemPath[SIZE_SYSTEM_PATH] = "" SYSTEM_PATH "";
 char glModulePath[SIZE_SYSTEM_PATH] = "" MODULE_PATH "";
@@ -65,7 +63,7 @@ struct CoreBase *LocalCoreBase = NULL;
 std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;
 std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren;
 std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory;
-std::unordered_map<CLASSID, ClassEntry> glClassDB;
+std::unordered_map<CLASSID, ClassRecord> glClassDB;
 std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
 
 struct PublicAddress  *glSharedBlocks  = NULL;

@@ -815,8 +815,8 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
             LONG hdr;
             file->read(&hdr, sizeof(hdr));
             if (hdr IS CLASSDB_HEADER) {
-               while (file->Position + ClassEntry::MIN_SIZE < filesize) {
-                  ClassEntry item;
+               while (file->Position + ClassRecord::MIN_SIZE < filesize) {
+                  ClassRecord item;
                   item.read(*file);
                   glClassDB[item.ClassID] = item;
                }
@@ -835,11 +835,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       if (Info->Flags & OPF_ERROR) Info->Error = error;
       CloseCore();
       return NULL;
-   }
-
-   if (Info->Flags & OPF_NAME) {
-      localtask->set(FID_Name, Info->Name);
-      StrCopy(Info->Name, glProgName, sizeof(glProgName));
    }
 
    if (na > 0) SetArray(localtask, FID_Parameters, newargs, na);

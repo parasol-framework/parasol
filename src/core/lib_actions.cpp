@@ -135,8 +135,7 @@ static ERROR thread_action(extThread *Thread)
    return error;
 }
 
-// Free all private memory resources tracked to an object.  Do this before deallocating public objects
-// because private objects may want to remove resources from objects that are in public memory.
+// Free all private memory resources tracked to an object.
 
 static void free_private_children(OBJECTPTR Object)
 {
