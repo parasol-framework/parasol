@@ -776,23 +776,20 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address)) {
     <name>FindObject</name>
     <category>Objects</category>
     <comment>Searches for objects by name.</comment>
-    <prototype>ERROR FindObject(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * Array, LONG * Count)</prototype>
+    <prototype>ERROR FindObject(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * ObjectID)</prototype>
     <input>
       <param type="CSTRING" name="Name">The name of an object to search for.</param>
       <param type="CLASSID" name="ClassID">Optional.  Set to a class ID to filter the results down to a specific class type.</param>
       <param type="LONG" name="Flags" lookup="FOF">Optional flags.</param>
-      <param type="OBJECTID *" name="Array">Pointer to the array that will store the results.</param>
-      <param type="LONG *" name="Count">Indicates the size of Array, measured in elements.  Must be set to a value of 1 or greater.</param>
+      <param type="OBJECTID *" name="ObjectID">An object id variable for storing the result.</param>
     </input>
     <description>
 <p>The FindObject() function searches for all objects that match a given name and can filter by class.  A pre-allocated buffer is required for the output of the results.</p>
 <p>The following example is a typical illustration of this function's use.  It finds the most recent object created with a given name:</p>
 <pre>OBJECTID id;
-LONG count = 1;
-FindObject("SystemPointer", ID_POINTER, 0, &amp;id, &amp;count);
+FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
 </pre>
 <p>If FindObject() cannot find any matching objects then it will return an error code.</p>
-<p>The list is sorted with the oldest object appearing at the start of the list.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>

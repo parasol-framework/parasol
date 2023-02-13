@@ -1962,7 +1962,7 @@ struct CoreBase {
    ERROR (*_GetFieldArray)(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements);
    LONG (*_AdjustLogLevel)(LONG Adjust);
    void __attribute__((format(printf, 2, 3))) (*_LogF)(CSTRING Header, CSTRING Message, ...);
-   ERROR (*_FindObject)(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * Array, LONG * Count);
+   ERROR (*_FindObject)(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * ObjectID);
    objMetaClass * (*_FindClass)(CLASSID ClassID);
    ERROR (*_ReleaseObject)(OBJECTPTR Object);
    ERROR (*_FreeResource)(const void * Address);
@@ -2111,7 +2111,7 @@ inline OBJECTPTR CurrentContext(void) { return CoreBase->_CurrentContext(); }
 inline ERROR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements) { return CoreBase->_GetFieldArray(Object,Field,Result,Elements); }
 inline LONG AdjustLogLevel(LONG Adjust) { return CoreBase->_AdjustLogLevel(Adjust); }
 template<class... Args> void LogF(CSTRING Header, CSTRING Message, Args... Tags) { return CoreBase->_LogF(Header,Message,Tags...); }
-inline ERROR FindObject(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * Array, LONG * Count) { return CoreBase->_FindObject(Name,ClassID,Flags,Array,Count); }
+inline ERROR FindObject(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * ObjectID) { return CoreBase->_FindObject(Name,ClassID,Flags,ObjectID); }
 inline objMetaClass * FindClass(CLASSID ClassID) { return CoreBase->_FindClass(ClassID); }
 inline ERROR ReleaseObject(OBJECTPTR Object) { return CoreBase->_ReleaseObject(Object); }
 inline ERROR FreeResource(const void * Address) { return CoreBase->_FreeResource(Address); }

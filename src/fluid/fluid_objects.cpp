@@ -527,11 +527,10 @@ static int object_find(lua_State *Lua)
          else return 0;
       }
 
-      LONG count = 1;
       if (!FindPrivateObject(object_name, &obj)) {
          return object_find_ptr(Lua, obj);
       }
-      else if (!FindObject(object_name, class_id, FOF_SMART_NAMES, &object_id, &count)) {
+      else if (!FindObject(object_name, class_id, FOF_SMART_NAMES, &object_id)) {
          return object_find_id(Lua, object_id);
       }
       else log.debug("Unable to find object '%s'", object_name);

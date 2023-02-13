@@ -814,10 +814,7 @@ static ERROR eval(extDocument *Self, STRING Buffer, LONG BufferLength, LONG Flag
                   if (!StrMatch(name, "self")) {
                      objectid = CurrentContext()->UID;
                   }
-                  else {
-                     LONG count = 1;
-                     FindObject(name, 0, FOF_SMART_NAMES, &objectid, &count);
-                  }
+                  else FindObject(name, 0, FOF_SMART_NAMES, &objectid);
                }
 
                if (objectid) {
@@ -1091,8 +1088,7 @@ static BYTE check_tag_conditions(extDocument *Self, XMLTag *Tag)
       }
       else if (!StrMatch("exists", Tag->Attrib[i].Name)) {
          OBJECTID object_id;
-         LONG count = 1;
-         if (!FindObject(Tag->Attrib[i].Value, 0, FOF_SMART_NAMES, &object_id, &count)) {
+         if (!FindObject(Tag->Attrib[i].Value, 0, FOF_SMART_NAMES, &object_id)) {
             if (valid_objectid(Self, object_id)) {
                satisfied = TRUE;
             }
@@ -6555,30 +6551,17 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                      if (Self->CurrentObject) objectid = Self->CurrentObject->UID;
                   }
                   else {
-                     // Find the nearest object with this name.  Objects are sorted by their creation time.  To find the correct object
-                     // we perform two passes.  On pass 1 we only consider objects that are children of the document object.
-                     // On pass 2, which can only be performed if the document is in unrestricted access mode, we will take the
-                     // first object on the list (which will be the most recently created one).
-
-                     OBJECTID list[40];
-                     LONG count = ARRAYSIZE(list);
-                     if (!FindObject(name, 0, FOF_SMART_NAMES, list, &count)) {
-                        // Pass 1: Only consider objects that are children of the document
-                        for (LONG j=0; (j < count) and (!objectid); j++) {
-                           OBJECTID parent_id = list[j];
-                           while (parent_id) {
-                              parent_id = GetOwnerID(parent_id);
+                     if (!FindObject(name, 0, FOF_SMART_NAMES, &objectid)) {
+                        if (!(Self->Flags & DCF_UNRESTRICTED)) {
+                           // Only consider objects that are children of the document
+                           bool valid = false;
+                           for (auto parent_id = GetOwnerID(objectid); parent_id; parent_id = GetOwnerID(parent_id)) {
                               if (parent_id IS Self->UID) {
-                                 objectid = list[j];
+                                 valid = true;
                                  break;
                               }
                            }
-                        }
-
-                        // Pass 2: Accept the first object that is outside of the document's name space
-
-                        if ((!objectid) and (Self->Flags & DCF_UNRESTRICTED)) {
-                           objectid = list[0];
+                           if (!valid) objectid = 0;
                         }
                      }
                   }

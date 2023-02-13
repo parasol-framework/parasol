@@ -1264,8 +1264,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
    if ((!Self->ParentID) and (gfxGetDisplayType() IS DT_NATIVE)) {
       if (!(Self->Flags & RNF_FULL_SCREEN)) {
-         LONG count = 1;
-         if (FindObject("desktop", ID_SURFACE, 0, &Self->ParentID, &count) != ERR_Okay) {
+         if (FindObject("desktop", ID_SURFACE, 0, &Self->ParentID) != ERR_Okay) {
             SurfaceControl *ctl;
             if ((ctl = gfxAccessList(ARF_READ))) {
                auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
@@ -1502,8 +1501,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
       if (Self->Flags & RNF_COMPOSITE) scrflags |= SCR_COMPOSITE;
 
       OBJECTID id;
-      LONG count = 1;
-      CSTRING name = FindObject("SystemDisplay", 0, 0, &id, &count) ? "SystemDisplay" : (CSTRING)NULL;
+      CSTRING name = FindObject("SystemDisplay", 0, 0, &id) ? "SystemDisplay" : (CSTRING)NULL;
 
       // For hosted displays:  On initialisation, the X and Y fields reflect the position at which the window will be
       // opened on the host desktop.  However, hosted surfaces operate on the absolute coordinates of client regions

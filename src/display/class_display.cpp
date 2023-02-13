@@ -915,8 +915,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
          }
          else {
             OBJECTID surface_id;
-            LONG count = 1;
-            if (!FindObject("SystemSurface", ID_SURFACE, 0, &surface_id, &count)) {
+            if (!FindObject("SystemSurface", ID_SURFACE, 0, &surface_id)) {
                if (surface_id IS Self->ownerID()) desktop = TRUE;
             }
          }
@@ -1202,13 +1201,12 @@ static ERROR DISPLAY_NewObject(extDisplay *Self, APTR Void)
 
    if (!error) {
       OBJECTID id;
-      LONG count = 1;
-      if (FindObject("SystemVideo", 0, 0, &id, &count) != ERR_Okay) {
+      if (FindObject("SystemVideo", 0, 0, &id) != ERR_Okay) {
          SetName(Self->Bitmap, "SystemVideo");
       }
 
       if (!(GetName(Self)[0])) {
-         if (FindObject("SystemDisplay", 0, 0, &id, &count) != ERR_Okay) {
+         if (FindObject("SystemDisplay", 0, 0, &id) != ERR_Okay) {
             SetName(Self, "SystemDisplay");
          }
       }
@@ -2007,8 +2005,7 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
 
    objPointer *pointer;
    OBJECTID pointer_id;
-   LONG count = 1;
-   if (FindObject("SystemPointer", ID_POINTER, 0, &pointer_id, &count) != ERR_Okay) {
+   if (FindObject("SystemPointer", ID_POINTER, 0, &pointer_id) != ERR_Okay) {
       if (!NewNamedObject(ID_POINTER, NF::UNTRACKED|NF::UNIQUE, &pointer, &pointer_id, "SystemPointer")) {
          OBJECTID owner = Self->ownerID();
          if (GetClassID(owner) IS ID_SURFACE) pointer->set(FID_Surface, owner);
@@ -2288,8 +2285,7 @@ ERROR GET_HDensity(extDisplay *Self, LONG *Value)
    // If the user has overridden the DPI with a preferred value, we have to use it.
 
    OBJECTID style_id;
-   LONG count = 1;
-   if (!FindObject("glStyle", ID_XML, 0, &style_id, &count)) {
+   if (!FindObject("glStyle", ID_XML, 0, &style_id)) {
       parasol::ScopedObjectLock<objXML> style(style_id, 3000);
       if (style.granted()) {
          char strdpi[32];
@@ -2359,8 +2355,7 @@ ERROR GET_VDensity(extDisplay *Self, LONG *Value)
    // If the user has overridden the DPI with a preferred value, we have to use it.
 
    OBJECTID style_id;
-   LONG count = 1;
-   if (!FindObject("glStyle", ID_XML, 0, &style_id, &count)) {
+   if (!FindObject("glStyle", ID_XML, 0, &style_id)) {
       parasol::ScopedObjectLock<objXML> style(style_id, 3000);
       if (style.granted()) {
          char strdpi[32];

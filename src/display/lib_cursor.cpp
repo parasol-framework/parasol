@@ -131,16 +131,14 @@ objPointer * gfxAccessPointer(void)
    pointer = NULL;
 
    if (!glPointerID) {
-      LONG count = 1;
-      if (!FindObject("SystemPointer", ID_POINTER, 0, &glPointerID, &count)) {
+      if (!FindObject("SystemPointer", ID_POINTER, 0, &glPointerID)) {
          AccessObject(glPointerID, 2000, &pointer);
       }
       return pointer;
    }
 
    if (AccessObject(glPointerID, 2000, &pointer) IS ERR_NoMatchingObject) {
-      LONG count = 1;
-      if (!FindObject("SystemPointer", ID_POINTER, 0, &glPointerID, &count)) {
+      if (!FindObject("SystemPointer", ID_POINTER, 0, &glPointerID)) {
          AccessObject(glPointerID, 2000, &pointer);
       }
    }

@@ -72,30 +72,22 @@ end
 function testObjectSearches()
    local parent = obj.new('xml', { name='TestParent', flags='NEW' })
 
+   local obj = parent.new('xml', { name='TestFO', flags='NEW' })
+
    local objects = { }
-   for i=1,10 do
-      local obj = parent.new('xml', { name='TestFO', flags='NEW' })
-      table.insert(objects, obj)
-   end
-
-   -- Test FindObject()
-
-   local objlist = array.new(10, 'long')
-   local err, count = mSys.FindObject('TestFO', 0, 0, objlist)
-   assert(err == ERR_Okay, 'Failed to list created objects: ' .. mSys.GetErrorMsg(err))
-   assert(count == 10, 'Expected 10 objects, listed ' .. count)
-
-   for i=1,10 do
-      assert(objlist[i] == objects[i].id, 'Object list returned by FindObject() is not in the expected order')
-   end
+   table.insert(objects, obj)
 
    -- Test FindPrivateObject()
 
    local err, obj = mSys.FindPrivateObject('TestFO')
    assert(err == ERR_Okay, 'Failed to find object: ' .. mSys.GetErrorMsg(err))
-   assert(obj.id == objlist[10], 'Expected the most recently created object of #' .. objlist[10] .. ', got ' .. obj.id)
 
    -- Test ListChildren()
+
+   for i=1,9 do
+      local obj = parent.new('xml', { name='TestFO', flags='NEW' })
+      table.insert(objects, obj)
+   end
 
    local children = array.new(20, 'ChildEntry')
    local err, count = mSys.ListChildren(parent.id, children)

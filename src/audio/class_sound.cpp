@@ -214,8 +214,7 @@ static ERROR snd_init_audio(extSound *Self)
 {
    parasol::Log log;
 
-   LONG count = 1;
-   if (!FindObject("SystemAudio", ID_AUDIO, 0, &Self->AudioID, &count)) return ERR_Okay;
+   if (!FindObject("SystemAudio", ID_AUDIO, 0, &Self->AudioID)) return ERR_Okay;
 
    extAudio *audio;
    ERROR error;

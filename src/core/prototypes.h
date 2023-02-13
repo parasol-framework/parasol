@@ -23,7 +23,7 @@ OBJECTPTR CurrentContext();
 ERROR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR * Result, LONG * Elements);
 LONG AdjustLogLevel(LONG Adjust);
 void LogF(CSTRING Header, CSTRING Message, ...);
-ERROR FindObject(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * Array, LONG * Count);
+ERROR FindObject(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * ObjectID);
 objMetaClass * FindClass(CLASSID ClassID);
 ERROR ReleaseObject(OBJECTPTR Object);
 ERROR FreeResource(const void * Address);

@@ -496,10 +496,9 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
             }
 
             case LUA_TSTRING: {
-               OBJECTID array[8];
-               LONG count = ARRAYSIZE(array);
-               if (!FindObject(lua_tostring(Lua, ValueIndex), 0, 0, array, &count)) {
-                  target->set(field->FieldID, array[count-1]);
+               OBJECTID id;
+               if (!FindObject(lua_tostring(Lua, ValueIndex), 0, 0, &id)) {
+                  target->set(field->FieldID, id);
                }
                else {
                   log.warning("Object \"%s\" could not be found.", lua_tostring(Lua, ValueIndex));

@@ -294,20 +294,16 @@ with a given name:
 
 <pre>
 OBJECTID id;
-LONG count = 1;
-FindObject("SystemPointer", ID_POINTER, 0, &id, &count);
+FindObject("SystemPointer", ID_POINTER, 0, &id);
 </pre>
 
 If FindObject() cannot find any matching objects then it will return an error code.
 
-The list is sorted with the oldest object appearing at the start of the list.
-
 -INPUT-
-cstr Name:     The name of an object to search for.
-cid ClassID:   Optional.  Set to a class ID to filter the results down to a specific class type.
+cstr Name:      The name of an object to search for.
+cid ClassID:    Optional.  Set to a class ID to filter the results down to a specific class type.
 int(FOF) Flags: Optional flags.
-buf(array(oid)) Array:    Pointer to the array that will store the results.
-&arraysize Count: Indicates the size of Array, measured in elements.  Must be set to a value of 1 or greater.
+&oid ObjectID:  An object id variable for storing the result.
 
 -ERRORS-
 Okay: At least one object was found and stored in the supplied array.
@@ -320,12 +316,11 @@ DoesNotExist:
 
 *********************************************************************************************************************/
 
-ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Array, LONG *Count)
+ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Result)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Array) or (!InitialName) or (!Count)) return ERR_NullArgs;
-   if (*Count < 1) return log.warning(ERR_Args);
+   if ((!Result) or (!InitialName)) return ERR_NullArgs;
    if (!InitialName[0]) return log.warning(ERR_EmptyString);
 
    if (Flags & FOF_SMART_NAMES) {
@@ -350,8 +345,7 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Arr
          OBJECTID objectid;
          if ((objectid = (OBJECTID)StrToInt(InitialName))) {
             if (!CheckObjectExists(objectid)) {
-               *Array = objectid;
-               *Count = 1;
+               *Result = objectid;
                return ERR_Okay;
             }
             else return ERR_Search;
@@ -362,8 +356,7 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Arr
       if (!StrMatch("owner", InitialName)) {
          if ((tlContext != &glTopContext) and (tlContext->object()->OwnerID)) {
             if (!CheckObjectExists(tlContext->object()->OwnerID)) {
-               *Array = tlContext->object()->OwnerID;
-               *Count = 1;
+               *Result = tlContext->object()->OwnerID;
                return ERR_Okay;
             }
             else return ERR_DoesNotExist;
@@ -372,53 +365,24 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Arr
       }
    }
 
-   class sortobj {
-      public: OBJECTID id; MEMORYID messagemid;
-      sortobj(OBJECTID a, MEMORYID b) : id(a), messagemid(b) { };
-   };
-
-   std::list<sortobj> objlist;
-
-   {
-      ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
-      if (lock.granted()) {
-         OBJECTPTR *list;
-         LONG list_size;
-         if (!VarGet(glObjectLookup, InitialName, (APTR *)&list, &list_size)) {
-            list_size = list_size / sizeof(OBJECTPTR);
-            for (LONG i=0; i < list_size; i++) {
-               OBJECTPTR object = list[i];
-               if ((object) and ((!ClassID) or (ClassID IS object->ClassID))) {
-                  if (objlist.size() < (size_t)Count[0]) {
-                     objlist.emplace_back(object->UID, glTaskMessageMID);
-                  }
-                  else if (objlist.back().id < object->UID) {
-                     objlist.back().id = object->UID;
-                     objlist.back().messagemid = glTaskMessageMID;
-                  }
+   ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
+   if (lock.granted()) {
+      OBJECTPTR *list;
+      LONG list_size;
+      if (!VarGet(glObjectLookup, InitialName, (APTR *)&list, &list_size)) {
+         // Return the most recently created object, i.e. the one at the end of the list.
+         for (LONG i=(list_size / sizeof(OBJECTPTR)) - 1; i >= 0; i--) {
+            if (list[i]) {
+               if ((!ClassID) or (list[i]->ClassID IS ClassID)) {
+                  *Result = list[i]->UID;
+                  return ERR_Okay;
                }
             }
          }
       }
    }
 
-   if (objlist.size() > 0) {
-      if (objlist.size() IS 1) {
-         Array[0] = objlist.front().id;
-      }
-      else {
-         objlist.sort([](const sortobj &a, const sortobj &b) {
-            return ((a.id < b.id) or ((a.messagemid IS glTaskMessageMID) and (b.messagemid != glTaskMessageMID)));
-         });
-
-         LONG i = 0;
-         for (const auto & obj : objlist) Array[i++] = obj.id;
-      }
-
-      *Count = objlist.size();
-      return ERR_Okay;
-   }
-   else return ERR_Search;
+   return ERR_Search;
 }
 
 /*********************************************************************************************************************
