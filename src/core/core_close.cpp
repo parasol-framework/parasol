@@ -36,68 +36,65 @@ EXPORT void CloseCore(void)
 
    if (glCrashStatus) remove_semaphores();
 
-   // If we are a master task, destroy all other tasks in our instance that we have created.
+   // Destroy all other tasks in our instance that we have created.
 
-   if (glMasterTask) {
+   {
+      parasol::Log log("Shutdown");
+      log.branch("Removing any child processes...");
 
-      {
-         parasol::Log log("Shutdown");
-         log.branch("Removing any child processes...");
+      #ifdef KILL_PROCESS_GROUP
+         // Kill all processes that have been created by this process and its children
+         killpg(0, SIGHUP);
+      #else
+         for (LONG i=0; i < MAX_TASKS; i++) {
+            if ((shTasks[i].ProcessID) and (shTasks[i].ProcessID != glProcessID)) {
+               log.msg("Removing sub-process #%d (pid %d).", shTasks[i].TaskID, shTasks[i].ProcessID);
 
-         #ifdef KILL_PROCESS_GROUP
-            // Kill all processes that have been created by this process and its children
-            killpg(0, SIGHUP);
-         #else
-            for (LONG i=0; i < MAX_TASKS; i++) {
-               if ((shTasks[i].ProcessID) and (shTasks[i].ProcessID != glProcessID)) {
-                  log.msg("Removing sub-process #%d (pid %d).", shTasks[i].TaskID, shTasks[i].ProcessID);
+               #ifdef __unix__
+                  // SIGHUP will convert to MSGID_QUIT in the signal handlers.  The main reason for us to use it is
+                  // to stop foreign processes that we've launched.
+                  kill(shTasks[i].ProcessID, SIGHUP);
+               #else
+                  if (shTasks[i].MessageID) SendMessage(shTasks[i].MessageID, MSGID_QUIT, 0, NULL, 0);
+               #endif
 
-                  #ifdef __unix__
-                     // SIGHUP will convert to MSGID_QUIT in the signal handlers.  The main reason for us to use it is
-                     // to stop foreign processes that we've launched.
-                     kill(shTasks[i].ProcessID, SIGHUP);
-                  #else
-                     if (shTasks[i].MessageID) SendMessage(shTasks[i].MessageID, MSGID_QUIT, 0, NULL, 0);
-                  #endif
-
-                  WaitTime(0, -100000);
-               }
+               WaitTime(0, -100000);
             }
-         #endif
-      }
-
-      // Wait for sub-tasks to die within the designated time limit
-
-      log.msg("Waiting for child processes to terminate...");
-
-      #define TIMETODIE 6 // Seconds to wait before a task has to die
-      LONG cycle;
-      for (cycle=0; cycle < (TIMETODIE * 10); cycle++) {
-         for (j=0; j < MAX_TASKS; j++) { // Break if any other process is found in the task array.
-            if ((shTasks[j].ProcessID) and (shTasks[j].ProcessID != glProcessID)) {
-               log.msg("Process %d is still live.", shTasks[j].ProcessID);
-               break;
-            }
-         }
-
-         if (j >= MAX_TASKS) break;
-         WaitTime(0, -100000);
-      }
-
-      // If the time-to-die has elapsed and sub-tasks are still in the system, send kill messages to force them out.
-
-      #ifdef __unix__
-         if (cycle >= TIMETODIE) {
-            for (LONG j=0; j < MAX_TASKS; j++) {
-               log.warning("Sending a kill signal to sub-task #%d (process %d).", shTasks[j].TaskID, shTasks[j].ProcessID);
-               if ((shTasks[j].ProcessID) and (shTasks[j].ProcessID != glProcessID)) {
-                  kill(shTasks[j].ProcessID, SIGTERM);
-               }
-            }
-            WaitTime(0, -200000);
          }
       #endif
    }
+
+   // Wait for sub-tasks to die within the designated time limit
+
+   log.msg("Waiting for child processes to terminate...");
+
+   #define TIMETODIE 6 // Seconds to wait before a task has to die
+   LONG cycle;
+   for (cycle=0; cycle < (TIMETODIE * 10); cycle++) {
+      for (j=0; j < MAX_TASKS; j++) { // Break if any other process is found in the task array.
+         if ((shTasks[j].ProcessID) and (shTasks[j].ProcessID != glProcessID)) {
+            log.msg("Process %d is still live.", shTasks[j].ProcessID);
+            break;
+         }
+      }
+
+      if (j >= MAX_TASKS) break;
+      WaitTime(0, -100000);
+   }
+
+   // If the time-to-die has elapsed and sub-tasks are still in the system, send kill messages to force them out.
+
+   #ifdef __unix__
+      if (cycle >= TIMETODIE) {
+         for (LONG j=0; j < MAX_TASKS; j++) {
+            log.warning("Sending a kill signal to sub-task #%d (process %d).", shTasks[j].TaskID, shTasks[j].ProcessID);
+            if ((shTasks[j].ProcessID) and (shTasks[j].ProcessID != glProcessID)) {
+               kill(shTasks[j].ProcessID, SIGTERM);
+            }
+         }
+         WaitTime(0, -200000);
+      }
+   #endif
 
    // Clear the glTaskMessageMID if we have crashed.  Otherwise do not alter this variable as we still need it for
    // destroying public objects that belong to the Task.
@@ -248,12 +245,6 @@ EXPORT void CloseCore(void)
       while (glMsgHandlers) FreeResource(glMsgHandlers);
       glLastMsgHandler = NULL;
 
-      if ((glCrashStatus) and (glSharedControl) and (glSharedControl->InstanceMsgPort) and (!glMasterTask)) {
-         ValidateMessage msg;
-         msg.ProcessID = glProcessID;
-         SendMessage(glSharedControl->InstanceMsgPort, MSGID_VALIDATE_PROCESS, 0, &msg, sizeof(msg));
-      }
-
       // Remove semaphore allocations
 
       remove_semaphores();
@@ -275,15 +266,13 @@ EXPORT void CloseCore(void)
       if (ThreadClass)        { acFree(ThreadClass);        ThreadClass    = 0; }
       if (ModuleMasterClass)  { acFree(ModuleMasterClass);  ModuleMasterClass = 0; }
 
-      // Remove access to class database
+      // Remove access to module database
 
-      if (glMasterTask) {
-         if (glModules) {
-            MemInfo info;
-            log.debug("Removing module database.");
-            if (!MemoryPtrInfo(glModules, &info, sizeof(info))) {
-               FreeResourceID(info.MemoryID); // Mark for deletion
-            }
+      if (glModules) {
+         MemInfo info;
+         log.debug("Removing module database.");
+         if (!MemoryPtrInfo(glModules, &info, sizeof(info))) {
+            FreeResourceID(info.MemoryID); // Mark for deletion
          }
       }
 
@@ -328,10 +317,11 @@ EXPORT void CloseCore(void)
       }
    }
 
-   // Remove our process from the global list completely IF THIS IS THE MASTER TASK.  Note that from this point onwards
-   // we will not be able to interact with any other processes, so all types of sharing/locking is disallowed henceforth.
+   // Remove our process from the global list completely.  From this point onwards
+   // we will not be able to interact with any other processes, so all types of
+   // sharing/locking is disallowed henceforth.
 
-   if ((glMasterTask) and (glTaskEntry)) {
+   if (glTaskEntry) {
       if (LOCK_PROCESS_TABLE(4000) IS ERR_Okay) {
          ClearMemory(glTaskEntry, sizeof(TaskList));
          glTaskEntry = NULL;

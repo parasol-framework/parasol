@@ -140,7 +140,6 @@ WORD glShowIO       = FALSE;
 WORD glShowPrivate  = FALSE;
 WORD glShowPublic   = FALSE;
 BYTE *SharedMemory  = 0;
-BYTE glMasterTask   = FALSE;
 BYTE glProgramStage = STAGE_STARTUP;
 BYTE glPrivileged   = FALSE;
 BYTE glSync         = FALSE;

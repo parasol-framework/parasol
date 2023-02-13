@@ -871,10 +871,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
    if (Self->Flags & TSF_ATTACHED) group = TRUE;
    else if (Self->Flags & TSF_DETACHED) group = FALSE;
-   else {
-      if (glMasterTask) group = TRUE;
-      else group = FALSE;
-   }
+   else group = TRUE;
 
    LONG internal_redirect = 0;
    if (Self->OutputCallback.Type) internal_redirect |= TSTD_OUT;

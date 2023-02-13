@@ -579,15 +579,13 @@ ERROR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
       }
    }
 
-   if (glMasterTask) {
-      // Check all registered processes to see which ones are alive.  This routine can manage all processes, although exhibits
-      // some problems with zombies, hence the earlier waitpid() routine to clean up such processes.
+   // Check all registered processes to see which ones are alive.  This routine can manage all processes, although exhibits
+   // some problems with zombies, hence the earlier waitpid() routine to clean up such processes.
 
-      for (LONG i=0; i < MAX_TASKS; i++) {
-         if (shTasks[i].ProcessID) {
-            if ((kill(shTasks[i].ProcessID, 0) IS -1) and (errno IS ESRCH)) {
-               validate_process(shTasks[i].ProcessID);
-            }
+   for (LONG i=0; i < MAX_TASKS; i++) {
+      if (shTasks[i].ProcessID) {
+         if ((kill(shTasks[i].ProcessID, 0) IS -1) and (errno IS ESRCH)) {
+            validate_process(shTasks[i].ProcessID);
          }
       }
    }

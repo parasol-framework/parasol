@@ -393,12 +393,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          else if (!StrMatch(arg, "log-shared-memory")) {
             glShowPublic = TRUE;
          }
-         else if (!StrMatch(arg, "instance")) {
-            if (i < Info->ArgCount-1) {
-               glInstanceID = StrToInt(Info->Args[i+1]);
-               i++;
-            }
-         }
          else if (!StrCompare(arg, "gfx-driver=", 11, 0)) {
             StrCopy(arg+11, glDisplayDriver, sizeof(glDisplayDriver));
          }
@@ -676,26 +670,12 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
       // Use a process ID as a unique instance ID by default
 
-      if (!glInstanceID) {
-         glMasterTask = TRUE;
-         if ((glInstanceID = glProcessID) < 0) glInstanceID = -glInstanceID;
+      if ((glInstanceID = glProcessID) < 0) glInstanceID = -glInstanceID;
 
-         glSharedControl->InstanceMsgPort = glTaskMessageMID;
+      glSharedControl->InstanceMsgPort = glTaskMessageMID;
 
-         auto call = make_function_stdc(process_janitor);
-         SubscribeTimer(60, &call, &glProcessJanitor);
-      }
-      else {
-         glMasterTask = FALSE;
-
-         #ifdef _WIN32
-            // In win32, child tasks need to run at a lower priority than the core task
-            // in order to prevent them sucking up the core task's time.  (This applies
-            // at least to Win2K and earlier).
-
-            winLowerPriority();
-         #endif
-      }
+      auto call = make_function_stdc(process_janitor);
+      SubscribeTimer(60, &call, &glProcessJanitor);
 
       SysUnlock(PL_FORBID);
    }

@@ -643,7 +643,7 @@ extern LONG glValidateProcessID; // Not a threading concern
 extern LONG glMutexLockSize; // Read only constant
 extern WORD glCrashStatus, glCodeIndex, glLastCodeIndex;
 extern UWORD glFunctionID;
-extern BYTE glMasterTask, glProgramStage, glPrivileged, glSync;
+extern BYTE glProgramStage, glPrivileged, glSync;
 extern LONG glPageSize; // Read only
 extern TIMER glCacheTimer;
 extern APTR glJNIEnv;
