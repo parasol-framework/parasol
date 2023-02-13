@@ -10,6 +10,8 @@ Name: Objects
 extern "C" ERROR CLASS_Free(extMetaClass *, APTR);
 extern "C" ERROR CLASS_Init(extMetaClass *, APTR);
 
+static bool master_sorted = false;
+
 /*****************************************************************************
 
 -FUNCTION-
@@ -47,7 +49,6 @@ ObjectExists: An object with the provided Name already exists in the system (app
 ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
 {
    parasol::Log log(__FUNCTION__);
-   static BYTE master_sorted = FALSE;
 
    ULONG class_id = (ULONG)(ClassID & 0xffffffff);
    if ((!class_id) or (!Object)) return log.warning(ERR_NullArgs);
@@ -61,7 +62,7 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
 
       if (!master_sorted) {
          sort_class_fields(&glMetaClass, glMetaClass.prvFields);
-         master_sorted = TRUE;
+         master_sorted = true;
       }
    }
    else if (!(mc = (extMetaClass *)FindClass(class_id))) {
@@ -227,8 +228,7 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
 {
    parasol::Log log(__FUNCTION__);
 
-   static BYTE master_sorted = FALSE;
-   static BYTE private_lock = FALSE;
+   static bool private_lock = false;
 
    ULONG class_id = (ULONG)(ClassID & 0xffffffff);
    if ((!class_id) or (!ObjectID)) return log.warning(ERR_NullArgs);
@@ -242,7 +242,7 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
 
       if (!master_sorted) {
          sort_class_fields(&glMetaClass, glMetaClass.prvFields);
-         master_sorted = TRUE;
+         master_sorted = true;
       }
    }
    else if (!(mc = (extMetaClass *)FindClass(class_id))) {
@@ -429,8 +429,8 @@ CLASSID ResolveClassName(CSTRING ClassName)
       return 0;
    }
 
-   if (auto item = find_class(StrHash(ClassName, FALSE))) return item->ClassID;
-
+   CLASSID cid = StrHash(ClassName, FALSE);
+   if (glClassDB.contains(cid)) return cid;
    else return 0;
 }
 
@@ -453,7 +453,7 @@ cstr: Returns the name of the class, or NULL if the ID is not recognised.  Stand
 
 CSTRING ResolveClassID(CLASSID ID)
 {
-   if (auto item = find_class(ID)) return item->Name;
+   if (glClassDB.contains(ID)) return glClassDB[ID].Name.c_str();
 
    parasol::Log log(__FUNCTION__);
    log.warning("Failed to resolve ID $%.8x", ID);

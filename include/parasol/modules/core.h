@@ -3077,9 +3077,18 @@ class objFile : public BaseClass {
    inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK_START); }
    inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK_END); }
    inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK_CURRENT); }
-   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result) {
+   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result = NULL) {
       ERROR error;
       struct acWrite write = { (BYTE *)Buffer, Bytes };
+      if (!(error = Action(AC_Write, this, &write))) {
+         if (Result) *Result = write.Result;
+      }
+      else if (Result) *Result = 0;
+      return error;
+   }
+   inline ERROR write(std::string Buffer, LONG *Result = NULL) {
+      ERROR error;
+      struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
       if (!(error = Action(AC_Write, this, &write))) {
          if (Result) *Result = write.Result;
       }
@@ -3500,9 +3509,18 @@ class objTask : public BaseClass {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);
    }
-   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result) {
+   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result = NULL) {
       ERROR error;
       struct acWrite write = { (BYTE *)Buffer, Bytes };
+      if (!(error = Action(AC_Write, this, &write))) {
+         if (Result) *Result = write.Result;
+      }
+      else if (Result) *Result = 0;
+      return error;
+   }
+   inline ERROR write(std::string Buffer, LONG *Result = NULL) {
+      ERROR error;
+      struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
       if (!(error = Action(AC_Write, this, &write))) {
          if (Result) *Result = write.Result;
       }
@@ -4030,10 +4048,8 @@ struct SharedControl {
    LONG InputSize;                  // Maximum number of subscribers allowed in InputMID
    LONG InstanceMsgPort;            // The message port of the process that created the instance.
    MEMORYID SurfacesMID;
-   MEMORYID ClassesMID;             // Class database
    MEMORYID ModulesMID;             // Module database
    MEMORYID InputMID;
-   LONG ClassSemaphore;             // Semaphore for controlling access to the class database
    #ifdef __unix__
       struct {
          pthread_mutex_t Mutex;
@@ -4044,31 +4060,6 @@ struct SharedControl {
    #elif _WIN32
       // In windows, the shared memory controls are controlled by mutexes that have local handles.
    #endif
-};
-
-// Class database.
-
-#define CL_ITEMS(c)        (ClassItem *)((BYTE *)(c) + sizeof(ClassHeader) + ((c)->Total<<2) )
-#define CL_OFFSETS(c)      ((LONG *)((c) + 1))
-#define CL_SIZE_OFFSETS(c) (sizeof(LONG) * (c)->Total)
-#define CL_ITEM(c,i)       ((ClassItem *)((BYTE *)(c) + offsets[(i)]))
-
-struct ClassHeader {
-   LONG Total;          // Total number of registered classes
-   LONG Size;           // Size of the entire memory block
-   // Followed by lookup table with offsets to each ClassItem, sorted by hash
-};
-
-struct ClassItem {
-   CLASSID ClassID;
-   CLASSID ParentID;    // Parent class reference.
-   LONG  Category;
-   WORD  Size;          // Size of the item structure, all accompanying strings and byte alignment
-   WORD  PathOffset;
-   WORD  MatchOffset;
-   WORD  HeaderOffset;
-   char Name[24];
-   // Followed by [path, match, header] strings
 };
 
 // X11 Variables

@@ -28,10 +28,7 @@ EXPORT void CloseCore(void)
    tlContext = &glTopContext;
    tlDepth   = 0;
 
-   if (glClassFileID) {
-      ActionMsg(AC_Free, glClassFileID, NULL);
-      glClassFileID = 0;
-   }
+   if (glClassFile) { acFree(glClassFile); glClassFile = NULL; }
 
    free_events(); // Remove event subscriptions
 
@@ -281,14 +278,6 @@ EXPORT void CloseCore(void)
       // Remove access to class database
 
       if (glMasterTask) {
-         if (glClassDB) {
-            MemInfo info;
-            log.debug("Removing class database.");
-            if (!MemoryPtrInfo(glClassDB, &info, sizeof(info))) {
-               FreeResourceID(info.MemoryID); // Mark for deletion
-            }
-         }
-
          if (glModules) {
             MemInfo info;
             log.debug("Removing module database.");
@@ -298,7 +287,6 @@ EXPORT void CloseCore(void)
          }
       }
 
-      if (glClassDB) { ReleaseMemory(glClassDB); glClassDB = NULL; }
       if (glModules) { ReleaseMemory(glModules); glModules = NULL; }
 
       // Check FD list and report FD's that have not been removed
@@ -415,6 +403,7 @@ EXPORT void CloseCore(void)
       winShutdown();
    #endif
 
+   free_private_lock(TL_CLASSDB);
    free_private_lock(TL_VOLUMES);
    free_private_lock(TL_GENERIC);
    free_private_lock(TL_TIMER);

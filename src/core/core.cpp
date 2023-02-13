@@ -28,6 +28,7 @@ This documentation is intended for technical reference and is not suitable as an
 #include <errno.h>
 #include <unistd.h>
 #include <forward_list>
+#include <sstream>
 
 #ifdef _WIN32
 #include <time.h>
@@ -138,16 +139,11 @@ static void print_class_list(void) __attribute__ ((unused));
 static void print_class_list(void)
 {
    parasol::Log log("Class List");
-   char buffer[1024];
-   size_t pos = 0;
-   LONG *offsets = CL_OFFSETS(glClassDB);
-   for (LONG i=0; i < glClassDB->Total; i++) {
-      ClassItem *item = (ClassItem *)(((BYTE *)glClassDB) + offsets[i]);
-      for (LONG j=0; (item->Name[j]) and (pos < sizeof(buffer)-2); j++) buffer[pos++] = item->Name[j];
-      if ((i < glClassDB->Total-1) and (pos < sizeof(buffer)-1)) buffer[pos++] = ' ';
+   std::ostringstream out;
+   for (auto & [ cid, v ] : glClassDB) {
+      out << v.Name << " ";
    }
-   buffer[pos] = 0;
-   log.trace("Total: %d, %s", glClassDB->Total, buffer);
+   log.msg("Total: %d, %s", (LONG)glClassDB.size(), out.str().c_str());
 }
 
 //********************************************************************************************************************
@@ -175,7 +171,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    #endif
    objTask *localtask;
    LONG i;
-   OBJECTPTR SystemTask;
    ERROR error;
 
    if (!Info) return NULL;
@@ -188,6 +183,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       fprintf(stderr, "Core module has already been initialised (OpenCore() called more than once.)\n");
    }
 
+   if (alloc_private_lock(TL_CLASSDB, 0)) return NULL; // For access to glClassDB
    if (alloc_private_lock(TL_VOLUMES, 0)) return NULL; // For access to glVolumes
    if (alloc_private_lock(TL_GENERIC, 0)) return NULL; // A misc. internal mutex, strictly not recursive.
    if (alloc_private_lock(TL_TIMER, 0)) return NULL; // For timer subscriptions.
@@ -293,11 +289,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    #else
       #error Require code to obtain the process ID.
    #endif
-
-   ClearMemory(glAlphaNumeric, sizeof(glAlphaNumeric));
-   for (i='a'; i <= 'z'; i++) glAlphaNumeric[i] = TRUE;
-   for (i='A'; i <= 'Z'; i++) glAlphaNumeric[i] = TRUE;
-   for (i='0'; i <= '9'; i++) glAlphaNumeric[i] = TRUE;
 
    if (Info->Flags & OPF_ROOT_PATH) SetResourcePath(RP_ROOT_PATH, Info->RootPath);
 
@@ -528,13 +519,13 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    }
    else log.msg("A debugger is active.");
 
-   // Process will run standalone - generate unique resource names based on our process ID.
+   // Generate unique resource names based on our process ID.
 
    {
       WINHANDLE handle;
       LONG id = glProcessID;
       static const char lookup[] = "0123456789ABCDEF";
-      while (1) {
+      while (true) {
          for (LONG p=1; p < PL_END; p++) {
             LONG mid = id;
             for (LONG i=3; i < 11; i++) {
@@ -734,11 +725,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       return NULL;
    }
 
-   if (AllocSemaphore(NULL, 0, 0, &glSharedControl->ClassSemaphore)) {
-      CloseCore();
-      return NULL;
-   }
-
    ManagedActions[AC_Init] = (LONG (*)(OBJECTPTR, APTR))MGR_Init;
    ManagedActions[AC_Free] = (LONG (*)(OBJECTPTR, APTR))MGR_Free;
    ManagedActions[AC_Signal] = (LONG (*)(OBJECTPTR, APTR))MGR_Signal;
@@ -763,6 +749,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    // Allocate the System Task
 
+   OBJECTPTR SystemTask;
    if (!(error = NewLockedObject(ID_TASK, NF::UNTRACKED|NF::UNIQUE, &SystemTask, &SystemTaskID, "SystemTask"))) {
       if (Action(AC_Init, SystemTask, NULL) != ERR_Okay) {
          if (Info->Flags & OPF_ERROR) Info->Error = ERR_Init;
@@ -789,27 +776,22 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       return NULL;
    }
 
-   // Register Core classes in the system
+   // Register Core classes
 
-   {
-      parasol::Log log("Core");
-      log.branch("Registering Core classes.");
+   if (add_thread_class() != ERR_Okay)  { CloseCore(); return NULL; }
+   if (add_module_class() != ERR_Okay)  { CloseCore(); return NULL; }
+   if (add_time_class() != ERR_Okay)    { CloseCore(); return NULL; }
+   if (add_config_class() != ERR_Okay)  { CloseCore(); return NULL; }
+   if (add_storage_class() != ERR_Okay) { CloseCore(); return NULL; }
+   if (add_file_class() != ERR_Okay)    { CloseCore(); return NULL; }
+   if (add_script_class() != ERR_Okay)  { CloseCore(); return NULL; }
+   if (add_archive_class() != ERR_Okay) { CloseCore(); return NULL; }
+   if (add_compressed_stream_class() != ERR_Okay) { CloseCore(); return NULL; }
+   if (add_compression_class() != ERR_Okay) { CloseCore(); return NULL; }
 
-      if (add_thread_class() != ERR_Okay)  { CloseCore(); return NULL; }
-      if (add_module_class() != ERR_Okay)  { CloseCore(); return NULL; }
-      if (add_time_class() != ERR_Okay)    { CloseCore(); return NULL; }
-      if (add_config_class() != ERR_Okay)  { CloseCore(); return NULL; }
-      if (add_storage_class() != ERR_Okay) { CloseCore(); return NULL; }
-      if (add_file_class() != ERR_Okay)    { CloseCore(); return NULL; }
-      if (add_script_class() != ERR_Okay)  { CloseCore(); return NULL; }
-      if (add_archive_class() != ERR_Okay) { CloseCore(); return NULL; }
-      if (add_compressed_stream_class() != ERR_Okay) { CloseCore(); return NULL; }
-      if (add_compression_class() != ERR_Okay) { CloseCore(); return NULL; }
-
-      #ifdef __ANDROID__
-      if (add_asset_class() != ERR_Okay) { CloseCore(); return NULL; }
-      #endif
-   }
+   #ifdef __ANDROID__
+   if (add_asset_class() != ERR_Okay) { CloseCore(); return NULL; }
+   #endif
 
    glCurrentTaskID = localtask->UID;
    glCurrentTask   = localtask;
@@ -824,8 +806,27 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    if (!(Info->Flags & OPF_SCAN_MODULES)) {
       if (!(error = load_modules())) {
-         error = load_classes(); // See class_metaclass.c
-         Expunge(FALSE); // A final expunge is essential to normalise the system state.
+         objFile::create file = { fl::Path(glClassBinPath), fl::Flags(FL_READ) };
+
+         if (file.ok()) {
+            LONG filesize;
+            file->get(FID_Size, &filesize);
+
+            LONG hdr;
+            file->read(&hdr, sizeof(hdr));
+            if (hdr IS CLASSDB_HEADER) {
+               while (file->Position + ClassEntry::MIN_SIZE < filesize) {
+                  ClassEntry item;
+                  item.read(*file);
+                  glClassDB[item.ClassID] = item;
+               }
+            }
+            else {
+               // File is probably from an old version and requires recalculation.
+               glScanClasses = true;
+            }
+         }
+         else glScanClasses = true; // If no file, a database rebuild is required.
       }
    }
 
@@ -870,7 +871,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    if (Info->Flags & OPF_SCAN_MODULES) {
       log.msg("Class scanning has been enforced by user request.");
-      glScanClasses = TRUE;
+      glScanClasses = true;
    }
 
    if (glScanClasses) {

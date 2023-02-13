@@ -241,44 +241,43 @@ objMetaClass * FindClass(CLASSID ClassID)
          return ptr[0];
       }
 
-      // If we are shutting down, do not go any further as we do not want to load new modules during the shutdown process.
+      if (glProgramStage IS STAGE_SHUTDOWN) return NULL; // No new module loading during shutdown
 
-      if (glProgramStage IS STAGE_SHUTDOWN) return NULL;
-
-      // Since the class is not in the system, we need to try and find a master in the references.  If we find one, we can
+      // Class is not loaded.  Try and find a master in the dictionary.  If we find one, we can
       // initialise the module and then find the new Class.
       //
       // Note: Children of the class are not automatically loaded into memory if they are unavailable at the time.  Doing so
       // would result in lost CPU and memory resources due to loading code that may not be needed.
 
-      CSTRING path = NULL;
-      if (auto item = find_class(ClassID)) {
-         if (item->PathOffset) path = (CSTRING)item + item->PathOffset;
-      }
+      if (glClassDB.contains(ClassID)) {
+         auto &path = glClassDB[ClassID].Path;
 
-      if (!path) {
-         ModuleItem *mod;
-         if ((mod = find_module(ClassID))) path = (STRING)(mod + 1);
-      }
-
-      extMetaClass *mc = NULL;
-      if (path) {
-         // Load the module from the associated location and then find the class that it contains.  If the module fails,
-         // we keep on looking for other installed modules that may handle the class.
-
-         log.branch("Attempting to load module \"%s\" for class $%.8x.", path, ClassID);
-
-         objModule::create mod = { fl::Name(path) };
-         if (mod.ok()) {
-            if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) mc = ptr[0];
+         if (path.empty()) {
+            ModuleItem *mod;
+            if ((mod = find_module(ClassID))) path.assign(STRING(mod + 1));
          }
+
+         if (!path.empty()) {
+            // Load the module from the associated location and then find the class that it contains.  If the module fails,
+            // we keep on looking for other installed modules that may handle the class.
+
+            log.branch("Attempting to load module \"%s\" for class $%.8x.", path.c_str(), ClassID);
+
+            objModule::create mod = { fl::Name(path) };
+            if (mod.ok()) {
+               if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) {
+                  return ptr[0];
+               }
+               else log.warning("Module \"%s\" did not configure class \"%s\"", path.c_str(), glClassDB[ClassID].Name.c_str());
+            }
+            else log.warning("Failed to load module \"%s\"", path.c_str());
+         }
+         else log.warning("No module path defined for class \%s\"", glClassDB[ClassID].Name.c_str());
       }
-
-      if (mc) log.msg("Found class \"%s\"", mc->ClassName);
-      else log.warning("Could not find class $%.8x in memory or in class references.", ClassID);
-
-      return mc;
+      else log.warning("Could not find class $%.8x in memory or in dictionary.", ClassID);
    }
+
+   return NULL;
 }
 
 /*********************************************************************************************************************

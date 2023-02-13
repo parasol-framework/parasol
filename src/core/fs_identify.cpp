@@ -169,26 +169,22 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
 
    // Check against the class registry to identify what class and sub-class that this data source belongs to.
 
-   ClassHeader *classes;
-
-   if ((classes = glClassDB)) {
-      LONG *offsets = CL_OFFSETS(classes);
-
+   if (!glClassDB.empty()) {
       // Check extension
 
       log.trace("Checking extension against class database.");
 
       if (!*ClassID) {
-         if ((filename = get_filename(res_path))) {
-            for (LONG i=0; (i < classes->Total) and (!*ClassID); i++) {
-               ClassItem *item = (ClassItem *)((char *)classes + offsets[i]);
-               if (item->MatchOffset) {
-                  if (!StrCompare((STRING)item + item->MatchOffset, filename, 0, STR_WILDCARD)) {
-                     if (item->ParentID) {
-                        *ClassID = item->ParentID;
-                        if (SubClassID) *SubClassID = item->ClassID;
+         if (auto filename = get_filename(res_path)) {
+            for (auto it = glClassDB.begin(); it != glClassDB.end(); it++) {
+               auto &rec = it->second;
+               if (!rec.Match.empty()) {
+                  if (!StrCompare(rec.Match.c_str(), filename, 0, STR_WILDCARD)) {
+                     if (rec.ParentID) {
+                        *ClassID = rec.ParentID;
+                        if (SubClassID) *SubClassID = rec.ClassID;
                      }
-                     else *ClassID = item->ClassID;
+                     else *ClassID = rec.ClassID;
                      log.trace("File identified as class $%.8x", *ClassID);
                      break;
                   }
@@ -203,13 +199,13 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
          log.trace("Loading file header to identify '%s' against class registry", res_path);
 
          if ((!ReadFileToBuffer(res_path, buffer, HEADER_SIZE, &bytes_read)) and (bytes_read >= 4)) {
-            log.trace("Checking file header data (%d bytes) against %d classes....", bytes_read, classes->Total);
-            for (LONG i=0; (i < classes->Total) and (!*ClassID); i++) {
-               ClassItem *item = (ClassItem *)((char *)classes + offsets[i]);
-               if (!item->HeaderOffset) continue;
+            log.trace("Checking file header data (%d bytes) against %d classes....", bytes_read, glClassDB.size());
+            for (auto it = glClassDB.begin(); it != glClassDB.end(); it++) {
+               auto &rec = it->second;
+               if (rec.Header.empty()) continue;
 
-               CSTRING header = (CSTRING)item + item->HeaderOffset; // Compare the header to the Path buffer
-               BYTE match = TRUE;  // Headers use an offset based hex format, for example: [8:$958a9b9f9301][24:$939a9fff]
+               CSTRING header = rec.Header.c_str(); // Compare the header to the Path buffer
+               bool match = true;  // Headers use an offset based hex format, for example: [8:$958a9b9f9301][24:$939a9fff]
                while (*header) {
                   if (*header != '[') {
                      if ((*header IS '|') and (match)) break;
@@ -248,47 +244,33 @@ ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLA
                         else break;
                         header++;
 
-                        if (offset >= bytes_read) {
-                           match = FALSE;
-                           break;
-                        }
-
-                        if (byte != buffer[offset++]) {
-                           match = FALSE;
-                           break;
-                        }
+                        if (offset >= bytes_read) { match = false; break; }
+                        if (byte != buffer[offset++]) { match = false; break; }
                      }
                   }
                   else {
                      while ((*header) and (*header != ']')) {
-                        if (offset >= bytes_read) {
-                           match = FALSE;
-                           break;
-                        }
-
-                        if (*header != buffer[offset++]) {
-                           match = FALSE;
-                           break;
-                        }
+                        if (offset >= bytes_read) { match = false; break; }
+                        if (*header != buffer[offset++]) { match = false; break; }
                         header++;
                      }
                   }
 
-                  if (match IS FALSE) {
+                  if (!match) {
                      while ((*header) and (*header != '|')) header++; // Look for an or operation
                      if (*header IS '|') {
-                        match = TRUE; // Continue comparisons
+                        match = true; // Continue comparisons
                         header++;
                      }
                   }
                }
 
                if (match) {
-                  if (item->ParentID) {
-                     *ClassID = item->ParentID;
-                     if (SubClassID) *SubClassID = item->ClassID;
+                  if (rec.ParentID) {
+                     *ClassID = rec.ParentID;
+                     if (SubClassID) *SubClassID = rec.ClassID;
                   }
-                  else *ClassID = item->ClassID;
+                  else *ClassID = rec.ClassID;
                   break;
                }
             } // for all classes
@@ -548,13 +530,12 @@ ERROR get_class_cmd(CSTRING Mode, objConfig *Associations, LONG Flags, CLASSID C
 
    if ((!ClassID) or (!Command) or (!Associations)) return log.warning(ERR_NullArgs);
 
-   auto item = find_class(ClassID);
-
-   if (item) {
+   if (glClassDB.contains(ClassID)) {
+      auto &item = glClassDB[ClassID];
       ConfigGroups *groups;
       if (!Associations->getPtr(FID_Data, &groups)) {
          for (auto& [group, keys] : groups[0]) {
-            if ((keys.contains("Class")) and (!StrMatch(keys["Class"].c_str(), item->Name))) {
+            if ((keys.contains("Class")) and (!StrMatch(keys["Class"].c_str(), item.Name.c_str()))) {
                if (Flags & IDF_SECTION) *Command = StrClone(group.c_str());
                else if (keys.contains(Mode)) *Command = StrClone(keys[Mode].c_str());
                else return ERR_NoData;
