@@ -218,18 +218,20 @@ static ERROR snd_init_audio(extSound *Self)
 
    extAudio *audio;
    ERROR error;
-   if (!(error = NewNamedObject(ID_AUDIO, NF::UNIQUE, &audio, &Self->AudioID, "SystemAudio"))) {
+   if (!(error = NewObject(ID_AUDIO, NF::NIL, &audio))) {
+      SetName(audio, "SystemAudio");
       SetOwner(audio, CurrentTask());
 
       if (!acInit(audio)) {
-         error = acActivate(audio);
+         if (!(error = acActivate(audio))) {
+            Self->AudioID = audio->UID;
+         }
+         else acFree(audio);
       }
       else {
          acFree(audio);
          error = ERR_Init;
       }
-
-      ReleaseObject(audio);
    }
    else if (error IS ERR_ObjectExists) return ERR_Okay;
    else error = ERR_NewObject;

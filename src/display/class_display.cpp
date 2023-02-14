@@ -2006,7 +2006,8 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
    objPointer *pointer;
    OBJECTID pointer_id;
    if (FindObject("SystemPointer", ID_POINTER, 0, &pointer_id) != ERR_Okay) {
-      if (!NewNamedObject(ID_POINTER, NF::UNTRACKED|NF::UNIQUE, &pointer, &pointer_id, "SystemPointer")) {
+      if (!NewObject(ID_POINTER, NF::UNTRACKED, &pointer)) {
+         SetName(pointer, "SystemPointer");
          OBJECTID owner = Self->ownerID();
          if (GetClassID(owner) IS ID_SURFACE) pointer->set(FID_Surface, owner);
 
@@ -2022,7 +2023,6 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
 
          if (acInit(pointer) != ERR_Okay) acFree(pointer);
          else acShow(pointer);
-         ReleaseObject(pointer);
       }
    }
    return ERR_Okay;
@@ -3125,8 +3125,7 @@ void alloc_display_buffer(extDisplay *Self)
    if (Self->BufferID) { acFree(Self->BufferID); Self->BufferID = 0; }
 
    objBitmap *buffer;
-   ERROR error;
-   if (!NewLockedObject(ID_BITMAP, NF::INTEGRAL|Self->flags(), &buffer, &Self->BufferID)) {
+   if (!NewObject(ID_BITMAP, NF::INTEGRAL, &buffer)) {
       if (!SetFields(buffer,
             FID_Name|TSTR,           "SystemBuffer",
             FID_BitsPerPixel|TLONG,  Self->Bitmap->BitsPerPixel,
@@ -3139,16 +3138,14 @@ void alloc_display_buffer(extDisplay *Self)
                FID_DataFlags|TLONG,  MEM_TEXTURE,
             #endif
             TAGEND)) {
-         if (!acInit(buffer)) error = ERR_Okay;
-         else error = ERR_Init;
+         if (!acInit(buffer)) {
+            Self->BufferID = buffer->UID;
+            return;
+         }
       }
-      else error = ERR_SetField;
 
-      if (error) { acFree(buffer); Self->BufferID = 0; }
-
-      ReleaseObject(buffer);
+      acFree(buffer);
    }
-   else error = ERR_NewObject;
 }
 
 //********************************************************************************************************************

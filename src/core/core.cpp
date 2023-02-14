@@ -729,15 +729,14 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    // Allocate the System Task
 
-   OBJECTPTR SystemTask;
-   if (!(error = NewLockedObject(ID_TASK, NF::UNTRACKED|NF::UNIQUE, &SystemTask, &SystemTaskID, "SystemTask"))) {
+   if (!(error = NewObject(ID_TASK, NF::UNTRACKED, &SystemTask))) {
+      SystemTaskID = SystemTask->UID;
+      SetName(SystemTask, "SystemTask");
       if (Action(AC_Init, SystemTask, NULL) != ERR_Okay) {
          if (Info->Flags & OPF_ERROR) Info->Error = ERR_Init;
-         ReleaseObject(SystemTask);
          CloseCore();
          return NULL;
       }
-      ReleaseObject(SystemTask);
    }
    else if (error != ERR_ObjectExists) {
       if (Info->Flags & OPF_ERROR) Info->Error = ERR_NewObject;

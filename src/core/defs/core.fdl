@@ -1269,7 +1269,7 @@ extern struct CoreBase *CoreBase;
     "LoadFile",
     "SetVolume",
     "DeleteVolume",
-    "NewLockedObject",
+    "MoveFile",
     "UpdateMessage",
     "AddMsgHandler",
     "QueueAction",
@@ -1335,8 +1335,7 @@ extern struct CoreBase *CoreBase;
     "StrHash",
     "UTF8ValidEncoding",
     "AnalysePath",
-    "CreateFolder",
-    "MoveFile")
+    "CreateFolder")
 
   c_insert([[
 
@@ -1366,14 +1365,6 @@ template<class T> inline ERROR NewObject(LARGE ClassID, T **Result) {
    return NewObject(ClassID, NF::NIL, Result);
 }
 
-inline ERROR NewLockedObject(LARGE ClassID, NF Flags, APTR Object, OBJECTID *ID) {
-  return NewLockedObject(ClassID, Flags, Object, ID, NULL);
-}
-
-inline ERROR NewLockedObject(LARGE ClassID, APTR Object, OBJECTID *ID) {
-  return NewLockedObject(ClassID, NF::NIL, Object, ID, NULL);
-}
-
 inline ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo) {
    return MemoryIDInfo(ID,MemInfo,sizeof(struct MemInfo));
 }
@@ -1387,10 +1378,6 @@ inline ERROR QueueAction(LONG Action, OBJECTID ObjectID) {
 }
 
 #endif
-
-template<class T> inline ERROR NewNamedObject(LARGE ClassID, NF Flags, T **Object, OBJECTID *ID, CSTRING Name) {
-  return NewLockedObject(ClassID, Flags|NF::NAME, Object, ID, Name);
-}
 
 typedef std::map<std::string, std::string> ConfigKeys;
 typedef std::pair<std::string, ConfigKeys> ConfigGroup;

@@ -72,7 +72,6 @@ FDEF argsLogReturn[] = { { "Void", FD_VOID }, { 0, 0 } };
 FDEF argsMemoryIDInfo[] = { { "Error", FD_LONG|FD_ERROR }, { "ID", FD_LONG }, { "MemInfo:MemInfo", FD_BUFFER|FD_PTR|FD_STRUCT }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsMemoryPtrInfo[] = { { "Error", FD_LONG|FD_ERROR }, { "Address", FD_PTR }, { "MemInfo:MemInfo", FD_BUFFER|FD_PTR|FD_STRUCT }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsMoveFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Source", FD_STR }, { "Dest", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
-FDEF argsNewLockedObject[] = { { "Error", FD_LONG|FD_ERROR }, { "ClassID", FD_LARGE }, { "Flags", FD_LONG }, { "Object", FD_OBJECTPTR|FD_RESULT }, { "ID", FD_OBJECTID|FD_RESULT }, { "Name", FD_STR }, { 0, 0 } };
 FDEF argsNewObject[] = { { "Error", FD_LONG|FD_ERROR }, { "ClassID", FD_LARGE }, { "Flags", FD_LONG }, { "Object", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
 FDEF argsNotifySubscribers[] = { { "Void", FD_VOID }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { "Args", FD_PTR }, { "Error", FD_LONG|FD_ERROR }, { 0, 0 } };
 FDEF argsOpenDir[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Flags", FD_LONG }, { "DirInfo:Info", FD_PTR|FD_STRUCT|FD_RESOURCE|FD_ALLOC|FD_RESULT }, { 0, 0 } };
@@ -228,7 +227,7 @@ const struct Function glFunctions[] = {
    { (APTR)LoadFile, "LoadFile", argsLoadFile },
    { (APTR)SetVolume, "SetVolume", argsSetVolume },
    { (APTR)DeleteVolume, "DeleteVolume", argsDeleteVolume },
-   { (APTR)NewLockedObject, "NewLockedObject", argsNewLockedObject },
+   { (APTR)MoveFile, "MoveFile", argsMoveFile },
    { (APTR)UpdateMessage, "UpdateMessage", argsUpdateMessage },
    { (APTR)AddMsgHandler, "AddMsgHandler", argsAddMsgHandler },
    { (APTR)QueueAction, "QueueAction", argsQueueAction },
@@ -295,7 +294,6 @@ const struct Function glFunctions[] = {
    { (APTR)UTF8ValidEncoding, "UTF8ValidEncoding", argsUTF8ValidEncoding },
    { (APTR)AnalysePath, "AnalysePath", argsAnalysePath },
    { (APTR)CreateFolder, "CreateFolder", argsCreateFolder },
-   { (APTR)MoveFile, "MoveFile", argsMoveFile },
    { NULL, NULL, NULL }
 };
 

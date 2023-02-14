@@ -173,7 +173,7 @@ ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
       else object_id = glCurrentTask->UID;
    }
    else if (tlContext != &glTopContext) object_id = tlContext->resource()->UID;
-   else object_id = SystemTaskID;
+   else if (SystemTask) object_id = SystemTask->UID;
 
    // Allocate the memory block according to whether it is public or private.
 
@@ -300,7 +300,7 @@ retry:
                else {
                   // IPC_RMID usually fails due to permission errors (e.g. the user ran our program as root and is now running it as a normal user).
 
-                  log.warning("shmctl(Remove, Key $%.8x, ID %d) %s", memkey, memid, strerror(errno));
+                  log.warning("shm key $%.8x / %d exists from previous run, shmctl(IPC_RMID) reports: %s", memkey, memid, strerror(errno));
 
                   if (Flags & MEM_RESERVED) {
                      UNLOCK_PUBLIC_MEMORY();
@@ -389,7 +389,7 @@ retry:
       glSharedBlocks[blk].Offset   = offset;
       #ifdef _WIN32
          glSharedBlocks[blk].OwnerProcess = glProcessID;
-         glSharedBlocks[blk].Handle    = handle;
+         glSharedBlocks[blk].Handle       = handle;
       #endif
 
       if (Flags & (MEM_UNTRACKED|MEM_HIDDEN));

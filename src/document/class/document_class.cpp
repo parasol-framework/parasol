@@ -809,7 +809,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 
    // Allocate the view and page areas
 
-   if (!NewLockedObject(ID_SURFACE, NF::INTEGRAL, &surface, &Self->ViewID)) {
+   if (!NewObject(ID_SURFACE, NF::INTEGRAL, &surface)) {
       SetFields(surface,
          FID_Name|TSTR,    "rgnDocView",   // Do not change this name - it can be used by objects to detect if they are placed in a document
          FID_Parent|TLONG, Self->SurfaceID,
@@ -819,18 +819,17 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
          FID_Height|TLONG, Self->AreaHeight,
          TAGEND);
       if (!acInit(surface)) {
+         Self->ViewID = surface->UID;
          drwAddCallback(surface, (APTR)&draw_background);
          error = ERR_Okay;
       }
-      else { acFree(surface); error = ERR_Init; Self->ViewID = 0; }
-
-      ReleaseObject(surface);
+      else { acFree(surface); error = ERR_Init; }
    }
    else error = ERR_NewObject;
 
    if (error) return error;
 
-   if (!NewLockedObject(ID_SURFACE, NF::INTEGRAL, &surface, &Self->PageID)) {
+   if (!NewObject(ID_SURFACE, NF::INTEGRAL, &surface)) {
       SetFields(surface,
          FID_Name|TSTR,       "rgnDocPage",  // Do not change this name - it can be used by objects to detect if they are placed in a document
          FID_Parent|TLONG,    Self->ViewID,
@@ -846,11 +845,10 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
          drwAddCallback(surface, (APTR)&draw_document);
          auto callback = make_function_stdc(consume_input_events);
          gfxSubscribeInput(&callback, Self->PageID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0, &Self->InputHandle);
+         Self->PageID = surface->UID;
          error = ERR_Okay;
       }
-      else { acFree(surface); error = ERR_Init; Self->PageID = 0; }
-
-      ReleaseObject(surface);
+      else { acFree(surface); error = ERR_Init; }
    }
    else error = ERR_NewObject;
 

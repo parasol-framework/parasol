@@ -1678,7 +1678,7 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
    MessageHeader *msgblock;
    LONG i, len;
 
-   if (Self->UID IS SystemTaskID) {
+   if (Self IS SystemTask) {
       // Perform the following if this is the System Task
       Self->ProcessID = 0;
    }

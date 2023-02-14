@@ -2020,7 +2020,7 @@ struct CoreBase {
    ERROR (*_LoadFile)(CSTRING Path, LONG Flags, struct CacheFile ** Cache);
    ERROR (*_SetVolume)(...);
    ERROR (*_DeleteVolume)(CSTRING Name);
-   ERROR (*_NewLockedObject)(LARGE ClassID, NF Flags, APTR Object, OBJECTID * ID, CSTRING Name);
+   ERROR (*_MoveFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
    ERROR (*_UpdateMessage)(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size);
    ERROR (*_AddMsgHandler)(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle);
    ERROR (*_QueueAction)(LONG Action, OBJECTID Object, APTR Args);
@@ -2087,7 +2087,6 @@ struct CoreBase {
    CSTRING (*_UTF8ValidEncoding)(CSTRING String, CSTRING Encoding);
    ERROR (*_AnalysePath)(CSTRING Path, LONG * Type);
    ERROR (*_CreateFolder)(CSTRING Path, LONG Permissions);
-   ERROR (*_MoveFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2168,7 +2167,7 @@ inline ERROR CopyMemory(const void * Src, APTR Dest, LONG Size) { return CoreBas
 inline ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile ** Cache) { return CoreBase->_LoadFile(Path,Flags,Cache); }
 template<class... Args> ERROR SetVolume(Args... Tags) { return CoreBase->_SetVolume(Tags...); }
 inline ERROR DeleteVolume(CSTRING Name) { return CoreBase->_DeleteVolume(Name); }
-inline ERROR NewLockedObject(LARGE ClassID, NF Flags, APTR Object, OBJECTID * ID, CSTRING Name) { return CoreBase->_NewLockedObject(ClassID,Flags,Object,ID,Name); }
+inline ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_MoveFile(Source,Dest,Callback); }
 inline ERROR UpdateMessage(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size) { return CoreBase->_UpdateMessage(Queue,Message,Type,Data,Size); }
 inline ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle) { return CoreBase->_AddMsgHandler(Custom,MsgType,Routine,Handle); }
 inline ERROR QueueAction(LONG Action, OBJECTID Object, APTR Args) { return CoreBase->_QueueAction(Action,Object,Args); }
@@ -2235,7 +2234,6 @@ inline ULONG StrHash(CSTRING String, LONG CaseSensitive) { return CoreBase->_Str
 inline CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding) { return CoreBase->_UTF8ValidEncoding(String,Encoding); }
 inline ERROR AnalysePath(CSTRING Path, LONG * Type) { return CoreBase->_AnalysePath(Path,Type); }
 inline ERROR CreateFolder(CSTRING Path, LONG Permissions) { return CoreBase->_CreateFolder(Path,Permissions); }
-inline ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_MoveFile(Source,Dest,Callback); }
 #endif
 
 
@@ -2265,14 +2263,6 @@ template<class T> inline ERROR NewObject(LARGE ClassID, T **Result) {
    return NewObject(ClassID, NF::NIL, Result);
 }
 
-inline ERROR NewLockedObject(LARGE ClassID, NF Flags, APTR Object, OBJECTID *ID) {
-  return NewLockedObject(ClassID, Flags, Object, ID, NULL);
-}
-
-inline ERROR NewLockedObject(LARGE ClassID, APTR Object, OBJECTID *ID) {
-  return NewLockedObject(ClassID, NF::NIL, Object, ID, NULL);
-}
-
 inline ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo) {
    return MemoryIDInfo(ID,MemInfo,sizeof(struct MemInfo));
 }
@@ -2286,10 +2276,6 @@ inline ERROR QueueAction(LONG Action, OBJECTID ObjectID) {
 }
 
 #endif
-
-template<class T> inline ERROR NewNamedObject(LARGE ClassID, NF Flags, T **Object, OBJECTID *ID, CSTRING Name) {
-  return NewLockedObject(ClassID, Flags|NF::NAME, Object, ID, Name);
-}
 
 typedef std::map<std::string, std::string> ConfigKeys;
 typedef std::pair<std::string, ConfigKeys> ConfigGroup;

@@ -298,9 +298,9 @@ EXPORT void CloseCore(void)
          glTotalFDs = 0;
       }
 
-      if (SystemTaskID) {
-         ActionMsg(AC_Free, SystemTaskID, NULL);
-         SystemTaskID = 0;
+      if (SystemTask) {
+         acFree(SystemTask);
+         SystemTask = 0;
       }
 
       log.trace("Removing private and public memory locks.");

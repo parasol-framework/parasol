@@ -685,7 +685,7 @@ static ERROR PTR_Init(extPointer *Self, APTR Void)
    // Allocate a custom cursor bitmap
 
    ERROR error;
-   if (!NewLockedObject(ID_BITMAP, NF::INTEGRAL|Self->flags(), &bitmap, &Self->BitmapID)) {
+   if (!NewObject(ID_BITMAP, NF::INTEGRAL, &bitmap)) {
       SetFields(bitmap,
          FID_Name|TSTR,           "CustomCursor",
          FID_Width|TLONG,         MAX_CURSOR_WIDTH,
@@ -694,14 +694,15 @@ static ERROR PTR_Init(extPointer *Self, APTR Void)
          FID_BytesPerPixel|TLONG, 4,
          FID_Flags|TLONG,         BMF_ALPHA_CHANNEL,
          TAGEND);
-      if (!acInit(bitmap)) error = ERR_Okay;
+      if (!acInit(bitmap)) {
+         Self->BitmapID = bitmap->UID;
+         error = ERR_Okay;
+      }
       else {
          acFree(bitmap);
          Self->BitmapID = 0;
          error = ERR_Init;
       }
-
-      ReleaseObject(bitmap);
    }
    else error = ERR_NewObject;
 
@@ -1524,7 +1525,7 @@ static ERROR init_mouse_driver(void)
 
    // Allocate the surface for software based cursor images
 
-   if (!NewLockedObject(ID_SURFACE, NF::INTEGRAL|Self->flags(), &surface, &Self->CursorSurfaceID)) {
+   if (!NewObject(ID_SURFACE, NF::INTEGRAL, &surface)) {
       SetFields(surface,
          FID_Name|TSTR,    "Pointer",
          FID_Parent|TLONG, Self->SurfaceID,
@@ -1536,15 +1537,14 @@ static ERROR init_mouse_driver(void)
          FID_Flags|TLONG,  RNF_CURSOR|RNF_PRECOPY|RNF_COMPOSITE,
          TAGEND);
       if (!acInit(surface)) {
+         Self->CursorSurfaceID = surface->UID;
          gfxAddCallback(surface, &DrawPointer);
+         return ERR_Okay;
       }
-      else { acFree(surface); Self->CursorSurfaceID = 0; }
-
-      ReleaseObject(surface);
+      acFree(surface);
+      return ERR_Init;
    }
    else return log.warning(ERR_NewObject);
-
-   return ERR_Okay;
 }
 #endif
 

@@ -1509,7 +1509,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
       // display will adjust the coordinates to reflect the absolute position of the surface on the desktop).
 
       objDisplay *display;
-      if (!NewLockedObject(ID_DISPLAY, NF::INTEGRAL|Self->flags(), &display, &Self->DisplayID)) {
+      if (!NewObject(ID_DISPLAY, NF::INTEGRAL, &display)) {
          SetFields(display,
                FID_Name|TSTR,           name,
                FID_X|TLONG,             Self->X,
@@ -1578,12 +1578,12 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
                SubscribeAction(display, AC_Draw, &callback);
             }
 
+            Self->DisplayID = display->UID;
             error = ERR_Okay;
          }
          else error = ERR_Init;
 
-         if (error) { acFree(display); Self->DisplayID = 0; }
-         ReleaseObject(display);
+         if (error) acFree(display);
       }
       else error = ERR_NewObject;
    }
@@ -1628,7 +1628,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
          }
          else bpp = display->Bitmap->BitsPerPixel;
 
-         if (!(NewLockedObject(ID_BITMAP, NF::INTEGRAL|Self->flags(), &bitmap, &Self->BufferID))) {
+         if (!NewObject(ID_BITMAP, NF::INTEGRAL, &bitmap)) {
             SetFields(bitmap,
                FID_BitsPerPixel|TLONG, bpp,
                FID_Width|TLONG,        Self->Width,
@@ -1643,13 +1643,13 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
                Self->BytesPerPixel = bitmap->BytesPerPixel;
                Self->LineWidth     = bitmap->LineWidth;
                Self->Data          = bitmap->Data;
+               Self->BufferID      = bitmap->UID;
                error = ERR_Okay;
             }
-            else error = ERR_Init;
-
-            if (error) { acFree(bitmap); Self->BufferID = 0; }
-
-            ReleaseObject(bitmap);
+            else {
+               error = ERR_Init;
+               acFree(bitmap);
+            }
          }
          else error = ERR_NewObject;
 

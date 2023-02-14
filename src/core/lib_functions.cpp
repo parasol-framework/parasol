@@ -110,8 +110,6 @@ ERROR CheckObjectExists(OBJECTID ObjectID)
 {
    parasol::Log log(__FUNCTION__);
 
-   if (ObjectID IS SystemTaskID) return ERR_True;
-
    ThreadLock lock(TL_PRIVATE_MEM, 4000);
    if (lock.granted()) {
       LONG result = ERR_False;

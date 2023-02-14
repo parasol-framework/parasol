@@ -1348,14 +1348,13 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
    parasol::Log log(__FUNCTION__);
    Field *field;
    STRING content, argname;
-   OBJECTID object_id;
    OBJECTPTR object;
    FIELD field_id;
    BYTE customised;
 
    // NF::INTEGRAL is only set when the object is owned by the document
 
-   if (NewLockedObject(class_id, (Self->CurrentObject) ? NF::NIL : NF::INTEGRAL, &object, &object_id)) {
+   if (NewObject(class_id, (Self->CurrentObject) ? NF::NIL : NF::INTEGRAL, &object)) {
       log.warning("Failed to create object of class #%d.", class_id);
       return;
    }
@@ -1489,7 +1488,7 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
 
       if (Tag->Child) {
          parasol::Log log(__FUNCTION__);
-         log.traceBranch("Processing child tags for object #%d.", object_id);
+         log.traceBranch("Processing child tags for object #%d.", object->UID);
          auto prevobject = Self->CurrentObject;
          Self->CurrentObject = object;
          parse_tag(Self, XML, Tag->Child, Index, Flags & (~FILTER_ALL));
@@ -1498,7 +1497,7 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
 
       if (child != Tag->Child) {
          parasol::Log log(__FUNCTION__);
-         log.traceBranch("Processing further child tags for object #%d.", object_id);
+         log.traceBranch("Processing further child tags for object #%d.", object->UID);
          auto prevobject = Self->CurrentObject;
          Self->CurrentObject = object;
          parse_tag(Self, XML, child, Index, Flags & (~FILTER_ALL));
@@ -1507,9 +1506,9 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
 
       // The object can self-destruct in ClosingTag(), so check that it still exists before inserting it into the text stream.
 
-      if (!CheckObjectExists(object_id)) {
+      if (!CheckObjectExists(object->UID)) {
          if (Self->BkgdGfx) {
-            auto resource = add_resource_id(Self, object_id, RT_OBJECT_UNLOAD);
+            auto resource = add_resource_id(Self, object->UID, RT_OBJECT_UNLOAD);
             if (resource) resource->ClassID = class_id;
          }
          else {
@@ -1540,7 +1539,7 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
                   case ID_CONFIG:
                   case ID_COMPRESSION:
                   case ID_SCRIPT:
-                     resource = add_resource_id(Self, object_id, RT_PERSISTENT_OBJECT);
+                     resource = add_resource_id(Self, object->UID, RT_PERSISTENT_OBJECT);
                      break;
 
                   // The following class types use their own internal caching system
@@ -1548,11 +1547,11 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
                   default:
                      log.warning("Cannot cache object of class type '%s'", ResolveClassID(object->ClassID));
                   //case ID_IMAGE:
-                  //   resource = add_resource_id(Self, object_id, RT_OBJECT_UNLOAD);
+                  //   resource = add_resource_id(Self, object->UID, RT_OBJECT_UNLOAD);
                      break;
                }
             }
-            else resource = add_resource_id(Self, object_id, RT_OBJECT_UNLOAD);
+            else resource = add_resource_id(Self, object->UID, RT_OBJECT_UNLOAD);
 
             if (resource) resource->ClassID = class_id;
 
@@ -1566,13 +1565,13 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
 
             for (LONG i=0; i < ARRAYSIZE(classes); i++) {
                if (classes[i] IS class_id) {
-                  add_tabfocus(Self, TT_OBJECT, object_id);
+                  add_tabfocus(Self, TT_OBJECT, object->UID);
                   break;
                }
             }
          }
       }
-      else log.trace("Object %d self-destructed.", object_id);
+      else log.trace("Object %d self-destructed.", object->UID);
    }
    else {
       acFree(object);
@@ -1582,8 +1581,6 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
 next: // Used by PTR_SAVE_ARGS()
 
    Self->DrawIntercept--;
-
-   if (object) ReleaseObject(object);
 }
 
 //****************************************************************************

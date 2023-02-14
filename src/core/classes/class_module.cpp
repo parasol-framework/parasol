@@ -264,10 +264,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
    else if (!NewObject(ID_MODULEMASTER, NF::UNTRACKED, (OBJECTPTR *)&master)) {
       char path[300];
 
-      if (!AccessObject(SystemTaskID, 5000, &Task)) {
-         SetOwner(master, Task);
-         ReleaseObject(Task);
-      }
+      SetOwner(master, SystemTask);
 
       master->Next = glModuleList; // Insert the ModuleMaster at the start of the chain.
       if (glModuleList) glModuleList->Prev = master;
