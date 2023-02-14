@@ -841,7 +841,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    // Broadcast the creation of the new task
 
-   evTaskCreated task_created = { EVID_SYSTEM_TASK_CREATED, glCurrentTaskID };
+   evTaskCreated task_created = { EVID_SYSTEM_TASK_CREATED, glCurrentTask->UID };
    BroadcastEvent(&task_created, sizeof(task_created));
 
    if (Info->Flags & OPF_SCAN_MODULES) {

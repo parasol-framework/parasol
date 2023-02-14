@@ -1071,7 +1071,7 @@ ERROR ListTasks(LONG Flags, struct ListTasks **Detail)
       for (LONG i=0; i < MAX_TASKS; i++) {
          if ((shTasks[i].ProcessID) and (shTasks[i].TaskID) and (shTasks[i].MessageID)) {
             if (Flags & LTF_CURRENT_PROCESS) {
-               if (shTasks[i].TaskID != glCurrentTaskID) continue;
+               if (shTasks[i].TaskID != glCurrentTask->UID) continue;
             }
 
             taskcount++;
@@ -1088,7 +1088,7 @@ ERROR ListTasks(LONG Flags, struct ListTasks **Detail)
          for (LONG i=0; (i < MAX_TASKS) and (j < taskcount); i++) {
             if ((shTasks[i].ProcessID) and (shTasks[i].TaskID) and (shTasks[i].MessageID)) {
                if (Flags & LTF_CURRENT_PROCESS) {
-                  if (shTasks[i].TaskID != glCurrentTaskID) continue;
+                  if (shTasks[i].TaskID != glCurrentTask->UID) continue;
                }
 
                list->ProcessID   = shTasks[i].ProcessID;

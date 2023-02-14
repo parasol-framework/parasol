@@ -1094,7 +1094,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
       if (i < MAX_TASKS) {
          shTasks[i].ProcessID    = pid;
-         shTasks[i].ParentID     = glCurrentTaskID;
+         shTasks[i].ParentID     = glCurrentTask->UID;
          shTasks[i].CreationTime = PreciseTime() / 1000LL;
          shTasks[i].InstanceID   = glInstanceID;
       }
@@ -1682,7 +1682,7 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
       // Perform the following if this is the System Task
       Self->ProcessID = 0;
    }
-   else if (!glCurrentTaskID) {
+   else if (!glCurrentTask) {
       // Perform the following if this is a Task representing the current process
 
       Self->ProcessID = glProcessID;

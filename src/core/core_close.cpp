@@ -119,7 +119,7 @@ EXPORT void CloseCore(void)
    // list just yet, as cooperation with other tasks is often needed when shared objects are freed during the shutdown
    // process.
 
-   if ((glCurrentTaskID) or (glProcessID)) remove_process_waitlocks();
+   if ((glCurrentTask) or (glProcessID)) remove_process_waitlocks();
 
    // Remove locks from private and public memory blocks
 
@@ -138,9 +138,9 @@ EXPORT void CloseCore(void)
 
       // Free all public memory blocks that are tracked to this Task
 
-      if (glCodeIndex < CP_FREE_PUBLIC_MEMORY) {
+      if ((glCodeIndex < CP_FREE_PUBLIC_MEMORY) and (glCurrentTask)) {
          glCodeIndex = CP_FREE_PUBLIC_MEMORY;
-         free_public_resources(glCurrentTaskID);
+         free_public_resources(glCurrentTask->UID);
       }
    }
    else { // This code is only safe to execute if the process hasn't crashed.
@@ -311,9 +311,9 @@ EXPORT void CloseCore(void)
 
       // Free all public memory blocks that are tracked to this process.
 
-      if (glCodeIndex < CP_FREE_PUBLIC_MEMORY) {
+      if ((glCodeIndex < CP_FREE_PUBLIC_MEMORY) and (glCurrentTask)) {
          glCodeIndex = CP_FREE_PUBLIC_MEMORY;
-         free_public_resources(glCurrentTaskID);
+         free_public_resources(glCurrentTask->UID);
       }
    }
 

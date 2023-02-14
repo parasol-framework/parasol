@@ -624,7 +624,7 @@ extern struct MemoryPage     *glMemoryPages;   // Locked with TL_MEMORY_PAGES
 extern struct KeyStore       *glObjectLookup;  // Locked with TL_OBJECT_LOOKUP
 extern struct ModuleHeader   *glModules;       // Read-only.  Module database.
 extern struct OpenInfo       *glOpenInfo;      // Read-only.  The OpenInfo structure initially passed to OpenCore()
-extern objTask *glCurrentTask;            // Threads should use glCurrentTaskID to manage access.
+extern objTask *glCurrentTask;
 extern const struct ActionTable ActionTable[];
 extern const struct Function    glFunctions[];
 extern std::list<CoreTimer> glTimers;           // Locked with TL_TIMER
