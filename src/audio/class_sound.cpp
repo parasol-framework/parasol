@@ -366,7 +366,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          }
 
          if (Self->OnStop.Type) stream.OnStop = make_function_stdc(&onstop_event);
-         else stream.OnStop.Type = 0;
+         else stream.OnStop.Type = CALL_NONE;
 
          stream.PlayOffset   = Self->Position;
          stream.Callback     = make_function_stdc(&read_stream);
@@ -410,7 +410,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
             }
 
             if (Self->OnStop.Type) add.OnStop = make_function_stdc(&onstop_event);
-            else add.OnStop.Type = 0;
+            else add.OnStop.Type = CALL_NONE;
 
             add.SampleFormat = sampleformat;
             add.Data         = buffer;
@@ -601,6 +601,11 @@ static ERROR SOUND_Free(extSound *Self, APTR Void)
 {
    if (Self->StreamTimer)   { UpdateTimer(Self->StreamTimer, 0); Self->StreamTimer = 0; }
    if (Self->PlaybackTimer) { UpdateTimer(Self->PlaybackTimer, 0); Self->PlaybackTimer = 0; }
+
+   if (Self->OnStop.Type IS CALL_SCRIPT) {
+      UnsubscribeAction(Self->OnStop.Script.Script, AC_Free);
+      Self->OnStop.Type = CALL_NONE;
+   }
 
 #if defined(USE_WIN32_PLAYBACK)
    if (!Self->Handle) sndFree((PlatformData *)Self->PlatformData);
