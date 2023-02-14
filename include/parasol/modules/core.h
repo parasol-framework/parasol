@@ -2610,7 +2610,7 @@ class Create {
    public:
       ERROR error;
 
-      // Return an unscoped direct object pointer
+      // Return an unscoped direct object pointer.  NB: Globals are still tracked
 
       template <typename... Args> static T * global(Args... Fields) {
          parasol::Create<T> object = { Fields... };

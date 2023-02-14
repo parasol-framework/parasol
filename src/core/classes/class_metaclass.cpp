@@ -381,7 +381,7 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
             LONG flags = FL_WRITE;
             if (AnalysePath(glClassBinPath, NULL) != ERR_Okay) flags |= FL_NEW;
 
-            auto file = objFile::create::global(fl::Path(glClassBinPath), fl::Flags(flags),
+            auto file = objFile::create::untracked(fl::Name("class_dict_output"), fl::Path(glClassBinPath), fl::Flags(flags),
                fl::Permissions(PERMIT_USER_READ|PERMIT_USER_WRITE|PERMIT_GROUP_READ|PERMIT_GROUP_WRITE|PERMIT_OTHERS_READ));
 
             if (!file) return ERR_File;
