@@ -276,7 +276,7 @@ ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR *Object, OBJECTID *Obje
 
    if (((Flags & NF::UNIQUE) != NF::NIL) and (Name)) {
       OBJECTID search_id;
-      if ((!FindObject(Name, class_id, FOF_SMART_NAMES, &search_id)) and (search_id)) {
+      if ((!FindObject(Name, class_id, 0, &search_id)) and (search_id)) {
          *ObjectID = search_id;
          return ERR_ObjectExists; // Must be ERR_ObjectExists for client benefit.
       }

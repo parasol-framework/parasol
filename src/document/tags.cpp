@@ -312,8 +312,9 @@ static void tag_call(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
          function = Tag->Attrib[1].Value;
          for (i=0; (function[i]) and (function[i] IS '.'); i++);
          if (function[i] IS '.') {
+            OBJECTID id;
             function[i] = 0;
-            FindPrivateObject(function, &script);
+            if (!FindObject(function, 0, 0, &id)) script = GetObjectPtr(id);
             function[i] = '.';
             function = function + i;
          }
@@ -1189,7 +1190,8 @@ static void tag_xml_content(extDocument *Self, objXML *XML, XMLTag *Tag, WORD Fl
    LONG size = Self->BufferSize - Self->BufferIndex;
 
    if ((str = XMLATTRIB(Tag, "object"))) {
-      FindPrivateObject(str, &target);
+      OBJECTID id;
+      if (!FindObject(str, 0, 0, &id)) target = GetObjectPtr(id);
       if (valid_object(Self, target) IS FALSE) return;
    }
    else target = Self->CurrentObject;
@@ -1673,7 +1675,9 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
       else if (!StrMatch("external", tagname)) {
          // Reference an external script as the default for function calls
          if (Self->Flags & DCF_UNRESTRICTED) {
-            if (!FindPrivateObject(Tag->Attrib[i].Value, &Self->DefaultScript)) {
+            OBJECTID id;
+            if (!FindObject(Tag->Attrib[i].Value, 0, 0, &id)) {
+               Self->DefaultScript = GetObjectPtr(id);
                return;
             }
             else {

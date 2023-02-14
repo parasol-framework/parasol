@@ -77,9 +77,9 @@ function testObjectSearches()
    local objects = { }
    table.insert(objects, obj)
 
-   -- Test FindPrivateObject()
+   -- Test FindObject()
 
-   local err, obj = mSys.FindPrivateObject('TestFO')
+   local err, obj = mSys.FindObject('TestFO')
    assert(err == ERR_Okay, 'Failed to find object: ' .. mSys.GetErrorMsg(err))
 
    -- Test ListChildren()

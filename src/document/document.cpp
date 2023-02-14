@@ -852,10 +852,10 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    FID_LayoutSurface = StrHash("LayoutSurface", 0);
 
-   OBJECTPTR style;
-   if (!FindPrivateObject("glStyle", &style)) {
+   OBJECTID style_id;
+   if (!FindObject("glStyle", ID_XML, 0, &style_id)) {
       char buffer[32];
-      if (!acGetVar(style, "/colours/@DocumentHighlight", buffer, sizeof(buffer))) {
+      if (!acGetVar(GetObjectPtr(style_id), "/colours/@DocumentHighlight", buffer, sizeof(buffer))) {
          read_rgb8(buffer, &glHighlight);
       }
    }

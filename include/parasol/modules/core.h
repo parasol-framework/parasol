@@ -2023,7 +2023,7 @@ struct CoreBase {
    ERROR (*_NewLockedObject)(LARGE ClassID, NF Flags, APTR Object, OBJECTID * ID, CSTRING Name);
    ERROR (*_UpdateMessage)(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size);
    ERROR (*_AddMsgHandler)(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle);
-   ERROR (*_FindPrivateObject)(CSTRING Name, APTR Object);
+   ERROR (*_QueueAction)(LONG Action, OBJECTID Object, APTR Args);
    LARGE (*_PreciseTime)(void);
    ERROR (*_OpenDir)(CSTRING Path, LONG Flags, struct DirInfo ** Info);
    OBJECTPTR (*_GetObjectPtr)(OBJECTID Object);
@@ -2088,7 +2088,6 @@ struct CoreBase {
    ERROR (*_AnalysePath)(CSTRING Path, LONG * Type);
    ERROR (*_CreateFolder)(CSTRING Path, LONG Permissions);
    ERROR (*_MoveFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
-   ERROR (*_QueueAction)(LONG Action, OBJECTID Object, APTR Args);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2172,7 +2171,7 @@ inline ERROR DeleteVolume(CSTRING Name) { return CoreBase->_DeleteVolume(Name); 
 inline ERROR NewLockedObject(LARGE ClassID, NF Flags, APTR Object, OBJECTID * ID, CSTRING Name) { return CoreBase->_NewLockedObject(ClassID,Flags,Object,ID,Name); }
 inline ERROR UpdateMessage(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size) { return CoreBase->_UpdateMessage(Queue,Message,Type,Data,Size); }
 inline ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle) { return CoreBase->_AddMsgHandler(Custom,MsgType,Routine,Handle); }
-inline ERROR FindPrivateObject(CSTRING Name, APTR Object) { return CoreBase->_FindPrivateObject(Name,Object); }
+inline ERROR QueueAction(LONG Action, OBJECTID Object, APTR Args) { return CoreBase->_QueueAction(Action,Object,Args); }
 inline LARGE PreciseTime(void) { return CoreBase->_PreciseTime(); }
 inline ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo ** Info) { return CoreBase->_OpenDir(Path,Flags,Info); }
 inline OBJECTPTR GetObjectPtr(OBJECTID Object) { return CoreBase->_GetObjectPtr(Object); }
@@ -2237,7 +2236,6 @@ inline CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding) { return Core
 inline ERROR AnalysePath(CSTRING Path, LONG * Type) { return CoreBase->_AnalysePath(Path,Type); }
 inline ERROR CreateFolder(CSTRING Path, LONG Permissions) { return CoreBase->_CreateFolder(Path,Permissions); }
 inline ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_MoveFile(Source,Dest,Callback); }
-inline ERROR QueueAction(LONG Action, OBJECTID Object, APTR Args) { return CoreBase->_QueueAction(Action,Object,Args); }
 #endif
 
 

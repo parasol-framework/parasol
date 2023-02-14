@@ -241,10 +241,10 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (objModule::load("font", MODVERSION_FONT, &modFont, &FontBase) != ERR_Okay) return ERR_InitModule;
    if (objModule::load("vector", MODVERSION_VECTOR, &modVector, &VectorBase) != ERR_Okay) return ERR_InitModule;
 
-   objXML *style;
-   if (!FindPrivateObject("glStyle", &style)) {
+   OBJECTID id;
+   if (!FindObject("glStyle", ID_XML, 0, &id)) {
       char buffer[40];
-      if (!acGetVar(style, "/colours/@texthighlight", buffer, sizeof(buffer))) {
+      if (!acGetVar(GetObjectPtr(id), "/colours/@texthighlight", buffer, sizeof(buffer))) {
          read_rgb8(buffer, &glHighlight);
       }
    }

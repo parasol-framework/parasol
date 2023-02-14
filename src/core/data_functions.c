@@ -37,7 +37,6 @@ FDEF argsDeleteVolume[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, {
 FDEF argsFindClass[] = { { "Object", FD_OBJECTPTR }, { "ClassID", FD_LONG|FD_UNSIGNED }, { 0, 0 } };
 FDEF argsFindField[] = { { "Field", FD_PTR|FD_STRUCT }, { "Object", FD_OBJECTPTR }, { "FieldID", FD_LONG|FD_UNSIGNED }, { "Target", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
 FDEF argsFindObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "ClassID", FD_LONG|FD_UNSIGNED }, { "Flags", FD_LONG }, { "ObjectID", FD_OBJECTID|FD_RESULT }, { 0, 0 } };
-FDEF argsFindPrivateObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "Object", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
 FDEF argsFreeMutex[] = { { "Void", FD_VOID }, { "Mutex", FD_PTR }, { 0, 0 } };
 FDEF argsFreeResource[] = { { "Error", FD_LONG|FD_ERROR }, { "Address", FD_PTR }, { 0, 0 } };
 FDEF argsFreeResourceID[] = { { "Error", FD_LONG|FD_ERROR }, { "ID", FD_LONG }, { 0, 0 } };
@@ -232,7 +231,7 @@ const struct Function glFunctions[] = {
    { (APTR)NewLockedObject, "NewLockedObject", argsNewLockedObject },
    { (APTR)UpdateMessage, "UpdateMessage", argsUpdateMessage },
    { (APTR)AddMsgHandler, "AddMsgHandler", argsAddMsgHandler },
-   { (APTR)FindPrivateObject, "FindPrivateObject", argsFindPrivateObject },
+   { (APTR)QueueAction, "QueueAction", argsQueueAction },
    { (APTR)PreciseTime, "PreciseTime", argsPreciseTime },
    { (APTR)OpenDir, "OpenDir", argsOpenDir },
    { (APTR)GetObjectPtr, "GetObjectPtr", argsGetObjectPtr },
@@ -297,7 +296,6 @@ const struct Function glFunctions[] = {
    { (APTR)AnalysePath, "AnalysePath", argsAnalysePath },
    { (APTR)CreateFolder, "CreateFolder", argsCreateFolder },
    { (APTR)MoveFile, "MoveFile", argsMoveFile },
-   { (APTR)QueueAction, "QueueAction", argsQueueAction },
    { NULL, NULL, NULL }
 };
 

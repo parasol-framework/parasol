@@ -84,7 +84,7 @@ ERROR DeleteVolume(CSTRING Name);
 ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR * Object, OBJECTID * ID, CSTRING Name);
 ERROR UpdateMessage(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size);
 ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle);
-ERROR FindPrivateObject(CSTRING Name, OBJECTPTR * Object);
+ERROR QueueAction(LONG Action, OBJECTID Object, APTR Args);
 LARGE PreciseTime();
 ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo ** Info);
 OBJECTPTR GetObjectPtr(OBJECTID Object);
@@ -149,7 +149,6 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding);
 ERROR AnalysePath(CSTRING Path, LONG * Type);
 ERROR CreateFolder(CSTRING Path, LONG Permissions);
 ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
-ERROR QueueAction(LONG Action, OBJECTID Object, APTR Args);
 
 #ifdef  __cplusplus
 }

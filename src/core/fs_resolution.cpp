@@ -466,7 +466,7 @@ static ERROR resolve_object_path(STRING Path, STRING Source, STRING Dest, LONG P
 
    if (Path[0]) {
       OBJECTID volume_id;
-      if (!FindObject(Path, 0, FOF_SMART_NAMES, &volume_id)) {
+      if (!FindObject(Path, 0, 0, &volume_id)) {
          OBJECTPTR object;
          if (!AccessObject(volume_id, 5000, &object)) {
             if ((!object->getPtr(FID_ResolvePath, &resolve_virtual)) and (resolve_virtual)) {

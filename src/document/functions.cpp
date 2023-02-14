@@ -8115,20 +8115,18 @@ static ERROR extract_script(extDocument *Self, CSTRING Link, OBJECTPTR *Script, 
 
    if (Script) {
       if (scriptref) {
-         if (!FindPrivateObject(scriptref, Script)) {
+         OBJECTID id;
+         if (!FindObject(scriptref, ID_SCRIPT, 0, &id)) {
             // Security checks
 
-            if (Script[0]->ClassID != ID_SCRIPT) {
-               log.warning("Function reference to object '%s' is not a Script object.", scriptref);
-               return ERR_WrongClass;
-            }
-            else if ((Script[0]->OwnerID != Self->UID) and (!(Self->Flags & DCF_UNRESTRICTED))) {
+            *Script = GetObjectPtr(id);
+
+            if ((Script[0]->OwnerID != Self->UID) and (!(Self->Flags & DCF_UNRESTRICTED))) {
                log.warning("Script '%s' does not belong to this document.  Action ignored due to security restrictions.", scriptref);
                return ERR_NoPermission;
             }
          }
-
-         if (!*Script) {
+         else {
             log.warning("Unable to find '%s'", scriptref);
             return ERR_Search;
          }

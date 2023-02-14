@@ -479,23 +479,6 @@ static int object_find_ptr(lua_State *Lua, OBJECTPTR obj)
    return 1;
 }
 
-static int object_find_id(lua_State *Lua, OBJECTID object_id)
-{
-   struct object *object = (struct object *)lua_newuserdata(Lua, sizeof(struct object));
-   ClearMemory(object, sizeof(struct object));
-   luaL_getmetatable(Lua, "Fluid.obj");
-   lua_setmetatable(Lua, -2);
-
-   object->prvObject   = NULL;
-   object->ObjectID    = object_id;
-   object->ClassID     = GetClassID(object_id);
-   object->Class       = FindClass(object->ClassID);
-   object->Detached    = TRUE;
-   object->Locked      = FALSE;
-   object->AccessCount = 0;
-   return 1;
-}
-
 static int object_find(lua_State *Lua)
 {
    parasol::Log log("object.find");
@@ -527,11 +510,8 @@ static int object_find(lua_State *Lua)
          else return 0;
       }
 
-      if (!FindPrivateObject(object_name, &obj)) {
-         return object_find_ptr(Lua, obj);
-      }
-      else if (!FindObject(object_name, class_id, FOF_SMART_NAMES, &object_id)) {
-         return object_find_id(Lua, object_id);
+      if (!FindObject(object_name, class_id, FOF_SMART_NAMES, &object_id)) {
+         return object_find_ptr(Lua, GetObjectPtr(object_id));
       }
       else log.debug("Unable to find object '%s'", object_name);
    }
@@ -539,13 +519,9 @@ static int object_find(lua_State *Lua)
       log.trace("obj.find(#%d)", object_id);
 
       if (CheckObjectExists(object_id) != ERR_Okay) return 0;
-      else if (object_id < 0) return object_find_id(Lua, object_id);
-      else {
-         char buffer[32] = "#";
-         IntToStr(object_id, buffer+1, sizeof(buffer)-1);
-         if (!FindPrivateObject(buffer, &obj)) {
-            return object_find_ptr(Lua, obj);
-         }
+
+      if ((obj = GetObjectPtr(Lua->Script->ownerID()))) {
+         return object_find_ptr(Lua, obj);
       }
    }
    else log.warning("String or ID expected for object name, got '%s'.", lua_typename(Lua, type));

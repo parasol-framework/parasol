@@ -784,7 +784,7 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address)) {
       <param type="OBJECTID *" name="ObjectID">An object id variable for storing the result.</param>
     </input>
     <description>
-<p>The FindObject() function searches for all objects that match a given name and can filter by class.  A pre-allocated buffer is required for the output of the results.</p>
+<p>The FindObject() function searches for all objects that match a given name and can filter by class.</p>
 <p>The following example is a typical illustration of this function's use.  It finds the most recent object created with a given name:</p>
 <pre>OBJECTID id;
 FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
@@ -798,29 +798,6 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
       <error code="LockFailed">Failed to lock a required resource.</error>
       <error code="EmptyString">A required string value contains no characters.</error>
       <error code="DoesNotExist">Resource does not exist.</error>
-    </result>
-  </function>
-
-  <function>
-    <name>FindPrivateObject</name>
-    <category>Objects</category>
-    <comment>Search for an object by name.</comment>
-    <prototype>ERROR FindPrivateObject(CSTRING Name, OBJECTPTR * Object)</prototype>
-    <input>
-      <param type="CSTRING" name="Name">The name of the object to find.</param>
-      <param type="OBJECTPTR *" name="Object">A pointer to the discovered object will be returned in this parameter.</param>
-    </input>
-    <description>
-<p>The FindPrivateObject() function is a simple implementation of <function module="Core">FindObject</function>.  It differs in being limited to finding private objects without class filtering, and can only return one result as a pointer. Care may need to be taken if using this function to access objects that are shared between threads.</p>
-<p>The most recently created object is returned by this function if there are objects sharing the same name.</p>
-<p>For more advanced functionality in object searches please use the <function module="Core">FindObject</function> function.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Search">A search routine in this function failed.</error>
-      <error code="LockFailed">Failed to lock a required resource.</error>
-      <error code="EmptyString">A required string value contains no characters.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 

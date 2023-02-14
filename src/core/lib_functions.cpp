@@ -286,8 +286,7 @@ objMetaClass * FindClass(CLASSID ClassID)
 FindObject: Searches for objects by name.
 Category: Objects
 
-The FindObject() function searches for all objects that match a given name and can filter by class.  A pre-allocated
-buffer is required for the output of the results.
+The FindObject() function searches for all objects that match a given name and can filter by class.
 
 The following example is a typical illustration of this function's use.  It finds the most recent object created
 with a given name:
@@ -306,7 +305,7 @@ int(FOF) Flags: Optional flags.
 &oid ObjectID:  An object id variable for storing the result.
 
 -ERRORS-
-Okay: At least one object was found and stored in the supplied array.
+Okay: At least one matching object was found and stored in the ObjectID.
 Args:
 Search: No objects matching the given name could be found.
 LockFailed:
@@ -327,8 +326,8 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Res
       // If an integer based name (defined by #num) is passed, we translate it to an ObjectID rather than searching for
       // an object of name "#1234".
 
-      BYTE number = FALSE;
-      if (InitialName[0] IS '#') number = TRUE;
+      bool number = false;
+      if (InitialName[0] IS '#') number = true;
       else {
          // If the name consists entirely of numbers, it must be considered an object ID (we can make this check because
          // it is illegal for a name to consist entirely of digits).
@@ -338,12 +337,11 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Res
             if (InitialName[i] < '0') break;
             if (InitialName[i] > '9') break;
          }
-         if (!InitialName[i]) number = TRUE;
+         if (!InitialName[i]) number = true;
       }
 
       if (number) {
-         OBJECTID objectid;
-         if ((objectid = (OBJECTID)StrToInt(InitialName))) {
+         if (auto objectid = (OBJECTID)StrToInt(InitialName)) {
             if (!CheckObjectExists(objectid)) {
                *Result = objectid;
                return ERR_Okay;
@@ -383,109 +381,6 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Res
    }
 
    return ERR_Search;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-FindPrivateObject: Search for an object by name.
-Category: Objects
-
-The FindPrivateObject() function is a simple implementation of ~FindObject().  It differs in being limited
-to finding private objects without class filtering, and can only return one result as a pointer.
-Care may need to be taken if using this function to access objects that are shared between threads.
-
-The most recently created object is returned by this function if there are objects sharing the same name.
-
-For more advanced functionality in object searches please use the ~FindObject() function.
-
--INPUT-
-cstr Name:   The name of the object to find.
-&obj Object: A pointer to the discovered object will be returned in this parameter.
-
--ERRORS-
-Okay: A matching object was found.
-NullArgs
-Search: No objects matching the given name could be found.
-LockFailed
-EmptyString
-
-*********************************************************************************************************************/
-
-ERROR FindPrivateObject(CSTRING InitialName, OBJECTPTR *Object)
-{
-   parasol::Log log(__FUNCTION__);
-
-   if ((!InitialName) or (!Object)) return log.warning(ERR_NullArgs);
-
-   *Object = NULL;
-
-   if (!*InitialName) return log.warning(ERR_EmptyString);
-
-   // If an integer based name (defined by #num) is passed, we translate it to an ObjectID rather than searching for an
-   // object of name "#1234".
-
-   bool number = false;
-   if (InitialName[0] IS '#') number = true;
-   else {
-      // If the name consists entirely of numbers, it must be considered an object ID (we can make this check because
-      // it is illegal for a name to consist entirely of figures).
-
-      LONG i;
-      for (i=0; InitialName[i]; i++) {
-         if (((InitialName[i] < '0') or (InitialName[i] > '9')) and (InitialName[i] != '-')) break;
-      }
-      if (!InitialName[i]) number = true;
-   }
-
-   if (number) {
-      OBJECTID objectid;
-      if ((objectid = (OBJECTID)StrToInt(InitialName))) {
-         ThreadLock lock(TL_PRIVATE_MEM, 4000);
-         if (lock.granted()) {
-            auto mem = glPrivateMemory.find(objectid);
-            if ((mem != glPrivateMemory.end()) and (mem->second.Object)) {
-               *Object = mem->second.Object;
-               return ERR_Okay;
-            }
-         }
-         else return log.warning(ERR_LockFailed);
-      }
-      return ERR_Search;
-   }
-   else if (!StrMatch("owner", InitialName)) {
-      if ((tlContext != &glTopContext) and (tlContext->object()->OwnerID)) {
-         ThreadLock lock(TL_PRIVATE_MEM, 4000);
-         if (lock.granted()) {
-            auto mem = glPrivateMemory.find(tlContext->object()->OwnerID);
-            if (mem != glPrivateMemory.end()) {
-               if ((*Object = mem->second.Object)) {
-                  return ERR_Okay;
-               }
-            }
-         }
-         else return log.warning(ERR_LockFailed);
-      }
-      return ERR_Search;
-   }
-
-   ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
-   if (lock.granted()) {
-      LONG i, list_size;
-      OBJECTPTR *list;
-      if (!VarGet(glObjectLookup, InitialName, (APTR *)&list, &list_size)) {
-         // Return the most recently created object, i.e. the one at the end of the list.
-         for (i=(list_size / sizeof(OBJECTPTR)) - 1; i >= 0; i--) {
-            if (list[i]) {
-               *Object = list[i];
-               return ERR_Okay;
-            }
-         }
-      }
-   }
-
-   if (*Object) return ERR_Okay;
-   else return ERR_Search;
 }
 
 /*********************************************************************************************************************
