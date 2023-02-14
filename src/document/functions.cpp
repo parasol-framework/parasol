@@ -8031,6 +8031,7 @@ static void process_parameters(extDocument *Self, CSTRING String)
 // Obsoletion of the old scrollbar code means that we should be adjusting page size only and let the scrollbars
 // automatically adjust in the background.
 
+static void calc_scroll(extDocument *Self) __attribute__((unused));
 static void calc_scroll(extDocument *Self)
 {
    parasol::Log log(__FUNCTION__);

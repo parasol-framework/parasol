@@ -1191,8 +1191,11 @@ static void tag_xml_content(extDocument *Self, objXML *XML, XMLTag *Tag, WORD Fl
 
    if ((str = XMLATTRIB(Tag, "object"))) {
       OBJECTID id;
-      if (!FindObject(str, 0, 0, &id)) target = GetObjectPtr(id);
-      if (valid_object(Self, target) IS FALSE) return;
+      if (!FindObject(str, 0, 0, &id)) {
+         target = GetObjectPtr(id);
+         if (valid_object(Self, target) IS FALSE) return;
+      }
+      else return;
    }
    else target = Self->CurrentObject;
 
