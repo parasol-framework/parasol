@@ -207,7 +207,6 @@ struct object {
    UBYTE     Detached:1;      // TRUE if the object is an external reference or is not to be garbage collected
    UBYTE     Locked:1;        // Can be TRUE only if a lock has been acquired from AccessObject()
    UBYTE     DelayCall:1;     // If TRUE, the next action/method call is to be delayed.
-   UBYTE     NewLock:1;       // Set by obj.new() if the object is private and a lock was (and still is) active.
    ULONG     AccessCount;     // Controlled by access_object() and release_object()
 };
 

@@ -81,7 +81,7 @@ ERROR CopyMemory(const void * Src, APTR Dest, LONG Size);
 ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile ** Cache);
 ERROR SetVolume(LARGE,...);
 ERROR DeleteVolume(CSTRING Name);
-ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR * Object, OBJECTID * ID, CSTRING Name);
+ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
 ERROR UpdateMessage(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size);
 ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle);
 ERROR QueueAction(LONG Action, OBJECTID Object, APTR Args);
@@ -148,7 +148,6 @@ ULONG StrHash(CSTRING String, LONG CaseSensitive);
 CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding);
 ERROR AnalysePath(CSTRING Path, LONG * Type);
 ERROR CreateFolder(CSTRING Path, LONG Permissions);
-ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
 
 #ifdef  __cplusplus
 }

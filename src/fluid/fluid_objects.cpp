@@ -145,9 +145,8 @@ static int object_new(lua_State *Lua)
    }
 
    OBJECTPTR obj;
-   OBJECTID obj_id;
    ERROR error;
-   if (!(error = NewLockedObject(class_id, objflags, &obj, &obj_id))) {
+   if (!(error = NewObject(class_id, objflags, &obj))) {
       if (Lua->Script->TargetID) obj->set(FID_Owner, Lua->Script->TargetID);
 
       obj->CreatorMeta = Lua;
@@ -182,7 +181,6 @@ static int object_new(lua_State *Lua)
 
          if ((field_error) or ((error = acInit(obj)) != ERR_Okay)) {
             acFree(obj);
-            ReleaseObject(obj);
 
             if (field_error) {
                prv->CaughtError = field_error;
@@ -201,32 +199,14 @@ static int object_new(lua_State *Lua)
       object->ObjectID = obj->UID;
       object->ClassID  = obj->SubID ? obj->SubID : obj->ClassID;
       object->Class    = FindClass(object->ClassID); //obj->Class;
-      if (obj->UID < 0) {
-         // If the object is shared, its address must be accessed through locking
-         object->prvObject = NULL;
-         object->AccessCount = 0;
-         object->Locked = FALSE;
-         ReleaseObject(obj);
-      }
-      else {
-         // In theory, private objects created with obj.new() can be permanently locked because they belong to the
-         // script.  This prevents them from being deleted prior to garbage collection and use of acFree() will not
-         // subvert Fluid's reference based locks.  If necessary, a permanent release of the lock can be achieved with
-         // a call to detach() at any time by the client program.
 
-#define MAINTAIN_OBJECT_LOCK 1
+      // In theory, objects created with obj.new() can be permanently locked because they belong to the
+      // script.  This prevents them from being deleted prior to garbage collection and use of acFree() will not
+      // subvert Fluid's reference based locks.  If necessary, a permanent release of the lock can be achieved with
+      // a call to detach() at any time by the client program.
 
-#ifdef MAINTAIN_OBJECT_LOCK
-         object->AccessCount = 1;
-         object->Locked      = TRUE;
-         object->NewLock     = TRUE;
-#else
-         object->prvObject   = NULL;
-         object->AccessCount = 0;
-         object->Locked      = FALSE;
-         ReleaseObject(obj);
-#endif
-      }
+      object->AccessCount = 0;
+      object->Locked      = FALSE;
 
       return 1;
    }
@@ -320,9 +300,8 @@ static int object_newchild(lua_State *Lua)
    }
 
    OBJECTPTR obj;
-   OBJECTID obj_id;
    ERROR error;
-   if (!(error = NewLockedObject(class_id, objflags, &obj, &obj_id))) {
+   if (!(error = NewObject(class_id, objflags, &obj))) {
       if (Lua->Script->TargetID) obj->set(FID_Owner, Lua->Script->TargetID);
 
       obj->CreatorMeta = Lua;
@@ -362,7 +341,6 @@ static int object_newchild(lua_State *Lua)
 
          if ((field_error) or ((error = acInit(obj)) != ERR_Okay)) {
             acFree(obj);
-            ReleaseObject(obj);
 
             if (field_error) {
                prv->CaughtError = field_error;
@@ -386,7 +364,6 @@ static int object_newchild(lua_State *Lua)
       def->ObjectID = obj->UID;
       def->ClassID  = obj->SubID ? obj->SubID : obj->ClassID;
       def->Class    = FindClass(def->ClassID); //obj->Class;
-      ReleaseObject(obj);
       return 1;
    }
    else {
@@ -655,14 +632,10 @@ static int object_detach(lua_State *Lua)
    }
 
    parasol::Log log("obj.detach");
-   log.traceBranch("Detached: %d, NewLock: %d", def->Detached, def->NewLock);
+   log.traceBranch("Detached: %d", def->Detached);
 
    if (!def->Detached) {
       def->Detached = TRUE;
-      if (def->NewLock) { // If created by obj.new(), undo the persistent lock that we have.
-         def->NewLock = FALSE;
-         release_object(def);
-      }
    }
 
    return 0;
