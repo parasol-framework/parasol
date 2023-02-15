@@ -25,7 +25,7 @@ LONG AdjustLogLevel(LONG Adjust);
 void LogF(CSTRING Header, CSTRING Message, ...);
 ERROR FindObject(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * ObjectID);
 objMetaClass * FindClass(CLASSID ClassID);
-ERROR ReleaseObject(OBJECTPTR Object);
+ERROR AnalysePath(CSTRING Path, LONG * Type);
 ERROR FreeResource(const void * Address);
 ERROR FreeResourceID(MEMORYID ID);
 CLASSID GetClassID(OBJECTID Object);
@@ -96,7 +96,7 @@ ERROR FuncError(CSTRING Header, ERROR Error);
 ERROR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements);
 ERROR ReleaseMemoryID(MEMORYID MemoryID);
 ERROR AccessPrivateObject(OBJECTPTR Object, LONG MilliSeconds);
-void ReleasePrivateObject(OBJECTPTR Object);
+void ReleaseObject(OBJECTPTR Object);
 ERROR AllocMutex(LONG Flags, APTR * Result);
 void FreeMutex(APTR Mutex);
 ERROR LockMutex(APTR Mutex, LONG MilliSeconds);
@@ -146,7 +146,6 @@ CSTRING VarGetString(struct KeyStore * Store, CSTRING Key);
 ERROR VarCopy(struct KeyStore * Source, struct KeyStore * Dest);
 ULONG StrHash(CSTRING String, LONG CaseSensitive);
 CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding);
-ERROR AnalysePath(CSTRING Path, LONG * Type);
 
 #ifdef  __cplusplus
 }

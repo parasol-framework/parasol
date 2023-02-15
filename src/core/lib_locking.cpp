@@ -1166,7 +1166,7 @@ Category: Objects
 Use AccessPrivateObject() to gain exclusivity to an object at thread-level.  This function provides identical
 behaviour to that of ~AccessObject(), but with a slight speed advantage as the object ID does not need to be
 resolved to an address.  Calls to AccessPrivateObject() will nest, and must be matched with a call to
-~ReleasePrivateObject() to unlock the object.
+~ReleaseObject() to unlock the object.
 
 If it is guaranteed that an object is not being shared between threads, there is no need to acquire a lock via this
 function.
@@ -1239,7 +1239,7 @@ ERROR AccessPrivateObject(OBJECTPTR Object, LONG Timeout)
    if (Timeout < 0) end_time = 0x0fffffffffffffffLL; // Do not alter this value.
    else end_time = (PreciseTime() / 1000LL) + Timeout;
 
-   Object->incSleep(); // Increment the sleep queue first so that ReleasePrivateObject() will know that another thread is expecting a wake-up.
+   Object->incSleep(); // Increment the sleep queue first so that ReleaseObject() will know that another thread is expecting a wake-up.
 
    ThreadLock lock(TL_PRIVATE_OBJECTS, Timeout);
    if (lock.granted()) {
@@ -1887,52 +1887,18 @@ ERROR ReleaseMemoryID(MEMORYID MemoryID)
 /*****************************************************************************
 
 -FUNCTION-
-ReleaseObject: Releases objects from exclusive use.
+ReleaseObject: Release a locked private object.
 Category: Objects
 
-Release a lock previously obtained from ~AccessObject().  Locks will nest, so a release is required for every lock that
-has been granted.  For public objects, the object address will be invalid once it is released.
-
--INPUT-
-obj Object: Pointer to a locked object.
-
--ERRORS-
-Okay
-NullArgs
-NoStats
-NotLocked
-Memory
-
-*****************************************************************************/
-
-ERROR ReleaseObject(OBJECTPTR Object)
-{
-   parasol::Log log(__FUNCTION__);
-
-   if (!Object) return log.warning(ERR_NullArgs);
-
-   if (Object->Queue > 0) {
-      ReleasePrivateObject(Object);
-      return ERR_Okay;
-   }
-   else return log.warning(ERR_NotLocked);
-}
-
-/*****************************************************************************
-
--FUNCTION-
-ReleasePrivateObject: Release a locked private object.
-Category: Objects
-
-Release a lock previously obtained from ~AccessPrivateObject().  Locks will nest, so a release is required for every
-lock that has been granted.
+Release a lock previously obtained from ~AccessObject() or ~AccessPrivateObject().  Locks will nest, so a release is
+required for every lock that has been granted.
 
 -INPUT-
 obj Object: Pointer to the object to be released.
 
 *****************************************************************************/
 
-void ReleasePrivateObject(OBJECTPTR Object)
+void ReleaseObject(OBJECTPTR Object)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1941,7 +1907,7 @@ void ReleasePrivateObject(OBJECTPTR Object)
    #ifdef DEBUG
       LONG our_thread = get_thread_id();
       if (Object->ThreadID != our_thread) {
-         log.traceWarning("Invalid call to ReleasePrivateObject(), locked by thread #%d, we are #%d", Object->ThreadID, our_thread);
+         log.traceWarning("Invalid call to ReleaseObject(), locked by thread #%d, we are #%d", Object->ThreadID, our_thread);
          return;
       }
    #endif
@@ -1961,7 +1927,7 @@ void ReleasePrivateObject(OBJECTPTR Object)
       if (!thread_lock(TL_PRIVATE_OBJECTS, -1)) {
          if (Object->defined(NF::FREE|NF::UNLOCK_FREE)) { // We have to tell other threads that the object is marked for deletion.
             // NB: A lock on PL_WAITLOCKS is not required because we're already protected by the TL_PRIVATE_OBJECTS
-            // barrier (which is common between AccessPrivateObject() and ReleasePrivateObject()
+            // barrier (which is common between AccessPrivateObject() and ReleaseObject()
             auto locks = (WaitLock *)ResolveAddress(glSharedControl, glSharedControl->WLOffset);
             for (WORD i=0; i < glSharedControl->WLIndex; i++) {
                if ((locks[i].WaitingForResourceID IS Object->UID) and (locks[i].WaitingForResourceType IS RT_OBJECT)) {

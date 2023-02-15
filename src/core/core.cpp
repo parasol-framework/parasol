@@ -196,7 +196,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    if (alloc_private_lock(TL_PRIVATE_OBJECTS, ALF_RECURSIVE)) return NULL;
    if (alloc_private_cond(CN_OBJECTS, 0)) return NULL;
 
-   // Allocate a private POSIX semaphore for AccessPrivateObject() and ReleasePrivateObject()
+   // Allocate a private POSIX semaphore for AccessPrivateObject() and ReleaseObject()
 
 #ifdef __unix__
    // Record the 'original' user id and group id, which we need to know in case the binary has been run with the suid

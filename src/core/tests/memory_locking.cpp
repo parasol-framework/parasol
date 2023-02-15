@@ -54,7 +54,7 @@ static void * test_locking(struct thread_info *info)
          if (memory[0] > 1) log.warning("--- MAJOR ERROR %d: More than one thread has access to this memory!", info->index);
          memory[0]--;
 
-         // Test that object removal works in ReleasePrivateObject() and that waiting threads fail peacefully.
+         // Test that object removal works in ReleaseObject() and that waiting threads fail peacefully.
 
          if (glTerminateMemory) {
             if (i >= glLockAttempts-2) {

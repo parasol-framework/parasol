@@ -167,7 +167,7 @@ ERROR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG
                { "Key",      FD_LONG,      { .Long = msg->Key } }
             };
             scCallback(script, msg->Callback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-            ReleasePrivateObject(script);
+            ReleaseObject(script);
          }
       }
    }
@@ -198,7 +198,7 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
             if (!AccessPrivateObject(script, 5000)) {
                const ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = thread } } };
                scCallback(script, thread->Callback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-               ReleasePrivateObject(script);
+               ReleaseObject(script);
             }
          }
       }
@@ -250,7 +250,7 @@ static void * thread_entry(extThread *Self)
             if (!AccessPrivateObject(script, 5000)) {
                const ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = Self } } };
                scCallback(script, Self->Routine.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-               ReleasePrivateObject(script);
+               ReleaseObject(script);
             }
          }
       }
@@ -280,7 +280,7 @@ static void * thread_entry(extThread *Self)
          }
          else Self->Active = FALSE;
 
-         ReleasePrivateObject(Self);
+         ReleaseObject(Self);
       }
 
       // Please note that the Thread object/memory should be presumed terminated from this point

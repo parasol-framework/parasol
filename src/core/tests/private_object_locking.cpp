@@ -50,7 +50,7 @@ INLINE ERROR prv_access(OBJECTPTR Object, LONG ThreadID)
 
 INLINE void prv_release(OBJECTPTR Object)
 {
-   if (Object->SleepQueue > 0) ReleasePrivateObject(Object);
+   if (Object->SleepQueue > 0) ReleaseObject(Object);
    else SUB_QUEUE(Object);
 }
 #endif
@@ -82,7 +82,7 @@ static void * thread_entry(struct thread_info *info)
          if (glConfig->ActionDepth > 1) log.warning("--- MAJOR ERROR: More than one thread has access to this object!");
          glConfig->ActionDepth--;
 
-         // Test that object removal works in ReleasePrivateObject() and that waiting threads fail peacefully.
+         // Test that object removal works in ReleaseObject() and that waiting threads fail peacefully.
 
          if (glTerminateObject) {
             if (i >= glLockAttempts-2) {
@@ -90,7 +90,7 @@ static void * thread_entry(struct thread_info *info)
                #ifdef QUICKLOCK
                prv_release(glConfig);
                #else
-               ReleasePrivateObject(glConfig);
+               ReleaseObject(glConfig);
                #endif
                glConfig = NULL;
                //LogReturn();
@@ -101,7 +101,7 @@ static void * thread_entry(struct thread_info *info)
          #ifdef QUICKLOCK
          prv_release(glConfig);
          #else
-         ReleasePrivateObject(glConfig);
+         ReleaseObject(glConfig);
          #endif
 
          #ifdef __unix__
