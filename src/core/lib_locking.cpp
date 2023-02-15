@@ -389,7 +389,7 @@ ERROR page_memory(PublicAddress *Block, APTR *Address)
             glMemoryPages[index].Address     = addr;
             glMemoryPages[index].AccessCount = 1;
             //glMemoryPages[index].Size        = Block->Size;
-            if (Block->TaskID IS glCurrentTaskID) glMemoryPages[index].Flags = MPF_LOCAL;
+            if ((glCurrentTask) and (Block->TaskID IS glCurrentTask->UID)) glMemoryPages[index].Flags = MPF_LOCAL;
             else glMemoryPages[index].Flags = 0;
             *Address = addr;
             return ERR_Okay;
@@ -416,7 +416,7 @@ ERROR page_memory(PublicAddress *Block, APTR *Address)
             glMemoryPages[index].Size        = Block->Size;
             glMemoryPages[index].Address     = addr;
             glMemoryPages[index].AccessCount = 1;
-            if (Block->TaskID IS glCurrentTaskID) glMemoryPages[index].Flags = MPF_LOCAL;
+            if ((glCurrentTask) and (Block->TaskID IS glCurrentTask->UID)) glMemoryPages[index].Flags = MPF_LOCAL;
             else glMemoryPages[index].Flags = 0;
             *Address = addr;
             return ERR_Okay;
@@ -1099,10 +1099,10 @@ Category: Objects
 This function resolves an object ID to its address and acquires a lock on the object so that other processes and
 threads cannot use it simultaneously.
 
-If the object is in shared memory, it will be paged into the calling process.  If the object is locked, the
-function will wait until the object becomes available.   This must occur within the amount of time specified in the
-Milliseconds parameter.  If the time expires, the function will return with an ERR_TimeOut error code.  If successful,
-ERR_Okay is returned and a reference to the object's address is stored in the Result variable.
+If the object is already locked, it will wait until the object becomes available.   This must occur within the amount
+of time specified in the Milliseconds parameter.  If the time expires, the function will return with an ERR_TimeOut
+error code.  If successful, ERR_Okay is returned and a reference to the object's address is stored in the Result
+variable.
 
 It is crucial that calls to AccessObject() are followed with a call to ~ReleaseObject() once the lock is no
 longer required.  Calls to AccessObject() will also nest, so they must be paired with ~ReleaseObject()
@@ -1131,7 +1131,6 @@ TimeOut
 ERROR AccessObject(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
 {
    parasol::Log log(__FUNCTION__);
-   OBJECTPTR obj;
    ERROR error;
 
    if ((!Result) or (!ObjectID)) return log.warning(ERR_NullArgs);
@@ -1140,93 +1139,22 @@ ERROR AccessObject(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
 
    if (MilliSeconds <= 0) log.warning("Object: %d, MilliSeconds: %d - This is bad practice.", ObjectID, MilliSeconds);
 
-   if (ObjectID > 0) {
-      auto mem = glPrivateMemory.find(ObjectID);
-      if ((mem != glPrivateMemory.end()) and (mem->second.Address)) {
-         if (!(error = AccessPrivateObject((OBJECTPTR)mem->second.Address, MilliSeconds))) {
-            *Result = (OBJECTPTR)mem->second.Address;
-            return ERR_Okay;
-         }
-         else return error;
-      }
-      else if (ObjectID IS glMetaClass.UID) { // Access to the MetaClass requires this special case handler.
-         if (!(error = AccessPrivateObject(&glMetaClass, MilliSeconds))) {
-            *Result = &glMetaClass;
-            return ERR_Okay;
-         }
-         else return error;
-      }
-      else return ERR_NoMatchingObject;
-   }
-   else if (!(error = AccessMemory(ObjectID, MEM_READ_WRITE|MEM_OBJECT, MilliSeconds, (void **)&obj))) {
-      if (obj->defined(NF::FREE)) { // If the object is currently being freed, access cannot be permitted even if the object is operating in the same task space.
-         ReleaseMemory(obj);
-         return ERR_MarkedForDeletion;
-      }
-
-      // This check prevents anyone from gaining access while ReleaseObject() is busy
-
-      if (obj->defined(NF::UNLOCK_FREE) and (!obj->Locked)) {
-         ReleaseMemory(obj);
-         return ERR_MarkedForDeletion;
-      }
-
-      if (obj->Locked) { // Return if we already have an exclusive lock on this object
-         *Result = obj;
-         #ifdef DBG_OBJECTLOCKS
-            log.function("Object: %d, Address: %p [Already Locked]", ObjectID, obj);
-         #endif
+   auto mem = glPrivateMemory.find(ObjectID);
+   if ((mem != glPrivateMemory.end()) and (mem->second.Address)) {
+      if (!(error = AccessPrivateObject((OBJECTPTR)mem->second.Address, MilliSeconds))) {
+         *Result = (OBJECTPTR)mem->second.Address;
          return ERR_Okay;
       }
-
-      // Resolve the Stats address by finding the Object's class and calculating the offset of the Stats structure from
-      // the object size.  If the object is private, resolving these addresses is not necessary.
-
-      if (obj->UID < 0) {
-         if (obj->SubID) obj->Class = FindClass(obj->SubID);
-         else obj->Class = FindClass(obj->ClassID);
-
-         if (!obj->Class) {
-            log.msg("Cannot grab object %d as the %s class is not loaded.", ObjectID, ResolveClassID(obj->ClassID));
-            ReleaseMemory(obj);
-            return ERR_MissingClass;
-         }
-
-         obj->Stats = (Stats *)ResolveAddress(obj, obj->Class->Size);
-      }
-
-      // Tell the object that an exclusive call is being made
-
-      if (obj->isPublic()) {
-         if (obj->defined(NF::NEW_OBJECT)) {
-            // If the object is currently in the process of being created for the first time (NF::NEW_OBJECT is set),
-            // do not call the AccessObject support routine if NewObject support has been written by the developer
-            // (the NewObject support routine is expected to do the equivalent of AccessObject).
-
-            if (!obj->ExtClass->ActionTable[AC_NewObject].PerformAction) error = Action(AC_AccessObject, obj, NULL);
-         }
-         else error = Action(AC_AccessObject, obj, NULL);
-      }
-      else error = ERR_Okay;
-
-      if ((error IS ERR_Okay) or (error IS ERR_NoAction)) {
-         obj->Locked = true; // Set the lock and return the object address
-         *Result = obj;
-
-         #ifdef DBG_OBJECTLOCKS
-            log.function("Object: %d, Address: %p [New Lock]", ObjectID, obj);
-         #endif
-
+      else return error;
+   }
+   else if (ObjectID IS glMetaClass.UID) { // Access to the MetaClass requires this special case handler.
+      if (!(error = AccessPrivateObject(&glMetaClass, MilliSeconds))) {
+         *Result = &glMetaClass;
          return ERR_Okay;
       }
-      else {
-         ReleaseMemory(obj);
-         return error;
-      }
+      else return error;
    }
-   else if (error IS ERR_TimeOut) return ERR_TimeOut;
-   else if (error IS ERR_MemoryDoesNotExist) return ERR_NoMatchingObject;
-   else return error;
+   else return ERR_NoMatchingObject;
 }
 
 /*****************************************************************************
@@ -1240,8 +1168,8 @@ behaviour to that of ~AccessObject(), but with a slight speed advantage as the o
 resolved to an address.  Calls to AccessPrivateObject() will nest, and must be matched with a call to
 ~ReleasePrivateObject() to unlock the object.
 
-This function only needs to be called on private objects that are used between more than one thread.  Calling it on
-public objects (identified by their negative object ID) is an error.
+If it is guaranteed that an object is not being shared between threads, there is no need to acquire a lock via this
+function.
 
 -INPUT-
 obj Object: The address of the object to lock.
@@ -1379,8 +1307,8 @@ This function allocates a mutex that is suitable for keeping threads synchronise
 supported).  Mutexes are locked and unlocked using the ~LockMutex() and ~UnlockMutex() functions.
 
 The underlying implementation is dependent on the host platform.  In Microsoft Windows, critical sections will be
-used and may nest (ALF_RECURSIVE always applies).  Unix systems employ pthread mutexes and will only nest if the
-ALF_RECURSIVE option is specified.
+used and may nest (`ALF_RECURSIVE` always applies).  Unix systems employ pthread mutexes and will only nest if the
+`ALF_RECURSIVE` option is specified.
 
 -INPUT-
 int(ALF) Flags: Optional flags.
@@ -1980,75 +1908,14 @@ Memory
 ERROR ReleaseObject(OBJECTPTR Object)
 {
    parasol::Log log(__FUNCTION__);
-   MemInfo info;
 
    if (!Object) return log.warning(ERR_NullArgs);
 
-   if (Object->UID > 0) {
-      if (Object->Queue > 0) {
-         ReleasePrivateObject(Object);
-         return ERR_Okay;
-      }
-      else return log.warning(ERR_NotLocked);
+   if (Object->Queue > 0) {
+      ReleasePrivateObject(Object);
+      return ERR_Okay;
    }
-   else if (!MemoryIDInfo(Object->UID, &info, sizeof(info))) {
-      if (info.AccessCount <= 0) {
-         log.warning("[Process:%d] Attempt to free a non-existent lock on object %d.", glProcessID, Object->UID);
-         return ERR_NotLocked;
-      }
-
-      if (info.AccessCount > 1) {
-         ReleaseMemory(Object);
-         #ifdef DBG_OBJECTLOCKS
-            log.function("#%d, Remaining Locks: %d", info.MemoryID, info.AccessCount);
-         #endif
-         return ERR_Okay;
-      }
-      else { // Send a ReleaseObject notification to the object
-
-         if (Object->isPublic()) {
-            if (Object->defined(NF::UNLOCK_FREE)) {
-               // Objects are not called with ReleaseObject() if they are marked for deletion.  This allows
-               // the developer to maintain locks during the Free() action and release them manually when he is ready.
-            }
-            else Action(AC_ReleaseObject, Object, NULL);
-
-            // If a child structure is active, automatically release the block for the developer
-            if (Object->ChildPrivate) {
-               ReleaseMemory(Object->ChildPrivate);
-               Object->ChildPrivate = NULL;
-            }
-         }
-
-         // Clean up
-
-         if (Object->defined(NF::UNLOCK_FREE)) {
-            Object->Flags  = Object->Flags & ~(NF::UNLOCK_FREE|NF::FREE);
-            Object->Locked = false;
-            if (Object->UID < 0) { // If public, free the object and then release the memory block to destroy it.
-               acFree(Object);
-               ReleaseMemory(Object);
-            }
-            else { // For private objects we can release the block first to optimise the free process.
-               ReleaseMemory(Object);
-               acFree(Object);
-            }
-         }
-         else {
-            Object->Locked = false;
-            ReleaseMemory(Object);
-         }
-
-         #ifdef DBG_OBJECTLOCKS
-            log.function("#%d [Unlocked]", info.MemoryID);
-         #endif
-         return ERR_Okay;
-      }
-   }
-   else {
-      log.msg("MemoryIDInfo() failed for object #%d @ %p", Object->UID, Object);
-      return ERR_Memory;
-   }
+   else return log.warning(ERR_NotLocked);
 }
 
 /*****************************************************************************
@@ -2108,7 +1975,7 @@ void ReleasePrivateObject(OBJECTPTR Object)
          // are removed so that no thread will attempt to use it during deallocation.
 
          if (Object->defined(NF::UNLOCK_FREE) and (!Object->defined(NF::FREE))) {
-            set_object_flags(Object, Object->Flags & (~NF::UNLOCK_FREE));
+            Object->Flags &= ~NF::UNLOCK_FREE;
             acFree(Object);
 
             cond_wake_all(CN_OBJECTS);
@@ -2120,7 +1987,7 @@ void ReleasePrivateObject(OBJECTPTR Object)
       else exit(0);
    }
    else if (Object->defined(NF::UNLOCK_FREE) and (!Object->defined(NF::FREE))) {
-      set_object_flags(Object, Object->Flags & (~NF::UNLOCK_FREE));
+      Object->Flags &= ~NF::UNLOCK_FREE;
       acFree(Object);
    }
 }

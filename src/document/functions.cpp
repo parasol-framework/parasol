@@ -814,10 +814,7 @@ static ERROR eval(extDocument *Self, STRING Buffer, LONG BufferLength, LONG Flag
                   if (!StrMatch(name, "self")) {
                      objectid = CurrentContext()->UID;
                   }
-                  else {
-                     LONG count = 1;
-                     FindObject(name, 0, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &objectid, &count);
-                  }
+                  else FindObject(name, 0, FOF_SMART_NAMES, &objectid);
                }
 
                if (objectid) {
@@ -1091,8 +1088,7 @@ static BYTE check_tag_conditions(extDocument *Self, XMLTag *Tag)
       }
       else if (!StrMatch("exists", Tag->Attrib[i].Name)) {
          OBJECTID object_id;
-         LONG count = 1;
-         if (!FindObject(Tag->Attrib[i].Value, 0, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &object_id, &count)) {
+         if (!FindObject(Tag->Attrib[i].Value, 0, FOF_SMART_NAMES, &object_id)) {
             if (valid_objectid(Self, object_id)) {
                satisfied = TRUE;
             }
@@ -2094,14 +2090,21 @@ static void check_clips(extDocument *Self, LONG Index, layout *l,
 // Height:   Minimum height of the page/section.  Will be increased to match the number of lines in the layout.
 // Margins:  Margins within the page area.  These are inclusive to the resulting page width/height.  If in a cell, margins reflect cell padding values.
 
-typedef struct {
+struct LAYOUT_STATE {
    layout Layout;
    LONG Index;
    LONG TotalClips;
    LONG TotalLinks;
    LONG SegCount;
    LONG ECIndex;
-} LAYOUT_STATE;
+
+   LAYOUT_STATE() {
+      TotalClips = 0;
+      TotalLinks = 0;
+      SegCount = 0;
+      ECIndex = 0;
+   }
+};
 
 #define SAVE_STATE(s) \
    CopyMemory(&l, &s.Layout, sizeof(l)); \
@@ -4902,42 +4905,42 @@ static ERROR keypress(extDocument *Self, LONG Flags, LONG Value, LONG Unicode)
          scroll.DeltaX = 0;
          scroll.DeltaY = Self->AreaHeight;
          scroll.DeltaZ = 0;
-         DelayMsg(AC_Scroll, Self->SurfaceID, &scroll);
+         QueueAction(AC_Scroll, Self->SurfaceID, &scroll);
          break;
 
       case K_PAGE_UP:
          scroll.DeltaX = 0;
          scroll.DeltaY = -Self->AreaHeight;
          scroll.DeltaZ = 0;
-         DelayMsg(AC_Scroll, Self->SurfaceID, &scroll);
+         QueueAction(AC_Scroll, Self->SurfaceID, &scroll);
          break;
 
       case K_LEFT:
          scroll.DeltaX = -10;
          scroll.DeltaY = 0;
          scroll.DeltaZ = 0;
-         DelayMsg(AC_Scroll, Self->SurfaceID, &scroll);
+         QueueAction(AC_Scroll, Self->SurfaceID, &scroll);
          break;
 
       case K_RIGHT:
          scroll.DeltaX = 10;
          scroll.DeltaY = 0;
          scroll.DeltaZ = 0;
-         DelayMsg(AC_Scroll, Self->SurfaceID, &scroll);
+         QueueAction(AC_Scroll, Self->SurfaceID, &scroll);
          break;
 
       case K_DOWN:
          scroll.DeltaX = 0;
          scroll.DeltaY = 10;
          scroll.DeltaZ = 0;
-         DelayMsg(AC_Scroll, Self->SurfaceID, &scroll);
+         QueueAction(AC_Scroll, Self->SurfaceID, &scroll);
          break;
 
       case K_UP:
          scroll.DeltaX = 0;
          scroll.DeltaY = -10;
          scroll.DeltaZ = 0;
-         DelayMsg(AC_Scroll, Self->SurfaceID, &scroll);
+         QueueAction(AC_Scroll, Self->SurfaceID, &scroll);
          break;
    }
 
@@ -5685,11 +5688,11 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
                continue;
             }
             else if (Flags & ULD_TERMINATE) acFree(resource->ObjectID);
-            else DelayMsg(AC_Free, resource->ObjectID);
+            else QueueAction(AC_Free, resource->ObjectID);
          }
          else if (resource->Type IS RT_OBJECT_UNLOAD_DELAY) {
             if (Flags & ULD_TERMINATE) acFree(resource->ObjectID);
-            else DelayMsg(AC_Free, resource->ObjectID);
+            else QueueAction(AC_Free, resource->ObjectID);
          }
          else acFree(resource->ObjectID);
 
@@ -6555,30 +6558,17 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                      if (Self->CurrentObject) objectid = Self->CurrentObject->UID;
                   }
                   else {
-                     // Find the nearest object with this name.  Objects are sorted by their creation time.  To find the correct object
-                     // we perform two passes.  On pass 1 we only consider objects that are children of the document object.
-                     // On pass 2, which can only be performed if the document is in unrestricted access mode, we will take the
-                     // first object on the list (which will be the most recently created one).
-
-                     OBJECTID list[40];
-                     LONG count = ARRAYSIZE(list);
-                     if (!FindObject(name, 0, FOF_SMART_NAMES, list, &count)) {
-                        // Pass 1: Only consider objects that are children of the document
-                        for (LONG j=0; (j < count) and (!objectid); j++) {
-                           OBJECTID parent_id = list[j];
-                           while (parent_id) {
-                              parent_id = GetOwnerID(parent_id);
+                     if (!FindObject(name, 0, FOF_SMART_NAMES, &objectid)) {
+                        if (!(Self->Flags & DCF_UNRESTRICTED)) {
+                           // Only consider objects that are children of the document
+                           bool valid = false;
+                           for (auto parent_id = GetOwnerID(objectid); parent_id; parent_id = GetOwnerID(parent_id)) {
                               if (parent_id IS Self->UID) {
-                                 objectid = list[j];
+                                 valid = true;
                                  break;
                               }
                            }
-                        }
-
-                        // Pass 2: Accept the first object that is outside of the document's name space
-
-                        if ((!objectid) and (Self->Flags & DCF_UNRESTRICTED)) {
-                           objectid = list[0];
+                           if (!valid) objectid = 0;
                         }
                      }
                   }
@@ -8048,6 +8038,7 @@ static void process_parameters(extDocument *Self, CSTRING String)
 // Obsoletion of the old scrollbar code means that we should be adjusting page size only and let the scrollbars
 // automatically adjust in the background.
 
+static void calc_scroll(extDocument *Self) __attribute__((unused));
 static void calc_scroll(extDocument *Self)
 {
    parasol::Log log(__FUNCTION__);
@@ -8106,7 +8097,8 @@ static ERROR extract_script(extDocument *Self, CSTRING Link, OBJECTPTR *Script, 
 
    *Function = exsbuffer + pos;
    if (bracket != -1) {
-      pos += CopyMemory(Link+dot, exsbuffer+pos, bracket-dot);
+      CopyMemory(Link+dot, exsbuffer+pos, bracket-dot);
+      pos += bracket - dot;
       exsbuffer[pos++] = 0;
 
       if (Args) { // Copy args
@@ -8114,7 +8106,8 @@ static ERROR extract_script(extDocument *Self, CSTRING Link, OBJECTPTR *Script, 
          while ((len > bracket) and (Link[len] != ')')) len--;
          if (Link[len] IS ')') {
             *Args = exsbuffer + pos;
-            pos += CopyMemory(Link+bracket, exsbuffer+pos, len-bracket);
+            CopyMemory(Link+bracket, exsbuffer+pos, len-bracket);
+            pos += len - bracket;
             exsbuffer[pos++] = 0;
          }
          else log.warning("Malformed function args: %s", Link);
@@ -8132,20 +8125,18 @@ static ERROR extract_script(extDocument *Self, CSTRING Link, OBJECTPTR *Script, 
 
    if (Script) {
       if (scriptref) {
-         if (!FindPrivateObject(scriptref, Script)) {
+         OBJECTID id;
+         if (!FindObject(scriptref, ID_SCRIPT, 0, &id)) {
             // Security checks
 
-            if (Script[0]->ClassID != ID_SCRIPT) {
-               log.warning("Function reference to object '%s' is not a Script object.", scriptref);
-               return ERR_WrongClass;
-            }
-            else if ((Script[0]->OwnerID != Self->UID) and (!(Self->Flags & DCF_UNRESTRICTED))) {
+            *Script = GetObjectPtr(id);
+
+            if ((Script[0]->OwnerID != Self->UID) and (!(Self->Flags & DCF_UNRESTRICTED))) {
                log.warning("Script '%s' does not belong to this document.  Action ignored due to security restrictions.", scriptref);
                return ERR_NoPermission;
             }
          }
-
-         if (!*Script) {
+         else {
             log.warning("Unable to find '%s'", scriptref);
             return ERR_Search;
          }

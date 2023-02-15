@@ -379,7 +379,7 @@ STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags)
 
    LONG i;
    char *csvbuffer_alloc = NULL;
-   char csvbuffer[1024];
+   char csvbuffer[1024]= { 0 };
    if (Flags & SBF_CSV) {
       // Note that empty strings (commas following no content) are allowed and are treated as null strings.
 

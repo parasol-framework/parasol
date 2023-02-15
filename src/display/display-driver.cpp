@@ -1377,8 +1377,7 @@ ERROR init_egl(void)
    glDisplayInfo->DisplayID = 0xffffffff; // Force refresh of display info cache.
 
    if (!glPointerID) {
-      LONG count = 1;
-      FindObject("SystemPointer", 0, FOF_INCLUDE_SHARED, &glPointerID, &count);
+      FindObject("SystemPointer", 0, 0, &glPointerID);
    }
 
    if (glPointerID) {

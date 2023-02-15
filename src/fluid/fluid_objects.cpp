@@ -109,8 +109,6 @@ static LONG get_action_info(lua_State *Lua, LONG ClassID, CSTRING action, const 
 **
 ** Variable fields can be denoted with an underscore prefix.
 **
-** An object can be allocated as public by prefixing a '@' to the class name.
-**
 ** Also see object_newchild() for creating objects from a parent.
 **
 ** Errors are immediately thrown.
@@ -132,9 +130,9 @@ static int object_new(lua_State *Lua)
       log.trace("$%.8x", class_id);
    }
    else if ((class_name = luaL_checkstring(Lua, 1))) {
-      if (class_name[0] IS '@') {
+      if (class_name[0] IS '@') { // Deprecated
+         log.warning("Use of @ for allocating public objects is deprecated.");
          class_name++;
-         objflags = objflags | NF::PUBLIC;
       }
       class_id = StrHash(class_name, 0);
       log.trace("%s, $%.8x", class_name, class_id);
@@ -147,9 +145,8 @@ static int object_new(lua_State *Lua)
    }
 
    OBJECTPTR obj;
-   OBJECTID obj_id;
    ERROR error;
-   if (!(error = NewLockedObject(class_id, objflags, &obj, &obj_id))) {
+   if (!(error = NewObject(class_id, objflags, &obj))) {
       if (Lua->Script->TargetID) obj->set(FID_Owner, Lua->Script->TargetID);
 
       obj->CreatorMeta = Lua;
@@ -184,7 +181,6 @@ static int object_new(lua_State *Lua)
 
          if ((field_error) or ((error = acInit(obj)) != ERR_Okay)) {
             acFree(obj);
-            ReleaseObject(obj);
 
             if (field_error) {
                prv->CaughtError = field_error;
@@ -203,32 +199,14 @@ static int object_new(lua_State *Lua)
       object->ObjectID = obj->UID;
       object->ClassID  = obj->SubID ? obj->SubID : obj->ClassID;
       object->Class    = FindClass(object->ClassID); //obj->Class;
-      if (obj->UID < 0) {
-         // If the object is shared, its address must be accessed through locking
-         object->prvObject = NULL;
-         object->AccessCount = 0;
-         object->Locked = FALSE;
-         ReleaseObject(obj);
-      }
-      else {
-         // In theory, private objects created with obj.new() can be permanently locked because they belong to the
-         // script.  This prevents them from being deleted prior to garbage collection and use of acFree() will not
-         // subvert Fluid's reference based locks.  If necessary, a permanent release of the lock can be achieved with
-         // a call to detach() at any time by the client program.
 
-#define MAINTAIN_OBJECT_LOCK 1
+      // In theory, objects created with obj.new() can be permanently locked because they belong to the
+      // script.  This prevents them from being deleted prior to garbage collection and use of acFree() will not
+      // subvert Fluid's reference based locks.  If necessary, a permanent release of the lock can be achieved with
+      // a call to detach() at any time by the client program.
 
-#ifdef MAINTAIN_OBJECT_LOCK
-         object->AccessCount = 1;
-         object->Locked      = TRUE;
-         object->NewLock     = TRUE;
-#else
-         object->prvObject   = NULL;
-         object->AccessCount = 0;
-         object->Locked      = FALSE;
-         ReleaseObject(obj);
-#endif
-      }
+      object->AccessCount = 0;
+      object->Locked      = FALSE;
 
       return 1;
    }
@@ -307,9 +285,9 @@ static int object_newchild(lua_State *Lua)
       log.trace("$%.8x", class_id);
    }
    else if ((class_name = luaL_checkstring(Lua, 1))) {
-      if (class_name[0] IS '@') {
+      if (class_name[0] IS '@') { // Deprecated
          class_name++;
-         objflags = objflags | NF::PUBLIC;
+         log.warning("Use of @ for allocating public objects is deprecated.");
       }
       class_id = StrHash(class_name, 0);
       log.trace("%s, $%.8x", class_name, class_id);
@@ -322,9 +300,8 @@ static int object_newchild(lua_State *Lua)
    }
 
    OBJECTPTR obj;
-   OBJECTID obj_id;
    ERROR error;
-   if (!(error = NewLockedObject(class_id, objflags, &obj, &obj_id))) {
+   if (!(error = NewObject(class_id, objflags, &obj))) {
       if (Lua->Script->TargetID) obj->set(FID_Owner, Lua->Script->TargetID);
 
       obj->CreatorMeta = Lua;
@@ -364,7 +341,6 @@ static int object_newchild(lua_State *Lua)
 
          if ((field_error) or ((error = acInit(obj)) != ERR_Okay)) {
             acFree(obj);
-            ReleaseObject(obj);
 
             if (field_error) {
                prv->CaughtError = field_error;
@@ -388,7 +364,6 @@ static int object_newchild(lua_State *Lua)
       def->ObjectID = obj->UID;
       def->ClassID  = obj->SubID ? obj->SubID : obj->ClassID;
       def->Class    = FindClass(def->ClassID); //obj->Class;
-      ReleaseObject(obj);
       return 1;
    }
    else {
@@ -481,23 +456,6 @@ static int object_find_ptr(lua_State *Lua, OBJECTPTR obj)
    return 1;
 }
 
-static int object_find_id(lua_State *Lua, OBJECTID object_id)
-{
-   struct object *object = (struct object *)lua_newuserdata(Lua, sizeof(struct object));
-   ClearMemory(object, sizeof(struct object));
-   luaL_getmetatable(Lua, "Fluid.obj");
-   lua_setmetatable(Lua, -2);
-
-   object->prvObject   = NULL;
-   object->ObjectID    = object_id;
-   object->ClassID     = GetClassID(object_id);
-   object->Class       = FindClass(object->ClassID);
-   object->Detached    = TRUE;
-   object->Locked      = FALSE;
-   object->AccessCount = 0;
-   return 1;
-}
-
 static int object_find(lua_State *Lua)
 {
    parasol::Log log("object.find");
@@ -529,12 +487,8 @@ static int object_find(lua_State *Lua)
          else return 0;
       }
 
-      LONG count = 1;
-      if (!FindPrivateObject(object_name, &obj)) {
-         return object_find_ptr(Lua, obj);
-      }
-      else if (!FindObject(object_name, class_id, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &object_id, &count)) {
-         return object_find_id(Lua, object_id);
+      if (!FindObject(object_name, class_id, FOF_SMART_NAMES, &object_id)) {
+         return object_find_ptr(Lua, GetObjectPtr(object_id));
       }
       else log.debug("Unable to find object '%s'", object_name);
    }
@@ -542,13 +496,9 @@ static int object_find(lua_State *Lua)
       log.trace("obj.find(#%d)", object_id);
 
       if (CheckObjectExists(object_id) != ERR_Okay) return 0;
-      else if (object_id < 0) return object_find_id(Lua, object_id);
-      else {
-         char buffer[32] = "#";
-         IntToStr(object_id, buffer+1, sizeof(buffer)-1);
-         if (!FindPrivateObject(buffer, &obj)) {
-            return object_find_ptr(Lua, obj);
-         }
+
+      if ((obj = GetObjectPtr(Lua->Script->ownerID()))) {
+         return object_find_ptr(Lua, obj);
       }
    }
    else log.warning("String or ID expected for object name, got '%s'.", lua_typename(Lua, type));
@@ -614,7 +564,7 @@ static int object_children(lua_State *Lua)
    LONG id[512];
    LONG count = ARRAYSIZE(list);
 
-   if (!ListChildren(object->ObjectID, TRUE, list, &count)) {
+   if (!ListChildren(object->ObjectID, list, &count)) {
       LONG index = 0;
       for (LONG i=0; i < count; i++) {
          if (class_id) {
@@ -644,11 +594,6 @@ static int object_lock(lua_State *Lua)
 
    if (!(def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_argerror(Lua, 1, "Expected object.");
-      return 0;
-   }
-
-   if (def->ObjectID < 0) { // Security measure - public locks are not allowed.
-      luaL_error(Lua, "Locking public objects is not supported.");
       return 0;
    }
 
@@ -682,14 +627,10 @@ static int object_detach(lua_State *Lua)
    }
 
    parasol::Log log("obj.detach");
-   log.traceBranch("Detached: %d, NewLock: %d", def->Detached, def->NewLock);
+   log.traceBranch("Detached: %d", def->Detached);
 
    if (!def->Detached) {
       def->Detached = TRUE;
-      if (def->NewLock) { // If created by obj.new(), undo the persistent lock that we have.
-         def->NewLock = FALSE;
-         release_object(def);
-      }
    }
 
    return 0;

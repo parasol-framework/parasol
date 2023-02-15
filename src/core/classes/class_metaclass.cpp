@@ -56,7 +56,6 @@ static ERROR GET_Location(extMetaClass *, CSTRING *);
 static ERROR GET_Methods(extMetaClass *Self, const MethodArray **, LONG *);
 static ERROR GET_Module(extMetaClass *, CSTRING *);
 static ERROR GET_PrivateObjects(extMetaClass *, OBJECTID **, LONG *);
-static ERROR GET_PublicObjects(extMetaClass *, OBJECTID **, LONG *);
 static ERROR GET_SubFields(extMetaClass *, const FieldArray **, LONG *);
 static ERROR GET_TotalMethods(extMetaClass *, LONG *);
 
@@ -102,19 +101,18 @@ static Field glMetaFieldsPreset[TOTAL_METAFIELDS+1] = {
    { 0, 0, 0,                      writeval_default, "SubClassID",      FID_SubClassID,      sizeof(BaseClass)+16+(sizeof(APTR)*7), 10, FDF_LONG|FDF_UNSIGNED|FDF_RI },
    { 0, 0, 0,                      writeval_default, "BaseClassID",     FID_BaseClassID,     sizeof(BaseClass)+20+(sizeof(APTR)*7), 11, FDF_LONG|FDF_UNSIGNED|FDF_RI },
    { 0, 0, 0,                      writeval_default, "OpenCount",       FID_OpenCount,       sizeof(BaseClass)+24+(sizeof(APTR)*7), 12, FDF_LONG|FDF_R },
-   { 0, (ERROR (*)(APTR, APTR))GET_TotalMethods, 0, writeval_default,   "TotalMethods",    FID_TotalMethods,    sizeof(BaseClass)+28+(sizeof(APTR)*7), 13, FDF_LONG|FDF_R },
+   { 0, (ERROR (*)(APTR, APTR))GET_TotalMethods, 0, writeval_default,   "TotalMethods",      FID_TotalMethods,    sizeof(BaseClass)+28+(sizeof(APTR)*7), 13, FDF_LONG|FDF_R },
    { 0, 0, 0,                      writeval_default, "TotalFields",     FID_TotalFields,     sizeof(BaseClass)+32+(sizeof(APTR)*7), 14, FDF_LONG|FDF_R },
    { (MAXINT)&CategoryTable, 0, 0, writeval_default, "Category",        FID_Category,        sizeof(BaseClass)+36+(sizeof(APTR)*7), 15, FDF_LONG|FDF_LOOKUP|FDF_RI },
    // Virtual fields
    { 0, 0, (APTR)SET_Actions,      writeval_default, "Actions",         FID_Actions,         sizeof(BaseClass), 16, FDF_POINTER|FDF_I },
-   { 0, (ERROR (*)(APTR, APTR))GET_ActionTable, 0,  writeval_default,   "ActionTable",     FID_ActionTable,     sizeof(BaseClass), 17, FDF_ARRAY|FDF_POINTER|FDF_R },
-   { 0, (ERROR (*)(APTR, APTR))GET_Location, 0,     writeval_default,   "Location",        FID_Location,        sizeof(BaseClass), 18, FDF_STRING|FDF_R },
-   { 0, (ERROR (*)(APTR, APTR))GET_ClassName, (APTR)SET_ClassName, writeval_default, "Name", FID_Name,        sizeof(BaseClass), 19, FDF_STRING|FDF_SYSTEM|FDF_RI },
-   { 0, (ERROR (*)(APTR, APTR))GET_Module, 0,       writeval_default,   "Module",          FID_Module,          sizeof(BaseClass), 20, FDF_STRING|FDF_R },
-   { 0, (ERROR (*)(APTR, APTR))GET_PrivateObjects, 0, writeval_default, "PrivateObjects", FID_PrivateObjects, sizeof(BaseClass), 21, FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R },
-   { 0, (ERROR (*)(APTR, APTR))GET_PublicObjects,  0, writeval_default, "PublicObjects",  FID_PublicObjects,  sizeof(BaseClass), 22, FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R },
-   { 0, (ERROR (*)(APTR, APTR))GET_IDL, 0,          writeval_default,   "IDL",             FID_IDL,             sizeof(BaseClass), 23, FDF_STRING|FDF_R },
-   { (MAXINT)"FieldArray", (ERROR (*)(APTR, APTR))GET_SubFields, 0, writeval_default, "SubFields", FID_SubFields, sizeof(BaseClass), 24, FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R },
+   { 0, (ERROR (*)(APTR, APTR))GET_ActionTable, 0,  writeval_default,   "ActionTable",       FID_ActionTable,     sizeof(BaseClass), 17, FDF_ARRAY|FDF_POINTER|FDF_R },
+   { 0, (ERROR (*)(APTR, APTR))GET_Location, 0,     writeval_default,   "Location",          FID_Location,        sizeof(BaseClass), 18, FDF_STRING|FDF_R },
+   { 0, (ERROR (*)(APTR, APTR))GET_ClassName, (APTR)SET_ClassName, writeval_default, "Name", FID_Name,            sizeof(BaseClass), 19, FDF_STRING|FDF_SYSTEM|FDF_RI },
+   { 0, (ERROR (*)(APTR, APTR))GET_Module, 0,       writeval_default,   "Module",            FID_Module,          sizeof(BaseClass), 20, FDF_STRING|FDF_R },
+   { 0, (ERROR (*)(APTR, APTR))GET_PrivateObjects, 0, writeval_default, "PrivateObjects",    FID_PrivateObjects,  sizeof(BaseClass), 21, FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R },
+   { 0, (ERROR (*)(APTR, APTR))GET_IDL, 0,          writeval_default,   "IDL",               FID_IDL,             sizeof(BaseClass), 22, FDF_STRING|FDF_R },
+   { (MAXINT)"FieldArray", (ERROR (*)(APTR, APTR))GET_SubFields, 0, writeval_default, "SubFields", FID_SubFields, sizeof(BaseClass), 23, FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R },
    { 0, 0, 0, NULL, "", 0, 0, 0,  0 }
 };
 
@@ -142,7 +140,6 @@ static const FieldArray glMetaFields[] = {
    { "Name",            FDF_STRING|FDF_SYSTEM|FDF_RI, 0, (APTR)GET_ClassName, (APTR)SET_ClassName },
    { "Module",          FDF_STRING|FDF_R,             0, (APTR)GET_Module, NULL },
    { "PrivateObjects",  FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R, 0, (APTR)GET_PrivateObjects, NULL },
-   { "PublicObjects",   FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R, 0, (APTR)GET_PublicObjects, NULL },
    { "IDL",             FDF_STRING|FDF_R,             0, (APTR)GET_IDL, NULL },
    { "SubFields",       FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R, (MAXINT)"FieldArray", (APTR)GET_SubFields, NULL },
    END_FIELD
@@ -163,6 +160,8 @@ static MethodArray glMetaMethods[TOTAL_METAMETHODS+2] = {
 struct Stats glMetaClass_Stats = { .NotifyFlags = { 0, 0 }, .Name = { 'M','e','t','a','C','l','a','s','s' } };
 
 extMetaClass glMetaClass;
+
+//********************************************************************************************************************
 
 void init_metaclass(void)
 {
@@ -187,27 +186,6 @@ void init_metaclass(void)
    glMetaClass.Category           = CCF_SYSTEM;
    glMetaClass.prvFields          = glMetaFieldsPreset;
    glMetaClass.OriginalFieldTotal = ARRAYSIZE(glMetaFields)-1;
-}
-
-//********************************************************************************************************************
-// Sort class lookup by class ID.
-
-static void sort_class_db(void)
-{
-   LONG h = 1;
-   while (h < glClassDB->Total / 9) h = 3 * h + 1;
-
-   LONG *offsets = CL_OFFSETS(glClassDB);
-   for (; h > 0; h /= 3) {
-      for (LONG i=h; i < glClassDB->Total; i++) {
-         LONG j;
-         auto temp = offsets[i];
-         for (j=i; (j >= h) and (((ClassItem *)((BYTE *)glClassDB + offsets[j-h]))->ClassID > ((ClassItem *)((BYTE *)glClassDB + temp))->ClassID); j -= h) {
-            offsets[j] = offsets[j - h];
-         }
-         offsets[j] = temp;
-      }
-   }
 }
 
 /*****************************************************************************
@@ -247,13 +225,13 @@ ERROR CLASS_FindField(extMetaClass *Class, struct mcFindField *Args)
 
 //********************************************************************************************************************
 
-ERROR CLASS_Free(extMetaClass *Class, APTR Void)
+ERROR CLASS_Free(extMetaClass *Self, APTR Void)
 {
-   VarSet(glClassMap, Class->ClassName, NULL, 0); // Deregister the class.
+   VarSet(glClassMap, Self->ClassName, NULL, 0); // Deregister the class.
 
-   if (Class->prvFields) { FreeResource(Class->prvFields); Class->prvFields = NULL; }
-   if (Class->Methods)   { FreeResource(Class->Methods);   Class->Methods   = NULL; }
-   if (Class->Location)  { FreeResource(Class->Location);  Class->Location  = NULL; }
+   if (Self->prvFields) { FreeResource(Self->prvFields); Self->prvFields = NULL; }
+   if (Self->Methods)   { FreeResource(Self->Methods);   Self->Methods   = NULL; }
+   if (Self->Location)  { FreeResource(Self->Location);  Self->Location  = NULL; }
    return ERR_Okay;
 }
 
@@ -273,7 +251,6 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
 
    if ((Self->BaseClassID) and (!Self->SubClassID)) {
       Self->SubClassID = StrHash(Self->ClassName, FALSE);
-      //Self->SubClassID = Self->BaseClassID;
    }
    else if (!Self->BaseClassID) {
       if (!Self->SubClassID) Self->SubClassID = StrHash(Self->ClassName, FALSE);
@@ -371,7 +348,58 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
       ctx = ctx->Stack;
    }
 
-   return register_class(Self->ClassName, (Self->BaseClassID IS Self->SubClassID) ? 0 : Self->BaseClassID, Self->Category, Self->Path, Self->FileExtension, Self->FileHeader);
+   bool save = false;
+   if (!glClassDB.contains(Self->SubClassID)) {
+      save = fs_initialised ? true : false;
+
+      glClassDB[Self->SubClassID] = [Self]() {
+         #ifdef __ANDROID__
+            // On Android, all libraries are stored in the libs/ folder with no sub-folder hierarchy.  Because of this,
+            // we rewrite the path to fit the Android system.
+
+            if (Self->Path) {
+               LONG i = StrLength(Self->Path);
+               while ((i > 0) and (Self->Path[i] != '/') and (Self->Path[i] != '\\') and (Self->Path[i] != ':')) i--;
+               if (i > 0) i++; // Skip folder separator.
+
+               return ClassRecord(Self, make_optional(Self->Path.substr(i)));
+            }
+            else return ClassRecord(Self);
+         #else
+            return ClassRecord(Self);
+         #endif
+      }();
+   }
+
+   if (save) {
+      // Saving is only necessary if this is a new dictionary entry.
+      ThreadLock lock(TL_CLASSDB, 3000);
+      if (lock.granted()) {
+         static bool write_attempted = false;
+         if ((!glClassFile) and (!write_attempted)) {
+            write_attempted = true;
+            LONG flags = FL_WRITE;
+            if (AnalysePath(glClassBinPath, NULL) != ERR_Okay) flags |= FL_NEW;
+
+            auto file = objFile::create::untracked(fl::Name("class_dict_output"), fl::Path(glClassBinPath), fl::Flags(flags),
+               fl::Permissions(PERMIT_USER_READ|PERMIT_USER_WRITE|PERMIT_GROUP_READ|PERMIT_GROUP_WRITE|PERMIT_OTHERS_READ));
+
+            if (!file) return ERR_File;
+            glClassFile = file;
+
+            LONG hdr = CLASSDB_HEADER;
+            glClassFile->write(&hdr, sizeof(hdr));
+         }
+
+         if (glClassFile) {
+            glClassFile->seekEnd(0);
+            glClassDB[Self->SubClassID].write(glClassFile);
+         }
+      }
+      else return log.warning(ERR_TimeOut);
+   }
+
+   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -589,29 +617,19 @@ file extension of the source binary.
 
 *****************************************************************************/
 
-static STRING get_class_path(CLASSID ClassID)
-{
-   ClassItem *item;
-   if ((item = find_class(ClassID))) {
-      if (item->PathOffset) return (STRING)item + item->PathOffset;
-   }
-   return NULL;
-}
-
 static ERROR GET_Location(extMetaClass *Self, CSTRING *Value)
 {
-   if (Self->Path) {
-      *Value = Self->Path;
-      return ERR_Okay;
-   }
+   if (Self->Path) { *Value = Self->Path; return ERR_Okay; }
+   if (Self->Location) { *Value = Self->Location; return ERR_Okay; }
 
-   if (Self->Location) {
-      *Value = Self->Location;
-      return ERR_Okay;
+   if (Self->SubClassID) {
+      if (glClassDB.contains(Self->SubClassID)) {
+         Self->Location = StrClone(glClassDB[Self->SubClassID].Path.c_str());
+      }
    }
-
-   if (Self->SubClassID) Self->Location = get_class_path(Self->SubClassID);
-   else Self->Location = get_class_path(Self->BaseClassID);
+   else if (glClassDB.contains(Self->BaseClassID)) {
+      Self->Location = StrClone(glClassDB[Self->BaseClassID].Path.c_str());
+   }
 
    if ((*Value = Self->Location)) return ERR_Okay;
    else return ERR_Failed;
@@ -713,9 +731,9 @@ static ERROR GET_Module(extMetaClass *Self, CSTRING *Value)
 /*****************************************************************************
 
 -FIELD-
-PrivateObjects: Returns an allocated list of all private objects that belong to this class.
+PrivateObjects: Returns an allocated list of all objects that belong to this class.
 
-This field will compile a list of all private objects that belong to the class.  The list is sorted with the oldest
+This field will compile a list of all objects that belong to the class.  The list is sorted with the oldest
 object appearing first.
 
 The resulting array must be terminated with ~FreeResource() after use.
@@ -739,56 +757,6 @@ static ERROR GET_PrivateObjects(extMetaClass *Self, OBJECTID **Array, LONG *Elem
       }
    }
    else return log.warning(ERR_LockFailed);
-
-   if (!objlist.size()) {
-      *Array = NULL;
-      *Elements = 0;
-      return ERR_Okay;
-   }
-
-   objlist.sort([](const OBJECTID &a, const OBJECTID &b) { return (a < b); });
-
-   OBJECTID *result;
-   if (!AllocMemory(sizeof(OBJECTID) * objlist.size(), MEM_NO_CLEAR, (APTR *)&result, NULL)) {
-      LONG i = 0;
-      for (const auto & id : objlist) result[i++] = id;
-      *Array = result;
-      *Elements = objlist.size();
-      return ERR_Okay;
-   }
-   else return ERR_AllocMemory;
-}
-
-/*****************************************************************************
-
--FIELD-
-PublicObjects: Returns an allocated list of all public objects that belong to this class.
-
-This field will compile a list of all public objects that belong to the class.  The list is sorted with the oldest
-object appearing first.
-
-The resulting array must be terminated with ~FreeResource() after use.
-
-*****************************************************************************/
-
-static ERROR GET_PublicObjects(extMetaClass *Self, OBJECTID **Array, LONG *Elements)
-{
-   parasol::Log log;
-   std::list<OBJECTID> objlist;
-
-   SharedObjectHeader *header;
-   if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-      auto entry = (SharedObject *)ResolveAddress(header, header->Offset);
-      for (LONG i=0; i < header->NextEntry; i++) {
-         if ((entry[i].ObjectID) and (Self->SubClassID IS entry[i].ClassID)) {
-            if ((!entry[i].InstanceID) or (entry[i].InstanceID IS glInstanceID)) {
-               objlist.push_back(entry[i].ObjectID);
-            }
-         }
-      }
-      ReleaseMemoryID(RPM_SharedObjects);
-   }
-   else return log.warning(ERR_AccessMemory);
 
    if (!objlist.size()) {
       *Array = NULL;
@@ -1274,129 +1242,6 @@ static ERROR OBJECT_SetName(OBJECTPTR Self, CSTRING Name)
 }
 
 //********************************************************************************************************************
-// This function expects you to have a lock on the class semaphore.
-
-ERROR write_class_item(ClassItem *item)
-{
-   parasol::Log log(__FUNCTION__);
-   static BYTE write_attempted = FALSE;
-
-   if (!fs_initialised) return ERR_Okay;
-
-   log.traceBranch("Record Index: %d", glClassDB->Total);
-
-   OBJECTPTR file = NULL;
-   if ((!glClassFileID) and (!write_attempted)) {
-      write_attempted = TRUE;
-      LONG flags = FL_WRITE;
-      if (AnalysePath(glClassBinPath, NULL) != ERR_Okay) flags |= FL_NEW;
-
-      if (!NewLockedObject(ID_FILE, NF::INTEGRAL|NF::UNTRACKED, &file, &glClassFileID, NULL)) {
-         SetFields(file,
-            FID_Path|TSTR,         glClassBinPath,
-            FID_Flags|TLONG,       flags,
-            FID_Permissions|TLONG, PERMIT_USER_READ|PERMIT_USER_WRITE|PERMIT_GROUP_READ|PERMIT_GROUP_WRITE|PERMIT_OTHERS_READ,
-            TAGEND);
-         if (acInit(file) != ERR_Okay) {
-            ReleaseObject(file);
-            acFree(file);
-            glClassFileID = 0;
-            return ERR_File;
-         }
-      }
-      else return ERR_NewObject;
-   }
-
-   if (!file) {
-      if (!glClassFileID) return ERR_Failed;
-      if (AccessObject(glClassFileID, 3000, &file)) return ERR_AccessObject;
-   }
-
-   acSeekStart(file, 0); // Write the 32-bit header at the start (the total number of records)
-   acWrite(file, &glClassDB->Total, sizeof(glClassDB->Total), NULL);
-   acSeekEnd(file, 0); // Write the new item to the end of the file.
-   acWrite(file, item, item->Size, NULL);
-
-   ReleaseObject(file);
-   return ERR_Okay;
-}
-
-//********************************************************************************************************************
-// Please note that this function will clear any registered classes, so the native classes are re-registered at the end
-// of the routine.
-
-ERROR load_classes(void)
-{
-   parasol::Log log(__FUNCTION__);
-
-   log.branch();
-
-   if (glClassDB) { ReleaseMemoryID(glSharedControl->ClassesMID); glClassDB = NULL; }
-   if (glSharedControl->ClassesMID) { FreeResourceID(glSharedControl->ClassesMID); glSharedControl->ClassesMID = 0; }
-
-   ERROR error;
-   if (!(error = AccessSemaphore(glSharedControl->ClassSemaphore, 3000, 0))) {
-      objFile::create file = { fl::Path(glClassBinPath), fl::Flags(FL_READ) };
-
-      if (file.ok()) {
-         LONG filesize;
-         file->get(FID_Size, &filesize);
-
-         LONG total;
-         if (!(error = file->read(&total, sizeof(total)))) {
-            log.msg("There are %d class records to process.", total);
-            LONG memsize = sizeof(ClassHeader) + (sizeof(LONG) * total) + filesize - sizeof(LONG);
-            if (!(error = AllocMemory(memsize, MEM_NO_CLEAR|MEM_PUBLIC|MEM_UNTRACKED|MEM_NO_BLOCK, (APTR *)&glClassDB, &glSharedControl->ClassesMID))) {
-               // Configure the header
-
-               glClassDB->Total = total;
-               glClassDB->Size  = memsize;
-
-               if (!(error = file->read(CL_ITEMS(glClassDB), filesize - sizeof(LONG)))) {
-                  log.msg("Loaded %d classes.", glClassDB->Total);
-
-                  // Build the class offset array
-
-                  LONG *offsets = CL_OFFSETS(glClassDB);
-                  ClassItem *item = CL_ITEMS(glClassDB);
-                  for (LONG i=0; i < total; i++) {
-                     offsets[i] = ((MAXINT)item - (MAXINT)glClassDB);
-                     item = (ClassItem *)((BYTE *)item + item->Size);
-                  }
-
-                  sort_class_db();  // Sort the offsets by class ID
-               }
-               else error = log.warning(ERR_Read);
-            }
-            else error = log.warning(ERR_AllocMemory);
-         }
-         else error = log.warning(ERR_Read);
-      }
-      else glScanClasses = TRUE;
-
-      pReleaseSemaphore(glSharedControl->ClassSemaphore, 0);
-   }
-   else error = log.warning(ERR_AccessSemaphore);
-
-   if (!error) {
-      if ((error = register_class("Task", 0, CCF_SYSTEM, "modules:core", TaskClass->FileExtension, TaskClass->FileHeader)));
-      else if ((error = register_class("Thread", 0, CCF_SYSTEM, "modules:core", NULL, NULL)));
-      else if ((error = register_class("Time", 0, CCF_SYSTEM, "modules:core", NULL, NULL)));
-      else if ((error = register_class("Config", 0, CCF_DATA, "modules:core", ConfigClass->FileExtension, NULL)));
-      else if ((error = register_class("Module", 0, CCF_SYSTEM, "modules:core", NULL, NULL)));
-      else if ((error = register_class("ModuleMaster", 0, CCF_SYSTEM, "modules:core", NULL, NULL)));
-      else if ((error = register_class("File", 0, CCF_SYSTEM, "modules:core", NULL, NULL)));
-      else if ((error = register_class("StorageDevice", 0, CCF_SYSTEM, "modules:core", NULL, NULL)));
-      #ifdef __ANDROID__
-      else if ((error = register_class("FileAssets", ID_FILE, CCF_SYSTEM, "modules:core", NULL, NULL)));
-      #endif
-      else error = register_class("MetaClass", 0, CCF_SYSTEM, "modules:core", NULL, NULL);
-   }
-
-   return error;
-}
-
-//********************************************************************************************************************
 // [Refer to register_class() to see how classes are recognised]
 //
 // If the classes.bin file is missing or incomplete, this code will scan for every module installed in the system and
@@ -1441,206 +1286,6 @@ void scan_classes(void)
    }
 
    log.msg("Class scan complete.");
-}
-
-/*****************************************************************************
-** Once a class is registered, there is no means to remove it.  You can however delete the classes.bin file to
-** regenerate the database from scratch.
-*/
-
-ERROR register_class(CSTRING Name, CLASSID ParentID, LONG Category, CSTRING Path, CSTRING FileMatch, CSTRING FileHeader)
-{
-   parasol::Log log(__FUNCTION__);
-   LONG headerlen, i, pathlen, matchlen;
-
-   if (!glSharedControl->ClassSemaphore) {
-      log.trace("No class semaphore available.");
-      return ERR_Okay; // Semaphore doesn't exist in early start-up process.
-   }
-
-   if (!Name) return ERR_NullArgs;
-
-   ULONG class_id = StrHash(Name, FALSE);
-   if (ParentID IS class_id) ParentID = 0; // Parent ID should only be set if the class is a genuine child of another class
-
-   if ((!glClassDB) and (glSharedControl->ClassesMID)) {
-      if (AccessMemory(glSharedControl->ClassesMID, MEM_READ|MEM_NO_BLOCK, 2000, (APTR *)&glClassDB) != ERR_Okay) {
-         return log.warning(ERR_AccessMemory);
-      }
-   }
-
-   ClassItem *item;
-   if (glClassDB) { // Return if the class is already registered
-      if ((item = find_class(class_id))) {
-         log.trace("Class already registered.");
-         return ERR_Okay;
-      }
-   }
-
-   log.branch("Name: %s, Path: %s", Name, Path);
-
-   if (!Path) log.warning("No path given for class '%s'", Name);
-
-   ClassHeader *classes;
-   if (!AccessSemaphore(glSharedControl->ClassSemaphore, 3000, 0)) {
-      char modpath[180];
-
-      // Determine the size of the new class item structure and additional strings
-
-      headerlen = FileHeader ? StrLength(FileHeader) + 1 : 0;
-
-      if (Path) {
-         #ifdef __ANDROID__
-            // On Android, all libraries are stored in the libs/ folder with no sub-folder hierarchy.  Because of this,
-            // we rewrite the path to fit the Android system.
-
-            i = StrLength(Path);
-            while ((i > 0) and (Path[i] != '/') and (Path[i] != '\\') and (Path[i] != ':')) i--;
-            if (i > 0) i++; // Skip folder separator.
-
-            for (pathlen=0; (Path[i+pathlen]) and ((size_t)pathlen < sizeof(modpath)-1); pathlen++) modpath[pathlen] = Path[i+pathlen];
-            modpath[pathlen++] = 0;
-         #else
-            for (pathlen=0; (Path[pathlen]) and ((size_t)pathlen < sizeof(modpath)-1); pathlen++) modpath[pathlen] = Path[pathlen];
-            modpath[pathlen++] = 0;
-         #endif
-      }
-      else { modpath[0] = 0; pathlen = 0; }
-
-      matchlen = FileMatch ? StrLength(FileMatch) + 1 : 0;
-
-      LONG itemsize = sizeof(ClassItem) + pathlen + matchlen + headerlen;
-
-      LONG totalsize;
-      if (glClassDB) totalsize = glClassDB->Size + itemsize + sizeof(LONG);
-      else totalsize = sizeof(ClassHeader) + itemsize + sizeof(LONG);
-
-      totalsize = ALIGN32(totalsize);
-
-      MEMORYID classes_mid;
-      if (AllocMemory(totalsize, MEM_NO_CLEAR|MEM_PUBLIC|MEM_NO_BLOCK|MEM_UNTRACKED, (APTR *)&classes, &classes_mid)) {
-         pReleaseSemaphore(glSharedControl->ClassSemaphore, 0);
-         return ERR_AllocMemory;
-      }
-
-      LONG *offsets = (LONG *)(classes + 1);
-
-      if (glClassDB) {
-         classes->Total = glClassDB->Total + 1;
-         classes->Size  = totalsize;
-
-         // Copy the offset array
-         CopyMemory(CL_OFFSETS(glClassDB), offsets, CL_SIZE_OFFSETS(glClassDB));
-         for (i=0; i < glClassDB->Total; i++) offsets[i] += sizeof(LONG); // All offsets increase due to table expansion
-
-         // Copy the items
-
-         CopyMemory(CL_ITEMS(glClassDB), offsets + classes->Total,
-            glClassDB->Size - sizeof(ClassHeader) - CL_SIZE_OFFSETS(glClassDB));
-
-         // Find an insertion point in the array
-
-         LONG floor = 0;
-         LONG ceiling = glClassDB->Total;
-         while (floor < ceiling) {
-            i = (floor + ceiling)>>1;
-            if (((ClassItem *)((BYTE *)classes + offsets[i]))->ClassID < class_id) floor = i + 1;
-            else ceiling = i;
-         }
-
-         if (glClassDB->Total - i > 0) { // Do the insert
-            CopyMemory(offsets+i, offsets+i+1, sizeof(LONG) * (glClassDB->Total - i));
-         }
-
-         //i = classes->Total-1;
-         offsets[i] = glClassDB->Size + sizeof(LONG);
-         item = (ClassItem *)((BYTE *)classes + offsets[i]);
-      }
-      else {
-         classes->Total = 1;
-         classes->Size = totalsize;
-         item = (ClassItem *)(offsets + 1);
-         offsets[0] = (LONG)((MAXINT)item - (MAXINT)classes);
-      }
-
-      // Configure the item structure
-
-      ClearMemory(item, sizeof(ClassItem));
-
-      item->ClassID  = class_id;
-      item->ParentID = ParentID;
-      item->Category = Category;
-      StrCopy(Name, item->Name, sizeof(item->Name));
-      item->Size = (sizeof(ClassItem) + pathlen + matchlen + headerlen + 3) & (~3);
-
-      if (pathlen) {
-         item->PathOffset = sizeof(ClassItem);
-         CopyMemory(modpath, (STRING)item + item->PathOffset, pathlen);
-      }
-      else item->PathOffset = 0;
-
-      if (matchlen) {
-         item->MatchOffset = sizeof(ClassItem) + pathlen;
-         CopyMemory(FileMatch, (STRING)item + item->MatchOffset, matchlen);
-      }
-      else item->MatchOffset = 0;
-
-      if (headerlen) {
-         item->HeaderOffset = sizeof(ClassItem) + pathlen + matchlen;
-         CopyMemory(FileHeader, (STRING)item + item->HeaderOffset, headerlen);
-      }
-      else item->HeaderOffset = 0;
-
-      // Replace the existing class array with the new one
-
-      if (glClassDB) {
-         FreeResourceID(glSharedControl->ClassesMID); // Mark for deletion
-         ReleaseMemoryID(glSharedControl->ClassesMID);
-      }
-      glClassDB = classes;
-      glSharedControl->ClassesMID = classes_mid; // Replace with the new memory block
-
-      // Write the item to the class database if we have the permissions to do so.
-
-      write_class_item(item);
-
-      sort_class_db(); // The class lookup table must be sorted at all times.
-
-      pReleaseSemaphore(glSharedControl->ClassSemaphore, 0);
-      return ERR_Okay;
-   }
-   else {
-      log.warning("Time-out on semaphore %d.", glSharedControl->ClassSemaphore);
-      return ERR_TimeOut;
-   }
-}
-
-//********************************************************************************************************************
-// Search the class database for a specific class ID.
-
-ClassItem * find_class(ULONG Hash)
-{
-   parasol::Log log(__FUNCTION__);
-
-   if (glClassDB) {
-      LONG *offsets = CL_OFFSETS(glClassDB);
-
-      LONG floor = 0;
-      LONG ceiling = glClassDB->Total;
-      while (floor < ceiling) {
-         LONG i = (floor + ceiling)>>1;
-         ClassItem *item = (ClassItem *)((BYTE *)glClassDB + offsets[i]);
-
-         if (item->ClassID < Hash) floor = i + 1;
-         else if (item->ClassID > Hash) ceiling = i;
-         else return item;
-      }
-
-      log.trace("Failed to find class $%.8x from %d classes.", Hash, glClassDB->Total);
-   }
-   else log.trace("No classes registered.");
-
-   return NULL;
 }
 
 //********************************************************************************************************************

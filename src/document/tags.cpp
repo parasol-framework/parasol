@@ -312,8 +312,9 @@ static void tag_call(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
          function = Tag->Attrib[1].Value;
          for (i=0; (function[i]) and (function[i] IS '.'); i++);
          if (function[i] IS '.') {
+            OBJECTID id;
             function[i] = 0;
-            FindPrivateObject(function, &script);
+            if (!FindObject(function, 0, 0, &id)) script = GetObjectPtr(id);
             function[i] = '.';
             function = function + i;
          }
@@ -1103,8 +1104,7 @@ static void tag_set(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, 
    if (Tag->TotalAttrib > 1) {
       if (!StrMatch("object", Tag->Attrib[1].Name)) {
          OBJECTID objectid;
-         LONG count = 1;
-         if (!FindObject(Tag->Attrib[1].Value, 0, FOF_SMART_NAMES, &objectid, &count)) {
+         if (!FindObject(Tag->Attrib[1].Value, 0, FOF_SMART_NAMES, &objectid)) {
             if (valid_objectid(Self, objectid) IS TRUE) {
                OBJECTPTR object;
                if (!AccessObject(objectid, 3000, &object)) {
@@ -1190,8 +1190,12 @@ static void tag_xml_content(extDocument *Self, objXML *XML, XMLTag *Tag, WORD Fl
    LONG size = Self->BufferSize - Self->BufferIndex;
 
    if ((str = XMLATTRIB(Tag, "object"))) {
-      FindPrivateObject(str, &target);
-      if (valid_object(Self, target) IS FALSE) return;
+      OBJECTID id;
+      if (!FindObject(str, 0, 0, &id)) {
+         target = GetObjectPtr(id);
+         if (valid_object(Self, target) IS FALSE) return;
+      }
+      else return;
    }
    else target = Self->CurrentObject;
 
@@ -1344,14 +1348,13 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
    parasol::Log log(__FUNCTION__);
    Field *field;
    STRING content, argname;
-   OBJECTID object_id;
    OBJECTPTR object;
    FIELD field_id;
    BYTE customised;
 
    // NF::INTEGRAL is only set when the object is owned by the document
 
-   if (NewLockedObject(class_id, (Self->CurrentObject) ? NF::NIL : NF::INTEGRAL, &object, &object_id)) {
+   if (NewObject(class_id, (Self->CurrentObject) ? NF::NIL : NF::INTEGRAL, &object)) {
       log.warning("Failed to create object of class #%d.", class_id);
       return;
    }
@@ -1431,9 +1434,7 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
             }
             else if ((src = XMLATTRIB(scan, "object"))) {
                OBJECTID objectid;
-               LONG count = 1;
-
-               if (!FindObject(src, 0, FOF_SMART_NAMES, &objectid, &count)) {
+               if (!FindObject(src, 0, FOF_SMART_NAMES, &objectid)) {
                   if ((objectid) and (valid_objectid(Self, objectid))) {
                      objXML *objxml;
                      if (!AccessObject(objectid, 3000, &objxml)) {
@@ -1487,7 +1488,7 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
 
       if (Tag->Child) {
          parasol::Log log(__FUNCTION__);
-         log.traceBranch("Processing child tags for object #%d.", object_id);
+         log.traceBranch("Processing child tags for object #%d.", object->UID);
          auto prevobject = Self->CurrentObject;
          Self->CurrentObject = object;
          parse_tag(Self, XML, Tag->Child, Index, Flags & (~FILTER_ALL));
@@ -1496,7 +1497,7 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
 
       if (child != Tag->Child) {
          parasol::Log log(__FUNCTION__);
-         log.traceBranch("Processing further child tags for object #%d.", object_id);
+         log.traceBranch("Processing further child tags for object #%d.", object->UID);
          auto prevobject = Self->CurrentObject;
          Self->CurrentObject = object;
          parse_tag(Self, XML, child, Index, Flags & (~FILTER_ALL));
@@ -1505,9 +1506,9 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
 
       // The object can self-destruct in ClosingTag(), so check that it still exists before inserting it into the text stream.
 
-      if (!CheckObjectExists(object_id)) {
+      if (!CheckObjectExists(object->UID)) {
          if (Self->BkgdGfx) {
-            auto resource = add_resource_id(Self, object_id, RT_OBJECT_UNLOAD);
+            auto resource = add_resource_id(Self, object->UID, RT_OBJECT_UNLOAD);
             if (resource) resource->ClassID = class_id;
          }
          else {
@@ -1538,7 +1539,7 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
                   case ID_CONFIG:
                   case ID_COMPRESSION:
                   case ID_SCRIPT:
-                     resource = add_resource_id(Self, object_id, RT_PERSISTENT_OBJECT);
+                     resource = add_resource_id(Self, object->UID, RT_PERSISTENT_OBJECT);
                      break;
 
                   // The following class types use their own internal caching system
@@ -1546,11 +1547,11 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
                   default:
                      log.warning("Cannot cache object of class type '%s'", ResolveClassID(object->ClassID));
                   //case ID_IMAGE:
-                  //   resource = add_resource_id(Self, object_id, RT_OBJECT_UNLOAD);
+                  //   resource = add_resource_id(Self, object->UID, RT_OBJECT_UNLOAD);
                      break;
                }
             }
-            else resource = add_resource_id(Self, object_id, RT_OBJECT_UNLOAD);
+            else resource = add_resource_id(Self, object->UID, RT_OBJECT_UNLOAD);
 
             if (resource) resource->ClassID = class_id;
 
@@ -1564,13 +1565,13 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
 
             for (LONG i=0; i < ARRAYSIZE(classes); i++) {
                if (classes[i] IS class_id) {
-                  add_tabfocus(Self, TT_OBJECT, object_id);
+                  add_tabfocus(Self, TT_OBJECT, object->UID);
                   break;
                }
             }
          }
       }
-      else log.trace("Object %d self-destructed.", object_id);
+      else log.trace("Object %d self-destructed.", object->UID);
    }
    else {
       acFree(object);
@@ -1580,8 +1581,6 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
 next: // Used by PTR_SAVE_ARGS()
 
    Self->DrawIntercept--;
-
-   if (object) ReleaseObject(object);
 }
 
 //****************************************************************************
@@ -1676,7 +1675,9 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
       else if (!StrMatch("external", tagname)) {
          // Reference an external script as the default for function calls
          if (Self->Flags & DCF_UNRESTRICTED) {
-            if (!FindPrivateObject(Tag->Attrib[i].Value, &Self->DefaultScript)) {
+            OBJECTID id;
+            if (!FindObject(Tag->Attrib[i].Value, 0, 0, &id)) {
+               Self->DefaultScript = GetObjectPtr(id);
                return;
             }
             else {

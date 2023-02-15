@@ -110,64 +110,17 @@ ERROR CheckObjectExists(OBJECTID ObjectID)
 {
    parasol::Log log(__FUNCTION__);
 
-   if (ObjectID < 0) {
-      ScopedSysLock lock(PL_PUBLICMEM, 4000);
-      if (lock.granted()) {
-         if (!find_public_mem_id(glSharedControl, ObjectID, NULL)) return ERR_True;
-         else return ERR_False;
+   ThreadLock lock(TL_PRIVATE_MEM, 4000);
+   if (lock.granted()) {
+      LONG result = ERR_False;
+      auto mem = glPrivateMemory.find(ObjectID);
+      if ((mem != glPrivateMemory.end()) and (mem->second.Object)) {
+         if (mem->second.Object->defined(NF::UNLOCK_FREE));
+         else result = ERR_True;
       }
-      else return log.warning(ERR_SystemLocked);
+      return result;
    }
-   else if (ObjectID > 0) {
-      if (ObjectID IS SystemTaskID) return ERR_True;
-
-      ThreadLock lock(TL_PRIVATE_MEM, 4000);
-      if (lock.granted()) {
-         LONG result = ERR_False;
-         auto mem = glPrivateMemory.find(ObjectID);
-         if ((mem != glPrivateMemory.end()) and (mem->second.Object)) {
-            if (mem->second.Object->defined(NF::UNLOCK_FREE));
-            else result = ERR_True;
-         }
-         return result;
-      }
-      else return log.warning(ERR_LockFailed);
-   }
-   else return log.warning(ERR_NullArgs);
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-CopyMemory: Copies a block of bytes from a source to a destination address.
-Category: Memory
-
-This function copies a block of bytes from a source address to a destination address. Ideally the fastest algorithm
-available for the machine will be used to perform the copy operation.  If a fine-tuned algorithm is unavailable, a
-stock copy operation is used.
-
--INPUT-
-cptr Src: Source address to copy.
-ptr Dest: Destination address.
-int Size: The total number of bytes to copy from the source to the destination.
-
--ERRORS-
-Okay:
-NullArgs: Src and/or Dest parameters were not provided.
-Args:
-
-*********************************************************************************************************************/
-
-ERROR CopyMemory(const void *Src, APTR Dest, LONG Length)
-{
-   if ((!Src) or (!Dest)) return ERR_NullArgs;
-   if (Length < 0) return ERR_Args;
-   if (Src IS Dest) return ERR_Okay;
-
-   // As of 2013 we are presuming that memmove() is suitably pre-optimised by either the compiler or the host platform.
-
-   memmove(Dest, Src, Length);
-   return ERR_Okay;
+   else return log.warning(ERR_LockFailed);
 }
 
 /*********************************************************************************************************************
@@ -252,44 +205,43 @@ objMetaClass * FindClass(CLASSID ClassID)
          return ptr[0];
       }
 
-      // If we are shutting down, do not go any further as we do not want to load new modules during the shutdown process.
+      if (glProgramStage IS STAGE_SHUTDOWN) return NULL; // No new module loading during shutdown
 
-      if (glProgramStage IS STAGE_SHUTDOWN) return NULL;
-
-      // Since the class is not in the system, we need to try and find a master in the references.  If we find one, we can
+      // Class is not loaded.  Try and find a master in the dictionary.  If we find one, we can
       // initialise the module and then find the new Class.
       //
       // Note: Children of the class are not automatically loaded into memory if they are unavailable at the time.  Doing so
       // would result in lost CPU and memory resources due to loading code that may not be needed.
 
-      CSTRING path = NULL;
-      if (auto item = find_class(ClassID)) {
-         if (item->PathOffset) path = (CSTRING)item + item->PathOffset;
-      }
+      if (glClassDB.contains(ClassID)) {
+         auto &path = glClassDB[ClassID].Path;
 
-      if (!path) {
-         ModuleItem *mod;
-         if ((mod = find_module(ClassID))) path = (STRING)(mod + 1);
-      }
-
-      extMetaClass *mc = NULL;
-      if (path) {
-         // Load the module from the associated location and then find the class that it contains.  If the module fails,
-         // we keep on looking for other installed modules that may handle the class.
-
-         log.branch("Attempting to load module \"%s\" for class $%.8x.", path, ClassID);
-
-         objModule::create mod = { fl::Name(path) };
-         if (mod.ok()) {
-            if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) mc = ptr[0];
+         if (path.empty()) {
+            ModuleItem *mod;
+            if ((mod = find_module(ClassID))) path.assign(STRING(mod + 1));
          }
+
+         if (!path.empty()) {
+            // Load the module from the associated location and then find the class that it contains.  If the module fails,
+            // we keep on looking for other installed modules that may handle the class.
+
+            log.branch("Attempting to load module \"%s\" for class $%.8x.", path.c_str(), ClassID);
+
+            objModule::create mod = { fl::Name(path) };
+            if (mod.ok()) {
+               if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) {
+                  return ptr[0];
+               }
+               else log.warning("Module \"%s\" did not configure class \"%s\"", path.c_str(), glClassDB[ClassID].Name.c_str());
+            }
+            else log.warning("Failed to load module \"%s\"", path.c_str());
+         }
+         else log.warning("No module path defined for class \%s\"", glClassDB[ClassID].Name.c_str());
       }
-
-      if (mc) log.msg("Found class \"%s\"", mc->ClassName);
-      else log.warning("Could not find class $%.8x in memory or in class references.", ClassID);
-
-      return mc;
+      else log.warning("Could not find class $%.8x in memory or in dictionary.", ClassID);
    }
+
+   return NULL;
 }
 
 /*********************************************************************************************************************
@@ -298,37 +250,28 @@ objMetaClass * FindClass(CLASSID ClassID)
 FindObject: Searches for objects by name.
 Category: Objects
 
-The FindObject() function searches for all objects that match a given name and can filter by class.  A pre-allocated
-buffer is required for the output of the results.
+The FindObject() function searches for all objects that match a given name and can filter by class.
 
 The following example is a typical illustration of this function's use.  It finds the most recent object created
 with a given name:
 
 <pre>
 OBJECTID id;
-LONG count = 1;
-FindObject("SystemPointer", ID_POINTER, 0, &id, &count);
+FindObject("SystemPointer", ID_POINTER, 0, &id);
 </pre>
 
 If FindObject() cannot find any matching objects then it will return an error code.
 
-The list is sorted so that the oldest private object is placed at the start of the list, and the most recent public object
-is placed at the end.  Take advantage of this fact to get the oldest or youngest object with the Name that is being
-searched for.  Preference is also given to objects that have been created by the calling process, thus foreign objects
-are pushed towards the end of the array.
-
 -INPUT-
-cstr Name:     The name of an object to search for.
-cid ClassID:   Optional.  Set to a class ID to filter the results down to a specific class type.
+cstr Name:      The name of an object to search for.
+cid ClassID:    Optional.  Set to a class ID to filter the results down to a specific class type.
 int(FOF) Flags: Optional flags.
-buf(array(oid)) Array:    Pointer to the array that will store the results.
-&arraysize Count: Indicates the size of Array, measured in elements.  Must be set to a value of 1 or greater.
+&oid ObjectID:  An object id variable for storing the result.
 
 -ERRORS-
-Okay: At least one object was found and stored in the supplied array.
+Okay: At least one matching object was found and stored in the ObjectID.
 Args:
 Search: No objects matching the given name could be found.
-AccessMemory: Access to the RPM_SharedObjects memory block was denied.
 LockFailed:
 EmptyString:
 DoesNotExist:
@@ -336,20 +279,19 @@ DoesNotExist:
 
 *********************************************************************************************************************/
 
-ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Array, LONG *Count)
+ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Result)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Array) or (!InitialName) or (!Count)) return ERR_NullArgs;
-   if (*Count < 1) return log.warning(ERR_Args);
+   if ((!Result) or (!InitialName)) return ERR_NullArgs;
    if (!InitialName[0]) return log.warning(ERR_EmptyString);
 
    if (Flags & FOF_SMART_NAMES) {
       // If an integer based name (defined by #num) is passed, we translate it to an ObjectID rather than searching for
       // an object of name "#1234".
 
-      BYTE number = FALSE;
-      if (InitialName[0] IS '#') number = TRUE;
+      bool number = false;
+      if (InitialName[0] IS '#') number = true;
       else {
          // If the name consists entirely of numbers, it must be considered an object ID (we can make this check because
          // it is illegal for a name to consist entirely of digits).
@@ -359,15 +301,13 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Arr
             if (InitialName[i] < '0') break;
             if (InitialName[i] > '9') break;
          }
-         if (!InitialName[i]) number = TRUE;
+         if (!InitialName[i]) number = true;
       }
 
       if (number) {
-         OBJECTID objectid;
-         if ((objectid = (OBJECTID)StrToInt(InitialName))) {
+         if (auto objectid = (OBJECTID)StrToInt(InitialName)) {
             if (!CheckObjectExists(objectid)) {
-               *Array = objectid;
-               *Count = 1;
+               *Result = objectid;
                return ERR_Okay;
             }
             else return ERR_Search;
@@ -378,8 +318,7 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Arr
       if (!StrMatch("owner", InitialName)) {
          if ((tlContext != &glTopContext) and (tlContext->object()->OwnerID)) {
             if (!CheckObjectExists(tlContext->object()->OwnerID)) {
-               *Array = tlContext->object()->OwnerID;
-               *Count = 1;
+               *Result = tlContext->object()->OwnerID;
                return ERR_Okay;
             }
             else return ERR_DoesNotExist;
@@ -388,202 +327,24 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Arr
       }
    }
 
-   class sortobj {
-      public: OBJECTID id; MEMORYID messagemid;
-      sortobj(OBJECTID a, MEMORYID b) : id(a), messagemid(b) { };
-   };
-
-   std::list<sortobj> objlist;
-
-   // Private object search
-
-   {
-      ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
-      if (lock.granted()) {
-         OBJECTPTR *list;
-         LONG list_size;
-         if (!VarGet(glObjectLookup, InitialName, (APTR *)&list, &list_size)) {
-            list_size = list_size / sizeof(OBJECTPTR);
-            for (LONG i=0; i < list_size; i++) {
-               OBJECTPTR object = list[i];
-               if ((object) and ((!ClassID) or (ClassID IS object->ClassID))) {
-                  if (objlist.size() < (size_t)Count[0]) {
-                     objlist.emplace_back(object->UID, glTaskMessageMID);
-                  }
-                  else if (objlist.back().id < object->UID) {
-                     objlist.back().id = object->UID;
-                     objlist.back().messagemid = glTaskMessageMID;
-                  }
-               }
-            }
-         }
-      }
-   }
-
-   if ((Flags & FOF_INCLUDE_SHARED) and (objlist.size() < (size_t)Count[0])) {
-      // Public object search.  When looking for publicly named objects we need to keep them arranged so that preference
-      // is given to objects that this process created.  This causes some mild overhead but is vital for ensuring
-      // that programs aren't confused when they use identically named objects.
-
-      LONG i;
-      char name[MAX_NAME_LEN+1];
-      for (i=0; (InitialName[i]) and (i < MAX_NAME_LEN - 1); i++) {
-         char c = InitialName[i];
-         if ((c >= 'A') and (c <= 'Z')) name[i] = c - 'A' + 'a';
-         else name[i] = c;
-      }
-      name[i] = 0;
-
-      SharedObjectHeader *header;
-      if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-         auto entry = (SharedObject *)ResolveAddress(header, header->Offset);
-         for (LONG i=0; i < header->NextEntry; i++) {
-            if (!entry[i].ObjectID) continue;
-            if ((!entry[i].InstanceID) or (entry[i].InstanceID IS glInstanceID)) {
-               if ((ClassID) and (ClassID != entry[i].ClassID));
-               else if (entry[i].Name[0] IS name[0]) {
-                  if (!StrCompare(entry[i].Name, name, 0, STR_CASE|STR_MATCH_LEN)) {
-                     if (objlist.size() < (size_t)Count[0]) {
-                        objlist.emplace_back(entry[i].ObjectID, entry[i].MessageMID);
-                     }
-                     else if (objlist.back().id > entry[i].ObjectID) {
-                        // The discovered object has a more recent ID than the last entry in the list, so replace it
-                        // (assuming that it won't replace something that was created from our own task space).
-
-                        if ((objlist.back().messagemid IS glTaskMessageMID) and (entry[i].MessageMID != glTaskMessageMID)) continue;
-                        objlist.back().id = entry[i].ObjectID;
-                        objlist.back().messagemid = entry[i].MessageMID;
-                     }
-                  }
-               }
-            }
-         }
-
-         ReleaseMemoryID(RPM_SharedObjects);
-      }
-      else return log.warning(ERR_AccessMemory);
-   }
-
-   if (objlist.size() > 0) {
-      if (objlist.size() IS 1) {
-         Array[0] = objlist.front().id;
-      }
-      else {
-         objlist.sort([](const sortobj &a, const sortobj &b) {
-            return ((a.id < b.id) or ((a.messagemid IS glTaskMessageMID) and (b.messagemid != glTaskMessageMID)));
-         });
-
-         LONG i = 0;
-         for (const auto & obj : objlist) Array[i++] = obj.id;
-      }
-
-      *Count = objlist.size();
-      return ERR_Okay;
-   }
-   else return ERR_Search;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-FindPrivateObject: Search for an object by name.
-Category: Objects
-
-The FindPrivateObject() function is a simple implementation of ~FindObject().  It differs in being limited
-to finding private objects without class filtering, and can only return one result as a pointer.
-Care may need to be taken if using this function to access objects that are shared between threads.
-
-The most recently created object is returned by this function if there are objects sharing the same name.
-
-For more advanced functionality in object searches please use the ~FindObject() function.
-
--INPUT-
-cstr Name:   The name of the object to find.
-&obj Object: A pointer to the discovered object will be returned in this parameter.
-
--ERRORS-
-Okay: A matching object was found.
-NullArgs
-Search: No objects matching the given name could be found.
-LockFailed
-EmptyString
-
-*********************************************************************************************************************/
-
-ERROR FindPrivateObject(CSTRING InitialName, OBJECTPTR *Object)
-{
-   parasol::Log log(__FUNCTION__);
-
-   if ((!InitialName) or (!Object)) return log.warning(ERR_NullArgs);
-
-   *Object = NULL;
-
-   if (!*InitialName) return log.warning(ERR_EmptyString);
-
-   // If an integer based name (defined by #num) is passed, we translate it to an ObjectID rather than searching for an
-   // object of name "#1234".
-
-   bool number = false;
-   if (InitialName[0] IS '#') number = true;
-   else {
-      // If the name consists entirely of numbers, it must be considered an object ID (we can make this check because
-      // it is illegal for a name to consist entirely of figures).
-
-      LONG i;
-      for (i=0; InitialName[i]; i++) {
-         if (((InitialName[i] < '0') or (InitialName[i] > '9')) and (InitialName[i] != '-')) break;
-      }
-      if (!InitialName[i]) number = true;
-   }
-
-   if (number) {
-      OBJECTID objectid;
-      if ((objectid = (OBJECTID)StrToInt(InitialName))) {
-         ThreadLock lock(TL_PRIVATE_MEM, 4000);
-         if (lock.granted()) {
-            auto mem = glPrivateMemory.find(objectid);
-            if ((mem != glPrivateMemory.end()) and (mem->second.Object)) {
-               *Object = mem->second.Object;
-               return ERR_Okay;
-            }
-         }
-         else return log.warning(ERR_LockFailed);
-      }
-      return ERR_Search;
-   }
-   else if (!StrMatch("owner", InitialName)) {
-      if ((tlContext != &glTopContext) and (tlContext->object()->OwnerID)) {
-         ThreadLock lock(TL_PRIVATE_MEM, 4000);
-         if (lock.granted()) {
-            auto mem = glPrivateMemory.find(tlContext->object()->OwnerID);
-            if (mem != glPrivateMemory.end()) {
-               if ((*Object = mem->second.Object)) {
+   ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
+   if (lock.granted()) {
+      OBJECTPTR *list;
+      LONG list_size;
+      if (!VarGet(glObjectLookup, InitialName, (APTR *)&list, &list_size)) {
+         // Return the most recently created object, i.e. the one at the end of the list.
+         for (LONG i=(list_size / sizeof(OBJECTPTR)) - 1; i >= 0; i--) {
+            if (list[i]) {
+               if ((!ClassID) or (list[i]->ClassID IS ClassID)) {
+                  *Result = list[i]->UID;
                   return ERR_Okay;
                }
             }
          }
-         else return log.warning(ERR_LockFailed);
-      }
-      return ERR_Search;
-   }
-
-   ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
-   if (lock.granted()) {
-      LONG i, list_size;
-      OBJECTPTR *list;
-      if (!VarGet(glObjectLookup, InitialName, (APTR *)&list, &list_size)) {
-         // Return the most recently created object, i.e. the one at the end of the list.
-         for (i=(list_size / sizeof(OBJECTPTR)) - 1; i >= 0; i--) {
-            if (list[i]) {
-               *Object = list[i];
-               return ERR_Okay;
-            }
-         }
       }
    }
 
-   if (*Object) return ERR_Okay;
-   else return ERR_Search;
+   return ERR_Search;
 }
 
 /*********************************************************************************************************************
@@ -613,24 +374,8 @@ CLASSID GetClassID(OBJECTID ObjectID)
    if (!ObjectID) return 0;
 
    OBJECTPTR object;
-   if (ObjectID < 0) {
-      SharedObjectHeader *header;
-      CLASSID id;
-      if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-         auto shared_obj = (SharedObject *)ResolveAddress(header, header->Offset);
-         LONG pos;
-         if (!find_public_object_entry(header, ObjectID, &pos)) id = shared_obj[pos].ClassID;
-         else {
-            id = 0;
-            log.function("Object #%d does not exist.", ObjectID);
-         }
-         ReleaseMemoryID(RPM_SharedObjects);
-         return id;
-      }
-      else log.warning(ERR_AccessMemory);
-   }
-   else if ((object = GetObjectPtr(ObjectID))) return object->ClassID;
-   else log.function("Failed to access private object #%d, no longer exists or ID invalid.", ObjectID);
+   if ((object = GetObjectPtr(ObjectID))) return object->ClassID;
+   else log.function("Failed to access object #%d, no longer exists or ID invalid.", ObjectID);
 
    return 0;
 }
@@ -950,7 +695,7 @@ object ID's are not supported.
 oid Object: The ID of the object to lookup.
 
 -RESULT-
-obj: The address of the object is returned, or NULL if the ID does not relate to a private object.
+obj: The address of the object is returned, or NULL if the ID does not relate to an object.
 
 *********************************************************************************************************************/
 
@@ -993,24 +738,11 @@ oid: Returns the ID of the object's owner.  If the object does not have a owner 
 OBJECTID GetOwnerID(OBJECTID ObjectID)
 {
    OBJECTID ownerid = 0;
-   if (ObjectID < 0) {
-      SharedObjectHeader *header;
-      if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-         LONG pos;
-         if (!find_public_object_entry(header, ObjectID, &pos)) {
-            auto list = (SharedObject *)ResolveAddress(header, header->Offset);
-            ownerid = list[pos].OwnerID;
-         }
-         ReleaseMemoryID(RPM_SharedObjects);
-      }
-   }
-   else {
-      ThreadLock lock(TL_PRIVATE_MEM, 4000);
-      if (lock.granted()) {
-         auto mem = glPrivateMemory.find(ObjectID);
-         if (mem != glPrivateMemory.end()) {
-            if (mem->second.Object) return mem->second.Object->OwnerID;
-         }
+   ThreadLock lock(TL_PRIVATE_MEM, 4000);
+   if (lock.granted()) {
+      auto mem = glPrivateMemory.find(ObjectID);
+      if (mem != glPrivateMemory.end()) {
+         if (mem->second.Object) return mem->second.Object->OwnerID;
       }
    }
    return ownerid;
@@ -1062,7 +794,6 @@ LARGE GetResource(LONG Resource)
    switch(Resource) {
       case RES_MESSAGE_QUEUE:   return glTaskMessageMID;
       case RES_SHARED_CONTROL:  return (MAXINT)glSharedControl;
-      case RES_GLOBAL_INSTANCE: return glSharedControl->GlobalInstance;
       case RES_PRIVILEGED:      return glPrivileged;
       case RES_KEY_STATE:       return glKeyState;
       case RES_LOG_LEVEL:       return glLogLevel;
@@ -1228,7 +959,6 @@ Objects marked with the `INTEGRAL` flag are not returned as they are private mem
 
 -INPUT-
 oid Object: The ID of the object that you wish to examine.
-int IncludeShared: If TRUE, shared objects will be included in the list.  Penalises performance.
 buf(array(resource(ChildEntry))) List: Must refer to an array of ChildEntry structures.
 &arraysize Count:  Set to the maximum number of elements in ChildEntry.  Before returning, this parameter will be updated with the total number of entries listed in the array.
 
@@ -1239,7 +969,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERROR ListChildren(OBJECTID ObjectID, LONG IncludeShared, ChildEntry *List, LONG *Count)
+ERROR ListChildren(OBJECTID ObjectID, ChildEntry *List, LONG *Count)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1250,23 +980,6 @@ ERROR ListChildren(OBJECTID ObjectID, LONG IncludeShared, ChildEntry *List, LONG
 
    ERROR error = ERR_Okay;
    LONG i = 0;
-
-   if (IncludeShared) {
-      SharedObjectHeader *header;
-      if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-         auto list = (SharedObject *)ResolveAddress(header, header->Offset);
-         for (LONG j=0; j < header->NextEntry; j++) {
-            if ((list[j].OwnerID IS ObjectID) and ((list[j].Flags & NF::INTEGRAL) IS NF::NIL)) {
-               List[i].ObjectID = list[j].ObjectID;
-               List[i].ClassID  = list[j].ClassID;
-               if (++i >= *Count) break;
-            }
-         }
-         ReleaseMemoryID(RPM_SharedObjects);
-      }
-   }
-
-   // Build the list of private objects
 
    if (i < *Count) {
       ThreadLock lock(TL_PRIVATE_MEM, 4000);
@@ -1322,7 +1035,7 @@ ERROR ListTasks(LONG Flags, struct ListTasks **Detail)
       for (LONG i=0; i < MAX_TASKS; i++) {
          if ((shTasks[i].ProcessID) and (shTasks[i].TaskID) and (shTasks[i].MessageID)) {
             if (Flags & LTF_CURRENT_PROCESS) {
-               if (shTasks[i].TaskID != glCurrentTaskID) continue;
+               if (shTasks[i].TaskID != glCurrentTask->UID) continue;
             }
 
             taskcount++;
@@ -1339,7 +1052,7 @@ ERROR ListTasks(LONG Flags, struct ListTasks **Detail)
          for (LONG i=0; (i < MAX_TASKS) and (j < taskcount); i++) {
             if ((shTasks[i].ProcessID) and (shTasks[i].TaskID) and (shTasks[i].MessageID)) {
                if (Flags & LTF_CURRENT_PROCESS) {
-                  if (shTasks[i].TaskID != glCurrentTaskID) continue;
+                  if (shTasks[i].TaskID != glCurrentTask->UID) continue;
                }
 
                list->ProcessID   = shTasks[i].ProcessID;
@@ -1561,55 +1274,22 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 
    //if (Object->OwnerID) log.trace("SetOwner:","Changing the owner for object %d from %d to %d.", Object->UID, Object->OwnerID, Owner->UID);
 
-   if (Object->UID < 0) { // Public object
-      ScopedAccessMemory<SharedObjectHeader> header(RPM_SharedObjects, MEM_READ, 2000);
-      if (header.granted()) {
-         LONG pos;
-         if (!find_public_object_entry(header.ptr, Object->UID, &pos)) {
-            auto list = (SharedObject *)ResolveAddress(header.ptr, header.ptr->Offset);
+   // Track the object's memory header to the new owner
 
-            if (Object->OwnerID) { // Remove reference from the now previous owner
-               auto it = glObjectChildren.find(Object->OwnerID);
-               if (it != glObjectChildren.end()) it->second.erase(Object->UID);
-            }
+   ThreadLock lock(TL_PRIVATE_MEM, 4000);
+   if (lock.granted()) {
+      auto mem = glPrivateMemory.find(Object->UID);
+      if (mem IS glPrivateMemory.end()) return log.warning(ERR_SystemCorrupt);
+      mem->second.OwnerID = Owner->UID;
 
-            Object->OwnerID = Owner->UID;
-            list[pos].OwnerID = Owner->UID;
-         }
-         else return log.warning(ERR_Search);
-      }
-      else return log.warning(ERR_AccessMemory);
+      // Remove reference from the now previous owner
+      if (Object->OwnerID) glObjectChildren[Object->OwnerID].erase(Object->UID);
 
-      // Track the object's memory header to the new owner
+      Object->OwnerID = Owner->UID;
 
-      ScopedSysLock lock(PL_PUBLICMEM, 4000);
-      if (lock.granted()) {
-         LONG i;
-         if ((i = find_public_address(glSharedControl, Object)) != -1) {
-            glSharedBlocks[i].ObjectID = Owner->UID;
-         }
-         else return log.warning(ERR_Search);
-      }
-      else return log.warning(ERR_Lock);
+      glObjectChildren[Owner->UID].insert(Object->UID);
    }
-   else {
-      { // Track the object's memory header to the new owner
-         ThreadLock lock(TL_PRIVATE_MEM, 4000);
-         if (lock.granted()) {
-            auto mem = glPrivateMemory.find(Object->UID);
-            if (mem IS glPrivateMemory.end()) return log.warning(ERR_SystemCorrupt);
-            mem->second.OwnerID = Owner->UID;
-
-            // Remove reference from the now previous owner
-            if (Object->OwnerID) glObjectChildren[Object->OwnerID].erase(Object->UID);
-
-            Object->OwnerID = Owner->UID;
-
-            glObjectChildren[Owner->UID].insert(Object->UID);
-         }
-         else return log.warning(ERR_Lock);
-      }
-   }
+   else return log.warning(ERR_Lock);
 
    return ERR_Okay;
 }
@@ -1700,8 +1380,7 @@ AccessMemory: The function could not gain access to the shared objects table (in
 ERROR SetName(OBJECTPTR Object, CSTRING NewName)
 {
    parasol::Log log(__FUNCTION__);
-   SharedObjectHeader *header;
-   LONG i, pos;
+   LONG i;
 
    if ((!Object) or (!NewName)) return log.warning(ERR_NullArgs);
 
@@ -1735,45 +1414,27 @@ ERROR SetName(OBJECTPTR Object, CSTRING NewName)
    }
    Object->Stats->Name[i] = 0;
 
-   if (Object->UID >= 0) {
-      if (Object->Stats->Name[0]) {
-         ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
-         if (lock.granted()) {
-            OBJECTPTR *list;
-            LONG list_size;
-            if (!VarGet(glObjectLookup, Object->Stats->Name, (APTR *)&list, &list_size)) {
-               list_size = list_size / sizeof(OBJECTPTR);
-               OBJECTPTR new_list[list_size + 1];
-               LONG j = 0;
-               for (i=0; i < list_size; i++) {
-                  if (list[i]) new_list[j++] = list[i];
-               }
-               new_list[j++] = Object;
-
-               VarSet(glObjectLookup, Object->Stats->Name, &new_list, sizeof(OBJECTPTR) * j);
+   if (Object->Stats->Name[0]) {
+      ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
+      if (lock.granted()) {
+         OBJECTPTR *list;
+         LONG list_size;
+         if (!VarGet(glObjectLookup, Object->Stats->Name, (APTR *)&list, &list_size)) {
+            list_size = list_size / sizeof(OBJECTPTR);
+            OBJECTPTR new_list[list_size + 1];
+            LONG j = 0;
+            for (i=0; i < list_size; i++) {
+               if (list[i]) new_list[j++] = list[i];
             }
-            else VarSet(glObjectLookup, Object->Stats->Name, &Object, sizeof(OBJECTPTR));
+            new_list[j++] = Object;
+
+            VarSet(glObjectLookup, Object->Stats->Name, &new_list, sizeof(OBJECTPTR) * j);
          }
-         else return log.warning(ERR_Lock);
+         else VarSet(glObjectLookup, Object->Stats->Name, &Object, sizeof(OBJECTPTR));
       }
-      return ERR_Okay;
+      else return log.warning(ERR_Lock);
    }
-   else if (!AccessMemory(RPM_SharedObjects, MEM_READ_WRITE, 2000, (void **)&header)) {
-      if (!find_public_object_entry(header, Object->UID, &pos)) {
-         auto list = (SharedObject *)ResolveAddress(header, header->Offset);
-         for (i=0; (Object->Stats->Name[i]) and (i < (MAX_NAME_LEN-1)); i++) {
-            list[pos].Name[i] = Object->Stats->Name[i];
-         }
-         list[pos].Name[i] = 0;
-         ReleaseMemoryID(RPM_SharedObjects);
-         return ERR_Okay;
-      }
-      else{
-         ReleaseMemoryID(RPM_SharedObjects);
-         return log.warning(ERR_Search);
-      }
-   }
-   else return log.warning(ERR_AccessMemory);
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
@@ -1913,10 +1574,6 @@ LARGE SetResource(LONG Resource, LARGE Value)
 #else
       case RES_NET_PROCESSING: break;
 #endif
-
-      case RES_GLOBAL_INSTANCE:
-         log.function("Global instance can only be requested on Core initialisation.");
-         break;
 
       case RES_JNI_ENV: glJNIEnv = L64PTR(Value); break;
 
@@ -2216,8 +1873,6 @@ void remove_object_hash(OBJECTPTR Object)
 {
    parasol::Log log(__FUNCTION__);
 
-   if (Object->UID < 0) return; // Public objects not supported by this function
-
    OBJECTPTR *list;
    LONG list_size;
    if (!VarGet(glObjectLookup, Object->Stats->Name, (APTR *)&list, &list_size)) {
@@ -2236,26 +1891,4 @@ void remove_object_hash(OBJECTPTR Object)
       }
    }
    else log.trace("No hash entry for object '%s'", Object->Stats->Name);
-}
-
-//********************************************************************************************************************
-
-void set_object_flags(OBJECTPTR Object, NF Flags)
-{
-   parasol::Log log(__FUNCTION__);
-
-   Object->Flags = Flags;
-
-   if (Object->UID < 0) {
-      SharedObjectHeader *header;
-      if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-         auto pubobj = (SharedObject *)ResolveAddress(header, header->Offset);
-         LONG index;
-         if (!find_public_object_entry(header, Object->UID, &index)) {
-            pubobj[index].Flags = Flags;
-         }
-         ReleaseMemoryID(RPM_SharedObjects);
-      }
-      else log.warning("Failed to access the PublicObjects array.");
-   }
 }

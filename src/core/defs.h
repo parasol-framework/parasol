@@ -8,6 +8,7 @@
 #include <set>
 #include <functional>
 #include <mutex>
+#include <sstream>
 
 #define PRV_CORE
 #define PRV_CORE_MODULE
@@ -41,13 +42,14 @@
 
 #define MSG_MAXARGSIZE   512   // The maximum allowable size of data based arguments before they have to be allocated as public memory blocks when messaging
 #define MAX_BLOCKS       2048  // The maximum number of public memory blocks (system-wide) that the Core can handle at once
-#define AUTOLOAD_MAX     30
 #define SIZE_SYSTEM_PATH 100  // Max characters for the Parasol system path
 
 #define MAX_SEMAPHORES    40  // Maximum number of semaphores that can be allocated in the system
 #define MAX_THREADS       20  // Maximum number of threads per process.
 #define MAX_NB_LOCKS      20  // Non-blocking locks apply when locking 'free-for-all' public memory blocks.  The maximum value is per-task, so keep the value low.
 #define MAX_WAITLOCKS     60  // This value is effectively imposing a limit on the maximum number of threads/processes that can be active at any time.
+
+#define CLASSDB_HEADER 0x7f887f88
 
 #ifndef O_LARGEFILE
 #define O_LARGEFILE 0
@@ -167,6 +169,8 @@ enum {
    TL_PRIVATE_OBJECTS,
    TL_MSGHANDLER,
    TL_THREADPOOL,
+   TL_VOLUMES,
+   TL_CLASSDB,
    TL_END
 };
 
@@ -311,26 +315,6 @@ struct WaitLock {
 #define WLF_REMOVED 0x01  // Set if the resource was removed by the thread that was holding it.
 
 //********************************************************************************************************************
-// Shared object management.
-
-struct SharedObjectHeader {
-   LONG Offset;          // Offset of the main array - sizeof(struct PublicObjectHeader)
-   LONG NextEntry;       // Next available entry within the array
-   LONG ArraySize;       // Actual size of the array
-};
-
-struct SharedObject {
-   OBJECTID  ObjectID;           // The object's ID
-   OBJECTID  OwnerID;            // The owner of the object (note: Can be a private or public object)
-   MEMORYID  MessageMID;         // If the object is private, this field refers to the Task MessageMID that owns it
-   OBJECTPTR Address;            // Pointer the object address (if in private memory)
-   CLASSID   ClassID;            // Class ID of the object
-   char      Name[MAX_NAME_LEN]; // Name of the object
-   NF        Flags;              // NF flags
-   LONG      InstanceID;         // Reference to the instance that this object is restricted to
-};
-
-//********************************************************************************************************************
 // This structure is used for internally timed broadcasting.
 
 class CoreTimer {
@@ -453,9 +437,6 @@ class extTask : public objTask {
    FUNCTION ExitCallback;
    FUNCTION InputCallback;
    struct MsgHandler *MsgAction;
-   struct MsgHandler *MsgGetField;
-   struct MsgHandler *MsgSetField;
-   struct MsgHandler *MsgActionResult;
    struct MsgHandler *MsgDebug;
    struct MsgHandler *MsgWaitForObjects;
    struct MsgHandler *MsgValidateProcess;
@@ -481,6 +462,104 @@ class extModule : public objModule {
    char   Name[60];      // Name of the module
    APTR   prvMBMemory;   // Module base memory
    struct KeyStore *Vars;
+};
+
+//********************************************************************************************************************
+// Class database.
+
+struct ClassRecord {
+   CLASSID ClassID;
+   CLASSID ParentID;
+   LONG Category;
+   std::string Name;
+   std::string Path;
+   std::string Match;
+   std::string Header;
+
+   static const LONG MIN_SIZE = sizeof(CLASSID) + sizeof(CLASSID) + sizeof(LONG) + (sizeof(LONG) * 4);
+
+   ClassRecord() { }
+
+   inline ClassRecord(extMetaClass *pClass, std::optional<std::string> pPath = std::nullopt) {
+      ClassID  = pClass->SubClassID;
+      ParentID = (pClass->BaseClassID IS pClass->SubClassID) ? 0 : pClass->BaseClassID;
+      Category = pClass->Category;
+
+      Name.assign(pClass->ClassName);
+
+      if (pPath.has_value()) pPath.value();
+      else if (pClass->Path) Path.assign(pClass->Path);
+
+      if (pClass->FileExtension) Match.assign(pClass->FileExtension);
+      if (pClass->FileHeader) Header.assign(pClass->FileHeader);
+   }
+
+   inline ClassRecord(CLASSID pClassID, std::string pName, CSTRING pMatch = NULL, CSTRING pHeader = NULL) {
+      ClassID  = pClassID;
+      ParentID = 0;
+      Category = CCF_SYSTEM;
+      Name     = pName;
+      Path     = "modules:core";
+      if (pMatch) Match   = pMatch;
+      if (pHeader) Header = pHeader;
+   }
+
+   inline ERROR write(objFile *File) {
+      if (File->write(&ClassID, sizeof(ClassID), NULL)) return ERR_Write;
+      if (File->write(&ParentID, sizeof(ParentID), NULL)) return ERR_Write;
+      if (File->write(&Category, sizeof(Category), NULL)) return ERR_Write;
+
+      LONG size = Name.size();
+      File->write(&size, sizeof(size));
+      File->write(Name.c_str(), size);
+
+      size = Path.size();
+      File->write(&size, sizeof(size));
+      if (size) File->write(Path.c_str(), size);
+
+      size = Match.size();
+      File->write(&size, sizeof(size));
+      if (size) File->write(Match.c_str(), size);
+
+      size = Header.size();
+      File->write(&size, sizeof(size));
+      if (size) File->write(Header.c_str(), size);
+
+      return ERR_Okay;
+   }
+
+   inline ERROR read(objFile *File) {
+      if (File->read(&ClassID, sizeof(ClassID))) return ERR_Read;
+      if (File->read(&ParentID, sizeof(ParentID))) return ERR_Read;
+      if (File->read(&Category, sizeof(Category))) return ERR_Read;
+
+      char buffer[256];
+      LONG size = 0;
+      File->read(&size, sizeof(size));
+      if (size < (LONG)sizeof(buffer)) {
+         File->read(buffer, size);
+         Name.assign(buffer, size);
+      }
+
+      File->read(&size, sizeof(size));
+      if (size < (LONG)sizeof(buffer)) {
+         File->read(buffer, size);
+         Path.assign(buffer, size);
+      }
+
+      File->read(&size, sizeof(size));
+      if (size < (LONG)sizeof(buffer)) {
+         File->read(buffer, size);
+         Match.assign(buffer, size);
+      }
+
+      File->read(&size, sizeof(size));
+      if (size < (LONG)sizeof(buffer)) {
+         File->read(buffer, size);
+         Header.assign(buffer, size);
+      }
+      return ERR_Okay;
+   }
 };
 
 //********************************************************************************************************************
@@ -530,36 +609,32 @@ extern LONG glKeyState;
 extern char glSystemPath[SIZE_SYSTEM_PATH];
 extern char glModulePath[SIZE_SYSTEM_PATH];
 extern char glRootPath[SIZE_SYSTEM_PATH];
-extern char glProgName[32];
 extern char glDisplayDriver[28];
-extern OBJECTID SystemTaskID, glCurrentTaskID; // Read-only
 extern WORD glLogLevel, glShowIO, glShowPrivate, glShowPublic, glMaxDepth;
 extern UBYTE glTaskState;
 extern LARGE glTimeLog;
-extern char glAlphaNumeric[256];
-extern struct ModuleMaster  *glModuleList;    // Locked with TL_GENERIC.  Maintained as a linked-list; hashmap unsuitable.
-extern struct PublicAddress *glSharedBlocks;  // Locked with PL_PUBLICMEM
-extern struct SortedAddress *glSortedBlocks;
-extern struct SharedControl *glSharedControl; // Locked with PL_FORBID
-extern struct TaskList      *shTasks, *glTaskEntry; // Locked with PL_PROCESSES
-extern struct SemaphoreEntry *shSemaphores;     // Locked with PL_SEMAPHORES
-extern const struct ActionTable ActionTable[];  // Read only
-extern const struct Function    glFunctions[];  // Read only
-extern std::list<CoreTimer> glTimers;          // Locked with TL_TIMER
+extern struct ModuleMaster   *glModuleList;    // Locked with TL_GENERIC.  Maintained as a linked-list; hashmap unsuitable.
+extern struct PublicAddress  *glSharedBlocks;  // Locked with PL_PUBLICMEM
+extern struct SortedAddress  *glSortedBlocks;
+extern struct SharedControl  *glSharedControl; // Locked with PL_FORBID
+extern struct TaskList       *shTasks, *glTaskEntry; // Locked with PL_PROCESSES
+extern struct SemaphoreEntry *shSemaphores;    // Locked with PL_SEMAPHORES
+extern struct MemoryPage     *glMemoryPages;   // Locked with TL_MEMORY_PAGES
+extern struct KeyStore       *glObjectLookup;  // Locked with TL_OBJECT_LOOKUP
+extern struct ModuleHeader   *glModules;       // Read-only.  Module database.
+extern struct OpenInfo       *glOpenInfo;      // Read-only.  The OpenInfo structure initially passed to OpenCore()
+extern objTask *glCurrentTask;
+extern const struct ActionTable ActionTable[];
+extern const struct Function    glFunctions[];
+extern std::list<CoreTimer> glTimers;           // Locked with TL_TIMER
 extern std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with TL_PRIVATE_MEM: Note that best performance for looking up ID's is achieved as a sorted array.
 extern std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory; // Locked with TL_PRIVATE_MEM.  Sorted with the most recent private memory first
 extern std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren; // Locked with TL_PRIVATE_MEM.  Sorted with most recent object first
-extern struct MemoryPage   *glMemoryPages;      // Locked with TL_MEMORY_PAGES
-extern struct KeyStore *glObjectLookup;         // Locked with TL_OBJECT_LOOKUP
-extern struct ClassHeader  *glClassDB;          // Read-only.  Class database.
-extern struct ModuleHeader *glModules;          // Read-only.  Module database.
-extern struct OpenInfo *glOpenInfo;             // Read-only.  The OpenInfo structure initially passed to OpenCore()
-extern objTask *glCurrentTask;            // Threads should use glCurrentTaskID to manage access.
+extern std::unordered_map<CLASSID, ClassRecord> glClassDB;
 extern CSTRING glMessages[ERR_END];       // Read-only table of error messages.
 extern const LONG glTotalMessages;
 extern LONG glTotalPages; // Read-only
 extern MEMORYID glTaskMessageMID;        // Read-only
-extern LONG glActionCount, glMemRegSize; // Read-only
 extern LONG glProcessID, glInstanceID;   // Read only
 extern HOSTHANDLE glConsoleFD;
 extern LONG glStdErrFlags; // Read only
@@ -567,21 +642,19 @@ extern LONG glValidateProcessID; // Not a threading concern
 extern LONG glMutexLockSize; // Read only constant
 extern WORD glCrashStatus, glCodeIndex, glLastCodeIndex;
 extern UWORD glFunctionID;
-extern BYTE glMasterTask, glProgramStage, glPrivileged, glSync;
+extern BYTE glProgramStage, glPrivileged, glSync;
 extern LONG glPageSize; // Read only
-extern LONG glBufferSize;
 extern TIMER glCacheTimer;
-extern STRING glBuffer;
 extern APTR glJNIEnv;
 extern class ObjectContext glTopContext; // Read-only, not a threading concern.
 extern OBJECTPTR modIconv;
 extern OBJECTPTR glLocale;
 extern objTime *glTime;
-extern objConfig *glVolumes; // Volume management object, contains all FS volume names and their meta data.  Use AccessPrivateObject() to lock.
+extern ConfigGroups glVolumes;
 extern objConfig *glDatatypes;
 extern struct KeyStore *glClassMap; // Register of all classes.
 extern struct KeyStore *glFields; // Reverse lookup for converting field hashes back to their respective names.
-extern OBJECTID glClassFileID;
+extern objFile *glClassFile;
 extern CSTRING glIDL;
 extern std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
 extern struct BaseClass glDummyObject;
@@ -605,7 +678,7 @@ extern objMetaClass *glAssetClass;
 #endif
 extern BYTE fs_initialised;
 extern APTR glPageFault;
-extern BYTE glScanClasses;
+extern bool glScanClasses;
 extern UBYTE glTimerCycle;
 extern LONG glDebugMemory;
 extern struct CoreBase *LocalCoreBase;
@@ -984,13 +1057,11 @@ APTR   build_jump_table(LONG, const struct Function *, LONG);
 ERROR  copy_args(const struct FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, WORD *, CSTRING);
 ERROR  copy_field_to_buffer(OBJECTPTR Object, struct Field *Field, LONG DestFlags, APTR Result, CSTRING Option, LONG *TotalElements);
 ERROR  create_archive_volume(void);
-ERROR  critical_janitor(OBJECTID, LONG, LONG);
 ERROR  delete_tree(STRING, LONG, FUNCTION *, struct FileFeedback *);
 struct ClassItem * find_class(CLASSID);
 struct ModuleItem * find_module(ULONG);
 LONG   find_public_address(struct SharedControl *, APTR);
 ERROR  find_private_object_entry(OBJECTID, LONG *);
-ERROR  find_public_object_entry(struct SharedObjectHeader *, OBJECTID, LONG *);
 ERROR  find_public_mem_id(struct SharedControl *, MEMORYID, LONG *);
 void   fix_core_table(struct CoreBase *, FLOAT);
 void   free_events(void);
@@ -1001,7 +1072,6 @@ void   free_wakelocks(void);
 LONG   get_thread_id(void);
 void   init_metaclass(void);
 ERROR  init_sleep(LONG OtherProcessID, LONG GlobalThreadID, LONG ResourceID, LONG ResourceType, WORD *);
-ERROR  load_classes(void);
 ERROR  local_copy_args(const struct FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, CSTRING);
 void   local_free_args(APTR, const struct FunctionField *);
 struct Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Result);
@@ -1012,17 +1082,14 @@ void   optimise_write_field(struct Field *Field);
 ERROR  page_memory(struct PublicAddress *, APTR *);
 void   PrepareSleep(void);
 ERROR  process_janitor(OBJECTID, LONG, LONG);
-ERROR  register_class(CSTRING, CLASSID ParentID, LONG Category, CSTRING Path, CSTRING FileMatch, CSTRING);
 ERROR  remove_memlock(void);
 void   remove_object_hash(OBJECTPTR);
 void   remove_process_waitlocks(void);
 void   remove_public_locks(LONG);
 void   remove_semaphores(void);
-void   remove_shared_object(OBJECTID);
 ERROR  resolve_args(APTR, const struct FunctionField *);
 APTR   resolve_public_address(struct PublicAddress *);
 void   scan_classes(void);
-void   set_object_flags(OBJECTPTR, NF);
 ERROR  sort_class_fields(extMetaClass *, struct Field *);
 void   remove_threadpool(void);
 ERROR  threadpool_get(extThread **);
@@ -1030,7 +1097,6 @@ void   threadpool_release(extThread *);
 ERROR  unpage_memory(APTR);
 ERROR  unpage_memory_id(MEMORYID MemoryID);
 void   wake_sleepers(LONG ResourceID, LONG ResourceType);
-ERROR  write_class_item(struct ClassItem *);
 ERROR  writeval_default(OBJECTPTR, struct Field *, LONG, const void *, LONG);
 ERROR  validate_process(LONG);
 void   free_iconv(void);
@@ -1092,6 +1158,7 @@ void  plUnlockSemaphore(APTR);
 ERROR check_paths(CSTRING, LONG);
 
 ERROR convert_errno(LONG Error, ERROR Default);
+void merge_groups(ConfigGroups &Dest, ConfigGroups &Source);
 
 #ifdef _WIN32
 void activate_console(BYTE);

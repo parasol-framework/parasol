@@ -1225,7 +1225,6 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <field name="SurfaceID" type="OBJECTID">ID of the surface area</field>
       <field name="BitmapID" type="OBJECTID">Shared bitmap buffer, if available</field>
       <field name="DisplayID" type="OBJECTID">Display</field>
-      <field name="TaskID" type="OBJECTID">Task that owns the surface</field>
       <field name="RootID" type="OBJECTID">RootLayer</field>
       <field name="PopOverID" type="OBJECTID"></field>
       <field name="Flags" type="LONG">Surface flags (RNF_VISIBLE etc)</field>

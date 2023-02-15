@@ -199,7 +199,7 @@ static ERROR VECTORSCENE_Debug(extVectorScene *Self, APTR Void)
    ChildEntry list[128];
    LONG count = ARRAYSIZE(list);
    do {
-      if (!ListChildren(Self->UID, FALSE, list, &count)) {
+      if (!ListChildren(Self->UID, list, &count)) {
          for (LONG i=0; i < count; i++) {
             auto obj = GetObjectPtr(list[i].ObjectID);
             if (obj IS Self->Viewport) continue;

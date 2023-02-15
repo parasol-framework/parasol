@@ -186,7 +186,6 @@ extern "C" ERROR add_storage_class(void)
       fl::ClassVersion(VER_STORAGEDEVICE),
       fl::Name("StorageDevice"),
       fl::Category(CCF_SYSTEM),
-      fl::Flags(CLF_PRIVATE_ONLY),
       fl::Actions(clActions),
       fl::Fields(clFields),
       fl::Size(sizeof(extStorageDevice)),

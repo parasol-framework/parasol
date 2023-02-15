@@ -147,7 +147,7 @@ void Scintilla::Window::InvalidateAll()
    if (scintilla->Visible IS FALSE) return;
 
    log.traceBranch();
-   DelayMsg(AC_Draw, getSurfaceID(this));
+   QueueAction(AC_Draw, getSurfaceID(this));
 }
 
 //********************************************************************************************************************
@@ -165,7 +165,7 @@ void Scintilla::Window::InvalidateRectangle(Scintilla::PRectangle rc)
    // Scintilla expects the invalidation to be buffered, so a delayed message is appropriate.
 
    struct acDraw draw = { rc.left, rc.top, rc.Width(), rc.Height() };
-   DelayMsg(AC_Draw, getSurfaceID(this), &draw);
+   QueueAction(AC_Draw, getSurfaceID(this), &draw);
 }
 
 //********************************************************************************************************************

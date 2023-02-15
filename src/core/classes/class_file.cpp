@@ -926,27 +926,19 @@ static ERROR FILE_NextFile(extFile *Self, struct flNext *Args)
       else if (Self->Flags & FL_EXCLUDE_FILES) flags |= RDF_FOLDER;
       else flags |= RDF_FILE|RDF_FOLDER;
 
-      ERROR error = OpenDir(Self->Path, flags, &Self->prvList);
-      if (error) return error;
+      if (auto error = OpenDir(Self->Path, flags, &Self->prvList)) return error;
    }
 
    ERROR error;
    if (!(error = ScanDir(Self->prvList))) {
-      LONG folder_len = StrLength(Self->Path);
-      LONG name_len = StrLength(Self->prvList->Info->Name);
+      std::string path(Self->Path);
+      path.append(Self->prvList->Info->Name);
 
-      {
-         char path[folder_len + name_len + 2];
-         CopyMemory(Self->Path, path, folder_len);
-         CopyMemory(Self->prvList->Info->Name, path + folder_len, name_len);
-         path[folder_len + name_len] = 0;
-
-         if (auto file = extFile::create::global(fl::Path(path))) {
-            Args->File = file;
-            return ERR_Okay;
-         }
-         else return log.warning(ERR_CreateObject);
+      if (auto file = extFile::create::global(fl::Path(path))) {
+         Args->File = file;
+         return ERR_Okay;
       }
+      else return log.warning(ERR_CreateObject);
    }
    else {
       // Automatically close the list in the event of an error and repurpose the return code.  Subsequent
@@ -2017,24 +2009,21 @@ static ERROR GET_Icon(extFile *Self, CSTRING *Value)
    if ((Self->Path[i] IS ':') and (!Self->Path[i+1])) {
       std::string icon("icons:folders/folder");
 
-      if (!AccessPrivateObject(glVolumes, 8000)) {
-         ConfigGroups *groups;
-         if ((!glVolumes->getPtr(FID_Data, &groups)) and (groups)) {
-            if (groups->size() > 0) {
-               std::string volume(Self->Path, i);
+      ThreadLock lock(TL_VOLUMES, 6000);
+      if (lock.granted()) {
+         if (glVolumes.size() > 0) {
+            std::string volume(Self->Path, i);
 
-               for (auto& [group, keys] : groups[0]) {
-                  if (!StrMatch(volume.c_str(), keys["Name"].c_str())) {
-                     if (keys.contains("Icon")) {
-                        icon = "icons:";
-                        icon += keys["Icon"];
-                        break;
-                     }
+            for (auto& [group, keys] : glVolumes) {
+               if (!StrMatch(volume.c_str(), keys["Name"].c_str())) {
+                  if (keys.contains("Icon")) {
+                     icon = "icons:";
+                     icon += keys["Icon"];
+                     break;
                   }
                }
             }
          }
-         ReleasePrivateObject(glVolumes);
       }
 
       *Value = Self->prvIcon = StrClone(icon.c_str());
@@ -2100,42 +2089,31 @@ static ERROR GET_Icon(extFile *Self, CSTRING *Value)
       // Use IdentifyFile() to see if this file can be associated with a class
 
       if (!icon[0]) {
-         char classname[40], mastername[40];
-         classname[0]  = 0;
-         mastername[0] = 0;
+         std::string subclass, baseclass;
 
          CLASSID class_id, subclass_id;
          if (!IdentifyFile(Self->Path, NULL, 0, &class_id, &subclass_id, NULL)) {
-            if (!subclass_id) subclass_id = class_id;
+            if (glClassDB.contains(subclass_id)) {
+               subclass = glClassDB[subclass_id].Name;
+            }
 
-            ClassHeader *classes;
-
-            if ((classes = glClassDB)) {
-               LONG *offsets = CL_OFFSETS(classes);
-               for (LONG i=0; i < classes->Total; i++) {
-                  auto item = (ClassItem *)((BYTE *)classes + offsets[i]);
-                  if (item->ClassID IS subclass_id) {
-                     StrCopy(item->Name, classname, sizeof(classname));
-                  }
-                  else if (item->ClassID IS class_id) {
-                     StrCopy(item->Name, mastername, sizeof(mastername));
-                  }
-               }
+            if (glClassDB.contains(class_id)) {
+               baseclass = glClassDB[class_id].Name;
             }
          }
 
          // Scan class names
 
-         if ((classname[0]) or (mastername[0])) {
+         if ((!subclass.empty()) or (!baseclass.empty())) {
             for (auto& [group, keys] : groups[0]) {
                if (keys.contains("Class")) {
-                  if (!StrMatch(keys["Class"].c_str(), classname)) {
+                  if (!StrMatch(keys["Class"].c_str(), subclass.c_str())) {
                      if (keys.contains("Icon")) StrCopy(keys["Icon"].c_str(), icon, sizeof(icon));
                      break;
                   }
-                  else if (!StrMatch(keys["Class"].c_str(), mastername)) {
+                  else if (!StrMatch(keys["Class"].c_str(), baseclass.c_str())) {
                      if (keys.contains("Icon")) StrCopy(keys["Icon"].c_str(), icon, sizeof(icon));
-                     // Don't break - keep searching in case there is a sub-class reference
+                     // Don't break as sub-class would have priority
                   }
                }
             }
@@ -2869,7 +2847,6 @@ extern "C" ERROR add_file_class(void)
       fl::ClassVersion(VER_FILE),
       fl::Name("File"),
       fl::Category(CCF_SYSTEM),
-      fl::Flags(CLF_PRIVATE_ONLY),
       fl::Actions(clFileActions),
       fl::Methods(clFileMethods),
       fl::Fields(FileFields),

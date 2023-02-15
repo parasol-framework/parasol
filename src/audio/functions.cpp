@@ -271,7 +271,7 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
 
          if (Self->activate() != ERR_Okay) {
             log.warning("Audio error is terminal, self-destructing...");
-            DelayMsg(AC_Free, Self->UID);
+            QueueAction(AC_Free, Self->UID);
             return ERR_Failed;
          }
       }

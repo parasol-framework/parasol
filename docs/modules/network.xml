@@ -8,7 +8,7 @@
     <version>1</version>
     <status>stable</status>
     <prefix>net</prefix>
-    <copyright>Paul Manias © 2005-2022</copyright>
+    <copyright>Paul Manias © 2005-2023</copyright>
     <classes>
       <class>ClientSocket</class>
       <class>NetLookup</class>

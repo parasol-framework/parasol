@@ -30,8 +30,6 @@
    #endif
 #endif
 
-char glProgName[32] = "Program";
-
 char glRootPath[SIZE_SYSTEM_PATH] = "" ROOT_PATH "";
 char glSystemPath[SIZE_SYSTEM_PATH] = "" SYSTEM_PATH "";
 char glModulePath[SIZE_SYSTEM_PATH] = "" MODULE_PATH "";
@@ -57,7 +55,7 @@ objMetaClass *glAssetClass = 0;
 objMetaClass *glStorageClass = NULL;
 BYTE fs_initialised = FALSE;
 APTR glPageFault = NULL;
-BYTE glScanClasses = FALSE;
+bool glScanClasses = false;
 LONG glDebugMemory = FALSE;
 struct CoreBase *LocalCoreBase = NULL;
 
@@ -65,30 +63,32 @@ struct CoreBase *LocalCoreBase = NULL;
 std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;
 std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren;
 std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory;
+std::unordered_map<CLASSID, ClassRecord> glClassDB;
+std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
 
-struct PublicAddress  *glSharedBlocks  = 0;
-struct SortedAddress  *glSortedBlocks  = 0;
-struct ModuleMaster   *glModuleList    = 0;
-struct SharedAccess   *SharedAccess    = 0;
-struct SharedControl  *glSharedControl = 0;
-struct TaskList       *shTasks         = 0;
-struct TaskList       *glTaskEntry     = 0;
-struct SemaphoreEntry *shSemaphores    = 0;
-struct MemoryPage     *glMemoryPages   = 0;
-struct KeyStore       *glObjectLookup  = 0;
-struct ClassHeader    *glClassDB       = 0;
-struct ModuleHeader   *glModules       = 0;
-struct OpenInfo       *glOpenInfo      = 0;
-struct MsgHandler     *glMsgHandlers   = 0, *glLastMsgHandler = 0;
+struct PublicAddress  *glSharedBlocks  = NULL;
+struct SortedAddress  *glSortedBlocks  = NULL;
+struct ModuleMaster   *glModuleList    = NULL;
+struct SharedAccess   *SharedAccess    = NULL;
+struct SharedControl  *glSharedControl = NULL;
+struct TaskList       *shTasks         = NULL;
+struct TaskList       *glTaskEntry     = NULL;
+struct SemaphoreEntry *shSemaphores    = NULL;
+struct MemoryPage     *glMemoryPages   = NULL;
+struct KeyStore       *glObjectLookup  = NULL;
+struct ModuleHeader   *glModules       = NULL;
+struct OpenInfo       *glOpenInfo      = NULL;
+struct MsgHandler     *glMsgHandlers   = NULL, *glLastMsgHandler = 0;
+struct KeyStore       *glClassMap      = NULL;
+struct KeyStore       *glFields        = NULL;
+struct FDTable        *glFDTable       = NULL;
+objFile *glClassFile   = NULL;
+objTask *glCurrentTask = NULL;
+objConfig *glDatatypes = NULL;
 std::list<CoreTimer> glTimers;
-OBJECTID glClassFileID = 0;
+ConfigGroups glVolumes;
 APTR glJNIEnv = 0;
-UWORD glFunctionID = 3333;
-objTask *glCurrentTask = 0;
-OBJECTID  glCurrentTaskID  = 0;
-OBJECTID  SystemTaskID     = 0;
-struct KeyStore *glClassMap = NULL;
-struct KeyStore *glFields = NULL;
+UWORD glFunctionID = 3333; // IDTYPE_FUNCTION
 LONG glPageSize = 4096; // Default page size is 4k
 LONG glTotalPages = 0;
 LONG glStdErrFlags = 0;
@@ -99,16 +99,10 @@ LONG glTaskMessageMID = 0;
 LONG glValidateProcessID = 0;
 LONG glProcessID  = 0;
 LONG glInstanceID = 0;
-LONG glMemRegSize = 0;
-LONG glActionCount = AC_END;
 LONG glEUID = -1, glEGID = -1, glGID = -1, glUID = -1;
-objConfig *glVolumes = NULL; // Volume management object
-objConfig *glDatatypes = NULL;
-struct FDTable *glFDTable = NULL;
 WORD glTotalFDs = 0, glLastFD = 0;
 UBYTE glTimerCycle = 1;
 CSTRING glIDL = MOD_IDL;
-std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
 
 #ifdef __unix__
   THREADVAR LONG glSocket = -1; // Implemented as thread-local because we don't want threads other than main to utilise the messaging system.
@@ -144,7 +138,6 @@ WORD glShowIO       = FALSE;
 WORD glShowPrivate  = FALSE;
 WORD glShowPublic   = FALSE;
 BYTE *SharedMemory  = 0;
-BYTE glMasterTask   = FALSE;
 BYTE glProgramStage = STAGE_STARTUP;
 BYTE glPrivileged   = FALSE;
 BYTE glSync         = FALSE;
@@ -220,7 +213,6 @@ void (*glNetProcessMessages)(LONG, APTR) = 0;
 
 // Imported string variables
 
-char glAlphaNumeric[256];
 #ifdef __ANDROID__
 static struct AndroidBase *AndroidBase = 0;
 #endif

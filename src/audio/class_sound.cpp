@@ -214,23 +214,24 @@ static ERROR snd_init_audio(extSound *Self)
 {
    parasol::Log log;
 
-   LONG count = 1;
-   if (!FindObject("SystemAudio", ID_AUDIO, 0, &Self->AudioID, &count)) return ERR_Okay;
+   if (!FindObject("SystemAudio", ID_AUDIO, 0, &Self->AudioID)) return ERR_Okay;
 
    extAudio *audio;
    ERROR error;
-   if (!(error = NewNamedObject(ID_AUDIO, NF::UNIQUE, &audio, &Self->AudioID, "SystemAudio"))) {
+   if (!(error = NewObject(ID_AUDIO, NF::NIL, &audio))) {
+      SetName(audio, "SystemAudio");
       SetOwner(audio, CurrentTask());
 
       if (!acInit(audio)) {
-         error = acActivate(audio);
+         if (!(error = acActivate(audio))) {
+            Self->AudioID = audio->UID;
+         }
+         else acFree(audio);
       }
       else {
          acFree(audio);
          error = ERR_Init;
       }
-
-      ReleaseObject(audio);
    }
    else if (error IS ERR_ObjectExists) return ERR_Okay;
    else error = ERR_NewObject;
@@ -367,7 +368,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          }
 
          if (Self->OnStop.Type) stream.OnStop = make_function_stdc(&onstop_event);
-         else stream.OnStop.Type = 0;
+         else stream.OnStop.Type = CALL_NONE;
 
          stream.PlayOffset   = Self->Position;
          stream.Callback     = make_function_stdc(&read_stream);
@@ -411,7 +412,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
             }
 
             if (Self->OnStop.Type) add.OnStop = make_function_stdc(&onstop_event);
-            else add.OnStop.Type = 0;
+            else add.OnStop.Type = CALL_NONE;
 
             add.SampleFormat = sampleformat;
             add.Data         = buffer;
@@ -602,6 +603,11 @@ static ERROR SOUND_Free(extSound *Self, APTR Void)
 {
    if (Self->StreamTimer)   { UpdateTimer(Self->StreamTimer, 0); Self->StreamTimer = 0; }
    if (Self->PlaybackTimer) { UpdateTimer(Self->PlaybackTimer, 0); Self->PlaybackTimer = 0; }
+
+   if (Self->OnStop.Type IS CALL_SCRIPT) {
+      UnsubscribeAction(Self->OnStop.Script.Script, AC_Free);
+      Self->OnStop.Type = CALL_NONE;
+   }
 
 #if defined(USE_WIN32_PLAYBACK)
    if (!Self->Handle) sndFree((PlatformData *)Self->PlatformData);

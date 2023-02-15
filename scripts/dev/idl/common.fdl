@@ -47,14 +47,14 @@ flags("CCF", { comment="Class categories" },
     "MULTIMEDIA")
 
 enum("AC", { start=1, comment="Action identifiers." },
-    "Signal",       "Activate",       "AccessObject", "Clear",    "FreeWarning",  "OwnerDestroyed", "CopyData",
-    "DataFeed",     "Deactivate",     "Draw",         "Flush",    "Focus",        "Free",         "ReleaseObject",
+    "Signal",       "Activate",       "SelectArea",   "Clear",    "FreeWarning",  "OwnerDestroyed", "CopyData",
+    "DataFeed",     "Deactivate",     "Draw",         "Flush",    "Focus",        "Free",         "SaveSettings",
     "GetVar",       "DragDrop",       "Hide",         "Init",     "Lock",         "LostFocus",    "Move",
     "MoveToBack",   "MoveToFront",    "NewChild",     "NewOwner", "NewObject",    "Redo",         "Query",
     "Read",         "Rename",         "Reset",        "Resize",   "SaveImage",    "SaveToObject", "Scroll",
     "Seek",         "SetVar",         "Show",         "Undo",     "Unlock",       "Next",         "Prev",
     "Write",        "SetField",       "Clipboard",    "Refresh",  "Disable",      "Enable",       "Redimension",
-    "MoveToPoint",  "ScrollToPoint",  "Custom",       "Sort",     "SaveSettings", "SelectArea",
+    "MoveToPoint",  "ScrollToPoint",  "Custom",       "Sort",
     "END")
 
 flags("PERMIT", { comment="Permission flags" },

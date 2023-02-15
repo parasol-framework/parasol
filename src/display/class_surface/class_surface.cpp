@@ -473,7 +473,7 @@ static void notify_free_parent(OBJECTPTR Object, ACTIONID ActionID, ERROR Result
 
    Self->Flags &= ~RNF_VISIBLE;
    UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
-   if (Self->defined(NF::INTEGRAL)) DelayMsg(AC_Free, Self->UID); // If the object is a child of something, give the parent object time to do the deallocation itself
+   if (Self->defined(NF::INTEGRAL)) QueueAction(AC_Free, Self->UID); // If the object is a child of something, give the parent object time to do the deallocation itself
    else acFree(Self);
 }
 
@@ -689,8 +689,6 @@ static ERROR SURFACE_AddCallback(extSurface *Self, struct drwAddCallback *Args)
    log.msg("Context: %d, Callback Context: %d, Routine: %p (Count: %d)", context->UID, call_context ? call_context->UID : 0, Args->Callback->StdC.Routine, Self->CallbackCount);
 
    if (call_context) context = call_context;
-
-   if (Self->ownerTask() != CurrentTaskID()) return log.warning(ERR_ExecViolation);
 
    if (Self->Callback) {
       // Check if the subscription is already on the list for our surface context.
@@ -1133,9 +1131,7 @@ static ERROR SURFACE_Free(extSurface *Self, APTR Void)
    if (Self->Flags & RNF_AUTO_QUIT) {
       parasol::Log log;
       log.msg("Posting a quit message due to use of AUTOQUIT.");
-      if (Self->ownerTask() IS CurrentTask()->UID) {
-         SendMessage(NULL, MSGID_QUIT, NULL, NULL, NULL);
-      }
+      SendMessage(NULL, MSGID_QUIT, NULL, NULL, NULL);
    }
 
    if (Self->InputHandle) gfxUnsubscribeInput(Self->InputHandle);
@@ -1268,8 +1264,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
    if ((!Self->ParentID) and (gfxGetDisplayType() IS DT_NATIVE)) {
       if (!(Self->Flags & RNF_FULL_SCREEN)) {
-         LONG count = 1;
-         if (FindObject("desktop", ID_SURFACE, FOF_INCLUDE_SHARED, &Self->ParentID, &count) != ERR_Okay) {
+         if (FindObject("desktop", ID_SURFACE, 0, &Self->ParentID) != ERR_Okay) {
             SurfaceControl *ctl;
             if ((ctl = gfxAccessList(ARF_READ))) {
                auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
@@ -1506,8 +1501,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
       if (Self->Flags & RNF_COMPOSITE) scrflags |= SCR_COMPOSITE;
 
       OBJECTID id;
-      LONG count = 1;
-      CSTRING name = FindObject("SystemDisplay", 0, 0, &id, &count) ? "SystemDisplay" : (CSTRING)NULL;
+      CSTRING name = FindObject("SystemDisplay", 0, 0, &id) ? "SystemDisplay" : (CSTRING)NULL;
 
       // For hosted displays:  On initialisation, the X and Y fields reflect the position at which the window will be
       // opened on the host desktop.  However, hosted surfaces operate on the absolute coordinates of client regions
@@ -1515,7 +1509,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
       // display will adjust the coordinates to reflect the absolute position of the surface on the desktop).
 
       objDisplay *display;
-      if (!NewLockedObject(ID_DISPLAY, NF::INTEGRAL|Self->flags(), &display, &Self->DisplayID)) {
+      if (!NewObject(ID_DISPLAY, NF::INTEGRAL, &display)) {
          SetFields(display,
                FID_Name|TSTR,           name,
                FID_X|TLONG,             Self->X,
@@ -1584,12 +1578,12 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
                SubscribeAction(display, AC_Draw, &callback);
             }
 
+            Self->DisplayID = display->UID;
             error = ERR_Okay;
          }
          else error = ERR_Init;
 
-         if (error) { acFree(display); Self->DisplayID = 0; }
-         ReleaseObject(display);
+         if (error) acFree(display);
       }
       else error = ERR_NewObject;
    }
@@ -1604,13 +1598,6 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
          DISPLAYINFO *info;
          if (!gfxGetDisplayInfo(Self->DisplayID, &info)) {
             if (info->BitsPerPixel != Self->BitsPerPixel) require_store = TRUE;
-         }
-      }
-
-      if ((require_store IS FALSE) and (Self->ParentID)) {
-         MemInfo info;
-         if (!MemoryIDInfo(Self->ParentID, &info)) {
-            if (info.TaskID != CurrentTaskID()) require_store = TRUE;
          }
       }
    }
@@ -1641,7 +1628,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
          }
          else bpp = display->Bitmap->BitsPerPixel;
 
-         if (!(NewLockedObject(ID_BITMAP, NF::INTEGRAL|Self->flags(), &bitmap, &Self->BufferID))) {
+         if (!NewObject(ID_BITMAP, NF::INTEGRAL, &bitmap)) {
             SetFields(bitmap,
                FID_BitsPerPixel|TLONG, bpp,
                FID_Width|TLONG,        Self->Width,
@@ -1656,13 +1643,13 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
                Self->BytesPerPixel = bitmap->BytesPerPixel;
                Self->LineWidth     = bitmap->LineWidth;
                Self->Data          = bitmap->Data;
+               Self->BufferID      = bitmap->UID;
                error = ERR_Okay;
             }
-            else error = ERR_Init;
-
-            if (error) { acFree(bitmap); Self->BufferID = 0; }
-
-            ReleaseObject(bitmap);
+            else {
+               error = ERR_Init;
+               acFree(bitmap);
+            }
          }
          else error = ERR_NewObject;
 
@@ -2194,13 +2181,6 @@ static ERROR SURFACE_NewObject(extSurface *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
-
-static ERROR SURFACE_ReleaseObject(extSurface *Self, APTR Void)
-{
-   return ERR_Okay;
-}
-
 /*****************************************************************************
 
 -METHOD-
@@ -2566,7 +2546,7 @@ static ERROR SURFACE_Scroll(extSurface *Self, struct acScroll *Args)
             gfxReleaseList(ARF_READ);
 
             struct acMove move = { -Args->DeltaX, -Args->DeltaY, -Args->DeltaZ };
-            for (LONG i=0; i < t; i++) DelayMsg(AC_Move, surfaces[i], &move);
+            for (LONG i=0; i < t; i++) QueueAction(AC_Move, surfaces[i], &move);
          }
       }
    }
@@ -2601,7 +2581,7 @@ static ERROR SURFACE_ScrollToPoint(extSurface *Self, struct acScrollToPoint *Arg
          gfxReleaseList(ARF_READ);
 
          struct acMoveToPoint move = { -Args->X, -Args->Y, -Args->Z, Args->Flags };
-         for (i=0; i < t; i++) DelayMsg(AC_MoveToPoint, surfaces[i], &move);
+         for (i=0; i < t; i++) QueueAction(AC_MoveToPoint, surfaces[i], &move);
       }
    }
 
@@ -2646,9 +2626,9 @@ static ERROR SURFACE_SetOpacity(extSurface *Self, struct drwSetOpacity *Args)
       SET_Opacity(Self, value);
    }
 
-   // Use the DelayMsg() feature so that we don't end up with major lag problems when SetOpacity is being used for things like fading.
+   // Use the QueueAction() feature so that we don't end up with major lag problems when SetOpacity is being used for things like fading.
 
-   if (Self->Flags & RNF_VISIBLE) DelayMsg(MT_DrwInvalidateRegion, Self->UID);
+   if (Self->Flags & RNF_VISIBLE) QueueAction(MT_DrwInvalidateRegion, Self->UID);
 
    return ERR_Okay;
 }
@@ -2985,11 +2965,6 @@ static const FieldArray clSurfaceFields[] = {
 
 ERROR create_surface_class(void)
 {
-   LONG flags = 0;
-
-   // When operating stand-alone, do not share surfaces by default.
-   if (GetResource(RES_GLOBAL_INSTANCE)) flags = CLF_SHARED_ONLY|CLF_PUBLIC_OBJECTS;
-
    clSurface = objMetaClass::create::global(
       fl::ClassVersion(VER_SURFACE),
       fl::Name("Surface"),
@@ -2998,7 +2973,6 @@ ERROR create_surface_class(void)
       fl::Methods(clSurfaceMethods),
       fl::Fields(clSurfaceFields),
       fl::Size(sizeof(extSurface)),
-      fl::Flags(flags),
       fl::Path(MOD_PATH));
 
    return clSurface ? ERR_Okay : ERR_AddClass;

@@ -61,8 +61,8 @@ static ERROR TIME_Query(objTime *Self, APTR Void)
       Self->Hour        = local.tm_hour;
       Self->Minute      = local.tm_min;
       Self->Second      = tmday.tv_sec % 60;
-      Self->MilliSecond = tmday.tv_usec/1000;  // Between 0 and 999
-      Self->MicroSecond = tmday.tv_usec;       // Between 0 and 999999
+      Self->MilliSecond = tmday.tv_usec / 1000;  // Between 0 and 999
+      Self->MicroSecond = tmday.tv_usec;         // Between 0 and 999999
       Self->SystemTime  = (((LARGE)tm) * (LARGE)1000000) + (LARGE)Self->MicroSecond;
 
    #elif _WIN32

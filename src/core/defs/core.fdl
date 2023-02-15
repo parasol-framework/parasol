@@ -80,7 +80,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 
   flags("TSF", { comment="Task flags" },
     "FOREIGN: Set this flag when using the task object to execute a foreign process - that is an executable that does not use the Parasol API.",
-    "DUMMY: Private. Marks the object as being for temporary use only.",
     "WAIT: This flag will cause the parent process to halt when the task is activated.  Control is returned to the parent process once the child process terminates.",
     "RESET_PATH: If set, the executed process will start in its own folder rather than the folder of the parent process.",
     "PRIVILEGED: During a normal execution process, any privileges of the parent process will be dropped so that the child process runs unprivileged.  This behaviour can be reversed if he PRIVILEGED flag is set, in which case the child process has the same privileges as the parent.",
@@ -184,7 +183,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "STRING: The string represents plain-text.")
 
   flags("OPF", { },
-    "NAME",
+    "SHOW_PUBLIC_MEM",
     "CORE_VERSION",
     "JUMPTABLE",
     "MAX_DEPTH",
@@ -200,9 +199,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "MODULE_PATH",
     "ROOT_PATH",
     "SCAN_MODULES",
-    "GLOBAL_INSTANCE",
-    "OPTIONS",
-    "SHOW_PUBLIC_MEM") -- Show shared memory allocations only (ignore private).
+    "OPTIONS")
 
   enum("TOI", { },
     "LOCAL_CACHE",        -- For Android.  Defines the path of the local cache for assignment to localcache:
@@ -318,24 +315,22 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "DEFLATE: The 'deflate' format")
 
   flags("FOF", { comment="Flags that can be passed to FindObject()" },
-    "SMART_NAMES: Parse numeric object names as ID references and support use of the 'Owner' reserved keyword.",
-    "INCLUDE_SHARED: Include shared objects when searching.")
+    "SMART_NAMES: Parse numeric object names as ID references and support use of the 'Owner' reserved keyword.")
 
   flags("NF", { strict=true, comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word." },
-    "NO_TRACK|UNTRACKED: An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.",
-    "PUBLIC|SHARED: Allocates a shared object using shareable resources, allowing it to be accessed directly by any process.  Access is granted via exclusive access locks  - refer to the AccessObject() and ReleaseObject() functions.",
+    "UNTRACKED: An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.",
     "INITIALISED: Read-only indicator if the object has been initialised.",
     "INTEGRAL: Integral objects can only be allocated by classes that need to adopt the functionality of said object.  Integral objects do not appear in the object tree, effectively making them hidden from view.",
     "UNLOCK_FREE: Read-only indicator for when the object is marked for deletion.",
     "FREE: Read-only indicator for when the object is being freed.",
-    "TIMER_SUB: Indicates that the object is subscribed to a timer interval.",
+    "TIMER_SUB: The object is subscribed to a timer interval.",
     "SUPPRESS_LOG: Private.  Turns off the initial log message.",
     "COLLECT: Marked for garbage collection.",
     "NEW_OBJECT: Private. The object is in the process of being created.",
     "RECLASSED: The object switched from the base-class to a sub-class during initialisation.",
     "MESSAGE: Action has been called against the object through the message system (managed by ProcessMessages()).",
     "SIGNALLED: The object has been signalled and is awaiting processing.",
-    "HAS_SHARED_RESOURCES: Private. The object owns a shared object or memory resource.",
+    "HAS_SHARED_RESOURCES: Private. The object owns a shared memory resource.",
     { UNIQUE = "0x40000000: Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating shared objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.",
       NAME   = "0x80000000: Use the Name parameter to name the created object.  This flag is not required if using NF_UNIQUE.",
       PRIVATE = 0
@@ -343,7 +338,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
   )
 
   const("RPM", { comment="Reserved Public Memory identifiers.", restrict="c" }, {
-    SharedObjects  = "-1000: Shared object list (struct SharedObject *).",
     Clipboard      = "-1002: Clipboard array.",
     X11            = "-1003: X11 global variables.",
     AlphaBlend     = "-1004: Alpha blending lookup table (Bitmap module).",
@@ -375,9 +369,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
      EXPOSE           = 100,
      CORE_END         = 100,  -- End marker for Core generated messages
      ACTION           = 99,     -- Start from 99 descending (lower risk of accidental ID matches)
-     SET_FIELD        = 98,
-     GET_FIELD        = 97,
-     ACTION_RESULT    = 96,
      DEBUG            = 95,
      EVENT            = 94,
      VALIDATE_PROCESS = 93,
@@ -417,7 +408,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
   enum("RES", { start=1 },
     "MESSAGE_QUEUE: Use this resource to retrieve the message queue ID of the current task.",
     "CONSOLE_FD: Internal reference to the FD of the console.",
-    "GLOBAL_INSTANCE: If a global instance is active, this resource holds the instance ID.  Otherwise the value is 0.",
     "SHARED_CONTROL: Internal pointer to the SharedControl structure.",
     "USER_ID: Internal",
     "DISPLAY_DRIVER: Internal.  Passes the name of the preferred display driver to the display module.",
@@ -453,11 +443,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "ROOT_PATH: Overrides the root path, which defaults to the location at which Parasol is installed.")
 
   flags("CLF", { comment="Flags for the MetaClass." },
-    "SHARED_ONLY|SHARED_OBJECTS: Forces all objects of this class to be shared.",
-    "PRIVATE_ONLY: Do not allow shared-memory instances of the class (private-shared objects will still be possible).",
     "PROMOTE_INTEGRAL: Promote class support for any integral object defined in the class definition structure.",
-    "PUBLIC_OBJECTS: Forces all class objects to be allocated in shared memory.",
-    "XML_CONTENT: Script processing should treat any object content as XML.",
     "NO_OWNERSHIP: Objects created will not be tracked to the creating process, nor any parent object (SetOwner() will not work either).")
 
   flags("CNF", { comment="Flags for the Config class." },
@@ -1279,14 +1265,14 @@ extern struct CoreBase *CoreBase;
     "ScanMessages",
     "SysLock",
     "SysUnlock",
-    "CopyMemory",
+    "CreateFolder",
     "LoadFile",
     "SetVolume",
     "DeleteVolume",
-    "NewLockedObject",
+    "MoveFile",
     "UpdateMessage",
     "AddMsgHandler",
-    "FindPrivateObject",
+    "QueueAction",
     "PreciseTime",
     "OpenDir",
     "GetObjectPtr",
@@ -1348,9 +1334,7 @@ extern struct CoreBase *CoreBase;
     "VarCopy",
     "StrHash",
     "UTF8ValidEncoding",
-    "AnalysePath",
-    "CreateFolder",
-    "MoveFile")
+    "AnalysePath")
 
   c_insert([[
 
@@ -1366,39 +1350,11 @@ extern struct CoreBase *CoreBase;
 inline OBJECTPTR GetParentContext() { return (OBJECTPTR)(MAXINT)GetResource(RES_PARENT_CONTEXT); }
 inline APTR GetResourcePtr(LONG ID) { return (APTR)(MAXINT)GetResource(ID); }
 
-template<class T> inline ERROR SendAction(LONG Action, OBJECTID ObjectID, T *Args, MEMORYID MessageID) {
-   return ActionMsg(Action, ObjectID, Args, MessageID, 0);
-}
-
-template<class T> inline ERROR WaitMsg(LONG Action, OBJECTID ObjectID, T *Args) {
-   return ActionMsg(Action, ObjectID, Args, 0, (CLASSID)-2);
-}
-
-template<class T> inline ERROR DelayAction(LONG Action, OBJECTID ObjectID, T *Args) {
-   return ActionMsg(Action, ObjectID, Args, 0, (CLASSID)-1);
-}
-
-inline ERROR DelayMsg(LONG Action, OBJECTID ObjectID) {
-   return ActionMsg(Action, ObjectID, NULL, 0, (CLASSID)-1);
-}
-
-template<class T> inline ERROR DelayMsg(LONG Action, OBJECTID ObjectID, T *Args) {
-   return ActionMsg(Action, ObjectID, Args, 0, (CLASSID)-1);
-}
-
-inline ERROR ActionMsgPort(LONG Action, OBJECTID ObjectID, APTR Args, MEMORYID MessageID, CLASSID ClassID) {
-   return ActionMsg(Action, ObjectID, Args, MessageID, ClassID);
-}
-
 inline ERROR StrMatch(CSTRING A, CSTRING B) {
    return StrCompare(A, B, 0, STR_MATCH_LEN);
 }
 
 #ifndef PRV_CORE_MODULE
-
-inline ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args) {
-   return ActionMsg(Action, Object, Args, 0, 0);
-}
 
 inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address) {
    return AllocMemory(Size, Flags, Address, NULL);
@@ -1406,14 +1362,6 @@ inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address) {
 
 template<class T> inline ERROR NewObject(LARGE ClassID, T **Result) {
    return NewObject(ClassID, NF::NIL, Result);
-}
-
-inline ERROR NewLockedObject(LARGE ClassID, NF Flags, APTR Object, OBJECTID *ID) {
-  return NewLockedObject(ClassID, Flags, Object, ID, NULL);
-}
-
-inline ERROR NewLockedObject(LARGE ClassID, APTR Object, OBJECTID *ID) {
-  return NewLockedObject(ClassID, NF::NIL, Object, ID, NULL);
 }
 
 inline ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo) {
@@ -1424,19 +1372,21 @@ inline ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo) {
    return MemoryPtrInfo(Address,MemInfo,sizeof(struct MemInfo));
 }
 
+inline ERROR QueueAction(LONG Action, OBJECTID ObjectID) {
+   return QueueAction(Action, ObjectID, NULL);
+}
+
 #endif
-
-inline ERROR NewPublicObject(LARGE ClassID, NF Flags, OBJECTID *ID) {
-  return NewLockedObject(ClassID, Flags|NF::PUBLIC, NULL, ID, NULL);
-}
-
-template<class T> inline ERROR NewNamedObject(LARGE ClassID, NF Flags, T **Object, OBJECTID *ID, CSTRING Name) {
-  return NewLockedObject(ClassID, Flags|NF::NAME, Object, ID, Name);
-}
 
 typedef std::map<std::string, std::string> ConfigKeys;
 typedef std::pair<std::string, ConfigKeys> ConfigGroup;
 typedef std::vector<ConfigGroup> ConfigGroups;
+
+inline void CopyMemory(const void *Src, APTR Dest, LONG Length)
+{
+   if ((!Src) or (!Dest) or (Length < 0)) return;
+   memmove(Dest, Src, Length);
+}
 
 inline LONG StrLength(CSTRING String) {
    if (String) return strlen(String);
@@ -1503,7 +1453,6 @@ struct BaseClass { // Must be 64-bit aligned
    OBJECTID UID;                // Unique object identifier
    OBJECTID OwnerID;            // The owner of this object
    NF       Flags;              // Object flags
-   OBJECTID TaskID;             // The process that this object belongs to
    volatile LONG  ThreadID;     // Managed by locking functions
    #ifdef _WIN32
       WINHANDLE ThreadMsg;      // Pipe for sending messages to the owner thread.
@@ -1517,10 +1466,8 @@ struct BaseClass { // Must be 64-bit aligned
    BYTE ActionDepth;            // Incremented each time an action or method is called on the object
 
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
-   inline bool isPublic() { return (Flags & NF::PUBLIC) != NF::NIL; }
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
    inline bool isSubClass() { return SubID != 0; }
-   inline OBJECTID ownerTask() { return TaskID; }
    inline OBJECTID ownerID() { return OwnerID; }
    inline NF flags() { return Flags; }
 
@@ -1756,7 +1703,7 @@ class Create {
    public:
       ERROR error;
 
-      // Return an unscoped direct object pointer
+      // Return an unscoped direct object pointer.  NB: Globals are still tracked
 
       template <typename... Args> static T * global(Args... Fields) {
          parasol::Create<T> object = { Fields... };
@@ -2509,8 +2456,6 @@ inline ERROR acRefresh(OBJECTID ObjectID) { return ActionMsg(AC_Refresh, ObjectI
 inline ERROR acSaveSettings(OBJECTID ObjectID) { return ActionMsg(AC_SaveSettings, ObjectID, NULL); }
 inline ERROR acShow(OBJECTID ObjectID) { return ActionMsg(AC_Show, ObjectID, NULL); }
 
-// The number of bytes written is not returned (you would need to use DelayMsg() for that).
-
 inline ERROR acWrite(OBJECTID ObjectID, CPTR Buffer, LONG Bytes) {
    struct acWrite write = { (BYTE *)Buffer, Bytes };
    return ActionMsg(AC_Write, ObjectID, &write);
@@ -2584,17 +2529,12 @@ struct SemaphoreEntry {   // The index of each semaphore in the array indicates 
    //LONG     FIFO[10];       // List of processes currently queued for access
 };
 
-// Message structure and internal ID's for standard Task-to-Task messages.
-
 struct ActionMessage {
-   WORD ActionID;            // ID of the action or method to execute
-   UWORD SendArgs:1;         //
-   UWORD ReturnResult:1;     // Set to TRUE if a result is required
-   UWORD Delayed:1;          // TRUE if the message was intentionally delayed
-   MEMORYID ReturnMessage;   // If ReturnResult is TRUE, the message queue for the result message must be set here
    OBJECTID ObjectID;        // The object that is to receive the action
-   ERROR Error;              // If a result is required, the action's error code is returned here by MSGID_ACTIONRESULT
    LONG  Time;
+   ACTIONID ActionID;        // ID of the action or method to execute
+   bool SendArgs;            //
+
    // Action arguments follow this structure in a buffer
 };
 
@@ -2636,15 +2576,12 @@ struct SharedControl {
    LONG TaskOffset;                 // Offset to the task control array
    LONG MemoryOffset;               // Offset to the shared memory allocations
    LONG WLOffset;                   // Offset to the wait-lock array
-   LONG GlobalInstance;             // If glSharedControl belongs to a global instance, this is the PID of the creator.
    LONG SurfaceSemaphore;
    LONG InputSize;                  // Maximum number of subscribers allowed in InputMID
    LONG InstanceMsgPort;            // The message port of the process that created the instance.
    MEMORYID SurfacesMID;
-   MEMORYID ClassesMID;             // Class database
    MEMORYID ModulesMID;             // Module database
    MEMORYID InputMID;
-   LONG ClassSemaphore;             // Semaphore for controlling access to the class database
    #ifdef __unix__
       struct {
          pthread_mutex_t Mutex;
@@ -2655,31 +2592,6 @@ struct SharedControl {
    #elif _WIN32
       // In windows, the shared memory controls are controlled by mutexes that have local handles.
    #endif
-};
-
-// Class database.
-
-#define CL_ITEMS(c)        (ClassItem *)((BYTE *)(c) + sizeof(ClassHeader) + ((c)->Total<<2) )
-#define CL_OFFSETS(c)      ((LONG *)((c) + 1))
-#define CL_SIZE_OFFSETS(c) (sizeof(LONG) * (c)->Total)
-#define CL_ITEM(c,i)       ((ClassItem *)((BYTE *)(c) + offsets[(i)]))
-
-struct ClassHeader {
-   LONG Total;          // Total number of registered classes
-   LONG Size;           // Size of the entire memory block
-   // Followed by lookup table with offsets to each ClassItem, sorted by hash
-};
-
-struct ClassItem {
-   CLASSID ClassID;
-   CLASSID ParentID;    // Parent class reference.
-   LONG  Category;
-   WORD  Size;          // Size of the item structure, all accompanying strings and byte alignment
-   WORD  PathOffset;
-   WORD  MatchOffset;
-   WORD  HeaderOffset;
-   char Name[24];
-   // Followed by [path, match, header] strings
 };
 
 // X11 Variables
