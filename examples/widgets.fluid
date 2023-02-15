@@ -16,6 +16,9 @@ A demonstration of standard widgets
    require 'gui/window'
    require 'vfx'
 
+   glSelf = obj.find('self')
+   glPath = glSelf.workingPath
+
    local win = gui.window({ title='Widget Examples', insideWidth=600, insideHeight=400, center=true })
    local viewport = win:clientViewport({ aspectRatio = ARF_MEET })
 
@@ -307,6 +310,10 @@ end
    })
    y = y + input.viewport.height + 16
 
+   catch(function()
+      sndAlarm = obj.new('sound', { path=glPath .. 'data/alarm.mp3', volume=0.2 })
+   end)
+
    gui.icon({
       target = viewport,
       x      = 20,
@@ -323,9 +330,15 @@ end
             Icon.effect = vfx.shake(Icon.viewport, 1.0, 0, 1.0, function(Effect)
                Icon.effect = nil
             end)
+
+            if (sndAlarm) then sndAlarm.acActivate() end
          end
       }
    })
+
+   catch(function()
+      sndWilhelm = obj.new('sound', { path=glPath .. 'data/wilhelm.mp3', volume=0.2 })
+   end)
 
    gui.icon({
       target = viewport,
@@ -348,6 +361,8 @@ end
                Icon.viewport.acFree()
                Icon.viewport = nil
             end)
+
+            if (sndWilhelm) then sndWilhelm.acActivate() end
          end
       }
    })
