@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -CLASS-
 SVG: Provides support for parsing and rendering SVG files.
@@ -19,7 +19,7 @@ static void notify_free_frame_callback(OBJECTPTR Object, ACTIONID ActionID, ERRO
    ((extSVG *)CurrentContext())->FrameCallback.Type = CALL_NONE;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Activate: Initiates playback of SVG animations.
 
@@ -43,7 +43,7 @@ static ERROR SVG_Activate(extSVG *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Deactivate: Stops all playback of SVG animations.
 -END-
@@ -55,7 +55,7 @@ static ERROR SVG_Deactivate(extSVG *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 DataFeed: Vector graphics are created by passing XML-based instructions here.
 -END-
@@ -112,7 +112,7 @@ static ERROR SVG_Free(extSVG *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Init: Initialise the SVG object.
 
@@ -150,7 +150,7 @@ static ERROR SVG_NewObject(extSVG *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Render: Render the scene to a target Bitamp.
@@ -199,7 +199,7 @@ static ERROR SVG_Render(extSVG *Self, struct svgRender *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 SaveImage: Saves the SVG document as a PNG image.
 
@@ -239,7 +239,7 @@ static ERROR SVG_SaveImage(extSVG *Self, struct acSaveImage *Args)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 SaveToObject: Saves the SVG document to a data object.
 -END-
@@ -330,7 +330,7 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Flags: Optional flags.
@@ -378,7 +378,7 @@ static ERROR SET_FrameCallback(extSVG *Self, FUNCTION *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 FrameRate: The maximum frame rate to use when animating a vector scene.
@@ -401,7 +401,7 @@ static ERROR SET_FrameRate(extSVG *Self, LONG Value)
    else return ERR_OutOfRange;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Path: The location of the source SVG data.
@@ -427,7 +427,7 @@ static ERROR SET_Path(extSVG *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Scene: The VectorScene that manages the Target object is referenced here.
@@ -442,7 +442,7 @@ static ERROR GET_Scene(extSVG *Self, objVectorScene **Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Target: The root Viewport that is generated during SVG initialisation can be created as a child of this target object.
@@ -482,7 +482,7 @@ static ERROR SET_Target(extSVG *Self, OBJECTPTR Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Title: The title of the SVG document.
@@ -500,7 +500,7 @@ static ERROR SET_Title(extSVG *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Viewport: Returns the first viewport created by an SVG document.

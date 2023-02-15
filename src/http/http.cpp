@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -327,7 +327,7 @@ static void notify_free_auth_callback(OBJECTPTR Object, ACTIONID ActionID, ERROR
    ((extHTTP *)CurrentContext())->AuthCallback.Type = CALL_NONE;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Activate: Executes an HTTP method.
@@ -696,7 +696,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Deactivate: Cancels the current download.  Can also signal the end to a download if subscribed.
 
@@ -788,7 +788,7 @@ static ERROR HTTP_Free(extHTTP *Self, APTR Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 GetVar: Entries in the HTTP response header can be read as variable fields.
 -END-
@@ -849,7 +849,7 @@ static ERROR HTTP_NewObject(extHTTP *Self, APTR Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 SetVar: Options to pass in the HTTP method header can be set as variable fields.
 -END-
@@ -895,7 +895,7 @@ static ERROR HTTP_Write(extHTTP *Self, struct acWrite *Args)
    else return ERR_InvalidState;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 AuthCallback: Private.  This field is reserved for future use.
 
@@ -924,7 +924,7 @@ static ERROR SET_AuthCallback(extHTTP *Self, FUNCTION *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 BufferSize: Indicates the preferred buffer size for data operations.
@@ -943,7 +943,7 @@ static ERROR SET_BufferSize(extHTTP *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 ConnectTimeout: The initial connection timeout value, measured in seconds.
@@ -986,7 +986,7 @@ static ERROR SET_ContentType(extHTTP *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 DataTimeout: The data timeout value, relevant when receiving or sending data.
@@ -1035,7 +1035,7 @@ static ERROR SET_Host(extHTTP *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Incoming: A callback routine can be defined here for incoming data.
@@ -1071,7 +1071,7 @@ static ERROR SET_Incoming(extHTTP *Self, FUNCTION *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Index: Indicates download progress in terms of bytes received.
@@ -1125,7 +1125,7 @@ static ERROR SET_InputFile(extHTTP *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 InputObject: Allows data to be sent from an object on execution of a POST command.
@@ -1246,7 +1246,7 @@ static ERROR SET_Location(extHTTP *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Method: The HTTP instruction to execute is defined here (defaults to GET).
@@ -1262,7 +1262,7 @@ static ERROR SET_Method(extHTTP *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 ObjectMode: The access mode used when passing data to a targeted object.
@@ -1312,7 +1312,7 @@ static ERROR SET_Outgoing(extHTTP *Self, FUNCTION *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 OutputFile: To download HTTP content to a file, set a file path here.
@@ -1330,7 +1330,7 @@ static ERROR SET_OutputFile(extHTTP *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 OutputObject: Incoming data can be sent to the object referenced in this field.
@@ -1360,7 +1360,7 @@ static ERROR SET_Password(extHTTP *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Path: The HTTP path targeted at the host server.
@@ -1426,7 +1426,7 @@ static ERROR SET_Path(extHTTP *Self, CSTRING Value)
    else return ERR_AllocMemory;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Port: The HTTP port to use when targeting a server.
@@ -1456,7 +1456,7 @@ static ERROR SET_ProxyServer(extHTTP *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Realm: Identifies the realm during HTTP authentication.
@@ -1473,7 +1473,7 @@ static ERROR SET_Realm(extHTTP *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 RecvBuffer: Refers to a data buffer that is used to store all incoming content.
@@ -1493,7 +1493,7 @@ static ERROR GET_RecvBuffer(extHTTP *Self, UBYTE **Value, LONG *Elements)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Size: Set this field to define the length of a data transfer when issuing a POST command.
@@ -1564,7 +1564,7 @@ static ERROR SET_CurrentState(extHTTP *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 StateChanged: A callback routine can be defined here for monitoring changes to the HTTP state.
@@ -1600,7 +1600,7 @@ static ERROR SET_StateChanged(extHTTP *Self, FUNCTION *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Status: Indicates the HTTP status code returned on completion of an HTTP request.
@@ -1619,7 +1619,7 @@ static ERROR SET_UserAgent(extHTTP *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 UserData: An unused field value that is useful for storing private data.

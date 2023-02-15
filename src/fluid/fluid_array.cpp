@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 This code can be utilised internally for returning C arrays back to Lua.  Its use is required in cases where an
 array needs to represent a fixed region in memory.  Writing values to the array will result in an update to that area
@@ -43,7 +43,7 @@ extern "C" {
 
 static int array_copy(lua_State *);
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** If List is NULL and Total > 0, the list will be allocated.
 **
 ** Note: It is okay for an array to be created that contains no elements.  For structs, the StructName will be
@@ -187,7 +187,7 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Usage: array = array.new(InitialSize, Type)
 **
 ** Creates a new array of the given size and value type.
@@ -270,7 +270,7 @@ static int array_new(lua_State *Lua)
    return 0;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Usage: string = array:getstring(start, len)
 **
 ** Creates a string from a byte array.  If len is nil, the entire buffer from the starting index up to the end of the
@@ -315,7 +315,7 @@ static int array_getstring(lua_State *Lua)
    return 1;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Internal: Array index call
 **
 ** Any Read accesses to the object will pass through here.
@@ -411,7 +411,7 @@ static int array_get(lua_State *Lua)
    return 0;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Usage: array.field = newvalue
 */
 

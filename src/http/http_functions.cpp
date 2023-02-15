@@ -149,7 +149,7 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG 
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Callback: NetSocket.Outgoing
 */
 
@@ -364,7 +364,7 @@ continue_upload:
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Callback: NetSocket.Incoming
 */
 
@@ -1247,7 +1247,7 @@ static ERROR write_socket(extHTTP *Self, CPTR Buffer, LONG Length, LONG *Result)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** The timer is used for managing time-outs on connection to and the receipt of data from the http server.  If the
 ** timer is activated then we close the current socket.  It should be noted that if the content is streamed, then
 ** it is not unusual for the client to remain unnotified even in the event of a complete transfer.  Because of this,

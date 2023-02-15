@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -64,7 +64,7 @@ const char * get_ft_error(FT_Error err)
     return "(Unknown error)";
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Draw: Draws a font to a Bitmap.
@@ -359,7 +359,7 @@ static ERROR FONT_NewObject(extFont *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Align: Sets the position of a font string to an abstract alignment.
@@ -423,7 +423,7 @@ static ERROR SET_Bold(extFont *Self, LONG Value)
    else return SET_Style(Self, "Bold");
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Colour: The font colour in RGB format.
@@ -481,7 +481,7 @@ static ERROR SET_EscapeChar(extFont *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Face: The name of a font face that is to be loaded on initialisation.
@@ -570,7 +570,7 @@ static ERROR SET_Face(extFont *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 FixedWidth: Forces a fixed pixel width to use for all glyphs.
@@ -589,7 +589,7 @@ static ERROR SET_Flags(extFont *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 FreeTypeFace: Internal field used for exposing FreeType font handles.
@@ -606,7 +606,7 @@ static ERROR GET_FreeTypeFace(extFont *Self, APTR *Handle)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Gutter: The 'external leading' value, measured in pixels.  Applies to fixed fonts only.
@@ -671,7 +671,7 @@ static ERROR SET_Italic(extFont *Self, LONG Value)
    else return SET_Style(Self, "Italic");
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Leading: 'Internal leading' measured in pixels.  Applies to fixed fonts only.
@@ -691,7 +691,7 @@ static ERROR GET_LineCount(extFont *Self, LONG *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 LineSpacing: The amount of spacing between each line.
@@ -724,7 +724,7 @@ static ERROR SET_Path(extFont *Self, CSTRING Value)
    else return ERR_Failed;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 MaxHeight: The maximum possible pixel height per character.
@@ -757,7 +757,7 @@ static ERROR SET_Opacity(extFont *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Outline: Defines the outline colour around a font.
@@ -831,7 +831,7 @@ static ERROR SET_Point(extFont *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 String: The string to use when drawing a Font.
@@ -875,7 +875,7 @@ static ERROR SET_String(extFont *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 StrokeSize: The strength of stroked outlines is defined here.
@@ -913,7 +913,7 @@ static ERROR SET_Style(extFont *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Tabs: Private. Not implemented.
@@ -942,7 +942,7 @@ static ERROR SET_Tabs(extFont *Self, WORD *Tabs, LONG Elements)
    else return ERR_AllocMemory;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 TabSize: Defines the tab size to use when drawing and manipulating a font string.
@@ -1004,7 +1004,7 @@ static ERROR GET_Width(extFont *Self, LONG *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 WrapCallback: The routine defined here will be called when the wordwrap boundary is encountered.

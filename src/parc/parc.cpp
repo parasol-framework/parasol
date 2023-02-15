@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -57,7 +57,7 @@ ERROR CMDExpunge(void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Activate: Launches the program defined in the PARC info file.
@@ -182,7 +182,7 @@ static ERROR PARC_Free(extParc *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Init: Initialises the object
@@ -242,7 +242,7 @@ static ERROR PARC_NewObject(extParc *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Allow: Private. Extends the access rights and allowable resource usage of the PARC program.
@@ -272,7 +272,7 @@ static ERROR SET_Allow(extParc *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Args: Pass parameters to the PARC on execution.
@@ -311,7 +311,7 @@ static ERROR SET_Args(extParc *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Path: Defines the path to the source PARC file.
@@ -334,7 +334,7 @@ static ERROR SET_Path(extParc *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Output: Nominate an object for receiving program output.

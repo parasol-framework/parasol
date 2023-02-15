@@ -229,7 +229,7 @@ static LONG find_href_tag(extSVG *Self, CSTRING Ref)
    return -1;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Converts a SVG time string into seconds.
 **
 ** Full clock example:  50:00:10.25 = 50 hours, 10 seconds and 250 milliseconds

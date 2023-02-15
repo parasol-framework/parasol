@@ -564,7 +564,7 @@ int winReadKey(char *Key, char *Value, char *Buffer, int Length)
    return errnum;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Function: winGetDisplaySettings()
 */
 
@@ -1187,7 +1187,7 @@ int winCreateScreenClass(void)
    else return 0;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Function: winCreateScreen()
 **
 ** WS_EX_ACCEPTFILES: Specifies that a window created with this style accepts drag-drop files.
@@ -1315,7 +1315,7 @@ HWND winCreateScreen(HWND PopOver, int *X, int *Y, int *Width, int *Height, char
    return Window;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** This is often used for creating windowed areas inside another application, such as a web browser.
 */
 
@@ -1452,7 +1452,7 @@ void winRemoveWindowClass(const char *ClassName)
    UnregisterClass(ClassName, glInstance);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** The coordinates are interpreted as being indicative of the client area.
 */
 
@@ -1469,7 +1469,7 @@ int winMoveWindow(HWND Window, int X, int Y)
    else return 0;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** The coordinates are interpreted as being relative to the client area.
 */
 
@@ -1711,7 +1711,7 @@ void winDrawRectangle(HDC hdc, LONG x, LONG y, LONG width, LONG height, UBYTE re
    DeleteObject(brush);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Sets a new clipping region for a DC.
 */
 
@@ -1794,7 +1794,7 @@ void winSetDIBitsToDevice(HDC hdc, LONG xdest, LONG ydest, LONG width, LONG heig
    SetDIBitsToDevice(hdc, xdest, ydest, width, height, xstart, ystart, 0, scanheight, data, (BITMAPINFO *)&info, DIB_RGB_COLORS);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Function: winDeleteDC()
 */
 
@@ -1803,7 +1803,7 @@ void winDeleteDC(HDC hdc)
    DeleteDC(hdc);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Function: winGetPixel()
 */
 
@@ -1816,7 +1816,7 @@ void winGetPixel(HDC hdc, LONG x, LONG y, UBYTE *rgb)
    rgb[2] = GetBValue(col);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Function: winCreateBitmap()
 */
 
@@ -1825,7 +1825,7 @@ HBITMAP winCreateBitmap(LONG width, LONG height, LONG bpp)
    return CreateBitmap(width, height, 1, bpp, NULL);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Function: winDrawTransparentBitmap()
 **
 ** This masking technique works so long as the source graphic uses a clear
@@ -1842,7 +1842,7 @@ void winDrawTransparentBitmap(HDC hdcDest, HDC hdcSrc, HBITMAP hBitmap,
    BitBlt(hdcDest, x, y, width, height, hdcSrc, xsrc, ysrc, SRCPAINT);    // XOR the bitmap with the background on the destination DC.
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Get a pointer to our interface
 */
 
@@ -1893,7 +1893,7 @@ static ULONG STDMETHODCALLTYPE RKDT_Release(struct rkDropTarget *Self)
 	return nCount;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** The drag action continues
 */
 
@@ -1904,7 +1904,7 @@ static HRESULT STDMETHODCALLTYPE RKDT_DragOver(struct rkDropTarget *Self, DWORD 
 	return S_OK;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** The drag action leaves your window - no dropping
 */
 
@@ -1914,7 +1914,7 @@ static HRESULT STDMETHODCALLTYPE RKDT_DragLeave()
 	return S_OK;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** The drag action enters your window - get the item
 */
 
@@ -1930,7 +1930,7 @@ static HRESULT STDMETHODCALLTYPE RKDT_DragEnter(struct rkDropTarget *Self, IData
 	return S_OK;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Convert the windows datatypes to Parasol datatypes.
 */
 
@@ -1986,7 +1986,7 @@ static int STDMETHODCALLTYPE RKDT_AssessDatatype(struct rkDropTarget *Self, IDat
    return i;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** The data have been dropped here, so process it
 */
 
@@ -2027,7 +2027,7 @@ static HRESULT STDMETHODCALLTYPE RKDT_Drop(struct rkDropTarget *Self, IDataObjec
    return S_OK;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 **
 */
 
@@ -2365,7 +2365,7 @@ static int get_data(struct rkDropTarget *Self, char *Preference, struct WinDT **
    return ERR_Failed;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Internal: winInitDragDrop()
 */
 
@@ -2403,7 +2403,7 @@ static LONG winInitDragDrop(HWND Window)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Internal: winGetData()
 */
 

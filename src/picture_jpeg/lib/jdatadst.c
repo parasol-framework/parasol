@@ -16,7 +16,7 @@ typedef my_destination_mgr * my_dest_ptr;
 
 #define OUTPUT_BUF_SIZE  4096
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Initialize destination --- called by jpeg_start_compress before any data
 ** is actually written.
 */
@@ -29,7 +29,7 @@ METHODDEF(void) init_destination(j_compress_ptr cinfo)
    dest->pub.free_in_buffer = OUTPUT_BUF_SIZE;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Empty the output buffer --- called whenever buffer fills up.
 **
 ** In typical applications, this should write the entire output buffer
@@ -63,7 +63,7 @@ METHODDEF(boolean) empty_output_buffer (j_compress_ptr cinfo)
    return TRUE;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Terminate destination --- called by jpeg_finish_compress after all data has
 ** been written.  Usually needs to flush buffer.
 */
@@ -81,7 +81,7 @@ METHODDEF(void) term_destination(j_compress_ptr cinfo)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Prepare for output to a stdio stream.
 ** The caller must have already opened the stream, and is responsible
 ** for closing it after finishing compression.

@@ -214,7 +214,7 @@ inline static UBYTE conv_l2r(DOUBLE X) {
    else return ix;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Clear: Clears a bitmap's image to black.
@@ -248,7 +248,7 @@ static ERROR BITMAP_Clear(extBitmap *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Compress: Compresses bitmap data to save memory.
@@ -491,7 +491,7 @@ ERROR BITMAP_ConvertToRGB(extBitmap *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 CopyArea: Copies a rectangular area from one bitmap to another.
@@ -521,7 +521,7 @@ static ERROR BITMAP_CopyArea(objBitmap *Self, struct bmpCopyArea *Args)
    else return ERR_NullArgs;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Decompress: Decompresses a compressed bitmap.
@@ -585,7 +585,7 @@ static ERROR BITMAP_Decompress(extBitmap *Self, struct bmpDecompress *Args)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 CopyData: Copies bitmap image data to other bitmaps with colour remapping enabled.
@@ -709,7 +709,7 @@ static ERROR BITMAP_Demultiply(extBitmap *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Draw: Clears a bitmap's image to its assigned background colour.
@@ -722,7 +722,7 @@ static ERROR BITMAP_Draw(extBitmap *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 DrawRectangle: Draws rectangles, both filled and unfilled.
@@ -753,7 +753,7 @@ static ERROR BITMAP_DrawRectangle(extBitmap *Self, struct bmpDrawRectangle *Args
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Flip: Flips a bitmap around the horizontal or vertical axis.
@@ -880,7 +880,7 @@ static ERROR BITMAP_Free(extBitmap *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 GetColour: Converts Red, Green, Blue components into a single colour value.
@@ -920,7 +920,7 @@ static ERROR BITMAP_GetColour(extBitmap *Self, struct bmpGetColour *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Init: Initialises a bitmap.
@@ -1203,7 +1203,7 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Lock: Locks the bitmap surface so that you can manipulate the graphics directly.
 -END-
@@ -1401,7 +1401,7 @@ static ERROR BITMAP_Premultiply(extBitmap *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Query: Fills a bitmap with pre-initialised/default values prior to initialisation.
@@ -1581,7 +1581,7 @@ static ERROR BITMAP_Query(extBitmap *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Read: Reads raw image data from a bitmap object.
 -END-
@@ -1600,7 +1600,7 @@ static ERROR BITMAP_Read(extBitmap *Self, struct acRead *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Resize: Resizes a bitmap object's dimensions.
@@ -1796,7 +1796,7 @@ setfields:
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 SaveImage: Saves a bitmap's image to a data object of your choosing in PCX format.
 -END-
@@ -1974,7 +1974,7 @@ static ERROR BITMAP_SaveImage(extBitmap *Self, struct acSaveImage *Args)
    else return ERR_AllocMemory;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Seek: Changes the current byte position for read/write operations.
 
@@ -1993,7 +1993,7 @@ static ERROR BITMAP_Seek(extBitmap *Self, struct acSeek *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SetClipRegion: Sets a clipping region for a bitmap object.
@@ -2022,7 +2022,7 @@ static ERROR BITMAP_SetClipRegion(extBitmap *Self, struct bmpSetClipRegion *Args
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Unlock: Unlocks the bitmap surface once direct access is no longer required.
 
@@ -2036,7 +2036,7 @@ static ERROR BITMAP_Unlock(extBitmap *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Write: Writes raw image data to a bitmap object.
 -END-
@@ -2058,7 +2058,7 @@ static ERROR BITMAP_Write(extBitmap *Self, struct acWrite *Args)
    else return ERR_NoData;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 AmtColours: The maximum number of displayable colours.
@@ -2093,7 +2093,7 @@ static ERROR SET_Bkgd(extBitmap *Self, RGB8 *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 BkgdIndex: The bitmap's background colour is defined here as a colour index.
@@ -2112,7 +2112,7 @@ static ERROR SET_BkgdIndex(extBitmap *Self, LONG Index)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 BytesPerPixel: The number of bytes per pixel.
@@ -2186,7 +2186,7 @@ static ERROR SET_Clip(extBitmap *Self, ClipRectangle *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 ColourFormat: Describes the colour format used to construct each bitmap pixel.
@@ -2269,7 +2269,7 @@ ERROR SET_Data(extBitmap *Self, UBYTE *Data)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 DataFlags: Defines the memory flags to use in allocating a bitmap's data area.
@@ -2356,7 +2356,7 @@ static ERROR SET_Handle(extBitmap *Self, APTR Value)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Height: The height of the bitmap, in pixels.
@@ -2436,7 +2436,7 @@ ERROR SET_Palette(extBitmap *Self, RGBPalette *SrcPalette)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 PlaneMod: The differential between each bitmap plane.
@@ -2518,7 +2518,7 @@ static ERROR SET_Trans(extBitmap *Self, RGB8 *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 TransIndex: The transparent colour of the bitmap, represented as an index.
@@ -2542,7 +2542,7 @@ static ERROR SET_TransIndex(extBitmap *Self, LONG Index)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Type: Defines the data type of the bitmap.

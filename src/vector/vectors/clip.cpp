@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -CLASS-
 VectorClip: Clips are used to define complex clipping regions for vectors.
@@ -35,7 +35,7 @@ static void draw_clips(extVectorClip *Self, extVector *Branch,
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Name:  Draw
 Short: Renders the vector clipping shape(s) to an internal buffer.
@@ -166,7 +166,7 @@ static ERROR CLIP_NewObject(extVectorClip *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Transform: Applies a transform to the paths in the clipping mask.
 
@@ -192,7 +192,7 @@ static ERROR CLIP_SET_Transform(extVectorClip *Self, CSTRING Commands)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Units: Defines the coordinate system for fields X, Y, Width and Height.
 

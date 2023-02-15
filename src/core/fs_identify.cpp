@@ -17,7 +17,7 @@ inline CSTRING get_filename(CSTRING Path)
    else return NULL;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 IdentifyFile: Identifies the class and/or command that may be used to load a file.

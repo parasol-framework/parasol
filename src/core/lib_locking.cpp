@@ -533,7 +533,7 @@ ERROR unpage_memory_id(MEMORYID MemoryID)
    else return ERR_SystemLocked;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Prepare a thread for going to sleep on a resource.  Checks for deadlocks in advance.  Once a thread has added a
 ** WakeLock entry, it must keep it until either the thread or process is destroyed.
 **
@@ -829,7 +829,7 @@ void free_threadlock(void)
 }
 #endif
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 AccessMemoryID: Grants access to public memory blocks.
@@ -1090,7 +1090,7 @@ ERROR AccessMemoryID(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Res
    return ERR_MemoryDoesNotExist;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 AccessObjectID: Grants exclusive access to objects via unique ID.
@@ -1157,7 +1157,7 @@ ERROR AccessObjectID(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
    else return ERR_NoMatchingObject;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 LockObject: Lock an object to prevent contention between threads.
@@ -1300,7 +1300,7 @@ ERROR LockObject(OBJECTPTR Object, LONG Timeout)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 AllocMutex: Allocate a mutex suitable for managing synchronisation between threads.
@@ -1347,7 +1347,7 @@ ERROR AllocMutex(LONG Flags, APTR *Result)
 #error No support for AllocMutex()
 #endif
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 AllocSharedMutex: Allocate a mutex suitable for managing synchronisation between processes.
@@ -1386,7 +1386,7 @@ ERROR AllocSharedMutex(CSTRING Name, APTR *Result)
 #error No support for AllocSharedMutex()
 #endif
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 FreeMutex: Deallocate a private mutex.
@@ -1413,7 +1413,7 @@ void FreeMutex(APTR Mutex)
 #endif
 
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 FreeSharedMutex: Deallocate a shared mutex.
@@ -1437,7 +1437,7 @@ void FreeSharedMutex(APTR Mutex)
 #error No support for FreeSharedMutex()
 #endif
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 LockMutex: Acquire a lock on a mutex.
@@ -1478,7 +1478,7 @@ ERROR LockMutex(APTR Mutex, LONG MilliSeconds)
 #error No support for LockMutex()
 #endif
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 LockSharedMutex: Acquire a lock on a shared mutex.
@@ -1514,7 +1514,7 @@ ERROR LockSharedMutex(APTR Mutex, LONG MilliSeconds)
 #error No support for LockMutex()
 #endif
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ReleaseMemory: Releases memory blocks from access locks.
@@ -1704,7 +1704,7 @@ MEMORYID ReleaseMemory(APTR Address)
    else return 0;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ReleaseMemoryID: Releases locked memory blocks by ID.
@@ -1886,7 +1886,7 @@ ERROR ReleaseMemoryID(MEMORYID MemoryID)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ReleaseObject: Release a locked private object.
@@ -1960,7 +1960,7 @@ void ReleaseObject(OBJECTPTR Object)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SysLock: Locks internal system mutexes.
@@ -2087,7 +2087,7 @@ ERROR SysLock(LONG Index, LONG Timeout)
 
 #endif
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SysUnlock: Releases a lock obtained from SysLock().
@@ -2134,7 +2134,7 @@ ERROR SysUnlock(LONG Index)
 
 #endif
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 UnlockMutex: Release a locked mutex.
@@ -2162,7 +2162,7 @@ void UnlockMutex(APTR Mutex)
 #error No support for UnlockMutex()
 #endif
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 UnlockSharedMutex: Release a locked mutex.

@@ -41,7 +41,7 @@ static int object_get(lua_State *Lua);
 static int object_getvar(lua_State *Lua);
 static int object_newindex(lua_State *Lua);
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** This macro is used to convert Lua calls.
 **
 ** From: xml.acDataFeed(1,2,3)
@@ -101,7 +101,7 @@ static LONG get_action_info(lua_State *Lua, LONG ClassID, CSTRING action, const 
    return action_id;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Usage: object = obj.new("Screen", { field1 = value1, field2 = value2, ...})
 **
 ** If fields are provided in the second argument, the object will be initialised automatically.  If no field list is
@@ -426,7 +426,7 @@ ERROR push_object_id(lua_State *Lua, OBJECTID ObjectID)
    else return ERR_NewObject;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Usage: object = obj.find("ObjectName" | ObjectID, [ClassName | ClassID])
 **
 ** Returns nil on error - does not throw exceptions.
@@ -636,7 +636,7 @@ static int object_detach(lua_State *Lua)
    return 0;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Usage: obj.exists()
 **
 ** Returns true if the object still exists, otherwise nil.
@@ -658,7 +658,7 @@ static int object_exists(lua_State *Lua)
    else return 0;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Usage: obj.subscribe(ActionName, Function, Reference)
 **
 ** Subscribe a function to an action or method.  Throws an exception on failure.  The client feedback prototype is:

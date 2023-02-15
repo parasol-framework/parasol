@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The memory functions use stdlib.h malloc() and free() to get the memory on Linux.  This can be changed according to the
 particular platform.  Where possible it is best to call the host platform's own memory management functions.
@@ -80,7 +80,7 @@ static void randomise_memory(UBYTE *Address, ULONG Size)
 }
 #endif
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 AllocMemory: Allocates a new memory block on the heap.
@@ -524,7 +524,7 @@ retry:
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 CheckMemoryExists: Checks if a memory block still exists.
@@ -571,7 +571,7 @@ ERROR CheckMemoryExists(MEMORYID MemoryID)
    return ERR_False;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 FreeResource: Frees private memory blocks allocated from AllocMemory().
@@ -689,7 +689,7 @@ ERROR FreeResource(const void *Address)
    else return ERR_LockFailed;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 FreeResourceID: Frees memory blocks allocated from AllocMemory().
@@ -861,7 +861,7 @@ ERROR FreeResourceID(MEMORYID MemoryID)
    return ERR_MemoryDoesNotExist;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 MemoryIDInfo: Returns information on memory ID's.
@@ -943,7 +943,7 @@ ERROR MemoryIDInfo(MEMORYID MemoryID, struct MemInfo *MemInfo, LONG Size)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 MemoryPtrInfo: Returns information on memory addresses.
@@ -1055,7 +1055,7 @@ ERROR MemoryPtrInfo(APTR Memory, struct MemInfo *MemInfo, LONG Size)
    return ERR_MemoryDoesNotExist;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ReallocMemory: Reallocates memory blocks.
@@ -1164,7 +1164,7 @@ static void compress_public_memory(SharedControl *Control)
    Control->NextBlock = i;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** This function works on the principle that the glSharedBlocks memory array is sorted by the address offset.  This
 ** function is known to be utilised by ReleaseMemory() and MemoryPtrInfo().
 **

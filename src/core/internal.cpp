@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 Functions that are internal to the Core.
 
@@ -108,7 +108,7 @@ ERROR validate_process(LONG ProcessID)
    return ERR_False; // Return ERR_False to indicate that the task was not healthy
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 copy_args: Used for turning argument structures into sendable messages.
 
@@ -284,7 +284,7 @@ looperror:
    return log.warning(error);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** This version of copy_args() is for thread-based execution.  Used by ActionThread() in lib_actions.c
 */
 
@@ -442,7 +442,7 @@ void local_free_args(APTR Parameters, const struct FunctionField *Args)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Resolves pointers and strings within an ActionMessage structure.
 */
 
@@ -504,7 +504,7 @@ looperror:
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Frees any allocations made in an argument structure.  This function is designed to work with pointer addresses, that
 ** have been exclusively accessed - not offsets.
 */

@@ -980,7 +980,7 @@ XMLTag * len_xml_str(XMLTag *Tag, LONG Flags, LONG *Length)
    return Tag->Next;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** This function calls itself recursively to count all tags (including children) within a tag space.  ALL sibling tags
 ** are also included.
 */
@@ -1076,7 +1076,7 @@ static XMLTag * next_sibling(extXML *Self, XMLTag *Tag, LONG Index, STRING Name,
    return NULL;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** XPath Query
 **
 ** [0-9]  Used for indexing

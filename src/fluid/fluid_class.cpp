@@ -166,7 +166,7 @@ void process_error(objScript *Self, CSTRING Procedure)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** This routine is intended for handling action notifications only.  It takes the FunctionField list provided by the
 ** action and copies them into a table.  Each value is represented by the relevant parameter name for ease of use.
 */
@@ -785,7 +785,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 SaveToObject: Compiles the current script statement and saves it as byte code.
@@ -821,7 +821,7 @@ static ERROR FLUID_SaveToObject(objScript *Self, struct acSaveToObject *Args)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Procedures: Returns a string array of all named procedures defined by a script.

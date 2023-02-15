@@ -3,7 +3,7 @@
 
 std::unordered_map<WindowHook, FUNCTION> glWindowHooks;
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetDisplayInfo: Retrieves display information.
@@ -48,7 +48,7 @@ ERROR gfxGetDisplayInfo(OBJECTID DisplayID, DISPLAYINFO **Result)
    else return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetDisplayType: Returns the type of display supported.
@@ -75,7 +75,7 @@ LONG gfxGetDisplayType(void)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ScanDisplayModes: Private. Returns formatted resolution information from the display database.
@@ -221,7 +221,7 @@ ERROR gfxScanDisplayModes(CSTRING Filter, DISPLAYINFO *Info, LONG Size)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SetHostOption: Alter options associated with the host display system.
@@ -265,7 +265,7 @@ ERROR gfxSetHostOption(LONG Option, LARGE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ScaleToDPI: Scales a value to the active display's DPI.

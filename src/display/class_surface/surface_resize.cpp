@@ -1,5 +1,5 @@
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Redimension: Moves and resizes a surface object in a single action call.
 -END-
@@ -100,7 +100,7 @@ static ERROR SURFACE_Redimension(extSurface *Self, struct acRedimension *Args)
    return error|ERF_Notified;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Resize: Alters the dimensions of a surface object.
 -END-
@@ -117,7 +117,7 @@ static ERROR SURFACE_Resize(extSurface *Self, struct acResize *Args)
    return Action(AC_Redimension, Self, &redimension)|ERF_Notified;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SetDisplay: Changes the screen resolution (applies to top-level surface objects only).

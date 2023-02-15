@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -MODULE-
 Core: The core library provides system calls and controls for the Parasol system.
@@ -1630,7 +1630,7 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
 }
 #endif
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Loads the module cache file.  If the cache file does not exist, it is created.
 **
 ** The cache merely holds the location of each system module that is installed in the system.  No modules are loaded

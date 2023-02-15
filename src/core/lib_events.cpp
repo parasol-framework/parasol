@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol Framework is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -49,7 +49,7 @@ void free_events(void)
    glEventList = NULL;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 BroadcastEvent: Broadcast an event to all event listeners in the system.
@@ -100,7 +100,7 @@ ERROR BroadcastEvent(APTR Event, LONG EventSize)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetEventID: Generates unique event ID's suitable for event broadcasting.
@@ -143,7 +143,7 @@ LARGE GetEventID(LONG Group, CSTRING SubGroup, CSTRING Event)
    return event_id;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SubscribeEvent: Subscribe to a system event.
@@ -208,7 +208,7 @@ ERROR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR Custom, APTR *Handl
    else return ERR_AllocMemory;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 UnsubscribeEvent: Removes an event subscription.
@@ -251,7 +251,7 @@ void UnsubscribeEvent(APTR Event)
    glEventListAltered = TRUE;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** ProcessMessages() will call this function whenever a MSGID_EVENT message is received.
 */
 

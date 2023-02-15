@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The input interface provides support for processing input messages.  The InputEvent structure is passed for each incoming
 message that is detected.

@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -CLASS-
 VectorText: Extends the Vector class with support for generating text.
@@ -238,7 +238,7 @@ INLINE void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, DOUBLE *X, 
    *Y = int26p6_to_dbl(delta.y);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 DeleteLine: Deletes any line number.
@@ -367,7 +367,7 @@ static ERROR VECTORTEXT_NewObject(extVectorText *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Align: Defines the alignment of the text string.
 
@@ -391,7 +391,7 @@ static ERROR TEXT_SET_Align(extVectorText *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 CharLimit: Limits the total characters allowed in the string.
 
@@ -418,7 +418,7 @@ static ERROR TEXT_SET_CharLimit(extVectorText *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 CursorColumn: The current column position of the cursor.
 
@@ -461,7 +461,7 @@ static ERROR TEXT_SET_CursorRow(extVectorText *Self, LONG Value)
    else return ERR_InvalidValue;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 DX: Adjusts horizontal spacing on a per-character basis.
@@ -504,7 +504,7 @@ static ERROR TEXT_SET_DX(extVectorText *Self, DOUBLE *Values, LONG Elements)
    else return ERR_AllocMemory;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 DY: Adjusts vertical spacing on a per-character basis.
 
@@ -532,7 +532,7 @@ static ERROR TEXT_SET_DY(extVectorText *Self, DOUBLE *Values, LONG Elements)
    else return ERR_AllocMemory;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Face: Defines the font face/family to use in rendering the text string.
 
@@ -560,7 +560,7 @@ static ERROR TEXT_SET_Face(extVectorText *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -PRIVATE-
 TextFlags: Optional flags.
 
@@ -579,7 +579,7 @@ static ERROR TEXT_SET_Flags(extVectorText *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Focus: Refers to the object that will be monitored for user focussing.
 
@@ -602,7 +602,7 @@ static ERROR TEXT_SET_Focus(extVectorText *Self, OBJECTID Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Font: The primary Font object that is used to source glyphs for the text string.
 
@@ -622,7 +622,7 @@ static ERROR TEXT_GET_Font(extVectorText *Self, OBJECTPTR *Value)
    else return ERR_FieldNotSet;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -PRIVATE-
 LetterSpacing: Currently unsupported.
 -END-
@@ -643,7 +643,7 @@ static ERROR TEXT_SET_LetterSpacing(extVectorText *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 FontSize: Defines the vertical size of the font.
 
@@ -676,7 +676,7 @@ static ERROR TEXT_SET_FontSize(extVectorText *Self, CSTRING Value)
    else return ERR_OutOfRange;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 FontStyle: Determines font styling.
 
@@ -702,7 +702,7 @@ static ERROR TEXT_SET_FontStyle(extVectorText *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 InlineSize: Enables word-wrapping at a fixed area size.
 
@@ -726,7 +726,7 @@ static ERROR TEXT_SET_InlineSize(extVectorText *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 LineLimit: Restricts the total number of lines allowed in a text object.
 
@@ -781,7 +781,7 @@ static ERROR TEXT_GET_SelectRow(extVectorText *Self, LONG *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -PRIVATE-
 Spacing: Not currently implemented.
@@ -801,7 +801,7 @@ static ERROR TEXT_SET_Spacing(extVectorText *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -PRIVATE-
 StartOffset: Not currently implemented.
 
@@ -820,7 +820,7 @@ static ERROR TEXT_SET_StartOffset(extVectorText *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 X: The x coordinate of the text.
 
@@ -846,7 +846,7 @@ static ERROR TEXT_SET_X(extVectorText *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Y: The base-line y coordinate of the text.
 
@@ -874,7 +874,7 @@ static ERROR TEXT_SET_Y(extVectorText *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Rotate: Applies vertical spacing on a per-character basis.
 
@@ -920,7 +920,7 @@ static ERROR TEXT_SET_Rotate(extVectorText *Self, DOUBLE *Values, LONG Elements)
    else return ERR_AllocMemory;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 ShapeInside: Reference a vector shape to define a content area that enables word-wrapping.
 
@@ -945,7 +945,7 @@ static ERROR TEXT_SET_ShapeInside(extVectorText *Self, OBJECTID Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 ShapeSubtract: Excludes a portion of the content area from the wrapping area.
 
@@ -966,7 +966,7 @@ static ERROR TEXT_SET_ShapeSubtract(extVectorText *Self, OBJECTID Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 String: The string to use for drawing the glyphs is defined here.
 
@@ -1005,7 +1005,7 @@ static ERROR TEXT_SET_String(extVectorText *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 TextLength: The expected length of the text after all computations have been taken into account.
 
@@ -1030,7 +1030,7 @@ static ERROR TEXT_SET_TextLength(extVectorText *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 TextWidth: The raw pixel width of the widest line in the @String value..
 
@@ -1051,7 +1051,7 @@ static ERROR TEXT_GET_TextWidth(extVectorText *Self, LONG *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 TotalLines: The total number of lines stored in the object.
 
@@ -1063,7 +1063,7 @@ static ERROR TEXT_GET_TotalLines(extVectorText *Self, LONG *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Weight: Defines the level of boldness in the text.
 

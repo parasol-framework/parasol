@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -CLASS-
 VectorTransition: Transitions are used to gradually apply transforms over distance.
@@ -162,7 +162,7 @@ static ERROR TRANSITION_NewObject(objVectorTransition *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Stops: Defines the transforms that will be used at specific stop points.
@@ -198,7 +198,7 @@ static ERROR TRANSITION_SET_Stops(objVectorTransition *Self, Transition *Value, 
    else return log.warning(ERR_DataSize);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 TotalStops: Total number of stops defined in the Stops array.

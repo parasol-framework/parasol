@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -161,7 +161,7 @@ static void decompress_jpeg(prvPicture *Self, objBitmap *Bitmap, struct jpeg_dec
    jpeg_destroy_decompress(Cinfo);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Picture: Init
 */
 
@@ -245,7 +245,7 @@ static ERROR JPEG_Query(prvPicture *Self, APTR Void)
    else return log.warning(ERR_Memory);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Picture: SaveImage
 */
 

@@ -260,7 +260,7 @@ ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG To
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Draw: Redraws the contents of a surface object.
@@ -376,7 +376,7 @@ ERROR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
    return ERR_Okay|ERF_Notified;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Expose: Redraws a surface region to the display, preferably from its graphics buffer.
@@ -462,7 +462,7 @@ static ERROR SURFACE_Expose(extSurface *Self, struct drwExpose *Args)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 InvalidateRegion: Redraws all of the content in a surface object.
@@ -666,7 +666,7 @@ void move_layer(extSurface *Self, LONG X, LONG Y)
    refresh_pointer(Self);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Used for PRECOPY, AFTERCOPY and compositing surfaces.
 **
 ** Self:       The surface object being drawn to.
@@ -767,7 +767,7 @@ void prepare_background(extSurface *Self, SurfaceList *list, LONG Total, LONG In
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Coordinates are absolute.
 */
 

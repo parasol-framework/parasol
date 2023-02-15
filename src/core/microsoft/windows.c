@@ -755,7 +755,7 @@ void free_private_cond(UBYTE Index)
    ZeroMemory(&conds[Index], sizeof(conds[0]));
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Windows compatible locking management functions.
 */
 
@@ -2289,7 +2289,7 @@ HANDLE winFindFile(CSTRING Location, HANDLE *Handle, STRING Result)
    return NULL;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Function: winScan()
 ** Short:    Used by fs_scandir()
 */

@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 Notes
 -----
@@ -200,7 +200,7 @@ void MsgResizedWindow(OBJECTID SurfaceID, LONG WinX, LONG WinY, LONG WinWidth, L
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** We're interested in this message only when Windows soft-sets one of our windows.  A 'soft-set' means that our Window
 ** has received the focus without direct user interaction (typically a window on the desktop has closed and our
 ** window is inheriting the focus).

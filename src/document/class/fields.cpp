@@ -1,5 +1,5 @@
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Author: The author(s) of the document.
@@ -16,7 +16,7 @@ static ERROR SET_Author(extDocument *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Background: Optional background colour for the document.
@@ -135,7 +135,7 @@ static ERROR SET_EventCallback(extDocument *Self, FUNCTION *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 EventMask: Specifies events that need to be reported from the Document object.
@@ -161,7 +161,7 @@ static ERROR SET_Flags(extDocument *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Focus: Refers to the object that will be monitored for user focusing.
@@ -207,7 +207,7 @@ static ERROR SET_FontFace(extDocument *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 FontSize: The point-size of the default font.
@@ -224,7 +224,7 @@ static ERROR SET_FontSize(extDocument *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Highlight: Defines the colour used to highlight document.
@@ -249,7 +249,7 @@ static ERROR SET_Keywords(extDocument *Self, STRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 LeftMargin: Defines the amount of whitespace to leave at the left of the page.
@@ -453,7 +453,7 @@ static ERROR SET_Origin(extDocument *Self, STRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 PageHeight: Measures the page height of the document, in pixels.
@@ -517,7 +517,7 @@ static ERROR SET_PageWidth(extDocument *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 RightMargin: Defines the amount of white-space to leave at the right side of the document page.
@@ -554,7 +554,7 @@ static ERROR SET_Surface(extDocument *Self, OBJECTID Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 TabFocus: Allows the user to hit the tab key to focus on other GUI objects.
@@ -577,7 +577,7 @@ static ERROR SET_Title(extDocument *Self, STRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 TopMargin: Defines the amount of white-space to leave at the top of the document page.
@@ -606,7 +606,7 @@ static ERROR SET_UpdateLayout(extDocument *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 VLinkColour: Default font colour for visited hyperlinks.
@@ -617,7 +617,7 @@ colour for visited links if the author desires.
 
 *****************************************************************************/
 
-/*****************************************************************************
+/*********************************************************************************************************************
 PRIVATE: Variables
 *****************************************************************************/
 
@@ -627,7 +627,7 @@ static ERROR GET_Variables(extDocument *Self, KeyStore **Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 WorkingPath: Defines the working path (folder or URI).

@@ -200,7 +200,7 @@ static ERROR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LO
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 CopyArea: Copies a rectangular area from one bitmap to another.
@@ -1132,7 +1132,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 CopyRawBitmap: Copies graphics data from an arbitrary surface to a bitmap.
@@ -1569,7 +1569,7 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 DrawRectangle: Draws rectangles, both filled and unfilled.
@@ -1843,7 +1843,7 @@ void gfxDrawRectangle(extBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height
    return;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 DrawRGBPixel: Draws a 24 bit pixel to a bitmap.
@@ -1866,7 +1866,7 @@ void gfxDrawRGBPixel(extBitmap *Bitmap, LONG X, LONG Y, RGB8 *Pixel)
    Bitmap->DrawUCRPixel(Bitmap, X + Bitmap->XOffset, Y + Bitmap->YOffset, Pixel);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 DrawPixel: Draws a single pixel to a bitmap.
@@ -1889,7 +1889,7 @@ void gfxDrawPixel(extBitmap *Bitmap, LONG X, LONG Y, ULONG Colour)
    Bitmap->DrawUCPixel(Bitmap, X + Bitmap->XOffset, Y + Bitmap->YOffset, Colour);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 FlipBitmap: Flips a bitmap around its horizontal or vertical axis.
@@ -1909,7 +1909,7 @@ void gfxFlipBitmap(extBitmap *Bitmap, LONG Orientation)
    bmpFlip(Bitmap, Orientation);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetColourFormat: Generates the values for a ColourFormat structure for a given bit depth.
@@ -2018,7 +2018,7 @@ void gfxGetColourFormat(ColourFormat *Format, LONG BPP, LONG RedMask, LONG Green
    Format->BitsPerPixel = BPP;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ReadRGBPixel: Reads a pixel's colour from the target bitmap.
@@ -2050,7 +2050,7 @@ void gfxReadRGBPixel(extBitmap *Bitmap, LONG X, LONG Y, RGB8 **Pixel)
    *Pixel = &pixel;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ReadPixel: Reads a pixel's colour from the target bitmap.
@@ -2075,7 +2075,7 @@ ULONG gfxReadPixel(extBitmap *Bitmap, LONG X, LONG Y)
    else return Bitmap->ReadUCPixel(Bitmap, X, Y);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 Resample: Resamples a bitmap by dithering it to a new set of colour masks.
@@ -2105,7 +2105,7 @@ ERROR gfxResample(extBitmap *Bitmap, ColourFormat *Format)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SetClipRegion: Sets a clipping region for a bitmap object.
@@ -2148,7 +2148,7 @@ void gfxSetClipRegion(extBitmap *Bitmap, LONG Number, LONG Left, LONG Top, LONG 
    if (Bitmap->Clip.Bottom > Bitmap->Height) Bitmap->Clip.Bottom = Bitmap->Height;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 Sync: Waits for the completion of all active bitmap operations.

@@ -114,7 +114,7 @@ static ERROR SET_AbsY(extSurface *Self, LONG Value)
    else return log.warning(ERR_NotInitialised);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Align: This field allows you to align a surface area within its owner.
@@ -135,7 +135,7 @@ static ERROR GET_Bottom(extSurface *Self, LONG *Bottom)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 BottomLimit: Prevents a surface object from moving beyond a given point at the bottom of its container.
@@ -155,7 +155,7 @@ static ERROR SET_BottomLimit(extSurface *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 BottomMargin: Manipulates the bottom margin of a surface object.
@@ -176,7 +176,7 @@ static ERROR SET_BottomMargin(extSurface *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Dimensions: Indicates currently active dimension settings.
@@ -412,7 +412,7 @@ static ERROR SET_InsideWidth(extSurface *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 LeftLimit: Prevents a surface object from moving beyond a given point on the left-hand side.
@@ -432,7 +432,7 @@ static ERROR SET_LeftLimit(extSurface *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 LeftMargin: Manipulates the left margin of a surface object.
@@ -472,7 +472,7 @@ static ERROR SET_MaxHeight(extSurface *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 MaxWidth: Prevents the width of a surface object from exceeding a certain value.
@@ -502,7 +502,7 @@ static ERROR SET_MaxWidth(extSurface *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 MinHeight: Prevents the height of a surface object from shrinking beyond a certain value.
@@ -532,7 +532,7 @@ static ERROR SET_MinHeight(extSurface *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 MinWidth: Prevents the width of a surface object from shrinking beyond a certain value.
@@ -562,7 +562,7 @@ static ERROR SET_MinWidth(extSurface *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Right: Returns the right-most coordinate of a surface object (X + Width).
@@ -575,7 +575,7 @@ static ERROR GET_Right(extSurface *Self, LONG *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 RightLimit: Prevents a surface object from moving beyond a given point on the right-hand side.
@@ -595,7 +595,7 @@ static ERROR SET_RightLimit(extSurface *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 RightMargin: Manipulates the right margin of a surface object.
@@ -616,7 +616,7 @@ static ERROR SET_RightMargin(extSurface *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 TopLimit: Prevents a surface object from moving beyond a given point at the top of its container.
@@ -636,7 +636,7 @@ static ERROR SET_TopLimit(extSurface *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 TopMargin: Manipulates the top margin of a surface object.
@@ -693,7 +693,7 @@ static ERROR GET_VisibleHeight(extSurface *Self, LONG *Value)
    else return log.warning(ERR_AccessMemory);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 VisibleWidth: The visible width of the surface area, relative to its parents.
@@ -740,7 +740,7 @@ static ERROR GET_VisibleWidth(extSurface *Self, LONG *Value)
    else return log.warning(ERR_AccessMemory);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 VisibleX: The first visible X coordinate of the surface area, relative to its parents.
@@ -787,7 +787,7 @@ static ERROR GET_VisibleX(extSurface *Self, LONG *Value)
    else return log.warning(ERR_AccessMemory);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 VisibleY: The first visible Y coordinate of the surface area, relative to its parents.
@@ -834,7 +834,7 @@ static ERROR GET_VisibleY(extSurface *Self, LONG *Value)
    else return log.warning(ERR_AccessMemory);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Width: Defines the width of a surface object.
@@ -923,7 +923,7 @@ static ERROR SET_Width(extSurface *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 X: Determines the horizontal position of a surface object.
@@ -993,7 +993,7 @@ static ERROR SET_XCoord(extSurface *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 XOffset: Determines the horizontal offset of a surface object.
@@ -1100,7 +1100,7 @@ static ERROR SET_XOffset(extSurface *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Y: Determines the vertical position of a surface object.
@@ -1159,7 +1159,7 @@ static ERROR SET_YCoord(extSurface *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 YOffset: Determines the vertical offset of a surface object.

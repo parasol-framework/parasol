@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol Framework is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -191,7 +191,7 @@ extern "C" LONG CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
    else return FFR_OKAY;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Cleans up path strings such as "../../myfile.txt".  Note that for Linux, the targeted file/folder has to exist or
 ** NULL will be returned.
 **
@@ -222,7 +222,7 @@ static STRING cleaned_path(CSTRING Path)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Returns a virtual_drive structure for all path types. Defaults to the host file system if no virtual drive was
 ** identified.
 **
@@ -282,7 +282,7 @@ ERROR check_cache(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)
    else return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 AddInfoTag: Adds new tags to FileInfo structures.
@@ -312,7 +312,7 @@ ERROR AddInfoTag(FileInfo *Info, CSTRING Name, CSTRING Value)
    return VarSetString(Info->Tags, Name, Value);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 AnalysePath: Analyses paths to determine their type (file, folder or volume).
@@ -403,7 +403,7 @@ ERROR AnalysePath(CSTRING Path, LONG *PathType)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 CompareFilePaths: Checks if two file paths refer to the same physical file.
@@ -492,7 +492,7 @@ ERROR fs_samefile(CSTRING Path1, CSTRING Path2)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ResolveGroupID: Converts a group ID to its corresponding name.
@@ -530,7 +530,7 @@ CSTRING ResolveGroupID(LONG GroupID)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ResolveUserID: Converts a user ID to its corresponding name.
@@ -568,7 +568,7 @@ CSTRING ResolveUserID(LONG UserID)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 CopyFile: Makes copies of folders and files.
@@ -620,7 +620,7 @@ ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback)
    return fs_copy(Source, Dest, Callback, FALSE);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 CreateLink: Creates symbolic links on Unix file systems.
@@ -692,7 +692,7 @@ ERROR CreateLink(CSTRING From, CSTRING To)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 DeleteFile: Deletes files and folders.
@@ -750,7 +750,7 @@ ERROR DeleteFile(CSTRING Path, FUNCTION *Callback)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SetDefaultPermissions: Forces the user and group permissions to be applied to new files and folders.
@@ -866,7 +866,7 @@ ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 TranslateCmdRef: Converts program references into command-line format.
@@ -936,7 +936,7 @@ ERROR TranslateCmdRef(CSTRING String, STRING *Command)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 LoadFile: Loads files into a local cache for fast file processing.
@@ -1058,7 +1058,7 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 CreateFolder: Makes new folders.
@@ -1111,7 +1111,7 @@ ERROR CreateFolder(CSTRING Path, LONG Permissions)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 MoveFile: Moves folders and files to new locations.
@@ -1279,7 +1279,7 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRe
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** The Path passed to this function must be a completely resolved path.  Note that the Path argument needs to be a
 ** large buffer as this function will modify it.
 */
@@ -1363,7 +1363,7 @@ ERROR test_path(STRING Path, LONG Flags)
    return ERR_FileNotFound;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 UnloadFile: Unloads files from the file cache.

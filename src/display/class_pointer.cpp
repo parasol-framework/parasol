@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -CLASS-
 Pointer: Interface for mouse cursor support.
@@ -127,7 +127,7 @@ static void send_inputmsg(InputEvent *Event, InputSubscription *List)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 *****************************************************************************/
 
@@ -140,7 +140,7 @@ static ERROR PTR_SetWinCursor(extPointer *Self, struct ptrSetWinCursor *Args)
 }
 #endif
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Private action used to grab the window cursor under X11.  Can only be executed by the task that owns the pointer.
 */
 
@@ -167,7 +167,7 @@ static ERROR PTR_UngrabX11Pointer(extPointer *Self, APTR Void)
 }
 #endif
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 DataFeed: This action can be used to send fake input to a pointer object.
@@ -629,7 +629,7 @@ static ERROR PTR_Free(extPointer *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Hide: Hides the pointer from the display.
 -END-
@@ -723,7 +723,7 @@ static ERROR PTR_Init(extPointer *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Move: Moves the cursor to a new location.
@@ -743,7 +743,7 @@ static ERROR PTR_Move(extPointer *Self, struct acMove *Args)
    return acMoveToPoint(Self, Self->X + Args->DeltaX, Self->Y + Args->DeltaY, 0, MTF_X|MTF_Y);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 MoveToPoint: Moves the cursor to a new location..
@@ -852,7 +852,7 @@ static ERROR PTR_NewObject(extPointer *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Refresh: Refreshes the pointer's cursor status.
 -END-
@@ -867,7 +867,7 @@ static ERROR PTR_Refresh(extPointer *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Reset: Resets the pointer settings back to the default.
 -END-
@@ -887,7 +887,7 @@ static ERROR PTR_Reset(extPointer *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 SaveToObject: Saves the current pointer settings to another object.
 -END-
@@ -913,7 +913,7 @@ static ERROR PTR_SaveToObject(extPointer *Self, struct acSaveToObject *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Show: Shows the pointer if it is not already on the display.
 -END-
@@ -945,7 +945,7 @@ static ERROR PTR_Show(extPointer *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Acceleration: The rate of acceleration for relative pointer movement.
@@ -1036,7 +1036,7 @@ static ERROR SET_ButtonOrder(extPointer *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 ButtonState: Indicates the current button-press state.
@@ -1058,7 +1058,7 @@ static ERROR GET_ButtonState(extPointer *Self, LONG *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 ClickSlop: A leniency value that assists in determining if the user intended to click or drag.
@@ -1124,7 +1124,7 @@ static ERROR SET_MaxSpeed(extPointer *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 OverObject: Readable field that gives the ID of the object under the pointer.
@@ -1190,7 +1190,7 @@ static ERROR PTR_SET_X(extPointer *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Y: The vertical position of the pointer within its parent display.

@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -CLASS-
 VectorSpiral: Extends the Vector class with support for spiral path generation.
@@ -71,7 +71,7 @@ static ERROR SPIRAL_NewObject(extVectorSpiral *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 CenterX: The horizontal center of the spiral.  Expressed as a fixed or relative coordinate.
 
@@ -109,7 +109,7 @@ static ERROR SPIRAL_SET_CenterX(extVectorSpiral *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 CenterY: The vertical center of the spiral.  Expressed as a fixed or relative coordinate.
 
@@ -146,7 +146,7 @@ static ERROR SPIRAL_SET_CenterY(extVectorSpiral *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Height: The height (vertical diameter) of the spiral.
 
@@ -176,7 +176,7 @@ static ERROR SPIRAL_SET_Height(extVectorSpiral *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Offset: Offset the generation of the path by a given value.
 
@@ -201,7 +201,7 @@ static ERROR SPIRAL_SET_Offset(extVectorSpiral *Self, DOUBLE Value)
    else return ERR_InvalidValue;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 PathLength: Calibrates the user agent's distance-along-a-path calculations with that of the author.
 
@@ -227,7 +227,7 @@ static ERROR SPIRAL_SET_PathLength(extVectorSpiral *Self, LONG Value)
    else return ERR_InvalidValue;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Radius: The radius of the spiral.  Expressed as a fixed or relative coordinate.
 
@@ -264,7 +264,7 @@ static ERROR SPIRAL_SET_Radius(extVectorSpiral *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Scale: The scale of the spiral, expressed as a multiplier.
 
@@ -289,7 +289,7 @@ static ERROR SPIRAL_SET_Scale(extVectorSpiral *Self, DOUBLE Value)
    else return ERR_InvalidValue;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Step: Determines the distance between each vertex in the spiral's path.
 
@@ -314,7 +314,7 @@ static ERROR SPIRAL_SET_Step(extVectorSpiral *Self, DOUBLE Value)
    else return ERR_InvalidValue;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Width: The width (horizontal diameter) of the spiral.

@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -188,7 +188,7 @@ void init_metaclass(void)
    glMetaClass.OriginalFieldTotal = ARRAYSIZE(glMetaFields)-1;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 FindField: Search a class definition for a specific field.
@@ -400,7 +400,7 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Actions: Defines the actions supported by the class.
@@ -448,7 +448,7 @@ static ERROR SET_Actions(extMetaClass *Self, const ActionArray *Actions)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 ActionTable: This field can be read to retrieve a MetaClass object's internal action table.
@@ -471,7 +471,7 @@ static ERROR GET_ActionTable(extMetaClass *Self, ActionEntry **Value, LONG *Elem
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 BaseClassID: Specifies the base class ID of a class object.
@@ -538,7 +538,7 @@ static ERROR SET_Fields(extMetaClass *Self, const FieldArray *Fields, LONG Eleme
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 FileDescription: Describes the file type represented by the class.
@@ -605,7 +605,7 @@ static ERROR GET_IDL(extMetaClass *Self, CSTRING *Value)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Location: Returns the path from which the class binary is loaded.
@@ -633,7 +633,7 @@ static ERROR GET_Location(extMetaClass *Self, CSTRING *Value)
    else return ERR_Failed;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Methods: Set this field to define the methods supported by the class.
@@ -705,7 +705,7 @@ static ERROR SET_Methods(extMetaClass *Self, const MethodArray *Methods, LONG El
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Module: The name of the module binary that initialised the class.
@@ -726,7 +726,7 @@ static ERROR GET_Module(extMetaClass *Self, CSTRING *Value)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 PrivateObjects: Returns an allocated list of all objects that belong to this class.
@@ -775,7 +775,7 @@ static ERROR GET_PrivateObjects(extMetaClass *Self, OBJECTID **Array, LONG *Elem
    else return ERR_AllocMemory;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 OpenCount: The total number of active objects that are linked back to the MetaClass.
@@ -829,7 +829,7 @@ static ERROR GET_SubFields(extMetaClass *Self, const FieldArray **Fields, LONG *
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 TotalFields: The total number of fields defined by a class.
 
@@ -1098,7 +1098,7 @@ static void copy_field(extMetaClass *Class, const FieldArray *Source, Field *Des
    optimise_write_field(Dest);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Sort the field table by name.  We use a shell sort, similar to bubble sort but much faster because it can copy
 ** records over larger distances.
 **

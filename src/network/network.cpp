@@ -354,7 +354,7 @@ static ERROR MODExpunge(void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 AddressToStr: Converts an IPAddress structure to an IPAddress in dotted string form.
@@ -395,7 +395,7 @@ static CSTRING netAddressToStr(IPAddress *Address)
    return StrClone(result);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 StrToAddress: Converts an IP Address in string form to an IPAddress structure.
@@ -442,7 +442,7 @@ static ERROR netStrToAddress(CSTRING Str, IPAddress *Address)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 HostToShort: Converts a 16 bit (unsigned) word from host to network byte order.
@@ -462,7 +462,7 @@ static ULONG netHostToShort(ULONG Value)
    return (ULONG)htons((UWORD)Value);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 HostToLong: Converts a 32 bit (unsigned) long from host to network byte order.
@@ -482,7 +482,7 @@ static ULONG netHostToLong(ULONG Value)
    return htonl(Value);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ShortToHost: Converts a 16 bit (unsigned) word from network to host byte order.
@@ -502,7 +502,7 @@ static ULONG netShortToHost(ULONG Value)
    return (ULONG)ntohs((UWORD)Value);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 LongToHost: Converts a 32 bit (unsigned) long from network to host byte order.
@@ -522,7 +522,7 @@ static ULONG netLongToHost(ULONG Value)
    return ntohl(Value);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SetSSL: Alters SSL settings on an initialised NetSocket object.
@@ -835,6 +835,6 @@ static BYTE check_machine_name(CSTRING HostName)
 
 PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MODVERSION_NETWORK)
 
-/*****************************************************************************
+/*********************************************************************************************************************
                                  BACKTRACE IT
 *****************************************************************************/

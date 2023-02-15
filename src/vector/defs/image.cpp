@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -CLASS-
 VectorImage: Provides support for the filling and stroking of vectors with bitmap images.
@@ -49,7 +49,7 @@ static ERROR IMAGE_NewObject(objVectorImage *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 AspectRatio: Flags that affect the aspect ratio of the image within its target vector.
 Lookup: ARF
@@ -74,7 +74,7 @@ static ERROR IMAGE_SET_Bitmap(objVectorImage *Self, objBitmap *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Dimensions: Dimension flags define whether individual dimension fields contain fixed or relative values.
@@ -96,7 +96,7 @@ static ERROR IMAGE_SET_Picture(objVectorImage *Self, objPicture *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 SpreadMethod: Defines the drawing mode.

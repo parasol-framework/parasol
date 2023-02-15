@@ -109,7 +109,7 @@ APTR GetWinCursor(LONG CursorID)
 #endif
 
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 AccessPointer: Returns a lock on the default pointer object.
@@ -225,7 +225,7 @@ ERROR gfxGetCursorPos(DOUBLE *X, DOUBLE *Y)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetModalSurface: Returns the current modal surface (if defined).
@@ -788,7 +788,7 @@ ERROR gfxSetCursorPos(DOUBLE X, DOUBLE Y)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 StartCursorDrag: Attaches an item to the cursor for the purpose of drag and drop.

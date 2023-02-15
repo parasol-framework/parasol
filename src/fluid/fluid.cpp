@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 This source code is placed in the public domain under no warranty from its
 authors.
@@ -211,7 +211,7 @@ APTR get_meta(lua_State *Lua, LONG Arg, CSTRING MetaTable)
    return NULL;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Returns a pointer to an object (if the object exists).
 */
 
@@ -354,7 +354,7 @@ static ERROR CMDOpen(OBJECTPTR Module)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SetVariable: Sets any variable in a loaded Fluid script.
@@ -778,7 +778,7 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
    return next_line(Line);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Bytecode read & write callbacks.  Returning 1 will stop processing.
 */
 

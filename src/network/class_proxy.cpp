@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -65,7 +65,7 @@ static void free_proxy(void)
 }
 */
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Delete: Removes a proxy from the database.
@@ -103,7 +103,7 @@ static ERROR PROXY_Delete(extProxy *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Disable: Marks a proxy as disabled.
@@ -121,7 +121,7 @@ static ERROR PROXY_Disable(extProxy *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Enable: Enables a proxy.
@@ -137,7 +137,7 @@ static ERROR PROXY_Enable(extProxy *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Find: Search for a proxy that matches a set of filters.
@@ -316,7 +316,7 @@ static ERROR PROXY_Find(extProxy *Self, struct prxFind *Args)
    else return ERR_AccessObject;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 FindNext: Continues an initiated search.
@@ -451,7 +451,7 @@ static ERROR PROXY_NewObject(extProxy *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 SaveSettings: Permanently saves user configurable settings for a proxy.

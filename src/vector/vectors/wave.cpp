@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -CLASS-
 VectorWave: Extends the Vector class with support for sine wave based paths.
@@ -151,7 +151,7 @@ static void generate_wave(extVectorWave *Vector)
    bounding_rect_single(Vector->BasePath, 0, &Vector->BX1, &Vector->BY1, &Vector->BX2, &Vector->BY2);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Move: Moves the vector to a new position.
 -END-
@@ -169,7 +169,7 @@ static ERROR WAVE_Move(extVectorWave *Self, struct acMove *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 MoveToPoint: Moves the vector to a new fixed position.
 -END-
@@ -200,7 +200,7 @@ static ERROR WAVE_NewObject(extVectorWave *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Resize: Changes the vector's area.
 -END-
@@ -216,7 +216,7 @@ static ERROR WAVE_Resize(extVectorWave *Self, struct acResize *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Amplitude: Adjusts the generated wave amplitude.
 
@@ -241,7 +241,7 @@ static ERROR WAVE_SET_Amplitude(extVectorWave *Self, DOUBLE Value)
    else return ERR_InvalidValue;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Close: Closes the generated wave path at either the top or bottom.
 
@@ -263,7 +263,7 @@ static ERROR WAVE_SET_Close(extVectorWave *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Decay: Declares a rate of decay to apply to the wave amplitude.
 
@@ -286,7 +286,7 @@ static ERROR WAVE_SET_Decay(extVectorWave *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Degree: Declares the initial angle (in degrees) to use when generating the wave.
 
@@ -310,7 +310,7 @@ static ERROR WAVE_SET_Degree(extVectorWave *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Dimensions: Dimension flags define whether individual dimension fields contain fixed or relative values.
@@ -343,7 +343,7 @@ static ERROR WAVE_SET_Dimensions(extVectorWave *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Frequency: Defines the wave frequency (the distance between each wave).
 
@@ -368,7 +368,7 @@ static ERROR WAVE_SET_Frequency(extVectorWave *Self, DOUBLE Value)
    else return ERR_InvalidValue;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Height: The height of the area containing the wave.
 
@@ -403,7 +403,7 @@ static ERROR WAVE_SET_Height(extVectorWave *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Style: Selects an alternative wave style.
 
@@ -425,7 +425,7 @@ static ERROR WAVE_SET_Style(extVectorWave *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Thickness: Expands the height of the wave to the specified value to produce a closed path.
 
@@ -447,7 +447,7 @@ static ERROR WAVE_SET_Thickness(extVectorWave *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Width: The width of the area containing the wave.
 
@@ -482,7 +482,7 @@ static ERROR WAVE_SET_Width(extVectorWave *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 X: The x coordinate of the wave.  Can be expressed as a fixed or relative coordinate.
 
@@ -517,7 +517,7 @@ static ERROR WAVE_SET_X(extVectorWave *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Y: The y coordinate of the wave.  Can be expressed as a fixed or relative coordinate.
 

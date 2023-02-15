@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -668,7 +668,7 @@ static ERROR InterceptedAction(extTask *Self, APTR Args)
    else return ERR_NoSupport;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Activate: Activating a task object will execute it.
@@ -1201,7 +1201,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 AddArgument: Adds new arguments to the Parameters field.
@@ -1281,7 +1281,7 @@ static ERROR TASK_AddArgument(extTask *Self, struct taskAddArgument *Args)
    else return log.warning(ERR_AllocMemory);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 CloseInstance: Sends a quit message to all tasks running in the current instance.
@@ -1302,7 +1302,7 @@ static ERROR TASK_CloseInstance(extTask *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Expunge: Forces a Task to expunge unused code.
@@ -1373,7 +1373,7 @@ static ERROR TASK_Free(extTask *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 GetEnv: Retrieves environment variables for the active process.
@@ -1513,7 +1513,7 @@ static ERROR TASK_GetEnv(extTask *Self, struct taskGetEnv *Args)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SetEnv: Sets environment variables for the active process.
@@ -1638,7 +1638,7 @@ static ERROR TASK_SetEnv(extTask *Self, struct taskSetEnv *Args)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 GetVar: Retrieves variable field values.
 -END-
@@ -1807,7 +1807,7 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Task: NewObject
 */
 
@@ -1821,7 +1821,7 @@ static ERROR TASK_NewObject(extTask *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Quit: Sends a quit message to a task.
@@ -1863,7 +1863,7 @@ static ERROR TASK_Quit(extTask *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 SetVar: Variable fields are supported for the general storage of program variables.
 -END-
@@ -1900,7 +1900,7 @@ static ERROR TASK_SetVar(extTask *Self, struct acSetVar *Args)
    else return log.warning(ERR_ArrayFull);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Write: Send raw data to a launched process' stdin descriptor.
@@ -1931,7 +1931,7 @@ static ERROR TASK_Write(extTask *Task, struct acWrite *Args)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Actions: Used to gain direct access to a task's actions.
@@ -1960,7 +1960,7 @@ static ERROR GET_Actions(extTask *Self, struct ActionEntry **Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Args: Command line arguments (string format).
@@ -2004,7 +2004,7 @@ static ERROR SET_Args(extTask *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Parameters: Command line arguments (list format).
@@ -2080,7 +2080,7 @@ static ERROR SET_Parameters(extTask *Self, CSTRING *Value, LONG Elements)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 ExitCallback: The callback is activated when the process is terminated.
@@ -2109,7 +2109,7 @@ static ERROR SET_ExitCallback(extTask *Self, FUNCTION *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 ErrorCallback: This callback returns incoming data from STDERR.
@@ -2138,7 +2138,7 @@ static ERROR SET_ErrorCallback(extTask *Self, FUNCTION *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 InputCallback: This callback returns incoming data from STDIN.
@@ -2191,7 +2191,7 @@ static ERROR SET_InputCallback(extTask *Self, FUNCTION *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 OutputCallback: This callback returns incoming data from STDOUT.
@@ -2220,7 +2220,7 @@ static ERROR SET_OutputCallback(extTask *Self, FUNCTION *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Flags: Optional flags.
@@ -2257,7 +2257,7 @@ static ERROR SET_LaunchPath(extTask *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Location: Location of an executable file to launch.
@@ -2301,7 +2301,7 @@ static ERROR SET_Location(extTask *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Instance: The instance ID that the process belongs to.
@@ -2321,7 +2321,7 @@ static ERROR GET_Instance(extTask *Self, LONG *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 MessageQueue: Read this field to acquire a task's message queue ID.
@@ -2338,7 +2338,7 @@ static ERROR GET_MessageQueue(extTask *Task, MEMORYID *Value)
    else return ERR_NoData;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Name: Name of the task.
@@ -2361,7 +2361,7 @@ static ERROR SET_Name(extTask *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 TimeOut: Limits the amount of time to wait for a launched process to return.
@@ -2445,7 +2445,7 @@ static ERROR SET_Path(extTask *Self, CSTRING Value)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 ProcessPath: The path of the executable that is associated with the task.
@@ -2464,7 +2464,7 @@ static ERROR GET_ProcessPath(extTask *Self, CSTRING *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Priority: The task priority in relation to other tasks is be defined here.
@@ -2489,7 +2489,7 @@ static ERROR SET_Priority(extTask *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 ReturnCode: The task's return code can be retrieved following execution.

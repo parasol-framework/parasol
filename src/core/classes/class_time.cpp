@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -39,7 +39,7 @@ static ERROR GET_TimeStamp(objTime *, LARGE *);
 static ERROR TIME_Query(objTime *, APTR);
 static ERROR TIME_SetTime(objTime *, APTR);
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Query: Updates the values in a time object with the current system date and time.
 -END-
@@ -96,7 +96,7 @@ static ERROR TIME_Query(objTime *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SetTime: Apply the time to the system clock.
@@ -164,7 +164,7 @@ static ERROR TIME_SetTime(objTime *Self, APTR Void)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Day: Day (1 - 31)
@@ -227,7 +227,7 @@ static ERROR GET_TimeStamp(objTime *Self, LARGE *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Year: Year (-ve for BC, +ve for AD).
 -END-

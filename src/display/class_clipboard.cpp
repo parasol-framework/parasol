@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -60,7 +60,7 @@ static void notify_script_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result
    Self->RequestHandler.Type = CALL_NONE;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 AddFile: Add files to the clipboard.
@@ -142,7 +142,7 @@ static ERROR CLIPBOARD_AddFile(objClipboard *Self, struct clipAddFile *Args)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 AddObject: Extract data from an object and add it to the clipboard.
@@ -170,7 +170,7 @@ static ERROR CLIPBOARD_AddObject(objClipboard *Self, struct clipAddObject *Args)
    return CLIPBOARD_AddObjects(Self, &add);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 AddObjects: Extract data from objects and add it all to the clipboard.
@@ -267,7 +267,7 @@ static ERROR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Arg
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 AddText: Adds a block of text to the clipboard.
@@ -337,7 +337,7 @@ static ERROR CLIPBOARD_AddText(objClipboard *Self, struct clipAddText *Args)
    else return log.warning(error);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Clear: Destroys all cached data that is stored in the clipboard.
 -END-
@@ -365,7 +365,7 @@ static ERROR CLIPBOARD_Clear(objClipboard *Self, APTR Void)
    else return ERR_AccessMemory;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 DataFeed: This action can be used to place data in a clipboard.
 
@@ -491,7 +491,7 @@ static ERROR CLIPBOARD_Free(objClipboard *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 GetFiles: Retrieve the most recently clipped data as a list of files.
@@ -648,7 +648,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
    else return ERR_AccessMemory;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Remove: Remove items from the clipboard.
@@ -696,7 +696,7 @@ static ERROR CLIPBOARD_Remove(objClipboard *Self, struct clipRemove *Args)
    else return log.warning(ERR_AccessMemory);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 GetVar: Special field types are supported as variables.
@@ -876,7 +876,7 @@ static ERROR CLIPBOARD_NewObject(objClipboard *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Cluster: Identifies a unique cluster of items targeted by a clipboard object.

@@ -1,5 +1,5 @@
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Initialise SSL for the first time.  NB: Refer to MODExpunge() for the resource termination code.
 */
 
@@ -85,7 +85,7 @@ static void sslCtxMsgCallback(SSL *s, int where, int ret)
    sslMsgCallback(s, where, ret);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** This only needs to be called once to setup the unique SSL context for the NetSocket object and the locations of the
 ** certificates.
 */

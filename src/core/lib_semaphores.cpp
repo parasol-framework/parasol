@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 -CATEGORY-
 Name: Locks/Semaphores
 -END-
@@ -96,7 +96,7 @@ void plUnlockSemaphore(APTR Semaphore)
 
 #endif
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Called by the close / crash recovery process to remove our semaphores.
 */
 
@@ -174,7 +174,7 @@ static LONG DeadSemaphoreProcesses(SemaphoreEntry *Semaphore)
    return dead;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 AccessSemaphore: Grants access to semaphores.
@@ -357,7 +357,7 @@ ERROR AccessSemaphore(LONG SemaphoreID, LONG Timeout, LONG Flags)
    else return log.warning(ERR_Lock);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 AllocSemaphore: Allocates a new public semaphore.
@@ -503,7 +503,7 @@ restart:
    else return log.warning(ERR_Lock);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 FreeSemaphore: Frees an allocated semaphore.
@@ -575,7 +575,7 @@ ERROR FreeSemaphore(LONG SemaphoreID)
    else return log.warning(ERR_Lock);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ReleaseSemaphore: Releases a locked semaphore.
@@ -677,7 +677,7 @@ ERROR pReleaseSemaphore(LONG SemaphoreID, LONG Flags)
    else return log.warning(ERR_Lock);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SemaphoreCtrl: Manipulates semaphore details.

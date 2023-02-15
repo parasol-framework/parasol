@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -301,7 +301,7 @@ static void thread_entry_cleanup(void *Arg)
    #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Activate: Spawn a new thread that calls the function referenced in the #Routine field.
 -END-
@@ -345,7 +345,7 @@ static ERROR THREAD_Activate(extThread *Self, APTR Void)
    return log.warning(ERR_Failed);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Deactivate: Stops a thread.
 
@@ -373,7 +373,7 @@ static ERROR THREAD_Deactivate(extThread *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Free: Remove the object and its resources.
 
@@ -457,7 +457,7 @@ static ERROR THREAD_NewObject(extThread *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SetData: Attaches data to the thread.
@@ -507,7 +507,7 @@ static ERROR THREAD_SetData(extThread *Self, struct thSetData *Args)
    else return log.warning(ERR_AllocMemory);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Wait: Waits for a thread to be completed.
@@ -537,7 +537,7 @@ static ERROR THREAD_Wait(extThread *Self, struct thWait *Args)
    return WaitForObjects(PMF_SYSTEM_NO_BREAK, Args->TimeOut, sig);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Callback: A function reference that will be called when the thread is started.
@@ -565,7 +565,7 @@ static ERROR SET_Callback(extThread *Self, FUNCTION *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Data: Pointer to initialisation data for the thread.
@@ -582,7 +582,7 @@ static ERROR GET_Data(extThread *Self, APTR *Value, LONG *Elements)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 DataSize: The size of the buffer referenced in the Data field.
@@ -621,7 +621,7 @@ static ERROR SET_Routine(extThread *Self, FUNCTION *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 StackSize: The stack size to allocate for the thread.
 

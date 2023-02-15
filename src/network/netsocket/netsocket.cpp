@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -91,7 +91,7 @@ static void notify_free_outgoing(OBJECTPTR Object, ACTIONID ActionID, ERROR Resu
    ((extNetSocket *)CurrentContext())->Outgoing.Type = CALL_NONE;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Connect: Connects a NetSocket to an address.
@@ -250,7 +250,7 @@ static ERROR NETSOCKET_DataFeed(extNetSocket *Self, struct acDataFeed *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Disable: Disables sending and receiving on the socket.
@@ -283,7 +283,7 @@ static ERROR NETSOCKET_Disable(extNetSocket *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 DisconnectClient: Disconnects all sockets connected to a specific client IP.
@@ -311,7 +311,7 @@ static ERROR NETSOCKET_DisconnectClient(extNetSocket *Self, struct nsDisconnectC
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 DisconnectSocket: Disconnects a single socket that is connected to a client IP address.
@@ -378,7 +378,7 @@ static ERROR NETSOCKET_FreeWarning(extNetSocket *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 GetLocalIPAddress: Returns the IP address that the socket is locally bound to.
@@ -581,7 +581,7 @@ static ERROR NETSOCKET_NewObject(extNetSocket *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Read: Read information from the socket.
@@ -626,7 +626,7 @@ static ERROR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 ReadMsg: Read a message from the socket.
@@ -776,7 +776,7 @@ static ERROR NETSOCKET_ReadMsg(extNetSocket *Self, struct nsReadMsg *Args)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Write: Writes data to the socket.
@@ -844,7 +844,7 @@ static ERROR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 WriteMsg: Writes a message to the socket.
@@ -889,7 +889,7 @@ static ERROR NETSOCKET_WriteMsg(extNetSocket *Self, struct nsWriteMsg *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Address: An IP address or domain name to connect to.
@@ -908,7 +908,7 @@ static ERROR SET_Address(extNetSocket *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Backlog: The maximum number of connections that can be queued against the socket.
@@ -986,7 +986,7 @@ static ERROR SET_Feedback(extNetSocket *Self, FUNCTION *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Flags: Optional flags.
@@ -1029,7 +1029,7 @@ static ERROR SET_Incoming(extNetSocket *Self, FUNCTION *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Outgoing: Callback that is triggered when a socket is ready to send data.
@@ -1089,7 +1089,7 @@ static ERROR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 MsgLimit: Limits the size of incoming and outgoing messages.
@@ -1111,7 +1111,7 @@ static ERROR GET_OutQueueSize(extNetSocket *Self, LONG *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Port: The port number to use for initiating a connection.
@@ -1137,7 +1137,7 @@ static ERROR SET_SocketHandle(extNetSocket *Self, APTR Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 State: The current connection state of the netsocket object.
@@ -1201,7 +1201,7 @@ static ERROR SET_State(extNetSocket *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 TotalClients: Indicates the total number of clients currently connected to the socket (if in server mode).

@@ -417,7 +417,7 @@ EXPORT void CloseCore(void)
    fflush(stderr);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Calls all loaded modules with an Expunge notification.
 **
 ** NOTE: If forced expunging occurs, it usually means that two modules have loaded each other.  This means that they
@@ -593,7 +593,7 @@ static void free_private_memory(void)
 }
 
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Frees public objects and memory blocks.  Please note that this routine is also used by validate_process().
 */
 
@@ -618,7 +618,7 @@ void free_public_resources(OBJECTID TaskID)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** This function does not release locks on public objects (special handling for objects can be found elsewhere in the
 ** shutdown program flow).  NOTE:  This function is also used by validate_process() to clear zombie resource locks.
 */

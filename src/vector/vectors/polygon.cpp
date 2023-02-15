@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -CLASS-
 VectorPolygon: Extends the Vector class with support for generating polygons.
@@ -122,7 +122,7 @@ static ERROR POLYGON_Free(extVectorPoly *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Move: Moves a polygon to a new position.
 -END-
@@ -153,7 +153,7 @@ static ERROR POLYGON_Move(extVectorPoly *Self, struct acMove *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 MoveToPoint: Moves a polygon to a new central position.
 
@@ -212,7 +212,7 @@ static ERROR POLYGON_NewObject(extVectorPoly *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Resize: Resize the polygon by its width and height.
 
@@ -243,7 +243,7 @@ static ERROR POLYGON_Resize(extVectorPoly *Self, struct acResize *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Closed: If TRUE, the polygon will be closed between the start and end points.
 
@@ -266,7 +266,7 @@ static ERROR POLY_SET_Closed(extVectorPoly *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 PathLength: Calibrates the user agent's distance-along-a-path calculations with that of the author.
 
@@ -293,7 +293,7 @@ static ERROR POLY_SET_PathLength(extVectorPoly *Self, LONG Value)
    else return ERR_InvalidValue;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 PointsArray: A series of numbered pairs that define the polygon.
 
@@ -327,7 +327,7 @@ static ERROR POLY_SET_PointsArray(extVectorPoly *Self, VectorPoint *Value, LONG 
    else return ERR_InvalidValue;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Points: A series of (X,Y) coordinates that define the polygon.
 
@@ -351,7 +351,7 @@ static ERROR POLY_SET_Points(extVectorPoly *Self, CSTRING Value)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 TotalPoints: The total number of coordinates defined in the Points field.
 
@@ -366,7 +366,7 @@ static ERROR POLY_GET_TotalPoints(extVectorPoly *Self, LONG *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 X1: Defines the X coordinate of the first point.
 
@@ -407,7 +407,7 @@ static ERROR POLY_SET_X1(extVectorPoly *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 X2: Defines the X coordinate of the second point.
 
@@ -448,7 +448,7 @@ static ERROR POLY_SET_X2(extVectorPoly *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Y1: Defines the Y coordinate of the first point.
 
@@ -489,7 +489,7 @@ static ERROR POLY_SET_Y1(extVectorPoly *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Y2: Defines the Y coordinate of the second point.
 

@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -694,7 +694,7 @@ static const CSTRING strCodes[] = {
    "IndexEnd"
 };
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Function prototypes.
 */
 
@@ -888,7 +888,7 @@ static ERROR CMDOpen(OBJECTPTR Module)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 CharLength: Returns the length of any character or escape code in a document data stream.

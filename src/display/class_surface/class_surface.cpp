@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -56,7 +56,7 @@ static ERROR consume_input_events(const InputEvent *, LONG);
 static void draw_region(extSurface *, extSurface *, extBitmap *);
 static ERROR redraw_timer(extSurface *, LARGE, LARGE);
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** This call is used to refresh the pointer image when at least one layer has been rearranged.  The timer is used to
 ** delay the refresh - useful if multiple surfaces are being rearranged when we only need to do the refresh once.
 ** The delay also prevents clashes with read/write access to the surface list.
@@ -124,7 +124,7 @@ static void release_video(objDisplay *Display)
    ReleaseObject(Display);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Used By:  MoveToBack(), move_layer()
 **
 ** This is the best way to figure out if a surface object or its children causes it to be volatile.  Use this function
@@ -341,7 +341,7 @@ static void expose_buffer(SurfaceList *list, LONG Total, LONG Index, LONG ScanIn
    else log.warning("Unable to access display #%d.", DisplayID);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Used by MoveToFront()
 **
 ** This function will expose areas that are uncovered when a surface changes its position in the surface tree (e.g.
@@ -629,7 +629,7 @@ static void notify_redimension_parent(OBJECTPTR Object, ACTIONID ActionID, ERROR
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Activate: Shows a surface object on the display.
 -END-
@@ -641,7 +641,7 @@ static ERROR SURFACE_Activate(extSurface *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 AddCallback: Inserts a function hook into the drawing process of a surface object.
@@ -760,7 +760,7 @@ static ERROR SURFACE_AddCallback(extSurface *Self, struct drwAddCallback *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Disable: Disables a surface object.
 -END-
@@ -773,7 +773,7 @@ static ERROR SURFACE_Disable(extSurface *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Enable: Enables a disabled surface object.
 -END-
@@ -786,7 +786,7 @@ static ERROR SURFACE_Enable(extSurface *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Event: task.removed
 */
 
@@ -804,7 +804,7 @@ static void event_task_removed(OBJECTID *SurfaceID, APTR Info, LONG InfoSize)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Event: user.login
 */
 
@@ -869,7 +869,7 @@ static void event_user_login(extSurface *Self, APTR Info, LONG InfoSize)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Focus: Changes the primary user focus to the surface object.
 -END-
@@ -1146,7 +1146,7 @@ static ERROR SURFACE_Free(extSurface *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Hide: Hides a surface object from the display.
 -END-
@@ -1196,7 +1196,7 @@ static ERROR SURFACE_Hide(extSurface *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 InheritedFocus: Private
@@ -1701,7 +1701,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 LostFocus: Informs a surface object that it has lost the user focus.
 -END-
@@ -1732,7 +1732,7 @@ static ERROR SURFACE_LostFocus(extSurface *Self, APTR Void)
    else return ERR_Okay | ERF_Notified;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Minimise: For hosted surfaces only, this method will minimise the surface to an icon.
@@ -1754,7 +1754,7 @@ static ERROR SURFACE_Minimise(extSurface *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Move: Moves a surface object to a new display position.
 -END-
@@ -1890,7 +1890,7 @@ static ERROR SURFACE_Move(extSurface *Self, struct acMove *Args)
    return ERR_Okay|ERF_Notified;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 MoveToBack: Moves a surface object to the back of its container.
 -END-
@@ -1964,7 +1964,7 @@ static ERROR SURFACE_MoveToBack(extSurface *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 MoveToFront: Moves a surface object to the front of its container.
 -END-
@@ -2096,7 +2096,7 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 MoveToPoint: Moves a surface object to an absolute coordinate.
 -END-
@@ -2117,7 +2117,7 @@ static ERROR SURFACE_MoveToPoint(extSurface *Self, struct acMoveToPoint *Args)
    return Action(AC_Move, Self, &move)|ERF_Notified;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Surface: NewOwner()
 */
 
@@ -2153,7 +2153,7 @@ static ERROR SURFACE_NewObject(extSurface *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 RemoveCallback: Removes a callback previously inserted by AddCallback().
@@ -2241,7 +2241,7 @@ static ERROR SURFACE_RemoveCallback(extSurface *Self, struct drwRemoveCallback *
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 ResetDimensions: Changes the dimensions of a surface.
@@ -2342,7 +2342,7 @@ static ERROR SURFACE_ResetDimensions(extSurface *Self, struct drwResetDimensions
    else return log.warning(ERR_AccessMemory);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 ScheduleRedraw: Schedules a redraw operation for the next frame.
@@ -2385,7 +2385,7 @@ static ERROR SURFACE_ScheduleRedraw(extSurface *Self, APTR Void)
    else return ERR_Failed;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 SaveImage: Saves the graphical image of a surface object.
@@ -2476,7 +2476,7 @@ static ERROR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
    else return log.warning(ERR_NewObject);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Scroll: Scrolls surface content to a new position.
@@ -2526,7 +2526,7 @@ static ERROR SURFACE_Scroll(extSurface *Self, struct acScroll *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 ScrollToPoint: Moves the content of a surface object to a specific point.
 -END-
@@ -2560,7 +2560,7 @@ static ERROR SURFACE_ScrollToPoint(extSurface *Self, struct acScrollToPoint *Arg
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SetOpacity: Alters the opacity of a surface object.
@@ -2605,7 +2605,7 @@ static ERROR SURFACE_SetOpacity(extSurface *Self, struct drwSetOpacity *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Show: Shows a surface object on the display.
 -END-

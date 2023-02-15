@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -CLASS-
 VectorRectangle: Extends the Vector class with support for generating rectangles.
@@ -47,7 +47,7 @@ static void generate_rectangle(extVectorRectangle *Vector)
    Vector->BY2 = y + height;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Move: Moves the vector to a new position.
 
@@ -65,7 +65,7 @@ static ERROR RECTANGLE_Move(extVectorRectangle *Self, struct acMove *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 MoveToPoint: Moves the vector to a new fixed position.
 
@@ -93,7 +93,7 @@ static ERROR RECTANGLE_NewObject(extVectorRectangle *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Resize: Changes the rectangle dimensions.
 
@@ -111,7 +111,7 @@ static ERROR RECTANGLE_Resize(extVectorRectangle *Self, struct acResize *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Dimensions: Dimension flags define whether individual dimension fields contain fixed or relative values.
@@ -144,7 +144,7 @@ static ERROR RECTANGLE_SET_Dimensions(extVectorRectangle *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Height: The height of the rectangle.  Can be expressed as a fixed or relative coordinate.
@@ -184,7 +184,7 @@ static ERROR RECTANGLE_SET_Height(extVectorRectangle *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 RoundX: Specifies the size of rounded corners on the horizontal axis.
@@ -208,7 +208,7 @@ static ERROR RECTANGLE_SET_RoundX(extVectorRectangle *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 RoundY: Specifies the size of rounded corners on the vertical axis.
@@ -232,7 +232,7 @@ static ERROR RECTANGLE_SET_RoundY(extVectorRectangle *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 X: The left-side of the rectangle.  Can be expressed as a fixed or relative coordinate.
@@ -271,7 +271,7 @@ static ERROR RECTANGLE_SET_X(extVectorRectangle *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Width: The width of the rectangle.  Can be expressed as a fixed or relative coordinate.
@@ -311,7 +311,7 @@ static ERROR RECTANGLE_SET_Width(extVectorRectangle *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Y: The top of the rectangle.  Can be expressed as a fixed or relative coordinate.

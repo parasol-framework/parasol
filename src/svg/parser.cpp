@@ -1942,7 +1942,7 @@ static void xtag_symbol(extSVG *Self, objXML *XML, const XMLTag *Tag)
    else log.warning("No id attribute specified in <symbol> at line %d.", Tag->LineNo);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Most vector shapes can be morphed to the path of another vector.
 */
 
@@ -2208,7 +2208,7 @@ static void xtag_group(extSVG *Self, objXML *XML, svgState *State, const XMLTag 
    else acFree(group);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** <svg/> tags can be embedded inside <svg/> tags - this establishes a new viewport.
 ** Refer to section 7.9 of the SVG Specification for more information.
 */

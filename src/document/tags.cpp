@@ -70,7 +70,7 @@ static void trim_preformat(extDocument *Self, LONG *Index)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Internal: saved_style_check()
 **
 ** This function is used to manage hierarchical styling:
@@ -258,7 +258,7 @@ static void tag_br(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, L
    Self->NoWhitespace = TRUE;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Internal: tag_cache()
 **
 ** Use caching to create objects that will persist between document refreshes
@@ -284,7 +284,7 @@ static void tag_cache(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
    Self->ObjectCache--;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Internal: tag_call()
 **
 ** Use this instruction to call a function during the parsing of the document.
@@ -597,7 +597,7 @@ static void tag_header(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
    Self->HeaderTag = Child;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Internal: tag_indent()
 **
 ** Indent document block.  The extent of the indentation can be customised in
@@ -2522,7 +2522,7 @@ static void tag_page(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Usage: <trigger event="resize" function="script.function"/>
 */
 

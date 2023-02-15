@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -CLASS-
 VectorPath: Extends the Vector class with support for generating custom paths.
@@ -194,7 +194,7 @@ static ERROR VECTORPATH_NewObject(extVectorPath *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 AddCommand: Add one or more commands to the end of the path sequence.
@@ -233,7 +233,7 @@ static ERROR VECTORPATH_AddCommand(extVectorPath *Self, struct vpAddCommand *Arg
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 GetCommand: Retrieve a specific command from the path sequence.
@@ -263,7 +263,7 @@ static ERROR VECTORPATH_GetCommand(extVectorPath *Self, struct vpGetCommand *Arg
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 RemoveCommand: Remove at least one command from the path sequence.
@@ -299,7 +299,7 @@ static ERROR VECTORPATH_RemoveCommand(extVectorPath *Self, struct vpRemoveComman
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SetCommand: Copies one or more commands into an existing path.
@@ -338,7 +338,7 @@ static ERROR VECTORPATH_SetCommand(extVectorPath *Self, struct vpSetCommand *Arg
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SetCommandList: The fastest available mechanism for setting a series of path instructions.
@@ -382,7 +382,7 @@ static ERROR VECTORPATH_SetCommandList(extVectorPath *Self, struct vpSetCommandL
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Commands: Direct pointer to the PathCommand array.
 
@@ -398,7 +398,7 @@ static ERROR VECTORPATH_GET_Commands(extVectorPath *Self, PathCommand **Value, L
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 PathLength: Calibrates the user agent's distance-along-a-path calculations with that of the author.
 
@@ -425,7 +425,7 @@ static ERROR VECTORPATH_SET_PathLength(extVectorPath *Self, LONG Value)
    else return ERR_InvalidValue;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Sequence: A sequence of points and instructions that will define the path.
 
@@ -466,7 +466,7 @@ static ERROR VECTORPATH_SET_Sequence(extVectorPath *Self, CSTRING Value)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 TotalCommands: The total number of points defined in the path sequence.
 

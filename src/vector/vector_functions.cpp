@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -65,7 +65,7 @@ ERROR CMDOpen(OBJECTPTR Module)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ApplyPath: Copy a pre-generated or custom path to a VectorPath object.
@@ -98,7 +98,7 @@ ERROR vecApplyPath(class SimpleVector *Vector, extVectorPath *VectorPath)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ArcTo: Alter a path by setting an arc-to command at the current vertex position.
@@ -122,7 +122,7 @@ void vecArcTo(SimpleVector *Vector, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X
    Vector->mPath.arc_to(RX, RY, Angle, (Flags & ARC_LARGE) ? 1 : 0, (Flags & ARC_SWEEP) ? 1 : 0, X, Y);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ClosePath: Close the path by connecting the beginning and end points.
@@ -143,7 +143,7 @@ void vecClosePath(SimpleVector *Vector)
    Vector->mPath.close_polygon();
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 Curve3: Alter a path by setting a quadratic bezier curve command at the current vertex position.
@@ -165,7 +165,7 @@ void vecCurve3(SimpleVector *Vector, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBL
    Vector->mPath.curve3(CtrlX, CtrlY, X, Y);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 Curve4: Alter a path by setting a curve4 command at the current vertex position.
@@ -189,7 +189,7 @@ void vecCurve4(SimpleVector *Vector, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2
    Vector->mPath.curve4(CtrlX1, CtrlY1, CtrlX2, CtrlY2, X, Y);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 DrawPath: Draws a vector path to a target bitmap.
@@ -233,7 +233,7 @@ ERROR vecDrawPath(objBitmap *Bitmap, class SimpleVector *Path, DOUBLE StrokeWidt
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 FreePath: Remove a generated path.
@@ -252,7 +252,7 @@ void vecFreePath(APTR Path)
    FreeResource(Path);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetVertex: Retrieve the coordinates of the current vertex.
@@ -275,7 +275,7 @@ LONG vecGetVertex(SimpleVector *Vector, DOUBLE *X, DOUBLE *Y)
    return Vector->mPath.vertex(X, Y);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GenerateEllipse: Generates an elliptical path.
@@ -349,7 +349,7 @@ ERROR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertic
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GenerateRectangle: Generate a rectangular path at (x,y) with size (width,height).
@@ -389,7 +389,7 @@ ERROR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GeneratePath: Generates a path from an SVG path command sequence, or an empty path for custom configuration.
@@ -460,7 +460,7 @@ ERROR vecGeneratePath(CSTRING Sequence, APTR *Path)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 LineTo: Alter a path by setting a line-to command at the current vertex position.
@@ -480,7 +480,7 @@ void vecLineTo(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
    Vector->mPath.line_to(X, Y);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 MoveTo: Alter a path by setting a move-to command at the current vertex position.
@@ -502,7 +502,7 @@ void vecMoveTo(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
    Vector->mPath.move_to(X, Y);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 Multiply: Combines a matrix with a series of matrix values.
@@ -548,7 +548,7 @@ ERROR vecMultiply(VectorMatrix *Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE She
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 MultiplyMatrix: Combines a source matrix with a target.
@@ -589,7 +589,7 @@ ERROR vecMultiplyMatrix(VectorMatrix *Target, VectorMatrix *Source)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ParseTransform: Parse an SVG transformation string and apply the values to a matrix.
@@ -727,7 +727,7 @@ ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ReadPainter: Parses a painter string into its colour, gradient and image values.
@@ -926,7 +926,7 @@ next:
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ResetMatrix: Resets a transformation matrix to its default state.
@@ -960,7 +960,7 @@ ERROR vecResetMatrix(VectorMatrix *Matrix)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 RewindPath: Resets the vertex seek position to zero.
@@ -980,7 +980,7 @@ void vecRewindPath(SimpleVector *Vector)
    if (Vector) Vector->mPath.rewind(0);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 Rotate: Applies a rotation transformation to a matrix.
@@ -1029,7 +1029,7 @@ ERROR vecRotate(VectorMatrix *Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE Cente
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 Scale: Scale the size of the vector by (x,y)
@@ -1073,7 +1073,7 @@ ERROR vecScale(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 Skew: Skews the matrix along the horizontal and/or vertical axis.
@@ -1123,7 +1123,7 @@ ERROR vecSkew(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 Smooth3: Alter a path by setting a smooth3 command at the current vertex position.
@@ -1146,7 +1146,7 @@ void vecSmooth3(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
    Vector->mPath.curve3(X, Y);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 Smooth4: Alter a path by setting a smooth4 command at the current vertex position.
@@ -1172,7 +1172,7 @@ void vecSmooth4(SimpleVector *Vector, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUB
    Vector->mPath.curve4(CtrlX, CtrlY, X, Y);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 Translate: Translates the vector by (X,Y).
@@ -1205,7 +1205,7 @@ ERROR vecTranslate(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 TranslatePath: Translates a path by (x,y)

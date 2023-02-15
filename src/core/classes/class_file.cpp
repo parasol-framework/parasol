@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -107,7 +107,7 @@ static ERROR GET_ResolvedPath(extFile *, CSTRING *);
 
 static ERROR set_permissions(extFile *, LONG);
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Activate: Opens the file.  Performed automatically if NEW, READ or WRITE flags were specified on initialisation.
 -END-
@@ -242,7 +242,7 @@ static ERROR FILE_Activate(extFile *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 BufferContent: Reads all file content into a local memory buffer.
@@ -539,7 +539,7 @@ static ERROR FILE_Free(extFile *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Init: Initialises a file.
@@ -773,7 +773,7 @@ retrydir:
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Move: Moves a file to a new location.
@@ -885,7 +885,7 @@ static ERROR FILE_NewObject(extFile *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Next: Retrieve meta information describing the next indexed file in the folder list.
@@ -950,7 +950,7 @@ static ERROR FILE_NextFile(extFile *Self, struct flNext *Args)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Query: Read a file's meta information from source.
 -END-
@@ -965,7 +965,7 @@ static ERROR FILE_Query(extFile *Self, APTR Void)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Read: Reads data from a file.
@@ -1061,7 +1061,7 @@ static ERROR FILE_Read(extFile *Self, struct acRead *Args)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 ReadLine: Reads the next line from the file.
@@ -1156,7 +1156,7 @@ static ERROR FILE_ReadLine(extFile *Self, struct flReadLine *Args)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Rename: Changes the name of a file.
 -END-
@@ -1254,7 +1254,7 @@ static ERROR FILE_Rename(extFile *Self, struct acRename *Args)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Reset: If the file represents a folder, the file list index is reset by this action.
 -END-
@@ -1269,7 +1269,7 @@ static ERROR FILE_Reset(extFile *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Seek: Seeks to a new read/write position within a file.
 -END-
@@ -1318,7 +1318,7 @@ static ERROR FILE_Seek(extFile *Self, struct acSeek *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SetDate: Sets the date on a file.
@@ -1409,7 +1409,7 @@ static ERROR FILE_SetDate(extFile *Self, struct flSetDate *Args)
    #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 StartStream: Starts streaming data from a file source.
@@ -1460,7 +1460,7 @@ static ERROR FILE_StartStream(extFile *Self, struct flStartStream *Args)
    return ERR_NoSupport;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 StopStream: Stops streaming data from a file source.
@@ -1480,7 +1480,7 @@ static ERROR FILE_StopStream(extFile *Self, APTR Void)
    return ERR_NoSupport;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Watch: Monitors files and folders for file system events.
@@ -1579,7 +1579,7 @@ static ERROR FILE_Watch(extFile *Self, struct flWatch *Args)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Write: Writes data to a file.
@@ -1695,7 +1695,7 @@ static ERROR FILE_Write(extFile *Self, struct acWrite *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Buffer: Points to the internal data buffer if the file content is held in memory.
@@ -1712,7 +1712,7 @@ static ERROR GET_Buffer(extFile *Self, APTR *Value, LONG *Elements)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Created: The creation date stamp of the file.
@@ -1787,7 +1787,7 @@ static ERROR GET_Created(extFile *Self, DateTime **Value)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Date: The 'last modified' date stamp on the file.
 
@@ -1916,7 +1916,7 @@ ERROR SET_Date(extFile *Self, DateTime *Date)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Flags: File flags and options.
@@ -2309,7 +2309,7 @@ static ERROR SET_Path(extFile *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Permissions: Manages the permissions of a file.
 Lookup: PERMIT
@@ -2463,7 +2463,7 @@ static ERROR set_permissions(extFile *Self, LONG Permissions)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Position: The current read/write byte position in a file.
 
@@ -2485,7 +2485,7 @@ static ERROR SET_Position(extFile *Self, LARGE Value)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 ResolvedPath: Returns a resolved copy of the Path string.
 
@@ -2514,7 +2514,7 @@ static ERROR GET_ResolvedPath(extFile *Self, CSTRING *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Size: The byte size of a file.
 
@@ -2653,7 +2653,7 @@ static ERROR SET_Size(extFile *Self, LARGE Size)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Static: Set to TRUE if a file object should be static.
@@ -2737,7 +2737,7 @@ static ERROR GET_TimeStamp(extFile *Self, LARGE *Value)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 User: Retrieve or change the user ID of a file.
 

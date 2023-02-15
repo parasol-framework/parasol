@@ -35,7 +35,7 @@ void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes)
 }
 #endif
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Surface locking routines.  These should only be called on occasions where you need to use the CPU to access graphics
 ** memory.  These functions are internal, if the user wants to lock a bitmap surface then the Lock() action must be
 ** called on the bitmap.
@@ -244,7 +244,7 @@ ERROR get_surface_abs(OBJECTID SurfaceID, LONG *AbsX, LONG *AbsY, LONG *Width, L
    else return ERR_AccessMemory;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Redraw everything in RegionB that does not intersect with RegionA.
 */
 
@@ -896,7 +896,7 @@ void process_surface_callbacks(extSurface *Self, extBitmap *Bitmap)
    Bitmap->Opacity = 255;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** This routine will modify a clip region to match the visible area, as governed by parent surfaces within the same
 ** bitmap space (if MatchBitmap is TRUE).  It also scans the whole parent tree to ensure that all parents are visible,
 ** returning TRUE or FALSE accordingly.  If the region is completely obscured regardless of visibility settings, -1 is
@@ -1038,7 +1038,7 @@ LONG find_parent_list(SurfaceList *list, LONG Total, extSurface *Self)
    return -1;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 AccessList: Private. Grants access to the internal SurfaceList array.
@@ -1068,7 +1068,7 @@ SurfaceControl * gfxAccessList(LONG Flags)
    return tlSurfaceList;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 CheckIfChild: Checks if a surface is a child of another particular surface.
@@ -1288,7 +1288,7 @@ ERROR gfxExposeSurface(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Heig
    return _expose_surface(SurfaceID, list, index, total, X, Y, Width, Height, Flags);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetSurfaceCoords: Returns the dimensions of a surface.
@@ -1353,7 +1353,7 @@ ERROR gfxGetSurfaceCoords(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG
    else return log.warning(ERR_AccessMemory);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetSurfaceFlags: Retrieves the Flags field from a surface.
@@ -1402,7 +1402,7 @@ ERROR gfxGetSurfaceFlags(OBJECTID SurfaceID, LONG *Flags)
    else return log.warning(ERR_AccessMemory);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetSurfaceInfo: Retrieves display information for any surface object without having to access it directly.
@@ -1474,7 +1474,7 @@ ERROR gfxGetSurfaceInfo(OBJECTID SurfaceID, SURFACEINFO **Info)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetUserFocus: Returns the ID of the surface that currently has the user's focus.
@@ -1498,7 +1498,7 @@ OBJECTID gfxGetUserFocus(void)
    else return NULL;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetVisibleArea: Returns the visible region of a surface.
@@ -1572,7 +1572,7 @@ ERROR gfxGetVisibleArea(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG *
    else return log.warning(ERR_AccessMemory);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -INTERNAL-
 RedrawSurface: Redraws all of the content in a surface object.
@@ -2018,7 +2018,7 @@ void _redraw_surface_do(extSurface *Self, SurfaceList *list, LONG Total, LONG In
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SetModalSurface: Enables a modal surface for the current task.
@@ -2107,7 +2107,7 @@ OBJECTID gfxSetModalSurface(OBJECTID SurfaceID)
    return old_modal;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 LockBitmap: Returns a bitmap that represents the video area covered by the surface object.
@@ -2284,7 +2284,7 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LONG *Info)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ReleaseList: Private. Releases access to the internal surfacelist array.
@@ -2309,7 +2309,7 @@ void gfxReleaseList(LONG Flags)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 UnlockBitmap: Unlocks any earlier call to gfxLockBitmap().
@@ -2333,7 +2333,7 @@ ERROR gfxUnlockBitmap(OBJECTID SurfaceID, extBitmap *Bitmap)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 WindowHook: Adds a function hook for receiving window messages from a host desktop.

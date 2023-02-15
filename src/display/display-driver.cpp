@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -488,7 +488,7 @@ int CatchXIOError(Display *XDisplay)
    return 0;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Returns TRUE if we are the window manager for the display.
 */
 
@@ -1251,7 +1251,7 @@ static ERROR CMDExpunge(void)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Use this function to allocate simple 2D OpenGL textures.  It configures the texture so that it is suitable for basic
 ** rendering operations.  Note that the texture will still be bound on returning.
 */
@@ -1285,7 +1285,7 @@ GLenum alloc_texture(LONG Width, LONG Height, GLuint *TextureID)
 #endif
 
 #ifdef _GLES_
-/*****************************************************************************
+/*********************************************************************************************************************
 ** This function is designed so that it can be re-called in case the OpenGL display needs to be reset.  THIS FUNCTION
 ** REQUIRES THAT THE GRAPHICS MUTEX IS LOCKED.
 **
@@ -1427,7 +1427,7 @@ void refresh_display_from_egl(extDisplay *Self)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Free EGL resources.  This does not relate to hiding or switch off of the display - in fact the display can remain
 ** active as it normally does.  For this reason, we just focus on resource deallocation.
 */

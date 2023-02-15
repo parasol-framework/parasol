@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -38,7 +38,7 @@ Font: Provides font management functionality and hosts the Font class.
 #include <wchar.h>
 #include <parasol/strings.hpp>
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** This table determines what ASCII characters are treated as white-space for word-wrapping purposes.  You'll need to
 ** refer to an ASCII table to see what is going on here.
 */
@@ -313,7 +313,7 @@ static ERROR CMDExpunge(void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 CharWidth: Returns the width of a character.
@@ -363,7 +363,7 @@ static LONG fntCharWidth(extFont *Font, ULONG Char, ULONG KChar, LONG *Kerning)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetList: Returns a list of all available system fonts.
@@ -451,7 +451,7 @@ static ERROR fntGetList(FontList **Result)
    else return ERR_NoData;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 StringSize: Calculates the exact dimensions of a font string, giving respect to word wrapping.
@@ -603,7 +603,7 @@ static void fntStringSize(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, 
    if (Width) *Width = longest;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 FreetypeHandle: Returns a handle to the FreeType library.
@@ -623,7 +623,7 @@ static APTR fntFreetypeHandle(void)
    return glFTLibrary;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 StringWidth: Returns the pixel width of any given string in relation to a font's settings.
@@ -701,7 +701,7 @@ static LONG fntStringWidth(extFont *Font, CSTRING String, LONG Chars)
    else return 0;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ConvertCoords: Converts pixel coordinates into equivalent column and row positions in font strings.
@@ -824,7 +824,7 @@ static ERROR fntConvertCoords(extFont *Font, CSTRING String, LONG X, LONG Y, LON
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SetDefaultSize: Sets the default font size for the application.
@@ -857,7 +857,7 @@ static DOUBLE fntSetDefaultSize(DOUBLE Size)
    return previous;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 InstallFont: Installs a new font.
@@ -925,7 +925,7 @@ static ERROR fntInstallFont(CSTRING Files)
 }
 
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 RemoveFont: Removes an installed font from the system.
@@ -997,7 +997,7 @@ static ERROR fntRemoveFont(CSTRING Name)
    return log.warning(ERR_Search);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SelectFont: Searches for a 'best fitting' font file based on select criteria.
@@ -1225,7 +1225,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
    return ERR_Search;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -INTERNAL-
 RefreshFonts: Refreshes the system font list with up-to-date font information.

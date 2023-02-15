@@ -247,7 +247,7 @@ static LONG hm_get_hashed(KeyStore *Store, ULONG Key)
    return -1;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 VarCopy: Copies all keys in a KeyStore source to a destination KeyStore.
@@ -325,7 +325,7 @@ ERROR VarCopy(KeyStore *Source, KeyStore *Dest)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 VarGet: Retrieve the value of a key, by name.
@@ -378,7 +378,7 @@ ERROR VarGet(KeyStore *Store, CSTRING Name, APTR *Data, LONG *Size)
    return ERR_DoesNotExist;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 VarGetString: Retrieve a key value from a key store.
@@ -420,7 +420,7 @@ CSTRING VarGetString(KeyStore *Store, CSTRING Key)
    return NULL;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 VarIterate: Iteratively scan the key-store for all key values.
@@ -506,7 +506,7 @@ ERROR VarIterate(KeyStore *Store, CSTRING Index, CSTRING *Key, APTR *Data, LONG 
    return ERR_Finished;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 VarLock: Acquire a lock on a key store.
@@ -536,7 +536,7 @@ ERROR VarLock(KeyStore *Store, LONG Timeout)
    return LockMutex(Store->Mutex, Timeout);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 VarNew: Creates a new resource for storing key values.
@@ -601,7 +601,7 @@ KeyStore * VarNew(LONG InitialSize, LONG Flags)
    return NULL;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 VarSetString: Set a key-value string pair in a key store.
@@ -672,7 +672,7 @@ ERROR VarSetString(KeyStore *Store, CSTRING Key, CSTRING Value)
    return ERR_AllocMemory;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 VarSet: Set a key-value pair with raw data.
@@ -745,7 +745,7 @@ APTR VarSet(KeyStore *Store, CSTRING Key, APTR Data, LONG Size)
    return NULL;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 VarSetSized: Create a key-value pair with an empty pre-sized data buffer.
@@ -810,7 +810,7 @@ ERROR VarSetSized(KeyStore *Store, CSTRING Key, LONG Size, APTR *Data, LONG *Dat
    return ERR_AllocMemory;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 VarUnlock: Release a lock acquired against a key store.
@@ -828,7 +828,7 @@ void VarUnlock(KeyStore *Store)
    UnlockMutex(Store->Mutex);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 KeyGet: Retrieve a raw data value from a KeyStore.
@@ -872,7 +872,7 @@ ERROR KeyGet(KeyStore *Store, ULONG Key, APTR *Data, LONG *Size)
    return ERR_DoesNotExist;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 KeyIterate: Iteratively scan the key-store for all key values.
@@ -956,7 +956,7 @@ ERROR KeyIterate(KeyStore *Store, ULONG Index, ULONG *Key, APTR *Data, LONG *Siz
    return ERR_Finished;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 KeySet: Set a key-value pair with raw data.

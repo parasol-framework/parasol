@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -CLASS-
 Document: Provides document display and editing facilities.
@@ -127,7 +127,7 @@ static void notify_redimension_surface(OBJECTPTR Object, ACTIONID ActionID, ERRO
    AdjustLogLevel(-2);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Activate: Opens the current document selection.
@@ -151,7 +151,7 @@ static ERROR DOCUMENT_Activate(extDocument *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 AddListener: Adds a listener to a document trigger for receiving special callbacks.
@@ -207,7 +207,7 @@ static ERROR DOCUMENT_AddListener(extDocument *Self, struct docAddListener *Args
    else return ERR_AllocMemory;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 ApplyFontStyle: Applies DocStyle information to a font.
@@ -251,7 +251,7 @@ static ERROR DOCUMENT_ApplyFontStyle(extDocument *Self, struct docApplyFontStyle
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 CallFunction: Executes any registered function in the currently open document.
@@ -293,7 +293,7 @@ static ERROR DOCUMENT_CallFunction(extDocument *Self, struct docCallFunction *Ar
    else return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Clear: Clears all content from the object.
@@ -314,7 +314,7 @@ static ERROR DOCUMENT_Clear(extDocument *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Clipboard: Full support for clipboard activity is provided through this action.
@@ -410,7 +410,7 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
    else return log.warning(ERR_Args);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 DataFeed: Document data can be sent and consumed via feeds.
@@ -473,7 +473,7 @@ static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Disable: Disables object functionality.
 -END-
@@ -497,7 +497,7 @@ static ERROR DOCUMENT_Draw(extDocument *Self, APTR Void)
    else return ERR_FieldNotSet;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Edit: Activates a user editing section within a document.
@@ -539,7 +539,7 @@ static ERROR DOCUMENT_Edit(extDocument *Self, struct docEdit *Args)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Enable: Enables object functionality.
 -END-
@@ -551,7 +551,7 @@ static ERROR DOCUMENT_Enable(extDocument *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 FeedParser: Private. Inserts content into a document during the parsing stage.
@@ -582,7 +582,7 @@ static ERROR DOCUMENT_FeedParser(extDocument *Self, struct docFeedParser *Args)
    return ERR_NoSupport;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 FindIndex: Searches the document stream for an index, returning the start and end points if found.
@@ -656,7 +656,7 @@ static ERROR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
    return ERR_Search;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Focus: Sets the user focus on the document page.
 -END-
@@ -719,7 +719,7 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 GetVar: Script arguments can be retrieved through this action.
 -END-
@@ -878,7 +878,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 HideIndex: Hides the content held within a named index.
@@ -971,7 +971,7 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 InsertXML: Inserts new content into a loaded document (XML format).
@@ -1049,7 +1049,7 @@ static ERROR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 InsertText: Inserts new content into a loaded document (raw text format).
@@ -1166,7 +1166,7 @@ static ERROR DOCUMENT_NewOwner(extDocument *Self, struct acNewOwner *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 ReadContent: Returns selected content from the document, either as plain text or original byte code.
@@ -1242,7 +1242,7 @@ static ERROR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args
    else return log.warning(ERR_Args);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Refresh: Reloads the document data from the original source location.
 -END-
@@ -1311,7 +1311,7 @@ static ERROR DOCUMENT_Refresh(extDocument *Self, APTR Void)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 RemoveContent: Removes content from a loaded document.
@@ -1348,7 +1348,7 @@ static ERROR DOCUMENT_RemoveContent(extDocument *Self, struct docRemoveContent *
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 RemoveListener: Removes a previously configured listener from the document.
@@ -1399,7 +1399,7 @@ static ERROR DOCUMENT_RemoveListener(extDocument *Self, struct docRemoveListener
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 SaveToObject: Use this action to save edited information as an XML document file.
 -END-
@@ -1422,7 +1422,7 @@ static ERROR DOCUMENT_SaveToObject(extDocument *Self, struct acSaveToObject *Arg
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 ScrollToPoint: Scrolls a document object's graphical content.
 -END-
@@ -1450,7 +1450,7 @@ static ERROR DOCUMENT_ScrollToPoint(extDocument *Self, struct acScrollToPoint *A
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SelectLink: Selects links in the document.
@@ -1509,7 +1509,7 @@ static ERROR DOCUMENT_SelectLink(extDocument *Self, struct docSelectLink *Args)
    else return log.warning(ERR_OutOfRange);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 SetVar: Passes variable parameters to loaded documents.
 -END-
@@ -1529,7 +1529,7 @@ static ERROR DOCUMENT_SetVar(extDocument *Self, struct acSetVar *Args)
    return VarSetString(Self->Vars, Args->Field, Args->Value);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 ShowIndex: Shows the content held within a named index.

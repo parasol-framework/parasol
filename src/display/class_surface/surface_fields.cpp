@@ -76,7 +76,7 @@ static ERROR SET_Cursor(extSurface *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Display: Refers to the @Display object that is managing the surface's graphics.
@@ -115,7 +115,7 @@ static ERROR SET_Drag(extSurface *Self, OBJECTID Value)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 DragStatus: Indicates the draggable state when dragging is enabled.
@@ -145,7 +145,7 @@ static ERROR SET_Flags(extSurface *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Modal: Sets the surface as modal (prevents user interaction with other surfaces).
 
@@ -173,7 +173,7 @@ static ERROR SET_Modal(extSurface *Self, LONG Modal)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Movement: Limits the movement of a surface object to vertical or horizontal shifts.
 Lookup: MOVE
@@ -247,7 +247,7 @@ static ERROR SET_Opacity(extSurface *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Parent: The parent for a surface is defined here.
 
@@ -298,7 +298,7 @@ static ERROR SET_Parent(extSurface *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 PopOver: Keeps a surface in front of another surface in the Z order.
 
@@ -339,7 +339,7 @@ static ERROR SET_PopOver(extSurface *Self, OBJECTID Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 PrecopyRegion: Defines the regions to be copied when precopy is enabled.
 
@@ -511,7 +511,7 @@ static ERROR SET_RevertFocus(extSurface *Self, OBJECTID Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 RootLayer: Private
@@ -525,7 +525,7 @@ static ERROR SET_RootLayer(extSurface *Self, OBJECTID Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 UserFocus: Refers to the surface object that has the current focus.
@@ -547,7 +547,7 @@ static ERROR GET_UserFocus(extSurface *Self, OBJECTID *Value)
    else return log.warning(ERR_AccessMemory);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Visible: Indicates the visibility of a surface object.
@@ -576,7 +576,7 @@ static ERROR SET_Visible(extSurface *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 WindowType: Indicator for surfaces that represent themselves as a desktop window.
@@ -648,7 +648,7 @@ static ERROR SET_WindowType(extSurface *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 WindowHandle: Refers to a surface object's window handle, if relevant.

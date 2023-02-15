@@ -443,7 +443,7 @@ static bool test_statement(CSTRING TestString, CSTRING CompareString, LONG Condi
    return result;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 This function can be used for performing simple calculations on numeric values and strings.  It can return a result in
 either a numeric format or in a string buffer if the calculation involves non-numeric characters.  Here are some
@@ -643,7 +643,7 @@ ERROR calc(CSTRING String, DOUBLE *Result, STRING Output, LONG OutputSize)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 This function is used to translate strings that make object and field references using the standard referencing format.
 References are made to objects by enclosing statements within square brackets.  As a result of calling this function,
@@ -1133,7 +1133,7 @@ static BYTE check_tag_conditions(extDocument *Self, XMLTag *Tag)
    return satisfied;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Processes an XML tag and passes it to parse_tag().
 **
 ** IXF_HOLDSTYLE:  If set, the font style will not be cleared.
@@ -6127,7 +6127,7 @@ static LONG add_drawsegment(extDocument *Self, LONG Offset, LONG Stop, layout *L
    return segment;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** convert_xml_args()
 **
 **   Attrib: Pointer to an array of XMLAttribs that are to be analysed for argument references.
@@ -6645,7 +6645,7 @@ repeat:
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Insert: The string to be inserted.
 ** Buffer: The start of the buffer region.
 ** Size:   The complete size of the target buffer.
@@ -8047,7 +8047,7 @@ static void calc_scroll(extDocument *Self)
    log.traceBranch("PageHeight: %d/%d, PageWidth: %d/%d, XPos: %d, YPos: %d", Self->PageHeight, Self->AreaHeight, Self->CalcWidth, Self->AreaWidth, Self->XPosition, Self->YPosition);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Resolves function references.
 */
 

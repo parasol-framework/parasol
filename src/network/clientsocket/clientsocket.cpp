@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -74,7 +74,7 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
    Socket->InUse--;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Note that this function will prevent the task from going to sleep if it is not managed correctly.  If
 ** no data is being written to the queue, the program will not be able to sleep until the client stops listening
 ** to the write queue.
@@ -247,7 +247,7 @@ static ERROR CLIENTSOCKET_Init(extClientSocket *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Read: Read incoming data from a client socket.
@@ -274,7 +274,7 @@ static ERROR CLIENTSOCKET_Read(extClientSocket *Self, struct acRead *Args)
    return RECEIVE((extNetSocket *)(Self->Client->NetSocket), Self->SocketHandle, Args->Buffer, Args->Length, 0, &Args->Result);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 ReadClientMsg: Read a message from the socket.
@@ -419,7 +419,7 @@ static ERROR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct csReadClie
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Write: Writes data to the socket.
@@ -459,7 +459,7 @@ static ERROR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 WriteClientMsg: Writes a message to the socket.

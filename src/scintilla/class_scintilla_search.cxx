@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -53,7 +53,7 @@ ScintillaSearch: Provides search functionality for use on Scintilla objects.
 
 #define SCICALL     ((extScintilla *)(Self->Scintilla))->API->SendScintilla
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Find: Searches for a specific text string.
@@ -188,7 +188,7 @@ static ERROR SEARCH_Init(objScintillaSearch *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Next: Continues a text search.
@@ -296,7 +296,7 @@ static ERROR SEARCH_Next(objScintillaSearch *Self, struct ssNext *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Prev: Continues a text search in reverse.
@@ -331,7 +331,7 @@ static ERROR SEARCH_Prev(objScintillaSearch *Self, struct ssPrev *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Flags: Optional flags.

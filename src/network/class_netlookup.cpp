@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -139,7 +139,7 @@ static void notify_free_callback(OBJECTPTR Object, ACTIONID ActionID, ERROR Resu
    ((extNetLookup *)CurrentContext())->Callback.Type = CALL_NONE;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 BlockingResolveAddress: Resolves an IP address to a host name.
@@ -186,7 +186,7 @@ static ERROR NETLOOKUP_BlockingResolveAddress(extNetLookup *Self, struct nlBlock
    else return log.warning(ERR_Args);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 BlockingResolveName: Resolves a domain name to an official host name and a list of IP addresses.
@@ -229,7 +229,7 @@ static ERROR NETLOOKUP_BlockingResolveName(extNetLookup *Self, struct nlResolveN
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Free: Terminate the object.
@@ -282,7 +282,7 @@ static ERROR NETLOOKUP_NewObject(extNetLookup *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 ResolveAddress: Resolves an IP address to a host name.
@@ -349,7 +349,7 @@ static ERROR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nlResolveAddres
    else return log.warning(ERR_Failed);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 ResolveName: Resolves a domain name to an official host name and a list of IP addresses.

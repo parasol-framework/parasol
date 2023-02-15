@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 To create a struct definition:                    MAKESTRUCT('XMLTag', 'Definition')
 To create a struct from a registered definition:  xmltag = struct.new('XMLTag')
@@ -256,7 +256,7 @@ struct fstruct * push_struct_def(lua_State *Lua, APTR Address, structentry *Stru
    return NULL;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Lua Usage: structdef = MAKESTRUCT(Name, Sequence)
 **
 ** This function makes a structure definition which can be passed to struct.new()
@@ -521,7 +521,7 @@ static LONG find_field(struct fstruct *Struct, CSTRING FieldName, CSTRING *Struc
    return FALSE;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Usage: struct = struct.size(Name)
 **
 ** Returns the size of a named structure definition
@@ -543,7 +543,7 @@ static int struct_size(lua_State *Lua)
    return 0;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Usage: struct = struct.new(Name)
 **
 ** Creates a new structure.  The name of the structure must have been previously registered, either through an include
@@ -806,7 +806,7 @@ static int struct_set(lua_State *Lua)
    return 0;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Garbage collecter.
 */
 

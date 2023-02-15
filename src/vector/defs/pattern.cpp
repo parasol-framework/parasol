@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 Please note that this is not an extension of the Vector class.  It is used for the purposes of pattern definitions only.
 
@@ -118,7 +118,7 @@ static ERROR PATTERN_NewObject(extVectorPattern *Self, APTR Void)
    else return ERR_NewObject;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 ContentUnits: Private. Not yet implemented.
@@ -164,7 +164,7 @@ static ERROR PATTERN_SET_Height(extVectorPattern *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Inherit: Inherit attributes from a VectorPattern referenced here.
@@ -187,7 +187,7 @@ static ERROR PATTERN_SET_Inherit(extVectorPattern *Self, extVectorPattern *Value
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Matrices: A linked list of transform matrices that have been applied to the pattern.
 
@@ -239,7 +239,7 @@ static ERROR VECTORPATTERN_SET_Matrices(extVectorPattern *Self, VectorMatrix *Va
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Opacity: The opacity of the pattern.
@@ -257,7 +257,7 @@ static ERROR PATTERN_SET_Opacity(extVectorPattern *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Scene: Refers to the internal @VectorScene that will contain the rendered pattern.
@@ -307,7 +307,7 @@ static ERROR PATTERN_SET_Transform(extVectorPattern *Self, CSTRING Commands)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Units:  Defines the coordinate system for fields X, Y, Width and Height.
@@ -330,7 +330,7 @@ static ERROR PATTERN_GET_Viewport(extVectorPattern *Self, extVectorViewport **Va
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Width: Width of the pattern tile.
@@ -367,7 +367,7 @@ static ERROR PATTERN_SET_Width(extVectorPattern *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 X: X coordinate for the pattern.
@@ -402,7 +402,7 @@ static ERROR PATTERN_SET_X(extVectorPattern *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Y: Y coordinate for the pattern.

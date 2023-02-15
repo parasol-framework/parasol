@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -CLASS-
 VectorEllipse: Extends the Vector class with support for elliptical path generation.
@@ -67,7 +67,7 @@ static void generate_ellipse(extVectorEllipse *Vector)
    Vector->BY2 = cy + ry;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Move: Moves the center of the ellipse by a relative distance.
 
@@ -83,7 +83,7 @@ static ERROR ELLIPSE_Move(extVectorEllipse *Self, struct acMove *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 MoveToPoint: Moves the center of the ellipse to a new position.
 
@@ -109,7 +109,7 @@ static ERROR ELLIPSE_NewObject(extVectorEllipse *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Dimensions: Dimension flags define whether individual dimension fields contain fixed or relative values.
@@ -142,7 +142,7 @@ static ERROR ELLIPSE_SET_Dimensions(extVectorEllipse *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Height: The height (vertical diameter) of the ellipse.
 
@@ -170,7 +170,7 @@ static ERROR ELLIPSE_SET_Height(extVectorEllipse *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 CenterX: The horizontal center of the ellipse.  Expressed as a fixed or relative coordinate.
 
@@ -206,7 +206,7 @@ static ERROR ELLIPSE_SET_CenterX(extVectorEllipse *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 CenterY: The vertical center of the ellipse.  Expressed as a fixed or relative coordinate.
 
@@ -241,7 +241,7 @@ static ERROR ELLIPSE_SET_CenterY(extVectorEllipse *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Radius: The radius of the ellipse.  Expressed as a fixed or relative coordinate.
 
@@ -277,7 +277,7 @@ static ERROR ELLIPSE_SET_Radius(extVectorEllipse *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 RadiusX: The horizontal radius of the ellipse.
 
@@ -312,7 +312,7 @@ static ERROR ELLIPSE_SET_RadiusX(extVectorEllipse *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 RadiusY: The vertical radius of the ellipse.
 
@@ -347,7 +347,7 @@ static ERROR ELLIPSE_SET_RadiusY(extVectorEllipse *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Vertices: Limits the total number of vertices generated for the ellipse.
 
@@ -375,7 +375,7 @@ static ERROR ELLIPSE_SET_Vertices(extVectorEllipse *Self, LONG Value)
    else return ERR_InvalidValue;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Width: The width (horizontal diameter) of the ellipse.
 

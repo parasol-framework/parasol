@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol Framework is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -65,7 +65,7 @@ Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target)
    return 0;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 FindField: Finds field descriptors for any class, by ID.
@@ -109,7 +109,7 @@ Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target) // Read-on
    else*/ return lookup_id(Object, FieldID, Target);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetField: Retrieves single field values from objects.
@@ -189,7 +189,7 @@ ERROR GetField(OBJECTPTR Object, FIELD FieldID, APTR Result)
    return ERR_UnsupportedField;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetFieldArray: Retrieves array field values from objects.
@@ -250,7 +250,7 @@ ERROR GetFieldArray(OBJECTPTR Object, FIELD FieldID, APTR *Result, LONG *Element
    return ERR_UnsupportedField;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetFields: Retrieves multiple field values in a single function call.
@@ -345,7 +345,7 @@ ERROR GetFields(OBJECTPTR Object, ...)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetFieldVariable: Retrieves field values by converting them into strings.
