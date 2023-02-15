@@ -678,7 +678,7 @@ cstr: A string containing the object name is returned.  If the object has no nam
 
 CSTRING GetName(OBJECTPTR Object)
 {
-   if ((Object) and (Object->Stats)) return Object->Stats->Name;
+   if (Object) return Object->Name;
    else return "";
 }
 
@@ -1406,15 +1406,15 @@ ERROR SetName(OBJECTPTR Object, CSTRING NewName)
 
    // Remove any existing name first.
 
-   if (Object->Stats->Name[0]) remove_object_hash(Object);
+   if (Object->Name[0]) remove_object_hash(Object);
 
-   for (i=0; (i < (MAX_NAME_LEN-1)) and (NewName[i]); i++) Object->Stats->Name[i] = sn_lookup[UBYTE(NewName[i])];
-   Object->Stats->Name[i] = 0;
+   for (i=0; (i < (MAX_NAME_LEN-1)) and (NewName[i]); i++) Object->Name[i] = sn_lookup[UBYTE(NewName[i])];
+   Object->Name[i] = 0;
 
-   if (Object->Stats->Name[0]) {
+   if (Object->Name[0]) {
       OBJECTPTR *list;
       LONG list_size;
-      if (!VarGet(glObjectLookup, Object->Stats->Name, (APTR *)&list, &list_size)) {
+      if (!VarGet(glObjectLookup, Object->Name, (APTR *)&list, &list_size)) {
          list_size = list_size / sizeof(OBJECTPTR);
          OBJECTPTR new_list[list_size + 1];
          LONG j = 0;
@@ -1423,9 +1423,9 @@ ERROR SetName(OBJECTPTR Object, CSTRING NewName)
          }
          new_list[j++] = Object;
 
-         VarSet(glObjectLookup, Object->Stats->Name, &new_list, sizeof(OBJECTPTR) * j);
+         VarSet(glObjectLookup, Object->Name, &new_list, sizeof(OBJECTPTR) * j);
       }
-      else VarSet(glObjectLookup, Object->Stats->Name, &Object, sizeof(OBJECTPTR));
+      else VarSet(glObjectLookup, Object->Name, &Object, sizeof(OBJECTPTR));
    }
 
    return ERR_Okay;
@@ -1869,7 +1869,7 @@ void remove_object_hash(OBJECTPTR Object)
 
    OBJECTPTR *list;
    LONG list_size;
-   if (!VarGet(glObjectLookup, Object->Stats->Name, (APTR *)&list, &list_size)) {
+   if (!VarGet(glObjectLookup, Object->Name, (APTR *)&list, &list_size)) {
       list_size = list_size / sizeof(OBJECTPTR);
 
       LONG count_others = 0;
@@ -1881,8 +1881,8 @@ void remove_object_hash(OBJECTPTR Object)
       }
 
       if (!count_others) { // If no other objects exist for this key, remove the key.
-         VarSet(glObjectLookup, Object->Stats->Name, NULL, 0);
+         VarSet(glObjectLookup, Object->Name, NULL, 0);
       }
    }
-   else log.trace("No hash entry for object '%s'", Object->Stats->Name);
+   else log.trace("No hash entry for object '%s'", Object->Name);
 }

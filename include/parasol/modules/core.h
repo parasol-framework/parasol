@@ -2343,12 +2343,14 @@ struct BaseClass { // Must be 64-bit aligned
    OBJECTID UID;                // Unique object identifier
    OBJECTID OwnerID;            // The owner of this object
    NF       Flags;              // Object flags
+   LONG     NotifyFlags[2];     // Action subscription flags - space for 64 actions max
    volatile LONG  ThreadID;     // Managed by locking functions
    #ifdef _WIN32
       WINHANDLE ThreadMsg;      // Pipe for sending messages to the owner thread.
    #else
       LONG ThreadMsg;
    #endif
+   char Name[MAX_NAME_LEN];     // The name of the object (optional)
    UBYTE ThreadPending;         // ActionThread() increments this.
    volatile BYTE Queue;         // Managed by locking functions
    volatile BYTE SleepQueue;    //

@@ -182,11 +182,6 @@ enum {
 
 //********************************************************************************************************************
 
-struct Stats {
-   LONG NotifyFlags[2];     // Action subscription flags - space for 64 actions max
-   char Name[MAX_NAME_LEN]; // The name of the object (optional)
-};
-
 struct ActionSubscription {
    OBJECTPTR Context;
    void (*Callback)(OBJECTPTR, ACTIONID, ERROR, APTR);

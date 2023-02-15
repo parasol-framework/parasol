@@ -157,8 +157,6 @@ static MethodArray glMetaMethods[TOTAL_METAMETHODS+2] = {
    { 0, 0, 0, 0, 0 }
 };
 
-struct Stats glMetaClass_Stats = { .NotifyFlags = { 0, 0 }, .Name = { 'M','e','t','a','C','l','a','s','s' } };
-
 extMetaClass glMetaClass;
 
 //********************************************************************************************************************
@@ -168,7 +166,6 @@ void init_metaclass(void)
    ClearMemory(&glMetaClass, sizeof(glMetaClass));
 
    glMetaClass.BaseClass::Class   = &glMetaClass;
-   glMetaClass.BaseClass::Stats   = &glMetaClass_Stats;
    glMetaClass.BaseClass::ClassID = ID_METACLASS;
    glMetaClass.BaseClass::SubID   = ID_METACLASS;
    glMetaClass.BaseClass::UID     = 123;
@@ -1229,7 +1226,7 @@ static ERROR OBJECT_SetOwner(OBJECTPTR Self, OBJECTID OwnerID)
 
 static ERROR OBJECT_GetName(OBJECTPTR Self, STRING *Name)
 {
-   *Name = Self->Stats->Name;
+   *Name = Self->Name;
    return ERR_Okay;
 }
 

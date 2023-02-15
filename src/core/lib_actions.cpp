@@ -338,7 +338,7 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
    if (error & ERF_Notified) {
       error &= ~ERF_Notified;
    }
-   else if ((ActionID > 0) and (obj->Stats->NotifyFlags[ActionID>>5] & (1<<(ActionID & 31)))) {
+   else if ((ActionID > 0) and (obj->NotifyFlags[ActionID>>5] & (1<<(ActionID & 31)))) {
       std::lock_guard<std::recursive_mutex> lock(glSubLock);
 
       glSubReadOnly++;
@@ -762,7 +762,7 @@ void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR E
    if (!Object) { log.warning(ERR_NullArgs); return; }
    if ((ActionID <= 0) or (ActionID >= AC_END)) { log.warning(ERR_Args); return; }
 
-   if (!(Object->Stats->NotifyFlags[ActionID>>5] & (1<<(ActionID & 31)))) return;
+   if (!(Object->NotifyFlags[ActionID>>5] & (1<<(ActionID & 31)))) return;
 
    const std::lock_guard<std::recursive_mutex> lock(glSubLock);
    glSubReadOnly++;
@@ -778,8 +778,8 @@ void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR E
       process_delayed_subs();
    }
    else {
-      log.warning("Unstable subscription flags discovered for object #%d, action %d: %.8x %.8x", Object->UID, ActionID, Object->Stats->NotifyFlags[0], Object->Stats->NotifyFlags[1]);
-      __atomic_and_fetch(&Object->Stats->NotifyFlags[ActionID>>5], ~(1<<(ActionID & 31)), __ATOMIC_RELAXED);
+      log.warning("Unstable subscription flags discovered for object #%d, action %d: %.8x %.8x", Object->UID, ActionID, Object->NotifyFlags[0], Object->NotifyFlags[1]);
+      __atomic_and_fetch(&Object->NotifyFlags[ActionID>>5], ~(1<<(ActionID & 31)), __ATOMIC_RELAXED);
    }
 
    glSubReadOnly--;
@@ -954,7 +954,7 @@ ERROR SubscribeAction(OBJECTPTR Object, ACTIONID ActionID, FUNCTION *Callback)
       std::lock_guard<std::recursive_mutex> lock(glSubLock);
 
       glSubscriptions[Object->UID][ActionID].emplace_back(Callback->StdC.Context, Callback->StdC.Routine);
-      __atomic_or_fetch(&Object->Stats->NotifyFlags[ActionID>>5], 1<<(ActionID & 31), __ATOMIC_RELAXED);
+      __atomic_or_fetch(&Object->NotifyFlags[ActionID>>5], 1<<(ActionID & 31), __ATOMIC_RELAXED);
    }
 
    return ERR_Okay;
@@ -1006,9 +1006,9 @@ restart:
             }
 
             if (list.empty()) {
-               __atomic_and_fetch(&Object->Stats->NotifyFlags[action>>5], ~(1<<(action & 31)), __ATOMIC_RELAXED);
+               __atomic_and_fetch(&Object->NotifyFlags[action>>5], ~(1<<(action & 31)), __ATOMIC_RELAXED);
 
-               if ((!Object->Stats->NotifyFlags[0]) and (!Object->Stats->NotifyFlags[1])) {
+               if ((!Object->NotifyFlags[0]) and (!Object->NotifyFlags[1])) {
                   glSubscriptions.erase(Object->UID);
                   break;
                }
@@ -1030,9 +1030,9 @@ restart:
       }
 
       if (list.empty()) {
-         __atomic_and_fetch(&Object->Stats->NotifyFlags[ActionID>>5], ~(1<<(ActionID & 31)), __ATOMIC_RELAXED);
+         __atomic_and_fetch(&Object->NotifyFlags[ActionID>>5], ~(1<<(ActionID & 31)), __ATOMIC_RELAXED);
 
-         if ((!Object->Stats->NotifyFlags[0]) and (!Object->Stats->NotifyFlags[1])) {
+         if ((!Object->NotifyFlags[0]) and (!Object->NotifyFlags[1])) {
             glSubscriptions.erase(Object->UID);
          }
          else glSubscriptions[Object->UID].erase(ActionID);
@@ -1085,7 +1085,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
 
    if (Object->ClassID IS ID_METACLASS)   log.branch("%s, Owner: %d", Object->className(), Object->OwnerID);
    else if (Object->ClassID IS ID_MODULE) log.branch("%s, Owner: %d", ((extModule *)Object)->Name, Object->OwnerID);
-   else if (Object->Stats->Name[0])       log.branch("Name: %s, Owner: %d", Object->Stats->Name, Object->OwnerID);
+   else if (Object->Name[0])              log.branch("Name: %s, Owner: %d", Object->Name, Object->OwnerID);
    else log.branch("Owner: %d", Object->OwnerID);
 
    // If the object wants to be warned when the free process is about to be executed, it will subscribe to the
@@ -1133,7 +1133,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
       }
    }
 
-   if ((Object->Stats->NotifyFlags[0]) or (Object->Stats->NotifyFlags[1])) {
+   if ((Object->NotifyFlags[0]) or (Object->NotifyFlags[1])) {
       const std::lock_guard<std::recursive_mutex> lock(glSubLock);
       glSubscriptions.erase(Object->UID);
    }
@@ -1164,7 +1164,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
    if ((mc->Base) and (mc->Base->OpenCount > 0)) mc->Base->OpenCount--; // Child detected
    if (mc->OpenCount > 0) mc->OpenCount--;
 
-   if ((glObjectLookup) and (Object->Stats->Name[0])) { // Remove the object from the name lookup list
+   if ((glObjectLookup) and (Object->Name[0])) { // Remove the object from the name lookup list
       ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
       if (lock.granted()) remove_object_hash(Object);
    }
@@ -1174,7 +1174,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
    ClearMemory(Object, sizeof(BaseClass));
    FreeResource(Object);
 
-   return ERR_Okay|ERF_Notified;  // On returning we set the ERF_Notified flag to prevent Action() from trying to interact with the Object->Stats structure (which no longer exists after the object memory is freed).
+   return ERR_Okay|ERF_Notified; // Prevent notifications after termination.
 }
 
 /*********************************************************************************************************************
@@ -1184,8 +1184,6 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
 ERROR MGR_Init(OBJECTPTR Object, APTR Void)
 {
    parasol::Log log("Init");
-
-   if (!Object->Stats) return log.warning(ERR_NoStats);
 
    extMetaClass *cl;
    if (!(cl = Object->ExtClass)) return log.warning(ERR_LostClass);
@@ -1200,7 +1198,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
       return ERR_Okay;
    }
 
-   if (Object->Stats->Name[0]) log.branch("Name: %s, Owner: %d", Object->Stats->Name, Object->OwnerID);
+   if (Object->Name[0]) log.branch("Name: %s, Owner: %d", Object->Name, Object->OwnerID);
    else log.branch("Owner: %d", Object->OwnerID);
 
    BYTE use_subclass = FALSE;

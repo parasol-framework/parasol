@@ -93,8 +93,7 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
    MEMORYID head_id = 0;
    ERROR error = ERR_Okay;
 
-   if (!AllocMemory(mc->Size + sizeof(Stats), MEM_OBJECT|MEM_NO_LOCK|(((Flags & NF::UNTRACKED) != NF::NIL) ? MEM_UNTRACKED : 0), (APTR *)&head, &head_id)) {
-      head->Stats     = (Stats *)ResolveAddress(head, mc->Size);
+   if (!AllocMemory(mc->Size, MEM_OBJECT|MEM_NO_LOCK|(((Flags & NF::UNTRACKED) != NF::NIL) ? MEM_UNTRACKED : 0), (APTR *)&head, &head_id)) {
       head->UID       = head_id;
       head->ClassID   = mc->BaseClassID;
       if (mc->BaseClassID IS mc->SubClassID) { // Object derived from a base class
