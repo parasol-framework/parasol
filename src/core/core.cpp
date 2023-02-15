@@ -1659,7 +1659,7 @@ static ERROR load_modules(void)
       if (!AccessMemoryID(glSharedControl->ModulesMID, MEM_READ, 2000, (APTR *)&glModules)) {
          return ERR_Okay;
       }
-      else return log.warning(ERR_AccessMemoryID);
+      else return log.warning(ERR_AccessMemory);
    }
 
    {

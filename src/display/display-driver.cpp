@@ -823,7 +823,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (error IS ERR_ResourceExists) {
       if (!glDisplayInfo) {
          if (AccessMemoryID(RPM_DisplayInfo, MEM_READ_WRITE|MEM_NO_BLOCKING, 1000, &glDisplayInfo) != ERR_Okay) {
-            return log.warning(ERR_AccessMemoryID);
+            return log.warning(ERR_AccessMemory);
          }
       }
    }
@@ -837,7 +837,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (error IS ERR_ResourceExists) {
       if (!glInputEvents) {
          if (AccessMemoryID(RPM_InputEvents, MEM_READ_WRITE|MEM_NO_BLOCKING, 1000, &glInputEvents) != ERR_Okay) {
-            return log.warning(ERR_AccessMemoryID);
+            return log.warning(ERR_AccessMemory);
          }
       }
    }
@@ -854,7 +854,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       else if (error IS ERR_ResourceExists) {
          if (!glX11) {
             if (AccessMemoryID(RPM_X11, MEM_READ_WRITE, 1000, &glX11) != ERR_Okay) {
-               return log.warning(ERR_AccessMemoryID);
+               return log.warning(ERR_AccessMemory);
             }
          }
       }
@@ -1027,7 +1027,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       }
       UnlockSharedMutex(glSurfaceMutex);
    }
-   else return log.warning(ERR_AccessMemoryID);
+   else return log.warning(ERR_AccessMemory);
 
    // Initialise 64K alpha blending table, for cutting down on multiplications.  This memory block is shared, so one
    // table serves all processes.
@@ -1045,7 +1045,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    else if (error IS ERR_ResourceExists) {
       if (!glAlphaLookup) {
          if (AccessMemoryID(RPM_AlphaBlend, MEM_READ_WRITE|MEM_NO_BLOCKING, 500, &glAlphaLookup) != ERR_Okay) {
-            return ERR_AccessMemoryID;
+            return ERR_AccessMemory;
          }
       }
    }
@@ -1139,7 +1139,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       else log.msg("Clipboard already initialised by other process.");
       ReleaseMemory(clipboard);
    }
-   else log.warning(ERR_AccessMemoryID);
+   else log.warning(ERR_AccessMemory);
 
 #endif
 

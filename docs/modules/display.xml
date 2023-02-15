@@ -44,6 +44,7 @@
       <error code="True">Operation successful.</error>
       <error code="False">The result is false.</error>
       <error code="Args">Invalid arguments passed to function.</error>
+      <error code="AccessMemoryID">Access to a shared memory block was denied.</error>
     </result>
   </function>
 
@@ -124,6 +125,7 @@
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
+      <error code="AccessMemoryID">Access to a shared memory block was denied.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -194,6 +196,7 @@
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
+      <error code="AccessMemoryID">Access to a shared memory block was denied.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -380,6 +383,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
+      <error code="AccessMemoryID">Access to a shared memory block was denied.</error>
     </result>
   </function>
 
@@ -397,6 +401,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
+      <error code="AccessMemoryID">Access to a shared memory block was denied.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -416,6 +421,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="Args">Invalid arguments passed to function.</error>
+      <error code="AccessMemoryID">Access to a shared memory block was denied.</error>
     </result>
   </function>
 
@@ -448,6 +454,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
+      <error code="AccessMemoryID">Access to a shared memory block was denied.</error>
     </result>
   </function>
 

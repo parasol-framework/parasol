@@ -475,13 +475,13 @@ ERROR resolve_args(APTR Parameters, const struct FunctionField *Args)
                }
                else {
                   log.warning("Failed to gain access to memory block #%d.", mid);
-                  error = ERR_AccessMemoryID;
+                  error = ERR_AccessMemory;
                   goto looperror;
                }
             }
             else if (mid > 0) {
                log.warning("Bad memory ID #%d for arg \"%s\", not a public allocation.", mid, Args[i].Name);
-               error = ERR_AccessMemoryID;
+               error = ERR_AccessMemory;
                goto looperror;
             }
          }

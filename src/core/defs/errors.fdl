@@ -80,7 +80,7 @@ function declareErrors()
     "Draw",                 -- An error occurred while drawing the object.
     "NoMethods",            -- The class does not export any methods.
     "NoMatchingObject",     -- Unable to find object
-    "AccessMemoryID",
+    "AccessMemory",
     "MissingPath",
     "NotLocked",           -- Attempted to release a lock that doesn't exist or doesn't belong to you
     "NoSearchResult",

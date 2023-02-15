@@ -241,7 +241,7 @@ ERROR get_surface_abs(OBJECTID SurfaceID, LONG *AbsX, LONG *AbsY, LONG *Width, L
       ReleaseMemory(ctl);
       return ERR_Okay;
    }
-   else return ERR_AccessMemoryID;
+   else return ERR_AccessMemory;
 }
 
 /*****************************************************************************
@@ -366,7 +366,7 @@ ERROR track_layer(extSurface *Self)
          }
          else {
             gfxReleaseList(ARF_WRITE);
-            return log.warning(ERR_AccessMemoryID);
+            return log.warning(ERR_AccessMemory);
          }
 
          if (ctl->Total >= ctl->ArraySize) {
@@ -589,7 +589,7 @@ ERROR update_surface_copy(extSurface *Self, SurfaceList *Copy)
       gfxReleaseList(ARF_UPDATE);
       return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemoryID);
+   else return log.warning(ERR_AccessMemory);
 }
 
 //****************************************************************************
@@ -759,7 +759,7 @@ ERROR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
       // contain children that belong to foreign tasks.
 
       SurfaceControl *ctl;
-      if (!(ctl = gfxAccessList(ARF_READ))) return ERR_AccessMemoryID;
+      if (!(ctl = gfxAccessList(ARF_READ))) return ERR_AccessMemory;
 
       LONG total = ctl->Total;
       SurfaceList cplist[total];
@@ -1117,7 +1117,7 @@ ERROR gfxCheckIfChild(OBJECTID ParentID, OBJECTID ChildID)
       gfxReleaseList(ARF_READ);
       return ERR_False;
    }
-   else return log.warning(ERR_AccessMemoryID);
+   else return log.warning(ERR_AccessMemory);
 }
 
 /****************************************************************************
@@ -1236,7 +1236,7 @@ ERROR gfxCopySurface(OBJECTID SurfaceID, extBitmap *Bitmap, LONG Flags,
       gfxReleaseList(ARF_READ);
       return ERR_Search;
    }
-   else return log.warning(ERR_AccessMemoryID);
+   else return log.warning(ERR_AccessMemory);
 }
 
 /****************************************************************************
@@ -1272,7 +1272,7 @@ ERROR gfxExposeSurface(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Heig
    if ((Width < 1) or (Height < 1)) return ERR_Okay;
 
    SurfaceControl *ctl;
-   if (!(ctl = gfxAccessList(ARF_READ))) return log.warning(ERR_AccessMemoryID);
+   if (!(ctl = gfxAccessList(ARF_READ))) return log.warning(ERR_AccessMemory);
 
    LONG total = ctl->Total;
    SurfaceList list[total];
@@ -1350,7 +1350,7 @@ ERROR gfxGetSurfaceCoords(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG
      gfxReleaseList(ARF_READ);
       return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemoryID);
+   else return log.warning(ERR_AccessMemory);
 }
 
 /*****************************************************************************
@@ -1399,7 +1399,7 @@ ERROR gfxGetSurfaceFlags(OBJECTID SurfaceID, LONG *Flags)
       gfxReleaseList(ARF_READ);
       return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemoryID);
+   else return log.warning(ERR_AccessMemory);
 }
 
 /*****************************************************************************
@@ -1470,7 +1470,7 @@ ERROR gfxGetSurfaceInfo(OBJECTID SurfaceID, SURFACEINFO **Info)
    }
    else {
       *Info = NULL;
-      return log.warning(ERR_AccessMemoryID);
+      return log.warning(ERR_AccessMemory);
    }
 }
 
@@ -1569,7 +1569,7 @@ ERROR gfxGetVisibleArea(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG *
       gfxReleaseList(ARF_READ);
       return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemoryID);
+   else return log.warning(ERR_AccessMemory);
 }
 
 /*****************************************************************************
@@ -1621,7 +1621,7 @@ ERROR gfxRedrawSurface(OBJECTID SurfaceID, LONG Left, LONG Top, LONG Right, LONG
    SurfaceControl *ctl;
    if (!(ctl = gfxAccessList(ARF_READ))) {
       log.warning("Unable to access the surfacelist.");
-      return ERR_AccessMemoryID;
+      return ERR_AccessMemory;
    }
 
    LONG total = ctl->Total;
@@ -2206,7 +2206,7 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LONG *Info)
       }
       else {
          ReleaseObject(bitmap);
-         return log.warning(ERR_AccessMemoryID);
+         return log.warning(ERR_AccessMemory);
       }
    }
    else return log.warning(ERR_AccessObject);
@@ -2279,7 +2279,7 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LONG *Info)
       }
       else return log.warning(ERR_AccessObject);
    }
-   else return log.warning(ERR_AccessMemoryID);
+   else return log.warning(ERR_AccessMemory);
 
 #endif
 }

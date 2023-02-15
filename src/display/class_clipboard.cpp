@@ -362,7 +362,7 @@ static ERROR CLIPBOARD_Clear(objClipboard *Self, APTR Void)
       ClearMemory(history, MAX_CLIPS * sizeof(ClipEntry));
       return ERR_Okay;
    }
-   else return ERR_AccessMemoryID;
+   else return ERR_AccessMemory;
 }
 
 /*****************************************************************************
@@ -592,7 +592,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
             log.warning("Failed to access file string #%d, error %d.", clips[index].Files, error);
             if (error IS ERR_MemoryDoesNotExist) clips[index].Files = 0;
             ReleaseMemory(header);
-            return ERR_AccessMemoryID;
+            return ERR_AccessMemory;
          }
       }
       else {
@@ -645,7 +645,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
       ReleaseMemory(header);
       return ERR_Okay;
    }
-   else return ERR_AccessMemoryID;
+   else return ERR_AccessMemory;
 }
 
 /*****************************************************************************
@@ -693,7 +693,7 @@ static ERROR CLIPBOARD_Remove(objClipboard *Self, struct clipRemove *Args)
       ReleaseMemory(header);
       return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemoryID);
+   else return log.warning(ERR_AccessMemory);
 }
 
 /*****************************************************************************
@@ -787,7 +787,7 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
                   }
                   else {
                      ReleaseMemory(header);
-                     return log.warning(ERR_AccessMemoryID);
+                     return log.warning(ERR_AccessMemory);
                   }
                }
                else snprintf(Args->Buffer, Args->Size, "clipboard:%s%d.%.3d", datatype, clip->ID, i);
@@ -797,7 +797,7 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
          ReleaseMemory(header);
          return ERR_Okay;
       }
-      else return log.warning(ERR_AccessMemoryID);
+      else return log.warning(ERR_AccessMemory);
    }
    else if (!StrCompare("Items(", Args->Field, 0, 0)) {
       // Extract the datatype
@@ -1013,7 +1013,7 @@ static ERROR add_clip(MEMORYID ClusterID, LONG Datatype, CSTRING File, LONG Flag
 
                         ReleaseMemory(str);
                      }
-                     else error = ERR_AccessMemoryID;
+                     else error = ERR_AccessMemory;
                   }
                }
                else {
@@ -1076,7 +1076,7 @@ static ERROR add_clip(MEMORYID ClusterID, LONG Datatype, CSTRING File, LONG Flag
       ReleaseMemory(header);
       return ERR_Okay;
    }
-   else return ERR_AccessMemoryID;
+   else return ERR_AccessMemory;
 }
 
 //********************************************************************************************************************

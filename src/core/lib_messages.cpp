@@ -218,7 +218,7 @@ ERROR GetMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Buffer, LONG B
    MessageHeader *header;
    if (Flags & MSF_ADDRESS) header = (MessageHeader *)(MAXINT)MessageMID;
    else if (AccessMemoryID(MessageMID, MEM_READ_WRITE, 2000, (void **)&header) != ERR_Okay) {
-      return ERR_AccessMemoryID;
+      return ERR_AccessMemory;
    }
 
    TaskMessage *msg = (TaskMessage *)header->Buffer;

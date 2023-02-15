@@ -1416,7 +1416,7 @@ static ERROR repeat_timer(extPointer *Self, LARGE Elapsed, LARGE Unused)
       }
       ReleaseMemory(subs);
    }
-   else return log.warning(ERR_AccessMemoryID);
+   else return log.warning(ERR_AccessMemory);
 
    if (unsub) return ERR_Terminate;
    else return ERR_Okay;

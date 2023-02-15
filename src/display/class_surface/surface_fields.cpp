@@ -544,7 +544,7 @@ static ERROR GET_UserFocus(extSurface *Self, OBJECTID *Value)
       ReleaseMemoryID(RPM_FocusList);
       return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemoryID);
+   else return log.warning(ERR_AccessMemory);
 }
 
 /*****************************************************************************

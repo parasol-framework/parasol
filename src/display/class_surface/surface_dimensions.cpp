@@ -29,7 +29,7 @@ static ERROR GET_AbsX(extSurface *Self, LONG *Value)
          return log.warning(ERR_Search);
       }
    }
-   else return log.warning(ERR_AccessMemoryID);
+   else return log.warning(ERR_AccessMemory);
 }
 
 static ERROR SET_AbsX(extSurface *Self, LONG Value)
@@ -52,7 +52,7 @@ static ERROR SET_AbsX(extSurface *Self, LONG Value)
             return log.warning(ERR_Search);
          }
       }
-      else return log.warning(ERR_AccessMemoryID);
+      else return log.warning(ERR_AccessMemory);
    }
    else return log.warning(ERR_NotInitialised);
 }
@@ -87,7 +87,7 @@ static ERROR GET_AbsY(extSurface *Self, LONG *Value)
          return log.warning(ERR_Search);
       }
    }
-   else return log.warning(ERR_AccessMemoryID);
+   else return log.warning(ERR_AccessMemory);
 }
 
 static ERROR SET_AbsY(extSurface *Self, LONG Value)
@@ -109,7 +109,7 @@ static ERROR SET_AbsY(extSurface *Self, LONG Value)
          gfxReleaseList(ARF_READ);
          return log.warning(ERR_Search);
       }
-      else return log.warning(ERR_AccessMemoryID);
+      else return log.warning(ERR_AccessMemory);
    }
    else return log.warning(ERR_NotInitialised);
 }
@@ -690,7 +690,7 @@ static ERROR GET_VisibleHeight(extSurface *Self, LONG *Value)
       gfxReleaseList(ARF_READ);
       return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemoryID);
+   else return log.warning(ERR_AccessMemory);
 }
 
 /*****************************************************************************
@@ -737,7 +737,7 @@ static ERROR GET_VisibleWidth(extSurface *Self, LONG *Value)
       gfxReleaseList(ARF_READ);
       return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemoryID);
+   else return log.warning(ERR_AccessMemory);
 }
 
 /*****************************************************************************
@@ -784,7 +784,7 @@ static ERROR GET_VisibleX(extSurface *Self, LONG *Value)
       gfxReleaseList(ARF_READ);
       return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemoryID);
+   else return log.warning(ERR_AccessMemory);
 }
 
 /*****************************************************************************
@@ -831,7 +831,7 @@ static ERROR GET_VisibleY(extSurface *Self, LONG *Value)
       gfxReleaseList(ARF_READ);
       return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemoryID);
+   else return log.warning(ERR_AccessMemory);
 }
 
 /*****************************************************************************

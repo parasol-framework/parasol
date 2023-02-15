@@ -160,7 +160,7 @@ ERROR gfxSubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, LONG InputMa
       glInputCallbacks.emplace(*Handle, is);
       return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemoryID);
+   else return log.warning(ERR_AccessMemory);
 }
 
 /******************************************************************************
@@ -223,7 +223,7 @@ ERROR gfxUnsubscribeInput(LONG Handle)
       if (!removed) return log.warning(ERR_NotFound);
       else return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemoryID);
+   else return log.warning(ERR_AccessMemory);
 }
 
 //****************************************************************************

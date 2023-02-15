@@ -548,7 +548,7 @@ static void notify_redimension_parent(OBJECTPTR Object, ACTIONID ActionID, ERROR
          parentheight = list[i].Height;
          gfxReleaseList(ARF_READ);
       }
-      else { log.warning(ERR_AccessMemoryID); return; }
+      else { log.warning(ERR_AccessMemory); return; }
    }
    else {
       DISPLAYINFO *display;
@@ -1004,7 +1004,7 @@ static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
       else {
          ReleaseMemory(focuslist);
          glLastFocusTime = PreciseTime();
-         return log.warning(ERR_AccessMemoryID);
+         return log.warning(ERR_AccessMemory);
       }
 
       // Send a Focus action to all parent surface objects in our generated focus list.
@@ -1069,7 +1069,7 @@ static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
    }
    else {
       glLastFocusTime = PreciseTime();
-      return log.warning(ERR_AccessMemoryID)|ERF_Notified;
+      return log.warning(ERR_AccessMemory)|ERF_Notified;
    }
 }
 
@@ -2012,7 +2012,7 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
 
    SurfaceControl *ctl;
    if (!(ctl = gfxAccessList(ARF_WRITE))) {
-      return log.warning(ERR_AccessMemoryID)|ERF_Notified;
+      return log.warning(ERR_AccessMemory)|ERF_Notified;
    }
 
    auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
@@ -2367,7 +2367,7 @@ static ERROR SURFACE_ResetDimensions(extSurface *Self, struct drwResetDimensions
       gfxReleaseList(ARF_READ);
       return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemoryID);
+   else return log.warning(ERR_AccessMemory);
 }
 
 /*****************************************************************************

@@ -505,7 +505,7 @@ retry:
             if (Flags & MEM_NO_LOCK) *Address = data_start;
             else if (AccessMemoryID(unique_id, MEM_READ_WRITE, 2000, Address) != ERR_Okay) {
                log.warning("Memory block %d stolen during allocation!", *MemoryID);
-               return ERR_AccessMemoryID;
+               return ERR_AccessMemory;
             }
             *MemoryID = unique_id;
          }
