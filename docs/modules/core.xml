@@ -101,7 +101,7 @@
       <param type="LONG" name="MilliSeconds">The total number of milliseconds to wait before giving up.  If -1, the function will wait indefinitely.</param>
     </input>
     <description>
-<p>Use AccessPrivateObject() to gain exclusivity to an object at thread-level.  This function provides identical behaviour to that of <function module="Core">AccessObject</function>, but with a slight speed advantage as the object ID does not need to be resolved to an address.  Calls to AccessPrivateObject() will nest, and must be matched with a call to <function module="Core">ReleasePrivateObject</function> to unlock the object.</p>
+<p>Use AccessPrivateObject() to gain exclusivity to an object at thread-level.  This function provides identical behaviour to that of <function module="Core">AccessObject</function>, but with a slight speed advantage as the object ID does not need to be resolved to an address.  Calls to AccessPrivateObject() will nest, and must be matched with a call to <function module="Core">ReleaseObject</function> to unlock the object.</p>
 <p>If it is guaranteed that an object is not being shared between threads, there is no need to acquire a lock via this function.</p>
     </description>
     <result type="ERROR">
@@ -1688,33 +1688,13 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
   <function>
     <name>ReleaseObject</name>
     <category>Objects</category>
-    <comment>Releases objects from exclusive use.</comment>
-    <prototype>ERROR ReleaseObject(OBJECTPTR Object)</prototype>
-    <input>
-      <param type="OBJECTPTR" name="Object">Pointer to a locked object.</param>
-    </input>
-    <description>
-<p>Release a lock previously obtained from <function module="Core">AccessObject</function>.  Locks will nest, so a release is required for every lock that has been granted.  For public objects, the object address will be invalid once it is released.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Memory">General memory error.</error>
-      <error code="NoStats">This object has lost its stats structure.</error>
-      <error code="NotLocked">There is no exclusive lock on this object.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
-    <name>ReleasePrivateObject</name>
-    <category>Objects</category>
     <comment>Release a locked private object.</comment>
-    <prototype>void ReleasePrivateObject(OBJECTPTR Object)</prototype>
+    <prototype>void ReleaseObject(OBJECTPTR Object)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">Pointer to the object to be released.</param>
     </input>
     <description>
-<p>Release a lock previously obtained from <function module="Core">AccessPrivateObject</function>.  Locks will nest, so a release is required for every lock that has been granted.</p>
+<p>Release a lock previously obtained from <function module="Core">AccessObject</function> or <function module="Core">AccessPrivateObject</function>.  Locks will nest, so a release is required for every lock that has been granted.</p>
     </description>
   </function>
 

@@ -2099,6 +2099,7 @@ struct LAYOUT_STATE {
    LONG ECIndex;
 
    LAYOUT_STATE() {
+      Index = 0;
       TotalClips = 0;
       TotalLinks = 0;
       SegCount = 0;

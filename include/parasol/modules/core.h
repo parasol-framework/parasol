@@ -1964,7 +1964,7 @@ struct CoreBase {
    void __attribute__((format(printf, 2, 3))) (*_LogF)(CSTRING Header, CSTRING Message, ...);
    ERROR (*_FindObject)(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * ObjectID);
    objMetaClass * (*_FindClass)(CLASSID ClassID);
-   ERROR (*_ReleaseObject)(OBJECTPTR Object);
+   ERROR (*_AnalysePath)(CSTRING Path, LONG * Type);
    ERROR (*_FreeResource)(const void * Address);
    ERROR (*_FreeResourceID)(MEMORYID ID);
    CLASSID (*_GetClassID)(OBJECTID Object);
@@ -2035,7 +2035,7 @@ struct CoreBase {
    ERROR (*_SetArray)(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements);
    ERROR (*_ReleaseMemoryID)(MEMORYID MemoryID);
    ERROR (*_AccessPrivateObject)(OBJECTPTR Object, LONG MilliSeconds);
-   void (*_ReleasePrivateObject)(OBJECTPTR Object);
+   void (*_ReleaseObject)(OBJECTPTR Object);
    ERROR (*_AllocMutex)(LONG Flags, APTR Result);
    void (*_FreeMutex)(APTR Mutex);
    ERROR (*_LockMutex)(APTR Mutex, LONG MilliSeconds);
@@ -2085,7 +2085,6 @@ struct CoreBase {
    ERROR (*_VarCopy)(struct KeyStore * Source, struct KeyStore * Dest);
    ULONG (*_StrHash)(CSTRING String, LONG CaseSensitive);
    CSTRING (*_UTF8ValidEncoding)(CSTRING String, CSTRING Encoding);
-   ERROR (*_AnalysePath)(CSTRING Path, LONG * Type);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2110,7 +2109,7 @@ inline LONG AdjustLogLevel(LONG Adjust) { return CoreBase->_AdjustLogLevel(Adjus
 template<class... Args> void LogF(CSTRING Header, CSTRING Message, Args... Tags) { return CoreBase->_LogF(Header,Message,Tags...); }
 inline ERROR FindObject(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * ObjectID) { return CoreBase->_FindObject(Name,ClassID,Flags,ObjectID); }
 inline objMetaClass * FindClass(CLASSID ClassID) { return CoreBase->_FindClass(ClassID); }
-inline ERROR ReleaseObject(OBJECTPTR Object) { return CoreBase->_ReleaseObject(Object); }
+inline ERROR AnalysePath(CSTRING Path, LONG * Type) { return CoreBase->_AnalysePath(Path,Type); }
 inline ERROR FreeResource(const void * Address) { return CoreBase->_FreeResource(Address); }
 inline ERROR FreeResourceID(MEMORYID ID) { return CoreBase->_FreeResourceID(ID); }
 inline CLASSID GetClassID(OBJECTID Object) { return CoreBase->_GetClassID(Object); }
@@ -2181,7 +2180,7 @@ inline ERROR FuncError(CSTRING Header, ERROR Error) { return CoreBase->_FuncErro
 inline ERROR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements) { return CoreBase->_SetArray(Object,Field,Array,Elements); }
 inline ERROR ReleaseMemoryID(MEMORYID MemoryID) { return CoreBase->_ReleaseMemoryID(MemoryID); }
 inline ERROR AccessPrivateObject(OBJECTPTR Object, LONG MilliSeconds) { return CoreBase->_AccessPrivateObject(Object,MilliSeconds); }
-inline void ReleasePrivateObject(OBJECTPTR Object) { return CoreBase->_ReleasePrivateObject(Object); }
+inline void ReleaseObject(OBJECTPTR Object) { return CoreBase->_ReleaseObject(Object); }
 inline ERROR AllocMutex(LONG Flags, APTR Result) { return CoreBase->_AllocMutex(Flags,Result); }
 inline void FreeMutex(APTR Mutex) { return CoreBase->_FreeMutex(Mutex); }
 inline ERROR LockMutex(APTR Mutex, LONG MilliSeconds) { return CoreBase->_LockMutex(Mutex,MilliSeconds); }
@@ -2231,7 +2230,6 @@ inline CSTRING VarGetString(struct KeyStore * Store, CSTRING Key) { return CoreB
 inline ERROR VarCopy(struct KeyStore * Source, struct KeyStore * Dest) { return CoreBase->_VarCopy(Source,Dest); }
 inline ULONG StrHash(CSTRING String, LONG CaseSensitive) { return CoreBase->_StrHash(String,CaseSensitive); }
 inline CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding) { return CoreBase->_UTF8ValidEncoding(String,Encoding); }
-inline ERROR AnalysePath(CSTRING Path, LONG * Type) { return CoreBase->_AnalysePath(Path,Type); }
 #endif
 
 
@@ -2396,7 +2394,7 @@ struct BaseClass { // Must be 64-bit aligned
 
    inline void threadRelease() {
       #ifdef AUTO_OBJECT_LOCK
-         if (SleepQueue > 0) ReleasePrivateObject(this);
+         if (SleepQueue > 0) ReleaseObject(this);
          else SUB_QUEUE(this);
       #endif
    }

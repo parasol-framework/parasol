@@ -112,7 +112,7 @@ static ERROR thread_action(extThread *Thread)
       }
 
       if (obj->defined(NF::FREE)) obj = NULL; // Clear the obj pointer because the object will be deleted on release.
-      ReleasePrivateObject(data->Object);
+      ReleaseObject(data->Object);
    }
    else {
       __sync_sub_and_fetch(&obj->ThreadPending, 1);

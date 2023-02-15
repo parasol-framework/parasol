@@ -1213,7 +1213,7 @@ extern struct CoreBase *CoreBase;
     "LogF",
     "FindObject",
     "FindClass",
-    "ReleaseObject",
+    "AnalysePath",
     "FreeResource",
     "FreeResourceID",
     "GetClassID",
@@ -1284,7 +1284,7 @@ extern struct CoreBase *CoreBase;
     "SetArray",
     "ReleaseMemoryID",
     "AccessPrivateObject",
-    "ReleasePrivateObject",
+    "ReleaseObject",
     "AllocMutex",
     "FreeMutex",
     "LockMutex",
@@ -1333,8 +1333,7 @@ extern struct CoreBase *CoreBase;
     "VarGetString",
     "VarCopy",
     "StrHash",
-    "UTF8ValidEncoding",
-    "AnalysePath")
+    "UTF8ValidEncoding")
 
   c_insert([[
 
@@ -1499,7 +1498,7 @@ struct BaseClass { // Must be 64-bit aligned
 
    inline void threadRelease() {
       #ifdef AUTO_OBJECT_LOCK
-         if (SleepQueue > 0) ReleasePrivateObject(this);
+         if (SleepQueue > 0) ReleaseObject(this);
          else SUB_QUEUE(this);
       #endif
    }

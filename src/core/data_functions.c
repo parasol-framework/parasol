@@ -82,8 +82,7 @@ FDEF argsReallocMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Memory", FD_PTR }
 FDEF argsRegisterFD[] = { { "Error", FD_LONG|FD_ERROR }, { "FD", FD_PTR }, { "Flags", FD_LONG }, { "Routine", FD_PTR }, { "Data", FD_PTR }, { 0, 0 } };
 FDEF argsReleaseMemory[] = { { "Result", FD_LONG }, { "Address", FD_PTR }, { 0, 0 } };
 FDEF argsReleaseMemoryID[] = { { "Error", FD_LONG|FD_ERROR }, { "MemoryID", FD_LONG }, { 0, 0 } };
-FDEF argsReleaseObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
-FDEF argsReleasePrivateObject[] = { { "Void", FD_VOID }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
+FDEF argsReleaseObject[] = { { "Void", FD_VOID }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsResolveClassID[] = { { "Result", FD_STR }, { "ID", FD_LONG|FD_UNSIGNED }, { 0, 0 } };
 FDEF argsResolveClassName[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "Name", FD_STR }, { 0, 0 } };
 FDEF argsResolveGroupID[] = { { "Result", FD_STR }, { "Group", FD_LONG }, { 0, 0 } };
@@ -170,7 +169,7 @@ const struct Function glFunctions[] = {
    { (APTR)LogF, "LogF", argsLogF },
    { (APTR)FindObject, "FindObject", argsFindObject },
    { (APTR)FindClass, "FindClass", argsFindClass },
-   { (APTR)ReleaseObject, "ReleaseObject", argsReleaseObject },
+   { (APTR)AnalysePath, "AnalysePath", argsAnalysePath },
    { (APTR)FreeResource, "FreeResource", argsFreeResource },
    { (APTR)FreeResourceID, "FreeResourceID", argsFreeResourceID },
    { (APTR)GetClassID, "GetClassID", argsGetClassID },
@@ -241,7 +240,7 @@ const struct Function glFunctions[] = {
    { (APTR)SetArray, "SetArray", argsSetArray },
    { (APTR)ReleaseMemoryID, "ReleaseMemoryID", argsReleaseMemoryID },
    { (APTR)AccessPrivateObject, "AccessPrivateObject", argsAccessPrivateObject },
-   { (APTR)ReleasePrivateObject, "ReleasePrivateObject", argsReleasePrivateObject },
+   { (APTR)ReleaseObject, "ReleaseObject", argsReleaseObject },
    { (APTR)AllocMutex, "AllocMutex", argsAllocMutex },
    { (APTR)FreeMutex, "FreeMutex", argsFreeMutex },
    { (APTR)LockMutex, "LockMutex", argsLockMutex },
@@ -291,7 +290,6 @@ const struct Function glFunctions[] = {
    { (APTR)VarCopy, "VarCopy", argsVarCopy },
    { (APTR)StrHash, "StrHash", argsStrHash },
    { (APTR)UTF8ValidEncoding, "UTF8ValidEncoding", argsUTF8ValidEncoding },
-   { (APTR)AnalysePath, "AnalysePath", argsAnalysePath },
    { NULL, NULL, NULL }
 };
 
