@@ -85,13 +85,12 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
 
    // Force certain flags on the class' behalf
 
-   if (mc->Flags & CLF_NO_OWNERSHIP)   Flags |= NF::UNTRACKED;
+   if (mc->Flags & CLF_NO_OWNERSHIP) Flags |= NF::UNTRACKED;
 
    if ((Flags & NF::SUPPRESS_LOG) IS NF::NIL) log.branch("%s #%d, Flags: $%x", mc->ClassName, glSharedControl->PrivateIDCounter, LONG(Flags));
 
    OBJECTPTR head = NULL;
-   MEMORYID head_id = 0;
-   ERROR error = ERR_Okay;
+   MEMORYID head_id;
 
    if (!AllocMemory(mc->Size, MEM_OBJECT|MEM_NO_LOCK|(((Flags & NF::UNTRACKED) != NF::NIL) ? MEM_UNTRACKED : 0), (APTR *)&head, &head_id)) {
       head->UID     = head_id;
@@ -129,27 +128,24 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
          SetOwner(head, glCurrentTask);
       }
 
-      // After the header has been created we can set the context, then call the base class's NewObject() support.  If the
-      // class is a child, we will also call its supporting NewObject() action if it has specified one.
-      //
-      // Note: The NewObject support caller has a special feature where it passes the expected object context in the args pointer.
+      // After the header has been created we can set the context, then call the base class's NewObject() support.  If this
+      // object belongs to a sub-class, we will also call its supporting NewObject() action if it has specified one.
 
-      if (!error) {
-         parasol::SwitchContext context(head); // Scope must be limited to the PerformAction() call
+      parasol::SwitchContext context(head);
 
-         if (mc->Base) {
-            if (mc->Base->ActionTable[AC_NewObject].PerformAction) {
-               if ((error = mc->Base->ActionTable[AC_NewObject].PerformAction(head, NULL))) {
-                  log.warning(error);
-               }
-            }
-            else error = log.warning(ERR_NoAction);
-         }
-
-         if ((!error) and (mc->ActionTable[AC_NewObject].PerformAction)) {
-            if ((error = mc->ActionTable[AC_NewObject].PerformAction(head, NULL))) {
+      ERROR error = ERR_Okay;
+      if (mc->Base) {
+         if (mc->Base->ActionTable[AC_NewObject].PerformAction) {
+            if ((error = mc->Base->ActionTable[AC_NewObject].PerformAction(head, NULL))) {
                log.warning(error);
             }
+         }
+         else error = log.warning(ERR_NoAction);
+      }
+
+      if ((!error) and (mc->ActionTable[AC_NewObject].PerformAction)) {
+         if ((error = mc->ActionTable[AC_NewObject].PerformAction(head, NULL))) {
+            log.warning(error);
          }
       }
 
@@ -160,12 +156,12 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
          *Object = head;
          return ERR_Okay;
       }
+
+      FreeResource(head);
+
+      return error;
    }
-   else error = ERR_AllocMemory;
-
-   if (head) FreeResource(head);
-
-   return error;
+   else return ERR_AllocMemory;
 }
 
 /*********************************************************************************************************************
