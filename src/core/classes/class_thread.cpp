@@ -42,15 +42,28 @@ within the thread routine.
 #include "../defs.h"
 #include <parasol/main.h>
 
-#define THREADPOOL_MAX 6
+static const LONG THREADPOOL_MAX = 6;
 
 static void thread_entry_cleanup(void *);
 
-static LONG glActionThreadsIndex = 0;
-static struct {
+struct ActionThread {
    extThread *Thread;
-   BYTE InUse;
-} glActionThreads[THREADPOOL_MAX];
+   bool InUse;
+
+   ActionThread() : Thread(0), InUse(0) { }
+
+   ActionThread(extThread *pThread) {
+      Thread = pThread;
+      InUse = pThread ? true : false;
+   }
+
+   ~ActionThread() {
+      parasol::Log log(__FUNCTION__);
+      if (InUse) log.warning("Pooled thread #%d is still in use on shutdown.", Thread->UID);
+   }
+};
+
+static std::vector<struct ActionThread> glActionThreads;
 
 //****************************************************************************
 // Retrieve a thread object from the thread pool.
@@ -58,41 +71,29 @@ static struct {
 ERROR threadpool_get(extThread **Result)
 {
    parasol::Log log;
-   extThread *thread = NULL;
-   ERROR error = ERR_Okay;
 
    log.traceBranch("");
 
    ThreadLock lock(TL_THREADPOOL, 2000);
    if (lock.granted()) {
-      for (LONG i=0; i < glActionThreadsIndex; i++) {
-         if ((glActionThreads[i].Thread) and (!glActionThreads[i].InUse)) {
-            thread = glActionThreads[i].Thread;
-            glActionThreads[i].InUse = TRUE;
-            break;
+      for (auto &at : glActionThreads) {
+         if ((at.Thread) and (!at.InUse)) {
+            at.InUse = true;
+            *Result = at.Thread;
+            return ERR_Okay;
          }
       }
 
-      if (!thread) { // Allocate a new thread.
-         if (!(error = NewObject(ID_THREAD, NF::UNTRACKED, (OBJECTPTR *)&thread))) {
-            SetName(thread, "ActionThread");
-            if (!(error = acInit(thread))) {
-               LONG i;
-               if ((i = glActionThreadsIndex) < THREADPOOL_MAX) { // Record the thread in the pool, if there is room for it.
-                  glActionThreads[i].Thread = thread;
-                  glActionThreads[i].InUse = TRUE;
-                  glActionThreadsIndex++;
-               }
-            }
-            else { acFree(thread); thread = NULL; }
+      if (auto thread = extThread::create::untracked(fl::Name("ActionThread"))) {
+         if (glActionThreads.size() < THREADPOOL_MAX) {
+            glActionThreads.emplace_back(thread);
          }
+         *Result = thread;
+         return ERR_Okay;
       }
+      else return log.warning(ERR_CreateObject);
    }
-   else error = log.warning(ERR_Lock);
-
-   if (thread) *Result = thread;
-
-   return error;
+   else return log.warning(ERR_Lock);
 }
 
 //****************************************************************************
@@ -102,13 +103,13 @@ void threadpool_release(extThread *Thread)
 {
    parasol::Log log;
 
-   log.traceBranch("Thread: #%d, Total: %d", Thread->UID, glActionThreadsIndex);
+   log.traceBranch("Thread: #%d, Total: %d", Thread->UID, (LONG)glActionThreads.size());
 
    ThreadLock lock(TL_THREADPOOL, 2000);
    if (lock.granted()) {
-      for (LONG i=0; i < glActionThreadsIndex; i++) {
-         if (glActionThreads[i].Thread IS Thread) {
-            glActionThreads[i].InUse = FALSE;
+      for (auto &at : glActionThreads) {
+         if (at.Thread IS Thread) {
+            at.InUse = false;
             return;
          }
       }
@@ -127,19 +128,10 @@ void remove_threadpool(void)
 {
    parasol::Log log("Core");
 
-   log.traceBranch("Removing the internal thread pool, size %d.", glActionThreadsIndex);
+   log.traceBranch("Removing the internal thread pool, size %d.", (LONG)glActionThreads.size());
 
    ThreadLock lock(TL_THREADPOOL, 2000);
-   if (lock.granted()) {
-      for (LONG i=0; i < glActionThreadsIndex; i++) {
-         if (glActionThreads[i].Thread) {
-            if (glActionThreads[i].InUse) log.warning("Pooled thread #%d is still in use on shutdown.", i);
-            acFree(glActionThreads[i].Thread);
-            glActionThreads[i].Thread = NULL;
-            glActionThreads[i].InUse = FALSE;
-         }
-      }
-   }
+   if (lock.granted()) glActionThreads.clear();
 }
 
 //****************************************************************************
