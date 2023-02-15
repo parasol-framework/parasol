@@ -93,7 +93,7 @@ class objCompressedStream;
 #define AC_SelectArea 3
 #define AC_Clear 4
 #define AC_FreeWarning 5
-#define AC_OwnerDestroyed 6
+#define AC_Sort 6
 #define AC_CopyData 7
 #define AC_DataFeed 8
 #define AC_Deactivate 9
@@ -140,8 +140,7 @@ class objCompressedStream;
 #define AC_MoveToPoint 50
 #define AC_ScrollToPoint 51
 #define AC_Custom 52
-#define AC_Sort 53
-#define AC_END 54
+#define AC_END 53
 
 // Permission flags
 
@@ -737,7 +736,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 #define AHASH_ACCESSOBJECT 0xbcf3b98e
 #define AHASH_CLEAR 0x0f3b6d8c
 #define AHASH_FREEWARNING 0xb903ddbd
-#define AHASH_OWNERDESTROYED 0x77295103
 #define AHASH_COPYDATA 0x47b0d1fa
 #define AHASH_DATAFEED 0x05e6d293
 #define AHASH_DEACTIVATE 0x1ee323ff

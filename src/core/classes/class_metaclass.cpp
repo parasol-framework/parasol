@@ -335,8 +335,6 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
 
    VarSet(glClassMap, Self->ClassName, &Self, sizeof(APTR));
 
-   Self->ActionTable[AC_OwnerDestroyed].PerformAction = MGR_OwnerDestroyed;
-
    // Record the name of the module that owns this class.
 
    auto ctx = tlContext;
@@ -442,7 +440,7 @@ static ERROR SET_Actions(extMetaClass *Self, const ActionArray *Actions)
 
    for (auto i=0; Actions[i].ActionCode; i++) {
       auto code = Actions[i].ActionCode;
-      if ((code < AC_END) and (code > 0) and (code != AC_OwnerDestroyed)) {
+      if ((code < AC_END) and (code > 0)) {
          Self->ActionTable[code].PerformAction = (ERROR (*)(OBJECTPTR, APTR))Actions[i].Routine;
       }
    }

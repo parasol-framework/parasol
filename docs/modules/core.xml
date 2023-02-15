@@ -2939,7 +2939,6 @@ end
       <const name="NewObject"/>
       <const name="NewOwner"/>
       <const name="Next"/>
-      <const name="OwnerDestroyed"/>
       <const name="Prev"/>
       <const name="Query"/>
       <const name="Read"/>

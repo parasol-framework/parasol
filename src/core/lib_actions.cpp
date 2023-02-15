@@ -1123,12 +1123,6 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
 
    NotifySubscribers(Object, AC_Free, NULL, ERR_Okay);
 
-   // TODO: Candidate for deprecation as only ModuleMaster has used this feature.
-   // AC_OwnerDestroyed is internal, it notifies objects in foreign tasks that are resource-linked to the object.
-   // Refer to SetOwner() for more info.
-
-   NotifySubscribers(Object, AC_OwnerDestroyed, NULL, ERR_Okay);
-
    if (mc->ActionTable[AC_Free].PerformAction) {  // If the class that formed the object is a sub-class, we call its Free() support first, and then the base-class to clean up.
       mc->ActionTable[AC_Free].PerformAction(Object, NULL);
    }
@@ -1333,18 +1327,6 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
    }
 
    return error;
-}
-
-/*********************************************************************************************************************
-** Action: OwnerDestroyed
-*/
-
-ERROR MGR_OwnerDestroyed(OBJECTPTR Object, APTR Void)
-{
-   parasol::Log log("OwnerDestroyed");
-   log.function("Owner %d has been destroyed.", Object->UID);
-   acFree(Object);
-   return ERR_Okay;
 }
 
 /*********************************************************************************************************************

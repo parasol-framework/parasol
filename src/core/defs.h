@@ -997,7 +997,6 @@ extern "C" {
 ERROR MGR_Init(OBJECTPTR, APTR);
 ERROR MGR_Free(OBJECTPTR, APTR);
 ERROR MGR_GetField(OBJECTPTR, struct acGetVar *);
-ERROR MGR_OwnerDestroyed(OBJECTPTR, APTR);
 ERROR MGR_SetField(OBJECTPTR, struct acSetVar *);
 ERROR MGR_Signal(OBJECTPTR, APTR);
 
