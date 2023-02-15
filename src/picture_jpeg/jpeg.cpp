@@ -334,6 +334,8 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    if (objModule::load("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
 
+   objModule::create pic = { fl::Name("picture") }; // Load our dependency ahead of class registration
+
    clJPEG = objMetaClass::create::global(
       fl::BaseClassID(ID_PICTURE),
       fl::SubClassID(ID_JPEG),

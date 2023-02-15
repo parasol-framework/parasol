@@ -20,7 +20,6 @@ restriction.
 #endif
 
 extern "C" void program(void);
-extern "C" STRING ProgName;
 
 struct CoreBase *CoreBase;
 
@@ -55,14 +54,13 @@ extern "C" const char * init_parasol(int argc, CSTRING *argv)
    struct OpenInfo info;
    info.Detail    = 0;
    info.MaxDepth  = 14;
-   info.Name      = ProgName;
    info.Args      = argv;
    info.ArgCount  = argc;
    info.CoreVersion = 0; // Minimum required core version
    info.CompiledAgainst = VER_CORE; // The core that this code is compiled against
    info.Error     = ERR_Okay;
    info.RootPath  = root_path;
-   info.Flags     = OPF_CORE_VERSION|OPF_COMPILED_AGAINST|OPF_NAME|OPF_ARGS|OPF_ERROR|OPF_ROOT_PATH;
+   info.Flags     = OPF_CORE_VERSION|OPF_COMPILED_AGAINST|OPF_ARGS|OPF_ERROR|OPF_ROOT_PATH;
 
    // Check for a local installation in the CWD.
 

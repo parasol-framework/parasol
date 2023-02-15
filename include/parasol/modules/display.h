@@ -299,7 +299,6 @@ struct SurfaceList {
    OBJECTID SurfaceID;   // ID of the surface area
    OBJECTID BitmapID;    // Shared bitmap buffer, if available
    OBJECTID DisplayID;   // Display
-   OBJECTID TaskID;      // Task that owns the surface
    OBJECTID RootID;      // RootLayer
    OBJECTID PopOverID;
    LONG     Flags;       // Surface flags (RNF_VISIBLE etc)
@@ -621,9 +620,18 @@ class objBitmap : public BaseClass {
    inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK_END); }
    inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK_CURRENT); }
    inline ERROR unlock() { return Action(AC_Unlock, this, NULL); }
-   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result) {
+   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result = NULL) {
       ERROR error;
       struct acWrite write = { (BYTE *)Buffer, Bytes };
+      if (!(error = Action(AC_Write, this, &write))) {
+         if (Result) *Result = write.Result;
+      }
+      else if (Result) *Result = 0;
+      return error;
+   }
+   inline ERROR write(std::string Buffer, LONG *Result = NULL) {
+      ERROR error;
+      struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
       if (!(error = Action(AC_Write, this, &write))) {
          if (Result) *Result = write.Result;
       }

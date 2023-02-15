@@ -28,6 +28,7 @@ This documentation is intended for technical reference and is not suitable as an
 #include <errno.h>
 #include <unistd.h>
 #include <forward_list>
+#include <sstream>
 
 #ifdef _WIN32
 #include <time.h>
@@ -108,10 +109,10 @@ extern "C" ERROR add_storage_class(void);
 LONG InitCore(void);
 extern "C" EXPORT void CloseCore(void);
 extern "C" EXPORT struct CoreBase * OpenCore(OpenInfo *);
-static ERROR open_shared_control(BYTE);
+static ERROR open_shared_control(void);
 static ERROR init_shared_control(void);
 static ERROR load_modules(void);
-static ERROR init_filesystem(std::forward_list<CSTRING> &);
+static ERROR init_volumes(std::forward_list<CSTRING> &);
 
 #ifdef _WIN32
 static WINHANDLE glSharedControlID = 0; // Shared memory ID.
@@ -132,22 +133,17 @@ DLLCALL void WINAPI CloseHandle(APTR);
 #endif
 
 static TIMER glProcessJanitor = 0;
-static CSTRING glUserHomeFolder = NULL;
+static std::string glUserHomeFolder;
 
 static void print_class_list(void) __attribute__ ((unused));
 static void print_class_list(void)
 {
    parasol::Log log("Class List");
-   char buffer[1024];
-   size_t pos = 0;
-   LONG *offsets = CL_OFFSETS(glClassDB);
-   for (LONG i=0; i < glClassDB->Total; i++) {
-      ClassItem *item = (ClassItem *)(((BYTE *)glClassDB) + offsets[i]);
-      for (LONG j=0; (item->Name[j]) and (pos < sizeof(buffer)-2); j++) buffer[pos++] = item->Name[j];
-      if ((i < glClassDB->Total-1) and (pos < sizeof(buffer)-1)) buffer[pos++] = ' ';
+   std::ostringstream out;
+   for (auto & [ cid, v ] : glClassDB) {
+      out << v.Name << " ";
    }
-   buffer[pos] = 0;
-   log.trace("Total: %d, %s", glClassDB->Total, buffer);
+   log.msg("Total: %d, %s", (LONG)glClassDB.size(), out.str().c_str());
 }
 
 //********************************************************************************************************************
@@ -173,11 +169,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          BYTE hold_priority;
       #endif
    #endif
-   objTask *localtask;
    LONG i;
-   OBJECTPTR SystemTask;
-   ERROR error;
-   UBYTE solo;
 
    if (!Info) return NULL;
    if (Info->Flags & OPF_ERROR) Info->Error = ERR_Failed;
@@ -189,6 +181,8 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       fprintf(stderr, "Core module has already been initialised (OpenCore() called more than once.)\n");
    }
 
+   if (alloc_private_lock(TL_CLASSDB, 0)) return NULL; // For access to glClassDB
+   if (alloc_private_lock(TL_VOLUMES, 0)) return NULL; // For access to glVolumes
    if (alloc_private_lock(TL_GENERIC, 0)) return NULL; // A misc. internal mutex, strictly not recursive.
    if (alloc_private_lock(TL_TIMER, 0)) return NULL; // For timer subscriptions.
    if (alloc_private_lock(TL_MSGHANDLER, ALF_RECURSIVE)) return NULL;
@@ -294,11 +288,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       #error Require code to obtain the process ID.
    #endif
 
-   ClearMemory(glAlphaNumeric, sizeof(glAlphaNumeric));
-   for (i='a'; i <= 'z'; i++) glAlphaNumeric[i] = TRUE;
-   for (i='A'; i <= 'Z'; i++) glAlphaNumeric[i] = TRUE;
-   for (i='0'; i <= '9'; i++) glAlphaNumeric[i] = TRUE;
-
    if (Info->Flags & OPF_ROOT_PATH) SetResourcePath(RP_ROOT_PATH, Info->RootPath);
 
    if (Info->Flags & OPF_MODULE_PATH) SetResourcePath(RP_MODULE_PATH, Info->ModulePath);
@@ -384,18 +373,10 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    }
 #endif
 
-   // Process arguments
-   //
-   // --solo:
-   //   Wait for all other running tasks to stop (unload the main semaphore).  Once this has occurred, continue the Core
-   //   initialisation.  Useful for relaunching the system from a new disk location with new glSemaphore stuff - module
-   //   references etc.
-
    std::forward_list<CSTRING> volumes;
 
    CSTRING newargs[Info->ArgCount];
    LONG na = 0;
-   solo = FALSE;
    if (Info->Flags & OPF_ARGS) {
       for (i=1; i < Info->ArgCount; i++) {
          auto arg = Info->Args[i];
@@ -410,20 +391,12 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          else if (!StrMatch(arg, "log-shared-memory")) {
             glShowPublic = TRUE;
          }
-         else if (!StrMatch(arg, "instance")) {
-            if (i < Info->ArgCount-1) {
-               glInstanceID = StrToInt(Info->Args[i+1]);
-               i++;
-            }
-         }
          else if (!StrCompare(arg, "gfx-driver=", 11, 0)) {
             StrCopy(arg+11, glDisplayDriver, sizeof(glDisplayDriver));
          }
          else if ((!StrMatch(arg, "set-volume")) and (i+1 < Info->ArgCount)) { // --set-volume scripts=my:location/
             volumes.emplace_front(Info->Args[++i]);
          }
-         else if (!StrMatch(arg, "global"))      Info->Flags |= OPF_GLOBAL_INSTANCE;
-         else if (!StrMatch(arg, "solo"))        solo = TRUE;
          else if (!StrMatch(arg, "sync"))        glSync = TRUE;
          else if (!StrMatch(arg, "log-none"))    glLogLevel = 0;
          else if (!StrMatch(arg, "log-error"))   glLogLevel = 1;
@@ -444,7 +417,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          // Note: In the volumes config file, 'user' is a special section that can define a name for the user folder other
          // than 'ParasolXX'.  This is useful for customised distributions.  If the folder is named as 'default' then no
          // user-specific folder is assigned.
-         else if (!StrCompare("home=", arg, 7, 0)) glUserHomeFolder = arg + 7;
+         else if (!StrCompare("home=", arg, 7, 0)) glUserHomeFolder.assign(arg + 7);
          else newargs[na++] = arg;
       }
 
@@ -538,64 +511,34 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    }
    else log.msg("A debugger is active.");
 
-   if (!(Info->Flags & OPF_GLOBAL_INSTANCE)) {
-      // This process isn't a global instance, so check if there's an existing global process that we can attach to.
-      // If not, generate resource names that are unique to this process and limit resource access so that they are
-      // only available to child processes.
+   // Generate unique resource names based on our process ID.
 
+   {
       WINHANDLE handle;
-      bool standalone = true;
-
-      if (!open_public_lock(&handle, glPublicLocks[PL_FORBID].Name)) { // Existing mutex resource is accessible
-         free_public_lock(handle);
-
-         if (!open_public_waitlock(&handle, glPublicLocks[CN_SEMAPHORES].Name)) { // Existing event resource is accessible
-            free_public_waitlock(handle);
-            log.trace("This process will attach to an existing global process.");
-            standalone = false;
-         }
-         else log.trace("Unable to access all parent process' locks, will run standalone");
-      }
-
-      if (standalone) { // Process will run standalone - generate unique resource names based on our process ID.
-         LONG id = glProcessID;
-         static const char lookup[] = "0123456789ABCDEF";
-         while (1) {
-            for (LONG p=1; p < PL_END; p++) {
-               LONG mid = id;
-               for (LONG i=3; i < 11; i++) {
-                  glPublicLocks[p].Name[i] = lookup[mid & 0xf];
-                  mid = mid>>4;
-               }
+      LONG id = glProcessID;
+      static const char lookup[] = "0123456789ABCDEF";
+      while (true) {
+         for (LONG p=1; p < PL_END; p++) {
+            LONG mid = id;
+            for (LONG i=3; i < 11; i++) {
+               glPublicLocks[p].Name[i] = lookup[mid & 0xf];
+               mid = mid>>4;
             }
-
-            // Check that the resource name is unique, otherwise keep looping.
-            if (open_public_lock(&handle, glPublicLocks[PL_FORBID].Name) != ERR_Okay) break;
-
-            free_public_lock(handle);
-            id += 17; // Alter the id with a prime number
          }
+
+         // Check that the resource name is unique, otherwise keep looping.
+         if (open_public_lock(&handle, glPublicLocks[PL_FORBID].Name) != ERR_Okay) break;
+
+         free_public_lock(handle);
+         id += 17; // Alter the id with a prime number
       }
    }
 
-   // If going solo, we need to wait for all other programs using this install to release the shared control semaphore
-
-   if (solo) {
-      log.trace("Process will only run solo - will wait if other processes are running.");
-      while (1) {
-         WINHANDLE handle;
-         if (!open_public_lock(&handle, glPublicLocks[PL_FORBID].Name)) {
-            free_public_lock(handle);
-            winSleep(20);
-         }
-         else break;
-      }
-   }
 #endif
 
    // Shared memory set-up
 
-   if (open_shared_control((Info->Flags & OPF_GLOBAL_INSTANCE) ? TRUE : FALSE) != ERR_Okay) {
+   if (open_shared_control() != ERR_Okay) {
       CloseCore();
       if (Info->Flags & OPF_ERROR) Info->Error = ERR_Failed;
       return NULL;
@@ -650,23 +593,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    #endif
 
    if (!SysLock(PL_FORBID, 4000)) {
-      if (glSharedControl->GlobalInstance) {
-         if (Info->Flags & OPF_GLOBAL_INSTANCE) {
-            // If a global instance is already active and OPF_GLOBAL_INSTANCE is set, we cannot proceed.
-
-            SysUnlock(PL_FORBID);
-            CloseCore();
-            if (Info->Flags & OPF_ERROR) Info->Error = ERR_GlobalInstanceLocked;
-            return NULL;
-         }
-         else {
-            // When a global instance is active, all tasks must relate to the same instance ID.
-
-            glInstanceID = glSharedControl->GlobalInstance;
-            glMasterTask = FALSE;
-         }
-      }
-
       // Register our process in the task control array.  First, check if a slot has been pre-allocated for our
       // task by the parent that launched us.  Otherwise, allocate a new slot.
 
@@ -742,30 +668,12 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
       // Use a process ID as a unique instance ID by default
 
-      if (!glInstanceID) {
-         glMasterTask = TRUE;
-         if ((glInstanceID = glProcessID) < 0) glInstanceID = -glInstanceID;
+      if ((glInstanceID = glProcessID) < 0) glInstanceID = -glInstanceID;
 
-         if (Info->Flags & OPF_GLOBAL_INSTANCE) {
-            glSharedControl->GlobalInstance = glInstanceID;
-         }
+      glSharedControl->InstanceMsgPort = glTaskMessageMID;
 
-         glSharedControl->InstanceMsgPort = glTaskMessageMID;
-
-         auto call = make_function_stdc(process_janitor);
-         SubscribeTimer(60, &call, &glProcessJanitor);
-      }
-      else {
-         glMasterTask = FALSE;
-
-         #ifdef _WIN32
-            // In win32, child tasks need to run at a lower priority than the core task
-            // in order to prevent them sucking up the core task's time.  (This applies
-            // at least to Win2K and earlier).
-
-            winLowerPriority();
-         #endif
-      }
+      auto call = make_function_stdc(process_janitor);
+      SubscribeTimer(60, &call, &glProcessJanitor);
 
       SysUnlock(PL_FORBID);
    }
@@ -795,33 +703,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       return NULL;
    }
 
-   // Allocate the public object table
-
-   {
-      SharedObjectHeader *publichdr;
-
-      log.msg("Allocating public object table.");
-
-      MEMORYID memid = RPM_SharedObjects;
-      if (!(error = AllocMemory(sizeof(SharedObjectHeader) + (sizeof(SharedObject) * PUBLIC_TABLE_CHUNK), MEM_UNTRACKED|MEM_RESERVED|MEM_PUBLIC|MEM_READ_WRITE, (void **)&publichdr, &memid))) {
-         publichdr->Offset    = sizeof(SharedObjectHeader);
-         publichdr->NextEntry = 0;
-         publichdr->ArraySize = PUBLIC_TABLE_CHUNK;
-         ReleaseMemoryID(memid);
-      }
-      else if (error != ERR_ResourceExists) {
-         log.warning("Failed to allocate the public object memory table, error %d.", error);
-         if (Info->Flags & OPF_ERROR) Info->Error = ERR_AllocMemory;
-         CloseCore();
-         return NULL;
-      }
-   }
-
-   if (AllocSemaphore(NULL, 0, 0, &glSharedControl->ClassSemaphore)) {
-      CloseCore();
-      return NULL;
-   }
-
    ManagedActions[AC_Init] = (LONG (*)(OBJECTPTR, APTR))MGR_Init;
    ManagedActions[AC_Free] = (LONG (*)(OBJECTPTR, APTR))MGR_Free;
    ManagedActions[AC_Signal] = (LONG (*)(OBJECTPTR, APTR))MGR_Signal;
@@ -844,91 +725,25 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       return NULL;
    }
 
-   // Allocate the System Task
+   // Register Core classes
 
-   if (!(error = NewLockedObject(ID_TASK, NF::NO_TRACK|NF::PUBLIC|NF::UNIQUE, &SystemTask, &SystemTaskID, "SystemTask"))) {
-      if (Action(AC_Init, SystemTask, NULL) != ERR_Okay) {
-         if (Info->Flags & OPF_ERROR) Info->Error = ERR_Init;
-         ReleaseObject(SystemTask);
-         CloseCore();
-         return NULL;
-      }
-      ReleaseObject(SystemTask);
-   }
-   else if (error != ERR_ObjectExists) {
-      if (Info->Flags & OPF_ERROR) Info->Error = ERR_NewObject;
-      CloseCore();
-      return NULL;
-   }
+   if (add_thread_class() != ERR_Okay)  { CloseCore(); return NULL; }
+   if (add_module_class() != ERR_Okay)  { CloseCore(); return NULL; }
+   if (add_time_class() != ERR_Okay)    { CloseCore(); return NULL; }
+   if (add_config_class() != ERR_Okay)  { CloseCore(); return NULL; }
+   if (add_storage_class() != ERR_Okay) { CloseCore(); return NULL; }
+   if (add_file_class() != ERR_Okay)    { CloseCore(); return NULL; }
+   if (add_script_class() != ERR_Okay)  { CloseCore(); return NULL; }
+   if (add_archive_class() != ERR_Okay) { CloseCore(); return NULL; }
+   if (add_compressed_stream_class() != ERR_Okay) { CloseCore(); return NULL; }
+   if (add_compression_class() != ERR_Okay) { CloseCore(); return NULL; }
 
-   // Register Core classes in the system
+   #ifdef __ANDROID__
+   if (add_asset_class() != ERR_Okay) { CloseCore(); return NULL; }
+   #endif
 
-   {
-      parasol::Log log("Core");
-      log.branch("Registering Core classes.");
-
-      if (add_thread_class() != ERR_Okay)  { CloseCore(); return NULL; }
-      if (add_module_class() != ERR_Okay)  { CloseCore(); return NULL; }
-      if (add_time_class() != ERR_Okay)    { CloseCore(); return NULL; }
-      if (add_config_class() != ERR_Okay)  { CloseCore(); return NULL; }
-      if (add_storage_class() != ERR_Okay) { CloseCore(); return NULL; }
-      if (add_file_class() != ERR_Okay)    { CloseCore(); return NULL; }
-      if (add_script_class() != ERR_Okay)  { CloseCore(); return NULL; }
-      if (add_archive_class() != ERR_Okay) { CloseCore(); return NULL; }
-      if (add_compressed_stream_class() != ERR_Okay) { CloseCore(); return NULL; }
-      if (add_compression_class() != ERR_Okay) { CloseCore(); return NULL; }
-
-      #ifdef __ANDROID__
-      if (add_asset_class() != ERR_Okay) { CloseCore(); return NULL; }
-      #endif
-   }
-
-   if (init_filesystem(volumes)) {
-      KERR("Failed to initialise the filesystem.");
-      CloseCore();
-      return NULL;
-   }
-
-   fs_initialised = TRUE;
-
-   if (!(Info->Flags & OPF_SCAN_MODULES)) {
-      if (!(error = load_modules())) {
-         error = load_classes(); // See class_metaclass.c
-         Expunge(FALSE); // A final expunge is essential to normalise the system state.
-      }
-   }
-
-   if (error != ERR_Okay) {
-      log.warning("Failed to load the system classes.");
-      if (Info->Flags & OPF_ERROR) Info->Error = error;
-      CloseCore();
-      return NULL;
-   }
-
-   // Create our task object.  This is expected to be local to our process, so do not allocate this object publicly.
-
-   if (!NewObject(ID_TASK, NF::NO_TRACK, (OBJECTPTR *)&localtask)) {
-      localtask->Flags |= TSF_DUMMY;
-
-      if (Info->Flags & OPF_NAME) {
-         localtask->set(FID_Name, Info->Name);
-         StrCopy(Info->Name, glProgName, sizeof(glProgName));
-      }
-
-      if (!acInit(localtask)) {
-         // NB: The glCurrentTask and glCurrentTaskID variables are set on task initialisation
-
-         if (na > 0) SetArray(localtask, FID_Parameters, newargs, na);
-
-         if (!acActivate(localtask)) {
-
-         }
-         else {
-            CloseCore();
-            return NULL;
-         }
-      }
-      else {
+   if (!NewObject(ID_TASK, NF::UNTRACKED, (OBJECTPTR *)&glCurrentTask)) {
+      if (acInit(glCurrentTask)) {
          CloseCore();
          return NULL;
       }
@@ -937,6 +752,49 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       CloseCore();
       return NULL;
    }
+
+   if (init_volumes(volumes)) {
+      KERR("Failed to initialise the filesystem.");
+      CloseCore();
+      return NULL;
+   }
+
+   fs_initialised = TRUE;
+
+   if (!(Info->Flags & OPF_SCAN_MODULES)) {
+      ERROR error;
+      if (!(error = load_modules())) {
+         objFile::create file = { fl::Path(glClassBinPath), fl::Flags(FL_READ) };
+
+         if (file.ok()) {
+            LONG filesize;
+            file->get(FID_Size, &filesize);
+
+            LONG hdr;
+            file->read(&hdr, sizeof(hdr));
+            if (hdr IS CLASSDB_HEADER) {
+               while (file->Position + ClassRecord::MIN_SIZE < filesize) {
+                  ClassRecord item;
+                  item.read(*file);
+                  glClassDB[item.ClassID] = item;
+               }
+            }
+            else {
+               // File is probably from an old version and requires recalculation.
+               glScanClasses = true;
+            }
+         }
+         else glScanClasses = true; // If no file, a database rebuild is required.
+      }
+      else {
+         log.warning("Failed to load the system classes.");
+         if (Info->Flags & OPF_ERROR) Info->Error = error;
+         CloseCore();
+         return NULL;
+      }
+   }
+
+   if (na > 0) SetArray(glCurrentTask, FID_Parameters, newargs, na);
 
    // In Windows, set the PATH environment variable so that DLL's installed under modules:lib can be found.
 
@@ -960,12 +818,12 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    // Broadcast the creation of the new task
 
-   evTaskCreated task_created = { EVID_SYSTEM_TASK_CREATED, glCurrentTaskID };
+   evTaskCreated task_created = { EVID_SYSTEM_TASK_CREATED, glCurrentTask->UID };
    BroadcastEvent(&task_created, sizeof(task_created));
 
    if (Info->Flags & OPF_SCAN_MODULES) {
       log.msg("Class scanning has been enforced by user request.");
-      glScanClasses = TRUE;
+      glScanClasses = true;
    }
 
    if (glScanClasses) {
@@ -995,12 +853,6 @@ EXPORT void CleanSystem(LONG Flags)
 }
 
 //********************************************************************************************************************
-// If GlobalInstance is TRUE (because OPF_GLOBALINSTANCE was specified to OpenCore()), then the permissions and
-// nature of the public memory can be quite different to that of the standalone runtime environment.
-//
-// Basically, a global instance uses loose shared memory permissions and a bigger shared heap because apps will be
-// sharing more information and using common objects as audio and display surfaces.  OTOH a standalone runtime only
-// needs to concern itself with sharing information with the child processes that it creates (if any).
 
 #define MAGICKEY 0x58392712
 
@@ -1012,11 +864,11 @@ static LONG glMemorySize = sizeof(SharedControl) +
                            (sizeof(TaskList) * MAX_TASKS);
 
 #ifdef _WIN32
-static ERROR open_shared_control(BYTE GlobalInstance)
+static ERROR open_shared_control(void)
 {
    parasol::Log log(__FUNCTION__);
 
-   log.trace("Global: %d", GlobalInstance);
+   log.trace("");
 
    ERROR error;
 
@@ -1061,7 +913,7 @@ static ERROR open_shared_control(BYTE GlobalInstance)
 
 #else
 
-static ERROR open_shared_control(BYTE GlobalInstance)
+static ERROR open_shared_control(void)
 {
    parasol::Log log("Core");
 
@@ -1078,7 +930,7 @@ static ERROR open_shared_control(BYTE GlobalInstance)
       }
    }
 
-   KMSG("open_shared_control(%d) Key: $%.8x.\n", GlobalInstance, memkey);
+   KMSG("open_shared_control() Key: $%.8x.\n", memkey);
 
    // Allocate the public memory pool
 
@@ -1133,10 +985,8 @@ static ERROR open_shared_control(BYTE GlobalInstance)
       if ((glSharedControlID = shmget(memkey, 0, SHM_R|SHM_W)) IS -1) {
          KMSG("No existing memory block exists for the given key (will create a new one).  Error: %s\n", strerror(errno));
 
-         if (!GlobalInstance) {
-            // Since there's no global instance running and we've been told on initialisation not to be one, change the memkey with our PID to make it unique.
-            memkey ^= getpid();
-         }
+         // Change the memkey with our PID to make it unique.
+         memkey ^= getpid();
 
          if ((glSharedControlID = shmget(memkey, glMemorySize, IPC_CREAT|IPC_EXCL|SHM_R|SHM_W|S_IRWXO|S_IRWXG|S_IRWXU)) IS -1) {
             if (errno IS EEXIST); // The shared memory block already exists
@@ -1167,41 +1017,6 @@ static ERROR open_shared_control(BYTE GlobalInstance)
       if ((init) or (glSharedControl->MagicKey != MAGICKEY)) {
          KMSG("Initialisation of glSharedControl is required.\n");
          init_shared_control();
-      }
-      else if (glSharedControl->GlobalInstance) {
-         KMSG("Checking existing glSharedControl is valid (instance PID %d).\n", glSharedControl->GlobalInstance);
-
-         bool cleanup = false;
-
-         if ((kill(glSharedControl->GlobalInstance, 0) IS -1) and (errno IS ESRCH)) cleanup = true;
-
-         if (cleanup) {
-            // The global instance no longer exists - this indicates that a crash occurred and the IPC's weren't
-            // terminated correctly.
-
-            log.warning("Cleaning up system failure detected for previous execution.");
-
-            // Mark all previous shared memory blocks for deletion.
-            // You can check the success of this routine by running "ipcs", which lists allocated shm blocks.
-
-            LONG id;
-
-            shSemaphores = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
-            shTasks      = (TaskList *)ResolveAddress(glSharedControl, glSharedControl->TaskOffset);
-
-            if (glSharedControl->BlocksOffset) {
-               glSharedBlocks = (PublicAddress *)ResolveAddress(glSharedControl, glSharedControl->BlocksOffset);
-               for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
-                  if (glSharedBlocks[i].MemoryID) {
-                     if ((id = shmget(SHMKEY + glSharedBlocks[i].MemoryID, glSharedBlocks[i].Size, S_IRWXO|S_IRWXG|S_IRWXU)) != -1) {
-                        shmctl(id, IPC_RMID, NULL);
-                     }
-                  }
-               }
-            }
-
-            init_shared_control();
-         }
       }
 
    #else
@@ -2047,367 +1862,324 @@ static void win32_enum_folders(CSTRING Volume, CSTRING Label, CSTRING Path, CSTR
 
 //****************************************************************************
 
-static ERROR init_filesystem(std::forward_list<CSTRING> &Volumes)
+static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
 {
    parasol::Log log("Core");
-   LONG i;
-   char buffer[300];
 
-   log.branch("Initialising filesystem.");
+   log.branch("Initialising filesystem volumes.");
 
    glVirtualTotal = 1;
    glVirtual[0] = glFSDefault;
 
-   // If the public volume list is not already in memory, load it. The SystemVolumes object provides us with a
-   // way to resolve volume names to file locations, as well as providing other classes with a way to
-   // peruse the volumes registered within the system.
-
    log.trace("Attempting to create SystemVolumes object.");
 
-   ERROR error;
-   if (!(error = NewObject(ID_CONFIG, NF::NO_TRACK, (OBJECTPTR *)&glVolumes))) {
-      SetName(glVolumes, "SystemVolumes");
-      if (acInit(glVolumes) != ERR_Okay) {
-         acFree(glVolumes);
-         return log.warning(ERR_Init);
-      }
+   // Add system volumes that require run-time determination.  For the avoidance of doubt, on Unix systems the
+   // default settings for a fixed installation are:
+   //
+   // OPF_ROOT_PATH   : parasol : glRootPath   = /usr/local
+   // OPF_MODULE_PATH : modules : glModulePath = %ROOT%/lib/parasol
+   // OPF_SYSTEM_PATH : system  : glSystemPath = %ROOT%/share/parasol
 
-      #ifndef __ANDROID__ // For security reasons we do not use an external volume file for the Android build.
-         {
-            char volpath[120];
-            #ifdef _WIN32
-               snprintf(volpath, sizeof(volpath), "%sconfig\\volumes.cfg", glSystemPath);
-            #else
-               snprintf(volpath, sizeof(volpath), "%sconfig/volumes.cfg", glSystemPath);
-            #endif
-            cfgMergeFile(glVolumes, volpath);
-         }
-      #endif
+   #ifdef _WIN32
+      SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/filemanager", TAGEND);
+      SetVolume(AST_NAME, "system", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "misc/brick", TAGEND);
 
-      // Add system volumes that require run-time determination.  For the avoidance of doubt, on Unix systems the
-      // default settings for a fixed installation are:
-      //
-      // OPF_ROOT_PATH   : parasol : glRootPath   = /usr/local
-      // OPF_MODULE_PATH : modules : glModulePath = %ROOT%/lib/parasol
-      // OPF_SYSTEM_PATH : system  : glSystemPath = %ROOT%/share/parasol
-
-      #ifdef _WIN32
-         SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/filemanager", TAGEND);
-         SetVolume(AST_NAME, "system", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "misc/brick", TAGEND);
-
-         if (glModulePath[0]) {
-            SetVolume(AST_NAME, "modules", AST_PATH, glModulePath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "misc/brick", TAGEND);
-         }
-         else {
-            SetVolume(AST_NAME, "modules", AST_PATH, "system:lib/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "misc/brick", TAGEND);
-         }
-      #elif __unix__
-         // If device volumes are already set by the user, do not attempt to discover such devices.
-
-         BYTE cd_set = FALSE;
-         BYTE hd_set = FALSE;
-/*
-         ConfigEntry *entries;
-         if ((entries = config->Entries)) {
-            for (i=0; i < config->AmtEntries; i++) {
-               if (!StrMatch("Name", entries[i].Item)) {
-                  if (!StrMatch("cd1", entries[i].Data))         cd_set = TRUE;
-                  else if (!StrMatch("drive1", entries[i].Data)) hd_set = TRUE;
-                  else if (!StrMatch("usb1", entries[i].Data))   usb_set = TRUE;
-               }
-            }
-         }
-*/
-         SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/filemanager",  TAGEND);
-         SetVolume(AST_NAME, "system", AST_PATH, glSystemPath, AST_FLAGS, VOLUME_REPLACE, AST_ICON, "misc/brick",  TAGEND);
-
-         if (glModulePath[0]) {
-            SetVolume(AST_NAME, "modules", AST_PATH, glModulePath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "misc/brick",  TAGEND);
-         }
-         else {
-            char path[200];
-            snprintf(path, sizeof(path), "%slib/parasol/", glRootPath);
-            SetVolume(AST_NAME, "modules", AST_PATH, path, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "misc/brick",  TAGEND);
-         }
-
-         if (!hd_set) {
-            SetVolume(AST_NAME, "drive1", AST_PATH, "/", AST_LABEL, "Linux", AST_FLAGS, VOLUME_REPLACE, AST_ICON, "devices/storage", AST_DEVICE, "hd", TAGEND);
-         }
-      #endif
-
-      // Configure some standard volumes.
-
-      #ifdef __ANDROID__
-         SetVolume(AST_NAME, "assets", AST_PATH, "EXT:FileAssets", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, TAGEND);
-         SetVolume(AST_NAME, "templates", AST_PATH, "assets:templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "misc/openbook", TAGEND);
-         SetVolume(AST_NAME, "config", AST_PATH, "localcache:config/|assets:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "tools/cog",  TAGEND);
-      #else
-         SetVolume(AST_NAME, "templates", AST_PATH, "scripts:templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "misc/openbook", TAGEND);
-         SetVolume(AST_NAME, "config", AST_PATH, "system:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "tools/cog",  TAGEND);
-         if (!AnalysePath("parasol:bin/", NULL)) { // Bin is the location of the fluid and parasol binaries
-            SetVolume(AST_NAME, "bin", AST_PATH, "parasol:bin/", AST_FLAGS, VOLUME_HIDDEN, TAGEND);
-         }
-         else SetVolume(AST_NAME, "bin", AST_PATH, "parasol:", AST_FLAGS, VOLUME_HIDDEN, TAGEND);
-      #endif
-
-      SetVolume(AST_NAME, "temp", AST_PATH, "user:temp/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/trash", TAGEND);
-      SetVolume(AST_NAME, "fonts", AST_PATH, "system:fonts/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/font",  TAGEND);
-      SetVolume(AST_NAME, "scripts", AST_PATH, "system:scripts/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/source",  TAGEND);
-      SetVolume(AST_NAME, "styles", AST_PATH, "system:styles/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "tools/image_gallery",  TAGEND);
-      SetVolume(AST_NAME, "icons", AST_PATH, "EXT:widget", AST_FLAGS, VOLUME_HIDDEN, AST_ICON,  "misc/picture", TAGEND); // Refer to widget module for actual configuration
-
-      // Some platforms need to have special volumes added - these are provided in the OpenInfo structure passed to
-      // the Core.
-
-      if ((glOpenInfo->Flags & OPF_OPTIONS) and (glOpenInfo->Options)) {
-         for (i=0; glOpenInfo->Options[i].Tag != TAGEND; i++) {
-            switch (glOpenInfo->Options[i].Tag) {
-               case TOI_LOCAL_CACHE: {
-                  SetVolume(AST_NAME, "localcache", AST_PATH, glOpenInfo->Options[i].Value.String, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, TAGEND);
-                  break;
-               }
-               case TOI_LOCAL_STORAGE: {
-                  SetVolume(AST_NAME, "localstorage", AST_PATH, glOpenInfo->Options[i].Value.String, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, TAGEND);
-                  break;
-               }
-            }
-         }
-      }
-
-      if (!glUserHomeFolder) {
-         if ((cfgReadValue(glVolumes, "User", "Name", &glUserHomeFolder) != ERR_Okay) or (!glUserHomeFolder)) glUserHomeFolder = "parasol";
-      }
-
-      if (!StrMatch("default", glUserHomeFolder)) {
-         CSTRING path;
-         if (!cfgReadValue(glVolumes, "User", "Path", &path)) {
-            i = StrCopy(path, buffer, sizeof(buffer));
-         }
-         else i = StrCopy("config:users/", buffer, sizeof(buffer));
+      if (glModulePath[0]) {
+         SetVolume(AST_NAME, "modules", AST_PATH, glModulePath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "misc/brick", TAGEND);
       }
       else {
-         #ifdef __unix__
-            STRING homedir, logname;
-            if ((homedir = getenv("HOME")) and (homedir[0]) and (StrMatch("/", homedir) != ERR_Okay)) {
-               log.msg("Home folder is \"%s\".", homedir);
-               for (i=0; (homedir[i]) and (i < (LONG)sizeof(buffer)-1); i++) buffer[i] = homedir[i];
-               while ((i > 0) and (buffer[i-1] IS '/')) i--;
-               i += snprintf(buffer+i, sizeof(buffer)-i, "/.%s%d/", glUserHomeFolder, F2T(VER_CORE));
-            }
-            else if ((logname = getenv("LOGNAME")) and (logname[0])) {
-               log.msg("Login name for home folder is \"%s\".", logname);
-               i = snprintf(buffer, sizeof(buffer), "config:users/%s/", logname);
-               buffer[i] = 0;
-            }
-            else {
-               log.msg("Unable to determine home folder, using default.");
-               i = StrCopy("config:users/default/", buffer, COPY_ALL);
-            }
-         #elif _WIN32
-            // Attempt to get the path of the user's personal folder.  If the Windows system doesn't have this
-            // facility, attempt to retrieve the login name and store the user files in the system folder.
+         SetVolume(AST_NAME, "modules", AST_PATH, "system:lib/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "misc/brick", TAGEND);
+      }
+   #elif __unix__
+      SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/filemanager",  TAGEND);
+      SetVolume(AST_NAME, "system", AST_PATH, glSystemPath, AST_FLAGS, VOLUME_REPLACE, AST_ICON, "misc/brick",  TAGEND);
 
-            if ((i = winGetUserFolder(buffer, sizeof(buffer)-40))) {
-               snprintf(buffer+i, sizeof(buffer)-i, "%s%d%d\\", glUserHomeFolder, F2T(VER_CORE), REV_CORE);
-               while (buffer[i]) i++;
-            }
-            else {
-               i = StrCopy("config:users/", buffer, 0);
-               if ((winGetUserName(buffer+i, sizeof(buffer)-i) and (buffer[i]))) {
-                  while (buffer[i]) i++;
-                  buffer[i++] = '/';
-                  buffer[i] = 0;
-               }
-               else i += StrCopy("default/", buffer+i, COPY_ALL);
-            }
-         #else
-            i = StrCopy("config:users/default/", buffer, COPY_ALL);
-         #endif
+      if (glModulePath[0]) {
+         SetVolume(AST_NAME, "modules", AST_PATH, glModulePath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "misc/brick",  TAGEND);
+      }
+      else {
+         char path[200];
+         snprintf(path, sizeof(path), "%slib/parasol/", glRootPath);
+         SetVolume(AST_NAME, "modules", AST_PATH, path, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "misc/brick",  TAGEND);
+      }
 
-         // Copy the default configuration files to the user: folder.  This also has the effect of creating the user
-         // folder if it does not already exist.
+      SetVolume(AST_NAME, "drive1", AST_PATH, "/", AST_LABEL, "Linux", AST_FLAGS, VOLUME_REPLACE, AST_ICON, "devices/storage", AST_DEVICE, "hd", TAGEND);
+   #endif
 
-         if (StrMatch("config:users/default/", buffer) != ERR_Okay) {
-            LONG location_type = 0;
-            if ((AnalysePath(buffer, &location_type) != ERR_Okay) or (location_type != LOC_DIRECTORY)) {
-               buffer[i-1] = 0;
-               SetDefaultPermissions(-1, -1, PERMIT_READ|PERMIT_WRITE);
-                  CopyFile("config:users/default/", buffer, NULL);
-               SetDefaultPermissions(-1, -1, 0);
-               buffer[i-1] = '/';
+   // Configure some standard volumes.
+
+   #ifdef __ANDROID__
+      SetVolume(AST_NAME, "assets", AST_PATH, "EXT:FileAssets", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, TAGEND);
+      SetVolume(AST_NAME, "templates", AST_PATH, "assets:templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "misc/openbook", TAGEND);
+      SetVolume(AST_NAME, "config", AST_PATH, "localcache:config/|assets:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "tools/cog",  TAGEND);
+   #else
+      SetVolume(AST_NAME, "templates", AST_PATH, "scripts:templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "misc/openbook", TAGEND);
+      SetVolume(AST_NAME, "config", AST_PATH, "system:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "tools/cog",  TAGEND);
+      if (!AnalysePath("parasol:bin/", NULL)) { // Bin is the location of the fluid and parasol binaries
+         SetVolume(AST_NAME, "bin", AST_PATH, "parasol:bin/", AST_FLAGS, VOLUME_HIDDEN, TAGEND);
+      }
+      else SetVolume(AST_NAME, "bin", AST_PATH, "parasol:", AST_FLAGS, VOLUME_HIDDEN, TAGEND);
+   #endif
+
+   SetVolume(AST_NAME, "temp", AST_PATH, "user:temp/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/trash", TAGEND);
+   SetVolume(AST_NAME, "fonts", AST_PATH, "system:fonts/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/font",  TAGEND);
+   SetVolume(AST_NAME, "scripts", AST_PATH, "system:scripts/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/source",  TAGEND);
+   SetVolume(AST_NAME, "styles", AST_PATH, "system:styles/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "tools/image_gallery",  TAGEND);
+   SetVolume(AST_NAME, "icons", AST_PATH, "EXT:widget", AST_FLAGS, VOLUME_HIDDEN, AST_ICON,  "misc/picture", TAGEND); // Refer to widget module for actual configuration
+
+   // Some platforms need to have special volumes added - these are provided in the OpenInfo structure passed to
+   // the Core.
+
+   if ((glOpenInfo->Flags & OPF_OPTIONS) and (glOpenInfo->Options)) {
+      for (LONG i=0; glOpenInfo->Options[i].Tag != TAGEND; i++) {
+         switch (glOpenInfo->Options[i].Tag) {
+            case TOI_LOCAL_CACHE: {
+               SetVolume(AST_NAME, "localcache", AST_PATH, glOpenInfo->Options[i].Value.String, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, TAGEND);
+               break;
             }
+            case TOI_LOCAL_STORAGE: {
+               SetVolume(AST_NAME, "localstorage", AST_PATH, glOpenInfo->Options[i].Value.String, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, TAGEND);
+               break;
+            }
+         }
+      }
+   }
 
-            i += StrCopy("|config:users/default/", buffer+i, sizeof(buffer)-i);
+   if (glUserHomeFolder.empty()) {
+      for (auto& [group, keys] : glVolumes) {
+         if (!group.compare("User")) {
+            if (keys.contains("Name")) glUserHomeFolder.assign(keys["Name"]);
+            break;
+         }
+      }
+
+      if (glUserHomeFolder.empty()) glUserHomeFolder.assign("parasol");
+   }
+
+   char buffer[300];
+   if (!StrMatch("default", glUserHomeFolder.c_str())) {
+      StrCopy("config:users/", buffer, sizeof(buffer));
+      for (auto& [group, keys] : glVolumes) {
+         if (!group.compare("User")) {
+            if (keys.contains("Path")) StrCopy(keys["Path"].c_str(), buffer, sizeof(buffer));
+         }
+      }
+   }
+   else {
+      LONG i;
+      #ifdef __unix__
+         STRING homedir, logname;
+         if ((homedir = getenv("HOME")) and (homedir[0]) and (StrMatch("/", homedir) != ERR_Okay)) {
+            log.msg("Home folder is \"%s\".", homedir);
+            for (i=0; (homedir[i]) and (i < (LONG)sizeof(buffer)-1); i++) buffer[i] = homedir[i];
+            while ((i > 0) and (buffer[i-1] IS '/')) i--;
+            i += snprintf(buffer+i, sizeof(buffer)-i, "/.%s%d/", glUserHomeFolder.c_str(), F2T(VER_CORE));
+         }
+         else if ((logname = getenv("LOGNAME")) and (logname[0])) {
+            log.msg("Login name for home folder is \"%s\".", logname);
+            i = snprintf(buffer, sizeof(buffer), "config:users/%s/", logname);
             buffer[i] = 0;
          }
-      }
+         else {
+            log.msg("Unable to determine home folder, using default.");
+            i = StrCopy("config:users/default/", buffer, COPY_ALL);
+         }
+      #elif _WIN32
+         // Attempt to get the path of the user's personal folder.  If the Windows system doesn't have this
+         // facility, attempt to retrieve the login name and store the user files in the system folder.
 
-      // Reset the user: volume
-
-      log.msg("Home Folder: %s", buffer);
-
-      SetVolume(AST_NAME, "user:", AST_PATH, buffer, AST_Flags, VOLUME_REPLACE, AST_ICON, "users/user", TAGEND);
-
-      // Make sure that certain default directories exist
-
-      CreateFolder("user:config/", PERMIT_READ|PERMIT_EXEC|PERMIT_WRITE);
-      CreateFolder("user:temp/", PERMIT_READ|PERMIT_EXEC|PERMIT_WRITE);
-
-      // Set the default folder from temp:.  It is possible for the user to overwrite this in volumes.cfg if he
-      // would like temporary files to be written somewhere else.
-
-      if (AnalysePath("temp:", NULL) != ERR_Okay) {
-         SetVolume(AST_NAME, "temp:", AST_PATH, "user:temp/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "items/trash", TAGEND);
-      }
-
-      if (AnalysePath("clipboard:", NULL) != ERR_Okay) {
-         SetVolume(AST_NAME, "clipboard:", AST_PATH, "temp:clipboard/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "items/clipboard", TAGEND);
-      }
-
-      // Look for the following drive types:
-      //
-      // CD-ROMS:               CD1/CD2/CD3
-      // Removable Media:       Disk1/Disk2 (floppies etc)
-      // Hard Drive Partitions: HD1/HD2
-      //
-      // NOTE: In the native release all media, including volumes, are controlled by the mountdrives program.
-      // Mountdrives also happens to manage the system:hardware/drives.cfg file.
-
-      const SystemState *state = GetSystemState();
-      if (StrMatch("Native", state->Platform) != ERR_Okay) {
-#ifdef _WIN32
-         LONG len;
-         if ((len = winGetLogicalDriveStrings(buffer, sizeof(buffer))) > 0) {
-            char disk[] = "disk1";
-            char cd[]   = "cd1";
-            char hd[]   = "drive1";
-            char net[]  = "net1";
-
-            for (i=0; i < len; i++) {
-               LONG type = winGetDriveType(buffer+i);
-
-               buffer[i+2] = '/';
-
-               char label[2];
-               label[0] = buffer[i];
-               label[1] = 0;
-
-               if (type IS DRIVETYPE_REMOVABLE) {
-                  SetVolume(AST_NAME, disk, AST_PATH, buffer+i, AST_LABEL, label, AST_ICON, "devices/storage", AST_DEVICE, "disk", TAGEND);
-                  disk[4]++;
-               }
-               else if (type IS DRIVETYPE_CDROM) {
-                  SetVolume(AST_NAME, cd, AST_PATH, buffer+i, AST_LABEL, label, AST_ICON, "devices/compactdisc", AST_DEVICE, "cd", TAGEND);
-                  cd[2]++;
-               }
-               else if (type IS DRIVETYPE_FIXED) {
-                  SetVolume(AST_Name, hd, AST_Path, buffer+i, AST_LABEL, label, AST_ICON, "devices/storage", AST_DEVICE, "hd", TAGEND);
-                  hd[5]++;
-               }
-               else if (type IS DRIVETYPE_NETWORK) {
-                  SetVolume(AST_NAME, net, AST_PATH, buffer+i, AST_LABEL, label, AST_ICON, "devices/network", AST_DEVICE, "network", TAGEND);
-                  net[3]++;
-               }
-               else log.warning("Drive %s identified as unsupported type %d.", buffer+i, type);
-
+         if ((i = winGetUserFolder(buffer, sizeof(buffer)-40))) {
+            snprintf(buffer+i, sizeof(buffer)-i, "%s%d%d\\", glUserHomeFolder.c_str(), F2T(VER_CORE), REV_CORE);
+            while (buffer[i]) i++;
+         }
+         else {
+            i = StrCopy("config:users/", buffer, 0);
+            if ((winGetUserName(buffer+i, sizeof(buffer)-i) and (buffer[i]))) {
                while (buffer[i]) i++;
+               buffer[i++] = '/';
+               buffer[i] = 0;
             }
+            else i += StrCopy("default/", buffer+i, COPY_ALL);
+         }
+      #else
+         i = StrCopy("config:users/default/", buffer, COPY_ALL);
+      #endif
+
+      // Copy the default configuration files to the user: folder.  This also has the effect of creating the user
+      // folder if it does not already exist.
+
+      if (StrMatch("config:users/default/", buffer) != ERR_Okay) {
+         LONG location_type = 0;
+         if ((AnalysePath(buffer, &location_type) != ERR_Okay) or (location_type != LOC_DIRECTORY)) {
+            buffer[i-1] = 0;
+            SetDefaultPermissions(-1, -1, PERMIT_READ|PERMIT_WRITE);
+               CopyFile("config:users/default/", buffer, NULL);
+            SetDefaultPermissions(-1, -1, 0);
+            buffer[i-1] = '/';
          }
 
-         winEnumSpecialFolders(&win32_enum_folders);
+         i += StrCopy("|config:users/default/", buffer+i, sizeof(buffer)-i);
+         buffer[i] = 0;
+      }
+   }
+
+   // Reset the user: volume
+
+   log.msg("Home Folder: %s", buffer);
+
+   SetVolume(AST_NAME, "user:", AST_PATH, buffer, AST_Flags, VOLUME_REPLACE, AST_ICON, "users/user", TAGEND);
+
+   // Make sure that certain default directories exist
+
+   CreateFolder("user:config/", PERMIT_READ|PERMIT_EXEC|PERMIT_WRITE);
+   CreateFolder("user:temp/", PERMIT_READ|PERMIT_EXEC|PERMIT_WRITE);
+
+   // Set the default folder from temp:.  It is possible for the user to overwrite this in volumes.cfg if he
+   // would like temporary files to be written somewhere else.
+
+   if (AnalysePath("temp:", NULL) != ERR_Okay) {
+      SetVolume(AST_NAME, "temp:", AST_PATH, "user:temp/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "items/trash", TAGEND);
+   }
+
+   if (AnalysePath("clipboard:", NULL) != ERR_Okay) {
+      SetVolume(AST_NAME, "clipboard:", AST_PATH, "temp:clipboard/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "items/clipboard", TAGEND);
+   }
+
+   // Look for the following drive types:
+   //
+   // CD-ROMS:               CD1/CD2/CD3
+   // Removable Media:       Disk1/Disk2 (floppies etc)
+   // Hard Drive Partitions: HD1/HD2
+   //
+   // NOTE: In the native release all media, including volumes, are controlled by the mountdrives program.
+   // Mountdrives also happens to manage the system:hardware/drives.cfg file.
+
+   const SystemState *state = GetSystemState();
+   if (StrMatch("Native", state->Platform) != ERR_Okay) {
+#ifdef _WIN32
+      LONG len;
+      if ((len = winGetLogicalDriveStrings(buffer, sizeof(buffer))) > 0) {
+         char disk[] = "disk1";
+         char cd[]   = "cd1";
+         char hd[]   = "drive1";
+         char net[]  = "net1";
+
+         for (LONG i=0; i < len; i++) {
+            LONG type = winGetDriveType(buffer+i);
+
+            buffer[i+2] = '/';
+
+            char label[2];
+            label[0] = buffer[i];
+            label[1] = 0;
+
+            if (type IS DRIVETYPE_REMOVABLE) {
+               SetVolume(AST_NAME, disk, AST_PATH, buffer+i, AST_LABEL, label, AST_ICON, "devices/storage", AST_DEVICE, "disk", TAGEND);
+               disk[4]++;
+            }
+            else if (type IS DRIVETYPE_CDROM) {
+               SetVolume(AST_NAME, cd, AST_PATH, buffer+i, AST_LABEL, label, AST_ICON, "devices/compactdisc", AST_DEVICE, "cd", TAGEND);
+               cd[2]++;
+            }
+            else if (type IS DRIVETYPE_FIXED) {
+               SetVolume(AST_Name, hd, AST_Path, buffer+i, AST_LABEL, label, AST_ICON, "devices/storage", AST_DEVICE, "hd", TAGEND);
+               hd[5]++;
+            }
+            else if (type IS DRIVETYPE_NETWORK) {
+               SetVolume(AST_NAME, net, AST_PATH, buffer+i, AST_LABEL, label, AST_ICON, "devices/network", AST_DEVICE, "network", TAGEND);
+               net[3]++;
+            }
+            else log.warning("Drive %s identified as unsupported type %d.", buffer+i, type);
+
+            while (buffer[i]) i++;
+         }
+      }
+
+      winEnumSpecialFolders(&win32_enum_folders);
 #endif
 
 #if defined(__linux__) && !defined(__ANDROID__)
 
-         if (!hd_set) {
-            // /proc/mounts contains a list of all mounted file systems, one for each line.
-            //
-            // Format:  devicename mountpoint fstype access 0 0
-            // Example: /dev/hda1  /winnt     ntfs   ro     0 0
-            //
-            // We extract all lines with /dev/hd** and convert those into drives.
+      // /proc/mounts contains a list of all mounted file systems, one for each line.
+      //
+      // Format:  devicename mountpoint fstype access 0 0
+      // Example: /dev/hda1  /winnt     ntfs   ro     0 0
+      //
+      // We extract all lines with /dev/hd** and convert those into drives.
 
-            char mount[80], drivename[] = "driveXXX", devpath[40];
-            LONG file;
+      char mount[80], drivename[] = "driveXXX", devpath[40];
+      LONG file;
 
-            log.msg("Scanning /proc/mounts for hard disks");
+      log.msg("Scanning /proc/mounts for hard disks");
 
-            LONG driveno = 2; // Drive 1 is already assigned to root, so start from #2
-            if ((file = open("/proc/mounts", O_RDONLY)) != -1) {
-               LONG size = lseek(file, 0, SEEK_END);
-               lseek(file, 0, SEEK_SET);
-               if (size < 1) size = 8192;
+      LONG driveno = 2; // Drive 1 is already assigned to root, so start from #2
+      if ((file = open("/proc/mounts", O_RDONLY)) != -1) {
+         LONG size = lseek(file, 0, SEEK_END);
+         lseek(file, 0, SEEK_SET);
+         if (size < 1) size = 8192;
 
-               STRING buffer;
-               if (!AllocMemory(size, MEM_NO_CLEAR, (APTR *)&buffer, NULL)) {
-                  size = read(file, buffer, size);
-                  buffer[size] = 0;
+         STRING buffer;
+         if (!AllocMemory(size, MEM_NO_CLEAR, (APTR *)&buffer, NULL)) {
+            size = read(file, buffer, size);
+            buffer[size] = 0;
 
-                  CSTRING str = buffer;
-                  while (*str) {
-                     if (!StrCompare("/dev/hd", str, 0, 0)) {
-                        // Extract mount point
+            CSTRING str = buffer;
+            while (*str) {
+               if (!StrCompare("/dev/hd", str, 0, 0)) {
+                  // Extract mount point
 
-                        i = 0;
-                        while ((*str) and (*str > 0x20)) {
-                           if (i < (LONG)sizeof(devpath)-1) devpath[i++] = *str;
-                           str++;
-                        }
-                        devpath[i] = 0;
-
-                        while ((*str) and (*str <= 0x20)) str++;
-                        for (i=0; (*str) and (*str > 0x20) and (i < (LONG)sizeof(mount)-1); i++) mount[i] = *str++;
-                        mount[i] = 0;
-
-                        if ((mount[0] IS '/') and (!mount[1]));
-                        else {
-                           IntToStr(driveno++, drivename+5, 3);
-                           SetVolume(AST_NAME, drivename, AST_DEVICE_PATH, devpath, AST_PATH, mount, AST_ICON, "devices/storage", AST_DEVICE, "hd", TAGEND);
-                        }
-                     }
-
-                     // Next line
-                     while ((*str) and (*str != '\n')) str++;
-                     while ((*str) and (*str <= 0x20)) str++;
+                  LONG i = 0;
+                  while ((*str) and (*str > 0x20)) {
+                     if (i < (LONG)sizeof(devpath)-1) devpath[i++] = *str;
+                     str++;
                   }
-                  FreeResource(buffer);
+                  devpath[i] = 0;
+
+                  while ((*str) and (*str <= 0x20)) str++;
+                  for (i=0; (*str) and (*str > 0x20) and (i < (LONG)sizeof(mount)-1); i++) mount[i] = *str++;
+                  mount[i] = 0;
+
+                  if ((mount[0] IS '/') and (!mount[1]));
+                  else {
+                     IntToStr(driveno++, drivename+5, 3);
+                     SetVolume(AST_NAME, drivename, AST_DEVICE_PATH, devpath, AST_PATH, mount, AST_ICON, "devices/storage", AST_DEVICE, "hd", TAGEND);
+                  }
                }
-               else log.warning(ERR_AllocMemory);
 
-               close(file);
+               // Next line
+               while ((*str) and (*str != '\n')) str++;
+               while ((*str) and (*str <= 0x20)) str++;
             }
-            else log.warning(ERR_File);
+            FreeResource(buffer);
          }
-         else log.msg("Not scanning for hard disks because user has defined drive1.");
+         else log.warning(ERR_AllocMemory);
 
-         if (!cd_set) {
-            CSTRING cdroms[] = {
-               "/mnt/cdrom", "/mnt/cdrom0", "/mnt/cdrom1", "/mnt/cdrom2", "/mnt/cdrom3", "/mnt/cdrom4", "/mnt/cdrom5", "/mnt/cdrom6", // RedHat
-               "/cdrom0", "/cdrom1", "/cdrom2", "/cdrom3" // Debian
-            };
-            char cdname[] = "cd1";
-
-            for (i=0; i < ARRAYSIZE(cdroms); i++) {
-               if (!access(cdroms[i], F_OK)) {
-                  SetVolume(AST_Name, cdname, AST_Path, cdroms[i], AST_ICON, "devices/compactdisc", AST_DEVICE, "cd", TAGEND);
-                  cdname[2] = cdname[2] + 1;
-               }
-            }
-         }
-#endif
+         close(file);
       }
+      else log.warning(ERR_File);
 
-      // Merge drive mounts into the system volume list
+      const CSTRING cdroms[] = {
+         "/mnt/cdrom", "/mnt/cdrom0", "/mnt/cdrom1", "/mnt/cdrom2", "/mnt/cdrom3", "/mnt/cdrom4", "/mnt/cdrom5", "/mnt/cdrom6", // RedHat
+         "/cdrom0", "/cdrom1", "/cdrom2", "/cdrom3" // Debian
+      };
+      char cdname[] = "cd1";
 
-      cfgMergeFile(glVolumes, "config:hardware/drives.cfg");
-
-      // Merge user preferences into the system volume list
-
-      cfgMergeFile(glVolumes, "user:config/volumes.cfg");
+      for (LONG i=0; i < ARRAYSIZE(cdroms); i++) {
+         if (!access(cdroms[i], F_OK)) {
+            SetVolume(AST_Name, cdname, AST_Path, cdroms[i], AST_ICON, "devices/compactdisc", AST_DEVICE, "cd", TAGEND);
+            cdname[2] = cdname[2] + 1;
+         }
+      }
+#endif
    }
-   else if (error != ERR_ObjectExists) {
-      log.warning("Failed to create the SystemVolumes object.");
-      return ERR_NewObject;
+
+   // Merge user preferences into the system volume list
+
+   {
+      objConfig::create user = { fl::Path("user:config/volumes.cfg") };
+      if (user.ok()) {
+         merge_groups(glVolumes, user->Groups[0]);
+      }
    }
 
    // Create the 'archive' volume (non-essential)

@@ -47,7 +47,7 @@ int(RSF) Flags: Optional flags.
 Okay:            The path was resolved.
 NullArgs:        Invalid arguments were specified.
 AllocMemory:     The result string could not be allocated.
-ExclusiveDenied: Access to the SystemVolumes object was denied.
+LockFailed:
 Search:          The given volume does not exist.
 FileNotFound:    The path was resolved, but the referenced file or folder does not exist (use RSF_NO_FILE_CHECK if you need to avoid this error code).
 Loop:            The volume refers back to itself.
@@ -56,7 +56,7 @@ Loop:            The volume refers back to itself.
 
 *****************************************************************************/
 
-static ERROR resolve(objConfig *, STRING, STRING, LONG);
+static ERROR resolve(STRING, STRING, LONG);
 static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result);
 static THREADVAR bool tlClassLoaded;
 
@@ -142,10 +142,11 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
    // Keep looping until the volume is resolved
 
    dest[0] = 0;
-   if (!AccessPrivateObject(glVolumes, 4000)) {
+   ThreadLock lock(TL_VOLUMES, 4000); // resolve() will be using glVolumes
+   if (lock.granted()) {
       ERROR error = ERR_Failed;
       for (loop=10; loop > 0; loop--) {
-         error = resolve(glVolumes, src, dest, Flags);
+         error = resolve(src, dest, Flags);
 
          if (error IS ERR_VirtualVolume) {
             log.trace("Detected virtual volume '%s'", dest);
@@ -201,18 +202,13 @@ resolved_path:
          break;
       } // for()
 
-      ReleasePrivateObject(glVolumes);
-
       if (loop > 0) { // Note that loop starts at 10 and decrements to zero
          if ((!error) and (!dest[0])) error = ERR_Failed;
          return error;
       }
       else return ERR_Loop;
    }
-   else {
-      log.warning(ERR_AccessObject);
-      return ERR_ExclusiveDenied;
-   }
+   else return log.warning(ERR_LockFailed);
 }
 
 //****************************************************************************
@@ -307,7 +303,7 @@ static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result)
 
 static ERROR resolve_object_path(STRING, STRING, STRING, LONG);
 
-static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
+static ERROR resolve(STRING Source, STRING Dest, LONG Flags)
 {
    parasol::Log log("ResolvePath");
    char fullpath[MAX_FILENAME];
@@ -328,13 +324,10 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
 
    Source[pos-1] = 0; // Remove the volume symbol for the string comparison
    fullpath[0] = 0;
-   ConfigGroups *groups;
-   if (!Config->getPtr(FID_Data, &groups)) {
-      for (auto& [group, keys] : groups[0]) {
-         if (!StrMatch(keys["Name"].c_str(), Source)) {
-            StrCopy(keys["Path"].c_str(), fullpath, sizeof(fullpath));
-            break;
-         }
+   for (auto& [group, keys] : glVolumes) {
+      if (!StrMatch(keys["Name"].c_str(), Source)) {
+         StrCopy(keys["Path"].c_str(), fullpath, sizeof(fullpath));
+         break;
       }
    }
 
@@ -410,7 +403,7 @@ static ERROR resolve(objConfig *Config, STRING Source, STRING Dest, LONG Flags)
       error = -1;
       for (loop=10; loop > 0; loop--) {
          if ((Dest[j] IS ':') and (j > 1)) { // Remaining ':' indicates more path resolution is required.
-            error = resolve(Config, Dest, buffer, Flags);
+            error = resolve(Dest, buffer, Flags);
 
             if (!error) {
                // Copy the result from buffer to Dest.
@@ -473,8 +466,7 @@ static ERROR resolve_object_path(STRING Path, STRING Source, STRING Dest, LONG P
 
    if (Path[0]) {
       OBJECTID volume_id;
-      LONG count = 1;
-      if (!FindObject(Path, 0, FOF_INCLUDE_SHARED|FOF_SMART_NAMES, &volume_id, &count)) {
+      if (!FindObject(Path, 0, 0, &volume_id)) {
          OBJECTPTR object;
          if (!AccessObject(volume_id, 5000, &object)) {
             if ((!object->getPtr(FID_ResolvePath, &resolve_virtual)) and (resolve_virtual)) {

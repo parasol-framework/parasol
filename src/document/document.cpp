@@ -167,7 +167,7 @@ thickness, or text inside the cell will mix with the border.
 #define CTRL_CODE      '\E' // The escape code, 0x1b.  NOTE: This must be between 1 and 0x20 so that it can be treated as whitespace for certain routines and also to avoid UTF8 interference
 #define CLIP_BLOCK     30
 
-#define DRAW_PAGE(a) DelayMsg(MT_DrwInvalidateRegion, (a)->SurfaceID);
+#define DRAW_PAGE(a) QueueAction(MT_DrwInvalidateRegion, (a)->SurfaceID);
 
 #define ULD_TERMINATE       0x01
 #define ULD_KEEP_PARAMETERS 0x02
@@ -852,10 +852,10 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    FID_LayoutSurface = StrHash("LayoutSurface", 0);
 
-   OBJECTPTR style;
-   if (!FindPrivateObject("glStyle", &style)) {
+   OBJECTID style_id;
+   if (!FindObject("glStyle", ID_XML, 0, &style_id)) {
       char buffer[32];
-      if (!acGetVar(style, "/colours/@DocumentHighlight", buffer, sizeof(buffer))) {
+      if (!acGetVar(GetObjectPtr(style_id), "/colours/@DocumentHighlight", buffer, sizeof(buffer))) {
          read_rgb8(buffer, &glHighlight);
       }
    }

@@ -237,22 +237,11 @@
 
     <field>
       <name>PrivateObjects</name>
-      <comment>Returns an allocated list of all private objects that belong to this class.</comment>
+      <comment>Returns an allocated list of all objects that belong to this class.</comment>
       <access read="G">Get</access>
       <type>LONG []</type>
       <description>
-<p>This field will compile a list of all private objects that belong to the class.  The list is sorted with the oldest object appearing first.</p>
-<p>The resulting array must be terminated with <function module="Core">FreeResource</function> after use.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>PublicObjects</name>
-      <comment>Returns an allocated list of all public objects that belong to this class.</comment>
-      <access read="G">Get</access>
-      <type>LONG []</type>
-      <description>
-<p>This field will compile a list of all public objects that belong to the class.  The list is sorted with the oldest object appearing first.</p>
+<p>This field will compile a list of all objects that belong to the class.  The list is sorted with the oldest object appearing first.</p>
 <p>The resulting array must be terminated with <function module="Core">FreeResource</function> after use.</p>
       </description>
     </field>
@@ -315,12 +304,7 @@
 
     <constants lookup="CLF" comment="Flags for the MetaClass.">
       <const name="NO_OWNERSHIP">Objects created will not be tracked to the creating process, nor any parent object (SetOwner() will not work either).</const>
-      <const name="PRIVATE_ONLY">Do not allow shared-memory instances of the class (private-shared objects will still be possible).</const>
       <const name="PROMOTE_INTEGRAL">Promote class support for any integral object defined in the class definition structure.</const>
-      <const name="PUBLIC_OBJECTS">Forces all class objects to be allocated in shared memory.</const>
-      <const name="SHARED_OBJECTS">Forces all objects of this class to be shared.</const>
-      <const name="SHARED_ONLY">Forces all objects of this class to be shared.</const>
-      <const name="XML_CONTENT">Script processing should treat any object content as XML.</const>
     </constants>
 
   </types>

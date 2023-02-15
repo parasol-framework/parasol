@@ -164,9 +164,18 @@ class objClientSocket : public BaseClass {
       struct acRead read = { (BYTE *)Buffer, bytes };
       return Action(AC_Read, this, &read);
    }
-   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result) {
+   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result = NULL) {
       ERROR error;
       struct acWrite write = { (BYTE *)Buffer, Bytes };
+      if (!(error = Action(AC_Write, this, &write))) {
+         if (Result) *Result = write.Result;
+      }
+      else if (Result) *Result = 0;
+      return error;
+   }
+   inline ERROR write(std::string Buffer, LONG *Result = NULL) {
+      ERROR error;
+      struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
       if (!(error = Action(AC_Write, this, &write))) {
          if (Result) *Result = write.Result;
       }
@@ -358,8 +367,6 @@ class objNetSocket : public BaseClass {
 
    // Action stubs
 
-   // ActionNotify
-
    inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
       struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
@@ -379,9 +386,18 @@ class objNetSocket : public BaseClass {
       struct acRead read = { (BYTE *)Buffer, bytes };
       return Action(AC_Read, this, &read);
    }
-   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result) {
+   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result = NULL) {
       ERROR error;
       struct acWrite write = { (BYTE *)Buffer, Bytes };
+      if (!(error = Action(AC_Write, this, &write))) {
+         if (Result) *Result = write.Result;
+      }
+      else if (Result) *Result = 0;
+      return error;
+   }
+   inline ERROR write(std::string Buffer, LONG *Result = NULL) {
+      ERROR error;
+      struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
       if (!(error = Action(AC_Write, this, &write))) {
          if (Result) *Result = write.Result;
       }

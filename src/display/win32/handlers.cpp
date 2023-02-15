@@ -74,8 +74,7 @@ void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG W
 void MsgWheelMovement(OBJECTID SurfaceID, FLOAT Wheel)
 {
    if (!glPointerID) {
-      LONG count = 1;
-      if (FindObject("SystemPointer", 0, FOF_INCLUDE_SHARED, &glPointerID, &count) != ERR_Okay) return;
+      if (FindObject("SystemPointer", 0, 0, &glPointerID) != ERR_Okay) return;
    }
 
    struct dcDeviceInput joy;
@@ -217,7 +216,7 @@ void MsgSetFocus(OBJECTID SurfaceID)
    if (!AccessObject(SurfaceID, 3000, &surface)) {
       if ((!(surface->Flags & RNF_HAS_FOCUS)) and (surface->Flags & RNF_VISIBLE)) {
          log.msg("WM_SETFOCUS: Sending focus to surface #%d.", SurfaceID);
-         DelayMsg(AC_Focus, SurfaceID);
+         QueueAction(AC_Focus, SurfaceID);
       }
       else log.trace("WM_SETFOCUS: Surface #%d already has the focus, or is hidden.", SurfaceID);
       ReleaseObject(surface);

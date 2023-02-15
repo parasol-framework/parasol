@@ -221,8 +221,7 @@ void handle_button_release(XEvent *xevent)
    log.traceBranch("Button: %d", xevent->xbutton.button);
 
    if (!glPointerID) {
-      LONG count = 1;
-      if (FindObject("SystemPointer", 0, FOF_INCLUDE_SHARED, &glPointerID, &count) != ERR_Okay) return;
+      if (FindObject("SystemPointer", 0, 0, &glPointerID) != ERR_Okay) return;
    }
 
    struct dcDeviceInput input;
@@ -343,7 +342,7 @@ void handle_exposure(XExposeEvent *event)
       XEvent xevent;
       while (XCheckWindowEvent(XDisplay, event->window, ExposureMask, &xevent) IS True);
       struct drwExpose region = { .X = 0, .Y = 0, .Width = 20000, .Height = 20000, .Flags = EXF_CHILDREN };
-      DelayMsg(MT_DrwExpose, surface_id, &region); // Redraw everything
+      QueueAction(MT_DrwExpose, surface_id, &region); // Redraw everything
    }
    else log.warning("XEvent.Expose: Failed to find a Surface ID for window %u.", (ULONG)event->window);
 }

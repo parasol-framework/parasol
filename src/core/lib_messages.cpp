@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol Framework is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol Framework is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 -CATEGORY-
 Name: Messages
@@ -103,9 +102,9 @@ AddMsgHandler: Adds a new message handler for processing incoming messages.
 
 This function allows handlers to be added for the interception of incoming messages.  Message handling works as follows:
 
-During a call to ProcessMessages(), each incoming message will be scanned to determine if a message handler is able to
-process that message.  All handlers that accept the message type will be called with a copy of the message structure
-and any additional data.  The message is then removed from the message queue.
+During a call to ~ProcessMessages(), each incoming message will be scanned to determine if a message handler is able
+to process that message.  All handlers that accept the message type will be called with a copy of the message
+structure and any additional data.  The message is then removed from the message queue.
 
 When calling AddMsgHandler(), you can provide an optional Custom pointer that will have meaning to the handler.  The
 MsgType acts as a filter so that only messages with the same type identifier will be passed to the handler.  The
@@ -807,10 +806,10 @@ ptr Queue:  An address pointer for a message queue (use AccessMemory() to get an
 &int Index: Pointer to a 32-bit value that must initially be set to zero.  The ScanMessages() function will automatically update this variable with each call so that it can remember its analysis position.
 int Type:   The message type to filter for, or zero to scan all messages in the queue.
 buf(ptr) Buffer: Pointer to a buffer that is large enough to hold the message information.  Set to NULL if you are not interested in the message data.
-bufsize Size:   The byte-size of the buffer that you have supplied.
+bufsize Size: The byte-size of the supplied Buffer.
 
 -ERRORS-
-Okay:   The next message in the queue was successfully analysed.
+Okay:
 NullArgs:
 Search: No more messages are left on the queue, or no messages that match the given Type are on the queue.
 -END-
@@ -1248,7 +1247,7 @@ ERROR send_thread_msg(LONG Handle, LONG Type, APTR Data, LONG Size)
    }
    else error = ERR_Write;
 #else
-   LARGE end_time = (PreciseTime()/1000LL) + 10000LL;
+   LARGE end_time = (PreciseTime() / 1000LL) + 10000LL;
    error = write_nonblock(Handle, &msg, sizeof(msg), end_time);
    if ((!error) and (Data) and (Size > 0)) { // Write the main message.
       error = write_nonblock(Handle, Data, Size, end_time);
@@ -1280,10 +1279,10 @@ ERROR write_nonblock(LONG Handle, APTR Data, LONG Size, LARGE EndTime)
          if ((errno IS EAGAIN) or (errno IS EWOULDBLOCK)) { // The write() failed because it would have blocked.  Try again!
             fd_set wfds;
             struct timeval tv;
-            while (((PreciseTime()/1000LL) < EndTime) and (!error)) {
+            while (((PreciseTime() / 1000LL) < EndTime) and (!error)) {
                FD_ZERO(&wfds);
                FD_SET(Handle, &wfds);
-               tv.tv_sec = (EndTime - (PreciseTime()/1000LL)) / 1000LL;
+               tv.tv_sec = (EndTime - (PreciseTime() / 1000LL)) / 1000LL;
                tv.tv_usec = 0;
                LONG total = select(1, &wfds, NULL, NULL, &tv);
                if (total IS -1) error = ERR_SystemCall;
@@ -1295,7 +1294,7 @@ ERROR write_nonblock(LONG Handle, APTR Data, LONG Size, LARGE EndTime)
          else { error = ERR_Write; break; }
       }
 
-      if ((PreciseTime()/1000LL) > EndTime) {
+      if ((PreciseTime() / 1000LL) > EndTime) {
          error = ERR_TimeOut;
          break;
       }
@@ -1503,7 +1502,7 @@ ERROR sleep_task(LONG Timeout)
       }
       else {
          if (Timeout > MAX_MSEC) Timeout = MAX_MSEC; // Do not sleep too long, in case the Linux kernel doesn't wake us when signalled (kernel 2.6)
-         time.tv_sec  = Timeout/1000;
+         time.tv_sec  = Timeout / 1000;
          time.tv_nsec = (Timeout - (time.tv_sec * 1000)) * 1000;
          nanosleep(&time, NULL);
       }

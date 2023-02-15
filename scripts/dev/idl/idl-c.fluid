@@ -24,8 +24,6 @@ glActionStubs = {
    NewChild      = "",
    NewObject     = "",
    NewOwner      = "",
-   ReleaseObject = "",
-   AccessObject  = "",
 
    -- Actions without parameters
    Activate     = "   inline ERROR activate() { return Action(AC_Activate, this, NULL); }",
@@ -182,9 +180,18 @@ glActionStubs = {
       return ERR_Okay;
    }]],
    Write = [[
-   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result) {
+   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result = NULL) {
       ERROR error;
       struct acWrite write = { (BYTE *)Buffer, Bytes };
+      if (!(error = Action(AC_Write, this, &write))) {
+         if (Result) *Result = write.Result;
+      }
+      else if (Result) *Result = 0;
+      return error;
+   }
+   inline ERROR write(std::string Buffer, LONG *Result = NULL) {
+      ERROR error;
+      struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
       if (!(error = Action(AC_Write, this, &write))) {
          if (Result) *Result = write.Result;
       }

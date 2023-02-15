@@ -148,6 +148,7 @@ extern "C" ERROR add_module_class(void)
       fl::BaseClassID(ID_MODULEMASTER),
       fl::ClassVersion(1.0),
       fl::Name("ModuleMaster"),
+      fl::Flags(CLF_NO_OWNERSHIP),
       fl::Category(CCF_SYSTEM),
       fl::Actions(glModuleMasterActions),
       fl::Fields(glModuleMasterFields),
@@ -238,7 +239,6 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
    parasol::Log log;
    #define AF_MODULEMASTER 0x0001
    #define AF_SEGMENT      0x0002
-   OBJECTPTR Task = 0;
    ERROR error = ERR_Failed;
    LONG i, len;
    WORD ext, aflags = 0;
@@ -261,13 +261,8 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
    if ((master = check_resident(Self, name))) {
       Self->Master = master;
    }
-   else if (!NewObject(ID_MODULEMASTER, NF::NO_TRACK, (OBJECTPTR *)&master)) {
+   else if (!NewObject(ID_MODULEMASTER, NF::UNTRACKED, (OBJECTPTR *)&master)) {
       char path[300];
-
-      if (!AccessObject(SystemTaskID, 5000, &Task)) {
-         SetOwner(master, Task);
-         ReleaseObject(Task);
-      }
 
       master->Next = glModuleList; // Insert the ModuleMaster at the start of the chain.
       if (glModuleList) glModuleList->Prev = master;

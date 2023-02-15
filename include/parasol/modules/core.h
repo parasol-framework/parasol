@@ -90,7 +90,7 @@ class objCompressedStream;
 
 #define AC_Signal 1
 #define AC_Activate 2
-#define AC_AccessObject 3
+#define AC_SelectArea 3
 #define AC_Clear 4
 #define AC_FreeWarning 5
 #define AC_OwnerDestroyed 6
@@ -101,7 +101,7 @@ class objCompressedStream;
 #define AC_Flush 11
 #define AC_Focus 12
 #define AC_Free 13
-#define AC_ReleaseObject 14
+#define AC_SaveSettings 14
 #define AC_GetVar 15
 #define AC_DragDrop 16
 #define AC_Hide 17
@@ -141,9 +141,7 @@ class objCompressedStream;
 #define AC_ScrollToPoint 51
 #define AC_Custom 52
 #define AC_Sort 53
-#define AC_SaveSettings 54
-#define AC_SelectArea 55
-#define AC_END 56
+#define AC_END 54
 
 // Permission flags
 
@@ -726,16 +724,15 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 // Task flags
 
 #define TSF_FOREIGN 0x00000001
-#define TSF_DUMMY 0x00000002
-#define TSF_WAIT 0x00000004
-#define TSF_RESET_PATH 0x00000008
-#define TSF_PRIVILEGED 0x00000010
-#define TSF_SHELL 0x00000020
-#define TSF_DEBUG 0x00000040
-#define TSF_QUIET 0x00000080
-#define TSF_DETACHED 0x00000100
-#define TSF_ATTACHED 0x00000200
-#define TSF_PIPE 0x00000400
+#define TSF_WAIT 0x00000002
+#define TSF_RESET_PATH 0x00000004
+#define TSF_PRIVILEGED 0x00000008
+#define TSF_SHELL 0x00000010
+#define TSF_DEBUG 0x00000020
+#define TSF_QUIET 0x00000040
+#define TSF_DETACHED 0x00000080
+#define TSF_ATTACHED 0x00000100
+#define TSF_PIPE 0x00000200
 
 #define AHASH_ACTIVATE 0xdbaf4876
 #define AHASH_ACCESSOBJECT 0xbcf3b98e
@@ -918,7 +915,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 #define STT_HEX 3
 #define STT_STRING 4
 
-#define OPF_NAME 0x00000001
+#define OPF_SHOW_PUBLIC_MEM 0x00000001
 #define OPF_CORE_VERSION 0x00000002
 #define OPF_JUMPTABLE 0x00000004
 #define OPF_MAX_DEPTH 0x00000008
@@ -934,9 +931,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 #define OPF_MODULE_PATH 0x00002000
 #define OPF_ROOT_PATH 0x00004000
 #define OPF_SCAN_MODULES 0x00008000
-#define OPF_GLOBAL_INSTANCE 0x00010000
-#define OPF_OPTIONS 0x00020000
-#define OPF_SHOW_PUBLIC_MEM 0x00040000
+#define OPF_OPTIONS 0x00010000
 
 #define TOI_LOCAL_CACHE 0
 #define TOI_LOCAL_STORAGE 1
@@ -1080,7 +1075,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 // Flags that can be passed to FindObject()
 
 #define FOF_SMART_NAMES 0x00000001
-#define FOF_INCLUDE_SHARED 0x00000002
 
 // Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word.
 
@@ -1088,21 +1082,18 @@ enum class NF : ULONG {
    NIL = 0,
    PRIVATE = 0x00000000,
    UNTRACKED = 0x00000001,
-   NO_TRACK = 0x00000001,
-   SHARED = 0x00000002,
-   PUBLIC = 0x00000002,
-   INITIALISED = 0x00000004,
-   INTEGRAL = 0x00000008,
-   UNLOCK_FREE = 0x00000010,
-   FREE = 0x00000020,
-   TIMER_SUB = 0x00000040,
-   SUPPRESS_LOG = 0x00000080,
-   COLLECT = 0x00000100,
-   NEW_OBJECT = 0x00000200,
-   RECLASSED = 0x00000400,
-   MESSAGE = 0x00000800,
-   SIGNALLED = 0x00001000,
-   HAS_SHARED_RESOURCES = 0x00002000,
+   INITIALISED = 0x00000002,
+   INTEGRAL = 0x00000004,
+   UNLOCK_FREE = 0x00000008,
+   FREE = 0x00000010,
+   TIMER_SUB = 0x00000020,
+   SUPPRESS_LOG = 0x00000040,
+   COLLECT = 0x00000080,
+   NEW_OBJECT = 0x00000100,
+   RECLASSED = 0x00000200,
+   MESSAGE = 0x00000400,
+   SIGNALLED = 0x00000800,
+   HAS_SHARED_RESOURCES = 0x00001000,
    UNIQUE = 0x40000000,
    NAME = 0x80000000,
 };
@@ -1111,7 +1102,6 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 
 // Reserved Public Memory identifiers.
 
-#define RPM_SharedObjects -1000
 #define RPM_Clipboard -1002
 #define RPM_X11 -1003
 #define RPM_AlphaBlend -1004
@@ -1143,9 +1133,6 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 #define MSGID_VALIDATE_PROCESS 93
 #define MSGID_EVENT 94
 #define MSGID_DEBUG 95
-#define MSGID_ACTION_RESULT 96
-#define MSGID_GET_FIELD 97
-#define MSGID_SET_FIELD 98
 #define MSGID_ACTION 99
 #define MSGID_CORE_END 100
 #define MSGID_EXPOSE 100
@@ -1183,34 +1170,33 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 
 #define RES_MESSAGE_QUEUE 1
 #define RES_CONSOLE_FD 2
-#define RES_GLOBAL_INSTANCE 3
-#define RES_SHARED_CONTROL 4
-#define RES_USER_ID 5
-#define RES_DISPLAY_DRIVER 6
-#define RES_PRIVILEGED_USER 7
-#define RES_PRIVILEGED 8
-#define RES_CORE_IDL 9
-#define RES_PARENT_CONTEXT 10
-#define RES_LOG_LEVEL 11
-#define RES_TOTAL_SHARED_MEMORY 12
-#define RES_TASK_CONTROL 13
-#define RES_TASK_LIST 14
-#define RES_MAX_PROCESSES 15
-#define RES_LOG_DEPTH 16
-#define RES_JNI_ENV 17
-#define RES_THREAD_ID 18
-#define RES_CURRENT_MSG 19
-#define RES_OPEN_INFO 20
-#define RES_EXCEPTION_HANDLER 21
-#define RES_NET_PROCESSING 22
-#define RES_PROCESS_STATE 23
-#define RES_TOTAL_MEMORY 24
-#define RES_TOTAL_SWAP 25
-#define RES_CPU_SPEED 26
-#define RES_SHARED_BLOCKS 27
-#define RES_FREE_MEMORY 28
-#define RES_FREE_SWAP 29
-#define RES_KEY_STATE 30
+#define RES_SHARED_CONTROL 3
+#define RES_USER_ID 4
+#define RES_DISPLAY_DRIVER 5
+#define RES_PRIVILEGED_USER 6
+#define RES_PRIVILEGED 7
+#define RES_CORE_IDL 8
+#define RES_PARENT_CONTEXT 9
+#define RES_LOG_LEVEL 10
+#define RES_TOTAL_SHARED_MEMORY 11
+#define RES_TASK_CONTROL 12
+#define RES_TASK_LIST 13
+#define RES_MAX_PROCESSES 14
+#define RES_LOG_DEPTH 15
+#define RES_JNI_ENV 16
+#define RES_THREAD_ID 17
+#define RES_CURRENT_MSG 18
+#define RES_OPEN_INFO 19
+#define RES_EXCEPTION_HANDLER 20
+#define RES_NET_PROCESSING 21
+#define RES_PROCESS_STATE 22
+#define RES_TOTAL_MEMORY 23
+#define RES_TOTAL_SWAP 24
+#define RES_CPU_SPEED 25
+#define RES_SHARED_BLOCKS 26
+#define RES_FREE_MEMORY 27
+#define RES_FREE_SWAP 28
+#define RES_KEY_STATE 29
 
 // Path types for SetResourcePath()
 
@@ -1220,13 +1206,8 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 
 // Flags for the MetaClass.
 
-#define CLF_SHARED_ONLY 0x00000001
-#define CLF_SHARED_OBJECTS 0x00000001
-#define CLF_PRIVATE_ONLY 0x00000002
-#define CLF_PROMOTE_INTEGRAL 0x00000004
-#define CLF_PUBLIC_OBJECTS 0x00000008
-#define CLF_XML_CONTENT 0x00000010
-#define CLF_NO_OWNERSHIP 0x00000020
+#define CLF_PROMOTE_INTEGRAL 0x00000001
+#define CLF_NO_OWNERSHIP 0x00000002
 
 // Flags for the Config class.
 
@@ -1965,7 +1946,7 @@ struct CoreBase {
    ERROR (*_AccessMemory)(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR Result);
    ERROR (*_Action)(LONG Action, OBJECTPTR Object, APTR Parameters);
    void (*_ActionList)(struct ActionTable ** Actions, LONG * Size);
-   ERROR (*_ActionMsg)(LONG Action, OBJECTID Object, APTR Args, MEMORYID MessageID, CLASSID ClassID);
+   ERROR (*_ActionMsg)(LONG Action, OBJECTID Object, APTR Args);
    ERROR (*_KeyGet)(struct KeyStore * Store, ULONG Key, APTR Data, LONG * Size);
    CSTRING (*_ResolveClassID)(CLASSID ID);
    LONG (*_AllocateID)(LONG Type);
@@ -1981,7 +1962,7 @@ struct CoreBase {
    ERROR (*_GetFieldArray)(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements);
    LONG (*_AdjustLogLevel)(LONG Adjust);
    void __attribute__((format(printf, 2, 3))) (*_LogF)(CSTRING Header, CSTRING Message, ...);
-   ERROR (*_FindObject)(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * Array, LONG * Count);
+   ERROR (*_FindObject)(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * ObjectID);
    objMetaClass * (*_FindClass)(CLASSID ClassID);
    ERROR (*_ReleaseObject)(OBJECTPTR Object);
    ERROR (*_FreeResource)(const void * Address);
@@ -1992,7 +1973,7 @@ struct CoreBase {
    ERROR (*_GetFieldVariable)(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size);
    ERROR (*_GetFields)(OBJECTPTR Object, ...);
    CSTRING (*_GetName)(OBJECTPTR Object);
-   ERROR (*_ListChildren)(OBJECTID Object, LONG IncludeShared, struct ChildEntry * List, LONG * Count);
+   ERROR (*_ListChildren)(OBJECTID Object, struct ChildEntry * List, LONG * Count);
    ERROR (*_Base64Decode)(struct rkBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
    ERROR (*_RegisterFD)(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
    ERROR (*_ResolvePath)(CSTRING Path, LONG Flags, STRING * Result);
@@ -2035,14 +2016,14 @@ struct CoreBase {
    ERROR (*_ScanMessages)(APTR Queue, LONG * Index, LONG Type, APTR Buffer, LONG Size);
    ERROR (*_SysLock)(LONG Index, LONG MilliSeconds);
    ERROR (*_SysUnlock)(LONG Index);
-   ERROR (*_CopyMemory)(const void * Src, APTR Dest, LONG Size);
+   ERROR (*_CreateFolder)(CSTRING Path, LONG Permissions);
    ERROR (*_LoadFile)(CSTRING Path, LONG Flags, struct CacheFile ** Cache);
    ERROR (*_SetVolume)(...);
    ERROR (*_DeleteVolume)(CSTRING Name);
-   ERROR (*_NewLockedObject)(LARGE ClassID, NF Flags, APTR Object, OBJECTID * ID, CSTRING Name);
+   ERROR (*_MoveFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
    ERROR (*_UpdateMessage)(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size);
    ERROR (*_AddMsgHandler)(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle);
-   ERROR (*_FindPrivateObject)(CSTRING Name, APTR Object);
+   ERROR (*_QueueAction)(LONG Action, OBJECTID Object, APTR Args);
    LARGE (*_PreciseTime)(void);
    ERROR (*_OpenDir)(CSTRING Path, LONG Flags, struct DirInfo ** Info);
    OBJECTPTR (*_GetObjectPtr)(OBJECTID Object);
@@ -2105,15 +2086,13 @@ struct CoreBase {
    ULONG (*_StrHash)(CSTRING String, LONG CaseSensitive);
    CSTRING (*_UTF8ValidEncoding)(CSTRING String, CSTRING Encoding);
    ERROR (*_AnalysePath)(CSTRING Path, LONG * Type);
-   ERROR (*_CreateFolder)(CSTRING Path, LONG Permissions);
-   ERROR (*_MoveFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
 };
 
 #ifndef PRV_CORE_MODULE
 inline ERROR AccessMemory(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessMemory(Memory,Flags,MilliSeconds,Result); }
 inline ERROR Action(LONG Action, OBJECTPTR Object, APTR Parameters) { return CoreBase->_Action(Action,Object,Parameters); }
 inline void ActionList(struct ActionTable ** Actions, LONG * Size) { return CoreBase->_ActionList(Actions,Size); }
-inline ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args, MEMORYID MessageID, CLASSID ClassID) { return CoreBase->_ActionMsg(Action,Object,Args,MessageID,ClassID); }
+inline ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args) { return CoreBase->_ActionMsg(Action,Object,Args); }
 inline ERROR KeyGet(struct KeyStore * Store, ULONG Key, APTR Data, LONG * Size) { return CoreBase->_KeyGet(Store,Key,Data,Size); }
 inline CSTRING ResolveClassID(CLASSID ID) { return CoreBase->_ResolveClassID(ID); }
 inline LONG AllocateID(LONG Type) { return CoreBase->_AllocateID(Type); }
@@ -2129,7 +2108,7 @@ inline OBJECTPTR CurrentContext(void) { return CoreBase->_CurrentContext(); }
 inline ERROR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements) { return CoreBase->_GetFieldArray(Object,Field,Result,Elements); }
 inline LONG AdjustLogLevel(LONG Adjust) { return CoreBase->_AdjustLogLevel(Adjust); }
 template<class... Args> void LogF(CSTRING Header, CSTRING Message, Args... Tags) { return CoreBase->_LogF(Header,Message,Tags...); }
-inline ERROR FindObject(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * Array, LONG * Count) { return CoreBase->_FindObject(Name,ClassID,Flags,Array,Count); }
+inline ERROR FindObject(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * ObjectID) { return CoreBase->_FindObject(Name,ClassID,Flags,ObjectID); }
 inline objMetaClass * FindClass(CLASSID ClassID) { return CoreBase->_FindClass(ClassID); }
 inline ERROR ReleaseObject(OBJECTPTR Object) { return CoreBase->_ReleaseObject(Object); }
 inline ERROR FreeResource(const void * Address) { return CoreBase->_FreeResource(Address); }
@@ -2140,7 +2119,7 @@ inline ERROR GetField(OBJECTPTR Object, FIELD Field, APTR Result) { return CoreB
 inline ERROR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size) { return CoreBase->_GetFieldVariable(Object,Field,Buffer,Size); }
 template<class... Args> ERROR GetFields(OBJECTPTR Object, Args... Tags) { return CoreBase->_GetFields(Object,Tags...); }
 inline CSTRING GetName(OBJECTPTR Object) { return CoreBase->_GetName(Object); }
-inline ERROR ListChildren(OBJECTID Object, LONG IncludeShared, struct ChildEntry * List, LONG * Count) { return CoreBase->_ListChildren(Object,IncludeShared,List,Count); }
+inline ERROR ListChildren(OBJECTID Object, struct ChildEntry * List, LONG * Count) { return CoreBase->_ListChildren(Object,List,Count); }
 inline ERROR Base64Decode(struct rkBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written) { return CoreBase->_Base64Decode(State,Input,InputSize,Output,Written); }
 inline ERROR RegisterFD(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data) { return CoreBase->_RegisterFD(FD,Flags,Routine,Data); }
 inline ERROR ResolvePath(CSTRING Path, LONG Flags, STRING * Result) { return CoreBase->_ResolvePath(Path,Flags,Result); }
@@ -2183,14 +2162,14 @@ inline LARGE SetResource(LONG Resource, LARGE Value) { return CoreBase->_SetReso
 inline ERROR ScanMessages(APTR Queue, LONG * Index, LONG Type, APTR Buffer, LONG Size) { return CoreBase->_ScanMessages(Queue,Index,Type,Buffer,Size); }
 inline ERROR SysLock(LONG Index, LONG MilliSeconds) { return CoreBase->_SysLock(Index,MilliSeconds); }
 inline ERROR SysUnlock(LONG Index) { return CoreBase->_SysUnlock(Index); }
-inline ERROR CopyMemory(const void * Src, APTR Dest, LONG Size) { return CoreBase->_CopyMemory(Src,Dest,Size); }
+inline ERROR CreateFolder(CSTRING Path, LONG Permissions) { return CoreBase->_CreateFolder(Path,Permissions); }
 inline ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile ** Cache) { return CoreBase->_LoadFile(Path,Flags,Cache); }
 template<class... Args> ERROR SetVolume(Args... Tags) { return CoreBase->_SetVolume(Tags...); }
 inline ERROR DeleteVolume(CSTRING Name) { return CoreBase->_DeleteVolume(Name); }
-inline ERROR NewLockedObject(LARGE ClassID, NF Flags, APTR Object, OBJECTID * ID, CSTRING Name) { return CoreBase->_NewLockedObject(ClassID,Flags,Object,ID,Name); }
+inline ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_MoveFile(Source,Dest,Callback); }
 inline ERROR UpdateMessage(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size) { return CoreBase->_UpdateMessage(Queue,Message,Type,Data,Size); }
 inline ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle) { return CoreBase->_AddMsgHandler(Custom,MsgType,Routine,Handle); }
-inline ERROR FindPrivateObject(CSTRING Name, APTR Object) { return CoreBase->_FindPrivateObject(Name,Object); }
+inline ERROR QueueAction(LONG Action, OBJECTID Object, APTR Args) { return CoreBase->_QueueAction(Action,Object,Args); }
 inline LARGE PreciseTime(void) { return CoreBase->_PreciseTime(); }
 inline ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo ** Info) { return CoreBase->_OpenDir(Path,Flags,Info); }
 inline OBJECTPTR GetObjectPtr(OBJECTID Object) { return CoreBase->_GetObjectPtr(Object); }
@@ -2253,8 +2232,6 @@ inline ERROR VarCopy(struct KeyStore * Source, struct KeyStore * Dest) { return 
 inline ULONG StrHash(CSTRING String, LONG CaseSensitive) { return CoreBase->_StrHash(String,CaseSensitive); }
 inline CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding) { return CoreBase->_UTF8ValidEncoding(String,Encoding); }
 inline ERROR AnalysePath(CSTRING Path, LONG * Type) { return CoreBase->_AnalysePath(Path,Type); }
-inline ERROR CreateFolder(CSTRING Path, LONG Permissions) { return CoreBase->_CreateFolder(Path,Permissions); }
-inline ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_MoveFile(Source,Dest,Callback); }
 #endif
 
 
@@ -2270,39 +2247,11 @@ inline ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { retur
 inline OBJECTPTR GetParentContext() { return (OBJECTPTR)(MAXINT)GetResource(RES_PARENT_CONTEXT); }
 inline APTR GetResourcePtr(LONG ID) { return (APTR)(MAXINT)GetResource(ID); }
 
-template<class T> inline ERROR SendAction(LONG Action, OBJECTID ObjectID, T *Args, MEMORYID MessageID) {
-   return ActionMsg(Action, ObjectID, Args, MessageID, 0);
-}
-
-template<class T> inline ERROR WaitMsg(LONG Action, OBJECTID ObjectID, T *Args) {
-   return ActionMsg(Action, ObjectID, Args, 0, (CLASSID)-2);
-}
-
-template<class T> inline ERROR DelayAction(LONG Action, OBJECTID ObjectID, T *Args) {
-   return ActionMsg(Action, ObjectID, Args, 0, (CLASSID)-1);
-}
-
-inline ERROR DelayMsg(LONG Action, OBJECTID ObjectID) {
-   return ActionMsg(Action, ObjectID, NULL, 0, (CLASSID)-1);
-}
-
-template<class T> inline ERROR DelayMsg(LONG Action, OBJECTID ObjectID, T *Args) {
-   return ActionMsg(Action, ObjectID, Args, 0, (CLASSID)-1);
-}
-
-inline ERROR ActionMsgPort(LONG Action, OBJECTID ObjectID, APTR Args, MEMORYID MessageID, CLASSID ClassID) {
-   return ActionMsg(Action, ObjectID, Args, MessageID, ClassID);
-}
-
 inline ERROR StrMatch(CSTRING A, CSTRING B) {
    return StrCompare(A, B, 0, STR_MATCH_LEN);
 }
 
 #ifndef PRV_CORE_MODULE
-
-inline ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args) {
-   return ActionMsg(Action, Object, Args, 0, 0);
-}
 
 inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address) {
    return AllocMemory(Size, Flags, Address, NULL);
@@ -2310,14 +2259,6 @@ inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address) {
 
 template<class T> inline ERROR NewObject(LARGE ClassID, T **Result) {
    return NewObject(ClassID, NF::NIL, Result);
-}
-
-inline ERROR NewLockedObject(LARGE ClassID, NF Flags, APTR Object, OBJECTID *ID) {
-  return NewLockedObject(ClassID, Flags, Object, ID, NULL);
-}
-
-inline ERROR NewLockedObject(LARGE ClassID, APTR Object, OBJECTID *ID) {
-  return NewLockedObject(ClassID, NF::NIL, Object, ID, NULL);
 }
 
 inline ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo) {
@@ -2328,19 +2269,21 @@ inline ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo) {
    return MemoryPtrInfo(Address,MemInfo,sizeof(struct MemInfo));
 }
 
+inline ERROR QueueAction(LONG Action, OBJECTID ObjectID) {
+   return QueueAction(Action, ObjectID, NULL);
+}
+
 #endif
-
-inline ERROR NewPublicObject(LARGE ClassID, NF Flags, OBJECTID *ID) {
-  return NewLockedObject(ClassID, Flags|NF::PUBLIC, NULL, ID, NULL);
-}
-
-template<class T> inline ERROR NewNamedObject(LARGE ClassID, NF Flags, T **Object, OBJECTID *ID, CSTRING Name) {
-  return NewLockedObject(ClassID, Flags|NF::NAME, Object, ID, Name);
-}
 
 typedef std::map<std::string, std::string> ConfigKeys;
 typedef std::pair<std::string, ConfigKeys> ConfigGroup;
 typedef std::vector<ConfigGroup> ConfigGroups;
+
+inline void CopyMemory(const void *Src, APTR Dest, LONG Length)
+{
+   if ((!Src) or (!Dest) or (Length < 0)) return;
+   memmove(Dest, Src, Length);
+}
 
 inline LONG StrLength(CSTRING String) {
    if (String) return strlen(String);
@@ -2407,7 +2350,6 @@ struct BaseClass { // Must be 64-bit aligned
    OBJECTID UID;                // Unique object identifier
    OBJECTID OwnerID;            // The owner of this object
    NF       Flags;              // Object flags
-   OBJECTID TaskID;             // The process that this object belongs to
    volatile LONG  ThreadID;     // Managed by locking functions
    #ifdef _WIN32
       WINHANDLE ThreadMsg;      // Pipe for sending messages to the owner thread.
@@ -2421,10 +2363,8 @@ struct BaseClass { // Must be 64-bit aligned
    BYTE ActionDepth;            // Incremented each time an action or method is called on the object
 
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
-   inline bool isPublic() { return (Flags & NF::PUBLIC) != NF::NIL; }
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
    inline bool isSubClass() { return SubID != 0; }
-   inline OBJECTID ownerTask() { return TaskID; }
    inline OBJECTID ownerID() { return OwnerID; }
    inline NF flags() { return Flags; }
 
@@ -2660,7 +2600,7 @@ class Create {
    public:
       ERROR error;
 
-      // Return an unscoped direct object pointer
+      // Return an unscoped direct object pointer.  NB: Globals are still tracked
 
       template <typename... Args> static T * global(Args... Fields) {
          parasol::Create<T> object = { Fields... };
@@ -3124,9 +3064,18 @@ class objFile : public BaseClass {
    inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK_START); }
    inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK_END); }
    inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK_CURRENT); }
-   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result) {
+   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result = NULL) {
       ERROR error;
       struct acWrite write = { (BYTE *)Buffer, Bytes };
+      if (!(error = Action(AC_Write, this, &write))) {
+         if (Result) *Result = write.Result;
+      }
+      else if (Result) *Result = 0;
+      return error;
+   }
+   inline ERROR write(std::string Buffer, LONG *Result = NULL) {
+      ERROR error;
+      struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
       if (!(error = Action(AC_Write, this, &write))) {
          if (Result) *Result = write.Result;
       }
@@ -3547,9 +3496,18 @@ class objTask : public BaseClass {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);
    }
-   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result) {
+   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result = NULL) {
       ERROR error;
       struct acWrite write = { (BYTE *)Buffer, Bytes };
+      if (!(error = Action(AC_Write, this, &write))) {
+         if (Result) *Result = write.Result;
+      }
+      else if (Result) *Result = 0;
+      return error;
+   }
+   inline ERROR write(std::string Buffer, LONG *Result = NULL) {
+      ERROR error;
+      struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
       if (!(error = Action(AC_Write, this, &write))) {
          if (Result) *Result = write.Result;
       }
@@ -3953,8 +3911,6 @@ inline ERROR acRefresh(OBJECTID ObjectID) { return ActionMsg(AC_Refresh, ObjectI
 inline ERROR acSaveSettings(OBJECTID ObjectID) { return ActionMsg(AC_SaveSettings, ObjectID, NULL); }
 inline ERROR acShow(OBJECTID ObjectID) { return ActionMsg(AC_Show, ObjectID, NULL); }
 
-// The number of bytes written is not returned (you would need to use DelayMsg() for that).
-
 inline ERROR acWrite(OBJECTID ObjectID, CPTR Buffer, LONG Bytes) {
    struct acWrite write = { (BYTE *)Buffer, Bytes };
    return ActionMsg(AC_Write, ObjectID, &write);
@@ -4028,17 +3984,12 @@ struct SemaphoreEntry {   // The index of each semaphore in the array indicates 
    //LONG     FIFO[10];       // List of processes currently queued for access
 };
 
-// Message structure and internal ID's for standard Task-to-Task messages.
-
 struct ActionMessage {
-   WORD ActionID;            // ID of the action or method to execute
-   UWORD SendArgs:1;         //
-   UWORD ReturnResult:1;     // Set to TRUE if a result is required
-   UWORD Delayed:1;          // TRUE if the message was intentionally delayed
-   MEMORYID ReturnMessage;   // If ReturnResult is TRUE, the message queue for the result message must be set here
    OBJECTID ObjectID;        // The object that is to receive the action
-   ERROR Error;              // If a result is required, the action's error code is returned here by MSGID_ACTIONRESULT
    LONG  Time;
+   ACTIONID ActionID;        // ID of the action or method to execute
+   bool SendArgs;            //
+
    // Action arguments follow this structure in a buffer
 };
 
@@ -4080,15 +4031,12 @@ struct SharedControl {
    LONG TaskOffset;                 // Offset to the task control array
    LONG MemoryOffset;               // Offset to the shared memory allocations
    LONG WLOffset;                   // Offset to the wait-lock array
-   LONG GlobalInstance;             // If glSharedControl belongs to a global instance, this is the PID of the creator.
    LONG SurfaceSemaphore;
    LONG InputSize;                  // Maximum number of subscribers allowed in InputMID
    LONG InstanceMsgPort;            // The message port of the process that created the instance.
    MEMORYID SurfacesMID;
-   MEMORYID ClassesMID;             // Class database
    MEMORYID ModulesMID;             // Module database
    MEMORYID InputMID;
-   LONG ClassSemaphore;             // Semaphore for controlling access to the class database
    #ifdef __unix__
       struct {
          pthread_mutex_t Mutex;
@@ -4099,31 +4047,6 @@ struct SharedControl {
    #elif _WIN32
       // In windows, the shared memory controls are controlled by mutexes that have local handles.
    #endif
-};
-
-// Class database.
-
-#define CL_ITEMS(c)        (ClassItem *)((BYTE *)(c) + sizeof(ClassHeader) + ((c)->Total<<2) )
-#define CL_OFFSETS(c)      ((LONG *)((c) + 1))
-#define CL_SIZE_OFFSETS(c) (sizeof(LONG) * (c)->Total)
-#define CL_ITEM(c,i)       ((ClassItem *)((BYTE *)(c) + offsets[(i)]))
-
-struct ClassHeader {
-   LONG Total;          // Total number of registered classes
-   LONG Size;           // Size of the entire memory block
-   // Followed by lookup table with offsets to each ClassItem, sorted by hash
-};
-
-struct ClassItem {
-   CLASSID ClassID;
-   CLASSID ParentID;    // Parent class reference.
-   LONG  Category;
-   WORD  Size;          // Size of the item structure, all accompanying strings and byte alignment
-   WORD  PathOffset;
-   WORD  MatchOffset;
-   WORD  HeaderOffset;
-   char Name[24];
-   // Followed by [path, match, header] strings
 };
 
 // X11 Variables

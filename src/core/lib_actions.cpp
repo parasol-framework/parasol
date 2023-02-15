@@ -135,8 +135,7 @@ static ERROR thread_action(extThread *Thread)
    return error;
 }
 
-// Free all private memory resources tracked to an object.  Do this before deallocating public objects
-// because private objects may want to remove resources from objects that are in public memory.
+// Free all private memory resources tracked to an object.
 
 static void free_private_children(OBJECTPTR Object)
 {
@@ -201,7 +200,7 @@ static void free_private_children(OBJECTPTR Object)
    }
 }
 
-// Free all public memory resources and objects tracked to this object
+// Free all public memory resources tracked to this object
 
 static void free_public_children(OBJECTPTR Object)
 {
@@ -215,29 +214,8 @@ static void free_public_children(OBJECTPTR Object)
          if ((glSharedBlocks[i].ObjectID IS Object->UID) and (glSharedBlocks[i].MemoryID)) {
             if (glSharedBlocks[i].Flags & MEM_DELETE) continue; // Ignore blocks already marked for deletion
 
-            OBJECTPTR child;
-            if (!(glSharedBlocks[i].Flags & MEM_OBJECT)) {
-               log.warning("Unfreed public memory: #%d, Size %d, Object #%d, Access %d.", glSharedBlocks[i].MemoryID, glSharedBlocks[i].Size, glSharedBlocks[i].ObjectID, glSharedBlocks[i].AccessCount);
-               FreeResourceID(glSharedBlocks[i].MemoryID);
-            }
-            else if (!page_memory(glSharedBlocks + i, (APTR *)&child)) {
-               auto id = child->UID;
-               if (!child->defined(NF::UNLOCK_FREE|NF::COLLECT)) {
-                  child->Flags |= NF::COLLECT;
-                  if (child->defined(NF::INTEGRAL)) log.warning("Found unfreed object #%d (class $%.8x).", id, child->ClassID);
-                  unpage_memory(child);
-                  lock.release();
-
-                  ActionMsg(AC_Free, id, NULL, 0, 0);
-
-                  if (lock.acquire(5000) != ERR_Okay) {
-                     log.warning(ERR_SystemLocked);
-                     break;
-                  }
-                  i = glSharedControl->NextBlock-1; // Reset the counter because we gave up control
-               }
-               else unpage_memory(child);
-            }
+            log.warning("Unfreed public memory: #%d, Size %d, Object #%d, Access %d.", glSharedBlocks[i].MemoryID, glSharedBlocks[i].Size, glSharedBlocks[i].ObjectID, glSharedBlocks[i].AccessCount);
+            FreeResourceID(glSharedBlocks[i].MemoryID);
          }
       }
    }
@@ -249,9 +227,9 @@ static void free_public_children(OBJECTPTR Object)
 Action: This function is responsible for executing action routines.
 
 This function is the key entry point for executing actions and method routines.  An action is a predefined function
-call that can be called on any object, while a method is a function call that is specific to a particular object
-type.  You can find a complete list of available actions and their associated details in the Action List document.
-If an object supports methods, they will be listed in the object's class document.
+call that can be called on any object, while a method is a function call that is specific to a class implementation.
+You can find a complete list of available actions and their associated details in the Action List document.
+The actions and methods supported by any class will be referenced in their auto-generated documentation.
 
 Here are two examples that demonstrate how to make an action call.  The first performs an initialisation, which
 does not require any additional arguments.  The second performs a move operation, which requires three additional
@@ -267,23 +245,18 @@ arguments to be passed to the Action() function:
 In all cases, action calls in C++ can be simplified by using their corresponding helper functions:
 
 <pre>
-1. acInit(Picture);
+1.  acInit(Picture);
 
-2. acMove(Window, 30, 15, 0);
+2a. acMove(Window, 30, 15, 0);
 
-3. Window->move(30, 15, 0);
+2b. Window->move(30, 15, 0);
 </pre>
 
-If the target object does not support the action code that has been specified, an error code of ERR_NoSupport will be
-returned.  If you need to test an object to see if it supports a particular action, use the ~CheckAction()
-function.
+If the class of an object does not support the action ID, an error code of `ERR_NoSupport` is returned.  To test
+an object to see if its class supports a particular action, use the ~CheckAction() function.
 
-If you need to send an action to an object that does not belong to your task space, use the ~ActionMsg()
-function.  If you're in a situation where you only have an object ID and are unsure as to whether or not the object is
-in your task space, use ~ActionMsg() anyway as it will divert to the Action() function if the object is local.
-
-If you are writing a class and need to know how to add support for a particular action, look it up in the Action
-Support Guide.
+In circumstances where an object ID is known without its pointer, the use of ~ActionMsg() or ~QueueAction() may be
+desirable to avoid acquiring an object lock.
 
 -INPUT-
 int(AC) Action: An action or method ID must be specified here (e.g. AC_Query).
@@ -329,7 +302,7 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
       // 2. If applicable, the object's sub-class (e.g. Picture:JPEG).
       // 3. The base-class.
 
-      if (ActionID > glActionCount) error = log.warning(ERR_IllegalActionID);
+      if (ActionID >= AC_END) error = log.warning(ERR_IllegalActionID);
       else if (ManagedActions[ActionID]) error = ManagedActions[ActionID](obj, Parameters);
       else if (cl->ActionTable[ActionID].PerformAction) { // Can be base or sub-class
          error = cl->ActionTable[ActionID].PerformAction(obj, Parameters);
@@ -451,321 +424,111 @@ void ActionList(struct ActionTable **List, LONG *Size)
 /*********************************************************************************************************************
 
 -FUNCTION-
-ActionMsg: Provides a mechanism for sending actions to objects that belong to other tasks.
+ActionMsg: Execute an action or method by way of object ID.
 
-ActionMsg() will execute an action on any shared object that does not reside within the caller's process space.  It
-first tests the target object to check if it it belongs to the calling process.  If the object is local then the
-action will be called immediately, as if ~Action() was called under normal circumstances.  Otherwise the
-process that owns the object will be sent a message that requests the action be called with the given parameters.
-Functionality then returns to the caller.
-
-After sending the action, assume that the other process will respond to the message and execute the action in a short
-time frame.  This will occur when the process makes its next call to ProcessMessages().
-
-Some alternative macros are available in addition to ActionMsg().  The DelayMsg() macro will force a message to be
-queued if the target object belongs to your program.  The action will not be processed until ProcessMessages() is
-called.
-
-The WaitMsg() macro will cause your process to sleep while the other process executes the action.  The function will
-return with the result parameters and the error code from the other process unless a timeout occurs, in which case
-ERR_TimeOut is returned.
+Use ActionMsg() to execute an action where only the object ID is known.  In cases where the object belongs to another
+thread, the call is messaged to that thread for delayed execution, and this function returns immediately.
 
 -INPUT-
-int Action: The ID of the action that you want to execute.
-oid Object: The ID of the object to receive the action.
-ptr Args:   The argument structure related to the specific action that you are calling.
-mem MessageID: Set to zero.
-cid ClassID: Set to zero.
+int Action: The ID of the action or method to be executed.
+oid Object: The target object.
+ptr Args:   The parameter structure required by Action.
 
 -ERRORS-
-Okay: The message was successfully passed to the object (this is not indicative of whether or not the object was actually successful in executing the action).
-Args:
-NoMatchingObject: There is no object for the given Object.
-TimeOut: Timeout limit reached while waiting for a result from the foreign process.  Applies to WaitMsg() only.
+Okay: The action was either executed or queued for another thread.
+NullArgs:
+OutOfRange:
+Failed: Failed to build buffered arguments.
 -END-
 
 *********************************************************************************************************************/
 
-struct msgAction {
-   struct Message Message;
-   struct ActionMessage Action;
-   BYTE Buffer[SIZE_ACTIONBUFFER];
-};
-
-ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args, MEMORYID MessageMID, CLASSID ClassID)
+ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!ActionID) or (ActionID >= AC_END)) {
-      log.warning("Invalid arguments: Action: %d, Object: %d", ActionID, ObjectID);
-      return ERR_Args;
-   }
+   if ((!ActionID) or (!ObjectID)) log.warning(ERR_NullArgs);
+   if (ActionID >= AC_END) return log.warning(ERR_OutOfRange);
 
-   if (!ObjectID) {
-      if (ActionID > 0) log.function("Object: 0, Action: %s", ActionTable[ActionID].Name);
-      else log.function("Object: 0, Method: %d", ActionID);
-      return ERR_NullArgs;
-   }
+   OBJECTPTR object;
+   if (!AccessObject(ObjectID, 3000, &object)) {
+      if (object->ThreadMsg != tlThreadWriteMsg) {
+         // If the object belongs to a separate thread, release it and let the other
+         // thread handle it via messaging.
+         ReleaseObject(object);
 
-   // If the ClassID has been passed as -1, this indicates that the DelayMsg() function macro has been used to call this
-   // function.  Delaying the call guarantees that the action is queued if the object is in our process space.
+         #ifdef _WIN32
+            WINHANDLE thread_msg = object->ThreadMsg;
+         #else
+            LONG thread_msg = object->ThreadMsg;
+         #endif
 
-   bool wait = false;
-   bool delay = false;
-   if (ClassID IS (CLASSID)-1) {
-      delay = true;
-      ClassID = 0;
-   }
-   else if (ClassID IS (CLASSID)-2) {
-      wait = true;
-      ClassID = 0;
-   }
+         struct {
+            ActionMessage Action;
+            BYTE Buffer[SIZE_ACTIONBUFFER];
+         } msg;
 
-   // Class ID can be zero if executing an action, and is only required when executing a method (it is necessary to
-   // lookup the method structure - its size, fields etc and we need the class ID to do that).
+         msg.Action = {
+            .ObjectID = ObjectID,
+            .Time     = 0,
+            .ActionID = ActionID,
+            .SendArgs = false
+         };
 
-   // Get the message port that manages this object
+         LONG msgsize = 0;
 
-   SharedObjectHeader *header;
-   SharedObject *list;
-   LONG pos, msgsize;
-
-   if (!MessageMID) {
-      if (ObjectID > 0) { // Object is private (local)
-         MessageMID = glTaskMessageMID;
-         ClassID = 0;
-      }
-      else if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-         if (!find_public_object_entry(header, ObjectID, &pos)) {
-            list = (SharedObject *)ResolveAddress(header, header->Offset);
-            MessageMID = list[pos].MessageMID;
-            ClassID    = list[pos].ClassID;
-            ReleaseMemoryID(RPM_SharedObjects);
-
-            // The MessageMID can be zero if the object is not assigned an owner (e.g. CLF_NO_OWNERSHIP is defined by the object's class).
-
-            if (!MessageMID) MessageMID = glTaskMessageMID;
-         }
-         else {
-            ReleaseMemoryID(RPM_SharedObjects);
-            return ERR_NoMatchingObject;
-         }
-      }
-      else return log.warning(ERR_AccessMemory);
-   }
-
-   // If the object belongs to the message port of our task, execute the action immediately (unless a delay has been requested).
-
-#ifdef _WIN32
-   WINHANDLE thread_msg = 0;
-#else
-   LONG thread_msg = 0;
-#endif
-
-   ERROR error;
-   if ((MessageMID IS glTaskMessageMID) and (!delay)) {
-      OBJECTPTR object;
-      if (!(error = AccessObject(ObjectID, 1000, &object))) {
-         if ((ObjectID > 0) and ((thread_msg = object->ThreadMsg) != tlThreadWriteMsg)) {
-            // The object belongs to a separate internal thread, so release the object and let the other thread handle it.
-            ReleaseObject(object);
-         }
-         else {
-            error = Action(ActionID, object, Args);
-            ReleaseObject(object);
-            return error;
-         }
-      }
-      else if (error != ERR_TimeOut) return error;
-   }
-/*
-   if (ActionID > 0) log.msg("Passing action %s to object #%d.", ActionTable[ActionID].Name, ObjectID);
-   else log.msg("Passing method %d to object #%d.", ActionID, ObjectID);
-*/
-   // Copy the argument structure to the message argument section
-
-   msgAction msg;
-
-   msg.Action.ObjectID      = ObjectID;
-   msg.Action.ActionID      = ActionID;
-   msg.Action.SendArgs      = FALSE;
-   msg.Action.ReturnResult  = FALSE;
-   msg.Action.Delayed       = delay;
-   msg.Action.Error         = ERR_Okay;
-   msg.Action.Time          = 0;
-   msg.Action.ReturnMessage = glTaskMessageMID;
-
-   const FunctionField *fields = NULL;
-   LONG argssize = 0;
-
-   if (Args) {
-      if (ActionID > 0) {
-         if (ActionTable[ActionID].Size) {
-            fields   = ActionTable[ActionID].Args;
-            argssize = ActionTable[ActionID].Size;
-            WORD waitresult;
-            if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, &waitresult, ActionTable[ActionID].Name) != ERR_Okay) {
-               log.warning("Failed to buffer arguments for action \"%s\".", ActionTable[ActionID].Name);
-               return ERR_Failed;
-            }
-
-            msgsize += sizeof(ActionMessage);
-            msg.Action.SendArgs = TRUE;
-         }
-         else msgsize = sizeof(ActionMessage);
-      }
-      else {
-         if (!ClassID) {
-            if (!(ClassID = GetClassID(ObjectID))) {
-               log.warning("Class ID indeterminable for object %d - cannot execute action %d.", ObjectID, ActionID);
-               return ERR_Failed;
-            }
-         }
-
-         if (auto cl = (extMetaClass *)FindClass(ClassID)) {
-            if ((-ActionID) < cl->TotalMethods) {
-               fields   = cl->Methods[-ActionID].Args;
-               argssize = cl->Methods[-ActionID].Size;
-               WORD waitresult;
-               if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, &waitresult, cl->Methods[-ActionID].Name) != ERR_Okay) {
-                  log.warning("Failed to buffer arguments for method \"%s\".", cl->Methods[-ActionID].Name);
-                  return ERR_Failed;
-               }
-               msgsize += sizeof(ActionMessage);
-               msg.Action.SendArgs = TRUE;
-            }
-            else {
-               log.warning("Illegal method ID %d executed on class %s.", ActionID, cl->ClassName);
-               return ERR_IllegalMethodID;
-            }
-         }
-         else return log.warning(ERR_MissingClass);
-      }
-   }
-   else msgsize = sizeof(ActionMessage);
-
-   msg.Action.ReturnResult = wait;
-
-retry:
-   if (thread_msg) error = send_thread_msg(thread_msg, MSGID_ACTION, &msg.Action, msgsize);
-   else error = SendMessage(MessageMID, MSGID_ACTION, 0, &msg.Action, msgsize);
-
-   if (error) {
-      if ((error IS ERR_MemoryDoesNotExist) and (ObjectID < 0)) {
-         // If the message queue does not exist for a shared object, the object can still remain in memory if it is
-         // untracked - so try to execute the action directly.
-
-         log.warning("Object #%d is orphaned and will now be disowned.", ObjectID);
-
-         if (!AccessMemory(RPM_SharedObjects, MEM_READ, 2000, (void **)&header)) {
-            // Wipe the message MID so that all future executions are within the caller's process space
-            if (find_public_object_entry(header, ObjectID, &pos) IS ERR_Okay) {
-               list = (SharedObject *)ResolveAddress(header, header->Offset);
-               list[pos].MessageMID = 0;
-            }
-            ReleaseMemoryID(RPM_SharedObjects);
-         }
-
-         OBJECTPTR object;
-         if (delay) {  // Since a delay is enforced, try again but with our task message queue.
-            if (!AccessObject(ObjectID, 1000, &object)) {
-               object->TaskID = 0; // The originating task no longer exists
-               ReleaseObject(object);
-            }
-            MessageMID = glTaskMessageMID;
-            goto retry;
-         }
-
-         if (!AccessObject(ObjectID, 1000, &object)) {
-            object->TaskID = 0; // The originating task no longer exists
-            error = Action(ActionID, object, Args);
-            ReleaseObject(object);
-            return error;
-         }
-      }
-
-      if (ActionID > 0) {
-         log.warning("Action %s on object #%d failed, SendMsg error: %s", ActionTable[ActionID].Name, ObjectID, glMessages[error]);
-      }
-      else log.warning("Method %d on object #%d failed, SendMsg error: %s", ActionID, ObjectID, glMessages[error]);
-
-      if (error IS ERR_MemoryDoesNotExist) error = ERR_NoMatchingObject; // If the queue does not exist, the object does not exist
-
-      return error;
-   }
-
-   // Wait for the other task to send back a result if we are required to do so.  If the task disappears or does not
-   // respond within 10 seconds we cancel the wait and return a time-out error.
-
-   if ((wait) and (glTaskMessageMID != MessageMID)) {
-      msgAction receive;
-      if (!GetMessage(glTaskMessageMID, MSGID_ACTION_RESULT, MSF_WAIT, &receive, msgsize + sizeof(Message))) {
-         LONG j;
-
-         // Here we convert the returned structure over to the current process space. We are mostly interested in
-         // pointer and result variables, and we also free any allocated memory blocks.
-         //
-         //    The src_msg contains offsets and memory ID's.
-         //    The result_msg contains structural results (keep in mind that any address pointers come from the foreign task).
-         //    The Dest is the argument structure that we need to copy the results to.
-
-         //log.msg("[%d] Action: %d, Error: %d", receive.Action.ObjectID, receive.Action.ActionID, receive.Action.Error);
-
-         BYTE *src_msg    = msg.Buffer;
-         BYTE *result_msg = receive.Buffer;
-         BYTE *dest       = (BYTE *)Args;
-         LONG pos = 0;
-         for (LONG i=0; fields[i].Name; i++) {
-            if (fields[i].Type & FD_RESULT) {
-               if (fields[i].Type & FD_LONG) {
-                  LONG *dest_long = (LONG *)(dest + pos);
-                  *dest_long = ((LONG *)(result_msg + pos))[0];
-               }
-               else if (fields[i].Type & (FD_DOUBLE|FD_LARGE)) {
-                  LARGE *dest_large = (LARGE *)(dest + pos);
-                  *dest_large = ((LARGE *)(result_msg + pos))[0];
-               }
-               else if (fields[i].Type & FD_STR) {
-                  LONG *dest_long = ((LONG **)(dest + pos))[0];
-                  LONG *src_long  = (LONG *)(result_msg + ((LONG *)(src_msg+pos))[0]);
-                  *dest_long = *src_long;
-               }
-               else if (fields[i].Type & FD_PTR) {
-                  if (fields[i+1].Type & FD_PTRSIZE) {
-                     // Copy the data from the memory buffer we allocated earlier to the buffer in the destination
-                     // argument structure.
-
-                     if (((MEMORYID *)(src_msg + pos))[0]) {
-                        MEMORYID id = ((MEMORYID *)(src_msg + pos))[0];
-                        BYTE *src;
-                        if (!AccessMemory(id, MEM_READ_WRITE, 2000, (void **)&src)) {
-                           BYTE *copy = ((BYTE **)(dest + pos))[0];
-                           for (j=0; j < ((LONG *)(dest + pos + sizeof(APTR)))[0]; j++) copy[j] = src[j];
-                           ReleaseMemoryID(id);
-                        }
-                        FreeResourceID(((MEMORYID *)(src_msg + pos))[0]);
-                     }
+         if (Args) {
+            if (ActionID > 0) {
+               if (ActionTable[ActionID].Size) {
+                  const FunctionField *fields = ActionTable[ActionID].Args;
+                  LONG argssize = ActionTable[ActionID].Size;
+                  WORD waitresult;
+                  if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, &waitresult, ActionTable[ActionID].Name) != ERR_Okay) {
+                     log.warning("Failed to buffer arguments for action \"%s\".", ActionTable[ActionID].Name);
+                     return ERR_Failed;
                   }
-               }
-               else log.warning("Bad type definition for argument \"%s\".", fields[i].Name);
 
-               pos += sizeof(APTR);
+                  msg.Action.SendArgs = TRUE;
+               }
             }
-            else {
-               if (fields[i].Type & (FD_DOUBLE|FD_LARGE)) pos += sizeof(LARGE);
-               else if (fields[i].Type & FD_PTR) pos += sizeof(APTR);
-               else pos += sizeof(LONG);
+            else if (auto cl = (extMetaClass *)FindClass(GetClassID(ObjectID))) {
+               if (-ActionID < cl->TotalMethods) {
+                  const FunctionField *fields = cl->Methods[-ActionID].Args;
+                  LONG argssize = cl->Methods[-ActionID].Size;
+                  WORD waitresult;
+                  if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, &waitresult, cl->Methods[-ActionID].Name) != ERR_Okay) {
+                     log.warning("Failed to buffer arguments for method \"%s\".", cl->Methods[-ActionID].Name);
+                     return ERR_Failed;
+                  }
+                  msg.Action.SendArgs = TRUE;
+               }
+               else {
+                  log.warning("Illegal method ID %d executed on class %s.", ActionID, cl->ClassName);
+                  return ERR_IllegalMethodID;
+               }
             }
+            else return log.warning(ERR_MissingClass);
          }
 
-         return receive.Action.Error;
+         ERROR error = send_thread_msg(thread_msg, MSGID_ACTION, &msg, msgsize + sizeof(ActionMessage));
+
+         if (error) {
+            if (ActionID > 0) {
+               log.warning("Action %s on object #%d failed, SendMsg error: %s", ActionTable[ActionID].Name, ObjectID, glMessages[error]);
+            }
+            else log.warning("Method %d on object #%d failed, SendMsg error: %s", ActionID, ObjectID, glMessages[error]);
+
+            if (error IS ERR_MemoryDoesNotExist) error = ERR_NoMatchingObject;
+         }
+         return error;
       }
       else {
-         log.warning("Time-out waiting for foreign process to return action results.");
-         return ERR_TimeOut;
+         ERROR error = Action(ActionID, object, Args);
+         ReleaseObject(object);
+         return error;
       }
    }
-   else return ERR_Okay;
+   else return log.warning(ERR_AccessObject);
 }
 
 /*********************************************************************************************************************
@@ -1025,6 +788,105 @@ void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR E
 /*********************************************************************************************************************
 
 -FUNCTION-
+QueueAction: Delay the execution of an action by adding the call to the message queue.
+
+Use QueueAction() to execute an action by way of the local message queue.  This means that the supplied Action and
+the Args will be bundled into a message that will be placed in the queue.  This function then returns immediately.
+
+The action will be executed on the next cycle of ~ProcessMessages() in line with the FIFO order of queued messages.
+
+-INPUT-
+int Action: The ID of an action or method to execute.
+oid Object: The target object.
+ptr Args:   The relevant argument structure for the Action, or NULL if not required.
+
+-ERRORS-
+Okay:
+NullArgs:
+OutOfRange: The ActionID is invalid.
+NoMatchingObject:
+MissingClass:
+Failed:
+IllegalMethodID:
+-END-
+
+*********************************************************************************************************************/
+
+ERROR QueueAction(LONG ActionID, OBJECTID ObjectID, APTR Args)
+{
+   parasol::Log log(__FUNCTION__);
+
+   if ((!ActionID) or (!ObjectID)) log.warning(ERR_NullArgs);
+   if (ActionID >= AC_END) return log.warning(ERR_OutOfRange);
+
+   struct msgAction {
+      ActionMessage Action;
+      BYTE Buffer[SIZE_ACTIONBUFFER];
+   } msg;
+
+   msg.Action = {
+      .ObjectID = ObjectID,
+      .Time     = 0,
+      .ActionID = ActionID,
+      .SendArgs = false
+   };
+
+   const FunctionField *fields = NULL;
+   LONG msgsize = 0;
+
+   if (Args) {
+      LONG argssize = 0;
+      if (ActionID > 0) {
+         if (ActionTable[ActionID].Size) {
+            fields   = ActionTable[ActionID].Args;
+            argssize = ActionTable[ActionID].Size;
+            WORD waitresult;
+            if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, &waitresult, ActionTable[ActionID].Name) != ERR_Okay) {
+               log.warning("Failed to buffer arguments for action \"%s\".", ActionTable[ActionID].Name);
+               return ERR_Failed;
+            }
+
+            msg.Action.SendArgs = true;
+         }
+      }
+      else {
+         if (auto cl = (extMetaClass *)FindClass(GetClassID(ObjectID))) {
+            if ((-ActionID) < cl->TotalMethods) {
+               fields   = cl->Methods[-ActionID].Args;
+               argssize = cl->Methods[-ActionID].Size;
+               WORD waitresult;
+               if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, &waitresult, cl->Methods[-ActionID].Name) != ERR_Okay) {
+                  log.warning("Failed to buffer arguments for method \"%s\".", cl->Methods[-ActionID].Name);
+                  return ERR_Failed;
+               }
+               msg.Action.SendArgs = true;
+            }
+            else {
+               log.warning("Illegal method ID %d executed on class %s.", ActionID, cl->ClassName);
+               return ERR_IllegalMethodID;
+            }
+         }
+         else return log.warning(ERR_MissingClass);
+      }
+   }
+
+   ERROR error = SendMessage(glTaskMessageMID, MSGID_ACTION, 0, &msg.Action, msgsize + sizeof(ActionMessage));
+
+   if (error) {
+      if (ActionID > 0) {
+         log.warning("Action %s on object #%d failed, SendMsg error: %s", ActionTable[ActionID].Name, ObjectID, glMessages[error]);
+      }
+      else log.warning("Method %d on object #%d failed, SendMsg error: %s", ActionID, ObjectID, glMessages[error]);
+
+      if (error IS ERR_MemoryDoesNotExist) error = ERR_NoMatchingObject;
+   }
+
+   return error;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
 SubscribeAction: Monitor action calls made against an object.
 
 The SubscribeAction() function provides a means for receiving an immediate notification after an action is called on
@@ -1201,7 +1063,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
 
    if ((Object->Locked) or (Object->ThreadPending)) {
       log.debug("Object #%d locked; marking for deletion.", Object->UID);
-      set_object_flags(Object, Object->Flags|NF::UNLOCK_FREE);
+      Object->Flags |= NF::UNLOCK_FREE;
       return ERR_Okay|ERF_Notified;
    }
 
@@ -1215,8 +1077,8 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
    if (Object->ActionDepth > 0) { // Free() is being called while the object itself is still in use.  This can be an issue with private objects that haven't been locked with AccessObject().
       log.trace("Free() attempt while object is in use.");
       if (!Object->defined(NF::COLLECT)) {
-         set_object_flags(Object, Object->Flags|NF::COLLECT);
-         ActionMsg(AC_Free, Object->UID, NULL, 0, -1);
+         Object->Flags |= NF::COLLECT;
+         ActionMsg(AC_Free, Object->UID, NULL);
       }
       return ERR_Okay|ERF_Notified;
    }
@@ -1257,7 +1119,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
    // Mark the object as being in the free process.  The mark prevents any further access to the object via
    // AccessObject().  Classes may also use the flag to check if an object is in the process of being freed.
 
-   set_object_flags(Object, (Object->Flags|NF::FREE) & (~NF::UNLOCK_FREE));
+   Object->Flags = (Object->Flags|NF::FREE) & (~NF::UNLOCK_FREE);
 
    NotifySubscribers(Object, AC_Free, NULL, ERR_Okay);
 
@@ -1305,27 +1167,18 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
       }
    }
 
-   if (Object->defined(NF::PUBLIC)) remove_shared_object(Object->UID);  // If the object is shared, remove it from the shared list
-
-   if (!Object->defined(NF::PUBLIC)) { // Decrement the counters associated with the class that this object belongs to.
-      if ((mc->Base) and (mc->Base->OpenCount > 0)) mc->Base->OpenCount--; // Child detected
-      if (mc->OpenCount > 0) mc->OpenCount--;
-   }
+   if ((mc->Base) and (mc->Base->OpenCount > 0)) mc->Base->OpenCount--; // Child detected
+   if (mc->OpenCount > 0) mc->OpenCount--;
 
    if ((glObjectLookup) and (Object->Stats->Name[0])) { // Remove the object from the name lookup list
       ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
       if (lock.granted()) remove_object_hash(Object);
    }
 
-   if (Object->UID < 0) {
-      FreeResourceID(Object->UID);
-   }
-   else {
-      // Clear the object header.  This helps to raise problems in any areas of code that may attempt to use the object
-      // after it has been destroyed.
-      ClearMemory(Object, sizeof(BaseClass));
-      FreeResource(Object);
-   }
+   // Clear the object header.  This helps to raise problems in any areas of code that may attempt to use the object
+   // after it has been destroyed.
+   ClearMemory(Object, sizeof(BaseClass));
+   FreeResource(Object);
 
    return ERR_Okay|ERF_Notified;  // On returning we set the ERF_Notified flag to prevent Action() from trying to interact with the Object->Stats structure (which no longer exists after the object memory is freed).
 }
@@ -1371,7 +1224,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
             error = cl->ActionTable[AC_Init].PerformAction(Object, NULL);
          }
 
-         if (!error) set_object_flags(Object, Object->Flags|NF::INITIALISED);
+         if (!error) Object->Flags |= NF::INITIALISED;
       }
 
       return error;
@@ -1395,7 +1248,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
          else error = ERR_Okay; // If no initialiser defined, auto-OK
 
          if (!error) {
-            set_object_flags(Object, Object->Flags|NF::INITIALISED);
+            Object->Flags |= NF::INITIALISED;
 
             if (Object->ExtClass != cl) {
                // Due to the switch, increase the open count of the sub-class (see NewObject() for details on object
@@ -1403,8 +1256,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
 
                log.msg("Object class switched to sub-class \"%s\".", Object->className());
 
-               if (!Object->isPublic()) Object->ExtClass->OpenCount++;
-
+               Object->ExtClass->OpenCount++;
                Object->SubID = Object->ExtClass->SubClassID;
                Object->Flags |= NF::RECLASSED; // This flag indicates that the object originally belonged to the base-class
             }
@@ -1464,11 +1316,8 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
                if (Object->ExtClass->ActionTable[AC_Init].PerformAction) {
                   if (!(error = Object->ExtClass->ActionTable[AC_Init].PerformAction(Object, NULL))) {
                      log.msg("Object class switched to sub-class \"%s\".", Object->className());
-                     set_object_flags(Object, Object->Flags|NF::INITIALISED);
-
-                     if (!Object->defined(NF::PUBLIC)) { // Increase the open count of the sub-class
-                        Object->ExtClass->OpenCount++;
-                     }
+                     Object->Flags |= NF::INITIALISED;
+                     Object->ExtClass->OpenCount++;
                      return ERR_Okay;
                   }
                }

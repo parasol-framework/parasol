@@ -209,31 +209,6 @@ void resize_feedback(FUNCTION *Feedback, OBJECTID DisplayID, LONG X, LONG Y, LON
 
 //****************************************************************************
 
-static ERROR DISPLAY_AccessObject(extDisplay *Self, APTR Void)
-{
-   parasol::Log log;
-
-   if (Self->BitmapID) {
-      if (AccessObject(Self->BitmapID, 2000, &Self->Bitmap) != ERR_Okay) return log.warning(ERR_AccessObject);
-   }
-   else Self->Bitmap = NULL;
-
-   if (Self->ResolutionsMID) {
-      if (AccessMemory(Self->ResolutionsMID, MEM_READ, 2000, &Self->Resolutions) != ERR_Okay) return ERR_AccessMemory;
-   }
-   else Self->Resolutions = NULL;
-
-   #ifdef _GLES_
-      if (glEGLRefreshDisplay) {
-         refresh_display_from_egl(Self);
-      }
-   #endif
-
-   return ERR_Okay;
-}
-
-//****************************************************************************
-
 static void notify_resize_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
    ((extDisplay *)CurrentContext())->ResizeFeedback.Type = CALL_NONE;
@@ -940,8 +915,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
          }
          else {
             OBJECTID surface_id;
-            LONG count = 1;
-            if (!FindObject("SystemSurface", ID_SURFACE, FOF_INCLUDE_SHARED, &surface_id, &count)) {
+            if (!FindObject("SystemSurface", ID_SURFACE, 0, &surface_id)) {
                if (surface_id IS Self->ownerID()) desktop = TRUE;
             }
          }
@@ -1221,25 +1195,18 @@ static ERROR DISPLAY_MoveToPoint(extDisplay *Self, struct acMoveToPoint *Args)
 static ERROR DISPLAY_NewObject(extDisplay *Self, APTR Void)
 {
    parasol::Log log;
-   ERROR error;
 
-   if (Self->isPublic()) {
-      error = NewLockedObject(ID_BITMAP, Self->flags()|NF::INTEGRAL, &Self->Bitmap, &Self->BitmapID);
-   }
-   else {
-      error = NewObject(ID_BITMAP, Self->flags()|NF::INTEGRAL, &Self->Bitmap);
-      Self->BitmapID = Self->Bitmap->UID;
-   }
+   ERROR error = NewObject(ID_BITMAP, Self->flags()|NF::INTEGRAL, &Self->Bitmap);
+   Self->BitmapID = Self->Bitmap->UID;
 
    if (!error) {
       OBJECTID id;
-      LONG count = 1;
-      if (FindObject("SystemVideo", 0, 0, &id, &count) != ERR_Okay) {
+      if (FindObject("SystemVideo", 0, 0, &id) != ERR_Okay) {
          SetName(Self->Bitmap, "SystemVideo");
       }
 
       if (!(GetName(Self)[0])) {
-         if (FindObject("SystemDisplay", 0, 0, &id, &count) != ERR_Okay) {
+         if (FindObject("SystemDisplay", 0, 0, &id) != ERR_Okay) {
             SetName(Self, "SystemDisplay");
          }
       }
@@ -1316,15 +1283,6 @@ static ERROR DISPLAY_Redimension(extDisplay *Self, struct acRedimension *Args)
 
    struct acResize resize = { Args->Width, Args->Height, Args->Depth };
    DISPLAY_Resize(Self, &resize);
-   return ERR_Okay;
-}
-
-//****************************************************************************
-
-static ERROR DISPLAY_ReleaseObject(extDisplay *Self, APTR Void)
-{
-   if (Self->Bitmap) { ReleaseObject(Self->Bitmap); Self->Bitmap = NULL; }
-   if (Self->Resolutions) { ReleaseMemory(Self->Resolutions); Self->Resolutions = NULL; }
    return ERR_Okay;
 }
 
@@ -2010,7 +1968,7 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
 
       // Post a delayed CheckXWindow() message so that we can respond to changes by the window manager.
 
-      DelayMsg(MT_GfxCheckXWindow, Self->UID);
+      QueueAction(MT_GfxCheckXWindow, Self->UID);
 
       // This really shouldn't be here, but until the management of menu focussing is fixed, we need it.
 
@@ -2047,9 +2005,9 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
 
    objPointer *pointer;
    OBJECTID pointer_id;
-   LONG count = 1;
-   if (FindObject("SystemPointer", ID_POINTER, 0, &pointer_id, &count) != ERR_Okay) {
-      if (!NewNamedObject(ID_POINTER, NF::NO_TRACK|NF::PUBLIC|NF::UNIQUE, &pointer, &pointer_id, "SystemPointer")) {
+   if (FindObject("SystemPointer", ID_POINTER, 0, &pointer_id) != ERR_Okay) {
+      if (!NewObject(ID_POINTER, NF::UNTRACKED, &pointer)) {
+         SetName(pointer, "SystemPointer");
          OBJECTID owner = Self->ownerID();
          if (GetClassID(owner) IS ID_SURFACE) pointer->set(FID_Surface, owner);
 
@@ -2065,7 +2023,6 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
 
          if (acInit(pointer) != ERR_Okay) acFree(pointer);
          else acShow(pointer);
-         ReleaseObject(pointer);
       }
    }
    return ERR_Okay;
@@ -2328,8 +2285,7 @@ ERROR GET_HDensity(extDisplay *Self, LONG *Value)
    // If the user has overridden the DPI with a preferred value, we have to use it.
 
    OBJECTID style_id;
-   LONG count = 1;
-   if (!FindObject("glStyle", ID_XML, 0, &style_id, &count)) {
+   if (!FindObject("glStyle", ID_XML, 0, &style_id)) {
       parasol::ScopedObjectLock<objXML> style(style_id, 3000);
       if (style.granted()) {
          char strdpi[32];
@@ -2399,8 +2355,7 @@ ERROR GET_VDensity(extDisplay *Self, LONG *Value)
    // If the user has overridden the DPI with a preferred value, we have to use it.
 
    OBJECTID style_id;
-   LONG count = 1;
-   if (!FindObject("glStyle", ID_XML, 0, &style_id, &count)) {
+   if (!FindObject("glStyle", ID_XML, 0, &style_id)) {
       parasol::ScopedObjectLock<objXML> style(style_id, 3000);
       if (style.granted()) {
          char strdpi[32];
@@ -2593,7 +2548,7 @@ static ERROR SET_Flags(extDisplay *Self, LONG Value)
 
             if (Self->Flags & SCR_VISIBLE) {
                winShowWindow(Self->WindowHandle, TRUE);
-               DelayMsg(AC_Focus, Self->UID);
+               QueueAction(AC_Focus, Self->UID);
             }
          }
 
@@ -2679,7 +2634,7 @@ static ERROR SET_Flags(extDisplay *Self, LONG Value)
          if (Self->Flags & SCR_VISIBLE) {
             acShow(Self);
             XSetInputFocus(XDisplay, Self->XWindowHandle, RevertToNone, CurrentTime);
-            DelayMsg(AC_Focus, Self->UID);
+            QueueAction(AC_Focus, Self->UID);
          }
 
          resize_feedback(&Self->ResizeFeedback, Self->UID, Self->X, Self->Y, Self->Width, Self->Height);
@@ -3170,8 +3125,7 @@ void alloc_display_buffer(extDisplay *Self)
    if (Self->BufferID) { acFree(Self->BufferID); Self->BufferID = 0; }
 
    objBitmap *buffer;
-   ERROR error;
-   if (!NewLockedObject(ID_BITMAP, NF::INTEGRAL|Self->flags(), &buffer, &Self->BufferID)) {
+   if (!NewObject(ID_BITMAP, NF::INTEGRAL, &buffer)) {
       if (!SetFields(buffer,
             FID_Name|TSTR,           "SystemBuffer",
             FID_BitsPerPixel|TLONG,  Self->Bitmap->BitsPerPixel,
@@ -3184,16 +3138,14 @@ void alloc_display_buffer(extDisplay *Self)
                FID_DataFlags|TLONG,  MEM_TEXTURE,
             #endif
             TAGEND)) {
-         if (!acInit(buffer)) error = ERR_Okay;
-         else error = ERR_Init;
+         if (!acInit(buffer)) {
+            Self->BufferID = buffer->UID;
+            return;
+         }
       }
-      else error = ERR_SetField;
 
-      if (error) { acFree(buffer); Self->BufferID = 0; }
-
-      ReleaseObject(buffer);
+      acFree(buffer);
    }
-   else error = ERR_NewObject;
 }
 
 //********************************************************************************************************************

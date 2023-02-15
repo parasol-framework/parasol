@@ -423,7 +423,6 @@ ERROR track_layer(extSurface *Self)
       list[i].SurfaceID = Self->UID;
       list[i].BitmapID  = Self->BufferID;
       list[i].DisplayID = Self->DisplayID;
-      list[i].TaskID    = Self->ownerTask();
       list[i].PopOverID = Self->PopOverID;
       list[i].Flags     = Self->Flags;
       list[i].X         = Self->X;
@@ -543,7 +542,6 @@ ERROR update_surface_copy(extSurface *Self, SurfaceList *Copy)
          //list[i].SurfaceID    = Self->UID; Never changes
          list[i].BitmapID      = Self->BufferID;
          list[i].DisplayID     = Self->DisplayID;
-         //list[i].TaskID      = Self->ownerTask(); Never changes
          list[i].PopOverID     = Self->PopOverID;
          list[i].X             = Self->X;
          list[i].Y             = Self->Y;
@@ -1684,20 +1682,6 @@ ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG To
          log.trace("Surface is not visible.");
          return ERR_Okay;
       }
-   }
-
-   // Because we are executing a redraw, we need to ensure that the surface belongs to our process before going any further.
-
-   if (list[index].TaskID != CurrentTaskID()) {
-      log.trace("Surface object #%d belongs to task #%d (we are #%d)", SurfaceID, list[index].TaskID, CurrentTaskID());
-
-      LONG x = Left - list[index].Left;
-      LONG y = Top - list[index].Top;
-      if (Flags & IRF_IGNORE_CHILDREN) {
-         acDrawArea(list[index].SurfaceID, x, y, Right - Left, Bottom - Top);
-      }
-      else drwInvalidateRegionID(list[index].SurfaceID, x, y, Right - Left, Bottom - Top);
-      return ERR_Okay;
    }
 
    // Check if the exposed dimensions are outside of our boundary and/or our parent(s) boundaries.  If so then we must restrict the exposed dimensions.

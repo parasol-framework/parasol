@@ -102,7 +102,6 @@
       <prototype>ERROR taskExpunge(OBJECTPTR Object)</prototype>
       <description>
 <p>The Expunge method releases all loaded libraries that are no longer in use by the active process.</p>
-<p>If the Expunge method is called on the System Task, it will message all Tasks to perform the expunge sequence. The System Task object can be found by searching for the "SystemTask" object.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>

@@ -371,7 +371,7 @@ static ERROR NETSOCKET_FreeWarning(extNetSocket *Self, APTR Void)
       if (!Self->Terminating) { // Check terminating state to prevent flooding of the message queue
          log.msg("NetSocket in use, cannot free yet (request delayed).");
          Self->Terminating = TRUE;
-         DelayMsg(AC_Free, Self->UID);
+         QueueAction(AC_Free, Self->UID);
       }
       return ERR_InUse;
    }

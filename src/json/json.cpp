@@ -90,6 +90,8 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
+   objModule::create xml = { fl::Name("xml") }; // Load our dependency ahead of class registration
+
    if ((clJSON = objMetaClass::create::global(
       fl::BaseClassID(ID_XML),
       fl::SubClassID(ID_JSON),

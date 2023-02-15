@@ -154,8 +154,6 @@ class objHTTP : public BaseClass {
 
    // Action stubs
 
-   // ActionNotify
-
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
    inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }
    inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
@@ -169,9 +167,18 @@ class objHTTP : public BaseClass {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);
    }
-   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result) {
+   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result = NULL) {
       ERROR error;
       struct acWrite write = { (BYTE *)Buffer, Bytes };
+      if (!(error = Action(AC_Write, this, &write))) {
+         if (Result) *Result = write.Result;
+      }
+      else if (Result) *Result = 0;
+      return error;
+   }
+   inline ERROR write(std::string Buffer, LONG *Result = NULL) {
+      ERROR error;
+      struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
       if (!(error = Action(AC_Write, this, &write))) {
          if (Result) *Result = write.Result;
       }

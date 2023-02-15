@@ -187,40 +187,36 @@ ERROR ScanDir(DirInfo *Dir)
    // Support for scanning of volume names
 
    if ((Dir->prvPath[0] IS ':') or (!Dir->prvPath[0])) {
-      parasol::ScopedObjectLock<objConfig> volumes(glVolumes, 8000);
-      if (!volumes.granted()) return log.warning(ERR_AccessObject);
+      ThreadLock lock(TL_VOLUMES, 4000);
+      if (!lock.granted()) return log.warning(ERR_LockFailed);
 
-      ConfigGroups *groups;
-      if (!glVolumes->getPtr(FID_Data, &groups)) {
-         LONG count = 0;
-         for (auto& [group, keys] : groups[0]) {
-            if (count IS Dir->prvIndex) {
-               Dir->prvIndex++;
-               if (keys.contains("Name")) {
-                  LONG j = StrCopy(keys["Name"].c_str(), file->Name, MAX_FILENAME-2);
-                  if (Dir->prvFlags & RDF_QUALIFY) {
-                     file->Name[j++] = ':';
-                     file->Name[j] = 0;
-                  }
-                  file->Flags |= RDF_VOLUME;
+      LONG count = 0;
+      for (auto& [group, keys] : glVolumes) {
+         if (count IS Dir->prvIndex) {
+            Dir->prvIndex++;
+            if (keys.contains("Name")) {
+               LONG j = StrCopy(keys["Name"].c_str(), file->Name, MAX_FILENAME-2);
+               if (Dir->prvFlags & RDF_QUALIFY) {
+                  file->Name[j++] = ':';
+                  file->Name[j] = 0;
                }
-
-               if (keys.contains("Hidden") and (keys["Hidden"].compare("Yes"))) {
-                  file->Flags |= RDF_HIDDEN;
-               }
-
-               if (keys.contains("Label")) {
-                  AddInfoTag(file, "Label", keys["Label"].c_str());
-               }
-
-               return ERR_Okay;
+               file->Flags |= RDF_VOLUME;
             }
-            else count++;
-         }
 
-         return ERR_DirEmpty;
+            if (keys.contains("Hidden") and (keys["Hidden"].compare("Yes"))) {
+               file->Flags |= RDF_HIDDEN;
+            }
+
+            if (keys.contains("Label")) {
+               AddInfoTag(file, "Label", keys["Label"].c_str());
+            }
+
+            return ERR_Okay;
+         }
+         else count++;
       }
-      else return log.warning(ERR_AccessObject);
+
+      return ERR_DirEmpty;
    }
 
    // In all other cases, pass functionality to the filesystem driver.

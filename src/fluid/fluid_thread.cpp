@@ -141,15 +141,6 @@ static int thread_action(lua_State *Lua)
       return 0;
    }
 
-   // If an obj.new() lock is still present, detach it first because ActionThread() is going to attempt to lock the
-   // object with AccessPrivateObject() and a timeout error will occur otherwise.
-
-   if ((object->NewLock) and (!object->Detached)) {
-      object->Detached = TRUE;
-      object->NewLock = FALSE;
-      release_object(object);
-   }
-
    FUNCTION callback;
    LONG key = lua_tointeger(Lua, 4);
 
@@ -247,12 +238,6 @@ static int thread_method(lua_State *Lua)
             if (found) {
                // If an obj.new() lock is still present, detach it first because ActionThread() is going to attempt to
                // lock the object with AccessPrivateObject() and a timeout error will occur otherwise.
-
-               if ((object->NewLock) and (!object->Detached)) {
-                  object->Detached = TRUE;
-                  object->NewLock = FALSE;
-                  release_object(object);
-               }
 
                const FunctionField *args = table[i].Args;
                LONG argsize = table[i].Size;

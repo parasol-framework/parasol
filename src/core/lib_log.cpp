@@ -239,7 +239,7 @@ void LogF(CSTRING Header, CSTRING Format, ...)
          }
          else action = ActionTable[ctx->Action].Name;
       }
-      else action = glProgName;
+      else action = "App";
 
       if (!Header) {
          Header = action;
@@ -452,7 +452,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
          }
          else action = ActionTable[ctx->Action].Name;
       }
-      else action = glProgName;
+      else action = "App";
 
       if (!Header) {
          Header = action;

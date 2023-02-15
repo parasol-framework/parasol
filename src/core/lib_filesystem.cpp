@@ -369,16 +369,13 @@ ERROR AnalysePath(CSTRING Path, LONG *PathType)
 
    LONG len = StrLength(Path);
    if (Path[len-1] IS ':') {
-      parasol::ScopedObjectLock<objConfig> volumes(glVolumes, 8000);
-      if (volumes.granted()) {
-         ConfigGroups *groups;
-         if (!glVolumes->getPtr(FID_Data, &groups)) {
-            for (auto& [group, keys] : groups[0]) {
-               if ((!StrCompare(Path, keys["Name"].c_str(), len-1, 0)) and
-                   (keys["Name"].size() IS (size_t)len-1)) {
-                  if (PathType) *PathType = LOC_VOLUME;
-                  return ERR_Okay;
-               }
+      ThreadLock lock(TL_VOLUMES, 6000);
+      if (lock.granted()) {
+         for (auto& [group, keys] : glVolumes) {
+            if ((!StrCompare(Path, keys["Name"].c_str(), len-1, 0)) and
+                (keys["Name"].size() IS (size_t)len-1)) {
+               if (PathType) *PathType = LOC_VOLUME;
+               return ERR_Okay;
             }
          }
       }
@@ -819,23 +816,20 @@ ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 
       error = ERR_Okay;
 
-      parasol::ScopedObjectLock<objConfig> volumes(glVolumes);
-      if (volumes.granted()) {
-         ConfigGroups *groups;
-         if (!glVolumes->getPtr(FID_Data, &groups)) {
-            for (auto& [group, keys] : groups[0]) {
-               if (!StrMatch(NameBuffer, keys["Name"].c_str())) {
-                  if (keys.contains("Hidden")) {
-                     if ((!StrMatch("Yes", keys["Hidden"].c_str())) or (!keys["Hidden"].compare("1"))) Info->Flags |= RDF_HIDDEN;
-                  }
-
-                  break;
+      ThreadLock lock(TL_VOLUMES, 4000);
+      if (lock.granted()) {
+         for (auto& [group, keys] : glVolumes) {
+            if (!StrMatch(NameBuffer, keys["Name"].c_str())) {
+               if (keys.contains("Hidden")) {
+                  if ((!StrMatch("Yes", keys["Hidden"].c_str())) or (!keys["Hidden"].compare("1"))) Info->Flags |= RDF_HIDDEN;
                }
+
+               break;
             }
          }
-         else error = ERR_FileNotFound;
+
       }
-      else error = ERR_AccessObject;
+      else error = ERR_LockFailed;
 
       if (pos < MAX_FILENAME-2) {
          NameBuffer[pos++] = ':';
@@ -2819,8 +2813,8 @@ ERROR fs_getdeviceinfo(CSTRING Path, objStorageDevice *Info)
    // Device information is stored in the SystemVolumes object
 
    {
-      parasol::ScopedObjectLock<objConfig> volumes(glVolumes, 8000);
-      if (volumes.granted()) {
+      ThreadLock lock(TL_VOLUMES, 8000);
+      if (lock.granted()) {
          ULONG pathend;
          STRING resolve = NULL;
          location = NULL;
@@ -2828,33 +2822,30 @@ ERROR fs_getdeviceinfo(CSTRING Path, objStorageDevice *Info)
 restart:
          for (pathend=0; (Path[pathend]) and (Path[pathend] != ':'); pathend++);
 
-         ConfigGroups *groups;
-         if (!glVolumes->getPtr(FID_Data, &groups)) {
-            for (auto& [group, keys] : groups[0]) {
-               if (not keys.contains("Name")) continue;
-               auto& name = keys["Name"];
+         for (auto& [group, keys] : glVolumes) {
+            if (not keys.contains("Name")) continue;
+            auto& name = keys["Name"];
 
-               bool match = false;
-               ULONG j;
-               for (j=0; (j < (ULONG)name.size()) and (j < pathend); j++) {
-                  if (std::tolower(Path[j]) != std::tolower(name[j])) break;
-               }
-               if ((j IS pathend) and ((j IS (ULONG)name.size()) or (name[j] IS ':'))) match = true;
+            bool match = false;
+            ULONG j;
+            for (j=0; (j < (ULONG)name.size()) and (j < pathend); j++) {
+               if (std::tolower(Path[j]) != std::tolower(name[j])) break;
+            }
+            if ((j IS pathend) and ((j IS (ULONG)name.size()) or (name[j] IS ':'))) match = true;
 
-               if (!match) continue;
+            if (!match) continue;
 
-               if (keys.contains("Path")) {
-                  if (!keys["Path"].compare(0, 6, "EXT:")) Info->DeviceFlags |= DEVICE_SOFTWARE; // Virtual device
-               }
+            if (keys.contains("Path")) {
+               if (!keys["Path"].compare(0, 6, "EXT:")) Info->DeviceFlags |= DEVICE_SOFTWARE; // Virtual device
+            }
 
-               if (keys.contains("Device")) {
-                  auto& device = keys["Device"];
-                  if (!device.compare("disk"))     Info->DeviceFlags |= DEVICE_FLOPPY_DISK|DEVICE_REMOVABLE|DEVICE_READ|DEVICE_WRITE;
-                  else if (!device.compare("hd"))  Info->DeviceFlags |= DEVICE_HARD_DISK|DEVICE_READ|DEVICE_WRITE;
-                  else if (!device.compare("cd"))  Info->DeviceFlags |= DEVICE_COMPACT_DISC|DEVICE_REMOVABLE|DEVICE_READ;
-                  else if (!device.compare("usb")) Info->DeviceFlags |= DEVICE_USB|DEVICE_REMOVABLE;
-                  else log.warning("Device '%s' unrecognised.", device.c_str());
-               }
+            if (keys.contains("Device")) {
+               auto& device = keys["Device"];
+               if (!device.compare("disk"))     Info->DeviceFlags |= DEVICE_FLOPPY_DISK|DEVICE_REMOVABLE|DEVICE_READ|DEVICE_WRITE;
+               else if (!device.compare("hd"))  Info->DeviceFlags |= DEVICE_HARD_DISK|DEVICE_READ|DEVICE_WRITE;
+               else if (!device.compare("cd"))  Info->DeviceFlags |= DEVICE_COMPACT_DISC|DEVICE_REMOVABLE|DEVICE_READ;
+               else if (!device.compare("usb")) Info->DeviceFlags |= DEVICE_USB|DEVICE_REMOVABLE;
+               else log.warning("Device '%s' unrecognised.", device.c_str());
             }
          }
 
@@ -2885,7 +2876,7 @@ restart:
 
          if (resolve) FreeResource(resolve);
       }
-      else return log.warning(ERR_AccessObject);
+      else return log.warning(ERR_LockFailed);
    }
 
    // Assume that the device is read/write if the device type cannot be assessed

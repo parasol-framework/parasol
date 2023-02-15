@@ -76,7 +76,7 @@
     </input>
     <description>
 <p>This function resolves an object ID to its address and acquires a lock on the object so that other processes and threads cannot use it simultaneously.</p>
-<p>If the object is in shared memory, it will be paged into the calling process.  If the object is locked, the function will wait until the object becomes available.   This must occur within the amount of time specified in the Milliseconds parameter.  If the time expires, the function will return with an ERR_TimeOut error code.  If successful, ERR_Okay is returned and a reference to the object's address is stored in the Result variable.</p>
+<p>If the object is already locked, it will wait until the object becomes available.   This must occur within the amount of time specified in the Milliseconds parameter.  If the time expires, the function will return with an ERR_TimeOut error code.  If successful, ERR_Okay is returned and a reference to the object's address is stored in the Result variable.</p>
 <p>It is crucial that calls to AccessObject() are followed with a call to <function module="Core">ReleaseObject</function> once the lock is no longer required.  Calls to AccessObject() will also nest, so they must be paired with <function module="Core">ReleaseObject</function> correctly.</p>
 <p>If AccessObject() fails, the Result variable will be automatically set to a NULL pointer on return.</p>
 <p>Hint: If the name of the target object is known but not the ID, use <function module="Core">FindObject</function> to resolve it.</p>
@@ -102,7 +102,7 @@
     </input>
     <description>
 <p>Use AccessPrivateObject() to gain exclusivity to an object at thread-level.  This function provides identical behaviour to that of <function module="Core">AccessObject</function>, but with a slight speed advantage as the object ID does not need to be resolved to an address.  Calls to AccessPrivateObject() will nest, and must be matched with a call to <function module="Core">ReleasePrivateObject</function> to unlock the object.</p>
-<p>This function only needs to be called on private objects that are used between more than one thread.  Calling it on public objects (identified by their negative object ID) is an error.</p>
+<p>If it is guaranteed that an object is not being shared between threads, there is no need to acquire a lock via this function.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -124,7 +124,7 @@
       <param type="APTR" name="Parameters">If the action or method is documented as taking parameters, point to the relevant parameter structure here.</param>
     </input>
     <description>
-<p>This function is the key entry point for executing actions and method routines.  An action is a predefined function call that can be called on any object, while a method is a function call that is specific to a particular object type.  You can find a complete list of available actions and their associated details in the Action List document. If an object supports methods, they will be listed in the object's class document.</p>
+<p>This function is the key entry point for executing actions and method routines.  An action is a predefined function call that can be called on any object, while a method is a function call that is specific to a class implementation. You can find a complete list of available actions and their associated details in the Action List document. The actions and methods supported by any class will be referenced in their auto-generated documentation.</p>
 <p>Here are two examples that demonstrate how to make an action call.  The first performs an initialisation, which does not require any additional arguments.  The second performs a move operation, which requires three additional arguments to be passed to the Action() function:</p>
 <pre>1. Action(AC_Init, Picture, NULL);
 
@@ -132,15 +132,14 @@
    Action(AC_Move, Window, &amp;move);
 </pre>
 <p>In all cases, action calls in C++ can be simplified by using their corresponding helper functions:</p>
-<pre>1. acInit(Picture);
+<pre>1.  acInit(Picture);
 
-2. acMove(Window, 30, 15, 0);
+2a. acMove(Window, 30, 15, 0);
 
-3. Window-&gt;move(30, 15, 0);
+2b. Window-&gt;move(30, 15, 0);
 </pre>
-<p>If the target object does not support the action code that has been specified, an error code of ERR_NoSupport will be returned.  If you need to test an object to see if it supports a particular action, use the <function module="Core">CheckAction</function> function.</p>
-<p>If you need to send an action to an object that does not belong to your task space, use the <function module="Core">ActionMsg</function> function.  If you're in a situation where you only have an object ID and are unsure as to whether or not the object is in your task space, use <function module="Core">ActionMsg</function> anyway as it will divert to the Action() function if the object is local.</p>
-<p>If you are writing a class and need to know how to add support for a particular action, look it up in the Action Support Guide.</p>
+<p>If the class of an object does not support the action ID, an error code of <code>ERR_NoSupport</code> is returned.  To test an object to see if its class supports a particular action, use the <function module="Core">CheckAction</function> function.</p>
+<p>In circumstances where an object ID is known without its pointer, the use of <function module="Core">ActionMsg</function> or <function module="Core">QueueAction</function> may be desirable to avoid acquiring an object lock.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -192,26 +191,21 @@ struct FunctionField argsResize[] = {
   <function>
     <name>ActionMsg</name>
     <category>Objects</category>
-    <comment>Provides a mechanism for sending actions to objects that belong to other tasks.</comment>
-    <prototype>ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args, MEMORYID MessageID, CLASSID ClassID)</prototype>
+    <comment>Execute an action or method by way of object ID.</comment>
+    <prototype>ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args)</prototype>
     <input>
-      <param type="LONG" name="Action">The ID of the action that you want to execute.</param>
-      <param type="OBJECTID" name="Object">The ID of the object to receive the action.</param>
-      <param type="APTR" name="Args">The argument structure related to the specific action that you are calling.</param>
-      <param type="MEMORYID" name="MessageID">Set to zero.</param>
-      <param type="CLASSID" name="ClassID">Set to zero.</param>
+      <param type="LONG" name="Action">The ID of the action or method to be executed.</param>
+      <param type="OBJECTID" name="Object">The target object.</param>
+      <param type="APTR" name="Args">The parameter structure required by Action.</param>
     </input>
     <description>
-<p>ActionMsg() will execute an action on any shared object that does not reside within the caller's process space.  It first tests the target object to check if it it belongs to the calling process.  If the object is local then the action will be called immediately, as if <function module="Core">Action</function> was called under normal circumstances.  Otherwise the process that owns the object will be sent a message that requests the action be called with the given parameters. Functionality then returns to the caller.</p>
-<p>After sending the action, assume that the other process will respond to the message and execute the action in a short time frame.  This will occur when the process makes its next call to ProcessMessages().</p>
-<p>Some alternative macros are available in addition to ActionMsg().  The DelayMsg() macro will force a message to be queued if the target object belongs to your program.  The action will not be processed until ProcessMessages() is called.</p>
-<p>The WaitMsg() macro will cause your process to sleep while the other process executes the action.  The function will return with the result parameters and the error code from the other process unless a timeout occurs, in which case ERR_TimeOut is returned.</p>
+<p>Use ActionMsg() to execute an action where only the object ID is known.  In cases where the object belongs to another thread, the call is messaged to that thread for delayed execution, and this function returns immediately.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-      <error code="TimeOut">Function timed-out before successful completion.</error>
-      <error code="NoMatchingObject">No matching object was found for the given object ID.</error>
+      <error code="Failed">General failure.</error>
+      <error code="OutOfRange">A specified number is outside of the valid range.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -277,7 +271,7 @@ struct FunctionField argsResize[] = {
     </input>
     <description>
 <p>This function allows handlers to be added for the interception of incoming messages.  Message handling works as follows:</p>
-<p>During a call to ProcessMessages(), each incoming message will be scanned to determine if a message handler is able to process that message.  All handlers that accept the message type will be called with a copy of the message structure and any additional data.  The message is then removed from the message queue.</p>
+<p>During a call to <function module="Core">ProcessMessages</function>, each incoming message will be scanned to determine if a message handler is able to process that message.  All handlers that accept the message type will be called with a copy of the message structure and any additional data.  The message is then removed from the message queue.</p>
 <p>When calling AddMsgHandler(), you can provide an optional Custom pointer that will have meaning to the handler.  The MsgType acts as a filter so that only messages with the same type identifier will be passed to the handler.  The Routine parameter must point to the function handler, which will follow this definition:</p>
 <pre>ERROR handler(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)</pre>
 <p>The handler must return <code>ERR_Okay</code> if the message was handled.  This means that the message will not be passed to message handlers that are yet to receive the message.  Throw <code>ERR_NothingDone</code> if the message has been ignored or <code>ERR_Continue</code> if the message was processed but may be analysed by other handlers.  Throw <code>ERR_Terminate</code> to break the current ProcessMessages() loop.  When using Fluid, this is best achieved by writing <code>check(errorcode)</code> in the handler.</p>
@@ -356,7 +350,7 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address)) {
     </input>
     <description>
 <p>This function allocates a mutex that is suitable for keeping threads synchronised (inter-process synchronisation is not supported).  Mutexes are locked and unlocked using the <function module="Core">LockMutex</function> and <function module="Core">UnlockMutex</function> functions.</p>
-<p>The underlying implementation is dependent on the host platform.  In Microsoft Windows, critical sections will be used and may nest (ALF_RECURSIVE always applies).  Unix systems employ pthread mutexes and will only nest if the ALF_RECURSIVE option is specified.</p>
+<p>The underlying implementation is dependent on the host platform.  In Microsoft Windows, critical sections will be used and may nest (<code>ALF_RECURSIVE</code> always applies).  Unix systems employ pthread mutexes and will only nest if the <code>ALF_RECURSIVE</code> option is specified.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -604,26 +598,6 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address)) {
   </function>
 
   <function>
-    <name>CopyMemory</name>
-    <category>Memory</category>
-    <comment>Copies a block of bytes from a source to a destination address.</comment>
-    <prototype>ERROR CopyMemory(const void * Src, APTR Dest, LONG Size)</prototype>
-    <input>
-      <param type="const void *" name="Src">Source address to copy.</param>
-      <param type="APTR" name="Dest">Destination address.</param>
-      <param type="LONG" name="Size">The total number of bytes to copy from the source to the destination.</param>
-    </input>
-    <description>
-<p>This function copies a block of bytes from a source address to a destination address. Ideally the fastest algorithm available for the machine will be used to perform the copy operation.  If a fine-tuned algorithm is unavailable, a stock copy operation is used.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>CreateFolder</name>
     <category>Files</category>
     <comment>Makes new folders.</comment>
@@ -782,55 +756,28 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address)) {
     <name>FindObject</name>
     <category>Objects</category>
     <comment>Searches for objects by name.</comment>
-    <prototype>ERROR FindObject(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * Array, LONG * Count)</prototype>
+    <prototype>ERROR FindObject(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * ObjectID)</prototype>
     <input>
       <param type="CSTRING" name="Name">The name of an object to search for.</param>
       <param type="CLASSID" name="ClassID">Optional.  Set to a class ID to filter the results down to a specific class type.</param>
       <param type="LONG" name="Flags" lookup="FOF">Optional flags.</param>
-      <param type="OBJECTID *" name="Array">Pointer to the array that will store the results.</param>
-      <param type="LONG *" name="Count">Indicates the size of Array, measured in elements.  Must be set to a value of 1 or greater.</param>
+      <param type="OBJECTID *" name="ObjectID">An object id variable for storing the result.</param>
     </input>
     <description>
-<p>The FindObject() function searches for all objects that match a given name and can filter by class.  A pre-allocated buffer is required for the output of the results.</p>
+<p>The FindObject() function searches for all objects that match a given name and can filter by class.</p>
 <p>The following example is a typical illustration of this function's use.  It finds the most recent object created with a given name:</p>
 <pre>OBJECTID id;
-LONG count = 1;
-FindObject("SystemPointer", ID_POINTER, 0, &amp;id, &amp;count);
+FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
 </pre>
 <p>If FindObject() cannot find any matching objects then it will return an error code.</p>
-<p>The list is sorted so that the oldest private object is placed at the start of the list, and the most recent public object is placed at the end.  Take advantage of this fact to get the oldest or youngest object with the Name that is being searched for.  Preference is also given to objects that have been created by the calling process, thus foreign objects are pushed towards the end of the array.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="LockFailed">Failed to lock a required resource.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
       <error code="EmptyString">A required string value contains no characters.</error>
       <error code="DoesNotExist">Resource does not exist.</error>
-    </result>
-  </function>
-
-  <function>
-    <name>FindPrivateObject</name>
-    <category>Objects</category>
-    <comment>Search for an object by name.</comment>
-    <prototype>ERROR FindPrivateObject(CSTRING Name, OBJECTPTR * Object)</prototype>
-    <input>
-      <param type="CSTRING" name="Name">The name of the object to find.</param>
-      <param type="OBJECTPTR *" name="Object">A pointer to the discovered object will be returned in this parameter.</param>
-    </input>
-    <description>
-<p>The FindPrivateObject() function is a simple implementation of <function module="Core">FindObject</function>.  It differs in being limited to finding private objects without class filtering, and can only return one result as a pointer. Care may need to be taken if using this function to access objects that are shared between threads.</p>
-<p>The most recently created object is returned by this function if there are objects sharing the same name.</p>
-<p>For more advanced functionality in object searches please use the <function module="Core">FindObject</function> function.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Search">A search routine in this function failed.</error>
-      <error code="LockFailed">Failed to lock a required resource.</error>
-      <error code="EmptyString">A required string value contains no characters.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -1157,7 +1104,7 @@ GetFields(screen,
     <description>
 <p>This function translates private object ID's (owned by the process) to their respective address pointers.  Public object ID's are not supported.</p>
     </description>
-    <result type="OBJECTPTR">The address of the object is returned, or NULL if the ID does not relate to a private object.</result>
+    <result type="OBJECTPTR">The address of the object is returned, or NULL if the ID does not relate to an object.</result>
   </function>
 
   <function>
@@ -1334,10 +1281,9 @@ end
     <name>ListChildren</name>
     <category>Objects</category>
     <comment>Returns a list of all children belonging to an object.</comment>
-    <prototype>ERROR ListChildren(OBJECTID Object, LONG IncludeShared, struct ChildEntry * List, LONG * Count)</prototype>
+    <prototype>ERROR ListChildren(OBJECTID Object, struct ChildEntry * List, LONG * Count)</prototype>
     <input>
       <param type="OBJECTID" name="Object">The ID of the object that you wish to examine.</param>
-      <param type="LONG" name="IncludeShared">If TRUE, shared objects will be included in the list.  Penalises performance.</param>
       <param type="struct ChildEntry *" name="List">Must refer to an array of ChildEntry structures.</param>
       <param type="LONG *" name="Count">Set to the maximum number of elements in ChildEntry.  Before returning, this parameter will be updated with the total number of entries listed in the array.</param>
     </input>
@@ -1508,31 +1454,6 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
   </function>
 
   <function>
-    <name>NewLockedObject</name>
-    <category>Objects</category>
-    <comment>Creates a new object with a lock immediately applied.</comment>
-    <prototype>ERROR NewLockedObject(LARGE ClassID, NF Flags, OBJECTPTR * Object, OBJECTID * ID, CSTRING Name)</prototype>
-    <input>
-      <param type="LARGE" name="ClassID">A class ID from "system/register.h" or generated by <function module="Core">ResolveClassName</function>.</param>
-      <param type="NF" name="Flags" lookup="NF">Optional flags.</param>
-      <param type="OBJECTPTR *" name="Object">Optional.  Pointer to an address variable that will store a reference to the new object.  If set to NULL, the acquired lock is released before returning to the client.</param>
-      <param type="OBJECTID *" name="ID">Compulsory.  The unique ID of the new object will be returned in this parameter.</param>
-      <param type="CSTRING" name="Name">Enabled only if NF_NAME or NF_UNIQUE are specified as Flags.  The Name refers to the name that you want to give the object.</param>
-    </input>
-    <description>
-<p>The NewLockedObject() function extends <function module="Core">NewObject</function> with the addition of applying a lock to the new object at the time of its allocation.  Its use is also required in cases where the client needs to allocate a public object that can be shared between processes.</p>
-<p>References to the created object are available as a pointer and unique object ID.  Once the lock is no longer required, a call to <function module="Core">ReleaseObject</function> is necessary to release it.  If the lock is not released, any attempt to free the object will fail and this can eventually lead to program closure problems.  Problems such as this can be debugged quickly by checking the application log for unreleased lock errors.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Failed">General failure.</error>
-      <error code="MissingClass">The class could not be found in the system.</error>
-      <error code="ObjectExists">Object exists.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>NewObject</name>
     <category>Objects</category>
     <comment>Creates new objects.</comment>
@@ -1627,6 +1548,31 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <error code="Okay">Operation successful.</error>
       <error code="Terminate">Please terminate future calls.</error>
       <error code="TimeOut">Function timed-out before successful completion.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>QueueAction</name>
+    <category>Objects</category>
+    <comment>Delay the execution of an action by adding the call to the message queue.</comment>
+    <prototype>ERROR QueueAction(LONG Action, OBJECTID Object, APTR Args)</prototype>
+    <input>
+      <param type="LONG" name="Action">The ID of an action or method to execute.</param>
+      <param type="OBJECTID" name="Object">The target object.</param>
+      <param type="APTR" name="Args">The relevant argument structure for the Action, or NULL if not required.</param>
+    </input>
+    <description>
+<p>Use QueueAction() to execute an action by way of the local message queue.  This means that the supplied Action and the Args will be bundled into a message that will be placed in the queue.  This function then returns immediately.</p>
+<p>The action will be executed on the next cycle of <function module="Core">ProcessMessages</function> in line with the FIFO order of queued messages.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="Failed">General failure.</error>
+      <error code="OutOfRange">A specified number is outside of the valid range.</error>
+      <error code="IllegalMethodID">Illegal method ID (number outside of valid range).</error>
+      <error code="MissingClass">The class could not be found in the system.</error>
+      <error code="NoMatchingObject">No matching object was found for the given object ID.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -1839,7 +1785,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="FileNotFound">File not found.</error>
-      <error code="ExclusiveDenied">An attempt to gain exclusive access to a shared object failed.</error>
+      <error code="LockFailed">Failed to lock a required resource.</error>
       <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
       <error code="Loop">An infinite loop was detected.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -1899,7 +1845,7 @@ if (!OpenDir(path, RDF_FILE|RDF_FOLDER, &amp;info)) {
       <param type="LONG *" name="Index">Pointer to a 32-bit value that must initially be set to zero.  The ScanMessages() function will automatically update this variable with each call so that it can remember its analysis position.</param>
       <param type="LONG" name="Type">The message type to filter for, or zero to scan all messages in the queue.</param>
       <param type="APTR" name="Buffer">Pointer to a buffer that is large enough to hold the message information.  Set to NULL if you are not interested in the message data.</param>
-      <param type="LONG" name="Size">The byte-size of the buffer that you have supplied.</param>
+      <param type="LONG" name="Size">The byte-size of the supplied Buffer.</param>
     </input>
     <description>
 <p>Use the ScanMessages() function to scan a message queue for information without affecting the state of the queue.  To use this function, you need to establish a connection to the queue by using the <function module="Core">AccessMemory</function> function first to gain access.  Then make repeated calls to ScanMessages() to analyse the queue until it returns an error code other than <code>ERR_Okay</code>.  Use <function module="Core">ReleaseMemory</function> to let go of the message queue when you are done with it.</p>
@@ -3000,7 +2946,6 @@ end
 
   <types>
     <constants lookup="AC" comment="Action identifiers.">
-      <const name="AccessObject"/>
       <const name="Activate"/>
       <const name="Clear"/>
       <const name="Clipboard"/>
@@ -3037,7 +2982,6 @@ end
       <const name="Redimension"/>
       <const name="Redo"/>
       <const name="Refresh"/>
-      <const name="ReleaseObject"/>
       <const name="Rename"/>
       <const name="Reset"/>
       <const name="Resize"/>
@@ -3111,12 +3055,7 @@ end
 
     <constants lookup="CLF" comment="Flags for the MetaClass.">
       <const name="NO_OWNERSHIP">Objects created will not be tracked to the creating process, nor any parent object (SetOwner() will not work either).</const>
-      <const name="PRIVATE_ONLY">Do not allow shared-memory instances of the class (private-shared objects will still be possible).</const>
       <const name="PROMOTE_INTEGRAL">Promote class support for any integral object defined in the class definition structure.</const>
-      <const name="PUBLIC_OBJECTS">Forces all class objects to be allocated in shared memory.</const>
-      <const name="SHARED_OBJECTS">Forces all objects of this class to be shared.</const>
-      <const name="SHARED_ONLY">Forces all objects of this class to be shared.</const>
-      <const name="XML_CONTENT">Script processing should treat any object content as XML.</const>
     </constants>
 
     <constants lookup="CLIPMODE" comment="Clipboard modes">
@@ -3373,7 +3312,6 @@ end
     </constants>
 
     <constants lookup="FOF" comment="Flags that can be passed to FindObject()">
-      <const name="INCLUDE_SHARED">Include shared objects when searching.</const>
       <const name="SMART_NAMES">Parse numeric object names as ID references and support use of the 'Owner' reserved keyword.</const>
     </constants>
 
@@ -3748,16 +3686,13 @@ end
 
     <constants lookup="MSGID" comment="Reserved message ID's that are handled internally.">
       <const name="ACTION"/>
-      <const name="ACTION_RESULT"/>
       <const name="BREAK"/>
       <const name="COMMAND"/>
       <const name="CORE_END"/>
       <const name="DEBUG"/>
       <const name="EVENT"/>
       <const name="EXPOSE"/>
-      <const name="GET_FIELD"/>
       <const name="QUIT"/>
-      <const name="SET_FIELD"/>
       <const name="THREAD_ACTION"/>
       <const name="THREAD_CALLBACK"/>
       <const name="VALIDATE_PROCESS"/>
@@ -3784,13 +3719,10 @@ end
       <const name="INTEGRAL">Integral objects can only be allocated by classes that need to adopt the functionality of said object.  Integral objects do not appear in the object tree, effectively making them hidden from view.</const>
       <const name="MESSAGE">Action has been called against the object through the message system (managed by ProcessMessages()).</const>
       <const name="NAME">Use the Name parameter to name the created object.  This flag is not required if using NF_UNIQUE.</const>
-      <const name="NO_TRACK">An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.</const>
       <const name="PRIVATE"/>
-      <const name="PUBLIC">Allocates a shared object using shareable resources, allowing it to be accessed directly by any process.  Access is granted via exclusive access locks  - refer to the AccessObject() and ReleaseObject() functions.</const>
       <const name="RECLASSED">The object switched from the base-class to a sub-class during initialisation.</const>
-      <const name="SHARED">Allocates a shared object using shareable resources, allowing it to be accessed directly by any process.  Access is granted via exclusive access locks  - refer to the AccessObject() and ReleaseObject() functions.</const>
       <const name="SIGNALLED">The object has been signalled and is awaiting processing.</const>
-      <const name="TIMER_SUB">Indicates that the object is subscribed to a timer interval.</const>
+      <const name="TIMER_SUB">The object is subscribed to a timer interval.</const>
       <const name="UNIQUE">Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating shared objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.</const>
       <const name="UNLOCK_FREE">Read-only indicator for when the object is marked for deletion.</const>
       <const name="UNTRACKED">An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.</const>
@@ -3802,11 +3734,9 @@ end
       <const name="CORE_VERSION"/>
       <const name="DETAIL"/>
       <const name="ERROR"/>
-      <const name="GLOBAL_INSTANCE"/>
       <const name="JUMPTABLE"/>
       <const name="MAX_DEPTH"/>
       <const name="MODULE_PATH"/>
-      <const name="NAME"/>
       <const name="OPTIONS"/>
       <const name="PRIVILEGED"/>
       <const name="ROOT_PATH"/>
@@ -3917,7 +3847,6 @@ end
       <const name="CURRENT_MSG">Returns a Message structure if the program is currently processing a message - otherwise returns NULL.  This resource type is meaningful only during a ProcessMessages call.</const>
       <const name="FREE_MEMORY">The total amount of free memory.</const>
       <const name="FREE_SWAP">The total amount of free swap memory.</const>
-      <const name="GLOBAL_INSTANCE">If a global instance is active, this resource holds the instance ID.  Otherwise the value is 0.</const>
       <const name="JNI_ENV">Return the current JNI environment string.</const>
       <const name="KEY_STATE">Maintains the state of key qualifiers such as caps-lock and the shift keys.</const>
       <const name="LOG_DEPTH">The current depth of log messages.</const>

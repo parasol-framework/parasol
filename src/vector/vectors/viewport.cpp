@@ -101,7 +101,7 @@ static ERROR VECTORVIEWPORT_Clear(extVectorViewport *Self, APTR Void)
    ChildEntry list[512];
    LONG count = ARRAYSIZE(list);
    do {
-      if (!ListChildren(Self->UID, FALSE, list, &count)) {
+      if (!ListChildren(Self->UID, list, &count)) {
          for (LONG i=0; i < count; i++) acFree(list[i].ObjectID);
       }
    } while (count IS ARRAYSIZE(list));

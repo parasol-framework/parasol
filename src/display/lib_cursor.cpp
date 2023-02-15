@@ -131,16 +131,14 @@ objPointer * gfxAccessPointer(void)
    pointer = NULL;
 
    if (!glPointerID) {
-      LONG count = 1;
-      if (!FindObject("SystemPointer", ID_POINTER, FOF_INCLUDE_SHARED, &glPointerID, &count)) {
+      if (!FindObject("SystemPointer", ID_POINTER, 0, &glPointerID)) {
          AccessObject(glPointerID, 2000, &pointer);
       }
       return pointer;
    }
 
    if (AccessObject(glPointerID, 2000, &pointer) IS ERR_NoMatchingObject) {
-      LONG count = 1;
-      if (!FindObject("SystemPointer", ID_POINTER, FOF_INCLUDE_SHARED, &glPointerID, &count)) {
+      if (!FindObject("SystemPointer", ID_POINTER, 0, &glPointerID)) {
          AccessObject(glPointerID, 2000, &pointer);
       }
    }
@@ -630,7 +628,7 @@ ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, O
             // is that only the desktop (which does the X11 input handling) is allowed
             // to grab the pointer.
 
-            //DelayMsg(MT_GrabX11Pointer, pointer->Head.UID);
+            //QueueAction(MT_GrabX11Pointer, pointer->Head.UID);
          #endif
       }
       else log.warning("The pointer may only be restricted to public surfaces.");

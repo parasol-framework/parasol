@@ -38,7 +38,6 @@ static FunctionField mthGrabX11Pointer[] = { { "Surface", FD_LONG }, { NULL, 0 }
 static LONG glDefaultSpeed = 160;
 static FLOAT glDefaultAcceleration = 0.8;
 static TIMER glRepeatTimer = 0;
-OBJECTID glOverTaskID = 0; // Task that owns the surface that the cursor is positioned over
 
 static ERROR repeat_timer(extPointer *, LARGE, LARGE);
 static void set_pointer_defaults(extPointer *);
@@ -220,7 +219,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
 {
    parasol::Log log(__FUNCTION__);
    InputEvent userinput;
-   OBJECTID modal_id, target;
+   OBJECTID target;
    LONG buttonflag, bi;
 
    ClearMemory(&userinput, sizeof(userinput));
@@ -286,23 +285,19 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
    // positioned over that surface (or its children).  The modal_id is therefore zero if the pointer is over the modal
    // surface, or if no modal surface is defined.
 
-   if (glOverTaskID) {
-      modal_id = gfxGetModalSurface();
+   auto modal_id = gfxGetModalSurface();
 
-      if (modal_id) {
-         if (modal_id IS Self->OverObjectID) {
-            modal_id = 0;
-         }
-         else {
-            // Check if the OverObject is one of the children of modal_id.
+   if (modal_id) {
+      if (modal_id IS Self->OverObjectID) {
+         modal_id = 0;
+      }
+      else {
+         // Check if the OverObject is one of the children of modal_id.
 
-            ERROR error;
-            error = gfxCheckIfChild(modal_id, Self->OverObjectID);
-            if ((error IS ERR_True) or (error IS ERR_LimitedSuccess)) modal_id = 0;
-         }
+         ERROR error = gfxCheckIfChild(modal_id, Self->OverObjectID);
+         if ((error IS ERR_True) or (error IS ERR_LimitedSuccess)) modal_id = 0;
       }
    }
-   else modal_id = 0;
 
    // Button Press Handler
 
@@ -311,8 +306,8 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
 
       //if ((modal_id) and (modal_id != Self->OverObjectID)) {
       //   log.branch("Surface %d is modal, button click on %d cancelled.", modal_id, Self->OverObjectID);
-      //   DelayMsg(AC_MoveToFront, modal_id);
-      //   DelayMsg(AC_Focus, modal_id);
+      //   QueueAction(AC_MoveToFront, modal_id);
+      //   QueueAction(AC_Focus, modal_id);
       //}
 
       //if (!modal_id) {
@@ -346,7 +341,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
          }
          else target = Self->OverObjectID;
 
-         DelayMsg(AC_Focus, target);
+         QueueAction(AC_Focus, target);
 
          call_userinput("ButtonPress", &userinput, uiflags, target, Self->OverObjectID,
             Self->X, Self->Y, Self->OverX, Self->OverY);
@@ -683,15 +678,14 @@ static ERROR PTR_Init(extPointer *Self, APTR Void)
       }
 
       if (!Self->SurfaceID) {
-         LONG count = 1;
-         FindObject("SystemSurface", 0, FOF_INCLUDE_SHARED, &Self->SurfaceID, &count);
+         FindObject("SystemSurface", 0, 0, &Self->SurfaceID);
       }
    }
 
    // Allocate a custom cursor bitmap
 
    ERROR error;
-   if (!NewLockedObject(ID_BITMAP, NF::INTEGRAL|Self->flags(), &bitmap, &Self->BitmapID)) {
+   if (!NewObject(ID_BITMAP, NF::INTEGRAL, &bitmap)) {
       SetFields(bitmap,
          FID_Name|TSTR,           "CustomCursor",
          FID_Width|TLONG,         MAX_CURSOR_WIDTH,
@@ -700,14 +694,15 @@ static ERROR PTR_Init(extPointer *Self, APTR Void)
          FID_BytesPerPixel|TLONG, 4,
          FID_Flags|TLONG,         BMF_ALPHA_CHANNEL,
          TAGEND);
-      if (!acInit(bitmap)) error = ERR_Okay;
+      if (!acInit(bitmap)) {
+         Self->BitmapID = bitmap->UID;
+         error = ERR_Okay;
+      }
       else {
          acFree(bitmap);
          Self->BitmapID = 0;
          error = ERR_Init;
       }
-
-      ReleaseObject(bitmap);
    }
    else error = ERR_NewObject;
 
@@ -980,7 +975,7 @@ anchor.
 -FIELD-
 Bitmap: Refers to bitmap in which custom cursor images can be drawn.
 
-The pointer graphic can be changed to a custom image if the PTR_CUSTOM #CursorID type is defined and an image is
+The pointer graphic can be changed to a custom image if the `PTR_CUSTOM` #CursorID type is defined and an image is
 drawn to the @Bitmap object referenced by this field.
 
 -FIELD-
@@ -989,11 +984,11 @@ ButtonOrder: Defines the order in which mouse buttons are interpreted.
 This field defines the order of interpretation of the mouse buttons when they are pressed.  This allows a right handed
 device to have its buttons remapped to mimic a left-handed device for instance.
 
-The default button order is defined as "123456789AB".  The left, right and middle mouse buttons are defined as 1, 2 and
+The default button order is defined as `123456789AB`.  The left, right and middle mouse buttons are defined as 1, 2 and
 3 respectively.  The rest of the buttons are assigned by the device, preferably starting from the left of the device and
 moving clockwise.
 
-It is legal for buttons to be referenced more than once, for instance a setting of "111" will force the middle and right
+It is legal for buttons to be referenced more than once, for instance a setting of `111` will force the middle and right
 mouse buttons to translate to the left mouse button.
 
 Changes to this field will have an immediate impact on the pointing device's behaviour.
@@ -1224,12 +1219,12 @@ static ERROR PTR_SET_Y(extPointer *Self, DOUBLE Value)
 
 static void set_pointer_defaults(extPointer *Self)
 {
-   DOUBLE speed         = glDefaultSpeed;
-   DOUBLE acceleration  = glDefaultAcceleration;
-   DOUBLE maxspeed      = 100;
-   DOUBLE wheelspeed    = DEFAULT_WHEELSPEED;
-   DOUBLE doubleclick   = 0.36;
-   CSTRING buttonorder   = "123456789ABCDEF";
+   DOUBLE speed        = glDefaultSpeed;
+   DOUBLE acceleration = glDefaultAcceleration;
+   DOUBLE maxspeed     = 100;
+   DOUBLE wheelspeed   = DEFAULT_WHEELSPEED;
+   DOUBLE doubleclick  = 0.36;
+   CSTRING buttonorder = "123456789ABCDEF";
 
    objConfig::create config = { fl::Path("user:config/pointer.cfg") };
 
@@ -1288,7 +1283,6 @@ static BYTE get_over_object(extPointer *Self)
       DOUBLE li_left = list[i].Left;
       DOUBLE li_top  = list[i].Top;
       LONG cursor_image = list[i].Cursor; // Preferred cursor ID
-      glOverTaskID = list[i].TaskID;   // Task that owns the surface
       ReleaseMemory(ctl);
 
       if (Self->OverObjectID != li_objectid) {
@@ -1531,7 +1525,7 @@ static ERROR init_mouse_driver(void)
 
    // Allocate the surface for software based cursor images
 
-   if (!NewLockedObject(ID_SURFACE, NF::INTEGRAL|Self->flags(), &surface, &Self->CursorSurfaceID)) {
+   if (!NewObject(ID_SURFACE, NF::INTEGRAL, &surface)) {
       SetFields(surface,
          FID_Name|TSTR,    "Pointer",
          FID_Parent|TLONG, Self->SurfaceID,
@@ -1543,15 +1537,14 @@ static ERROR init_mouse_driver(void)
          FID_Flags|TLONG,  RNF_CURSOR|RNF_PRECOPY|RNF_COMPOSITE,
          TAGEND);
       if (!acInit(surface)) {
+         Self->CursorSurfaceID = surface->UID;
          gfxAddCallback(surface, &DrawPointer);
+         return ERR_Okay;
       }
-      else { acFree(surface); Self->CursorSurfaceID = 0; }
-
-      ReleaseObject(surface);
+      acFree(surface);
+      return ERR_Init;
    }
    else return log.warning(ERR_NewObject);
-
-   return ERR_Okay;
 }
 #endif
 
@@ -1691,7 +1684,6 @@ ERROR create_pointer_class(void)
       fl::Methods(clPointerMethods),
       fl::Fields(clPointerFields),
       fl::Size(sizeof(extPointer)),
-      fl::Flags(CLF_SHARED_ONLY),
       fl::Path(MOD_PATH));
 
    return clPointer ? ERR_Okay : ERR_AddClass;

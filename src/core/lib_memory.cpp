@@ -166,14 +166,15 @@ ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
 
    if (Flags & MEM_HIDDEN)         object_id = 0;
    else if (Flags & MEM_UNTRACKED) object_id = 0;
-   else if (Flags & MEM_TASK)      object_id = glCurrentTaskID;
+   else if (Flags & MEM_TASK)      object_id = glCurrentTask->UID;
    else if (Flags & MEM_CALLER) {
       // Rarely used, but this feature allows methods to return memory that is tracked to the caller.
       if (tlContext->Stack) object_id = tlContext->Stack->resource()->UID;
-      else object_id = glCurrentTaskID;
+      else object_id = glCurrentTask->UID;
    }
    else if (tlContext != &glTopContext) object_id = tlContext->resource()->UID;
-   else object_id = SystemTaskID;
+   else if (glCurrentTask) object_id = glCurrentTask->UID;
+   else object_id = 0;
 
    // Allocate the memory block according to whether it is public or private.
 
@@ -300,7 +301,7 @@ retry:
                else {
                   // IPC_RMID usually fails due to permission errors (e.g. the user ran our program as root and is now running it as a normal user).
 
-                  log.warning("shmctl(Remove, Key $%.8x, ID %d) %s", memkey, memid, strerror(errno));
+                  log.warning("shm key $%.8x / %d exists from previous run, shmctl(IPC_RMID) reports: %s", memkey, memid, strerror(errno));
 
                   if (Flags & MEM_RESERVED) {
                      UNLOCK_PUBLIC_MEMORY();
@@ -389,11 +390,11 @@ retry:
       glSharedBlocks[blk].Offset   = offset;
       #ifdef _WIN32
          glSharedBlocks[blk].OwnerProcess = glProcessID;
-         glSharedBlocks[blk].Handle    = handle;
+         glSharedBlocks[blk].Handle       = handle;
       #endif
 
       if (Flags & (MEM_UNTRACKED|MEM_HIDDEN));
-      else glSharedBlocks[blk].TaskID = glCurrentTaskID;
+      else if (glCurrentTask) glSharedBlocks[blk].TaskID = glCurrentTask->UID;
 
       // Gain exclusive access if an address pointer has been requested
 
@@ -721,8 +722,8 @@ ERROR FreeResourceID(MEMORYID MemoryID)
             if (glShowPublic) log.pmsg("FreeResourceID(#%d, Index %d, Count: %d)", MemoryID, entry, glSharedBlocks[entry].AccessCount);
 
             if (glSharedBlocks[entry].AccessCount > 0) {
-               //if ((glSharedBlocks[entry].Flags & MEM_NO_BLOCKING) and (glCurrentTaskID) and
-               //    (glSharedBlocks[entry].TaskID IS glCurrentTaskID)) {
+               //if ((glSharedBlocks[entry].Flags & MEM_NO_BLOCKING) and (glCurrentTask->UID) and
+               //    (glSharedBlocks[entry].TaskID IS glCurrentTask->UID)) {
                   // Non-blocking memory blocks fall through to the deallocation process regardless of the access count (assuming the block belongs to the task attempting the deallocation).
                //}
                //else {
@@ -965,7 +966,7 @@ ERROR MemoryIDInfo(MEMORYID MemoryID, struct MemInfo *MemInfo, LONG Size)
             MemInfo->AccessCount = mem->second.AccessCount;
             MemInfo->Flags       = mem->second.Flags | MEM_PUBLIC;
             MemInfo->MemoryID    = mem->second.MemoryID;
-            MemInfo->TaskID      = glCurrentTaskID;
+            MemInfo->TaskID      = 0;
             MemInfo->Handle      = 0;
             return ERR_Okay;
          }
@@ -1077,7 +1078,7 @@ ERROR MemoryPtrInfo(APTR Memory, struct MemInfo *MemInfo, LONG Size)
             MemInfo->AccessCount = mem.AccessCount;
             MemInfo->Flags       = mem.Flags;
             MemInfo->MemoryID    = mem.MemoryID;
-            MemInfo->TaskID      = glCurrentTaskID;
+            MemInfo->TaskID      = glCurrentTask->UID;
             return ERR_Okay;
          }
       }

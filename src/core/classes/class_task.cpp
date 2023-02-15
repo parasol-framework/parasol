@@ -119,7 +119,6 @@ static ERROR TASK_Quit(extTask *, APTR);
 
 static const FieldDef clFlags[] = {
    { "Foreign",    TSF_FOREIGN },
-   { "Dummy",      TSF_DUMMY },
    { "Wait",       TSF_WAIT },
    { "Shell",      TSF_SHELL },
    { "ResetPath",  TSF_RESET_PATH },
@@ -427,33 +426,6 @@ extern "C" void task_deregister_incoming(WINHANDLE Handle)
 
 //****************************************************************************
 
-static ERROR msg_getfield(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
-{
-   parasol::Log log("ProcessMessages");
-   log.warning("Support for GetField messages not available.");
-   return ERR_Okay;
-}
-
-//****************************************************************************
-
-static ERROR msg_setfield(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
-{
-   parasol::Log log("ProcessMessages");
-   log.warning("Support for SetField messages not available.");
-   return ERR_Okay;
-}
-
-//****************************************************************************
-
-static ERROR msg_actionresult(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
-{
-   parasol::Log log("ProcessMessages");
-   log.warning("Support for ActionResult messages not available.");
-   return ERR_Okay;
-}
-
-//****************************************************************************
-
 static ERROR msg_waitforobjects(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
    return ERR_Terminate;
@@ -495,7 +467,7 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
       if (!(error = AccessObject(action->ObjectID, 5000, &obj))) {
          if (action->SendArgs IS FALSE) {
             obj->Flags |= NF::MESSAGE;
-            action->Error = Action(action->ActionID, obj, NULL);
+            Action(action->ActionID, obj, NULL);
             obj->Flags = obj->Flags & (~NF::MESSAGE);
             ReleaseObject(obj);
          }
@@ -521,22 +493,14 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
             if (fields) {
                if (!resolve_args(action+1, fields)) {
                   obj->Flags |= NF::MESSAGE;
-                  action->Error = Action(action->ActionID, obj, action+1);
+                  Action(action->ActionID, obj, action+1);
                   obj->Flags = obj->Flags & (~NF::MESSAGE);
                   ReleaseObject(obj);
-
-                  if ((action->ReturnResult IS TRUE) and (action->ReturnMessage)) {
-                     SendMessage(action->ReturnMessage, MSGID_ACTION_RESULT, 0, action, MsgSize);
-                  }
 
                   free_ptr_args(action+1, fields, FALSE);
                }
                else {
                   log.warning("Failed to resolve arguments for action %s.", action_id_name(action->ActionID));
-                  if ((action->ReturnResult IS TRUE) and (action->ReturnMessage)) {
-                     action->Error = ERR_Args;
-                     SendMessage(action->ReturnMessage, MSGID_ACTION_RESULT, 0, action, MsgSize);
-                  }
                   ReleaseObject(obj);
                }
             }
@@ -757,10 +721,6 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
    Self->ReturnCodeSet = FALSE;
 
-   // If this is a dummy task object then it is being used during the initialisation sequence, so do nothing.
-
-   if (Self->Flags & TSF_DUMMY) return ERR_Okay;
-
    if (Self->Flags & TSF_FOREIGN) Self->Flags |= TSF_SHELL;
 
    if (!Self->Location) return log.warning(ERR_MissingPath);
@@ -911,10 +871,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
    if (Self->Flags & TSF_ATTACHED) group = TRUE;
    else if (Self->Flags & TSF_DETACHED) group = FALSE;
-   else {
-      if (glMasterTask) group = TRUE;
-      else group = FALSE;
-   }
+   else group = TRUE;
 
    LONG internal_redirect = 0;
    if (Self->OutputCallback.Type) internal_redirect |= TSTD_OUT;
@@ -1137,7 +1094,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
       if (i < MAX_TASKS) {
          shTasks[i].ProcessID    = pid;
-         shTasks[i].ParentID     = glCurrentTaskID;
+         shTasks[i].ParentID     = glCurrentTask->UID;
          shTasks[i].CreationTime = PreciseTime() / 1000LL;
          shTasks[i].InstanceID   = glInstanceID;
       }
@@ -1352,9 +1309,6 @@ Expunge: Forces a Task to expunge unused code.
 
 The Expunge method releases all loaded libraries that are no longer in use by the active process.
 
-If the Expunge method is called on the System Task, it will message all Tasks to perform the expunge sequence.
-The System Task object can be found by searching for the "SystemTask" object.
-
 -ERRORS-
 Okay
 
@@ -1362,18 +1316,7 @@ Okay
 
 static ERROR TASK_Expunge(extTask *Self, APTR Void)
 {
-   if (Self->UID IS SystemTaskID) {
-      parasol::ScopedSysLock lock(PL_PROCESSES, 4000);
-      if (lock.granted()) {
-         for (LONG i=0; i < MAX_TASKS; i++) {
-            if ((shTasks[i].TaskID) and (shTasks[i].TaskID != Self->UID)) {
-               ActionMsg(MT_TaskExpunge, shTasks[i].TaskID, NULL, 0, 0);
-            }
-         }
-      }
-   }
-   else Expunge(FALSE);
-
+   Expunge(FALSE);
    return ERR_Okay;
 }
 
@@ -1419,9 +1362,6 @@ static ERROR TASK_Free(extTask *Self, APTR Void)
    if (Self->MessageMID)  { FreeResourceID(Self->MessageMID); Self->MessageMID  = 0; }
 
    if (Self->MsgAction)          { FreeResource(Self->MsgAction);          Self->MsgAction          = NULL; }
-   if (Self->MsgGetField)        { FreeResource(Self->MsgGetField);        Self->MsgGetField        = NULL; }
-   if (Self->MsgSetField)        { FreeResource(Self->MsgSetField);        Self->MsgSetField        = NULL; }
-   if (Self->MsgActionResult)    { FreeResource(Self->MsgActionResult);    Self->MsgActionResult    = NULL; }
    if (Self->MsgDebug)           { FreeResource(Self->MsgDebug);           Self->MsgDebug           = NULL; }
    if (Self->MsgValidateProcess) { FreeResource(Self->MsgValidateProcess); Self->MsgValidateProcess = NULL; }
    if (Self->MsgWaitForObjects)  { FreeResource(Self->MsgWaitForObjects);  Self->MsgWaitForObjects  = NULL; }
@@ -1738,17 +1678,10 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
    MessageHeader *msgblock;
    LONG i, len;
 
-   if (Self->UID IS SystemTaskID) {
-      // Perform the following if this is the System Task
-      Self->ProcessID = 0;
-   }
-   else if ((!glCurrentTaskID) or (glCurrentTaskID IS SystemTaskID)) {
+   if (!fs_initialised) {
       // Perform the following if this is a Task representing the current process
 
       Self->ProcessID = glProcessID;
-
-      glCurrentTaskID = Self->UID;
-      glCurrentTask   = Self;
 
       // Allocate the message block for this Task
 
@@ -1831,15 +1764,6 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
       call.Type = CALL_STDC;
       call.StdC.Routine = (APTR)msg_action;
       AddMsgHandler(NULL, MSGID_ACTION, &call, &Self->MsgAction);
-
-      call.StdC.Routine = (APTR)msg_getfield;
-      AddMsgHandler(NULL, MSGID_GET_FIELD, &call, &Self->MsgGetField);
-
-      call.StdC.Routine = (APTR)msg_setfield;
-      AddMsgHandler(NULL, MSGID_SET_FIELD, &call, &Self->MsgSetField);
-
-      call.StdC.Routine = (APTR)msg_actionresult;
-      AddMsgHandler(NULL, MSGID_ACTION_RESULT, &call, &Self->MsgActionResult);
 
       call.StdC.Routine = (APTR)msg_debug;
       AddMsgHandler(NULL, MSGID_DEBUG, &call, &Self->MsgDebug);
@@ -2647,21 +2571,21 @@ static const FieldArray clFields[] = {
    { "ReturnCode",      FDF_LONG|FDF_RW,      0, (APTR)GET_ReturnCode, (APTR)SET_ReturnCode },
    { "ProcessID",       FDF_LONG|FDF_RI,      0, NULL, NULL },
    // Virtual fields
-   { "Actions",        FDF_POINTER|FDF_R,      0, (APTR)GET_Actions,          NULL },
-   { "Args",           FDF_STRING|FDF_W,       0, NULL,                       (APTR)SET_Args },
+   { "Actions",        FDF_POINTER|FDF_R,      0, (APTR)GET_Actions,         NULL },
+   { "Args",           FDF_STRING|FDF_W,       0, NULL,                      (APTR)SET_Args },
    { "Parameters",     FDF_ARRAY|FDF_STRING|FDF_RW, 0, (APTR)GET_Parameters, (APTR)SET_Parameters },
-   { "ErrorCallback",  FDF_FUNCTIONPTR|FDF_RI, 0, (APTR)GET_ErrorCallback, (APTR)SET_ErrorCallback }, // STDERR
-   { "ExitCallback",   FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_ExitCallback,  (APTR)SET_ExitCallback },
-   { "Instance",       FDF_LONG|FDF_R,         0, (APTR)GET_Instance,         NULL },
-   { "InputCallback",  FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_InputCallback, (APTR)SET_InputCallback }, // STDIN
-   { "LaunchPath",     FDF_STRING|FDF_RW,      0, (APTR)GET_LaunchPath,       (APTR)SET_LaunchPath },
-   { "Location",       FDF_STRING|FDF_RW,      0, (APTR)GET_Location,         (APTR)SET_Location },
-   { "MessageQueue",   FDF_LONG|FDF_R,         0, (APTR)GET_MessageQueue,     NULL },
-   { "Name",           FDF_STRING|FDF_RW,      0, (APTR)GET_Name,             (APTR)SET_Name },
-   { "OutputCallback", FDF_FUNCTIONPTR|FDF_RI, 0, (APTR)GET_OutputCallback, (APTR)SET_OutputCallback }, // STDOUT
-   { "Path",           FDF_STRING|FDF_RW,      0, (APTR)GET_Path,              (APTR)SET_Path },
-   { "ProcessPath",    FDF_STRING|FDF_R,       0, (APTR)GET_ProcessPath,       NULL },
-   { "Priority",       FDF_LONG|FDF_W,         0, NULL,                        (APTR)SET_Priority },
+   { "ErrorCallback",  FDF_FUNCTIONPTR|FDF_RI, 0, (APTR)GET_ErrorCallback,   (APTR)SET_ErrorCallback }, // STDERR
+   { "ExitCallback",   FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_ExitCallback,    (APTR)SET_ExitCallback },
+   { "Instance",       FDF_LONG|FDF_R,         0, (APTR)GET_Instance,        NULL },
+   { "InputCallback",  FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_InputCallback,   (APTR)SET_InputCallback }, // STDIN
+   { "LaunchPath",     FDF_STRING|FDF_RW,      0, (APTR)GET_LaunchPath,      (APTR)SET_LaunchPath },
+   { "Location",       FDF_STRING|FDF_RW,      0, (APTR)GET_Location,        (APTR)SET_Location },
+   { "MessageQueue",   FDF_LONG|FDF_R,         0, (APTR)GET_MessageQueue,    NULL },
+   { "Name",           FDF_STRING|FDF_RW,      0, (APTR)GET_Name,            (APTR)SET_Name },
+   { "OutputCallback", FDF_FUNCTIONPTR|FDF_RI, 0, (APTR)GET_OutputCallback,  (APTR)SET_OutputCallback }, // STDOUT
+   { "Path",           FDF_STRING|FDF_RW,      0, (APTR)GET_Path,            (APTR)SET_Path },
+   { "ProcessPath",    FDF_STRING|FDF_R,       0, (APTR)GET_ProcessPath,     NULL },
+   { "Priority",       FDF_LONG|FDF_W,         0, NULL,                      (APTR)SET_Priority },
    // Synonyms
    { "Src",            FDF_SYNONYM|FDF_STRING|FDF_RW, 0, (APTR)GET_Location, (APTR)SET_Location },
    { "ArgsList",       FDF_ARRAY|FDF_STRING|FDF_SYSTEM|FDF_RW, 0, (APTR)GET_Parameters, (APTR)SET_Parameters }, // OBSOLETE

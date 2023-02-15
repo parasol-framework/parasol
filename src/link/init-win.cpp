@@ -69,7 +69,6 @@ typedef WIN32_FIND_DATAW WIN32_FIND_DATA,*LPWIN32_FIND_DATA;
 #define MB_OK 0
 
 extern void program(void);
-extern STRING ProgName;
 
 struct CoreBase *CoreBase;
 
@@ -110,13 +109,12 @@ extern "C" const char * init_parasol(int argc, CSTRING *argv)
 
    info.Detail    = 0;
    info.MaxDepth  = 14;
-   info.Name      = ProgName;
    info.Args      = argv;
    info.ArgCount  = argc;
    info.CoreVersion = 0; // Minimum required core version
    info.CompiledAgainst = VER_CORE; // The core that this code is compiled against
    info.Error = ERR_Okay;
-   info.Flags = OPF_CORE_VERSION|OPF_COMPILED_AGAINST|OPF_NAME|OPF_ARGS|OPF_ERROR;
+   info.Flags = OPF_CORE_VERSION|OPF_COMPILED_AGAINST|OPF_ARGS|OPF_ERROR;
 
    if ((CoreBase = opencore(&info))) {
       OBJECTPTR task = CurrentTask();
