@@ -1377,6 +1377,21 @@ AccessMemory: The function could not gain access to the shared objects table (in
 
 *********************************************************************************************************************/
 
+static const char sn_lookup[256] = {
+   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
+   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
+   '_', '_', '_', '_', '0', '1', '2', '3', '4', '5', '6', '7', '8', '_', '_', '_', '_', '_', '_', '_', '_', 'a',
+   'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w',
+   'x', 'y', '_', '_', '_', '_', '_', '_', '_', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+   'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', '_', '_', '_', '_', '_', '_',
+   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
+   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
+   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
+   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
+   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
+   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_'
+};
+
 ERROR SetName(OBJECTPTR Object, CSTRING NewName)
 {
    parasol::Log log(__FUNCTION__);
@@ -1385,55 +1400,33 @@ ERROR SetName(OBJECTPTR Object, CSTRING NewName)
    if ((!Object) or (!NewName)) return log.warning(ERR_NullArgs);
 
    ScopedObjectAccess objlock(Object);
+   ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
+   if (!lock.granted()) return log.warning(ERR_LockFailed);
 
    // Remove any existing name first.
 
-   if ((Object->Stats->Name[0]) and (Object->UID > 0)) {
-      ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
-      if (lock.granted()) remove_object_hash(Object);
-   }
+   if (Object->Stats->Name[0]) remove_object_hash(Object);
 
-   bool illegal = false;
-   char c;
-   for (i=0; ((c = NewName[i])) and (i < (MAX_NAME_LEN-1)); i++) {
-      if ((c >= 'A') and (c <= 'Z')) {
-         c = c - 'A' + 'a';
-      }
-      else if (((c >= 'a') and (c <= 'z')) or ((c >= '0') and (c <= '9')) or ((c IS '_'))) {
-      }
-      else {
-         // Anything that is not alphanumeric is not permitted in the object name.
-         if (!illegal) {
-            illegal = true;
-            log.msg("Illegal character '%c' in proposed name '%s'", c, NewName);
-         }
-         c = '_';
-      }
-
-      Object->Stats->Name[i] = c;
-   }
+   for (i=0; (i < (MAX_NAME_LEN-1)) and (NewName[i]); i++) Object->Stats->Name[i] = sn_lookup[UBYTE(NewName[i])];
    Object->Stats->Name[i] = 0;
 
    if (Object->Stats->Name[0]) {
-      ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
-      if (lock.granted()) {
-         OBJECTPTR *list;
-         LONG list_size;
-         if (!VarGet(glObjectLookup, Object->Stats->Name, (APTR *)&list, &list_size)) {
-            list_size = list_size / sizeof(OBJECTPTR);
-            OBJECTPTR new_list[list_size + 1];
-            LONG j = 0;
-            for (i=0; i < list_size; i++) {
-               if (list[i]) new_list[j++] = list[i];
-            }
-            new_list[j++] = Object;
-
-            VarSet(glObjectLookup, Object->Stats->Name, &new_list, sizeof(OBJECTPTR) * j);
+      OBJECTPTR *list;
+      LONG list_size;
+      if (!VarGet(glObjectLookup, Object->Stats->Name, (APTR *)&list, &list_size)) {
+         list_size = list_size / sizeof(OBJECTPTR);
+         OBJECTPTR new_list[list_size + 1];
+         LONG j = 0;
+         for (i=0; i < list_size; i++) {
+            if (list[i]) new_list[j++] = list[i];
          }
-         else VarSet(glObjectLookup, Object->Stats->Name, &Object, sizeof(OBJECTPTR));
+         new_list[j++] = Object;
+
+         VarSet(glObjectLookup, Object->Stats->Name, &new_list, sizeof(OBJECTPTR) * j);
       }
-      else return log.warning(ERR_Lock);
+      else VarSet(glObjectLookup, Object->Stats->Name, &Object, sizeof(OBJECTPTR));
    }
+
    return ERR_Okay;
 }
 
