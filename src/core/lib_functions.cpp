@@ -1300,18 +1300,18 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 SetContext: Alters the nominated owner of newly created objects.
 Category: Objects
 
-This function provides a means for instructing the system which object has control of the current thread.  Once
-called, all further resource allocations will be assigned to the supplied object.  This is particularly important
-for memory and object handling. For example:
+This function defines the object that has control of the current thread.  Once called, all further resource
+allocations are assigned to that object.  This is significant for the automatic collection of memory and object
+allocations.  For example:
 
 <pre>
 acInit(display);
-prev_context = SetContext(display);
+auto ctx = SetContext(display);
 
    NewObject(ID_BITMAP, &bitmap);
-   AllocMemory(1000, MEM_DATA, &memory, NULL);;
+   AllocMemory(1000, MEM_DATA, &memory, NULL);
 
-SetContext(prev_context);
+SetContext(ctx);
 acFree(display);
 </pre>
 
@@ -1321,22 +1321,23 @@ display's existence.  Please keep in mind that the following is incorrect:
 
 <pre>
 acInit(display);
-prev_context = SetContext(display);
+auto ctx = SetContext(display);
 
    NewObject(ID_BITMAP, &bitmap);
    AllocMemory(1000, MEM_DATA, &memory, NULL);
 
-SetContext(prev_context);
-acFree(display); // The bitmap and memory are terminated here
+SetContext(ctx);
+acFree(display); // The bitmap and memory would be auto-collected
 acFree(bitmap); // Reference is no longer valid
 FreeResource(memory); // Reference is no longer valid
 </pre>
 
 As the bitmap and memory block would have been freed as members of the display, their references are invalid when
-manually terminated.
+manually terminated in the following instructions.
 
-SetContext() is intended for use by modules and classes.  Do not use it unless conditions necessitate its use.  The
-Core automatically manages the context when calling class actions, methods and interactive fields.
+SetContext() is intended for use by modules and classes.  Do not use it in an application unless conditions
+necessitate its use.  The Core automatically manages the context when calling class actions, methods and interactive
+fields.
 
 -INPUT-
 obj Object: Pointer to the object that will take on the new context.  If NULL, no change to the context will be made.

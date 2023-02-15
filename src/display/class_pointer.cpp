@@ -665,7 +665,6 @@ static ERROR PTR_Hide(extPointer *Self, APTR Void)
 static ERROR PTR_Init(extPointer *Self, APTR Void)
 {
    parasol::Log log;
-   objBitmap *bitmap;
 
    // Find the Surface object that we are associated with.  Note that it is okay if no surface is available at this
    // stage, but the host system must have a mechanism for setting the Surface field at a later stage or else
@@ -684,29 +683,20 @@ static ERROR PTR_Init(extPointer *Self, APTR Void)
 
    // Allocate a custom cursor bitmap
 
-   ERROR error;
-   if (!NewObject(ID_BITMAP, NF::INTEGRAL, &bitmap)) {
-      SetFields(bitmap,
-         FID_Name|TSTR,           "CustomCursor",
-         FID_Width|TLONG,         MAX_CURSOR_WIDTH,
-         FID_Height|TLONG,        MAX_CURSOR_HEIGHT,
-         FID_BitsPerPixel|TLONG,  32,
-         FID_BytesPerPixel|TLONG, 4,
-         FID_Flags|TLONG,         BMF_ALPHA_CHANNEL,
-         TAGEND);
-      if (!acInit(bitmap)) {
-         Self->BitmapID = bitmap->UID;
-         error = ERR_Okay;
-      }
-      else {
-         acFree(bitmap);
-         Self->BitmapID = 0;
-         error = ERR_Init;
-      }
-   }
-   else error = ERR_NewObject;
+   if (auto bitmap = objBitmap::create::integral(
+         fl::Name("CustomCursor"),
+         fl::Width(MAX_CURSOR_WIDTH),
+         fl::Height(MAX_CURSOR_HEIGHT),
+         fl::BitsPerPixel(32),
+         fl::BytesPerPixel(4),
+         fl::Flags(BMF_ALPHA_CHANNEL))) {
 
-   if (error) return log.warning(error);
+      Self->BitmapID = bitmap->UID;
+   }
+   else {
+      Self->BitmapID = 0;
+      log.warning(ERR_NewObject);
+   }
 
    if (Self->MaxSpeed < 1) Self->MaxSpeed = 10;
    if (Self->Speed < 1)    Self->Speed    = 150;
@@ -1525,24 +1515,18 @@ static ERROR init_mouse_driver(void)
 
    // Allocate the surface for software based cursor images
 
-   if (!NewObject(ID_SURFACE, NF::INTEGRAL, &surface)) {
-      SetFields(surface,
-         FID_Name|TSTR,    "Pointer",
-         FID_Parent|TLONG, Self->SurfaceID,
-         FID_Owner|TLONG,  Self->UID,
-         FID_X|TLONG,      -64,
-         FID_Y|TLONG,      -64,
-         FID_Width|TLONG,  MAX_CURSOR_WIDTH,
-         FID_Height|TLONG, MAX_CURSOR_HEIGHT,
-         FID_Flags|TLONG,  RNF_CURSOR|RNF_PRECOPY|RNF_COMPOSITE,
-         TAGEND);
-      if (!acInit(surface)) {
-         Self->CursorSurfaceID = surface->UID;
-         gfxAddCallback(surface, &DrawPointer);
-         return ERR_Okay;
-      }
-      acFree(surface);
-      return ERR_Init;
+   if (auto surface = objSurface::create::integral(
+         fl::Name("Pointer"),
+         fl::Parent(Self->SurfaceID),
+         fl::Owner(Self->UID),
+         fl::X(-64),
+         fl::Y(-64),
+         fl::Width(MAX_CURSOR_WIDTH),
+         fl::Height(MAX_CURSOR_HEIGHT),
+         fl::Flags(RNF_CURSOR|RNF_PRECOPY|RNF_COMPOSITE))) {
+      Self->CursorSurfaceID = surface->UID;
+      gfxAddCallback(surface, &DrawPointer);
+      return ERR_Okay;
    }
    else return log.warning(ERR_NewObject);
 }

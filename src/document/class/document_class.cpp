@@ -747,7 +747,6 @@ static ERROR DOCUMENT_GetVar(extDocument *Self, struct acGetVar *Args)
 static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 {
    parasol::Log log;
-   ERROR error;
 
    if (!Self->SurfaceID) return log.warning(ERR_UnsupportedOwner);
 
@@ -809,50 +808,31 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 
    // Allocate the view and page areas
 
-   if (!NewObject(ID_SURFACE, NF::INTEGRAL, &surface)) {
-      SetFields(surface,
-         FID_Name|TSTR,    "rgnDocView",   // Do not change this name - it can be used by objects to detect if they are placed in a document
-         FID_Parent|TLONG, Self->SurfaceID,
-         FID_X|TLONG,      Self->AreaX,
-         FID_Y|TLONG,      Self->AreaY,
-         FID_Width|TLONG,  Self->AreaWidth,
-         FID_Height|TLONG, Self->AreaHeight,
-         TAGEND);
-      if (!acInit(surface)) {
-         Self->ViewID = surface->UID;
-         drwAddCallback(surface, (APTR)&draw_background);
-         error = ERR_Okay;
-      }
-      else { acFree(surface); error = ERR_Init; }
+   if (auto surface = objSurface::create::integral(
+         fl::Name("rgnDocView"),   // Do not change this name - it can be used by objects to detect if they are placed in a document
+         fl::Parent(Self->SurfaceID),
+         fl::X(Self->AreaX), fl::Y(Self->AreaY),
+         fl::Width(Self->AreaWidth), fl::Height(Self->AreaHeight))) {
+
+      Self->ViewID = surface->UID;
+      drwAddCallback(surface, (APTR)&draw_background);
    }
-   else error = ERR_NewObject;
+   else return ERR_CreateObject;
 
-   if (error) return error;
+   if (auto surface = objSurface::create::integral(
+         fl::Name("rgnDocPage"),  // Do not change this name - it can be used by objects to detect if they are placed in a document
+         fl::Parent(Self->ViewID),
+         fl::X(0), fl::Y(0),
+         fl::MaxWidth(0x7fffffff), fl::MaxHeight(0x7fffffff),
+         fl::Width(MAX_PAGEWIDTH), fl::Height(MAX_PAGEHEIGHT),
+         fl::Flags(RNF_TRANSPARENT|RNF_GRAB_FOCUS))) {
 
-   if (!NewObject(ID_SURFACE, NF::INTEGRAL, &surface)) {
-      SetFields(surface,
-         FID_Name|TSTR,       "rgnDocPage",  // Do not change this name - it can be used by objects to detect if they are placed in a document
-         FID_Parent|TLONG,    Self->ViewID,
-         FID_X|TLONG,         0,
-         FID_Y|TLONG,         0,
-         FID_MaxWidth|TLONG,  0x7fffffff,
-         FID_MaxHeight|TLONG, 0x7fffffff,
-         FID_Width|TLONG,     MAX_PAGEWIDTH,
-         FID_Height|TLONG,    MAX_PAGEHEIGHT,
-         FID_Flags|TLONG,     RNF_TRANSPARENT|RNF_GRAB_FOCUS,
-         TAGEND);
-      if (!acInit(surface)) {
-         drwAddCallback(surface, (APTR)&draw_document);
-         auto callback = make_function_stdc(consume_input_events);
-         gfxSubscribeInput(&callback, Self->PageID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0, &Self->InputHandle);
-         Self->PageID = surface->UID;
-         error = ERR_Okay;
-      }
-      else { acFree(surface); error = ERR_Init; }
+      drwAddCallback(surface, (APTR)&draw_document);
+      auto callback = make_function_stdc(consume_input_events);
+      gfxSubscribeInput(&callback, Self->PageID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0, &Self->InputHandle);
+      Self->PageID = surface->UID;
    }
-   else error = ERR_NewObject;
-
-   if (error) return error;
+   else return ERR_CreateObject;
 
    acShow(Self->ViewID);
    acShow(Self->PageID);
@@ -883,7 +863,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
    }
    else if (Self->Path) {
       if ((Self->Path[0] != '#') and (Self->Path[0] != '?')) {
-         if ((error = load_doc(Self, Self->Path, FALSE, 0))) {
+         if (auto error = load_doc(Self, Self->Path, FALSE, 0)) {
             return error;
          }
       }

@@ -742,13 +742,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    if (add_asset_class() != ERR_Okay) { CloseCore(); return NULL; }
    #endif
 
-   if (!NewObject(ID_TASK, NF::UNTRACKED, (OBJECTPTR *)&glCurrentTask)) {
-      if (acInit(glCurrentTask)) {
-         CloseCore();
-         return NULL;
-      }
-   }
-   else {
+   if (!(glCurrentTask = objTask::create::untracked())) {
       CloseCore();
       return NULL;
    }

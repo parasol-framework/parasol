@@ -129,7 +129,7 @@ end
    end)
 
    local text = viewport.new('vectortext', {
-      x=win.margins.left, y=y, string='Text Widget', face='Open Sans', fontSize=20, fill='rgb(0,0,0)', textflags='!editable'
+      x=win.margins.left, y=y, string='This interface is a real-time computed vector scene', face='Open Sans', fontSize=20, fill='rgb(0,0,0)', textflags='!editable'
    })
    text.y = y + text.font.height
    y = y + text.font.height + 8

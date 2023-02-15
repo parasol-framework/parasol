@@ -1194,78 +1194,73 @@ static ERROR DISPLAY_MoveToPoint(extDisplay *Self, struct acMoveToPoint *Args)
 
 static ERROR DISPLAY_NewObject(extDisplay *Self, APTR Void)
 {
-   parasol::Log log;
-
-   ERROR error = NewObject(ID_BITMAP, Self->flags()|NF::INTEGRAL, &Self->Bitmap);
+   if (NewObject(ID_BITMAP, NF::INTEGRAL, &Self->Bitmap)) return ERR_NewObject;
    Self->BitmapID = Self->Bitmap->UID;
 
-   if (!error) {
-      OBJECTID id;
-      if (FindObject("SystemVideo", 0, 0, &id) != ERR_Okay) {
-         SetName(Self->Bitmap, "SystemVideo");
-      }
-
-      if (!(GetName(Self)[0])) {
-         if (FindObject("SystemDisplay", 0, 0, &id) != ERR_Okay) {
-            SetName(Self, "SystemDisplay");
-         }
-      }
-
-      #ifdef __xwindows__
-
-         StrCopy("X11", Self->Chipset, sizeof(Self->Chipset));
-         StrCopy("X Windows", Self->Display, sizeof(Self->Display));
-         StrCopy("N/A", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
-         StrCopy("N/A", Self->Manufacturer, sizeof(Self->Manufacturer));
-
-      #elif _WIN32
-
-         StrCopy("Windows", Self->Chipset, sizeof(Self->Chipset));
-         StrCopy("Windows", Self->Display, sizeof(Self->Display));
-         StrCopy("N/A", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
-         StrCopy("N/A", Self->Manufacturer, sizeof(Self->Manufacturer));
-
-      #elif _GLES_
-
-         StrCopy("OpenGLES", Self->Chipset, sizeof(Self->Chipset));
-         StrCopy("OpenGL", Self->Display, sizeof(Self->Display));
-         StrCopy("N/A", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
-         StrCopy("N/A", Self->Manufacturer, sizeof(Self->Manufacturer));
-
-      #else
-
-         StrCopy("Unknown", Self->CertificationDate, sizeof(Self->CertificationDate));
-         StrCopy("Unknown", Self->Chipset, sizeof(Self->Chipset));
-         StrCopy("Unknown", Self->Display, sizeof(Self->Display));
-         StrCopy("Unknown", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
-         StrCopy("Unknown", Self->DriverCopyright, sizeof(Self->DriverCopyright));
-         StrCopy("Unknown", Self->DriverVendor, sizeof(Self->DriverVendor));
-         StrCopy("Unknown", Self->DriverVersion, sizeof(Self->DriverVersion));
-         StrCopy("Unknown", Self->Manufacturer, sizeof(Self->Manufacturer));
-
-      #endif
-
-      Self->Width       = 800;
-      Self->Height      = 600;
-      Self->RefreshRate = -1;
-      Self->Gamma[0]    = 1.0;
-      Self->Gamma[1]    = 1.0;
-      Self->Gamma[2]    = 1.0;
-      Self->Opacity     = 255;
-
-      #ifdef __xwindows__
-         Self->DisplayType = DT_X11;
-      #elif _WIN32
-         Self->DisplayType = DT_WINDOWS;
-      #elif _GLES_
-         Self->DisplayType = DT_GLES;
-      #else
-         Self->DisplayType = DT_NATIVE;
-      #endif
-
-      return ERR_Okay;
+   OBJECTID id;
+   if (FindObject("SystemVideo", 0, 0, &id) != ERR_Okay) {
+      SetName(Self->Bitmap, "SystemVideo");
    }
-   else return log.warning(ERR_NewObject);
+
+   if (!(GetName(Self)[0])) {
+      if (FindObject("SystemDisplay", 0, 0, &id) != ERR_Okay) {
+         SetName(Self, "SystemDisplay");
+      }
+   }
+
+   #ifdef __xwindows__
+
+      StrCopy("X11", Self->Chipset, sizeof(Self->Chipset));
+      StrCopy("X Windows", Self->Display, sizeof(Self->Display));
+      StrCopy("N/A", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
+      StrCopy("N/A", Self->Manufacturer, sizeof(Self->Manufacturer));
+
+   #elif _WIN32
+
+      StrCopy("Windows", Self->Chipset, sizeof(Self->Chipset));
+      StrCopy("Windows", Self->Display, sizeof(Self->Display));
+      StrCopy("N/A", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
+      StrCopy("N/A", Self->Manufacturer, sizeof(Self->Manufacturer));
+
+   #elif _GLES_
+
+      StrCopy("OpenGLES", Self->Chipset, sizeof(Self->Chipset));
+      StrCopy("OpenGL", Self->Display, sizeof(Self->Display));
+      StrCopy("N/A", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
+      StrCopy("N/A", Self->Manufacturer, sizeof(Self->Manufacturer));
+
+   #else
+
+      StrCopy("Unknown", Self->CertificationDate, sizeof(Self->CertificationDate));
+      StrCopy("Unknown", Self->Chipset, sizeof(Self->Chipset));
+      StrCopy("Unknown", Self->Display, sizeof(Self->Display));
+      StrCopy("Unknown", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
+      StrCopy("Unknown", Self->DriverCopyright, sizeof(Self->DriverCopyright));
+      StrCopy("Unknown", Self->DriverVendor, sizeof(Self->DriverVendor));
+      StrCopy("Unknown", Self->DriverVersion, sizeof(Self->DriverVersion));
+      StrCopy("Unknown", Self->Manufacturer, sizeof(Self->Manufacturer));
+
+   #endif
+
+   Self->Width       = 800;
+   Self->Height      = 600;
+   Self->RefreshRate = -1;
+   Self->Gamma[0]    = 1.0;
+   Self->Gamma[1]    = 1.0;
+   Self->Gamma[2]    = 1.0;
+   Self->Opacity     = 255;
+
+   #ifdef __xwindows__
+      Self->DisplayType = DT_X11;
+   #elif _WIN32
+      Self->DisplayType = DT_WINDOWS;
+   #elif _GLES_
+      Self->DisplayType = DT_GLES;
+   #else
+      Self->DisplayType = DT_NATIVE;
+   #endif
+
+   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -1606,35 +1601,6 @@ static ERROR DISPLAY_SetDisplay(extDisplay *Self, struct gfxSetDisplay *Args)
 
    evResolutionChange ev = { EVID_DISPLAY_RESOLUTION_CHANGE };
    BroadcastEvent(&ev, sizeof(ev));
-
-   if (sciOpenVideoMode(gfxmode, &modeinfo, &vx, &vy, &bytesperline, &Self->VideoHandle, Args->RefreshRate) != ERR_Okay) {
-      log.warning("Failed to set the requested video mode.");
-      return ERR_Failed;
-   }
-
-   Self->GfxMode = gfxmode;
-   Self->Width   = modeinfo.XResolution;
-   Self->Height  = modeinfo.YResolution;
-   Self->RefreshRate = (glSNAP->Init.GetCurrentRefreshRate() + 50) / 100;
-
-   if (bpp != Self->Bitmap->BitsPerPixel) {
-      acFree(Self->Bitmap);
-      ReleaseObject(Self->Bitmap);
-      Self->Bitmap = NULL;
-
-      if (!NewObject(ID_BITMAP, NF::INTEGRAL|Self->flags(), &Self->Bitmap, Self->isPublic() ? &Self->BitmapID : NULL)) {
-         Self->BitmapID = Self->Bitmap->UID;
-         Self->Bitmap->BitsPerPixel = bpp;
-         Self->Bitmap->Width        = Self->Width;
-         Self->Bitmap->Height       = Self->Height;
-         Self->Bitmap->Flags        = BMF_NO_DATA;
-         Self->Bitmap->DataFlags    = MEM_VIDEO;
-         if (!acInit(Self->Bitmap)) {
-            Self->Bitmap->LineWidth = modeinfo.BytesPerScanLine;
-         }
-      }
-   }
-   else acResize(Self->Bitmap, Self->Width, Self->Height, 0);
 
 #endif
 
@@ -2895,7 +2861,7 @@ The value in this field reflects the refresh rate of the currently active displa
 
 static ERROR SET_RefreshRate(extDisplay *Self, DOUBLE Value)
 {
-   return ERR_NoSupport;
+   return ERR_Okay;
 }
 
 /*****************************************************************************
@@ -3124,28 +3090,21 @@ void alloc_display_buffer(extDisplay *Self)
 
    if (Self->BufferID) { acFree(Self->BufferID); Self->BufferID = 0; }
 
-   objBitmap *buffer;
-   if (!NewObject(ID_BITMAP, NF::INTEGRAL, &buffer)) {
-      if (!SetFields(buffer,
-            FID_Name|TSTR,           "SystemBuffer",
-            FID_BitsPerPixel|TLONG,  Self->Bitmap->BitsPerPixel,
-            FID_BytesPerPixel|TLONG, Self->Bitmap->BytesPerPixel,
-            FID_Width|TLONG,         Self->Bitmap->Width,
-            FID_Height|TLONG,        Self->Bitmap->Height,
-            #ifdef __xwindows__
-               FID_DataFlags|TLONG,  MEM_DATA,
-            #else
-               FID_DataFlags|TLONG,  MEM_TEXTURE,
-            #endif
-            TAGEND)) {
-         if (!acInit(buffer)) {
-            Self->BufferID = buffer->UID;
-            return;
-         }
-      }
-
-      acFree(buffer);
+   if (auto buffer = objBitmap::create::integral(
+         fl::Name("SystemBuffer"),
+         fl::BitsPerPixel(Self->Bitmap->BitsPerPixel),
+         fl::BytesPerPixel(Self->Bitmap->BytesPerPixel),
+         fl::Width(Self->Bitmap->Width),
+         fl::Height(Self->Bitmap->Height),
+         #ifdef __xwindows__
+            fl::DataFlags(MEM_DATA)
+         #else
+            fl::DataFlags(MEM_TEXTURE)
+         #endif
+      )) {
+      Self->BufferID = buffer->UID;
    }
+
 }
 
 //********************************************************************************************************************

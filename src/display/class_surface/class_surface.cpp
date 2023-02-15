@@ -1275,17 +1275,12 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
       }
    }
 
-   ERROR error;
+   ERROR error = ERR_Okay;
    if (Self->ParentID) {
-      extSurface *parent;
-      if (AccessObjectID(Self->ParentID, 3000, &parent) != ERR_Okay) {
-         log.warning("Failed to access parent #%d.", Self->ParentID);
-         return ERR_AccessObject;
-      }
+      parasol::ScopedObjectLock<extSurface> parent(Self->ParentID, 3000);
+      if (!parent.granted()) return ERR_AccessObject;
 
       log.trace("Initialising surface to parent #%d.", Self->ParentID);
-
-      error = ERR_Okay;
 
       // If the parent has the ROOT flag set, we have to inherit whatever root layer that the parent is using, as well
       // as the PRECOPY and/or AFTERCOPY and opacity flags if they are set.
@@ -1301,10 +1296,10 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
       // Subscribe to the surface parent's Resize and Redimension actions
 
       auto callback = make_function_stdc(notify_free_parent);
-      SubscribeAction(parent, AC_Free, &callback);
+      SubscribeAction(*parent, AC_Free, &callback);
 
       callback = make_function_stdc(notify_redimension_parent);
-      SubscribeAction(parent, AC_Redimension, &callback);
+      SubscribeAction(*parent, AC_Redimension, &callback);
 
       // If the surface object is transparent, subscribe to the Draw action of the parent object.
 
@@ -1314,7 +1309,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
          func.Type = CALL_STDC;
          func.StdC.Context = Self;
          func.StdC.Routine = (APTR)&draw_region;
-         Action(MT_DrwAddCallback, parent, &args);
+         Action(MT_DrwAddCallback, *parent, &args);
 
          // Turn off flags that should never be combined with transparent surfaces.
          Self->Flags &= ~(RNF_PRECOPY|RNF_AFTER_COPY|RNF_COMPOSITE);
@@ -1396,8 +1391,6 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
       // If not, managing layered surfaces between processes becomes more difficult.
 
       if (parent->Flags & RNF_HOST) require_store = TRUE;
-
-      ReleaseObject(parent);
    }
    else {
       log.trace("This surface object will be display-based.");
@@ -1500,92 +1493,81 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
       if (Self->Flags & RNF_COMPOSITE) scrflags |= SCR_COMPOSITE;
 
-      OBJECTID id;
+      OBJECTID id, pop_display = 0;
       CSTRING name = FindObject("SystemDisplay", 0, 0, &id) ? "SystemDisplay" : (CSTRING)NULL;
+
+      if (Self->PopOverID) {
+         extSurface *popsurface;
+         if (!AccessObjectID(Self->PopOverID, 2000, &popsurface)) {
+            pop_display = popsurface->DisplayID;
+            ReleaseObject(popsurface);
+
+            if (!pop_display) log.warning("Surface #%d doesn't have a display ID for pop-over.", Self->PopOverID);
+         }
+      }
 
       // For hosted displays:  On initialisation, the X and Y fields reflect the position at which the window will be
       // opened on the host desktop.  However, hosted surfaces operate on the absolute coordinates of client regions
       // and are ignorant of window frames, so we read the X, Y fields back from the display after initialisation (the
       // display will adjust the coordinates to reflect the absolute position of the surface on the desktop).
 
-      objDisplay *display;
-      if (!NewObject(ID_DISPLAY, NF::INTEGRAL, &display)) {
-         SetFields(display,
-               FID_Name|TSTR,           name,
-               FID_X|TLONG,             Self->X,
-               FID_Y|TLONG,             Self->Y,
-               FID_Width|TLONG,         Self->Width,
-               FID_Height|TLONG,        Self->Height,
-               FID_BitsPerPixel|TLONG,  glpDisplayDepth,
-               FID_RefreshRate|TDOUBLE, glpRefreshRate,
-               FID_Flags|TLONG,         scrflags,
-               FID_DPMS|TSTRING,        glpDPMS,
-               FID_Opacity|TLONG,       (Self->Opacity * 100) / 255,
-               FID_WindowHandle|TPTR,   (APTR)Self->DisplayWindow, // Sometimes a window may be preset, e.g. for a web plugin
-               TAGEND);
+      if (auto display = objDisplay::create::integral(
+            fl::Name(name),
+            fl::X(Self->X), fl::Y(Self->Y), fl::Width(Self->Width), fl::Height(Self->Height),
+            fl::BitsPerPixel(glpDisplayDepth),
+            fl::RefreshRate(glpRefreshRate),
+            fl::Flags(scrflags),
+            fl::DPMS(glpDPMS),
+            fl::Opacity((Self->Opacity * 100) / 255),
+            fl::PopOver(pop_display),
+            fl::WindowHandle((APTR)Self->DisplayWindow))) { // Sometimes a window may be preset, e.g. for a web plugin
 
-         if (Self->PopOverID) {
-            extSurface *popsurface;
-            if (!AccessObjectID(Self->PopOverID, 2000, &popsurface)) {
-               OBJECTID pop_display = popsurface->DisplayID;
-               ReleaseObject(popsurface);
+         gfxSetGamma(display, glpGammaRed, glpGammaGreen, glpGammaBlue, GMF_SAVE);
+         gfxSetHostOption(HOST_TASKBAR, 1); // Reset display system so that windows open with a taskbar by default
 
-               if (pop_display) display->set(FID_PopOver, pop_display);
-               else log.warning("Surface #%d doesn't have a display ID for pop-over.", Self->PopOverID);
-            }
+         // Get the true coordinates of the client area of the surface
+
+         Self->X = display->X;
+         Self->Y = display->Y;
+         Self->Width  = display->Width;
+         Self->Height = display->Height;
+
+         struct gfxSizeHints hints;
+
+         if ((Self->MaxWidth) or (Self->MaxHeight) or (Self->MinWidth) or (Self->MinHeight)) {
+            if (Self->MaxWidth > 0)  hints.MaxWidth  = Self->MaxWidth  + Self->LeftMargin + Self->RightMargin;  else hints.MaxWidth  = 0;
+            if (Self->MaxHeight > 0) hints.MaxHeight = Self->MaxHeight + Self->TopMargin  + Self->BottomMargin; else hints.MaxHeight = 0;
+            if (Self->MinWidth > 0)  hints.MinWidth  = Self->MinWidth  + Self->LeftMargin + Self->RightMargin;  else hints.MinWidth  = 0;
+            if (Self->MinHeight > 0) hints.MinHeight = Self->MinHeight + Self->TopMargin  + Self->BottomMargin; else hints.MinHeight = 0;
+            Action(MT_GfxSizeHints, display, &hints);
          }
 
-         if (!acInit(display)) {
-            gfxSetGamma(display, glpGammaRed, glpGammaGreen, glpGammaBlue, GMF_SAVE);
-            gfxSetHostOption(HOST_TASKBAR, 1); // Reset display system so that windows open with a taskbar by default
+         acFlush(display);
 
-            // Get the true coordinates of the client area of the surface
+         // For hosted environments, record the window handle (NB: this is doubling up the display handle, we should
+         // just make the window handle a virtual field so that we don't need a permanent record of it).
 
-            Self->X = display->X;
-            Self->Y = display->Y;
-            Self->Width  = display->Width;
-            Self->Height = display->Height;
+         display->getPtr(FID_WindowHandle, &Self->DisplayWindow);
 
-            struct gfxSizeHints hints;
+         #ifdef _WIN32
+            winSetSurfaceID(Self->DisplayWindow, Self->UID);
+         #endif
 
-            if ((Self->MaxWidth) or (Self->MaxHeight) or (Self->MinWidth) or (Self->MinHeight)) {
-               if (Self->MaxWidth > 0)  hints.MaxWidth  = Self->MaxWidth  + Self->LeftMargin + Self->RightMargin;  else hints.MaxWidth  = 0;
-               if (Self->MaxHeight > 0) hints.MaxHeight = Self->MaxHeight + Self->TopMargin  + Self->BottomMargin; else hints.MaxHeight = 0;
-               if (Self->MinWidth > 0)  hints.MinWidth  = Self->MinWidth  + Self->LeftMargin + Self->RightMargin;  else hints.MinWidth  = 0;
-               if (Self->MinHeight > 0) hints.MinHeight = Self->MinHeight + Self->TopMargin  + Self->BottomMargin; else hints.MinHeight = 0;
-               Action(MT_GfxSizeHints, display, &hints);
-            }
+         // Subscribe to Redimension notifications if the display is hosted.  Also subscribe to Draw because this
+         // can be used by the host to notify of window exposures.
 
-            acFlush(display);
+         if (Self->DisplayWindow) {
+            FUNCTION func = { .Type = CALL_STDC, .StdC = { .Context = NULL, .Routine = (APTR)&display_resized } };
+            display->set(FID_ResizeFeedback, &func);
 
-            // For hosted environments, record the window handle (NB: this is doubling up the display handle, we should
-            // just make the window handle a virtual field so that we don't need a permanent record of it).
-
-            display->getPtr(FID_WindowHandle, &Self->DisplayWindow);
-
-            #ifdef _WIN32
-               winSetSurfaceID(Self->DisplayWindow, Self->UID);
-            #endif
-
-            // Subscribe to Redimension notifications if the display is hosted.  Also subscribe to Draw because this
-            // can be used by the host to notify of window exposures.
-
-            if (Self->DisplayWindow) {
-               FUNCTION func = { .Type = CALL_STDC, .StdC = { .Context = NULL, .Routine = (APTR)&display_resized } };
-               display->set(FID_ResizeFeedback, &func);
-
-               auto callback = make_function_stdc(notify_draw_display);
-               SubscribeAction(display, AC_Draw, &callback);
-            }
-
-            Self->DisplayID = display->UID;
-            error = ERR_Okay;
+            auto callback = make_function_stdc(notify_draw_display);
+            SubscribeAction(display, AC_Draw, &callback);
          }
-         else error = ERR_Init;
 
-         if (error) acFree(display);
+         Self->DisplayID = display->UID;
+         error = ERR_Okay;
       }
-      else error = ERR_NewObject;
+      else return log.warning(ERR_CreateObject);
    }
 
    // Allocate a backing store if this is a host object, or the parent is foreign, or we are the child of a host object
@@ -1607,8 +1589,9 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
    if (require_store) {
       Self->BitmapOwnerID = Self->UID;
 
-      objDisplay *display;
-      if (!(error = AccessObjectID(Self->DisplayID, 3000, &display))) {
+      parasol::ScopedObjectLock<objDisplay> display(Self->DisplayID, 3000);
+
+      if (display.granted()) {
          LONG memflags = MEM_DATA;
 
          if (Self->Flags & RNF_VIDEO) {
@@ -1628,32 +1611,21 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
          }
          else bpp = display->Bitmap->BitsPerPixel;
 
-         if (!NewObject(ID_BITMAP, NF::INTEGRAL, &bitmap)) {
-            SetFields(bitmap,
-               FID_BitsPerPixel|TLONG, bpp,
-               FID_Width|TLONG,        Self->Width,
-               FID_Height|TLONG,       Self->Height,
-               FID_DataFlags|TLONG,    memflags,
-               FID_Flags|TLONG,        ((Self->Flags & RNF_COMPOSITE) ? (BMF_ALPHA_CHANNEL|BMF_FIXED_DEPTH) : NULL),
-               TAGEND);
-            if (!acInit(bitmap)) {
-               if (Self->BitsPerPixel) bitmap->Flags |= BMF_FIXED_DEPTH; // This flag prevents automatic changes to the bit depth
+         if (auto bitmap = objBitmap::create::integral(
+               fl::BitsPerPixel(bpp), fl::Width(Self->Width), fl::Height(Self->Height),
+               fl::DataFlags(memflags),
+               fl::Flags(((Self->Flags & RNF_COMPOSITE) ? (BMF_ALPHA_CHANNEL|BMF_FIXED_DEPTH) : 0)))) {
 
-               Self->BitsPerPixel  = bitmap->BitsPerPixel;
-               Self->BytesPerPixel = bitmap->BytesPerPixel;
-               Self->LineWidth     = bitmap->LineWidth;
-               Self->Data          = bitmap->Data;
-               Self->BufferID      = bitmap->UID;
-               error = ERR_Okay;
-            }
-            else {
-               error = ERR_Init;
-               acFree(bitmap);
-            }
+            if (Self->BitsPerPixel) bitmap->Flags |= BMF_FIXED_DEPTH; // This flag prevents automatic changes to the bit depth
+
+            Self->BitsPerPixel  = bitmap->BitsPerPixel;
+            Self->BytesPerPixel = bitmap->BytesPerPixel;
+            Self->LineWidth     = bitmap->LineWidth;
+            Self->Data          = bitmap->Data;
+            Self->BufferID      = bitmap->UID;
+            error = ERR_Okay;
          }
-         else error = ERR_NewObject;
-
-         ReleaseObject(display);
+         else error = ERR_CreateObject;
       }
       else error = ERR_AccessObject;
 
