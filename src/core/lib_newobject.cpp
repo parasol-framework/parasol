@@ -114,9 +114,7 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
 
       // Tracking for our new object is configured here.
 
-      OBJECTPTR task;
-      if (mc->Flags & CLF_NO_OWNERSHIP) {
-      }
+      if (mc->Flags & CLF_NO_OWNERSHIP) { }
       else if ((Flags & NF::UNTRACKED) != NF::NIL) {
          if (class_id IS ID_MODULE); // Untracked modules have no owner, due to the expunge process.
          else {
@@ -132,7 +130,7 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
       else if (tlContext != &glTopContext) { // Track the object to the current context
          SetOwner(head, tlContext->resource());
       }
-      else if (glCurrentTask) { // If no current context is available then track the object to the local task
+      else if (glCurrentTask) {
          ScopedObjectAccess lock(glCurrentTask);
          SetOwner(head, glCurrentTask);
       }

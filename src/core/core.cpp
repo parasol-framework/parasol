@@ -170,7 +170,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       #endif
    #endif
    LONG i;
-   ERROR error;
 
    if (!Info) return NULL;
    if (Info->Flags & OPF_ERROR) Info->Error = ERR_Failed;
@@ -763,6 +762,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    fs_initialised = TRUE;
 
    if (!(Info->Flags & OPF_SCAN_MODULES)) {
+      ERROR error;
       if (!(error = load_modules())) {
          objFile::create file = { fl::Path(glClassBinPath), fl::Flags(FL_READ) };
 
@@ -786,13 +786,12 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          }
          else glScanClasses = true; // If no file, a database rebuild is required.
       }
-   }
-
-   if (error != ERR_Okay) {
-      log.warning("Failed to load the system classes.");
-      if (Info->Flags & OPF_ERROR) Info->Error = error;
-      CloseCore();
-      return NULL;
+      else {
+         log.warning("Failed to load the system classes.");
+         if (Info->Flags & OPF_ERROR) Info->Error = error;
+         CloseCore();
+         return NULL;
+      }
    }
 
    if (na > 0) SetArray(glCurrentTask, FID_Parameters, newargs, na);

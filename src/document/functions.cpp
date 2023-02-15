@@ -2090,14 +2090,21 @@ static void check_clips(extDocument *Self, LONG Index, layout *l,
 // Height:   Minimum height of the page/section.  Will be increased to match the number of lines in the layout.
 // Margins:  Margins within the page area.  These are inclusive to the resulting page width/height.  If in a cell, margins reflect cell padding values.
 
-typedef struct {
+struct LAYOUT_STATE {
    layout Layout;
    LONG Index;
    LONG TotalClips;
    LONG TotalLinks;
    LONG SegCount;
    LONG ECIndex;
-} LAYOUT_STATE;
+
+   LAYOUT_STATE() {
+      TotalClips = 0;
+      TotalLinks = 0;
+      SegCount = 0;
+      ECIndex = 0;
+   }
+};
 
 #define SAVE_STATE(s) \
    CopyMemory(&l, &s.Layout, sizeof(l)); \
