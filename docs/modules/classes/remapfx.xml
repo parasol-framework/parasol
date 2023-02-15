@@ -12,7 +12,7 @@
     <idstring>ID_REMAPFX</idstring>
     <category>Graphics</category>
     <include>modules/remapfx.h</include>
-    <copyright>Paul Manias © 2010-2022</copyright>
+    <copyright>Paul Manias © 2010-2023</copyright>
     <description>
 <p>The RemapFX class provides an implementation of the feComponentTransfer functionality in SVG.</p>
 <p>Internally the pixel rendering process is implemented using pixel lookup tables.  As such this particular effect carries minimal overhead compared to most other effect classes.</p></description>

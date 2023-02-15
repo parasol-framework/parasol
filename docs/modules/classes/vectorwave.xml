@@ -12,7 +12,7 @@
     <idstring>ID_VECTORWAVE</idstring>
     <category>Graphics</category>
     <include>modules/vectorwave.h</include>
-    <copyright>Paul Manias © 2010-2022</copyright>
+    <copyright>Paul Manias © 2010-2023</copyright>
     <description>
 <p>The VectorWave class provides functionality for generating paths based on sine waves.  This feature is not part of the SVG standard and therefore should not be used in cases where SVG compliance is a strict requirement.</p>
 <p>The sine wave will be generated within a rectangular region at (<field>X</field>,<field>Y</field>) with size (<field>Width</field>,<field>Height</field>).  The horizontal center-line within the rectangle will dictate the orientation of the sine wave, and the path vertices are generated on a left-to-right basis.</p>

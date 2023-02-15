@@ -12,7 +12,7 @@
     <idstring>ID_COMPOSITEFX</idstring>
     <category>Graphics</category>
     <include>modules/compositefx.h</include>
-    <copyright>Paul Manias © 2010-2022</copyright>
+    <copyright>Paul Manias © 2010-2023</copyright>
     <description>
 <p>This filter combines the Input and Mix sources using either one of the Porter-Duff compositing operations, or a colour blending algorithm.  The Input has priority and will be placed in the foreground for ordered operations such as Atop and Over.</p></description>
     <source>
