@@ -1453,8 +1453,8 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     </input>
     <description>
 <p>The NewObject() function is used to create new objects and register them for use within the Core.  After creating a new object, the client can proceed to set the object's field values and initialise it with <action>Init</action> so that it can be used as intended.</p>
-<p>The new object will be modeled according to the class blueprint indicated by ClassID.  Pre-defined class ID's are defined in the <code>parasol/system/register.h</code> include file and a complete list of known classes is available in the Class Index Guide.  ID's for unregistered classes can be found dynamically by using the <function module="Core">ResolveClassName</function> function.</p>
-<p>A pointer to the new object will be returned in the Object parameter.  By default, new objects are always owned by the object that holds the current context.  It is possible to track a new object to a different owner by using the <function module="Core">SetOwner</function> function after calling NewObject().</p>
+<p>The new object will be modeled according to the class blueprint indicated by ClassID.  Pre-defined class ID's are defined in their documentation and the <code>parasol/system/register.h</code> include file.  ID's for unregistered classes can be computed using the <function module="Core">ResolveClassName</function> function.</p>
+<p>A pointer to the new object will be returned in the Object parameter.  By default, object allocations are context sensitive and will be collected when their owner is terminated.  It is possible to track an object to a different owner by using the <function module="Core">SetOwner</function> function.</p>
 <p>To destroy an object, use the <action>Free</action> action.</p>
     </description>
     <result type="ERROR">

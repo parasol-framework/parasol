@@ -22,12 +22,12 @@ a new object, the client can proceed to set the object's field values and initia
 can be used as intended.
 
 The new object will be modeled according to the class blueprint indicated by ClassID.  Pre-defined class ID's are
-defined in the `parasol/system/register.h` include file and a complete list of known classes is available in the Class
-Index Guide.  ID's for unregistered classes can be found dynamically by using the ~ResolveClassName() function.
+defined in their documentation and the `parasol/system/register.h` include file.  ID's for unregistered classes can
+be computed using the ~ResolveClassName() function.
 
-A pointer to the new object will be returned in the Object parameter.  By default, new objects are always owned by the
-object that holds the current context.  It is possible to track a new object to a different owner by using the
-~SetOwner() function after calling NewObject().
+A pointer to the new object will be returned in the Object parameter.  By default, object allocations are context
+sensitive and will be collected when their owner is terminated.  It is possible to track an object to a different
+owner by using the ~SetOwner() function.
 
 To destroy an object, use the #Free() action.
 
@@ -76,7 +76,7 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
 
    if (Object) *Object = NULL;
 
-   Flags = Flags & (NF::UNTRACKED|NF::INTEGRAL|NF::UNIQUE|NF::NAME|NF::SUPPRESS_LOG); // Very important to eliminate any internal flags.
+   Flags &= (NF::UNTRACKED|NF::INTEGRAL|NF::UNIQUE|NF::NAME|NF::SUPPRESS_LOG); // Very important to eliminate any internal flags.
 
    // If the object is integral then turn off use of the UNTRACKED flag (otherwise the child will
    // end up being tracked to its task rather than its parent object).
@@ -94,22 +94,17 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
    ERROR error = ERR_Okay;
 
    if (!AllocMemory(mc->Size, MEM_OBJECT|MEM_NO_LOCK|(((Flags & NF::UNTRACKED) != NF::NIL) ? MEM_UNTRACKED : 0), (APTR *)&head, &head_id)) {
-      head->UID       = head_id;
-      head->ClassID   = mc->BaseClassID;
-      if (mc->BaseClassID IS mc->SubClassID) { // Object derived from a base class
-         head->SubID = 0;
-      }
-      else { // Object derived from a sub-class
-         head->SubID = mc->SubClassID;
-      }
+      head->UID     = head_id;
+      head->ClassID = mc->BaseClassID;
+      head->Class   = (extMetaClass *)mc;
+      head->Flags   = Flags;
 
-      head->Class = (extMetaClass *)mc;
+      if (mc->BaseClassID IS mc->SubClassID) head->SubID = 0; // Object derived from a base class
+      else head->SubID = mc->SubClassID; // Object derived from a sub-class
 
       if ((Flags & NF::UNTRACKED) IS NF::NIL) { // Don't track untracked objects to specific threads.
          head->ThreadMsg = tlThreadWriteMsg; // If the object needs to belong to a thread, this will record it.
       }
-
-      head->Flags = Flags | NF::NEW_OBJECT;
 
       // Tracking for our new object is configured here.
 
@@ -162,17 +157,13 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
          ((extMetaClass *)head->Class)->OpenCount++;
          if (mc->Base) mc->Base->OpenCount++;
 
-         head->Flags = head->Flags & (~NF::NEW_OBJECT);
          *Object = head;
          return ERR_Okay;
       }
    }
    else error = ERR_AllocMemory;
 
-   if (head) {
-      head->Flags = head->Flags & (~NF::NEW_OBJECT);
-      FreeResource(head);
-   }
+   if (head) FreeResource(head);
 
    return error;
 }
