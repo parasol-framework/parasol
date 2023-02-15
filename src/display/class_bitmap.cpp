@@ -605,7 +605,7 @@ static ERROR BITMAP_CopyData(extBitmap *Self, struct acCopyData *Args)
 
    if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
 
-   if (!AccessObject(Args->DestID, 3000, &Dest)) {
+   if (!AccessObjectID(Args->DestID, 3000, &Dest)) {
       if ((Dest->ClassID != ID_BITMAP)) {
          ReleaseObject(Dest);
          return log.warning(ERR_Args);
@@ -1514,7 +1514,7 @@ static ERROR BITMAP_Query(extBitmap *Self, APTR Void)
          Self->BytesPerPixel = 4;
 #if 1
          if (!FindObject("SystemDisplay", ID_DISPLAY, 0, &display_id)) {
-            if (!AccessObject(display_id, 3000, &display)) {
+            if (!AccessObjectID(display_id, 3000, &display)) {
                Self->AmtColours    = display->Bitmap->AmtColours;
                Self->BytesPerPixel = display->Bitmap->BytesPerPixel;
                Self->BitsPerPixel  = display->Bitmap->BitsPerPixel;
@@ -1856,7 +1856,7 @@ static ERROR BITMAP_SaveImage(extBitmap *Self, struct acSaveImage *Args)
 
    size = width * height * pcx.NumPlanes;
    if (!AllocMemory(size, MEM_DATA|MEM_NO_CLEAR, &buffer)) {
-      if (!AccessObject(Args->DestID, 3000, &dest)) {
+      if (!AccessObjectID(Args->DestID, 3000, &dest)) {
          acWrite(dest, &pcx, sizeof(pcx), NULL);
 
          LONG dp = 0;

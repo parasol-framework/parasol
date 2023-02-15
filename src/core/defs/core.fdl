@@ -1192,7 +1192,7 @@ extern struct CoreBase *CoreBase;
 ]])
 
   functionNames(nil,
-    "AccessMemory",
+    "AccessMemoryID",
     "Action",
     "ActionList",
     "ActionMsg",
@@ -1200,7 +1200,7 @@ extern struct CoreBase *CoreBase;
     "ResolveClassID",
     "AllocateID",
     "AllocMemory",
-    "AccessObject",
+    "AccessObjectID",
     "ListTasks",
     "CheckAction",
     "CheckMemoryExists",
@@ -1283,7 +1283,7 @@ extern struct CoreBase *CoreBase;
     "FuncError",
     "SetArray",
     "ReleaseMemoryID",
-    "AccessPrivateObject",
+    "LockObject",
     "ReleaseObject",
     "AllocMutex",
     "FreeMutex",
@@ -1461,7 +1461,7 @@ struct BaseClass { // Must be 64-bit aligned
    UBYTE ThreadPending;         // ActionThread() increments this.
    volatile BYTE Queue;         // Managed by locking functions
    volatile BYTE SleepQueue;    //
-   volatile bool Locked;        // Set if locked by AccessObject()/AccessPrivateObject()
+   volatile bool Locked;        // Set if locked by AccessObjectID()/LockObject()
    BYTE ActionDepth;            // Incremented each time an action or method is called on the object
 
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
@@ -1488,8 +1488,8 @@ struct BaseClass { // Must be 64-bit aligned
          }
          else {
             if (ThreadID IS get_thread_id()) return ERR_Okay; // If this is for the same thread then it's a nested lock, so there's no issue.
-            SUB_QUEUE(this); // Put the lock count back to normal before AccessPrivateObject()
-            return AccessPrivateObject(this, -1); // Can fail if object is marked for deletion.
+            SUB_QUEUE(this); // Put the lock count back to normal before LockObject()
+            return LockObject(this, -1); // Can fail if object is marked for deletion.
          }
       #else
          return ERR_Okay;

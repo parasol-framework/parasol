@@ -159,7 +159,7 @@ ERROR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG
    else if (msg->Callback.Type IS CALL_SCRIPT) {
       OBJECTPTR script;
       if ((script = msg->Callback.Script.Script)) {
-         if (!AccessPrivateObject(script, 5000)) {
+         if (!LockObject(script, 5000)) {
             const ScriptArg args[] = {
                { "ActionID", FD_LONG,      { .Long = msg->ActionID } },
                { "Object",   FD_OBJECTPTR, { .Address = msg->Object } },
@@ -185,7 +185,7 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
    if (!(msg = (ThreadMessage *)Message)) return ERR_Okay;
 
    extThread *thread;
-   if (!AccessObject(msg->ThreadID, 5000, (OBJECTPTR *)&thread)) {
+   if (!AccessObjectID(msg->ThreadID, 5000, (OBJECTPTR *)&thread)) {
       thread->Active = FALSE; // Because marking the thread as inactive is not done until the message is received by the core program
 
       if (thread->Callback.Type IS CALL_STDC) {
@@ -195,7 +195,7 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
       else if (thread->Callback.Type IS CALL_SCRIPT) {
          OBJECTPTR script;
          if ((script = thread->Callback.Script.Script)) {
-            if (!AccessPrivateObject(script, 5000)) {
+            if (!LockObject(script, 5000)) {
                const ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = thread } } };
                scCallback(script, thread->Callback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
                ReleaseObject(script);
@@ -247,7 +247,7 @@ static void * thread_entry(extThread *Self)
       else if (Self->Routine.Type IS CALL_SCRIPT) {
          OBJECTPTR script;
          if ((script = Self->Routine.Script.Script)) {
-            if (!AccessPrivateObject(script, 5000)) {
+            if (!LockObject(script, 5000)) {
                const ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = Self } } };
                scCallback(script, Self->Routine.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
                ReleaseObject(script);
@@ -261,7 +261,7 @@ static void * thread_entry(extThread *Self)
 
       tlThreadRef = NULL;
 
-      if (!AccessPrivateObject(Self, 10000)) {
+      if (!LockObject(Self, 10000)) {
          NotifySubscribers(Self, AC_Signal, NULL, ERR_Okay); // Signalling thread completion is required by THREAD_Wait()
 
          if (Self->Callback.Type) {

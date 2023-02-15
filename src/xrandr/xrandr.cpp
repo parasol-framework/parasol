@@ -54,8 +54,8 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // Access the global x11 variables
 
-   if (AccessMemory(RPM_X11, MEM_READ_WRITE, 1000, &glX11) != ERR_Okay) {
-      return log.warning(ERR_AccessMemory);
+   if (AccessMemoryID(RPM_X11, MEM_READ_WRITE, 1000, &glX11) != ERR_Okay) {
+      return log.warning(ERR_AccessMemoryID);
    }
 
    glX11->RRInitialised++;

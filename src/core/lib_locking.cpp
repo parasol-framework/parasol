@@ -537,7 +537,7 @@ ERROR unpage_memory_id(MEMORYID MemoryID)
 ** Prepare a thread for going to sleep on a resource.  Checks for deadlocks in advance.  Once a thread has added a
 ** WakeLock entry, it must keep it until either the thread or process is destroyed.
 **
-** Used by AccessMemory() and AccessPrivateObject()
+** Used by AccessMemoryID() and LockObject()
 */
 
 static THREADVAR WORD glWLIndex = -1;
@@ -832,10 +832,10 @@ void free_threadlock(void)
 /*****************************************************************************
 
 -FUNCTION-
-AccessMemory: Grants access to public memory blocks.
+AccessMemoryID: Grants access to public memory blocks.
 Category: Memory
 
-The AccessMemory() function is used to page public memory blocks into the caller's memory space.  If the target block
+The AccessMemoryID() function is used to page public memory blocks into the caller's memory space.  If the target block
 is available, a valid address pointer will be returned that can be used for direct read/write operations.  For
 convenience, this function may also be used to resolve the memory addresses of private memory block IDs.
 
@@ -865,7 +865,7 @@ SystemLocked
 
 *****************************************************************************/
 
-ERROR AccessMemory(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Result)
+ERROR AccessMemoryID(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Result)
 {
    parasol::Log log(__FUNCTION__);
    LONG i, entry;
@@ -879,7 +879,7 @@ ERROR AccessMemory(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Resul
       return ERR_Args;
    }
 
-   // NB: Printing AccessMemory() calls is usually a waste of time unless the process is going to sleep.
+   // NB: Printing AccessMemoryID() calls is usually a waste of time unless the process is going to sleep.
    //log.trace("MemoryID: %d, Flags: $%x, TimeOut: %d", MemoryID, Flags, MilliSeconds);
 
    *Result = NULL;
@@ -888,7 +888,7 @@ ERROR AccessMemory(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Resul
       LARGE endtime = start_time + MilliSeconds;
 
       if (tlPreventSleep) {
-         log.warning("AccessMemory() Cannot proceed as a MEM_TMP_LOCK memory block is locked.  This lock must be released before calling AccessMemory().");
+         log.warning("AccessMemoryID() Cannot proceed as a MEM_TMP_LOCK memory block is locked.  This lock must be released before calling AccessMemoryID().");
          log.warning("Details - MemoryID: %d, Flags: $%x, TimeOut: %d. NoSleepTracker: %d", MemoryID, Flags, MilliSeconds, tlPreventSleep);
          //BREAKPOINT
          return ERR_LockFailed;
@@ -911,7 +911,7 @@ ERROR AccessMemory(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Resul
 
          PublicAddress *addr = glSharedBlocks + entry;
 
-         // If this function has been called from AccessObject() then the MEM_OBJECT flag will be set, which requires
+         // If this function has been called from AccessObjectID() then the MEM_OBJECT flag will be set, which requires
          // us to fail if the memory block does not form an object header.
 
          if ((Flags & MEM_OBJECT) and (!(addr->Flags & MEM_OBJECT))) {
@@ -1093,22 +1093,22 @@ ERROR AccessMemory(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Resul
 /*****************************************************************************
 
 -FUNCTION-
-AccessObject: Grants exclusive access to public objects.
+AccessObjectID: Grants exclusive access to objects via unique ID.
 Category: Objects
 
-This function resolves an object ID to its address and acquires a lock on the object so that other processes and
-threads cannot use it simultaneously.
+This function resolves an object ID to its address and acquires a lock on the object so that other threads cannot use
+it simultaneously.
 
 If the object is already locked, it will wait until the object becomes available.   This must occur within the amount
-of time specified in the Milliseconds parameter.  If the time expires, the function will return with an ERR_TimeOut
-error code.  If successful, ERR_Okay is returned and a reference to the object's address is stored in the Result
+of time specified in the Milliseconds parameter.  If the time expires, the function will return with an `ERR_TimeOut`
+error code.  If successful, `ERR_Okay` is returned and a reference to the object's address is stored in the Result
 variable.
 
-It is crucial that calls to AccessObject() are followed with a call to ~ReleaseObject() once the lock is no
-longer required.  Calls to AccessObject() will also nest, so they must be paired with ~ReleaseObject()
+It is crucial that calls to AccessObjectID() are followed with a call to ~ReleaseObject() once the lock is no
+longer required.  Calls to AccessObjectID() will also nest, so they must be paired with ~ReleaseObject()
 correctly.
 
-If AccessObject() fails, the Result variable will be automatically set to a NULL pointer on return.
+If AccessObjectID() fails, the Result variable will be automatically set to a NULL pointer on return.
 
 Hint: If the name of the target object is known but not the ID, use ~FindObject() to resolve it.
 
@@ -1128,7 +1128,7 @@ TimeOut
 
 *****************************************************************************/
 
-ERROR AccessObject(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
+ERROR AccessObjectID(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
 {
    parasol::Log log(__FUNCTION__);
    ERROR error;
@@ -1141,14 +1141,14 @@ ERROR AccessObject(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
 
    auto mem = glPrivateMemory.find(ObjectID);
    if ((mem != glPrivateMemory.end()) and (mem->second.Address)) {
-      if (!(error = AccessPrivateObject((OBJECTPTR)mem->second.Address, MilliSeconds))) {
+      if (!(error = LockObject((OBJECTPTR)mem->second.Address, MilliSeconds))) {
          *Result = (OBJECTPTR)mem->second.Address;
          return ERR_Okay;
       }
       else return error;
    }
    else if (ObjectID IS glMetaClass.UID) { // Access to the MetaClass requires this special case handler.
-      if (!(error = AccessPrivateObject(&glMetaClass, MilliSeconds))) {
+      if (!(error = LockObject(&glMetaClass, MilliSeconds))) {
          *Result = &glMetaClass;
          return ERR_Okay;
       }
@@ -1160,16 +1160,18 @@ ERROR AccessObject(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
 /*****************************************************************************
 
 -FUNCTION-
-AccessPrivateObject: Lock an object to prevent contention between threads.
+LockObject: Lock an object to prevent contention between threads.
 Category: Objects
 
-Use AccessPrivateObject() to gain exclusivity to an object at thread-level.  This function provides identical
-behaviour to that of ~AccessObject(), but with a slight speed advantage as the object ID does not need to be
-resolved to an address.  Calls to AccessPrivateObject() will nest, and must be matched with a call to
+Use LockObject() to gain exclusivity to an object at thread-level.  This function provides identical
+behaviour to that of ~AccessObjectID(), but with a slight speed advantage as the object ID does not need to be
+resolved to an address.  Calls to LockObject() will nest, and must be matched with a call to
 ~ReleaseObject() to unlock the object.
 
-If it is guaranteed that an object is not being shared between threads, there is no need to acquire a lock via this
-function.
+Be aware that while this function is faster than ~AccessObjectID(), its use may be considered unsafe if other threads
+could terminate the object without a suitable barrier in place.
+
+If it is guaranteed that an object is not being shared between threads, object locking is unnecessary.
 
 -INPUT-
 obj Object: The address of the object to lock.
@@ -1185,7 +1187,7 @@ TimeOut:
 
 *****************************************************************************/
 
-ERROR AccessPrivateObject(OBJECTPTR Object, LONG Timeout)
+ERROR LockObject(OBJECTPTR Object, LONG Timeout)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -1518,7 +1520,7 @@ ERROR LockSharedMutex(APTR Mutex, LONG MilliSeconds)
 ReleaseMemory: Releases memory blocks from access locks.
 Category: Memory
 
-Successful calls to ~AccessMemory() must be paired with a call to ReleaseMemory or ~ReleaseMemoryID() so that the
+Successful calls to ~AccessMemoryID() must be paired with a call to ReleaseMemory or ~ReleaseMemoryID() so that the
 memory can be made available to other processes.  By releasing the memory, the access count will decrease, and if
 applicable, a process that is in the queue for access may then be able to gain a lock.
 
@@ -1708,7 +1710,7 @@ MEMORYID ReleaseMemory(APTR Address)
 ReleaseMemoryID: Releases locked memory blocks by ID.
 Category: Memory
 
-Successful calls to ~AccessMemory() must be paired with a call to ~ReleaseMemory() or ReleaseMemoryID so that the
+Successful calls to ~AccessMemoryID() must be paired with a call to ~ReleaseMemory() or ReleaseMemoryID so that the
 memory can be made available to other processes.  By releasing the memory, the access count will decrease, and if
 applicable, a process that is in the queue for access may then be able to gain a lock.
 
@@ -1890,7 +1892,7 @@ ERROR ReleaseMemoryID(MEMORYID MemoryID)
 ReleaseObject: Release a locked private object.
 Category: Objects
 
-Release a lock previously obtained from ~AccessObject() or ~AccessPrivateObject().  Locks will nest, so a release is
+Release a lock previously obtained from ~AccessObjectID() or ~LockObject().  Locks will nest, so a release is
 required for every lock that has been granted.
 
 -INPUT-
@@ -1927,7 +1929,7 @@ void ReleaseObject(OBJECTPTR Object)
       if (!thread_lock(TL_PRIVATE_OBJECTS, -1)) {
          if (Object->defined(NF::FREE|NF::UNLOCK_FREE)) { // We have to tell other threads that the object is marked for deletion.
             // NB: A lock on PL_WAITLOCKS is not required because we're already protected by the TL_PRIVATE_OBJECTS
-            // barrier (which is common between AccessPrivateObject() and ReleaseObject()
+            // barrier (which is common between LockObject() and ReleaseObject()
             auto locks = (WaitLock *)ResolveAddress(glSharedControl, glSharedControl->WLOffset);
             for (WORD i=0; i < glSharedControl->WLIndex; i++) {
                if ((locks[i].WaitingForResourceID IS Object->UID) and (locks[i].WaitingForResourceType IS RT_OBJECT)) {

@@ -46,7 +46,7 @@ restart:
 
          if (anim->Transform) { // Animated transform
             objVector *vector;
-            if (!AccessObject(anim->TargetVector, 1000, &vector)) {
+            if (!AccessObjectID(anim->TargetVector, 1000, &vector)) {
                if (!anim->Matrix) {
                   vecNewMatrix(vector, &anim->Matrix);
                }

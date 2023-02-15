@@ -830,7 +830,7 @@ static ERROR eval(extDocument *Self, STRING Buffer, LONG BufferLength, LONG Flag
                         field[j++] = Buffer[i++];
                      }
                      field[j] = 0;
-                     if (!AccessObject(objectid, 2000, &object)) {
+                     if (!AccessObjectID(objectid, 2000, &object)) {
                         OBJECTPTR target;
                         if (((classfield = find_field(object, field, &target))) and (classfield->Flags & FD_STRING)) {
                            error = GetField(object, (FIELD)classfield->FieldID|TSTR, &Self->TBuffer);
@@ -2576,7 +2576,7 @@ list_repass:
                LONG width_check = 0;
                LONG dimensions = 0;
                LONG layoutflags = 0;
-               if (!(error = AccessObject(object_id, 5000, &object))) {
+               if (!(error = AccessObjectID(object_id, 5000, &object))) {
                   LAYOUT("layout_object:","[Idx:%d] The %s's available page area is %d-%d,%d-%d, margins %dx%d,%d, cursor %dx%d", i, object->Class->ClassName, cell.Left, cell.Right, cell.Top, cell.Bottom, l.left_margin-AbsX, l.right_margin, TopMargin, l.cursorx, l.cursory);
 
                   LONG cellwidth, cellheight, align, leftmargin, lineheight, zone_height;
@@ -2589,7 +2589,7 @@ list_repass:
                      // This layout method is used for objects that do not have a Layout object for graphics management and
                      // simply rely on a Surface object instead.
 
-                     if (!(error = AccessObject(layout_surface_id, 3000, &surface))) {
+                     if (!(error = AccessObjectID(layout_surface_id, 3000, &surface))) {
                         leftmargin    = l.left_margin - AbsX;
                         lineheight    = (l.base_line) ? l.base_line : l.font->Ascent;
 
@@ -4306,7 +4306,7 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
                   if ((escobject->Graphical) and (!escobject->Owned)) {
                      if (escobject->ObjectID < 0) {
                         object = NULL;
-                        AccessObject(escobject->ObjectID, 3000, &object);
+                        AccessObjectID(escobject->ObjectID, 3000, &object);
                      }
                      else object = GetObjectPtr(escobject->ObjectID);
 /*
@@ -6585,7 +6585,7 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                            LONG j = 0;
                            while ((i < end-1) and ((size_t)j < sizeof(name)-1)) name[j++] = Buffer[i++];
                            name[j] = 0;
-                           if (!AccessObject(objectid, 2000, &object)) {
+                           if (!AccessObjectID(objectid, 2000, &object)) {
                               if (((classfield = FindField(object, StrHash(name, FALSE), &target))) and (classfield->Flags & FD_STRING)) {
                                  error = object->get(classfield->FieldID, &strbuf);
                               }
@@ -7699,7 +7699,7 @@ static LONG add_tabfocus(extDocument *Self, UBYTE Type, LONG Reference)
       // Find out if the object has a surface and if so, place it in the XRef field.
 
       if (GetClassID(Reference) != ID_SURFACE) {
-         if (!AccessObject(Reference, 3000, &object)) {
+         if (!AccessObjectID(Reference, 3000, &object)) {
             regionid = 0;
             if (FindField(object, FID_Region, NULL)) {
                if (!object->get(FID_Region, &regionid)) {
@@ -7778,7 +7778,7 @@ static void set_focus(extDocument *Self, LONG Index, CSTRING Caller)
          CLASSID class_id = GetClassID(Self->Tabs[Index].Ref);
          OBJECTPTR input;
          if (class_id IS ID_VECTORTEXT) {
-            if (!AccessObject(Self->Tabs[Index].Ref, 1000, &input)) {
+            if (!AccessObjectID(Self->Tabs[Index].Ref, 1000, &input)) {
                acFocus(input);
                //if ((input->getPtr(FID_UserInput, &text) IS ERR_Okay) and (text)) {
                //   txtSelectArea(text, 0,0, 200000, 200000);

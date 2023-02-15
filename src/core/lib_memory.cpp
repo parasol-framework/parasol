@@ -108,7 +108,7 @@ argument to NULL.  However when allocating public memory, you should always retr
 Address pointer if you need immediate access to the block.
 
 If the block is allocated as private and you retrieve both the ID and Address pointer, or if the allocation is
-public and you choose to retrieve the Address pointer, an internal call will be made to ~AccessMemory() to
+public and you choose to retrieve the Address pointer, an internal call will be made to ~AccessMemoryID() to
 lock the memory block and resolve its address.  This means that before freeing the memory block, you must make a call
 to the ~ReleaseMemory() function to remove the lock, or it will remain in memory till your Task is terminated.
 
@@ -128,7 +128,7 @@ Failed:         The block could not be allocated due to insufficient memory spac
 ArrayFull:      Although memory space for the block was available, all available memory records are in use.
 LockFailed:     The function failed to gain access to the public memory controller.
 SystemCorrupt:  The internal tables that manage memory allocations are corrupt.
-AccessMemory:   The block was allocated but access to it was not granted, causing failure.
+AccessMemoryID:   The block was allocated but access to it was not granted, causing failure.
 ResourceExists: This error is returned if MEM_RESERVED was used and the memory block ID was found to already exist.
 -END-
 
@@ -506,9 +506,9 @@ retry:
 
          if ((MemoryID) and (Address)) {
             if (Flags & MEM_NO_LOCK) *Address = data_start;
-            else if (AccessMemory(unique_id, MEM_READ_WRITE, 2000, Address) != ERR_Okay) {
+            else if (AccessMemoryID(unique_id, MEM_READ_WRITE, 2000, Address) != ERR_Okay) {
                log.warning("Memory block %d stolen during allocation!", *MemoryID);
-               return ERR_AccessMemory;
+               return ERR_AccessMemoryID;
             }
             *MemoryID = unique_id;
          }
@@ -868,7 +868,7 @@ The GetMemAddress() function provides a fast method for obtaining the address of
 memory ID is known.  It may also be used to check the validity of private memory blocks as it will return NULL if
 the memory block no longer exists.
 
-This function does not work on public memory blocks (identified as negative integers).  Use ~AccessMemory()
+This function does not work on public memory blocks (identified as negative integers).  Use ~AccessMemoryID()
 for resolving public memory addresses.
 
 -INPUT-

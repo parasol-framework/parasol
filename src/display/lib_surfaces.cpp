@@ -225,7 +225,7 @@ ERROR get_surface_abs(OBJECTID SurfaceID, LONG *AbsX, LONG *AbsY, LONG *Width, L
 {
    SurfaceControl *ctl;
 
-   if (!AccessMemory(glSharedControl->SurfacesMID, MEM_READ, 500, &ctl)) {
+   if (!AccessMemoryID(glSharedControl->SurfacesMID, MEM_READ, 500, &ctl)) {
       auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
       LONG i;
       for (i=0; (list[i].SurfaceID) and (list[i].SurfaceID != SurfaceID); i++);
@@ -241,7 +241,7 @@ ERROR get_surface_abs(OBJECTID SurfaceID, LONG *AbsX, LONG *AbsY, LONG *Width, L
       ReleaseMemory(ctl);
       return ERR_Okay;
    }
-   else return ERR_AccessMemory;
+   else return ERR_AccessMemoryID;
 }
 
 /*****************************************************************************
@@ -366,7 +366,7 @@ ERROR track_layer(extSurface *Self)
          }
          else {
             gfxReleaseList(ARF_WRITE);
-            return log.warning(ERR_AccessMemory);
+            return log.warning(ERR_AccessMemoryID);
          }
 
          if (ctl->Total >= ctl->ArraySize) {
@@ -589,7 +589,7 @@ ERROR update_surface_copy(extSurface *Self, SurfaceList *Copy)
       gfxReleaseList(ARF_UPDATE);
       return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemory);
+   else return log.warning(ERR_AccessMemoryID);
 }
 
 //****************************************************************************
@@ -716,7 +716,7 @@ ERROR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
       if (InsideHeight < Height) InsideHeight = Height;
 
       OBJECTPTR display;
-      if (!AccessObject(Self->DisplayID, 5000, &display)) { // NB: SetDisplay() always processes coordinates relative to the client area in order to resolve issues when in hosted mode.
+      if (!AccessObjectID(Self->DisplayID, 5000, &display)) { // NB: SetDisplay() always processes coordinates relative to the client area in order to resolve issues when in hosted mode.
          if (gfxSetDisplay(display, X, Y, Width, Height, InsideWidth, InsideHeight, BPP, RefreshRate, DeviceFlags)) {
             ReleaseObject(display);
             return log.warning(ERR_Redimension);
@@ -759,7 +759,7 @@ ERROR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
       // contain children that belong to foreign tasks.
 
       SurfaceControl *ctl;
-      if (!(ctl = gfxAccessList(ARF_READ))) return ERR_AccessMemory;
+      if (!(ctl = gfxAccessList(ARF_READ))) return ERR_AccessMemoryID;
 
       LONG total = ctl->Total;
       SurfaceList cplist[total];
@@ -1057,9 +1057,9 @@ SurfaceControl * gfxAccessList(LONG Flags)
       ERROR error;
 
       if (Flags & ARF_NO_DELAY) {
-         error = AccessMemory(glSharedControl->SurfacesMID, MEM_READ_WRITE, 20, &tlSurfaceList);
+         error = AccessMemoryID(glSharedControl->SurfacesMID, MEM_READ_WRITE, 20, &tlSurfaceList);
       }
-      else error = AccessMemory(glSharedControl->SurfacesMID, MEM_READ_WRITE, 4000, &tlSurfaceList);
+      else error = AccessMemoryID(glSharedControl->SurfacesMID, MEM_READ_WRITE, 4000, &tlSurfaceList);
 
       if (!error) tlListCount = 1;
    }
@@ -1085,7 +1085,7 @@ oid Child: The child surface to check.
 True: The Child surface belongs to the Parent.
 False: The Child surface is not a child of Parent.
 Args: Invalid arguments were specified.
-AccessMemory: Failed to access the internal surface list.
+AccessMemoryID: Failed to access the internal surface list.
 
 *****************************************************************************/
 
@@ -1117,7 +1117,7 @@ ERROR gfxCheckIfChild(OBJECTID ParentID, OBJECTID ChildID)
       gfxReleaseList(ARF_READ);
       return ERR_False;
    }
-   else return log.warning(ERR_AccessMemory);
+   else return log.warning(ERR_AccessMemoryID);
 }
 
 /****************************************************************************
@@ -1149,7 +1149,7 @@ int YDest:  The vertical target coordinate.
 Okay
 NullArgs
 Search: The supplied SurfaceID did not refer to a recognised surface object
-AccessMemory: Failed to access the internal surfacelist memory structure
+AccessMemoryID: Failed to access the internal surfacelist memory structure
 
 ****************************************************************************/
 
@@ -1190,7 +1190,7 @@ ERROR gfxCopySurface(OBJECTID SurfaceID, extBitmap *Bitmap, LONG Flags,
 
             if ((Flags & (BDF_SYNC|BDF_DITHER)) or (!list_root.Data)) {
                extBitmap *src;
-               if (!AccessObject(list_root.BitmapID, 4000, &src)) {
+               if (!AccessObjectID(list_root.BitmapID, 4000, &src)) {
                   src->XOffset    = list_i.Left - list_root.Left;
                   src->YOffset    = list_i.Top - list_root.Top;
                   src->Clip.Left   = 0;
@@ -1236,7 +1236,7 @@ ERROR gfxCopySurface(OBJECTID SurfaceID, extBitmap *Bitmap, LONG Flags,
       gfxReleaseList(ARF_READ);
       return ERR_Search;
    }
-   else return log.warning(ERR_AccessMemory);
+   else return log.warning(ERR_AccessMemoryID);
 }
 
 /****************************************************************************
@@ -1259,7 +1259,7 @@ int(EXF) Flags: Optional flags - EXF_CHILDREN will expose all intersecting child
 Okay
 NullArgs
 Search: The SurfaceID does not refer to an existing surface object
-AccessMemory: The internal surfacelist could not be accessed
+AccessMemoryID: The internal surfacelist could not be accessed
 
 ****************************************************************************/
 
@@ -1272,7 +1272,7 @@ ERROR gfxExposeSurface(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Heig
    if ((Width < 1) or (Height < 1)) return ERR_Okay;
 
    SurfaceControl *ctl;
-   if (!(ctl = gfxAccessList(ARF_READ))) return log.warning(ERR_AccessMemory);
+   if (!(ctl = gfxAccessList(ARF_READ))) return log.warning(ERR_AccessMemoryID);
 
    LONG total = ctl->Total;
    SurfaceList list[total];
@@ -1308,7 +1308,7 @@ oid Surface: The surface to query.  If zero, the top-level display is queried.
 -ERRORS-
 Okay
 Search: The supplied SurfaceID did not refer to a recognised surface object.
-AccessMemory: Failed to access the internal surfacelist memory structure.
+AccessMemoryID: Failed to access the internal surfacelist memory structure.
 
 *****************************************************************************/
 
@@ -1350,7 +1350,7 @@ ERROR gfxGetSurfaceCoords(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG
      gfxReleaseList(ARF_READ);
       return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemory);
+   else return log.warning(ERR_AccessMemoryID);
 }
 
 /*****************************************************************************
@@ -1371,7 +1371,7 @@ oid Surface: The surface to query.  If zero, the top-level surface is queried.
 -ERRORS-
 Okay
 NullArgs
-AccessMemory
+AccessMemoryID
 
 *****************************************************************************/
 
@@ -1399,7 +1399,7 @@ ERROR gfxGetSurfaceFlags(OBJECTID SurfaceID, LONG *Flags)
       gfxReleaseList(ARF_READ);
       return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemory);
+   else return log.warning(ERR_AccessMemoryID);
 }
 
 /*****************************************************************************
@@ -1408,7 +1408,7 @@ ERROR gfxGetSurfaceFlags(OBJECTID SurfaceID, LONG *Flags)
 GetSurfaceInfo: Retrieves display information for any surface object without having to access it directly.
 
 GetSurfaceInfo() is used for quickly retrieving basic information from surfaces, allowing the client to bypass the
-AccessObject() function.  The resulting structure values are good only up until the next call to this function,
+AccessObjectID() function.  The resulting structure values are good only up until the next call to this function,
 at which point those values will be overwritten.
 
 -INPUT-
@@ -1419,7 +1419,7 @@ oid Surface: The unique ID of a surface to query.  If zero, the root surface is 
 Okay:
 Args:
 Search: The supplied SurfaceID did not refer to a recognised surface object.
-AccessMemory: Failed to access the internal surfacelist memory structure.
+AccessMemoryID: Failed to access the internal surfacelist memory structure.
 
 *****************************************************************************/
 
@@ -1470,7 +1470,7 @@ ERROR gfxGetSurfaceInfo(OBJECTID SurfaceID, SURFACEINFO **Info)
    }
    else {
       *Info = NULL;
-      return log.warning(ERR_AccessMemory);
+      return log.warning(ERR_AccessMemoryID);
    }
 }
 
@@ -1490,7 +1490,7 @@ OBJECTID gfxGetUserFocus(void)
 {
    OBJECTID *focuslist, objectid;
 
-   if (!AccessMemory(RPM_FocusList, MEM_READ, 1000, &focuslist)) {
+   if (!AccessMemoryID(RPM_FocusList, MEM_READ, 1000, &focuslist)) {
       objectid = focuslist[0];
       ReleaseMemory(focuslist);
       return objectid;
@@ -1519,7 +1519,7 @@ oid Surface: The surface to query.  If zero, the top-level display will be queri
 -ERRORS-
 Okay
 Search: The supplied SurfaceID did not refer to a recognised surface object.
-AccessMemory: Failed to access the internal surfacelist memory structure.
+AccessMemoryID: Failed to access the internal surfacelist memory structure.
 
 *****************************************************************************/
 
@@ -1569,7 +1569,7 @@ ERROR gfxGetVisibleArea(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG *
       gfxReleaseList(ARF_READ);
       return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemory);
+   else return log.warning(ERR_AccessMemoryID);
 }
 
 /*****************************************************************************
@@ -1605,7 +1605,7 @@ int(IRF) Flags: Optional flags.
 
 -ERRORS-
 Okay:
-AccessMemory: Failed to access the internal surface list.
+AccessMemoryID: Failed to access the internal surface list.
 
 *****************************************************************************/
 
@@ -1621,7 +1621,7 @@ ERROR gfxRedrawSurface(OBJECTID SurfaceID, LONG Left, LONG Top, LONG Right, LONG
    SurfaceControl *ctl;
    if (!(ctl = gfxAccessList(ARF_READ))) {
       log.warning("Unable to access the surfacelist.");
-      return ERR_AccessMemory;
+      return ERR_AccessMemoryID;
    }
 
    LONG total = ctl->Total;
@@ -1715,11 +1715,11 @@ ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG To
 
    extSurface *surface;
    ERROR error;
-   if (!(error = AccessObject(list[index].SurfaceID, 5000, &surface))) {
+   if (!(error = AccessObjectID(list[index].SurfaceID, 5000, &surface))) {
       log.trace("Area: %dx%d,%dx%d", Left, Top, Right-Left, Bottom-Top);
 
       extBitmap *bitmap;
-      if (!AccessObject(list[index].BitmapID, 5000, &bitmap)) {
+      if (!AccessObjectID(list[index].BitmapID, 5000, &bitmap)) {
          // Check if there has been a change in the video bit depth.  If so, regenerate the bitmap with a matching depth.
 
          check_bmp_buffer_depth(surface, bitmap);
@@ -2056,7 +2056,7 @@ OBJECTID gfxSetModalSurface(OBJECTID SurfaceID)
    if (SurfaceID) {
       extSurface *surface;
       OBJECTID divert = 0;
-      if (!AccessObject(SurfaceID, 3000, &surface)) {
+      if (!AccessObjectID(SurfaceID, 3000, &surface)) {
          if (!(surface->Flags & RNF_VISIBLE)) {
             divert = surface->PrevModalID;
             if (!divert) SurfaceID = 0;
@@ -2146,9 +2146,9 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LONG *Info)
    *Bitmap = 0;
 
    extSurface *surface;
-   if (!AccessObject(SurfaceID, 5000, &surface)) {
+   if (!AccessObjectID(SurfaceID, 5000, &surface)) {
       extBitmap *bitmap;
-      if (AccessObject(surface->BufferID, 5000, &bitmap) != ERR_Okay) {
+      if (AccessObjectID(surface->BufferID, 5000, &bitmap) != ERR_Okay) {
          ReleaseObject(surface);
          return log.warning(ERR_AccessObject);
       }
@@ -2206,7 +2206,7 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LONG *Info)
       }
       else {
          ReleaseObject(bitmap);
-         return log.warning(ERR_AccessMemory);
+         return log.warning(ERR_AccessMemoryID);
       }
    }
    else return log.warning(ERR_AccessObject);
@@ -2252,7 +2252,7 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LONG *Info)
       // Gain access to the bitmap buffer and set the clipping and offsets to the correct values.
 
       extBitmap *bmp;
-      if (!AccessObject(list_root.BitmapID, 5000, &bmp)) {
+      if (!AccessObjectID(list_root.BitmapID, 5000, &bmp)) {
          bmp->XOffset = expose.Left - list_root.Left; // The offset is the position of the surface within the root bitmap
          bmp->YOffset = expose.Top - list_root.Top;
 
@@ -2279,7 +2279,7 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LONG *Info)
       }
       else return log.warning(ERR_AccessObject);
    }
-   else return log.warning(ERR_AccessMemory);
+   else return log.warning(ERR_AccessMemoryID);
 
 #endif
 }

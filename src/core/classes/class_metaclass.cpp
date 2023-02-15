@@ -1217,7 +1217,7 @@ static ERROR OBJECT_SetOwner(OBJECTPTR Self, OBJECTID OwnerID)
 
    if (OwnerID) {
       OBJECTPTR newowner;
-      if (!AccessObject(OwnerID, 2000, &newowner)) {
+      if (!AccessObjectID(OwnerID, 2000, &newowner)) {
          SetOwner(Self, newowner);
          ReleaseObject(newowner);
          return ERR_Okay;

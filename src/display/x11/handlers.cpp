@@ -55,7 +55,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
 
          case FocusOut:
             log.traceBranch("XFocusOut");
-            if (!AccessMemory(RPM_FocusList, MEM_READ_WRITE, 1000, &list)) {
+            if (!AccessMemoryID(RPM_FocusList, MEM_READ_WRITE, 1000, &list)) {
                for (i=0; list[i]; i++) {
                   acLostFocus(list[i]);
                }
@@ -127,11 +127,11 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
 
          if ((display_id = get_display(xevent.xany.window))) {
             surface_id = GetOwnerID(display_id);
-            if (!AccessObject(surface_id, 5000, &surface)) {
+            if (!AccessObjectID(surface_id, 5000, &surface)) {
                // Update the display width/height so that we don't recursively post further display mode updates to the
                // X server.
 
-               if (!AccessObject(display_id, 5000, &display)) {
+               if (!AccessObjectID(display_id, 5000, &display)) {
                   display->Width  = notify->width;
                   display->Height = notify->height;
                   acResize(surface, notify->width, notify->height, 0);
@@ -302,7 +302,7 @@ void handle_configure_notify(XConfigureEvent *xevent)
 
       // Update the display dimensions
 
-      if (!AccessObject(display_id, 3000, &display)) {
+      if (!AccessObjectID(display_id, 3000, &display)) {
          Window childwin;
          LONG absx, absy;
 

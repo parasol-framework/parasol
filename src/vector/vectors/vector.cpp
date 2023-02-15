@@ -214,7 +214,7 @@ static ERROR VECTOR_Draw(extVector *Self, struct acDraw *Args)
 #endif
 
       objSurface *surface;
-      if (!AccessObject(Self->Scene->SurfaceID, 1000, &surface)) {
+      if (!AccessObjectID(Self->Scene->SurfaceID, 1000, &surface)) {
          Action(MT_DrwScheduleRedraw, surface, NULL);
          ReleaseObject(surface);
          return ERR_Okay;

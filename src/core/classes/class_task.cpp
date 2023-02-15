@@ -464,7 +464,7 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
    if ((action->ObjectID) and (action->ActionID)) {
       OBJECTPTR obj;
       ERROR error;
-      if (!(error = AccessObject(action->ObjectID, 5000, &obj))) {
+      if (!(error = AccessObjectID(action->ObjectID, 5000, &obj))) {
          if (action->SendArgs IS FALSE) {
             obj->Flags |= NF::MESSAGE;
             Action(action->ActionID, obj, NULL);
@@ -1945,7 +1945,7 @@ You can hook into an action simply by writing to its index in the table with a p
 use for that action.  For example:
 
 <pre>
-if (!AccessObject(CurrentTask(), 5000, &task)) {
+if (!AccessObjectID(CurrentTask(), 5000, &task)) {
    task->getPtr(FID_Actions, &amp;actions);
    actions[AC_Seek] = PROGRAM_Seek;
    ReleaseObject(task);

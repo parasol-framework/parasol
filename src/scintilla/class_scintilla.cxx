@@ -641,14 +641,14 @@ static ERROR SCINTILLA_Free(extScintilla *Self, APTR)
    if (Self->TimerID) { UpdateTimer(Self->TimerID, 0); Self->TimerID = 0; }
 
    if ((Self->FocusID) and (Self->FocusID != Self->SurfaceID)) {
-      if (!AccessObject(Self->FocusID, 500, &object)) {
+      if (!AccessObjectID(Self->FocusID, 500, &object)) {
          UnsubscribeAction(object, 0);
          ReleaseObject(object);
       }
    }
 
    if (Self->SurfaceID) {
-      if (!AccessObject(Self->SurfaceID, 500, &object)) {
+      if (!AccessObjectID(Self->SurfaceID, 500, &object)) {
          drwRemoveCallback(object, (APTR)&draw_scintilla);
          UnsubscribeAction(object, 0);
          ReleaseObject(object);
@@ -796,7 +796,7 @@ static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
    // Subscribe to the object responsible for the user focus
 
    OBJECTPTR object;
-   if (!AccessObject(Self->FocusID, 5000, &object)) {
+   if (!AccessObjectID(Self->FocusID, 5000, &object)) {
       auto callback = make_function_stdc(notify_focus);
       SubscribeAction(object, AC_Focus, &callback);
 
@@ -810,7 +810,7 @@ static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
    log.trace("Configure target surface #%d", Self->SurfaceID);
 
    objSurface *surface;
-   if (!AccessObject(Self->SurfaceID, 3000, &surface)) {
+   if (!AccessObjectID(Self->SurfaceID, 3000, &surface)) {
       surface->set(FID_Flags, surface->Flags|RNF_GRAB_FOCUS);
 
       Self->Surface.X = surface->X;
@@ -1267,7 +1267,7 @@ static ERROR SCINTILLA_SaveToObject(extScintilla *Self, struct acSaveToObject *A
    log.branch("To: %d, Size: %d", Args->DestID, len);
 
    OBJECTPTR object;
-   if (!AccessObject(Args->DestID, 5000, &object)) {
+   if (!AccessObjectID(Args->DestID, 5000, &object)) {
       ERROR error;
       APTR buffer;
       if (!(AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &buffer))) {

@@ -460,7 +460,7 @@ static void user_login(APTR Reference, APTR Info, LONG InfoSize)
    parasol::Log log("Audio");
    extAudio *Self;
 
-   if (!AccessObject((OBJECTID)(MAXINT)Reference, 3000, &Self)) {
+   if (!AccessObjectID((OBJECTID)(MAXINT)Reference, 3000, &Self)) {
       if (!Self->Initialising) {
          log.branch("User login detected - reloading audio configuration.");
          acDeactivate(Self);

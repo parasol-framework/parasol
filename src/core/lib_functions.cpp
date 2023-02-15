@@ -1373,7 +1373,7 @@ cstr Name: The new name for the object.
 Okay:
 NullArgs:
 Search:       The Object is not recognised by the system - the address may be invalid.
-AccessMemory: The function could not gain access to the shared objects table (internal error).
+AccessMemoryID: The function could not gain access to the shared objects table (internal error).
 
 *********************************************************************************************************************/
 

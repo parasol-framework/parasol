@@ -521,7 +521,7 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
          CopyMemory(glDisplayInfo, Info, InfoSize);
          return ERR_Okay;
       }
-      else if (!AccessObject(DisplayID, 5000, &display)) {
+      else if (!AccessObjectID(DisplayID, 5000, &display)) {
          Info->DisplayID     = DisplayID;
          Info->Flags         = display->Flags;
          Info->Width         = display->Width;
@@ -822,8 +822,8 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    error = AllocMemory(sizeof(DISPLAYINFO), MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, &glDisplayInfo, &memoryid);
    if (error IS ERR_ResourceExists) {
       if (!glDisplayInfo) {
-         if (AccessMemory(RPM_DisplayInfo, MEM_READ_WRITE|MEM_NO_BLOCKING, 1000, &glDisplayInfo) != ERR_Okay) {
-            return log.warning(ERR_AccessMemory);
+         if (AccessMemoryID(RPM_DisplayInfo, MEM_READ_WRITE|MEM_NO_BLOCKING, 1000, &glDisplayInfo) != ERR_Okay) {
+            return log.warning(ERR_AccessMemoryID);
          }
       }
    }
@@ -836,8 +836,8 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    error = AllocMemory(sizeof(glInputEvents[0]), MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, &glInputEvents, &memoryid);
    if (error IS ERR_ResourceExists) {
       if (!glInputEvents) {
-         if (AccessMemory(RPM_InputEvents, MEM_READ_WRITE|MEM_NO_BLOCKING, 1000, &glInputEvents) != ERR_Okay) {
-            return log.warning(ERR_AccessMemory);
+         if (AccessMemoryID(RPM_InputEvents, MEM_READ_WRITE|MEM_NO_BLOCKING, 1000, &glInputEvents) != ERR_Okay) {
+            return log.warning(ERR_AccessMemoryID);
          }
       }
    }
@@ -853,8 +853,8 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       }
       else if (error IS ERR_ResourceExists) {
          if (!glX11) {
-            if (AccessMemory(RPM_X11, MEM_READ_WRITE, 1000, &glX11) != ERR_Okay) {
-               return log.warning(ERR_AccessMemory);
+            if (AccessMemoryID(RPM_X11, MEM_READ_WRITE, 1000, &glX11) != ERR_Okay) {
+               return log.warning(ERR_AccessMemoryID);
             }
          }
       }
@@ -1027,7 +1027,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       }
       UnlockSharedMutex(glSurfaceMutex);
    }
-   else return log.warning(ERR_AccessMemory);
+   else return log.warning(ERR_AccessMemoryID);
 
    // Initialise 64K alpha blending table, for cutting down on multiplications.  This memory block is shared, so one
    // table serves all processes.
@@ -1044,8 +1044,8 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    }
    else if (error IS ERR_ResourceExists) {
       if (!glAlphaLookup) {
-         if (AccessMemory(RPM_AlphaBlend, MEM_READ_WRITE|MEM_NO_BLOCKING, 500, &glAlphaLookup) != ERR_Okay) {
-            return ERR_AccessMemory;
+         if (AccessMemoryID(RPM_AlphaBlend, MEM_READ_WRITE|MEM_NO_BLOCKING, 500, &glAlphaLookup) != ERR_Okay) {
+            return ERR_AccessMemoryID;
          }
       }
    }
@@ -1129,7 +1129,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 #ifdef _WIN32 // Get any existing Windows clipboard content
 
    ClipHeader *clipboard;
-   if (!AccessMemory(RPM_Clipboard, MEM_READ_WRITE, 3000, &clipboard)) {
+   if (!AccessMemoryID(RPM_Clipboard, MEM_READ_WRITE, 3000, &clipboard)) {
       if (!clipboard->Init) {
          log.branch("Populating clipboard for the first time from the Windows host.");
          winCopyClipboard();
@@ -1139,7 +1139,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       else log.msg("Clipboard already initialised by other process.");
       ReleaseMemory(clipboard);
    }
-   else log.warning(ERR_AccessMemory);
+   else log.warning(ERR_AccessMemoryID);
 
 #endif
 
@@ -1385,7 +1385,7 @@ ERROR init_egl(void)
       objPointer *pointer;
       if (!adGetConfig(&config)) {
          DOUBLE dp_factor = 160.0 / AConfiguration_getDensity(config);
-         if (!AccessObject(glPointerID, 3000, &pointer)) {
+         if (!AccessObjectID(glPointerID, 3000, &pointer)) {
             pointer->ClickSlop = F2I(8.0 * dp_factor);
             log.msg("Click-slop calculated as %d.", pointer->ClickSlop);
             ReleaseObject(pointer);

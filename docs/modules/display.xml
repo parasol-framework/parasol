@@ -44,7 +44,6 @@
       <error code="True">Operation successful.</error>
       <error code="False">The result is false.</error>
       <error code="Args">Invalid arguments passed to function.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
     </result>
   </function>
 
@@ -125,7 +124,6 @@
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -196,7 +194,6 @@
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -383,7 +380,6 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
     </result>
   </function>
 
@@ -401,7 +397,6 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -415,13 +410,12 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <param type="struct SurfaceInfoV2 **" name="Info">This parameter will receive a SurfaceInfo pointer that describes the Surface object.</param>
     </input>
     <description>
-<p>GetSurfaceInfo() is used for quickly retrieving basic information from surfaces, allowing the client to bypass the AccessObject() function.  The resulting structure values are good only up until the next call to this function, at which point those values will be overwritten.</p>
+<p>GetSurfaceInfo() is used for quickly retrieving basic information from surfaces, allowing the client to bypass the AccessObjectID() function.  The resulting structure values are good only up until the next call to this function, at which point those values will be overwritten.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="Args">Invalid arguments passed to function.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
     </result>
   </function>
 
@@ -454,7 +448,6 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
     </result>
   </function>
 
@@ -659,7 +652,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 <p>It may be possible to speed up the creation of custom cursors by drawing directly to the pointer's internal bitmap buffer rather than supplying a fresh bitmap.  To do this, the Bitmap parameter must be NULL and it is necessary to draw to the pointer's bitmap before calling SetCustomCursor().  Note that the bitmap is always returned as a 32-bit, alpha-enabled graphics area.  The following code illustrates this process:</p>
 <pre>if (auto pointer = gfxAccessPointer()) {
    objBitmap *bitmap;
-   if (!AccessObject(pointer-&gt;BitmapID, 3000, &amp;bitmap)) {
+   if (!AccessObjectID(pointer-&gt;BitmapID, 3000, &amp;bitmap)) {
       // Adjust clipping to match the cursor size.
       buffer-&gt;Clip.Right  = CursorWidth;
       buffer-&gt;Clip.Bottom = CursorHeight;

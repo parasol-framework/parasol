@@ -96,7 +96,7 @@ static ERROR thread_script_callback(objThread *Thread)
 
    if ((!Thread->getPtr(FID_Data, &cb)) and (cb)) {
       objScript *script;
-      if (!AccessObject(cb->mainScriptID, 4000, &script)) {
+      if (!AccessObjectID(cb->mainScriptID, 4000, &script)) {
          auto prv = (prvFluid *)script->ChildPrivate;
          if (!prv) return log.warning(ERR_ObjectCorrupt);
          scCallback(script, cb->callbackID, NULL, 0, NULL);
@@ -237,7 +237,7 @@ static int thread_method(lua_State *Lua)
 
             if (found) {
                // If an obj.new() lock is still present, detach it first because ActionThread() is going to attempt to
-               // lock the object with AccessPrivateObject() and a timeout error will occur otherwise.
+               // lock the object with LockObject() and a timeout error will occur otherwise.
 
                const FunctionField *args = table[i].Args;
                LONG argsize = table[i].Size;

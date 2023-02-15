@@ -362,7 +362,7 @@ static ERROR CLIPBOARD_Clear(objClipboard *Self, APTR Void)
       ClearMemory(history, MAX_CLIPS * sizeof(ClipEntry));
       return ERR_Okay;
    }
-   else return ERR_AccessMemory;
+   else return ERR_AccessMemoryID;
 }
 
 /*****************************************************************************
@@ -540,7 +540,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
    // Find the first clipboard entry to match what has been requested
 
    ClipHeader *header;
-   if (!AccessMemory(Self->ClusterID, MEM_READ_WRITE, 3000, &header)) {
+   if (!AccessMemoryID(Self->ClusterID, MEM_READ_WRITE, 3000, &header)) {
       auto clips = (ClipEntry *)(header + 1);
 
       WORD index, i;
@@ -574,7 +574,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
       STRING files;
       CSTRING *list = NULL;
       if (clips[index].Files) {
-         if (!(error = AccessMemory(clips[index].Files, MEM_READ, 3000, &files))) {
+         if (!(error = AccessMemoryID(clips[index].Files, MEM_READ, 3000, &files))) {
             MEMINFO info;
             if (!MemoryIDInfo(clips[index].Files, &info)) {
                if (!AllocMemory(((clips[index].TotalItems+1) * sizeof(STRING)) + info.Size, MEM_DATA|MEM_CALLER, &list)) {
@@ -592,7 +592,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
             log.warning("Failed to access file string #%d, error %d.", clips[index].Files, error);
             if (error IS ERR_MemoryDoesNotExist) clips[index].Files = 0;
             ReleaseMemory(header);
-            return ERR_AccessMemory;
+            return ERR_AccessMemoryID;
          }
       }
       else {
@@ -645,7 +645,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
       ReleaseMemory(header);
       return ERR_Okay;
    }
-   else return ERR_AccessMemory;
+   else return ERR_AccessMemoryID;
 }
 
 /*****************************************************************************
@@ -662,7 +662,7 @@ int(CLIPTYPE) Datatype: The datatype(s) that will be deleted (datatypes may be l
 -ERRORS-
 Okay
 NullArgs
-AccessMemory: The clipboard memory data was not accessible.
+AccessMemoryID: The clipboard memory data was not accessible.
 -END-
 
 *****************************************************************************/
@@ -677,7 +677,7 @@ static ERROR CLIPBOARD_Remove(objClipboard *Self, struct clipRemove *Args)
 
    ClipHeader *header;
 
-   if (!AccessMemory(Self->ClusterID, MEM_READ_WRITE, 3000, &header)) {
+   if (!AccessMemoryID(Self->ClusterID, MEM_READ_WRITE, 3000, &header)) {
       auto clips = (ClipEntry *)(header + 1);
       for (WORD i=0; i < MAX_CLIPS; i++) {
          if (clips[i].Datatype & Args->Datatype) {
@@ -693,7 +693,7 @@ static ERROR CLIPBOARD_Remove(objClipboard *Self, struct clipRemove *Args)
       ReleaseMemory(header);
       return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemory);
+   else return log.warning(ERR_AccessMemoryID);
 }
 
 /*****************************************************************************
@@ -751,7 +751,7 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
       index[j] = 0;
 
       ClipHeader *header;
-      if (!AccessMemory(Self->ClusterID, MEM_READ_WRITE, 3000, &header)) {
+      if (!AccessMemoryID(Self->ClusterID, MEM_READ_WRITE, 3000, &header)) {
          // Find the clip for the requested datatype
 
          auto clips = (ClipEntry *)(header + 1);
@@ -769,7 +769,7 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
             if ((i >= 0) and (i < clip->TotalItems)) {
                if (clip->Files) {
                   STRING files;
-                  if (!AccessMemory(clip->Files, MEM_READ, 3000, &files)) {
+                  if (!AccessMemoryID(clip->Files, MEM_READ, 3000, &files)) {
                      // Find the file path that we're looking for
 
                      LONG j = 0;
@@ -787,7 +787,7 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
                   }
                   else {
                      ReleaseMemory(header);
-                     return log.warning(ERR_AccessMemory);
+                     return log.warning(ERR_AccessMemoryID);
                   }
                }
                else snprintf(Args->Buffer, Args->Size, "clipboard:%s%d.%.3d", datatype, clip->ID, i);
@@ -797,7 +797,7 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
          ReleaseMemory(header);
          return ERR_Okay;
       }
-      else return log.warning(ERR_AccessMemory);
+      else return log.warning(ERR_AccessMemoryID);
    }
    else if (!StrCompare("Items(", Args->Field, 0, 0)) {
       // Extract the datatype
@@ -978,7 +978,7 @@ static ERROR add_clip(MEMORYID ClusterID, LONG Datatype, CSTRING File, LONG Flag
    }
 
    ClipHeader *header;
-   if (!AccessMemory(ClusterID, MEM_READ_WRITE, 3000, &header)) {
+   if (!AccessMemoryID(ClusterID, MEM_READ_WRITE, 3000, &header)) {
       auto clips = (ClipEntry *)(header + 1);
 
       if (Flags & CEF_EXTEND) {
@@ -1000,7 +1000,7 @@ static ERROR add_clip(MEMORYID ClusterID, LONG Datatype, CSTRING File, LONG Flag
                if (File) {
                   if (clips->Files) {
                      STRING str;
-                     if (!AccessMemory(clips->Files, MEM_READ_WRITE, 3000, &str)) {
+                     if (!AccessMemoryID(clips->Files, MEM_READ_WRITE, 3000, &str)) {
                         MEMINFO meminfo;
                         if (!MemoryIDInfo(clips->Files, &meminfo)) {
                            if (!ReallocMemory(str, meminfo.Size + StrLength(File) + 1, &str, &clips->Files)) {
@@ -1013,7 +1013,7 @@ static ERROR add_clip(MEMORYID ClusterID, LONG Datatype, CSTRING File, LONG Flag
 
                         ReleaseMemory(str);
                      }
-                     else error = ERR_AccessMemory;
+                     else error = ERR_AccessMemoryID;
                   }
                }
                else {
@@ -1076,7 +1076,7 @@ static ERROR add_clip(MEMORYID ClusterID, LONG Datatype, CSTRING File, LONG Flag
       ReleaseMemory(header);
       return ERR_Okay;
    }
-   else return ERR_AccessMemory;
+   else return ERR_AccessMemoryID;
 }
 
 //********************************************************************************************************************
@@ -1112,7 +1112,7 @@ extern "C" void report_windows_files(APTR Data, LONG CutOperation)
    log.branch("Application has detected files on the clipboard.  Cut: %d", CutOperation);
 
    APTR lock;
-   if (!AccessMemory(RPM_Clipboard, MEM_READ_WRITE, 3000, &lock)) {
+   if (!AccessMemoryID(RPM_Clipboard, MEM_READ_WRITE, 3000, &lock)) {
       char path[256];
       for (LONG i=0; winExtractFile(Data, i, path, sizeof(path)); i++) {
          add_clip(RPM_Clipboard, CLIPTYPE_FILE, path, (i ? CEF_EXTEND : 0) | (CutOperation ? CEF_DELETE : 0), 0, 1, 0);
@@ -1132,7 +1132,7 @@ extern "C" void report_windows_hdrop(STRING Data, LONG CutOperation)
    log.branch("Application has detected files on the clipboard.  Cut: %d", CutOperation);
 
    APTR lock;
-   if (!AccessMemory(RPM_Clipboard, MEM_READ_WRITE, 3000, &lock)) {
+   if (!AccessMemoryID(RPM_Clipboard, MEM_READ_WRITE, 3000, &lock)) {
       for (LONG i=0; *Data; i++) {
          add_clip(RPM_Clipboard, CLIPTYPE_FILE, Data, (i ? CEF_EXTEND : 0) | (CutOperation ? CEF_DELETE : 0), 0, 1, 0);
          while (*Data) Data++; // Go to next file path

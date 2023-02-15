@@ -183,7 +183,7 @@
       <description>
 <p>This field provides direct access to the actions of a task.  You can use it in the development of an executable program to hook into the Core action system.  This allows you to create a program that blends in seamlessly with the system's object oriented design.</p>
 <p>The Actions field itself points to a list of action routines that are arranged into a lookup table, sorted by action ID. You can hook into an action simply by writing to its index in the table with a pointer to the routine that you want to use for that action.  For example:</p>
-<pre>if (!AccessObject(CurrentTask(), 5000, &amp;task)) {
+<pre>if (!AccessObjectID(CurrentTask(), 5000, &amp;task)) {
    task-&gt;getPtr(FID_Actions, &amp;actions);
    actions[AC_Seek] = PROGRAM_Seek;
    ReleaseObject(task);

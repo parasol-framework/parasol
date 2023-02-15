@@ -55,7 +55,7 @@ INLINE void call_userinput(CSTRING Debug, InputEvent *input, LONG Flags, OBJECTI
 {
    InputSubscription *list;
 
-   if ((glSharedControl->InputMID) and (!AccessMemory(glSharedControl->InputMID, MEM_READ, 1000, &list))) {
+   if ((glSharedControl->InputMID) and (!AccessMemoryID(glSharedControl->InputMID, MEM_READ, 1000, &list))) {
       //parasol::Log log(__FUNCTION__);
       //log.trace("Type: %s, Value: %.2f, Recipient: %d, Over: %d %.2fx%.2f, Abs: %.2fx%.2f %s",
       //   (input->Type < JET_END) ? glInputNames[input->Type] : (CSTRING)"", input->Value, RecipientID, OverID, OverX, OverY, AbsX, AbsY, Debug);
@@ -150,7 +150,7 @@ static ERROR PTR_GrabX11Pointer(extPointer *Self, struct ptrGrabX11Pointer *Args
    APTR xwin;
    OBJECTPTR surface;
 
-   if (!AccessObject(Self->SurfaceID, 5000, &surface)) {
+   if (!AccessObjectID(Self->SurfaceID, 5000, &surface)) {
       surface->getPtr(FID_WindowHandle, &xwin);
       ReleaseObject(surface);
 
@@ -374,7 +374,7 @@ static void process_ptr_wheel(extPointer *Self, struct dcDeviceInput *Input)
 {
    InputSubscription *subs;
 
-   if ((glSharedControl->InputMID) and (!AccessMemory(glSharedControl->InputMID, MEM_READ, 1000, &subs))) {
+   if ((glSharedControl->InputMID) and (!AccessMemoryID(glSharedControl->InputMID, MEM_READ, 1000, &subs))) {
       InputEvent msg;
       msg.Type        = JET_WHEEL;
       msg.Flags       = JTYPE_ANALOG|JTYPE_EXT_MOVEMENT | Input->Flags;
@@ -621,7 +621,7 @@ static ERROR PTR_Free(extPointer *Self, APTR Void)
    }
 /*
    OBJECTPTR object;
-   if ((Self->SurfaceID) and (!AccessObject(Self->SurfaceID, 5000, &object))) {
+   if ((Self->SurfaceID) and (!AccessObjectID(Self->SurfaceID, 5000, &object))) {
       UnsubscribeFeed(object);
       ReleaseObject(object);
    }
@@ -646,7 +646,7 @@ static ERROR PTR_Hide(extPointer *Self, APTR Void)
       APTR xwin;
       OBJECTPTR surface;
 
-      if (AccessObject(Self->SurfaceID, 5000, &surface) IS ERR_Okay) {
+      if (AccessObjectID(Self->SurfaceID, 5000, &surface) IS ERR_Okay) {
          surface->getPtr(FID_WindowHandle, &xwin);
          XDefineCursor(XDisplay, (Window)xwin, GetX11Cursor(Self->CursorID));
          ReleaseObject(surface);
@@ -723,7 +723,7 @@ static ERROR PTR_Init(extPointer *Self, APTR Void)
 /*
    if (Self->SurfaceID) {
       objSurface *surface;
-      if (!AccessObject(Self->SurfaceID, 5000, &surface)) {
+      if (!AccessObjectID(Self->SurfaceID, 5000, &surface)) {
          SubscribeFeed(surface);
          surface->set(FID_Flags, surface->Flags);
          ReleaseObject(surface);
@@ -782,7 +782,7 @@ static ERROR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
 #ifdef __xwindows__
    OBJECTPTR surface;
 
-   if (!AccessObject(Self->SurfaceID, 3000, &surface)) {
+   if (!AccessObjectID(Self->SurfaceID, 3000, &surface)) {
       APTR xwin;
 
       if (!surface->getPtr(FID_WindowHandle, &xwin)) {
@@ -813,7 +813,7 @@ static ERROR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
       moveto.Y = Self->Y - Self->Cursors[Self->CursorID].HotY;
       moveto.ZCoord = NULL;
       moveto.Flags  = MTF_X|MTF_Y;
-      if (AccessObject(Self->CursorSurfaceID, 3000, &surface) IS ERR_Okay) {
+      if (AccessObjectID(Self->CursorSurfaceID, 3000, &surface) IS ERR_Okay) {
          Action(AC_MoveToPoint, surface, &moveto);
          ReleaseObject(surface);
       }
@@ -822,7 +822,7 @@ static ERROR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
 #elif _WIN32
    OBJECTPTR surface;
 
-   if (!AccessObject(Self->SurfaceID, 3000, &surface)) {
+   if (!AccessObjectID(Self->SurfaceID, 3000, &surface)) {
       if (Args->Flags & MTF_X) Self->X = Args->X;
       if (Args->Flags & MTF_Y) Self->Y = Args->Y;
       if (Self->X < 0) Self->X = 0;
@@ -940,7 +940,7 @@ static ERROR PTR_Show(extPointer *Self, APTR Void)
       APTR xwin;
       OBJECTPTR surface;
 
-      if (!AccessObject(Self->SurfaceID, 5000, &surface)) {
+      if (!AccessObjectID(Self->SurfaceID, 5000, &surface)) {
          surface->getPtr(FID_WindowHandle, &xwin);
          XDefineCursor(XDisplay, (Window)xwin, GetX11Cursor(Self->CursorID));
          ReleaseObject(surface);
@@ -1261,7 +1261,7 @@ static BYTE get_over_object(extPointer *Self)
 
    if (!glSharedControl->SurfacesMID) return FALSE;
 
-   ERROR error = AccessMemory(glSharedControl->SurfacesMID, MEM_READ, 20, &ctl);
+   ERROR error = AccessMemoryID(glSharedControl->SurfacesMID, MEM_READ, 20, &ctl);
    //list = gfxAccessList(ARF_READ|ARF_NO_DELAY, &size);
 
    BYTE changed = FALSE;
@@ -1293,7 +1293,7 @@ static BYTE get_over_object(extPointer *Self)
 
          changed = TRUE;
 
-         if ((glSharedControl->InputMID) and (!AccessMemory(glSharedControl->InputMID, MEM_READ, 500, &subs))) {
+         if ((glSharedControl->InputMID) and (!AccessMemoryID(glSharedControl->InputMID, MEM_READ, 500, &subs))) {
             InputEvent input = {
                .Next        = NULL,
                .Value       = (DOUBLE)Self->OverObjectID,
@@ -1374,7 +1374,7 @@ static ERROR repeat_timer(extPointer *Self, LARGE Elapsed, LARGE Unused)
 
    bool unsub;
    InputSubscription *subs;
-   if (!AccessMemory(glSharedControl->InputMID, MEM_READ, 500, &subs)) {
+   if (!AccessMemoryID(glSharedControl->InputMID, MEM_READ, 500, &subs)) {
       unsub = true;
       for (LONG i=0; i < ARRAYSIZE(Self->Buttons); i++) {
          if (Self->Buttons[i].LastClicked) {
@@ -1416,7 +1416,7 @@ static ERROR repeat_timer(extPointer *Self, LARGE Elapsed, LARGE Unused)
       }
       ReleaseMemory(subs);
    }
-   else return log.warning(ERR_AccessMemory);
+   else return log.warning(ERR_AccessMemoryID);
 
    if (unsub) return ERR_Terminate;
    else return ERR_Okay;

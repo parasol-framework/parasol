@@ -153,7 +153,7 @@ ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG To
       // Do the expose
 
       ERROR error;
-      if (!(error = AccessObject(list[i].BitmapID, 2000, &bitmap))) {
+      if (!(error = AccessObjectID(list[i].BitmapID, 2000, &bitmap))) {
          expose_buffer(list, Total, i, i, childexpose.Left, childexpose.Top, childexpose.Right, childexpose.Bottom, list[index].DisplayID, bitmap);
          ReleaseObject(bitmap);
       }
@@ -325,7 +325,7 @@ ERROR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
 
    MEMORYID msgqueue = GetResource(RES_MESSAGE_QUEUE);
    APTR queue;
-   if (!AccessMemory(msgqueue, MEM_READ, 3000, &queue)) {
+   if (!AccessMemoryID(msgqueue, MEM_READ, 3000, &queue)) {
       UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct acDraw)];
       LONG msgindex = 0;
       while (!ScanMessages(queue, &msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
@@ -405,7 +405,7 @@ static ERROR SURFACE_Expose(extSurface *Self, struct drwExpose *Args)
 
    APTR queue;
    MEMORYID msgqueue = GetResource(RES_MESSAGE_QUEUE);
-   if (!AccessMemory(msgqueue, MEM_READ_WRITE, 3000, &queue)) {
+   if (!AccessMemoryID(msgqueue, MEM_READ_WRITE, 3000, &queue)) {
       UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct drwExpose)];
       LONG msgindex = 0;
       while (!ScanMessages(queue, &msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
@@ -486,7 +486,7 @@ int Height: Height of the region to invalidate.
 
 -ERRORS-
 Okay:
-AccessMemory: Failed to access the internal surface list.
+AccessMemoryID: Failed to access the internal surface list.
 -END-
 
 *****************************************************************************/
@@ -505,7 +505,7 @@ static ERROR SURFACE_InvalidateRegion(extSurface *Self, struct drwInvalidateRegi
 
    APTR queue;
    MEMORYID msgqueue = GetResource(RES_MESSAGE_QUEUE);
-   if (!AccessMemory(msgqueue, MEM_READ_WRITE, 3000, &queue)) {
+   if (!AccessMemoryID(msgqueue, MEM_READ_WRITE, 3000, &queue)) {
       LONG msgindex = 0;
       UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct drwInvalidateRegion)];
       while (!ScanMessages(queue, &msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
@@ -573,7 +573,7 @@ void move_layer(extSurface *Self, LONG X, LONG Y)
 
    if (!Self->ParentID) {
       objDisplay *display;
-      if (!AccessObject(Self->DisplayID, 2000, &display)) {
+      if (!AccessObjectID(Self->DisplayID, 2000, &display)) {
          // Subtract the host window's LeftMargin and TopMargin as MoveToPoint() is based on the coordinates of the window frame.
 
          LONG left_margin = display->LeftMargin;
@@ -756,7 +756,7 @@ void prepare_background(extSurface *Self, SurfaceList *list, LONG Total, LONG In
 
       extBitmap *bitmap;
       ERROR error;
-      if (!(error = AccessObject(list[i].BitmapID, 2000, &bitmap))) {
+      if (!(error = AccessObjectID(list[i].BitmapID, 2000, &bitmap))) {
          copy_bkgd(list, i, end, master, expose.Left, expose.Top, expose.Right, expose.Bottom, DestBitmap, bitmap, opaque, pervasive);
          ReleaseObject(bitmap);
       }

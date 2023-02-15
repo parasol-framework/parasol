@@ -1943,7 +1943,7 @@ extern struct CoreBase *CoreBase;
 
 extern struct CoreBase *CoreBase;
 struct CoreBase {
-   ERROR (*_AccessMemory)(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR Result);
+   ERROR (*_AccessMemoryID)(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR Result);
    ERROR (*_Action)(LONG Action, OBJECTPTR Object, APTR Parameters);
    void (*_ActionList)(struct ActionTable ** Actions, LONG * Size);
    ERROR (*_ActionMsg)(LONG Action, OBJECTID Object, APTR Args);
@@ -1951,7 +1951,7 @@ struct CoreBase {
    CSTRING (*_ResolveClassID)(CLASSID ID);
    LONG (*_AllocateID)(LONG Type);
    ERROR (*_AllocMemory)(LONG Size, LONG Flags, APTR Address, MEMORYID * ID);
-   ERROR (*_AccessObject)(OBJECTID Object, LONG MilliSeconds, APTR Result);
+   ERROR (*_AccessObjectID)(OBJECTID Object, LONG MilliSeconds, APTR Result);
    ERROR (*_ListTasks)(LONG Flags, struct ListTasks ** List);
    ERROR (*_CheckAction)(OBJECTPTR Object, LONG Action);
    ERROR (*_CheckMemoryExists)(MEMORYID ID);
@@ -2034,7 +2034,7 @@ struct CoreBase {
    ERROR (*_FuncError)(CSTRING Header, ERROR Error);
    ERROR (*_SetArray)(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements);
    ERROR (*_ReleaseMemoryID)(MEMORYID MemoryID);
-   ERROR (*_AccessPrivateObject)(OBJECTPTR Object, LONG MilliSeconds);
+   ERROR (*_LockObject)(OBJECTPTR Object, LONG MilliSeconds);
    void (*_ReleaseObject)(OBJECTPTR Object);
    ERROR (*_AllocMutex)(LONG Flags, APTR Result);
    void (*_FreeMutex)(APTR Mutex);
@@ -2088,7 +2088,7 @@ struct CoreBase {
 };
 
 #ifndef PRV_CORE_MODULE
-inline ERROR AccessMemory(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessMemory(Memory,Flags,MilliSeconds,Result); }
+inline ERROR AccessMemoryID(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessMemoryID(Memory,Flags,MilliSeconds,Result); }
 inline ERROR Action(LONG Action, OBJECTPTR Object, APTR Parameters) { return CoreBase->_Action(Action,Object,Parameters); }
 inline void ActionList(struct ActionTable ** Actions, LONG * Size) { return CoreBase->_ActionList(Actions,Size); }
 inline ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args) { return CoreBase->_ActionMsg(Action,Object,Args); }
@@ -2096,7 +2096,7 @@ inline ERROR KeyGet(struct KeyStore * Store, ULONG Key, APTR Data, LONG * Size) 
 inline CSTRING ResolveClassID(CLASSID ID) { return CoreBase->_ResolveClassID(ID); }
 inline LONG AllocateID(LONG Type) { return CoreBase->_AllocateID(Type); }
 inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address, MEMORYID * ID) { return CoreBase->_AllocMemory(Size,Flags,Address,ID); }
-inline ERROR AccessObject(OBJECTID Object, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessObject(Object,MilliSeconds,Result); }
+inline ERROR AccessObjectID(OBJECTID Object, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessObjectID(Object,MilliSeconds,Result); }
 inline ERROR ListTasks(LONG Flags, struct ListTasks ** List) { return CoreBase->_ListTasks(Flags,List); }
 inline ERROR CheckAction(OBJECTPTR Object, LONG Action) { return CoreBase->_CheckAction(Object,Action); }
 inline ERROR CheckMemoryExists(MEMORYID ID) { return CoreBase->_CheckMemoryExists(ID); }
@@ -2179,7 +2179,7 @@ inline struct Message * GetActionMsg(void) { return CoreBase->_GetActionMsg(); }
 inline ERROR FuncError(CSTRING Header, ERROR Error) { return CoreBase->_FuncError(Header,Error); }
 inline ERROR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements) { return CoreBase->_SetArray(Object,Field,Array,Elements); }
 inline ERROR ReleaseMemoryID(MEMORYID MemoryID) { return CoreBase->_ReleaseMemoryID(MemoryID); }
-inline ERROR AccessPrivateObject(OBJECTPTR Object, LONG MilliSeconds) { return CoreBase->_AccessPrivateObject(Object,MilliSeconds); }
+inline ERROR LockObject(OBJECTPTR Object, LONG MilliSeconds) { return CoreBase->_LockObject(Object,MilliSeconds); }
 inline void ReleaseObject(OBJECTPTR Object) { return CoreBase->_ReleaseObject(Object); }
 inline ERROR AllocMutex(LONG Flags, APTR Result) { return CoreBase->_AllocMutex(Flags,Result); }
 inline void FreeMutex(APTR Mutex) { return CoreBase->_FreeMutex(Mutex); }
@@ -2357,7 +2357,7 @@ struct BaseClass { // Must be 64-bit aligned
    UBYTE ThreadPending;         // ActionThread() increments this.
    volatile BYTE Queue;         // Managed by locking functions
    volatile BYTE SleepQueue;    //
-   volatile bool Locked;        // Set if locked by AccessObject()/AccessPrivateObject()
+   volatile bool Locked;        // Set if locked by AccessObjectID()/LockObject()
    BYTE ActionDepth;            // Incremented each time an action or method is called on the object
 
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
@@ -2384,8 +2384,8 @@ struct BaseClass { // Must be 64-bit aligned
          }
          else {
             if (ThreadID IS get_thread_id()) return ERR_Okay; // If this is for the same thread then it's a nested lock, so there's no issue.
-            SUB_QUEUE(this); // Put the lock count back to normal before AccessPrivateObject()
-            return AccessPrivateObject(this, -1); // Can fail if object is marked for deletion.
+            SUB_QUEUE(this); // Put the lock count back to normal before LockObject()
+            return LockObject(this, -1); // Can fail if object is marked for deletion.
          }
       #else
          return ERR_Okay;

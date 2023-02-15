@@ -325,7 +325,7 @@ static ERROR SET_PopOver(extSurface *Self, OBJECTID Value)
       CLASSID class_id = GetClassID(Value);
       if (class_id != ID_SURFACE) {
          OBJECTPTR obj;
-         if (!AccessObject(Value, 3000, &obj)) {
+         if (!AccessObjectID(Value, 3000, &obj)) {
             obj->get(FID_Surface, &Value);
             ReleaseObject(obj);
          }
@@ -539,12 +539,12 @@ static ERROR GET_UserFocus(extSurface *Self, OBJECTID *Value)
    parasol::Log log;
    OBJECTID *focuslist;
 
-   if (!AccessMemory(RPM_FocusList, MEM_READ, 1000, &focuslist)) {
+   if (!AccessMemoryID(RPM_FocusList, MEM_READ, 1000, &focuslist)) {
       *Value = focuslist[0];
       ReleaseMemoryID(RPM_FocusList);
       return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemory);
+   else return log.warning(ERR_AccessMemoryID);
 }
 
 /*****************************************************************************
@@ -611,7 +611,7 @@ static ERROR SET_WindowType(extSurface *Self, LONG Value)
       }
 
       if (Self->DisplayID) {
-         if (!AccessObject(Self->DisplayID, 2000, &display)) {
+         if (!AccessObjectID(Self->DisplayID, 2000, &display)) {
             log.trace("Changing window type to %d.", Value);
 
             switch(Value) {

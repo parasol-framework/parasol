@@ -588,7 +588,7 @@ static ERROR PIC_SaveImage(prvPicture *Self, struct acSaveImage *Args)
    tlError = false;
 
    if ((Args) and (Args->DestID)) {
-      if (AccessObject(Args->DestID, 3000, &file) != ERR_Okay) {
+      if (AccessObjectID(Args->DestID, 3000, &file) != ERR_Okay) {
          log.warning("Failed to access destination object #%d.", Args->DestID);
          goto exit;
       }

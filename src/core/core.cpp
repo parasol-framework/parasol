@@ -196,7 +196,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    if (alloc_private_lock(TL_PRIVATE_OBJECTS, ALF_RECURSIVE)) return NULL;
    if (alloc_private_cond(CN_OBJECTS, 0)) return NULL;
 
-   // Allocate a private POSIX semaphore for AccessPrivateObject() and ReleaseObject()
+   // Allocate a private POSIX semaphore for LockObject() and ReleaseObject()
 
 #ifdef __unix__
    // Record the 'original' user id and group id, which we need to know in case the binary has been run with the suid
@@ -965,7 +965,7 @@ static ERROR open_shared_control(void)
       }
 
       // Map the first portion of the file into our process (i.e. the system stuff that needs to be permanently mapped).
-      // Mapping of blocks in the global pool will only be done on request in AccessMemory() and page_memory().
+      // Mapping of blocks in the global pool will only be done on request in AccessMemoryID() and page_memory().
 
       if ((glSharedControl = mmap(0, glMemorySize, PROT_READ|PROT_WRITE, MAP_SHARED, glMemoryFD, 0)) != (APTR)-1) {
          // Call init_shared_control() if this is the first time that the block has been created.
@@ -1656,10 +1656,10 @@ static ERROR load_modules(void)
 
    ERROR error;
    if (glSharedControl->ModulesMID) {
-      if (!AccessMemory(glSharedControl->ModulesMID, MEM_READ, 2000, (APTR *)&glModules)) {
+      if (!AccessMemoryID(glSharedControl->ModulesMID, MEM_READ, 2000, (APTR *)&glModules)) {
          return ERR_Okay;
       }
-      else return log.warning(ERR_AccessMemory);
+      else return log.warning(ERR_AccessMemoryID);
    }
 
    {

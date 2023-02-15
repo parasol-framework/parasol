@@ -470,18 +470,18 @@ ERROR resolve_args(APTR Parameters, const struct FunctionField *Args)
             MEMORYID mid = ((MEMORYID *)(Buffer + pos))[0];
             if (mid < 0) {
                APTR memory;
-               if (!AccessMemory(mid, MEM_READ_WRITE, 3000, &memory)) {
+               if (!AccessMemoryID(mid, MEM_READ_WRITE, 3000, &memory)) {
                   ((APTR *)(Buffer + pos))[0] = memory;
                }
                else {
                   log.warning("Failed to gain access to memory block #%d.", mid);
-                  error = ERR_AccessMemory;
+                  error = ERR_AccessMemoryID;
                   goto looperror;
                }
             }
             else if (mid > 0) {
                log.warning("Bad memory ID #%d for arg \"%s\", not a public allocation.", mid, Args[i].Name);
-               error = ERR_AccessMemory;
+               error = ERR_AccessMemoryID;
                goto looperror;
             }
          }

@@ -49,7 +49,7 @@ static ERROR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR M
    log.traceBranch("MsgID: %d, MsgType: %d, Host: %s, Thread: %d", MsgID, MsgType, (CSTRING)(r + 1), r->ThreadID);
 
    extNetLookup *nl;
-   if (!AccessObject(r->NetLookupID, 2000, &nl)) {
+   if (!AccessObjectID(r->NetLookupID, 2000, &nl)) {
       {
          std::lock_guard<std::mutex> lock(*nl->ThreadLock);
          nl->Threads->erase(r->ThreadID);
@@ -78,7 +78,7 @@ static ERROR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR M
    log.traceBranch("MsgID: %d, MsgType: %d, Address: %s, Thread: %d", MsgID, MsgType, (CSTRING)(r + 1), r->ThreadID);
 
    extNetLookup *nl;
-   if (!AccessObject(r->NetLookupID, 2000, &nl)) {
+   if (!AccessObjectID(r->NetLookupID, 2000, &nl)) {
       {
          std::lock_guard<std::mutex> lock(*nl->ThreadLock);
          nl->Threads->erase(r->ThreadID);

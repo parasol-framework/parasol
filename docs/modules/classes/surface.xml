@@ -198,7 +198,7 @@ the surface area first).</li>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
-        <error code="AccessMemory">Failed to access the internal surface list.</error>
+        <error code="AccessMemoryID">Failed to access the internal surface list.</error>
       </result>
     </method>
 
@@ -248,7 +248,7 @@ the surface area first).</li>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
-        <error code="AccessMemory">Unable to access internal surface list.</error>
+        <error code="AccessMemoryID">Unable to access internal surface list.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>

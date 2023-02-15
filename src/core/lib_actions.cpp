@@ -102,7 +102,7 @@ static ERROR thread_action(extThread *Thread)
    thread_data *data = (thread_data *)Thread->Data;
    OBJECTPTR obj = data->Object;
 
-   if (!(error = AccessPrivateObject(obj, 5000))) { // Access the object and process the action.
+   if (!(error = LockObject(obj, 5000))) { // Access the object and process the action.
       __sync_sub_and_fetch(&obj->ThreadPending, 1);
       error = Action(data->ActionID, obj, data->Parameters ? (data + 1) : NULL);
 
@@ -451,7 +451,7 @@ ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args)
    if (ActionID >= AC_END) return log.warning(ERR_OutOfRange);
 
    OBJECTPTR object;
-   if (!AccessObject(ObjectID, 3000, &object)) {
+   if (!AccessObjectID(ObjectID, 3000, &object)) {
       if (object->ThreadMsg != tlThreadWriteMsg) {
          // If the object belongs to a separate thread, release it and let the other
          // thread handle it via messaging.
@@ -1058,7 +1058,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
       return log.warning(ERR_ObjectCorrupt)|ERF_Notified;
    }
 
-   // Check to see if the object is currently locked from AccessObject().  If it is, we mark it for deletion so that we
+   // Check to see if the object is currently locked from AccessObjectID().  If it is, we mark it for deletion so that we
    // can safely get rid of it during ReleaseObject().
 
    if ((Object->Locked) or (Object->ThreadPending)) {
@@ -1074,7 +1074,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
       return ERR_Okay|ERF_Notified;
    }
 
-   if (Object->ActionDepth > 0) { // Free() is being called while the object itself is still in use.  This can be an issue with private objects that haven't been locked with AccessObject().
+   if (Object->ActionDepth > 0) { // Free() is being called while the object itself is still in use.  This can be an issue with private objects that haven't been locked with AccessObjectID().
       log.trace("Free() attempt while object is in use.");
       if (!Object->defined(NF::COLLECT)) {
          Object->Flags |= NF::COLLECT;
@@ -1117,7 +1117,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
    }
 
    // Mark the object as being in the free process.  The mark prevents any further access to the object via
-   // AccessObject().  Classes may also use the flag to check if an object is in the process of being freed.
+   // AccessObjectID().  Classes may also use the flag to check if an object is in the process of being freed.
 
    Object->Flags = (Object->Flags|NF::FREE) & (~NF::UNLOCK_FREE);
 

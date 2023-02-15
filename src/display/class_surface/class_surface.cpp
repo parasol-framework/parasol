@@ -86,7 +86,7 @@ void refresh_pointer(extSurface *Self)
 
 static ERROR access_video(OBJECTID DisplayID, objDisplay **Display, objBitmap **Bitmap)
 {
-   if (!AccessObject(DisplayID, 5000, Display)) {
+   if (!AccessObjectID(DisplayID, 5000, Display)) {
       APTR winhandle;
 
       if (!Display[0]->getPtr(FID_WindowHandle, &winhandle)) {
@@ -445,7 +445,7 @@ static void display_resized(OBJECTID DisplayID, LONG X, LONG Y, LONG Width, LONG
 {
    OBJECTID surface_id = GetOwnerID(DisplayID);
    extSurface *surface;
-   if (!AccessObject(surface_id, 4000, &surface)) {
+   if (!AccessObjectID(surface_id, 4000, &surface)) {
       if (surface->ClassID IS ID_SURFACE) {
          if ((X != surface->X) or (Y != surface->Y)) {
             surface->X = X;
@@ -548,7 +548,7 @@ static void notify_redimension_parent(OBJECTPTR Object, ACTIONID ActionID, ERROR
          parentheight = list[i].Height;
          gfxReleaseList(ARF_READ);
       }
-      else { log.warning(ERR_AccessMemory); return; }
+      else { log.warning(ERR_AccessMemoryID); return; }
    }
    else {
       DISPLAYINFO *display;
@@ -837,7 +837,7 @@ static void event_user_login(extSurface *Self, APTR Info, LONG InfoSize)
       cfgRead(*config, "DISPLAY", "GammaBlue", &gammablue);
 
       if (!cfgReadValue(*config, "DISPLAY", "DPMS", &str)) {
-         if (!AccessObject(Self->DisplayID, 3000, &object)) {
+         if (!AccessObjectID(Self->DisplayID, 3000, &object)) {
             object->set(FID_DPMS, str);
             ReleaseObject(object);
          }
@@ -923,7 +923,7 @@ static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
    }
 
    OBJECTID *focuslist;
-   if (!AccessMemory(RPM_FocusList, MEM_READ_WRITE, 1000, &focuslist)) {
+   if (!AccessMemoryID(RPM_FocusList, MEM_READ_WRITE, 1000, &focuslist)) {
       // Return immediately if this surface object already has the -primary- focus
 
       if ((Self->Flags & RNF_HAS_FOCUS) and (focuslist[0] IS Self->UID)) {
@@ -1004,7 +1004,7 @@ static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
       else {
          ReleaseMemory(focuslist);
          glLastFocusTime = PreciseTime();
-         return log.warning(ERR_AccessMemory);
+         return log.warning(ERR_AccessMemoryID);
       }
 
       // Send a Focus action to all parent surface objects in our generated focus list.
@@ -1069,7 +1069,7 @@ static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
    }
    else {
       glLastFocusTime = PreciseTime();
-      return log.warning(ERR_AccessMemory)|ERF_Notified;
+      return log.warning(ERR_AccessMemoryID)|ERF_Notified;
    }
 }
 
@@ -1095,7 +1095,7 @@ static ERROR SURFACE_Free(extSurface *Self, APTR Void)
    if (Self->ParentID) {
       extSurface *parent;
       ERROR error;
-      if (!(error = AccessObject(Self->ParentID, 5000, &parent))) {
+      if (!(error = AccessObjectID(Self->ParentID, 5000, &parent))) {
          UnsubscribeAction(parent, NULL);
          if (Self->Flags & RNF_TRANSPARENT) {
             drwRemoveCallback(parent, NULL);
@@ -1278,7 +1278,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
    ERROR error;
    if (Self->ParentID) {
       extSurface *parent;
-      if (AccessObject(Self->ParentID, 3000, &parent) != ERR_Okay) {
+      if (AccessObjectID(Self->ParentID, 3000, &parent) != ERR_Okay) {
          log.warning("Failed to access parent #%d.", Self->ParentID);
          return ERR_AccessObject;
       }
@@ -1526,7 +1526,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
          if (Self->PopOverID) {
             extSurface *popsurface;
-            if (!AccessObject(Self->PopOverID, 2000, &popsurface)) {
+            if (!AccessObjectID(Self->PopOverID, 2000, &popsurface)) {
                OBJECTID pop_display = popsurface->DisplayID;
                ReleaseObject(popsurface);
 
@@ -1608,7 +1608,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
       Self->BitmapOwnerID = Self->UID;
 
       objDisplay *display;
-      if (!(error = AccessObject(Self->DisplayID, 3000, &display))) {
+      if (!(error = AccessObjectID(Self->DisplayID, 3000, &display))) {
          LONG memflags = MEM_DATA;
 
          if (Self->Flags & RNF_VIDEO) {
@@ -1667,7 +1667,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
    // If the FIXEDBUFFER option is set, pass the NEVERSHRINK option to the bitmap
 
    if (Self->Flags & RNF_FIXED_BUFFER) {
-      if (!AccessObject(Self->BufferID, 5000, &bitmap)) {
+      if (!AccessObjectID(Self->BufferID, 5000, &bitmap)) {
          bitmap->Flags |= BMF_NEVER_SHRINK;
          ReleaseObject(bitmap);
       }
@@ -1804,7 +1804,7 @@ static ERROR SURFACE_Move(extSurface *Self, struct acMove *Args)
    // response times.
 
    APTR queue;
-   if (!AccessMemory(GetResource(RES_MESSAGE_QUEUE), MEM_READ, 2000, &queue)) {
+   if (!AccessMemoryID(GetResource(RES_MESSAGE_QUEUE), MEM_READ, 2000, &queue)) {
       LONG index = 0;
       UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct acMove)];
       while (!ScanMessages(queue, &index, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
@@ -2012,7 +2012,7 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
 
    SurfaceControl *ctl;
    if (!(ctl = gfxAccessList(ARF_WRITE))) {
-      return log.warning(ERR_AccessMemory)|ERF_Notified;
+      return log.warning(ERR_AccessMemoryID)|ERF_Notified;
    }
 
    auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
@@ -2097,7 +2097,7 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
       //   Areas of our surface that were obscured by surfaces that also shared our bitmap space.
 
       objBitmap *bitmap;
-      if (!AccessObject(Self->BufferID, 5000, &bitmap)) {
+      if (!AccessObjectID(Self->BufferID, 5000, &bitmap)) {
          invalidate_overlap(Self, cplist, total, currentindex, i, cplist[i].Left, cplist[i].Top, cplist[i].Right, cplist[i].Bottom, bitmap);
          ReleaseObject(bitmap);
       }
@@ -2296,7 +2296,7 @@ int(DMF) Dimensions: Dimension flags.
 -ERRORS-
 Okay
 NullArgs
-AccessMemory: Unable to access internal surface list.
+AccessMemoryID: Unable to access internal surface list.
 -END-
 
 *****************************************************************************/
@@ -2367,7 +2367,7 @@ static ERROR SURFACE_ResetDimensions(extSurface *Self, struct drwResetDimensions
       gfxReleaseList(ARF_READ);
       return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemory);
+   else return log.warning(ERR_AccessMemoryID);
 }
 
 /*****************************************************************************
