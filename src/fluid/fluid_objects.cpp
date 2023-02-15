@@ -54,7 +54,7 @@ INLINE void SET_CONTEXT(lua_State *Lua, APTR Function)
    lua_pushcclosure(Lua, (lua_CFunction)Function, 1); // C function to call - the number indicates the number of values pushed onto the stack that are to be associated as private values relevant to the C function being called
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static LONG get_action_info(lua_State *Lua, LONG ClassID, CSTRING action, const FunctionField **Args)
 {
@@ -217,7 +217,7 @@ static int object_new(lua_State *Lua)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: state = some_object.state()
 //
 // Returns a table that can be used to store information that is specific to the object.  The state is linked to the
@@ -259,7 +259,7 @@ static int object_state(lua_State *Lua)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Syntactic sugar for creating new objects against a parent, e.g. window.new("button", { ... }).  Behaviour is
 // mostly identical to obj.new() but the object is detached.
 
@@ -373,7 +373,7 @@ static int object_newchild(lua_State *Lua)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Throws exceptions.  Used for returning objects to the user.
 
 struct object * push_object(lua_State *Lua, OBJECTPTR Object)
@@ -400,7 +400,7 @@ struct object * push_object(lua_State *Lua, OBJECTPTR Object)
    return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Guaranteed to not throw exceptions.
 
 ERROR push_object_id(lua_State *Lua, OBJECTID ObjectID)
@@ -506,7 +506,7 @@ static int object_find(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: metaclass = obj.class(object)
 //
 // Returns the MetaClass for an object, representing it as an inspectable object.
@@ -535,7 +535,7 @@ static int object_class(lua_State *Lua)
    return 1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: obj.children(["ClassNameFilter"])
 //
 // Returns an object ID array of children belonging to the queried object.  If there are no children, an empty array is
@@ -580,7 +580,7 @@ static int object_children(lua_State *Lua)
    return 1; // make_table() always returns a value even if it is nil
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // obj:lock(function()
 //    --Code--
 // end)
@@ -611,7 +611,7 @@ static int object_lock(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: obj:detach()
 //
 // Detaches the object from the metatable, this stops the object from being killed on garbage collection.  HOWEVER: The
@@ -746,7 +746,7 @@ static int object_subscribe(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: obj.unsubscribe(ActionName)
 
 static int object_unsubscribe(lua_State *Lua)
@@ -808,7 +808,7 @@ static int object_unsubscribe(lua_State *Lua)
    return 1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: obj.delayCall()
 //
 // Delays the next action or method call that is taken against this object.
@@ -825,7 +825,7 @@ static int object_delaycall(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Object garbage collector.
 
 static int object_destruct(lua_State *Lua)
@@ -869,7 +869,7 @@ static int object_destruct(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Prints the object interface as the object ID, e.g. #-10513
 
 static int object_tostring(lua_State *Lua)
@@ -884,7 +884,7 @@ static int object_tostring(lua_State *Lua)
    return 1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Any Read accesses to the object will pass through here.
 
 static int object_index(lua_State *Lua)
@@ -968,7 +968,7 @@ static int object_index(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Support for pairs() allows the meta fields of the object to be iterated.  Note that in next_pair(), the object
 // interface isn't used but could be pushed as an upvalue if needed.
 
@@ -1008,7 +1008,7 @@ static int object_pairs(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Similar to pairs(), but returns each field index and its name.
 
 static int object_next_ipair(lua_State *Lua)
@@ -1043,12 +1043,12 @@ static int object_ipairs(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "fluid_objects_indexes.cpp"
 #include "fluid_objects_calls.cpp"
 
-//****************************************************************************
+//********************************************************************************************************************
 // Register the object interface.
 
 static const struct luaL_Reg objectlib_functions[] = {

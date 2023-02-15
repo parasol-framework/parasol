@@ -24,7 +24,7 @@ Functions that are internal to the Core.
 
 using namespace parasol;
 
-//****************************************************************************
+//********************************************************************************************************************
 // If a function has reason to believe that a process has crashed or is failing to unlock memory blocks, it can call
 // the validate_process() function to help clean up the system.
 
@@ -419,7 +419,7 @@ looperror:
    return log.warning(error);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This version of free_ptr_args() is for thread-based execution.  Used by thread_action() in lib_actions.c
 
 void local_free_args(APTR Parameters, const struct FunctionField *Args)
@@ -532,7 +532,7 @@ ERROR free_ptr_args(APTR Parameters, const struct FunctionField *Args, WORD Rele
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void fix_core_table(struct CoreBase *CoreBase, FLOAT Version)
 {
@@ -546,7 +546,7 @@ void fix_core_table(struct CoreBase *CoreBase, FLOAT Version)
 */
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 TaskList * find_process(LONG ProcessID)
 {
@@ -556,7 +556,7 @@ TaskList * find_process(LONG ProcessID)
    return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
 {

@@ -65,7 +65,7 @@ struct ActionThread {
 
 static std::vector<struct ActionThread> glActionThreads;
 
-//****************************************************************************
+//********************************************************************************************************************
 // Retrieve a thread object from the thread pool.
 
 ERROR threadpool_get(extThread **Result)
@@ -96,7 +96,7 @@ ERROR threadpool_get(extThread **Result)
    else return log.warning(ERR_Lock);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Mark a thread in the pool as no longer in use.  The thread object will be destroyed if it is not in the pool.
 
 void threadpool_release(extThread *Thread)
@@ -121,7 +121,7 @@ void threadpool_release(extThread *Thread)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Destroy the entire thread pool.  For use on application shutdown only.
 
 void remove_threadpool(void)
@@ -134,7 +134,7 @@ void remove_threadpool(void)
    if (lock.granted()) glActionThreads.clear();
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Called whenever a MSGID_THREAD_ACTION message is caught by ProcessMessages().  See thread_action() in lib_actions.c
 // for usage.
 
@@ -167,7 +167,7 @@ ERROR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Called whenever a MSGID_THREAD_CALLBACK message is caught by ProcessMessages().  See thread_entry() for usage.
 // This is NOT called if the developer did not define a Callback reference.
 
@@ -204,7 +204,7 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This is the entry point for all threads.
 
 THREADVAR BYTE tlThreadCrashed;
@@ -283,7 +283,7 @@ static void * thread_entry(extThread *Self)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Cleanup on completion of a thread.  Note that this will also run in the event that the thread throws an exception.
 
 static void thread_entry_cleanup(void *Arg)
@@ -401,7 +401,7 @@ static ERROR THREAD_Free(extThread *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR THREAD_FreeWarning(extThread *Self, APTR Void)
 {
@@ -421,7 +421,7 @@ static ERROR THREAD_FreeWarning(extThread *Self, APTR Void)
    else return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR THREAD_Init(extThread *Self, APTR Void)
 {
@@ -445,7 +445,7 @@ static ERROR THREAD_Init(extThread *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR THREAD_NewObject(extThread *Self, APTR Void)
 {
@@ -652,7 +652,7 @@ static const FieldArray clFields[] = {
 
 #include "class_thread_def.c"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 extern "C" ERROR add_thread_class(void)
 {

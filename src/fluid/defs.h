@@ -289,7 +289,7 @@ extern void x64ExecFunction(APTR, LONG, LARGE *, LONG);
 extern void x86ExecFunction(APTR, APTR, LONG);
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 // Standard hash computation, but stops when it encounters a character outside of A-Za-z0-9 range
 // Note that struct name hashes are case sensitive.
 

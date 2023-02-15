@@ -85,7 +85,7 @@ typedef int HANDLE;
  #define ftruncate64 ftruncate
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 class CacheFileIndex {
 public:
@@ -119,7 +119,7 @@ namespace std {
 static std::unordered_map<CacheFileIndex, CacheFile *> glCache;
 static std::mutex glCacheLock;
 
-//****************************************************************************
+//********************************************************************************************************************
 // Called during shutdown
 
 void free_file_cache(void)
@@ -135,7 +135,7 @@ void free_file_cache(void)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Check if a Path refers to a virtual volume, and if so, return the matching virtual_drive definition.
 
 static virtual_drive * get_virtual(CSTRING Path)
@@ -152,7 +152,7 @@ static virtual_drive * get_virtual(CSTRING Path)
    return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 extern "C" LONG CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
 {
@@ -256,7 +256,7 @@ const virtual_drive * get_fs(CSTRING Path)
    return (const virtual_drive *)&glVirtual[0];
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Assigned to a timer for the purpose of checking up on the expiry of cached files.
 
 ERROR check_cache(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)
@@ -469,7 +469,7 @@ ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB)
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR fs_samefile(CSTRING Path1, CSTRING Path2)
 {
@@ -785,7 +785,7 @@ void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions)
    glDefaultPermissions = Permissions;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Internal function for getting information from files, particularly virtual volumes.  If you know that a path
 // refers directly to the client's filesystem then you can revert to calling fs_getinfo() instead.
 
@@ -1391,7 +1391,7 @@ void UnloadFile(CacheFile *Cache)
    // Cache entries are never removed here because this determination is handled by check_cache().
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // NOTE: The argument passed as the folder must be a large buffer to compensate for the resulting filename.
 
 #ifdef __unix__
@@ -1540,7 +1540,7 @@ ERROR findfile(STRING Path)
 
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG convert_permissions(LONG Permissions)
 {
@@ -1570,7 +1570,7 @@ LONG convert_permissions(LONG Permissions)
    return flags;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG convert_fs_permissions(LONG Permissions)
 {
@@ -2182,7 +2182,7 @@ exit:
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Generic routine for copying folders, intended to be used in conjunction with fs_copy()
 
 ERROR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *Callback, BYTE Move)
@@ -2288,7 +2288,7 @@ ERROR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *C
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Gets the permissions of the parent folder.  Typically used for permission inheritance. NB: It is often wise to
 // remove exec and suid flags returned from this function.
 
@@ -2325,7 +2325,7 @@ LONG get_parent_permissions(CSTRING Path, LONG *UserID, LONG *GroupID)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Strips trailing slashes from folder locations.
 
 BYTE strip_folder(STRING Path)
@@ -2341,7 +2341,7 @@ BYTE strip_folder(STRING Path)
    return FALSE;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR fs_readlink(STRING Source, STRING *Link)
 {
@@ -2360,7 +2360,7 @@ ERROR fs_readlink(STRING Source, STRING *Link)
 #endif
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR fs_createlink(CSTRING Target, CSTRING Link)
 {
@@ -2374,7 +2374,7 @@ ERROR fs_createlink(CSTRING Target, CSTRING Link)
 #endif
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // NB: The path that is received is already resolved.
 
 ERROR fs_delete(STRING Path, FUNCTION *Callback)
@@ -2422,7 +2422,7 @@ ERROR fs_delete(STRING Path, FUNCTION *Callback)
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR fs_scandir(DirInfo *Dir)
 {
@@ -2545,7 +2545,7 @@ ERROR fs_scandir(DirInfo *Dir)
    return ERR_DirEmpty;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR fs_opendir(DirInfo *Info)
 {
@@ -2578,7 +2578,7 @@ ERROR fs_opendir(DirInfo *Info)
 #endif
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR fs_closedir(DirInfo *Dir)
 {
@@ -2619,14 +2619,14 @@ ERROR fs_closedir(DirInfo *Dir)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR fs_rename(STRING CurrentPath, STRING NewPath)
 {
    return ERR_NoSupport;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR fs_testpath(CSTRING Path, LONG Flags, LONG *Type)
 {
@@ -2667,7 +2667,7 @@ ERROR fs_testpath(CSTRING Path, LONG Flags, LONG *Type)
    else return ERR_DoesNotExist;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR fs_getinfo(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
 {
@@ -2801,7 +2801,7 @@ ERROR fs_getinfo(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR fs_getdeviceinfo(CSTRING Path, objStorageDevice *Info)
 {
@@ -2961,7 +2961,7 @@ restart:
    return ERR_NoSupport;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR fs_makedir(CSTRING Path, LONG Permissions)
 {
@@ -3067,7 +3067,7 @@ ERROR fs_makedir(CSTRING Path, LONG Permissions)
 #endif
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #ifdef __ANDROID__
 // The Android release does not keep an associations.cfg file.
@@ -3123,7 +3123,7 @@ ERROR load_datatypes(void)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 // Private function for deleting files and folders recursively.
 
 #ifdef __unix__
@@ -3212,7 +3212,7 @@ ERROR delete_tree(STRING Path, LONG Size, FUNCTION *Callback, FileFeedback *Feed
 
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "fs_identify.cpp"
 #include "fs_resolution.cpp"

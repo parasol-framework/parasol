@@ -198,7 +198,7 @@ class extNetLookup : public objNetLookup {
    std::mutex *ThreadLock;
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 enum {
    SSL_NOT_BUSY=0,
@@ -315,7 +315,7 @@ ERROR MODOpen(OBJECTPTR Module)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Note: Take care and attention with the order of operations during the expunge process, particuarly due to the
 // background processes that are managed by the module.
 
@@ -594,7 +594,7 @@ static ERROR netSetSSL(extNetSocket *Socket, ...)
 #include "ssl.cpp"
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 // Used by RECEIVE() SSL support.
 
 #ifdef _WIN32
@@ -608,7 +608,7 @@ static void client_server_pending(SOCKET_HANDLE FD, APTR Self)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG BufferSize, LONG Flags, LONG *Result)
 {
@@ -725,7 +725,7 @@ static ERROR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
 #endif
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *Length, LONG Flags)
 {
@@ -824,14 +824,14 @@ static BYTE check_machine_name(CSTRING HostName)
    return TRUE;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "netsocket/netsocket.cpp"
 #include "clientsocket/clientsocket.cpp"
 #include "class_proxy.cpp"
 #include "class_netlookup.cpp"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MODVERSION_NETWORK)
 

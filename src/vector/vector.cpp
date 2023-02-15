@@ -132,7 +132,7 @@ ERROR CMDExpunge(void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "paths.cpp"
 
@@ -149,7 +149,7 @@ ERROR CMDExpunge(void)
 #include "vectors/supershape.cpp"
 #include "vectors/wave.cpp"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 extern ERROR CMDOpen(OBJECTPTR Module);
 PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_VECTOR)

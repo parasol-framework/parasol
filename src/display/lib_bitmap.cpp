@@ -3,7 +3,7 @@
 
 static size_t glDitherSize = 0;
 
-//****************************************************************************
+//********************************************************************************************************************
 // NOTE: Please ensure that the Width and Height are already clipped to meet the restrictions of BOTH the source and
 // destination bitmaps.
 

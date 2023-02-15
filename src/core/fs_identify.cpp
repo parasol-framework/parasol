@@ -520,7 +520,7 @@ exit:
    else return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Scan the class database to extract the correct name for ClassID.  Then scan the Associations object for an entry
 // that is registered against the given class type.
 

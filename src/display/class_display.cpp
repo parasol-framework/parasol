@@ -101,7 +101,7 @@ static void printConfig(EGLDisplay display, EGLConfig config) {
 
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 // Build a list of valid resolutions.
 
 static resolution * get_resolutions(extDisplay *Self)
@@ -179,7 +179,7 @@ static void update_displayinfo(extDisplay *Self)
    get_display_info(Self->UID, glDisplayInfo, sizeof(DISPLAYINFO));
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void resize_feedback(FUNCTION *Feedback, OBJECTID DisplayID, LONG X, LONG Y, LONG Width, LONG Height)
 {
@@ -207,7 +207,7 @@ void resize_feedback(FUNCTION *Feedback, OBJECTID DisplayID, LONG X, LONG Y, LON
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void notify_resize_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
@@ -425,7 +425,7 @@ static ERROR DISPLAY_Enable(extDisplay *Self, APTR Void)
 #endif
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // On hosted systems like Android, the system may call Draw() on a display as a means of informing a program that a
 // redraw is required.  It is the responsibility of the program that created the Display object to subscribe to the
 // Draw action and act on it.
@@ -435,7 +435,7 @@ static ERROR DISPLAY_Draw(extDisplay *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void user_login(extDisplay *Self, APTR Info, LONG Data)
 {
@@ -465,7 +465,7 @@ static ERROR DISPLAY_Flush(extDisplay *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR DISPLAY_Focus(extDisplay *Self, APTR Void)
 {
@@ -480,7 +480,7 @@ static ERROR DISPLAY_Focus(extDisplay *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR DISPLAY_Free(extDisplay *Self, APTR Void)
 {
@@ -657,7 +657,7 @@ static ERROR DISPLAY_Hide(extDisplay *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
 {
@@ -1190,7 +1190,7 @@ static ERROR DISPLAY_MoveToPoint(extDisplay *Self, struct acMoveToPoint *Args)
 #endif
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR DISPLAY_NewObject(extDisplay *Self, APTR Void)
 {

@@ -15,7 +15,7 @@ to be shared by multiple vector objects within the same scene.
 
 *****************************************************************************/
 
-//****************************************************************************
+//********************************************************************************************************************
 // NB: Considered a shape (can be transformed)
 
 static void draw_clips(extVectorClip *Self, extVector *Branch,
@@ -125,7 +125,7 @@ static ERROR CLIP_Draw(extVectorClip *Self, struct acDraw *Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CLIP_Free(extVectorClip *Self, APTR Void)
 {
@@ -137,7 +137,7 @@ static ERROR CLIP_Free(extVectorClip *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CLIP_Init(extVectorClip *Self, APTR Void)
 {
@@ -156,7 +156,7 @@ static ERROR CLIP_Init(extVectorClip *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CLIP_NewObject(extVectorClip *Self, APTR Void)
 {
@@ -213,7 +213,7 @@ static ERROR CLIP_SET_Units(extVectorClip *Self, LONG Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const ActionArray clClipActions[] = {
    { AC_Draw,      (APTR)CLIP_Draw },

@@ -82,7 +82,7 @@ void refresh_pointer(extSurface *Self)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR access_video(OBJECTID DisplayID, objDisplay **Display, objBitmap **Bitmap)
 {
@@ -103,7 +103,7 @@ static ERROR access_video(OBJECTID DisplayID, objDisplay **Display, objBitmap **
    else return ERR_AccessObject;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void release_video(objDisplay *Display)
 {
@@ -170,7 +170,7 @@ static bool check_volatile(SurfaceList *list, LONG index)
    return false;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void expose_buffer(SurfaceList *list, LONG Total, LONG Index, LONG ScanIndex, LONG Left, LONG Top,
                    LONG Right, LONG Bottom, OBJECTID DisplayID, extBitmap *Bitmap)
@@ -411,7 +411,7 @@ skipcontent:
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static BYTE check_surface_list(void)
 {
@@ -438,7 +438,7 @@ static BYTE check_surface_list(void)
    else return FALSE;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Handler for the display being resized.
 
 static void display_resized(OBJECTID DisplayID, LONG X, LONG Y, LONG Width, LONG Height)
@@ -1073,7 +1073,7 @@ static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR SURFACE_Free(extSurface *Self, APTR Void)
 {
@@ -1244,7 +1244,7 @@ static ERROR SURFACE_InheritedFocus(extSurface *Self, struct gfxInheritedFocus *
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 {
@@ -2135,7 +2135,7 @@ static ERROR SURFACE_NewOwner(extSurface *Self, struct acNewOwner *Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR SURFACE_NewObject(extSurface *Self, APTR Void)
 {
@@ -2647,7 +2647,7 @@ static ERROR SURFACE_Show(extSurface *Self, APTR Void)
    return ERR_Okay|notified;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR redraw_timer(extSurface *Self, LARGE Elapsed, LARGE CurrentTime)
 {
@@ -2669,7 +2669,7 @@ static ERROR redraw_timer(extSurface *Self, LARGE Elapsed, LARGE CurrentTime)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void draw_region(extSurface *Self, extSurface *Parent, extBitmap *Bitmap)
 {
@@ -2729,7 +2729,7 @@ static void draw_region(extSurface *Self, extSurface *Parent, extBitmap *Bitmap)
    Bitmap->YOffset = yoffset;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 {
@@ -2845,14 +2845,14 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "surface_drawing.cpp"
 #include "surface_fields.cpp"
 #include "surface_dimensions.cpp"
 #include "surface_resize.cpp"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const FieldDef MovementFlags[] = {
    { "Vertical",   MOVE_VERTICAL },
@@ -2933,7 +2933,7 @@ static const FieldArray clSurfaceFields[] = {
    END_FIELD
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR create_surface_class(void)
 {

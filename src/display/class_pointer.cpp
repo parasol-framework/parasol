@@ -48,7 +48,7 @@ static void process_ptr_movement(extPointer *, struct dcDeviceInput *);
 static void process_ptr_wheel(extPointer *, struct dcDeviceInput *);
 static void send_inputmsg(InputEvent *input, InputSubscription *List);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 INLINE void call_userinput(CSTRING Debug, InputEvent *input, LONG Flags, OBJECTID RecipientID, OBJECTID OverID,
    DOUBLE AbsX, DOUBLE AbsY, DOUBLE OverX, DOUBLE OverY)
@@ -73,7 +73,7 @@ INLINE void call_userinput(CSTRING Debug, InputEvent *input, LONG Flags, OBJECTI
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Adds an input event to the glInput event list, then scans through the list of subscribers and alerts any processes
 // that match the filter.
 
@@ -213,7 +213,7 @@ static ERROR PTR_DataFeed(extPointer *Self, struct acDataFeed *Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
 {
@@ -368,7 +368,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void process_ptr_wheel(extPointer *Self, struct dcDeviceInput *Input)
 {
@@ -412,7 +412,7 @@ static void process_ptr_wheel(extPointer *Self, struct dcDeviceInput *Input)
    ActionMsg(AC_Scroll, Self->OverObjectID, &scroll);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
 {
@@ -600,14 +600,14 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void ptr_user_login(extPointer *Self, APTR Info, LONG Size)
 {
    set_pointer_defaults(Self);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR PTR_Free(extPointer *Self, APTR Void)
 {
@@ -660,7 +660,7 @@ static ERROR PTR_Hide(extPointer *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR PTR_Init(extPointer *Self, APTR Void)
 {
@@ -837,7 +837,7 @@ static ERROR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
    return ERR_Okay|ERF_Notified;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR PTR_NewObject(extPointer *Self, APTR Void)
 {
@@ -1205,7 +1205,7 @@ static ERROR PTR_SET_Y(extPointer *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void set_pointer_defaults(extPointer *Self)
 {
@@ -1240,7 +1240,7 @@ static void set_pointer_defaults(extPointer *Self)
                    TAGEND);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static BYTE get_over_object(extPointer *Self)
 {
@@ -1329,7 +1329,7 @@ static BYTE get_over_object(extPointer *Self)
    return changed;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static WORD examine_chain(extPointer *Self, WORD Index, SurfaceControl *Ctl, WORD ListEnd)
 {
@@ -1351,7 +1351,7 @@ static WORD examine_chain(extPointer *Self, WORD Index, SurfaceControl *Ctl, WOR
    return Index;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This timer is used for handling repeat-clicks.
 
 static ERROR repeat_timer(extPointer *Self, LARGE Elapsed, LARGE Unused)
@@ -1412,7 +1412,7 @@ static ERROR repeat_timer(extPointer *Self, LARGE Elapsed, LARGE Unused)
    else return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #ifdef __native__
 // Mouse driver initialisation
@@ -1532,7 +1532,7 @@ static ERROR init_mouse_driver(void)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 FieldDef CursorLookup[] = {
    { "None",            0 },
@@ -1629,7 +1629,7 @@ static const FieldArray clPointerFields[] = {
    END_FIELD
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR create_pointer_class(void)
 {

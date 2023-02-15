@@ -1,7 +1,7 @@
 
 static void check_para_attrib(extDocument *, CSTRING, CSTRING, escParagraph *);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void check_para_attrib(extDocument *Self, CSTRING Attrib, CSTRING Value, escParagraph *esc)
 {
@@ -44,7 +44,7 @@ static void check_para_attrib(extDocument *Self, CSTRING Attrib, CSTRING Value, 
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void trim_preformat(extDocument *Self, LONG *Index)
 {
@@ -107,7 +107,7 @@ static void saved_style_check(extDocument *Self, style_status *SaveStatus)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Advances the cursor.  It is only possible to advance positively on either axis.
 
 static void tag_advance(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
@@ -130,7 +130,7 @@ static void tag_advance(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chi
    insert_escape(Self, Index, ESC_ADVANCE, &advance, sizeof(advance));
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // NB: If a <body> tag contains any children, it is treated as a template and must contain an <inject/> tag so that
 // the XML insertion point is known.
 
@@ -226,7 +226,7 @@ static void tag_body(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
    Self->BodyTag = Child;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // In background mode, all objects are targetted to the view surface rather than the page surface.
 
 static void tag_background(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
@@ -236,7 +236,7 @@ static void tag_background(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *
    Self->BkgdGfx--;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void tag_bold(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
@@ -250,7 +250,7 @@ static void tag_bold(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
    else parse_tag(Self, XML, Child, Index, Flags & (~FILTER_ALL));
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void tag_br(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
@@ -377,7 +377,7 @@ static void tag_call(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void tag_caps(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
@@ -392,7 +392,7 @@ static void tag_caps(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
    else parse_tag(Self, XML, Tag->Child, Index, Flags);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void tag_debug(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
@@ -404,7 +404,7 @@ static void tag_debug(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Use div to structure the document in a similar way to paragraphs.  Its main
 // difference is that it avoids the declaration of paragraph start and end points.
 
@@ -433,7 +433,7 @@ static void tag_div(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, 
    saved_style_check(Self, &savestatus);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Creates a new edit definition.  These are stored in a linked list.  Edit definitions are used by referring to them
 // by name in table cells.
 
@@ -569,7 +569,7 @@ static void tag_editdef(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chi
    else Self->Error = ERR_AllocMemory;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This very simple tag tells the parser that the object or link that immediately follows the focus element should
 // have the initial focus when the user interacts with the document.  Commonly used for things such as input boxes.
 //
@@ -583,14 +583,14 @@ static void tag_focus(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
    Self->FocusIndex = Self->TabIndex;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void tag_footer(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
    Self->FooterTag = Child;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void tag_header(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
@@ -630,7 +630,7 @@ static void tag_indent(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
    insert_paragraph_end(Self, Index);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Use of <meta> for custom information is allowed and is ignored by the parser.
 
 static void tag_head(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
@@ -672,7 +672,7 @@ static void tag_head(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Include XML from another RIPPLE file.
 
 static void tag_include(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
@@ -689,7 +689,7 @@ static void tag_include(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chi
    else log.warning("<include> directive missing required 'src' element.");
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void tag_parse(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
@@ -718,7 +718,7 @@ static void tag_parse(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Indexes set bookmarks that can be used for quick-scrolling to document sections.  They can also be used to mark
 // sections of content that may require run-time modification.
 //
@@ -787,7 +787,7 @@ static void tag_index(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
    else if (Child) parse_tag(Self, XML, Child, Index, 0);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // If calling a function with 'onclick', all arguments must be identified with the @ prefix.  Parameters will be
 // passed to the function in the order in which they are given.  Global values can be set against the document
 // object itself, if a parameter is prefixed with an underscore.
@@ -933,7 +933,7 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
    else parse_tag(Self, XML, Tag->Child, Index, Flags & (~FILTER_ALL));
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #define LIST_BUFFER_SIZE 80
 
@@ -1001,7 +1001,7 @@ static void tag_list(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
    Self->NoWhitespace = TRUE;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Also see check_para_attrib() for paragraph attributes.
 
 static void tag_paragraph(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
@@ -1049,7 +1049,7 @@ static void tag_paragraph(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *C
    style_check(Self, Index);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void tag_print(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
@@ -1085,7 +1085,7 @@ static void tag_print(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Sets the attributes of an object.  NOTE: For security reasons, this feature is limited to objects that are children
 // of the document object.
 //
@@ -1131,7 +1131,7 @@ static void tag_set(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, 
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void tag_template(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
@@ -1146,7 +1146,7 @@ static void tag_template(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Ch
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Used to send XML data to an embedded object.
 //
 // NOTE: If no child tags or content is inside the XML string, or if attributes are attached to the XML tag, then the
@@ -1167,7 +1167,7 @@ static void tag_xmltranslate(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag
    tag_xml_content(Self, XML, Tag, PXF_TRANSLATE|PXF_ARGS);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // For use the by tag_xml*() range of functions only.
 
 static void tag_xml_content(extDocument *Self, objXML *XML, XMLTag *Tag, WORD Flags)
@@ -1256,7 +1256,7 @@ static void tag_xml_content(extDocument *Self, objXML *XML, XMLTag *Tag, WORD Fl
    LAYOUT_LOGRETURN();
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void tag_font(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
@@ -1339,7 +1339,7 @@ static void tag_font(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
    if (preformat) trim_preformat(Self, Index);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, XMLTag *Template,
   objXML *XML, XMLTag *Tag, XMLTag *child, LONG *Index,
@@ -1583,7 +1583,7 @@ next: // Used by PTR_SAVE_ARGS()
    Self->DrawIntercept--;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void tag_pre(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
@@ -1605,7 +1605,7 @@ static void tag_pre(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, 
 //   Self->NoWhitespace = TRUE;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // By default, a script will be activated when the parser encounters it in the document.  If the script returns a
 // result string, that result is assumed to be valid XML and is processed by the parser as such.
 //
@@ -1793,7 +1793,7 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Similar to <font/>, but the original font state is never saved and restored.
 
 static void tag_setfont(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
@@ -1835,7 +1835,7 @@ static void tag_setfont(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chi
    //style_check(Self, Index);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void tag_setmargins(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
@@ -1881,7 +1881,7 @@ static void tag_setmargins(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *
    insert_escape(Self, Index, ESC_SETMARGINS, &margins, sizeof(margins));
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void tag_savestyle(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
@@ -1889,7 +1889,7 @@ static void tag_savestyle(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *C
    Self->RestoreStyle = Self->Style; // Save the current style
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void tag_restorestyle(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
@@ -1898,7 +1898,7 @@ static void tag_restorestyle(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag
    //style_check(Self, Index);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void tag_italic(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
@@ -1913,7 +1913,7 @@ static void tag_italic(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
    else parse_tag(Self, XML, Child, Index, 0);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void tag_li(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
@@ -2007,7 +2007,7 @@ static void tag_li(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, L
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void tag_underline(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
@@ -2022,7 +2022,7 @@ static void tag_underline(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *C
    else parse_tag(Self, XML, Child, Index, Flags & (~FILTER_ALL));
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void tag_repeat(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
@@ -2098,7 +2098,7 @@ static void tag_repeat(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
    log.trace("insert_child:","Repeat loop ends.");
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // <table columns="10%,90%" width="100" height="100" colour="#808080">
 //  <row><cell>Activate<brk/>This activates the object.</cell></row>
 //  <row><cell span="2">Reset</cell></row>
@@ -2255,7 +2255,7 @@ static void tag_table(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
    Self->NoWhitespace = TRUE; // Setting this to TRUE will prevent the possibility of blank spaces immediately following the table.
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void tag_row(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
@@ -2304,7 +2304,7 @@ static void tag_row(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, 
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void tag_cell(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
@@ -2484,7 +2484,7 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
    if (esc.cell.EditHash) edit_recurse--;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This instruction can only be used from within a template.
 
 static void tag_inject(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
@@ -2498,7 +2498,7 @@ static void tag_inject(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
    else log.warning("<inject/> request detected but not used inside a template.");
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // No response is required for page tags, but we can check for validity.
 
 static void tag_page(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
@@ -2584,7 +2584,7 @@ static void tag_trigger(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chi
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void insert_paragraph_start(extDocument *Self, LONG *Index, escParagraph *Esc)
 {
@@ -2598,7 +2598,7 @@ static void insert_paragraph_start(extDocument *Self, LONG *Index, escParagraph 
    insert_escape(Self, Index, ESC_PARAGRAPH_START, Esc, sizeof(escParagraph));
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This function inserts a paragraph into a text stream, with the addition of some checking to ensure that multiple
 // line breaks are avoided.
 
@@ -2608,7 +2608,7 @@ static void insert_paragraph_end(extDocument *Self, LONG *Index)
    Self->NoWhitespace = TRUE; // TRUE: Prevents whitespace
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // TAG_OBJECTOK: Indicates that the tag can be used inside an object section, e.g. <image>.<this_tag_ok/>..</image>
 // FILTER_TABLE: The tag is restricted to use within <table> sections.
 // FILTER_ROW:   The tag is restricted to use within <row> sections.

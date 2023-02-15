@@ -95,7 +95,7 @@ static int processing_new(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: err = proc.sleep([Seconds], [WakeOnSignal=true])
 //
 // Puts a process to sleep with message processing in the background.  Can be woken early with a signal.
@@ -165,7 +165,7 @@ static int processing_sleep(lua_State *Lua)
    return 1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: proc.signal()
 //
 // Signals the Fluid object.  Note that this is ineffective if the user provided a list of objects to monitor for signalling.
@@ -176,7 +176,7 @@ static int processing_signal(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Internal: Processing index call
 
 static int processing_get(lua_State *Lua)
@@ -214,7 +214,7 @@ static int processing_destruct(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Register the fprocessing interface.
 
 static const luaL_Reg processinglib_functions[] = {

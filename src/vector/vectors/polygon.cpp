@@ -62,7 +62,7 @@ static void generate_polygon(extVectorPoly *Vector)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Converts a string of paired coordinates into a VectorPoint array.
 
 static ERROR read_points(extVectorPoly *Self, VectorPoint **Array, LONG *PointCount, CSTRING Value)
@@ -114,7 +114,7 @@ static ERROR read_points(extVectorPoly *Self, VectorPoint **Array, LONG *PointCo
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR POLYGON_Free(extVectorPoly *Self, APTR Void)
 {
@@ -201,7 +201,7 @@ static ERROR POLYGON_MoveToPoint(extVectorPoly *Self, struct acMoveToPoint *Args
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR POLYGON_NewObject(extVectorPoly *Self, APTR Void)
 {
@@ -530,7 +530,7 @@ static ERROR POLY_SET_Y2(extVectorPoly *Self, Variable *Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const ActionArray clPolygonActions[] = {
    { AC_Free,        (APTR)POLYGON_Free },

@@ -114,7 +114,7 @@ static ERROR thread_resolve_name(objThread *Thread)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR thread_resolve_addr(objThread *Thread)
 {
@@ -132,7 +132,7 @@ static ERROR thread_resolve_addr(objThread *Thread)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void notify_free_callback(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
@@ -767,7 +767,7 @@ static const FieldArray clNetLookupFields[] = {
 
 #include "class_netlookup_def.c"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR init_netlookup(void)
 {

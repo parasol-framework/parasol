@@ -62,7 +62,7 @@ static const UBYTE glWrapBreaks[256] = {
    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0  // 0xff
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 OBJECTPTR modFont = NULL;
 struct CoreBase *CoreBase;
@@ -108,7 +108,7 @@ static void scan_fixed_folder(objConfig *);
 static ERROR analyse_bmp_font(CSTRING, winfnt_header_fields *, STRING *, UBYTE *, UBYTE);
 static ERROR  fntRefreshFonts(void);
 
-//****************************************************************************
+//********************************************************************************************************************
 // Return the first unicode value from a given string address.
 
 static LONG getutf8(CSTRING Value, ULONG *Unicode)
@@ -161,7 +161,7 @@ static LONG getutf8(CSTRING Value, ULONG *Unicode)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Returns the global point size for font scaling.  This is set to 10 by default, but the user can change the setting
 // in the interface style values.
 
@@ -192,7 +192,7 @@ static DOUBLE global_point_size(void)
    return glDefaultPoint;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Attempts to update globally held DPI values with the main display's real DPI.
 //
 
@@ -214,7 +214,7 @@ static void update_dpi(void)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Only call this function if the font includes kerning support (test via FTF_KERNING).
 
 INLINE void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, LONG *X, LONG *Y)
@@ -225,7 +225,7 @@ INLINE void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, LONG *X, LO
    *Y = delta.y>>FT_DOWNSIZE;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Only call this function if the font includes kerning support (test via FTF_KERNING).
 
 INLINE LONG get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
@@ -237,7 +237,7 @@ INLINE LONG get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
    return delta.x>>FT_DOWNSIZE;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 INLINE void calc_lines(extFont *Self)
 {
@@ -253,7 +253,7 @@ INLINE void calc_lines(extFont *Self)
    else Self->prvLineCount = 1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static objConfig *glConfig = NULL;
 
@@ -1302,7 +1302,7 @@ static ERROR fntRefreshFonts(void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void scan_truetype_folder(objConfig *Config)
 {
@@ -1391,7 +1391,7 @@ static void scan_truetype_folder(objConfig *Config)
    else log.warning("Failed to open the fonts:truetype/ directory.");
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void scan_fixed_folder(objConfig *Config)
 {
@@ -1489,7 +1489,7 @@ static void scan_fixed_folder(objConfig *Config)
    else log.warning("Failed to scan directory fonts:fixed/");
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING *FaceName, UBYTE *Points, UBYTE MaxPoints)
 {
@@ -1602,10 +1602,10 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING
    else return ERR_File;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "class_font.cpp"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_FONT)

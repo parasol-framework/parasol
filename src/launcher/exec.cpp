@@ -1,5 +1,5 @@
 
-//****************************************************************************
+//********************************************************************************************************************
 // This function targets a data file for opening.
 
 static ERROR exec_data_file(CSTRING TargetFile)
@@ -58,7 +58,7 @@ static ERROR exec_data_file(CSTRING TargetFile)
    return(ERR_LimitedSuccess);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Executes the target.
 
 ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)

@@ -226,7 +226,7 @@ ERROR gfxUnsubscribeInput(LONG Handle)
    else return log.warning(ERR_AccessMemory);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This routine is called on every cycle of ProcessMessages() so that we can check if there are input events
 // that need to be processed.
 

@@ -485,7 +485,7 @@ static ERROR DOCUMENT_Disable(extDocument *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR DOCUMENT_Draw(extDocument *Self, APTR Void)
 {
@@ -668,7 +668,7 @@ static ERROR DOCUMENT_Focus(extDocument *Self, APTR Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
 {
@@ -742,7 +742,7 @@ static ERROR DOCUMENT_GetVar(extDocument *Self, struct acGetVar *Args)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 {
@@ -1142,7 +1142,7 @@ static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR DOCUMENT_NewObject(extDocument *Self, APTR Void)
 {
@@ -1151,7 +1151,7 @@ static ERROR DOCUMENT_NewObject(extDocument *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR DOCUMENT_NewOwner(extDocument *Self, struct acNewOwner *Args)
 {
@@ -1651,7 +1651,7 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
    return ERR_Search;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "document_def.c"
 

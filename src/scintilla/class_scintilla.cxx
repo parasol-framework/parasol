@@ -162,7 +162,7 @@ static const struct {
 #define SCIBLUE(c)  (UBYTE)(c>>16)
 #define SCICALL     Self->API->SendScintilla
 
-//****************************************************************************
+//********************************************************************************************************************
 // Scintilla class definition.
 
 static ERROR GET_AllowTabs(extScintilla *, LONG *);
@@ -203,7 +203,7 @@ static ERROR SET_TabWidth(extScintilla *, LONG);
 static ERROR SET_TextColour(extScintilla *, RGB8 *);
 static ERROR SET_Wordwrap(extScintilla *, LONG);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR consume_input_events(const InputEvent *, LONG);
 static void create_styled_fonts(extScintilla *);
@@ -216,7 +216,7 @@ static void report_event(extScintilla *, LARGE Event);
 static ERROR idle_timer(extScintilla *Self, LARGE Elapsed, LARGE CurrentTime);
 extern ERROR init_search(void);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static bool read_rgb8(CSTRING Value, RGB8 *RGB)
 {
@@ -231,7 +231,7 @@ static bool read_rgb8(CSTRING Value, RGB8 *RGB)
    else return false;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
@@ -255,7 +255,7 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    else return ERR_AddClass;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR CMDExpunge(void)
 {
@@ -1323,7 +1323,7 @@ static ERROR SCINTILLA_SetFont(extScintilla *Self, struct sciSetFont *Args)
    else return ERR_CreateObject;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Scintilla: ScrollToPoint
 
 static ERROR SCINTILLA_ScrollToPoint(extScintilla *Self, struct acScrollToPoint *Args)
@@ -1384,7 +1384,7 @@ static ERROR SCINTILLA_SelectRange(extScintilla *Self, struct sciSelectRange *Ar
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR SCINTILLA_Show(extScintilla *Self, APTR Void)
 {
@@ -2148,7 +2148,7 @@ static void create_styled_fonts(extScintilla *Self)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Scintilla initiates drawing instructions through window::InvalidateRectangle()
 
 static THREADVAR objBitmap *glBitmap = NULL;
@@ -2178,7 +2178,7 @@ static void draw_scintilla(extScintilla *Self, objSurface *Surface, objBitmap *B
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
 {
@@ -2487,7 +2487,7 @@ static void calc_longest_line(extScintilla *Self)
    LOGRETURN();
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR idle_timer(extScintilla *Self, LARGE Elapsed, LARGE CurrentTime)
 {
@@ -2497,7 +2497,7 @@ static ERROR idle_timer(extScintilla *Self, LARGE Elapsed, LARGE CurrentTime)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "class_scintilla_ext.cxx"
 #include "pan_classes.cxx"
@@ -2506,7 +2506,7 @@ static ERROR idle_timer(extScintilla *Self, LARGE Elapsed, LARGE CurrentTime)
 #include "pan_surface.cxx"
 #include "pan_listbox.cxx"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "class_scintilla_def.cxx"
 
@@ -2548,7 +2548,7 @@ static const FieldArray clFields[] = {
    END_FIELD
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR create_scintilla(void)
 {
@@ -2566,6 +2566,6 @@ static ERROR create_scintilla(void)
    return clScintilla ? ERR_Okay : ERR_AddClass;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, 1.0)

@@ -45,7 +45,7 @@ static BYTE glAlwaysUnpage = FALSE; // Forces unpaging of memory in all circumst
 THREADVAR WORD tlMessageBreak = FALSE; // This variable is set by ProcessMessages() to allow breaking when Windows sends OS messages
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 // POSIX compatible lock allocation functions.
 // Note: THREADLOCK == pthread_mutex_t; CONDLOCK == pthread_cond_t
 
@@ -315,7 +315,7 @@ void cond_wake_all(UBYTE Index)
 
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 // Note: This function must be called in a LOCK_PUBLIC_MEMORY() zone.
 //
 // If the memory is already paged in, then an AccessCount is incremented and the already-paged address is returned.
@@ -430,7 +430,7 @@ ERROR page_memory(PublicAddress *Block, APTR *Address)
    else return ERR_SystemLocked;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This function does not need to be called in a LOCK_PUBLIC_MEMORY() zone as pages are managed locally.
 
 ERROR unpage_memory(APTR Address)
@@ -482,7 +482,7 @@ ERROR unpage_memory(APTR Address)
    else return ERR_SystemLocked;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR unpage_memory_id(MEMORYID MemoryID)
 {
@@ -609,7 +609,7 @@ ERROR init_sleep(LONG OtherProcessID, LONG OtherThreadID, LONG ResourceID, LONG 
    else return log.warning(ERR_SystemLocked);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Used by ReleaseMemory(), ReleaseMemoryID(), ReleaseSemaphore()
 
 void wake_sleepers(LONG ResourceID, LONG ResourceType)
@@ -656,7 +656,7 @@ void wake_sleepers(LONG ResourceID, LONG ResourceType)
    else log.warning(ERR_SystemLocked);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Remove all the wait-locks for the current process (affects all threads).  Lingering wait-locks are indicative of
 // serious problems, as all should have been released on shutdown.
 
@@ -728,7 +728,7 @@ void remove_process_waitlocks(void)
    #endif
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Clear the wait-lock of the active thread.  This does not remove our thread from the wait-lock array.
 // Returns ERR_DoesNotExist if the resource was removed while waiting.
 
@@ -763,7 +763,7 @@ ERROR clear_waitlock(WORD Index)
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Windows thread-lock support.  Each thread gets its own semaphore.  Note that this is intended for handling public
 // resources only.  Internally, use critical sections for synchronisation between threads.
 

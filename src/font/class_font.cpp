@@ -89,7 +89,7 @@ static ERROR FONT_Draw(extFont *Self, APTR Void)
    else return draw_vector_font(Self);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR FONT_Free(extFont *Self, APTR Void)
 {
@@ -136,7 +136,7 @@ static ERROR FONT_Free(extFont *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR FONT_Init(extFont *Self, APTR Void)
 {
@@ -338,7 +338,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR FONT_NewObject(extFont *Self, APTR Void)
 {
@@ -1070,7 +1070,7 @@ static ERROR GET_YOffset(extFont *Self, LONG *Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // For use by draw_vector_font() only.
 
 static void draw_vector_outline(extFont *Self, objBitmap *Bitmap, font_glyph *src, LONG dxcoord, LONG dycoord, const RGB8 *Colour)
@@ -1148,7 +1148,7 @@ static void draw_vector_outline(extFont *Self, objBitmap *Bitmap, font_glyph *sr
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR draw_vector_font(extFont *Self)
 {
@@ -1447,7 +1447,7 @@ static ERROR draw_vector_font(extFont *Self)
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // All resources that are allocated in this routine must be untracked.
 // Assumes a cache lock is held on being called.
 
@@ -1529,7 +1529,7 @@ static ERROR cache_truetype_font(extFont *Self, CSTRING Path)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR generate_vector_outline(extFont *Self, font_glyph *Glyph)
 {
@@ -1572,7 +1572,7 @@ static ERROR generate_vector_outline(extFont *Self, font_glyph *Glyph)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This function is used to generate and cache the glyphs as bitmaps.  If the requested unicode value is not recognised
 // by the font, the default character glyph is used.  Caching is performed locally, i.e. to the font object and not
 // system wide.
@@ -1714,7 +1714,7 @@ static font_glyph * get_glyph(extFont *Self, ULONG Unicode, bool GetBitmap)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR draw_bitmap_font(extFont *Self)
 {
@@ -2094,7 +2094,7 @@ static ERROR draw_bitmap_font(extFont *Self)
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void unload_glyph_cache(extFont *Font)
 {

@@ -72,7 +72,7 @@ void apply_transition(objVectorTransition *Self, DOUBLE Index, agg::trans_affine
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Accurately interpolate the transform for Index and apply it to the coordinate (X,Y).
 
 void apply_transition_xy(objVectorTransition *Self, DOUBLE Index, DOUBLE *X, DOUBLE *Y)
@@ -108,7 +108,7 @@ void apply_transition_xy(objVectorTransition *Self, DOUBLE Index, DOUBLE *X, DOU
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR set_stop_transform(objVectorTransition *Self, TransitionStop *Stop, CSTRING Commands)
 {
@@ -133,7 +133,7 @@ static ERROR set_stop_transform(objVectorTransition *Self, TransitionStop *Stop,
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR TRANSITION_Free(objVectorTransition *Self, APTR Void)
 {
@@ -145,7 +145,7 @@ static ERROR TRANSITION_Free(objVectorTransition *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR TRANSITION_Init(objVectorTransition *Self, APTR Void)
 {
@@ -154,7 +154,7 @@ static ERROR TRANSITION_Init(objVectorTransition *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR TRANSITION_NewObject(objVectorTransition *Self, APTR Void)
 {

@@ -58,7 +58,7 @@ FT_Error (*EFT_New_Size)(FT_Face, FT_Size *);
 
 static FIELD FID_FreetypeFace;
 
-//****************************************************************************
+//********************************************************************************************************************
 
 class TextCursor {
 private:
@@ -211,11 +211,11 @@ static void reset_font(extVectorText *);
 static ERROR text_input_events(extVector *, const InputEvent *);
 static ERROR text_focus_event(extVector *, LONG);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 enum { WS_NO_WORD=0, WS_NEW_WORD, WS_IN_WORD };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 INLINE DOUBLE int26p6_to_dbl(LONG p)
 {
@@ -227,7 +227,7 @@ INLINE LONG dbl_to_int26p6(DOUBLE p)
    return LONG(p * 64.0);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Only call this function if the font includes kerning support
 
 INLINE void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, DOUBLE *X, DOUBLE *Y)
@@ -279,7 +279,7 @@ static ERROR VECTORTEXT_DeleteLine(extVectorText *Self, struct vtDeleteLine *Arg
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTORTEXT_Free(extVectorText *Self, APTR Void)
 {
@@ -305,7 +305,7 @@ static ERROR VECTORTEXT_Free(extVectorText *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTORTEXT_Init(extVectorText *Self, APTR Void)
 {
@@ -345,7 +345,7 @@ static ERROR VECTORTEXT_Init(extVectorText *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTORTEXT_NewObject(extVectorText *Self, APTR Void)
 {
@@ -1091,7 +1091,7 @@ static ERROR TEXT_SET_Weight(extVectorText *Self, LONG Value)
    else return ERR_OutOfRange;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Calculate the cursor that would be displayed at this character position and save it to the
 // line's chars array.
 
@@ -1109,7 +1109,7 @@ static void calc_cursor_position(TextLine &Line, agg::trans_affine &transform, D
    Line.chars.emplace_back(cx1, cy1, cx2, cy2);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This path generator creates text as a single path, by concatenating the paths of all individual characters in the
 // string.
 
@@ -1411,7 +1411,7 @@ static void generate_text(extVectorText *Vector)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Bitmap fonts are drawn as a rectangular block referencing a VectorImage texture that contains the rendered font.
 
 static void generate_text_bitmap(extVectorText *Vector)
@@ -1551,7 +1551,7 @@ static void generate_text_bitmap(extVectorText *Vector)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Converts a Freetype glyph outline to an AGG path.  The size of the font must be preset in the FT_Outline object,
 // with a call to FT_Set_Char_Size()
 
@@ -1711,7 +1711,7 @@ Close:
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 extern void get_text_xy(extVectorText *Vector)
 {
@@ -1741,7 +1741,7 @@ extern void get_text_xy(extVectorText *Vector)
    Vector->FinalY = y + Vector->txYOffset;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // (Re)loads the font for a text object.  This is a resource intensive exercise that should be avoided until the object
 // is ready to initialise.
 
@@ -1801,7 +1801,7 @@ static void reset_font(extVectorText *Vector)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR cursor_timer(extVectorText *Self, LARGE Elapsed, LARGE CurrentTime)
 {
@@ -1818,7 +1818,7 @@ static ERROR cursor_timer(extVectorText *Self, LARGE Elapsed, LARGE CurrentTime)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void add_line(extVectorText *Self, std::string String, LONG Offset, LONG Length, LONG Line)
 {
@@ -1845,7 +1845,7 @@ static void add_line(extVectorText *Self, std::string String, LONG Offset, LONG 
    acDraw(Self);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR text_focus_event(extVector *Vector, LONG Event)
 {
@@ -1888,7 +1888,7 @@ static ERROR text_focus_event(extVector *Vector, LONG Event)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR text_input_events(extVector *Vector, const InputEvent *Events)
 {
@@ -1958,7 +1958,7 @@ static ERROR text_input_events(extVector *Vector, const InputEvent *Events)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void key_event(extVectorText *Self, evKey *Event, LONG Size)
 {
@@ -2172,7 +2172,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void delete_selection(extVectorText *Self)
 {
@@ -2200,7 +2200,7 @@ static void delete_selection(extVectorText *Self)
    mark_dirty(Self, RC_BASE_PATH);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Note: This function validates boundaries except for the column going beyond the string length.
 
 void TextCursor::move(extVectorText *Vector, LONG Row, LONG Column, bool ValidateWidth)
@@ -2224,7 +2224,7 @@ void TextCursor::move(extVectorText *Vector, LONG Row, LONG Column, bool Validat
    acDraw(Vector);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void TextCursor::resetVector(extVectorText *Vector)
 {
@@ -2270,7 +2270,7 @@ void TextCursor::resetVector(extVectorText *Vector)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Move the cursor if it's outside the line boundary.
 
 void TextCursor::validatePosition(extVectorText *Self)
@@ -2292,7 +2292,7 @@ void TextCursor::validatePosition(extVectorText *Self)
    if ((row != mRow) or (col != mColumn)) Self->txCursor.move(Self, row, col);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void insert_char(extVectorText *Self, LONG Unicode, LONG Column)
 {
@@ -2331,7 +2331,7 @@ static void insert_char(extVectorText *Self, LONG Unicode, LONG Column)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "text_def.cpp"
 
@@ -2404,7 +2404,7 @@ static const FieldArray clTextFields[] = {
    END_FIELD
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR init_text(void)
 {

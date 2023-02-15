@@ -84,7 +84,7 @@ static ERROR load_file(objXML *, CSTRING);
 static ERROR next_item(objXML *, exttag *, CSTRING *);
 static ERROR txt_to_json(objXML *, CSTRING);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
@@ -112,7 +112,7 @@ ERROR CMDExpunge(void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static APTR get_tmp(LONG Size)
 {
@@ -126,7 +126,7 @@ static APTR get_tmp(LONG Size)
    else return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void free_tags(objXML *Self)
 {
@@ -179,7 +179,7 @@ static void debug_tree(objXML *Self)
 
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR JSON_Init(objXML *Self, APTR Void)
 {
@@ -221,7 +221,7 @@ static ERROR JSON_Init(objXML *Self, APTR Void)
    return ERR_NoSupport;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR JSON_SaveToObject(objXML *Self, struct acSaveToObject *Args)
 {
@@ -230,7 +230,7 @@ static ERROR JSON_SaveToObject(objXML *Self, struct acSaveToObject *Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR txt_to_json(objXML *Self, CSTRING Text)
 {
@@ -349,7 +349,7 @@ static ERROR txt_to_json(objXML *Self, CSTRING Text)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Called by txt_to_json() to extract the next item from a JSON string.  This function also recurses into itself.
 
 static ERROR extract_item(objXML *Self, exttag *Status, CSTRING *Input)
@@ -877,7 +877,7 @@ static ERROR extract_item(objXML *Self, exttag *Status, CSTRING *Input)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR create_tag(objXML *Self, LONG LineNo, exttag *Status, ...)
 {
@@ -947,7 +947,7 @@ static ERROR create_tag(objXML *Self, LONG LineNo, exttag *Status, ...)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR create_content(objXML *Self, LONG LineNo, exttag *Status, CSTRING Content)
 {
@@ -982,7 +982,7 @@ static ERROR create_content(objXML *Self, LONG LineNo, exttag *Status, CSTRING C
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR load_file(objXML *Self, CSTRING Path)
 {
@@ -996,7 +996,7 @@ static ERROR load_file(objXML *Self, CSTRING Path)
    else return Self->ParseError;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR next_item(objXML *Self, exttag *Status, CSTRING *Input)
 {
@@ -1014,6 +1014,6 @@ static ERROR next_item(objXML *Self, exttag *Status, CSTRING *Input)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, 1.0)

@@ -85,7 +85,7 @@ static ERROR RECTANGLE_MoveToPoint(extVectorRectangle *Self, struct acMoveToPoin
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR RECTANGLE_NewObject(extVectorRectangle *Self, APTR Void)
 {
@@ -351,7 +351,7 @@ static ERROR RECTANGLE_SET_Y(extVectorRectangle *Self, Variable *Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const FieldDef clRectDimensions[] = {
    { "FixedHeight",     DMF_FIXED_HEIGHT },

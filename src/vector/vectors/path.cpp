@@ -9,7 +9,7 @@ VectorPath provides support for parsing SVG styled path strings.
 
 *****************************************************************************/
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void generate_path(extVectorPath *Vector)
 {
@@ -19,7 +19,7 @@ static void generate_path(extVectorPath *Vector)
    bounding_rect_single(Vector->BasePath, 0, &Vector->BX1, &Vector->BY1, &Vector->BX2, &Vector->BY2);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void convert_to_aggpath(std::vector<PathCommand> &Paths, agg::path_storage *BasePath)
 {
@@ -150,7 +150,7 @@ void convert_to_aggpath(std::vector<PathCommand> &Paths, agg::path_storage *Base
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTORPATH_Clear(extVectorPath *Self, APTR Void)
 {
@@ -160,7 +160,7 @@ static ERROR VECTORPATH_Clear(extVectorPath *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTORPATH_Flush(extVectorPath *Self, APTR Void)
 {
@@ -169,7 +169,7 @@ static ERROR VECTORPATH_Flush(extVectorPath *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTORPATH_Free(extVectorPath *Self, APTR Void)
 {
@@ -178,14 +178,14 @@ static ERROR VECTORPATH_Free(extVectorPath *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTORPATH_Init(extVectorPath *Self, APTR Void)
 {
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTORPATH_NewObject(extVectorPath *Self, APTR Void)
 {
@@ -489,7 +489,7 @@ static ERROR VECTORPATH_SET_TotalCommands(extVectorPath *Self, LONG Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const FieldArray clPathFields[] = {
    { "Sequence",      FDF_VIRTUAL|FDF_STRING|FDF_RW, 0, (APTR)VECTOR_GET_Sequence, (APTR)VECTORPATH_SET_Sequence },
@@ -501,7 +501,7 @@ static const FieldArray clPathFields[] = {
 
 #include "path_def.c"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR init_path(void)
 {

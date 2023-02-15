@@ -1,5 +1,5 @@
 
-//****************************************************************************
+//********************************************************************************************************************
 // Called when a socket handle detects a new client wanting to connect to it.
 
 static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)

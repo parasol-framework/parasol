@@ -57,7 +57,7 @@ All data that is received from client sockets will be passed to the #Incoming fe
 
 static LONG glMaxWriteLen = 16 * 1024;
 
-//****************************************************************************
+//********************************************************************************************************************
 // Prototypes for internal methods
 
 #ifdef __linux__
@@ -74,7 +74,7 @@ static void server_client_connect(SOCKET_HANDLE, extNetSocket *);
 static void free_socket(extNetSocket *);
 static ERROR write_queue(extNetSocket *, NetQueue *, CPTR, LONG);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void notify_free_feedback(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
@@ -170,7 +170,7 @@ static ERROR NETSOCKET_Connect(extNetSocket *Self, struct nsConnect *Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This function is called on completion of nlResolveName().
 
 static void connect_name_resolved_nl(objNetLookup *NetLookup, ERROR Error, CSTRING HostName, IPAddress *IPs, LONG TotalIPs)
@@ -238,7 +238,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERROR Error, CSTRING Hos
 #endif
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Action: DataFeed
 
 static ERROR NETSOCKET_DataFeed(extNetSocket *Self, struct acDataFeed *Args)
@@ -336,7 +336,7 @@ static ERROR NETSOCKET_DisconnectSocket(extNetSocket *Self, struct nsDisconnectS
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Action: Free
 
 static ERROR NETSOCKET_Free(extNetSocket *Self, APTR Void)
@@ -357,7 +357,7 @@ static ERROR NETSOCKET_Free(extNetSocket *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Action: FreeWarning
 //
 // If a netsocket object is about to be freed, ensure that we are not using the netsocket object in one of our message
@@ -427,7 +427,7 @@ static ERROR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct nsGetLocalIP
    else return log.warning(ERR_Failed);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Action: Init()
 
 static ERROR NETSOCKET_Init(extNetSocket *Self, APTR Void)
@@ -563,7 +563,7 @@ static ERROR NETSOCKET_Init(extNetSocket *Self, APTR Void)
    else return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Action: NewObject
 
 static ERROR NETSOCKET_NewObject(extNetSocket *Self, APTR Void)
@@ -1242,7 +1242,7 @@ static ERROR GET_ValidCert(extNetSocket *Self, LONG *Value)
 #endif
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void free_socket(extNetSocket *Self)
 {
@@ -1282,7 +1282,7 @@ static void free_socket(extNetSocket *Self)
 
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR write_queue(extNetSocket *Self, NetQueue *Queue, CPTR Message, LONG Length)
 {
@@ -1449,7 +1449,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, LONG 
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const FieldDef clValidCert[] = {
    { "Okay",                          SCV_OK },                                 // The operation was successful.
@@ -1515,7 +1515,7 @@ static const FieldArray clSocketFields[] = {
 #include "netsocket_server.cpp"
 #include "netsocket_client.cpp"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR init_netsocket(void)
 {

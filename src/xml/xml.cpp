@@ -320,7 +320,7 @@ static ERROR XML_DataFeed(extXML *Self, struct acDataFeed *Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR XML_Free(extXML *Self, APTR Void)
 {

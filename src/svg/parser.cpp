@@ -1,5 +1,5 @@
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static LONG parse_aspect_ratio(CSTRING Value)
 {
@@ -24,7 +24,7 @@ static LONG parse_aspect_ratio(CSTRING Value)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static LONG shape_rendering_to_render_quality(CSTRING Value)
 {
@@ -43,7 +43,7 @@ static LONG shape_rendering_to_render_quality(CSTRING Value)
    return RQ_AUTO;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Apply the current state values to a vector.
 
 static void apply_state(svgState *State, OBJECTPTR Vector)
@@ -68,7 +68,7 @@ static void apply_state(svgState *State, OBJECTPTR Vector)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Copy a tag's attributes to the current state.
 
 static void set_state(svgState *State, const XMLTag *Tag)
@@ -111,7 +111,7 @@ static void set_state(svgState *State, const XMLTag *Tag)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Process all child elements that belong to the target Tag.
 
 static void process_children(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Vector)
@@ -124,7 +124,7 @@ static void process_children(extSVG *Self, objXML *XML, svgState *State, const X
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void xtag_pathtransition(extSVG *Self, objXML *XML, const XMLTag *Tag)
 {
@@ -169,7 +169,7 @@ static void xtag_pathtransition(extSVG *Self, objXML *XML, const XMLTag *Tag)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void xtag_clippath(extSVG *Self, objXML *XML, const XMLTag *Tag)
 {
@@ -1380,7 +1380,7 @@ static void xtag_filter(extSVG *Self, objXML *XML, svgState *State, const XMLTag
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // NB: In bounding-box mode, the default view-box is 0 0 1 1, where 1 is equivalent to 100% of the target space.
 // If the client sets a custom view-box then the dimensions are fixed, and no scaling will apply.
 
@@ -1492,7 +1492,7 @@ static void process_pattern(extSVG *Self, objXML *XML, const XMLTag *Tag)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR process_shape(extSVG *Self, CLASSID VectorID, objXML *XML, svgState *State, const XMLTag *Tag,
    OBJECTPTR Parent, objVector **Result)
@@ -1552,7 +1552,7 @@ static ERROR process_shape(extSVG *Self, CLASSID VectorID, objXML *XML, svgState
    else return ERR_CreateObject;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR xtag_default(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent, objVector **Vector)
 {
@@ -1637,7 +1637,7 @@ static ERROR xtag_default(extSVG *Self, objXML *XML, svgState *State, const XMLT
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR load_pic(extSVG *Self, CSTRING Path, objPicture **Picture)
 {
@@ -1702,7 +1702,7 @@ static ERROR load_pic(extSVG *Self, CSTRING Path, objPicture **Picture)
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Definition images are stored once, allowing them to be used multiple times via Fill and Stroke references.
 
 static void def_image(extSVG *Self, const XMLTag *Tag)
@@ -1768,7 +1768,7 @@ static void def_image(extSVG *Self, const XMLTag *Tag)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR xtag_image(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent, objVector **Vector)
 {
@@ -1833,7 +1833,7 @@ static ERROR xtag_image(extSVG *Self, objXML *XML, svgState *State, const XMLTag
    return ERR_Failed;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR xtag_defs(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent)
 {
@@ -1871,7 +1871,7 @@ static ERROR xtag_defs(extSVG *Self, objXML *XML, svgState *State, const XMLTag 
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR xtag_style(extSVG *Self, objXML *XML, const XMLTag *Tag)
 {
@@ -1926,7 +1926,7 @@ static ERROR xtag_style(extSVG *Self, objXML *XML, const XMLTag *Tag)
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Declare a 'symbol' which is basically a template for inclusion elsewhere through the use of a 'use' element.
 //
 // When a use element is encountered, it looks for the associated symbol ID and then processes the XML child tags that
@@ -2044,7 +2044,7 @@ static void xtag_morph(extSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR P
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Duplicates a referenced area of the SVG definition.
 //
 // "The effect of a 'use' element is as if the contents of the referenced element were deeply cloned into a separate
@@ -2179,7 +2179,7 @@ static void xtag_use(extSVG *Self, objXML *XML, svgState *State, const XMLTag *T
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void xtag_group(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent, objVector **Vector)
 {
@@ -2343,7 +2343,7 @@ static void xtag_svg(extSVG *Self, objXML *XML, svgState *State, const XMLTag *T
    else acFree(viewport);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // <animateTransform attributeType="XML" attributeName="transform" type="rotate" from="0,150,150" to="360,150,150"
 //   begin="0s" dur="5s" repeatCount="indefinite"/>
 
@@ -2499,7 +2499,7 @@ static ERROR xtag_animatetransform(extSVG *Self, objXML *XML, const XMLTag *Tag,
    else return ERR_AllocMemory;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // <animateMotion from="0,0" to="100,100" dur="4s" fill="freeze"/>
 
 static ERROR xtag_animatemotion(extSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR Parent)
@@ -2531,7 +2531,7 @@ static ERROR xtag_animatemotion(extSVG *Self, objXML *XML, const XMLTag *Tag, OB
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void process_attrib(extSVG *Self, objXML *XML, const XMLTag *Tag, objVector *Vector)
 {
@@ -2558,7 +2558,7 @@ static void process_attrib(extSVG *Self, objXML *XML, const XMLTag *Tag, objVect
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Apply all attributes in a rule to a target tag.
 
 static void apply_rule(extSVG *Self, objXML *XML, KatanaArray *Properties, const XMLTag *Tag)
@@ -2649,7 +2649,7 @@ static void apply_rule(extSVG *Self, objXML *XML, KatanaArray *Properties, const
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Scan and apply all stylesheet selectors to the loaded XML document.
 
 static void process_rule(extSVG *Self, objXML *XML, KatanaRule *Rule)
@@ -2728,7 +2728,7 @@ static void process_rule(extSVG *Self, objXML *XML, KatanaRule *Rule)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, objXML *XML, const XMLTag *Tag, CSTRING StrValue)
 {

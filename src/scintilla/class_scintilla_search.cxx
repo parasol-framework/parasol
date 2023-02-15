@@ -160,7 +160,7 @@ static ERROR SEARCH_Find(objScintillaSearch *Self, struct ssFind *Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR SEARCH_Free(objScintillaSearch *Self, APTR Void)
 {
@@ -168,7 +168,7 @@ static ERROR SEARCH_Free(objScintillaSearch *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR SEARCH_Init(objScintillaSearch *Self, APTR Void)
 {
@@ -360,7 +360,7 @@ static ERROR SET_Text(objScintillaSearch *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const ActionArray clActions[] = {
    { AC_Free, (APTR)SEARCH_Free },
@@ -368,7 +368,7 @@ static const ActionArray clActions[] = {
    { 0, NULL }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const FunctionField argsNext[] = { { "Pos", FD_LONG|FD_RESULT }, { NULL, 0 } };
 static const FunctionField argsPrev[] = { { "Pos", FD_LONG|FD_RESULT }, { NULL, 0 } };
@@ -381,7 +381,7 @@ static const MethodArray clMethods[] = {
    { 0, NULL, NULL, NULL, 0 }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const FieldDef clFlags[] = {
    { "Case",          STF_CASE },
@@ -400,7 +400,7 @@ static const FieldArray clFields[] = {
    END_FIELD
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 OBJECTPTR clScintillaSearch = NULL;
 

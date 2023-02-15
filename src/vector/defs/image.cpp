@@ -39,7 +39,7 @@ static ERROR IMAGE_Init(objVectorImage *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR IMAGE_NewObject(objVectorImage *Self, APTR Void)
 {

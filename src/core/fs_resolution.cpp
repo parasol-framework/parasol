@@ -211,7 +211,7 @@ resolved_path:
    else return log.warning(ERR_LockFailed);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // For resolving file references via the host environment's PATH variable.  This will only work for relative paths.
 
 #ifdef __unix__
@@ -451,7 +451,7 @@ static ERROR resolve(STRING Source, STRING Dest, LONG Flags)
    return ERR_FileNotFound;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // For cases such as ":SystemIcons", we find the referenced object and ask it to resolve the path for us.  (In effect,
 // the object will be used as a plugin for volume resolution).
 //

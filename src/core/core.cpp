@@ -1106,7 +1106,7 @@ static ERROR init_shared_control(void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const CSTRING signals[] = {
    "00: UNKNOWN",
@@ -1840,7 +1840,7 @@ static void BreakHandler(void)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #ifdef _WIN32
 static void win32_enum_folders(CSTRING Volume, CSTRING Label, CSTRING Path, CSTRING Icon, BYTE Hidden)
@@ -1854,7 +1854,7 @@ static void win32_enum_folders(CSTRING Volume, CSTRING Label, CSTRING Path, CSTR
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
 {

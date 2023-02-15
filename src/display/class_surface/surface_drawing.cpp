@@ -553,7 +553,7 @@ static ERROR SURFACE_InvalidateRegion(extSurface *Self, struct drwInvalidateRegi
    return ERR_Okay|ERF_Notified;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void move_layer(extSurface *Self, LONG X, LONG Y)
 {

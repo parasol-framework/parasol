@@ -50,7 +50,7 @@ static void dump_global_table(objScript *Self, STRING Global)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR GET_Procedures(objScript *, STRING **, LONG *);
 
@@ -59,7 +59,7 @@ static const FieldArray clFields[] = {
    END_FIELD
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR FLUID_Activate(objScript *, APTR);
 static ERROR FLUID_DataFeed(objScript *, struct acDataFeed *);
@@ -76,7 +76,7 @@ static const ActionArray clActions[] = {
    { 0, NULL }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR FLUID_GetProcedureID(objScript *, struct scGetProcedureID *);
 static ERROR FLUID_DerefProcedure(objScript *, struct scDerefProcedure *);
@@ -87,7 +87,7 @@ static const MethodArray clMethods[] = {
    { 0, NULL, NULL, NULL, 0 }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void free_all(objScript *Self)
 {
@@ -105,7 +105,7 @@ static void free_all(objScript *Self)
    prv->Lua = NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Proxy functions for controlling access to global variables.
 
 static int global_index(lua_State *Lua) // Read global via proxy
@@ -130,7 +130,7 @@ static int global_newindex(lua_State *Lua) // Write global variable via proxy
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Only to be used immediately after a failed lua_pcall().  Lua stores a description of the error that occurred on the
 // stack, this will be popped and copied to the ErrorString field.
 
@@ -223,7 +223,7 @@ static ERROR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Action notifications arrive when the user has used object.subscribe() in the Fluid script.
 //
 // function(ObjectID, Args, Reference)
@@ -272,7 +272,7 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR FLUID_Activate(objScript *Self, APTR Void)
 {
@@ -509,7 +509,7 @@ failure:
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
 {
@@ -592,7 +592,7 @@ restart:
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR FLUID_DerefProcedure(objScript *Self, struct scDerefProcedure *Args)
 {
@@ -618,7 +618,7 @@ static ERROR FLUID_DerefProcedure(objScript *Self, struct scDerefProcedure *Args
    else return log.warning(ERR_Args);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR FLUID_Free(objScript *Self, APTR Void)
 {
@@ -626,7 +626,7 @@ static ERROR FLUID_Free(objScript *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR FLUID_GetProcedureID(objScript *Self, struct scGetProcedureID *Args)
 {
@@ -654,7 +654,7 @@ static ERROR FLUID_GetProcedureID(objScript *Self, struct scGetProcedureID *Args
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR FLUID_Init(objScript *Self, APTR Void)
 {
@@ -865,7 +865,7 @@ static ERROR GET_Procedures(objScript *Self, STRING **Value, LONG *Elements)
    else return ERR_Failed;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR save_binary(objScript *Self, OBJECTID FileID)
 {
@@ -912,7 +912,7 @@ static ERROR save_binary(objScript *Self, OBJECTID FileID)
 */
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR run_script(objScript *Self)
 {
@@ -1086,7 +1086,7 @@ static ERROR run_script(objScript *Self)
       return Self->Error;
    }
 }
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR register_interfaces(objScript *Self)
 {
@@ -1126,7 +1126,7 @@ static ERROR register_interfaces(objScript *Self)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR create_fluid(void)
 {

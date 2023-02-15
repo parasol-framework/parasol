@@ -11,7 +11,7 @@ Please refer to it for further information on licensing.
 ERROR GET_HDensity(extDisplay *Self, LONG *Value);
 ERROR GET_VDensity(extDisplay *Self, LONG *Value);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 rgb_to_linear glLinearRGB;
 
@@ -90,7 +90,7 @@ static void android_term_window(LONG);
 
 #include "module_def.c"
 
-//****************************************************************************
+//********************************************************************************************************************
 // Note: These values are used as the input masks
 
 const InputType glInputType[JET_END] = {
@@ -227,7 +227,7 @@ THREADVAR OBJECTID tlFreeExpose = 0;
 THREADVAR SurfaceControl *tlSurfaceList = NULL;
 THREADVAR LONG glRecentSurfaceIndex = 0;
 
-//****************************************************************************
+//********************************************************************************************************************
 // Alpha blending data.
 
 UBYTE *glAlphaLookup = NULL;
@@ -239,7 +239,7 @@ INLINE UBYTE clipByte(LONG value)
    return value;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // GLES specific functions
 
 #ifdef _GLES_
@@ -283,7 +283,7 @@ int pthread_mutex_timedlock (pthread_mutex_t *mutex, int Timeout)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 // lock_graphics_active() is intended for functionality that MUST have access to an active OpenGL display.  If an EGL
 // display is unavailable then this function will fail even if the lock could otherwise be granted.
 
@@ -338,7 +338,7 @@ void unlock_graphics(void)
 
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 // Handles incoming interface messages.
 
 static ERROR msg_handler(APTR Custom, LONG UniqueID, LONG Type, APTR Data, LONG Size)
@@ -351,7 +351,7 @@ static ERROR msg_handler(APTR Custom, LONG UniqueID, LONG Type, APTR Data, LONG 
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #ifdef __xwindows__
 
@@ -444,7 +444,7 @@ XErrorHandler CatchRedirectError(Display *XDisplay, XErrorEvent *event)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 const CSTRING glXProtoList[] = { NULL,
 "CreateWindow","ChangeWindowAttributes","GetWindowAttributes","DestroyWindow","DestroySubwindows","ChangeSaveSet","ReparentWindow","MapWindow","MapSubwindows",
@@ -479,7 +479,7 @@ XErrorHandler CatchXError(Display *XDisplay, XErrorEvent *XEvent)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int CatchXIOError(Display *XDisplay)
 {
@@ -500,7 +500,7 @@ LONG x11WindowManager(void)
 
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
 {
@@ -733,7 +733,7 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
@@ -1146,7 +1146,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CMDOpen(OBJECTPTR Module)
 {
@@ -1154,7 +1154,7 @@ static ERROR CMDOpen(OBJECTPTR Module)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CMDExpunge(void)
 {
@@ -1399,7 +1399,7 @@ ERROR init_egl(void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void refresh_display_from_egl(extDisplay *Self)
 {
@@ -1462,7 +1462,7 @@ void free_egl(void)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #ifdef __xwindows__
 #include "x11/handlers.cpp"
@@ -1476,6 +1476,6 @@ void free_egl(void)
 #include "android/android.cpp"
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_DISPLAY)

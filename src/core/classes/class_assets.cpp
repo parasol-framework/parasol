@@ -83,7 +83,7 @@ static ERROR scan_dir(DirInfo *);
 static ERROR test_path(CSTRING, LONG *);
 static AAssetManager * get_asset_manager(void);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR add_asset_class(void)
 {
@@ -168,7 +168,7 @@ ERROR add_asset_class(void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void free_asset_class(void)
 {
@@ -182,21 +182,21 @@ void free_asset_class(void)
    if (glAssetClass) { acFree(glAssetClass); glAssetClass = NULL; }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR ASSET_Delete(objFile *Self, APTR Void)
 {
    return ERR_NoSupport; // Asset files cannot be deleted.
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR ASSET_Free(objFile *Self, APTR Void)
 {
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR ASSET_Init(objFile *Self, APTR Void)
 {
@@ -262,14 +262,14 @@ static ERROR ASSET_Init(objFile *Self, APTR Void)
    else return log.warning(ERR_AllocMemory);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR ASSET_Move(objFile *Self, struct mtFileMove *Args)
 {
    return ERR_NoSupport; // Assets cannot be moved
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR ASSET_Read(objFile *Self, struct acRead *Args)
 {
@@ -300,14 +300,14 @@ static ERROR ASSET_Read(objFile *Self, struct acRead *Args)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR ASSET_Rename(objFile *Self, struct acRename *Args)
 {
    return ERR_NoSupport; // Assets cannot be renamed.
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR ASSET_Seek(objFile *Self, struct acSeek *Args)
 {
@@ -328,7 +328,7 @@ static ERROR ASSET_Seek(objFile *Self, struct acSeek *Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Assets are read-only.  If writing to an asset is required, the developer should copy the file to the cache or other
 // storage area and modify it there.
 
@@ -337,7 +337,7 @@ static ERROR ASSET_Write(objFile *Self, struct acWrite *Args)
    return ERR_NoSupport; // Writing to assets is disallowed
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR GET_Permissions(objFile *Self, APTR *Value)
 {
@@ -350,7 +350,7 @@ static ERROR SET_Permissions(objFile *Self, APTR Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR GET_Size(objFile *Self, LARGE *Value)
 {
@@ -366,7 +366,7 @@ static ERROR GET_Size(objFile *Self, LARGE *Value)
    else return ERR_Failed; // Either the file is a folder or hasn't been opened.
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Open the assets: volume for scanning.
 
 static ERROR open_dir(DirInfo *Dir)
@@ -397,7 +397,7 @@ static ERROR open_dir(DirInfo *Dir)
    else return ERR_InvalidPath;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Scan the next entry in the folder.
 
 static ERROR scan_dir(DirInfo *Dir)
@@ -444,7 +444,7 @@ static ERROR scan_dir(DirInfo *Dir)
    return ERR_DirEmpty;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Close the assets: volume.
 
 static ERROR close_dir(DirInfo *Dir)
@@ -460,7 +460,7 @@ static ERROR close_dir(DirInfo *Dir)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 {
@@ -525,7 +525,7 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Test an assets: location.
 
 static ERROR test_path(CSTRING Path, LONG Flags, LONG *Type)
@@ -578,7 +578,7 @@ static ERROR test_path(CSTRING Path, LONG Flags, LONG *Type)
    return ERR_DoesNotExist;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Read the entire folder in one function call.
 
 #if 0
@@ -724,7 +724,7 @@ static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static AAssetManager * get_asset_manager(void)
 {

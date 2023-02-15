@@ -76,7 +76,7 @@ static ERROR PROGRAM_DataFeed(OBJECTPTR, struct acDataFeed *);
 extern "C" void close_parasol(void);
 static APTR find_core(char *PathBuffer, int Size);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 typedef struct CoreBase * OPENCORE(struct OpenInfo *);
 typedef void CLOSECORE(void);
@@ -136,7 +136,7 @@ exit:
    return msg;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void close_parasol(void)
 {

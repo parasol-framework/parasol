@@ -34,7 +34,7 @@ class extVectorWave : public extVector {
    UBYTE  wStyle;
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void generate_wave(extVectorWave *Vector)
 {
@@ -189,7 +189,7 @@ static ERROR WAVE_MoveToPoint(extVectorWave *Self, struct acMoveToPoint *Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR WAVE_NewObject(extVectorWave *Self, APTR Void)
 {
@@ -552,7 +552,7 @@ static ERROR WAVE_SET_Y(extVectorWave *Self, Variable *Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const FieldDef clWaveClose[] = {
    { "None",   WVC_NONE },

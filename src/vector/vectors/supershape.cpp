@@ -32,7 +32,7 @@ class extVectorShape : public extVector {
    UBYTE Mod;
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void generate_supershape(extVectorShape *Vector)
 {
@@ -142,7 +142,7 @@ static void generate_supershape(extVectorShape *Vector)
    bounding_rect_single(Vector->BasePath, 0, &Vector->BX1, &Vector->BY1, &Vector->BX2, &Vector->BY2);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR SUPER_NewObject(extVectorShape *Self, APTR Void)
 {
@@ -584,7 +584,7 @@ static ERROR SUPER_SET_Vertices(extVectorShape *Self, LONG Value)
    else return ERR_InvalidValue;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const FieldDef clSuperDimensions[] = {
    { "FixedRadius",     DMF_FIXED_RADIUS },

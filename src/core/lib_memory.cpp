@@ -63,7 +63,7 @@ INLINE void set_publicmem_lock(PublicAddress *Address)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 // This function is called whenever memory blocks are freed.  It is useful for debugging applications that are
 // suspected to be using memory blocks after they have been deallocated.  Copies '0xdeadbeef' so that it's obvious.
 
@@ -1141,7 +1141,7 @@ ERROR ReallocMemory(APTR Address, LONG NewSize, APTR *Memory, MEMORYID *MemoryID
    else return log.error(ERR_AllocMemory);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Compresses the public memory table, keeping it in the correct record order.
 
 static void compress_public_memory(SharedControl *Control)
@@ -1237,7 +1237,7 @@ LONG find_public_address(SharedControl *Control, APTR Address)
    return -1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Internal function to set the manager for an allocated resource.  Note: At this stage managed resources are not to
 // be exposed in the published API.
 
@@ -1247,7 +1247,7 @@ void set_memory_manager(APTR Address, ResourceManager *Manager)
    address_mgr[0] = Manager;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Finds public memory blocks via ID.  For thread safety, this function should be called within a lock_private_memory() zone.
 
 ERROR find_public_mem_id(SharedControl *Control, MEMORYID MemoryID, LONG *EntryPos)
@@ -1279,7 +1279,7 @@ ERROR find_public_mem_id(SharedControl *Control, MEMORYID MemoryID, LONG *EntryP
    return ERR_MemoryDoesNotExist;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Returns the address of a public block that has been *mapped*.  If not mapped, then NULL is returned.
 
 APTR resolve_public_address(PublicAddress *Block)

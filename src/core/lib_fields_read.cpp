@@ -19,7 +19,7 @@ this by calling SetContext() themselves.
 
 static THREADVAR char strGetField[400]; // Buffer for retrieving variable field values
 
-//****************************************************************************
+//********************************************************************************************************************
 // This internal function provides a fast binary search of field names via ID.
 
 Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target)
@@ -580,7 +580,7 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Used by the GetField() range of functions.
 
 ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Result, CSTRING Option, LONG *TotalElements)

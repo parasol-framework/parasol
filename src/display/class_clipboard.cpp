@@ -41,7 +41,7 @@ static ERROR add_clip(MEMORYID, LONG, CSTRING, LONG, CLASSID, LONG, LONG *);
 static void free_clip(ClipEntry *);
 static ERROR CLIPBOARD_AddObjects(objClipboard *, struct clipAddObjects *);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static CSTRING GetDatatype(LONG Datatype)
 {
@@ -52,7 +52,7 @@ static CSTRING GetDatatype(LONG Datatype)
    return "unknown";
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void notify_script_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
@@ -478,7 +478,7 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CLIPBOARD_Free(objClipboard *Self, APTR Void)
 {
@@ -836,7 +836,7 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
    else return ERR_NoSupport;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CLIPBOARD_Init(objClipboard *Self, APTR Void)
 {
@@ -868,7 +868,7 @@ static ERROR CLIPBOARD_Init(objClipboard *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CLIPBOARD_NewObject(objClipboard *Self, APTR Void)
 {

@@ -49,7 +49,7 @@ DLLCALL LONG WINAPI GetPixel(APTR, LONG, LONG);
 
 static LONG CalculatePixelRoutines(extBitmap *);
 
-//****************************************************************************
+//********************************************************************************************************************
 // Pixel and pen based functions.
 
 // Video Pixel Routines
@@ -142,7 +142,7 @@ static ULONG MemReadPixelPlanar(objBitmap *, LONG, LONG);
 
 static void DrawRGBPixelPlanar(objBitmap *, LONG X, LONG Y, RGB8 *);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR GET_Handle(extBitmap *, APTR *);
 
@@ -168,7 +168,7 @@ FDEF argsReadUCRPixel[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { 
 FDEF argsDrawUCRIndex[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "Data", FD_PTR }, { "Colour", FD_PTR|FD_RGB }, { NULL, 0 } };
 FDEF argsReadUCRIndex[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "Data", FD_PTR }, { "Colour", FD_PTR|FD_RGB|FD_RESULT }, { NULL, 0 } };
 
-//****************************************************************************
+//********************************************************************************************************************
 // Score = Abs(BB1 - BB2) + Abs(GG1 - GG2) + Abs(RR1 - RR2)
 // The closer the score is to zero, the better the colour match.
 
@@ -201,7 +201,7 @@ static ULONG RGBToValue(RGB8 *RGB, RGBPalette *Palette)
    return best;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 inline static UBYTE conv_l2r(DOUBLE X) {
    LONG ix;
@@ -834,7 +834,7 @@ static ERROR BITMAP_Flush(extBitmap *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR BITMAP_Free(extBitmap *Self, APTR Void)
 {
@@ -1263,7 +1263,7 @@ static ERROR BITMAP_Lock(extBitmap *Self, APTR Void)
 #endif
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR BITMAP_NewObject(extBitmap *Self, APTR Void)
 {
@@ -2561,7 +2561,7 @@ YOffset: Private. Provided for surface/video drawing purposes - considered too a
 
 *****************************************************************************/
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CalculatePixelRoutines(extBitmap *Self)
 {
@@ -2697,7 +2697,7 @@ static ERROR CalculatePixelRoutines(extBitmap *Self)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "lib_mempixels.cpp"
 
@@ -2757,7 +2757,7 @@ static const FieldArray clBitmapFields[] = {
    END_FIELD
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR create_bitmap_class(void)
 {

@@ -42,7 +42,7 @@ static ERROR GET_Args(extParc *, CSTRING *);
 
 static ERROR add_parc_class(void);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
@@ -116,7 +116,7 @@ static ERROR PARC_Activate(extParc *Self, APTR Void)
    else return ERR_NothingDone;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const char glOutputScript[] = "\n\
    glSelf = obj.find('self')\n\
@@ -170,7 +170,7 @@ static ERROR PARC_DataFeed(extParc *Self, struct acDataFeed *Args)
    else return ERR_NoSupport;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR PARC_Free(extParc *Self, APTR Void)
 {
@@ -235,7 +235,7 @@ static ERROR PARC_Init(extParc *Self, APTR Void)
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR PARC_NewObject(extParc *Self, APTR Void)
 {

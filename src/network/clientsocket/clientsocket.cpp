@@ -182,7 +182,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
    ClientSocket->OutgoingRecursion--;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CLIENTSOCKET_Free(extClientSocket *Self, APTR Void)
 {
@@ -218,7 +218,7 @@ static ERROR CLIENTSOCKET_Free(extClientSocket *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CLIENTSOCKET_Init(extClientSocket *Self, APTR Void)
 {
@@ -502,7 +502,7 @@ static ERROR CLIENTSOCKET_WriteClientMsg(extClientSocket *Self, struct csWriteCl
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "clientsocket_def.c"
 
@@ -520,7 +520,7 @@ static const FieldArray clClientSocketFields[] = {
    END_FIELD
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR init_clientsocket(void)
 {

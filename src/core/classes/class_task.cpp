@@ -184,7 +184,7 @@ static const ActionArray clActions[] = {
 
 #include "class_task_def.c"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void task_stdinput_callback(HOSTHANDLE FD, void *Task)
 {
@@ -258,7 +258,7 @@ static void check_incoming(extTask *Self)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 // Data output from the executed process is passed via data channels to the object specified in Task->OutputID, and/or
 // sent to a callback function.
 
@@ -331,7 +331,7 @@ static void task_stderr(HOSTHANDLE FD, APTR Task)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 // task_incoming_stdout() and task_incoming_stderr() are callbacks that are activated when data is incoming from a
 // process that we've launched.
 
@@ -399,7 +399,7 @@ static void task_incoming_stderr(WINHANDLE Handle, extTask *Task)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // These functions arrange for callbacks to be made whenever one of our process-connected pipes receives data.
 
 extern "C" void task_register_stdout(extTask *Task, WINHANDLE Handle)
@@ -416,7 +416,7 @@ extern "C" void task_register_stderr(extTask *Task, WINHANDLE Handle)
    RegisterFD(Handle, RFD_READ, (void (*)(void *, void *))&task_incoming_stderr, Task);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 extern "C" void task_deregister_incoming(WINHANDLE Handle)
 {
@@ -424,14 +424,14 @@ extern "C" void task_deregister_incoming(WINHANDLE Handle)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR msg_waitforobjects(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
    return ERR_Terminate;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static CSTRING action_id_name(LONG ActionID)
 {
@@ -445,7 +445,7 @@ static CSTRING action_id_name(LONG ActionID)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
@@ -518,7 +518,7 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Internal debug message found.  Internal debug messages are used for diagnosing things that are in local memory to
 // the task (programs like Inspector cannot access such areas).
 
@@ -549,7 +549,7 @@ static ERROR msg_debug(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR msg_validate_process(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
@@ -560,7 +560,7 @@ static ERROR msg_validate_process(APTR Custom, LONG MsgID, LONG MsgType, APTR Me
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR msg_quit(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
@@ -568,7 +568,7 @@ static ERROR msg_quit(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG 
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This function is called when a WIN32 process that we launched has been terminated.
 //
 // For the linux equivalent, refer to internal.c validate_processID().
@@ -639,7 +639,7 @@ static void task_process_end(WINHANDLE FD, extTask *Task)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #ifdef _WIN32
 extern "C" void register_process_pipes(extTask *Self, WINHANDLE ProcessHandle)
@@ -657,7 +657,7 @@ extern "C" void deregister_process_pipes(extTask *Self, WINHANDLE ProcessHandle)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 // Action interception routine.
 
 static ERROR InterceptedAction(extTask *Self, APTR Args)
@@ -1320,7 +1320,7 @@ static ERROR TASK_Expunge(extTask *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR TASK_Free(extTask *Self, APTR Void)
 {
@@ -1670,7 +1670,7 @@ static ERROR TASK_GetVar(extTask *Self, struct acGetVar *Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR TASK_Init(extTask *Self, APTR Void)
 {
@@ -2563,7 +2563,7 @@ static ERROR SET_ReturnCode(extTask *Self, LONG Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const FieldArray clFields[] = {
    { "TimeOut",         FDF_DOUBLE|FDF_RW,    0, NULL, NULL },
@@ -2592,7 +2592,7 @@ static const FieldArray clFields[] = {
    END_FIELD
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 extern "C" ERROR add_task_class(void)
 {

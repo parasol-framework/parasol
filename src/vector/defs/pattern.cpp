@@ -51,7 +51,7 @@ static ERROR PATTERN_Draw(extVectorPattern *Self, struct acDraw *Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR PATTERN_Free(extVectorPattern *Self, APTR Void)
 {
@@ -68,7 +68,7 @@ static ERROR PATTERN_Free(extVectorPattern *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR PATTERN_Init(extVectorPattern *Self, APTR Void)
 {
@@ -100,7 +100,7 @@ static ERROR PATTERN_Init(extVectorPattern *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR PATTERN_NewObject(extVectorPattern *Self, APTR Void)
 {

@@ -44,7 +44,7 @@ INLINE LONG GET_KEY_SIZE(KeyPair *KP) { return KP->ValueOffset + KP->ValueLength
 #define MOD_TABLESIZE(val,size) ((val) & (size - 1))
 #define HEAD_SIZE sizeof(KeyPair)
 
-//****************************************************************************
+//********************************************************************************************************************
 // Resource management for KeyStore.
 
 static void KeyStore_free(APTR Address)
@@ -81,14 +81,14 @@ static ResourceManager glResourceKeyStore = {
    &KeyStore_free
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 INLINE LONG hm_hash_index(LONG TableSize, ULONG KeyHash) {
    ULONG hash = KeyHash * PRIME_HASH; // This operation greatly improves hash distribution with a more even spread.
    return MOD_TABLESIZE(hash, TableSize);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static KeyPair * build_key_pair(KeyStore *Store, CSTRING Key, const void *Value, LONG Length)
 {
@@ -121,7 +121,7 @@ static KeyPair * build_hashed_key_pair(KeyStore *Store, ULONG Key, const void *V
    else return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Doubles the size of the hashmap, and rehashes all the elements
 
 static ERROR hm_rehash(KeyStore *Store)
@@ -175,7 +175,7 @@ retry:
    else return ERR_AllocMemory;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Used for setting values in the map, this returns the integer of the location to store a new item, or -1.
 
 static LONG hm_newkey(KeyStore *Store, KeyPair *KeyPair)
@@ -195,7 +195,7 @@ static LONG hm_newkey(KeyStore *Store, KeyPair *KeyPair)
    return -1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Note: It is presumed that you have checked for duplicates because this routine does not check for an existing key
 // with the same name.
 
@@ -212,7 +212,7 @@ static LONG hm_put(KeyStore *Store, KeyPair *KeyPair)
    return index;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Get the index of a key, or -1 if it's not present.  Note: Dead keys are not ignored, so can be returned.
 // This function also breaks immediately if a NULL pointer is found in the bucket.  This is a useful optimisation, but
 // presumes that keys are never removed and that they can only become 'dead'.  Such keys are cleaned up during a rehash.

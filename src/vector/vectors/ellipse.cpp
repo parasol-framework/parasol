@@ -21,7 +21,7 @@ class extVectorEllipse : public extVector {
    LONG eVertices;
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void generate_ellipse(extVectorEllipse *Vector)
 {
@@ -101,7 +101,7 @@ static ERROR ELLIPSE_MoveToPoint(extVectorEllipse *Self, struct acMoveToPoint *A
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR ELLIPSE_NewObject(extVectorEllipse *Self, APTR Void)
 {
@@ -403,7 +403,7 @@ static ERROR ELLIPSE_SET_Width(extVectorEllipse *Self, Variable *Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const FieldDef clEllipseDimensions[] = {
    { "FixedRadiusX",    DMF_FIXED_RADIUS_X },

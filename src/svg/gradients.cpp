@@ -15,7 +15,7 @@ static ERROR gradient_defaults(extSVG *Self, objVectorGradient *Gradient, ULONG 
    return ERR_Failed;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Note that all offsets are percentages.
 
 static ERROR process_gradient_stops(extSVG *Self, const XMLTag *Tag, GradientStop *Stops)
@@ -74,7 +74,7 @@ static ERROR process_gradient_stops(extSVG *Self, const XMLTag *Tag, GradientSto
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR xtag_lineargradient(extSVG *Self, const XMLTag *Tag)
 {
@@ -160,7 +160,7 @@ static ERROR xtag_lineargradient(extSVG *Self, const XMLTag *Tag)
    else return ERR_NewObject;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR xtag_radialgradient(extSVG *Self, const XMLTag *Tag)
 {
@@ -237,7 +237,7 @@ static ERROR xtag_radialgradient(extSVG *Self, const XMLTag *Tag)
    else return ERR_NewObject;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR xtag_diamondgradient(extSVG *Self, const XMLTag *Tag)
 {
@@ -313,7 +313,7 @@ static ERROR xtag_diamondgradient(extSVG *Self, const XMLTag *Tag)
    else return ERR_NewObject;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // NB: Contour gradients are not part of the SVG standard.
 
 static ERROR xtag_contourgradient(extSVG *Self, const XMLTag *Tag)
@@ -385,7 +385,7 @@ static ERROR xtag_contourgradient(extSVG *Self, const XMLTag *Tag)
    else return ERR_NewObject;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR xtag_conicgradient(extSVG *Self, const XMLTag *Tag)
 {

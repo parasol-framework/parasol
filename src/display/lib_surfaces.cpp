@@ -219,7 +219,7 @@ ERROR unlock_surface(extBitmap *Bitmap)
 
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR get_surface_abs(OBJECTID SurfaceID, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height)
 {
@@ -295,7 +295,7 @@ void redraw_nonintersect(OBJECTID SurfaceID, SurfaceList *List, LONG Index, LONG
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Scans the surfacelist for the 'true owner' of a given bitmap.
 
 LONG find_bitmap_owner(SurfaceList *List, LONG Index)
@@ -310,7 +310,7 @@ LONG find_bitmap_owner(SurfaceList *List, LONG Index)
    return owner;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This function is responsible for inserting new surface objects into the list of layers for positional/depth management.
 //
 // Surface levels start at 1, which indicates the top-most level.
@@ -455,7 +455,7 @@ ERROR track_layer(extSurface *Self)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void untrack_layer(OBJECTID ObjectID)
 {
@@ -502,7 +502,7 @@ void untrack_layer(OBJECTID ObjectID)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR update_surface_copy(extSurface *Self, SurfaceList *Copy)
 {
@@ -592,7 +592,7 @@ ERROR update_surface_copy(extSurface *Self, SurfaceList *Copy)
    else return log.warning(ERR_AccessMemory);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 // TODO: This function is broken.  It needs to be tested in a dedicated test app to get the bugs out.
 
@@ -665,7 +665,7 @@ void move_layer_pos(SurfaceControl *ctl, LONG SrcIndex, LONG DestIndex)
 10-NULL
 */
 
-//****************************************************************************
+//********************************************************************************************************************
 // This function is responsible for managing the resizing of top-most surface objects and is also used by some of the
 // field management functions for Width/Height adjustments.
 //
@@ -819,7 +819,7 @@ ERROR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Checks if an object is visible, according to its visibility and its parents visibility.
 
 static UBYTE check_visibility(SurfaceList *list, LONG index)
@@ -855,7 +855,7 @@ static void check_bmp_buffer_depth(extSurface *Self, objBitmap *Bitmap)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void process_surface_callbacks(extSurface *Self, extBitmap *Bitmap)
 {
@@ -931,7 +931,7 @@ BYTE restrict_region_to_parents(SurfaceList *List, LONG Index, ClipRectangle *Cl
    return visible;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void forbidDrawing(void)
 {
@@ -990,7 +990,7 @@ void print_layer_list(STRING Function, SurfaceControl *Ctl, LONG POI)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 // Surface list lookup routines.
 
 LONG find_surface_list(SurfaceList *list, LONG Total, OBJECTID SurfaceID)
@@ -1638,7 +1638,7 @@ ERROR gfxRedrawSurface(OBJECTID SurfaceID, LONG Left, LONG Top, LONG Right, LONG
    return _redraw_surface(SurfaceID, list, index, total, Left, Top, Right, Bottom, Flags);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG Total,
    LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Flags)
@@ -1777,7 +1777,7 @@ ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG To
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This function fulfils the recursive drawing requirements of _redraw_surface() and is not intended for any other use.
 
 void _redraw_surface_do(extSurface *Self, SurfaceList *list, LONG Total, LONG Index,

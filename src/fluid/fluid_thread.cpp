@@ -36,7 +36,7 @@ struct thread_callback {
    OBJECTID mainScriptID;
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: thread.script(Statement, Callback)
 
 static int thread_script(lua_State *Lua)
@@ -73,7 +73,7 @@ static int thread_script(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Execute the script statement within the context of the child thread.
 
 static ERROR thread_script_entry(objThread *Thread)
@@ -86,7 +86,7 @@ static ERROR thread_script_entry(objThread *Thread)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Callback following execution (within the context of the main thread, not the child)
 
 static ERROR thread_script_callback(objThread *Thread)
@@ -108,7 +108,7 @@ static ERROR thread_script_callback(objThread *Thread)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: error = thread.action(Object, Action, Callback, Key, Args...)
 
 static int thread_action(lua_State *Lua)
@@ -208,7 +208,7 @@ static int thread_action(lua_State *Lua)
    return 1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: error = thread.method(Object, Action, Callback, Key, Args...)
 
 static int thread_method(lua_State *Lua)
@@ -314,7 +314,7 @@ static int thread_method(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Register the thread interface.
 
 static const luaL_Reg threadlib_functions[] = {

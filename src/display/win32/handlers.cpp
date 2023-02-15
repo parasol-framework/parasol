@@ -25,7 +25,7 @@ void MsgKeyPress(LONG Flags, LONG Value, LONG Printable)
    BroadcastEvent(&key, sizeof(key));
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void MsgKeyRelease(LONG Flags, LONG Value)
 {
@@ -40,7 +40,7 @@ void MsgKeyRelease(LONG Flags, LONG Value)
    BroadcastEvent(&key, sizeof(key));
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG WinY)
 {
@@ -69,7 +69,7 @@ void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG W
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void MsgWheelMovement(OBJECTID SurfaceID, FLOAT Wheel)
 {
@@ -91,7 +91,7 @@ void MsgWheelMovement(OBJECTID SurfaceID, FLOAT Wheel)
    ActionMsg(AC_DataFeed, glPointerID, &feed);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void MsgFocusState(OBJECTID SurfaceID, LONG State)
 {
@@ -117,7 +117,7 @@ void MsgFocusState(OBJECTID SurfaceID, LONG State)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void MsgButtonPress(LONG button, LONG State)
 {
@@ -168,7 +168,7 @@ void MsgButtonPress(LONG button, LONG State)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void MsgResizedWindow(OBJECTID SurfaceID, LONG WinX, LONG WinY, LONG WinWidth, LONG WinHeight,
    LONG ClientX, LONG ClientY, LONG ClientWidth, LONG ClientHeight)
@@ -223,7 +223,7 @@ void MsgSetFocus(OBJECTID SurfaceID)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // The width and height arguments must reflect the dimensions of the client area.
 
 void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
@@ -263,7 +263,7 @@ void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 extern "C" void RepaintWindow(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Height)
 {
@@ -274,14 +274,14 @@ extern "C" void RepaintWindow(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LO
    else ActionMsg(MT_DrwExpose, SurfaceID, NULL);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void MsgTimer(void)
 {
    ProcessMessages(0, 0);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void MsgWindowClose(OBJECTID SurfaceID)
 {
@@ -318,7 +318,7 @@ void MsgWindowClose(OBJECTID SurfaceID)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void MsgWindowDestroyed(OBJECTID SurfaceID)
 {
@@ -329,7 +329,7 @@ void MsgWindowDestroyed(OBJECTID SurfaceID)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void MsgShowObject(OBJECTID ObjectID)
 {

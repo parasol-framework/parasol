@@ -116,7 +116,7 @@ ScintillaParasol::~ScintillaParasol()
 
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::Finalise()
 {
@@ -128,7 +128,7 @@ void ScintillaParasol::Finalise()
    ScintillaBase::Finalise();
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::CreateCallTipWindow(Scintilla::PRectangle rc)
 {
@@ -136,7 +136,7 @@ void ScintillaParasol::CreateCallTipWindow(Scintilla::PRectangle rc)
    log.trace("");
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::AddToPopUp(const char *label, int cmD, bool enabled)
 {
@@ -154,7 +154,7 @@ void ScintillaParasol::AddToPopUp(const char *label, int cmD, bool enabled)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::SetVerticalScrollPos()
 {
@@ -175,7 +175,7 @@ void ScintillaParasol::SetVerticalScrollPos()
 */
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::SetHorizontalScrollPos()
 {
@@ -249,7 +249,7 @@ bool ScintillaParasol::ModifyScrollBars(int nMax, int nPage)
    return TRUE;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Called after SCI_SETWRAPMODE and SCI_SETHSCROLLBAR.
 
 void ScintillaParasol::ReconfigureScrollBars()
@@ -316,7 +316,7 @@ void ScintillaParasol::Copy()
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::Paste()
 {
@@ -364,7 +364,7 @@ void ScintillaParasol::Paste()
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This is used for the drag and drop of selected text.
 
 void ScintillaParasol::ClaimSelection()
@@ -375,7 +375,7 @@ void ScintillaParasol::ClaimSelection()
    else primarySelection = false;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::NotifyChange()
 {
@@ -383,7 +383,7 @@ void ScintillaParasol::NotifyChange()
    // up with the SCN_MODIFIED message, which carries a lot more detail.
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Sometimes Scintilla will report events that have occurred in the text editor.
 
 void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
@@ -623,7 +623,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
    else log.traceWarning("Notification code %d unsupported.", code);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::ScrollText(int linesToMove)
 {
@@ -652,7 +652,7 @@ void ScintillaParasol::ScrollText(int linesToMove)
    ActionMsg(AC_Draw, surfaceid, &draw);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::SetTicking(bool On)
 {
@@ -666,7 +666,7 @@ void ScintillaParasol::SetTicking(bool On)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Grab or release the mouse and keyboard.  This is usually called when the user clicks a mouse button and holds it
 // while dragging the mouse (e.g. when highlighting text).
 
@@ -687,7 +687,7 @@ bool ScintillaParasol::HaveMouseCapture()
    return captured_mouse;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 sptr_t ScintillaParasol::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam)
 {
@@ -705,7 +705,7 @@ sptr_t ScintillaParasol::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lP
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 sptr_t ScintillaParasol::DirectFunction(ScintillaParasol *sci, unsigned int iMessage, uptr_t wParam, sptr_t lParam)
 {
@@ -780,7 +780,7 @@ void ScintillaParasol::panFontChanged(void *Font, void *BoldFont, void *ItalicFo
    this->RefreshStyleData();
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::panWordwrap(int Value)
 {
@@ -809,7 +809,7 @@ void ScintillaParasol::panWordwrap(int Value)
    //SendScintilla(SCI_ENSUREVISIBLE, SendScintilla(SCI_LINEFROMPOSITION, SendScintilla(SCI_GETCURRENTPOS)));
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::panIdleEvent()
 {
@@ -834,7 +834,7 @@ void ScintillaParasol::panIdleEvent()
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::panKeyDown(int Key, LONG Flags)
 {
@@ -845,7 +845,7 @@ void ScintillaParasol::panKeyDown(int Key, LONG Flags)
    KeyDown(Key, Flags & KQ_SHIFT, Flags & KQ_CTRL, Flags & KQ_ALT, &consumed);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int ScintillaParasol::KeyDefault(int key, int modifiers)
 {
@@ -854,7 +854,7 @@ int ScintillaParasol::KeyDefault(int key, int modifiers)
    return 1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::panMousePress(int Button, double x, double y)
 {
@@ -877,7 +877,7 @@ void ScintillaParasol::panMousePress(int Button, double x, double y)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::panMouseMove(double x, double y)
 {
@@ -885,7 +885,7 @@ void ScintillaParasol::panMouseMove(double x, double y)
    ButtonMove(point);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::panMouseRelease(int Button, double x, double y)
 {
@@ -899,7 +899,7 @@ void ScintillaParasol::panMouseRelease(int Button, double x, double y)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::panResized()
 {
@@ -908,7 +908,7 @@ void ScintillaParasol::panResized()
    ChangeSize();
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::panScrollToX(double x)
 {
@@ -917,7 +917,7 @@ void ScintillaParasol::panScrollToX(double x)
    HorizontalScrollTo((int)(x));
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::panScrollToY(double y)
 {
@@ -926,7 +926,7 @@ void ScintillaParasol::panScrollToY(double y)
    ScrollTo((int)(y / vs.lineHeight));
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 #if 0
 void ScintillaParasol::SetSelectedTextStyle(int style)
 {
@@ -937,14 +937,14 @@ void ScintillaParasol::SetSelectedTextStyle(int style)
    WndProc(SCI_SETSTYLING, SelectionEnd() - SelectionStart(), style);//style
 }
 #endif
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::panGotFocus()
 {
    SetFocusState(TRUE);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::panLostFocus()
 {

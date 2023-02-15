@@ -45,7 +45,7 @@ static int input_unsubscribe(lua_State *Lua);
 static void focus_event(lua_State *, evFocus *, LONG);
 static void key_event(struct finput *, evKey *, LONG);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 {
@@ -90,7 +90,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Any Read accesses to the object will pass through here.
 
 static int input_index(lua_State *Lua)
@@ -117,7 +117,7 @@ static int input_index(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: input = input.keyboard(SurfaceID, Function)
 
 static int input_keyboard(lua_State *Lua)
@@ -197,7 +197,7 @@ static int input_keyboard(lua_State *Lua)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: req = input.requestItem(Source, Item, DataType, ReceiptFunction)
 //
 // Request an item of data from an existing object that can provision data.  Used to support drag and drop operations.
@@ -293,7 +293,7 @@ static int input_request_item(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: input = input.subscribe(MaskFlags (JTYPE), SurfaceFilter (Optional), DeviceFilter (Optional), Function)
 //
 // This functionality is a wrapper for the gfxSubscribeInput() function.
@@ -367,7 +367,7 @@ failed:
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: error = input.unsubscribe()
 
 static int input_unsubscribe(lua_State *Lua)
@@ -391,7 +391,7 @@ static int input_unsubscribe(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Input garbage collecter.
 
 static int input_destruct(lua_State *Lua)
@@ -427,7 +427,7 @@ static int input_destruct(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Key events should only be received when a monitored surface has the focus.
 
 static void key_event(struct finput *Input, evKey *Event, LONG Size)
@@ -463,7 +463,7 @@ static void key_event(struct finput *Input, evKey *Event, LONG Size)
    lua_gc(prv->Lua, LUA_GCCOLLECT, 0);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This is a global function for monitoring the focus of surfaces that we want to filter on for keyboard input.
 
 static void focus_event(lua_State *Lua, evFocus *Event, LONG Size)
@@ -508,7 +508,7 @@ static void focus_event(lua_State *Lua, evFocus *Event, LONG Size)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static int input_tostring(lua_State *Lua)
 {
@@ -518,7 +518,7 @@ static int input_tostring(lua_State *Lua)
    return 1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void register_input_class(lua_State *Lua)
 {

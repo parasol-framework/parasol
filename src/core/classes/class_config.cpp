@@ -444,7 +444,7 @@ static ERROR CONFIG_MergeFile(extConfig *Self, struct cfgMergeFile *Args)
    else return ERR_File;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CONFIG_NewObject(extConfig *Self, APTR Void)
 {

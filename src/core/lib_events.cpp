@@ -30,7 +30,7 @@ static struct eventsub *glEventList = NULL;
 static UBYTE glCallSignal = 0;
 static UBYTE glEventListAltered = FALSE;
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void free_events(void)
 {

@@ -59,7 +59,7 @@ GRADIENT_TABLE * get_fill_gradient_table(extVector &Vector, DOUBLE Opacity)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 GRADIENT_TABLE * get_stroke_gradient_table(extVector &Vector)
 {
@@ -98,7 +98,7 @@ GRADIENT_TABLE * get_stroke_gradient_table(extVector &Vector)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Constructor for the GradientColours class.  This expects to be called whenever the Gradient class updates the
 // Stops array.
 
@@ -136,7 +136,7 @@ GradientColours::GradientColours(extVectorGradient *Gradient, DOUBLE Alpha)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTORGRADIENT_Free(extVectorGradient *Self, APTR Void)
 {
@@ -154,7 +154,7 @@ static ERROR VECTORGRADIENT_Free(extVectorGradient *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTORGRADIENT_Init(extVectorGradient *Self, APTR Void)
 {
@@ -178,7 +178,7 @@ static ERROR VECTORGRADIENT_Init(extVectorGradient *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTORGRADIENT_NewObject(extVectorGradient *Self, APTR Void)
 {
@@ -767,7 +767,7 @@ static ERROR VECTORGRADIENT_SET_Y2(extVectorGradient *Self, Variable *Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "gradient_def.c"
 
@@ -797,7 +797,7 @@ static const FieldArray clGradientFields[] = {
    END_FIELD
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR init_gradient(void) // The gradient is a definition type for creating gradients and not drawing.
 {

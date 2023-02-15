@@ -191,7 +191,7 @@ static ERROR HTTP_Write(extHTTP *, struct acWrite *);
 
 #include "http_def.c"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const FieldDef clStatus[] = {
    { "Continue",                 HTS_CONTINUE },
@@ -237,7 +237,7 @@ static const FieldDef clStatus[] = {
    { NULL, 0 }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static CSTRING adv_crlf(CSTRING);
 static ERROR check_incoming_end(extHTTP *);
@@ -270,7 +270,7 @@ static ERROR socket_outgoing(objNetSocket *);
    }
 */
 
-//****************************************************************************
+//********************************************************************************************************************
 
 INLINE CSTRING GETSTATUS(LONG Code) __attribute__((unused));
 
@@ -282,7 +282,7 @@ INLINE CSTRING GETSTATUS(LONG Code)
    return "Unrecognised Status Code";
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
@@ -295,7 +295,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    return create_http_class();
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CMDExpunge(void)
 {
@@ -305,7 +305,7 @@ static ERROR CMDExpunge(void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void notify_free_outgoing(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
@@ -745,7 +745,7 @@ static ERROR HTTP_Deactivate(extHTTP *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR HTTP_Free(extHTTP *Self, APTR Args)
 {
@@ -811,7 +811,7 @@ static ERROR HTTP_GetVar(extHTTP *Self, struct acGetVar *Args)
    return ERR_UnsupportedField;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR HTTP_Init(extHTTP *Self, APTR Args)
 {
@@ -834,7 +834,7 @@ static ERROR HTTP_Init(extHTTP *Self, APTR Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR HTTP_NewObject(extHTTP *Self, APTR Args)
 {
@@ -867,7 +867,7 @@ static ERROR HTTP_SetVar(extHTTP *Self, struct acSetVar *Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Writing to an HTTP object's outgoing buffer is possible if the Outgoing callback function is active.
 
 static ERROR HTTP_Write(extHTTP *Self, struct acWrite *Args)
@@ -1644,7 +1644,7 @@ static ERROR SET_Username(extHTTP *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "http_functions.cpp"
 
@@ -1688,7 +1688,7 @@ static const FieldArray clFields[] = {
    END_FIELD
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR create_http_class(void)
 {
@@ -1705,6 +1705,6 @@ static ERROR create_http_class(void)
    return clHTTP ? ERR_Okay : ERR_AddClass;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, MODVERSION_HTTP)

@@ -73,7 +73,7 @@ static CSTRING load_include_struct(lua_State *, CSTRING, CSTRING);
 static CSTRING load_include_constant(lua_State *, CSTRING, CSTRING);
 static ERROR flSetVariable(objScript *, CSTRING, LONG, ...);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 FDEF argsSetVariable[] = { { "Error", FD_ERROR }, { "Script", FD_OBJECTPTR }, { "Name", FD_STR }, { "Type", FD_LONG }, { "Variable", FD_TAGS }, { 0, 0 } };
 
@@ -158,7 +158,7 @@ static void flTestCall7(STRING a, STRING b, STRING c)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 struct references * alloc_references(void)
 {
@@ -178,7 +178,7 @@ void free_references(lua_State *Lua, struct references *Ref)
    FreeResource(Ref);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 CSTRING next_line(CSTRING String)
 {
@@ -192,7 +192,7 @@ CSTRING next_line(CSTRING String)
    else return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 APTR get_meta(lua_State *Lua, LONG Arg, CSTRING MetaTable)
 {
@@ -266,7 +266,7 @@ void release_object(struct object *Object)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Build the Includes keystore for the active Lua state.  Content is based on glIncludes (dir scan of config:defs/)
 
 INLINE struct KeyStore * GET_INCLUDES(objScript *Script)
@@ -276,7 +276,7 @@ INLINE struct KeyStore * GET_INCLUDES(objScript *Script)
    return prv->Includes;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Automatically load the include file for the given metaclass, if it has not been loaded already.
 
 void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
@@ -311,7 +311,7 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
    else log.traceWarning("Failed to get module name from class '%s', \"%s\"", MetaClass->ClassName, GetErrorMsg(error));
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
@@ -407,7 +407,7 @@ static ERROR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void hook_debug(lua_State *Lua, lua_Debug *Info)
 {
@@ -433,7 +433,7 @@ void hook_debug(lua_State *Lua, lua_Debug *Info)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Builds an ordered Lua array from a fixed list of values.  Guaranteed to always return a table, empty or not.
 // Works with primitives only, for structs please use make_struct_[ptr|serial]_table() because the struct name
 // will be required.
@@ -480,7 +480,7 @@ void make_table(lua_State *Lua, LONG Type, LONG Elements, CPTR Data)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Create a Lua array from a list of structure pointers.
 
 void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, LONG Elements, CPTR *Values)
@@ -515,7 +515,7 @@ void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, LONG Elements, CP
    else log.warning("Failed to find struct '%s'", StructName);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Create a Lua array from a serialised list of structures.
 
 void make_struct_serial_table(lua_State *Lua, CSTRING StructName, LONG Elements, CPTR Data)
@@ -560,7 +560,7 @@ void make_struct_serial_table(lua_State *Lua, CSTRING StructName, LONG Elements,
    else log.warning("Failed to find struct '%s'", StructName);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // The TypeName can be in the format 'Struct:Arg' without causing any issues.
 
 void make_any_table(lua_State *Lua, LONG Type, CSTRING TypeName, LONG Elements, CPTR Values)
@@ -572,7 +572,7 @@ void make_any_table(lua_State *Lua, LONG Type, CSTRING TypeName, LONG Elements, 
    else make_table(Lua, Type, Elements, Values);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void get_line(objScript *Self, LONG Line, STRING Buffer, LONG Size)
 {
@@ -598,7 +598,7 @@ void get_line(objScript *Self, LONG Line, STRING Buffer, LONG Size)
    else Buffer[0] = 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR load_include(objScript *Script, CSTRING IncName)
 {
@@ -675,7 +675,7 @@ ERROR load_include(objScript *Script, CSTRING IncName)
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Format: s.Name:typeField,...
 
 static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
@@ -711,7 +711,7 @@ static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Source)
 {
@@ -817,7 +817,7 @@ int code_writer(lua_State *Lua, CPTR Data, size_t Size, OBJECTPTR File)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Callback for lua_load() to read data from File objects.
 
 CSTRING code_reader(lua_State *Lua, void *Handle, size_t *Size)
@@ -831,7 +831,7 @@ CSTRING code_reader(lua_State *Lua, void *Handle, size_t *Size)
    else return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #ifdef DEBUG
 
@@ -856,6 +856,6 @@ static void stack_dump(lua_State *L)
 
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, VER_FLUID)
