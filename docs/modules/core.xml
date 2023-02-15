@@ -311,6 +311,7 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
       <error code="LockFailed">Failed to lock a required resource.</error>
       <error code="SystemCorrupt">The operating system has been badly corrupted.</error>
       <error code="ArrayFull">Array has reached capacity and cannot be expanded.</error>
+      <error code="AccessMemory">Access to a shared memory block was denied.</error>
       <error code="ResourceExists">A new resource could not be created because a matching resource exists.</error>
     </result>
   </function>
@@ -1039,6 +1040,7 @@ GetFields(screen,
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
       <error code="Args">Invalid arguments passed to function.</error>
+      <error code="AccessMemory">Access to a shared memory block was denied.</error>
     </result>
   </function>
 
@@ -1854,6 +1856,7 @@ if (!OpenDir(path, RDF_FILE|RDF_FOLDER, &amp;info)) {
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="TimeOut">Function timed-out before successful completion.</error>
       <error code="ArrayFull">Array has reached capacity and cannot be expanded.</error>
+      <error code="AccessMemory">Access to a shared memory block was denied.</error>
     </result>
   </function>
 
@@ -2023,6 +2026,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
+      <error code="AccessMemory">Access to a shared memory block was denied.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>

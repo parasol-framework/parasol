@@ -1085,7 +1085,7 @@ oid Child: The child surface to check.
 True: The Child surface belongs to the Parent.
 False: The Child surface is not a child of Parent.
 Args: Invalid arguments were specified.
-AccessMemoryID: Failed to access the internal surface list.
+AccessMemory: Failed to access the internal surface list.
 
 *****************************************************************************/
 
@@ -1149,7 +1149,7 @@ int YDest:  The vertical target coordinate.
 Okay
 NullArgs
 Search: The supplied SurfaceID did not refer to a recognised surface object
-AccessMemoryID: Failed to access the internal surfacelist memory structure
+AccessMemory: Failed to access the internal surfacelist memory structure
 
 ****************************************************************************/
 
@@ -1259,7 +1259,7 @@ int(EXF) Flags: Optional flags - EXF_CHILDREN will expose all intersecting child
 Okay
 NullArgs
 Search: The SurfaceID does not refer to an existing surface object
-AccessMemoryID: The internal surfacelist could not be accessed
+AccessMemory: The internal surfacelist could not be accessed
 
 ****************************************************************************/
 
@@ -1308,7 +1308,7 @@ oid Surface: The surface to query.  If zero, the top-level display is queried.
 -ERRORS-
 Okay
 Search: The supplied SurfaceID did not refer to a recognised surface object.
-AccessMemoryID: Failed to access the internal surfacelist memory structure.
+AccessMemory: Failed to access the internal surfacelist memory structure.
 
 *****************************************************************************/
 
@@ -1371,7 +1371,7 @@ oid Surface: The surface to query.  If zero, the top-level surface is queried.
 -ERRORS-
 Okay
 NullArgs
-AccessMemoryID
+AccessMemory
 
 *****************************************************************************/
 
@@ -1419,7 +1419,7 @@ oid Surface: The unique ID of a surface to query.  If zero, the root surface is 
 Okay:
 Args:
 Search: The supplied SurfaceID did not refer to a recognised surface object.
-AccessMemoryID: Failed to access the internal surfacelist memory structure.
+AccessMemory: Failed to access the internal surfacelist memory structure.
 
 *****************************************************************************/
 
@@ -1519,7 +1519,7 @@ oid Surface: The surface to query.  If zero, the top-level display will be queri
 -ERRORS-
 Okay
 Search: The supplied SurfaceID did not refer to a recognised surface object.
-AccessMemoryID: Failed to access the internal surfacelist memory structure.
+AccessMemory: Failed to access the internal surfacelist memory structure.
 
 *****************************************************************************/
 
@@ -1605,7 +1605,7 @@ int(IRF) Flags: Optional flags.
 
 -ERRORS-
 Okay:
-AccessMemoryID: Failed to access the internal surface list.
+AccessMemory: Failed to access the internal surface list.
 
 *****************************************************************************/
 
