@@ -49,7 +49,6 @@ FDEF argsGetField[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR 
 FDEF argsGetFieldArray[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_LARGE }, { "Result", FD_PTR|FD_RESULT }, { "Elements", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsGetFieldVariable[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_STR }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsGetFields[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Tags", FD_VARTAGS }, { 0, 0 } };
-FDEF argsGetMemAddress[] = { { "Result", FD_PTR }, { "ID", FD_LONG }, { 0, 0 } };
 FDEF argsGetMessage[] = { { "Error", FD_LONG|FD_ERROR }, { "Queue", FD_LONG }, { "Type", FD_LONG }, { "Flags", FD_LONG }, { "Buffer", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsGetName[] = { { "Result", FD_STR }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsGetObjectPtr[] = { { "Object", FD_OBJECTPTR }, { "Object", FD_OBJECTID }, { 0, 0 } };
@@ -187,7 +186,7 @@ const struct Function glFunctions[] = {
    { (APTR)NewObject, "NewObject", argsNewObject },
    { (APTR)NotifySubscribers, "NotifySubscribers", argsNotifySubscribers },
    { (APTR)StrReadLocale, "StrReadLocale", argsStrReadLocale },
-   { (APTR)GetMemAddress, "GetMemAddress", argsGetMemAddress },
+   { (APTR)UTF8ValidEncoding, "UTF8ValidEncoding", argsUTF8ValidEncoding },
    { (APTR)ProcessMessages, "ProcessMessages", argsProcessMessages },
    { (APTR)IdentifyFile, "IdentifyFile", argsIdentifyFile },
    { (APTR)ReallocMemory, "ReallocMemory", argsReallocMemory },
@@ -289,7 +288,6 @@ const struct Function glFunctions[] = {
    { (APTR)VarGetString, "VarGetString", argsVarGetString },
    { (APTR)VarCopy, "VarCopy", argsVarCopy },
    { (APTR)StrHash, "StrHash", argsStrHash },
-   { (APTR)UTF8ValidEncoding, "UTF8ValidEncoding", argsUTF8ValidEncoding },
    { NULL, NULL, NULL }
 };
 

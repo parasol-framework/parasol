@@ -130,8 +130,8 @@ flags("MEM", { comment="Memory types used by AllocMemory().  The lower 16 bits a
     "PUBLIC|SHARED: Public memory can be allocated by specifying this flag.  Public memory blocks are accessible by all tasks, but access can only be gained by knowing the unique memory ID and utilising the AccessMemory() function.",
     "VIDEO: The memory space is reserved by a video device such as a graphics card for display purposes, e.g. framebuffer.",
     "TEXTURE: The memory space is reserved by a video driver for hosting texture graphics.",
-    "AUDIO: Identifies the memory space as being reserved by an audio device such as a sound card.",
-    "CODE: Indicates that the memory will contain executable program code.",
+    "AUDIO: The memory space is reserved by an audio device such as a sound card.",
+    "CODE: Set if the memory will contain executable program code.",
     "NO_POOL: Gives a hint to the allocator to allocate the block outside of the memory pool.",
     "TMP_LOCK: Enables temporary locking restrictions.  Prevents processes from sleeping while holding a lock on the memory block.",
     "UNTRACKED: Allocating an untracked memory block will prevent the memory block from being tracked back to the object holding the current context.",
@@ -149,7 +149,6 @@ flags("MEM", { comment="Memory types used by AllocMemory().  The lower 16 bits a
     { NO_CLEAR      = "0x00040000: Do not clear the memory on allocation (saves time)." },
     { RESERVED      = "0x00080000: This special flag is used to allocate shared memory blocks that require reserved ID numbers.  When using the MEM_RESERVED flag, you are required to set the longword pointed to by the ID argument to the ID that you wish to reserve.  If that memory ID is already taken, the AllocMemory() call will fail." },
     { HIDDEN        = "0x00100000: Hidden blocks are not recorded and are excluded from resource tracking." },
-    { TASK          = "0x00200000: Track the memory block to the current process, as opposed to the current object." },
     { CALLER        = "0x00800000: This flag is usable only in routines that are supporting a class method.  It forces the memory allocation to be tracked to the object that made the method call.  This is particularly important in methods that return memory blocks that do not form a part of the object itself." },
     { READ_WRITE    = "READ|WRITE" })
 

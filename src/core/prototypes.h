@@ -43,7 +43,7 @@ ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size);
 ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR * Object);
 void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERROR Error);
 ERROR StrReadLocale(CSTRING Key, CSTRING * Value);
-APTR GetMemAddress(MEMORYID ID);
+CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding);
 ERROR ProcessMessages(LONG Flags, LONG TimeOut);
 ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID * Class, CLASSID * SubClass, STRING * Command);
 ERROR ReallocMemory(APTR Memory, LONG Size, APTR * Address, MEMORYID * ID);
@@ -145,7 +145,6 @@ ERROR VarSetString(struct KeyStore * Store, CSTRING Key, CSTRING Value);
 CSTRING VarGetString(struct KeyStore * Store, CSTRING Key);
 ERROR VarCopy(struct KeyStore * Source, struct KeyStore * Dest);
 ULONG StrHash(CSTRING String, LONG CaseSensitive);
-CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding);
 
 #ifdef  __cplusplus
 }

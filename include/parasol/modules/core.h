@@ -241,7 +241,6 @@ class objCompressedStream;
 #define MEM_NO_CLEAR 0x00040000
 #define MEM_RESERVED 0x00080000
 #define MEM_HIDDEN 0x00100000
-#define MEM_TASK 0x00200000
 #define MEM_CALLER 0x00800000
 
 // Event categories.
@@ -1982,7 +1981,7 @@ struct CoreBase {
    ERROR (*_NewObject)(LARGE ClassID, NF Flags, APTR Object);
    void (*_NotifySubscribers)(OBJECTPTR Object, LONG Action, APTR Args, ERROR Error);
    ERROR (*_StrReadLocale)(CSTRING Key, CSTRING * Value);
-   APTR (*_GetMemAddress)(MEMORYID ID);
+   CSTRING (*_UTF8ValidEncoding)(CSTRING String, CSTRING Encoding);
    ERROR (*_ProcessMessages)(LONG Flags, LONG TimeOut);
    ERROR (*_IdentifyFile)(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID * Class, CLASSID * SubClass, STRING * Command);
    ERROR (*_ReallocMemory)(APTR Memory, LONG Size, APTR Address, MEMORYID * ID);
@@ -2084,7 +2083,6 @@ struct CoreBase {
    CSTRING (*_VarGetString)(struct KeyStore * Store, CSTRING Key);
    ERROR (*_VarCopy)(struct KeyStore * Source, struct KeyStore * Dest);
    ULONG (*_StrHash)(CSTRING String, LONG CaseSensitive);
-   CSTRING (*_UTF8ValidEncoding)(CSTRING String, CSTRING Encoding);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2127,7 +2125,7 @@ inline ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size) { 
 inline ERROR NewObject(LARGE ClassID, NF Flags, APTR Object) { return CoreBase->_NewObject(ClassID,Flags,Object); }
 inline void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERROR Error) { return CoreBase->_NotifySubscribers(Object,Action,Args,Error); }
 inline ERROR StrReadLocale(CSTRING Key, CSTRING * Value) { return CoreBase->_StrReadLocale(Key,Value); }
-inline APTR GetMemAddress(MEMORYID ID) { return CoreBase->_GetMemAddress(ID); }
+inline CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding) { return CoreBase->_UTF8ValidEncoding(String,Encoding); }
 inline ERROR ProcessMessages(LONG Flags, LONG TimeOut) { return CoreBase->_ProcessMessages(Flags,TimeOut); }
 inline ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID * Class, CLASSID * SubClass, STRING * Command) { return CoreBase->_IdentifyFile(Path,Mode,Flags,Class,SubClass,Command); }
 inline ERROR ReallocMemory(APTR Memory, LONG Size, APTR Address, MEMORYID * ID) { return CoreBase->_ReallocMemory(Memory,Size,Address,ID); }
@@ -2229,7 +2227,6 @@ inline ERROR VarSetString(struct KeyStore * Store, CSTRING Key, CSTRING Value) {
 inline CSTRING VarGetString(struct KeyStore * Store, CSTRING Key) { return CoreBase->_VarGetString(Store,Key); }
 inline ERROR VarCopy(struct KeyStore * Source, struct KeyStore * Dest) { return CoreBase->_VarCopy(Source,Dest); }
 inline ULONG StrHash(CSTRING String, LONG CaseSensitive) { return CoreBase->_StrHash(String,CaseSensitive); }
-inline CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding) { return CoreBase->_UTF8ValidEncoding(String,Encoding); }
 #endif
 
 

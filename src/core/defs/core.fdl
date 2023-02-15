@@ -1231,7 +1231,7 @@ extern struct CoreBase *CoreBase;
     "NewObject",
     "NotifySubscribers",
     "StrReadLocale",
-    "GetMemAddress",
+    "UTF8ValidEncoding",
     "ProcessMessages",
     "IdentifyFile",
     "ReallocMemory",
@@ -1332,8 +1332,7 @@ extern struct CoreBase *CoreBase;
     "VarSetString",
     "VarGetString",
     "VarCopy",
-    "StrHash",
-    "UTF8ValidEncoding")
+    "StrHash")
 
   c_insert([[
 

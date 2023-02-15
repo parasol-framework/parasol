@@ -197,7 +197,7 @@ bufsize Size:   The byte-size of the buffer that you have supplied.
 -ERRORS-
 Okay:
 Args:
-AccessMemoryID: Failed to gain access to the message queue.
+AccessMemory: Failed to gain access to the message queue.
 Search: No more messages are left on the queue, or no messages that match the given Type are on the queue.
 -END-
 
@@ -899,7 +899,7 @@ Okay:         The message was successfully written to the message queue.
 Args:
 ArrayFull:    The message queue is full.
 TimeOut:      The message queue is full and the queue handler has failed to process them over a reasonable time period.
-AccessMemoryID: Access to the message queue memory was denied.
+AccessMemory: Access to the message queue memory was denied.
 -END-
 
 *********************************************************************************************************************/
