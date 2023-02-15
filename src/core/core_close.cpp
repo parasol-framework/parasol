@@ -468,7 +468,7 @@ EXPORT void Expunge(WORD Force)
             if (!class_in_use) {
                if (mod_master->Expunge) {
                   parasol::Log log(__FUNCTION__);
-                  log.branch("Sending expunge request to the %s module, routine %p, master #%d.", mod_master->Name, mod_master->Expunge, mod_master->UID);
+                  log.branch("Sending expunge request to the %s module #%d.", mod_master->Name, mod_master->UID);
                   if (!mod_master->Expunge()) {
                      ccount++;
                      if (acFree(mod_master)) {
@@ -497,7 +497,7 @@ EXPORT void Expunge(WORD Force)
    if (Force) {
       // Any modules that are still in the system are probably there because they have created classes that have
       // objects still in use.  This routine prints warning messages to let the developer know about this.  (NB: There
-      // can be times where private objects are tracked outside of the process space and therefore will not be
+      // can be times where objects are tracked outside of the process space and therefore will not be
       // destroyed by earlier routines.  This is normal and they will be taken out when the private memory resources
       // are deallocated).
 

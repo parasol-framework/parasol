@@ -138,10 +138,10 @@ The ScanDir() function is used to scan for files and folders in a folder that yo
 for each function call that you make.  The following code sample illustrates typical usage:
 
 <pre>
-struct DirInfo *info;
+DirInfo *info;
 if (!OpenDir(path, RDF_FILE|RDF_FOLDER, &info)) {
    while (!ScanDir(info)) {
-      LogMsg("File: %s", info->Name);
+      log.msg("File: %s", info->Name);
    }
    FreeResource(info);
 }

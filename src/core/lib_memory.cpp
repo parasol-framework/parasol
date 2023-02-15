@@ -904,9 +904,9 @@ the start address, parent object, memory ID, size and flags of the memory block 
 code segment illustrates correct use of this function:
 
 <pre>
-struct MemInfo info;
+MemInfo info;
 if (!MemoryIDInfo(memid, &info)) {
-   LogMsg("Memory block #%d is %d bytes large.", info.MemoryID, info.Size);
+   log.msg("Memory block #%d is %d bytes large.", info.MemoryID, info.Size);
 }
 </pre>
 
@@ -986,9 +986,9 @@ the start address, parent object, memory ID, size and flags of the memory addres
 following code segment illustrates correct use of this function:
 
 <pre>
-struct MemInfo info;
+MemInfo info;
 if (!MemoryPtrInfo(ptr, &info)) {
-   LogMsg("Address %p is %d bytes large.", info.Start, info.Size);
+   log.msg("Address %p is %d bytes large.", info.Start, info.Size);
 }
 </pre>
 
