@@ -1204,7 +1204,7 @@ int winCreateScreenClass(void)
 ** WS_EX_TOPMOST: Specifies that a window created with this style should be placed above all non-topmost windows and should stay above them, even when the window is deactivated. To add or remove this style, use the SetWindowPos function.
 ** WS_EX_TRANSPARENT: Specifies that a window created with this style should not be painted until siblings beneath the window (that were created by the same thread) have been painted. The window appears transparent because the bits of underlying sibling windows have already been painted.  To achieve transparency without these restrictions, use the SetWindowRgn function.
 ** WS_EX_WINDOWEDGE: Specifies that a window has a border with a raised edge.
-******************************************************************************
+**********************************************************************************************************************
 ** WS_BORDER: Creates a window that has a thin-line border.
 ** WS_CAPTION: Creates a window that has a title bar (includes the WS_BORDER style).
 ** WS_CHILD: Creates a child window. A window with this style cannot have a menu bar. This style cannot be used with the WS_POPUP style.

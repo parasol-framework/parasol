@@ -4,7 +4,7 @@ The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 NOTE: The NetLookup class was created in order to support asynchronous name resolution in a way that would
 be thread safe.  In essence the class is acting as a thread pool that is safely deallocated on termination.

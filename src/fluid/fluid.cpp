@@ -14,7 +14,7 @@ NOTE REGARDING LUAJIT PATCHES:
     Enable LUAJIT_USE_SYSMALLOC temporarily if you need to figure out memory management and overflow issues.
     Enable LUAJIT_USE_GDBJIT temporarily if debugging with GDB.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -MODULE-
 Fluid: Fluid is a customised scripting language for the Script class.

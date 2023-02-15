@@ -4,7 +4,7 @@ The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 This is a dummy module for managing access to the display module.  It exists
 so that any program needing access to the display API will be diverted to the

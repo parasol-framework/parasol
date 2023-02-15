@@ -4,7 +4,7 @@ The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 This program tests the locking of private and public memory between threads.
 Use parameter '-public' to test public memory locking.

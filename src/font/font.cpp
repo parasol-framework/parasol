@@ -8,7 +8,7 @@ This code utilises the work of the FreeType Project under the FreeType
 License.  For more information please refer to the FreeType home page at
 www.freetype.org.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -MODULE-
 Font: Provides font management functionality and hosts the Font class.

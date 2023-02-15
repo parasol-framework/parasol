@@ -3,7 +3,7 @@
 This file is in the public domain and may be distributed and modified without
 restriction.
 
-******************************************************************************
+**********************************************************************************************************************
 
 This version of the initialisation process does not define a main() function.
 Parasol must be initialised via the init_parasol() function and closed with
