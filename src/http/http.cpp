@@ -86,7 +86,7 @@ For information about the HTTP protocol, please refer to the official protocol w
 
    http://www.w3.org/Protocols/rfc2616/rfc2616.html
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 //#define DEBUG
 #define PRV_HTTP
@@ -358,7 +358,7 @@ CreateObject: Failed to create a NetSocket object.
 HostNotFound: DNS resolution of the domain name in the URI failed.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
 {
@@ -708,7 +708,7 @@ assist scripted usage of the HTTP object.
 
 Active HTTP requests can be manually cancelled by calling the Deactivate action at any time.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR HTTP_Deactivate(extHTTP *Self, APTR Void)
 {
@@ -792,7 +792,7 @@ static ERROR HTTP_Free(extHTTP *Self, APTR Args)
 -ACTION-
 GetVar: Entries in the HTTP response header can be read as variable fields.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR HTTP_GetVar(extHTTP *Self, struct acGetVar *Args)
 {
@@ -853,7 +853,7 @@ static ERROR HTTP_NewObject(extHTTP *Self, APTR Args)
 -ACTION-
 SetVar: Options to pass in the HTTP method header can be set as variable fields.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR HTTP_SetVar(extHTTP *Self, struct acSetVar *Args)
 {
@@ -899,7 +899,7 @@ static ERROR HTTP_Write(extHTTP *Self, struct acWrite *Args)
 -FIELD-
 AuthCallback: Private.  This field is reserved for future use.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_AuthCallback(extHTTP *Self, FUNCTION **Value)
 {
@@ -934,7 +934,7 @@ is used for storing outgoing data (PUT and POST operations).
 
 Note that the actual buffer size may not reflect the exact size that you set here.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_BufferSize(extHTTP *Self, LONG Value)
 {
@@ -971,7 +971,7 @@ The ContentType should be set prior to sending a PUT or POST request.  If NULL, 
 methods will be set to 'application/x-www-form-urlencoded'.  For PUT requests the default of 'application/binary' will
 be applied.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_ContentType(extHTTP *Self, STRING *Value)
 {
@@ -1026,7 +1026,7 @@ Host: The targeted HTTP server is specified here, either by name or IP address.
 The HTTP server to target for HTTP requests is defined here.  To change the host post-initialisation, set the
 #Location.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Host(extHTTP *Self, CSTRING Value)
 {
@@ -1046,7 +1046,7 @@ callback routine is `ERROR Function(*HTTP, APTR Data, LONG Length)`.
 If an error code of ERR_Terminate is returned by the callback routine, the currently executing HTTP request will be
 cancelled.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Incoming(extHTTP *Self, FUNCTION **Value)
 {
@@ -1092,7 +1092,7 @@ executed by the HTTP object.
 
 An alternative is to set the #InputObject for abstracting the data source.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_InputFile(extHTTP *Self, CSTRING Value)
 {
@@ -1146,7 +1146,7 @@ If desired, you can elect to set the #Host, #Path and #Port fields separately if
 URI string is inconvenient.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Location(extHTTP *Self, STRING *Value)
 {
@@ -1251,7 +1251,7 @@ static ERROR SET_Location(extHTTP *Self, CSTRING Value)
 -FIELD-
 Method: The HTTP instruction to execute is defined here (defaults to GET).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Method(extHTTP *Self, LONG Value)
 {
@@ -1287,7 +1287,7 @@ If an error code of ERR_Terminate is returned by the callback routine, any remai
 will be treated as having completed successfully.  Use ERR_TimeOut if data cannot be returned in a reasonable time
 frame.  All other error codes apart from ERR_Okay indicate failure.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Outgoing(extHTTP *Self, FUNCTION **Value)
 {
@@ -1321,7 +1321,7 @@ HTTP content can be streamed to a target file during transfer.  To do so, set th
 file name that will receive data.  If the file already exists, it will be overwritten unless the RESUME flag has been
 set in the #Flags field.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_OutputFile(extHTTP *Self, CSTRING Value)
 {
@@ -1350,7 +1350,7 @@ present a dialog box to the user to request the relevant information.
 
 A 401 status code is returned in the event of an authorisation failure.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Password(extHTTP *Self, CSTRING Value)
 {
@@ -1371,7 +1371,7 @@ not necessary to set the path if one has been specified in the #Location.
 If spaces are discovered in the path, they will be converted to the '%20' HTTP escape code automatically.  No other
 automatic conversions are operated when setting the Path field.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Path(extHTTP *Self, CSTRING Value)
 {
@@ -1446,7 +1446,7 @@ ProxyServer: The targeted HTTP server is specified here, either by name or IP ad
 If a proxy server will receive the HTTP request, set the name or IP address of the server here.  To specify the port
 that the proxy server uses to receive requests, see the #ProxyPort field.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_ProxyServer(extHTTP *Self, CSTRING Value)
 {
@@ -1464,7 +1464,7 @@ Realm: Identifies the realm during HTTP authentication.
 During the user authentication process, a realm name may be returned by the HTTP server.  The Realm field will reflect
 this name string.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Realm(extHTTP *Self, CSTRING Value)
 {
@@ -1484,7 +1484,7 @@ received. The buffer address and all content is reset whenever the HTTP object i
 
 The buffer is null-terminated if you wish to use it as a string.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_RecvBuffer(extHTTP *Self, UBYTE **Value, LONG *Elements)
 {
@@ -1510,7 +1510,7 @@ server.  The default state is `READING_HEADER`.  Changes to the state can be mon
 
 On completion of an HTTP request, the state will be changed to either `COMPLETED` or `TERMINATED`.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_CurrentState(extHTTP *Self, LONG Value)
 {
@@ -1575,7 +1575,7 @@ HTTP object.  The format for the routine is `ERROR Function(*HTTP, LONG State)`.
 If an error code of ERR_Terminate is returned by the callback routine, the currently executing HTTP request will be
 cancelled.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_StateChanged(extHTTP *Self, FUNCTION **Value)
 {
@@ -1610,7 +1610,7 @@ UserAgent: Specifies the name of the user-agent string that is sent in HTTP requ
 
 This field describe the 'user-agent' value that will be sent in HTTP requests.  The default value is 'Parasol Client'.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_UserAgent(extHTTP *Self, CSTRING Value)
 {
@@ -1635,7 +1635,7 @@ In the event that a username or password is not supplied, or if the supplied cre
 presented with a dialog box and asked to enter the correct username and password.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Username(extHTTP *Self, CSTRING Value)
 {

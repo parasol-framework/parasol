@@ -464,7 +464,7 @@ Special operators include:
 <type name="f">The same as the 'p' operator except the precision is always guaranteed to be fixed at that value through the use of trailing zeros (so a fixed precision of two used to print the number '7' will give a result of '7.00'.</>
 </>
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static WORD write_calc(STRING Buffer, LONG BufferSize, DOUBLE Value, WORD Precision)
 {
@@ -680,7 +680,7 @@ The escape character for string translation is `$` and should be used as `[$...]
 square brackets from being translated.  The `[$]` characters will be removed as part of this process unless the
 KEEP_ESCAPE flag is used.  To escape a single right or left bracket, use `[rb]` or `[lb]` respectively.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR eval(extDocument *Self, STRING Buffer, LONG BufferLength, LONG Flags)
 {

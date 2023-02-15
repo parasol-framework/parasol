@@ -40,7 +40,7 @@ speed up exposes, but it is the only reasonable way to get masking and transluce
 that backing store graphics are stored in public Bitmaps so that processes can share graphics information without
 having to communicate with each other directly.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #undef __xwindows__
 #include "../defs.h"
@@ -633,7 +633,7 @@ static void notify_redimension_parent(OBJECTPTR Object, ACTIONID ActionID, ERROR
 -ACTION-
 Activate: Shows a surface object on the display.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_Activate(extSurface *Self, APTR Void)
 {
@@ -668,7 +668,7 @@ ExecViolation: The call was not made from the process that owns the object.
 AllocMemory
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_AddCallback(extSurface *Self, struct drwAddCallback *Args)
 {
@@ -764,7 +764,7 @@ static ERROR SURFACE_AddCallback(extSurface *Self, struct drwAddCallback *Args)
 -ACTION-
 Disable: Disables a surface object.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_Disable(extSurface *Self, APTR Void)
 {
@@ -777,7 +777,7 @@ static ERROR SURFACE_Disable(extSurface *Self, APTR Void)
 -ACTION-
 Enable: Enables a disabled surface object.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_Enable(extSurface *Self, APTR Void)
 {
@@ -873,7 +873,7 @@ static void event_user_login(extSurface *Self, APTR Info, LONG InfoSize)
 -ACTION-
 Focus: Changes the primary user focus to the surface object.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static LARGE glLastFocusTime = 0;
 
@@ -1150,7 +1150,7 @@ static ERROR SURFACE_Free(extSurface *Self, APTR Void)
 -ACTION-
 Hide: Hides a surface object from the display.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_Hide(extSurface *Self, APTR Void)
 {
@@ -1211,7 +1211,7 @@ int Flags: Private
 Okay
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_InheritedFocus(extSurface *Self, struct gfxInheritedFocus *Args)
 {
@@ -1705,7 +1705,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 -ACTION-
 LostFocus: Informs a surface object that it has lost the user focus.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_LostFocus(extSurface *Self, APTR Void)
 {
@@ -1746,7 +1746,7 @@ the desktop.  This behaviour is platform dependent and should be manually tested
 host platform.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_Minimise(extSurface *Self, APTR Void)
 {
@@ -1758,7 +1758,7 @@ static ERROR SURFACE_Minimise(extSurface *Self, APTR Void)
 -ACTION-
 Move: Moves a surface object to a new display position.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_Move(extSurface *Self, struct acMove *Args)
 {
@@ -1894,7 +1894,7 @@ static ERROR SURFACE_Move(extSurface *Self, struct acMove *Args)
 -ACTION-
 MoveToBack: Moves a surface object to the back of its container.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_MoveToBack(extSurface *Self, APTR Void)
 {
@@ -1968,7 +1968,7 @@ static ERROR SURFACE_MoveToBack(extSurface *Self, APTR Void)
 -ACTION-
 MoveToFront: Moves a surface object to the front of its container.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
 {
@@ -2100,7 +2100,7 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
 -ACTION-
 MoveToPoint: Moves a surface object to an absolute coordinate.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_MoveToPoint(extSurface *Self, struct acMoveToPoint *Args)
 {
@@ -2171,7 +2171,7 @@ Okay
 Search
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_RemoveCallback(extSurface *Self, struct drwRemoveCallback *Args)
 {
@@ -2271,7 +2271,7 @@ NullArgs
 AccessMemoryID: Unable to access internal surface list.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_ResetDimensions(extSurface *Self, struct drwResetDimensions *Args)
 {
@@ -2362,7 +2362,7 @@ relevant top-level surface for scheduling.
 Okay
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_ScheduleRedraw(extSurface *Self, APTR Void)
 {
@@ -2399,7 +2399,7 @@ limited to members of the @Picture class, for example `ID_JPEG` and `ID_PICTURE`
 the user's preferred default file format is used.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
 {
@@ -2493,7 +2493,7 @@ If the surface object does not have the `SCROLL_CONTENT` flag set, the call will
 listening for the Scroll action on the surface.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_Scroll(extSurface *Self, struct acScroll *Args)
 {
@@ -2530,7 +2530,7 @@ static ERROR SURFACE_Scroll(extSurface *Self, struct acScroll *Args)
 -ACTION-
 ScrollToPoint: Moves the content of a surface object to a specific point.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_ScrollToPoint(extSurface *Self, struct acScrollToPoint *Args)
 {
@@ -2575,7 +2575,7 @@ double Adjustment: Adjustment value to add or subtract from the existing opacity
 Okay: The opacity of the surface object was changed.
 NullArgs
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_SetOpacity(extSurface *Self, struct drwSetOpacity *Args)
 {
@@ -2609,7 +2609,7 @@ static ERROR SURFACE_SetOpacity(extSurface *Self, struct drwSetOpacity *Args)
 -ACTION-
 Show: Shows a surface object on the display.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_Show(extSurface *Self, APTR Void)
 {

@@ -16,7 +16,7 @@ Use the NetLookup class for resolving network names to IP addresses and vice ver
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define PRV_NETLOOKUP
 
@@ -159,7 +159,7 @@ Args
 NullArgs
 Failed: The address could not be resolved
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR NETLOOKUP_BlockingResolveAddress(extNetLookup *Self, struct nlBlockingResolveAddress *Args)
 {
@@ -206,7 +206,7 @@ NullArgs:
 AllocMemory:
 Failed:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR NETLOOKUP_BlockingResolveName(extNetLookup *Self, struct nlResolveName *Args)
 {
@@ -236,7 +236,7 @@ Free: Terminate the object.
 
 This routine may block temporarily if there are unresolved requests awaiting completion in separate threads.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR NETLOOKUP_Free(extNetLookup *Self, APTR Void)
 {
@@ -302,7 +302,7 @@ Args
 NullArgs
 Failed: The address could not be resolved
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nlResolveAddress *Args)
 {
@@ -369,7 +369,7 @@ NullArgs:
 AllocMemory:
 Failed:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR NETLOOKUP_ResolveName(extNetLookup *Self, struct nlResolveName *Args)
 {

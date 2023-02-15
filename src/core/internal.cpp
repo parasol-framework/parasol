@@ -2,7 +2,7 @@
 
 Functions that are internal to the Core.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #ifdef __unix__
    #include <unistd.h>
@@ -135,7 +135,7 @@ public|untracked and private memory flags as necessary.  Example:
 
   Read(Bytes (FD_LONG), &BufferMID (FD_LONGRESULT), &BufferSize (FD_LONGRESULT));
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffer, BYTE *Buffer, LONG BufferSize,
                     LONG *NewSize, WORD *WaitResult, CSTRING ActionName)

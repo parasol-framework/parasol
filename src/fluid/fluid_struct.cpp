@@ -27,7 +27,7 @@ Acceptable field definitions:
 Arrays are permitted if you follow the field name with [n] where 'n' is the array size.  For pointers to null
 terminated arrays, use [0].
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define PRV_SCRIPT
 #define PRV_FLUID

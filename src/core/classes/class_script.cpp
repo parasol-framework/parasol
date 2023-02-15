@@ -20,7 +20,7 @@ Note that client scripts may sometimes create objects that are unmanaged by the 
 Terminating the script will not remove objects that are outside its resource hierarchy.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define PRV_SCRIPT 1
 #include "../defs.h"
@@ -44,7 +44,7 @@ INLINE CSTRING check_bom(CSTRING Value)
 -ACTION-
 Activate: Executes the script.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCRIPT_Activate(objScript *Self, APTR Void)
 {
@@ -55,7 +55,7 @@ static ERROR SCRIPT_Activate(objScript *Self, APTR Void)
 -ACTION-
 DataFeed: Script source code can be passed to the object as XML or text via data feeds.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCRIPT_DataFeed(objScript *Self, struct acDataFeed *Args)
 {
@@ -90,7 +90,7 @@ ptr(func) Procedure: The function to be dereferenced.
 Okay:
 NullArgs:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCRIPT_DerefProcedure(objScript *Self, struct scDerefProcedure *Args)
 {
@@ -117,7 +117,7 @@ Args:
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCRIPT_Callback(objScript *Self, struct scCallback *Args)
 {
@@ -218,7 +218,7 @@ NullArgs
 Args: The TotalArgs value is invalid.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCRIPT_Exec(objScript *Self, struct scExec *Args)
 {
@@ -289,7 +289,7 @@ Okay
 NullArgs
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCRIPT_GetProcedureID(objScript *Self, struct scGetProcedureID *Args)
 {
@@ -304,7 +304,7 @@ static ERROR SCRIPT_GetProcedureID(objScript *Self, struct scGetProcedureID *Arg
 -ACTION-
 GetVar: Script parameters can be retrieved through this action.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCRIPT_GetVar(objScript *Self, struct acGetVar *Args)
 {
@@ -372,7 +372,7 @@ static ERROR SCRIPT_Reset(objScript *Self, APTR Void)
 -ACTION-
 SetVar: Script parameters can be set through this action.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCRIPT_SetVar(objScript *Self, struct acSetVar *Args)
 {
@@ -403,7 +403,7 @@ file is used instead of the original source code.
 If the cache file exists, a determination on whether the source code has been edited is usually made by comparing
 date stamps on the original and cache files.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_CacheFile(objScript *Self, STRING *Value)
 {
@@ -439,7 +439,7 @@ propagated through the call stack.
 -FIELD-
 ErrorString: A human readable error string may be declared here following a script execution failure.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_ErrorString(objScript *Self, STRING *Value)
 {
@@ -466,7 +466,7 @@ Language: Indicates the language (locale) that the source script is written in.
 The Language value indicates the language in which the source script was written.  The default setting is ENG, the
 code for international English.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Language(objScript *Self, STRING *Value)
 {
@@ -500,7 +500,7 @@ A target for the script may be specified by using the 'target' argument in the p
 valid existing object).
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Path(objScript *Self, STRING *Value)
 {
@@ -622,7 +622,7 @@ they read the OwnerID field directly.
 NB: It probably makes more sense to use a support routine for NewChild() to divert object resource tracking during
 script activation - something to try when we have the time?
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Owner(objScript *Self, OBJECTID *Value)
 {
@@ -659,7 +659,7 @@ specific routine whenever the script is activated with the Activate action.
 If this field is not set, the first procedure in the script, or the 'main' procedure (as defined by the script type) is
 executed by default.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Procedure(objScript *Self, CSTRING *Value)
 {
@@ -684,7 +684,7 @@ execution of any procedure.
 
 For maximum compatibility in type conversion, the results are stored as an array of strings.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Results(objScript *Self, STRING **Value, LONG *Elements)
 {
@@ -740,7 +740,7 @@ Scripts may be compiled into a script object by setting the Statement field with
 often convenient for embedding a small script into another script file without having to make external file references.
 It is also commonly used for executing scripts that have been embedded into program binaries.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_String(objScript *Self, CSTRING *Value)
 {
@@ -771,7 +771,7 @@ TotalArgs: Reflects the total number of arguments used in a script object.
 The total number of arguments that have been set in a script object through the unlisted field mechanism are reflected
 in the value of this field.  If you have not set any arguments then the field value will be zero.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_TotalArgs(objScript *Self, LONG *Value)
 {
@@ -781,7 +781,7 @@ static ERROR GET_TotalArgs(objScript *Self, LONG *Value)
 
 /*********************************************************************************************************************
 PRIVATE: Variables
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Variables(objScript *Self, KeyStore **Value)
 {
@@ -809,7 +809,7 @@ The working path is always fully qualified with a slash or colon at the end of t
 You can manually change the working path by setting this field with a custom string.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
 {

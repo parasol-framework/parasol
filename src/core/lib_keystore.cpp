@@ -13,7 +13,7 @@ tracking requirements.
 
 Keys cannot be deleted, only marked as dead and then the space is reclaimed when the KeyStore is rehashed.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include "defs.h"
 
@@ -265,7 +265,7 @@ Okay
 NullArgs
 AllocMemory
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR VarCopy(KeyStore *Source, KeyStore *Dest)
 {
@@ -348,7 +348,7 @@ Okay
 NullArgs
 DoesNotExist
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR VarGet(KeyStore *Store, CSTRING Name, APTR *Data, LONG *Size)
 {
@@ -393,7 +393,7 @@ cstr Key: The name of the key-pair to lookup.
 -RESULT-
 cstr: The value for the given key is returned.  If no match is possible then a NULL pointer is returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 CSTRING VarGetString(KeyStore *Store, CSTRING Key)
 {
@@ -468,7 +468,7 @@ NullArgs
 NotFound: The Index does not match a known key.
 Finished: All keys have been iterated.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR VarIterate(KeyStore *Store, CSTRING Index, CSTRING *Key, APTR *Data, LONG *Size)
 {
@@ -527,7 +527,7 @@ Okay
 InvalidState
 TimeOut
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR VarLock(KeyStore *Store, LONG Timeout)
 {
@@ -555,7 +555,7 @@ int(KSF) Flags: Optional flags.
 -RESULT-
 resource(KeyStore): The allocated resource is returned or NULL if a memory allocation error occurred.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 KeyStore * VarNew(LONG InitialSize, LONG Flags)
 {
@@ -622,7 +622,7 @@ Okay
 NullArgs
 AllocMemory
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR VarSetString(KeyStore *Store, CSTRING Key, CSTRING Value)
 {
@@ -699,7 +699,7 @@ bufsize Size: The byte-size of the Data buffer.
 -RESULT-
 ptr: A pointer to the cached version of the data is returned, or NULL if failure.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 APTR VarSet(KeyStore *Store, CSTRING Key, APTR Data, LONG Size)
 {
@@ -770,7 +770,7 @@ Okay:
 NullArgs:
 AllocMemory:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR VarSetSized(KeyStore *Store, CSTRING Key, LONG Size, APTR *Data, LONG *DataSize)
 {
@@ -820,7 +820,7 @@ Call VarUnlock() to release a lock previously acquired with VarLock().
 -INPUT-
 resource(KeyStore) Store: The key store to lock.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void VarUnlock(KeyStore *Store)
 {
@@ -847,7 +847,7 @@ Okay
 NullArgs
 DoesNotExist
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR KeyGet(KeyStore *Store, ULONG Key, APTR *Data, LONG *Size)
 {
@@ -918,7 +918,7 @@ NullArgs
 NotFound: The Index does not match a known key.
 Finished: All keys have been iterated.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR KeyIterate(KeyStore *Store, ULONG Index, ULONG *Key, APTR *Data, LONG *Size)
 {
@@ -986,7 +986,7 @@ NullArgs
 AllocMemory
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR KeySet(KeyStore *Store, ULONG Key, const void *Data, LONG Size)
 {

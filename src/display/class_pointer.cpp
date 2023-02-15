@@ -12,7 +12,7 @@ used for all interactions with this service.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include "defs.h"
 
@@ -129,7 +129,7 @@ static void send_inputmsg(InputEvent *Event, InputSubscription *List)
 
 /*********************************************************************************************************************
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #ifdef _WIN32
 static ERROR PTR_SetWinCursor(extPointer *Self, struct ptrSetWinCursor *Args)
@@ -180,7 +180,7 @@ flag for that button.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PTR_DataFeed(extPointer *Self, struct acDataFeed *Args)
 {
@@ -633,7 +633,7 @@ static ERROR PTR_Free(extPointer *Self, APTR Void)
 -ACTION-
 Hide: Hides the pointer from the display.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PTR_Hide(extPointer *Self, APTR Void)
 {
@@ -732,7 +732,7 @@ The Move action will move the cursor to a new location instantly.  This has the 
 of routines for pointer movement (i.e. no UserMovement signals will be sent to applications to indicate the
 change).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PTR_Move(extPointer *Self, struct acMove *Args)
 {
@@ -755,7 +755,7 @@ indicate the change).
 The client can subscribe to this action to listen for changes to the cursor's position.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
 {
@@ -856,7 +856,7 @@ static ERROR PTR_NewObject(extPointer *Self, APTR Void)
 -ACTION-
 Refresh: Refreshes the pointer's cursor status.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PTR_Refresh(extPointer *Self, APTR Void)
 {
@@ -871,7 +871,7 @@ static ERROR PTR_Refresh(extPointer *Self, APTR Void)
 -ACTION-
 Reset: Resets the pointer settings back to the default.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PTR_Reset(extPointer *Self, APTR Void)
 {
@@ -891,7 +891,7 @@ static ERROR PTR_Reset(extPointer *Self, APTR Void)
 -ACTION-
 SaveToObject: Saves the current pointer settings to another object.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PTR_SaveToObject(extPointer *Self, struct acSaveToObject *Args)
 {
@@ -917,7 +917,7 @@ static ERROR PTR_SaveToObject(extPointer *Self, struct acSaveToObject *Args)
 -ACTION-
 Show: Shows the pointer if it is not already on the display.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PTR_Show(extPointer *Self, APTR Void)
 {
@@ -983,7 +983,7 @@ mouse buttons to translate to the left mouse button.
 
 Changes to this field will have an immediate impact on the pointing device's behaviour.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_ButtonOrder(extPointer *Self, CSTRING *Value)
 {
@@ -1044,7 +1044,7 @@ ButtonState: Indicates the current button-press state.
 You can read this field at any time to get an indication of the buttons that are currently being held by the user.  The
 flags returned by this field are JD_LMB, JD_RMB and JD_MMB indicating left, right and middle mouse buttons respectively.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_ButtonState(extPointer *Self, LONG *Value)
 {
@@ -1114,7 +1114,7 @@ The maximum speed at which the pointer can move per frame is specified in this f
 the user for times where the pointer may be moving to fast (for example if the hardware driver is interpreting the mouse
 movement at larger offsets than what is normal).  You can also set the value to 1 if a digital simulation is required.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_MaxSpeed(extPointer *Self, LONG Value)
 {
@@ -1181,7 +1181,7 @@ wheel speed unaltered, while a setting of 2.0 would double the regular speed.
 -FIELD-
 X: The horizontal position of the pointer within its parent display.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PTR_SET_X(extPointer *Self, DOUBLE Value)
 {
@@ -1196,7 +1196,7 @@ static ERROR PTR_SET_X(extPointer *Self, DOUBLE Value)
 Y: The vertical position of the pointer within its parent display.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PTR_SET_Y(extPointer *Self, DOUBLE Value)
 {

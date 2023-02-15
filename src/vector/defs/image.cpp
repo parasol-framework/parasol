@@ -14,7 +14,7 @@ It is strongly recommended that the VectorImage is owned by the @VectorScene tha
 definition.  This will ensure that the VectorImage is de-allocated when the scene is destroyed.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR IMAGE_Init(objVectorImage *Self, APTR Void)
 {
@@ -65,7 +65,7 @@ Bitmap: Reference to a source bitmap for the rendering algorithm.
 This field must be set prior to initialisation.  It will refer to a source bitmap that will be used by the rendering
 algorithm.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR IMAGE_SET_Bitmap(objVectorImage *Self, objBitmap *Value)
 {
@@ -87,7 +87,7 @@ Picture: Refers to a @Picture from which the source #Bitmap is acquired.
 If an image bitmap is sourced from a @Picture then this field may be used to refer to the @Picture object.  The picture
 will not be used directly by the VectorImage, as only the bitmap is of interest.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR IMAGE_SET_Picture(objVectorImage *Self, objPicture *Value)
 {
@@ -115,7 +115,7 @@ X: Apply a horizontal offset to the image, the origin of which is determined by 
 Y: Apply a vertical offset to the image, the origin of which is determined by the #Units value.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static const ActionArray clImageActions[] = {
    { AC_Init,      (APTR)IMAGE_Init },

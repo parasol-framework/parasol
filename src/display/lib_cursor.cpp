@@ -235,7 +235,7 @@ This function returns the modal surface for the running process.  Returns zero i
 -RESULT-
 oid: The UID of the modal surface, or zero.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 OBJECTID gfxGetModalSurface(void)
 {
@@ -828,7 +828,7 @@ AccessObject:
 Failed: The left mouse button is not held by the user.
 InUse: A drag and drop operation has already been started.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface)
 {

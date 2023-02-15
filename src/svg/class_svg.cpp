@@ -10,7 +10,7 @@ SVG script and then access the #Viewport field to perform transforms and manipul
 Please refer to the W3C documentation on SVG for a complete reference to the attributes that can be applied to SVG
 elements.  Unfortunately we do not support all SVG capabilities at this time, but support will improve in future.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 //********************************************************************************************************************
 
@@ -28,7 +28,7 @@ code will be processed in the background at the pre-defined #FrameRate.  The cli
 by setting the #FrameCallback with a suitable function.
 
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SVG_Activate(extSVG *Self, APTR Void)
 {
@@ -47,7 +47,7 @@ static ERROR SVG_Activate(extSVG *Self, APTR Void)
 -ACTION-
 Deactivate: Stops all playback of SVG animations.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SVG_Deactivate(extSVG *Self, APTR Void)
 {
@@ -59,7 +59,7 @@ static ERROR SVG_Deactivate(extSVG *Self, APTR Void)
 -ACTION-
 DataFeed: Vector graphics are created by passing XML-based instructions here.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SVG_DataFeed(extSVG *Self, struct acDataFeed *Args)
 {
@@ -121,7 +121,7 @@ generate the content in a local #Scene object, or alternatively the content can 
 @VectorScene referred to by #Target.
 
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SVG_Init(extSVG *Self, APTR Void)
 {
@@ -170,7 +170,7 @@ Okay
 NullArgs
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SVG_Render(extSVG *Self, struct svgRender *Args)
 {
@@ -210,7 +210,7 @@ The image will be saved in PNG format by default, but can be changed by specifyi
 is recommended in particular because it supports an alpha channel.
 
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SVG_SaveImage(extSVG *Self, struct acSaveImage *Args)
 {
@@ -243,7 +243,7 @@ static ERROR SVG_SaveImage(extSVG *Self, struct acSaveImage *Args)
 -ACTION-
 SaveToObject: Saves the SVG document to a data object.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
 {
@@ -353,7 +353,7 @@ Note that if the SVG document does not make use of any animation features then t
 
 The function prototype is `void Function(*SVG)`.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_FrameCallback(extSVG *Self, FUNCTION **Value)
 {
@@ -390,7 +390,7 @@ a frame rate of 50.  This will subsequently have an effect on power consumption.
 
 The recommended frame rate is 60, as this will match the majority of modern displays.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_FrameRate(extSVG *Self, LONG Value)
 {
@@ -408,7 +408,7 @@ Path: The location of the source SVG data.
 
 SVG data can be loaded from a file source by setting the Path field to an SVG file.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Path(extSVG *Self, STRING *Value)
 {
@@ -434,7 +434,7 @@ Scene: The VectorScene that manages the Target object is referenced here.
 
 The Scene is a read-only field that assists in quickly finding the @VectorScene that owns the #Target object.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Scene(extSVG *Self, objVectorScene **Value)
 {
@@ -457,7 +457,7 @@ and no further action is taken.
 If a SVG object is initialised with no Target being defined, a @VectorScene will be created automatically and
 referenced by the Target field.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Target(extSVG *Self, OBJECTPTR Value)
 {
@@ -491,7 +491,7 @@ The title of an SVG document is declared with a title element that can embedded 
 where a title has been specified, it will be possible to read it from this field.  If no title is in the document then
 NULL will be returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Title(extSVG *Self, CSTRING Value)
 {
@@ -509,7 +509,7 @@ This field simplifies the process of finding the first @VectorViewport that was 
 is returned if an SVG document has not been successfully parsed yet.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Viewport(extSVG *Self, OBJECTPTR *Value)
 {

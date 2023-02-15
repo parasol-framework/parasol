@@ -7,7 +7,7 @@ The VectorEllipse class provides the necessary functionality for elliptical path
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 class extVectorEllipse : public extVector {
    public:
@@ -71,7 +71,7 @@ static void generate_ellipse(extVectorEllipse *Vector)
 -ACTION-
 Move: Moves the center of the ellipse by a relative distance.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR ELLIPSE_Move(extVectorEllipse *Self, struct acMove *Args)
 {
@@ -87,7 +87,7 @@ static ERROR ELLIPSE_Move(extVectorEllipse *Self, struct acMove *Args)
 -ACTION-
 MoveToPoint: Moves the center of the ellipse to a new position.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR ELLIPSE_MoveToPoint(extVectorEllipse *Self, struct acMoveToPoint *Args)
 {
@@ -127,7 +127,7 @@ The following dimension flags are supported:
 <type name="RELATIVE_CENTER_Y">The #CenterY value is a relative coordinate.</>
 </types>
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR ELLIPSE_GET_Dimensions(extVectorEllipse *Self, LONG *Value)
 {
@@ -148,7 +148,7 @@ Height: The height (vertical diameter) of the ellipse.
 
 The height of the ellipse is defined here as the equivalent of #RadiusY * 2.0.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR ELLIPSE_GET_Height(extVectorEllipse *Self, Variable *Value)
 {
@@ -176,7 +176,7 @@ CenterX: The horizontal center of the ellipse.  Expressed as a fixed or relative
 
 The horizontal center of the ellipse is defined here as either a fixed or relative value.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR ELLIPSE_GET_CenterX(extVectorEllipse *Self, Variable *Value)
 {
@@ -212,7 +212,7 @@ CenterY: The vertical center of the ellipse.  Expressed as a fixed or relative c
 
 The vertical center of the ellipse is defined here as either a fixed or relative value.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR ELLIPSE_GET_CenterY(extVectorEllipse *Self, Variable *Value)
 {
@@ -248,7 +248,7 @@ Radius: The radius of the ellipse.  Expressed as a fixed or relative coordinate.
 The radius of the ellipse is defined here as either a fixed or relative value.  Updating the radius will set both the
 #RadiusX and #RadiusY values simultaneously.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR ELLIPSE_GET_Radius(extVectorEllipse *Self, Variable *Value)
 {
@@ -283,7 +283,7 @@ RadiusX: The horizontal radius of the ellipse.
 
 The horizontal radius of the ellipse is defined here as either a fixed or relative value.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR ELLIPSE_GET_RadiusX(extVectorEllipse *Self, Variable *Value)
 {
@@ -318,7 +318,7 @@ RadiusY: The vertical radius of the ellipse.
 
 The vertical radius of the ellipse is defined here as either a fixed or relative value.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR ELLIPSE_GET_RadiusY(extVectorEllipse *Self, Variable *Value)
 {
@@ -357,7 +357,7 @@ their vertices will always touch the sides of an elliptical area.
 
 Please note that this feature is not part of the SVG standard.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR ELLIPSE_GET_Vertices(extVectorEllipse *Self, LONG *Value)
 {
@@ -381,7 +381,7 @@ Width: The width (horizontal diameter) of the ellipse.
 
 The width of the ellipse is defined here as the equivalent of #RadiusX * 2.0.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR ELLIPSE_GET_Width(extVectorEllipse *Self, Variable *Value)
 {

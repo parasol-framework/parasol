@@ -25,7 +25,7 @@ fast 1:1 rendering without transforms.  The user is otherwise better served thro
 TODO: decompose_ft_outline() should cache the generated paths
       ShapeInside and ShapeSubtract require implementation
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 /*
 textPath warping could be more accurate if the character angles were calculated on the mid-point of the character
@@ -255,7 +255,7 @@ Okay: The line was deleted.
 Args: The Line value was out of the valid range.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORTEXT_DeleteLine(extVectorText *Self, struct vtDeleteLine *Args)
 {
@@ -377,7 +377,7 @@ form of `ALIGN_LEFT`, `ALIGN_HORIZONTAL` and `ALIGN_RIGHT`.
 In addition, the SVG equivalent values of `start`, `middle` and `end` are supported and map directly to the formerly
 mentioned align flags.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_Align(extVectorText *Self, LONG *Value)
 {
@@ -402,7 +402,7 @@ limit.
 Note that it is valid for the #String length to exceed the limit if set manually.  Only the display of the string
 characters will be affected by the CharLimit value.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_CharLimit(extVectorText *Self, LONG *Value)
 {
@@ -482,7 +482,7 @@ specifies a relative X coordinate for the given character via a #DX field, then 
 is shifted along the x-axis of the current user coordinate system by that amount (nearest ancestor has precedence),
 else (b) no extra shift along the x-axis occurs.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_DX(extVectorText *Self, DOUBLE **Values, LONG *Elements)
 {
@@ -510,7 +510,7 @@ DY: Adjusts vertical spacing on a per-character basis.
 
 This field follows the same rules described in #DX.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_DY(extVectorText *Self, DOUBLE **Values, LONG *Elements)
 {
@@ -544,7 +544,7 @@ If none of the listed fonts are available, the default system font will be used.
 
 Please note that referencing bitmap fonts is unsupported and they will be ignored by the font loader.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_Face(extVectorText *Self, CSTRING *Value)
 {
@@ -565,7 +565,7 @@ static ERROR TEXT_SET_Face(extVectorText *Self, CSTRING Value)
 TextFlags: Optional flags.
 
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_Flags(extVectorText *Self, LONG *Value)
 {
@@ -588,7 +588,7 @@ field to a different vector in the scene graph will redirect monitoring to it.
 
 Changing this value post-initialisation has no effect.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_Focus(extVectorText *Self, OBJECTID *Value)
 {
@@ -609,7 +609,7 @@ Font: The primary Font object that is used to source glyphs for the text string.
 Returns the @Font object that is used for drawing the text.  The object may be queried but must remain unmodified.
 Any modification by the client that happens to work in the present code release may fail in future releases.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_Font(extVectorText *Self, OBJECTPTR *Value)
 {
@@ -626,7 +626,7 @@ static ERROR TEXT_GET_Font(extVectorText *Self, OBJECTPTR *Value)
 -PRIVATE-
 LetterSpacing: Currently unsupported.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 // SVG standard, presuming this inserts space as opposed to acting as a multiplier
 
@@ -652,7 +652,7 @@ current user coordinate system in pixels.  To define the point size, append 'pt'
 
 If retrieving the font size, the string must be freed by the client when no longer in use.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_FontSize(extVectorText *Self, CSTRING *Value)
 {
@@ -687,7 +687,7 @@ style names.
 
 Errors are not returned if the style name is invalid or unavailable.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_FontStyle(extVectorText *Self, CSTRING *Value)
 {
@@ -711,7 +711,7 @@ property sets the width of the rectangle for horizontal text and the height of t
 The other dimension (height for horizontal text, width for vertical text) is of infinite length. A value of zero
 (the default) disables the creation of a wrapping area.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_InlineSize(extVectorText *Self, DOUBLE *Value)
 {
@@ -733,7 +733,7 @@ LineLimit: Restricts the total number of lines allowed in a text object.
 Set the LineLimit field to restrict the maximum number of lines permitted in a text object.  It is common to set this
 field to a value of 1 for input boxes that have a limited amount of space available.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_LineLimit(extVectorText *Self, LONG *Value)
 {
@@ -756,7 +756,7 @@ has not been selected, the value of the SelectColumn field is undefined.
 
 To check whether or not an area has been selected, test the `AREA_SELECTED` bit in the #Flags field.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_SelectColumn(extVectorText *Self, LONG *Value)
 {
@@ -773,7 +773,7 @@ has not been selected, the value of the SelectRow field is undefined.
 
 To check whether or not an area has been selected, test the `AREA_SELECTED` bit in the #Flags field.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_SelectRow(extVectorText *Self, LONG *Value)
 {
@@ -786,7 +786,7 @@ static ERROR TEXT_GET_SelectRow(extVectorText *Self, LONG *Value)
 -PRIVATE-
 Spacing: Not currently implemented.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_Spacing(extVectorText *Self, DOUBLE *Value)
 {
@@ -805,7 +805,7 @@ static ERROR TEXT_SET_Spacing(extVectorText *Self, DOUBLE Value)
 -PRIVATE-
 StartOffset: Not currently implemented.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_StartOffset(extVectorText *Self, DOUBLE *Value)
 {
@@ -826,7 +826,7 @@ X: The x coordinate of the text.
 
 The x-axis coordinate of the text is specified here as a fixed value.  Relative coordinates are not supported.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_X(extVectorText *Self, Variable *Value)
 {
@@ -854,7 +854,7 @@ The Y-axis coordinate of the text is specified here as a fixed value.  Relative 
 
 Unlike other vector shapes, the Y coordinate positions the text from its base line rather than the top of the shape.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_Y(extVectorText *Self, Variable *Value)
 {
@@ -898,7 +898,7 @@ This supplemental rotation has no impact on the rules by which current text posi
 and is supplemental to any rotation due to text on a path and to 'glyph-orientation-horizontal' or
 'glyph-orientation-vertical'.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_Rotate(extVectorText *Self, DOUBLE **Values, LONG *Elements)
 {
@@ -931,7 +931,7 @@ boundaries.
 This feature is computationally expensive and the use of #InlineSize is preferred if the text can be wrapped to
 a rectangular area.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_ShapeInside(extVectorText *Self, OBJECTID *Value)
 {
@@ -952,7 +952,7 @@ ShapeSubtract: Excludes a portion of the content area from the wrapping area.
 This property can be used in conjunction with #ShapeInside to further restrict the content area that is available
 for word-wrapping.  It has no effect if #ShapeInside is undefined.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_ShapeSubtract(extVectorText *Self, OBJECTID *Value)
 {
@@ -974,7 +974,7 @@ The string for drawing the glyphs is defined here in UTF-8 format.
 
 When retrieving a string that contains return codes, only the first line of text is returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_String(extVectorText *Self, CSTRING *Value)
 {
@@ -1013,7 +1013,7 @@ The purpose of this attribute is to allow exact alignment of the text graphic in
 #Width that is initially computed does not match this value, then the text will be scaled to match the
 TextLength.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 // NB: Internally we can fulfil TextLength requirements simply by checking the width of the text path boundary
 // and if they don't match, apply a rescale transformation just prior to drawing (Width * (TextLength / Width))
@@ -1034,7 +1034,7 @@ static ERROR TEXT_SET_TextLength(extVectorText *Self, DOUBLE Value)
 -FIELD-
 TextWidth: The raw pixel width of the widest line in the @String value..
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_TextWidth(extVectorText *Self, LONG *Value)
 {
@@ -1055,7 +1055,7 @@ static ERROR TEXT_GET_TextWidth(extVectorText *Self, LONG *Value)
 -FIELD-
 TotalLines: The total number of lines stored in the object.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_TotalLines(extVectorText *Self, LONG *Value)
 {
@@ -1073,7 +1073,7 @@ normal state.  Lower values between 100 to 300 render the text in a light format
 
 Please note that setting the Weight will give it priority over the #FontStyle value.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_Weight(extVectorText *Self, LONG *Value)
 {

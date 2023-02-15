@@ -29,7 +29,7 @@ Transitions are most effective when used in conjunction with the morph feature i
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 // Applies the correct transform when given a relative Index position between 0.0 and 1.0
 
@@ -176,7 +176,7 @@ a transform string.  The Transition structure consists of the following fields:
 <field name="Transform" type="STRING">A transform string, as per SVG guidelines.</field>
 </fields>
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TRANSITION_SET_Stops(objVectorTransition *Self, Transition *Value, LONG Elements)
 {
@@ -206,7 +206,7 @@ TotalStops: Total number of stops defined in the Stops array.
 This read-only field indicates the total number of stops that have been defined in the #Stops array.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static const ActionArray clTransitionActions[] = {
    { AC_Free,      (APTR)TRANSITION_Free },

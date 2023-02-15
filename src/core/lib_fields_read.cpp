@@ -12,7 +12,7 @@ NOTE: The GetField range of functions do not provide any context management. Thi
 allocate memory will have their memory tracked back to the object that made the GetField() call.  They can overcome
 this by calling SetContext() themselves.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include "defs.h"
 #include <parasol/main.h>
@@ -92,7 +92,7 @@ struct(Field): Returns a pointer to the field descriptor, otherwise NULL if not 
 
 Please note that FieldID is explicitly defined as 32-bit because using the FIELD type would make it 64-bit.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target) // Read-only, thread safe function.
 {
@@ -154,7 +154,7 @@ Args:             Invalid arguments were specified.
 NoFieldAccess:    Permissions for this field indicate that it is not readable.
 UnsupportedField: The Field is not supported by the object's class.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR GetField(OBJECTPTR Object, FIELD FieldID, APTR Result)
 {
@@ -217,7 +217,7 @@ NoFieldAccess:    Permissions for this field indicate that it is not readable.
 UnsupportedField: The Field is not supported by the object's class.
 Mismatch
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR GetFieldArray(OBJECTPTR Object, FIELD FieldID, APTR *Result, LONG *Elements)
 {
@@ -291,7 +291,7 @@ Okay
 NullArgs
 UnsupportedField
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR GetFields(OBJECTPTR Object, ...)
 {
@@ -387,7 +387,7 @@ NoFieldAccess:    Permissions for this field state that it is not readable.
 Mismatch:         The field value cannot be converted into a string.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG BufferSize)
 {

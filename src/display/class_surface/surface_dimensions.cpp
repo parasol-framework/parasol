@@ -127,7 +127,7 @@ Valid alignment flags are BOTTOM, CENTER/MIDDLE, LEFT, HORIZONTAL, RIGHT, TOP, V
 -FIELD-
 Bottom: Returns the bottom-most coordinate of a surface object (Y + Height).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Bottom(extSurface *Self, LONG *Bottom)
 {
@@ -147,7 +147,7 @@ units at the bottom of its container would fail.
 Limits only apply to movement, as induced through the Move() action.  This means that limits can be over-ridden by
 setting the coordinate fields directly (which can be useful in certain cases).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_BottomLimit(extSurface *Self, LONG Value)
 {
@@ -167,7 +167,7 @@ available for placing graphics and other surface objects inside of it.
 
 By default, all margins are set to zero when a new surface object is created.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_BottomMargin(extSurface *Self, LONG Value)
 {
@@ -190,7 +190,7 @@ client when setting fields such as #X and #Width.  If circumstances require manu
 take care to ensure that the flags do not conflict.  For instance, FIXED_X and RELATIVE_X cannot be paired, nor could
 FIXED_X, FIXED_XOFFSET and FIXED_WIDTH simultaneously.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Dimensions(extSurface *Self, LONG Value)
 {
@@ -424,7 +424,7 @@ beyond the 3 units at the left of its container would fail.
 Limits only apply to movement, as induced through the #Move() action.  This means it is possible to override limits by
 setting the coordinate fields directly.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_LeftLimit(extSurface *Self, LONG Value)
 {
@@ -454,7 +454,7 @@ It is possible to circumvent the MaxHeight by setting the Height field directly.
 to the inside-height of the surface area, thus the overall maximum height will include both the #TopMargin and
 #BottomMargin values.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_MaxHeight(extSurface *Self, LONG Value)
 {
@@ -484,7 +484,7 @@ It is possible to circumvent the MaxWidth by setting the Width field directly.  
 the inside-width of the surface area, thus the overall maximum width will include both the LeftMargin and RightMargin
 values.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_MaxWidth(extSurface *Self, LONG Value)
 {
@@ -513,7 +513,7 @@ less than the one you specify.
 
 It is possible to circumvent the MinHeight by setting the #Height field directly.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_MinHeight(extSurface *Self, LONG Value)
 {
@@ -543,7 +543,7 @@ less than the one you specify.
 
 It is possible to circumvent the MinWidth by setting the Width field directly.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_MinWidth(extSurface *Self, LONG Value)
 {
@@ -567,7 +567,7 @@ static ERROR SET_MinWidth(extSurface *Self, LONG Value)
 -FIELD-
 Right: Returns the right-most coordinate of a surface object (X + Width).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Right(extSurface *Self, LONG *Value)
 {
@@ -587,7 +587,7 @@ beyond the 8 units at the right-hand side of its container would fail.
 Limits only apply to movement, as induced through the #Move() action.  This means that limits can be over-ridden by
 setting the coordinate fields directly (which can be useful in certain cases).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_RightLimit(extSurface *Self, LONG Value)
 {
@@ -607,7 +607,7 @@ available for placing graphics and other surface objects inside of it.
 
 By default, all margins are set to zero when a new surface object is created.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_RightMargin(extSurface *Self, LONG Value)
 {
@@ -628,7 +628,7 @@ units at the top of its container would fail.
 Limits only apply to movement, as induced through the Move() action.  This means that limits can be over-ridden by
 setting the coordinate fields directly (which can be useful in certain cases).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_TopLimit(extSurface *Self, LONG Value)
 {
@@ -659,7 +659,7 @@ pixels or less, depending on the position of the surface.
 
 If none of the surface area is visible then zero is returned.  The result is never negative.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_VisibleHeight(extSurface *Self, LONG *Value)
 {
@@ -706,7 +706,7 @@ pixels or less, depending on the position of the surface.
 
 If none of the surface area is visible then zero is returned.  The result is never negative.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_VisibleWidth(extSurface *Self, LONG *Value)
 {
@@ -753,7 +753,7 @@ pixels or less, depending on the position of the surface.
 
 If none of the surface area is visible then zero is returned.  The result is never negative.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_VisibleX(extSurface *Self, LONG *Value)
 {
@@ -800,7 +800,7 @@ pixels or less, depending on the position of the surface.
 
 If none of the surface area is visible then zero is returned.  The result is never negative.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_VisibleY(extSurface *Self, LONG *Value)
 {
@@ -850,7 +850,7 @@ objects that are within the surface area will be re-drawn and resized as necessa
 
 Width values of 0 or less are illegal, and will result in an ERR_OutOfRange error-code.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Width(extSurface *Self, Variable *Value)
 {
@@ -934,7 +934,7 @@ coordinate (the default) or a relative coordinate if you use the FD_PERCENT flag
 If you set the X while the surface object is on display, the position of the surface area will be updated
 immediately.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_XCoord(extSurface *Self, Variable *Value)
 {
@@ -1008,7 +1008,7 @@ If the XOffset field is set in conjunction with a fixed or relative width then t
 an X coordinate calculated from the formula `X = ContainerWidth - SurfaceWidth - XOffset`.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_XOffset(extSurface *Self, Variable *Value)
 {
@@ -1110,7 +1110,7 @@ coordinate (the default) or a relative coordinate if you use the FD_PERCENT flag
 
 If the value is changed while the surface is on display, its position will be updated immediately.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_YCoord(extSurface *Self, Variable *Value)
 {
@@ -1174,7 +1174,7 @@ If the YOffset field is set in conjunction with a fixed or relative height then 
 at a Y coordinate calculated from the formula "Y = ContainerHeight - SurfaceHeight - YOffset".
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_YOffset(extSurface *Self, Variable *Value)
 {

@@ -10,7 +10,7 @@ copyright to Thomas G. Lane.  Libjpeg is publicly available on terms that
 are not related to this Package.  The original libjpeg source code can be
 obtained from http://www.ijg.org.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include <parasol/main.h>
 #include <parasol/modules/picture.h>

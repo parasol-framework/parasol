@@ -7,7 +7,7 @@ VectorPath provides support for parsing SVG styled path strings.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 //********************************************************************************************************************
 
@@ -212,7 +212,7 @@ bufsize Size: The size of the Command buffer, in bytes.
 Okay
 NullArgs
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORPATH_AddCommand(extVectorPath *Self, struct vpAddCommand *Args)
 {
@@ -250,7 +250,7 @@ Okay
 NullArgs
 OutOfRange
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORPATH_GetCommand(extVectorPath *Self, struct vpGetCommand *Args)
 {
@@ -281,7 +281,7 @@ NullArgs
 OutOfRange
 NothingDone
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORPATH_RemoveCommand(extVectorPath *Self, struct vpRemoveCommand *Args)
 {
@@ -317,7 +317,7 @@ NullArgs
 OutOfRange
 BufferOverflow
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORPATH_SetCommand(extVectorPath *Self, struct vpSetCommand *Args)
 {
@@ -358,7 +358,7 @@ NullArgs
 NotInitialised
 Args
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORPATH_SetCommandList(extVectorPath *Self, struct vpSetCommandList *Args)
 {
@@ -389,7 +389,7 @@ Commands: Direct pointer to the PathCommand array.
 Read the Commands field to obtain a direct pointer to the PathCommand array.  This will allow the path to be modified
 directly.  After making changes to the path, call #Flush() to register the changes for the next redraw.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORPATH_GET_Commands(extVectorPath *Self, PathCommand **Value, LONG *Elements)
 {
@@ -408,7 +408,7 @@ distance-along-a-path computations by the ratio of PathLength to the user agent'
 length.  This feature potentially affects calculations for text on a path, motion animation and various stroke
 operations.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORPATH_GET_PathLength(extVectorPath *Self, LONG *Value)
 {
@@ -453,7 +453,7 @@ of the previous command).
 
 To terminate a path without joining it to the first coordinate, omit the 'Z' from the end of the sequence.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORPATH_SET_Sequence(extVectorPath *Self, CSTRING Value)
 {
@@ -473,7 +473,7 @@ TotalCommands: The total number of points defined in the path sequence.
 The total number of points defined in the path #Sequence is reflected in this field.  Modifying the total directly is
 permitted, although this should be used for shrinking the list because expansion will create uninitialised command entries.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORPATH_GET_TotalCommands(extVectorPath *Self, LONG *Value)
 {

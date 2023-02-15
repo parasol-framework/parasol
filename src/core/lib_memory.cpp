@@ -7,7 +7,7 @@ particular platform.  Where possible it is best to call the host platform's own 
 Name: Memory
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include <stdlib.h> // Contains free(), malloc() etc
 
@@ -130,7 +130,7 @@ AccessMemory:   The block was allocated but access to it was not granted, causin
 ResourceExists: This error is returned if MEM_RESERVED was used and the memory block ID was found to already exist.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
 {
@@ -541,7 +541,7 @@ NullArgs:
 SystemCorrupt: The internal memory tables are corrupt.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR CheckMemoryExists(MEMORYID MemoryID)
 {
@@ -597,7 +597,7 @@ NullArgs:
 Memory: The supplied memory address is not a recognised memory block.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR FreeResource(const void *Address)
 {
@@ -710,7 +710,7 @@ MemoryDoesNotExist
 LockFailed: Failed to lock the public memory controller.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR FreeResourceID(MEMORYID MemoryID)
 {
@@ -892,7 +892,7 @@ MemoryDoesNotExist
 SystemCorrupt: Internal memory tables are corrupt.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR MemoryIDInfo(MEMORYID MemoryID, struct MemInfo *MemInfo, LONG Size)
 {
@@ -975,7 +975,7 @@ Okay
 NullArgs
 MemoryDoesNotExist
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR MemoryPtrInfo(APTR Memory, struct MemInfo *MemInfo, LONG Size)
 {
@@ -1085,7 +1085,7 @@ AllocMemory
 Memory: The memory block to be re-allocated is invalid.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR ReallocMemory(APTR Address, LONG NewSize, APTR *Memory, MEMORYID *MemoryID)
 {

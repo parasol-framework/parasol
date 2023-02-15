@@ -21,7 +21,7 @@ each entry the proxy database.  You may change existing values of any proxy and 
 #SaveSettings() action.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define PRV_PROXY
 
@@ -77,7 +77,7 @@ database on the success of this function.
 Okay: Proxy deleted.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PROXY_Delete(extProxy *Self, APTR Void)
 {
@@ -113,7 +113,7 @@ programs that scan the database for active proxies.
 
 The change will not come into effect until the proxy record is saved.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PROXY_Disable(extProxy *Self, APTR Void)
 {
@@ -129,7 +129,7 @@ Enable: Enables a proxy.
 Calling the Enable action will mark the proxy as enabled.  The change will not come into effect until the proxy record
 is saved.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PROXY_Enable(extProxy *Self, APTR Void)
 {
@@ -164,7 +164,7 @@ Okay: A proxy was discovered.
 NoSearchResult: No matching proxy was discovered.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PROXY_Find(extProxy *Self, struct prxFind *Args)
 {
@@ -330,7 +330,7 @@ Okay: A proxy was discovered.
 NoSearchResult: No matching proxy was discovered.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PROXY_FindNext(extProxy *Self, APTR Void)
 {
@@ -464,7 +464,7 @@ administrator to define proxy settings as the default for all users by copying t
 `system:users/default/config/network/` folder.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
 {

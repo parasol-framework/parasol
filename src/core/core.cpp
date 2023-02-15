@@ -14,7 +14,7 @@ This documentation is intended for technical reference and is not suitable as an
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define PRV_CORE
 #define PRV_CORE_MODULE

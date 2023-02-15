@@ -2,7 +2,7 @@
 -CATEGORY-
 Name: Objects
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include "defs.h"
 #include <parasol/main.h>
@@ -44,7 +44,7 @@ Failed
 ObjectExists: An object with the provided Name already exists in the system (applies only when the NF_UNIQUE flag has been used).
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
 {
@@ -194,7 +194,7 @@ cstr Name: The name of the class that requires resolution.
 cid: Returns the class ID identified from the class name, or NULL if the class could not be found.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 CLASSID ResolveClassName(CSTRING ClassName)
 {
@@ -224,7 +224,7 @@ cid ID: The ID of the class that needs to be resolved.
 cstr: Returns the name of the class, or NULL if the ID is not recognised.  Standard naming conventions apply, so it can be expected that the string is capitalised and without spaces, e.g. "NetSocket".
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 CSTRING ResolveClassID(CLASSID ID)
 {

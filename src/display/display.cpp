@@ -10,7 +10,7 @@ This is a dummy module for managing access to the display module.  It exists
 so that any program needing access to the display API will be diverted to the
 module binary that is relevant to the platform (X11, DirectFB, OpenGL etc).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define __system__
 #define PRV_DISPLAY

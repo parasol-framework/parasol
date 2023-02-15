@@ -14,7 +14,7 @@ Waves can be used in Parasol's SVG implementation by using the &lt;parasol:wave/
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 class extVectorWave : public extVector {
    public:
@@ -155,7 +155,7 @@ static void generate_wave(extVectorWave *Vector)
 -ACTION-
 Move: Moves the vector to a new position.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR WAVE_Move(extVectorWave *Self, struct acMove *Args)
 {
@@ -173,7 +173,7 @@ static ERROR WAVE_Move(extVectorWave *Self, struct acMove *Args)
 -ACTION-
 MoveToPoint: Moves the vector to a new fixed position.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR WAVE_MoveToPoint(extVectorWave *Self, struct acMoveToPoint *Args)
 {
@@ -204,7 +204,7 @@ static ERROR WAVE_NewObject(extVectorWave *Self, APTR Void)
 -ACTION-
 Resize: Changes the vector's area.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR WAVE_Resize(extVectorWave *Self, struct acResize *Args)
 {
@@ -223,7 +223,7 @@ Amplitude: Adjusts the generated wave amplitude.
 The Amplitude is expressed as a multiplier that adjusts the wave amplitude (i.e. height).  A value of 1.0 is the
 default.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR WAVE_GET_Amplitude(extVectorWave *Self, DOUBLE *Value)
 {
@@ -248,7 +248,7 @@ Close: Closes the generated wave path at either the top or bottom.
 Setting the Close field to TOP or BOTTOM will close the generated wave's path so that it is suitable for being
 filled.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR WAVE_GET_Close(extVectorWave *Self, LONG *Value)
 {
@@ -271,7 +271,7 @@ The amplitude of a sine wave can be decayed between its start and end points by 
 gives the wave an appearance of being funnelled into a cone-like shape.  If the value is negative, the start and
 end points for the decay will be reversed.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR WAVE_GET_Decay(extVectorWave *Self, DOUBLE *Value)
 {
@@ -295,7 +295,7 @@ The degree value defines the initial angle that is used when computing the sine 
 Visually, changing the degree will affect the 'offset' of the generated wave.  Gradually incrementing the value
 will give the wave an appearance of moving from right to left.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR WAVE_GET_Degree(extVectorWave *Self, DOUBLE *Value)
 {
@@ -328,7 +328,7 @@ The following dimension flags are supported:
 <type name="RELATIVE_Y">The #Y value is a relative coordinate.</>
 </types>
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR WAVE_GET_Dimensions(extVectorWave *Self, LONG *Value)
 {
@@ -350,7 +350,7 @@ Frequency: Defines the wave frequency (the distance between each wave).
 The frequency determines the distance between each individual wave that is generated.  The default
 value for the frequency is 1.0.  Shortening the frequency to a value closer to 0 will bring the waves closer together.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR WAVE_GET_Frequency(extVectorWave *Self, DOUBLE *Value)
 {
@@ -374,7 +374,7 @@ Height: The height of the area containing the wave.
 
 The height of the area containing the wave is defined here as a fixed or relative value.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR WAVE_GET_Height(extVectorWave *Self, Variable *Value)
 {
@@ -411,7 +411,7 @@ NOT YET IMPLEMENTED
 
 By default, waves are generated in the style of a sine wave.  Alternative styles can be selected by setting this field.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR WAVE_GET_Style(extVectorWave *Self, LONG *Value)
 {
@@ -432,7 +432,7 @@ Thickness: Expands the height of the wave to the specified value to produce a cl
 Specifying a thickness value will create a wave that forms a filled shape, rather than the default of a stroked path.
 The thickness (height) of the wave is determined by the provided value.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR WAVE_GET_Thickness(extVectorWave *Self, DOUBLE *Value)
 {
@@ -453,7 +453,7 @@ Width: The width of the area containing the wave.
 
 The width of the area containing the wave is defined here as a fixed or relative value.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR WAVE_GET_Width(extVectorWave *Self, Variable *Value)
 {
@@ -488,7 +488,7 @@ X: The x coordinate of the wave.  Can be expressed as a fixed or relative coordi
 
 The x coordinate of the wave is defined here as either a fixed or relative value.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR WAVE_GET_X(extVectorWave *Self, Variable *Value)
 {
@@ -523,7 +523,7 @@ Y: The y coordinate of the wave.  Can be expressed as a fixed or relative coordi
 
 The y coordinate of the wave is defined here as either a fixed or relative value.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR WAVE_GET_Y(extVectorWave *Self, Variable *Value)
 {

@@ -26,7 +26,7 @@ way to initiate interprocess communication is to pass your MessageQueue ID to th
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define PRV_TASK
 
@@ -699,7 +699,7 @@ Failed
 TimeOut:     Can be returned if the WAIT flag is used.  Indicates that the process was launched, but the timeout expired before the process returned.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TASK_Activate(extTask *Self, APTR Void)
 {
@@ -1219,7 +1219,7 @@ Args
 GetField:    The Parameters field could not be retrieved.
 AllocMemory: Memory for the new Parameters could not be allocated.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TASK_AddArgument(extTask *Self, struct taskAddArgument *Args)
 {
@@ -1292,7 +1292,7 @@ includes the process that is making the method call.
 -ERRORS-
 Okay
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TASK_CloseInstance(extTask *Self, APTR Void)
 {
@@ -1312,7 +1312,7 @@ The Expunge method releases all loaded libraries that are no longer in use by th
 -ERRORS-
 Okay
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TASK_Expunge(extTask *Self, APTR Void)
 {
@@ -1407,7 +1407,7 @@ DoesNotExist: The environment variable is undefined.
 NoSupport: The platform does not support environment variables.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TASK_GetEnv(extTask *Self, struct taskGetEnv *Args)
 {
@@ -1545,7 +1545,7 @@ Args
 NoSupport: The platform does not support environment variables.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TASK_SetEnv(extTask *Self, struct taskSetEnv *Args)
 {
@@ -1642,7 +1642,7 @@ static ERROR TASK_SetEnv(extTask *Self, struct taskSetEnv *Args)
 -ACTION-
 GetVar: Retrieves variable field values.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TASK_GetVar(extTask *Self, struct acGetVar *Args)
 {
@@ -1835,7 +1835,7 @@ can be killed outright with the Free action.
 Okay
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TASK_Quit(extTask *Self, APTR Void)
 {
@@ -1867,7 +1867,7 @@ static ERROR TASK_Quit(extTask *Self, APTR Void)
 -ACTION-
 SetVar: Variable fields are supported for the general storage of program variables.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TASK_SetVar(extTask *Self, struct acSetVar *Args)
 {
@@ -1909,7 +1909,7 @@ If a process is successfully launched with the PIPE set in #Flags, data can be s
 Write action.  Setting the Buffer parameter to NULL will result in the pipe being closed (this will signal to the
 process that no more data is incoming).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TASK_Write(extTask *Task, struct acWrite *Args)
 {
@@ -1952,7 +1952,7 @@ if (!AccessObjectID(CurrentTask(), 5000, &task)) {
 }
 </pre>
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Actions(extTask *Self, struct ActionEntry **Value)
 {
@@ -1970,7 +1970,7 @@ The string will be disassembled and the arguments will be available to read from
 
 If an argument needs to include whitespace, use double-quotes to encapsulate the value.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Args(extTask *Self, CSTRING Value)
 {
@@ -2028,7 +2028,7 @@ CSTRING Args[] = {
 };
 </pre>
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Parameters(extTask *Self, CSTRING **Value, LONG *Elements)
 {
@@ -2091,7 +2091,7 @@ terminated.  The callback must follow the synopsis `Function(*Task)`.
 Please keep in mind that if the Task is freed when the process is still executing, the ExitCallback routine will not be
 called on termination because the Task object no longer exists for the control of the process.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_ExitCallback(extTask *Self, FUNCTION **Value)
 {
@@ -2120,7 +2120,7 @@ STDERR.  The callback must follow the synopsis `Function(*Task, APTR Data, LONG 
 The information read from STDERR will be returned in the Data pointer and the byte-length of the data will be
 indicated by the Size.  The data pointer is temporary and will be invalid once the callback function has returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_ErrorCallback(extTask *Self, FUNCTION **Value)
 {
@@ -2152,7 +2152,7 @@ by the Size.  The data buffer is temporary and will be invalid once the callback
 
 A status of ERR_Finished is sent if the stdinput handle has been closed.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_InputCallback(extTask *Self, FUNCTION **Value)
 {
@@ -2202,7 +2202,7 @@ STDOUT.  The callback must follow the synopsis `Function(*Task, APTR Data, LONG 
 The information read from STDOUT will be returned in the Data pointer and the byte-length of the data will be indicated
 by the Size.  The data pointer is temporary and will be invalid once the callback function has returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_OutputCallback(extTask *Self, FUNCTION **Value)
 {
@@ -2232,7 +2232,7 @@ LaunchPath: Launched executables will start in the path specified here.
 Use the LaunchPath field to specify the folder that a launched executable will start in when the task object is
 activated.  This will override all other path options, such as the RESET_PATH flag.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_LaunchPath(extTask *Self, STRING *Value)
 {
@@ -2269,7 +2269,7 @@ native platform.
 Leading spaces will be ignored by the string parser.  The Location string can be enclosed with quotes, in which case
 only the quoted portion of the string will be used as the source path.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Location(extTask *Self, STRING *Value)
 {
@@ -2313,7 +2313,7 @@ It is not possible to change the instance ID once the process has started.  New 
 ID on creation with the `--instance` commandline argument.  By default, any new process will share the same
 instance ID as its creator.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Instance(extTask *Self, LONG *Value)
 {
@@ -2330,7 +2330,7 @@ If you need the ID of a task's message queue, read this field to obtain it.  Onc
 you can use it to send messages to the task.  For information on messaging, refer to the ~GetMessage(),
 ~ProcessMessages() and ~SendMessage() functions.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_MessageQueue(extTask *Task, MEMORYID *Value)
 {
@@ -2347,7 +2347,7 @@ This field specifies the name of the Task or program that has been initialised. 
 program to set the Name which will appear in this field.  If there is no name for the task then the system may
 assign a randomly generated name.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Name(extTask *Self, STRING *Value)
 {
@@ -2385,7 +2385,7 @@ process, such as that of a terminal shell.
 The working folder can be changed at any time by updating the Path with a new folder location.  If changing to the
 new folder fails for any reason, the working folder will remain unchanged and the path value will not be updated.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Path(extTask *Self, STRING *Value)
 {
@@ -2456,7 +2456,7 @@ and cannot be altered.
 In Microsoft Windows it is not always possible to determine the origins of an executable, in which case the
 ProcessPath is set to the working folder in use at the time the process was launched.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_ProcessPath(extTask *Self, CSTRING *Value)
 {
@@ -2477,7 +2477,7 @@ Note that depending on the platform, there may be limits as to whether one proce
 of a foreign process.  Other factors such as the scheduler used by the host system should be considered in the
 effect of prioritisation.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Priority(extTask *Self, LONG Value)
 {
@@ -2502,7 +2502,7 @@ Okay
 TaskStillExists: The task is still running and has no return code at this stage.
 DoesNotExist: The task is yet to be successfully launched with the Activate action.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_ReturnCode(extTask *Self, LONG *Value)
 {

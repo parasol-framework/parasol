@@ -241,7 +241,7 @@ Mismatch: The destination bitmap is not a close enough match to the source bitma
 InvalidState: The BAF_LINEAR flag was used when at least one bitmap is using a linear colourspace.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 UBYTE validate_clip(CSTRING Header, CSTRING Name, extBitmap *Bitmap)
 {
@@ -1159,7 +1159,7 @@ Okay:
 Args:
 NullArgs:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define UnpackSRed(a,b)   ((((b) >> (a)->Format.RedPos)   & (a)->Format.RedMask) << (a)->Format.RedShift)
 #define UnpackSGreen(a,b) ((((b) >> (a)->Format.GreenPos) & (a)->Format.GreenMask) << (a)->Format.GreenShift)
@@ -1589,7 +1589,7 @@ int Height:  The height of the rectangle.
 uint Colour: The colour value to use for the rectangle.
 int(BAF) Flags: Use BAF_FILL to fill the rectangle.  Use of BAF_BLEND will enable blending.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void gfxDrawRectangle(extBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags)
 {
@@ -1857,7 +1857,7 @@ int X: Horizontal coordinate of the pixel.
 int Y: Vertical coordinate of the pixel.
 struct(*RGB8) RGB: The colour to be drawn, in RGB format.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void gfxDrawRGBPixel(extBitmap *Bitmap, LONG X, LONG Y, RGB8 *Pixel)
 {
@@ -1880,7 +1880,7 @@ int X: The horizontal coordinate of the pixel.
 int Y: The vertical coordinate of the pixel.
 uint Colour: The colour value to use for the pixel.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void gfxDrawPixel(extBitmap *Bitmap, LONG X, LONG Y, ULONG Colour)
 {
@@ -1902,7 +1902,7 @@ colours.
 ext(Bitmap) Bitmap: Pointer to a bitmap object.
 int(FLIP) Orientation: Set to either FLIP_HORIZONTAL or FLIP_VERTICAL.  If set to neither, the function does nothing.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void gfxFlipBitmap(extBitmap *Bitmap, LONG Orientation)
 {
@@ -1955,7 +1955,7 @@ int GreenMask:    Green component bit mask value.
 int BlueMask:     Blue component bit mask value.
 int AlphaMask:    Alpha component bit mask value.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void gfxGetColourFormat(ColourFormat *Format, LONG BPP, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask)
 {
@@ -2034,7 +2034,7 @@ int X: The horizontal coordinate of the pixel.
 int Y: The vertical coordinate of the pixel.
 &struct(RGB8) RGB: The colour values will be stored in this RGB structure.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void gfxReadRGBPixel(extBitmap *Bitmap, LONG X, LONG Y, RGB8 **Pixel)
 {
@@ -2066,7 +2066,7 @@ int Y: The vertical coordinate of the pixel.
 -RESULT-
 uint: The colour value of the pixel will be returned.  Zero is returned if the pixel is out of bounds.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ULONG gfxReadPixel(extBitmap *Bitmap, LONG X, LONG Y)
 {
@@ -2095,7 +2095,7 @@ struct(*ColourFormat) ColourFormat: The new colour format to be applied to the b
 Okay
 NullArgs
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxResample(extBitmap *Bitmap, ColourFormat *Format)
 {
@@ -2132,7 +2132,7 @@ int Right:     The right-most edge of the clip region.
 int Bottom:    The bottom-most edge of the clip region.
 int Terminate: Set to TRUE if this is the last clip region in the list, otherwise FALSE.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void gfxSetClipRegion(extBitmap *Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom,
    LONG Terminate)
@@ -2160,7 +2160,7 @@ safe to write to video memory with the CPU, preventing any possibility of clashe
 ext(Bitmap) Bitmap: Pointer to the bitmap that you want to synchronise or NULL to sleep on the graphics accelerator.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void gfxSync(extBitmap *Bitmap)
 {

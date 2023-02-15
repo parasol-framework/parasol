@@ -8,7 +8,7 @@ Please refer to it for further information on licensing.
 Name: Events
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include <stdlib.h>
 
@@ -76,7 +76,7 @@ int EventSize: The size of the Event structure, in bytes.
 Okay
 NullArgs
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR BroadcastEvent(APTR Event, LONG EventSize)
 {
@@ -126,7 +126,7 @@ cstr Event:    The name of the event.
 -RESULT-
 large: The EventID is returned as a 64-bit integer.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 LARGE GetEventID(LONG Group, CSTRING SubGroup, CSTRING Event)
 {
@@ -168,7 +168,7 @@ Okay
 NullArgs
 AllocMemory
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR Custom, APTR *Handle)
 {
@@ -220,7 +220,7 @@ function must be provided.
 ptr Event: An event handle returned from SubscribeEvent()
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void UnsubscribeEvent(APTR Event)
 {

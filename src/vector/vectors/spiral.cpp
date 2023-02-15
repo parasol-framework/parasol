@@ -7,7 +7,7 @@ The VectorSpiral class provides the necessary functionality for generating spira
 point.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define MAX_SPIRAL_VERTICES 65536
 
@@ -77,7 +77,7 @@ CenterX: The horizontal center of the spiral.  Expressed as a fixed or relative 
 
 The horizontal center of the spiral is defined here as either a fixed or relative value.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SPIRAL_GET_CenterX(extVectorSpiral *Self, Variable *Value)
 {
@@ -115,7 +115,7 @@ CenterY: The vertical center of the spiral.  Expressed as a fixed or relative co
 
 The vertical center of the spiral is defined here as either a fixed or relative value.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SPIRAL_GET_CenterY(extVectorSpiral *Self, Variable *Value)
 {
@@ -152,7 +152,7 @@ Height: The height (vertical diameter) of the spiral.
 
 The height of the spiral is expressed as '#Radius * 2.0'.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SPIRAL_GET_Height(extVectorSpiral *Self, Variable *Value)
 {
@@ -183,7 +183,7 @@ Offset: Offset the generation of the path by a given value.
 The generation of a spiral's path can be offset by specifying a positive value in the Offset field.  By default the
 Offset is set to zero.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SPIRAL_GET_Offset(extVectorSpiral *Self, DOUBLE *Value)
 {
@@ -210,7 +210,7 @@ agent's own distance-along-a-path calculations with that of the author. The user
 distance-along-a-path computations by the ratio of PathLength to the user agent's own computed value for total path
 length.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SPIRAL_GET_PathLength(extVectorSpiral *Self, LONG *Value)
 {
@@ -233,7 +233,7 @@ Radius: The radius of the spiral.  Expressed as a fixed or relative coordinate.
 
 The radius of the spiral is defined here as either a fixed or relative value.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SPIRAL_GET_Radius(extVectorSpiral *Self, Variable *Value)
 {
@@ -271,7 +271,7 @@ Scale: The scale of the spiral, expressed as a multiplier.
 The spiral path can be scaled by setting this field.  The points on the spiral will be scaled by being multiplied by
 the scale factor.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SPIRAL_GET_Scale(extVectorSpiral *Self, DOUBLE *Value)
 {
@@ -296,7 +296,7 @@ Step: Determines the distance between each vertex in the spiral's path.
 The Step value alters the distance between each vertex in the spiral path during its generation.  The default value
 is 0.1.  Using larger values will create a spiral with more visible corners due to the overall reduction in vertices.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SPIRAL_GET_Step(extVectorSpiral *Self, DOUBLE *Value)
 {
@@ -322,7 +322,7 @@ Width: The width (horizontal diameter) of the spiral.
 The width of the spiral is expressed as '#Radius * 2.0'.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SPIRAL_GET_Width(extVectorSpiral *Self, Variable *Value)
 {

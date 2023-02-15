@@ -8,7 +8,7 @@ Notes
 * The win32 FindWindow() and FindWindowEx() functions can be used to retrieve foreign window handles.
 * The IsWindow() function can be used to determine if a window handle is still valid.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void MsgKeyPress(LONG Flags, LONG Value, LONG Printable)
 {

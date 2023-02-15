@@ -13,7 +13,7 @@ If a @Netsocket is running in server mode then it will create a new ClientSocket
 is opened by a client.  This is a very simple class that assists in the management of I/O between the client and server.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 // Data is being received from a client.
 
@@ -262,7 +262,7 @@ NullArgs
 Disconnected: The socket connection is closed.
 Failed: A permanent failure has occurred and socket has been closed.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIENTSOCKET_Read(extClientSocket *Self, struct acRead *Args)
 {
@@ -300,7 +300,7 @@ NoData: No new data was found for the socket.
 BadData: The message header or tail was invalid, or the message length exceeded internally imposed limits.
 AllocMemory: A message buffer could not be allocated.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct csReadClientMsg *Args)
 {
@@ -428,7 +428,7 @@ Write raw data to a client socket with this action.  Write connections are buffe
 data overflow generated in a call to this action will be buffered into a software queue.  Resource limits placed on the
 software queue are governed by the #MsgLimit field setting.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
 {
@@ -477,7 +477,7 @@ Okay
 Args
 OutOfRange
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIENTSOCKET_WriteClientMsg(extClientSocket *Self, struct csWriteClientMsg *Args)
 {

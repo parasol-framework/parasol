@@ -96,7 +96,7 @@ point to the object ID of the window. If necessary, you can set the Drag field t
 
 To turn off dragging, set the field to zero.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Drag(extSurface *Self, OBJECTID Value)
 {
@@ -129,7 +129,7 @@ Flags: Optional flags.
 The Flags field allows special options to be set for a surface object.  Use a logical-OR operation when setting this
 field so that existing flags are not overwritten.  To not do so can produce unexpected behaviour.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Flags(extSurface *Self, LONG Value)
 {
@@ -153,7 +153,7 @@ If TRUE, the surface will become the modal surface for the program when it is sh
 other surfaces until the modal surface is either hidden or destroyed.  Children of the modal surface may be interacted
 with normally.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Modal(extSurface *Self, LONG Modal)
 {
@@ -184,7 +184,7 @@ object is capable of moving both horizontally and vertically.
 This field is only effective in relation to the Move action, and it is possible to circumvent the restrictions by
 setting the coordinate fields directly.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Movement(extSurface *Self, LONG Flags)
 {
@@ -255,7 +255,7 @@ The parent for child surfaces is defined here.  Top level surfaces will have no 
 prior to initialisation, the surface class will attempt to discover a valid parent by checking its ownership chain for
 a surface object.  This behaviour can be switched off by setting a Parent of zero prior to initialisation.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Parent(extSurface *Self, LONG Value)
 {
@@ -311,7 +311,7 @@ Setting the PopOver field to zero will return the surface to its normal state.
 If an object that does not belong to the Surface class is detected, an attempt will be made to read that object's
 Surface field, if available.  If this does not yield a valid surface then ERR_InvalidObject is returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_PopOver(extSurface *Self, OBJECTID Value)
 {
@@ -360,7 +360,7 @@ definitions: `(0,0,!0,!0) (1,1,!1,!1)`.
 
 This example uses percentages to create two regions: `(0%,0%,20%,20%) (5%,5%,10%,10%)`.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_PrecopyRegion(extSurface *Self, STRING Value)
 {
@@ -516,7 +516,7 @@ static ERROR SET_RevertFocus(extSurface *Self, OBJECTID Value)
 -FIELD-
 RootLayer: Private
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_RootLayer(extSurface *Self, OBJECTID Value)
 {
@@ -532,7 +532,7 @@ UserFocus: Refers to the surface object that has the current focus.
 
 Returns the surface object that has the primary user focus.  Returns NULL if no object has the focus.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_UserFocus(extSurface *Self, OBJECTID *Value)
 {
@@ -560,7 +560,7 @@ invisible.
 
 Visibility is directly affected by the Hide and Show actions if you wish to change the visibility of a surface object.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Visible(extSurface *Self, LONG *Value)
 {
@@ -589,7 +589,7 @@ this field, as the desktop is treated as a parent.
 It is the responsibility of the developer to provide window gadgets such as titlebars and set the resize borders for
 custom surfaces.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_WindowType(extSurface *Self, LONG *Value)
 {
@@ -661,7 +661,7 @@ It is possible to set the WindowHandle field prior to initialisation if you want
 window that already exists.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_WindowHandle(extSurface *Self, APTR *Value)
 {

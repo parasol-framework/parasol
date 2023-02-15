@@ -9,7 +9,7 @@ Please refer to it for further information on licensing.
 This version of the Parasol launcher is intended for use from the command-line
 only.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include <parasol/main.h>
 #include <parasol/modules/core.h>

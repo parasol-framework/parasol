@@ -112,7 +112,7 @@ CELLS
 Borders: Borders are drawn within the cell, so the cell-padding value need to at least be the same value as the border
 thickness, or text inside the cell will mix with the border.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 //#define DEBUG
 //#define DBG_LAYOUT
@@ -904,7 +904,7 @@ int: The length of the character is returned, or 0 if an error occurs.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static LONG docCharLength(extDocument *Self, LONG Index)
 {

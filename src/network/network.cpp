@@ -13,7 +13,7 @@ The Network module exports a few miscellaneous networking functions.  For core n
 sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 //#define DEBUG
 
@@ -368,7 +368,7 @@ struct(IPAddress) IPAddress: A pointer to the IPAddress structure.
 -RESULT-
 !cstr: The IP address is returned as an allocated string.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static CSTRING netAddressToStr(IPAddress *Address)
 {
@@ -419,7 +419,7 @@ Okay:    The Address was converted successfully.
 Args:    Either the string or the IPAddress pointer were NULL.
 Failed:  The String was not a valid IP Address.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR netStrToAddress(CSTRING Str, IPAddress *Address)
 {
@@ -455,7 +455,7 @@ uint Value: Data in host byte order to be converted to network byte order
 -RESULT-
 uint: The word in network byte order
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ULONG netHostToShort(ULONG Value)
 {
@@ -475,7 +475,7 @@ uint Value: Data in host byte order to be converted to network byte order
 -RESULT-
 uint: The long in network byte order
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ULONG netHostToLong(ULONG Value)
 {
@@ -495,7 +495,7 @@ uint Value: Data in network byte order to be converted to host byte order
 -RESULT-
 uint: The Value in host byte order
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ULONG netShortToHost(ULONG Value)
 {
@@ -515,7 +515,7 @@ uint Value: Data in network byte order to be converted to host byte order
 -RESULT-
 uint: The Value in host byte order.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ULONG netLongToHost(ULONG Value)
 {
@@ -546,7 +546,7 @@ Okay:
 NullArgs: The NetSocket argument was not specified.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR netSetSSL(extNetSocket *Socket, ...)
 {
@@ -837,4 +837,4 @@ PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MODVERSION_NETWORK)
 
 /*********************************************************************************************************************
                                  BACKTRACE IT
-*****************************************************************************/
+*********************************************************************************************************************/

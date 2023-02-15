@@ -15,7 +15,7 @@ http://scintilla.org and it may be useful to study the official Scintilla docume
 capabilities.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 //#define DEBUG
 #define NO_SSTRING
@@ -425,7 +425,7 @@ static ERROR SCINTILLA_Clear(extScintilla *Self, APTR Void)
 -ACTION-
 Clipboard: Full support for clipboard activity is provided through this action.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCINTILLA_Clipboard(extScintilla *Self, struct acClipboard *Args)
 {
@@ -538,7 +538,7 @@ int Line: The number of the line to delete.  Indexing starts from 0.
 -RESULT-
 Okay
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCINTILLA_DeleteLine(extScintilla *Self, struct sciDeleteLine *Args)
 {
@@ -583,7 +583,7 @@ static ERROR SCINTILLA_DeleteLine(extScintilla *Self, struct sciDeleteLine *Args
 -ACTION-
 Disable: Disables the target #Surface.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCINTILLA_Disable(extScintilla *Self, APTR Void)
 {
@@ -596,7 +596,7 @@ static ERROR SCINTILLA_Disable(extScintilla *Self, APTR Void)
 -ACTION-
 Draw: Draws the Scintilla object's graphics.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCINTILLA_Draw(extScintilla *Self, struct acDraw *Args)
 {
@@ -608,7 +608,7 @@ static ERROR SCINTILLA_Draw(extScintilla *Self, struct acDraw *Args)
 -ACTION-
 Enable: Enables the target #Surface.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCINTILLA_Enable(extScintilla *Self, APTR Void)
 {
@@ -621,7 +621,7 @@ static ERROR SCINTILLA_Enable(extScintilla *Self, APTR Void)
 -ACTION-
 Focus: Focus on the Scintilla surface.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCINTILLA_Focus(extScintilla *Self, APTR Void)
 {
@@ -693,7 +693,7 @@ NullArgs:
 OutOfRange: At least one of the parameters is out of range.
 BufferOverflow: The supplied buffer is not large enough to contain the
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCINTILLA_GetLine(extScintilla *Self, struct sciGetLine *Args)
 {
@@ -727,7 +727,7 @@ int Column: Column index
 Okay:
 NullArgs:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCINTILLA_GetPos(extScintilla *Self, struct sciGetPos *Args)
 {
@@ -753,7 +753,7 @@ Okay:
 NullArgs:
 OutOfRange: The Line is less than zero.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCINTILLA_GotoLine(extScintilla *Self, struct sciGotoLine *Args)
 {
@@ -985,7 +985,7 @@ Okay
 NullArgs
 OutOfRange
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCINTILLA_InsertText(extScintilla *Self, struct sciInsertText *Args)
 {
@@ -1080,7 +1080,7 @@ static ERROR SCINTILLA_NewOwner(extScintilla *Self, struct acNewOwner *Args)
 -ACTION-
 Redo: Redo the most recently undone activity.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCINTILLA_Redo(extScintilla *Self, struct acRedo *Args)
 {
@@ -1111,7 +1111,7 @@ Okay:
 NullArgs:
 OutOfRange: The line index is less than zero or greater than the available number of lines.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCINTILLA_ReplaceLine(extScintilla *Self, struct sciReplaceLine *Args)
 {
@@ -1156,7 +1156,7 @@ Okay: At least one keyword was successfully replaced.
 Args:
 Search: The keyword could not be found.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCINTILLA_ReplaceText(extScintilla *Self, struct sciReplaceText *Args)
 {
@@ -1238,7 +1238,7 @@ ReportEvent: Private.  For internal use only.
 
 Private
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCINTILLA_ReportEvent(extScintilla *Self, APTR Void)
 {
@@ -1254,7 +1254,7 @@ static ERROR SCINTILLA_ReportEvent(extScintilla *Self, APTR Void)
 -ACTION-
 SaveToObject: Save content as a text stream to another object.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCINTILLA_SaveToObject(extScintilla *Self, struct acSaveToObject *Args)
 {
@@ -1303,7 +1303,7 @@ NullArgs:
 CreateObject: Failed to create a Font object.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCINTILLA_SetFont(extScintilla *Self, struct sciSetFont *Args)
 {
@@ -1356,7 +1356,7 @@ int End: The character at which the selection will end.  If negative, the last c
 -RESULT-
 Okay:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCINTILLA_SelectRange(extScintilla *Self, struct sciSelectRange *Args)
 {
@@ -1412,7 +1412,7 @@ considered white-space - all other characters shall be treated as content.
 
 The position of the cursor is reset to the left margin as a result of calling this method.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCINTILLA_TrimWhitespace(extScintilla *Self, APTR Void)
 {
@@ -1452,7 +1452,7 @@ static ERROR SCINTILLA_TrimWhitespace(extScintilla *Self, APTR Void)
 -ACTION-
 Undo: Undo the last user action.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCINTILLA_Undo(extScintilla *Self, struct acUndo *Args)
 {
@@ -1469,7 +1469,7 @@ static ERROR SCINTILLA_Undo(extScintilla *Self, struct acUndo *Args)
 -FIELD-
 AllowTabs: If enabled, use of the tab key produces real tabs and not spaces.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_AllowTabs(extScintilla *Self, LONG *Value)
 {
@@ -1495,7 +1495,7 @@ static ERROR SET_AllowTabs(extScintilla *Self, LONG Value)
 -FIELD-
 AutoIndent: If TRUE, enables auto-indenting when the user presses the enter key.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_AutoIndent(extScintilla *Self, LONG *Value)
 {
@@ -1515,7 +1515,7 @@ static ERROR SET_AutoIndent(extScintilla *Self, LONG Value)
 -FIELD-
 BkgdColour: Defines the background colour.  Alpha blending is not supported.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_BkgdColour(extScintilla *Self, RGB8 *Value)
 {
@@ -1547,7 +1547,7 @@ receive updates on changes to #CursorCol and CursorRow.
 -FIELD-
 CursorColour: Defines the colour of the text cursor.  Alpha blending is not supported.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_CursorColour(extScintilla *Self, RGB8 *Value)
 {
@@ -1570,7 +1570,7 @@ Scintilla object's surface.  The synopsis for the callback function is `ERROR Fu
 
 If multiple files are dropped, the callback will be repeatedly called until all of the file paths have been reported.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_FileDrop(extScintilla *Self, FUNCTION **Value)
 {
@@ -1603,7 +1603,7 @@ state changes, it can be defined here prior to initialisation.
 -FIELD-
 FoldingMarkers: Folding markers in the left margin will be visible when this value is TRUE.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_FoldingMarkers(extScintilla *Self, LONG *Value)
 {
@@ -1638,7 +1638,7 @@ To change the font post-initialisation, please use the #SetFont() method.
 -FIELD-
 LeftMargin: The amount of white-space at the left side of the page.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_LeftMargin(extScintilla *Self, LONG Value)
 {
@@ -1659,7 +1659,7 @@ Lexer: The lexer for document styling is defined here.
 
 The lexer for document styling is defined here.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Lexer(extScintilla *Self, LONG Value)
 {
@@ -1677,7 +1677,7 @@ static ERROR SET_Lexer(extScintilla *Self, LONG Value)
 -FIELD-
 LineCount: The total number of lines in the document.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_LineCount(extScintilla *Self, LONG *Value)
 {
@@ -1693,7 +1693,7 @@ static ERROR GET_LineCount(extScintilla *Self, LONG *Value)
 -FIELD-
 LineHighlight: The colour to use when highlighting the line that contains the user's cursor.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_LineHighlight(extScintilla *Self, RGB8 *Value)
 {
@@ -1716,7 +1716,7 @@ static ERROR SET_LineHighlight(extScintilla *Self, RGB8 *Value)
 -FIELD-
 LineNumbers: Line numbers will appear on the left when this value is TRUE.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_LineNumbers(extScintilla *Self, LONG *Value)
 {
@@ -1748,7 +1748,7 @@ If the Path is set after initialisation, the existing content will be cleared an
 that you specify.  To change the path without automatically loading from the source file, set the
 #Origin field instead.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Path(extScintilla *Self, CSTRING *Value)
 {
@@ -1812,7 +1812,7 @@ the Modified field.
 It is recommended that you manually set this field to FALSE if the document is saved to disk.  The Scintilla class will
 not make this change for you automatically.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Modified(extScintilla *Self, LONG Value)
 {
@@ -1836,7 +1836,7 @@ static ERROR SET_Modified(extScintilla *Self, LONG Value)
 -FIELD-
 RightMargin: Defines the amount of white-space at the right side of the page.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_RightMargin(extScintilla *Self, LONG Value)
 {
@@ -1855,7 +1855,7 @@ static ERROR SET_RightMargin(extScintilla *Self, LONG Value)
 -FIELD-
 ShowWhitespace: White-space characters will be visible to the user when this field is TRUE.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_ShowWhitespace(extScintilla *Self, LONG *Value)
 {
@@ -1889,7 +1889,7 @@ The callback function must be in the format `Function(*Scintilla, LARGE EventFla
 The EventFlag value will indicate the event that occurred.  Please see the #EventFlags field for a list of
 supported events and additional details.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_EventCallback(extScintilla *Self, FUNCTION **Value)
 {
@@ -1925,7 +1925,7 @@ indicates the events that need to be received.
 -FIELD-
 SelectBkgd: Defines the background colour of selected text.  Supports alpha blending.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_SelectBkgd(extScintilla *Self, RGB8 *Value)
 {
@@ -1947,7 +1947,7 @@ static ERROR SET_SelectBkgd(extScintilla *Self, RGB8 *Value)
 -FIELD-
 SelectFore: Defines the colour of selected text.  Supports alpha blending.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_SelectFore(extScintilla *Self, RGB8 *Value)
 {
@@ -1975,7 +1975,7 @@ retrieved by getting the String field.  Please be aware that retrieving the docu
 inefficient, as the document text is normally stored on a per-line basis.  Consider using the #GetLine()
 method as the preferred alternative, as it is much more efficient with memory usage.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_String(extScintilla *Self, STRING *Value)
 {
@@ -2014,7 +2014,7 @@ hierarchy.
 -FIELD-
 Symbols: Symbols can be displayed in the left margin when this value is TRUE.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Symbols(extScintilla *Self, LONG *Value)
 {
@@ -2040,7 +2040,7 @@ static ERROR SET_Symbols(extScintilla *Self, LONG Value)
 -FIELD-
 TabWidth: The width of tab stops in the document, measured as fixed-width characters.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_TabWidth(extScintilla *Self, LONG *Value)
 {
@@ -2064,7 +2064,7 @@ static ERROR SET_TabWidth(extScintilla *Self, LONG Value)
 -FIELD-
 TextColour: Defines the default colour of foreground text.  Supports alpha blending.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_TextColour(extScintilla *Self, RGB8 *Value)
 {
@@ -2090,7 +2090,7 @@ object should start in a hidden state.
 Wordwrap: Enables automatic word wrapping when TRUE.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Wordwrap(extScintilla *Self, LONG *Value)
 {

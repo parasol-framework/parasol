@@ -8,7 +8,7 @@ Please refer to it for further information on licensing.
 Name: Files
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 //#define DEBUG
 #define PRV_FILESYSTEM
@@ -301,7 +301,7 @@ Okay:
 NullArgs:
 CreateResource: Failed to create a new keystore.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR AddInfoTag(FileInfo *Info, CSTRING Name, CSTRING Value)
 {
@@ -343,7 +343,7 @@ Okay: The path was analysed and the result is stored in the Type variable.
 NullArgs:
 DoesNotExist:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR AnalysePath(CSTRING Path, LONG *PathType)
 {
@@ -426,7 +426,7 @@ False: The file paths refer to different files.
 NullArgs
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB)
 {
@@ -506,7 +506,7 @@ int Group: The group ID.
 -RESULT-
 cstr: The group name is returned, or NULL if the ID cannot be resolved.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 CSTRING ResolveGroupID(LONG GroupID)
 {
@@ -544,7 +544,7 @@ int User: The user ID.
 -RESULT-
 cstr: The user name is returned, or NULL if the ID cannot be resolved.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 CSTRING ResolveUserID(LONG UserID)
 {
@@ -613,7 +613,7 @@ Okay: The location was copied successfully.
 Args:
 Failed: A failure occurred during the copy process.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback)
 {
@@ -653,7 +653,7 @@ Memory:
 BufferOverflow: One or both of the provided arguments is too long.
 FileExists: The location referenced at From already exists.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR CreateLink(CSTRING From, CSTRING To)
 {
@@ -724,7 +724,7 @@ FileNotFound:
 File: The location could not be opened for deletion.
 NoSupport: The filesystem driver does not support deletion.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR DeleteFile(CSTRING Path, FUNCTION *Callback)
 {
@@ -767,7 +767,7 @@ int Group: Group ID to apply to new files.
 int(PERMIT) Permissions: Permission flags to be applied to new files.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions)
 {
@@ -885,7 +885,7 @@ StringFormat
 NoData
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR TranslateCmdRef(CSTRING String, STRING *Command)
 {
@@ -967,7 +967,7 @@ AllocMemory:
 Search: If LDF_CHECK_EXISTS is specified, this failure indicates that the file is not cached.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
 {
@@ -1083,7 +1083,7 @@ FileExists: An identically named file or folder already exists at the Path.
 NoSupport:  Virtual file system does not support folder creation.
 Failed:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR CreateFolder(CSTRING Path, LONG Permissions)
 {
@@ -1156,7 +1156,7 @@ Okay
 NullArgs
 Failed
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback)
 {
@@ -1374,7 +1374,7 @@ This function unloads cached files that have been previously loaded with the ~Lo
 resource(CacheFile) Cache: A pointer to a CacheFile structure returned from LoadFile().
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void UnloadFile(CacheFile *Cache)
 {

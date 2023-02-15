@@ -15,7 +15,7 @@ Font: Provides font management functionality and hosts the Font class.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define PRV_FONT
 #define PRV_FONT_MODULE
@@ -332,7 +332,7 @@ uint KChar: A unicode character to use for calculating the font kerning (optiona
 -RESULT-
 int: The pixel width of the character will be returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static LONG fntCharWidth(extFont *Font, ULONG Char, ULONG KChar, LONG *Kerning)
 {
@@ -378,7 +378,7 @@ Okay
 NullArgs
 AccessObject: Font configuration information could not be accessed.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR fntGetList(FontList **Result)
 {
@@ -473,7 +473,7 @@ int Wrap:   The pixel position at which word wrapping occurs.  If zero or less, 
 &int Width: The width of the longest line will be returned in this parameter.
 &int Rows:  The number of calculated rows will be returned in this parameter.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static void fntStringSize(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LONG *Width, LONG *Rows)
 {
@@ -616,7 +616,7 @@ names, e.g. "FT_Open_Face".
 -RESULT-
 ptr: A handle to the FreeType library will be returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static APTR fntFreetypeHandle(void)
 {
@@ -642,7 +642,7 @@ int Chars: The number of characters (not bytes, so consider UTF-8 serialisation)
 -RESULT-
 int: The pixel width of the string is returned - this will be zero if there was an error or the string is empty.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static LONG fntStringWidth(extFont *Font, CSTRING String, LONG Chars)
 {
@@ -729,7 +729,7 @@ Okay: The character position was calculated.
 Args:
 FieldNotSet: The String field has not been set.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR fntConvertCoords(extFont *Font, CSTRING String, LONG X, LONG Y, LONG *Column, LONG *Row,
    LONG *ByteColumn, LONG *BytePos, LONG *CharX)
@@ -844,7 +844,7 @@ double Size: The new default point size.
 -RESULT-
 double: The previous font size is returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static DOUBLE fntSetDefaultSize(DOUBLE Size)
 {
@@ -882,7 +882,7 @@ Okay: The font information was successfully installed.
 NullArgs:
 NoSupport: One of the font files is in an unsupported file format.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR fntInstallFont(CSTRING Files)
 {
@@ -944,7 +944,7 @@ Okay: The font was successfully removed.
 Args: Invalid arguments were specified.
 DeleteFile: Removal aborted due to a file deletion failure.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR fntRemoveFont(CSTRING Name)
 {
@@ -1027,7 +1027,7 @@ AccessObject: Unable to access the internal font configuration object.
 Search: Unable to find a suitable font.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static std::optional<std::string> get_font_path(ConfigKeys &Keys, const std::string& Type, const std::string& Style)
 {
@@ -1243,7 +1243,7 @@ Okay: Fonts were successfully refreshed.
 AccessObject: Access to the SytsemFonts object was denied, or the object does not exist.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR fntRefreshFonts(void)
 {

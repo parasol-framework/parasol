@@ -7,7 +7,7 @@ VectorRectangle extends the @Vector class with the ability to generate rectangul
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include "agg_rounded_rect.h"
 
@@ -51,7 +51,7 @@ static void generate_rectangle(extVectorRectangle *Vector)
 -ACTION-
 Move: Moves the vector to a new position.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR RECTANGLE_Move(extVectorRectangle *Self, struct acMove *Args)
 {
@@ -69,7 +69,7 @@ static ERROR RECTANGLE_Move(extVectorRectangle *Self, struct acMove *Args)
 -ACTION-
 MoveToPoint: Moves the vector to a new fixed position.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR RECTANGLE_MoveToPoint(extVectorRectangle *Self, struct acMoveToPoint *Args)
 {
@@ -97,7 +97,7 @@ static ERROR RECTANGLE_NewObject(extVectorRectangle *Self, APTR Void)
 -ACTION-
 Resize: Changes the rectangle dimensions.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR RECTANGLE_Resize(extVectorRectangle *Self, struct acResize *Args)
 {
@@ -129,7 +129,7 @@ The following dimension flags are supported:
 <type name="RELATIVE_Y">The #Y value is a relative coordinate.</>
 </types>
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR RECTANGLE_GET_Dimensions(extVectorRectangle *Self, LONG *Value)
 {
@@ -152,7 +152,7 @@ Height: The height of the rectangle.  Can be expressed as a fixed or relative co
 The height of the rectangle is defined here as either a fixed or relative value.  Negative values are permitted (this
 will flip the rectangle on the vertical axis).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR RECTANGLE_GET_Height(extVectorRectangle *Self, Variable *Value)
 {
@@ -192,7 +192,7 @@ RoundX: Specifies the size of rounded corners on the horizontal axis.
 The corners of a rectangle can be rounded by setting the RoundX and RoundY values.  Each value is interpreted as a
 radius along the relevant axis.  A value of zero (the default) turns off this feature.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR RECTANGLE_GET_RoundX(extVectorRectangle *Self, DOUBLE *Value)
 {
@@ -216,7 +216,7 @@ RoundY: Specifies the size of rounded corners on the vertical axis.
 The corners of a rectangle can be rounded by setting the RoundX and RoundY values.  Each value is interpreted as a
 radius along the relevant axis.  A value of zero (the default) turns off this feature.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR RECTANGLE_GET_RoundY(extVectorRectangle *Self, DOUBLE *Value)
 {
@@ -239,7 +239,7 @@ X: The left-side of the rectangle.  Can be expressed as a fixed or relative coor
 
 The position of the rectangle on the x-axis is defined here as a fixed or relative coordinate.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR RECTANGLE_GET_X(extVectorRectangle *Self, Variable *Value)
 {
@@ -279,7 +279,7 @@ Width: The width of the rectangle.  Can be expressed as a fixed or relative coor
 The width of the rectangle is defined here as either a fixed or relative value.  Negative values are permitted (this
 will flip the rectangle on the horizontal axis).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR RECTANGLE_GET_Width(extVectorRectangle *Self, Variable *Value)
 {
@@ -319,7 +319,7 @@ Y: The top of the rectangle.  Can be expressed as a fixed or relative coordinate
 The position of the rectangle on the y-axis is defined here as a fixed or relative coordinate.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR RECTANGLE_GET_Y(extVectorRectangle *Self, Variable *Value)
 {

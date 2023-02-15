@@ -23,7 +23,7 @@ permitted (for example, only one group of image clips may exist at any time) and
 number of clips that can be stored in the history cache.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include "defs.h"
 
@@ -90,7 +90,7 @@ MissingLocation: The Files argument was not correctly specified.
 LimitedSuccess: The file item was successfully added to the internal clipboard, but could not be added to the host.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIPBOARD_AddFile(objClipboard *Self, struct clipAddFile *Args)
 {
@@ -159,7 +159,7 @@ int(CEF) Flags: Optional flags.
 Okay: The object was added to the clipboard.
 NullArgs
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIPBOARD_AddObject(objClipboard *Self, struct clipAddObject *Args)
 {
@@ -204,7 +204,7 @@ Okay: The objects were added to the clipboard.
 Args
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Args)
 {
@@ -285,7 +285,7 @@ Args
 File
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIPBOARD_AddText(objClipboard *Self, struct clipAddText *Args)
 {
@@ -341,7 +341,7 @@ static ERROR CLIPBOARD_AddText(objClipboard *Self, struct clipAddText *Args)
 -ACTION-
 Clear: Destroys all cached data that is stored in the clipboard.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIPBOARD_Clear(objClipboard *Self, APTR Void)
 {
@@ -373,7 +373,7 @@ Data can be sent to a clipboard object via the DataFeed action. Currently, only 
 All data that is sent to a clipboard object through this action will replace any stored information that matches the
 given data type.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
 {
@@ -525,7 +525,7 @@ OutOfRange: The specified Index is out of the range of the available clip items.
 NoData: No clip was available that matched the requested data type.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
 {
@@ -665,7 +665,7 @@ NullArgs
 AccessMemoryID: The clipboard memory data was not accessible.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIPBOARD_Remove(objClipboard *Self, struct clipRemove *Args)
 {
@@ -710,7 +710,7 @@ The following variable field types are supported by the Clipboard class:
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
 {
@@ -907,7 +907,7 @@ The function will be expected to send a DATA_RECEIPT to the object referenced in
 receipt must provide coverage for the referenced Item and use one of the indicated Datatypes as the data format.
 If this cannot be achieved then ERR_NoSupport should be returned by the function.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_RequestHandler(objClipboard *Self, FUNCTION **Value)
 {

@@ -31,7 +31,7 @@ For more information on the Fluid syntax, please refer to the official Fluid Ref
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #ifdef DEBUG
 #undef DEBUG
@@ -375,7 +375,7 @@ FieldTypeMismatch: A valid field type was not specified in the Type parameter.
 ObjectCorrupt: Privately maintained memory has become inaccessible.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
 {

@@ -10,7 +10,7 @@ Parasol must be initialised via the init_parasol() function and closed with
 close_parasol().  Another difference vs startup-win.c is that error messages
 are returned by the function and not automatically presented in a dialog box.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include <stdio.h>
 #include <stdarg.h>

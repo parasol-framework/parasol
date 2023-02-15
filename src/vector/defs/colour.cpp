@@ -28,7 +28,7 @@ Alpha: The alpha component value.
 The alpha component value, measured from 0 to 1.0.  The default is 1.0.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR COLOUR_NewObject(objVectorColour *Self, APTR Void)
 {

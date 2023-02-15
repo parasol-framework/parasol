@@ -29,7 +29,7 @@ within the thread routine.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #ifdef __unix__
 #include <string.h>
@@ -305,7 +305,7 @@ static void thread_entry_cleanup(void *Arg)
 -ACTION-
 Activate: Spawn a new thread that calls the function referenced in the #Routine field.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR THREAD_Activate(extThread *Self, APTR Void)
 {
@@ -352,7 +352,7 @@ Deactivate: Stops a thread.
 Deactivating an active thread will cause it to stop immediately.  Stopping a thread in this manner is dangerous and
 could result in an unstable application.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR THREAD_Deactivate(extThread *Self, APTR Void)
 {
@@ -380,7 +380,7 @@ Free: Remove the object and its resources.
 Terminating a thread object will destroy the object unless the thread is currently active.  If an attempt to free
 an active thread is made then it will be marked for termination so as to avoid the risk of system corruption.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR THREAD_Free(extThread *Self, APTR Void)
 {
@@ -480,7 +480,7 @@ Args
 AllocMemory
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR THREAD_SetData(extThread *Self, struct thSetData *Args)
 {
@@ -525,7 +525,7 @@ Args: The TimeOut value is invalid.
 TimeOut: The timeout was reached before the thread was terminated.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR THREAD_Wait(extThread *Self, struct thWait *Args)
 {
@@ -547,7 +547,7 @@ callback will be executed in the context of the main program loop to minimise re
 
 The synopsis for the callback routine is `void Callback(objThread *Thread)`.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Callback(extThread *Self, FUNCTION **Value)
 {
@@ -573,7 +573,7 @@ Data: Pointer to initialisation data for the thread.
 The Data field will point to a data buffer if the #SetData() method has previously been called to store data in
 the thread object.  It is paired with the #DataSize field, which reflects the size of the data buffer.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Data(extThread *Self, APTR *Value, LONG *Elements)
 {
@@ -603,7 +603,7 @@ The routine that will be executed when the thread is activated must be specified
 When the routine is called, a reference to the thread object is passed as a parameter.  Once the routine has
 finished processing, the resulting error code will be stored in the thread object's #Error field.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Routine(extThread *Self, FUNCTION **Value)
 {
@@ -630,7 +630,7 @@ in order to check the default stack size.  Changes to the stack size when the th
 
 On some platforms it may not be possible to preset the stack size and the provided value will be ignored.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static const FieldDef clThreadFlags[] = {
    { "AutoFree",   THF_AUTO_FREE },

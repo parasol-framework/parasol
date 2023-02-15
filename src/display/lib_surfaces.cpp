@@ -1049,7 +1049,7 @@ int(ARF) Flags: Specify ARF_WRITE if writing to the list, otherwise ARF_READ mus
 -RESULT-
 struct(SurfaceControl): Pointer to the SurfaceControl structure.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 SurfaceControl * gfxAccessList(LONG Flags)
 {
@@ -1087,7 +1087,7 @@ False: The Child surface is not a child of Parent.
 Args: Invalid arguments were specified.
 AccessMemory: Failed to access the internal surface list.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxCheckIfChild(OBJECTID ParentID, OBJECTID ChildID)
 {
@@ -1310,7 +1310,7 @@ Okay
 Search: The supplied SurfaceID did not refer to a recognised surface object.
 AccessMemory: Failed to access the internal surfacelist memory structure.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxGetSurfaceCoords(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height)
 {
@@ -1373,7 +1373,7 @@ Okay
 NullArgs
 AccessMemory
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxGetSurfaceFlags(OBJECTID SurfaceID, LONG *Flags)
 {
@@ -1421,7 +1421,7 @@ Args:
 Search: The supplied SurfaceID did not refer to a recognised surface object.
 AccessMemory: Failed to access the internal surfacelist memory structure.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxGetSurfaceInfo(OBJECTID SurfaceID, SURFACEINFO **Info)
 {
@@ -1484,7 +1484,7 @@ This function returns the unique ID of the surface that has the user's focus.
 -RESULT-
 oid: Returns the ID of the surface object that has the user focus, or zero on failure.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 OBJECTID gfxGetUserFocus(void)
 {
@@ -1521,7 +1521,7 @@ Okay
 Search: The supplied SurfaceID did not refer to a recognised surface object.
 AccessMemory: Failed to access the internal surfacelist memory structure.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxGetVisibleArea(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height)
 {
@@ -1607,7 +1607,7 @@ int(IRF) Flags: Optional flags.
 Okay:
 AccessMemory: Failed to access the internal surface list.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxRedrawSurface(OBJECTID SurfaceID, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Flags)
 {
@@ -2038,7 +2038,7 @@ oid Surface: The surface to enable as modal.
 -RESULT-
 oid: The object ID of the previous modal surface is returned (zero if there was no currently modal surface).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 OBJECTID gfxSetModalSurface(OBJECTID SurfaceID)
 {
@@ -2127,7 +2127,7 @@ oid Surface:         Object ID of the surface object that you want to lock.
 Okay
 Args
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LONG *Info)
 {
@@ -2292,7 +2292,7 @@ ReleaseList: Private. Releases access to the internal surfacelist array.
 -INPUT-
 int(ARF) Flags: Use the same flags as in in the previous call to gfxAccessList().
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void gfxReleaseList(LONG Flags)
 {
@@ -2324,7 +2324,7 @@ ext(Bitmap) Bitmap: Pointer to the bitmap structure returned earlier by LockBitm
 Okay: The bitmap has been unlocked successfully.
 NullArgs:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxUnlockBitmap(OBJECTID SurfaceID, extBitmap *Bitmap)
 {
@@ -2351,7 +2351,7 @@ NullArgs
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxWindowHook(OBJECTID SurfaceID, LONG Event, FUNCTION *Callback)
 {

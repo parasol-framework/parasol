@@ -17,7 +17,7 @@ definition.  This will ensure that the VectorGradient is de-allocated when the s
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 // Return a gradient table for a vector with its opacity multiplier applied.  The table is cached with the vector so
 // that it does not need to be recalculated when required again.
@@ -203,7 +203,7 @@ CenterX: The horizontal center point of the gradient.
 The (CenterX,CenterY) coordinates define the center point of the gradient.  The center point will only be used if
 the gradient type requires it (such as the radial type).  By default, the center point is set to 50%.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORGRADIENT_GET_CenterX(extVectorGradient *Self, Variable *Value)
 {
@@ -239,7 +239,7 @@ CenterY: The vertical center point of the gradient.
 The (CenterX,CenterY) coordinates define the center point of the gradient.  The center point will only be used if
 the gradient type requires it (such as the radial type).  By default, the center point is set to 50%.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORGRADIENT_GET_CenterY(extVectorGradient *Self, Variable *Value)
 {
@@ -288,7 +288,7 @@ FX: The horizontal focal point for radial gradients.
 The (FX,FY) coordinates define the focal point for radial gradients.  If left undefined, the focal point will match the
 center of the gradient.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORGRADIENT_GET_FX(extVectorGradient *Self, Variable *Value)
 {
@@ -324,7 +324,7 @@ FY: The vertical focal point for radial gradients.
 The (FX,FY) coordinates define the focal point for radial gradients.  If left undefined, the focal point will match the
 center of the gradient.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORGRADIENT_GET_FY(extVectorGradient *Self, Variable *Value)
 {
@@ -359,7 +359,7 @@ ID: String identifier for a vector.
 The ID field is provided for the purpose of SVG support.  Where possible we would recommend that you use the
 existing object name and automatically assigned ID's for identifiers.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORGRADIENT_GET_ID(extVectorGradient *Self, STRING *Value)
 {
@@ -390,7 +390,7 @@ Inherit: Inherit attributes from the VectorGradient referenced here.
 Attributes can be inherited from another gradient by referencing that gradient in this field.  This feature is provided
 primarily for the purpose of simplifying SVG compatibility and its use may result in an unnecessary performance penalty.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORGRADIENT_SET_Inherit(extVectorGradient *Self, extVectorGradient *Value)
 {
@@ -411,7 +411,7 @@ represented by a VectorMatrix structure, and are linked in the order in which th
 
 &VectorMatrix
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORGRADIENT_GET_Matrices(extVectorGradient *Self, VectorMatrix **Value)
 {
@@ -464,7 +464,7 @@ This field assigns a numeric ID to a vector.  Alternatively it can also reflect 
 
 If NumericID is set by the client, then any value in #ID will be immediately cleared.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORGRADIENT_GET_NumericID(extVectorGradient *Self, LONG *Value)
 {
@@ -488,7 +488,7 @@ The radius of the gradient can be defined in fixed units or relative terms to it
 
 The Radius value has no effect if the gradient is linear.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORGRADIENT_GET_Radius(extVectorGradient *Self, Variable *Value)
 {
@@ -533,7 +533,7 @@ Stops: Defines the colours to use for the gradient.
 The colours that will be used for drawing a gradient are defined by the Stops array.  At least two stops are required
 to define a start and end point for interpolating the gradient colours.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORGRADIENT_GET_Stops(extVectorGradient *Self, GradientStop **Value, LONG *Elements)
 {
@@ -577,7 +577,7 @@ Transform: Applies a transform to the gradient.
 
 A transform can be applied to the gradient by setting this field with an SVG compliant transform string.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORGRADIENT_SET_Transform(extVectorGradient *Self, CSTRING Commands)
 {
@@ -630,7 +630,7 @@ these values.  The gradient will be drawn from (X1,Y1) to (X2,Y2).
 
 Coordinate values can be expressed as percentages that are relative to the target space.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORGRADIENT_GET_X1(extVectorGradient *Self, Variable *Value)
 {
@@ -667,7 +667,7 @@ these values.  The gradient will be drawn from (X1,Y1) to (X2,Y2).
 
 Coordinate values can be expressed as percentages that are relative to the target space.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORGRADIENT_GET_X2(extVectorGradient *Self, Variable *Value)
 {
@@ -702,7 +702,7 @@ Y1: Initial Y coordinate for the gradient.
 The (X1,Y1) field values define the starting coordinate for mapping linear gradients.  Other gradient types ignore
 these values.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORGRADIENT_GET_Y1(extVectorGradient *Self, Variable *Value)
 {
@@ -739,7 +739,7 @@ these values.  The gradient will be drawn from (X1,Y1) to (X2,Y2).
 
 Coordinate values can be expressed as percentages that are relative to the target space.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORGRADIENT_GET_Y2(extVectorGradient *Self, Variable *Value)
 {

@@ -13,7 +13,7 @@ to be shared by multiple vector objects within the same scene.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 //********************************************************************************************************************
 // NB: Considered a shape (can be transformed)
@@ -40,7 +40,7 @@ static void draw_clips(extVectorClip *Self, extVector *Branch,
 Name:  Draw
 Short: Renders the vector clipping shape(s) to an internal buffer.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIP_Draw(extVectorClip *Self, struct acDraw *Args)
 {
@@ -173,7 +173,7 @@ Transform: Applies a transform to the paths in the clipping mask.
 A transform can be applied to the paths in the clipping mask by setting this field with an SVG compliant transform
 string.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIP_SET_Transform(extVectorClip *Self, CSTRING Commands)
 {
@@ -199,7 +199,7 @@ Units: Defines the coordinate system for fields X, Y, Width and Height.
 The default coordinate system for clip-paths is `BOUNDING_BOX`, which positions the clipping region against the vector
 that references it.  The alternative is `USERSPACE`, which positions the path relative to the current viewport.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIP_GET_Units(extVectorClip *Self, LONG *Value)
 {

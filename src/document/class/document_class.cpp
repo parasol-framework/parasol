@@ -8,7 +8,7 @@ features for creating complex documents and manuals.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 /*
    else if (Args->ActionID IS MT_DrwInheritedFocus) {
       // Check that the FocusIndex is accurate (it may have changed if the user clicked on a gadget).
@@ -135,7 +135,7 @@ Activate: Opens the current document selection.
 Calling the Activate action on a document object will cause it to send Activate messages to the child objects that
 belong to the document object.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_Activate(extDocument *Self, APTR Void)
 {
@@ -190,7 +190,7 @@ Okay
 NullArgs
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_AddListener(extDocument *Self, struct docAddListener *Args)
 {
@@ -224,7 +224,7 @@ Okay
 NullArgs
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_ApplyFontStyle(extDocument *Self, struct docApplyFontStyle *Args)
 {
@@ -274,7 +274,7 @@ int TotalArgs: The total number of entries in the Args array.
 Okay
 NullArgs
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_CallFunction(extDocument *Self, struct docCallFunction *Args)
 {
@@ -301,7 +301,7 @@ Clear: Clears all content from the object.
 You can delete all of the document information from a document object by calling the Clear action.  All of the document
 data will be deleted from the object and the graphics will be automatically updated as a result of calling this action.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_Clear(extDocument *Self, APTR Void)
 {
@@ -320,7 +320,7 @@ static ERROR DOCUMENT_Clear(extDocument *Self, APTR Void)
 Clipboard: Full support for clipboard activity is provided through this action.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 {
@@ -427,7 +427,7 @@ AllocMemory: The Document's memory buffer could not be expanded.
 Mismatch:    The data type that was passed to the action is not supported by the Document class.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
 {
@@ -477,7 +477,7 @@ static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
 -ACTION-
 Disable: Disables object functionality.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_Disable(extDocument *Self, APTR Void)
 {
@@ -518,7 +518,7 @@ NullArgs
 Search: The cell was not found.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_Edit(extDocument *Self, struct docEdit *Args)
 {
@@ -543,7 +543,7 @@ static ERROR DOCUMENT_Edit(extDocument *Self, struct docEdit *Args)
 -ACTION-
 Enable: Enables object functionality.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_Enable(extDocument *Self, APTR Void)
 {
@@ -565,7 +565,7 @@ cstr String: Content to insert
 Okay
 NullArgs
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_FeedParser(extDocument *Self, struct docFeedParser *Args)
 {
@@ -606,7 +606,7 @@ Okay: The index was found and the Start and End parameters reflect its position.
 NullArgs:
 Search: The index was not found.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
 {
@@ -660,7 +660,7 @@ static ERROR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
 -ACTION-
 Focus: Sets the user focus on the document page.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_Focus(extDocument *Self, APTR Args)
 {
@@ -723,7 +723,7 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
 -ACTION-
 GetVar: Script arguments can be retrieved through this action.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_GetVar(extDocument *Self, struct acGetVar *Args)
 {
@@ -898,7 +898,7 @@ NullArgs
 Search
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
 {
@@ -994,7 +994,7 @@ Okay
 NullArgs
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
 {
@@ -1073,7 +1073,7 @@ Okay
 NullArgs
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
 {
@@ -1191,7 +1191,7 @@ OutOfRange: The Start and/or End indexes are not within the stream.
 Args
 NoData: Operation successful, but no data was present for extraction.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args)
 {
@@ -1246,7 +1246,7 @@ static ERROR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args
 -ACTION-
 Refresh: Reloads the document data from the original source location.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_Refresh(extDocument *Self, APTR Void)
 {
@@ -1329,7 +1329,7 @@ NullArgs
 OutOfRange: The area to be removed is outside the bounds of the document's data stream.
 Args
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_RemoveContent(extDocument *Self, struct docRemoveContent *Args)
 {
@@ -1364,7 +1364,7 @@ ptr(func) Function: The function that is called when the trigger activates.
 Okay
 NullArgs
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_RemoveListener(extDocument *Self, struct docRemoveListener *Args)
 {
@@ -1403,7 +1403,7 @@ static ERROR DOCUMENT_RemoveListener(extDocument *Self, struct docRemoveListener
 -ACTION-
 SaveToObject: Use this action to save edited information as an XML document file.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_SaveToObject(extDocument *Self, struct acSaveToObject *Args)
 {
@@ -1426,7 +1426,7 @@ static ERROR DOCUMENT_SaveToObject(extDocument *Self, struct acSaveToObject *Arg
 -ACTION-
 ScrollToPoint: Scrolls a document object's graphical content.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_ScrollToPoint(extDocument *Self, struct acScrollToPoint *Args)
 {
@@ -1475,7 +1475,7 @@ NullArgs
 OutOfRange
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_SelectLink(extDocument *Self, struct docSelectLink *Args)
 {
@@ -1513,7 +1513,7 @@ static ERROR DOCUMENT_SelectLink(extDocument *Self, struct docSelectLink *Args)
 -ACTION-
 SetVar: Passes variable parameters to loaded documents.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_SetVar(extDocument *Self, struct acSetVar *Args)
 {
@@ -1549,7 +1549,7 @@ NullArgs
 Search: The index could not be found.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
 {

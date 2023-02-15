@@ -8,7 +8,7 @@ Please refer to it for further information on licensing.
 
 This program tests the locking of private objects between threads.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include <pthread.h>
 

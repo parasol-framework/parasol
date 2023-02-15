@@ -50,7 +50,7 @@ To send data to a client, write it to the target @ClientSocket.
 All data that is received from client sockets will be passed to the #Incoming feedback routine with a reference to a @ClientSocket.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 // The MaxWriteLen cannot exceed the size of the network queue on the host platform, otherwise all send attempts will
 // return 'could block' error codes.  Note that when using SSL, the write length is an SSL library imposition.
@@ -120,7 +120,7 @@ HostNotFound: Host name resolution failed.
 Failed: The connect failed for some other reason.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static void connect_name_resolved_nl(objNetLookup *, ERROR, CSTRING, IPAddress *, LONG);
 static void connect_name_resolved(extNetSocket *, ERROR, CSTRING, IPAddress *, LONG);
@@ -261,7 +261,7 @@ This method will stop all sending and receiving of data over the socket.  This i
 Okay
 Failed: Shutdown operation failed.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR NETSOCKET_Disable(extNetSocket *Self, APTR Void)
 {
@@ -302,7 +302,7 @@ Okay
 NullArgs
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR NETSOCKET_DisconnectClient(extNetSocket *Self, struct nsDisconnectClient *Args)
 {
@@ -327,7 +327,7 @@ Okay
 NullArgs
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR NETSOCKET_DisconnectSocket(extNetSocket *Self, struct nsDisconnectSocket *Args)
 {
@@ -395,7 +395,7 @@ NullArgs
 Failed
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct nsGetLocalIPAddress *Args)
 {
@@ -596,7 +596,7 @@ NullArgs
 Disconnected: The socket connection is closed.
 Failed: A permanent failure has occurred and socket has been closed.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
 {
@@ -652,7 +652,7 @@ NoData: No new data was found for the socket.
 BadData: The message header or tail was invalid, or the message length exceeded internally imposed limits.
 AllocMemory: A message buffer could not be allocated.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR NETSOCKET_ReadMsg(extNetSocket *Self, struct nsReadMsg *Args)
 {
@@ -790,7 +790,7 @@ Do not use this action if in server mode.  Instead, write to the @ClientSocket o
 It is possible to write to a socket in advance of any connection being made. The netsocket will queue the data
 and automatically send it once the first connection has been made.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
 {
@@ -862,7 +862,7 @@ Okay
 Args
 OutOfRange
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR NETSOCKET_WriteMsg(extNetSocket *Self, struct nsWriteMsg *Args)
 {
@@ -899,7 +899,7 @@ will be made when the NetSocket is initialised.  Post-initialisation this field 
 calls to #Connect() will result in it being updated so that it always reflects the named address of the current
 connection.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Address(extNetSocket *Self, CSTRING Value)
 {
@@ -960,7 +960,7 @@ The function must be in the format `Function(*NetSocket, *ClientSocket, LONG Sta
 The NetSocket parameter will refer to the NetSocket object to which the Feedback function is subscribed.  The reflects
 the new value in the #State field.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Feedback(extNetSocket *Self, FUNCTION **Value)
 {
@@ -1004,7 +1004,7 @@ compulsory - if the function does not do this then the data will be cleared from
 If the callback function returns ERR_Terminate then the Incoming field will be cleared and the function will no
 longer be called.  All other error codes are ignored.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Incoming(extNetSocket *Self, FUNCTION **Value)
 {
@@ -1045,7 +1045,7 @@ codes are ignored.
 
 The Outgoing field is ineffective if the NetSocket is in server mode (target a connected client socket instead).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Outgoing(extNetSocket *Self, FUNCTION **Value)
 {
@@ -1103,7 +1103,7 @@ The default setting is 1 megabyte.
 -FIELD-
 OutQueueSize: The number of bytes on the socket's outgoing queue.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_OutQueueSize(extNetSocket *Self, LONG *Value)
 {
@@ -1119,7 +1119,7 @@ Port: The port number to use for initiating a connection.
 -FIELD-
 SocketHandle: Platform specific reference to the network socket handle.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_SocketHandle(extNetSocket *Self, APTR *Value)
 {
@@ -1142,7 +1142,7 @@ static ERROR SET_SocketHandle(extNetSocket *Self, APTR Value)
 -FIELD-
 State: The current connection state of the netsocket object.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_State(extNetSocket *Self, LONG Value)
 {
@@ -1226,7 +1226,7 @@ If encrypted communication is not supported, ERR_NoSupport is returned.  If the 
 is not encrypted, a value of zero is returned to indicate that the connection is valid.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_ValidCert(extNetSocket *Self, LONG *Value)
 {

@@ -24,7 +24,7 @@ Okay:
 NullArgs:
 AllocMemory:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxGetDisplayInfo(OBJECTID DisplayID, DISPLAYINFO **Result)
 {
@@ -60,7 +60,7 @@ This function returns the type of display supported by the loaded Display module
 -RESULT-
 int(DT): Returns an integer indicating the display type.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 LONG gfxGetDisplayType(void)
 {
@@ -101,7 +101,7 @@ Args:
 NoSupport: Native graphics system not available (e.g. hosted on Windows or X11).
 Search: There are no more display modes to return that are a match for the Filter.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxScanDisplayModes(CSTRING Filter, DISPLAYINFO *Info, LONG Size)
 {
@@ -235,7 +235,7 @@ large Value: The value to be applied to the option.
 -ERRORS-
 Okay
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxSetHostOption(LONG Option, LARGE Value)
 {
@@ -284,7 +284,7 @@ double Value: The number to be scaled.
 double: The scaled value is returned.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 DOUBLE gfxScaleToDPI(DOUBLE Value)
 {

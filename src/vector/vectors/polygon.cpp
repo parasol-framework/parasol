@@ -16,7 +16,7 @@ field to FALSE and set only two points (#X1,#Y1) and (#X2,#Y2)
 
 TODO: Add a SetPoint(DOUBLE X, DOUBLE Y) method for modifying existing points.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define MAX_POINTS 1024 * 16 // Maximum of 16k points per polygon object.
 
@@ -126,7 +126,7 @@ static ERROR POLYGON_Free(extVectorPoly *Self, APTR Void)
 -ACTION-
 Move: Moves a polygon to a new position.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR POLYGON_Move(extVectorPoly *Self, struct acMove *Args)
 {
@@ -161,7 +161,7 @@ This action will permanently modify the coordinates of a polygon so that they of
 
 The operation will abort if any of the points in the polygon are discovered to be relative coordinates.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR POLYGON_MoveToPoint(extVectorPoly *Self, struct acMoveToPoint *Args)
 {
@@ -221,7 +221,7 @@ they are within the provided dimensions.
 
 If a Width and/or Height value of zero is passed, no scaling on the associated axis will occur.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR POLYGON_Resize(extVectorPoly *Self, struct acResize *Args)
 {
@@ -250,7 +250,7 @@ Closed: If TRUE, the polygon will be closed between the start and end points.
 Set the Closed field to TRUE to ensure that the polygon is closed between the start and end points.  This behaviour is
 the default.  If FALSE, the polygon will not be closed, which results in the equivalent of the SVG polyline type.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR POLY_GET_Closed(extVectorPoly *Self, LONG *Value)
 {
@@ -276,7 +276,7 @@ distance-along-a-path computations by the ratio of PathLength to the user agent'
 length.  This feature potentially affects calculations for text on a path, motion animation and various stroke
 operations.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR POLY_GET_PathLength(extVectorPoly *Self, LONG *Value)
 {
@@ -302,7 +302,7 @@ points is required for the shape to be valid.  The &VectorPoint structure consis
 
 &VectorPoint
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR POLY_GET_PointsArray(extVectorPoly *Self, VectorPoint **Value, LONG *Elements)
 {
@@ -335,7 +335,7 @@ The Points field can be set with a series of (X,Y) coordinates that will define 
 numbered pairs will be required to define a valid polygon.  Each point must be separated with either white-space or
 a comma.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR POLY_SET_Points(extVectorPoly *Self, CSTRING Value)
 {
@@ -358,7 +358,7 @@ TotalPoints: The total number of coordinates defined in the Points field.
 TotalPoints is a read-only field value that reflects the total number of coordinates that have been set in the
 #Points array.  The minimum value is 2.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR POLY_GET_TotalPoints(extVectorPoly *Self, LONG *Value)
 {
@@ -376,7 +376,7 @@ when creating a VectorPolygon that will be used to draw a single line.
 By default the value will be treated as a fixed coordinate.  Relative values are supported if the value is a defined as
 a percentage.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR POLY_GET_X1(extVectorPoly *Self, Variable *Value)
 {
@@ -417,7 +417,7 @@ when creating a VectorPolygon that will be used to draw a single line.
 By default the value will be treated as a fixed coordinate.  Relative values are supported if the value is a defined as
 a percentage.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR POLY_GET_X2(extVectorPoly *Self, Variable *Value)
 {
@@ -458,7 +458,7 @@ when creating a VectorPolygon that will be used to draw a single line.
 By default the value will be treated as a fixed coordinate.  Relative values are supported if the value is a defined as
 a percentage.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR POLY_GET_Y1(extVectorPoly *Self, Variable *Value)
 {
@@ -499,7 +499,7 @@ when creating a VectorPolygon that will be used to draw a single line.
 By default the value will be treated as a fixed coordinate.  Relative values are supported if the value is a defined as
 a percentage.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR POLY_GET_Y2(extVectorPoly *Self, Variable *Value)
 {

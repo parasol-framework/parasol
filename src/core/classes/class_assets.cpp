@@ -10,7 +10,7 @@ Please refer to it for further information on licensing.
 FileAssets: For Android systems only.  The FileAssets sub-class provides access to the assets folder in the currently running Android project.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 //#define DEBUG
 

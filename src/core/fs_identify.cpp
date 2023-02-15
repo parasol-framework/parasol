@@ -51,7 +51,7 @@ FileNotFound
 Read
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLASSID *SubClassID, STRING *Command)
 {

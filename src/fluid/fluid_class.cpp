@@ -794,7 +794,7 @@ Use the SaveToObject action to compile the statement in the Script's String fiel
 target object.  The byte code can be loaded into any script object for execution or referenced in the Fluid code for
 usage.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR FLUID_SaveToObject(objScript *Self, struct acSaveToObject *Args)
 {
@@ -833,7 +833,7 @@ The procedure list is built at the time of the call.  The array is allocated as 
 removed by the caller with FreeResource().
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Procedures(objScript *Self, STRING **Value, LONG *Elements)
 {

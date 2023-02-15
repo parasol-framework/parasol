@@ -25,7 +25,7 @@ complete run-down on class development.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include "../defs.h"
 
@@ -210,7 +210,7 @@ Search
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR CLASS_FindField(extMetaClass *Class, struct mcFindField *Args)
 {
@@ -432,7 +432,7 @@ ActionArray clActions[] = {
 The action ID's used in this particular list can be found in the system/actioncodes.h include file, along with many
 others. Never define method ID's in an action list - please use the #Methods field to define your methods.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Actions(extMetaClass *Self, const ActionArray *Actions)
 {
@@ -462,7 +462,7 @@ example `Routine[AC_Read]`.  Calling an action routine directly is an illegal op
 A) The call is made from an action support function in a class module and B) Special circumstances allow for such
 a call, as documented in the Action Support Guide.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_ActionTable(extMetaClass *Self, ActionEntry **Value, LONG *Elements)
 {
@@ -511,7 +511,7 @@ class.  If creating a base class then it must be provided, while sub-classes wil
 The Class Development Guide has a section devoted to the configuration of this array. Please read the guide for more
 information.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Fields(extMetaClass *Self, const FieldArray **Fields, LONG *Elements)
 {
@@ -589,7 +589,7 @@ e.g. Fluid.
 
 A value of NULL is returned if the module does not provide an IDL string.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_IDL(extMetaClass *Self, CSTRING *Value)
 {
@@ -613,7 +613,7 @@ Location: Returns the path from which the class binary is loaded.
 The path from which the class binary was loaded is readable from this field.  The path may not necessarily include the
 file extension of the source binary.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Location(extMetaClass *Self, CSTRING *Value)
 {
@@ -649,7 +649,7 @@ the guide for more information.
 
 Never use action ID's in a Methods array - please use the #Actions field for this.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Methods(extMetaClass *Self, const MethodArray **Methods, LONG *Elements)
 {
@@ -710,7 +710,7 @@ static ERROR SET_Methods(extMetaClass *Self, const MethodArray *Methods, LONG El
 -FIELD-
 Module: The name of the module binary that initialised the class.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Module(extMetaClass *Self, CSTRING *Value)
 {
@@ -736,7 +736,7 @@ object appearing first.
 
 The resulting array must be terminated with ~FreeResource() after use.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_PrivateObjects(extMetaClass *Self, OBJECTID **Array, LONG *Elements)
 {
@@ -812,7 +812,7 @@ This field must not be set when creating a base class.
 To determine whether or not a class is a sub-class or a base class, compare the BaseClassID and SubClassID fields.  If
 they are identical then it is a base class, otherwise it is a sub-class.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_SubFields(extMetaClass *Self, const FieldArray **Fields, LONG *Elements)
 {
@@ -837,7 +837,7 @@ TotalFields: The total number of fields defined by a class.
 TotalMethods: The total number of methods supported by a class.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_TotalMethods(extMetaClass *Class, LONG *Value)
 {

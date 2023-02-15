@@ -11,7 +11,7 @@ ScintillaSearch: Provides search functionality for use on Scintilla objects.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define PRV_SCINTILLA
 
@@ -74,7 +74,7 @@ NullArgs:
 Search: The string sequence was not found.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SEARCH_Find(objScintillaSearch *Self, struct ssFind *Args)
 {
@@ -207,7 +207,7 @@ Search: The string could not be found.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SEARCH_Next(objScintillaSearch *Self, struct ssNext *Args)
 {
@@ -313,7 +313,7 @@ NullArgs
 Search: The string could not be found.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SEARCH_Prev(objScintillaSearch *Self, struct ssPrev *Args)
 {
@@ -349,7 +349,7 @@ Text: The string sequence to search for.
 This field defines the string sequence that will be searched for when calling either #Find(), #Next() or #Prev().
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Text(objScintillaSearch *Self, CSTRING Value)
 {

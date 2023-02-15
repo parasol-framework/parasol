@@ -24,7 +24,7 @@ definition.  This will ensure that the VectorPattern is deallocated when the sce
 NOTE: The VectorPattern inherits attributes from the VectorScene, which is used to define the size of the pattern and
 contains the pattern content.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PATTERN_Draw(extVectorPattern *Self, struct acDraw *Args)
 {
@@ -136,7 +136,7 @@ The (Width,Height) field values define the dimensions of the pattern tile.  If t
 then the dimension is calculated relative to the bounding box or viewport applying the pattern, dependent on the
 #Units setting.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PATTERN_GET_Height(extVectorPattern *Self, Variable *Value)
 {
@@ -173,7 +173,7 @@ Attributes can be inherited from another pattern by referencing it in this field
 primarily for the purpose of simplifying SVG compatibility and its use may result in an unnecessary performance
 penalty.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PATTERN_SET_Inherit(extVectorPattern *Self, extVectorPattern *Value)
 {
@@ -196,7 +196,7 @@ represented by a VectorMatrix structure, and are linked in the order in which th
 
 &VectorMatrix
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORPATTERN_GET_Matrices(extVectorPattern *Self, VectorMatrix **Value)
 {
@@ -247,7 +247,7 @@ Opacity: The opacity of the pattern.
 The opacity of the pattern is defined as a value between 0.0 and 1.0, with 1.0 being fully opaque.  The default value
 is 1.0.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PATTERN_SET_Opacity(extVectorPattern *Self, DOUBLE Value)
 {
@@ -276,7 +276,7 @@ Transform: Applies a transform to the pattern during the render process.
 
 A transform can be applied to the pattern by setting this field with an SVG compliant transform string.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PATTERN_SET_Transform(extVectorPattern *Self, CSTRING Commands)
 {
@@ -322,7 +322,7 @@ Viewport: Refers to the viewport that contains the pattern.
 The Viewport refers to a @VectorViewport object that is created to host the vectors for the rendered pattern.  If the
 Viewport does not contain at least one vector that renders an image, the pattern will be ineffective.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PATTERN_GET_Viewport(extVectorPattern *Self, extVectorViewport **Value)
 {
@@ -339,7 +339,7 @@ The (Width,Height) field values define the dimensions of the pattern tile.  If t
 then the dimension is calculated relative to the bounding box or viewport applying the pattern, dependent on the
 #Units setting.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PATTERN_GET_Width(extVectorPattern *Self, Variable *Value)
 {
@@ -374,7 +374,7 @@ X: X coordinate for the pattern.
 
 The (X,Y) field values define the starting coordinate for mapping patterns.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PATTERN_GET_X(extVectorPattern *Self, Variable *Value)
 {
@@ -410,7 +410,7 @@ Y: Y coordinate for the pattern.
 The (X,Y) field values define the starting coordinate for mapping patterns.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PATTERN_GET_Y(extVectorPattern *Self, Variable *Value)
 {

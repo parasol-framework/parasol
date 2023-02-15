@@ -9,7 +9,7 @@ Please refer to it for further information on licensing.
 This program tests the locking of private and public memory between threads.
 Use parameter '-public' to test public memory locking.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include <pthread.h>
 
