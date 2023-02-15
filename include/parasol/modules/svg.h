@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      svg.h
-// Copyright: Paul Manias © 2010-2022
+// Copyright: Paul Manias © 2010-2023
 // Generator: idl-c
 
 #include <parasol/main.h>

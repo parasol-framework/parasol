@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      system/registry.h
-// Copyright: Paul Manias 1996-2022
+// Copyright: Paul Manias 1996-2023
 // Generator: idl-c
 
 #define ID_PICTURE 0xad68f281UL
