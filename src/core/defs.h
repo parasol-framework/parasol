@@ -610,8 +610,6 @@ extern char glSystemPath[SIZE_SYSTEM_PATH];
 extern char glModulePath[SIZE_SYSTEM_PATH];
 extern char glRootPath[SIZE_SYSTEM_PATH];
 extern char glDisplayDriver[28];
-extern OBJECTPTR SystemTask;
-extern OBJECTID SystemTaskID, glCurrentTaskID; // Read-only
 extern WORD glLogLevel, glShowIO, glShowPrivate, glShowPublic, glMaxDepth;
 extern UBYTE glTaskState;
 extern LARGE glTimeLog;

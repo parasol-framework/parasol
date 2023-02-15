@@ -597,11 +597,6 @@ static int object_lock(lua_State *Lua)
       return 0;
    }
 
-   if (def->ObjectID < 0) { // Security measure - public locks are not allowed.
-      luaL_error(Lua, "Locking public objects is not supported.");
-      return 0;
-   }
-
    if (!lua_isfunction(Lua, 1)) {
       luaL_argerror(Lua, 1, "Function expected.");
       return 0;

@@ -1678,11 +1678,7 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
    MessageHeader *msgblock;
    LONG i, len;
 
-   if (Self IS SystemTask) {
-      // Perform the following if this is the System Task
-      Self->ProcessID = 0;
-   }
-   else if (!glCurrentTask) {
+   if (!fs_initialised) {
       // Perform the following if this is a Task representing the current process
 
       Self->ProcessID = glProcessID;

@@ -416,7 +416,7 @@ ERROR page_memory(PublicAddress *Block, APTR *Address)
             glMemoryPages[index].Size        = Block->Size;
             glMemoryPages[index].Address     = addr;
             glMemoryPages[index].AccessCount = 1;
-            if (Block->TaskID IS glCurrentTaskID) glMemoryPages[index].Flags = MPF_LOCAL;
+            if ((glCurrentTask) and (Block->TaskID IS glCurrentTask->UID)) glMemoryPages[index].Flags = MPF_LOCAL;
             else glMemoryPages[index].Flags = 0;
             *Address = addr;
             return ERR_Okay;

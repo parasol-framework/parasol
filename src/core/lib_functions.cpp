@@ -126,40 +126,6 @@ ERROR CheckObjectExists(OBJECTID ObjectID)
 /*********************************************************************************************************************
 
 -FUNCTION-
-CopyMemory: Copies a block of bytes from a source to a destination address.
-Category: Memory
-
-This function copies a block of bytes from a source address to a destination address. Ideally the fastest algorithm
-available for the machine will be used to perform the copy operation.  If a fine-tuned algorithm is unavailable, a
-stock copy operation is used.
-
--INPUT-
-cptr Src: Source address to copy.
-ptr Dest: Destination address.
-int Size: The total number of bytes to copy from the source to the destination.
-
--ERRORS-
-Okay:
-NullArgs: Src and/or Dest parameters were not provided.
-Args:
-
-*********************************************************************************************************************/
-
-ERROR CopyMemory(const void *Src, APTR Dest, LONG Length)
-{
-   if ((!Src) or (!Dest)) return ERR_NullArgs;
-   if (Length < 0) return ERR_Args;
-   if (Src IS Dest) return ERR_Okay;
-
-   // As of 2013 we are presuming that memmove() is suitably pre-optimised by either the compiler or the host platform.
-
-   memmove(Dest, Src, Length);
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
 CurrentContext: Returns a pointer to the object that has the current context.
 Category: Objects
 

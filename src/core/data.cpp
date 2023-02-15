@@ -89,9 +89,6 @@ std::list<CoreTimer> glTimers;
 ConfigGroups glVolumes;
 APTR glJNIEnv = 0;
 UWORD glFunctionID = 3333; // IDTYPE_FUNCTION
-OBJECTID glCurrentTaskID = 0;
-OBJECTPTR SystemTask = NULL;
-OBJECTID SystemTaskID    = 0;
 LONG glPageSize = 4096; // Default page size is 4k
 LONG glTotalPages = 0;
 LONG glStdErrFlags = 0;

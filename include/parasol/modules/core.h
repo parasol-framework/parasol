@@ -2016,7 +2016,7 @@ struct CoreBase {
    ERROR (*_ScanMessages)(APTR Queue, LONG * Index, LONG Type, APTR Buffer, LONG Size);
    ERROR (*_SysLock)(LONG Index, LONG MilliSeconds);
    ERROR (*_SysUnlock)(LONG Index);
-   ERROR (*_CopyMemory)(const void * Src, APTR Dest, LONG Size);
+   ERROR (*_CreateFolder)(CSTRING Path, LONG Permissions);
    ERROR (*_LoadFile)(CSTRING Path, LONG Flags, struct CacheFile ** Cache);
    ERROR (*_SetVolume)(...);
    ERROR (*_DeleteVolume)(CSTRING Name);
@@ -2086,7 +2086,6 @@ struct CoreBase {
    ULONG (*_StrHash)(CSTRING String, LONG CaseSensitive);
    CSTRING (*_UTF8ValidEncoding)(CSTRING String, CSTRING Encoding);
    ERROR (*_AnalysePath)(CSTRING Path, LONG * Type);
-   ERROR (*_CreateFolder)(CSTRING Path, LONG Permissions);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2163,7 +2162,7 @@ inline LARGE SetResource(LONG Resource, LARGE Value) { return CoreBase->_SetReso
 inline ERROR ScanMessages(APTR Queue, LONG * Index, LONG Type, APTR Buffer, LONG Size) { return CoreBase->_ScanMessages(Queue,Index,Type,Buffer,Size); }
 inline ERROR SysLock(LONG Index, LONG MilliSeconds) { return CoreBase->_SysLock(Index,MilliSeconds); }
 inline ERROR SysUnlock(LONG Index) { return CoreBase->_SysUnlock(Index); }
-inline ERROR CopyMemory(const void * Src, APTR Dest, LONG Size) { return CoreBase->_CopyMemory(Src,Dest,Size); }
+inline ERROR CreateFolder(CSTRING Path, LONG Permissions) { return CoreBase->_CreateFolder(Path,Permissions); }
 inline ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile ** Cache) { return CoreBase->_LoadFile(Path,Flags,Cache); }
 template<class... Args> ERROR SetVolume(Args... Tags) { return CoreBase->_SetVolume(Tags...); }
 inline ERROR DeleteVolume(CSTRING Name) { return CoreBase->_DeleteVolume(Name); }
@@ -2233,7 +2232,6 @@ inline ERROR VarCopy(struct KeyStore * Source, struct KeyStore * Dest) { return 
 inline ULONG StrHash(CSTRING String, LONG CaseSensitive) { return CoreBase->_StrHash(String,CaseSensitive); }
 inline CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding) { return CoreBase->_UTF8ValidEncoding(String,Encoding); }
 inline ERROR AnalysePath(CSTRING Path, LONG * Type) { return CoreBase->_AnalysePath(Path,Type); }
-inline ERROR CreateFolder(CSTRING Path, LONG Permissions) { return CoreBase->_CreateFolder(Path,Permissions); }
 #endif
 
 
@@ -2280,6 +2278,12 @@ inline ERROR QueueAction(LONG Action, OBJECTID ObjectID) {
 typedef std::map<std::string, std::string> ConfigKeys;
 typedef std::pair<std::string, ConfigKeys> ConfigGroup;
 typedef std::vector<ConfigGroup> ConfigGroups;
+
+inline void CopyMemory(const void *Src, APTR Dest, LONG Length)
+{
+   if ((!Src) or (!Dest) or (Length < 0)) return;
+   memmove(Dest, Src, Length);
+}
 
 inline LONG StrLength(CSTRING String) {
    if (String) return strlen(String);

@@ -1265,7 +1265,7 @@ extern struct CoreBase *CoreBase;
     "ScanMessages",
     "SysLock",
     "SysUnlock",
-    "CopyMemory",
+    "CreateFolder",
     "LoadFile",
     "SetVolume",
     "DeleteVolume",
@@ -1334,8 +1334,7 @@ extern struct CoreBase *CoreBase;
     "VarCopy",
     "StrHash",
     "UTF8ValidEncoding",
-    "AnalysePath",
-    "CreateFolder")
+    "AnalysePath")
 
   c_insert([[
 
@@ -1382,6 +1381,12 @@ inline ERROR QueueAction(LONG Action, OBJECTID ObjectID) {
 typedef std::map<std::string, std::string> ConfigKeys;
 typedef std::pair<std::string, ConfigKeys> ConfigGroup;
 typedef std::vector<ConfigGroup> ConfigGroups;
+
+inline void CopyMemory(const void *Src, APTR Dest, LONG Length)
+{
+   if ((!Src) or (!Dest) or (Length < 0)) return;
+   memmove(Dest, Src, Length);
+}
 
 inline LONG StrLength(CSTRING String) {
    if (String) return strlen(String);

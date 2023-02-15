@@ -77,7 +77,7 @@ LARGE SetResource(LONG Resource, LARGE Value);
 ERROR ScanMessages(APTR Queue, LONG * Index, LONG Type, APTR Buffer, LONG Size);
 ERROR SysLock(LONG Index, LONG MilliSeconds);
 ERROR SysUnlock(LONG Index);
-ERROR CopyMemory(const void * Src, APTR Dest, LONG Size);
+ERROR CreateFolder(CSTRING Path, LONG Permissions);
 ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile ** Cache);
 ERROR SetVolume(LARGE,...);
 ERROR DeleteVolume(CSTRING Name);
@@ -147,7 +147,6 @@ ERROR VarCopy(struct KeyStore * Source, struct KeyStore * Dest);
 ULONG StrHash(CSTRING String, LONG CaseSensitive);
 CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding);
 ERROR AnalysePath(CSTRING Path, LONG * Type);
-ERROR CreateFolder(CSTRING Path, LONG Permissions);
 
 #ifdef  __cplusplus
 }

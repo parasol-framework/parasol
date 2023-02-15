@@ -136,9 +136,6 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
          ScopedObjectAccess lock(glCurrentTask);
          SetOwner(head, glCurrentTask);
       }
-      else if (SystemTask) { // If no current task is available then track the object to the system task
-         SetOwner(head, SystemTask);
-      }
 
       // After the header has been created we can set the context, then call the base class's NewObject() support.  If the
       // class is a child, we will also call its supporting NewObject() action if it has specified one.

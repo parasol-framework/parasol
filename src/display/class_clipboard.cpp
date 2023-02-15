@@ -56,7 +56,8 @@ static CSTRING GetDatatype(LONG Datatype)
 
 static void notify_script_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   ((objClipboard *)CurrentContext())->RequestHandler.Type = CALL_NONE;
+   auto Self = (objClipboard *)CurrentContext();
+   Self->RequestHandler.Type = CALL_NONE;
 }
 
 /*****************************************************************************
@@ -477,58 +478,15 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
-
--METHOD-
-Remove: Remove items from the clipboard.
-
-The Remove method will clear all items that match a specified datatype.  Clear multiple datatypes by combining flags
-in the Datatype parameter.  To clear all content from the clipboard, use the #Clear() action instead of this method.
-
--INPUT-
-int(CLIPTYPE) Datatype: The datatype(s) that will be deleted (datatypes may be logically-or'd together).
-
--ERRORS-
-Okay
-NullArgs
-AccessMemory: The clipboard memory data was not accessible.
--END-
-
-*****************************************************************************/
-
-static ERROR CLIPBOARD_Remove(objClipboard *Self, struct clipRemove *Args)
-{
-   parasol::Log log;
-
-   if ((!Args) or (!Args->Datatype)) return log.warning(ERR_NullArgs);
-
-   log.branch("Cluster: %d, Datatype: $%x", Self->ClusterID, Args->Datatype);
-
-   ClipHeader *header;
-
-   if (!AccessMemory(Self->ClusterID, MEM_READ_WRITE, 3000, &header)) {
-      auto clips = (ClipEntry *)(header + 1);
-      for (WORD i=0; i < MAX_CLIPS; i++) {
-         if (clips[i].Datatype & Args->Datatype) {
-            if (i IS 0) {
-               #ifdef _WIN32
-               winClearClipboard();
-               #endif
-            }
-            free_clip(&clips[i]);
-         }
-      }
-
-      ReleaseMemory(header);
-      return ERR_Okay;
-   }
-   else return log.warning(ERR_AccessMemory);
-}
-
 //****************************************************************************
 
 static ERROR CLIPBOARD_Free(objClipboard *Self, APTR Void)
 {
+   if (Self->RequestHandler.Type IS CALL_SCRIPT) {
+      UnsubscribeAction(Self->RequestHandler.Script.Script, AC_Free);
+      Self->RequestHandler.Type = CALL_NONE;
+   }
+
    if (Self->ClusterAllocated) { FreeResourceID(Self->ClusterID); Self->ClusterID = 0; }
    return ERR_Okay;
 }
@@ -688,6 +646,54 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
       return ERR_Okay;
    }
    else return ERR_AccessMemory;
+}
+
+/*****************************************************************************
+
+-METHOD-
+Remove: Remove items from the clipboard.
+
+The Remove method will clear all items that match a specified datatype.  Clear multiple datatypes by combining flags
+in the Datatype parameter.  To clear all content from the clipboard, use the #Clear() action instead of this method.
+
+-INPUT-
+int(CLIPTYPE) Datatype: The datatype(s) that will be deleted (datatypes may be logically-or'd together).
+
+-ERRORS-
+Okay
+NullArgs
+AccessMemory: The clipboard memory data was not accessible.
+-END-
+
+*****************************************************************************/
+
+static ERROR CLIPBOARD_Remove(objClipboard *Self, struct clipRemove *Args)
+{
+   parasol::Log log;
+
+   if ((!Args) or (!Args->Datatype)) return log.warning(ERR_NullArgs);
+
+   log.branch("Cluster: %d, Datatype: $%x", Self->ClusterID, Args->Datatype);
+
+   ClipHeader *header;
+
+   if (!AccessMemory(Self->ClusterID, MEM_READ_WRITE, 3000, &header)) {
+      auto clips = (ClipEntry *)(header + 1);
+      for (WORD i=0; i < MAX_CLIPS; i++) {
+         if (clips[i].Datatype & Args->Datatype) {
+            if (i IS 0) {
+               #ifdef _WIN32
+               winClearClipboard();
+               #endif
+            }
+            free_clip(&clips[i]);
+         }
+      }
+
+      ReleaseMemory(header);
+      return ERR_Okay;
+   }
+   else return log.warning(ERR_AccessMemory);
 }
 
 /*****************************************************************************

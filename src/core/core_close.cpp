@@ -202,6 +202,8 @@ EXPORT void CloseCore(void)
          UpdateTimer(id, 0);
       }
 
+      OBJECTID task_id = glCurrentTask->UID;
+
       // Remove the Task structure and child objects
 
       if (glCurrentTask) {
@@ -298,11 +300,6 @@ EXPORT void CloseCore(void)
          glTotalFDs = 0;
       }
 
-      if (SystemTask) {
-         acFree(SystemTask);
-         SystemTask = 0;
-      }
-
       log.trace("Removing private and public memory locks.");
 
       remove_private_locks();
@@ -311,10 +308,11 @@ EXPORT void CloseCore(void)
 
       // Free all public memory blocks that are tracked to this process.
 
-      if ((glCodeIndex < CP_FREE_PUBLIC_MEMORY) and (glCurrentTask)) {
+      if (glCodeIndex < CP_FREE_PUBLIC_MEMORY) {
          glCodeIndex = CP_FREE_PUBLIC_MEMORY;
-         free_public_resources(glCurrentTask->UID);
+         free_public_resources(task_id);
       }
+
    }
 
    // Remove our process from the global list completely.  From this point onwards
@@ -411,8 +409,6 @@ EXPORT void CloseCore(void)
       unlink(sockpath->sun_path);
    #endif
 
-   glCurrentTask = NULL;
-   glCurrentTaskID = 0;
    glProcessID = 0;
 
    if (glCodeIndex < CP_FINISHED) glCodeIndex = CP_FINISHED;

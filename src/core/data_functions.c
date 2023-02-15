@@ -27,7 +27,6 @@ FDEF argsCheckMemoryExists[] = { { "Error", FD_LONG|FD_ERROR }, { "ID", FD_LONG 
 FDEF argsCheckObjectExists[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTID }, { 0, 0 } };
 FDEF argsCompareFilePaths[] = { { "Error", FD_LONG|FD_ERROR }, { "PathA", FD_STR }, { "PathB", FD_STR }, { 0, 0 } };
 FDEF argsCopyFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Source", FD_STR }, { "Dest", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
-FDEF argsCopyMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Src", FD_PTR }, { "Dest", FD_PTR }, { "Size", FD_LONG }, { 0, 0 } };
 FDEF argsCreateFolder[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Permissions", FD_LONG }, { 0, 0 } };
 FDEF argsCreateLink[] = { { "Error", FD_LONG|FD_ERROR }, { "From", FD_STR }, { "To", FD_STR }, { 0, 0 } };
 FDEF argsCurrentContext[] = { { "Object", FD_OBJECTPTR }, { 0, 0 } };
@@ -223,7 +222,7 @@ const struct Function glFunctions[] = {
    { (APTR)ScanMessages, "ScanMessages", argsScanMessages },
    { (APTR)SysLock, "SysLock", argsSysLock },
    { (APTR)SysUnlock, "SysUnlock", argsSysUnlock },
-   { (APTR)CopyMemory, "CopyMemory", argsCopyMemory },
+   { (APTR)CreateFolder, "CreateFolder", argsCreateFolder },
    { (APTR)LoadFile, "LoadFile", argsLoadFile },
    { (APTR)SetVolume, "SetVolume", argsSetVolume },
    { (APTR)DeleteVolume, "DeleteVolume", argsDeleteVolume },
@@ -293,7 +292,6 @@ const struct Function glFunctions[] = {
    { (APTR)StrHash, "StrHash", argsStrHash },
    { (APTR)UTF8ValidEncoding, "UTF8ValidEncoding", argsUTF8ValidEncoding },
    { (APTR)AnalysePath, "AnalysePath", argsAnalysePath },
-   { (APTR)CreateFolder, "CreateFolder", argsCreateFolder },
    { NULL, NULL, NULL }
 };
 

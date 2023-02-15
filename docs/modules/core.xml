@@ -598,26 +598,6 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address)) {
   </function>
 
   <function>
-    <name>CopyMemory</name>
-    <category>Memory</category>
-    <comment>Copies a block of bytes from a source to a destination address.</comment>
-    <prototype>ERROR CopyMemory(const void * Src, APTR Dest, LONG Size)</prototype>
-    <input>
-      <param type="const void *" name="Src">Source address to copy.</param>
-      <param type="APTR" name="Dest">Destination address.</param>
-      <param type="LONG" name="Size">The total number of bytes to copy from the source to the destination.</param>
-    </input>
-    <description>
-<p>This function copies a block of bytes from a source address to a destination address. Ideally the fastest algorithm available for the machine will be used to perform the copy operation.  If a fine-tuned algorithm is unavailable, a stock copy operation is used.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>CreateFolder</name>
     <category>Files</category>
     <comment>Makes new folders.</comment>

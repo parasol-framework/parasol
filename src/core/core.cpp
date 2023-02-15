@@ -169,7 +169,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          BYTE hold_priority;
       #endif
    #endif
-   objTask *localtask;
    LONG i;
    ERROR error;
 
@@ -727,34 +726,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       return NULL;
    }
 
-   // Allocate the System Task
-
-   if (!(error = NewObject(ID_TASK, NF::UNTRACKED, &SystemTask))) {
-      SystemTaskID = SystemTask->UID;
-      SetName(SystemTask, "SystemTask");
-      if (Action(AC_Init, SystemTask, NULL) != ERR_Okay) {
-         if (Info->Flags & OPF_ERROR) Info->Error = ERR_Init;
-         CloseCore();
-         return NULL;
-      }
-   }
-   else if (error != ERR_ObjectExists) {
-      if (Info->Flags & OPF_ERROR) Info->Error = ERR_NewObject;
-      CloseCore();
-      return NULL;
-   }
-
-   if (!NewObject(ID_TASK, NF::UNTRACKED, (OBJECTPTR *)&localtask)) {
-      if (acInit(localtask)) {
-         CloseCore();
-         return NULL;
-      }
-   }
-   else {
-      CloseCore();
-      return NULL;
-   }
-
    // Register Core classes
 
    if (add_thread_class() != ERR_Okay)  { CloseCore(); return NULL; }
@@ -772,8 +743,16 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    if (add_asset_class() != ERR_Okay) { CloseCore(); return NULL; }
    #endif
 
-   glCurrentTaskID = localtask->UID;
-   glCurrentTask   = localtask;
+   if (!NewObject(ID_TASK, NF::UNTRACKED, (OBJECTPTR *)&glCurrentTask)) {
+      if (acInit(glCurrentTask)) {
+         CloseCore();
+         return NULL;
+      }
+   }
+   else {
+      CloseCore();
+      return NULL;
+   }
 
    if (init_volumes(volumes)) {
       KERR("Failed to initialise the filesystem.");
@@ -816,7 +795,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       return NULL;
    }
 
-   if (na > 0) SetArray(localtask, FID_Parameters, newargs, na);
+   if (na > 0) SetArray(glCurrentTask, FID_Parameters, newargs, na);
 
    // In Windows, set the PATH environment variable so that DLL's installed under modules:lib can be found.
 

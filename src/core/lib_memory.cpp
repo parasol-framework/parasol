@@ -173,7 +173,8 @@ ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
       else object_id = glCurrentTask->UID;
    }
    else if (tlContext != &glTopContext) object_id = tlContext->resource()->UID;
-   else if (SystemTask) object_id = SystemTask->UID;
+   else if (glCurrentTask) object_id = glCurrentTask->UID;
+   else object_id = 0;
 
    // Allocate the memory block according to whether it is public or private.
 
