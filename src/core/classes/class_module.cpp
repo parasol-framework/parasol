@@ -711,7 +711,7 @@ static ERROR MODULE_ResolveSymbol(extModule *Self, struct modResolveSymbol *Args
 -ACTION-
 SetVar: Passes variable parameters to loaded modules.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR MODULE_SetVar(extModule *Self, struct acSetVar *Args)
 {

@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 Notes
 -----
@@ -8,7 +8,7 @@ Notes
 * The win32 FindWindow() and FindWindowEx() functions can be used to retrieve foreign window handles.
 * The IsWindow() function can be used to determine if a window handle is still valid.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void MsgKeyPress(LONG Flags, LONG Value, LONG Printable)
 {
@@ -25,7 +25,7 @@ void MsgKeyPress(LONG Flags, LONG Value, LONG Printable)
    BroadcastEvent(&key, sizeof(key));
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void MsgKeyRelease(LONG Flags, LONG Value)
 {
@@ -40,7 +40,7 @@ void MsgKeyRelease(LONG Flags, LONG Value)
    BroadcastEvent(&key, sizeof(key));
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG WinY)
 {
@@ -69,7 +69,7 @@ void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG W
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void MsgWheelMovement(OBJECTID SurfaceID, FLOAT Wheel)
 {
@@ -91,7 +91,7 @@ void MsgWheelMovement(OBJECTID SurfaceID, FLOAT Wheel)
    ActionMsg(AC_DataFeed, glPointerID, &feed);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void MsgFocusState(OBJECTID SurfaceID, LONG State)
 {
@@ -105,7 +105,7 @@ void MsgFocusState(OBJECTID SurfaceID, LONG State)
       OBJECTID *list;
       WORD i;
 
-      if (!AccessMemory(RPM_FocusList, MEM_READ_WRITE, &list)) {
+      if (!AccessMemoryID(RPM_FocusList, MEM_READ_WRITE, &list)) {
          for (i=0; list[i]; i++) {
             LogMsg("Lost Focus: %d: %d", i, list[i]);
             acLostFocus(list[i]);
@@ -117,7 +117,7 @@ void MsgFocusState(OBJECTID SurfaceID, LONG State)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void MsgButtonPress(LONG button, LONG State)
 {
@@ -168,7 +168,7 @@ void MsgButtonPress(LONG button, LONG State)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void MsgResizedWindow(OBJECTID SurfaceID, LONG WinX, LONG WinY, LONG WinWidth, LONG WinHeight,
    LONG ClientX, LONG ClientY, LONG ClientWidth, LONG ClientHeight)
@@ -179,10 +179,10 @@ void MsgResizedWindow(OBJECTID SurfaceID, LONG WinX, LONG WinY, LONG WinWidth, L
    if ((!SurfaceID) or (WinWidth < 1) or (WinHeight < 1)) return;
 
    objSurface *surface;
-   if (!AccessObject(SurfaceID, 3000, &surface)) {
+   if (!AccessObjectID(SurfaceID, 3000, &surface)) {
       extDisplay *display;
       OBJECTID display_id = surface->DisplayID;
-      if (!AccessObject(display_id, 3000, &display)) {
+      if (!AccessObjectID(display_id, 3000, &display)) {
          FUNCTION feedback = display->ResizeFeedback;
          display->X = WinX;
          display->Y = WinY;
@@ -200,7 +200,7 @@ void MsgResizedWindow(OBJECTID SurfaceID, LONG WinX, LONG WinY, LONG WinWidth, L
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** We're interested in this message only when Windows soft-sets one of our windows.  A 'soft-set' means that our Window
 ** has received the focus without direct user interaction (typically a window on the desktop has closed and our
 ** window is inheriting the focus).
@@ -213,7 +213,7 @@ void MsgSetFocus(OBJECTID SurfaceID)
 {
    parasol::Log log;
    objSurface *surface;
-   if (!AccessObject(SurfaceID, 3000, &surface)) {
+   if (!AccessObjectID(SurfaceID, 3000, &surface)) {
       if ((!(surface->Flags & RNF_HAS_FOCUS)) and (surface->Flags & RNF_VISIBLE)) {
          log.msg("WM_SETFOCUS: Sending focus to surface #%d.", SurfaceID);
          QueueAction(AC_Focus, SurfaceID);
@@ -223,7 +223,7 @@ void MsgSetFocus(OBJECTID SurfaceID)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // The width and height arguments must reflect the dimensions of the client area.
 
 void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
@@ -231,7 +231,7 @@ void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
    if ((!SurfaceID) or (!Width) or (!Height)) return;
 
    objSurface *surface;
-   if (!AccessObject(SurfaceID, 3000, &surface)) {
+   if (!AccessObjectID(SurfaceID, 3000, &surface)) {
       LONG minwidth, minheight, maxwidth, maxheight;
       LONG left, right, top, bottom;
       if (!GetFields(surface, FID_MinWidth|TLONG,     &minwidth,
@@ -263,7 +263,7 @@ void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 extern "C" void RepaintWindow(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Height)
 {
@@ -274,14 +274,14 @@ extern "C" void RepaintWindow(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LO
    else ActionMsg(MT_DrwExpose, SurfaceID, NULL);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void MsgTimer(void)
 {
    ProcessMessages(0, 0);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void MsgWindowClose(OBJECTID SurfaceID)
 {
@@ -318,7 +318,7 @@ void MsgWindowClose(OBJECTID SurfaceID)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void MsgWindowDestroyed(OBJECTID SurfaceID)
 {
@@ -329,7 +329,7 @@ void MsgWindowDestroyed(OBJECTID SurfaceID)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void MsgShowObject(OBJECTID ObjectID)
 {

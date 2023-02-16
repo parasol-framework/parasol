@@ -3,7 +3,7 @@
 
 std::unordered_map<WindowHook, FUNCTION> glWindowHooks;
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetDisplayInfo: Retrieves display information.
@@ -24,7 +24,7 @@ Okay:
 NullArgs:
 AllocMemory:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxGetDisplayInfo(OBJECTID DisplayID, DISPLAYINFO **Result)
 {
@@ -48,7 +48,7 @@ ERROR gfxGetDisplayInfo(OBJECTID DisplayID, DISPLAYINFO **Result)
    else return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetDisplayType: Returns the type of display supported.
@@ -60,7 +60,7 @@ This function returns the type of display supported by the loaded Display module
 -RESULT-
 int(DT): Returns an integer indicating the display type.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 LONG gfxGetDisplayType(void)
 {
@@ -75,7 +75,7 @@ LONG gfxGetDisplayType(void)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ScanDisplayModes: Private. Returns formatted resolution information from the display database.
@@ -101,7 +101,7 @@ Args:
 NoSupport: Native graphics system not available (e.g. hosted on Windows or X11).
 Search: There are no more display modes to return that are a match for the Filter.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxScanDisplayModes(CSTRING Filter, DISPLAYINFO *Info, LONG Size)
 {
@@ -221,7 +221,7 @@ ERROR gfxScanDisplayModes(CSTRING Filter, DISPLAYINFO *Info, LONG Size)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SetHostOption: Alter options associated with the host display system.
@@ -235,7 +235,7 @@ large Value: The value to be applied to the option.
 -ERRORS-
 Okay
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxSetHostOption(LONG Option, LARGE Value)
 {
@@ -265,7 +265,7 @@ ERROR gfxSetHostOption(LONG Option, LARGE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ScaleToDPI: Scales a value to the active display's DPI.
@@ -284,7 +284,7 @@ double Value: The number to be scaled.
 double: The scaled value is returned.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 DOUBLE gfxScaleToDPI(DOUBLE Value)
 {

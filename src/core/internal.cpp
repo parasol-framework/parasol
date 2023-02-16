@@ -1,8 +1,8 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 Functions that are internal to the Core.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #ifdef __unix__
    #include <unistd.h>
@@ -24,7 +24,7 @@ Functions that are internal to the Core.
 
 using namespace parasol;
 
-//****************************************************************************
+//********************************************************************************************************************
 // If a function has reason to believe that a process has crashed or is failing to unlock memory blocks, it can call
 // the validate_process() function to help clean up the system.
 
@@ -108,7 +108,7 @@ ERROR validate_process(LONG ProcessID)
    return ERR_False; // Return ERR_False to indicate that the task was not healthy
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 copy_args: Used for turning argument structures into sendable messages.
 
@@ -135,7 +135,7 @@ public|untracked and private memory flags as necessary.  Example:
 
   Read(Bytes (FD_LONG), &BufferMID (FD_LONGRESULT), &BufferSize (FD_LONGRESULT));
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffer, BYTE *Buffer, LONG BufferSize,
                     LONG *NewSize, WORD *WaitResult, CSTRING ActionName)
@@ -284,7 +284,7 @@ looperror:
    return log.warning(error);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** This version of copy_args() is for thread-based execution.  Used by ActionThread() in lib_actions.c
 */
 
@@ -419,7 +419,7 @@ looperror:
    return log.warning(error);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This version of free_ptr_args() is for thread-based execution.  Used by thread_action() in lib_actions.c
 
 void local_free_args(APTR Parameters, const struct FunctionField *Args)
@@ -442,7 +442,7 @@ void local_free_args(APTR Parameters, const struct FunctionField *Args)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Resolves pointers and strings within an ActionMessage structure.
 */
 
@@ -470,7 +470,7 @@ ERROR resolve_args(APTR Parameters, const struct FunctionField *Args)
             MEMORYID mid = ((MEMORYID *)(Buffer + pos))[0];
             if (mid < 0) {
                APTR memory;
-               if (!AccessMemory(mid, MEM_READ_WRITE, 3000, &memory)) {
+               if (!AccessMemoryID(mid, MEM_READ_WRITE, 3000, &memory)) {
                   ((APTR *)(Buffer + pos))[0] = memory;
                }
                else {
@@ -504,7 +504,7 @@ looperror:
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Frees any allocations made in an argument structure.  This function is designed to work with pointer addresses, that
 ** have been exclusively accessed - not offsets.
 */
@@ -532,7 +532,7 @@ ERROR free_ptr_args(APTR Parameters, const struct FunctionField *Args, WORD Rele
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void fix_core_table(struct CoreBase *CoreBase, FLOAT Version)
 {
@@ -546,7 +546,7 @@ void fix_core_table(struct CoreBase *CoreBase, FLOAT Version)
 */
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 TaskList * find_process(LONG ProcessID)
 {
@@ -556,7 +556,7 @@ TaskList * find_process(LONG ProcessID)
    return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
 {

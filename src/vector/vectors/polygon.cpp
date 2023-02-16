@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -CLASS-
 VectorPolygon: Extends the Vector class with support for generating polygons.
@@ -16,7 +16,7 @@ field to FALSE and set only two points (#X1,#Y1) and (#X2,#Y2)
 
 TODO: Add a SetPoint(DOUBLE X, DOUBLE Y) method for modifying existing points.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define MAX_POINTS 1024 * 16 // Maximum of 16k points per polygon object.
 
@@ -62,7 +62,7 @@ static void generate_polygon(extVectorPoly *Vector)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Converts a string of paired coordinates into a VectorPoint array.
 
 static ERROR read_points(extVectorPoly *Self, VectorPoint **Array, LONG *PointCount, CSTRING Value)
@@ -114,7 +114,7 @@ static ERROR read_points(extVectorPoly *Self, VectorPoint **Array, LONG *PointCo
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR POLYGON_Free(extVectorPoly *Self, APTR Void)
 {
@@ -122,11 +122,11 @@ static ERROR POLYGON_Free(extVectorPoly *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Move: Moves a polygon to a new position.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR POLYGON_Move(extVectorPoly *Self, struct acMove *Args)
 {
@@ -153,7 +153,7 @@ static ERROR POLYGON_Move(extVectorPoly *Self, struct acMove *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 MoveToPoint: Moves a polygon to a new central position.
 
@@ -161,7 +161,7 @@ This action will permanently modify the coordinates of a polygon so that they of
 
 The operation will abort if any of the points in the polygon are discovered to be relative coordinates.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR POLYGON_MoveToPoint(extVectorPoly *Self, struct acMoveToPoint *Args)
 {
@@ -201,7 +201,7 @@ static ERROR POLYGON_MoveToPoint(extVectorPoly *Self, struct acMoveToPoint *Args
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR POLYGON_NewObject(extVectorPoly *Self, APTR Void)
 {
@@ -212,7 +212,7 @@ static ERROR POLYGON_NewObject(extVectorPoly *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Resize: Resize the polygon by its width and height.
 
@@ -221,7 +221,7 @@ they are within the provided dimensions.
 
 If a Width and/or Height value of zero is passed, no scaling on the associated axis will occur.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR POLYGON_Resize(extVectorPoly *Self, struct acResize *Args)
 {
@@ -243,14 +243,14 @@ static ERROR POLYGON_Resize(extVectorPoly *Self, struct acResize *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Closed: If TRUE, the polygon will be closed between the start and end points.
 
 Set the Closed field to TRUE to ensure that the polygon is closed between the start and end points.  This behaviour is
 the default.  If FALSE, the polygon will not be closed, which results in the equivalent of the SVG polyline type.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR POLY_GET_Closed(extVectorPoly *Self, LONG *Value)
 {
@@ -266,7 +266,7 @@ static ERROR POLY_SET_Closed(extVectorPoly *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 PathLength: Calibrates the user agent's distance-along-a-path calculations with that of the author.
 
@@ -276,7 +276,7 @@ distance-along-a-path computations by the ratio of PathLength to the user agent'
 length.  This feature potentially affects calculations for text on a path, motion animation and various stroke
 operations.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR POLY_GET_PathLength(extVectorPoly *Self, LONG *Value)
 {
@@ -293,7 +293,7 @@ static ERROR POLY_SET_PathLength(extVectorPoly *Self, LONG Value)
    else return ERR_InvalidValue;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 PointsArray: A series of numbered pairs that define the polygon.
 
@@ -302,7 +302,7 @@ points is required for the shape to be valid.  The &VectorPoint structure consis
 
 &VectorPoint
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR POLY_GET_PointsArray(extVectorPoly *Self, VectorPoint **Value, LONG *Elements)
 {
@@ -327,7 +327,7 @@ static ERROR POLY_SET_PointsArray(extVectorPoly *Self, VectorPoint *Value, LONG 
    else return ERR_InvalidValue;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Points: A series of (X,Y) coordinates that define the polygon.
 
@@ -335,7 +335,7 @@ The Points field can be set with a series of (X,Y) coordinates that will define 
 numbered pairs will be required to define a valid polygon.  Each point must be separated with either white-space or
 a comma.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR POLY_SET_Points(extVectorPoly *Self, CSTRING Value)
 {
@@ -351,14 +351,14 @@ static ERROR POLY_SET_Points(extVectorPoly *Self, CSTRING Value)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 TotalPoints: The total number of coordinates defined in the Points field.
 
 TotalPoints is a read-only field value that reflects the total number of coordinates that have been set in the
 #Points array.  The minimum value is 2.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR POLY_GET_TotalPoints(extVectorPoly *Self, LONG *Value)
 {
@@ -366,7 +366,7 @@ static ERROR POLY_GET_TotalPoints(extVectorPoly *Self, LONG *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 X1: Defines the X coordinate of the first point.
 
@@ -376,7 +376,7 @@ when creating a VectorPolygon that will be used to draw a single line.
 By default the value will be treated as a fixed coordinate.  Relative values are supported if the value is a defined as
 a percentage.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR POLY_GET_X1(extVectorPoly *Self, Variable *Value)
 {
@@ -407,7 +407,7 @@ static ERROR POLY_SET_X1(extVectorPoly *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 X2: Defines the X coordinate of the second point.
 
@@ -417,7 +417,7 @@ when creating a VectorPolygon that will be used to draw a single line.
 By default the value will be treated as a fixed coordinate.  Relative values are supported if the value is a defined as
 a percentage.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR POLY_GET_X2(extVectorPoly *Self, Variable *Value)
 {
@@ -448,7 +448,7 @@ static ERROR POLY_SET_X2(extVectorPoly *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Y1: Defines the Y coordinate of the first point.
 
@@ -458,7 +458,7 @@ when creating a VectorPolygon that will be used to draw a single line.
 By default the value will be treated as a fixed coordinate.  Relative values are supported if the value is a defined as
 a percentage.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR POLY_GET_Y1(extVectorPoly *Self, Variable *Value)
 {
@@ -489,7 +489,7 @@ static ERROR POLY_SET_Y1(extVectorPoly *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Y2: Defines the Y coordinate of the second point.
 
@@ -499,7 +499,7 @@ when creating a VectorPolygon that will be used to draw a single line.
 By default the value will be treated as a fixed coordinate.  Relative values are supported if the value is a defined as
 a percentage.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR POLY_GET_Y2(extVectorPoly *Self, Variable *Value)
 {
@@ -530,7 +530,7 @@ static ERROR POLY_SET_Y2(extVectorPoly *Self, Variable *Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const ActionArray clPolygonActions[] = {
    { AC_Free,        (APTR)POLYGON_Free },

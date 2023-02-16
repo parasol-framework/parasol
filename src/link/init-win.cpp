@@ -1,16 +1,16 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 This file is in the public domain and may be distributed and modified without
 restriction.
 
-******************************************************************************
+**********************************************************************************************************************
 
 This version of the initialisation process does not define a main() function.
 Parasol must be initialised via the init_parasol() function and closed with
 close_parasol().  Another difference vs startup-win.c is that error messages
 are returned by the function and not automatically presented in a dialog box.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -76,7 +76,7 @@ static ERROR PROGRAM_DataFeed(OBJECTPTR, struct acDataFeed *);
 extern "C" void close_parasol(void);
 static APTR find_core(char *PathBuffer, int Size);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 typedef struct CoreBase * OPENCORE(struct OpenInfo *);
 typedef void CLOSECORE(void);
@@ -136,7 +136,7 @@ exit:
    return msg;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void close_parasol(void)
 {

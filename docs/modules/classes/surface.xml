@@ -12,7 +12,7 @@
     <idstring>ID_SURFACE</idstring>
     <category>GUI</category>
     <include>modules/surface.h</include>
-    <copyright>Paul Manias 2003-2022</copyright>
+    <copyright>Paul Manias 2003-2023</copyright>
     <description>
 <p>The Surface class is used to manage the positioning, drawing and interaction with layered display interfaces.  It is supplemented by many classes in the GUI category that either draw graphics to or manage user interactivity with the surface objects that you create.</p>
 <p>Graphically, each surface object represents a rectangular area of space on the display.  The biggest surface object, often referred to as the 'Master' represents the screen space, and is as big as the display itself, if not larger. Surface objects can be placed inside the master and are typically known as children.  You can place more surface objects inside of these children, causing a hierarchy to develop that consists of many objects that are all working together on the display.</p>
@@ -198,7 +198,7 @@ the surface area first).</li>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
-        <error code="AccessMemory">Failed to access the internal surface list.</error>
+        <error code="AccessMemoryID">Failed to access the internal surface list.</error>
       </result>
     </method>
 
@@ -248,7 +248,7 @@ the surface area first).</li>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
-        <error code="AccessMemory">Unable to access internal surface list.</error>
+        <error code="AccessMemoryID">Unable to access internal surface list.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>

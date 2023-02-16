@@ -1,10 +1,10 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -CLASS-
 Script: The Script class defines a common interface for script execution.
@@ -20,7 +20,7 @@ Note that client scripts may sometimes create objects that are unmanaged by the 
 Terminating the script will not remove objects that are outside its resource hierarchy.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define PRV_SCRIPT 1
 #include "../defs.h"
@@ -40,22 +40,22 @@ INLINE CSTRING check_bom(CSTRING Value)
    return Value;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Activate: Executes the script.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCRIPT_Activate(objScript *Self, APTR Void)
 {
    return ERR_NoSupport;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 DataFeed: Script source code can be passed to the object as XML or text via data feeds.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCRIPT_DataFeed(objScript *Self, struct acDataFeed *Args)
 {
@@ -71,7 +71,7 @@ static ERROR SCRIPT_DataFeed(objScript *Self, struct acDataFeed *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 DerefProcedure: Dereferences a function.
@@ -90,7 +90,7 @@ ptr(func) Procedure: The function to be dereferenced.
 Okay:
 NullArgs:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCRIPT_DerefProcedure(objScript *Self, struct scDerefProcedure *Args)
 {
@@ -98,7 +98,7 @@ static ERROR SCRIPT_DerefProcedure(objScript *Self, struct scDerefProcedure *Arg
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Callback: An internal method for managing callbacks.
@@ -117,7 +117,7 @@ Args:
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCRIPT_Callback(objScript *Self, struct scCallback *Args)
 {
@@ -155,7 +155,7 @@ static ERROR SCRIPT_Callback(objScript *Self, struct scCallback *Args)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Exec: Executes a procedure in the script.
@@ -218,7 +218,7 @@ NullArgs
 Args: The TotalArgs value is invalid.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCRIPT_Exec(objScript *Self, struct scExec *Args)
 {
@@ -248,7 +248,7 @@ static ERROR SCRIPT_Exec(objScript *Self, struct scExec *Args)
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR SCRIPT_Free(objScript *Self, APTR Void)
 {
@@ -263,7 +263,7 @@ static ERROR SCRIPT_Free(objScript *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 GetProcedureID: Converts a procedure name to an ID.
@@ -289,7 +289,7 @@ Okay
 NullArgs
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCRIPT_GetProcedureID(objScript *Self, struct scGetProcedureID *Args)
 {
@@ -300,11 +300,11 @@ static ERROR SCRIPT_GetProcedureID(objScript *Self, struct scGetProcedureID *Arg
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 GetVar: Script parameters can be retrieved through this action.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCRIPT_GetVar(objScript *Self, struct acGetVar *Args)
 {
@@ -325,7 +325,7 @@ static ERROR SCRIPT_GetVar(objScript *Self, struct acGetVar *Args)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR SCRIPT_Init(objScript *Self, APTR Void)
 {
@@ -341,7 +341,7 @@ static ERROR SCRIPT_Init(objScript *Self, APTR Void)
    return ERR_NoSupport;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR SCRIPT_NewObject(objScript *Self, APTR Void)
 {
@@ -368,11 +368,11 @@ static ERROR SCRIPT_Reset(objScript *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 SetVar: Script parameters can be set through this action.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SCRIPT_SetVar(objScript *Self, struct acSetVar *Args)
 {
@@ -391,7 +391,7 @@ static ERROR SCRIPT_SetVar(objScript *Self, struct acSetVar *Args)
 
    return VarSetString(Self->Vars, Args->Field, Args->Value);
 }
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 CacheFile: Compilable script languages can be compiled to a cache file.
@@ -403,7 +403,7 @@ file is used instead of the original source code.
 If the cache file exists, a determination on whether the source code has been edited is usually made by comparing
 date stamps on the original and cache files.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_CacheFile(objScript *Self, STRING *Value)
 {
@@ -418,7 +418,7 @@ static ERROR SET_CacheFile(objScript *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 CurrentLine: Indicates the current line being executed when in debug mode.
@@ -439,7 +439,7 @@ propagated through the call stack.
 -FIELD-
 ErrorString: A human readable error string may be declared here following a script execution failure.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_ErrorString(objScript *Self, STRING *Value)
 {
@@ -454,7 +454,7 @@ static ERROR SET_ErrorString(objScript *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Flags: Optional flags.
@@ -466,7 +466,7 @@ Language: Indicates the language (locale) that the source script is written in.
 The Language value indicates the language in which the source script was written.  The default setting is ENG, the
 code for international English.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Language(objScript *Self, STRING *Value)
 {
@@ -474,7 +474,7 @@ static ERROR GET_Language(objScript *Self, STRING *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 LineOffset: For debugging purposes, this value is added to any message referencing a line number.
@@ -500,7 +500,7 @@ A target for the script may be specified by using the 'target' argument in the p
 valid existing object).
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Path(objScript *Self, STRING *Value)
 {
@@ -597,7 +597,7 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Internal: Name
 
 static ERROR SET_Name(objScript *Self, CSTRING Name)
@@ -610,7 +610,7 @@ static ERROR SET_Name(objScript *Self, CSTRING Name)
    else return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 PRIVATE: Owner
 
@@ -622,7 +622,7 @@ they read the OwnerID field directly.
 NB: It probably makes more sense to use a support routine for NewChild() to divert object resource tracking during
 script activation - something to try when we have the time?
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Owner(objScript *Self, OBJECTID *Value)
 {
@@ -637,7 +637,7 @@ static ERROR SET_Owner(objScript *Self, OBJECTID Value)
 
    if (Value) {
       OBJECTPTR newowner;
-      if (!AccessObject(Value, 2000, &newowner)) {
+      if (!AccessObjectID(Value, 2000, &newowner)) {
          SetOwner(Self, newowner);
          ReleaseObject(newowner);
          return ERR_Okay;
@@ -647,7 +647,7 @@ static ERROR SET_Owner(objScript *Self, OBJECTID Value)
    else return log.warning(ERR_Args);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Procedure: Allows you to specify a procedure to be executed from within a script.
@@ -659,7 +659,7 @@ specific routine whenever the script is activated with the Activate action.
 If this field is not set, the first procedure in the script, or the 'main' procedure (as defined by the script type) is
 executed by default.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Procedure(objScript *Self, CSTRING *Value)
 {
@@ -674,7 +674,7 @@ static ERROR SET_Procedure(objScript *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Results: Stores multiple string results for languages that support this feature.
@@ -684,7 +684,7 @@ execution of any procedure.
 
 For maximum compatibility in type conversion, the results are stored as an array of strings.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Results(objScript *Self, STRING **Value, LONG *Elements)
 {
@@ -731,7 +731,7 @@ static ERROR SET_Results(objScript *Self, CSTRING *Value, LONG Elements)
    else return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Statement: Scripts can be executed from any string passed into this field.
@@ -740,7 +740,7 @@ Scripts may be compiled into a script object by setting the Statement field with
 often convenient for embedding a small script into another script file without having to make external file references.
 It is also commonly used for executing scripts that have been embedded into program binaries.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_String(objScript *Self, CSTRING *Value)
 {
@@ -757,7 +757,7 @@ static ERROR SET_String(objScript *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Target: Reference to the default container that new script objects will be initialised to.
@@ -771,7 +771,7 @@ TotalArgs: Reflects the total number of arguments used in a script object.
 The total number of arguments that have been set in a script object through the unlisted field mechanism are reflected
 in the value of this field.  If you have not set any arguments then the field value will be zero.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_TotalArgs(objScript *Self, LONG *Value)
 {
@@ -779,9 +779,9 @@ static ERROR GET_TotalArgs(objScript *Self, LONG *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 PRIVATE: Variables
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Variables(objScript *Self, KeyStore **Value)
 {
@@ -795,7 +795,7 @@ static ERROR GET_Variables(objScript *Self, KeyStore **Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 WorkingPath: Defines the script's working path (folder).
@@ -809,7 +809,7 @@ The working path is always fully qualified with a slash or colon at the end of t
 You can manually change the working path by setting this field with a custom string.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
 {
@@ -882,7 +882,7 @@ static ERROR SET_WorkingPath(objScript *Self, STRING Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "class_script_def.c"
 
@@ -911,7 +911,7 @@ static const FieldArray clScriptFields[] = {
    END_FIELD
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 extern "C" ERROR add_script_class(void)
 {

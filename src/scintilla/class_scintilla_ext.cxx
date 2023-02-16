@@ -80,7 +80,7 @@ void ScintillaParasol::SetStyles(const struct styledef *Def, LONG Total)
    WndProc(SCI_STYLESETFORE, STYLE_DEFAULT, (long int)SCICOLOUR(scintilla->TextColour.Red, scintilla->TextColour.Green, scintilla->TextColour.Blue));
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** This is the main entry point, we're called from the Init action here.
 */
 
@@ -116,7 +116,7 @@ ScintillaParasol::~ScintillaParasol()
 
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::Finalise()
 {
@@ -128,7 +128,7 @@ void ScintillaParasol::Finalise()
    ScintillaBase::Finalise();
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::CreateCallTipWindow(Scintilla::PRectangle rc)
 {
@@ -136,7 +136,7 @@ void ScintillaParasol::CreateCallTipWindow(Scintilla::PRectangle rc)
    log.trace("");
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::AddToPopUp(const char *label, int cmD, bool enabled)
 {
@@ -154,7 +154,7 @@ void ScintillaParasol::AddToPopUp(const char *label, int cmD, bool enabled)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::SetVerticalScrollPos()
 {
@@ -175,7 +175,7 @@ void ScintillaParasol::SetVerticalScrollPos()
 */
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::SetHorizontalScrollPos()
 {
@@ -194,7 +194,7 @@ void ScintillaParasol::SetHorizontalScrollPos()
 */
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** nMax: Total number of lines in document
 ** nPage: Number of lines per view.
 */
@@ -249,7 +249,7 @@ bool ScintillaParasol::ModifyScrollBars(int nMax, int nPage)
    return TRUE;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Called after SCI_SETWRAPMODE and SCI_SETHSCROLLBAR.
 
 void ScintillaParasol::ReconfigureScrollBars()
@@ -283,7 +283,7 @@ void ScintillaParasol::CopyToClipboard(const Scintilla::SelectionText &selectedT
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Cut the selected text to the clipboard.
 */
 
@@ -300,7 +300,7 @@ void ScintillaParasol::Cut()
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Copy the selected text to the clipboard.
 */
 
@@ -316,7 +316,7 @@ void ScintillaParasol::Copy()
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::Paste()
 {
@@ -364,7 +364,7 @@ void ScintillaParasol::Paste()
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This is used for the drag and drop of selected text.
 
 void ScintillaParasol::ClaimSelection()
@@ -375,7 +375,7 @@ void ScintillaParasol::ClaimSelection()
    else primarySelection = false;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::NotifyChange()
 {
@@ -383,7 +383,7 @@ void ScintillaParasol::NotifyChange()
    // up with the SCN_MODIFIED message, which carries a lot more detail.
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Sometimes Scintilla will report events that have occurred in the text editor.
 
 void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
@@ -623,7 +623,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
    else log.traceWarning("Notification code %d unsupported.", code);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::ScrollText(int linesToMove)
 {
@@ -652,7 +652,7 @@ void ScintillaParasol::ScrollText(int linesToMove)
    ActionMsg(AC_Draw, surfaceid, &draw);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::SetTicking(bool On)
 {
@@ -666,7 +666,7 @@ void ScintillaParasol::SetTicking(bool On)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Grab or release the mouse and keyboard.  This is usually called when the user clicks a mouse button and holds it
 // while dragging the mouse (e.g. when highlighting text).
 
@@ -677,7 +677,7 @@ void ScintillaParasol::SetMouseCapture(bool On)
    captured_mouse = On;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Simply returns the capture state.
 */
 
@@ -687,7 +687,7 @@ bool ScintillaParasol::HaveMouseCapture()
    return captured_mouse;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 sptr_t ScintillaParasol::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam)
 {
@@ -705,14 +705,14 @@ sptr_t ScintillaParasol::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lP
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 sptr_t ScintillaParasol::DirectFunction(ScintillaParasol *sci, unsigned int iMessage, uptr_t wParam, sptr_t lParam)
 {
    return sci->WndProc(iMessage, wParam, lParam);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Do nothing; this is a Win32 support function.
 */
 
@@ -721,7 +721,7 @@ sptr_t ScintillaParasol::DefWndProc(unsigned int iMessage, uptr_t wParam, sptr_t
    return 0;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Refer to the pan_surface.cxx file for the drawing routines that are used when panDraw() is active.
 */
 
@@ -762,7 +762,7 @@ void ScintillaParasol::panDraw(objSurface *TargetSurface, objBitmap *Bitmap)
    this->paintState = notPainting;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Called from the SetFont() method whenever the user opts to change the font.
 */
 
@@ -780,7 +780,7 @@ void ScintillaParasol::panFontChanged(void *Font, void *BoldFont, void *ItalicFo
    this->RefreshStyleData();
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::panWordwrap(int Value)
 {
@@ -809,7 +809,7 @@ void ScintillaParasol::panWordwrap(int Value)
    //SendScintilla(SCI_ENSUREVISIBLE, SendScintilla(SCI_LINEFROMPOSITION, SendScintilla(SCI_GETCURRENTPOS)));
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::panIdleEvent()
 {
@@ -834,7 +834,7 @@ void ScintillaParasol::panIdleEvent()
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::panKeyDown(int Key, LONG Flags)
 {
@@ -845,7 +845,7 @@ void ScintillaParasol::panKeyDown(int Key, LONG Flags)
    KeyDown(Key, Flags & KQ_SHIFT, Flags & KQ_CTRL, Flags & KQ_ALT, &consumed);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int ScintillaParasol::KeyDefault(int key, int modifiers)
 {
@@ -854,7 +854,7 @@ int ScintillaParasol::KeyDefault(int key, int modifiers)
    return 1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::panMousePress(int Button, double x, double y)
 {
@@ -877,7 +877,7 @@ void ScintillaParasol::panMousePress(int Button, double x, double y)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::panMouseMove(double x, double y)
 {
@@ -885,7 +885,7 @@ void ScintillaParasol::panMouseMove(double x, double y)
    ButtonMove(point);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::panMouseRelease(int Button, double x, double y)
 {
@@ -899,7 +899,7 @@ void ScintillaParasol::panMouseRelease(int Button, double x, double y)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::panResized()
 {
@@ -908,7 +908,7 @@ void ScintillaParasol::panResized()
    ChangeSize();
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::panScrollToX(double x)
 {
@@ -917,7 +917,7 @@ void ScintillaParasol::panScrollToX(double x)
    HorizontalScrollTo((int)(x));
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::panScrollToY(double y)
 {
@@ -926,7 +926,7 @@ void ScintillaParasol::panScrollToY(double y)
    ScrollTo((int)(y / vs.lineHeight));
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 #if 0
 void ScintillaParasol::SetSelectedTextStyle(int style)
 {
@@ -937,21 +937,21 @@ void ScintillaParasol::SetSelectedTextStyle(int style)
    WndProc(SCI_SETSTYLING, SelectionEnd() - SelectionStart(), style);//style
 }
 #endif
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::panGotFocus()
 {
    SetFocusState(TRUE);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void ScintillaParasol::panLostFocus()
 {
    SetFocusState(FALSE);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Get the cursor position.
 */
 
@@ -967,7 +967,7 @@ void ScintillaParasol::panGetCursorPosition(int *line, int *index)
    *index = pos - linpos;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Set the cursor position.
 */
 
@@ -986,7 +986,7 @@ void ScintillaParasol::panSetCursorPosition(int line, int index)
    SendScintilla(SCI_GOTOPOS, pos);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Ensure a line is visible (expands folded zones).
 */
 
@@ -995,7 +995,7 @@ void ScintillaParasol::panEnsureLineVisible(int line)
    SendScintilla(SCI_ENSUREVISIBLEENFORCEPOLICY,line);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Set the lexer.  To turn off the lexer, use SCLEX_NULL.
 */
 
@@ -1017,7 +1017,7 @@ void ScintillaParasol::SetLexerLanguage(const char *languageName)
    SendScintilla(SCI_SETLEXERLANGUAGE, 0UL, languageName);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Handle brace matching.
 */
 
@@ -1059,7 +1059,7 @@ void ScintillaParasol::braceMatch()
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Check if the character at a position is a brace.
 */
 
@@ -1080,7 +1080,7 @@ long ScintillaParasol::checkBrace(long pos,int brace_style)
    return brace_pos;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Find a brace and it's match.  Return TRUE if the current position is inside a pair of braces.
 */
 
@@ -1186,7 +1186,7 @@ static const int defaultFoldMarginWidth = 14;
 // The default set of characters that make up a word.
 static const char *defaultWordChars = "_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Handle a possible change to any current call tip.
 */
 
@@ -1332,7 +1332,7 @@ void ScintillaParasol::handleCallTipClick(int dir)
 }
 #endif
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Possibly start auto-completion.
 */
 
@@ -1427,7 +1427,7 @@ void ScintillaParasol::panStartAutoCompletion(AutoCompletionSource acs, bool che
    SendScintilla(SCI_AUTOCSHOW,wlen,acWordList.latin1());
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Maintain the indentation of the previous line.
 */
 
@@ -1450,7 +1450,7 @@ void ScintillaParasol::panMaintainIndentation(char ch,long pos)
    if (ind > 0) autoIndentLine(pos,curr_line,ind);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Implement auto-indentation.
 */
 
@@ -1482,7 +1482,7 @@ void ScintillaParasol::panAutoIndentation(char ch,long pos)
       autoIndentLine(pos,curr_line,blockIndent(curr_line - 1));
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Set the indentation for a line.
 */
 
@@ -1504,7 +1504,7 @@ void ScintillaParasol::panAutoIndentLine(long pos,int line,int indent)
    if (new_pos >= 0) SendScintilla(SCI_SETSEL,new_pos,new_pos);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Return the indentation of the block defined by the given line (or something significant before).
 */
 
@@ -1541,7 +1541,7 @@ int ScintillaParasol::panBlockIndent(int line)
    return indentation(line);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Return TRUE if all characters starting at spos up to, but not including epos, are spaces or tabs.
 */
 
@@ -1556,7 +1556,7 @@ bool ScintillaParasol::panRangeIsWhitespace(long spos,long epos)
    return TRUE;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Returns the indentation state of a line.
 */
 
@@ -1598,7 +1598,7 @@ ScintillaParasol::IndentState ScintillaParasol::panGetIndentState(int line)
    return istate;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Text is a pointer to some styled text (ie. a character byte followed by a
 // style byte).  style is a style number.  words is a space separated list of
 // words.  Returns the position in the text of the last one of the words with
@@ -1655,7 +1655,7 @@ int ScintillaParasol::panFindStyledWord(const char *text, int style, const char 
    return -1;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Return the end-of-line mode.
 */
 
@@ -1895,7 +1895,7 @@ bool ScintillaParasol::isModified()
    return modified;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Handle the SCN_MARGINCLICK notification.
 */
 
@@ -1913,7 +1913,7 @@ void ScintillaParasol::handleMarginClick(int pos,int modifiers,int margin)
    else emit marginClicked(margin,line,(ButtonState)state);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Return the state of indentation guides.
 */
 
@@ -1928,7 +1928,7 @@ void ScintillaParasol::setIndentationGuides(bool enable)
    SendScintilla(SCI_SETINDENTATIONGUIDES,enable);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Define a marker based on a character.
 */
 
@@ -1939,7 +1939,7 @@ int ScintillaParasol::panMarkerDefine(char ch,int mnr)
    return mnr;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Add a marker to a line.
 */
 
@@ -1949,7 +1949,7 @@ int ScintillaParasol::panMarkerAdd(int linenr,int mnr)
    return SendScintilla(SCI_MARKERADD,linenr,mnr);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Get the marker mask for a line.
 */
 
@@ -1958,7 +1958,7 @@ unsigned ScintillaParasol::panMarkersAtLine(int linenr)
    return SendScintilla(SCI_MARKERGET,linenr);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Delete a marker from a line.
 */
 
@@ -1977,7 +1977,7 @@ void ScintillaParasol::panMarkerDelete(int linenr,int mnr)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Delete a marker from the text.
 */
 
@@ -1989,7 +1989,7 @@ void ScintillaParasol::panMarkerDeleteAll(int mnr)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Delete a marker handle from the text.
 */
 
@@ -1998,7 +1998,7 @@ void ScintillaParasol::panMarkerDeleteHandle(int mhandle)
    SendScintilla(SCI_MARKERDELETEHANDLE,mhandle);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Return the line containing a marker instance.
 */
 
@@ -2007,7 +2007,7 @@ int ScintillaParasol::panMarkerLine(int mhandle)
    return SendScintilla(SCI_MARKERLINEFROMHANDLE,mhandle);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Search forwards for a marker.
 */
 
@@ -2016,7 +2016,7 @@ int ScintillaParasol::panMarkerFindNext(int linenr,unsigned mask)
    return SendScintilla(SCI_MARKERNEXT,linenr,mask);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Search backwards for a marker.
 */
 
@@ -2025,7 +2025,7 @@ int ScintillaParasol::panMarkerFindPrevious(int linenr,unsigned mask)
    return SendScintilla(SCI_MARKERPREVIOUS,linenr,mask);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Set the marker background colour.
 */
 
@@ -2050,7 +2050,7 @@ void ScintillaParasol::panSetMarkerBackgroundColor(const QColor &col,int mnr)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Set the marker foreground colour.
 */
 
@@ -2075,7 +2075,7 @@ void ScintillaParasol::panSetMarkerForegroundColor(const QColor &col,int mnr)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Check a marker, allocating a marker number if necessary.
 */
 
@@ -2106,7 +2106,7 @@ void ScintillaParasol::panCheckMarker(int &mnr)
       allocatedMarkers |= (1 << mnr);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Reset the fold margin colours.
 */
 
@@ -2116,7 +2116,7 @@ void ScintillaParasol::resetFoldMarginColors()
    SendScintilla(SCI_SETFOLDMARGINCOLOUR,0,0L);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Set the fold margin colours.
 */
 
@@ -2126,7 +2126,7 @@ void ScintillaParasol::panSetFoldMarginColors(const QColor &fore,const QColor &b
    SendScintilla(SCI_SETFOLDMARGINCOLOUR,1,back);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Handle a change to the user visible user interface.
 */
 
@@ -2205,7 +2205,7 @@ void ScintillaParasol::autoCompleteFromDocument()
       startAutoCompletion(AcsDocument,FALSE,FALSE,showSingle);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Return TRUE if the current character (ie. the one before the carat) is part
 ** of a word.
 */
@@ -2217,7 +2217,7 @@ bool ScintillaParasol::currentCharInWord()
    return isWordChar(SendScintilla(SCI_GETCHARAT,pos - 1));
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Registered an image.
 */
 
@@ -2226,7 +2226,7 @@ void ScintillaParasol::registerImage(int id,const QPixmap *pm)
    SendScintilla(SCI_REGISTERIMAGE,id,pm);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Clear all registered images.
 */
 
@@ -2235,7 +2235,7 @@ void ScintillaParasol::clearRegisteredImages()
    SendScintilla(SCI_CLEARREGISTEREDIMAGES);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Set the fill-up characters for auto-completion.
 */
 
@@ -2244,7 +2244,7 @@ void ScintillaParasol::setAutoCompletionFillups(const char *fillups)
    SendScintilla(SCI_AUTOCSETFILLUPS,fillups);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Set the case sensitivity for auto-completion.
 */
 
@@ -2253,7 +2253,7 @@ void ScintillaParasol::setAutoCompletionCaseSensitivity(bool cs)
    SendScintilla(SCI_AUTOCSETIGNORECASE,!cs);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Return the case sensitivity for auto-completion.
 */
 
@@ -2262,7 +2262,7 @@ bool ScintillaParasol::autoCompletionCaseSensitivity()
    return !SendScintilla(SCI_AUTOCGETIGNORECASE);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Set the replace word mode for auto-completion.
 */
 
@@ -2271,7 +2271,7 @@ void ScintillaParasol::setAutoCompletionReplaceWord(bool replace)
    SendScintilla(SCI_AUTOCSETDROPRESTOFWORD,replace);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Return the replace word mode for auto-completion.
 */
 
@@ -2280,7 +2280,7 @@ bool ScintillaParasol::autoCompletionReplaceWord()
    return SendScintilla(SCI_AUTOCGETDROPRESTOFWORD);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Set the single item mode for auto-completion.
 */
 
@@ -2289,7 +2289,7 @@ void ScintillaParasol::setAutoCompletionShowSingle(bool single)
    showSingle = single;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Return the single item mode for auto-completion.
 */
 

@@ -1,10 +1,10 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -MODULE-
 Document: Provides document display and editing facilities.
@@ -112,7 +112,7 @@ CELLS
 Borders: Borders are drawn within the cell, so the cell-padding value need to at least be the same value as the border
 thickness, or text inside the cell will mix with the border.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 //#define DEBUG
 //#define DBG_LAYOUT
@@ -205,7 +205,7 @@ static OBJECTPTR clDocument = NULL;
 static RGB8 glHighlight = { 220, 220, 255, 255 };
 static OBJECTPTR modDisplay = NULL, modFont = NULL, modDocument = NULL, modVector = NULL;
 
-//****************************************************************************
+//********************************************************************************************************************
 
 class extDocument : public objDocument {
    public:
@@ -694,7 +694,7 @@ static const CSTRING strCodes[] = {
    "IndexEnd"
 };
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Function prototypes.
 */
 
@@ -838,7 +838,7 @@ T * escape_data(UBYTE *Stream, LONG Index) {
 
 static FIELD FID_LayoutSurface;
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
@@ -888,7 +888,7 @@ static ERROR CMDOpen(OBJECTPTR Module)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 CharLength: Returns the length of any character or escape code in a document data stream.
@@ -904,7 +904,7 @@ int: The length of the character is returned, or 0 if an error occurs.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static LONG docCharLength(extDocument *Self, LONG Index)
 {
@@ -920,7 +920,7 @@ static LONG docCharLength(extDocument *Self, LONG Index)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 INLINE LONG find_cell(extDocument *Self, LONG ID, ULONG EditHash)
 {
@@ -942,7 +942,7 @@ INLINE LONG find_cell(extDocument *Self, LONG ID, ULONG EditHash)
    return -1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 INLINE DocEdit * find_editdef(extDocument *Self, ULONG Hash)
 {
@@ -953,7 +953,7 @@ INLINE DocEdit * find_editdef(extDocument *Self, ULONG Hash)
    return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 INLINE void layout_doc_fast(extDocument *Self)
 {
@@ -967,7 +967,7 @@ INLINE void layout_doc_fast(extDocument *Self)
 #include "class/document_class.cpp"
 #include "functions.cpp"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR add_document_class(void)
 {
@@ -987,6 +987,6 @@ static ERROR add_document_class(void)
    return clDocument ? ERR_Okay : ERR_AddClass;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_DOCUMENT)

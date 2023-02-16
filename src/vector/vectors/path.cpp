@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -CLASS-
 VectorPath: Extends the Vector class with support for generating custom paths.
@@ -7,9 +7,9 @@ VectorPath provides support for parsing SVG styled path strings.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void generate_path(extVectorPath *Vector)
 {
@@ -19,7 +19,7 @@ static void generate_path(extVectorPath *Vector)
    bounding_rect_single(Vector->BasePath, 0, &Vector->BX1, &Vector->BY1, &Vector->BX2, &Vector->BY2);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void convert_to_aggpath(std::vector<PathCommand> &Paths, agg::path_storage *BasePath)
 {
@@ -150,7 +150,7 @@ void convert_to_aggpath(std::vector<PathCommand> &Paths, agg::path_storage *Base
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTORPATH_Clear(extVectorPath *Self, APTR Void)
 {
@@ -160,7 +160,7 @@ static ERROR VECTORPATH_Clear(extVectorPath *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTORPATH_Flush(extVectorPath *Self, APTR Void)
 {
@@ -169,7 +169,7 @@ static ERROR VECTORPATH_Flush(extVectorPath *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTORPATH_Free(extVectorPath *Self, APTR Void)
 {
@@ -178,14 +178,14 @@ static ERROR VECTORPATH_Free(extVectorPath *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTORPATH_Init(extVectorPath *Self, APTR Void)
 {
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR VECTORPATH_NewObject(extVectorPath *Self, APTR Void)
 {
@@ -194,7 +194,7 @@ static ERROR VECTORPATH_NewObject(extVectorPath *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 AddCommand: Add one or more commands to the end of the path sequence.
@@ -212,7 +212,7 @@ bufsize Size: The size of the Command buffer, in bytes.
 Okay
 NullArgs
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORPATH_AddCommand(extVectorPath *Self, struct vpAddCommand *Args)
 {
@@ -233,7 +233,7 @@ static ERROR VECTORPATH_AddCommand(extVectorPath *Self, struct vpAddCommand *Arg
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 GetCommand: Retrieve a specific command from the path sequence.
@@ -250,7 +250,7 @@ Okay
 NullArgs
 OutOfRange
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORPATH_GetCommand(extVectorPath *Self, struct vpGetCommand *Args)
 {
@@ -263,7 +263,7 @@ static ERROR VECTORPATH_GetCommand(extVectorPath *Self, struct vpGetCommand *Arg
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 RemoveCommand: Remove at least one command from the path sequence.
@@ -281,7 +281,7 @@ NullArgs
 OutOfRange
 NothingDone
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORPATH_RemoveCommand(extVectorPath *Self, struct vpRemoveCommand *Args)
 {
@@ -299,7 +299,7 @@ static ERROR VECTORPATH_RemoveCommand(extVectorPath *Self, struct vpRemoveComman
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SetCommand: Copies one or more commands into an existing path.
@@ -317,7 +317,7 @@ NullArgs
 OutOfRange
 BufferOverflow
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORPATH_SetCommand(extVectorPath *Self, struct vpSetCommand *Args)
 {
@@ -338,7 +338,7 @@ static ERROR VECTORPATH_SetCommand(extVectorPath *Self, struct vpSetCommand *Arg
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SetCommandList: The fastest available mechanism for setting a series of path instructions.
@@ -358,7 +358,7 @@ NullArgs
 NotInitialised
 Args
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORPATH_SetCommandList(extVectorPath *Self, struct vpSetCommandList *Args)
 {
@@ -382,14 +382,14 @@ static ERROR VECTORPATH_SetCommandList(extVectorPath *Self, struct vpSetCommandL
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Commands: Direct pointer to the PathCommand array.
 
 Read the Commands field to obtain a direct pointer to the PathCommand array.  This will allow the path to be modified
 directly.  After making changes to the path, call #Flush() to register the changes for the next redraw.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORPATH_GET_Commands(extVectorPath *Self, PathCommand **Value, LONG *Elements)
 {
@@ -398,7 +398,7 @@ static ERROR VECTORPATH_GET_Commands(extVectorPath *Self, PathCommand **Value, L
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 PathLength: Calibrates the user agent's distance-along-a-path calculations with that of the author.
 
@@ -408,7 +408,7 @@ distance-along-a-path computations by the ratio of PathLength to the user agent'
 length.  This feature potentially affects calculations for text on a path, motion animation and various stroke
 operations.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORPATH_GET_PathLength(extVectorPath *Self, LONG *Value)
 {
@@ -425,7 +425,7 @@ static ERROR VECTORPATH_SET_PathLength(extVectorPath *Self, LONG Value)
    else return ERR_InvalidValue;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Sequence: A sequence of points and instructions that will define the path.
 
@@ -453,7 +453,7 @@ of the previous command).
 
 To terminate a path without joining it to the first coordinate, omit the 'Z' from the end of the sequence.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORPATH_SET_Sequence(extVectorPath *Self, CSTRING Value)
 {
@@ -466,14 +466,14 @@ static ERROR VECTORPATH_SET_Sequence(extVectorPath *Self, CSTRING Value)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 TotalCommands: The total number of points defined in the path sequence.
 
 The total number of points defined in the path #Sequence is reflected in this field.  Modifying the total directly is
 permitted, although this should be used for shrinking the list because expansion will create uninitialised command entries.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORPATH_GET_TotalCommands(extVectorPath *Self, LONG *Value)
 {
@@ -489,7 +489,7 @@ static ERROR VECTORPATH_SET_TotalCommands(extVectorPath *Self, LONG Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const FieldArray clPathFields[] = {
    { "Sequence",      FDF_VIRTUAL|FDF_STRING|FDF_RW, 0, (APTR)VECTOR_GET_Sequence, (APTR)VECTORPATH_SET_Sequence },
@@ -501,7 +501,7 @@ static const FieldArray clPathFields[] = {
 
 #include "path_def.c"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR init_path(void)
 {

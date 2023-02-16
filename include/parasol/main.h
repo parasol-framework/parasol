@@ -30,7 +30,7 @@ class ScopedAccessMemory { // C++ wrapper for automatically releasing shared mem
 
       ScopedAccessMemory(LONG ID, LONG Flags, LONG Milliseconds = 5000) {
          id = ID;
-         error = AccessMemory(ID, Flags, Milliseconds, (APTR *)&ptr);
+         error = AccessMemoryID(ID, Flags, Milliseconds, (APTR *)&ptr);
       }
 
       ~ScopedAccessMemory() { if (!error) ReleaseMemory(ptr); }
@@ -67,11 +67,11 @@ class ScopedObjectLock { // C++ wrapper for automatically releasing an object
       T *obj;
 
       ScopedObjectLock(OBJECTID ObjectID, LONG Milliseconds = 3000) {
-         error = AccessObject(ObjectID, Milliseconds, &obj);
+         error = AccessObjectID(ObjectID, Milliseconds, &obj);
       }
 
       ScopedObjectLock(OBJECTPTR Object, LONG Milliseconds = 3000) {
-         error = AccessPrivateObject(Object, Milliseconds);
+         error = LockObject(Object, Milliseconds);
          obj = (T *)Object;
       }
 
@@ -200,6 +200,9 @@ inline FieldValue ArchiveName(std::string Value) { return FieldValue(FID_Archive
 constexpr FieldValue Volume(CSTRING Value) { return FieldValue(FID_Volume, Value); }
 inline FieldValue Volume(std::string Value) { return FieldValue(FID_Volume, Value.c_str()); }
 
+constexpr FieldValue DPMS(CSTRING Value) { return FieldValue(FID_DPMS, Value); }
+inline FieldValue DPMS(std::string Value) { return FieldValue(FID_DPMS, Value.c_str()); }
+
 constexpr FieldValue ReadOnly(LONG Value) { return FieldValue(FID_ReadOnly, Value); }
 constexpr FieldValue ReadOnly(bool Value) { return FieldValue(FID_ReadOnly, (Value ? 1 : 0)); }
 
@@ -233,11 +236,21 @@ constexpr FieldValue Units(LONG Value) { return FieldValue(FID_Units, Value); }
 constexpr FieldValue AspectRatio(LONG Value) { return FieldValue(FID_AspectRatio, Value); }
 constexpr FieldValue ColourSpace(LONG Value) { return FieldValue(FID_ColourSpace, Value); }
 constexpr FieldValue WindowHandle(LONG Value) { return FieldValue(FID_WindowHandle, Value); }
+constexpr FieldValue WindowHandle(APTR Value) { return FieldValue(FID_WindowHandle, Value); }
 constexpr FieldValue StrokeWidth(DOUBLE Value) { return FieldValue(FID_StrokeWidth, Value); }
 constexpr FieldValue Closed(bool Value) { return FieldValue(FID_Closed, (Value ? 1 : 0)); }
 constexpr FieldValue Visibility(LONG Value) { return FieldValue(FID_Visibility, Value); }
 constexpr FieldValue Input(CPTR Value) { return FieldValue(FID_Input, Value); }
 constexpr FieldValue Picture(OBJECTPTR Value) { return FieldValue(FID_Picture, Value); }
+constexpr FieldValue BitsPerPixel(LONG Value) { return FieldValue(FID_BitsPerPixel, Value); }
+constexpr FieldValue BytesPerPixel(LONG Value) { return FieldValue(FID_BytesPerPixel, Value); }
+constexpr FieldValue DataFlags(LONG Value) { return FieldValue(FID_DataFlags, Value); }
+constexpr FieldValue RefreshRate(DOUBLE Value) { return FieldValue(FID_RefreshRate, Value); }
+constexpr FieldValue Opacity(DOUBLE Value) { return FieldValue(FID_Opacity, Value); }
+constexpr FieldValue PopOver(OBJECTID Value) { return FieldValue(FID_PopOver, Value); }
+constexpr FieldValue Parent(OBJECTID Value) { return FieldValue(FID_Parent, Value); }
+constexpr FieldValue MaxWidth(LONG Value) { return FieldValue(FID_MaxWidth, Value); }
+constexpr FieldValue MaxHeight(LONG Value) { return FieldValue(FID_MaxHeight, Value); }
 
 template <class T> FieldValue PageWidth(T Value) {
    static_assert(std::is_arithmetic<T>::value, "PageWidth value must be numeric");
@@ -289,5 +302,4 @@ template <class T> FieldValue Y2(T Value) {
    return FieldValue(FID_Y2, Value);
 }
 
-constexpr FieldValue BitsPerPixel(LONG Value) { return FieldValue(FID_BitsPerPixel, Value); }
 }

@@ -1,5 +1,5 @@
 
-//****************************************************************************
+//********************************************************************************************************************
 // Lua C closure executed via calls to obj.acName() or obj.mtName()
 
 static int object_call(lua_State *Lua)
@@ -147,7 +147,7 @@ static int object_call(lua_State *Lua)
    return results;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Build argument buffer for actions and methods.
 
 ERROR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE *argbuffer, LONG *ResultCount)

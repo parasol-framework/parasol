@@ -5,7 +5,7 @@ static void remove_private_locks(void);
 static void free_shared_control(void);
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 EXPORT void CloseCore(void)
 {
@@ -417,7 +417,7 @@ EXPORT void CloseCore(void)
    fflush(stderr);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Calls all loaded modules with an Expunge notification.
 **
 ** NOTE: If forced expunging occurs, it usually means that two modules have loaded each other.  This means that they
@@ -468,7 +468,7 @@ EXPORT void Expunge(WORD Force)
             if (!class_in_use) {
                if (mod_master->Expunge) {
                   parasol::Log log(__FUNCTION__);
-                  log.branch("Sending expunge request to the %s module, routine %p, master #%d.", mod_master->Name, mod_master->Expunge, mod_master->UID);
+                  log.branch("Sending expunge request to the %s module #%d.", mod_master->Name, mod_master->UID);
                   if (!mod_master->Expunge()) {
                      ccount++;
                      if (acFree(mod_master)) {
@@ -497,7 +497,7 @@ EXPORT void Expunge(WORD Force)
    if (Force) {
       // Any modules that are still in the system are probably there because they have created classes that have
       // objects still in use.  This routine prints warning messages to let the developer know about this.  (NB: There
-      // can be times where private objects are tracked outside of the process space and therefore will not be
+      // can be times where objects are tracked outside of the process space and therefore will not be
       // destroyed by earlier routines.  This is normal and they will be taken out when the private memory resources
       // are deallocated).
 
@@ -593,7 +593,7 @@ static void free_private_memory(void)
 }
 
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Frees public objects and memory blocks.  Please note that this routine is also used by validate_process().
 */
 
@@ -618,7 +618,7 @@ void free_public_resources(OBJECTID TaskID)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** This function does not release locks on public objects (special handling for objects can be found elsewhere in the
 ** shutdown program flow).  NOTE:  This function is also used by validate_process() to clear zombie resource locks.
 */
@@ -689,7 +689,7 @@ static void remove_private_locks(void)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #ifdef __unix__
 static void free_shared_control(void)

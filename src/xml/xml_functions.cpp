@@ -152,7 +152,7 @@ static ERROR count_tags(extXML *Self, CSTRING Text, CSTRING *Result)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Convert a text string into XML tags.
 
 static ERROR txt_to_xml(extXML *Self, CSTRING Text)
@@ -302,7 +302,7 @@ static ERROR txt_to_xml(extXML *Self, CSTRING Text)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Extracts the next tag from an XML string.  This function also recurses into itself.
 
 static CSTRING extract_tag_attrib(extXML *Self, CSTRING Str, LONG *AttribSize, WORD *TotalAttrib)
@@ -364,7 +364,7 @@ static CSTRING extract_tag_attrib(extXML *Self, CSTRING Str, LONG *AttribSize, W
    return str;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Called by txt_to_xml() to extract the next tag from an XML string.  This function also recurses into itself.
 
 static ERROR extract_tag(extXML *Self, exttag *Status)
@@ -672,7 +672,7 @@ static ERROR extract_tag(extXML *Self, exttag *Status)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR extract_content(extXML *Self, exttag *Status)
 {
@@ -745,7 +745,7 @@ static ERROR extract_content(extXML *Self, exttag *Status)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Output an XML string with escape characters.
 
 static LONG attrib_len(CSTRING String)
@@ -817,7 +817,7 @@ static LONG content_output(CSTRING String, STRING Output)
    return i;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Converts XML data into its equivalent string.
 
 XMLTag * build_xml_string(XMLTag *Tag, STRING Buffer, LONG Flags, LONG *Offset)
@@ -898,7 +898,7 @@ XMLTag * build_xml_string(XMLTag *Tag, STRING Buffer, LONG Flags, LONG *Offset)
    return Tag->Next;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Determines the amount of bytes that would be required to write out an XML string.
 
 XMLTag * len_xml_str(XMLTag *Tag, LONG Flags, LONG *Length)
@@ -980,7 +980,7 @@ XMLTag * len_xml_str(XMLTag *Tag, LONG Flags, LONG *Length)
    return Tag->Next;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** This function calls itself recursively to count all tags (including children) within a tag space.  ALL sibling tags
 ** are also included.
 */
@@ -994,7 +994,7 @@ static void tag_count(XMLTag *Tag, LONG *Count)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void sift_down(ListSort **lookup, LONG Index, LONG heapsize)
 {
@@ -1020,7 +1020,7 @@ static void sift_down(ListSort **lookup, LONG Index, LONG heapsize)
    } while (largest != Index);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void sift_up(ListSort **lookup, LONG i, LONG heapsize)
 {
@@ -1046,7 +1046,7 @@ static void sift_up(ListSort **lookup, LONG i, LONG heapsize)
    } while (largest != i);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Gets the nth sibling with the given name.
 
 static XMLTag * next_sibling(extXML *Self, XMLTag *Tag, LONG Index, STRING Name, LONG FlatScan)
@@ -1076,7 +1076,7 @@ static XMLTag * next_sibling(extXML *Self, XMLTag *Tag, LONG Index, STRING Name,
    return NULL;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** XPath Query
 **
 ** [0-9]  Used for indexing
@@ -1479,7 +1479,7 @@ parse_error:
    return ERR_Search;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR parse_source(extXML *Self)
 {
@@ -1534,7 +1534,7 @@ static ERROR parse_source(extXML *Self)
    return Self->ParseError;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Extracts immediate content, does not recurse into child tags.
 
 static ERROR get_content(extXML *Self, XMLTag *Tag, STRING Buffer, LONG Size)
@@ -1559,7 +1559,7 @@ static ERROR get_content(extXML *Self, XMLTag *Tag, STRING Buffer, LONG Size)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void free_xml(extXML *Self)
 {
@@ -1580,7 +1580,7 @@ static void clear_tags(extXML *XML)
    XML->TagCount = 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #warning TODO: Support processing of ENTITY declarations in the doctype.
 

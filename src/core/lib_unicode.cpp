@@ -1,10 +1,10 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 -CATEGORY-
 Name: Unicode
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 UTF8CharOffset: Retrieves the byte position of a character in a UTF-8 string.
@@ -19,7 +19,7 @@ int Offset: The character number to translate to a byte offset.
 -RESULT-
 int: Returns the byte offset of the character.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 LONG UTF8CharOffset(CSTRING String, LONG Index)
 {
@@ -33,7 +33,7 @@ LONG UTF8CharOffset(CSTRING String, LONG Index)
    return offset;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 UTF8CharLength: Returns the number of bytes used to define a single UTF-8 character.
@@ -47,7 +47,7 @@ cstr String: Pointer to a UTF-8 string.
 -RESULT-
 int: Returns the number of bytes used to create the UTF-8 character referred to by the String argument.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 LONG UTF8CharLength(CSTRING String)
 {
@@ -58,7 +58,7 @@ LONG UTF8CharLength(CSTRING String)
    return total;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 UTF8Copy: Copies the characters of one string to another (UTF8).
@@ -80,7 +80,7 @@ int Size:  Byte size of the destination buffer.
 -RESULT-
 int: Returns the total amount of <i>bytes</i> that were copied, not including the null byte at the end.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 LONG UTF8Copy(CSTRING String, STRING Dest, LONG Chars, LONG Size)
 {
@@ -124,7 +124,7 @@ LONG UTF8Copy(CSTRING String, STRING Dest, LONG Chars, LONG Size)
    return i;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 UTF8Length: Returns the total number of characters in a UTF-8 string.
@@ -137,7 +137,7 @@ cstr String: Pointer to a UTF-8 string.
 -RESULT-
 int: Returns the total number of characters used in the supplied UTF-8 string.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 LONG UTF8Length(CSTRING String)
 {
@@ -150,7 +150,7 @@ LONG UTF8Length(CSTRING String)
    return total;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 UTF8OffsetToChar: Converts a byte offset into a character position.
@@ -164,7 +164,7 @@ int Offset: The byte offset that you need a character number for.
 -RESULT-
 int: Returns the number of the character at the given byte position.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 LONG UTF8OffsetToChar(CSTRING String, LONG Offset)
 {
@@ -178,7 +178,7 @@ LONG UTF8OffsetToChar(CSTRING String, LONG Offset)
    return pos;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 UTF8PrevLength: Gets the byte length of the previous character at a specific position in a UTF-8 string.
@@ -193,7 +193,7 @@ int Offset: The byte index from which the size of the previous character should 
 -RESULT-
 int: Returns the byte-length of the previous character.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 LONG UTF8PrevLength(CSTRING String, LONG ByteIndex)
 {
@@ -205,7 +205,7 @@ LONG UTF8PrevLength(CSTRING String, LONG ByteIndex)
    return len;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 UTF8ReadValue: Converts UTF-8 characters into 32-bit unicode values.
@@ -220,7 +220,7 @@ cstr String: Pointer to a character in a UTF-8 string that you want to convert.
 -RESULT-
 uint: Returns the extracted unicode value.  If a failure occurs (the encoding is invalid) then a value of zero is returned. Zero can also be returned if the String parameter is NULL or begins with a null character.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ULONG UTF8ReadValue(CSTRING String, LONG *Length)
 {
@@ -284,7 +284,7 @@ ULONG UTF8ReadValue(CSTRING String, LONG *Length)
    return code;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 UTF8ValidEncoding: Corrects invalid UTF-8 encodings and converts string encodings to UTF-8.
@@ -324,7 +324,7 @@ cstr Encoding: The encoding that should be tried for invalid UTF-8 characters.  
 -RESULT-
 cstr: Returns the original string pointer if it is already valid, otherwise a converted string is returned.  The converted string remains valid up until the next call to UTF8ValidEncoding().  A return of NULL is possible if an internal error occurs during the conversion process (e.g. invalid encoding type).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
 {
@@ -477,7 +477,7 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
    return String;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 UTF8WriteValue: Writes a 32-bit unicode value into a UTF-8 character buffer.
@@ -500,7 +500,7 @@ int: Returns the total amount of characters written to the string buffer.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 LONG UTF8WriteValue(LONG Value, STRING String, LONG StringSize)
 {

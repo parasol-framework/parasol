@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      document.h
-// Copyright: Paul Manias © 2005-2022
+// Copyright: Paul Manias © 2005-2023
 // Generator: idl-c
 
 #include <parasol/main.h>

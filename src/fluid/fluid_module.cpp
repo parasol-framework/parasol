@@ -25,7 +25,7 @@ extern "C" {
 static int module_call(lua_State *);
 static LONG process_results(prvFluid *, APTR, const FunctionField *, LONG);
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: module = mod.load("core")
 
 static int module_load(lua_State *Lua)
@@ -66,7 +66,7 @@ static int module_load(lua_State *Lua)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Internal: Object garbage collector.
 
 static int module_destruct(lua_State *Lua)
@@ -79,7 +79,7 @@ static int module_destruct(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Internal: Prints the module name
 
 static int module_tostring(lua_State *Lua)
@@ -96,7 +96,7 @@ static int module_tostring(lua_State *Lua)
    return 1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Any Read accesses to the module object will pass through here.
 
 static int module_index(lua_State *Lua)
@@ -125,7 +125,7 @@ static int module_index(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static int module_call(lua_State *Lua)
 {
@@ -716,7 +716,7 @@ static int module_call(lua_State *Lua)
    return process_results(prv, buffer, args, result);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This code looks for FD_RESULT arguments in the function's parameter list and converts them into multiple Fluid results.
 
 static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField *args, LONG result)
@@ -885,7 +885,7 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
    return result;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Register the module interface.
 
 void register_module_class(lua_State *Lua)

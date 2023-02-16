@@ -4,7 +4,7 @@ The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -MODULE-
 Network: Provides miscellaneous network functions and hosts the NetSocket and ClientSocket classes.
@@ -13,7 +13,7 @@ The Network module exports a few miscellaneous networking functions.  For core n
 sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 //#define DEBUG
 
@@ -198,7 +198,7 @@ class extNetLookup : public objNetLookup {
    std::mutex *ThreadLock;
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 enum {
    SSL_NOT_BUSY=0,
@@ -315,7 +315,7 @@ ERROR MODOpen(OBJECTPTR Module)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Note: Take care and attention with the order of operations during the expunge process, particuarly due to the
 // background processes that are managed by the module.
 
@@ -354,7 +354,7 @@ static ERROR MODExpunge(void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 AddressToStr: Converts an IPAddress structure to an IPAddress in dotted string form.
@@ -368,7 +368,7 @@ struct(IPAddress) IPAddress: A pointer to the IPAddress structure.
 -RESULT-
 !cstr: The IP address is returned as an allocated string.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static CSTRING netAddressToStr(IPAddress *Address)
 {
@@ -395,7 +395,7 @@ static CSTRING netAddressToStr(IPAddress *Address)
    return StrClone(result);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 StrToAddress: Converts an IP Address in string form to an IPAddress structure.
@@ -419,7 +419,7 @@ Okay:    The Address was converted successfully.
 Args:    Either the string or the IPAddress pointer were NULL.
 Failed:  The String was not a valid IP Address.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR netStrToAddress(CSTRING Str, IPAddress *Address)
 {
@@ -442,7 +442,7 @@ static ERROR netStrToAddress(CSTRING Str, IPAddress *Address)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 HostToShort: Converts a 16 bit (unsigned) word from host to network byte order.
@@ -455,14 +455,14 @@ uint Value: Data in host byte order to be converted to network byte order
 -RESULT-
 uint: The word in network byte order
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ULONG netHostToShort(ULONG Value)
 {
    return (ULONG)htons((UWORD)Value);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 HostToLong: Converts a 32 bit (unsigned) long from host to network byte order.
@@ -475,14 +475,14 @@ uint Value: Data in host byte order to be converted to network byte order
 -RESULT-
 uint: The long in network byte order
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ULONG netHostToLong(ULONG Value)
 {
    return htonl(Value);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ShortToHost: Converts a 16 bit (unsigned) word from network to host byte order.
@@ -495,14 +495,14 @@ uint Value: Data in network byte order to be converted to host byte order
 -RESULT-
 uint: The Value in host byte order
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ULONG netShortToHost(ULONG Value)
 {
    return (ULONG)ntohs((UWORD)Value);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 LongToHost: Converts a 32 bit (unsigned) long from network to host byte order.
@@ -515,14 +515,14 @@ uint Value: Data in network byte order to be converted to host byte order
 -RESULT-
 uint: The Value in host byte order.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ULONG netLongToHost(ULONG Value)
 {
    return ntohl(Value);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SetSSL: Alters SSL settings on an initialised NetSocket object.
@@ -546,7 +546,7 @@ Okay:
 NullArgs: The NetSocket argument was not specified.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR netSetSSL(extNetSocket *Socket, ...)
 {
@@ -594,7 +594,7 @@ static ERROR netSetSSL(extNetSocket *Socket, ...)
 #include "ssl.cpp"
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 // Used by RECEIVE() SSL support.
 
 #ifdef _WIN32
@@ -608,7 +608,7 @@ static void client_server_pending(SOCKET_HANDLE FD, APTR Self)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG BufferSize, LONG Flags, LONG *Result)
 {
@@ -725,7 +725,7 @@ static ERROR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
 #endif
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *Length, LONG Flags)
 {
@@ -824,17 +824,17 @@ static BYTE check_machine_name(CSTRING HostName)
    return TRUE;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "netsocket/netsocket.cpp"
 #include "clientsocket/clientsocket.cpp"
 #include "class_proxy.cpp"
 #include "class_netlookup.cpp"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MODVERSION_NETWORK)
 
-/*****************************************************************************
+/*********************************************************************************************************************
                                  BACKTRACE IT
-*****************************************************************************/
+*********************************************************************************************************************/

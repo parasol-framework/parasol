@@ -298,19 +298,14 @@ static ERROR PIC_Activate(prvPicture *Self, APTR Void)
          if ((error = bmp->init())) goto exit;
       }
 
-      objBitmap *tmp_bitmap;
-      if (!(error = NewObject(ID_BITMAP, &tmp_bitmap))) {
-         SetFields(tmp_bitmap,
-            FID_Width|TLONG,  bmp->Width,
-            FID_Height|TLONG, bmp->Height,
-            FID_BitsPerPixel, total_bit_depth,
-            TAGEND);
+      objBitmap::create tmp_bitmap = {
+         fl::Width(bmp->Width), fl::Height(bmp->Height), fl::BitsPerPixel(total_bit_depth)
+      };
 
-         if (!(error = decompress_png(Self, tmp_bitmap, bit_depth, color_type, read_ptr, info_ptr, png_width, png_height))) {
-            gfxCopyArea(tmp_bitmap, bmp, BAF_DITHER, 0, 0, bmp->Width, bmp->Height, 0, 0);
+      if (tmp_bitmap.ok()) {
+         if (!(error = decompress_png(Self, *tmp_bitmap, bit_depth, color_type, read_ptr, info_ptr, png_width, png_height))) {
+            gfxCopyArea(*tmp_bitmap, bmp, BAF_DITHER, 0, 0, bmp->Width, bmp->Height, 0, 0);
          }
-
-         acFree(tmp_bitmap);
       }
    }
    else error = decompress_png(Self, bmp, bit_depth, color_type, read_ptr, info_ptr, png_width, png_height);
@@ -385,27 +380,14 @@ static ERROR PIC_Init(prvPicture *Self, APTR Void)
          if (!acInit(Self->Bitmap)) {
             if (Self->Flags & PCF_FORCE_ALPHA_32) Self->Flags &= ~(PCF_ALPHA|PCF_MASK);
 
-            if (Self->Flags & PCF_ALPHA) {
-               if (!NewObject(ID_BITMAP, NF::INTEGRAL, &Self->Mask)) {
-                  Self->Mask->Width  = Self->Bitmap->Width;
-                  Self->Mask->Height = Self->Bitmap->Height;
-                  Self->Mask->Flags |= PCF_MASK;
-                  Self->Mask->BitsPerPixel = 8;
-                  if (!acInit(Self->Mask)) Self->Flags |= PCF_MASK;
-                  else return log.warning(ERR_Init);
+            if (Self->Flags & (PCF_ALPHA|PCF_MASK)) {
+               if ((Self->Mask = objBitmap::create::integral(fl::Width(Self->Bitmap->Width),
+                     fl::Height(Self->Bitmap->Height),
+                     fl::Flags(BMF_MASK),
+                     fl::BitsPerPixel((Self->Flags & PCF_ALPHA) ? 8 : 1)))) {
+                  Self->Flags |= PCF_MASK;
                }
-               else return log.warning(ERR_NewObject);
-            }
-            else if (Self->Flags & PCF_MASK) {
-               if (!NewObject(ID_BITMAP, NF::INTEGRAL, &Self->Mask)) {
-                  Self->Mask->Width  = Self->Bitmap->Width;
-                  Self->Mask->Height = Self->Bitmap->Height;
-                  Self->Mask->Flags |= PCF_MASK;
-                  Self->Mask->BitsPerPixel = 1;
-                  if (!acInit(Self->Mask)) Self->Flags |= PCF_MASK;
-                  else return log.warning(ERR_Init);
-               }
-               else return log.warning(ERR_NewObject);
+               else return log.warning(ERR_Init);
             }
 
             if (Self->SubID) return ERR_Okay; // Break here to let the sub-class continue initialisation
@@ -588,7 +570,7 @@ static ERROR PIC_SaveImage(prvPicture *Self, struct acSaveImage *Args)
    tlError = false;
 
    if ((Args) and (Args->DestID)) {
-      if (AccessObject(Args->DestID, 3000, &file) != ERR_Okay) {
+      if (AccessObjectID(Args->DestID, 3000, &file) != ERR_Okay) {
          log.warning("Failed to access destination object #%d.", Args->DestID);
          goto exit;
       }

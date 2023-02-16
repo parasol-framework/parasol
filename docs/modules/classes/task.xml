@@ -14,7 +14,7 @@
     <idstring>ID_TASK</idstring>
     <category>System</category>
     <include>modules/task.h</include>
-    <copyright>Paul Manias 1996-2022</copyright>
+    <copyright>Paul Manias 1996-2023</copyright>
     <description>
 <p>Tasks, also known as processes, form the basis of process execution in an operating system.  By creating a task object, it is possible to execute a program from within the host system.</p>
 <p>To execute a compiled program, set the <field>Location</field> field to point to the executable file before initialising the task.  Arguments can be passed to the executable by setting the <field>Parameters</field> field.  Once the task object is successfully initialised, use the <action>Activate</action> action to run the executable.  If the file executes successfully, a new task object is spawned separately to represent the executable (which means it is safe to destroy your task object immediately afterwards).  If the <action>Activate</action> action returns with ERR_Okay then the executable program was run successfully.</p>
@@ -183,7 +183,7 @@
       <description>
 <p>This field provides direct access to the actions of a task.  You can use it in the development of an executable program to hook into the Core action system.  This allows you to create a program that blends in seamlessly with the system's object oriented design.</p>
 <p>The Actions field itself points to a list of action routines that are arranged into a lookup table, sorted by action ID. You can hook into an action simply by writing to its index in the table with a pointer to the routine that you want to use for that action.  For example:</p>
-<pre>if (!AccessObject(CurrentTask(), 5000, &amp;task)) {
+<pre>if (!AccessObjectID(CurrentTask(), 5000, &amp;task)) {
    task-&gt;getPtr(FID_Actions, &amp;actions);
    actions[AC_Seek] = PROGRAM_Seek;
    ReleaseObject(task);

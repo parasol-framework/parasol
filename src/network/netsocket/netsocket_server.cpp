@@ -1,5 +1,5 @@
 
-//****************************************************************************
+//********************************************************************************************************************
 // Called when a socket handle detects a new client wanting to connect to it.
 
 static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
@@ -163,7 +163,7 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
    log.trace("Total clients: %d", Self->TotalClients);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Terminates the connection to the client and removes associated resources.
 */
 
@@ -206,7 +206,7 @@ static void free_client(extNetSocket *Self, struct NetClient *Client)
    recursive--;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Terminates the connection to the client and removes associated resources.
 */
 

@@ -1,10 +1,10 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include <parasol/main.h>
 #include <startup.h>
@@ -60,7 +60,7 @@ Available commands:\n\
  --errors   : Activates the output of run-time errors.\n"
 };
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Function: main()
 */
 
@@ -186,7 +186,7 @@ exit:
 
    if (CoreObjectID) {
       OBJECTPTR object;
-      if (!AccessObject(CoreObjectID, 5000, &object)) {
+      if (!AccessObjectID(CoreObjectID, 5000, &object)) {
          UnsubscribeAction(object, 0, glTask->UniqueID);
          ReleaseObject(object);
       }
@@ -212,7 +212,7 @@ exit:
    if (glScript) acFree(glScript);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Prepares a special environment for running scripts.
 */
 
@@ -237,7 +237,7 @@ ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)
    else return ERR_CreateObject;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Runs scripts.
 */
 
@@ -395,7 +395,7 @@ ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRI
    return(ERR_Okay);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Function: decompress_archive()
 */
 

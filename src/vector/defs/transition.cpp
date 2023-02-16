@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -CLASS-
 VectorTransition: Transitions are used to gradually apply transforms over distance.
@@ -29,7 +29,7 @@ Transitions are most effective when used in conjunction with the morph feature i
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 // Applies the correct transform when given a relative Index position between 0.0 and 1.0
 
@@ -72,7 +72,7 @@ void apply_transition(objVectorTransition *Self, DOUBLE Index, agg::trans_affine
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Accurately interpolate the transform for Index and apply it to the coordinate (X,Y).
 
 void apply_transition_xy(objVectorTransition *Self, DOUBLE Index, DOUBLE *X, DOUBLE *Y)
@@ -108,7 +108,7 @@ void apply_transition_xy(objVectorTransition *Self, DOUBLE Index, DOUBLE *X, DOU
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR set_stop_transform(objVectorTransition *Self, TransitionStop *Stop, CSTRING Commands)
 {
@@ -133,7 +133,7 @@ static ERROR set_stop_transform(objVectorTransition *Self, TransitionStop *Stop,
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR TRANSITION_Free(objVectorTransition *Self, APTR Void)
 {
@@ -145,7 +145,7 @@ static ERROR TRANSITION_Free(objVectorTransition *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR TRANSITION_Init(objVectorTransition *Self, APTR Void)
 {
@@ -154,7 +154,7 @@ static ERROR TRANSITION_Init(objVectorTransition *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR TRANSITION_NewObject(objVectorTransition *Self, APTR Void)
 {
@@ -162,7 +162,7 @@ static ERROR TRANSITION_NewObject(objVectorTransition *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Stops: Defines the transforms that will be used at specific stop points.
@@ -176,7 +176,7 @@ a transform string.  The Transition structure consists of the following fields:
 <field name="Transform" type="STRING">A transform string, as per SVG guidelines.</field>
 </fields>
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TRANSITION_SET_Stops(objVectorTransition *Self, Transition *Value, LONG Elements)
 {
@@ -198,7 +198,7 @@ static ERROR TRANSITION_SET_Stops(objVectorTransition *Self, Transition *Value, 
    else return log.warning(ERR_DataSize);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 TotalStops: Total number of stops defined in the Stops array.
@@ -206,7 +206,7 @@ TotalStops: Total number of stops defined in the Stops array.
 This read-only field indicates the total number of stops that have been defined in the #Stops array.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static const ActionArray clTransitionActions[] = {
    { AC_Free,      (APTR)TRANSITION_Free },

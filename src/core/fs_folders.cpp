@@ -1,8 +1,8 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 -CATEGORY-
 Name: Files
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static void folder_free(APTR Address)
 {
@@ -30,7 +30,7 @@ static ResourceManager glResourceFolder = {
    &folder_free
 };
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 OpenDir: Opens a folder for content scanning.
@@ -55,7 +55,7 @@ NullArgs
 DirEmpty
 AllocMemory
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR OpenDir(CSTRING Path, LONG Flags, DirInfo **Result)
 {
@@ -128,7 +128,7 @@ ERROR OpenDir(CSTRING Path, LONG Flags, DirInfo **Result)
    else return log.warning(ERR_ResolvePath);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ScanDir: Scans the content of a folder, by item.
@@ -138,10 +138,10 @@ The ScanDir() function is used to scan for files and folders in a folder that yo
 for each function call that you make.  The following code sample illustrates typical usage:
 
 <pre>
-struct DirInfo *info;
+DirInfo *info;
 if (!OpenDir(path, RDF_FILE|RDF_FOLDER, &info)) {
    while (!ScanDir(info)) {
-      LogMsg("File: %s", info->Name);
+      log.msg("File: %s", info->Name);
    }
    FreeResource(info);
 }
@@ -163,7 +163,7 @@ Args
 DirEmpty: There are no more items to scan.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR ScanDir(DirInfo *Dir)
 {

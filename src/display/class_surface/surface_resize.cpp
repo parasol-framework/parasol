@@ -1,9 +1,9 @@
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Redimension: Moves and resizes a surface object in a single action call.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_Redimension(extSurface *Self, struct acRedimension *Args)
 {
@@ -29,7 +29,7 @@ static ERROR SURFACE_Redimension(extSurface *Self, struct acRedimension *Args)
 
    if (Self->Flags & RNF_VISIBLE) { // Visibility check because this sub-routine doesn't play nice with hidden surfaces.
       APTR queue;
-      if (!AccessMemory(GetResource(RES_MESSAGE_QUEUE), MEM_READ_WRITE, 3000, &queue)) {
+      if (!AccessMemoryID(GetResource(RES_MESSAGE_QUEUE), MEM_READ_WRITE, 3000, &queue)) {
          UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage)];
          LONG index = 0;
          while (!ScanMessages(queue, &index, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
@@ -100,11 +100,11 @@ static ERROR SURFACE_Redimension(extSurface *Self, struct acRedimension *Args)
    return error|ERF_Notified;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Resize: Alters the dimensions of a surface object.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_Resize(extSurface *Self, struct acResize *Args)
 {
@@ -117,7 +117,7 @@ static ERROR SURFACE_Resize(extSurface *Self, struct acResize *Args)
    return Action(AC_Redimension, Self, &redimension)|ERF_Notified;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SetDisplay: Changes the screen resolution (applies to top-level surface objects only).
@@ -149,7 +149,7 @@ Args
 Failed
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_SetDisplay(extSurface *Self, struct gfxSetDisplay *Args)
 {

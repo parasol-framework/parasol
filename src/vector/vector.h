@@ -576,7 +576,7 @@ template <class T> static void drawBitmapRender(agg::renderer_base<agg::pixfmt_p
    else agg::render_scanlines_aa(Raster, scanline, RenderBase, spanalloc, spangen);
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 template <class T> static void renderSolidBitmap(agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster, T &spangen, DOUBLE Opacity = 1.0)
@@ -609,7 +609,7 @@ template <class T> static void renderSolidBitmap(agg::renderer_base<agg::pixfmt_
    else agg::render_scanlines_aa_noblend(Raster, scanline, RenderBase, spanalloc, spangen);
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 // This class is used for clipped images (no tiling)
 
 template<class Source> class span_once // Based on span_pattern_rgba

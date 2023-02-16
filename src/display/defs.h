@@ -483,7 +483,7 @@ extern const CSTRING glInputNames[JET_END];
 #define find_own_index(a,b)     find_surface_list( (SurfaceList *)((BYTE *)(a) + (a)->ArrayIndex), (a)->Total, (b)->UID)
 #define find_parent_index(a,b)  find_parent_list( (SurfaceList *)((BYTE *)(a) + (a)->ArrayIndex), (a)->Total, (b))
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #ifdef _GLES_ // OpenGL related prototypes
 GLenum alloc_texture(LONG Width, LONG Height, GLuint *TextureID);

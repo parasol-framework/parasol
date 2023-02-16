@@ -1,14 +1,14 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 This program tests the locking of private objects between threads.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include <pthread.h>
 
@@ -43,8 +43,8 @@ INLINE ERROR prv_access(OBJECTPTR Object, LONG ThreadID)
    }
    else {
       if (Object->ThreadID IS ThreadID) return ERR_Okay;
-      SUB_QUEUE(Object); // Put the lock count back to normal before AccessPrivateObject()
-      return AccessPrivateObject(Object, -1);
+      SUB_QUEUE(Object); // Put the lock count back to normal before LockObject()
+      return LockObject(Object, -1);
    }
 }
 
@@ -55,7 +55,7 @@ INLINE void prv_release(OBJECTPTR Object)
 }
 #endif
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Internal: thread_entry()
 */
 
@@ -74,7 +74,7 @@ static void * thread_entry(struct thread_info *info)
       #ifdef QUICKLOCK
       if (!(error = prv_access(glConfig, info->index))) {
       #else
-      if (!(error = AccessPrivateObject(glConfig, 30000))) {
+      if (!(error = LockObject(glConfig, 30000))) {
       #endif
          glConfig->ActionDepth++;
          log.msg("%d.%d: Object acquired.", info->index, i);
@@ -117,7 +117,7 @@ static void * thread_entry(struct thread_info *info)
    return NULL;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Main.
 */
 

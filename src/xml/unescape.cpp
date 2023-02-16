@@ -1,5 +1,5 @@
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Internal: xml_unescape()
 **
 ** Converts XML escape codes in the source string to their relevant character values.  Because XML escape codes are

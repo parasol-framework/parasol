@@ -1,10 +1,10 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -CLASS-
 ClientSocket: Represents a single socket connection to a client IP address.
@@ -13,7 +13,7 @@ If a @Netsocket is running in server mode then it will create a new ClientSocket
 is opened by a client.  This is a very simple class that assists in the management of I/O between the client and server.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 // Data is being received from a client.
 
@@ -74,7 +74,7 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
    Socket->InUse--;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Note that this function will prevent the task from going to sleep if it is not managed correctly.  If
 ** no data is being written to the queue, the program will not be able to sleep until the client stops listening
 ** to the write queue.
@@ -182,7 +182,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
    ClientSocket->OutgoingRecursion--;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CLIENTSOCKET_Free(extClientSocket *Self, APTR Void)
 {
@@ -218,7 +218,7 @@ static ERROR CLIENTSOCKET_Free(extClientSocket *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CLIENTSOCKET_Init(extClientSocket *Self, APTR Void)
 {
@@ -247,7 +247,7 @@ static ERROR CLIENTSOCKET_Init(extClientSocket *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Read: Read incoming data from a client socket.
@@ -262,7 +262,7 @@ NullArgs
 Disconnected: The socket connection is closed.
 Failed: A permanent failure has occurred and socket has been closed.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIENTSOCKET_Read(extClientSocket *Self, struct acRead *Args)
 {
@@ -274,7 +274,7 @@ static ERROR CLIENTSOCKET_Read(extClientSocket *Self, struct acRead *Args)
    return RECEIVE((extNetSocket *)(Self->Client->NetSocket), Self->SocketHandle, Args->Buffer, Args->Length, 0, &Args->Result);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 ReadClientMsg: Read a message from the socket.
@@ -300,7 +300,7 @@ NoData: No new data was found for the socket.
 BadData: The message header or tail was invalid, or the message length exceeded internally imposed limits.
 AllocMemory: A message buffer could not be allocated.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct csReadClientMsg *Args)
 {
@@ -419,7 +419,7 @@ static ERROR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct csReadClie
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Write: Writes data to the socket.
@@ -428,7 +428,7 @@ Write raw data to a client socket with this action.  Write connections are buffe
 data overflow generated in a call to this action will be buffered into a software queue.  Resource limits placed on the
 software queue are governed by the #MsgLimit field setting.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
 {
@@ -459,7 +459,7 @@ static ERROR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 WriteClientMsg: Writes a message to the socket.
@@ -477,7 +477,7 @@ Okay
 Args
 OutOfRange
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIENTSOCKET_WriteClientMsg(extClientSocket *Self, struct csWriteClientMsg *Args)
 {
@@ -502,7 +502,7 @@ static ERROR CLIENTSOCKET_WriteClientMsg(extClientSocket *Self, struct csWriteCl
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "clientsocket_def.c"
 
@@ -520,7 +520,7 @@ static const FieldArray clClientSocketFields[] = {
    END_FIELD
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR init_clientsocket(void)
 {

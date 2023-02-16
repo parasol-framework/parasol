@@ -1,15 +1,15 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 This version of the Parasol launcher is intended for use from the command-line
 only.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include <parasol/main.h>
 #include <parasol/modules/core.h>
@@ -60,11 +60,11 @@ The following parameters can be used when executing script files:\n\
  --log-error     Activates run-time log messages at ERROR level.\n"
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "exec.cpp"
 
-//****************************************************************************
+//********************************************************************************************************************
 // Process arguments
 
 static ERROR process_args(void)
@@ -157,7 +157,7 @@ static ERROR process_args(void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Main entry point
 
 int main(int argc, CSTRING *argv)
@@ -218,7 +218,7 @@ exit:
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This function targets an existing OS window handle and prepares it for running Parasol.
 
 ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)

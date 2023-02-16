@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -CLASS-
 VectorShape: Extends the Vector class with support for the Superformula algorithm.
@@ -11,7 +11,7 @@ The Superformula is documented in detail at Wikipedia: http://en.wikipedia.org/w
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define DEFAULT_VERTICES (360 * 4)
 
@@ -32,7 +32,7 @@ class extVectorShape : public extVector {
    UBYTE Mod;
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void generate_supershape(extVectorShape *Vector)
 {
@@ -142,7 +142,7 @@ static void generate_supershape(extVectorShape *Vector)
    bounding_rect_single(Vector->BasePath, 0, &Vector->BX1, &Vector->BY1, &Vector->BX2, &Vector->BY2);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR SUPER_NewObject(extVectorShape *Self, APTR Void)
 {
@@ -160,13 +160,13 @@ static ERROR SUPER_NewObject(extVectorShape *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 A: A parameter for the Superformula.
 
 This field sets the Superformula's 'A' parameter value.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SUPER_GET_A(extVectorShape *Self, DOUBLE *Value)
 {
@@ -181,13 +181,13 @@ static ERROR SUPER_SET_A(extVectorShape *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 B: A parameter for the Superformula.
 
 This field sets the Superformula's 'B' parameter value.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SUPER_GET_B(extVectorShape *Self, DOUBLE *Value)
 {
@@ -202,13 +202,13 @@ static ERROR SUPER_SET_B(extVectorShape *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 CenterX: The center of the shape on the x-axis.  Expressed as a fixed or relative coordinate.
 
 The horizontal center of the shape is defined here as either a fixed or relative value.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SUPER_GET_CenterX(extVectorShape *Self, Variable *Value)
 {
@@ -238,13 +238,13 @@ static ERROR SUPER_SET_CenterX(extVectorShape *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 CenterY: The center of the shape on the y-axis.  Expressed as a fixed or relative coordinate.
 
 The vertical center of the shape is defined here as either a fixed or relative value.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SUPER_GET_CenterY(extVectorShape *Self, Variable *Value)
 {
@@ -273,13 +273,13 @@ static ERROR SUPER_SET_CenterY(extVectorShape *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Close: A parameter for the super shape algorithm.
 
 If TRUE, the shape path will be closed between the beginning and end points.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SUPER_GET_Close(extVectorShape *Self, LONG *Value)
 {
@@ -294,7 +294,7 @@ static ERROR SUPER_SET_Close(extVectorShape *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Dimensions: Dimension flags define whether individual dimension fields contain fixed or relative values.
@@ -310,7 +310,7 @@ The following dimension flags are supported:
 <type name="RELATIVE_RADIUS">The #Radius value is a relative coordinate.</>
 </types>
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SUPER_GET_Dimensions(extVectorShape *Self, LONG *Value)
 {
@@ -325,13 +325,13 @@ static ERROR SUPER_SET_Dimensions(extVectorShape *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 M: A parameter for the Superformula.
 
 This field sets the Superformula's 'M' parameter value.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SUPER_GET_M(extVectorShape *Self, DOUBLE *Value)
 {
@@ -346,7 +346,7 @@ static ERROR SUPER_SET_M(extVectorShape *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Mod: A special modification parameter that alters the super shape algorithm.
 
@@ -366,7 +366,7 @@ generated 'r' value.  Possible values and their effects are:
 <type name="8">cos(r)^2</>
 </types>
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SUPER_GET_Mod(extVectorShape *Self, LONG *Value)
 {
@@ -381,13 +381,13 @@ static ERROR SUPER_SET_Mod(extVectorShape *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 N1: A parameter for the super shape algorithm.
 
 This field sets the Superformula's 'N1' parameter value.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SUPER_GET_N1(extVectorShape *Self, DOUBLE *Value)
 {
@@ -402,13 +402,13 @@ static ERROR SUPER_SET_N1(extVectorShape *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 N2: A parameter for the super shape algorithm.
 
 This field sets the Superformula's 'N2' parameter value.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SUPER_GET_N2(extVectorShape *Self, DOUBLE *Value)
 {
@@ -423,13 +423,13 @@ static ERROR SUPER_SET_N2(extVectorShape *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 N3: A parameter for the super shape algorithm.
 
 This field sets the Superformula's 'N3' parameter value.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SUPER_GET_N3(extVectorShape *Self, DOUBLE *Value)
 {
@@ -444,7 +444,7 @@ static ERROR SUPER_SET_N3(extVectorShape *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Phi: A parameter for the super shape algorithm.
 
@@ -453,7 +453,7 @@ The Phi value has an impact on the length of the generated path.  If the super s
 itself then the Phi value should be increased until it does.  The minimum (and default) value is 2.  It is recommended
 that the Phi value is increased in increments of 2 until the desired effect is achieved.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SUPER_GET_Phi(extVectorShape *Self, DOUBLE *Value)
 {
@@ -471,13 +471,13 @@ static ERROR SUPER_SET_Phi(extVectorShape *Self, DOUBLE Value)
    else return ERR_InvalidValue;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Radius: The radius of the generated shape.  Expressed as a fixed or relative coordinate.
 
 The Radius defines the final size of the generated shape.  It can be expressed in fixed or relative terms.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SUPER_GET_Radius(extVectorShape *Self, Variable *Value)
 {
@@ -506,7 +506,7 @@ static ERROR SUPER_SET_Radius(extVectorShape *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Repeat: Repeat the generated shape multiple times.
 
@@ -515,7 +515,7 @@ at consistent intervals leading to the center point.
 
 The Repeat value cannot be set in conjunction with #Spiral.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SUPER_GET_Repeat(extVectorShape *Self, LONG *Value)
 {
@@ -533,14 +533,14 @@ static ERROR SUPER_SET_Repeat(extVectorShape *Self, LONG Value)
    else return ERR_InvalidValue;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Spiral: Alters the generated super shape so that it forms a spiral.
 
 Setting the Spiral field to a value greater than one will cause the path generator to form spirals, up to the value
 specified.  For instance, a value of 5 will generate five spirals.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SUPER_GET_Spiral(extVectorShape *Self, LONG *Value)
 {
@@ -558,7 +558,7 @@ static ERROR SUPER_SET_Spiral(extVectorShape *Self, LONG Value)
    else return ERR_InvalidValue;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Vertices: Limits the total number of vertices generated for the super shape.
 
@@ -566,7 +566,7 @@ Setting a value in Vertices will limit the total number of vertices that are gen
 is useful for generating common convex geometrical shapes such as triangles, polygons, hexagons and so forth; because
 their vertices will always touch the sides of an elliptical area.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SUPER_GET_Vertices(extVectorShape *Self, LONG *Value)
 {
@@ -584,7 +584,7 @@ static ERROR SUPER_SET_Vertices(extVectorShape *Self, LONG Value)
    else return ERR_InvalidValue;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const FieldDef clSuperDimensions[] = {
    { "FixedRadius",     DMF_FIXED_RADIUS },

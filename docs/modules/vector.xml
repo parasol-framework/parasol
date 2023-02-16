@@ -6,7 +6,7 @@
     <name>Vector</name>
     <type>module</type>
     <version>1</version>
-    <copyright>Paul Manias © 2010-2022</copyright>
+    <copyright>Paul Manias © 2010-2023</copyright>
     <classes>
       <class>BlurFX</class>
       <class>ColourFX</class>

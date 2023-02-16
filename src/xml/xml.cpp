@@ -1,10 +1,10 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -CLASS-
 XML: Provides XML data management services.
@@ -28,7 +28,7 @@ ENTITY       <!ENTITY % textgizmo "fontgizmo">
 INSTRUCTION  <?XML version="1.0" standalone="yes" ?>
 NOTATION     <!NOTATION gif SYSTEM "viewer.exe">
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #undef DEBUG
 //#define DEBUG // Enables extensive debugging of the XML tree
@@ -192,11 +192,11 @@ ERROR CMDExpunge(void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Clear: Clears all of the data held in an XML object.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR XML_Clear(extXML *Self, APTR Void)
 {
@@ -207,7 +207,7 @@ static ERROR XML_Clear(extXML *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Count: Count all tags that match a given XPath.
@@ -223,7 +223,7 @@ Okay
 NullArgs
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static THREADVAR LONG tlXMLCounter;
 
@@ -251,11 +251,11 @@ static ERROR XML_Count(extXML *Self, struct xmlCount *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 DataFeed: XML data can be added to an XML object through this action.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR XML_DataFeed(extXML *Self, struct acDataFeed *Args)
 {
@@ -320,7 +320,7 @@ static ERROR XML_DataFeed(extXML *Self, struct acDataFeed *Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR XML_Free(extXML *Self, APTR Void)
 {
@@ -328,7 +328,7 @@ static ERROR XML_Free(extXML *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Filter: Filters the XML data down to a single tag and its children.
@@ -347,7 +347,7 @@ Okay
 NullArgs
 Search: A matching tag could not be found.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR XML_Filter(extXML *Self, struct xmlFilter *Args)
 {
@@ -365,7 +365,7 @@ static ERROR XML_Filter(extXML *Self, struct xmlFilter *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 FindTag: Searches for a tag via XPath.
@@ -389,7 +389,7 @@ NullArgs:
 NoData:
 Search: A matching tag could not be found.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR XML_FindTag(extXML *Self, struct xmlFindTag *Args)
 {
@@ -413,7 +413,7 @@ static ERROR XML_FindTag(extXML *Self, struct xmlFindTag *Args)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 FindTagFromIndex: Searches for a tag via XPath, starting from a specific tag index.
@@ -439,7 +439,7 @@ ptr(func) Callback: Optional reference to a function that should be called for e
 Okay:
 OutOfRange: The Index is invalid.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR XML_FindTagFromIndex(extXML *Self, struct xmlFindTagFromIndex *Args)
 {
@@ -469,7 +469,7 @@ static ERROR XML_FindTagFromIndex(extXML *Self, struct xmlFindTagFromIndex *Args
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 GetAttrib: Retrieves the value of an XML attribute.
@@ -520,7 +520,7 @@ static ERROR XML_GetAttrib(extXML *Self, struct xmlGetAttrib *Args)
    return ERR_NotFound;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 GetVar: Retrieves data from an xml object.
@@ -556,7 +556,7 @@ Index is a direct lookup into the #Tags array.  If an `Attrib` name is specified
 attribute will be returned.  If the Attrib name is omitted, the content of the matching tag will be returned.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR XML_GetVar(extXML *Self, struct acGetVar *Args)
 {
@@ -787,7 +787,7 @@ static ERROR XML_GetVar(extXML *Self, struct acGetVar *Args)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 GetContent: Extracts the content embedded inside an XML tag.
@@ -816,7 +816,7 @@ Okay: The content string was successfully extracted.
 Args
 BufferOverflow: The buffer was not large enough to hold the content (the resulting string will be valid but truncated).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR XML_GetContent(extXML *Self, struct xmlGetContent *Args)
 {
@@ -829,7 +829,7 @@ static ERROR XML_GetContent(extXML *Self, struct xmlGetContent *Args)
    return get_content(Self, Self->Tags[Args->Index], Args->Buffer, Args->Length);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 GetString: Retrieves data from an XML object in standard XML string format.
@@ -851,7 +851,7 @@ Args:
 NoData: No information has been loaded into the XML object.
 AllocMemory: Failed to allocate an XML string for the result.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR XML_GetString(extXML *Self, struct xmlGetString *Args)
 {
@@ -909,7 +909,7 @@ static ERROR XML_GetString(extXML *Self, struct xmlGetString *Args)
    else return log.warning(ERR_AllocMemory);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 GetTag: Returns a pointer to the XMLTag structure for a given tag index.
@@ -926,7 +926,7 @@ Okay
 NullArgs
 OutOfRange: The Index parameter is invalid.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR XML_GetTag(extXML *Self, struct xmlGetTag *Args)
 {
@@ -983,7 +983,7 @@ static ERROR XML_Init(extXML *Self, APTR Void)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 InsertContent: Inserts XML content into the XML tree.
@@ -1007,7 +1007,7 @@ Okay
 NullArgs
 ReadOnly
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR XML_InsertContent(extXML *Self, struct xmlInsertContent *Args)
 {
@@ -1050,7 +1050,7 @@ static ERROR XML_InsertContent(extXML *Self, struct xmlInsertContent *Args)
    else return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 InsertXML: Inserts an XML statement in the XML tree.
@@ -1076,7 +1076,7 @@ NullArgs
 OutOfRange
 ReadOnly: Changes to the XML data are not permitted.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR XML_InsertXML(extXML *Self, struct xmlInsertXML *Args)
 {
@@ -1158,7 +1158,7 @@ static ERROR XML_InsertXML(extXML *Self, struct xmlInsertXML *Args)
    else return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 InsertXPath: Inserts an XML statement in an XML tree.
@@ -1180,7 +1180,7 @@ Okay
 NullArgs
 Search: The XPath could not be resolved.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR XML_InsertXPath(extXML *Self, struct xmlInsertXPath *Args)
 {
@@ -1206,7 +1206,7 @@ ERROR XML_InsertXPath(extXML *Self, struct xmlInsertXPath *Args)
    else return ERR_Search;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 MoveTags: Move an XML tag group to a new position in the XML tree.
@@ -1231,7 +1231,7 @@ NullArgs
 ReadOnly
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static void recalc_indexes(extXML *Self, XMLTag *Tag, LONG *Index, LONG *);
 
@@ -1381,7 +1381,7 @@ static ERROR XML_NewObject(extXML *Self, APTR Void)
    else return ERR_AllocMemory;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 RemoveTag: Removes tag(s) from the XML structure.
@@ -1408,7 +1408,7 @@ OutOfRange
 ReadOnly
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR XML_RemoveTag(extXML *Self, struct xmlRemoveTag *Args)
 {
@@ -1501,7 +1501,7 @@ static ERROR XML_RemoveTag(extXML *Self, struct xmlRemoveTag *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 RemoveXPath: Removes tag(s) from the XML structure, using an xpath lookup.
@@ -1527,7 +1527,7 @@ NullArgs
 ReadOnly
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR XML_RemoveXPath(extXML *Self, struct xmlRemoveXPath *Args)
 {
@@ -1568,22 +1568,22 @@ static ERROR XML_RemoveXPath(extXML *Self, struct xmlRemoveXPath *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Reset: Clears the information held in an XML object.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR XML_Reset(extXML *Self, APTR Void)
 {
    return acClear(Self);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 SaveToObject: Saves XML data to a storage object (e.g. file).
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR XML_SaveToObject(extXML *Self, struct acSaveToObject *Args)
 {
@@ -1605,7 +1605,7 @@ static ERROR XML_SaveToObject(extXML *Self, struct acSaveToObject *Args)
    else return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SetAttrib: Adds, updates and removes XML attributes.
@@ -1647,7 +1647,7 @@ Search: The attribute, identified by Name, could not be found.
 ReadOnly: The XML object is read-only.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR XML_SetAttrib(extXML *Self, struct xmlSetAttrib *Args)
 {
@@ -1934,7 +1934,7 @@ static ERROR XML_SetAttrib(extXML *Self, struct xmlSetAttrib *Args)
    else return log.warning(ERR_Args);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SetRoot: Defines a root-level tag for all XPath queries.
@@ -1964,7 +1964,7 @@ Okay
 Search: Unable to find a tag matching the provided XPath.
 OutOfRange: The Index parameter is invalid.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR XML_SetRoot(extXML *Self, struct xmlSetRoot *Args)
 {
@@ -1990,7 +1990,7 @@ static ERROR XML_SetRoot(extXML *Self, struct xmlSetRoot *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 SetVar: Sets attributes and content in the XML tree using XPaths,
@@ -2008,7 +2008,7 @@ Okay
 ReadOnly: Changes to the XML structure are not permitted.
 Search: Failed to find the tag referenced by the XPath.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR XML_SetVar(extXML *Self, struct acSetVar *Args)
 {
@@ -2046,7 +2046,7 @@ static ERROR XML_SetVar(extXML *Self, struct acSetVar *Args)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Sort: Sorts XML tags to your specifications.
@@ -2074,7 +2074,7 @@ AllocMemory:
 NothingDone: The XML array was already sorted to your specifications.   Dependent on XSF_REPORT_SORTING.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR XML_SortXML(extXML *Self, struct xmlSort *Args)
 {
@@ -2334,7 +2334,7 @@ static ERROR XML_SortXML(extXML *Self, struct xmlSort *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 CurrentTag: Determines the index of the main tag to use when building XML strings.
@@ -2392,7 +2392,7 @@ static ERROR SET_Path(extXML *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Modified: A timestamp of when the XML data was last modified.
@@ -2408,7 +2408,7 @@ Buffer space can be allocated against each XML tag by defining a value in this f
 referenced in the #Tags field will be allocated extra bytes that will be referenced in the Private field.  The
 owner of the XML object is free to use this extra space as it wishes.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_PrivateDataSize(extXML *Self, LONG Value)
 {
@@ -2419,7 +2419,7 @@ static ERROR SET_PrivateDataSize(extXML *Self, LONG Value)
    else return ERR_OutOfRange;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 ReadOnly: Prevents modifications and enables caching for a loaded XML data source.
@@ -2428,7 +2428,7 @@ This field can be set to TRUE prior to initialisation of an XML object that will
 prevents modifications to the XML object.  If the data originates from a file path, the data may be cached to optimise
 parsing where the same data is used across multiple XML objects.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_ReadOnly(extXML *Self, LONG *Value)
 {
@@ -2442,7 +2442,7 @@ static ERROR SET_ReadOnly(extXML *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 RootIndex: Defines the root tag for queries into the XML tree.
@@ -2450,7 +2450,7 @@ RootIndex: Defines the root tag for queries into the XML tree.
 XML tree queries are offset by the value of the RootIndex field.  By default the root index is set to zero so that all
 queries start from the top of the tree.  The index cannot exceed the value in the #TagCount field.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_RootIndex(extXML *Self, LONG Value)
 {
@@ -2464,7 +2464,7 @@ static ERROR SET_RootIndex(extXML *Self, LONG Value)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Source: Set this field if the XML document is to be sourced from another object.
@@ -2475,7 +2475,7 @@ supports the Read action.
 If set post-initialisation, all currently loaded data will be cleared and the source object will be parsed
 automatically.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Source(extXML *Self, OBJECTPTR Value)
 {
@@ -2495,7 +2495,7 @@ static ERROR SET_Source(extXML *Self, OBJECTPTR Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Statement: XML data is processed through this field.
@@ -2511,7 +2511,7 @@ be included in the statement unless a predefined starting position is set by the
 is an allocation that must be freed.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Statement(extXML *Self, STRING *Value)
 {
@@ -2572,7 +2572,7 @@ static ERROR SET_Statement(extXML *Self, CSTRING Value)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 TagCount: Reflects the total number of tags in the XML Tags array.
@@ -2594,7 +2594,7 @@ of NULL in the first attribute are to be treated as embedded content, the data o
 
 The Tags field is still defined in the event that it is empty (the array will consist of a null terminated entry).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Tags(extXML *Self, XMLTag ***Values, LONG *Elements)
 {

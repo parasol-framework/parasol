@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, function()
+module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, function()
   c_include("<parasol/modules/display.h>", "<parasol/modules/picture.h>")
 
   restrict(function()
@@ -586,7 +586,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2022", version=1.0 }, fun
     "ResetMatrix")
 
   c_insert([[
-//****************************************************************************
+//********************************************************************************************************************
 
 INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green, DOUBLE Blue, DOUBLE Alpha) {
    Colour->ClassID = ID_VECTORCOLOUR;

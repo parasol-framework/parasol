@@ -19,7 +19,7 @@ static inline OBJECTID get_display(Window Window)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
 {
@@ -55,7 +55,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
 
          case FocusOut:
             log.traceBranch("XFocusOut");
-            if (!AccessMemory(RPM_FocusList, MEM_READ_WRITE, 1000, &list)) {
+            if (!AccessMemoryID(RPM_FocusList, MEM_READ_WRITE, 1000, &list)) {
                for (i=0; list[i]; i++) {
                   acLostFocus(list[i]);
                }
@@ -127,11 +127,11 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
 
          if ((display_id = get_display(xevent.xany.window))) {
             surface_id = GetOwnerID(display_id);
-            if (!AccessObject(surface_id, 5000, &surface)) {
+            if (!AccessObjectID(surface_id, 5000, &surface)) {
                // Update the display width/height so that we don't recursively post further display mode updates to the
                // X server.
 
-               if (!AccessObject(display_id, 5000, &display)) {
+               if (!AccessObjectID(display_id, 5000, &display)) {
                   display->Width  = notify->width;
                   display->Height = notify->height;
                   acResize(surface, notify->width, notify->height, 0);
@@ -148,7 +148,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
    if (XDisplay) XSync(XDisplay, False);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void handle_button_press(XEvent *xevent)
 {
@@ -212,7 +212,7 @@ void handle_button_press(XEvent *xevent)
    XFlush(XDisplay);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void handle_button_release(XEvent *xevent)
 {
@@ -261,7 +261,7 @@ void handle_button_release(XEvent *xevent)
    XSetInputFocus(XDisplay, xevent->xany.window, RevertToNone, CurrentTime);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void handle_stack_change(XCirculateEvent *xevent)
 {
@@ -269,7 +269,7 @@ void handle_stack_change(XCirculateEvent *xevent)
    log.trace("Window %d stack position has changed.", (int)xevent->window);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void handle_configure_notify(XConfigureEvent *xevent)
 {
@@ -302,7 +302,7 @@ void handle_configure_notify(XConfigureEvent *xevent)
 
       // Update the display dimensions
 
-      if (!AccessObject(display_id, 3000, &display)) {
+      if (!AccessObjectID(display_id, 3000, &display)) {
          Window childwin;
          LONG absx, absy;
 
@@ -329,7 +329,7 @@ void handle_configure_notify(XConfigureEvent *xevent)
    else log.warning("Failed to get display ID.");
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void handle_exposure(XExposeEvent *event)
 {
@@ -347,7 +347,7 @@ void handle_exposure(XExposeEvent *event)
    else log.warning("XEvent.Expose: Failed to find a Surface ID for window %u.", (ULONG)event->window);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // XK symbols are defined in X11/keysymdef.h
 
 LONG xkeysym_to_pkey(KeySym KSym)
@@ -539,7 +539,7 @@ LONG xkeysym_to_pkey(KeySym KSym)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Refer: man page XKeyEvent
 */
 
@@ -602,7 +602,7 @@ void handle_key_press(XEvent *xevent)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void handle_key_release(XEvent *xevent)
 {
@@ -671,14 +671,14 @@ void handle_key_release(XEvent *xevent)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void handle_enter_notify(XCrossingEvent *xevent)
 {
    process_movement(xevent->window, xevent->x_root, xevent->y_root);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void handle_motion_notify(XMotionEvent *xevent)
 {
@@ -692,7 +692,7 @@ void handle_motion_notify(XMotionEvent *xevent)
    process_movement(xevent->window, xevent->x_root, xevent->y_root);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void process_movement(Window Window, LONG X, LONG Y)
 {

@@ -76,7 +76,7 @@ static ERROR SET_Cursor(extSurface *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Display: Refers to the @Display object that is managing the surface's graphics.
@@ -96,7 +96,7 @@ point to the object ID of the window. If necessary, you can set the Drag field t
 
 To turn off dragging, set the field to zero.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Drag(extSurface *Self, OBJECTID Value)
 {
@@ -115,7 +115,7 @@ static ERROR SET_Drag(extSurface *Self, OBJECTID Value)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 DragStatus: Indicates the draggable state when dragging is enabled.
@@ -129,7 +129,7 @@ Flags: Optional flags.
 The Flags field allows special options to be set for a surface object.  Use a logical-OR operation when setting this
 field so that existing flags are not overwritten.  To not do so can produce unexpected behaviour.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Flags(extSurface *Self, LONG Value)
 {
@@ -145,7 +145,7 @@ static ERROR SET_Flags(extSurface *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Modal: Sets the surface as modal (prevents user interaction with other surfaces).
 
@@ -153,7 +153,7 @@ If TRUE, the surface will become the modal surface for the program when it is sh
 other surfaces until the modal surface is either hidden or destroyed.  Children of the modal surface may be interacted
 with normally.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Modal(extSurface *Self, LONG Modal)
 {
@@ -173,7 +173,7 @@ static ERROR SET_Modal(extSurface *Self, LONG Modal)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Movement: Limits the movement of a surface object to vertical or horizontal shifts.
 Lookup: MOVE
@@ -184,7 +184,7 @@ object is capable of moving both horizontally and vertically.
 This field is only effective in relation to the Move action, and it is possible to circumvent the restrictions by
 setting the coordinate fields directly.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Movement(extSurface *Self, LONG Flags)
 {
@@ -247,7 +247,7 @@ static ERROR SET_Opacity(extSurface *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Parent: The parent for a surface is defined here.
 
@@ -255,7 +255,7 @@ The parent for child surfaces is defined here.  Top level surfaces will have no 
 prior to initialisation, the surface class will attempt to discover a valid parent by checking its ownership chain for
 a surface object.  This behaviour can be switched off by setting a Parent of zero prior to initialisation.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Parent(extSurface *Self, LONG Value)
 {
@@ -298,7 +298,7 @@ static ERROR SET_Parent(extSurface *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 PopOver: Keeps a surface in front of another surface in the Z order.
 
@@ -311,7 +311,7 @@ Setting the PopOver field to zero will return the surface to its normal state.
 If an object that does not belong to the Surface class is detected, an attempt will be made to read that object's
 Surface field, if available.  If this does not yield a valid surface then ERR_InvalidObject is returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_PopOver(extSurface *Self, OBJECTID Value)
 {
@@ -325,7 +325,7 @@ static ERROR SET_PopOver(extSurface *Self, OBJECTID Value)
       CLASSID class_id = GetClassID(Value);
       if (class_id != ID_SURFACE) {
          OBJECTPTR obj;
-         if (!AccessObject(Value, 3000, &obj)) {
+         if (!AccessObjectID(Value, 3000, &obj)) {
             obj->get(FID_Surface, &Value);
             ReleaseObject(obj);
          }
@@ -339,7 +339,7 @@ static ERROR SET_PopOver(extSurface *Self, OBJECTID Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 PrecopyRegion: Defines the regions to be copied when precopy is enabled.
 
@@ -360,7 +360,7 @@ definitions: `(0,0,!0,!0) (1,1,!1,!1)`.
 
 This example uses percentages to create two regions: `(0%,0%,20%,20%) (5%,5%,10%,10%)`.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_PrecopyRegion(extSurface *Self, STRING Value)
 {
@@ -511,12 +511,12 @@ static ERROR SET_RevertFocus(extSurface *Self, OBJECTID Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 RootLayer: Private
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_RootLayer(extSurface *Self, OBJECTID Value)
 {
@@ -525,21 +525,21 @@ static ERROR SET_RootLayer(extSurface *Self, OBJECTID Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 UserFocus: Refers to the surface object that has the current focus.
 
 Returns the surface object that has the primary user focus.  Returns NULL if no object has the focus.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_UserFocus(extSurface *Self, OBJECTID *Value)
 {
    parasol::Log log;
    OBJECTID *focuslist;
 
-   if (!AccessMemory(RPM_FocusList, MEM_READ, 1000, &focuslist)) {
+   if (!AccessMemoryID(RPM_FocusList, MEM_READ, 1000, &focuslist)) {
       *Value = focuslist[0];
       ReleaseMemoryID(RPM_FocusList);
       return ERR_Okay;
@@ -547,7 +547,7 @@ static ERROR GET_UserFocus(extSurface *Self, OBJECTID *Value)
    else return log.warning(ERR_AccessMemory);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Visible: Indicates the visibility of a surface object.
@@ -560,7 +560,7 @@ invisible.
 
 Visibility is directly affected by the Hide and Show actions if you wish to change the visibility of a surface object.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Visible(extSurface *Self, LONG *Value)
 {
@@ -576,7 +576,7 @@ static ERROR SET_Visible(extSurface *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 WindowType: Indicator for surfaces that represent themselves as a desktop window.
@@ -589,7 +589,7 @@ this field, as the desktop is treated as a parent.
 It is the responsibility of the developer to provide window gadgets such as titlebars and set the resize borders for
 custom surfaces.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_WindowType(extSurface *Self, LONG *Value)
 {
@@ -611,7 +611,7 @@ static ERROR SET_WindowType(extSurface *Self, LONG Value)
       }
 
       if (Self->DisplayID) {
-         if (!AccessObject(Self->DisplayID, 2000, &display)) {
+         if (!AccessObjectID(Self->DisplayID, 2000, &display)) {
             log.trace("Changing window type to %d.", Value);
 
             switch(Value) {
@@ -648,7 +648,7 @@ static ERROR SET_WindowType(extSurface *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 WindowHandle: Refers to a surface object's window handle, if relevant.
@@ -661,7 +661,7 @@ It is possible to set the WindowHandle field prior to initialisation if you want
 window that already exists.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_WindowHandle(extSurface *Self, APTR *Value)
 {

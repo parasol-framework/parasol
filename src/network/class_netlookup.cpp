@@ -1,10 +1,10 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 NOTE: The NetLookup class was created in order to support asynchronous name resolution in a way that would
 be thread safe.  In essence the class is acting as a thread pool that is safely deallocated on termination.
@@ -16,7 +16,7 @@ Use the NetLookup class for resolving network names to IP addresses and vice ver
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define PRV_NETLOOKUP
 
@@ -49,7 +49,7 @@ static ERROR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR M
    log.traceBranch("MsgID: %d, MsgType: %d, Host: %s, Thread: %d", MsgID, MsgType, (CSTRING)(r + 1), r->ThreadID);
 
    extNetLookup *nl;
-   if (!AccessObject(r->NetLookupID, 2000, &nl)) {
+   if (!AccessObjectID(r->NetLookupID, 2000, &nl)) {
       {
          std::lock_guard<std::mutex> lock(*nl->ThreadLock);
          nl->Threads->erase(r->ThreadID);
@@ -78,7 +78,7 @@ static ERROR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR M
    log.traceBranch("MsgID: %d, MsgType: %d, Address: %s, Thread: %d", MsgID, MsgType, (CSTRING)(r + 1), r->ThreadID);
 
    extNetLookup *nl;
-   if (!AccessObject(r->NetLookupID, 2000, &nl)) {
+   if (!AccessObjectID(r->NetLookupID, 2000, &nl)) {
       {
          std::lock_guard<std::mutex> lock(*nl->ThreadLock);
          nl->Threads->erase(r->ThreadID);
@@ -114,7 +114,7 @@ static ERROR thread_resolve_name(objThread *Thread)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR thread_resolve_addr(objThread *Thread)
 {
@@ -132,14 +132,14 @@ static ERROR thread_resolve_addr(objThread *Thread)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void notify_free_callback(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
    ((extNetLookup *)CurrentContext())->Callback.Type = CALL_NONE;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 BlockingResolveAddress: Resolves an IP address to a host name.
@@ -159,7 +159,7 @@ Args
 NullArgs
 Failed: The address could not be resolved
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR NETLOOKUP_BlockingResolveAddress(extNetLookup *Self, struct nlBlockingResolveAddress *Args)
 {
@@ -186,7 +186,7 @@ static ERROR NETLOOKUP_BlockingResolveAddress(extNetLookup *Self, struct nlBlock
    else return log.warning(ERR_Args);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 BlockingResolveName: Resolves a domain name to an official host name and a list of IP addresses.
@@ -206,7 +206,7 @@ NullArgs:
 AllocMemory:
 Failed:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR NETLOOKUP_BlockingResolveName(extNetLookup *Self, struct nlResolveName *Args)
 {
@@ -229,14 +229,14 @@ static ERROR NETLOOKUP_BlockingResolveName(extNetLookup *Self, struct nlResolveN
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Free: Terminate the object.
 
 This routine may block temporarily if there are unresolved requests awaiting completion in separate threads.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR NETLOOKUP_Free(extNetLookup *Self, APTR Void)
 {
@@ -282,7 +282,7 @@ static ERROR NETLOOKUP_NewObject(extNetLookup *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 ResolveAddress: Resolves an IP address to a host name.
@@ -302,7 +302,7 @@ Args
 NullArgs
 Failed: The address could not be resolved
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nlResolveAddress *Args)
 {
@@ -349,7 +349,7 @@ static ERROR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nlResolveAddres
    else return log.warning(ERR_Failed);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 ResolveName: Resolves a domain name to an official host name and a list of IP addresses.
@@ -369,7 +369,7 @@ NullArgs:
 AllocMemory:
 Failed:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR NETLOOKUP_ResolveName(extNetLookup *Self, struct nlResolveName *Args)
 {
@@ -767,7 +767,7 @@ static const FieldArray clNetLookupFields[] = {
 
 #include "class_netlookup_def.c"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR init_netlookup(void)
 {

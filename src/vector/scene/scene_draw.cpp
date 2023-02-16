@@ -175,7 +175,7 @@ private:
    int m_x;
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 class span_repeat_rkl
 {
@@ -616,7 +616,7 @@ void draw_brush(const objVectorImage &Image, agg::renderer_base<agg::pixfmt_psl>
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Image extension
 // Path: The original vector path without transforms.
 // Transform: Transforms to be applied to the path and to align the image.

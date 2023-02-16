@@ -12,7 +12,7 @@
     <idstring>ID_OFFSETFX</idstring>
     <category>Graphics</category>
     <include>modules/offsetfx.h</include>
-    <copyright>Paul Manias © 2010-2022</copyright>
+    <copyright>Paul Manias © 2010-2023</copyright>
     <description>
 <p>This filter offsets the input image relative to its current position in the image space by the specified vector of <code>(XOffset,YOffset)</code>.</p></description>
     <source>

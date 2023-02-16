@@ -1,10 +1,10 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 //#include "vector.h"
 #include "idl.h"
@@ -132,7 +132,7 @@ ERROR CMDExpunge(void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "paths.cpp"
 
@@ -149,7 +149,7 @@ ERROR CMDExpunge(void)
 #include "vectors/supershape.cpp"
 #include "vectors/wave.cpp"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 extern ERROR CMDOpen(OBJECTPTR Module);
 PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_VECTOR)

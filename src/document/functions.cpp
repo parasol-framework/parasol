@@ -388,7 +388,7 @@ static Field * find_field(OBJECTPTR Object, CSTRING Name, OBJECTPTR *Source) // 
 static void check_clips(extDocument *Self, LONG Index, layout *l,
    LONG ObjectIndex, LONG *ObjectX, LONG *ObjectY, LONG ObjectWidth, LONG ObjectHeight);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static bool read_rgb8(CSTRING Value, RGB8 *RGB)
 {
@@ -403,7 +403,7 @@ static bool read_rgb8(CSTRING Value, RGB8 *RGB)
    else return false;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static bool test_statement(CSTRING TestString, CSTRING CompareString, LONG Condition)
 {
@@ -443,7 +443,7 @@ static bool test_statement(CSTRING TestString, CSTRING CompareString, LONG Condi
    return result;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 This function can be used for performing simple calculations on numeric values and strings.  It can return a result in
 either a numeric format or in a string buffer if the calculation involves non-numeric characters.  Here are some
@@ -464,7 +464,7 @@ Special operators include:
 <type name="f">The same as the 'p' operator except the precision is always guaranteed to be fixed at that value through the use of trailing zeros (so a fixed precision of two used to print the number '7' will give a result of '7.00'.</>
 </>
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static WORD write_calc(STRING Buffer, LONG BufferSize, DOUBLE Value, WORD Precision)
 {
@@ -643,7 +643,7 @@ ERROR calc(CSTRING String, DOUBLE *Result, STRING Output, LONG OutputSize)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 This function is used to translate strings that make object and field references using the standard referencing format.
 References are made to objects by enclosing statements within square brackets.  As a result of calling this function,
@@ -680,7 +680,7 @@ The escape character for string translation is `$` and should be used as `[$...]
 square brackets from being translated.  The `[$]` characters will be removed as part of this process unless the
 KEEP_ESCAPE flag is used.  To escape a single right or left bracket, use `[rb]` or `[lb]` respectively.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR eval(extDocument *Self, STRING Buffer, LONG BufferLength, LONG Flags)
 {
@@ -830,7 +830,7 @@ static ERROR eval(extDocument *Self, STRING Buffer, LONG BufferLength, LONG Flag
                         field[j++] = Buffer[i++];
                      }
                      field[j] = 0;
-                     if (!AccessObject(objectid, 2000, &object)) {
+                     if (!AccessObjectID(objectid, 2000, &object)) {
                         OBJECTPTR target;
                         if (((classfield = find_field(object, field, &target))) and (classfield->Flags & FD_STRING)) {
                            error = GetField(object, (FIELD)classfield->FieldID|TSTR, &Self->TBuffer);
@@ -1057,7 +1057,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Checks if the file path is safe, i.e. does not refer to an absolute file location.
 
 static LONG safe_file_path(extDocument *Self, CSTRING Path)
@@ -1133,7 +1133,7 @@ static BYTE check_tag_conditions(extDocument *Self, XMLTag *Tag)
    return satisfied;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Processes an XML tag and passes it to parse_tag().
 **
 ** IXF_HOLDSTYLE:  If set, the font style will not be cleared.
@@ -1252,7 +1252,7 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, XMLTag *Tag, LONG Index,
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Supported Flags:
 //   IPF_NOCONTENT:
 //   IPF_STRIPFEEDS:
@@ -1582,7 +1582,7 @@ next_skiprestore:
    return result;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void style_check(extDocument *Self, LONG *Index)
 {
@@ -1604,7 +1604,7 @@ static void style_check(extDocument *Self, LONG *Index)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Inserts plain UTF8 text into the document stream.  Insertion can be at any byte index, indicated by the Index
 // parameter.  The Index value will be increased by the number of bytes to insert, indicated by Length.  The Document's
 // StreamLen will have increased by Length on this function's return.
@@ -1718,7 +1718,7 @@ static ERROR insert_text(extDocument *Self, LONG *Index, CSTRING Text, LONG Leng
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Inserts an escape sequence into the text stream.
 //
 // ESC,Code,Length[2],...Data...,Length[2],ESC
@@ -1803,7 +1803,7 @@ static ERROR insert_escape(extDocument *Self, LONG *Index, WORD EscapeCode, APTR
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This function is called only when a paragraph or explicit line-break (\n) is encountered.
 
 static void end_line(extDocument *Self, layout *l, LONG NewLine, LONG Index, DOUBLE Spacing, LONG RestartIndex, CSTRING Caller)
@@ -1891,7 +1891,7 @@ static void end_line(extDocument *Self, layout *l, LONG NewLine, LONG Index, DOU
    LAYOUT_LOGRETURN();
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Word-wrapping is checked whenever whitespace is encountered or certain escape codes are found in the text stream,
 // e.g. paragraphs and objects will mark an end to the current word.
 //
@@ -2079,7 +2079,7 @@ static void check_clips(extDocument *Self, LONG Index, layout *l,
    WRAP_LOGRETURN();
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Calculate the position, pixel length and height of each line for the entire page.  This function does not recurse,
 // but it reiterates if the size of the page section is expanded.  It is also called for individual table cells
 // which are treated as miniature pages.
@@ -2576,7 +2576,7 @@ list_repass:
                LONG width_check = 0;
                LONG dimensions = 0;
                LONG layoutflags = 0;
-               if (!(error = AccessObject(object_id, 5000, &object))) {
+               if (!(error = AccessObjectID(object_id, 5000, &object))) {
                   LAYOUT("layout_object:","[Idx:%d] The %s's available page area is %d-%d,%d-%d, margins %dx%d,%d, cursor %dx%d", i, object->Class->ClassName, cell.Left, cell.Right, cell.Top, cell.Bottom, l.left_margin-AbsX, l.right_margin, TopMargin, l.cursorx, l.cursory);
 
                   LONG cellwidth, cellheight, align, leftmargin, lineheight, zone_height;
@@ -2589,7 +2589,7 @@ list_repass:
                      // This layout method is used for objects that do not have a Layout object for graphics management and
                      // simply rely on a Surface object instead.
 
-                     if (!(error = AccessObject(layout_surface_id, 3000, &surface))) {
+                     if (!(error = AccessObjectID(layout_surface_id, 3000, &surface))) {
                         leftmargin    = l.left_margin - AbsX;
                         lineheight    = (l.base_line) ? l.base_line : l.font->Ascent;
 
@@ -4030,7 +4030,7 @@ exit:
    return i;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Calculate the page height, which is either going to be the coordinate of
 // the bottom-most line, or one of the clipping regions if one of them
 // extends further than the bottom-most line.
@@ -4071,7 +4071,7 @@ static LONG calc_page_height(extDocument *Self, LONG FirstClip, LONG Y, LONG Bot
    return page_height;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Terminates all links and frees the memory.  Another method to clear the links
 // is to set the TotalLinks to zero, which retains the link cache allocation.
 
@@ -4086,7 +4086,7 @@ static void free_links(extDocument *Self)
    Self->TotalLinks = 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Record a clickable link, cell, or other form of clickable area.
 
 static void add_link(extDocument *Self, UBYTE EscapeCode, APTR Escape, LONG X, LONG Y, LONG Width, LONG Height, CSTRING Caller)
@@ -4129,14 +4129,14 @@ static void add_link(extDocument *Self, UBYTE EscapeCode, APTR Escape, LONG X, L
    Self->TotalLinks++;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void draw_background(extDocument *Self, objSurface *Surface, objBitmap *Bitmap)
 {
    gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, Surface->Height, Bitmap->packPixel(Self->Background), BAF_FILL);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Note that this function also controls the drawing of objects that have loaded into the document (see the
 // subscription hook in the layout process).
 
@@ -4306,7 +4306,7 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
                   if ((escobject->Graphical) and (!escobject->Owned)) {
                      if (escobject->ObjectID < 0) {
                         object = NULL;
-                        AccessObject(escobject->ObjectID, 3000, &object);
+                        AccessObjectID(escobject->ObjectID, 3000, &object);
                      }
                      else object = GetObjectPtr(escobject->ObjectID);
 /*
@@ -4549,7 +4549,7 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
    } // for loop
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void draw_border(extDocument *Self, objSurface *Surface, objBitmap *Bitmap)
 {
@@ -4572,7 +4572,7 @@ static void draw_border(extDocument *Self, objSurface *Surface, objBitmap *Bitma
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static LONG xml_content_len(XMLTag *Tag)
 {
@@ -4593,7 +4593,7 @@ static LONG xml_content_len(XMLTag *Tag)
    return len;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void xml_extract_content(XMLTag *Tag, char *Buffer, LONG *Index, BYTE Whitespace)
 {
@@ -4620,7 +4620,7 @@ static void xml_extract_content(XMLTag *Tag, char *Buffer, LONG *Index, BYTE Whi
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR keypress(extDocument *Self, LONG Flags, LONG Value, LONG Unicode)
 {
@@ -4948,7 +4948,7 @@ static ERROR keypress(extDocument *Self, LONG Flags, LONG Value, LONG Unicode)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR load_doc(extDocument *Self, CSTRING Path, BYTE Unload, BYTE UnloadFlags)
 {
@@ -4997,7 +4997,7 @@ static ERROR load_doc(extDocument *Self, CSTRING Path, BYTE Unload, BYTE UnloadF
    else return log.warning(ERR_FileNotFound);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This function lays out the document so that it is ready to be drawn.  It calculates the position, pixel length and
 // height of each line and rearranges any objects that are present in the document.
 
@@ -5214,7 +5214,7 @@ restart:
    LAYOUT_LOGRETURN();
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Converts XML into RIPPLE bytecode, then displays the page that is referenced by the PageName field by calling
 // layout_doc().  If the PageName is unspecified, we use the first <page> that has no name, otherwise the first page
 // irrespective of the name.
@@ -5459,7 +5459,7 @@ static ERROR process_page(extDocument *Self, objXML *xml)
    return Self->Error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static docresource * add_resource_id(extDocument *Self, LONG ID, LONG Type)
 {
@@ -5477,7 +5477,7 @@ static docresource * add_resource_id(extDocument *Self, LONG ID, LONG Type)
    else return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static docresource * add_resource_ptr(extDocument *Self, APTR Address, LONG Type)
 {
@@ -5494,7 +5494,7 @@ static docresource * add_resource_ptr(extDocument *Self, APTR Address, LONG Type
    else return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This function removes all allocations that were made in displaying the current page, and resets a number of
 // variables that they are at the default settings for the next page.
 //
@@ -5730,7 +5730,7 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // If the layout needs to be recalculated, set the UpdateLayout field before calling this function.
 
 static void redraw(extDocument *Self, BYTE Focus)
@@ -5752,7 +5752,7 @@ static void redraw(extDocument *Self, BYTE Focus)
    if ((Focus) and (Self->FocusIndex != -1)) set_focus(Self, -1, "redraw()");
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #if 0
 static LONG get_line_from_index(extDocument *Self, LONG Index)
@@ -5767,7 +5767,7 @@ static LONG get_line_from_index(extDocument *Self, LONG Index)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
 {
@@ -5818,7 +5818,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void add_template(extDocument *Self, objXML *XML, XMLTag *Tag)
 {
@@ -5849,7 +5849,7 @@ static void add_template(extDocument *Self, objXML *XML, XMLTag *Tag)
    else log.warning("Failed to convert template %d to an XML string.", Tag->Index);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static CSTRING get_font_style(LONG Options)
 {
@@ -5859,7 +5859,7 @@ static CSTRING get_font_style(LONG Options)
    else return "Regular";
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Converts a font index into a font structure.
 
 static objFont * lookup_font(LONG Index, CSTRING Caller)
@@ -5873,7 +5873,7 @@ static objFont * lookup_font(LONG Index, CSTRING Caller)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Creates a font (if it doesn't already exist) and returns an index.
 //
 // Created fonts belong to the Document module rather than the current object, so they can be reused between multiple
@@ -5944,7 +5944,7 @@ exit:
    return i;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This function creates segments, which are used during the drawing process as well as user interactivity, e.g. to
 // determine the character that the mouse is positioned over.  A segment will usually consist of a sequence of
 // text characters or escape sequences.
@@ -6127,7 +6127,7 @@ static LONG add_drawsegment(extDocument *Self, LONG Offset, LONG Stop, layout *L
    return segment;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** convert_xml_args()
 **
 **   Attrib: Pointer to an array of XMLAttribs that are to be analysed for argument references.
@@ -6585,7 +6585,7 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                            LONG j = 0;
                            while ((i < end-1) and ((size_t)j < sizeof(name)-1)) name[j++] = Buffer[i++];
                            name[j] = 0;
-                           if (!AccessObject(objectid, 2000, &object)) {
+                           if (!AccessObjectID(objectid, 2000, &object)) {
                               if (((classfield = FindField(object, StrHash(name, FALSE), &target))) and (classfield->Flags & FD_STRING)) {
                                  error = object->get(classfield->FieldID, &strbuf);
                               }
@@ -6645,7 +6645,7 @@ repeat:
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Insert: The string to be inserted.
 ** Buffer: The start of the buffer region.
 ** Size:   The complete size of the target buffer.
@@ -6700,7 +6700,7 @@ static ERROR insert_string(CSTRING Insert, STRING Buffer, LONG BufferSize, LONG 
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Checks if an object reference is a valid member of the document.
 
 static BYTE valid_object(extDocument *Self, OBJECTPTR Object)
@@ -6719,7 +6719,7 @@ static BYTE valid_object(extDocument *Self, OBJECTPTR Object)
    return FALSE;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 //Checks if an object reference is a valid member of the document.
 
 static BYTE valid_objectid(extDocument *Self, OBJECTID ObjectID)
@@ -6733,7 +6733,7 @@ static BYTE valid_objectid(extDocument *Self, OBJECTID ObjectID)
    return FALSE;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static LONG getutf8(CSTRING Value, LONG *Unicode)
 {
@@ -6785,7 +6785,7 @@ static LONG getutf8(CSTRING Value, LONG *Unicode)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR activate_edit(extDocument *Self, LONG CellIndex, LONG CursorIndex)
 {
@@ -6884,7 +6884,7 @@ static ERROR activate_edit(extDocument *Self, LONG CellIndex, LONG CursorIndex)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void deactivate_edit(extDocument *Self, BYTE Redraw)
 {
@@ -6977,7 +6977,7 @@ static void deactivate_edit(extDocument *Self, BYTE Redraw)
    else log.warning("Failed to find cell ID %d", Self->ActiveEditCellID);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Clip: The clipping area in absolute coordinates.
 // Index: The stream index of the object/table/item that is creating the clip.
 // Transparent: If TRUE, wrapping will not be performed around the clip region.
@@ -7017,7 +7017,7 @@ static ERROR add_clip(extDocument *Self, SurfaceClip *Clip, LONG Index, CSTRING 
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Sends motion events for zones that the mouse pointer has departed.
 
 static void check_pointer_exit(extDocument *Self, LONG X, LONG Y)
@@ -7052,7 +7052,7 @@ static void check_pointer_exit(extDocument *Self, LONG X, LONG Y)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void pointer_enter(extDocument *Self, LONG Index, CSTRING Function, LONG Left, LONG Top, LONG Right, LONG Bottom)
 {
@@ -7090,7 +7090,7 @@ static void pointer_enter(extDocument *Self, LONG Index, CSTRING Function, LONG 
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
 {
@@ -7213,7 +7213,7 @@ static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void check_mouse_release(extDocument *Self, DOUBLE X, DOUBLE Y)
 {
@@ -7226,7 +7226,7 @@ static void check_mouse_release(extDocument *Self, DOUBLE X, DOUBLE Y)
    if (Self->LinkIndex != -1) exec_link(Self, Self->LinkIndex);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
 {
@@ -7372,7 +7372,7 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR resolve_font_pos(extDocument *Self, LONG Segment, LONG X, LONG *CharX, LONG *BytePos)
 {
@@ -7454,7 +7454,7 @@ static ERROR resolve_font_pos(extDocument *Self, LONG Segment, LONG X, LONG *Cha
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Using only a stream index, this function will determine the X coordinate of the character at that index.  This is
 // slower than resolve_font_pos(), because the segment has to be resolved by this function.
 
@@ -7520,7 +7520,7 @@ static ERROR resolve_fontx_by_index(extDocument *Self, LONG Index, LONG *CharX)
    return ERR_Search;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static LONG find_segment(extDocument *Self, LONG Index, LONG InclusiveStop)
 {
@@ -7545,7 +7545,7 @@ static LONG find_segment(extDocument *Self, LONG Index, LONG InclusiveStop)
    return -1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // The text will be deselected, but the cursor and editing area will remain active.
 
 static void deselect_text(extDocument *Self)
@@ -7606,7 +7606,7 @@ static void deselect_text(extDocument *Self)
    DRAW_PAGE(Self);  // TODO: Draw only the area that we've identified as relevant.
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void split_command(std::string &Command, std::string &Args)
 {
@@ -7636,7 +7636,7 @@ static void split_command(std::string &Command, std::string &Args)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static LONG find_tabfocus(extDocument *Self, UBYTE Type, LONG Reference)
 {
@@ -7646,7 +7646,7 @@ static LONG find_tabfocus(extDocument *Self, UBYTE Type, LONG Reference)
    return -1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This function is used in tags.c by the link and object insertion code.
 
 static LONG add_tabfocus(extDocument *Self, UBYTE Type, LONG Reference)
@@ -7699,7 +7699,7 @@ static LONG add_tabfocus(extDocument *Self, UBYTE Type, LONG Reference)
       // Find out if the object has a surface and if so, place it in the XRef field.
 
       if (GetClassID(Reference) != ID_SURFACE) {
-         if (!AccessObject(Reference, 3000, &object)) {
+         if (!AccessObjectID(Reference, 3000, &object)) {
             regionid = 0;
             if (FindField(object, FID_Region, NULL)) {
                if (!object->get(FID_Region, &regionid)) {
@@ -7727,7 +7727,7 @@ static LONG add_tabfocus(extDocument *Self, UBYTE Type, LONG Reference)
    return index;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Changes the focus to an object or link in the document.  The new index is stored in the FocusIndex field.  If the
 // Index is set to -1, set_focus() will focus on the first element, but only if it is an object.
 
@@ -7778,7 +7778,7 @@ static void set_focus(extDocument *Self, LONG Index, CSTRING Caller)
          CLASSID class_id = GetClassID(Self->Tabs[Index].Ref);
          OBJECTPTR input;
          if (class_id IS ID_VECTORTEXT) {
-            if (!AccessObject(Self->Tabs[Index].Ref, 1000, &input)) {
+            if (!AccessObjectID(Self->Tabs[Index].Ref, 1000, &input)) {
                acFocus(input);
                //if ((input->getPtr(FID_UserInput, &text) IS ERR_Okay) and (text)) {
                //   txtSelectArea(text, 0,0, 200000, 200000);
@@ -7823,7 +7823,7 @@ static void set_focus(extDocument *Self, LONG Index, CSTRING Caller)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Scrolls any given area of the document into view.
 
 static BYTE view_area(extDocument *Self, LONG Left, LONG Top, LONG Right, LONG Bottom)
@@ -7878,7 +7878,7 @@ static BYTE view_area(extDocument *Self, LONG Left, LONG Top, LONG Right, LONG B
    else return FALSE;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void advance_tabfocus(extDocument *Self, BYTE Direction)
 {
@@ -7935,7 +7935,7 @@ static void advance_tabfocus(extDocument *Self, BYTE Direction)
    if (i >= 0) set_focus(Self, Self->FocusIndex, "adv_tabfocus");
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // scheme://domain.com/path?param1=value&param2=value#fragment:bookmark
 
 static void process_parameters(extDocument *Self, CSTRING String)
@@ -8035,7 +8035,7 @@ static void process_parameters(extDocument *Self, CSTRING String)
    log.msg("Reset page name to '%s', bookmark '%s'", Self->PageName, Self->Bookmark);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Obsoletion of the old scrollbar code means that we should be adjusting page size only and let the scrollbars
 // automatically adjust in the background.
 
@@ -8047,7 +8047,7 @@ static void calc_scroll(extDocument *Self)
    log.traceBranch("PageHeight: %d/%d, PageWidth: %d/%d, XPos: %d, YPos: %d", Self->PageHeight, Self->AreaHeight, Self->CalcWidth, Self->AreaWidth, Self->XPosition, Self->YPosition);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Resolves function references.
 */
 
@@ -8153,7 +8153,7 @@ static ERROR extract_script(extDocument *Self, CSTRING Link, OBJECTPTR *Script, 
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void exec_link(extDocument *Self, LONG Index)
 {
@@ -8350,7 +8350,7 @@ end:
    Self->Processing--;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // If an object supports the LayoutStyle field, this function configures the DocStyle structure and then sets the
 // LayoutStyle field for that object.
 //
@@ -8374,7 +8374,7 @@ static void set_object_style(extDocument *Self, OBJECTPTR Object)
    Object->set(FID_LayoutStyle, &style);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void show_bookmark(extDocument *Self, CSTRING Bookmark)
 {
@@ -8394,7 +8394,7 @@ static void show_bookmark(extDocument *Self, CSTRING Bookmark)
    else log.warning("Failed to find bookmark '%s'", Bookmark);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void key_event(extDocument *Self, evKey *Event, LONG Size)
 {
@@ -8403,7 +8403,7 @@ static void key_event(extDocument *Self, evKey *Event, LONG Size)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR flash_cursor(extDocument *Self, LARGE TimeElapsed, LARGE CurrentTime)
 {
@@ -8413,7 +8413,7 @@ static ERROR flash_cursor(extDocument *Self, LARGE TimeElapsed, LARGE CurrentTim
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void reset_cursor(extDocument *Self)
 {
@@ -8429,7 +8429,7 @@ static void reset_cursor(extDocument *Self)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR report_event(extDocument *Self, LARGE Event, APTR EventData, CSTRING StructName)
 {

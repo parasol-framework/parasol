@@ -1,10 +1,10 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -MODULE-
 Vector: Create, manipulate and draw vector graphics to bitmaps.
@@ -14,7 +14,7 @@ functions for creating paths and rendering them to bitmaps.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 //#include "vector.h"
 #include "colours.cpp"
@@ -53,11 +53,11 @@ static SimpleVector * new_simplevector(void)
    return vector;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "module_def.c"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR CMDOpen(OBJECTPTR Module)
 {
@@ -65,7 +65,7 @@ ERROR CMDOpen(OBJECTPTR Module)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ApplyPath: Copy a pre-generated or custom path to a VectorPath object.
@@ -84,7 +84,7 @@ obj VectorPath: The target VectorPath object.
 Okay
 NullArgs
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR vecApplyPath(class SimpleVector *Vector, extVectorPath *VectorPath)
 {
@@ -98,7 +98,7 @@ ERROR vecApplyPath(class SimpleVector *Vector, extVectorPath *VectorPath)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ArcTo: Alter a path by setting an arc-to command at the current vertex position.
@@ -115,14 +115,14 @@ double X: The horizontal end point for the arc command.
 double Y: The vertical end point for the arc command.
 int(ARC) Flags: Optional flags.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void vecArcTo(SimpleVector *Vector, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, LONG Flags)
 {
    Vector->mPath.arc_to(RX, RY, Angle, (Flags & ARC_LARGE) ? 1 : 0, (Flags & ARC_SWEEP) ? 1 : 0, X, Y);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ClosePath: Close the path by connecting the beginning and end points.
@@ -136,14 +136,14 @@ interesting effects can be created by taking advantage of fill rules.
 -INPUT-
 ptr Path:  The vector path to modify.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void vecClosePath(SimpleVector *Vector)
 {
    Vector->mPath.close_polygon();
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 Curve3: Alter a path by setting a quadratic bezier curve command at the current vertex position.
@@ -158,14 +158,14 @@ double CtrlY: Control point vertical coordinate.
 double X: The horizontal end point for the curve3 command.
 double Y: The vertical end point for the curve3 command.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void vecCurve3(SimpleVector *Vector, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y)
 {
    Vector->mPath.curve3(CtrlX, CtrlY, X, Y);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 Curve4: Alter a path by setting a curve4 command at the current vertex position.
@@ -182,14 +182,14 @@ double CtrlY2: Control point 2 vertical coordinate.
 double X: The horizontal end point for the curve4 command.
 double Y: The vertical end point for the curve4 command.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void vecCurve4(SimpleVector *Vector, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y)
 {
    Vector->mPath.curve4(CtrlX1, CtrlY1, CtrlX2, CtrlY2, X, Y);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 DrawPath: Draws a vector path to a target bitmap.
@@ -214,7 +214,7 @@ obj FillStyle: Pointer to a valid object for fill definition, or NULL if none re
 Okay
 NullArgs
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR vecDrawPath(objBitmap *Bitmap, class SimpleVector *Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle,
    OBJECTPTR FillStyle)
@@ -233,7 +233,7 @@ ERROR vecDrawPath(objBitmap *Bitmap, class SimpleVector *Path, DOUBLE StrokeWidt
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 FreePath: Remove a generated path.
@@ -243,7 +243,7 @@ Deallocates paths generated by the Vector module, such as ~GeneratePath().
 -INPUT-
 ptr Path: Pointer to the path to deallocate.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void vecFreePath(APTR Path)
 {
@@ -252,7 +252,7 @@ void vecFreePath(APTR Path)
    FreeResource(Path);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetVertex: Retrieve the coordinates of the current vertex.
@@ -268,14 +268,14 @@ ptr Path: The vector path to modify.
 -RESULT-
 int: The internal command value for the vertex will be returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 LONG vecGetVertex(SimpleVector *Vector, DOUBLE *X, DOUBLE *Y)
 {
    return Vector->mPath.vertex(X, Y);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GenerateEllipse: Generates an elliptical path.
@@ -296,7 +296,7 @@ Okay
 NullArgs
 AllocMemory
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR *Path)
 {
@@ -349,7 +349,7 @@ ERROR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertic
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GenerateRectangle: Generate a rectangular path at (x,y) with size (width,height).
@@ -369,7 +369,7 @@ Okay
 NullArgs
 AllocMemory
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR *Path)
 {
@@ -389,7 +389,7 @@ ERROR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GeneratePath: Generates a path from an SVG path command sequence, or an empty path for custom configuration.
@@ -432,7 +432,7 @@ Okay
 NullArgs
 AllocMemory
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR vecGeneratePath(CSTRING Sequence, APTR *Path)
 {
@@ -460,7 +460,7 @@ ERROR vecGeneratePath(CSTRING Sequence, APTR *Path)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 LineTo: Alter a path by setting a line-to command at the current vertex position.
@@ -473,14 +473,14 @@ ptr Path: The vector path to modify.
 double X: The line end point on the horizontal plane.
 double Y: The line end point on the vertical plane.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void vecLineTo(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
 {
    Vector->mPath.line_to(X, Y);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 MoveTo: Alter a path by setting a move-to command at the current vertex position.
@@ -495,14 +495,14 @@ ptr Path: The vector path to modify.
 double X: The horizontal end point for the command.
 double Y: The vertical end point for the command.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void vecMoveTo(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
 {
    Vector->mPath.move_to(X, Y);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 Multiply: Combines a matrix with a series of matrix values.
@@ -523,7 +523,7 @@ Okay:
 NullArgs:
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR vecMultiply(VectorMatrix *Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX,
    DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY)
@@ -548,7 +548,7 @@ ERROR vecMultiply(VectorMatrix *Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE She
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 MultiplyMatrix: Combines a source matrix with a target.
@@ -564,7 +564,7 @@ Okay:
 NullArgs:
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR vecMultiplyMatrix(VectorMatrix *Target, VectorMatrix *Source)
 {
@@ -589,7 +589,7 @@ ERROR vecMultiplyMatrix(VectorMatrix *Target, VectorMatrix *Source)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ParseTransform: Parse an SVG transformation string and apply the values to a matrix.
@@ -611,7 +611,7 @@ Okay:
 NullArgs:
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
 {
@@ -727,7 +727,7 @@ ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ReadPainter: Parses a painter string into its colour, gradient and image values.
@@ -756,7 +756,7 @@ Okay:
 NullArgs:
 Failed:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR vecReadPainter(objVectorScene *Scene, CSTRING IRI, FRGB *RGB, objVectorGradient **Gradient,
    objVectorImage **Image, objVectorPattern **Pattern)
@@ -926,7 +926,7 @@ next:
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ResetMatrix: Resets a transformation matrix to its default state.
@@ -940,7 +940,7 @@ struct(*VectorMatrix) Matrix: The target transformation matrix.
 Okay:
 NullArgs:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR vecResetMatrix(VectorMatrix *Matrix)
 {
@@ -960,7 +960,7 @@ ERROR vecResetMatrix(VectorMatrix *Matrix)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 RewindPath: Resets the vertex seek position to zero.
@@ -973,14 +973,14 @@ If the referenced Path is empty, this function does nothing.
 -INPUT-
 ptr Path: The vector path to rewind.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void vecRewindPath(SimpleVector *Vector)
 {
    if (Vector) Vector->mPath.rewind(0);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 Rotate: Applies a rotation transformation to a matrix.
@@ -998,7 +998,7 @@ double CenterY: Center of rotation on the vertical axis.
 Okay:
 NullArgs:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR vecRotate(VectorMatrix *Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY)
 {
@@ -1029,7 +1029,7 @@ ERROR vecRotate(VectorMatrix *Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE Cente
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 Scale: Scale the size of the vector by (x,y)
@@ -1053,7 +1053,7 @@ double Y: The scale factor on the y-axis.
 Okay
 NullArgs
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR vecScale(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
 {
@@ -1073,7 +1073,7 @@ ERROR vecScale(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 Skew: Skews the matrix along the horizontal and/or vertical axis.
@@ -1092,7 +1092,7 @@ NullArgs:
 OutOfRange: At least one of the angles is out of the allowable range.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR vecSkew(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
 {
@@ -1123,7 +1123,7 @@ ERROR vecSkew(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 Smooth3: Alter a path by setting a smooth3 command at the current vertex position.
@@ -1138,7 +1138,7 @@ ptr Path: The vector path to modify.
 double X: The horizontal end point for the smooth3 command.
 double Y: The vertical end point for the smooth3 command.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void vecSmooth3(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
 {
@@ -1146,7 +1146,7 @@ void vecSmooth3(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
    Vector->mPath.curve3(X, Y);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 Smooth4: Alter a path by setting a smooth4 command at the current vertex position.
@@ -1164,7 +1164,7 @@ double CtrlY: Control point vertical coordinate.
 double X: The horizontal end point for the smooth4 instruction.
 double Y: The vertical end point for the smooth4 instruction.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void vecSmooth4(SimpleVector *Vector, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y)
 {
@@ -1172,7 +1172,7 @@ void vecSmooth4(SimpleVector *Vector, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUB
    Vector->mPath.curve4(CtrlX, CtrlY, X, Y);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 Translate: Translates the vector by (X,Y).
@@ -1189,7 +1189,7 @@ Okay:
 NullArgs:
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR vecTranslate(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
 {
@@ -1205,7 +1205,7 @@ ERROR vecTranslate(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 TranslatePath: Translates a path by (x,y)
@@ -1219,7 +1219,7 @@ double Y: Translate the path vertically by the given value.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void vecTranslatePath(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
 {

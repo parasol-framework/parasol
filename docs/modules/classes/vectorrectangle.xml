@@ -12,7 +12,7 @@
     <idstring>ID_VECTORRECTANGLE</idstring>
     <category>Graphics</category>
     <include>modules/vectorrectangle.h</include>
-    <copyright>Paul Manias © 2010-2022</copyright>
+    <copyright>Paul Manias © 2010-2023</copyright>
     <description>
 <p>VectorRectangle extends the <class name="Vector">Vector</class> class with the ability to generate rectangular paths.</p></description>
     <source>

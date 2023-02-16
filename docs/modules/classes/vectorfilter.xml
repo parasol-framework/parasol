@@ -12,7 +12,7 @@
     <idstring>ID_VECTORFILTER</idstring>
     <category>Graphics</category>
     <include>modules/vectorfilter.h</include>
-    <copyright>Paul Manias © 2010-2022</copyright>
+    <copyright>Paul Manias © 2010-2023</copyright>
     <description>
 <p>The VectorFilter class allows post-effect filters to be applied to vectors as they are being rendered.  Filter support is closely modelled around the SVG standard, and effect results are intended to match that of the standard. Once created, a filter can be utilised by vector objects through their Filter field.  By way of example in SVG:</p>
 <pre>&lt;circle cx="160" cy="50" r="40" fill="#f00" filter="url(#EffectPipeline)"/&gt;

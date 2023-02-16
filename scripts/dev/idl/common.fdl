@@ -47,14 +47,14 @@ flags("CCF", { comment="Class categories" },
     "MULTIMEDIA")
 
 enum("AC", { start=1, comment="Action identifiers." },
-    "Signal",       "Activate",       "SelectArea",   "Clear",    "FreeWarning",  "OwnerDestroyed", "CopyData",
+    "Signal",       "Activate",       "SelectArea",   "Clear",    "FreeWarning",  "Sort",         "CopyData",
     "DataFeed",     "Deactivate",     "Draw",         "Flush",    "Focus",        "Free",         "SaveSettings",
     "GetVar",       "DragDrop",       "Hide",         "Init",     "Lock",         "LostFocus",    "Move",
     "MoveToBack",   "MoveToFront",    "NewChild",     "NewOwner", "NewObject",    "Redo",         "Query",
     "Read",         "Rename",         "Reset",        "Resize",   "SaveImage",    "SaveToObject", "Scroll",
     "Seek",         "SetVar",         "Show",         "Undo",     "Unlock",       "Next",         "Prev",
     "Write",        "SetField",       "Clipboard",    "Refresh",  "Disable",      "Enable",       "Redimension",
-    "MoveToPoint",  "ScrollToPoint",  "Custom",       "Sort",
+    "MoveToPoint",  "ScrollToPoint",  "Custom",
     "END")
 
 flags("PERMIT", { comment="Permission flags" },
@@ -127,11 +127,11 @@ flags("KQ", { comment="Special qualifier flags" },
 )
 
 flags("MEM", { comment="Memory types used by AllocMemory().  The lower 16 bits are stored with allocated blocks, the upper 16 bits are function-relative only." },
-    "PUBLIC|SHARED: Public memory can be allocated by specifying this flag.  Public memory blocks are accessible by all tasks, but access can only be gained by knowing the unique memory ID and utilising the AccessMemory() function.",
+    "PUBLIC|SHARED: Public memory can be allocated by specifying this flag.  Public memory blocks are accessible by all tasks, but access can only be gained by knowing the unique memory ID and utilising the AccessMemoryID() function.",
     "VIDEO: The memory space is reserved by a video device such as a graphics card for display purposes, e.g. framebuffer.",
     "TEXTURE: The memory space is reserved by a video driver for hosting texture graphics.",
-    "AUDIO: Identifies the memory space as being reserved by an audio device such as a sound card.",
-    "CODE: Indicates that the memory will contain executable program code.",
+    "AUDIO: The memory space is reserved by an audio device such as a sound card.",
+    "CODE: Set if the memory will contain executable program code.",
     "NO_POOL: Gives a hint to the allocator to allocate the block outside of the memory pool.",
     "TMP_LOCK: Enables temporary locking restrictions.  Prevents processes from sleeping while holding a lock on the memory block.",
     "UNTRACKED: Allocating an untracked memory block will prevent the memory block from being tracked back to the object holding the current context.",
@@ -140,7 +140,7 @@ flags("MEM", { comment="Memory types used by AllocMemory().  The lower 16 bits a
     "NO_LOCK: For AllocMemory() only, indicates that the (private) memory block should not be locked on return.",
     "EXCLUSIVE: Internal - Used for lock management.",
     "DELETE: Internal - The memory block is marked for deletion.",
-    "NO_BLOCK|NO_BLOCKING: If this flag is set against a public memory block then the access blocking mechanism will be permanently turned off for all accesses to that particular memory block.  This means that multiple tasks can have full read/write access to the memory block at once regardless of the flags passed to AccessMemory().",
+    "NO_BLOCK|NO_BLOCKING: If this flag is set against a public memory block then the access blocking mechanism will be permanently turned off for all accesses to that particular memory block.  This means that multiple tasks can have full read/write access to the memory block at once regardless of the flags passed to AccessMemoryID().",
     "FIXED: This flag can be applied to public memory blocks that need to be mapped to a fixed address that is common to all tasks.  For instance, if the system locks the memory block to address 0x56084000 for your task, then all other tasks that map the memory block will also see it at that address.  This flag is typically used for supporting absolute code execution.",
     "MANAGED: Enables custom resource management for the memory block.  The start of the block will need to be reserved with a pointer to a ResourceManager structure, which is included as part of the block's declared Size.  The Free() callback will be called when the block is removed.",
     { DATA          = "0: The default type, MEM_DATA, is used to indicate a standard memory allocation from system RAM." },
@@ -149,7 +149,6 @@ flags("MEM", { comment="Memory types used by AllocMemory().  The lower 16 bits a
     { NO_CLEAR      = "0x00040000: Do not clear the memory on allocation (saves time)." },
     { RESERVED      = "0x00080000: This special flag is used to allocate shared memory blocks that require reserved ID numbers.  When using the MEM_RESERVED flag, you are required to set the longword pointed to by the ID argument to the ID that you wish to reserve.  If that memory ID is already taken, the AllocMemory() call will fail." },
     { HIDDEN        = "0x00100000: Hidden blocks are not recorded and are excluded from resource tracking." },
-    { TASK          = "0x00200000: Track the memory block to the current process, as opposed to the current object." },
     { CALLER        = "0x00800000: This flag is usable only in routines that are supporting a class method.  It forces the memory allocation to be tracked to the object that made the method call.  This is particularly important in methods that return memory blocks that do not form a part of the object itself." },
     { READ_WRITE    = "READ|WRITE" })
 

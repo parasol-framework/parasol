@@ -12,7 +12,7 @@
     <idstring>ID_VECTORCLIP</idstring>
     <category>Graphics</category>
     <include>modules/vectorclip.h</include>
-    <copyright>Paul Manias © 2010-2022</copyright>
+    <copyright>Paul Manias © 2010-2023</copyright>
     <description>
 <p>The VectorClip defines a clipping path that can be used by other vectors as a mask.  The clipping path is defined by creating Vector shapes that are initialised to the VectorClip as child objects.</p>
 <p>Any Vector that defines a path can utilise a VectorClip by referencing it through the Vector's Mask field.</p>

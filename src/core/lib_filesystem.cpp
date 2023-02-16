@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol Framework is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -8,7 +8,7 @@ Please refer to it for further information on licensing.
 Name: Files
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 //#define DEBUG
 #define PRV_FILESYSTEM
@@ -85,7 +85,7 @@ typedef int HANDLE;
  #define ftruncate64 ftruncate
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 class CacheFileIndex {
 public:
@@ -119,7 +119,7 @@ namespace std {
 static std::unordered_map<CacheFileIndex, CacheFile *> glCache;
 static std::mutex glCacheLock;
 
-//****************************************************************************
+//********************************************************************************************************************
 // Called during shutdown
 
 void free_file_cache(void)
@@ -135,7 +135,7 @@ void free_file_cache(void)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Check if a Path refers to a virtual volume, and if so, return the matching virtual_drive definition.
 
 static virtual_drive * get_virtual(CSTRING Path)
@@ -152,7 +152,7 @@ static virtual_drive * get_virtual(CSTRING Path)
    return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 extern "C" LONG CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
 {
@@ -191,7 +191,7 @@ extern "C" LONG CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
    else return FFR_OKAY;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Cleans up path strings such as "../../myfile.txt".  Note that for Linux, the targeted file/folder has to exist or
 ** NULL will be returned.
 **
@@ -222,7 +222,7 @@ static STRING cleaned_path(CSTRING Path)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Returns a virtual_drive structure for all path types. Defaults to the host file system if no virtual drive was
 ** identified.
 **
@@ -256,7 +256,7 @@ const virtual_drive * get_fs(CSTRING Path)
    return (const virtual_drive *)&glVirtual[0];
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Assigned to a timer for the purpose of checking up on the expiry of cached files.
 
 ERROR check_cache(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)
@@ -282,7 +282,7 @@ ERROR check_cache(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)
    else return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 AddInfoTag: Adds new tags to FileInfo structures.
@@ -301,7 +301,7 @@ Okay:
 NullArgs:
 CreateResource: Failed to create a new keystore.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR AddInfoTag(FileInfo *Info, CSTRING Name, CSTRING Value)
 {
@@ -312,7 +312,7 @@ ERROR AddInfoTag(FileInfo *Info, CSTRING Name, CSTRING Value)
    return VarSetString(Info->Tags, Name, Value);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 AnalysePath: Analyses paths to determine their type (file, folder or volume).
@@ -343,7 +343,7 @@ Okay: The path was analysed and the result is stored in the Type variable.
 NullArgs:
 DoesNotExist:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR AnalysePath(CSTRING Path, LONG *PathType)
 {
@@ -403,7 +403,7 @@ ERROR AnalysePath(CSTRING Path, LONG *PathType)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 CompareFilePaths: Checks if two file paths refer to the same physical file.
@@ -426,7 +426,7 @@ False: The file paths refer to different files.
 NullArgs
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB)
 {
@@ -469,7 +469,7 @@ ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB)
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR fs_samefile(CSTRING Path1, CSTRING Path2)
 {
@@ -492,7 +492,7 @@ ERROR fs_samefile(CSTRING Path1, CSTRING Path2)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ResolveGroupID: Converts a group ID to its corresponding name.
@@ -506,7 +506,7 @@ int Group: The group ID.
 -RESULT-
 cstr: The group name is returned, or NULL if the ID cannot be resolved.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 CSTRING ResolveGroupID(LONG GroupID)
 {
@@ -530,7 +530,7 @@ CSTRING ResolveGroupID(LONG GroupID)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ResolveUserID: Converts a user ID to its corresponding name.
@@ -544,7 +544,7 @@ int User: The user ID.
 -RESULT-
 cstr: The user name is returned, or NULL if the ID cannot be resolved.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 CSTRING ResolveUserID(LONG UserID)
 {
@@ -568,7 +568,7 @@ CSTRING ResolveUserID(LONG UserID)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 CopyFile: Makes copies of folders and files.
@@ -613,14 +613,14 @@ Okay: The location was copied successfully.
 Args:
 Failed: A failure occurred during the copy process.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback)
 {
    return fs_copy(Source, Dest, Callback, FALSE);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 CreateLink: Creates symbolic links on Unix file systems.
@@ -653,7 +653,7 @@ Memory:
 BufferOverflow: One or both of the provided arguments is too long.
 FileExists: The location referenced at From already exists.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR CreateLink(CSTRING From, CSTRING To)
 {
@@ -692,7 +692,7 @@ ERROR CreateLink(CSTRING From, CSTRING To)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 DeleteFile: Deletes files and folders.
@@ -724,7 +724,7 @@ FileNotFound:
 File: The location could not be opened for deletion.
 NoSupport: The filesystem driver does not support deletion.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR DeleteFile(CSTRING Path, FUNCTION *Callback)
 {
@@ -750,7 +750,7 @@ ERROR DeleteFile(CSTRING Path, FUNCTION *Callback)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SetDefaultPermissions: Forces the user and group permissions to be applied to new files and folders.
@@ -767,7 +767,7 @@ int Group: Group ID to apply to new files.
 int(PERMIT) Permissions: Permission flags to be applied to new files.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions)
 {
@@ -785,7 +785,7 @@ void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions)
    glDefaultPermissions = Permissions;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Internal function for getting information from files, particularly virtual volumes.  If you know that a path
 // refers directly to the client's filesystem then you can revert to calling fs_getinfo() instead.
 
@@ -866,7 +866,7 @@ ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 TranslateCmdRef: Converts program references into command-line format.
@@ -885,7 +885,7 @@ StringFormat
 NoData
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR TranslateCmdRef(CSTRING String, STRING *Command)
 {
@@ -936,7 +936,7 @@ ERROR TranslateCmdRef(CSTRING String, STRING *Command)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 LoadFile: Loads files into a local cache for fast file processing.
@@ -967,7 +967,7 @@ AllocMemory:
 Search: If LDF_CHECK_EXISTS is specified, this failure indicates that the file is not cached.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
 {
@@ -1058,7 +1058,7 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 CreateFolder: Makes new folders.
@@ -1083,7 +1083,7 @@ FileExists: An identically named file or folder already exists at the Path.
 NoSupport:  Virtual file system does not support folder creation.
 Failed:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR CreateFolder(CSTRING Path, LONG Permissions)
 {
@@ -1111,7 +1111,7 @@ ERROR CreateFolder(CSTRING Path, LONG Permissions)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 MoveFile: Moves folders and files to new locations.
@@ -1156,7 +1156,7 @@ Okay
 NullArgs
 Failed
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback)
 {
@@ -1279,7 +1279,7 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRe
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** The Path passed to this function must be a completely resolved path.  Note that the Path argument needs to be a
 ** large buffer as this function will modify it.
 */
@@ -1363,7 +1363,7 @@ ERROR test_path(STRING Path, LONG Flags)
    return ERR_FileNotFound;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 UnloadFile: Unloads files from the file cache.
@@ -1374,7 +1374,7 @@ This function unloads cached files that have been previously loaded with the ~Lo
 resource(CacheFile) Cache: A pointer to a CacheFile structure returned from LoadFile().
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void UnloadFile(CacheFile *Cache)
 {
@@ -1391,7 +1391,7 @@ void UnloadFile(CacheFile *Cache)
    // Cache entries are never removed here because this determination is handled by check_cache().
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // NOTE: The argument passed as the folder must be a large buffer to compensate for the resulting filename.
 
 #ifdef __unix__
@@ -1540,7 +1540,7 @@ ERROR findfile(STRING Path)
 
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG convert_permissions(LONG Permissions)
 {
@@ -1570,7 +1570,7 @@ LONG convert_permissions(LONG Permissions)
    return flags;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG convert_fs_permissions(LONG Permissions)
 {
@@ -2182,7 +2182,7 @@ exit:
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Generic routine for copying folders, intended to be used in conjunction with fs_copy()
 
 ERROR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *Callback, BYTE Move)
@@ -2288,7 +2288,7 @@ ERROR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *C
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Gets the permissions of the parent folder.  Typically used for permission inheritance. NB: It is often wise to
 // remove exec and suid flags returned from this function.
 
@@ -2325,7 +2325,7 @@ LONG get_parent_permissions(CSTRING Path, LONG *UserID, LONG *GroupID)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Strips trailing slashes from folder locations.
 
 BYTE strip_folder(STRING Path)
@@ -2341,7 +2341,7 @@ BYTE strip_folder(STRING Path)
    return FALSE;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR fs_readlink(STRING Source, STRING *Link)
 {
@@ -2360,7 +2360,7 @@ ERROR fs_readlink(STRING Source, STRING *Link)
 #endif
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR fs_createlink(CSTRING Target, CSTRING Link)
 {
@@ -2374,7 +2374,7 @@ ERROR fs_createlink(CSTRING Target, CSTRING Link)
 #endif
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // NB: The path that is received is already resolved.
 
 ERROR fs_delete(STRING Path, FUNCTION *Callback)
@@ -2422,7 +2422,7 @@ ERROR fs_delete(STRING Path, FUNCTION *Callback)
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR fs_scandir(DirInfo *Dir)
 {
@@ -2545,7 +2545,7 @@ ERROR fs_scandir(DirInfo *Dir)
    return ERR_DirEmpty;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR fs_opendir(DirInfo *Info)
 {
@@ -2578,7 +2578,7 @@ ERROR fs_opendir(DirInfo *Info)
 #endif
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR fs_closedir(DirInfo *Dir)
 {
@@ -2619,14 +2619,14 @@ ERROR fs_closedir(DirInfo *Dir)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR fs_rename(STRING CurrentPath, STRING NewPath)
 {
    return ERR_NoSupport;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR fs_testpath(CSTRING Path, LONG Flags, LONG *Type)
 {
@@ -2667,7 +2667,7 @@ ERROR fs_testpath(CSTRING Path, LONG Flags, LONG *Type)
    else return ERR_DoesNotExist;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR fs_getinfo(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
 {
@@ -2801,7 +2801,7 @@ ERROR fs_getinfo(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR fs_getdeviceinfo(CSTRING Path, objStorageDevice *Info)
 {
@@ -2961,7 +2961,7 @@ restart:
    return ERR_NoSupport;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR fs_makedir(CSTRING Path, LONG Permissions)
 {
@@ -3067,7 +3067,7 @@ ERROR fs_makedir(CSTRING Path, LONG Permissions)
 #endif
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #ifdef __ANDROID__
 // The Android release does not keep an associations.cfg file.
@@ -3123,7 +3123,7 @@ ERROR load_datatypes(void)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 // Private function for deleting files and folders recursively.
 
 #ifdef __unix__
@@ -3212,7 +3212,7 @@ ERROR delete_tree(STRING Path, LONG Size, FUNCTION *Callback, FileFeedback *Feed
 
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "fs_identify.cpp"
 #include "fs_resolution.cpp"

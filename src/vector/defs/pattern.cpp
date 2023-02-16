@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 Please note that this is not an extension of the Vector class.  It is used for the purposes of pattern definitions only.
 
@@ -24,7 +24,7 @@ definition.  This will ensure that the VectorPattern is deallocated when the sce
 NOTE: The VectorPattern inherits attributes from the VectorScene, which is used to define the size of the pattern and
 contains the pattern content.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PATTERN_Draw(extVectorPattern *Self, struct acDraw *Args)
 {
@@ -51,7 +51,7 @@ static ERROR PATTERN_Draw(extVectorPattern *Self, struct acDraw *Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR PATTERN_Free(extVectorPattern *Self, APTR Void)
 {
@@ -68,7 +68,7 @@ static ERROR PATTERN_Free(extVectorPattern *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR PATTERN_Init(extVectorPattern *Self, APTR Void)
 {
@@ -100,7 +100,7 @@ static ERROR PATTERN_Init(extVectorPattern *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR PATTERN_NewObject(extVectorPattern *Self, APTR Void)
 {
@@ -118,7 +118,7 @@ static ERROR PATTERN_NewObject(extVectorPattern *Self, APTR Void)
    else return ERR_NewObject;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 ContentUnits: Private. Not yet implemented.
@@ -136,7 +136,7 @@ The (Width,Height) field values define the dimensions of the pattern tile.  If t
 then the dimension is calculated relative to the bounding box or viewport applying the pattern, dependent on the
 #Units setting.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PATTERN_GET_Height(extVectorPattern *Self, Variable *Value)
 {
@@ -164,7 +164,7 @@ static ERROR PATTERN_SET_Height(extVectorPattern *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Inherit: Inherit attributes from a VectorPattern referenced here.
@@ -173,7 +173,7 @@ Attributes can be inherited from another pattern by referencing it in this field
 primarily for the purpose of simplifying SVG compatibility and its use may result in an unnecessary performance
 penalty.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PATTERN_SET_Inherit(extVectorPattern *Self, extVectorPattern *Value)
 {
@@ -187,7 +187,7 @@ static ERROR PATTERN_SET_Inherit(extVectorPattern *Self, extVectorPattern *Value
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Matrices: A linked list of transform matrices that have been applied to the pattern.
 
@@ -196,7 +196,7 @@ represented by a VectorMatrix structure, and are linked in the order in which th
 
 &VectorMatrix
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTORPATTERN_GET_Matrices(extVectorPattern *Self, VectorMatrix **Value)
 {
@@ -239,7 +239,7 @@ static ERROR VECTORPATTERN_SET_Matrices(extVectorPattern *Self, VectorMatrix *Va
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Opacity: The opacity of the pattern.
@@ -247,7 +247,7 @@ Opacity: The opacity of the pattern.
 The opacity of the pattern is defined as a value between 0.0 and 1.0, with 1.0 being fully opaque.  The default value
 is 1.0.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PATTERN_SET_Opacity(extVectorPattern *Self, DOUBLE Value)
 {
@@ -257,7 +257,7 @@ static ERROR PATTERN_SET_Opacity(extVectorPattern *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Scene: Refers to the internal @VectorScene that will contain the rendered pattern.
@@ -276,7 +276,7 @@ Transform: Applies a transform to the pattern during the render process.
 
 A transform can be applied to the pattern by setting this field with an SVG compliant transform string.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PATTERN_SET_Transform(extVectorPattern *Self, CSTRING Commands)
 {
@@ -307,7 +307,7 @@ static ERROR PATTERN_SET_Transform(extVectorPattern *Self, CSTRING Commands)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Units:  Defines the coordinate system for fields X, Y, Width and Height.
@@ -322,7 +322,7 @@ Viewport: Refers to the viewport that contains the pattern.
 The Viewport refers to a @VectorViewport object that is created to host the vectors for the rendered pattern.  If the
 Viewport does not contain at least one vector that renders an image, the pattern will be ineffective.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PATTERN_GET_Viewport(extVectorPattern *Self, extVectorViewport **Value)
 {
@@ -330,7 +330,7 @@ static ERROR PATTERN_GET_Viewport(extVectorPattern *Self, extVectorViewport **Va
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Width: Width of the pattern tile.
@@ -339,7 +339,7 @@ The (Width,Height) field values define the dimensions of the pattern tile.  If t
 then the dimension is calculated relative to the bounding box or viewport applying the pattern, dependent on the
 #Units setting.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PATTERN_GET_Width(extVectorPattern *Self, Variable *Value)
 {
@@ -367,14 +367,14 @@ static ERROR PATTERN_SET_Width(extVectorPattern *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 X: X coordinate for the pattern.
 
 The (X,Y) field values define the starting coordinate for mapping patterns.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PATTERN_GET_X(extVectorPattern *Self, Variable *Value)
 {
@@ -402,7 +402,7 @@ static ERROR PATTERN_SET_X(extVectorPattern *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Y: Y coordinate for the pattern.
@@ -410,7 +410,7 @@ Y: Y coordinate for the pattern.
 The (X,Y) field values define the starting coordinate for mapping patterns.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PATTERN_GET_Y(extVectorPattern *Self, Variable *Value)
 {

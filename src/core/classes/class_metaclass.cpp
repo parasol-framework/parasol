@@ -1,10 +1,10 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -CLASS-
 MetaClass: The MetaClass is used to manage all classes supported by the system core.
@@ -25,7 +25,7 @@ complete run-down on class development.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include "../defs.h"
 
@@ -157,8 +157,6 @@ static MethodArray glMetaMethods[TOTAL_METAMETHODS+2] = {
    { 0, 0, 0, 0, 0 }
 };
 
-struct Stats glMetaClass_Stats = { .NotifyFlags = { 0, 0 }, .Name = { 'M','e','t','a','C','l','a','s','s' } };
-
 extMetaClass glMetaClass;
 
 //********************************************************************************************************************
@@ -168,7 +166,6 @@ void init_metaclass(void)
    ClearMemory(&glMetaClass, sizeof(glMetaClass));
 
    glMetaClass.BaseClass::Class   = &glMetaClass;
-   glMetaClass.BaseClass::Stats   = &glMetaClass_Stats;
    glMetaClass.BaseClass::ClassID = ID_METACLASS;
    glMetaClass.BaseClass::SubID   = ID_METACLASS;
    glMetaClass.BaseClass::UID     = 123;
@@ -188,7 +185,7 @@ void init_metaclass(void)
    glMetaClass.OriginalFieldTotal = ARRAYSIZE(glMetaFields)-1;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 FindField: Search a class definition for a specific field.
@@ -210,7 +207,7 @@ Search
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR CLASS_FindField(extMetaClass *Class, struct mcFindField *Args)
 {
@@ -335,8 +332,6 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
 
    VarSet(glClassMap, Self->ClassName, &Self, sizeof(APTR));
 
-   Self->ActionTable[AC_OwnerDestroyed].PerformAction = MGR_OwnerDestroyed;
-
    // Record the name of the module that owns this class.
 
    auto ctx = tlContext;
@@ -402,7 +397,7 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Actions: Defines the actions supported by the class.
@@ -434,7 +429,7 @@ ActionArray clActions[] = {
 The action ID's used in this particular list can be found in the system/actioncodes.h include file, along with many
 others. Never define method ID's in an action list - please use the #Methods field to define your methods.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Actions(extMetaClass *Self, const ActionArray *Actions)
 {
@@ -442,7 +437,7 @@ static ERROR SET_Actions(extMetaClass *Self, const ActionArray *Actions)
 
    for (auto i=0; Actions[i].ActionCode; i++) {
       auto code = Actions[i].ActionCode;
-      if ((code < AC_END) and (code > 0) and (code != AC_OwnerDestroyed)) {
+      if ((code < AC_END) and (code > 0)) {
          Self->ActionTable[code].PerformAction = (ERROR (*)(OBJECTPTR, APTR))Actions[i].Routine;
       }
    }
@@ -450,7 +445,7 @@ static ERROR SET_Actions(extMetaClass *Self, const ActionArray *Actions)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 ActionTable: This field can be read to retrieve a MetaClass object's internal action table.
@@ -464,7 +459,7 @@ example `Routine[AC_Read]`.  Calling an action routine directly is an illegal op
 A) The call is made from an action support function in a class module and B) Special circumstances allow for such
 a call, as documented in the Action Support Guide.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_ActionTable(extMetaClass *Self, ActionEntry **Value, LONG *Elements)
 {
@@ -473,7 +468,7 @@ static ERROR GET_ActionTable(extMetaClass *Self, ActionEntry **Value, LONG *Elem
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 BaseClassID: Specifies the base class ID of a class object.
@@ -513,7 +508,7 @@ class.  If creating a base class then it must be provided, while sub-classes wil
 The Class Development Guide has a section devoted to the configuration of this array. Please read the guide for more
 information.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Fields(extMetaClass *Self, const FieldArray **Fields, LONG *Elements)
 {
@@ -540,7 +535,7 @@ static ERROR SET_Fields(extMetaClass *Self, const FieldArray *Fields, LONG Eleme
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 FileDescription: Describes the file type represented by the class.
@@ -591,7 +586,7 @@ e.g. Fluid.
 
 A value of NULL is returned if the module does not provide an IDL string.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_IDL(extMetaClass *Self, CSTRING *Value)
 {
@@ -607,7 +602,7 @@ static ERROR GET_IDL(extMetaClass *Self, CSTRING *Value)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Location: Returns the path from which the class binary is loaded.
@@ -615,7 +610,7 @@ Location: Returns the path from which the class binary is loaded.
 The path from which the class binary was loaded is readable from this field.  The path may not necessarily include the
 file extension of the source binary.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Location(extMetaClass *Self, CSTRING *Value)
 {
@@ -635,7 +630,7 @@ static ERROR GET_Location(extMetaClass *Self, CSTRING *Value)
    else return ERR_Failed;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Methods: Set this field to define the methods supported by the class.
@@ -651,7 +646,7 @@ the guide for more information.
 
 Never use action ID's in a Methods array - please use the #Actions field for this.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Methods(extMetaClass *Self, const MethodArray **Methods, LONG *Elements)
 {
@@ -707,12 +702,12 @@ static ERROR SET_Methods(extMetaClass *Self, const MethodArray *Methods, LONG El
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Module: The name of the module binary that initialised the class.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Module(extMetaClass *Self, CSTRING *Value)
 {
@@ -728,7 +723,7 @@ static ERROR GET_Module(extMetaClass *Self, CSTRING *Value)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 PrivateObjects: Returns an allocated list of all objects that belong to this class.
@@ -738,7 +733,7 @@ object appearing first.
 
 The resulting array must be terminated with ~FreeResource() after use.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_PrivateObjects(extMetaClass *Self, OBJECTID **Array, LONG *Elements)
 {
@@ -777,7 +772,7 @@ static ERROR GET_PrivateObjects(extMetaClass *Self, OBJECTID **Array, LONG *Elem
    else return ERR_AllocMemory;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 OpenCount: The total number of active objects that are linked back to the MetaClass.
@@ -814,7 +809,7 @@ This field must not be set when creating a base class.
 To determine whether or not a class is a sub-class or a base class, compare the BaseClassID and SubClassID fields.  If
 they are identical then it is a base class, otherwise it is a sub-class.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_SubFields(extMetaClass *Self, const FieldArray **Fields, LONG *Elements)
 {
@@ -831,7 +826,7 @@ static ERROR GET_SubFields(extMetaClass *Self, const FieldArray **Fields, LONG *
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 TotalFields: The total number of fields defined by a class.
 
@@ -839,7 +834,7 @@ TotalFields: The total number of fields defined by a class.
 TotalMethods: The total number of methods supported by a class.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_TotalMethods(extMetaClass *Class, LONG *Value)
 {
@@ -1100,7 +1095,7 @@ static void copy_field(extMetaClass *Class, const FieldArray *Source, Field *Des
    optimise_write_field(Dest);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Sort the field table by name.  We use a shell sort, similar to bubble sort but much faster because it can copy
 ** records over larger distances.
 **
@@ -1217,7 +1212,7 @@ static ERROR OBJECT_SetOwner(OBJECTPTR Self, OBJECTID OwnerID)
 
    if (OwnerID) {
       OBJECTPTR newowner;
-      if (!AccessObject(OwnerID, 2000, &newowner)) {
+      if (!AccessObjectID(OwnerID, 2000, &newowner)) {
          SetOwner(Self, newowner);
          ReleaseObject(newowner);
          return ERR_Okay;
@@ -1231,7 +1226,7 @@ static ERROR OBJECT_SetOwner(OBJECTPTR Self, OBJECTID OwnerID)
 
 static ERROR OBJECT_GetName(OBJECTPTR Self, STRING *Name)
 {
-   *Name = Self->Stats->Name;
+   *Name = Self->Name;
    return ERR_Okay;
 }
 

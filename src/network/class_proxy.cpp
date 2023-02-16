@@ -1,10 +1,10 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -CLASS-
 Proxy: Manages user settings for proxy servers.
@@ -21,7 +21,7 @@ each entry the proxy database.  You may change existing values of any proxy and 
 #SaveSettings() action.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define PRV_PROXY
 
@@ -65,7 +65,7 @@ static void free_proxy(void)
 }
 */
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Delete: Removes a proxy from the database.
@@ -77,7 +77,7 @@ database on the success of this function.
 Okay: Proxy deleted.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PROXY_Delete(extProxy *Self, APTR Void)
 {
@@ -103,7 +103,7 @@ static ERROR PROXY_Delete(extProxy *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Disable: Marks a proxy as disabled.
@@ -113,7 +113,7 @@ programs that scan the database for active proxies.
 
 The change will not come into effect until the proxy record is saved.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PROXY_Disable(extProxy *Self, APTR Void)
 {
@@ -121,7 +121,7 @@ static ERROR PROXY_Disable(extProxy *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Enable: Enables a proxy.
@@ -129,7 +129,7 @@ Enable: Enables a proxy.
 Calling the Enable action will mark the proxy as enabled.  The change will not come into effect until the proxy record
 is saved.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PROXY_Enable(extProxy *Self, APTR Void)
 {
@@ -137,7 +137,7 @@ static ERROR PROXY_Enable(extProxy *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Find: Search for a proxy that matches a set of filters.
@@ -164,7 +164,7 @@ Okay: A proxy was discovered.
 NoSearchResult: No matching proxy was discovered.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PROXY_Find(extProxy *Self, struct prxFind *Args)
 {
@@ -316,7 +316,7 @@ static ERROR PROXY_Find(extProxy *Self, struct prxFind *Args)
    else return ERR_AccessObject;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 FindNext: Continues an initiated search.
@@ -330,7 +330,7 @@ Okay: A proxy was discovered.
 NoSearchResult: No matching proxy was discovered.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PROXY_FindNext(extProxy *Self, APTR Void)
 {
@@ -339,7 +339,7 @@ static ERROR PROXY_FindNext(extProxy *Self, APTR Void)
    return find_proxy(Self);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR find_proxy(extProxy *Self)
 {
@@ -426,7 +426,7 @@ static ERROR find_proxy(extProxy *Self)
    return ERR_NoSearchResult;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR PROXY_Free(extProxy *Self, APTR Void)
 {
@@ -434,14 +434,14 @@ static ERROR PROXY_Free(extProxy *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR PROXY_Init(extProxy *Self, APTR Void)
 {
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR PROXY_NewObject(extProxy *Self, APTR Void)
 {
@@ -451,7 +451,7 @@ static ERROR PROXY_NewObject(extProxy *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 SaveSettings: Permanently saves user configurable settings for a proxy.
@@ -464,7 +464,7 @@ administrator to define proxy settings as the default for all users by copying t
 `system:users/default/config/network/` folder.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
 {
@@ -887,7 +887,7 @@ static const FieldArray clProxyFields[] = {
 
 #include "class_proxy_def.c"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR init_proxy(void)
 {

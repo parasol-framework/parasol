@@ -7,7 +7,7 @@
 
 extern struct CoreBase *CoreBase;
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Memory allocation and freeing are controlled by the regular library
 ** routines malloc() and free().
 */
@@ -36,7 +36,7 @@ void jpeg_free_large (j_common_ptr cinfo, void FAR * object, LONG sizeofobject)
    FreeResource(object);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** This routine computes the total memory space available for allocation.
 ** It's impossible to do this in a portable way; our current solution is
 ** to make the user tell us (with a default value set at compile time).
@@ -49,7 +49,7 @@ LONG jpeg_mem_available(j_common_ptr cinfo, LONG min_bytes_needed, LONG max_byte
   return cinfo->mem->max_memory_to_use - already_allocated;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Backing store (temporary file) management.
 ** Backing store objects are only used when the value returned by
 ** jpeg_mem_available is less than the total space needed.  You can dispense
@@ -90,7 +90,7 @@ void close_backing_store(j_common_ptr cinfo, backing_store_ptr info)
    info->temp_file = NULL;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Initial opening of a backing-store object.
 */
 

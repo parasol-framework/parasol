@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -MODULE-
 Core: The core library provides system calls and controls for the Parasol system.
@@ -14,7 +14,7 @@ This documentation is intended for technical reference and is not suitable as an
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define PRV_CORE
 #define PRV_CORE_MODULE
@@ -196,7 +196,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    if (alloc_private_lock(TL_PRIVATE_OBJECTS, ALF_RECURSIVE)) return NULL;
    if (alloc_private_cond(CN_OBJECTS, 0)) return NULL;
 
-   // Allocate a private POSIX semaphore for AccessPrivateObject() and ReleaseObject()
+   // Allocate a private POSIX semaphore for LockObject() and ReleaseObject()
 
 #ifdef __unix__
    // Record the 'original' user id and group id, which we need to know in case the binary has been run with the suid
@@ -742,13 +742,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    if (add_asset_class() != ERR_Okay) { CloseCore(); return NULL; }
    #endif
 
-   if (!NewObject(ID_TASK, NF::UNTRACKED, (OBJECTPTR *)&glCurrentTask)) {
-      if (acInit(glCurrentTask)) {
-         CloseCore();
-         return NULL;
-      }
-   }
-   else {
+   if (!(glCurrentTask = objTask::create::untracked())) {
       CloseCore();
       return NULL;
    }
@@ -965,7 +959,7 @@ static ERROR open_shared_control(void)
       }
 
       // Map the first portion of the file into our process (i.e. the system stuff that needs to be permanently mapped).
-      // Mapping of blocks in the global pool will only be done on request in AccessMemory() and page_memory().
+      // Mapping of blocks in the global pool will only be done on request in AccessMemoryID() and page_memory().
 
       if ((glSharedControl = mmap(0, glMemorySize, PROT_READ|PROT_WRITE, MAP_SHARED, glMemoryFD, 0)) != (APTR)-1) {
          // Call init_shared_control() if this is the first time that the block has been created.
@@ -1112,7 +1106,7 @@ static ERROR init_shared_control(void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const CSTRING signals[] = {
    "00: UNKNOWN",
@@ -1636,7 +1630,7 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
 }
 #endif
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Loads the module cache file.  If the cache file does not exist, it is created.
 **
 ** The cache merely holds the location of each system module that is installed in the system.  No modules are loaded
@@ -1656,7 +1650,7 @@ static ERROR load_modules(void)
 
    ERROR error;
    if (glSharedControl->ModulesMID) {
-      if (!AccessMemory(glSharedControl->ModulesMID, MEM_READ, 2000, (APTR *)&glModules)) {
+      if (!AccessMemoryID(glSharedControl->ModulesMID, MEM_READ, 2000, (APTR *)&glModules)) {
          return ERR_Okay;
       }
       else return log.warning(ERR_AccessMemory);
@@ -1846,7 +1840,7 @@ static void BreakHandler(void)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #ifdef _WIN32
 static void win32_enum_folders(CSTRING Volume, CSTRING Label, CSTRING Path, CSTRING Icon, BYTE Hidden)
@@ -1860,7 +1854,7 @@ static void win32_enum_folders(CSTRING Volume, CSTRING Label, CSTRING Path, CSTR
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
 {

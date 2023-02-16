@@ -20,7 +20,7 @@
 #include "jinclude.h"
 #include "jpeglib.h"
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Initialization of a JPEG decompression object.
 ** The error manager must already be set up (in case memory manager fails).
 */
@@ -81,7 +81,7 @@ GLOBAL(void) jpeg_CreateDecompress (j_decompress_ptr cinfo, int version, LONG st
    cinfo->global_state = DSTATE_START;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Destruction of a JPEG decompression object
 */
 
@@ -90,7 +90,7 @@ GLOBAL(void) jpeg_destroy_decompress (j_decompress_ptr cinfo)
    jpeg_destroy((j_common_ptr) cinfo); /* use common routine */
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Abort processing of a JPEG decompression operation,
 ** but don't destroy the object itself.
 */
@@ -100,7 +100,7 @@ GLOBAL(void) jpeg_abort_decompress (j_decompress_ptr cinfo)
    jpeg_abort((j_common_ptr) cinfo); /* use common routine */
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Set default decompression parameters.
 */
 
@@ -316,7 +316,7 @@ GLOBAL(int) jpeg_consume_input (j_decompress_ptr cinfo)
   return retcode;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Have we finished reading the input file?
 */
 
@@ -327,7 +327,7 @@ GLOBAL(boolean) jpeg_input_complete (j_decompress_ptr cinfo)
   return cinfo->inputctl->eoi_reached;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Is there more than one scan?
 */
 
@@ -339,7 +339,7 @@ GLOBAL(boolean) jpeg_has_multiple_scans(j_decompress_ptr cinfo)
   return cinfo->inputctl->has_multiple_scans;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Finish JPEG decompression.
 **
 ** This will normally just verify the file trailer and release temp storage.

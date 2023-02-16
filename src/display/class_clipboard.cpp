@@ -1,10 +1,10 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -CLASS-
 Clipboard: The Clipboard class manages cut, copy and paste operations.
@@ -23,7 +23,7 @@ permitted (for example, only one group of image clips may exist at any time) and
 number of clips that can be stored in the history cache.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include "defs.h"
 
@@ -41,7 +41,7 @@ static ERROR add_clip(MEMORYID, LONG, CSTRING, LONG, CLASSID, LONG, LONG *);
 static void free_clip(ClipEntry *);
 static ERROR CLIPBOARD_AddObjects(objClipboard *, struct clipAddObjects *);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static CSTRING GetDatatype(LONG Datatype)
 {
@@ -52,7 +52,7 @@ static CSTRING GetDatatype(LONG Datatype)
    return "unknown";
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void notify_script_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
@@ -60,7 +60,7 @@ static void notify_script_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result
    Self->RequestHandler.Type = CALL_NONE;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 AddFile: Add files to the clipboard.
@@ -90,7 +90,7 @@ MissingLocation: The Files argument was not correctly specified.
 LimitedSuccess: The file item was successfully added to the internal clipboard, but could not be added to the host.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIPBOARD_AddFile(objClipboard *Self, struct clipAddFile *Args)
 {
@@ -142,7 +142,7 @@ static ERROR CLIPBOARD_AddFile(objClipboard *Self, struct clipAddFile *Args)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 AddObject: Extract data from an object and add it to the clipboard.
@@ -159,7 +159,7 @@ int(CEF) Flags: Optional flags.
 Okay: The object was added to the clipboard.
 NullArgs
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIPBOARD_AddObject(objClipboard *Self, struct clipAddObject *Args)
 {
@@ -170,7 +170,7 @@ static ERROR CLIPBOARD_AddObject(objClipboard *Self, struct clipAddObject *Args)
    return CLIPBOARD_AddObjects(Self, &add);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 AddObjects: Extract data from objects and add it all to the clipboard.
@@ -204,7 +204,7 @@ Okay: The objects were added to the clipboard.
 Args
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Args)
 {
@@ -267,7 +267,7 @@ static ERROR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Arg
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 AddText: Adds a block of text to the clipboard.
@@ -285,7 +285,7 @@ Args
 File
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIPBOARD_AddText(objClipboard *Self, struct clipAddText *Args)
 {
@@ -337,11 +337,11 @@ static ERROR CLIPBOARD_AddText(objClipboard *Self, struct clipAddText *Args)
    else return log.warning(error);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Clear: Destroys all cached data that is stored in the clipboard.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIPBOARD_Clear(objClipboard *Self, APTR Void)
 {
@@ -365,7 +365,7 @@ static ERROR CLIPBOARD_Clear(objClipboard *Self, APTR Void)
    else return ERR_AccessMemory;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 DataFeed: This action can be used to place data in a clipboard.
 
@@ -373,7 +373,7 @@ Data can be sent to a clipboard object via the DataFeed action. Currently, only 
 All data that is sent to a clipboard object through this action will replace any stored information that matches the
 given data type.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
 {
@@ -478,7 +478,7 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CLIPBOARD_Free(objClipboard *Self, APTR Void)
 {
@@ -491,7 +491,7 @@ static ERROR CLIPBOARD_Free(objClipboard *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 GetFiles: Retrieve the most recently clipped data as a list of files.
@@ -525,7 +525,7 @@ OutOfRange: The specified Index is out of the range of the available clip items.
 NoData: No clip was available that matched the requested data type.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
 {
@@ -540,7 +540,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
    // Find the first clipboard entry to match what has been requested
 
    ClipHeader *header;
-   if (!AccessMemory(Self->ClusterID, MEM_READ_WRITE, 3000, &header)) {
+   if (!AccessMemoryID(Self->ClusterID, MEM_READ_WRITE, 3000, &header)) {
       auto clips = (ClipEntry *)(header + 1);
 
       WORD index, i;
@@ -574,7 +574,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
       STRING files;
       CSTRING *list = NULL;
       if (clips[index].Files) {
-         if (!(error = AccessMemory(clips[index].Files, MEM_READ, 3000, &files))) {
+         if (!(error = AccessMemoryID(clips[index].Files, MEM_READ, 3000, &files))) {
             MEMINFO info;
             if (!MemoryIDInfo(clips[index].Files, &info)) {
                if (!AllocMemory(((clips[index].TotalItems+1) * sizeof(STRING)) + info.Size, MEM_DATA|MEM_CALLER, &list)) {
@@ -648,7 +648,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
    else return ERR_AccessMemory;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Remove: Remove items from the clipboard.
@@ -662,10 +662,10 @@ int(CLIPTYPE) Datatype: The datatype(s) that will be deleted (datatypes may be l
 -ERRORS-
 Okay
 NullArgs
-AccessMemory: The clipboard memory data was not accessible.
+AccessMemoryID: The clipboard memory data was not accessible.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIPBOARD_Remove(objClipboard *Self, struct clipRemove *Args)
 {
@@ -677,7 +677,7 @@ static ERROR CLIPBOARD_Remove(objClipboard *Self, struct clipRemove *Args)
 
    ClipHeader *header;
 
-   if (!AccessMemory(Self->ClusterID, MEM_READ_WRITE, 3000, &header)) {
+   if (!AccessMemoryID(Self->ClusterID, MEM_READ_WRITE, 3000, &header)) {
       auto clips = (ClipEntry *)(header + 1);
       for (WORD i=0; i < MAX_CLIPS; i++) {
          if (clips[i].Datatype & Args->Datatype) {
@@ -696,7 +696,7 @@ static ERROR CLIPBOARD_Remove(objClipboard *Self, struct clipRemove *Args)
    else return log.warning(ERR_AccessMemory);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 GetVar: Special field types are supported as variables.
@@ -710,7 +710,7 @@ The following variable field types are supported by the Clipboard class:
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
 {
@@ -751,7 +751,7 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
       index[j] = 0;
 
       ClipHeader *header;
-      if (!AccessMemory(Self->ClusterID, MEM_READ_WRITE, 3000, &header)) {
+      if (!AccessMemoryID(Self->ClusterID, MEM_READ_WRITE, 3000, &header)) {
          // Find the clip for the requested datatype
 
          auto clips = (ClipEntry *)(header + 1);
@@ -769,7 +769,7 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
             if ((i >= 0) and (i < clip->TotalItems)) {
                if (clip->Files) {
                   STRING files;
-                  if (!AccessMemory(clip->Files, MEM_READ, 3000, &files)) {
+                  if (!AccessMemoryID(clip->Files, MEM_READ, 3000, &files)) {
                      // Find the file path that we're looking for
 
                      LONG j = 0;
@@ -836,7 +836,7 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
    else return ERR_NoSupport;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CLIPBOARD_Init(objClipboard *Self, APTR Void)
 {
@@ -868,7 +868,7 @@ static ERROR CLIPBOARD_Init(objClipboard *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CLIPBOARD_NewObject(objClipboard *Self, APTR Void)
 {
@@ -876,7 +876,7 @@ static ERROR CLIPBOARD_NewObject(objClipboard *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Cluster: Identifies a unique cluster of items targeted by a clipboard object.
@@ -907,7 +907,7 @@ The function will be expected to send a DATA_RECEIPT to the object referenced in
 receipt must provide coverage for the referenced Item and use one of the indicated Datatypes as the data format.
 If this cannot be achieved then ERR_NoSupport should be returned by the function.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_RequestHandler(objClipboard *Self, FUNCTION **Value)
 {
@@ -978,7 +978,7 @@ static ERROR add_clip(MEMORYID ClusterID, LONG Datatype, CSTRING File, LONG Flag
    }
 
    ClipHeader *header;
-   if (!AccessMemory(ClusterID, MEM_READ_WRITE, 3000, &header)) {
+   if (!AccessMemoryID(ClusterID, MEM_READ_WRITE, 3000, &header)) {
       auto clips = (ClipEntry *)(header + 1);
 
       if (Flags & CEF_EXTEND) {
@@ -1000,7 +1000,7 @@ static ERROR add_clip(MEMORYID ClusterID, LONG Datatype, CSTRING File, LONG Flag
                if (File) {
                   if (clips->Files) {
                      STRING str;
-                     if (!AccessMemory(clips->Files, MEM_READ_WRITE, 3000, &str)) {
+                     if (!AccessMemoryID(clips->Files, MEM_READ_WRITE, 3000, &str)) {
                         MEMINFO meminfo;
                         if (!MemoryIDInfo(clips->Files, &meminfo)) {
                            if (!ReallocMemory(str, meminfo.Size + StrLength(File) + 1, &str, &clips->Files)) {
@@ -1112,7 +1112,7 @@ extern "C" void report_windows_files(APTR Data, LONG CutOperation)
    log.branch("Application has detected files on the clipboard.  Cut: %d", CutOperation);
 
    APTR lock;
-   if (!AccessMemory(RPM_Clipboard, MEM_READ_WRITE, 3000, &lock)) {
+   if (!AccessMemoryID(RPM_Clipboard, MEM_READ_WRITE, 3000, &lock)) {
       char path[256];
       for (LONG i=0; winExtractFile(Data, i, path, sizeof(path)); i++) {
          add_clip(RPM_Clipboard, CLIPTYPE_FILE, path, (i ? CEF_EXTEND : 0) | (CutOperation ? CEF_DELETE : 0), 0, 1, 0);
@@ -1132,7 +1132,7 @@ extern "C" void report_windows_hdrop(STRING Data, LONG CutOperation)
    log.branch("Application has detected files on the clipboard.  Cut: %d", CutOperation);
 
    APTR lock;
-   if (!AccessMemory(RPM_Clipboard, MEM_READ_WRITE, 3000, &lock)) {
+   if (!AccessMemoryID(RPM_Clipboard, MEM_READ_WRITE, 3000, &lock)) {
       for (LONG i=0; *Data; i++) {
          add_clip(RPM_Clipboard, CLIPTYPE_FILE, Data, (i ? CEF_EXTEND : 0) | (CutOperation ? CEF_DELETE : 0), 0, 1, 0);
          while (*Data) Data++; // Go to next file path

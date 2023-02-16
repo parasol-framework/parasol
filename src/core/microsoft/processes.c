@@ -6,7 +6,7 @@ void task_register_stdout(APTR Task, HANDLE Handle);
 void task_register_stderr(APTR Task, HANDLE Handle);
 void task_deregister_incoming(HANDLE);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winFreeProcess(struct winprocess *Process)
 {
@@ -32,7 +32,7 @@ void winFreeProcess(struct winprocess *Process)
    free(Process);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Assigns a newly created process to a group that belongs to the current process.  This has the benefit of closing the
 // child process when the parent is destroyed.
 
@@ -76,7 +76,7 @@ static void assign_group(HANDLE Process)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winResetStdOut(struct winprocess *Process, char *Buffer, DWORD *Size)
 {
@@ -112,7 +112,7 @@ void winResetStdOut(struct winprocess *Process, char *Buffer, DWORD *Size)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winResetStdErr(struct winprocess *Process, char *Buffer, DWORD *Size)
 {
@@ -149,7 +149,7 @@ void winResetStdErr(struct winprocess *Process, char *Buffer, DWORD *Size)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Internal: winLaunchProcess()
 */
 
@@ -366,7 +366,7 @@ LONG winLaunchProcess(APTR Task, LPSTR commandline, LPSTR InitialDir, BYTE Group
    return winerror;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winGetExitCodeProcess(struct winprocess *Process, LPDWORD Code)
 {
@@ -380,7 +380,7 @@ LONG winGetExitCodeProcess(struct winprocess *Process, LPDWORD Code)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winWriteStd(struct winprocess *Platform, APTR Buffer, DWORD Size)
 {
@@ -400,7 +400,7 @@ LONG winWriteStd(struct winprocess *Platform, APTR Buffer, DWORD Size)
    else return GetLastError();
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Designed for reading from stdin/out/err pipes.  Returns -1 on general error, -2 if the pipe is broken, e.g. child
 // process is dead.
 
@@ -468,7 +468,7 @@ LONG winReadStd(struct winprocess *Platform, LONG Type, APTR Buffer, DWORD *Size
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 HANDLE winCreateThread(APTR Function, APTR Arg, LONG StackSize, DWORD *ID)
 {
