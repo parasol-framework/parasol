@@ -101,7 +101,7 @@ end
       end
    })
 
-   y = y + lToolbar.viewport.height + 8
+   y = y + lToolbar.viewport.height + 10
 
    local popupMenu = gui.menu({
       x     = 30,
@@ -129,10 +129,10 @@ end
    end)
 
    local text = viewport.new('vectortext', {
-      x=win.margins.left, y=y, string='This interface is a real-time computed vector scene', face='Open Sans', fontSize=20, fill='rgb(0,0,0)', textflags='!editable'
+      x=win.margins.left, y=y, string='Parasol interfaces are drawn using real-time vector graphics', face='Open Sans', fontSize=20, fill='rgb(0,0,0)', textflags='!editable'
    })
    text.y = y + text.font.height
-   y = y + text.font.height + 8
+   y = y + text.font.height + 14
 
    local msgButton = gui.button({
       target = viewport,
@@ -254,7 +254,7 @@ end
       }
    })
 
-   y = y + msgButton.viewport.height + 8
+   y = y + msgButton.viewport.height + 12
 
    local checkbox = gui.checkbox({
       target = viewport,
@@ -268,7 +268,7 @@ end
          focus = widgetFocus
       }
    })
-   y = y + checkbox.viewport.height + 8
+   y = y + checkbox.viewport.height + 12
 
    local combobox = gui.combobox({
       target = viewport,
@@ -292,7 +292,7 @@ end
          focus = widgetFocus
       }
    })
-   y = y + combobox.viewport.height + 8
+   y = y + combobox.viewport.height + 12
 
    local input = gui.input({
       target = viewport,
