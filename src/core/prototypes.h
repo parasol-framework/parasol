@@ -4,7 +4,7 @@
 extern "C" {
 #endif
 
-ERROR AccessMemory(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR * Result);
+ERROR AccessMemoryID(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR * Result);
 ERROR Action(LONG Action, OBJECTPTR Object, APTR Parameters);
 void ActionList(struct ActionTable ** Actions, LONG * Size);
 ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args);
@@ -12,7 +12,7 @@ ERROR KeyGet(struct KeyStore * Store, ULONG Key, APTR * Data, LONG * Size);
 CSTRING ResolveClassID(CLASSID ID);
 LONG AllocateID(LONG Type);
 ERROR AllocMemory(LONG Size, LONG Flags, APTR * Address, MEMORYID * ID);
-ERROR AccessObject(OBJECTID Object, LONG MilliSeconds, OBJECTPTR * Result);
+ERROR AccessObjectID(OBJECTID Object, LONG MilliSeconds, OBJECTPTR * Result);
 ERROR ListTasks(LONG Flags, struct ListTasks ** List);
 ERROR CheckAction(OBJECTPTR Object, LONG Action);
 ERROR CheckMemoryExists(MEMORYID ID);
@@ -43,7 +43,7 @@ ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size);
 ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR * Object);
 void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERROR Error);
 ERROR StrReadLocale(CSTRING Key, CSTRING * Value);
-APTR GetMemAddress(MEMORYID ID);
+CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding);
 ERROR ProcessMessages(LONG Flags, LONG TimeOut);
 ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID * Class, CLASSID * SubClass, STRING * Command);
 ERROR ReallocMemory(APTR Memory, LONG Size, APTR * Address, MEMORYID * ID);
@@ -95,7 +95,7 @@ struct Message * GetActionMsg();
 ERROR FuncError(CSTRING Header, ERROR Error);
 ERROR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements);
 ERROR ReleaseMemoryID(MEMORYID MemoryID);
-ERROR AccessPrivateObject(OBJECTPTR Object, LONG MilliSeconds);
+ERROR LockObject(OBJECTPTR Object, LONG MilliSeconds);
 void ReleaseObject(OBJECTPTR Object);
 ERROR AllocMutex(LONG Flags, APTR * Result);
 void FreeMutex(APTR Mutex);
@@ -145,7 +145,6 @@ ERROR VarSetString(struct KeyStore * Store, CSTRING Key, CSTRING Value);
 CSTRING VarGetString(struct KeyStore * Store, CSTRING Key);
 ERROR VarCopy(struct KeyStore * Source, struct KeyStore * Dest);
 ULONG StrHash(CSTRING String, LONG CaseSensitive);
-CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding);
 
 #ifdef  __cplusplus
 }

@@ -50,7 +50,7 @@ static void dump_global_table(objScript *Self, STRING Global)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR GET_Procedures(objScript *, STRING **, LONG *);
 
@@ -59,7 +59,7 @@ static const FieldArray clFields[] = {
    END_FIELD
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR FLUID_Activate(objScript *, APTR);
 static ERROR FLUID_DataFeed(objScript *, struct acDataFeed *);
@@ -76,7 +76,7 @@ static const ActionArray clActions[] = {
    { 0, NULL }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR FLUID_GetProcedureID(objScript *, struct scGetProcedureID *);
 static ERROR FLUID_DerefProcedure(objScript *, struct scDerefProcedure *);
@@ -87,7 +87,7 @@ static const MethodArray clMethods[] = {
    { 0, NULL, NULL, NULL, 0 }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void free_all(objScript *Self)
 {
@@ -105,7 +105,7 @@ static void free_all(objScript *Self)
    prv->Lua = NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Proxy functions for controlling access to global variables.
 
 static int global_index(lua_State *Lua) // Read global via proxy
@@ -130,7 +130,7 @@ static int global_newindex(lua_State *Lua) // Write global variable via proxy
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Only to be used immediately after a failed lua_pcall().  Lua stores a description of the error that occurred on the
 // stack, this will be popped and copied to the ErrorString field.
 
@@ -166,7 +166,7 @@ void process_error(objScript *Self, CSTRING Procedure)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** This routine is intended for handling action notifications only.  It takes the FunctionField list provided by the
 ** action and copies them into a table.  Each value is represented by the relevant parameter name for ease of use.
 */
@@ -223,7 +223,7 @@ static ERROR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Action notifications arrive when the user has used object.subscribe() in the Fluid script.
 //
 // function(ObjectID, Args, Reference)
@@ -272,7 +272,7 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR FLUID_Activate(objScript *Self, APTR Void)
 {
@@ -494,7 +494,7 @@ failure:
 
    if (owner_id) {
       OBJECTPTR owner;
-      if (!AccessObject(owner_id, 5000, &owner)) {
+      if (!AccessObjectID(owner_id, 5000, &owner)) {
          SetOwner(Self, owner);
          ReleaseObject(owner);
       }
@@ -509,7 +509,7 @@ failure:
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
 {
@@ -592,7 +592,7 @@ restart:
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR FLUID_DerefProcedure(objScript *Self, struct scDerefProcedure *Args)
 {
@@ -618,7 +618,7 @@ static ERROR FLUID_DerefProcedure(objScript *Self, struct scDerefProcedure *Args
    else return log.warning(ERR_Args);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR FLUID_Free(objScript *Self, APTR Void)
 {
@@ -626,7 +626,7 @@ static ERROR FLUID_Free(objScript *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR FLUID_GetProcedureID(objScript *Self, struct scGetProcedureID *Args)
 {
@@ -654,7 +654,7 @@ static ERROR FLUID_GetProcedureID(objScript *Self, struct scGetProcedureID *Args
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR FLUID_Init(objScript *Self, APTR Void)
 {
@@ -785,7 +785,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 SaveToObject: Compiles the current script statement and saves it as byte code.
@@ -794,7 +794,7 @@ Use the SaveToObject action to compile the statement in the Script's String fiel
 target object.  The byte code can be loaded into any script object for execution or referenced in the Fluid code for
 usage.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR FLUID_SaveToObject(objScript *Self, struct acSaveToObject *Args)
 {
@@ -821,7 +821,7 @@ static ERROR FLUID_SaveToObject(objScript *Self, struct acSaveToObject *Args)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Procedures: Returns a string array of all named procedures defined by a script.
@@ -833,7 +833,7 @@ The procedure list is built at the time of the call.  The array is allocated as 
 removed by the caller with FreeResource().
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Procedures(objScript *Self, STRING **Value, LONG *Elements)
 {
@@ -865,7 +865,7 @@ static ERROR GET_Procedures(objScript *Self, STRING **Value, LONG *Elements)
    else return ERR_Failed;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR save_binary(objScript *Self, OBJECTID FileID)
 {
@@ -888,7 +888,7 @@ static ERROR save_binary(objScript *Self, OBJECTID FileID)
    // Write the fluid header first.  This must identify the content as compiled, plus include any relevant options,
    // such as the persistent identifier.
 
-   if (!AccessObject(FileID, 3000, &dest)) {
+   if (!AccessObjectID(FileID, 3000, &dest)) {
       LONG result;
       UBYTE header[256];
 
@@ -912,7 +912,7 @@ static ERROR save_binary(objScript *Self, OBJECTID FileID)
 */
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR run_script(objScript *Self)
 {
@@ -1086,7 +1086,7 @@ static ERROR run_script(objScript *Self)
       return Self->Error;
    }
 }
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR register_interfaces(objScript *Self)
 {
@@ -1126,7 +1126,7 @@ static ERROR register_interfaces(objScript *Self)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR create_fluid(void)
 {

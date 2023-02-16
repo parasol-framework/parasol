@@ -1,5 +1,5 @@
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG State)
 {
@@ -149,7 +149,7 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG 
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Callback: NetSocket.Outgoing
 */
 
@@ -240,7 +240,7 @@ redo_upload:
       if (Self->Flags & HTF_DEBUG) log.msg("Sending content from InputObject #%d.", Self->InputObjectID);
 
       OBJECTPTR object;
-      if (!(error = AccessObject(Self->InputObjectID, 100, &object))) {
+      if (!(error = AccessObjectID(Self->InputObjectID, 100, &object))) {
          error = acRead(object, Self->WriteBuffer, Self->WriteSize, &len);
          ReleaseObject(object);
       }
@@ -364,7 +364,7 @@ continue_upload:
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Callback: NetSocket.Incoming
 */
 
@@ -869,7 +869,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static CSTRING adv_crlf(CSTRING String)
 {
@@ -883,7 +883,7 @@ static CSTRING adv_crlf(CSTRING String)
    return String;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR parse_response(extHTTP *Self, CSTRING Buffer)
 {
@@ -961,7 +961,7 @@ static ERROR parse_response(extHTTP *Self, CSTRING Buffer)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Sends some data specified in the arguments to the listener
 
 static ERROR process_data(extHTTP *Self, APTR Buffer, LONG Length)
@@ -1066,7 +1066,7 @@ static ERROR process_data(extHTTP *Self, APTR Buffer, LONG Length)
    return Self->Error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static LONG extract_value(CSTRING String, STRING *Result)
 {
@@ -1108,7 +1108,7 @@ static LONG extract_value(CSTRING String, STRING *Result)
    return String - start;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void writehex(HASH Bin, HASHHEX Hex)
 {
@@ -1126,7 +1126,7 @@ static void writehex(HASH Bin, HASHHEX Hex)
    Hex[HASHHEXLEN] = 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Calculate H(A1) as per spec
 
 static void digest_calc_ha1(extHTTP *Self, HASHHEX SessionKey)
@@ -1161,7 +1161,7 @@ static void digest_calc_ha1(extHTTP *Self, HASHHEX SessionKey)
    writehex(HA1, SessionKey);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Calculate request-digest/response-digest as per HTTP Digest spec
 
 static void digest_calc_response(extHTTP *Self, std::string Request, CSTRING NonceCount, HASHHEX HA1, HASHHEX HEntity, HASHHEX Response)
@@ -1220,7 +1220,7 @@ static void digest_calc_response(extHTTP *Self, std::string Request, CSTRING Non
    log.trace("%s:%s:%s:%s:%s:%s", HA1, Self->AuthNonce, NonceCount, Self->AuthCNonce, Self->AuthQOP, HA2Hex);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR write_socket(extHTTP *Self, CPTR Buffer, LONG Length, LONG *Result)
 {
@@ -1247,7 +1247,7 @@ static ERROR write_socket(extHTTP *Self, CPTR Buffer, LONG Length, LONG *Result)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** The timer is used for managing time-outs on connection to and the receipt of data from the http server.  If the
 ** timer is activated then we close the current socket.  It should be noted that if the content is streamed, then
 ** it is not unusual for the client to remain unnotified even in the event of a complete transfer.  Because of this,
@@ -1265,7 +1265,7 @@ static ERROR timeout_manager(extHTTP *Self, LARGE Elapsed, LARGE CurrentTime)
    return ERR_Terminate;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Returns ERR_True if the transmission is complete and also sets status to HGS_COMPLETED, otherwise ERR_False.
 
 static ERROR check_incoming_end(extHTTP *Self)
@@ -1287,7 +1287,7 @@ static ERROR check_incoming_end(extHTTP *Self)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void set_http_method(extHTTP *Self, CSTRING Method, std::ostringstream &Cmd)
 {
@@ -1302,7 +1302,7 @@ static void set_http_method(extHTTP *Self, CSTRING Method, std::ostringstream &C
    Cmd << "User-Agent: " << Self->UserAgent << CRLF;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR parse_file(extHTTP *Self, STRING Buffer, LONG Size)
 {
@@ -1331,7 +1331,7 @@ static ERROR parse_file(extHTTP *Self, STRING Buffer, LONG Size)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void parse_file(extHTTP *Self, std::ostringstream &Cmd)
 {

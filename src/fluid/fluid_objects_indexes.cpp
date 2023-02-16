@@ -1,5 +1,5 @@
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: object.field = newvalue
 //
 // Custom fields can be referenced by using _ as the field name suffix.
@@ -26,7 +26,7 @@ static int object_newindex(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: value = obj.get("Width", [Default])
 //
 // The default value is optional - it is used if the get request fails.  This function never throws exceptions.
@@ -54,7 +54,7 @@ static int object_get(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: value = obj.getVar("Width", [Default])
 //
 // As for obj.get(), but explicitly references a custom variable name.
@@ -96,7 +96,7 @@ static int object_getvar(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: obj.set("Width", Value)
 
 static int object_set(lua_State *Lua)
@@ -138,7 +138,7 @@ static int object_set(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: obj.setVar("Width", "Value")
 
 static int object_setvar(lua_State *Lua)
@@ -178,7 +178,7 @@ static int object_setvar(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // If successful, a value is pushed on the stack and ERR_Okay is returned.  If any other error code is returned,
 // the stack is unmodified.
 
@@ -307,7 +307,7 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG ValueIndex)
 {

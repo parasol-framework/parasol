@@ -1,10 +1,10 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 -CATEGORY-
 Name: Files
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ResolvePath: Converts volume-based paths into absolute paths applicable to the host platform.
@@ -54,7 +54,7 @@ Loop:            The volume refers back to itself.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR resolve(STRING, STRING, LONG);
 static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result);
@@ -211,7 +211,7 @@ resolved_path:
    else return log.warning(ERR_LockFailed);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // For resolving file references via the host environment's PATH variable.  This will only work for relative paths.
 
 #ifdef __unix__
@@ -292,7 +292,7 @@ static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result)
 
 #endif
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Note: This function calls itself recursively.  For use by ResolvePath() only.
 **
 ** Config  - The SystemVolumes configuration object.
@@ -451,7 +451,7 @@ static ERROR resolve(STRING Source, STRING Dest, LONG Flags)
    return ERR_FileNotFound;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // For cases such as ":SystemIcons", we find the referenced object and ask it to resolve the path for us.  (In effect,
 // the object will be used as a plugin for volume resolution).
 //
@@ -468,7 +468,7 @@ static ERROR resolve_object_path(STRING Path, STRING Source, STRING Dest, LONG P
       OBJECTID volume_id;
       if (!FindObject(Path, 0, 0, &volume_id)) {
          OBJECTPTR object;
-         if (!AccessObject(volume_id, 5000, &object)) {
+         if (!AccessObjectID(volume_id, 5000, &object)) {
             if ((!object->getPtr(FID_ResolvePath, &resolve_virtual)) and (resolve_virtual)) {
                error = resolve_virtual(object, Source, Dest, PathSize);
             }

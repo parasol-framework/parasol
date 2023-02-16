@@ -313,7 +313,7 @@ public:
 static std::list<BitmapCache> glBitmapCache;
 static APTR glCacheTimer = NULL;
 
-//****************************************************************************
+//********************************************************************************************************************
 // Assumes a cache lock is held on being called.
 
 static BitmapCache * check_bitmap_cache(extFont *Self, LONG Style)
@@ -338,7 +338,7 @@ static BitmapCache * check_bitmap_cache(extFont *Self, LONG Style)
    return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR bitmap_cache_cleaner(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)
 {

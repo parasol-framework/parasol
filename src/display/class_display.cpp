@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -CLASS-
 Display: Manages the video display and graphics hardware.
@@ -20,7 +20,7 @@ mind the implications of creating a shared display.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include "defs.h"
 
@@ -101,7 +101,7 @@ static void printConfig(EGLDisplay display, EGLConfig config) {
 
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 // Build a list of valid resolutions.
 
 static resolution * get_resolutions(extDisplay *Self)
@@ -179,7 +179,7 @@ static void update_displayinfo(extDisplay *Self)
    get_display_info(Self->UID, glDisplayInfo, sizeof(DISPLAYINFO));
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void resize_feedback(FUNCTION *Feedback, OBJECTID DisplayID, LONG X, LONG Y, LONG Width, LONG Height)
 {
@@ -207,32 +207,32 @@ void resize_feedback(FUNCTION *Feedback, OBJECTID DisplayID, LONG X, LONG Y, LON
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void notify_resize_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
    ((extDisplay *)CurrentContext())->ResizeFeedback.Type = CALL_NONE;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Activate: Activating a display has the same effect as calling the Show action.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DISPLAY_Activate(extDisplay *Self, APTR Void)
 {
    return acShow(Self);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -METHOD-
 CheckXWindow: Private. Checks that the Display dimensions match the X11 window dimensions.
 
 Private
 
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DISPLAY_CheckXWindow(extDisplay *Self, APTR Void)
 {
@@ -257,11 +257,11 @@ static ERROR DISPLAY_CheckXWindow(extDisplay *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Clear: Clears a display's image data and hardware buffers (e.g. OpenGL)
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DISPLAY_Clear(extDisplay *Self, APTR Void)
 {
@@ -278,11 +278,11 @@ static ERROR DISPLAY_Clear(extDisplay *Self, APTR Void)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 DataFeed: Declared for internal purposes - do not call.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DISPLAY_DataFeed(extDisplay *Self, struct acDataFeed *Args)
 {
@@ -343,7 +343,7 @@ static ERROR DISPLAY_DataFeed(extDisplay *Self, struct acDataFeed *Args)
    return log.warning(ERR_NoSupport);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Disable: Disables the display (goes into power saving mode).
@@ -358,7 +358,7 @@ Okay: The display was disabled.
 NoSupport: The display or graphics card does not support DPMS.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DISPLAY_Disable(extDisplay *Self, APTR Void)
 {
@@ -397,11 +397,11 @@ static ERROR DISPLAY_Disable(extDisplay *Self, APTR Void)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Enable: Restores the screen display from power saving mode.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DISPLAY_Enable(extDisplay *Self, APTR Void)
 {
@@ -425,7 +425,7 @@ static ERROR DISPLAY_Enable(extDisplay *Self, APTR Void)
 #endif
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // On hosted systems like Android, the system may call Draw() on a display as a means of informing a program that a
 // redraw is required.  It is the responsibility of the program that created the Display object to subscribe to the
 // Draw action and act on it.
@@ -435,7 +435,7 @@ static ERROR DISPLAY_Draw(extDisplay *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void user_login(extDisplay *Self, APTR Info, LONG Data)
 {
@@ -446,11 +446,11 @@ static void user_login(extDisplay *Self, APTR Info, LONG Data)
    #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Flush: Flush pending graphics operations to the display.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DISPLAY_Flush(extDisplay *Self, APTR Void)
 {
@@ -465,7 +465,7 @@ static ERROR DISPLAY_Flush(extDisplay *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR DISPLAY_Focus(extDisplay *Self, APTR Void)
 {
@@ -480,7 +480,7 @@ static ERROR DISPLAY_Focus(extDisplay *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR DISPLAY_Free(extDisplay *Self, APTR Void)
 {
@@ -553,11 +553,11 @@ static ERROR DISPLAY_Free(extDisplay *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 GetVar: Retrieve formatted information from the display.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DISPLAY_GetVar(extDisplay *Self, struct acGetVar *Args)
 {
@@ -618,7 +618,7 @@ static ERROR DISPLAY_GetVar(extDisplay *Self, struct acGetVar *Args)
    else return ERR_NoSupport;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Hide: Hides a display from the user's view.
 
@@ -626,7 +626,7 @@ Calling this action will hide a display from the user's view.  If the hidden dis
 and there is a display object behind it, then the next underlying display will be displayed.  If there are no other
 displays available then the user's viewport will be blank after calling this action.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DISPLAY_Hide(extDisplay *Self, APTR Void)
 {
@@ -657,7 +657,7 @@ static ERROR DISPLAY_Hide(extDisplay *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
 {
@@ -925,7 +925,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
          HWND popover = 0;
          if (Self->PopOverID) {
             extDisplay *other_display;
-            if (!AccessObject(Self->PopOverID, 3000, &other_display)) {
+            if (!AccessObjectID(Self->PopOverID, 3000, &other_display)) {
                popover = other_display->WindowHandle;
                ReleaseObject(other_display);
             }
@@ -1000,7 +1000,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Minimise: Minimise the desktop window hosting the display.
@@ -1017,7 +1017,7 @@ host platform.
 Okay
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DISPLAY_Minimise(extDisplay *Self, APTR Void)
 {
@@ -1031,7 +1031,7 @@ static ERROR DISPLAY_Minimise(extDisplay *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 Bitmap moving should be supported by listening to the Bitmap's Move() action
 and responding to it.
@@ -1051,13 +1051,13 @@ that has a bitmap of twice the size of the display. You can then scroll around i
 scrolling map.  Because today's game programs typically run in high resolution true colour displays, be aware that the
 host graphics card may need a large amount of memory to support this method of scrolling.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Move: Move the display to a new display position (relative coordinates).
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DISPLAY_Move(extDisplay *Self, struct acMove *Args)
 {
@@ -1098,11 +1098,11 @@ static ERROR DISPLAY_Move(extDisplay *Self, struct acMove *Args)
 
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 MoveToBack: Move the display to the back of the display list.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DISPLAY_MoveToBack(extDisplay *Self, APTR Void)
 {
@@ -1118,11 +1118,11 @@ static ERROR DISPLAY_MoveToBack(extDisplay *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 MoveToFront: Move the display to the front of the display list.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DISPLAY_MoveToFront(extDisplay *Self, APTR Void)
 {
@@ -1136,7 +1136,7 @@ static ERROR DISPLAY_MoveToFront(extDisplay *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 MoveToPoint: Move the display to a new position.
 
@@ -1149,7 +1149,7 @@ For full-screen displays, MoveToPoint can alter the screen position for the hard
 output.  This is a rare feature that requires hardware support.  ERR_NoSupport is returned if this feature is
 unavailable.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DISPLAY_MoveToPoint(extDisplay *Self, struct acMoveToPoint *Args)
 {
@@ -1190,89 +1190,84 @@ static ERROR DISPLAY_MoveToPoint(extDisplay *Self, struct acMoveToPoint *Args)
 #endif
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR DISPLAY_NewObject(extDisplay *Self, APTR Void)
 {
-   parasol::Log log;
-
-   ERROR error = NewObject(ID_BITMAP, Self->flags()|NF::INTEGRAL, &Self->Bitmap);
+   if (NewObject(ID_BITMAP, NF::INTEGRAL, &Self->Bitmap)) return ERR_NewObject;
    Self->BitmapID = Self->Bitmap->UID;
 
-   if (!error) {
-      OBJECTID id;
-      if (FindObject("SystemVideo", 0, 0, &id) != ERR_Okay) {
-         SetName(Self->Bitmap, "SystemVideo");
-      }
-
-      if (!(GetName(Self)[0])) {
-         if (FindObject("SystemDisplay", 0, 0, &id) != ERR_Okay) {
-            SetName(Self, "SystemDisplay");
-         }
-      }
-
-      #ifdef __xwindows__
-
-         StrCopy("X11", Self->Chipset, sizeof(Self->Chipset));
-         StrCopy("X Windows", Self->Display, sizeof(Self->Display));
-         StrCopy("N/A", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
-         StrCopy("N/A", Self->Manufacturer, sizeof(Self->Manufacturer));
-
-      #elif _WIN32
-
-         StrCopy("Windows", Self->Chipset, sizeof(Self->Chipset));
-         StrCopy("Windows", Self->Display, sizeof(Self->Display));
-         StrCopy("N/A", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
-         StrCopy("N/A", Self->Manufacturer, sizeof(Self->Manufacturer));
-
-      #elif _GLES_
-
-         StrCopy("OpenGLES", Self->Chipset, sizeof(Self->Chipset));
-         StrCopy("OpenGL", Self->Display, sizeof(Self->Display));
-         StrCopy("N/A", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
-         StrCopy("N/A", Self->Manufacturer, sizeof(Self->Manufacturer));
-
-      #else
-
-         StrCopy("Unknown", Self->CertificationDate, sizeof(Self->CertificationDate));
-         StrCopy("Unknown", Self->Chipset, sizeof(Self->Chipset));
-         StrCopy("Unknown", Self->Display, sizeof(Self->Display));
-         StrCopy("Unknown", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
-         StrCopy("Unknown", Self->DriverCopyright, sizeof(Self->DriverCopyright));
-         StrCopy("Unknown", Self->DriverVendor, sizeof(Self->DriverVendor));
-         StrCopy("Unknown", Self->DriverVersion, sizeof(Self->DriverVersion));
-         StrCopy("Unknown", Self->Manufacturer, sizeof(Self->Manufacturer));
-
-      #endif
-
-      Self->Width       = 800;
-      Self->Height      = 600;
-      Self->RefreshRate = -1;
-      Self->Gamma[0]    = 1.0;
-      Self->Gamma[1]    = 1.0;
-      Self->Gamma[2]    = 1.0;
-      Self->Opacity     = 255;
-
-      #ifdef __xwindows__
-         Self->DisplayType = DT_X11;
-      #elif _WIN32
-         Self->DisplayType = DT_WINDOWS;
-      #elif _GLES_
-         Self->DisplayType = DT_GLES;
-      #else
-         Self->DisplayType = DT_NATIVE;
-      #endif
-
-      return ERR_Okay;
+   OBJECTID id;
+   if (FindObject("SystemVideo", 0, 0, &id) != ERR_Okay) {
+      SetName(Self->Bitmap, "SystemVideo");
    }
-   else return log.warning(ERR_NewObject);
+
+   if (!(GetName(Self)[0])) {
+      if (FindObject("SystemDisplay", 0, 0, &id) != ERR_Okay) {
+         SetName(Self, "SystemDisplay");
+      }
+   }
+
+   #ifdef __xwindows__
+
+      StrCopy("X11", Self->Chipset, sizeof(Self->Chipset));
+      StrCopy("X Windows", Self->Display, sizeof(Self->Display));
+      StrCopy("N/A", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
+      StrCopy("N/A", Self->Manufacturer, sizeof(Self->Manufacturer));
+
+   #elif _WIN32
+
+      StrCopy("Windows", Self->Chipset, sizeof(Self->Chipset));
+      StrCopy("Windows", Self->Display, sizeof(Self->Display));
+      StrCopy("N/A", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
+      StrCopy("N/A", Self->Manufacturer, sizeof(Self->Manufacturer));
+
+   #elif _GLES_
+
+      StrCopy("OpenGLES", Self->Chipset, sizeof(Self->Chipset));
+      StrCopy("OpenGL", Self->Display, sizeof(Self->Display));
+      StrCopy("N/A", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
+      StrCopy("N/A", Self->Manufacturer, sizeof(Self->Manufacturer));
+
+   #else
+
+      StrCopy("Unknown", Self->CertificationDate, sizeof(Self->CertificationDate));
+      StrCopy("Unknown", Self->Chipset, sizeof(Self->Chipset));
+      StrCopy("Unknown", Self->Display, sizeof(Self->Display));
+      StrCopy("Unknown", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
+      StrCopy("Unknown", Self->DriverCopyright, sizeof(Self->DriverCopyright));
+      StrCopy("Unknown", Self->DriverVendor, sizeof(Self->DriverVendor));
+      StrCopy("Unknown", Self->DriverVersion, sizeof(Self->DriverVersion));
+      StrCopy("Unknown", Self->Manufacturer, sizeof(Self->Manufacturer));
+
+   #endif
+
+   Self->Width       = 800;
+   Self->Height      = 600;
+   Self->RefreshRate = -1;
+   Self->Gamma[0]    = 1.0;
+   Self->Gamma[1]    = 1.0;
+   Self->Gamma[2]    = 1.0;
+   Self->Opacity     = 255;
+
+   #ifdef __xwindows__
+      Self->DisplayType = DT_X11;
+   #elif _WIN32
+      Self->DisplayType = DT_WINDOWS;
+   #elif _GLES_
+      Self->DisplayType = DT_GLES;
+   #else
+      Self->DisplayType = DT_NATIVE;
+   #endif
+
+   return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Redimension: Moves and resizes a display object in a single action call.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DISPLAY_Redimension(extDisplay *Self, struct acRedimension *Args)
 {
@@ -1286,13 +1281,13 @@ static ERROR DISPLAY_Redimension(extDisplay *Self, struct acRedimension *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Resize: Resizes the dimensions of a display object.
 
 If the display is hosted, the Width and Height values will determine the size of the inside area of the window.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DISPLAY_Resize(extDisplay *Self, struct acResize *Args)
 {
@@ -1393,22 +1388,22 @@ static ERROR DISPLAY_Resize(extDisplay *Self, struct acResize *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 SaveImage: Saves the image of a display to a data object.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DISPLAY_SaveImage(extDisplay *Self, struct acSaveImage *Args)
 {
    return Action(AC_SaveImage, Self->Bitmap, Args);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 SaveSettings: Saves the current display settings as the default.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DISPLAY_SaveSettings(extDisplay *Self, APTR Void)
 {
@@ -1467,7 +1462,7 @@ static ERROR DISPLAY_SaveSettings(extDisplay *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SizeHints: Sets the width and height restrictions for the host window (hosted environments only).
@@ -1487,7 +1482,7 @@ Okay
 NoSupport: The host platform does not support this feature.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DISPLAY_SizeHints(extDisplay *Self, struct gfxSizeHints *Args)
 {
@@ -1511,7 +1506,7 @@ static ERROR DISPLAY_SizeHints(extDisplay *Self, struct gfxSizeHints *Args)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SetDisplay: Changes the current display mode.
@@ -1546,7 +1541,7 @@ NullArgs:
 Failed: Failed to switch to the requested display mode.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DISPLAY_SetDisplay(extDisplay *Self, struct gfxSetDisplay *Args)
 {
@@ -1607,35 +1602,6 @@ static ERROR DISPLAY_SetDisplay(extDisplay *Self, struct gfxSetDisplay *Args)
    evResolutionChange ev = { EVID_DISPLAY_RESOLUTION_CHANGE };
    BroadcastEvent(&ev, sizeof(ev));
 
-   if (sciOpenVideoMode(gfxmode, &modeinfo, &vx, &vy, &bytesperline, &Self->VideoHandle, Args->RefreshRate) != ERR_Okay) {
-      log.warning("Failed to set the requested video mode.");
-      return ERR_Failed;
-   }
-
-   Self->GfxMode = gfxmode;
-   Self->Width   = modeinfo.XResolution;
-   Self->Height  = modeinfo.YResolution;
-   Self->RefreshRate = (glSNAP->Init.GetCurrentRefreshRate() + 50) / 100;
-
-   if (bpp != Self->Bitmap->BitsPerPixel) {
-      acFree(Self->Bitmap);
-      ReleaseObject(Self->Bitmap);
-      Self->Bitmap = NULL;
-
-      if (!NewObject(ID_BITMAP, NF::INTEGRAL|Self->flags(), &Self->Bitmap, Self->isPublic() ? &Self->BitmapID : NULL)) {
-         Self->BitmapID = Self->Bitmap->UID;
-         Self->Bitmap->BitsPerPixel = bpp;
-         Self->Bitmap->Width        = Self->Width;
-         Self->Bitmap->Height       = Self->Height;
-         Self->Bitmap->Flags        = BMF_NO_DATA;
-         Self->Bitmap->DataFlags    = MEM_VIDEO;
-         if (!acInit(Self->Bitmap)) {
-            Self->Bitmap->LineWidth = modeinfo.BytesPerScanLine;
-         }
-      }
-   }
-   else acResize(Self->Bitmap, Self->Width, Self->Height, 0);
-
 #endif
 
    // If a display buffer is in use, reallocate it from scratch.  Note: A failure to allocate a display buffer is not
@@ -1647,7 +1613,7 @@ static ERROR DISPLAY_SetDisplay(extDisplay *Self, struct gfxSetDisplay *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SetGamma: Sets the display gamma levels.
@@ -1674,7 +1640,7 @@ NullArgs
 NoSupport: The graphics hardware does not support gamma correction.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DISPLAY_SetGamma(extDisplay *Self, struct gfxSetGamma *Args)
 {
@@ -1717,7 +1683,7 @@ static ERROR DISPLAY_SetGamma(extDisplay *Self, struct gfxSetGamma *Args)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SetGammaLinear: Sets the display gamma level using a linear algorithm.
@@ -1736,7 +1702,7 @@ Okay:
 NullArgs:
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DISPLAY_SetGammaLinear(extDisplay *Self, struct gfxSetGammaLinear *Args)
 {
@@ -1785,7 +1751,7 @@ static ERROR DISPLAY_SetGammaLinear(extDisplay *Self, struct gfxSetGammaLinear *
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SetMonitor: Changes the default monitor settings.
@@ -1814,7 +1780,7 @@ Okay
 NullArgs
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DISPLAY_SetMonitor(extDisplay *Self, struct gfxSetMonitor *Args)
 {
@@ -1905,7 +1871,7 @@ static ERROR DISPLAY_SetMonitor(extDisplay *Self, struct gfxSetMonitor *Args)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Show: Presents a display object to the user.
@@ -1928,7 +1894,7 @@ the code for the host platform supports this capability.
 The `VISIBLE` flag in the #Flags field will be set if the Show operation is successful.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
 {
@@ -2028,7 +1994,7 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 UpdateDisplay: Private. Updates the display using content from a source bitmap.
@@ -2049,7 +2015,7 @@ Okay
 NullArgs
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DISPLAY_UpdateDisplay(extDisplay *Self, struct gfxUpdateDisplay *Args)
 {
@@ -2139,7 +2105,7 @@ static ERROR DISPLAY_UpdateDisplay(extDisplay *Self, struct gfxUpdateDisplay *Ar
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 UpdatePalette: Updates the video display palette to new colour values if in 256 colour mode.
@@ -2156,7 +2122,7 @@ struct(*RGBPalette) NewPalette: The new palette to apply to the display bitmap.
 Okay
 NullArgs
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DISPLAY_UpdatePalette(extDisplay *Self, struct gfxUpdatePalette *Args)
 {
@@ -2176,7 +2142,7 @@ static ERROR DISPLAY_UpdatePalette(extDisplay *Self, struct gfxUpdatePalette *Ar
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 WaitVBL: Waits for a vertical blank.
@@ -2188,14 +2154,14 @@ hardware will support this method.  If this is the case, WaitVBL() will return i
 Okay
 NoSupport
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR DISPLAY_WaitVBL(extDisplay *Self, APTR Void)
 {
    return ERR_NoSupport;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Bitmap: Reference to the display's bitmap information.
@@ -2231,7 +2197,7 @@ CertificationDate: String describing the date of the graphics driver's certifica
 The string in this field describes the date on which the graphics card driver was certified.  If this information is
 not available from the driver, a NULL pointer is returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_CertificationDate(extDisplay *Self, STRING *Value)
 {
@@ -2239,14 +2205,14 @@ static ERROR GET_CertificationDate(extDisplay *Self, STRING *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Chipset: String describing the graphics chipset.
 
 The string in this field describes the graphic card's chipset.  If this information is not retrievable, a NULL pointer
 is returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Chipset(extDisplay *Self, STRING *Value)
 {
@@ -2254,7 +2220,7 @@ static ERROR GET_Chipset(extDisplay *Self, STRING *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 HDensity: Returns the horizontal pixel density for the display.
 
@@ -2267,7 +2233,7 @@ HDensity field in the Display object.
 
 Reading this field always succeeds.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR GET_HDensity(extDisplay *Self, LONG *Value)
 {
@@ -2323,7 +2289,7 @@ static ERROR SET_HDensity(extDisplay *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 VDensity: Returns the vertical pixel density for the display.
@@ -2337,7 +2303,7 @@ VDensity field in the Display object.
 
 Reading this field always succeeds.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR GET_VDensity(extDisplay *Self, LONG *Value)
 {
@@ -2393,7 +2359,7 @@ static ERROR SET_VDensity(extDisplay *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Display: String describing the display (e.g. model name of the monitor).
@@ -2401,7 +2367,7 @@ Display: String describing the display (e.g. model name of the monitor).
 The string in this field describes the display device that is connected to the user's graphics card.  If this
 information is not detectable, a NULL pointer is returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Display(extDisplay *Self, CSTRING *Value)
 {
@@ -2410,7 +2376,7 @@ static ERROR GET_Display(extDisplay *Self, CSTRING *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 DisplayManufacturer: String describing the display manufacturer.
@@ -2418,7 +2384,7 @@ DisplayManufacturer: String describing the display manufacturer.
 The string in this field returns the name of the manufacturer that created the user's display device.  If this
 information is not detectable, a NULL pointer is returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_DisplayManufacturer(extDisplay *Self, CSTRING *Value)
 {
@@ -2427,7 +2393,7 @@ static ERROR GET_DisplayManufacturer(extDisplay *Self, CSTRING *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 DisplayType: In hosted mode, indicates the bottom margin of the client window.
@@ -2448,7 +2414,7 @@ DriverCopyright: String containing copyright information on the graphics driver 
 The string in this field returns copyright information related to the graphics driver.  If this information is not
 available, a NULL pointer is returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_DriverCopyright(extDisplay *Self, CSTRING *Value)
 {
@@ -2457,7 +2423,7 @@ static ERROR GET_DriverCopyright(extDisplay *Self, CSTRING *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 DriverVersion: String describing the version of the graphics hardware driver.
@@ -2465,7 +2431,7 @@ DriverVersion: String describing the version of the graphics hardware driver.
 The string in this field describes the graphic driver's version number. If this information is not detectable, a NULL
 pointer is returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_DriverVersion(extDisplay *Self, CSTRING *Value)
 {
@@ -2474,7 +2440,7 @@ static ERROR GET_DriverVersion(extDisplay *Self, CSTRING *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 DriverVendor: String describing the vendor of the graphics driver.
@@ -2482,7 +2448,7 @@ DriverVendor: String describing the vendor of the graphics driver.
 The string in this field returns the name of the vendor that supplied the graphics card driver.  If this information is
 not available, a NULL pointer is returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_DriverVendor(extDisplay *Self, CSTRING *Value)
 {
@@ -2490,7 +2456,7 @@ static ERROR GET_DriverVendor(extDisplay *Self, CSTRING *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Flags: Optional flag settings.
@@ -2498,7 +2464,7 @@ Flags: Optional flag settings.
 Optional display flags can be defined here.  Post-initialisation, the only flags that can be set are AUTO_SAVE and
 BORDERLESS.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Flags(extDisplay *Self, LONG Value)
 {
@@ -2664,7 +2630,7 @@ static ERROR SET_Flags(extDisplay *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Gamma: Contains red, green and blue values for the display's gamma setting.
@@ -2674,7 +2640,7 @@ values that represent red, green and blue colours guns.  The default gamma value
 
 To modify the display gamma values, please refer to the #SetGamma() and #SetGammaLinear() methods.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Gamma(extDisplay *Self, DOUBLE **Value, LONG *Elements)
 {
@@ -2693,7 +2659,7 @@ static ERROR SET_Gamma(extDisplay *Self, DOUBLE *Value, LONG Elements)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Height: Defines the height of the display.
@@ -2704,7 +2670,7 @@ If the height exceeds allowable limits, it will be restricted to a value that th
 If the display is hosted, the height reflects the internal height of the host window.  On some hosted systems, the true
 height of the window can be calculated by reading the #TopMargin and #BottomMargin fields.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Height(extDisplay *Self, LONG Value)
 {
@@ -2712,7 +2678,7 @@ static ERROR SET_Height(extDisplay *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 InsideHeight: Represents the internal height of the display.
@@ -2721,7 +2687,7 @@ On full-screen displays, the video data area can exceed the height of the screen
 the height of the video data in pixels.  If this feature is not in use or is unavailable, the InsideWidth is equal to
 the display #Height.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_InsideHeight(extDisplay *Self, LONG *Value)
 {
@@ -2729,7 +2695,7 @@ static ERROR GET_InsideHeight(extDisplay *Self, LONG *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 InsideWidth: Represents the internal width of the display.
@@ -2738,7 +2704,7 @@ On full-screen displays, the video data area can exceed the width of the screen 
 width of the video data in pixels.  If this feature is not in use or is unavailable, the InsideWidth is equal to the
 display #Width.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_InsideWidth(extDisplay *Self, LONG *Value)
 {
@@ -2746,7 +2712,7 @@ static ERROR GET_InsideWidth(extDisplay *Self, LONG *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 LeftMargin: In hosted mode, indicates the left-hand margin of the client window.
@@ -2760,7 +2726,7 @@ Manufacturer: String describing the manufacturer of the graphics hardware.
 The string in this field returns the name of the manufacturer that created the user's graphics card.  If this
 information is not detectable, a NULL pointer is returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Manufacturer(extDisplay *Self, STRING *Value)
 {
@@ -2769,7 +2735,7 @@ static ERROR GET_Manufacturer(extDisplay *Self, STRING *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 MaxHScan: The maximum horizontal scan rate of the display output device.
@@ -2822,7 +2788,7 @@ static ERROR SET_Opacity(extDisplay *Self, DOUBLE Value)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 PopOver: Enables pop-over support for hosted display windows.
@@ -2834,7 +2800,7 @@ windows are visible on the desktop).
 The ERR_NoSupport error code is returned if the host does not support this functionality or if the display owns the
 output device.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_PopOver(extDisplay *Self, OBJECTID Value)
 {
@@ -2848,7 +2814,7 @@ static ERROR SET_PopOver(extDisplay *Self, OBJECTID Value)
          Self->PopOverID = 0;
          XSetTransientForHint(XDisplay, Self->XWindowHandle, (Window)0);
       }
-      else if (!AccessObject(Value, 2000, &popover)) {
+      else if (!AccessObjectID(Value, 2000, &popover)) {
          if (popover->ClassID IS ID_DISPLAY) {
             Self->PopOverID = Value;
             XSetTransientForHint(XDisplay, Self->XWindowHandle, (Window)popover->WindowHandle);
@@ -2884,28 +2850,28 @@ static ERROR SET_PopOver(extDisplay *Self, OBJECTID Value)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 RefreshRate: This field manages the display refresh rate.
 
 The value in this field reflects the refresh rate of the currently active display, if operating in full-screen mode.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_RefreshRate(extDisplay *Self, DOUBLE Value)
 {
-   return ERR_NoSupport;
+   return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 ResizeFeedback: This field manages the display refresh rate.
 
 The value in this field reflects the refresh rate of the currently active display, if operating in full-screen mode.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_ResizeFeedback(extDisplay *Self, FUNCTION **Value)
 {
@@ -2930,7 +2896,7 @@ static ERROR SET_ResizeFeedback(extDisplay *Self, FUNCTION *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 RightMargin: In hosted mode, indicates the pixel margin between the client window and right window edge.
@@ -2944,7 +2910,7 @@ TotalMemory: The total amount of user accessible RAM installed on the video card
 -FIELD-
 TotalResolutions: The total number of resolutions supported by the display.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_TotalResolutions(extDisplay *Self, LONG *Value)
 {
@@ -2959,7 +2925,7 @@ static ERROR GET_TotalResolutions(extDisplay *Self, LONG *Value)
    else return ERR_Failed;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Width: Defines the width of the display.
@@ -2970,7 +2936,7 @@ If the width exceeds allowable limits, it will be restricted to a value that the
 If the display is hosted, the width reflects the internal width of the host window.  On some hosted systems, the true
 width of the window can be calculated by reading the #LeftMargin and #RightMargin fields.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Width(extDisplay *Self, LONG Value)
 {
@@ -2984,7 +2950,7 @@ static ERROR SET_Width(extDisplay *Self, LONG Value)
    else return ERR_OutOfRange;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 WindowHandle: Refers to a display object's window handle, if relevant.
 
@@ -2995,7 +2961,7 @@ Microsoft Windows.
 It is possible to set the WindowHandle field prior to initialisation if you want a display object to be based on a
 window that already exists.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_WindowHandle(extDisplay *Self, APTR *Value)
 {
@@ -3018,11 +2984,11 @@ static ERROR SET_WindowHandle(extDisplay *Self, APTR Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Title: Sets the window title (hosted environments only).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #if defined(_WIN32)
 static STRING glWindowTitle = NULL;
@@ -3064,7 +3030,7 @@ static ERROR SET_Title(extDisplay *Self, CSTRING Value)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 X: Defines the horizontal coordinate of the display.
 
@@ -3077,7 +3043,7 @@ display window.  The #LeftMargin can be used to determine the actual position of
 
 To adjust the position of the display, use the #MoveToPoint() action rather than setting this field directly.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_X(extDisplay *Self, LONG Value)
 {
@@ -3088,7 +3054,7 @@ static ERROR SET_X(extDisplay *Self, LONG Value)
    else return acMoveToPoint(Self, Value, 0, 0, MTF_X);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Y: Defines the vertical coordinate of the display.
 
@@ -3101,7 +3067,7 @@ display window.  The #TopMargin can be used to determine the actual position of 
 
 To adjust the position of the display, use the #MoveToPoint() action rather than setting this field directly.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Y(extDisplay *Self, LONG Value)
 {
@@ -3124,28 +3090,21 @@ void alloc_display_buffer(extDisplay *Self)
 
    if (Self->BufferID) { acFree(Self->BufferID); Self->BufferID = 0; }
 
-   objBitmap *buffer;
-   if (!NewObject(ID_BITMAP, NF::INTEGRAL, &buffer)) {
-      if (!SetFields(buffer,
-            FID_Name|TSTR,           "SystemBuffer",
-            FID_BitsPerPixel|TLONG,  Self->Bitmap->BitsPerPixel,
-            FID_BytesPerPixel|TLONG, Self->Bitmap->BytesPerPixel,
-            FID_Width|TLONG,         Self->Bitmap->Width,
-            FID_Height|TLONG,        Self->Bitmap->Height,
-            #ifdef __xwindows__
-               FID_DataFlags|TLONG,  MEM_DATA,
-            #else
-               FID_DataFlags|TLONG,  MEM_TEXTURE,
-            #endif
-            TAGEND)) {
-         if (!acInit(buffer)) {
-            Self->BufferID = buffer->UID;
-            return;
-         }
-      }
-
-      acFree(buffer);
+   if (auto buffer = objBitmap::create::integral(
+         fl::Name("SystemBuffer"),
+         fl::BitsPerPixel(Self->Bitmap->BitsPerPixel),
+         fl::BytesPerPixel(Self->Bitmap->BytesPerPixel),
+         fl::Width(Self->Bitmap->Width),
+         fl::Height(Self->Bitmap->Height),
+         #ifdef __xwindows__
+            fl::DataFlags(MEM_DATA)
+         #else
+            fl::DataFlags(MEM_TEXTURE)
+         #endif
+      )) {
+      Self->BufferID = buffer->UID;
    }
+
 }
 
 //********************************************************************************************************************

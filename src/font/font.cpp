@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -8,14 +8,14 @@ This code utilises the work of the FreeType Project under the FreeType
 License.  For more information please refer to the FreeType home page at
 www.freetype.org.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -MODULE-
 Font: Provides font management functionality and hosts the Font class.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define PRV_FONT
 #define PRV_FONT_MODULE
@@ -38,7 +38,7 @@ Font: Provides font management functionality and hosts the Font class.
 #include <wchar.h>
 #include <parasol/strings.hpp>
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** This table determines what ASCII characters are treated as white-space for word-wrapping purposes.  You'll need to
 ** refer to an ASCII table to see what is going on here.
 */
@@ -62,7 +62,7 @@ static const UBYTE glWrapBreaks[256] = {
    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0  // 0xff
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 OBJECTPTR modFont = NULL;
 struct CoreBase *CoreBase;
@@ -108,7 +108,7 @@ static void scan_fixed_folder(objConfig *);
 static ERROR analyse_bmp_font(CSTRING, winfnt_header_fields *, STRING *, UBYTE *, UBYTE);
 static ERROR  fntRefreshFonts(void);
 
-//****************************************************************************
+//********************************************************************************************************************
 // Return the first unicode value from a given string address.
 
 static LONG getutf8(CSTRING Value, ULONG *Unicode)
@@ -161,7 +161,7 @@ static LONG getutf8(CSTRING Value, ULONG *Unicode)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Returns the global point size for font scaling.  This is set to 10 by default, but the user can change the setting
 // in the interface style values.
 
@@ -192,7 +192,7 @@ static DOUBLE global_point_size(void)
    return glDefaultPoint;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Attempts to update globally held DPI values with the main display's real DPI.
 //
 
@@ -214,7 +214,7 @@ static void update_dpi(void)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Only call this function if the font includes kerning support (test via FTF_KERNING).
 
 INLINE void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, LONG *X, LONG *Y)
@@ -225,7 +225,7 @@ INLINE void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, LONG *X, LO
    *Y = delta.y>>FT_DOWNSIZE;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Only call this function if the font includes kerning support (test via FTF_KERNING).
 
 INLINE LONG get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
@@ -237,7 +237,7 @@ INLINE LONG get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
    return delta.x>>FT_DOWNSIZE;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 INLINE void calc_lines(extFont *Self)
 {
@@ -253,7 +253,7 @@ INLINE void calc_lines(extFont *Self)
    else Self->prvLineCount = 1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static objConfig *glConfig = NULL;
 
@@ -313,7 +313,7 @@ static ERROR CMDExpunge(void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 CharWidth: Returns the width of a character.
@@ -332,7 +332,7 @@ uint KChar: A unicode character to use for calculating the font kerning (optiona
 -RESULT-
 int: The pixel width of the character will be returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static LONG fntCharWidth(extFont *Font, ULONG Char, ULONG KChar, LONG *Kerning)
 {
@@ -363,7 +363,7 @@ static LONG fntCharWidth(extFont *Font, ULONG Char, ULONG KChar, LONG *Kerning)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetList: Returns a list of all available system fonts.
@@ -378,7 +378,7 @@ Okay
 NullArgs
 AccessObject: Font configuration information could not be accessed.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR fntGetList(FontList **Result)
 {
@@ -451,7 +451,7 @@ static ERROR fntGetList(FontList **Result)
    else return ERR_NoData;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 StringSize: Calculates the exact dimensions of a font string, giving respect to word wrapping.
@@ -473,7 +473,7 @@ int Wrap:   The pixel position at which word wrapping occurs.  If zero or less, 
 &int Width: The width of the longest line will be returned in this parameter.
 &int Rows:  The number of calculated rows will be returned in this parameter.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static void fntStringSize(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LONG *Width, LONG *Rows)
 {
@@ -603,7 +603,7 @@ static void fntStringSize(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, 
    if (Width) *Width = longest;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 FreetypeHandle: Returns a handle to the FreeType library.
@@ -616,14 +616,14 @@ names, e.g. "FT_Open_Face".
 -RESULT-
 ptr: A handle to the FreeType library will be returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static APTR fntFreetypeHandle(void)
 {
    return glFTLibrary;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 StringWidth: Returns the pixel width of any given string in relation to a font's settings.
@@ -642,7 +642,7 @@ int Chars: The number of characters (not bytes, so consider UTF-8 serialisation)
 -RESULT-
 int: The pixel width of the string is returned - this will be zero if there was an error or the string is empty.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static LONG fntStringWidth(extFont *Font, CSTRING String, LONG Chars)
 {
@@ -701,7 +701,7 @@ static LONG fntStringWidth(extFont *Font, CSTRING String, LONG Chars)
    else return 0;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ConvertCoords: Converts pixel coordinates into equivalent column and row positions in font strings.
@@ -729,7 +729,7 @@ Okay: The character position was calculated.
 Args:
 FieldNotSet: The String field has not been set.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR fntConvertCoords(extFont *Font, CSTRING String, LONG X, LONG Y, LONG *Column, LONG *Row,
    LONG *ByteColumn, LONG *BytePos, LONG *CharX)
@@ -824,7 +824,7 @@ static ERROR fntConvertCoords(extFont *Font, CSTRING String, LONG X, LONG Y, LON
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SetDefaultSize: Sets the default font size for the application.
@@ -844,7 +844,7 @@ double Size: The new default point size.
 -RESULT-
 double: The previous font size is returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static DOUBLE fntSetDefaultSize(DOUBLE Size)
 {
@@ -857,7 +857,7 @@ static DOUBLE fntSetDefaultSize(DOUBLE Size)
    return previous;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 InstallFont: Installs a new font.
@@ -882,7 +882,7 @@ Okay: The font information was successfully installed.
 NullArgs:
 NoSupport: One of the font files is in an unsupported file format.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR fntInstallFont(CSTRING Files)
 {
@@ -925,7 +925,7 @@ static ERROR fntInstallFont(CSTRING Files)
 }
 
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 RemoveFont: Removes an installed font from the system.
@@ -944,7 +944,7 @@ Okay: The font was successfully removed.
 Args: Invalid arguments were specified.
 DeleteFile: Removal aborted due to a file deletion failure.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR fntRemoveFont(CSTRING Name)
 {
@@ -997,7 +997,7 @@ static ERROR fntRemoveFont(CSTRING Name)
    return log.warning(ERR_Search);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SelectFont: Searches for a 'best fitting' font file based on select criteria.
@@ -1027,7 +1027,7 @@ AccessObject: Unable to access the internal font configuration object.
 Search: Unable to find a suitable font.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static std::optional<std::string> get_font_path(ConfigKeys &Keys, const std::string& Type, const std::string& Style)
 {
@@ -1225,7 +1225,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
    return ERR_Search;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -INTERNAL-
 RefreshFonts: Refreshes the system font list with up-to-date font information.
@@ -1243,7 +1243,7 @@ Okay: Fonts were successfully refreshed.
 AccessObject: Access to the SytsemFonts object was denied, or the object does not exist.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR fntRefreshFonts(void)
 {
@@ -1302,7 +1302,7 @@ static ERROR fntRefreshFonts(void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void scan_truetype_folder(objConfig *Config)
 {
@@ -1391,7 +1391,7 @@ static void scan_truetype_folder(objConfig *Config)
    else log.warning("Failed to open the fonts:truetype/ directory.");
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void scan_fixed_folder(objConfig *Config)
 {
@@ -1489,7 +1489,7 @@ static void scan_fixed_folder(objConfig *Config)
    else log.warning("Failed to scan directory fonts:fixed/");
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING *FaceName, UBYTE *Points, UBYTE MaxPoints)
 {
@@ -1602,10 +1602,10 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING
    else return ERR_File;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "class_font.cpp"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_FONT)

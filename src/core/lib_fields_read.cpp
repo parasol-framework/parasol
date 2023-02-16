@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol Framework is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -12,14 +12,14 @@ NOTE: The GetField range of functions do not provide any context management. Thi
 allocate memory will have their memory tracked back to the object that made the GetField() call.  They can overcome
 this by calling SetContext() themselves.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include "defs.h"
 #include <parasol/main.h>
 
 static THREADVAR char strGetField[400]; // Buffer for retrieving variable field values
 
-//****************************************************************************
+//********************************************************************************************************************
 // This internal function provides a fast binary search of field names via ID.
 
 Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target)
@@ -65,7 +65,7 @@ Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target)
    return 0;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 FindField: Finds field descriptors for any class, by ID.
@@ -92,7 +92,7 @@ struct(Field): Returns a pointer to the field descriptor, otherwise NULL if not 
 
 Please note that FieldID is explicitly defined as 32-bit because using the FIELD type would make it 64-bit.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target) // Read-only, thread safe function.
 {
@@ -109,7 +109,7 @@ Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target) // Read-on
    else*/ return lookup_id(Object, FieldID, Target);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetField: Retrieves single field values from objects.
@@ -154,7 +154,7 @@ Args:             Invalid arguments were specified.
 NoFieldAccess:    Permissions for this field indicate that it is not readable.
 UnsupportedField: The Field is not supported by the object's class.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR GetField(OBJECTPTR Object, FIELD FieldID, APTR Result)
 {
@@ -189,7 +189,7 @@ ERROR GetField(OBJECTPTR Object, FIELD FieldID, APTR Result)
    return ERR_UnsupportedField;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetFieldArray: Retrieves array field values from objects.
@@ -217,7 +217,7 @@ NoFieldAccess:    Permissions for this field indicate that it is not readable.
 UnsupportedField: The Field is not supported by the object's class.
 Mismatch
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR GetFieldArray(OBJECTPTR Object, FIELD FieldID, APTR *Result, LONG *Elements)
 {
@@ -250,7 +250,7 @@ ERROR GetFieldArray(OBJECTPTR Object, FIELD FieldID, APTR *Result, LONG *Element
    return ERR_UnsupportedField;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetFields: Retrieves multiple field values in a single function call.
@@ -291,7 +291,7 @@ Okay
 NullArgs
 UnsupportedField
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR GetFields(OBJECTPTR Object, ...)
 {
@@ -345,7 +345,7 @@ ERROR GetFields(OBJECTPTR Object, ...)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetFieldVariable: Retrieves field values by converting them into strings.
@@ -387,7 +387,7 @@ NoFieldAccess:    Permissions for this field state that it is not readable.
 Mismatch:         The field value cannot be converted into a string.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG BufferSize)
 {
@@ -580,7 +580,7 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Used by the GetField() range of functions.
 
 ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Result, CSTRING Option, LONG *TotalElements)

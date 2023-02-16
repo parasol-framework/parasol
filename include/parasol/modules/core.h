@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      core.h
-// Copyright: Paul Manias 1996-2022
+// Copyright: Paul Manias 1996-2023
 // Generator: idl-c
 
 #include <parasol/main.h>
@@ -93,7 +93,7 @@ class objCompressedStream;
 #define AC_SelectArea 3
 #define AC_Clear 4
 #define AC_FreeWarning 5
-#define AC_OwnerDestroyed 6
+#define AC_Sort 6
 #define AC_CopyData 7
 #define AC_DataFeed 8
 #define AC_Deactivate 9
@@ -140,8 +140,7 @@ class objCompressedStream;
 #define AC_MoveToPoint 50
 #define AC_ScrollToPoint 51
 #define AC_Custom 52
-#define AC_Sort 53
-#define AC_END 54
+#define AC_END 53
 
 // Permission flags
 
@@ -241,7 +240,6 @@ class objCompressedStream;
 #define MEM_NO_CLEAR 0x00040000
 #define MEM_RESERVED 0x00080000
 #define MEM_HIDDEN 0x00100000
-#define MEM_TASK 0x00200000
 #define MEM_CALLER 0x00800000
 
 // Event categories.
@@ -738,7 +736,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 #define AHASH_ACCESSOBJECT 0xbcf3b98e
 #define AHASH_CLEAR 0x0f3b6d8c
 #define AHASH_FREEWARNING 0xb903ddbd
-#define AHASH_OWNERDESTROYED 0x77295103
 #define AHASH_COPYDATA 0x47b0d1fa
 #define AHASH_DATAFEED 0x05e6d293
 #define AHASH_DEACTIVATE 0x1ee323ff
@@ -1089,11 +1086,10 @@ enum class NF : ULONG {
    TIMER_SUB = 0x00000020,
    SUPPRESS_LOG = 0x00000040,
    COLLECT = 0x00000080,
-   NEW_OBJECT = 0x00000100,
+   HAS_SHARED_RESOURCES = 0x00000100,
    RECLASSED = 0x00000200,
    MESSAGE = 0x00000400,
    SIGNALLED = 0x00000800,
-   HAS_SHARED_RESOURCES = 0x00001000,
    UNIQUE = 0x40000000,
    NAME = 0x80000000,
 };
@@ -1943,7 +1939,7 @@ extern struct CoreBase *CoreBase;
 
 extern struct CoreBase *CoreBase;
 struct CoreBase {
-   ERROR (*_AccessMemory)(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR Result);
+   ERROR (*_AccessMemoryID)(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR Result);
    ERROR (*_Action)(LONG Action, OBJECTPTR Object, APTR Parameters);
    void (*_ActionList)(struct ActionTable ** Actions, LONG * Size);
    ERROR (*_ActionMsg)(LONG Action, OBJECTID Object, APTR Args);
@@ -1951,7 +1947,7 @@ struct CoreBase {
    CSTRING (*_ResolveClassID)(CLASSID ID);
    LONG (*_AllocateID)(LONG Type);
    ERROR (*_AllocMemory)(LONG Size, LONG Flags, APTR Address, MEMORYID * ID);
-   ERROR (*_AccessObject)(OBJECTID Object, LONG MilliSeconds, APTR Result);
+   ERROR (*_AccessObjectID)(OBJECTID Object, LONG MilliSeconds, APTR Result);
    ERROR (*_ListTasks)(LONG Flags, struct ListTasks ** List);
    ERROR (*_CheckAction)(OBJECTPTR Object, LONG Action);
    ERROR (*_CheckMemoryExists)(MEMORYID ID);
@@ -1982,7 +1978,7 @@ struct CoreBase {
    ERROR (*_NewObject)(LARGE ClassID, NF Flags, APTR Object);
    void (*_NotifySubscribers)(OBJECTPTR Object, LONG Action, APTR Args, ERROR Error);
    ERROR (*_StrReadLocale)(CSTRING Key, CSTRING * Value);
-   APTR (*_GetMemAddress)(MEMORYID ID);
+   CSTRING (*_UTF8ValidEncoding)(CSTRING String, CSTRING Encoding);
    ERROR (*_ProcessMessages)(LONG Flags, LONG TimeOut);
    ERROR (*_IdentifyFile)(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID * Class, CLASSID * SubClass, STRING * Command);
    ERROR (*_ReallocMemory)(APTR Memory, LONG Size, APTR Address, MEMORYID * ID);
@@ -2034,7 +2030,7 @@ struct CoreBase {
    ERROR (*_FuncError)(CSTRING Header, ERROR Error);
    ERROR (*_SetArray)(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements);
    ERROR (*_ReleaseMemoryID)(MEMORYID MemoryID);
-   ERROR (*_AccessPrivateObject)(OBJECTPTR Object, LONG MilliSeconds);
+   ERROR (*_LockObject)(OBJECTPTR Object, LONG MilliSeconds);
    void (*_ReleaseObject)(OBJECTPTR Object);
    ERROR (*_AllocMutex)(LONG Flags, APTR Result);
    void (*_FreeMutex)(APTR Mutex);
@@ -2084,11 +2080,10 @@ struct CoreBase {
    CSTRING (*_VarGetString)(struct KeyStore * Store, CSTRING Key);
    ERROR (*_VarCopy)(struct KeyStore * Source, struct KeyStore * Dest);
    ULONG (*_StrHash)(CSTRING String, LONG CaseSensitive);
-   CSTRING (*_UTF8ValidEncoding)(CSTRING String, CSTRING Encoding);
 };
 
 #ifndef PRV_CORE_MODULE
-inline ERROR AccessMemory(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessMemory(Memory,Flags,MilliSeconds,Result); }
+inline ERROR AccessMemoryID(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessMemoryID(Memory,Flags,MilliSeconds,Result); }
 inline ERROR Action(LONG Action, OBJECTPTR Object, APTR Parameters) { return CoreBase->_Action(Action,Object,Parameters); }
 inline void ActionList(struct ActionTable ** Actions, LONG * Size) { return CoreBase->_ActionList(Actions,Size); }
 inline ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args) { return CoreBase->_ActionMsg(Action,Object,Args); }
@@ -2096,7 +2091,7 @@ inline ERROR KeyGet(struct KeyStore * Store, ULONG Key, APTR Data, LONG * Size) 
 inline CSTRING ResolveClassID(CLASSID ID) { return CoreBase->_ResolveClassID(ID); }
 inline LONG AllocateID(LONG Type) { return CoreBase->_AllocateID(Type); }
 inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address, MEMORYID * ID) { return CoreBase->_AllocMemory(Size,Flags,Address,ID); }
-inline ERROR AccessObject(OBJECTID Object, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessObject(Object,MilliSeconds,Result); }
+inline ERROR AccessObjectID(OBJECTID Object, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessObjectID(Object,MilliSeconds,Result); }
 inline ERROR ListTasks(LONG Flags, struct ListTasks ** List) { return CoreBase->_ListTasks(Flags,List); }
 inline ERROR CheckAction(OBJECTPTR Object, LONG Action) { return CoreBase->_CheckAction(Object,Action); }
 inline ERROR CheckMemoryExists(MEMORYID ID) { return CoreBase->_CheckMemoryExists(ID); }
@@ -2127,7 +2122,7 @@ inline ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size) { 
 inline ERROR NewObject(LARGE ClassID, NF Flags, APTR Object) { return CoreBase->_NewObject(ClassID,Flags,Object); }
 inline void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERROR Error) { return CoreBase->_NotifySubscribers(Object,Action,Args,Error); }
 inline ERROR StrReadLocale(CSTRING Key, CSTRING * Value) { return CoreBase->_StrReadLocale(Key,Value); }
-inline APTR GetMemAddress(MEMORYID ID) { return CoreBase->_GetMemAddress(ID); }
+inline CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding) { return CoreBase->_UTF8ValidEncoding(String,Encoding); }
 inline ERROR ProcessMessages(LONG Flags, LONG TimeOut) { return CoreBase->_ProcessMessages(Flags,TimeOut); }
 inline ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID * Class, CLASSID * SubClass, STRING * Command) { return CoreBase->_IdentifyFile(Path,Mode,Flags,Class,SubClass,Command); }
 inline ERROR ReallocMemory(APTR Memory, LONG Size, APTR Address, MEMORYID * ID) { return CoreBase->_ReallocMemory(Memory,Size,Address,ID); }
@@ -2179,7 +2174,7 @@ inline struct Message * GetActionMsg(void) { return CoreBase->_GetActionMsg(); }
 inline ERROR FuncError(CSTRING Header, ERROR Error) { return CoreBase->_FuncError(Header,Error); }
 inline ERROR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements) { return CoreBase->_SetArray(Object,Field,Array,Elements); }
 inline ERROR ReleaseMemoryID(MEMORYID MemoryID) { return CoreBase->_ReleaseMemoryID(MemoryID); }
-inline ERROR AccessPrivateObject(OBJECTPTR Object, LONG MilliSeconds) { return CoreBase->_AccessPrivateObject(Object,MilliSeconds); }
+inline ERROR LockObject(OBJECTPTR Object, LONG MilliSeconds) { return CoreBase->_LockObject(Object,MilliSeconds); }
 inline void ReleaseObject(OBJECTPTR Object) { return CoreBase->_ReleaseObject(Object); }
 inline ERROR AllocMutex(LONG Flags, APTR Result) { return CoreBase->_AllocMutex(Flags,Result); }
 inline void FreeMutex(APTR Mutex) { return CoreBase->_FreeMutex(Mutex); }
@@ -2229,7 +2224,6 @@ inline ERROR VarSetString(struct KeyStore * Store, CSTRING Key, CSTRING Value) {
 inline CSTRING VarGetString(struct KeyStore * Store, CSTRING Key) { return CoreBase->_VarGetString(Store,Key); }
 inline ERROR VarCopy(struct KeyStore * Source, struct KeyStore * Dest) { return CoreBase->_VarCopy(Source,Dest); }
 inline ULONG StrHash(CSTRING String, LONG CaseSensitive) { return CoreBase->_StrHash(String,CaseSensitive); }
-inline CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding) { return CoreBase->_UTF8ValidEncoding(String,Encoding); }
 #endif
 
 
@@ -2340,7 +2334,6 @@ struct BaseClass { // Must be 64-bit aligned
       objMetaClass *Class;          // [Public] Class pointer
       class extMetaClass *ExtClass; // [Private] Internal version of the class pointer
    };
-   struct Stats *Stats;         // [Private] Stats pointer
    APTR     ChildPrivate;       // Address for the ChildPrivate structure, if allocated
    APTR     CreatorMeta;        // The creator (via NewObject) is permitted to store a custom data pointer here.
    CLASSID  ClassID;            // The object's class ID
@@ -2348,16 +2341,18 @@ struct BaseClass { // Must be 64-bit aligned
    OBJECTID UID;                // Unique object identifier
    OBJECTID OwnerID;            // The owner of this object
    NF       Flags;              // Object flags
+   LONG     NotifyFlags[2];     // Action subscription flags - space for 64 actions max
    volatile LONG  ThreadID;     // Managed by locking functions
    #ifdef _WIN32
       WINHANDLE ThreadMsg;      // Pipe for sending messages to the owner thread.
    #else
       LONG ThreadMsg;
    #endif
+   char Name[MAX_NAME_LEN];     // The name of the object (optional)
    UBYTE ThreadPending;         // ActionThread() increments this.
    volatile BYTE Queue;         // Managed by locking functions
    volatile BYTE SleepQueue;    //
-   volatile bool Locked;        // Set if locked by AccessObject()/AccessPrivateObject()
+   volatile bool Locked;        // Set if locked by AccessObjectID()/LockObject()
    BYTE ActionDepth;            // Incremented each time an action or method is called on the object
 
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
@@ -2384,8 +2379,8 @@ struct BaseClass { // Must be 64-bit aligned
          }
          else {
             if (ThreadID IS get_thread_id()) return ERR_Okay; // If this is for the same thread then it's a nested lock, so there's no issue.
-            SUB_QUEUE(this); // Put the lock count back to normal before AccessPrivateObject()
-            return AccessPrivateObject(this, -1); // Can fail if object is marked for deletion.
+            SUB_QUEUE(this); // Put the lock count back to normal before LockObject()
+            return LockObject(this, -1); // Can fail if object is marked for deletion.
          }
       #else
          return ERR_Okay;
@@ -2670,7 +2665,9 @@ class Create {
 
                      target->threadRelease();
 
-                     if (error) return;
+                     // NB: NoSupport is considered a 'soft' error that does not warrant failure.
+
+                     if ((error) and (error != ERR_NoSupport)) return;
                   }
                }
                else { error = log.warning(ERR_UnsupportedField); return; }

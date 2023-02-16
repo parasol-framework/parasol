@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
@@ -10,7 +10,7 @@ copyright to Thomas G. Lane.  Libjpeg is publicly available on terms that
 are not related to this Package.  The original libjpeg source code can be
 obtained from http://www.ijg.org.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include <parasol/main.h>
 #include <parasol/modules/picture.h>
@@ -36,7 +36,7 @@ static ERROR JPEG_SaveImage(prvPicture *, struct acSaveImage *);
 
 static void decompress_jpeg(prvPicture *, objBitmap *, struct jpeg_decompress_struct *);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR JPEG_Activate(prvPicture *Self, APTR Void)
 {
@@ -161,7 +161,7 @@ static void decompress_jpeg(prvPicture *Self, objBitmap *Bitmap, struct jpeg_dec
    jpeg_destroy_decompress(Cinfo);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Picture: Init
 */
 
@@ -201,7 +201,7 @@ static ERROR JPEG_Init(prvPicture *Self, APTR Void)
    return ERR_NoSupport;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR JPEG_Query(prvPicture *Self, APTR Void)
 {
@@ -245,7 +245,7 @@ static ERROR JPEG_Query(prvPicture *Self, APTR Void)
    else return log.warning(ERR_Memory);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Picture: SaveImage
 */
 
@@ -258,7 +258,7 @@ static ERROR JPEG_SaveImage(prvPicture *Self, struct acSaveImage *Args)
    objFile *file = NULL;
 
    if ((Args) and (Args->DestID)) {
-      if (AccessObject(Args->DestID, 3000, &file)) return log.warning(ERR_AccessObject);
+      if (AccessObjectID(Args->DestID, 3000, &file)) return log.warning(ERR_AccessObject);
    }
    else {
       STRING path;
@@ -316,7 +316,7 @@ static ERROR JPEG_SaveImage(prvPicture *Self, struct acSaveImage *Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ActionArray clActions[] = {
    { AC_Activate,  (APTR)JPEG_Activate },
@@ -326,7 +326,7 @@ static ActionArray clActions[] = {
    { 0, NULL }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
@@ -350,7 +350,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    return clJPEG ? ERR_Okay : ERR_AddClass;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CMDExpunge(void)
 {
@@ -359,6 +359,6 @@ static ERROR CMDExpunge(void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, 1.0)

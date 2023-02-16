@@ -1,5 +1,5 @@
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Author: The author(s) of the document.
@@ -7,7 +7,7 @@ Author: The author(s) of the document.
 If a document declares the names of its author(s) under a head tag, the author string will be readable from this field.
 This field is always NULL if a document does not declare an author string.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Author(extDocument *Self, CSTRING Value)
 {
@@ -16,7 +16,7 @@ static ERROR SET_Author(extDocument *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Background: Optional background colour for the document.
@@ -50,7 +50,7 @@ Copyright: Copyright information for the document.
 If a document declares copyright information under a head tag, the copyright string will be readable from this field.
 This field is always NULL if a document does not declare a copyright string.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Copyright(extDocument *Self, CSTRING Value)
 {
@@ -76,7 +76,7 @@ custom documents.
 
 If a loaded document defines its own custom script, it will have priority over the script referenced here.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_DefaultScript(extDocument *Self, OBJECTPTR Value)
 {
@@ -110,7 +110,7 @@ supported events and additional details.
 Error codes returned from the callback will normally be discarded, however in some cases ERR_Skip can be returned in
 order to prevent the event from being processed any further.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_EventCallback(extDocument *Self, FUNCTION **Value)
 {
@@ -135,7 +135,7 @@ static ERROR SET_EventCallback(extDocument *Self, FUNCTION *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 EventMask: Specifies events that need to be reported from the Document object.
@@ -161,7 +161,7 @@ static ERROR SET_Flags(extDocument *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Focus: Refers to the object that will be monitored for user focusing.
@@ -182,7 +182,7 @@ The default font face to use when processing a document is defined in this field
 font face by declaring a body tag containing a face attribute.  If this occurs, the FontFace field will reflect the
 default font face chosen by that document.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_FontFace(extDocument *Self, CSTRING Value)
 {
@@ -207,14 +207,14 @@ static ERROR SET_FontFace(extDocument *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 FontSize: The point-size of the default font.
 
 The point size of the default font is defined here.  Valid values range between 6 and 128.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_FontSize(extDocument *Self, LONG Value)
 {
@@ -224,7 +224,7 @@ static ERROR SET_FontSize(extDocument *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Highlight: Defines the colour used to highlight document.
@@ -239,7 +239,7 @@ always NULL if a document does not declare any keywords.  It is recommended that
 commas.  It should not be assumed that the author of the document has adhered to the accepted standard for keyword
 separation.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Keywords(extDocument *Self, STRING Value)
 {
@@ -249,7 +249,7 @@ static ERROR SET_Keywords(extDocument *Self, STRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 LeftMargin: Defines the amount of whitespace to leave at the left of the page.
@@ -292,7 +292,7 @@ Other means of opening a document include loading the data manually and feeding 
 The new document layout will be displayed when incoming messages are next processed by the running task.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Path(extDocument *Self, STRING *Value)
 {
@@ -453,7 +453,7 @@ static ERROR SET_Origin(extDocument *Self, STRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 PageHeight: Measures the page height of the document, in pixels.
@@ -467,7 +467,7 @@ PageWidth: Measures the page width of the document, in pixels.
 The width of the longest document line can be retrieved from this field.  The result includes the left and right page
 margins.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_PageWidth(extDocument *Self, Variable *Value)
 {
@@ -517,7 +517,7 @@ static ERROR SET_PageWidth(extDocument *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 RightMargin: Defines the amount of white-space to leave at the right side of the document page.
@@ -541,7 +541,7 @@ The Surface field refers to the object ID of the surface that will contain the d
 set prior to initialisation to target the graphics correctly - if left unset then the document object will attempt to
 determine the correct surface object based on object ownership.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Surface(extDocument *Self, OBJECTID Value)
 {
@@ -554,7 +554,7 @@ static ERROR SET_Surface(extDocument *Self, OBJECTID Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 TabFocus: Allows the user to hit the tab key to focus on other GUI objects.
@@ -568,7 +568,7 @@ Title: The title of the document.
 If a document declares a title under a head tag, the title string will be readable from this field.   This field is
 always NULL if a document does not declare a title.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Title(extDocument *Self, STRING Value)
 {
@@ -577,7 +577,7 @@ static ERROR SET_Title(extDocument *Self, STRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 TopMargin: Defines the amount of white-space to leave at the top of the document page.
@@ -598,7 +598,7 @@ Forcing the document to recompute its layout is rarely necessary as this is auto
 removing content.  However, an action such as adjusting the size of graphical objects from a script would require this
 field to be manually set.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_UpdateLayout(extDocument *Self, LONG Value)
 {
@@ -606,7 +606,7 @@ static ERROR SET_UpdateLayout(extDocument *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 VLinkColour: Default font colour for visited hyperlinks.
@@ -615,11 +615,11 @@ The default font colour for visited hyperlinks is stored in this field.  The sou
 colour for visited links if the author desires.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
-/*****************************************************************************
+/*********************************************************************************************************************
 PRIVATE: Variables
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Variables(extDocument *Self, KeyStore **Value)
 {
@@ -627,7 +627,7 @@ static ERROR GET_Variables(extDocument *Self, KeyStore **Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 WorkingPath: Defines the working path (folder or URI).
@@ -642,7 +642,7 @@ determined - in which case an empty string is returned.
 You can manually change the working path by setting the #Origin field without affecting the loaded document.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_WorkingPath(extDocument *Self, CSTRING *Value)
 {

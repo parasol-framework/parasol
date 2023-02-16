@@ -1,10 +1,10 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -CLASS-
 Parc: This class manages the execution of PARC files.
@@ -16,7 +16,7 @@ than using the Parc class directly.  After executing a Parc file via the #Activa
 recommended that the process is terminated because the loss of system privileges is irreversible.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define PRV_PARC
 #include <parasol/main.h>
@@ -42,7 +42,7 @@ static ERROR GET_Args(extParc *, CSTRING *);
 
 static ERROR add_parc_class(void);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
@@ -57,7 +57,7 @@ ERROR CMDExpunge(void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Activate: Launches the program defined in the PARC info file.
@@ -69,7 +69,7 @@ A potential side-effect of calling this action is the permanent loss of system p
 sand-boxing of the application and protecting the host system.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PARC_Activate(extParc *Self, APTR Void)
 {
@@ -116,7 +116,7 @@ static ERROR PARC_Activate(extParc *Self, APTR Void)
    else return ERR_NothingDone;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const char glOutputScript[] = "\n\
    glSelf = obj.find('self')\n\
@@ -170,7 +170,7 @@ static ERROR PARC_DataFeed(extParc *Self, struct acDataFeed *Args)
    else return ERR_NoSupport;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR PARC_Free(extParc *Self, APTR Void)
 {
@@ -182,7 +182,7 @@ static ERROR PARC_Free(extParc *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Init: Initialises the object
@@ -192,7 +192,7 @@ as a PARC file.  If the tests are passed, the parc.xml in the package will be re
 field after this action returns.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR PARC_Init(extParc *Self, APTR Void)
 {
@@ -235,19 +235,19 @@ static ERROR PARC_Init(extParc *Self, APTR Void)
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR PARC_NewObject(extParc *Self, APTR Void)
 {
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Allow: Private. Extends the access rights and allowable resource usage of the PARC program.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Allow(extParc *Self, CSTRING *Value)
 {
@@ -272,7 +272,7 @@ static ERROR SET_Allow(extParc *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Args: Pass parameters to the PARC on execution.
@@ -280,7 +280,7 @@ Args: Pass parameters to the PARC on execution.
 Set the Args field to pass parameter values to the executable PARC program.  Multiple arguments must be separated with
 whitespace.  If a parameter value needs to include whitespace, enclose the value in double quotes.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Args(extParc *Self, CSTRING *Value)
 {
@@ -311,12 +311,12 @@ static ERROR SET_Args(extParc *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Path: Defines the path to the source PARC file.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Path(extParc *Self, STRING *Value)
 {
@@ -334,7 +334,7 @@ static ERROR SET_Path(extParc *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Output: Nominate an object for receiving program output.
@@ -344,7 +344,7 @@ process, set the Output field to a target object that supports data channels.
 
 If an Output object is not provided, all data from the program will be directed via stdout by default.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include "parc_def.c"
 

@@ -230,7 +230,7 @@ static void printerror(void)
 }
 */
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winGetCoords(HWND Window, int *WinX, int *WinY, int *WinWidth, int *WinHeight, int *ClientX, int *ClientY,
    int *ClientWidth, int *ClientHeight)
@@ -260,7 +260,7 @@ void winGetCoords(HWND Window, int *WinX, int *WinY, int *WinWidth, int *WinHeig
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 HDC winGetDC(HWND Window)
 {
@@ -272,7 +272,7 @@ void winReleaseDC(HWND Window, HDC DC)
    ReleaseDC(Window, DC);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // If an error occurs, the DPI values are not updated.
 
 void winGetDPI(LONG *HDPI, LONG *VDPI)
@@ -394,7 +394,7 @@ void get_dpi(void)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 // Key conversion table.  This is used for translating raw values from the keyboard into our keyboard values.
 
 static unsigned char keyconv[256] = {
@@ -447,7 +447,7 @@ static const LPCTSTR glWinCursors[] = {
 
 static int glCancelAutoPlayMsg = 0;
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winSetCursor(HCURSOR Cursor)
 {
@@ -455,14 +455,14 @@ void winSetCursor(HCURSOR Cursor)
    SetCursor(Cursor);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winSetClassCursor(HWND Window, HCURSOR Cursor)
 {
    SetClassLong(Window, GCLP_HCURSOR, (LONG_PTR)Cursor);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winInitCursors(struct WinCursor *Cursor, int Total)
 {
@@ -477,7 +477,7 @@ void winInitCursors(struct WinCursor *Cursor, int Total)
    glCurrentCursor = Cursor[0].WinCursor;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winSetCursorPos(double X, double Y)
 {
@@ -490,14 +490,14 @@ void winSetCursorPos(double X, double Y)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winShowCursor(int State)
 {
    ShowCursor(State);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
@@ -508,21 +508,21 @@ int winLookupSurfaceID(HWND Window)
 }
 #pragma GCC diagnostic pop
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winFindClose(HANDLE Handle)
 {
    FindClose(Handle);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 HANDLE winFindWindow(char *Class, char *Window)
 {
    return FindWindow(Class, Window);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winMinimiseWindow(HWND Window)
 {
@@ -545,7 +545,7 @@ void winMinimiseWindow(HWND Window)
 #endif
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int winReadKey(char *Key, char *Value, char *Buffer, int Length)
 {
@@ -564,7 +564,7 @@ int winReadKey(char *Key, char *Value, char *Buffer, int Length)
    return errnum;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Function: winGetDisplaySettings()
 */
 
@@ -590,7 +590,7 @@ int winGetDisplaySettings(int *bits, int *bytes, int *amtcolours)
    else return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int winGetWindowInfo(HWND Window, int *X, int *Y, int *Width, int *Height, int *Maximised)
 {
@@ -625,7 +625,7 @@ int winGetWindowInfo(HWND Window, int *X, int *Y, int *Width, int *Height, int *
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void HandleMovement(HWND window, WPARAM wparam, LPARAM lparam)
 {
@@ -655,7 +655,7 @@ static void HandleMovement(HWND window, WPARAM wparam, LPARAM lparam)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void HandleWheel(HWND window, WPARAM wparam, LPARAM lparam)
 {
@@ -669,7 +669,7 @@ static void HandleWheel(HWND window, WPARAM wparam, LPARAM lparam)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void HandleButtonPress(HWND window, int button)
 {
@@ -685,7 +685,7 @@ static void HandleButtonPress(HWND window, int button)
    MsgButtonPress(button, 1);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void HandleButtonRelease(HWND window, int button)
 {
@@ -693,7 +693,7 @@ static void HandleButtonRelease(HWND window, int button)
    MsgButtonPress(button, 0);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Processes MSG_KEYDOWN messages, which are raw character values (useful for detecting keypresses that have no
 // character representation).
 
@@ -763,7 +763,7 @@ static void HandleKeyPress(WPARAM value)
    else MSG("GetKeyboardState() failed.\n");
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void HandleKeyRelease(WPARAM value)
 {
@@ -789,7 +789,7 @@ void CALLBACK msg_timeout(HWND hwnd, UINT msg, UINT_PTR idEvent, DWORD time)
    MsgTimer();
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam, LPARAM lParam)
 {
@@ -1104,7 +1104,7 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
@@ -1116,14 +1116,14 @@ void winSetSurfaceID(HWND Window, int SurfaceID)
 }
 #pragma GCC diagnostic pop
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winDisableBatching(void)
 {
    GdiSetBatchLimit(1);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int winGetDesktopSize(int *width, int *height)
 {
@@ -1142,7 +1142,7 @@ int winGetDesktopSize(int *width, int *height)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int winCreateScreenClass(void)
 {
@@ -1187,7 +1187,7 @@ int winCreateScreenClass(void)
    else return 0;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Function: winCreateScreen()
 **
 ** WS_EX_ACCEPTFILES: Specifies that a window created with this style accepts drag-drop files.
@@ -1204,7 +1204,7 @@ int winCreateScreenClass(void)
 ** WS_EX_TOPMOST: Specifies that a window created with this style should be placed above all non-topmost windows and should stay above them, even when the window is deactivated. To add or remove this style, use the SetWindowPos function.
 ** WS_EX_TRANSPARENT: Specifies that a window created with this style should not be painted until siblings beneath the window (that were created by the same thread) have been painted. The window appears transparent because the bits of underlying sibling windows have already been painted.  To achieve transparency without these restrictions, use the SetWindowRgn function.
 ** WS_EX_WINDOWEDGE: Specifies that a window has a border with a raised edge.
-******************************************************************************
+**********************************************************************************************************************
 ** WS_BORDER: Creates a window that has a thin-line border.
 ** WS_CAPTION: Creates a window that has a title bar (includes the WS_BORDER style).
 ** WS_CHILD: Creates a child window. A window with this style cannot have a menu bar. This style cannot be used with the WS_POPUP style.
@@ -1315,7 +1315,7 @@ HWND winCreateScreen(HWND PopOver, int *X, int *Y, int *Width, int *Height, char
    return Window;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** This is often used for creating windowed areas inside another application, such as a web browser.
 */
 
@@ -1339,28 +1339,28 @@ HWND winCreateChild(HWND Parent, int X, int Y, int Width, int Height)
    else return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int winHideWindow(HWND window)
 {
    return ShowWindow(window, SW_HIDE);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winMoveToBack(HWND Window)
 {
    SetWindowPos(Window, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE|SWP_NOSIZE);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winFocus(HWND Window)
 {
    SetForegroundWindow(Window);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winMoveToFront(HWND Window)
 {
@@ -1376,21 +1376,21 @@ void winMoveToFront(HWND Window)
 */
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winGetWindowTitle(HWND Window, char *Buffer, int Size)
 {
    GetWindowText(Window, Buffer, Size);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winSetWindowTitle(HWND window, const char *title)
 {
    SetWindowText(window, title);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int winShowWindow(HWND window, int Maximise)
 {
@@ -1413,21 +1413,21 @@ int winShowWindow(HWND window, int Maximise)
    return result;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winUpdateWindow(HWND hWnd)
 {
    UpdateWindow(hWnd);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 HINSTANCE winGetModuleHandle(void)
 {
    return GetModuleHandle(NULL);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int winDestroyWindow(HWND window)
 {
@@ -1445,14 +1445,14 @@ int winDestroyWindow(HWND window)
    return DestroyWindow(window);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winRemoveWindowClass(const char *ClassName)
 {
    UnregisterClass(ClassName, glInstance);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** The coordinates are interpreted as being indicative of the client area.
 */
 
@@ -1469,7 +1469,7 @@ int winMoveWindow(HWND Window, int X, int Y)
    else return 0;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** The coordinates are interpreted as being relative to the client area.
 */
 
@@ -1502,7 +1502,7 @@ int winResizeWindow(HWND Window, int X, int Y, int Width, int Height)
    return MoveWindow(Window, X, Y, Width, Height, TRUE);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winGetMargins(HWND Window, int *Left, int *Top, int *Right, int *Bottom)
 {
@@ -1517,7 +1517,7 @@ void winGetMargins(HWND Window, int *Left, int *Top, int *Right, int *Bottom)
    *Bottom = info.rcWindow.bottom - info.rcClient.bottom;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int winSettings(int Flags)
 {
@@ -1527,7 +1527,7 @@ int winSettings(int Flags)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void precalc_rgb(unsigned char *Data, unsigned char *Dest, int Width, int Height)
 {
@@ -1643,7 +1643,7 @@ void win32RedrawWindow(HWND Window, HDC WindowDC, int X, int Y, int Width,
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winGetPixelFormat(int *redmask, int *greenmask, int *bluemask, int *alphamask)
 {
@@ -1672,14 +1672,14 @@ LONG winGetPixelFormat(int *redmask, int *greenmask, int *bluemask, int *alphama
    else return -1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winGetError(LONG Error, char *Buffer, LONG BufferSize)
 {
    FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, 0, Error, 0, Buffer, BufferSize, 0);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winDrawLine(HDC hdc, LONG x1, LONG y1, LONG x2, LONG y2, UBYTE *rgb)
 {
@@ -1695,7 +1695,7 @@ void winDrawLine(HDC hdc, LONG x1, LONG y1, LONG x2, LONG y2, UBYTE *rgb)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winDrawRectangle(HDC hdc, LONG x, LONG y, LONG width, LONG height, UBYTE red, UBYTE green, UBYTE blue)
 {
@@ -1711,7 +1711,7 @@ void winDrawRectangle(HDC hdc, LONG x, LONG y, LONG width, LONG height, UBYTE re
    DeleteObject(brush);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Sets a new clipping region for a DC.
 */
 
@@ -1732,7 +1732,7 @@ LONG winSetClipping(HDC hdc, LONG left, LONG top, LONG right, LONG bottom)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winBlit(HDC dest, LONG xdest, LONG ydest, LONG width, LONG height, HDC src, LONG x, LONG y)
 {
@@ -1742,21 +1742,21 @@ LONG winBlit(HDC dest, LONG xdest, LONG ydest, LONG width, LONG height, HDC src,
    else return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void * winCreateCompatibleDC(void)
 {
    return CreateCompatibleDC(NULL);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winDeleteObject(void *Object)
 {
    DeleteObject(Object);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winSetDIBitsToDevice(HDC hdc, LONG xdest, LONG ydest, LONG width, LONG height,
         LONG xstart, LONG ystart, LONG scanwidth, LONG scanheight, LONG bpp, void *data,
@@ -1794,7 +1794,7 @@ void winSetDIBitsToDevice(HDC hdc, LONG xdest, LONG ydest, LONG width, LONG heig
    SetDIBitsToDevice(hdc, xdest, ydest, width, height, xstart, ystart, 0, scanheight, data, (BITMAPINFO *)&info, DIB_RGB_COLORS);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Function: winDeleteDC()
 */
 
@@ -1803,7 +1803,7 @@ void winDeleteDC(HDC hdc)
    DeleteDC(hdc);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Function: winGetPixel()
 */
 
@@ -1816,7 +1816,7 @@ void winGetPixel(HDC hdc, LONG x, LONG y, UBYTE *rgb)
    rgb[2] = GetBValue(col);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Function: winCreateBitmap()
 */
 
@@ -1825,7 +1825,7 @@ HBITMAP winCreateBitmap(LONG width, LONG height, LONG bpp)
    return CreateBitmap(width, height, 1, bpp, NULL);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Function: winDrawTransparentBitmap()
 **
 ** This masking technique works so long as the source graphic uses a clear
@@ -1842,7 +1842,7 @@ void winDrawTransparentBitmap(HDC hdcDest, HDC hdcSrc, HBITMAP hBitmap,
    BitBlt(hdcDest, x, y, width, height, hdcSrc, xsrc, ysrc, SRCPAINT);    // XOR the bitmap with the background on the destination DC.
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Get a pointer to our interface
 */
 
@@ -1862,7 +1862,7 @@ static HRESULT STDMETHODCALLTYPE RKDT_QueryInterface(struct rkDropTarget *Self, 
 	return E_NOINTERFACE;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ULONG STDMETHODCALLTYPE RKDT_AddRef(struct rkDropTarget *Self)
 {
@@ -1870,7 +1870,7 @@ static ULONG STDMETHODCALLTYPE RKDT_AddRef(struct rkDropTarget *Self)
    return InterlockedIncrement(&Self->lRefCount);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ULONG STDMETHODCALLTYPE RKDT_Release(struct rkDropTarget *Self)
 {
@@ -1893,7 +1893,7 @@ static ULONG STDMETHODCALLTYPE RKDT_Release(struct rkDropTarget *Self)
 	return nCount;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** The drag action continues
 */
 
@@ -1904,7 +1904,7 @@ static HRESULT STDMETHODCALLTYPE RKDT_DragOver(struct rkDropTarget *Self, DWORD 
 	return S_OK;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** The drag action leaves your window - no dropping
 */
 
@@ -1914,7 +1914,7 @@ static HRESULT STDMETHODCALLTYPE RKDT_DragLeave()
 	return S_OK;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** The drag action enters your window - get the item
 */
 
@@ -1930,7 +1930,7 @@ static HRESULT STDMETHODCALLTYPE RKDT_DragEnter(struct rkDropTarget *Self, IData
 	return S_OK;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Convert the windows datatypes to Parasol datatypes.
 */
 
@@ -1986,7 +1986,7 @@ static int STDMETHODCALLTYPE RKDT_AssessDatatype(struct rkDropTarget *Self, IDat
    return i;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** The data have been dropped here, so process it
 */
 
@@ -2027,7 +2027,7 @@ static HRESULT STDMETHODCALLTYPE RKDT_Drop(struct rkDropTarget *Self, IDataObjec
    return S_OK;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 **
 */
 
@@ -2365,7 +2365,7 @@ static int get_data(struct rkDropTarget *Self, char *Preference, struct WinDT **
    return ERR_Failed;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Internal: winInitDragDrop()
 */
 
@@ -2403,7 +2403,7 @@ static LONG winInitDragDrop(HWND Window)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Internal: winGetData()
 */
 

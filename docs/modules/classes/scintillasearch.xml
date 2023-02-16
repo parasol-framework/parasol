@@ -12,7 +12,7 @@
     <idstring>ID_SCINTILLASEARCH</idstring>
     <category>Tool</category>
     <include>modules/scintillasearch.h</include>
-    <copyright>Paul Manias © 2005-2022</copyright>
+    <copyright>Paul Manias © 2005-2023</copyright>
     <source>
       <file>class_scintilla_search.cxx</file>
     </source>

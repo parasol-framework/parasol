@@ -17,7 +17,6 @@ glIgnoreList[AC_Init] = true
 glIgnoreList[AC_NewChild] = true
 glIgnoreList[AC_NewObject] = true
 glIgnoreList[AC_NewOwner] = true
-glIgnoreList[AC_OwnerDestroyed] = true
 
 glActionComments = { }
 glActionComments[AC_Activate]       = 'Performs the native action of the object.'
@@ -48,7 +47,6 @@ glActionComments[AC_NewChild]       = 'Used by classes that need to be alerted w
 glActionComments[AC_NewObject]      = 'Called when a new object has been created from a base class.'
 glActionComments[AC_NewOwner]       = 'Called when the owner of an object is about to change.'
 glActionComments[AC_Next]           = 'Move to the next record.'
-glActionComments[AC_OwnerDestroyed] = 'Called by the object kernel when the owner of an object is removed.'
 glActionComments[AC_Prev]           = 'Move to the previous record.'
 glActionComments[AC_Query]          = 'Retrieves the latest information from an object.'
 glActionComments[AC_Read]           = 'Reads raw data information from objects.'

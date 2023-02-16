@@ -117,7 +117,7 @@ ERROR gfxSubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, LONG InputMa
    // Add the process to the subscription list.  Note that access to InputMID acts as a lock for variables like InputTotal.
 
    InputSubscription *list, *newlist;
-   if (!AccessMemory(glSharedControl->InputMID, MEM_READ_WRITE, 2000, &list)) {
+   if (!AccessMemoryID(glSharedControl->InputMID, MEM_READ_WRITE, 2000, &list)) {
       if (glSharedControl->InputTotal >= glSharedControl->InputSize) {
          log.msg("Input array needs to be expanded from %d entries.", glSharedControl->InputSize);
 
@@ -196,7 +196,7 @@ ERROR gfxUnsubscribeInput(LONG Handle)
    }
 
    InputSubscription *list;
-   if (!AccessMemory(glSharedControl->InputMID, MEM_READ_WRITE, 2000, &list)) {
+   if (!AccessMemoryID(glSharedControl->InputMID, MEM_READ_WRITE, 2000, &list)) {
       bool removed = false;
       for (LONG i=glSharedControl->InputTotal-1; i >= 0; i--) {
          if (list[i].Handle != Handle) continue;
@@ -226,7 +226,7 @@ ERROR gfxUnsubscribeInput(LONG Handle)
    else return log.warning(ERR_AccessMemory);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This routine is called on every cycle of ProcessMessages() so that we can check if there are input events
 // that need to be processed.
 

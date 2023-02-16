@@ -39,14 +39,14 @@ static LONG str_copy(const char *String, char *Dest, int Length)
    return(i);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int get_exe(char *Buffer, int Size)
 {
    return(GetModuleFileName(NULL, Buffer, Size));
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const char * GetIntegrityLevelString(IntegrityLevel integrity_level)
 {
@@ -65,7 +65,7 @@ static const char * GetIntegrityLevelString(IntegrityLevel integrity_level)
    return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Returns the integrity level of the running process, expressed as an INTEGRITY constant.
 
 IntegrityLevel get_integrity_level(void)
@@ -105,7 +105,7 @@ IntegrityLevel get_integrity_level(void)
    return result;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Execute a process at low priority.
 
 ERROR create_low_process(const char *ExePath, BYTE SharedOutput)
@@ -176,7 +176,7 @@ exit:
    return result;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Changes the integrity of the target file so that low-integrity processes can write to it.
 //
 // This code could potentially target a file or directory, network share, registry key, semaphore, event, mutex, file mapping

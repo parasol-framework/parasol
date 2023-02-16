@@ -1,10 +1,10 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -CLASS-
 Thread: Threads are created and managed by the Thread class.
@@ -29,7 +29,7 @@ within the thread routine.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #ifdef __unix__
 #include <string.h>
@@ -42,73 +42,74 @@ within the thread routine.
 #include "../defs.h"
 #include <parasol/main.h>
 
-#define THREADPOOL_MAX 6
+static const LONG THREADPOOL_MAX = 6;
 
 static void thread_entry_cleanup(void *);
 
-static LONG glActionThreadsIndex = 0;
-static struct {
+struct ActionThread {
    extThread *Thread;
-   BYTE InUse;
-} glActionThreads[THREADPOOL_MAX];
+   bool InUse;
 
-//****************************************************************************
+   ActionThread() : Thread(0), InUse(0) { }
+
+   ActionThread(extThread *pThread) {
+      Thread = pThread;
+      InUse = pThread ? true : false;
+   }
+
+   ~ActionThread() {
+      parasol::Log log(__FUNCTION__);
+      if (InUse) log.warning("Pooled thread #%d is still in use on shutdown.", Thread->UID);
+   }
+};
+
+static std::vector<struct ActionThread> glActionThreads;
+
+//********************************************************************************************************************
 // Retrieve a thread object from the thread pool.
 
 ERROR threadpool_get(extThread **Result)
 {
    parasol::Log log;
-   extThread *thread = NULL;
-   ERROR error = ERR_Okay;
 
    log.traceBranch("");
 
    ThreadLock lock(TL_THREADPOOL, 2000);
    if (lock.granted()) {
-      for (LONG i=0; i < glActionThreadsIndex; i++) {
-         if ((glActionThreads[i].Thread) and (!glActionThreads[i].InUse)) {
-            thread = glActionThreads[i].Thread;
-            glActionThreads[i].InUse = TRUE;
-            break;
+      for (auto &at : glActionThreads) {
+         if ((at.Thread) and (!at.InUse)) {
+            at.InUse = true;
+            *Result = at.Thread;
+            return ERR_Okay;
          }
       }
 
-      if (!thread) { // Allocate a new thread.
-         if (!(error = NewObject(ID_THREAD, NF::UNTRACKED, (OBJECTPTR *)&thread))) {
-            SetName(thread, "ActionThread");
-            if (!(error = acInit(thread))) {
-               LONG i;
-               if ((i = glActionThreadsIndex) < THREADPOOL_MAX) { // Record the thread in the pool, if there is room for it.
-                  glActionThreads[i].Thread = thread;
-                  glActionThreads[i].InUse = TRUE;
-                  glActionThreadsIndex++;
-               }
-            }
-            else { acFree(thread); thread = NULL; }
+      if (auto thread = extThread::create::untracked(fl::Name("ActionThread"))) {
+         if (glActionThreads.size() < THREADPOOL_MAX) {
+            glActionThreads.emplace_back(thread);
          }
+         *Result = thread;
+         return ERR_Okay;
       }
+      else return log.warning(ERR_CreateObject);
    }
-   else error = log.warning(ERR_Lock);
-
-   if (thread) *Result = thread;
-
-   return error;
+   else return log.warning(ERR_Lock);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Mark a thread in the pool as no longer in use.  The thread object will be destroyed if it is not in the pool.
 
 void threadpool_release(extThread *Thread)
 {
    parasol::Log log;
 
-   log.traceBranch("Thread: #%d, Total: %d", Thread->UID, glActionThreadsIndex);
+   log.traceBranch("Thread: #%d, Total: %d", Thread->UID, (LONG)glActionThreads.size());
 
    ThreadLock lock(TL_THREADPOOL, 2000);
    if (lock.granted()) {
-      for (LONG i=0; i < glActionThreadsIndex; i++) {
-         if (glActionThreads[i].Thread IS Thread) {
-            glActionThreads[i].InUse = FALSE;
+      for (auto &at : glActionThreads) {
+         if (at.Thread IS Thread) {
+            at.InUse = false;
             return;
          }
       }
@@ -120,29 +121,20 @@ void threadpool_release(extThread *Thread)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Destroy the entire thread pool.  For use on application shutdown only.
 
 void remove_threadpool(void)
 {
    parasol::Log log("Core");
 
-   log.traceBranch("Removing the internal thread pool, size %d.", glActionThreadsIndex);
+   log.traceBranch("Removing the internal thread pool, size %d.", (LONG)glActionThreads.size());
 
    ThreadLock lock(TL_THREADPOOL, 2000);
-   if (lock.granted()) {
-      for (LONG i=0; i < glActionThreadsIndex; i++) {
-         if (glActionThreads[i].Thread) {
-            if (glActionThreads[i].InUse) log.warning("Pooled thread #%d is still in use on shutdown.", i);
-            acFree(glActionThreads[i].Thread);
-            glActionThreads[i].Thread = NULL;
-            glActionThreads[i].InUse = FALSE;
-         }
-      }
-   }
+   if (lock.granted()) glActionThreads.clear();
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Called whenever a MSGID_THREAD_ACTION message is caught by ProcessMessages().  See thread_action() in lib_actions.c
 // for usage.
 
@@ -159,7 +151,7 @@ ERROR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG
    else if (msg->Callback.Type IS CALL_SCRIPT) {
       OBJECTPTR script;
       if ((script = msg->Callback.Script.Script)) {
-         if (!AccessPrivateObject(script, 5000)) {
+         if (!LockObject(script, 5000)) {
             const ScriptArg args[] = {
                { "ActionID", FD_LONG,      { .Long = msg->ActionID } },
                { "Object",   FD_OBJECTPTR, { .Address = msg->Object } },
@@ -175,7 +167,7 @@ ERROR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Called whenever a MSGID_THREAD_CALLBACK message is caught by ProcessMessages().  See thread_entry() for usage.
 // This is NOT called if the developer did not define a Callback reference.
 
@@ -185,7 +177,7 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
    if (!(msg = (ThreadMessage *)Message)) return ERR_Okay;
 
    extThread *thread;
-   if (!AccessObject(msg->ThreadID, 5000, (OBJECTPTR *)&thread)) {
+   if (!AccessObjectID(msg->ThreadID, 5000, (OBJECTPTR *)&thread)) {
       thread->Active = FALSE; // Because marking the thread as inactive is not done until the message is received by the core program
 
       if (thread->Callback.Type IS CALL_STDC) {
@@ -195,7 +187,7 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
       else if (thread->Callback.Type IS CALL_SCRIPT) {
          OBJECTPTR script;
          if ((script = thread->Callback.Script.Script)) {
-            if (!AccessPrivateObject(script, 5000)) {
+            if (!LockObject(script, 5000)) {
                const ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = thread } } };
                scCallback(script, thread->Callback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
                ReleaseObject(script);
@@ -212,7 +204,7 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This is the entry point for all threads.
 
 THREADVAR BYTE tlThreadCrashed;
@@ -247,7 +239,7 @@ static void * thread_entry(extThread *Self)
       else if (Self->Routine.Type IS CALL_SCRIPT) {
          OBJECTPTR script;
          if ((script = Self->Routine.Script.Script)) {
-            if (!AccessPrivateObject(script, 5000)) {
+            if (!LockObject(script, 5000)) {
                const ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = Self } } };
                scCallback(script, Self->Routine.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
                ReleaseObject(script);
@@ -261,7 +253,7 @@ static void * thread_entry(extThread *Self)
 
       tlThreadRef = NULL;
 
-      if (!AccessPrivateObject(Self, 10000)) {
+      if (!LockObject(Self, 10000)) {
          NotifySubscribers(Self, AC_Signal, NULL, ERR_Okay); // Signalling thread completion is required by THREAD_Wait()
 
          if (Self->Callback.Type) {
@@ -291,7 +283,7 @@ static void * thread_entry(extThread *Self)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Cleanup on completion of a thread.  Note that this will also run in the event that the thread throws an exception.
 
 static void thread_entry_cleanup(void *Arg)
@@ -309,11 +301,11 @@ static void thread_entry_cleanup(void *Arg)
    #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Activate: Spawn a new thread that calls the function referenced in the #Routine field.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR THREAD_Activate(extThread *Self, APTR Void)
 {
@@ -353,14 +345,14 @@ static ERROR THREAD_Activate(extThread *Self, APTR Void)
    return log.warning(ERR_Failed);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Deactivate: Stops a thread.
 
 Deactivating an active thread will cause it to stop immediately.  Stopping a thread in this manner is dangerous and
 could result in an unstable application.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR THREAD_Deactivate(extThread *Self, APTR Void)
 {
@@ -381,14 +373,14 @@ static ERROR THREAD_Deactivate(extThread *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Free: Remove the object and its resources.
 
 Terminating a thread object will destroy the object unless the thread is currently active.  If an attempt to free
 an active thread is made then it will be marked for termination so as to avoid the risk of system corruption.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR THREAD_Free(extThread *Self, APTR Void)
 {
@@ -409,7 +401,7 @@ static ERROR THREAD_Free(extThread *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR THREAD_FreeWarning(extThread *Self, APTR Void)
 {
@@ -429,7 +421,7 @@ static ERROR THREAD_FreeWarning(extThread *Self, APTR Void)
    else return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR THREAD_Init(extThread *Self, APTR Void)
 {
@@ -453,7 +445,7 @@ static ERROR THREAD_Init(extThread *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR THREAD_NewObject(extThread *Self, APTR Void)
 {
@@ -465,7 +457,7 @@ static ERROR THREAD_NewObject(extThread *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SetData: Attaches data to the thread.
@@ -488,7 +480,7 @@ Args
 AllocMemory
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR THREAD_SetData(extThread *Self, struct thSetData *Args)
 {
@@ -515,7 +507,7 @@ static ERROR THREAD_SetData(extThread *Self, struct thSetData *Args)
    else return log.warning(ERR_AllocMemory);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Wait: Waits for a thread to be completed.
@@ -533,7 +525,7 @@ Args: The TimeOut value is invalid.
 TimeOut: The timeout was reached before the thread was terminated.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR THREAD_Wait(extThread *Self, struct thWait *Args)
 {
@@ -545,7 +537,7 @@ static ERROR THREAD_Wait(extThread *Self, struct thWait *Args)
    return WaitForObjects(PMF_SYSTEM_NO_BREAK, Args->TimeOut, sig);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Callback: A function reference that will be called when the thread is started.
@@ -555,7 +547,7 @@ callback will be executed in the context of the main program loop to minimise re
 
 The synopsis for the callback routine is `void Callback(objThread *Thread)`.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Callback(extThread *Self, FUNCTION **Value)
 {
@@ -573,7 +565,7 @@ static ERROR SET_Callback(extThread *Self, FUNCTION *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Data: Pointer to initialisation data for the thread.
@@ -581,7 +573,7 @@ Data: Pointer to initialisation data for the thread.
 The Data field will point to a data buffer if the #SetData() method has previously been called to store data in
 the thread object.  It is paired with the #DataSize field, which reflects the size of the data buffer.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Data(extThread *Self, APTR *Value, LONG *Elements)
 {
@@ -590,7 +582,7 @@ static ERROR GET_Data(extThread *Self, APTR *Value, LONG *Elements)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 DataSize: The size of the buffer referenced in the Data field.
@@ -611,7 +603,7 @@ The routine that will be executed when the thread is activated must be specified
 When the routine is called, a reference to the thread object is passed as a parameter.  Once the routine has
 finished processing, the resulting error code will be stored in the thread object's #Error field.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Routine(extThread *Self, FUNCTION **Value)
 {
@@ -629,7 +621,7 @@ static ERROR SET_Routine(extThread *Self, FUNCTION *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 StackSize: The stack size to allocate for the thread.
 
@@ -638,7 +630,7 @@ in order to check the default stack size.  Changes to the stack size when the th
 
 On some platforms it may not be possible to preset the stack size and the provided value will be ignored.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static const FieldDef clThreadFlags[] = {
    { "AutoFree",   THF_AUTO_FREE },
@@ -660,7 +652,7 @@ static const FieldArray clFields[] = {
 
 #include "class_thread_def.c"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 extern "C" ERROR add_thread_class(void)
 {

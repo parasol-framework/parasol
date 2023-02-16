@@ -217,7 +217,7 @@ void (*glNetProcessMessages)(LONG, APTR) = 0;
 static struct AndroidBase *AndroidBase = 0;
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "data_functions.c"
 #include "data_errors.c"

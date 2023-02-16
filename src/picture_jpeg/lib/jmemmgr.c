@@ -727,7 +727,7 @@ METHODDEF(void) self_destruct (j_common_ptr cinfo)
 }
 
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Memory manager initialization.
 ** When this is called, only the error manager pointer is valid in cinfo!
 */

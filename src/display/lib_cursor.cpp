@@ -92,7 +92,7 @@ void free_xcursors(void)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #ifdef _WIN32
 
@@ -109,7 +109,7 @@ APTR GetWinCursor(LONG CursorID)
 #endif
 
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 AccessPointer: Returns a lock on the default pointer object.
@@ -132,14 +132,14 @@ objPointer * gfxAccessPointer(void)
 
    if (!glPointerID) {
       if (!FindObject("SystemPointer", ID_POINTER, 0, &glPointerID)) {
-         AccessObject(glPointerID, 2000, &pointer);
+         AccessObjectID(glPointerID, 2000, &pointer);
       }
       return pointer;
    }
 
-   if (AccessObject(glPointerID, 2000, &pointer) IS ERR_NoMatchingObject) {
+   if (AccessObjectID(glPointerID, 2000, &pointer) IS ERR_NoMatchingObject) {
       if (!FindObject("SystemPointer", ID_POINTER, 0, &glPointerID)) {
-         AccessObject(glPointerID, 2000, &pointer);
+         AccessObjectID(glPointerID, 2000, &pointer);
       }
    }
 
@@ -225,7 +225,7 @@ ERROR gfxGetCursorPos(DOUBLE *X, DOUBLE *Y)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetModalSurface: Returns the current modal surface (if defined).
@@ -235,7 +235,7 @@ This function returns the modal surface for the running process.  Returns zero i
 -RESULT-
 oid: The UID of the modal surface, or zero.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 OBJECTID gfxGetModalSurface(void)
 {
@@ -568,8 +568,8 @@ ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, O
             objDisplay *display;
             Cursor xcursor;
 
-            if ((pointer->SurfaceID) and (!AccessObject(pointer->SurfaceID, 1000, &surface))) {
-               if ((surface->DisplayID) and (!AccessObject(surface->DisplayID, 1000, &display))) {
+            if ((pointer->SurfaceID) and (!AccessObjectID(pointer->SurfaceID, 1000, &surface))) {
+               if ((surface->DisplayID) and (!AccessObjectID(surface->DisplayID, 1000, &display))) {
                   if ((display->getPtr(FID_WindowHandle, &xwin) IS ERR_Okay) and (xwin)) {
                      xcursor = get_x11_cursor(CursorID);
                      XDefineCursor(XDisplay, (Window)xwin, xcursor);
@@ -661,7 +661,7 @@ alpha-enabled graphics area.  The following code illustrates this process:
 <pre>
 if (auto pointer = gfxAccessPointer()) {
    objBitmap *bitmap;
-   if (!AccessObject(pointer->BitmapID, 3000, &bitmap)) {
+   if (!AccessObjectID(pointer->BitmapID, 3000, &bitmap)) {
       // Adjust clipping to match the cursor size.
       buffer->Clip.Right  = CursorWidth;
       buffer->Clip.Bottom = CursorHeight;
@@ -707,7 +707,7 @@ ERROR gfxSetCustomCursor(OBJECTID ObjectID, LONG Flags, objBitmap *Bitmap, LONG 
    else log.extmsg("Object: %d, Bitmap Preset", ObjectID);
 
    if ((pointer = gfxAccessPointer())) {
-      if (!AccessObject(pointer->BitmapID, 0, &buffer)) {
+      if (!AccessObjectID(pointer->BitmapID, 0, &buffer)) {
          if (Bitmap) {
             // Adjust the clipping area of our custom bitmap to match the incoming dimensions of the new cursor image.
 
@@ -788,7 +788,7 @@ ERROR gfxSetCursorPos(DOUBLE X, DOUBLE Y)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 StartCursorDrag: Attaches an item to the cursor for the purpose of drag and drop.
@@ -828,7 +828,7 @@ AccessObject:
 Failed: The left mouse button is not held by the user.
 InUse: A drag and drop operation has already been started.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface)
 {

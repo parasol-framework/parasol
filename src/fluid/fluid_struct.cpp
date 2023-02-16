@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 To create a struct definition:                    MAKESTRUCT('XMLTag', 'Definition')
 To create a struct from a registered definition:  xmltag = struct.new('XMLTag')
@@ -27,7 +27,7 @@ Acceptable field definitions:
 Arrays are permitted if you follow the field name with [n] where 'n' is the array size.  For pointers to null
 terminated arrays, use [0].
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define PRV_SCRIPT
 #define PRV_FLUID
@@ -67,7 +67,7 @@ static void set_ptr_ref(struct references *Ref, CPTR Address, LONG Resource)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Create a standard Lua table and copy the struct values to that table.  Pushes nil if there was a conversion issue.
 // Note the use of the References lookup, which prevents circular referencing and duplication of existing structs.
 //
@@ -209,7 +209,7 @@ ERROR struct_to_table(lua_State *Lua, struct references *References, struct stru
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Use this for creating a struct on the Lua stack.
 
 struct fstruct * push_struct(objScript *Self, APTR Address, CSTRING StructName, BYTE Deallocate, BYTE AllowEmpty)
@@ -256,7 +256,7 @@ struct fstruct * push_struct_def(lua_State *Lua, APTR Address, structentry *Stru
    return NULL;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Lua Usage: structdef = MAKESTRUCT(Name, Sequence)
 **
 ** This function makes a structure definition which can be passed to struct.new()
@@ -271,7 +271,7 @@ int MAKESTRUCT(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR eval_type(objScript *Self, CSTRING Sequence, LONG *Pos, LONG *Type, LONG *Size)
 {
@@ -326,7 +326,7 @@ static ERROR eval_type(objScript *Self, CSTRING Sequence, LONG *Pos, LONG *Type,
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // The structure definition is arranged as:
 //
 //    Len:Offset:FieldType:FieldName:TypeName
@@ -435,7 +435,7 @@ static ERROR generate_structdef(objScript *Self, CSTRING StructName, CSTRING Seq
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Parse a struct definition and permanently store it in the Structs keystore.
 
 ERROR make_struct(lua_State *Lua, CSTRING StructName, CSTRING Sequence)
@@ -493,7 +493,7 @@ ERROR make_struct(lua_State *Lua, CSTRING StructName, CSTRING Sequence)
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static LONG find_field(struct fstruct *Struct, CSTRING FieldName, CSTRING *StructName, LONG *Offset, LONG *Type, LONG *ArraySize)
 {
@@ -521,7 +521,7 @@ static LONG find_field(struct fstruct *Struct, CSTRING FieldName, CSTRING *Struc
    return FALSE;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Usage: struct = struct.size(Name)
 **
 ** Returns the size of a named structure definition
@@ -543,7 +543,7 @@ static int struct_size(lua_State *Lua)
    return 0;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Usage: struct = struct.new(Name)
 **
 ** Creates a new structure.  The name of the structure must have been previously registered, either through an include
@@ -621,7 +621,7 @@ static int struct_new(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: struct.size()
 // Returns the byte size of the structure definition.
 
@@ -638,7 +638,7 @@ static int struct_structsize(lua_State *Lua)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: #struct
 // Returns the total number of fields in the structure definition.
 
@@ -655,7 +655,7 @@ static int struct_len(lua_State *Lua)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Internal: Struct index call
 
 static int struct_get(lua_State *Lua)
@@ -677,7 +677,7 @@ static int struct_get(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static LONG get_fieldvalue(lua_State *Lua, struct fstruct *FS, CSTRING fieldname)
 {
@@ -760,7 +760,7 @@ static LONG get_fieldvalue(lua_State *Lua, struct fstruct *FS, CSTRING fieldname
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: fstruct.field = newvalue
 
 static int struct_set(lua_State *Lua)
@@ -806,7 +806,7 @@ static int struct_set(lua_State *Lua)
    return 0;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Garbage collecter.
 */
 
@@ -821,7 +821,7 @@ static int struct_destruct(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Register the fstruct interface.
 
 static const luaL_Reg structlib_functions[] = {

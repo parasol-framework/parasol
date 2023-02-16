@@ -678,7 +678,7 @@ cstr: A string containing the object name is returned.  If the object has no nam
 
 CSTRING GetName(OBJECTPTR Object)
 {
-   if ((Object) and (Object->Stats)) return Object->Stats->Name;
+   if (Object) return Object->Name;
    else return "";
 }
 
@@ -1300,18 +1300,18 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 SetContext: Alters the nominated owner of newly created objects.
 Category: Objects
 
-This function provides a means for instructing the system which object has control of the current thread.  Once
-called, all further resource allocations will be assigned to the supplied object.  This is particularly important
-for memory and object handling. For example:
+This function defines the object that has control of the current thread.  Once called, all further resource
+allocations are assigned to that object.  This is significant for the automatic collection of memory and object
+allocations.  For example:
 
 <pre>
 acInit(display);
-prev_context = SetContext(display);
+auto ctx = SetContext(display);
 
    NewObject(ID_BITMAP, &bitmap);
-   AllocMemory(1000, MEM_DATA, &memory, NULL);;
+   AllocMemory(1000, MEM_DATA, &memory, NULL);
 
-SetContext(prev_context);
+SetContext(ctx);
 acFree(display);
 </pre>
 
@@ -1321,22 +1321,23 @@ display's existence.  Please keep in mind that the following is incorrect:
 
 <pre>
 acInit(display);
-prev_context = SetContext(display);
+auto ctx = SetContext(display);
 
    NewObject(ID_BITMAP, &bitmap);
    AllocMemory(1000, MEM_DATA, &memory, NULL);
 
-SetContext(prev_context);
-acFree(display); // The bitmap and memory are terminated here
+SetContext(ctx);
+acFree(display); // The bitmap and memory would be auto-collected
 acFree(bitmap); // Reference is no longer valid
 FreeResource(memory); // Reference is no longer valid
 </pre>
 
 As the bitmap and memory block would have been freed as members of the display, their references are invalid when
-manually terminated.
+manually terminated in the following instructions.
 
-SetContext() is intended for use by modules and classes.  Do not use it unless conditions necessitate its use.  The
-Core automatically manages the context when calling class actions, methods and interactive fields.
+SetContext() is intended for use by modules and classes.  Do not use it in an application unless conditions
+necessitate its use.  The Core automatically manages the context when calling class actions, methods and interactive
+fields.
 
 -INPUT-
 obj Object: Pointer to the object that will take on the new context.  If NULL, no change to the context will be made.
@@ -1377,6 +1378,21 @@ AccessMemory: The function could not gain access to the shared objects table (in
 
 *********************************************************************************************************************/
 
+static const char sn_lookup[256] = {
+   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
+   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
+   '_', '_', '_', '_', '0', '1', '2', '3', '4', '5', '6', '7', '8', '_', '_', '_', '_', '_', '_', '_', '_', 'a',
+   'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w',
+   'x', 'y', '_', '_', '_', '_', '_', '_', '_', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+   'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', '_', '_', '_', '_', '_', '_',
+   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
+   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
+   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
+   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
+   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
+   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_'
+};
+
 ERROR SetName(OBJECTPTR Object, CSTRING NewName)
 {
    parasol::Log log(__FUNCTION__);
@@ -1385,55 +1401,33 @@ ERROR SetName(OBJECTPTR Object, CSTRING NewName)
    if ((!Object) or (!NewName)) return log.warning(ERR_NullArgs);
 
    ScopedObjectAccess objlock(Object);
+   ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
+   if (!lock.granted()) return log.warning(ERR_LockFailed);
 
    // Remove any existing name first.
 
-   if ((Object->Stats->Name[0]) and (Object->UID > 0)) {
-      ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
-      if (lock.granted()) remove_object_hash(Object);
-   }
+   if (Object->Name[0]) remove_object_hash(Object);
 
-   bool illegal = false;
-   char c;
-   for (i=0; ((c = NewName[i])) and (i < (MAX_NAME_LEN-1)); i++) {
-      if ((c >= 'A') and (c <= 'Z')) {
-         c = c - 'A' + 'a';
-      }
-      else if (((c >= 'a') and (c <= 'z')) or ((c >= '0') and (c <= '9')) or ((c IS '_'))) {
-      }
-      else {
-         // Anything that is not alphanumeric is not permitted in the object name.
-         if (!illegal) {
-            illegal = true;
-            log.msg("Illegal character '%c' in proposed name '%s'", c, NewName);
+   for (i=0; (i < (MAX_NAME_LEN-1)) and (NewName[i]); i++) Object->Name[i] = sn_lookup[UBYTE(NewName[i])];
+   Object->Name[i] = 0;
+
+   if (Object->Name[0]) {
+      OBJECTPTR *list;
+      LONG list_size;
+      if (!VarGet(glObjectLookup, Object->Name, (APTR *)&list, &list_size)) {
+         list_size = list_size / sizeof(OBJECTPTR);
+         OBJECTPTR new_list[list_size + 1];
+         LONG j = 0;
+         for (i=0; i < list_size; i++) {
+            if (list[i]) new_list[j++] = list[i];
          }
-         c = '_';
+         new_list[j++] = Object;
+
+         VarSet(glObjectLookup, Object->Name, &new_list, sizeof(OBJECTPTR) * j);
       }
-
-      Object->Stats->Name[i] = c;
+      else VarSet(glObjectLookup, Object->Name, &Object, sizeof(OBJECTPTR));
    }
-   Object->Stats->Name[i] = 0;
 
-   if (Object->Stats->Name[0]) {
-      ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
-      if (lock.granted()) {
-         OBJECTPTR *list;
-         LONG list_size;
-         if (!VarGet(glObjectLookup, Object->Stats->Name, (APTR *)&list, &list_size)) {
-            list_size = list_size / sizeof(OBJECTPTR);
-            OBJECTPTR new_list[list_size + 1];
-            LONG j = 0;
-            for (i=0; i < list_size; i++) {
-               if (list[i]) new_list[j++] = list[i];
-            }
-            new_list[j++] = Object;
-
-            VarSet(glObjectLookup, Object->Stats->Name, &new_list, sizeof(OBJECTPTR) * j);
-         }
-         else VarSet(glObjectLookup, Object->Stats->Name, &Object, sizeof(OBJECTPTR));
-      }
-      else return log.warning(ERR_Lock);
-   }
    return ERR_Okay;
 }
 
@@ -1875,7 +1869,7 @@ void remove_object_hash(OBJECTPTR Object)
 
    OBJECTPTR *list;
    LONG list_size;
-   if (!VarGet(glObjectLookup, Object->Stats->Name, (APTR *)&list, &list_size)) {
+   if (!VarGet(glObjectLookup, Object->Name, (APTR *)&list, &list_size)) {
       list_size = list_size / sizeof(OBJECTPTR);
 
       LONG count_others = 0;
@@ -1887,8 +1881,8 @@ void remove_object_hash(OBJECTPTR Object)
       }
 
       if (!count_others) { // If no other objects exist for this key, remove the key.
-         VarSet(glObjectLookup, Object->Stats->Name, NULL, 0);
+         VarSet(glObjectLookup, Object->Name, NULL, 0);
       }
    }
-   else log.trace("No hash entry for object '%s'", Object->Stats->Name);
+   else log.trace("No hash entry for object '%s'", Object->Name);
 }

@@ -254,7 +254,7 @@ void LogF(CSTRING Header, CSTRING Format, ...)
          if (obj->Class) {
             char msg[180];
 
-            if (obj->Stats->Name[0]) name = obj->Stats->Name;
+            if (obj->Name[0]) name = obj->Name;
             else name = obj->Class->Name;
 
             if (glLogLevel > 5) {
@@ -291,7 +291,7 @@ void LogF(CSTRING Header, CSTRING Format, ...)
          }
 
          if (obj->Class) {
-            if (obj->Stats->Name[0]) name = obj->Stats->Name;
+            if (obj->Name[0]) name = obj->Name;
             else name = obj->Class->ClassName;
 
             if (glLogLevel > 5) {
@@ -467,7 +467,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
          if (obj->Class) {
             char msg[180];
 
-            if (obj->Stats->Name[0]) name = obj->Stats->Name;
+            if (obj->Name[0]) name = obj->Name;
             else name = obj->Class->Name;
 
             if (glLogLevel > 5) {
@@ -498,7 +498,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
          }
 
          if (obj->Class) {
-            if (obj->Stats->Name[0]) name = obj->Stats->Name;
+            if (obj->Name[0]) name = obj->Name;
             else name = obj->Class->ClassName;
 
             if (glLogLevel > 5) {
@@ -602,7 +602,7 @@ ERROR FuncError(CSTRING Header, ERROR Code)
          if (obj->Class) {
             STRING name;
 
-            if (obj->Stats->Name[0]) name = obj->Stats->Name;
+            if (obj->Name[0]) name = obj->Name;
             else name = obj->Class->Name;
 
             if (ctx->Field) {
@@ -629,7 +629,7 @@ ERROR FuncError(CSTRING Header, ERROR Code)
          fmsg(Header, msgheader, MS_MSG, 2);
 
          if (obj->Class) {
-            if (obj->Stats->Name[0]) name = obj->Stats->Name;
+            if (obj->Name[0]) name = obj->Name;
             else name = obj->Class->ClassName;
 
             if (ctx->Field) {

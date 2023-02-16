@@ -74,7 +74,7 @@ static struct socket_info * lookup_socket_by_ref(void *Reference)
    return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const struct {
    int WinError;
@@ -117,7 +117,7 @@ static const struct {
    { 0, 0 }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static int convert_error(int error)
 {
@@ -130,7 +130,7 @@ static int convert_error(int error)
    return ERR_Failed;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winCloseResolveHandle(void *Handle)
 {
@@ -138,7 +138,7 @@ void winCloseResolveHandle(void *Handle)
    CloseHandle(Handle);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 struct hostent * win_gethostbyaddr(const struct IPAddress *Address)
 {
@@ -146,7 +146,7 @@ struct hostent * win_gethostbyaddr(const struct IPAddress *Address)
    else return gethostbyaddr((const char *)&Address->Data, 16, AF_INET6);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static LRESULT CALLBACK win_messages(HWND window, UINT msgcode, WPARAM wParam, LPARAM lParam)
 {
@@ -189,7 +189,7 @@ static LRESULT CALLBACK win_messages(HWND window, UINT msgcode, WPARAM wParam, L
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This function is called by ProcessMesages() before and after windows messages are processed.  We tell windows to
 // not produce any new network events during the message processing by turning off the flags for each socket.  This
 // stops Windows from flooding our application with messages when downloading over a fast connection for example.
@@ -218,7 +218,7 @@ void win_net_processing(int Status, void *Args)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Sets the read/write state for a socket.
 
 void win_socketstate(WSW_SOCKET Socket, char Read, char Write)
@@ -235,7 +235,7 @@ void win_socketstate(WSW_SOCKET Socket, char Read, char Write)
    if (!glSocketsDisabled) WSAAsyncSelect(Socket, glNetWindow, WM_NETWORK, sock->Flags);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Initially when accepting a connection from a client, the ClientSocket object won't exist yet.  This is rectified later
 // with a call to win_socket_reference()
 
@@ -256,7 +256,7 @@ WSW_SOCKET win_accept(void *NetSocket, WSW_SOCKET SocketHandle, struct sockaddr 
    return client_handle;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Replace the reference on a known socket handle
 
 void win_socket_reference(WSW_SOCKET SocketHandle, void *Reference)
@@ -264,7 +264,7 @@ void win_socket_reference(WSW_SOCKET SocketHandle, void *Reference)
    glNetLookup[SocketHandle].Reference = Reference;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int win_bind(WSW_SOCKET SocketHandle, const struct sockaddr *Name, int NameLen)
 {
@@ -272,7 +272,7 @@ int win_bind(WSW_SOCKET SocketHandle, const struct sockaddr *Name, int NameLen)
    else return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int win_closesocket(WSW_SOCKET SocketHandle)
 {
@@ -281,7 +281,7 @@ int win_closesocket(WSW_SOCKET SocketHandle)
    return closesocket(SocketHandle);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int win_connect(WSW_SOCKET SocketHandle, const struct sockaddr *Name, int NameLen)
 {
@@ -292,7 +292,7 @@ int win_connect(WSW_SOCKET SocketHandle, const struct sockaddr *Name, int NameLe
    else return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 struct hostent *win_gethostbyname(const char *Name)
 {
@@ -301,28 +301,28 @@ struct hostent *win_gethostbyname(const char *Name)
    return gethostbyname(Name);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int win_getpeername(WSW_SOCKET S, struct sockaddr *Name, int *NameLen)
 {
    return getpeername(S, Name, NameLen);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int win_getsockname(WSW_SOCKET S, struct sockaddr *Name, int *NameLen)
 {
    return getsockname(S, Name, NameLen);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 unsigned long win_inet_addr(const char *Str)
 {
    return inet_addr(Str);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 char * win_inet_ntoa(unsigned long Addr) //struct in_addr);
 {
@@ -332,7 +332,7 @@ char * win_inet_ntoa(unsigned long Addr) //struct in_addr);
    return inet_ntoa(addr);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int win_listen(WSW_SOCKET SocketHandle, int BackLog)
 {
@@ -340,7 +340,7 @@ int win_listen(WSW_SOCKET SocketHandle, int BackLog)
    else return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int WIN_RECEIVE(WSW_SOCKET SocketHandle, void *Buffer, int Len, int Flags, int *Result)
 {
@@ -358,7 +358,7 @@ int WIN_RECEIVE(WSW_SOCKET SocketHandle, void *Buffer, int Len, int Flags, int *
    else return convert_error(0);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int WIN_SEND(WSW_SOCKET Socket, const void *Buffer, int *Length, int Flags)
 {
@@ -380,14 +380,14 @@ int WIN_SEND(WSW_SOCKET Socket, const void *Buffer, int *Length, int Flags)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int win_shutdown(WSW_SOCKET S, int How)
 {
    return shutdown(S, How);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Create a socket, make it non-blocking and configure it to wake our task when activity occurs on the socket.
 
 WSW_SOCKET win_socket(void *NetSocket, char Read, char Write)
@@ -409,7 +409,7 @@ WSW_SOCKET win_socket(void *NetSocket, char Read, char Write)
    else return (WSW_SOCKET)INVALID_SOCKET;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int win_WSAGetLastError()
 {
@@ -431,14 +431,14 @@ int SocketWouldBlock()
    return WSAGetLastError() IS WSAEWOULDBLOCK;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int GetSockOptError(WSW_SOCKET S, char *Result, int *OptLen)
 {
    return getsockopt(S, SOL_SOCKET, SO_ERROR, Result, OptLen);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 unsigned long win_htonl(unsigned long X)
 {
@@ -460,7 +460,7 @@ unsigned short win_ntohs(unsigned short X)
    return ntohs(X);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Note: The startup and shutdown functionality have been tested as working with multiple initialisations and
 // module expunges.  Avoid tampering as the Windows functions are a bit sensitive.
 
@@ -515,7 +515,7 @@ const char * StartupWinsock() // Return zero if succesful
    return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int ShutdownWinsock()
 {

@@ -1,17 +1,17 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include "defs.h"
 
 ERROR GET_HDensity(extDisplay *Self, LONG *Value);
 ERROR GET_VDensity(extDisplay *Self, LONG *Value);
 
-//****************************************************************************
+//********************************************************************************************************************
 
 rgb_to_linear glLinearRGB;
 
@@ -90,7 +90,7 @@ static void android_term_window(LONG);
 
 #include "module_def.c"
 
-//****************************************************************************
+//********************************************************************************************************************
 // Note: These values are used as the input masks
 
 const InputType glInputType[JET_END] = {
@@ -227,7 +227,7 @@ THREADVAR OBJECTID tlFreeExpose = 0;
 THREADVAR SurfaceControl *tlSurfaceList = NULL;
 THREADVAR LONG glRecentSurfaceIndex = 0;
 
-//****************************************************************************
+//********************************************************************************************************************
 // Alpha blending data.
 
 UBYTE *glAlphaLookup = NULL;
@@ -239,7 +239,7 @@ INLINE UBYTE clipByte(LONG value)
    return value;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // GLES specific functions
 
 #ifdef _GLES_
@@ -283,7 +283,7 @@ int pthread_mutex_timedlock (pthread_mutex_t *mutex, int Timeout)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 // lock_graphics_active() is intended for functionality that MUST have access to an active OpenGL display.  If an EGL
 // display is unavailable then this function will fail even if the lock could otherwise be granted.
 
@@ -338,7 +338,7 @@ void unlock_graphics(void)
 
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 // Handles incoming interface messages.
 
 static ERROR msg_handler(APTR Custom, LONG UniqueID, LONG Type, APTR Data, LONG Size)
@@ -351,7 +351,7 @@ static ERROR msg_handler(APTR Custom, LONG UniqueID, LONG Type, APTR Data, LONG 
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #ifdef __xwindows__
 
@@ -444,7 +444,7 @@ XErrorHandler CatchRedirectError(Display *XDisplay, XErrorEvent *event)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 const CSTRING glXProtoList[] = { NULL,
 "CreateWindow","ChangeWindowAttributes","GetWindowAttributes","DestroyWindow","DestroySubwindows","ChangeSaveSet","ReparentWindow","MapWindow","MapSubwindows",
@@ -479,7 +479,7 @@ XErrorHandler CatchXError(Display *XDisplay, XErrorEvent *XEvent)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int CatchXIOError(Display *XDisplay)
 {
@@ -488,7 +488,7 @@ int CatchXIOError(Display *XDisplay)
    return 0;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Returns TRUE if we are the window manager for the display.
 */
 
@@ -500,7 +500,7 @@ LONG x11WindowManager(void)
 
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
 {
@@ -521,7 +521,7 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
          CopyMemory(glDisplayInfo, Info, InfoSize);
          return ERR_Okay;
       }
-      else if (!AccessObject(DisplayID, 5000, &display)) {
+      else if (!AccessObjectID(DisplayID, 5000, &display)) {
          Info->DisplayID     = DisplayID;
          Info->Flags         = display->Flags;
          Info->Width         = display->Width;
@@ -733,7 +733,7 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
@@ -822,7 +822,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    error = AllocMemory(sizeof(DISPLAYINFO), MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, &glDisplayInfo, &memoryid);
    if (error IS ERR_ResourceExists) {
       if (!glDisplayInfo) {
-         if (AccessMemory(RPM_DisplayInfo, MEM_READ_WRITE|MEM_NO_BLOCKING, 1000, &glDisplayInfo) != ERR_Okay) {
+         if (AccessMemoryID(RPM_DisplayInfo, MEM_READ_WRITE|MEM_NO_BLOCKING, 1000, &glDisplayInfo) != ERR_Okay) {
             return log.warning(ERR_AccessMemory);
          }
       }
@@ -836,7 +836,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    error = AllocMemory(sizeof(glInputEvents[0]), MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, &glInputEvents, &memoryid);
    if (error IS ERR_ResourceExists) {
       if (!glInputEvents) {
-         if (AccessMemory(RPM_InputEvents, MEM_READ_WRITE|MEM_NO_BLOCKING, 1000, &glInputEvents) != ERR_Okay) {
+         if (AccessMemoryID(RPM_InputEvents, MEM_READ_WRITE|MEM_NO_BLOCKING, 1000, &glInputEvents) != ERR_Okay) {
             return log.warning(ERR_AccessMemory);
          }
       }
@@ -853,7 +853,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       }
       else if (error IS ERR_ResourceExists) {
          if (!glX11) {
-            if (AccessMemory(RPM_X11, MEM_READ_WRITE, 1000, &glX11) != ERR_Okay) {
+            if (AccessMemoryID(RPM_X11, MEM_READ_WRITE, 1000, &glX11) != ERR_Okay) {
                return log.warning(ERR_AccessMemory);
             }
          }
@@ -1044,7 +1044,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    }
    else if (error IS ERR_ResourceExists) {
       if (!glAlphaLookup) {
-         if (AccessMemory(RPM_AlphaBlend, MEM_READ_WRITE|MEM_NO_BLOCKING, 500, &glAlphaLookup) != ERR_Okay) {
+         if (AccessMemoryID(RPM_AlphaBlend, MEM_READ_WRITE|MEM_NO_BLOCKING, 500, &glAlphaLookup) != ERR_Okay) {
             return ERR_AccessMemory;
          }
       }
@@ -1129,7 +1129,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 #ifdef _WIN32 // Get any existing Windows clipboard content
 
    ClipHeader *clipboard;
-   if (!AccessMemory(RPM_Clipboard, MEM_READ_WRITE, 3000, &clipboard)) {
+   if (!AccessMemoryID(RPM_Clipboard, MEM_READ_WRITE, 3000, &clipboard)) {
       if (!clipboard->Init) {
          log.branch("Populating clipboard for the first time from the Windows host.");
          winCopyClipboard();
@@ -1146,7 +1146,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CMDOpen(OBJECTPTR Module)
 {
@@ -1154,7 +1154,7 @@ static ERROR CMDOpen(OBJECTPTR Module)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CMDExpunge(void)
 {
@@ -1251,7 +1251,7 @@ static ERROR CMDExpunge(void)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Use this function to allocate simple 2D OpenGL textures.  It configures the texture so that it is suitable for basic
 ** rendering operations.  Note that the texture will still be bound on returning.
 */
@@ -1285,7 +1285,7 @@ GLenum alloc_texture(LONG Width, LONG Height, GLuint *TextureID)
 #endif
 
 #ifdef _GLES_
-/*****************************************************************************
+/*********************************************************************************************************************
 ** This function is designed so that it can be re-called in case the OpenGL display needs to be reset.  THIS FUNCTION
 ** REQUIRES THAT THE GRAPHICS MUTEX IS LOCKED.
 **
@@ -1385,7 +1385,7 @@ ERROR init_egl(void)
       objPointer *pointer;
       if (!adGetConfig(&config)) {
          DOUBLE dp_factor = 160.0 / AConfiguration_getDensity(config);
-         if (!AccessObject(glPointerID, 3000, &pointer)) {
+         if (!AccessObjectID(glPointerID, 3000, &pointer)) {
             pointer->ClickSlop = F2I(8.0 * dp_factor);
             log.msg("Click-slop calculated as %d.", pointer->ClickSlop);
             ReleaseObject(pointer);
@@ -1399,7 +1399,7 @@ ERROR init_egl(void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void refresh_display_from_egl(extDisplay *Self)
 {
@@ -1427,7 +1427,7 @@ void refresh_display_from_egl(extDisplay *Self)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Free EGL resources.  This does not relate to hiding or switch off of the display - in fact the display can remain
 ** active as it normally does.  For this reason, we just focus on resource deallocation.
 */
@@ -1462,7 +1462,7 @@ void free_egl(void)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #ifdef __xwindows__
 #include "x11/handlers.cpp"
@@ -1476,6 +1476,6 @@ void free_egl(void)
 #include "android/android.cpp"
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_DISPLAY)

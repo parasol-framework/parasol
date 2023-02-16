@@ -1,10 +1,10 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -CLASS-
 Surface: Manages the display and positioning of 2-Dimensional rendered graphics.
@@ -40,7 +40,7 @@ speed up exposes, but it is the only reasonable way to get masking and transluce
 that backing store graphics are stored in public Bitmaps so that processes can share graphics information without
 having to communicate with each other directly.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #undef __xwindows__
 #include "../defs.h"
@@ -56,7 +56,7 @@ static ERROR consume_input_events(const InputEvent *, LONG);
 static void draw_region(extSurface *, extSurface *, extBitmap *);
 static ERROR redraw_timer(extSurface *, LARGE, LARGE);
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** This call is used to refresh the pointer image when at least one layer has been rearranged.  The timer is used to
 ** delay the refresh - useful if multiple surfaces are being rearranged when we only need to do the refresh once.
 ** The delay also prevents clashes with read/write access to the surface list.
@@ -82,11 +82,11 @@ void refresh_pointer(extSurface *Self)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR access_video(OBJECTID DisplayID, objDisplay **Display, objBitmap **Bitmap)
 {
-   if (!AccessObject(DisplayID, 5000, Display)) {
+   if (!AccessObjectID(DisplayID, 5000, Display)) {
       APTR winhandle;
 
       if (!Display[0]->getPtr(FID_WindowHandle, &winhandle)) {
@@ -103,7 +103,7 @@ static ERROR access_video(OBJECTID DisplayID, objDisplay **Display, objBitmap **
    else return ERR_AccessObject;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void release_video(objDisplay *Display)
 {
@@ -124,7 +124,7 @@ static void release_video(objDisplay *Display)
    ReleaseObject(Display);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Used By:  MoveToBack(), move_layer()
 **
 ** This is the best way to figure out if a surface object or its children causes it to be volatile.  Use this function
@@ -170,7 +170,7 @@ static bool check_volatile(SurfaceList *list, LONG index)
    return false;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void expose_buffer(SurfaceList *list, LONG Total, LONG Index, LONG ScanIndex, LONG Left, LONG Top,
                    LONG Right, LONG Bottom, OBJECTID DisplayID, extBitmap *Bitmap)
@@ -341,7 +341,7 @@ static void expose_buffer(SurfaceList *list, LONG Total, LONG Index, LONG ScanIn
    else log.warning("Unable to access display #%d.", DisplayID);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Used by MoveToFront()
 **
 ** This function will expose areas that are uncovered when a surface changes its position in the surface tree (e.g.
@@ -411,7 +411,7 @@ skipcontent:
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static BYTE check_surface_list(void)
 {
@@ -438,14 +438,14 @@ static BYTE check_surface_list(void)
    else return FALSE;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Handler for the display being resized.
 
 static void display_resized(OBJECTID DisplayID, LONG X, LONG Y, LONG Width, LONG Height)
 {
    OBJECTID surface_id = GetOwnerID(DisplayID);
    extSurface *surface;
-   if (!AccessObject(surface_id, 4000, &surface)) {
+   if (!AccessObjectID(surface_id, 4000, &surface)) {
       if (surface->ClassID IS ID_SURFACE) {
          if ((X != surface->X) or (Y != surface->Y)) {
             surface->X = X;
@@ -629,11 +629,11 @@ static void notify_redimension_parent(OBJECTPTR Object, ACTIONID ActionID, ERROR
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Activate: Shows a surface object on the display.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_Activate(extSurface *Self, APTR Void)
 {
@@ -641,7 +641,7 @@ static ERROR SURFACE_Activate(extSurface *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 AddCallback: Inserts a function hook into the drawing process of a surface object.
@@ -668,7 +668,7 @@ ExecViolation: The call was not made from the process that owns the object.
 AllocMemory
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_AddCallback(extSurface *Self, struct drwAddCallback *Args)
 {
@@ -760,11 +760,11 @@ static ERROR SURFACE_AddCallback(extSurface *Self, struct drwAddCallback *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Disable: Disables a surface object.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_Disable(extSurface *Self, APTR Void)
 {
@@ -773,11 +773,11 @@ static ERROR SURFACE_Disable(extSurface *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Enable: Enables a disabled surface object.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_Enable(extSurface *Self, APTR Void)
 {
@@ -786,7 +786,7 @@ static ERROR SURFACE_Enable(extSurface *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Event: task.removed
 */
 
@@ -804,7 +804,7 @@ static void event_task_removed(OBJECTID *SurfaceID, APTR Info, LONG InfoSize)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Event: user.login
 */
 
@@ -837,7 +837,7 @@ static void event_user_login(extSurface *Self, APTR Info, LONG InfoSize)
       cfgRead(*config, "DISPLAY", "GammaBlue", &gammablue);
 
       if (!cfgReadValue(*config, "DISPLAY", "DPMS", &str)) {
-         if (!AccessObject(Self->DisplayID, 3000, &object)) {
+         if (!AccessObjectID(Self->DisplayID, 3000, &object)) {
             object->set(FID_DPMS, str);
             ReleaseObject(object);
          }
@@ -869,11 +869,11 @@ static void event_user_login(extSurface *Self, APTR Info, LONG InfoSize)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Focus: Changes the primary user focus to the surface object.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static LARGE glLastFocusTime = 0;
 
@@ -923,7 +923,7 @@ static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
    }
 
    OBJECTID *focuslist;
-   if (!AccessMemory(RPM_FocusList, MEM_READ_WRITE, 1000, &focuslist)) {
+   if (!AccessMemoryID(RPM_FocusList, MEM_READ_WRITE, 1000, &focuslist)) {
       // Return immediately if this surface object already has the -primary- focus
 
       if ((Self->Flags & RNF_HAS_FOCUS) and (focuslist[0] IS Self->UID)) {
@@ -1073,7 +1073,7 @@ static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR SURFACE_Free(extSurface *Self, APTR Void)
 {
@@ -1095,7 +1095,7 @@ static ERROR SURFACE_Free(extSurface *Self, APTR Void)
    if (Self->ParentID) {
       extSurface *parent;
       ERROR error;
-      if (!(error = AccessObject(Self->ParentID, 5000, &parent))) {
+      if (!(error = AccessObjectID(Self->ParentID, 5000, &parent))) {
          UnsubscribeAction(parent, NULL);
          if (Self->Flags & RNF_TRANSPARENT) {
             drwRemoveCallback(parent, NULL);
@@ -1146,11 +1146,11 @@ static ERROR SURFACE_Free(extSurface *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Hide: Hides a surface object from the display.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_Hide(extSurface *Self, APTR Void)
 {
@@ -1196,7 +1196,7 @@ static ERROR SURFACE_Hide(extSurface *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 InheritedFocus: Private
@@ -1211,7 +1211,7 @@ int Flags: Private
 Okay
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_InheritedFocus(extSurface *Self, struct gfxInheritedFocus *Args)
 {
@@ -1244,7 +1244,7 @@ static ERROR SURFACE_InheritedFocus(extSurface *Self, struct gfxInheritedFocus *
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 {
@@ -1275,17 +1275,12 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
       }
    }
 
-   ERROR error;
+   ERROR error = ERR_Okay;
    if (Self->ParentID) {
-      extSurface *parent;
-      if (AccessObject(Self->ParentID, 3000, &parent) != ERR_Okay) {
-         log.warning("Failed to access parent #%d.", Self->ParentID);
-         return ERR_AccessObject;
-      }
+      parasol::ScopedObjectLock<extSurface> parent(Self->ParentID, 3000);
+      if (!parent.granted()) return ERR_AccessObject;
 
       log.trace("Initialising surface to parent #%d.", Self->ParentID);
-
-      error = ERR_Okay;
 
       // If the parent has the ROOT flag set, we have to inherit whatever root layer that the parent is using, as well
       // as the PRECOPY and/or AFTERCOPY and opacity flags if they are set.
@@ -1301,10 +1296,10 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
       // Subscribe to the surface parent's Resize and Redimension actions
 
       auto callback = make_function_stdc(notify_free_parent);
-      SubscribeAction(parent, AC_Free, &callback);
+      SubscribeAction(*parent, AC_Free, &callback);
 
       callback = make_function_stdc(notify_redimension_parent);
-      SubscribeAction(parent, AC_Redimension, &callback);
+      SubscribeAction(*parent, AC_Redimension, &callback);
 
       // If the surface object is transparent, subscribe to the Draw action of the parent object.
 
@@ -1314,7 +1309,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
          func.Type = CALL_STDC;
          func.StdC.Context = Self;
          func.StdC.Routine = (APTR)&draw_region;
-         Action(MT_DrwAddCallback, parent, &args);
+         Action(MT_DrwAddCallback, *parent, &args);
 
          // Turn off flags that should never be combined with transparent surfaces.
          Self->Flags &= ~(RNF_PRECOPY|RNF_AFTER_COPY|RNF_COMPOSITE);
@@ -1396,8 +1391,6 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
       // If not, managing layered surfaces between processes becomes more difficult.
 
       if (parent->Flags & RNF_HOST) require_store = TRUE;
-
-      ReleaseObject(parent);
    }
    else {
       log.trace("This surface object will be display-based.");
@@ -1500,92 +1493,81 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
       if (Self->Flags & RNF_COMPOSITE) scrflags |= SCR_COMPOSITE;
 
-      OBJECTID id;
+      OBJECTID id, pop_display = 0;
       CSTRING name = FindObject("SystemDisplay", 0, 0, &id) ? "SystemDisplay" : (CSTRING)NULL;
+
+      if (Self->PopOverID) {
+         extSurface *popsurface;
+         if (!AccessObjectID(Self->PopOverID, 2000, &popsurface)) {
+            pop_display = popsurface->DisplayID;
+            ReleaseObject(popsurface);
+
+            if (!pop_display) log.warning("Surface #%d doesn't have a display ID for pop-over.", Self->PopOverID);
+         }
+      }
 
       // For hosted displays:  On initialisation, the X and Y fields reflect the position at which the window will be
       // opened on the host desktop.  However, hosted surfaces operate on the absolute coordinates of client regions
       // and are ignorant of window frames, so we read the X, Y fields back from the display after initialisation (the
       // display will adjust the coordinates to reflect the absolute position of the surface on the desktop).
 
-      objDisplay *display;
-      if (!NewObject(ID_DISPLAY, NF::INTEGRAL, &display)) {
-         SetFields(display,
-               FID_Name|TSTR,           name,
-               FID_X|TLONG,             Self->X,
-               FID_Y|TLONG,             Self->Y,
-               FID_Width|TLONG,         Self->Width,
-               FID_Height|TLONG,        Self->Height,
-               FID_BitsPerPixel|TLONG,  glpDisplayDepth,
-               FID_RefreshRate|TDOUBLE, glpRefreshRate,
-               FID_Flags|TLONG,         scrflags,
-               FID_DPMS|TSTRING,        glpDPMS,
-               FID_Opacity|TLONG,       (Self->Opacity * 100) / 255,
-               FID_WindowHandle|TPTR,   (APTR)Self->DisplayWindow, // Sometimes a window may be preset, e.g. for a web plugin
-               TAGEND);
+      if (auto display = objDisplay::create::integral(
+            fl::Name(name),
+            fl::X(Self->X), fl::Y(Self->Y), fl::Width(Self->Width), fl::Height(Self->Height),
+            fl::BitsPerPixel(glpDisplayDepth),
+            fl::RefreshRate(glpRefreshRate),
+            fl::Flags(scrflags),
+            fl::DPMS(glpDPMS),
+            fl::Opacity((Self->Opacity * 100) / 255),
+            fl::PopOver(pop_display),
+            fl::WindowHandle((APTR)Self->DisplayWindow))) { // Sometimes a window may be preset, e.g. for a web plugin
 
-         if (Self->PopOverID) {
-            extSurface *popsurface;
-            if (!AccessObject(Self->PopOverID, 2000, &popsurface)) {
-               OBJECTID pop_display = popsurface->DisplayID;
-               ReleaseObject(popsurface);
+         gfxSetGamma(display, glpGammaRed, glpGammaGreen, glpGammaBlue, GMF_SAVE);
+         gfxSetHostOption(HOST_TASKBAR, 1); // Reset display system so that windows open with a taskbar by default
 
-               if (pop_display) display->set(FID_PopOver, pop_display);
-               else log.warning("Surface #%d doesn't have a display ID for pop-over.", Self->PopOverID);
-            }
+         // Get the true coordinates of the client area of the surface
+
+         Self->X = display->X;
+         Self->Y = display->Y;
+         Self->Width  = display->Width;
+         Self->Height = display->Height;
+
+         struct gfxSizeHints hints;
+
+         if ((Self->MaxWidth) or (Self->MaxHeight) or (Self->MinWidth) or (Self->MinHeight)) {
+            if (Self->MaxWidth > 0)  hints.MaxWidth  = Self->MaxWidth  + Self->LeftMargin + Self->RightMargin;  else hints.MaxWidth  = 0;
+            if (Self->MaxHeight > 0) hints.MaxHeight = Self->MaxHeight + Self->TopMargin  + Self->BottomMargin; else hints.MaxHeight = 0;
+            if (Self->MinWidth > 0)  hints.MinWidth  = Self->MinWidth  + Self->LeftMargin + Self->RightMargin;  else hints.MinWidth  = 0;
+            if (Self->MinHeight > 0) hints.MinHeight = Self->MinHeight + Self->TopMargin  + Self->BottomMargin; else hints.MinHeight = 0;
+            Action(MT_GfxSizeHints, display, &hints);
          }
 
-         if (!acInit(display)) {
-            gfxSetGamma(display, glpGammaRed, glpGammaGreen, glpGammaBlue, GMF_SAVE);
-            gfxSetHostOption(HOST_TASKBAR, 1); // Reset display system so that windows open with a taskbar by default
+         acFlush(display);
 
-            // Get the true coordinates of the client area of the surface
+         // For hosted environments, record the window handle (NB: this is doubling up the display handle, we should
+         // just make the window handle a virtual field so that we don't need a permanent record of it).
 
-            Self->X = display->X;
-            Self->Y = display->Y;
-            Self->Width  = display->Width;
-            Self->Height = display->Height;
+         display->getPtr(FID_WindowHandle, &Self->DisplayWindow);
 
-            struct gfxSizeHints hints;
+         #ifdef _WIN32
+            winSetSurfaceID(Self->DisplayWindow, Self->UID);
+         #endif
 
-            if ((Self->MaxWidth) or (Self->MaxHeight) or (Self->MinWidth) or (Self->MinHeight)) {
-               if (Self->MaxWidth > 0)  hints.MaxWidth  = Self->MaxWidth  + Self->LeftMargin + Self->RightMargin;  else hints.MaxWidth  = 0;
-               if (Self->MaxHeight > 0) hints.MaxHeight = Self->MaxHeight + Self->TopMargin  + Self->BottomMargin; else hints.MaxHeight = 0;
-               if (Self->MinWidth > 0)  hints.MinWidth  = Self->MinWidth  + Self->LeftMargin + Self->RightMargin;  else hints.MinWidth  = 0;
-               if (Self->MinHeight > 0) hints.MinHeight = Self->MinHeight + Self->TopMargin  + Self->BottomMargin; else hints.MinHeight = 0;
-               Action(MT_GfxSizeHints, display, &hints);
-            }
+         // Subscribe to Redimension notifications if the display is hosted.  Also subscribe to Draw because this
+         // can be used by the host to notify of window exposures.
 
-            acFlush(display);
+         if (Self->DisplayWindow) {
+            FUNCTION func = { .Type = CALL_STDC, .StdC = { .Context = NULL, .Routine = (APTR)&display_resized } };
+            display->set(FID_ResizeFeedback, &func);
 
-            // For hosted environments, record the window handle (NB: this is doubling up the display handle, we should
-            // just make the window handle a virtual field so that we don't need a permanent record of it).
-
-            display->getPtr(FID_WindowHandle, &Self->DisplayWindow);
-
-            #ifdef _WIN32
-               winSetSurfaceID(Self->DisplayWindow, Self->UID);
-            #endif
-
-            // Subscribe to Redimension notifications if the display is hosted.  Also subscribe to Draw because this
-            // can be used by the host to notify of window exposures.
-
-            if (Self->DisplayWindow) {
-               FUNCTION func = { .Type = CALL_STDC, .StdC = { .Context = NULL, .Routine = (APTR)&display_resized } };
-               display->set(FID_ResizeFeedback, &func);
-
-               auto callback = make_function_stdc(notify_draw_display);
-               SubscribeAction(display, AC_Draw, &callback);
-            }
-
-            Self->DisplayID = display->UID;
-            error = ERR_Okay;
+            auto callback = make_function_stdc(notify_draw_display);
+            SubscribeAction(display, AC_Draw, &callback);
          }
-         else error = ERR_Init;
 
-         if (error) acFree(display);
+         Self->DisplayID = display->UID;
+         error = ERR_Okay;
       }
-      else error = ERR_NewObject;
+      else return log.warning(ERR_CreateObject);
    }
 
    // Allocate a backing store if this is a host object, or the parent is foreign, or we are the child of a host object
@@ -1607,8 +1589,9 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
    if (require_store) {
       Self->BitmapOwnerID = Self->UID;
 
-      objDisplay *display;
-      if (!(error = AccessObject(Self->DisplayID, 3000, &display))) {
+      parasol::ScopedObjectLock<objDisplay> display(Self->DisplayID, 3000);
+
+      if (display.granted()) {
          LONG memflags = MEM_DATA;
 
          if (Self->Flags & RNF_VIDEO) {
@@ -1628,32 +1611,21 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
          }
          else bpp = display->Bitmap->BitsPerPixel;
 
-         if (!NewObject(ID_BITMAP, NF::INTEGRAL, &bitmap)) {
-            SetFields(bitmap,
-               FID_BitsPerPixel|TLONG, bpp,
-               FID_Width|TLONG,        Self->Width,
-               FID_Height|TLONG,       Self->Height,
-               FID_DataFlags|TLONG,    memflags,
-               FID_Flags|TLONG,        ((Self->Flags & RNF_COMPOSITE) ? (BMF_ALPHA_CHANNEL|BMF_FIXED_DEPTH) : NULL),
-               TAGEND);
-            if (!acInit(bitmap)) {
-               if (Self->BitsPerPixel) bitmap->Flags |= BMF_FIXED_DEPTH; // This flag prevents automatic changes to the bit depth
+         if (auto bitmap = objBitmap::create::integral(
+               fl::BitsPerPixel(bpp), fl::Width(Self->Width), fl::Height(Self->Height),
+               fl::DataFlags(memflags),
+               fl::Flags(((Self->Flags & RNF_COMPOSITE) ? (BMF_ALPHA_CHANNEL|BMF_FIXED_DEPTH) : 0)))) {
 
-               Self->BitsPerPixel  = bitmap->BitsPerPixel;
-               Self->BytesPerPixel = bitmap->BytesPerPixel;
-               Self->LineWidth     = bitmap->LineWidth;
-               Self->Data          = bitmap->Data;
-               Self->BufferID      = bitmap->UID;
-               error = ERR_Okay;
-            }
-            else {
-               error = ERR_Init;
-               acFree(bitmap);
-            }
+            if (Self->BitsPerPixel) bitmap->Flags |= BMF_FIXED_DEPTH; // This flag prevents automatic changes to the bit depth
+
+            Self->BitsPerPixel  = bitmap->BitsPerPixel;
+            Self->BytesPerPixel = bitmap->BytesPerPixel;
+            Self->LineWidth     = bitmap->LineWidth;
+            Self->Data          = bitmap->Data;
+            Self->BufferID      = bitmap->UID;
+            error = ERR_Okay;
          }
-         else error = ERR_NewObject;
-
-         ReleaseObject(display);
+         else error = ERR_CreateObject;
       }
       else error = ERR_AccessObject;
 
@@ -1667,7 +1639,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
    // If the FIXEDBUFFER option is set, pass the NEVERSHRINK option to the bitmap
 
    if (Self->Flags & RNF_FIXED_BUFFER) {
-      if (!AccessObject(Self->BufferID, 5000, &bitmap)) {
+      if (!AccessObjectID(Self->BufferID, 5000, &bitmap)) {
          bitmap->Flags |= BMF_NEVER_SHRINK;
          ReleaseObject(bitmap);
       }
@@ -1729,11 +1701,11 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 LostFocus: Informs a surface object that it has lost the user focus.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_LostFocus(extSurface *Self, APTR Void)
 {
@@ -1760,7 +1732,7 @@ static ERROR SURFACE_LostFocus(extSurface *Self, APTR Void)
    else return ERR_Okay | ERF_Notified;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Minimise: For hosted surfaces only, this method will minimise the surface to an icon.
@@ -1774,7 +1746,7 @@ the desktop.  This behaviour is platform dependent and should be manually tested
 host platform.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_Minimise(extSurface *Self, APTR Void)
 {
@@ -1782,11 +1754,11 @@ static ERROR SURFACE_Minimise(extSurface *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Move: Moves a surface object to a new display position.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_Move(extSurface *Self, struct acMove *Args)
 {
@@ -1804,7 +1776,7 @@ static ERROR SURFACE_Move(extSurface *Self, struct acMove *Args)
    // response times.
 
    APTR queue;
-   if (!AccessMemory(GetResource(RES_MESSAGE_QUEUE), MEM_READ, 2000, &queue)) {
+   if (!AccessMemoryID(GetResource(RES_MESSAGE_QUEUE), MEM_READ, 2000, &queue)) {
       LONG index = 0;
       UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct acMove)];
       while (!ScanMessages(queue, &index, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
@@ -1918,11 +1890,11 @@ static ERROR SURFACE_Move(extSurface *Self, struct acMove *Args)
    return ERR_Okay|ERF_Notified;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 MoveToBack: Moves a surface object to the back of its container.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_MoveToBack(extSurface *Self, APTR Void)
 {
@@ -1992,11 +1964,11 @@ static ERROR SURFACE_MoveToBack(extSurface *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 MoveToFront: Moves a surface object to the front of its container.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
 {
@@ -2097,7 +2069,7 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
       //   Areas of our surface that were obscured by surfaces that also shared our bitmap space.
 
       objBitmap *bitmap;
-      if (!AccessObject(Self->BufferID, 5000, &bitmap)) {
+      if (!AccessObjectID(Self->BufferID, 5000, &bitmap)) {
          invalidate_overlap(Self, cplist, total, currentindex, i, cplist[i].Left, cplist[i].Top, cplist[i].Right, cplist[i].Bottom, bitmap);
          ReleaseObject(bitmap);
       }
@@ -2124,11 +2096,11 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 MoveToPoint: Moves a surface object to an absolute coordinate.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_MoveToPoint(extSurface *Self, struct acMoveToPoint *Args)
 {
@@ -2145,7 +2117,7 @@ static ERROR SURFACE_MoveToPoint(extSurface *Self, struct acMoveToPoint *Args)
    return Action(AC_Move, Self, &move)|ERF_Notified;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Surface: NewOwner()
 */
 
@@ -2163,7 +2135,7 @@ static ERROR SURFACE_NewOwner(extSurface *Self, struct acNewOwner *Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR SURFACE_NewObject(extSurface *Self, APTR Void)
 {
@@ -2181,7 +2153,7 @@ static ERROR SURFACE_NewObject(extSurface *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 RemoveCallback: Removes a callback previously inserted by AddCallback().
@@ -2199,7 +2171,7 @@ Okay
 Search
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_RemoveCallback(extSurface *Self, struct drwRemoveCallback *Args)
 {
@@ -2269,7 +2241,7 @@ static ERROR SURFACE_RemoveCallback(extSurface *Self, struct drwRemoveCallback *
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 ResetDimensions: Changes the dimensions of a surface.
@@ -2296,10 +2268,10 @@ int(DMF) Dimensions: Dimension flags.
 -ERRORS-
 Okay
 NullArgs
-AccessMemory: Unable to access internal surface list.
+AccessMemoryID: Unable to access internal surface list.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_ResetDimensions(extSurface *Self, struct drwResetDimensions *Args)
 {
@@ -2370,7 +2342,7 @@ static ERROR SURFACE_ResetDimensions(extSurface *Self, struct drwResetDimensions
    else return log.warning(ERR_AccessMemory);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 ScheduleRedraw: Schedules a redraw operation for the next frame.
@@ -2390,7 +2362,7 @@ relevant top-level surface for scheduling.
 Okay
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_ScheduleRedraw(extSurface *Self, APTR Void)
 {
@@ -2413,7 +2385,7 @@ static ERROR SURFACE_ScheduleRedraw(extSurface *Self, APTR Void)
    else return ERR_Failed;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 SaveImage: Saves the graphical image of a surface object.
@@ -2427,7 +2399,7 @@ limited to members of the @Picture class, for example `ID_JPEG` and `ID_PICTURE`
 the user's preferred default file format is used.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
 {
@@ -2504,7 +2476,7 @@ static ERROR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
    else return log.warning(ERR_NewObject);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Scroll: Scrolls surface content to a new position.
@@ -2521,7 +2493,7 @@ If the surface object does not have the `SCROLL_CONTENT` flag set, the call will
 listening for the Scroll action on the surface.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_Scroll(extSurface *Self, struct acScroll *Args)
 {
@@ -2554,11 +2526,11 @@ static ERROR SURFACE_Scroll(extSurface *Self, struct acScroll *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 ScrollToPoint: Moves the content of a surface object to a specific point.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_ScrollToPoint(extSurface *Self, struct acScrollToPoint *Args)
 {
@@ -2588,7 +2560,7 @@ static ERROR SURFACE_ScrollToPoint(extSurface *Self, struct acScrollToPoint *Arg
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SetOpacity: Alters the opacity of a surface object.
@@ -2603,7 +2575,7 @@ double Adjustment: Adjustment value to add or subtract from the existing opacity
 Okay: The opacity of the surface object was changed.
 NullArgs
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_SetOpacity(extSurface *Self, struct drwSetOpacity *Args)
 {
@@ -2633,11 +2605,11 @@ static ERROR SURFACE_SetOpacity(extSurface *Self, struct drwSetOpacity *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Show: Shows a surface object on the display.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SURFACE_Show(extSurface *Self, APTR Void)
 {
@@ -2675,7 +2647,7 @@ static ERROR SURFACE_Show(extSurface *Self, APTR Void)
    return ERR_Okay|notified;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR redraw_timer(extSurface *Self, LARGE Elapsed, LARGE CurrentTime)
 {
@@ -2697,7 +2669,7 @@ static ERROR redraw_timer(extSurface *Self, LARGE Elapsed, LARGE CurrentTime)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void draw_region(extSurface *Self, extSurface *Parent, extBitmap *Bitmap)
 {
@@ -2757,7 +2729,7 @@ static void draw_region(extSurface *Self, extSurface *Parent, extBitmap *Bitmap)
    Bitmap->YOffset = yoffset;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 {
@@ -2873,14 +2845,14 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "surface_drawing.cpp"
 #include "surface_fields.cpp"
 #include "surface_dimensions.cpp"
 #include "surface_resize.cpp"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const FieldDef MovementFlags[] = {
    { "Vertical",   MOVE_VERTICAL },
@@ -2961,7 +2933,7 @@ static const FieldArray clSurfaceFields[] = {
    END_FIELD
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR create_surface_class(void)
 {

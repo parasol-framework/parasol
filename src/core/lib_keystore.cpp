@@ -13,7 +13,7 @@ tracking requirements.
 
 Keys cannot be deleted, only marked as dead and then the space is reclaimed when the KeyStore is rehashed.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include "defs.h"
 
@@ -44,7 +44,7 @@ INLINE LONG GET_KEY_SIZE(KeyPair *KP) { return KP->ValueOffset + KP->ValueLength
 #define MOD_TABLESIZE(val,size) ((val) & (size - 1))
 #define HEAD_SIZE sizeof(KeyPair)
 
-//****************************************************************************
+//********************************************************************************************************************
 // Resource management for KeyStore.
 
 static void KeyStore_free(APTR Address)
@@ -81,14 +81,14 @@ static ResourceManager glResourceKeyStore = {
    &KeyStore_free
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 INLINE LONG hm_hash_index(LONG TableSize, ULONG KeyHash) {
    ULONG hash = KeyHash * PRIME_HASH; // This operation greatly improves hash distribution with a more even spread.
    return MOD_TABLESIZE(hash, TableSize);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static KeyPair * build_key_pair(KeyStore *Store, CSTRING Key, const void *Value, LONG Length)
 {
@@ -121,7 +121,7 @@ static KeyPair * build_hashed_key_pair(KeyStore *Store, ULONG Key, const void *V
    else return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Doubles the size of the hashmap, and rehashes all the elements
 
 static ERROR hm_rehash(KeyStore *Store)
@@ -175,7 +175,7 @@ retry:
    else return ERR_AllocMemory;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Used for setting values in the map, this returns the integer of the location to store a new item, or -1.
 
 static LONG hm_newkey(KeyStore *Store, KeyPair *KeyPair)
@@ -195,7 +195,7 @@ static LONG hm_newkey(KeyStore *Store, KeyPair *KeyPair)
    return -1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Note: It is presumed that you have checked for duplicates because this routine does not check for an existing key
 // with the same name.
 
@@ -212,7 +212,7 @@ static LONG hm_put(KeyStore *Store, KeyPair *KeyPair)
    return index;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Get the index of a key, or -1 if it's not present.  Note: Dead keys are not ignored, so can be returned.
 // This function also breaks immediately if a NULL pointer is found in the bucket.  This is a useful optimisation, but
 // presumes that keys are never removed and that they can only become 'dead'.  Such keys are cleaned up during a rehash.
@@ -247,7 +247,7 @@ static LONG hm_get_hashed(KeyStore *Store, ULONG Key)
    return -1;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 VarCopy: Copies all keys in a KeyStore source to a destination KeyStore.
@@ -265,7 +265,7 @@ Okay
 NullArgs
 AllocMemory
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR VarCopy(KeyStore *Source, KeyStore *Dest)
 {
@@ -325,7 +325,7 @@ ERROR VarCopy(KeyStore *Source, KeyStore *Dest)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 VarGet: Retrieve the value of a key, by name.
@@ -348,7 +348,7 @@ Okay
 NullArgs
 DoesNotExist
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR VarGet(KeyStore *Store, CSTRING Name, APTR *Data, LONG *Size)
 {
@@ -378,7 +378,7 @@ ERROR VarGet(KeyStore *Store, CSTRING Name, APTR *Data, LONG *Size)
    return ERR_DoesNotExist;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 VarGetString: Retrieve a key value from a key store.
@@ -393,7 +393,7 @@ cstr Key: The name of the key-pair to lookup.
 -RESULT-
 cstr: The value for the given key is returned.  If no match is possible then a NULL pointer is returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 CSTRING VarGetString(KeyStore *Store, CSTRING Key)
 {
@@ -420,7 +420,7 @@ CSTRING VarGetString(KeyStore *Store, CSTRING Key)
    return NULL;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 VarIterate: Iteratively scan the key-store for all key values.
@@ -468,7 +468,7 @@ NullArgs
 NotFound: The Index does not match a known key.
 Finished: All keys have been iterated.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR VarIterate(KeyStore *Store, CSTRING Index, CSTRING *Key, APTR *Data, LONG *Size)
 {
@@ -506,7 +506,7 @@ ERROR VarIterate(KeyStore *Store, CSTRING Index, CSTRING *Key, APTR *Data, LONG 
    return ERR_Finished;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 VarLock: Acquire a lock on a key store.
@@ -527,7 +527,7 @@ Okay
 InvalidState
 TimeOut
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR VarLock(KeyStore *Store, LONG Timeout)
 {
@@ -536,7 +536,7 @@ ERROR VarLock(KeyStore *Store, LONG Timeout)
    return LockMutex(Store->Mutex, Timeout);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 VarNew: Creates a new resource for storing key values.
@@ -555,7 +555,7 @@ int(KSF) Flags: Optional flags.
 -RESULT-
 resource(KeyStore): The allocated resource is returned or NULL if a memory allocation error occurred.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 KeyStore * VarNew(LONG InitialSize, LONG Flags)
 {
@@ -601,7 +601,7 @@ KeyStore * VarNew(LONG InitialSize, LONG Flags)
    return NULL;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 VarSetString: Set a key-value string pair in a key store.
@@ -622,7 +622,7 @@ Okay
 NullArgs
 AllocMemory
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR VarSetString(KeyStore *Store, CSTRING Key, CSTRING Value)
 {
@@ -672,7 +672,7 @@ ERROR VarSetString(KeyStore *Store, CSTRING Key, CSTRING Value)
    return ERR_AllocMemory;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 VarSet: Set a key-value pair with raw data.
@@ -699,7 +699,7 @@ bufsize Size: The byte-size of the Data buffer.
 -RESULT-
 ptr: A pointer to the cached version of the data is returned, or NULL if failure.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 APTR VarSet(KeyStore *Store, CSTRING Key, APTR Data, LONG Size)
 {
@@ -745,7 +745,7 @@ APTR VarSet(KeyStore *Store, CSTRING Key, APTR Data, LONG Size)
    return NULL;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 VarSetSized: Create a key-value pair with an empty pre-sized data buffer.
@@ -770,7 +770,7 @@ Okay:
 NullArgs:
 AllocMemory:
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR VarSetSized(KeyStore *Store, CSTRING Key, LONG Size, APTR *Data, LONG *DataSize)
 {
@@ -810,7 +810,7 @@ ERROR VarSetSized(KeyStore *Store, CSTRING Key, LONG Size, APTR *Data, LONG *Dat
    return ERR_AllocMemory;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 VarUnlock: Release a lock acquired against a key store.
@@ -820,7 +820,7 @@ Call VarUnlock() to release a lock previously acquired with VarLock().
 -INPUT-
 resource(KeyStore) Store: The key store to lock.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 void VarUnlock(KeyStore *Store)
 {
@@ -828,7 +828,7 @@ void VarUnlock(KeyStore *Store)
    UnlockMutex(Store->Mutex);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 KeyGet: Retrieve a raw data value from a KeyStore.
@@ -847,7 +847,7 @@ Okay
 NullArgs
 DoesNotExist
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR KeyGet(KeyStore *Store, ULONG Key, APTR *Data, LONG *Size)
 {
@@ -872,7 +872,7 @@ ERROR KeyGet(KeyStore *Store, ULONG Key, APTR *Data, LONG *Size)
    return ERR_DoesNotExist;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 KeyIterate: Iteratively scan the key-store for all key values.
@@ -918,7 +918,7 @@ NullArgs
 NotFound: The Index does not match a known key.
 Finished: All keys have been iterated.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR KeyIterate(KeyStore *Store, ULONG Index, ULONG *Key, APTR *Data, LONG *Size)
 {
@@ -956,7 +956,7 @@ ERROR KeyIterate(KeyStore *Store, ULONG Index, ULONG *Key, APTR *Data, LONG *Siz
    return ERR_Finished;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 KeySet: Set a key-value pair with raw data.
@@ -986,7 +986,7 @@ NullArgs
 AllocMemory
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR KeySet(KeyStore *Store, ULONG Key, const void *Data, LONG Size)
 {

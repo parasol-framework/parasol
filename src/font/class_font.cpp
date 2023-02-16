@@ -1,10 +1,10 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -CLASS-
 Font: Draws text in different type faces and styles.
@@ -47,7 +47,7 @@ Please note that if special effects and transforms are desired then use the @Vec
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static BitmapCache * check_bitmap_cache(extFont *, LONG);
 static ERROR cache_truetype_font(extFont *, CSTRING);
@@ -64,7 +64,7 @@ const char * get_ft_error(FT_Error err)
     return "(Unknown error)";
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Draw: Draws a font to a Bitmap.
@@ -76,7 +76,7 @@ Okay
 FieldNotSet: The Bitmap and/or String field has not been set.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR draw_bitmap_font(extFont *);
 static ERROR draw_vector_font(extFont *);
@@ -89,7 +89,7 @@ static ERROR FONT_Draw(extFont *Self, APTR Void)
    else return draw_vector_font(Self);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR FONT_Free(extFont *Self, APTR Void)
 {
@@ -136,7 +136,7 @@ static ERROR FONT_Free(extFont *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR FONT_Init(extFont *Self, APTR Void)
 {
@@ -338,7 +338,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR FONT_NewObject(extFont *Self, APTR Void)
 {
@@ -359,7 +359,7 @@ static ERROR FONT_NewObject(extFont *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Align: Sets the position of a font string to an abstract alignment.
@@ -401,7 +401,7 @@ Bold: Set to TRUE to enable bold styling.
 Setting the Bold field to TRUE prior to initialisation will enable bold styling.  This field is provided only for
 convenience - we recommend that you set the Style field for determining font styling where possible.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Bold(extFont *Self, LONG *Value)
 {
@@ -423,7 +423,7 @@ static ERROR SET_Bold(extFont *Self, LONG Value)
    else return SET_Style(Self, "Bold");
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Colour: The font colour in RGB format.
@@ -466,7 +466,7 @@ EscapeChar: The routine defined here will be called when escape characters are e
 If the EscapeCallback field has been set, EscapeChar will define the character used to detect escape sequences.  The
 default value is 0x1b in the ASCII character set.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_EscapeChar(extFont *Self, STRING *Value)
 {
@@ -481,7 +481,7 @@ static ERROR SET_EscapeChar(extFont *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Face: The name of a font face that is to be loaded on initialisation.
@@ -509,7 +509,7 @@ Multiple font faces can be specified in CSV format, e.g. `Sans Serif,Open Sans`,
 be selected if the first face is unavailable or unable to match the requested point size.  This feature can be very
 useful for pairing bitmap fonts with a scalable equivalent.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Face(extFont *Self, CSTRING Value)
 {
@@ -570,7 +570,7 @@ static ERROR SET_Face(extFont *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 FixedWidth: Forces a fixed pixel width to use for all glyphs.
@@ -581,7 +581,7 @@ fixed width value is less than the widest glyph, the glyphs will overlap each ot
 -FIELD-
 Flags:  Optional flags.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Flags(extFont *Self, LONG Value)
 {
@@ -589,7 +589,7 @@ static ERROR SET_Flags(extFont *Self, LONG Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 FreeTypeFace: Internal field used for exposing FreeType font handles.
@@ -597,7 +597,7 @@ FreeTypeFace: Internal field used for exposing FreeType font handles.
 This internal field is intended for use by code published in the standard distribution only.  It exposes the handle for
 a font that has been loaded by the FreeType library (FT_Face).
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_FreeTypeFace(extFont *Self, APTR *Handle)
 {
@@ -606,7 +606,7 @@ static ERROR GET_FreeTypeFace(extFont *Self, APTR *Handle)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Gutter: The 'external leading' value, measured in pixels.  Applies to fixed fonts only.
@@ -649,7 +649,7 @@ Italic: Set to TRUE to enable italic styling.
 Setting the Italic field to TRUE prior to initialisation will enable italic styling.  This field is provided for
 convenience only - we recommend that you set the Style field for determining font styling where possible.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Italic(extFont *Self, LONG *Value)
 {
@@ -671,7 +671,7 @@ static ERROR SET_Italic(extFont *Self, LONG Value)
    else return SET_Style(Self, "Italic");
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Leading: 'Internal leading' measured in pixels.  Applies to fixed fonts only.
@@ -682,7 +682,7 @@ LineCount: The total number of lines in a font string.
 This field indicates the number of lines that are present in a font's String field.  If word wrapping is enabled, this
 will be taken into account in the resulting figure.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_LineCount(extFont *Self, LONG *Value)
 {
@@ -691,7 +691,7 @@ static ERROR GET_LineCount(extFont *Self, LONG *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 LineSpacing: The amount of spacing between each line.
@@ -712,7 +712,7 @@ in opposition to the normal practice of loading fonts that are installed on the 
 
 This feature is ideal for use when distributing custom fonts with an application.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Path(extFont *Self, CSTRING Value)
 {
@@ -724,7 +724,7 @@ static ERROR SET_Path(extFont *Self, CSTRING Value)
    else return ERR_Failed;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 MaxHeight: The maximum possible pixel height per character.
@@ -741,7 +741,7 @@ Bitmap.  High values will retain the boldness of the font, while low values can 
 
 Please note that the use of translucency will always have an impact on the time it normally takes to draw a font.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Opacity(extFont *Self, DOUBLE *Value)
 {
@@ -757,7 +757,7 @@ static ERROR SET_Opacity(extFont *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Outline: Defines the outline colour around a font.
@@ -787,7 +787,7 @@ When setting the point size of a bitmap font, the system will try and find the c
 point size.  For instance, if you request a fixed font at point 11 and the closest size is point 8, the system will
 drop the font to point 8.  This does not impact upon scalable fonts, which can be measured to any point size.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Point(extFont *Self, Variable *Value)
 {
@@ -831,7 +831,7 @@ static ERROR SET_Point(extFont *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 String: The string to use when drawing a Font.
@@ -843,7 +843,7 @@ the next line).  Drawing will stop when the null termination character is reache
 If a string contains characters that are not supported by a font, those characters will be printed using a default
 character from the font.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_String(extFont *Self, CSTRING Value)
 {
@@ -875,7 +875,7 @@ static ERROR SET_String(extFont *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 StrokeSize: The strength of stroked outlines is defined here.
@@ -904,7 +904,7 @@ Conventional font styles are `Bold`, `Bold Italic`, `Italic` and `Regular` (the 
 of any style that the designer chooses, such as `Narrow` or `Wide`, so use ~Font.GetList() to retrieve available style
 names.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Style(extFont *Self, CSTRING Value)
 {
@@ -913,12 +913,12 @@ static ERROR SET_Style(extFont *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Tabs: Private. Not implemented.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Tabs(extFont *Self, WORD **Tabs, LONG *Elements)
 {
@@ -942,7 +942,7 @@ static ERROR SET_Tabs(extFont *Self, WORD *Tabs, LONG Elements)
    else return ERR_AllocMemory;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 TabSize: Defines the tab size to use when drawing and manipulating a font string.
@@ -984,7 +984,7 @@ Width: Returns the pixel width of a string.
 Read this virtual field to obtain the pixel width of a font string.  You must have already set a string in the font for
 this to work, or a width of zero will be returned.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Width(extFont *Self, LONG *Value)
 {
@@ -1004,7 +1004,7 @@ static ERROR GET_Width(extFont *Self, LONG *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 WrapCallback: The routine defined here will be called when the wordwrap boundary is encountered.
@@ -1051,7 +1051,7 @@ value.  Reading that value from this field and adding it to the Y field will giv
 the string will be drawn.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_YOffset(extFont *Self, LONG *Value)
 {
@@ -1070,7 +1070,7 @@ static ERROR GET_YOffset(extFont *Self, LONG *Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // For use by draw_vector_font() only.
 
 static void draw_vector_outline(extFont *Self, objBitmap *Bitmap, font_glyph *src, LONG dxcoord, LONG dycoord, const RGB8 *Colour)
@@ -1148,7 +1148,7 @@ static void draw_vector_outline(extFont *Self, objBitmap *Bitmap, font_glyph *sr
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR draw_vector_font(extFont *Self)
 {
@@ -1447,7 +1447,7 @@ static ERROR draw_vector_font(extFont *Self)
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // All resources that are allocated in this routine must be untracked.
 // Assumes a cache lock is held on being called.
 
@@ -1529,7 +1529,7 @@ static ERROR cache_truetype_font(extFont *Self, CSTRING Path)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR generate_vector_outline(extFont *Self, font_glyph *Glyph)
 {
@@ -1572,7 +1572,7 @@ static ERROR generate_vector_outline(extFont *Self, font_glyph *Glyph)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This function is used to generate and cache the glyphs as bitmaps.  If the requested unicode value is not recognised
 // by the font, the default character glyph is used.  Caching is performed locally, i.e. to the font object and not
 // system wide.
@@ -1714,7 +1714,7 @@ static font_glyph * get_glyph(extFont *Self, ULONG Unicode, bool GetBitmap)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR draw_bitmap_font(extFont *Self)
 {
@@ -2094,7 +2094,7 @@ static ERROR draw_bitmap_font(extFont *Self)
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void unload_glyph_cache(extFont *Font)
 {

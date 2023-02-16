@@ -1,10 +1,10 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -CLASS-
 Time: Simplifies the management of date/time information.
@@ -18,7 +18,7 @@ is, a millisecond is 1/1000th (one thousandth) of a second, a microsecond is 1/1
 To get the current system time, use the #Query() action.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include "../defs.h"
 #include <parasol/main.h>
@@ -39,11 +39,11 @@ static ERROR GET_TimeStamp(objTime *, LARGE *);
 static ERROR TIME_Query(objTime *, APTR);
 static ERROR TIME_SetTime(objTime *, APTR);
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Query: Updates the values in a time object with the current system date and time.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TIME_Query(objTime *Self, APTR Void)
 {
@@ -96,7 +96,7 @@ static ERROR TIME_Query(objTime *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SetTime: Apply the time to the system clock.
@@ -105,7 +105,7 @@ This method will apply the time object's values to the BIOS.  Depending on the h
 work if the user is logged in as the administrator.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TIME_SetTime(objTime *Self, APTR Void)
 {
@@ -164,7 +164,7 @@ static ERROR TIME_SetTime(objTime *Self, APTR Void)
 #endif
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Day: Day (1 - 31)
@@ -209,7 +209,7 @@ convenient for summarising a time value for comparison with other time stamps, o
 
 The TimeStamp is dynamically calculated when you read this field.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_TimeStamp(objTime *Self, LARGE *Value)
 {
@@ -227,11 +227,11 @@ static ERROR GET_TimeStamp(objTime *Self, LARGE *Value)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Year: Year (-ve for BC, +ve for AD).
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static const FieldArray TimeFields[] = {
    { "SystemTime",   FDF_LARGE|FDF_RW, 0, 0, 0 },
@@ -261,7 +261,7 @@ static const MethodArray TimeMethods[] = {
    { 0, NULL, NULL }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 extern "C" ERROR add_time_class(void)
 {

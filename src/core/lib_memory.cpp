@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The memory functions use stdlib.h malloc() and free() to get the memory on Linux.  This can be changed according to the
 particular platform.  Where possible it is best to call the host platform's own memory management functions.
@@ -7,7 +7,7 @@ particular platform.  Where possible it is best to call the host platform's own 
 Name: Memory
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include <stdlib.h> // Contains free(), malloc() etc
 
@@ -63,7 +63,7 @@ INLINE void set_publicmem_lock(PublicAddress *Address)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 // This function is called whenever memory blocks are freed.  It is useful for debugging applications that are
 // suspected to be using memory blocks after they have been deallocated.  Copies '0xdeadbeef' so that it's obvious.
 
@@ -80,7 +80,7 @@ static void randomise_memory(UBYTE *Address, ULONG Size)
 }
 #endif
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 AllocMemory: Allocates a new memory block on the heap.
@@ -91,8 +91,7 @@ Here is an example:
 
 <pre>
 APTR address;
-
-if (!AllocMemory(1000, MEM_DATA, &address)) {
+if (!AllocMemory(1000, MEM_DATA, &address, NULL)) {
    ...
    FreeResource(address);
 }
@@ -102,18 +101,17 @@ A number of flag definitions are available that affect the memory allocation pro
 
 <types lookup="MEM"/>
 
-You will notice that you have the option of receiving the memory allocation as an address pointer and/or as a unique
-memory ID.  When allocating private memory, you can generally just accept an address result and drive the ID
-argument to NULL.  However when allocating public memory, you should always retrieve the ID, and optionally the
-Address pointer if you need immediate access to the block.
+Notice that memory allocation can be returned as an address pointer and/or as a unique memory ID.  Typically a private
+address with no ID reference is sufficient.  However when allocating public memory, the ID is essential and optionally
+the Address pointer to gain immediate access to the block.
 
-If the block is allocated as private and you retrieve both the ID and Address pointer, or if the allocation is
-public and you choose to retrieve the Address pointer, an internal call will be made to ~AccessMemory() to
-lock the memory block and resolve its address.  This means that before freeing the memory block, you must make a call
-to the ~ReleaseMemory() function to remove the lock, or it will remain in memory till your Task is terminated.
+If the block is allocated as private and the caller retrieves both the ID and Address pointer, or if the allocation is
+public and the Address pointer is requested, an internal call will be made to ~AccessMemoryID() to lock the memory
+block and resolve its address.  This means that before freeing the memory block the caller must call ~ReleaseMemory()
+to unlock it.  Blocks that are persistently locked will remain in memory until the process is terminated.
 
 Memory that is allocated through AllocMemory() is automatically cleared with zero-byte values.  When allocating large
-blocks it may be wise to turn off this feature - you can do this by setting the MEM_NO_CLEAR flag.
+blocks it may be wise to turn off this feature, achieved by setting the `MEM_NO_CLEAR` flag.
 
 -INPUT-
 int Size:     The size of the memory block.
@@ -132,7 +130,7 @@ AccessMemory:   The block was allocated but access to it was not granted, causin
 ResourceExists: This error is returned if MEM_RESERVED was used and the memory block ID was found to already exist.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
 {
@@ -166,7 +164,6 @@ ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
 
    if (Flags & MEM_HIDDEN)         object_id = 0;
    else if (Flags & MEM_UNTRACKED) object_id = 0;
-   else if (Flags & MEM_TASK)      object_id = glCurrentTask->UID;
    else if (Flags & MEM_CALLER) {
       // Rarely used, but this feature allows methods to return memory that is tracked to the caller.
       if (tlContext->Stack) object_id = tlContext->Stack->resource()->UID;
@@ -506,7 +503,7 @@ retry:
 
          if ((MemoryID) and (Address)) {
             if (Flags & MEM_NO_LOCK) *Address = data_start;
-            else if (AccessMemory(unique_id, MEM_READ_WRITE, 2000, Address) != ERR_Okay) {
+            else if (AccessMemoryID(unique_id, MEM_READ_WRITE, 2000, Address) != ERR_Okay) {
                log.warning("Memory block %d stolen during allocation!", *MemoryID);
                return ERR_AccessMemory;
             }
@@ -527,7 +524,7 @@ retry:
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 CheckMemoryExists: Checks if a memory block still exists.
@@ -544,7 +541,7 @@ NullArgs:
 SystemCorrupt: The internal memory tables are corrupt.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR CheckMemoryExists(MEMORYID MemoryID)
 {
@@ -574,18 +571,22 @@ ERROR CheckMemoryExists(MEMORYID MemoryID)
    return ERR_False;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 FreeResource: Frees private memory blocks allocated from AllocMemory().
 
-This function frees memory areas allocated from ~AllocMemory().  Crash protection is incorporated into
-various areas of this function. If the memory header or tail is missing from the block, then it is assumed that a
-routine has has over-written the memory boundaries, or you are attempting to free a non-existent allocation.
-Such problems are immediately reported to the system debugger and warrant priority attention.
+This function will free a memory block originating from ~AllocMemory().
 
-This function only works with private memory blocks.  To free a public memory block, use the ~FreeResourceID()
-function instead.
+The process of freeing the block will not necessarily take place immediately.  If the block is locked then
+it will be marked for deletion and not removed until the lock count reaches zero.
+
+Crash protection measures are built-in.  If the memory header or tail is missing from the block, it is assumed that a
+routine has has over-written the memory boundaries, or the caller is attempting to free a non-existent allocation.
+Double-freeing can be caught but is not guaranteed.  Freeing memory blocks that are out of scope will result in
+a warning.  All caught errors are reported to the application log and warrant priority attention.
+
+This function is for private memory blocks only.  To free a public memory block, use ~FreeResourceID().
 
 -INPUT-
 cptr Address: Points to the start of a memory block to be freed.
@@ -596,7 +597,7 @@ NullArgs:
 Memory: The supplied memory address is not a recognised memory block.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR FreeResource(const void *Address)
 {
@@ -688,15 +689,16 @@ ERROR FreeResource(const void *Address)
    else return ERR_LockFailed;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
-FreeResourceID: Frees public memory blocks allocated from AllocMemory().
+FreeResourceID: Frees memory blocks allocated from AllocMemory().
 
-When a public memory block is no longer required it can be freed from the system with this function.  The action of
-freeing the block will not necessarily take place immediately - if another task is using the block for example,
-deletion cannot occur for safety reasons.  In this case the block will be marked for deletion and removed once all
-tasks have released it.
+This function will free a memory block with the ID as the identifier.  It is a requirement that public memory blocks
+are terminated with this function.
+
+The process of freeing the block will not necessarily take place immediately.  If the block is locked then
+it will be marked for deletion and not removed until the lock count reaches zero.
 
 -INPUT-
 mem ID: The unique ID of the memory block.
@@ -708,7 +710,7 @@ MemoryDoesNotExist
 LockFailed: Failed to lock the public memory controller.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR FreeResourceID(MEMORYID MemoryID)
 {
@@ -859,42 +861,7 @@ ERROR FreeResourceID(MEMORYID MemoryID)
    return ERR_MemoryDoesNotExist;
 }
 
-/*****************************************************************************
-
--FUNCTION-
-GetMemAddress: Returns the address of private memory blocks identified by ID.
-
-The GetMemAddress() function provides a fast method for obtaining the address of private memory blocks when only the
-memory ID is known.  It may also be used to check the validity of private memory blocks as it will return NULL if
-the memory block no longer exists.
-
-This function does not work on public memory blocks (identified as negative integers).  Use ~AccessMemory()
-for resolving public memory addresses.
-
--INPUT-
-mem ID: Reference to a private memory ID.
-
--RESULT-
-ptr: Returns the address of the memory ID, or NULL if the ID does not refer to a private memory block.
--END-
-
-*****************************************************************************/
-
-APTR GetMemAddress(MEMORYID MemoryID)
-{
-   if (MemoryID > 0) {
-      ThreadLock lock(TL_PRIVATE_MEM, 4000);
-      if (lock.granted()) {
-         auto mem = glPrivateMemory.find(MemoryID);
-         if (mem != glPrivateMemory.end()) {
-            return mem->second.Address;
-         }
-      }
-   }
-   return NULL;
-}
-
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 MemoryIDInfo: Returns information on memory ID's.
@@ -904,9 +871,9 @@ the start address, parent object, memory ID, size and flags of the memory block 
 code segment illustrates correct use of this function:
 
 <pre>
-struct MemInfo info;
+MemInfo info;
 if (!MemoryIDInfo(memid, &info)) {
-   LogMsg("Memory block #%d is %d bytes large.", info.MemoryID, info.Size);
+   log.msg("Memory block #%d is %d bytes large.", info.MemoryID, info.Size);
 }
 </pre>
 
@@ -925,7 +892,7 @@ MemoryDoesNotExist
 SystemCorrupt: Internal memory tables are corrupt.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR MemoryIDInfo(MEMORYID MemoryID, struct MemInfo *MemInfo, LONG Size)
 {
@@ -976,7 +943,7 @@ ERROR MemoryIDInfo(MEMORYID MemoryID, struct MemInfo *MemInfo, LONG Size)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 MemoryPtrInfo: Returns information on memory addresses.
@@ -986,9 +953,9 @@ the start address, parent object, memory ID, size and flags of the memory addres
 following code segment illustrates correct use of this function:
 
 <pre>
-struct MemInfo info;
+MemInfo info;
 if (!MemoryPtrInfo(ptr, &info)) {
-   LogMsg("Address %p is %d bytes large.", info.Start, info.Size);
+   log.msg("Address %p is %d bytes large.", info.Start, info.Size);
 }
 </pre>
 
@@ -1008,7 +975,7 @@ Okay
 NullArgs
 MemoryDoesNotExist
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR MemoryPtrInfo(APTR Memory, struct MemInfo *MemInfo, LONG Size)
 {
@@ -1088,7 +1055,7 @@ ERROR MemoryPtrInfo(APTR Memory, struct MemInfo *MemInfo, LONG Size)
    return ERR_MemoryDoesNotExist;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ReallocMemory: Reallocates memory blocks.
@@ -1118,7 +1085,7 @@ AllocMemory
 Memory: The memory block to be re-allocated is invalid.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR ReallocMemory(APTR Address, LONG NewSize, APTR *Memory, MEMORYID *MemoryID)
 {
@@ -1174,7 +1141,7 @@ ERROR ReallocMemory(APTR Address, LONG NewSize, APTR *Memory, MEMORYID *MemoryID
    else return log.error(ERR_AllocMemory);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Compresses the public memory table, keeping it in the correct record order.
 
 static void compress_public_memory(SharedControl *Control)
@@ -1197,7 +1164,7 @@ static void compress_public_memory(SharedControl *Control)
    Control->NextBlock = i;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** This function works on the principle that the glSharedBlocks memory array is sorted by the address offset.  This
 ** function is known to be utilised by ReleaseMemory() and MemoryPtrInfo().
 **
@@ -1270,7 +1237,7 @@ LONG find_public_address(SharedControl *Control, APTR Address)
    return -1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Internal function to set the manager for an allocated resource.  Note: At this stage managed resources are not to
 // be exposed in the published API.
 
@@ -1280,7 +1247,7 @@ void set_memory_manager(APTR Address, ResourceManager *Manager)
    address_mgr[0] = Manager;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Finds public memory blocks via ID.  For thread safety, this function should be called within a lock_private_memory() zone.
 
 ERROR find_public_mem_id(SharedControl *Control, MEMORYID MemoryID, LONG *EntryPos)
@@ -1312,7 +1279,7 @@ ERROR find_public_mem_id(SharedControl *Control, MEMORYID MemoryID, LONG *EntryP
    return ERR_MemoryDoesNotExist;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Returns the address of a public block that has been *mapped*.  If not mapped, then NULL is returned.
 
 APTR resolve_public_address(PublicAddress *Block)

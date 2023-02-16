@@ -210,7 +210,7 @@ GLOBAL(JDIMENSION) jpeg_read_raw_data (j_decompress_ptr cinfo, JSAMPIMAGE data, 
 
 #ifdef D_MULTISCAN_FILES_SUPPORTED
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Initialize for an output pass in buffered-image mode.
 */
 

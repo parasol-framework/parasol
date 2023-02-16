@@ -5,7 +5,7 @@
   <info>
     <name>Core</name>
     <type>module</type>
-    <copyright>Paul Manias 1996-2022</copyright>
+    <copyright>Paul Manias 1996-2023</copyright>
     <classes>
       <class>CompressedStream</class>
       <class>Compression</class>
@@ -35,10 +35,10 @@
   </info>
 
   <function>
-    <name>AccessMemory</name>
+    <name>AccessMemoryID</name>
     <category>Memory</category>
     <comment>Grants access to public memory blocks.</comment>
-    <prototype>ERROR AccessMemory(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR * Result)</prototype>
+    <prototype>ERROR AccessMemoryID(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR * Result)</prototype>
     <input>
       <param type="MEMORYID" name="Memory">The ID of the memory block that you want to access.</param>
       <param type="LONG" name="Flags" lookup="MEM">Set to MEM_READ, MEM_WRITE or MEM_READ_WRITE according to your requirements.</param>
@@ -46,7 +46,7 @@
       <param type="APTR *" name="Result">Must point to an APTR variable that will store the resolved address.</param>
     </input>
     <description>
-<p>The AccessMemory() function is used to page public memory blocks into the caller's memory space.  If the target block is available, a valid address pointer will be returned that can be used for direct read/write operations.  For convenience, this function may also be used to resolve the memory addresses of private memory block IDs.</p>
+<p>The AccessMemoryID() function is used to page public memory blocks into the caller's memory space.  If the target block is available, a valid address pointer will be returned that can be used for direct read/write operations.  For convenience, this function may also be used to resolve the memory addresses of private memory block IDs.</p>
 <p>Public memory blocks should never be locked for extended periods of time.  Ensure that all locks are matched with a call to <function module="Core">ReleaseMemory</function> within the same code block.</p>
 <p>The resulting address is specific to the caller's process and is not transferable to other running processes.</p>
     </description>
@@ -65,20 +65,20 @@
   </function>
 
   <function>
-    <name>AccessObject</name>
+    <name>AccessObjectID</name>
     <category>Objects</category>
-    <comment>Grants exclusive access to public objects.</comment>
-    <prototype>ERROR AccessObject(OBJECTID Object, LONG MilliSeconds, OBJECTPTR * Result)</prototype>
+    <comment>Grants exclusive access to objects via unique ID.</comment>
+    <prototype>ERROR AccessObjectID(OBJECTID Object, LONG MilliSeconds, OBJECTPTR * Result)</prototype>
     <input>
       <param type="OBJECTID" name="Object">The unique ID of the target object.</param>
       <param type="LONG" name="MilliSeconds">The limit in milliseconds before a timeout occurs.  The maximum limit is 60000, and 100 is recommended.</param>
       <param type="OBJECTPTR *" name="Result">A pointer storage variable that will store the resulting object address.</param>
     </input>
     <description>
-<p>This function resolves an object ID to its address and acquires a lock on the object so that other processes and threads cannot use it simultaneously.</p>
-<p>If the object is already locked, it will wait until the object becomes available.   This must occur within the amount of time specified in the Milliseconds parameter.  If the time expires, the function will return with an ERR_TimeOut error code.  If successful, ERR_Okay is returned and a reference to the object's address is stored in the Result variable.</p>
-<p>It is crucial that calls to AccessObject() are followed with a call to <function module="Core">ReleaseObject</function> once the lock is no longer required.  Calls to AccessObject() will also nest, so they must be paired with <function module="Core">ReleaseObject</function> correctly.</p>
-<p>If AccessObject() fails, the Result variable will be automatically set to a NULL pointer on return.</p>
+<p>This function resolves an object ID to its address and acquires a lock on the object so that other threads cannot use it simultaneously.</p>
+<p>If the object is already locked, it will wait until the object becomes available.   This must occur within the amount of time specified in the Milliseconds parameter.  If the time expires, the function will return with an <code>ERR_TimeOut</code> error code.  If successful, <code>ERR_Okay</code> is returned and a reference to the object's address is stored in the Result variable.</p>
+<p>It is crucial that calls to AccessObjectID() are followed with a call to <function module="Core">ReleaseObject</function> once the lock is no longer required.  Calls to AccessObjectID() will also nest, so they must be paired with <function module="Core">ReleaseObject</function> correctly.</p>
+<p>If AccessObjectID() fails, the Result variable will be automatically set to a NULL pointer on return.</p>
 <p>Hint: If the name of the target object is known but not the ID, use <function module="Core">FindObject</function> to resolve it.</p>
     </description>
     <result type="ERROR">
@@ -87,28 +87,6 @@
       <error code="MarkedForDeletion">A resource cannot be accessed as it is marked for deletion.</error>
       <error code="MissingClass">The class could not be found in the system.</error>
       <error code="NoMatchingObject">No matching object was found for the given object ID.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
-    <name>AccessPrivateObject</name>
-    <category>Objects</category>
-    <comment>Lock an object to prevent contention between threads.</comment>
-    <prototype>ERROR AccessPrivateObject(OBJECTPTR Object, LONG MilliSeconds)</prototype>
-    <input>
-      <param type="OBJECTPTR" name="Object">The address of the object to lock.</param>
-      <param type="LONG" name="MilliSeconds">The total number of milliseconds to wait before giving up.  If -1, the function will wait indefinitely.</param>
-    </input>
-    <description>
-<p>Use AccessPrivateObject() to gain exclusivity to an object at thread-level.  This function provides identical behaviour to that of <function module="Core">AccessObject</function>, but with a slight speed advantage as the object ID does not need to be resolved to an address.  Calls to AccessPrivateObject() will nest, and must be matched with a call to <function module="Core">ReleaseObject</function> to unlock the object.</p>
-<p>If it is guaranteed that an object is not being shared between threads, there is no need to acquire a lock via this function.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="TimeOut">Function timed-out before successful completion.</error>
-      <error code="MarkedForDeletion">A resource cannot be accessed as it is marked for deletion.</error>
-      <error code="SystemLocked">Part of the system is unreachable due to a persistent lock.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -315,17 +293,16 @@ struct FunctionField argsResize[] = {
 <p>The AllocMemory() function will allocate a new block of memory on the program's heap.  The client will need to define the minimum byte Size, optional Flags and a variable to store the resulting Address and/or ID of the memory block. Here is an example:</p>
 <pre>
 APTR address;
-
-if (!AllocMemory(1000, MEM_DATA, &amp;address)) {
+if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
    ...
    FreeResource(address);
 }
 </pre>
 <p>A number of flag definitions are available that affect the memory allocation process.  They are:</p>
 <types lookup="MEM"/>
-<p>You will notice that you have the option of receiving the memory allocation as an address pointer and/or as a unique memory ID.  When allocating private memory, you can generally just accept an address result and drive the ID argument to NULL.  However when allocating public memory, you should always retrieve the ID, and optionally the Address pointer if you need immediate access to the block.</p>
-<p>If the block is allocated as private and you retrieve both the ID and Address pointer, or if the allocation is public and you choose to retrieve the Address pointer, an internal call will be made to <function module="Core">AccessMemory</function> to lock the memory block and resolve its address.  This means that before freeing the memory block, you must make a call to the <function module="Core">ReleaseMemory</function> function to remove the lock, or it will remain in memory till your Task is terminated.</p>
-<p>Memory that is allocated through AllocMemory() is automatically cleared with zero-byte values.  When allocating large blocks it may be wise to turn off this feature - you can do this by setting the MEM_NO_CLEAR flag.</p>
+<p>Notice that memory allocation can be returned as an address pointer and/or as a unique memory ID.  Typically a private address with no ID reference is sufficient.  However when allocating public memory, the ID is essential and optionally the Address pointer to gain immediate access to the block.</p>
+<p>If the block is allocated as private and the caller retrieves both the ID and Address pointer, or if the allocation is public and the Address pointer is requested, an internal call will be made to <function module="Core">AccessMemoryID</function> to lock the memory block and resolve its address.  This means that before freeing the memory block the caller must call <function module="Core">ReleaseMemory</function> to unlock it.  Blocks that are persistently locked will remain in memory until the process is terminated.</p>
+<p>Memory that is allocated through AllocMemory() is automatically cleared with zero-byte values.  When allocating large blocks it may be wise to turn off this feature, achieved by setting the <code>MEM_NO_CLEAR</code> flag.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -803,8 +780,10 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
       <param type="const void *" name="Address">Points to the start of a memory block to be freed.</param>
     </input>
     <description>
-<p>This function frees memory areas allocated from <function module="Core">AllocMemory</function>.  Crash protection is incorporated into various areas of this function. If the memory header or tail is missing from the block, then it is assumed that a routine has has over-written the memory boundaries, or you are attempting to free a non-existent allocation. Such problems are immediately reported to the system debugger and warrant priority attention.</p>
-<p>This function only works with private memory blocks.  To free a public memory block, use the <function module="Core">FreeResourceID</function> function instead.</p>
+<p>This function will free a memory block originating from <function module="Core">AllocMemory</function>.</p>
+<p>The process of freeing the block will not necessarily take place immediately.  If the block is locked then it will be marked for deletion and not removed until the lock count reaches zero.</p>
+<p>Crash protection measures are built-in.  If the memory header or tail is missing from the block, it is assumed that a routine has has over-written the memory boundaries, or the caller is attempting to free a non-existent allocation. Double-freeing can be caught but is not guaranteed.  Freeing memory blocks that are out of scope will result in a warning.  All caught errors are reported to the application log and warrant priority attention.</p>
+<p>This function is for private memory blocks only.  To free a public memory block, use <function module="Core">FreeResourceID</function>.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -816,13 +795,14 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
   <function>
     <name>FreeResourceID</name>
     <category>Memory</category>
-    <comment>Frees public memory blocks allocated from AllocMemory().</comment>
+    <comment>Frees memory blocks allocated from AllocMemory().</comment>
     <prototype>ERROR FreeResourceID(MEMORYID ID)</prototype>
     <input>
       <param type="MEMORYID" name="ID">The unique ID of the memory block.</param>
     </input>
     <description>
-<p>When a public memory block is no longer required it can be freed from the system with this function.  The action of freeing the block will not necessarily take place immediately - if another task is using the block for example, deletion cannot occur for safety reasons.  In this case the block will be marked for deletion and removed once all tasks have released it.</p>
+<p>This function will free a memory block with the ID as the identifier.  It is a requirement that public memory blocks are terminated with this function.</p>
+<p>The process of freeing the block will not necessarily take place immediately.  If the block is locked then it will be marked for deletion and not removed until the lock count reaches zero.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -1037,21 +1017,6 @@ GetFields(screen,
       <error code="UnsupportedField">The specified field is not supported by the object's class.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
-  </function>
-
-  <function>
-    <name>GetMemAddress</name>
-    <category>Memory</category>
-    <comment>Returns the address of private memory blocks identified by ID.</comment>
-    <prototype>APTR GetMemAddress(MEMORYID ID)</prototype>
-    <input>
-      <param type="MEMORYID" name="ID">Reference to a private memory ID.</param>
-    </input>
-    <description>
-<p>The GetMemAddress() function provides a fast method for obtaining the address of private memory blocks when only the memory ID is known.  It may also be used to check the validity of private memory blocks as it will return NULL if the memory block no longer exists.</p>
-<p>This function does not work on public memory blocks (identified as negative integers).  Use <function module="Core">AccessMemory</function> for resolving public memory addresses.</p>
-    </description>
-    <result type="APTR">Returns the address of the memory ID, or NULL if the ID does not refer to a private memory block.</result>
   </function>
 
   <function>
@@ -1345,6 +1310,29 @@ end
   </function>
 
   <function>
+    <name>LockObject</name>
+    <category>Objects</category>
+    <comment>Lock an object to prevent contention between threads.</comment>
+    <prototype>ERROR LockObject(OBJECTPTR Object, LONG MilliSeconds)</prototype>
+    <input>
+      <param type="OBJECTPTR" name="Object">The address of the object to lock.</param>
+      <param type="LONG" name="MilliSeconds">The total number of milliseconds to wait before giving up.  If -1, the function will wait indefinitely.</param>
+    </input>
+    <description>
+<p>Use LockObject() to gain exclusivity to an object at thread-level.  This function provides identical behaviour to that of <function module="Core">AccessObjectID</function>, but with a slight speed advantage as the object ID does not need to be resolved to an address.  Calls to LockObject() will nest, and must be matched with a call to <function module="Core">ReleaseObject</function> to unlock the object.</p>
+<p>Be aware that while this function is faster than <function module="Core">AccessObjectID</function>, its use may be considered unsafe if other threads could terminate the object without a suitable barrier in place.</p>
+<p>If it is guaranteed that an object is not being shared between threads, object locking is unnecessary.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="TimeOut">Function timed-out before successful completion.</error>
+      <error code="MarkedForDeletion">A resource cannot be accessed as it is marked for deletion.</error>
+      <error code="SystemLocked">Part of the system is unreachable due to a persistent lock.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
     <name>LockSharedMutex</name>
     <category>Locks</category>
     <comment>Acquire a lock on a shared mutex.</comment>
@@ -1376,9 +1364,9 @@ end
     </input>
     <description>
 <p>This function can be used to get special details on the attributes of a memory block.  It will return information on the start address, parent object, memory ID, size and flags of the memory block that you are querying.  The following code segment illustrates correct use of this function:</p>
-<pre>struct MemInfo info;
+<pre>MemInfo info;
 if (!MemoryIDInfo(memid, &amp;info)) {
-   LogMsg("Memory block #%d is %d bytes large.", info.MemoryID, info.Size);
+   log.msg("Memory block #%d is %d bytes large.", info.MemoryID, info.Size);
 }
 </pre>
 <p>If the call to MemoryIDInfo() fails, the MemInfo structure's fields will be driven to NULL and an error code will be returned.</p>
@@ -1404,9 +1392,9 @@ if (!MemoryIDInfo(memid, &amp;info)) {
     </input>
     <description>
 <p>This function can be used to get details on the attributes of a memory block.  It will return information on the start address, parent object, memory ID, size and flags of the memory address that you are querying.  The following code segment illustrates correct use of this function:</p>
-<pre>struct MemInfo info;
+<pre>MemInfo info;
 if (!MemoryPtrInfo(ptr, &amp;info)) {
-   LogMsg("Address %p is %d bytes large.", info.Start, info.Size);
+   log.msg("Address %p is %d bytes large.", info.Start, info.Size);
 }
 </pre>
 <p>If the call to MemoryPtrInfo() fails then the MemInfo structure's fields will be driven to NULL and an error code will be returned.</p>
@@ -1465,8 +1453,8 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     </input>
     <description>
 <p>The NewObject() function is used to create new objects and register them for use within the Core.  After creating a new object, the client can proceed to set the object's field values and initialise it with <action>Init</action> so that it can be used as intended.</p>
-<p>The new object will be modeled according to the class blueprint indicated by ClassID.  Pre-defined class ID's are defined in the <code>parasol/system/register.h</code> include file and a complete list of known classes is available in the Class Index Guide.  ID's for unregistered classes can be found dynamically by using the <function module="Core">ResolveClassName</function> function.</p>
-<p>A pointer to the new object will be returned in the Object parameter.  By default, new objects are always owned by the object that holds the current context.  It is possible to track a new object to a different owner by using the <function module="Core">SetOwner</function> function after calling NewObject().</p>
+<p>The new object will be modeled according to the class blueprint indicated by ClassID.  Pre-defined class ID's are defined in their documentation and the <code>parasol/system/register.h</code> include file.  ID's for unregistered classes can be computed using the <function module="Core">ResolveClassName</function> function.</p>
+<p>A pointer to the new object will be returned in the Object parameter.  By default, object allocations are context sensitive and will be collected when their owner is terminated.  It is possible to track an object to a different owner by using the <function module="Core">SetOwner</function> function.</p>
 <p>To destroy an object, use the <action>Free</action> action.</p>
     </description>
     <result type="ERROR">
@@ -1662,7 +1650,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <param type="APTR" name="Address">Pointer to the memory address that you want to release.</param>
     </input>
     <description>
-<p>Successful calls to <function module="Core">AccessMemory</function> must be paired with a call to ReleaseMemory or <function module="Core">ReleaseMemoryID</function> so that the memory can be made available to other processes.  By releasing the memory, the access count will decrease, and if applicable, a process that is in the queue for access may then be able to gain a lock.</p>
+<p>Successful calls to <function module="Core">AccessMemoryID</function> must be paired with a call to ReleaseMemory or <function module="Core">ReleaseMemoryID</function> so that the memory can be made available to other processes.  By releasing the memory, the access count will decrease, and if applicable, a process that is in the queue for access may then be able to gain a lock.</p>
     </description>
     <result type="MEMORYID">Returns the memory ID of the block that was released, or zero if an error occurred.</result>
   </function>
@@ -1676,7 +1664,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <param type="MEMORYID" name="MemoryID">A reference to a memory block for release.</param>
     </input>
     <description>
-<p>Successful calls to <function module="Core">AccessMemory</function> must be paired with a call to <function module="Core">ReleaseMemory</function> or ReleaseMemoryID so that the memory can be made available to other processes.  By releasing the memory, the access count will decrease, and if applicable, a process that is in the queue for access may then be able to gain a lock.</p>
+<p>Successful calls to <function module="Core">AccessMemoryID</function> must be paired with a call to <function module="Core">ReleaseMemory</function> or ReleaseMemoryID so that the memory can be made available to other processes.  By releasing the memory, the access count will decrease, and if applicable, a process that is in the queue for access may then be able to gain a lock.</p>
 <p>This function is both faster and safer than the <function module="Core">ReleaseMemory</function> function.</p>
     </description>
     <result type="ERROR">
@@ -1694,7 +1682,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <param type="OBJECTPTR" name="Object">Pointer to the object to be released.</param>
     </input>
     <description>
-<p>Release a lock previously obtained from <function module="Core">AccessObject</function> or <function module="Core">AccessPrivateObject</function>.  Locks will nest, so a release is required for every lock that has been granted.</p>
+<p>Release a lock previously obtained from <function module="Core">AccessObjectID</function> or <function module="Core">LockObject</function>.  Locks will nest, so a release is required for every lock that has been granted.</p>
     </description>
   </function>
 
@@ -1796,10 +1784,10 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     </input>
     <description>
 <p>The ScanDir() function is used to scan for files and folders in a folder that you have opened using the <function module="Core">OpenDir</function> function. The ScanDir() function is intended to be used in a simple loop, returning a single item for each function call that you make.  The following code sample illustrates typical usage:</p>
-<pre>struct DirInfo *info;
+<pre>DirInfo *info;
 if (!OpenDir(path, RDF_FILE|RDF_FOLDER, &amp;info)) {
    while (!ScanDir(info)) {
-      LogMsg("File: %s", info-&gt;Name);
+      log.msg("File: %s", info-&gt;Name);
    }
    FreeResource(info);
 }
@@ -1821,16 +1809,16 @@ if (!OpenDir(path, RDF_FILE|RDF_FOLDER, &amp;info)) {
     <comment>Scans a message queue for multiple occurrences of a message type.</comment>
     <prototype>ERROR ScanMessages(APTR Queue, LONG * Index, LONG Type, APTR Buffer, LONG Size)</prototype>
     <input>
-      <param type="APTR" name="Queue">An address pointer for a message queue (use AccessMemory() to get an address from a message queue ID).</param>
+      <param type="APTR" name="Queue">An address pointer for a message queue (use AccessMemoryID() to get an address from a message queue ID).</param>
       <param type="LONG *" name="Index">Pointer to a 32-bit value that must initially be set to zero.  The ScanMessages() function will automatically update this variable with each call so that it can remember its analysis position.</param>
       <param type="LONG" name="Type">The message type to filter for, or zero to scan all messages in the queue.</param>
       <param type="APTR" name="Buffer">Pointer to a buffer that is large enough to hold the message information.  Set to NULL if you are not interested in the message data.</param>
       <param type="LONG" name="Size">The byte-size of the supplied Buffer.</param>
     </input>
     <description>
-<p>Use the ScanMessages() function to scan a message queue for information without affecting the state of the queue.  To use this function, you need to establish a connection to the queue by using the <function module="Core">AccessMemory</function> function first to gain access.  Then make repeated calls to ScanMessages() to analyse the queue until it returns an error code other than <code>ERR_Okay</code>.  Use <function module="Core">ReleaseMemory</function> to let go of the message queue when you are done with it.</p>
+<p>Use the ScanMessages() function to scan a message queue for information without affecting the state of the queue.  To use this function, you need to establish a connection to the queue by using the <function module="Core">AccessMemoryID</function> function first to gain access.  Then make repeated calls to ScanMessages() to analyse the queue until it returns an error code other than <code>ERR_Okay</code>.  Use <function module="Core">ReleaseMemory</function> to let go of the message queue when you are done with it.</p>
 <p>Here is an example that scans the queue of the active task:</p>
-<pre>if (!AccessMemory(GetResource(RES_MESSAGEQUEUE), MEM_READ, &amp;queue)) {
+<pre>if (!AccessMemoryID(GetResource(RES_MESSAGEQUEUE), MEM_READ, &amp;queue)) {
    while (!ScanMessages(queue, &amp;index, MSGID_QUIT, NULL, NULL)) {
       ...
    }
@@ -1909,30 +1897,30 @@ SetArray(Object, FID_Table|TLONG, array, 100);
       <param type="OBJECTPTR" name="Object">Pointer to the object that will take on the new context.  If NULL, no change to the context will be made.</param>
     </input>
     <description>
-<p>This function provides a means for instructing the system which object has control of the current thread.  Once called, all further resource allocations will be assigned to the supplied object.  This is particularly important for memory and object handling. For example:</p>
+<p>This function defines the object that has control of the current thread.  Once called, all further resource allocations are assigned to that object.  This is significant for the automatic collection of memory and object allocations.  For example:</p>
 <pre>acInit(display);
-prev_context = SetContext(display);
-
-   NewObject(ID_BITMAP, &amp;bitmap);
-   AllocMemory(1000, MEM_DATA, &amp;memory, NULL);;
-
-SetContext(prev_context);
-acFree(display);
-</pre>
-<p>The above code allocates a Bitmap and a memory block, both of which will be contained by the display. When the <action>Free</action> action is called, both the bitmap and memory block will be automatically removed as they have a dependency on the display's existence.  Please keep in mind that the following is incorrect:</p>
-<pre>acInit(display);
-prev_context = SetContext(display);
+auto ctx = SetContext(display);
 
    NewObject(ID_BITMAP, &amp;bitmap);
    AllocMemory(1000, MEM_DATA, &amp;memory, NULL);
 
-SetContext(prev_context);
-acFree(display); // The bitmap and memory are terminated here
+SetContext(ctx);
+acFree(display);
+</pre>
+<p>The above code allocates a Bitmap and a memory block, both of which will be contained by the display. When the <action>Free</action> action is called, both the bitmap and memory block will be automatically removed as they have a dependency on the display's existence.  Please keep in mind that the following is incorrect:</p>
+<pre>acInit(display);
+auto ctx = SetContext(display);
+
+   NewObject(ID_BITMAP, &amp;bitmap);
+   AllocMemory(1000, MEM_DATA, &amp;memory, NULL);
+
+SetContext(ctx);
+acFree(display); // The bitmap and memory would be auto-collected
 acFree(bitmap); // Reference is no longer valid
 FreeResource(memory); // Reference is no longer valid
 </pre>
-<p>As the bitmap and memory block would have been freed as members of the display, their references are invalid when manually terminated.</p>
-<p>SetContext() is intended for use by modules and classes.  Do not use it unless conditions necessitate its use.  The Core automatically manages the context when calling class actions, methods and interactive fields.</p>
+<p>As the bitmap and memory block would have been freed as members of the display, their references are invalid when manually terminated in the following instructions.</p>
+<p>SetContext() is intended for use by modules and classes.  Do not use it in an application unless conditions necessitate its use.  The Core automatically manages the context when calling class actions, methods and interactive fields.</p>
     </description>
     <result type="OBJECTPTR">Returns a pointer to the previous context.  Because contexts nest, the client must call SetContext() a second time with this pointer in order to keep the process stable.</result>
   </function>
@@ -2955,7 +2943,6 @@ end
       <const name="NewObject"/>
       <const name="NewOwner"/>
       <const name="Next"/>
-      <const name="OwnerDestroyed"/>
       <const name="Prev"/>
       <const name="Query"/>
       <const name="Read"/>
@@ -3591,25 +3578,24 @@ end
     </constants>
 
     <constants lookup="MEM" comment="Memory types used by AllocMemory().  The lower 16 bits are stored with allocated blocks, the upper 16 bits are function-relative only.">
-      <const name="AUDIO">Identifies the memory space as being reserved by an audio device such as a sound card.</const>
+      <const name="AUDIO">The memory space is reserved by an audio device such as a sound card.</const>
       <const name="CALLER">This flag is usable only in routines that are supporting a class method.  It forces the memory allocation to be tracked to the object that made the method call.  This is particularly important in methods that return memory blocks that do not form a part of the object itself.</const>
-      <const name="CODE">Indicates that the memory will contain executable program code.</const>
+      <const name="CODE">Set if the memory will contain executable program code.</const>
       <const name="DATA">The default type, MEM_DATA, is used to indicate a standard memory allocation from system RAM.</const>
       <const name="FIXED">This flag can be applied to public memory blocks that need to be mapped to a fixed address that is common to all tasks.  For instance, if the system locks the memory block to address 0x56084000 for your task, then all other tasks that map the memory block will also see it at that address.  This flag is typically used for supporting absolute code execution.</const>
       <const name="HIDDEN">Hidden blocks are not recorded and are excluded from resource tracking.</const>
       <const name="MANAGED">Enables custom resource management for the memory block.  The start of the block will need to be reserved with a pointer to a ResourceManager structure, which is included as part of the block's declared Size.  The Free() callback will be called when the block is removed.</const>
-      <const name="NO_BLOCK">If this flag is set against a public memory block then the access blocking mechanism will be permanently turned off for all accesses to that particular memory block.  This means that multiple tasks can have full read/write access to the memory block at once regardless of the flags passed to AccessMemory().</const>
-      <const name="NO_BLOCKING">If this flag is set against a public memory block then the access blocking mechanism will be permanently turned off for all accesses to that particular memory block.  This means that multiple tasks can have full read/write access to the memory block at once regardless of the flags passed to AccessMemory().</const>
+      <const name="NO_BLOCK">If this flag is set against a public memory block then the access blocking mechanism will be permanently turned off for all accesses to that particular memory block.  This means that multiple tasks can have full read/write access to the memory block at once regardless of the flags passed to AccessMemoryID().</const>
+      <const name="NO_BLOCKING">If this flag is set against a public memory block then the access blocking mechanism will be permanently turned off for all accesses to that particular memory block.  This means that multiple tasks can have full read/write access to the memory block at once regardless of the flags passed to AccessMemoryID().</const>
       <const name="NO_CLEAR">Do not clear the memory on allocation (saves time).</const>
       <const name="NO_LOCK">For AllocMemory() only, indicates that the (private) memory block should not be locked on return.</const>
       <const name="NO_POOL">Gives a hint to the allocator to allocate the block outside of the memory pool.</const>
-      <const name="PUBLIC">Public memory can be allocated by specifying this flag.  Public memory blocks are accessible by all tasks, but access can only be gained by knowing the unique memory ID and utilising the AccessMemory() function.</const>
+      <const name="PUBLIC">Public memory can be allocated by specifying this flag.  Public memory blocks are accessible by all tasks, but access can only be gained by knowing the unique memory ID and utilising the AccessMemoryID() function.</const>
       <const name="READ">The memory is explicitly marked as readable.</const>
       <const name="READ_WRITE">Synonym for READ | WRITE</const>
       <const name="RESERVED">This special flag is used to allocate shared memory blocks that require reserved ID numbers.  When using the MEM_RESERVED flag, you are required to set the longword pointed to by the ID argument to the ID that you wish to reserve.  If that memory ID is already taken, the AllocMemory() call will fail.</const>
-      <const name="SHARED">Public memory can be allocated by specifying this flag.  Public memory blocks are accessible by all tasks, but access can only be gained by knowing the unique memory ID and utilising the AccessMemory() function.</const>
+      <const name="SHARED">Public memory can be allocated by specifying this flag.  Public memory blocks are accessible by all tasks, but access can only be gained by knowing the unique memory ID and utilising the AccessMemoryID() function.</const>
       <const name="STRING">Identifies the memory content as a null terminated string. Useful for debugging and run-time type identification in scripts.</const>
-      <const name="TASK">Track the memory block to the current process, as opposed to the current object.</const>
       <const name="TEXTURE">The memory space is reserved by a video driver for hosting texture graphics.</const>
       <const name="TMP_LOCK">Enables temporary locking restrictions.  Prevents processes from sleeping while holding a lock on the memory block.</const>
       <const name="UNTRACKED">Allocating an untracked memory block will prevent the memory block from being tracked back to the object holding the current context.</const>

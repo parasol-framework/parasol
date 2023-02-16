@@ -1,15 +1,15 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 This program tests the locking of private and public memory between threads.
 Use parameter '-public' to test public memory locking.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #include <pthread.h>
 
@@ -31,7 +31,7 @@ struct thread_info{
    int index;
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void * test_locking(struct thread_info *info)
 {
@@ -47,7 +47,7 @@ static void * test_locking(struct thread_info *info)
       if (!glMemoryID) break;
       //LogF("~","Attempt %d.%d: Acquiring the memory.", info->index, i);
 
-      if (!(error = AccessMemory(glMemoryID, MEM_READ_WRITE, 30000, &memory))) {
+      if (!(error = AccessMemoryID(glMemoryID, MEM_READ_WRITE, 30000, &memory))) {
          memory[0]++;
          log.msg("%d.%d: Memory acquired.", info->index, i);
          WaitTime(0, 2000);
@@ -81,7 +81,7 @@ static void * test_locking(struct thread_info *info)
    return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Allocate and free sets of memory blocks at random intervals.
 
 #define TOTAL_ALLOC 2000
@@ -109,7 +109,7 @@ static void * test_allocation(struct thread_info *info)
    return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void program(void)
 {

@@ -1,5 +1,5 @@
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** See win32_netresponse() for the Windows version.
 */
 
@@ -59,7 +59,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
 }
 #endif
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** If the socket is the client of a server, messages from the server will come in through here.
 **
 ** Incoming information from the server can be read with either the Incoming callback routine (the developer is
@@ -161,7 +161,7 @@ restart:
    Self->IncomingRecursion = 0;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** If the socket refers to a client, this routine will be called when there is empty space available on the socket
 ** for writing data to the server.
 **

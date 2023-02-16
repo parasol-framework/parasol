@@ -234,7 +234,7 @@ extern LONG convert_errno(LONG Error, LONG Default);
 
 LONG winReadPipe(HANDLE FD, APTR Buffer, DWORD *Size);
 
-//****************************************************************************
+//********************************************************************************************************************
 // Console checker for Cygwin
 
 BYTE is_console(HANDLE h)
@@ -250,7 +250,7 @@ BYTE is_console(HANDLE h)
    return GetCurrentConsoleFont(h, FALSE, &cfi) != 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // If the program is launched from a console, attach to it.  Otherwise create a new console window and redirect output
 // to it (e.g. if launched from a desktop icon).
 
@@ -286,7 +286,7 @@ void activate_console(BYTE AllowOpenConsole)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static inline unsigned int LCASEHASH(char *String)
 {
@@ -301,7 +301,7 @@ static inline unsigned int LCASEHASH(char *String)
    return hash;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #ifdef DEBUG
 static char glSymbolsLoaded = FALSE;
@@ -364,7 +364,7 @@ static void windows_print_stacktrace(CONTEXT* context)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const char *glMsgClass = "RKLMessageClass";
 
@@ -439,7 +439,7 @@ LONG winInitialise(unsigned int *PathHash, void *BreakHandler)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Platform specific semaphore handling functions.
 
 LONG plAllocPrivateSemaphore(HANDLE *Semaphore, LONG InitialValue)
@@ -474,7 +474,7 @@ void plUnlockSemaphore(HANDLE *Semaphore)
    ReleaseSemaphore(*Semaphore, 1, &prev);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Broadcast a message saying that our process is dying.  Status should be 0 for an initial broadcast (closure is
 // starting) and 1 if the process has finished and closed the Core cleanly.
 
@@ -487,14 +487,14 @@ void winDeathBringer(LONG Status)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winIsDebuggerPresent(void)
 {
    return IsDebuggerPresent();
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Remove all allocations here, called at the end of CloseCore()
 
 void winShutdown(void)
@@ -516,7 +516,7 @@ void winShutdown(void)
    DeleteCriticalSection(&csJob);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Return a duplicate handle linked to some other process.  A cache is used so that re-duplication is minimised.
 
 static HANDLE handle_cache(LONG OtherProcess, HANDLE OtherHandle, BYTE *Free)
@@ -556,7 +556,7 @@ static HANDLE handle_cache(LONG OtherProcess, HANDLE OtherHandle, BYTE *Free)
    return result;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Windows compatible locking allocation functions.  See lib_locking.c for the POSIX versions.
 
 int alloc_public_lock(HANDLE *Lock, const char *Name)
@@ -608,7 +608,7 @@ void public_thread_unlock(HANDLE Lock)
    ReleaseMutex(Lock);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // The SysLock() function uses these publicly accessible handles for synchronising Core processes.
 
 int alloc_public_waitlock(HANDLE *Lock, const char *Name)
@@ -701,7 +701,7 @@ LONG sleep_waitlock(HANDLE Handle, LONG Time)
    else return 3;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #define MAX_LOCKS 32
 
@@ -734,7 +734,7 @@ void winDeleteCriticalSection(APTR Lock)
    DeleteCriticalSection(Lock);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static CONDITION_VARIABLE conds[MAX_LOCKS];
 
@@ -755,7 +755,7 @@ void free_private_cond(UBYTE Index)
    ZeroMemory(&conds[Index], sizeof(conds[0]));
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Windows compatible locking management functions.
 */
 
@@ -829,7 +829,7 @@ static int strnicmp(const char *s1, const char *s2, size_t n)
 }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 DWORD winGetExeDirectory(DWORD Length, unsigned char *String)
 {
@@ -902,7 +902,7 @@ DWORD winGetExeDirectory(DWORD Length, unsigned char *String)
    return GetCurrentDirectory(Length, String);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Warning: DispatchMessage() can hang for modal operations.  An example of a modal operation is window resizing.  If
 // necessary, this issue can be subverted with threading.
 //
@@ -920,21 +920,21 @@ void winProcessMessages(void)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winLowerPriority(void)
 {
    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winGetCurrentThreadId(void)
 {
    return GetCurrentThreadId();
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // A null-terminator will be included in the output buffer.  Returns 0 on error.
 
 DWORD winGetCurrentDirectory(DWORD Length, unsigned char *String)
@@ -942,7 +942,7 @@ DWORD winGetCurrentDirectory(DWORD Length, unsigned char *String)
    return GetCurrentDirectory(Length, String);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Checks if a process exists by attempting to open it.
 
 LONG winCheckProcessExists(DWORD ProcessID)
@@ -956,14 +956,14 @@ LONG winCheckProcessExists(DWORD ProcessID)
    else return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winFreeLibrary(HMODULE Module)
 {
    return FreeLibrary(Module);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 HANDLE winLoadLibrary(LPCSTR Name)
 {
@@ -971,28 +971,28 @@ HANDLE winLoadLibrary(LPCSTR Name)
    return h;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 FARPROC winGetProcAddress(HMODULE Module, LPCSTR Name)
 {
    return GetProcAddress(Module, Name);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 HANDLE winGetCurrentProcess(void)
 {
    return GetCurrentProcess();
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winGetCurrentProcessId(void)
 {
    return GetCurrentProcessId();
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Returns a handle if successful, otherwise NULL.
 
 HANDLE winOpenSemaphore(unsigned char *Name)
@@ -1000,7 +1000,7 @@ HANDLE winOpenSemaphore(unsigned char *Name)
    return OpenSemaphore(SEMAPHORE_ALL_ACCESS, FALSE, Name);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static BYTE glConsoleMode = TRUE; // Assume running from a terminal by default.
 
@@ -1016,7 +1016,7 @@ LONG winReadStdInput(HANDLE FD, APTR Buffer, DWORD BufferSize, DWORD *Size)
    return winReadPipe(FD, Buffer, Size);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 HANDLE winGetStdInput(void)
 {
@@ -1030,7 +1030,7 @@ HANDLE winGetStdInput(void)
    return in;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // To be used on local handles only.
 
 LONG winWaitForSingleObject(HANDLE Handle, LONG Time)
@@ -1045,7 +1045,7 @@ LONG winWaitForSingleObject(HANDLE Handle, LONG Time)
    else return 3;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Return Values:
 //   -1 = Timeout
 //   -2 = A handle has been abandoned/freed/is invalid.  Handles[0] will be updated to reflect the bad handle.
@@ -1093,14 +1093,14 @@ LONG winWaitForObjects(LONG Total, HANDLE *Handles, LONG Time, BYTE WinMsgs)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winSleep(LONG Time)
 {
    Sleep(Time);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Retrieve the 'counts per second' value if this hardware supports a high frequency timer.  Otherwise use
 // GetTickCount().
 
@@ -1130,7 +1130,7 @@ long long winGetTickCount(void)
    else return GetTickCount() * 1000LL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Designed for reading from pipes.  Returns -1 on general error, -2 if the pipe is broken, e.g. child process is dead.
 
 LONG winReadPipe(HANDLE FD, APTR Buffer, DWORD *Size)
@@ -1159,7 +1159,7 @@ LONG winReadPipe(HANDLE FD, APTR Buffer, DWORD *Size)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // WARNING: If it is not possible to write all data to the pipe, windows will block until the other side of the pipe
 // has been read.  This does not match expected/documented functionality but there is no simple way to implement
 // non-blocking anonymous pipes on windows.
@@ -1175,7 +1175,7 @@ LONG winWritePipe(HANDLE FD, APTR Buffer, DWORD *Size)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Used by class_thread.c only.
 
 LONG winCreatePipe(HANDLE *Read, HANDLE *Write)
@@ -1192,7 +1192,7 @@ LONG winCreatePipe(HANDLE *Read, HANDLE *Write)
    else return ERR_Failed;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Returns zero on failure.
 
 LONG winCloseHandle(HANDLE Handle)
@@ -1201,7 +1201,7 @@ LONG winCloseHandle(HANDLE Handle)
    return CloseHandle(Handle);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winGetPageSize(void)
 {
@@ -1210,7 +1210,7 @@ LONG winGetPageSize(void)
    return sysinfo.dwAllocationGranularity;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Returns zero on failure.
 
 LONG winUnmapViewOfFile(void *Address)
@@ -1218,7 +1218,7 @@ LONG winUnmapViewOfFile(void *Address)
    return UnmapViewOfFile(Address);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 long long winGetFileSize(char *Path)
 {
@@ -1235,7 +1235,7 @@ long long winGetFileSize(char *Path)
    return size;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 HANDLE glMemoryPool;
 
@@ -1254,7 +1254,7 @@ LONG winCreateSharedMemory(char *Name, LONG mapsize, LONG initial_size, HANDLE *
    else return -1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Creates a brand new file mapping, independent of shared memory pools.
 
 HANDLE winAllocPublic(LONG allocsize)
@@ -1266,7 +1266,7 @@ HANDLE winAllocPublic(LONG allocsize)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winMapMemory(HANDLE MemHandle, LONG Process, APTR *address)
 {
@@ -1298,35 +1298,35 @@ LONG winMapMemory(HANDLE MemHandle, LONG Process, APTR *address)
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int winDeleteFile(const char *Path)
 {
    return DeleteFile(Path);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int winGetEnv(const char *Name, char *Buffer, int Size)
 {
    return GetEnvironmentVariable(Name, Buffer, Size);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int winSetEnv(const char *Name, const char *Value)
 {
    return SetEnvironmentVariable(Name, Value);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winTerminateThread(HANDLE Handle)
 {
    TerminateThread(Handle, 0);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winWaitThread(HANDLE Handle, LONG TimeOut)
 {
@@ -1334,7 +1334,7 @@ LONG winWaitThread(HANDLE Handle, LONG TimeOut)
    else return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static BOOL break_handler(DWORD CtrlType)
 {
@@ -1343,7 +1343,7 @@ static BOOL break_handler(DWORD CtrlType)
    return FALSE;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winSetUnhandledExceptionFilter(LONG (*Function)(LONG, APTR, LONG, APTR))
 {
@@ -1352,7 +1352,7 @@ void winSetUnhandledExceptionFilter(LONG (*Function)(LONG, APTR, LONG, APTR))
    SetUnhandledExceptionFilter((LPTOP_LEVEL_EXCEPTION_FILTER)&ExceptionFilter);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-exception_record
 
 LONG ExceptionFilter(LPEXCEPTION_POINTERS Args)
@@ -1465,7 +1465,7 @@ static BOOL CALLBACK TerminateAppEnum( HWND hwnd, LPARAM lParam )
    return TRUE;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 extern int ProcessMessages(int Flags, int Timeout);
 
@@ -1480,7 +1480,7 @@ static LRESULT CALLBACK window_procedure(HWND window, UINT msgcode, WPARAM wPara
    else return DefWindowProc(window, msgcode, wParam, lParam);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int AllocMutex(int Flags, CRITICAL_SECTION **Result)
 {
@@ -1499,7 +1499,7 @@ int AllocMutex(int Flags, CRITICAL_SECTION **Result)
    else return ERR_AllocMemory;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void FreeMutex(void *Mutex)
 {
@@ -1509,7 +1509,7 @@ void FreeMutex(void *Mutex)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Calls to TryEnterCriticalSection() will nest.
 
 int LockMutex(void *Mutex, int MilliSeconds)
@@ -1523,14 +1523,14 @@ int LockMutex(void *Mutex, int MilliSeconds)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void UnlockMutex(void *Mutex)
 {
    if (Mutex) LeaveCriticalSection(Mutex);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int AllocSharedMutex(const char *Name, void **Result)
 {
@@ -1551,14 +1551,14 @@ int AllocSharedMutex(const char *Name, void **Result)
    else return ERR_SystemCall;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void FreeSharedMutex(void *Mutex)
 {
    if (Mutex) CloseHandle(Mutex);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int LockSharedMutex(void *Mutex, int Timeout)
 {
@@ -1572,18 +1572,18 @@ int LockSharedMutex(void *Mutex, int Timeout)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void UnlockSharedMutex(APTR Mutex)
 {
    ReleaseMutex(Mutex);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "processes.c"
 
-//****************************************************************************
+//********************************************************************************************************************
 // Called on file system initialisation to create assignments specific to windows.
 
 void winEnumSpecialFolders(void (*enumfolder)(char *, char *, char *, char *, char))
@@ -1619,14 +1619,14 @@ void winEnumSpecialFolders(void (*enumfolder)(char *, char *, char *, char *, ch
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winGetFullPathName(const char *Path, LONG PathLength, char *Output, char **NamePart)
 {
    return GetFullPathName(Path, PathLength, Output, NamePart);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 char * winFormatMessage(LONG Error, char *Buffer, LONG BufferSize)
 {
@@ -1645,7 +1645,7 @@ static void printerror(void)
    LocalFree(lpMsgBuf);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 BYTE winGetCommand(char *Path, char *Buffer, LONG BufferSize)
 {
@@ -1662,7 +1662,7 @@ BYTE winGetCommand(char *Path, char *Buffer, LONG BufferSize)
    else return 1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winCurrentDirectory(char *Buffer, LONG BufferSize)
 {
@@ -1686,7 +1686,7 @@ LONG winCurrentDirectory(char *Buffer, LONG BufferSize)
    else return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void convert_time(FILETIME *Source, struct DateTime *Dest)
 {
@@ -1704,7 +1704,7 @@ static void convert_time(FILETIME *Source, struct DateTime *Dest)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int winGetFileAttributesEx(const char *Path, BYTE *Hidden, BYTE *ReadOnly, BYTE *Archive, BYTE *Folder, LARGE *Size,
    struct DateTime *LastWrite, struct DateTime *LastAccess, struct DateTime *LastCreate)
@@ -1738,7 +1738,7 @@ int winGetFileAttributesEx(const char *Path, BYTE *Hidden, BYTE *ReadOnly, BYTE 
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int winCreateDir(const char *Path)
 {
@@ -1752,7 +1752,7 @@ int winCreateDir(const char *Path)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Returns TRUE on success.
 
 LONG winGetFreeDiskSpace(unsigned char Drive, long long *TotalSpace, long long *BytesUsed)
@@ -1776,7 +1776,7 @@ LONG winGetFreeDiskSpace(unsigned char Drive, long long *TotalSpace, long long *
    else return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // This function retrieves the original Creation date of the file and applies it to the Modification and Access date/times.
 
 LONG winResetDate(STRING Location)
@@ -1796,35 +1796,35 @@ LONG winResetDate(STRING Location)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winFindNextChangeNotification(HANDLE Handle)
 {
    FindNextChangeNotification(Handle);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winFindCloseChangeNotification(HANDLE Handle)
 {
    FindCloseChangeNotification(Handle);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winGetWatchBufferSize(void)
 {
    return sizeof(OVERLAPPED) + sizeof(FILE_NOTIFY_INFORMATION) + MAX_PATH;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winSetDllDirectory(LPCSTR Path)
 {
    SetDllDirectoryA(Path);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winWatchFile(LONG Flags, CSTRING Path, APTR WatchBuffer, HANDLE *Handle, LONG *WinFlags)
 {
@@ -1872,7 +1872,7 @@ LONG winWatchFile(LONG Flags, CSTRING Path, APTR WatchBuffer, HANDLE *Handle, LO
    else return ERR_NoSupport;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winReadChanges(HANDLE Handle, APTR WatchBuffer, LONG NotifyFlags, char *PathOutput, LONG PathSize, LONG *Status)
 {
@@ -1906,7 +1906,7 @@ LONG winReadChanges(HANDLE Handle, APTR WatchBuffer, LONG NotifyFlags, char *Pat
    else return ERR_NothingDone;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winSetFileTime(STRING Location, WORD Year, WORD Month, WORD Day, WORD Hour, WORD Minute, WORD Second)
 {
@@ -1937,14 +1937,14 @@ LONG winSetFileTime(STRING Location, WORD Year, WORD Month, WORD Day, WORD Hour,
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winFindClose(HANDLE Handle)
 {
    FindClose(Handle);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winReadKey(LPBYTE Key, LPBYTE Value, LPBYTE Buffer, LONG Length)
 {
@@ -1960,7 +1960,7 @@ LONG winReadKey(LPBYTE Key, LPBYTE Value, LPBYTE Buffer, LONG Length)
    return err;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winReadRootKey(LPBYTE Key, LPBYTE Value, LPBYTE Buffer, LONG Length)
 {
@@ -1976,7 +1976,7 @@ LONG winReadRootKey(LPBYTE Key, LPBYTE Value, LPBYTE Buffer, LONG Length)
    return err;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winGetUserName(STRING Buffer, LONG Length)
 {
@@ -1984,7 +1984,7 @@ LONG winGetUserName(STRING Buffer, LONG Length)
    return GetUserName(Buffer, &len);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winGetUserFolder(STRING Buffer, LONG Size)
 {
@@ -2007,14 +2007,14 @@ LONG winGetUserFolder(STRING Buffer, LONG Size)
    return i;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winMoveFile(STRING oldname, STRING newname)
 {
    return MoveFile(oldname, newname);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winSetEOF(CSTRING Location, __int64 Size)
 {
@@ -2040,21 +2040,21 @@ LONG winSetEOF(CSTRING Location, __int64 Size)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winGetLogicalDrives(void)
 {
    return GetLogicalDrives();
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winGetLogicalDriveStrings(STRING Buffer, LONG Length)
 {
    return GetLogicalDriveStrings(Length, Buffer);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winGetDriveType(STRING Name)
 {
@@ -2067,7 +2067,7 @@ LONG winGetDriveType(STRING Name)
    else return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winTestLocation(STRING Location, BYTE CaseSensitive)
 {
@@ -2146,7 +2146,7 @@ LONG winTestLocation(STRING Location, BYTE CaseSensitive)
    else return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG delete_tree(STRING Path, int Size, struct FileFeedback *Feedback)
 {
@@ -2222,7 +2222,7 @@ LONG delete_tree(STRING Path, int Size, struct FileFeedback *Feedback)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 HANDLE winFindDirectory(STRING Location, HANDLE *Handle, STRING Result)
 {
@@ -2256,7 +2256,7 @@ HANDLE winFindDirectory(STRING Location, HANDLE *Handle, STRING Result)
    return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 HANDLE winFindFile(CSTRING Location, HANDLE *Handle, STRING Result)
 {
@@ -2289,7 +2289,7 @@ HANDLE winFindFile(CSTRING Location, HANDLE *Handle, STRING Result)
    return NULL;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Function: winScan()
 ** Short:    Used by fs_scandir()
 */
@@ -2340,7 +2340,7 @@ LONG winScan(HANDLE *Handle, CSTRING Path, STRING Name, long long *Size, struct 
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 int winSetAttrib(CSTRING Path, LONG Flags)
 {
@@ -2361,7 +2361,7 @@ int winSetAttrib(CSTRING Path, LONG Flags)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 void winGetAttrib(CSTRING Path, LONG *Flags)
 {
@@ -2378,7 +2378,7 @@ void winGetAttrib(CSTRING Path, LONG *Flags)
    else *Flags |= PERMIT_READ|PERMIT_WRITE;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 LONG winFileInfo(CSTRING Path, long long *Size, struct DateTime *Time, BYTE *Folder)
 {
@@ -2420,7 +2420,7 @@ LONG winFileInfo(CSTRING Path, long long *Size, struct DateTime *Time, BYTE *Fol
    return 1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Returns TRUE if the folder exists.
 
 LONG winCheckDirectoryExists(CSTRING Path)

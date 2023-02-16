@@ -1,6 +1,6 @@
 #pragma once
 
-// Copyright: Paul Manias © 1996-2022
+// Copyright: Paul Manias © 1996-2023
 // Generator: idl-c
 
 #define HASH_AfterLayout 0x58983635UL

@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The thread interface provides support for the parallel execution of actions and methods against objects:
 
@@ -11,7 +11,7 @@ variables with its creator, except via existing conventional means such as a Key
 
   thread.script(Statement, Callback)
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define PRV_SCRIPT
 #define PRV_FLUID
@@ -36,7 +36,7 @@ struct thread_callback {
    OBJECTID mainScriptID;
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: thread.script(Statement, Callback)
 
 static int thread_script(lua_State *Lua)
@@ -73,7 +73,7 @@ static int thread_script(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Execute the script statement within the context of the child thread.
 
 static ERROR thread_script_entry(objThread *Thread)
@@ -86,7 +86,7 @@ static ERROR thread_script_entry(objThread *Thread)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Callback following execution (within the context of the main thread, not the child)
 
 static ERROR thread_script_callback(objThread *Thread)
@@ -96,7 +96,7 @@ static ERROR thread_script_callback(objThread *Thread)
 
    if ((!Thread->getPtr(FID_Data, &cb)) and (cb)) {
       objScript *script;
-      if (!AccessObject(cb->mainScriptID, 4000, &script)) {
+      if (!AccessObjectID(cb->mainScriptID, 4000, &script)) {
          auto prv = (prvFluid *)script->ChildPrivate;
          if (!prv) return log.warning(ERR_ObjectCorrupt);
          scCallback(script, cb->callbackID, NULL, 0, NULL);
@@ -108,7 +108,7 @@ static ERROR thread_script_callback(objThread *Thread)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: error = thread.action(Object, Action, Callback, Key, Args...)
 
 static int thread_action(lua_State *Lua)
@@ -208,7 +208,7 @@ static int thread_action(lua_State *Lua)
    return 1;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Usage: error = thread.method(Object, Action, Callback, Key, Args...)
 
 static int thread_method(lua_State *Lua)
@@ -237,7 +237,7 @@ static int thread_method(lua_State *Lua)
 
             if (found) {
                // If an obj.new() lock is still present, detach it first because ActionThread() is going to attempt to
-               // lock the object with AccessPrivateObject() and a timeout error will occur otherwise.
+               // lock the object with LockObject() and a timeout error will occur otherwise.
 
                const FunctionField *args = table[i].Args;
                LONG argsize = table[i].Size;
@@ -314,7 +314,7 @@ static int thread_method(lua_State *Lua)
    return 0;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Register the thread interface.
 
 static const luaL_Reg threadlib_functions[] = {

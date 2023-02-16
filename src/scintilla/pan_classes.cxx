@@ -17,7 +17,7 @@ int GetFontGutter(void *TheFont)
    return static_cast<objFont *>(TheFont)->Gutter;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Point class
 */
 
@@ -27,7 +27,7 @@ Scintilla::Point Scintilla::Point::FromLong(long lpoint)
       Scintilla::Platform::HighShortFromLong(lpoint));
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Palette class.  Functionality not required as we only use 32 bit colours.
 */
 
@@ -41,7 +41,7 @@ void Scintilla::Palette::WantFind(Scintilla::ColourPair &cp, bool want)
    cp.allocated.Set(cp.desired.AsLong());
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Font class
 **
 ** Not really supported as we only need to allocate 3 main fonts in the
@@ -75,7 +75,7 @@ void Scintilla::Font::Release()
 {
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** BitmapClipper class
 **
 ** Utility class used by SurfacePan
@@ -116,7 +116,7 @@ private:
    Scintilla::PRectangle saved_cliprect;
 };
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** DynamicLibraryImpl class
 */
 
@@ -151,7 +151,7 @@ Scintilla::DynamicLibrary * Scintilla::DynamicLibrary::Load(const char *modulePa
    return static_cast<DynamicLibrary *>(new DynamicLibraryImpl(modulePath));
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** ElapsedTime class
 */
 
@@ -174,7 +174,7 @@ double Scintilla::ElapsedTime::Duration(bool reset)
    return elapsed * 0.001;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Platform class
 */
 

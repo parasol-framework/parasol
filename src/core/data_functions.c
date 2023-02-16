@@ -4,9 +4,8 @@
 #define FDEF static const struct FunctionField
 #endif
 
-FDEF argsAccessMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Memory", FD_LONG }, { "Flags", FD_LONG }, { "MilliSeconds", FD_LONG }, { "Result", FD_PTR|FD_RESULT }, { 0, 0 } };
-FDEF argsAccessObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTID }, { "MilliSeconds", FD_LONG }, { "Result", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
-FDEF argsAccessPrivateObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "MilliSeconds", FD_LONG }, { 0, 0 } };
+FDEF argsAccessMemoryID[] = { { "Error", FD_LONG|FD_ERROR }, { "Memory", FD_LONG }, { "Flags", FD_LONG }, { "MilliSeconds", FD_LONG }, { "Result", FD_PTR|FD_RESULT }, { 0, 0 } };
+FDEF argsAccessObjectID[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTID }, { "MilliSeconds", FD_LONG }, { "Result", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
 FDEF argsAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Action", FD_LONG }, { "Object", FD_OBJECTPTR }, { "Parameters", FD_PTR }, { 0, 0 } };
 FDEF argsActionList[] = { { "Void", FD_VOID }, { "ActionTable:Actions", FD_ARRAY|FD_STRUCT|FD_RESULT }, { "Size", FD_LONG|FD_ARRAYSIZE|FD_RESULT }, { 0, 0 } };
 FDEF argsActionMsg[] = { { "Error", FD_LONG|FD_ERROR }, { "Action", FD_LONG }, { "Object", FD_OBJECTID }, { "Args", FD_PTR }, { 0, 0 } };
@@ -50,7 +49,6 @@ FDEF argsGetField[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR 
 FDEF argsGetFieldArray[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_LARGE }, { "Result", FD_PTR|FD_RESULT }, { "Elements", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsGetFieldVariable[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_STR }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsGetFields[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Tags", FD_VARTAGS }, { 0, 0 } };
-FDEF argsGetMemAddress[] = { { "Result", FD_PTR }, { "ID", FD_LONG }, { 0, 0 } };
 FDEF argsGetMessage[] = { { "Error", FD_LONG|FD_ERROR }, { "Queue", FD_LONG }, { "Type", FD_LONG }, { "Flags", FD_LONG }, { "Buffer", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsGetName[] = { { "Result", FD_STR }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsGetObjectPtr[] = { { "Object", FD_OBJECTPTR }, { "Object", FD_OBJECTID }, { 0, 0 } };
@@ -65,6 +63,7 @@ FDEF argsListChildren[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECT
 FDEF argsListTasks[] = { { "Error", FD_LONG|FD_ERROR }, { "Flags", FD_LONG }, { "ListTasks:List", FD_PTR|FD_STRUCT|FD_RESULT }, { 0, 0 } };
 FDEF argsLoadFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Flags", FD_LONG }, { "CacheFile:Cache", FD_PTR|FD_STRUCT|FD_RESOURCE|FD_RESULT }, { 0, 0 } };
 FDEF argsLockMutex[] = { { "Error", FD_LONG|FD_ERROR }, { "Mutex", FD_PTR }, { "MilliSeconds", FD_LONG }, { 0, 0 } };
+FDEF argsLockObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "MilliSeconds", FD_LONG }, { 0, 0 } };
 FDEF argsLockSharedMutex[] = { { "Error", FD_LONG|FD_ERROR }, { "Mutex", FD_PTR }, { "MilliSeconds", FD_LONG }, { 0, 0 } };
 FDEF argsLogF[] = { { "Void", FD_VOID }, { "Header", FD_STR }, { "Message", FD_STR }, { "Tags", FD_TAGS }, { 0, 0 } };
 FDEF argsLogReturn[] = { { "Void", FD_VOID }, { 0, 0 } };
@@ -148,7 +147,7 @@ FDEF argsWaitTime[] = { { "Void", FD_VOID }, { "Seconds", FD_LONG }, { "MicroSec
 FDEF argsWakeProcess[] = { { "Error", FD_LONG|FD_ERROR }, { "ProcessID", FD_LONG }, { 0, 0 } };
 
 const struct Function glFunctions[] = {
-   { (APTR)AccessMemory, "AccessMemory", argsAccessMemory },
+   { (APTR)AccessMemoryID, "AccessMemoryID", argsAccessMemoryID },
    { (APTR)Action, "Action", argsAction },
    { (APTR)ActionList, "ActionList", argsActionList },
    { (APTR)ActionMsg, "ActionMsg", argsActionMsg },
@@ -156,7 +155,7 @@ const struct Function glFunctions[] = {
    { (APTR)ResolveClassID, "ResolveClassID", argsResolveClassID },
    { (APTR)AllocateID, "AllocateID", argsAllocateID },
    { (APTR)AllocMemory, "AllocMemory", argsAllocMemory },
-   { (APTR)AccessObject, "AccessObject", argsAccessObject },
+   { (APTR)AccessObjectID, "AccessObjectID", argsAccessObjectID },
    { (APTR)ListTasks, "ListTasks", argsListTasks },
    { (APTR)CheckAction, "CheckAction", argsCheckAction },
    { (APTR)CheckMemoryExists, "CheckMemoryExists", argsCheckMemoryExists },
@@ -187,7 +186,7 @@ const struct Function glFunctions[] = {
    { (APTR)NewObject, "NewObject", argsNewObject },
    { (APTR)NotifySubscribers, "NotifySubscribers", argsNotifySubscribers },
    { (APTR)StrReadLocale, "StrReadLocale", argsStrReadLocale },
-   { (APTR)GetMemAddress, "GetMemAddress", argsGetMemAddress },
+   { (APTR)UTF8ValidEncoding, "UTF8ValidEncoding", argsUTF8ValidEncoding },
    { (APTR)ProcessMessages, "ProcessMessages", argsProcessMessages },
    { (APTR)IdentifyFile, "IdentifyFile", argsIdentifyFile },
    { (APTR)ReallocMemory, "ReallocMemory", argsReallocMemory },
@@ -239,7 +238,7 @@ const struct Function glFunctions[] = {
    { (APTR)FuncError, "FuncError", argsFuncError },
    { (APTR)SetArray, "SetArray", argsSetArray },
    { (APTR)ReleaseMemoryID, "ReleaseMemoryID", argsReleaseMemoryID },
-   { (APTR)AccessPrivateObject, "AccessPrivateObject", argsAccessPrivateObject },
+   { (APTR)LockObject, "LockObject", argsLockObject },
    { (APTR)ReleaseObject, "ReleaseObject", argsReleaseObject },
    { (APTR)AllocMutex, "AllocMutex", argsAllocMutex },
    { (APTR)FreeMutex, "FreeMutex", argsFreeMutex },
@@ -289,7 +288,6 @@ const struct Function glFunctions[] = {
    { (APTR)VarGetString, "VarGetString", argsVarGetString },
    { (APTR)VarCopy, "VarCopy", argsVarCopy },
    { (APTR)StrHash, "StrHash", argsStrHash },
-   { (APTR)UTF8ValidEncoding, "UTF8ValidEncoding", argsUTF8ValidEncoding },
    { NULL, NULL, NULL }
 };
 

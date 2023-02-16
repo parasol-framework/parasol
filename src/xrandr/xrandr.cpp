@@ -21,7 +21,7 @@ static XRRScreenSize *glSizes = glCustomSizes;
 static LONG glSizeCount = ARRAYSIZE(glCustomSizes);
 static LONG glActualCount = 0;
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void write_string(objFile *File, CSTRING String)
 {
@@ -29,7 +29,7 @@ static void write_string(objFile *File, CSTRING String)
    Action(AC_Write, File, &write);
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
@@ -54,7 +54,7 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // Access the global x11 variables
 
-   if (AccessMemory(RPM_X11, MEM_READ_WRITE, 1000, &glX11) != ERR_Okay) {
+   if (AccessMemoryID(RPM_X11, MEM_READ_WRITE, 1000, &glX11) != ERR_Okay) {
       return log.warning(ERR_AccessMemory);
    }
 
@@ -331,11 +331,11 @@ static struct xrMode * xrGetDisplayMode(LONG Index)
    return NULL;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "module_def.c"
 
-//****************************************************************************
+//********************************************************************************************************************
 
 ERROR CMDOpen(OBJECTPTR Module)
 {
@@ -343,7 +343,7 @@ ERROR CMDOpen(OBJECTPTR Module)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR CMDExpunge(void)
 {
@@ -351,6 +351,6 @@ static ERROR CMDExpunge(void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_XRANDR)

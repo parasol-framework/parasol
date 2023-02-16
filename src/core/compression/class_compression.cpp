@@ -1613,7 +1613,7 @@ static ERROR COMPRESSION_Find(extCompression *Self, struct cmpFind *Args)
 -ACTION-
 Flush: Flushes all pending actions.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR COMPRESSION_Flush(extCompression *Self, APTR Void)
 {
@@ -1822,7 +1822,7 @@ NullArgs
 NoSupport
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR COMPRESSION_RemoveFile(extCompression *Self, struct cmpRemoveFile *Args)
 {

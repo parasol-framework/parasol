@@ -17,7 +17,7 @@ inline CSTRING get_filename(CSTRING Path)
    else return NULL;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 IdentifyFile: Identifies the class and/or command that may be used to load a file.
@@ -51,7 +51,7 @@ FileNotFound
 Read
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID *ClassID, CLASSID *SubClassID, STRING *Command)
 {
@@ -520,7 +520,7 @@ exit:
    else return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // Scan the class database to extract the correct name for ClassID.  Then scan the Associations object for an entry
 // that is registered against the given class type.
 

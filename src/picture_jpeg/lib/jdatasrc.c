@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 ** jdatasrc.c
 **
 ** Copyright (C) 1994-1996, Thomas G. Lane.
@@ -32,7 +32,7 @@ typedef my_source_mgr * my_src_ptr;
 
 #define INPUT_BUF_SIZE  4096	/* choose an efficiently fread'able size */
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Initialize source --- called by jpeg_read_header before any data is
 ** actually read.
 */
@@ -43,7 +43,7 @@ METHODDEF(void) init_source(j_decompress_ptr cinfo)
    src->start_of_file = TRUE;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Fill the input buffer --- called whenever buffer is emptied.
 */
 
@@ -69,7 +69,7 @@ METHODDEF(boolean) fill_input_buffer (j_decompress_ptr cinfo)
    return TRUE;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Skip data --- used to skip over a potentially large amount of
 ** uninteresting data (such as an APPn marker).
 */
@@ -93,7 +93,7 @@ void term_source(j_decompress_ptr cinfo)
 
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Prepare for input from a stdio stream.
 ** The caller must have already opened the stream, and is responsible
 ** for closing it after finishing decompression.

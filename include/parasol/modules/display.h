@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      display.h
-// Copyright: Paul Manias 2003-2022
+// Copyright: Paul Manias 2003-2023
 // Generator: idl-c
 
 #include <parasol/main.h>

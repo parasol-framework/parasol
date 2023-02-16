@@ -1,4 +1,4 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -CLASS-
 Document: Provides document display and editing facilities.
@@ -8,7 +8,7 @@ features for creating complex documents and manuals.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 /*
    else if (Args->ActionID IS MT_DrwInheritedFocus) {
       // Check that the FocusIndex is accurate (it may have changed if the user clicked on a gadget).
@@ -127,7 +127,7 @@ static void notify_redimension_surface(OBJECTPTR Object, ACTIONID ActionID, ERRO
    AdjustLogLevel(-2);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Activate: Opens the current document selection.
@@ -135,7 +135,7 @@ Activate: Opens the current document selection.
 Calling the Activate action on a document object will cause it to send Activate messages to the child objects that
 belong to the document object.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_Activate(extDocument *Self, APTR Void)
 {
@@ -151,7 +151,7 @@ static ERROR DOCUMENT_Activate(extDocument *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 AddListener: Adds a listener to a document trigger for receiving special callbacks.
@@ -190,7 +190,7 @@ Okay
 NullArgs
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_AddListener(extDocument *Self, struct docAddListener *Args)
 {
@@ -207,7 +207,7 @@ static ERROR DOCUMENT_AddListener(extDocument *Self, struct docAddListener *Args
    else return ERR_AllocMemory;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 ApplyFontStyle: Applies DocStyle information to a font.
@@ -224,7 +224,7 @@ Okay
 NullArgs
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_ApplyFontStyle(extDocument *Self, struct docApplyFontStyle *Args)
 {
@@ -251,7 +251,7 @@ static ERROR DOCUMENT_ApplyFontStyle(extDocument *Self, struct docApplyFontStyle
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 CallFunction: Executes any registered function in the currently open document.
@@ -274,7 +274,7 @@ int TotalArgs: The total number of entries in the Args array.
 Okay
 NullArgs
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_CallFunction(extDocument *Self, struct docCallFunction *Args)
 {
@@ -293,7 +293,7 @@ static ERROR DOCUMENT_CallFunction(extDocument *Self, struct docCallFunction *Ar
    else return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Clear: Clears all content from the object.
@@ -301,7 +301,7 @@ Clear: Clears all content from the object.
 You can delete all of the document information from a document object by calling the Clear action.  All of the document
 data will be deleted from the object and the graphics will be automatically updated as a result of calling this action.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_Clear(extDocument *Self, APTR Void)
 {
@@ -314,13 +314,13 @@ static ERROR DOCUMENT_Clear(extDocument *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 Clipboard: Full support for clipboard activity is provided through this action.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 {
@@ -410,7 +410,7 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
    else return log.warning(ERR_Args);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -ACTION-
 DataFeed: Document data can be sent and consumed via feeds.
@@ -427,7 +427,7 @@ AllocMemory: The Document's memory buffer could not be expanded.
 Mismatch:    The data type that was passed to the action is not supported by the Document class.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
 {
@@ -473,11 +473,11 @@ static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Disable: Disables object functionality.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_Disable(extDocument *Self, APTR Void)
 {
@@ -485,7 +485,7 @@ static ERROR DOCUMENT_Disable(extDocument *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR DOCUMENT_Draw(extDocument *Self, APTR Void)
 {
@@ -497,7 +497,7 @@ static ERROR DOCUMENT_Draw(extDocument *Self, APTR Void)
    else return ERR_FieldNotSet;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Edit: Activates a user editing section within a document.
@@ -518,7 +518,7 @@ NullArgs
 Search: The cell was not found.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_Edit(extDocument *Self, struct docEdit *Args)
 {
@@ -539,11 +539,11 @@ static ERROR DOCUMENT_Edit(extDocument *Self, struct docEdit *Args)
    }
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Enable: Enables object functionality.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_Enable(extDocument *Self, APTR Void)
 {
@@ -551,7 +551,7 @@ static ERROR DOCUMENT_Enable(extDocument *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 FeedParser: Private. Inserts content into a document during the parsing stage.
@@ -565,7 +565,7 @@ cstr String: Content to insert
 Okay
 NullArgs
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_FeedParser(extDocument *Self, struct docFeedParser *Args)
 {
@@ -582,7 +582,7 @@ static ERROR DOCUMENT_FeedParser(extDocument *Self, struct docFeedParser *Args)
    return ERR_NoSupport;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 FindIndex: Searches the document stream for an index, returning the start and end points if found.
@@ -606,7 +606,7 @@ Okay: The index was found and the Start and End parameters reflect its position.
 NullArgs:
 Search: The index was not found.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
 {
@@ -656,11 +656,11 @@ static ERROR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
    return ERR_Search;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Focus: Sets the user focus on the document page.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_Focus(extDocument *Self, APTR Args)
 {
@@ -668,7 +668,7 @@ static ERROR DOCUMENT_Focus(extDocument *Self, APTR Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
 {
@@ -681,7 +681,7 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
 
    if ((Self->FocusID) and (Self->FocusID != Self->SurfaceID)) {
       OBJECTPTR object;
-      if (!AccessObject(Self->FocusID, 5000, &object)) {
+      if (!AccessObjectID(Self->FocusID, 5000, &object)) {
          UnsubscribeAction(object, 0);
          ReleaseObject(object);
       }
@@ -689,7 +689,7 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
 
    if (Self->SurfaceID) {
       OBJECTPTR object;
-      if (!AccessObject(Self->SurfaceID, 5000, &object)) {
+      if (!AccessObjectID(Self->SurfaceID, 5000, &object)) {
          drwRemoveCallback(object, NULL);
          UnsubscribeAction(object, 0);
          ReleaseObject(object);
@@ -719,11 +719,11 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 GetVar: Script arguments can be retrieved through this action.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_GetVar(extDocument *Self, struct acGetVar *Args)
 {
@@ -742,19 +742,18 @@ static ERROR DOCUMENT_GetVar(extDocument *Self, struct acGetVar *Args)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 {
    parasol::Log log;
-   ERROR error;
 
    if (!Self->SurfaceID) return log.warning(ERR_UnsupportedOwner);
 
    if (!Self->FocusID) Self->FocusID = Self->SurfaceID;
 
    objSurface *surface;
-   if (!AccessObject(Self->FocusID, 5000, &surface)) {
+   if (!AccessObjectID(Self->FocusID, 5000, &surface)) {
       if (surface->ClassID != ID_SURFACE) {
          ReleaseObject(surface);
          return log.warning(ERR_WrongObjectType);
@@ -778,7 +777,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 
    // Setup the target surface
 
-   if (!AccessObject(Self->SurfaceID, 5000, &surface)) {
+   if (!AccessObjectID(Self->SurfaceID, 5000, &surface)) {
       Self->SurfaceWidth = surface->Width;
       Self->SurfaceHeight = surface->Height;
 
@@ -809,50 +808,31 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 
    // Allocate the view and page areas
 
-   if (!NewObject(ID_SURFACE, NF::INTEGRAL, &surface)) {
-      SetFields(surface,
-         FID_Name|TSTR,    "rgnDocView",   // Do not change this name - it can be used by objects to detect if they are placed in a document
-         FID_Parent|TLONG, Self->SurfaceID,
-         FID_X|TLONG,      Self->AreaX,
-         FID_Y|TLONG,      Self->AreaY,
-         FID_Width|TLONG,  Self->AreaWidth,
-         FID_Height|TLONG, Self->AreaHeight,
-         TAGEND);
-      if (!acInit(surface)) {
-         Self->ViewID = surface->UID;
-         drwAddCallback(surface, (APTR)&draw_background);
-         error = ERR_Okay;
-      }
-      else { acFree(surface); error = ERR_Init; }
+   if (auto surface = objSurface::create::integral(
+         fl::Name("rgnDocView"),   // Do not change this name - it can be used by objects to detect if they are placed in a document
+         fl::Parent(Self->SurfaceID),
+         fl::X(Self->AreaX), fl::Y(Self->AreaY),
+         fl::Width(Self->AreaWidth), fl::Height(Self->AreaHeight))) {
+
+      Self->ViewID = surface->UID;
+      drwAddCallback(surface, (APTR)&draw_background);
    }
-   else error = ERR_NewObject;
+   else return ERR_CreateObject;
 
-   if (error) return error;
+   if (auto surface = objSurface::create::integral(
+         fl::Name("rgnDocPage"),  // Do not change this name - it can be used by objects to detect if they are placed in a document
+         fl::Parent(Self->ViewID),
+         fl::X(0), fl::Y(0),
+         fl::MaxWidth(0x7fffffff), fl::MaxHeight(0x7fffffff),
+         fl::Width(MAX_PAGEWIDTH), fl::Height(MAX_PAGEHEIGHT),
+         fl::Flags(RNF_TRANSPARENT|RNF_GRAB_FOCUS))) {
 
-   if (!NewObject(ID_SURFACE, NF::INTEGRAL, &surface)) {
-      SetFields(surface,
-         FID_Name|TSTR,       "rgnDocPage",  // Do not change this name - it can be used by objects to detect if they are placed in a document
-         FID_Parent|TLONG,    Self->ViewID,
-         FID_X|TLONG,         0,
-         FID_Y|TLONG,         0,
-         FID_MaxWidth|TLONG,  0x7fffffff,
-         FID_MaxHeight|TLONG, 0x7fffffff,
-         FID_Width|TLONG,     MAX_PAGEWIDTH,
-         FID_Height|TLONG,    MAX_PAGEHEIGHT,
-         FID_Flags|TLONG,     RNF_TRANSPARENT|RNF_GRAB_FOCUS,
-         TAGEND);
-      if (!acInit(surface)) {
-         drwAddCallback(surface, (APTR)&draw_document);
-         auto callback = make_function_stdc(consume_input_events);
-         gfxSubscribeInput(&callback, Self->PageID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0, &Self->InputHandle);
-         Self->PageID = surface->UID;
-         error = ERR_Okay;
-      }
-      else { acFree(surface); error = ERR_Init; }
+      drwAddCallback(surface, (APTR)&draw_document);
+      auto callback = make_function_stdc(consume_input_events);
+      gfxSubscribeInput(&callback, Self->PageID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0, &Self->InputHandle);
+      Self->PageID = surface->UID;
    }
-   else error = ERR_NewObject;
-
-   if (error) return error;
+   else return ERR_CreateObject;
 
    acShow(Self->ViewID);
    acShow(Self->PageID);
@@ -883,7 +863,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
    }
    else if (Self->Path) {
       if ((Self->Path[0] != '#') and (Self->Path[0] != '?')) {
-         if ((error = load_doc(Self, Self->Path, FALSE, 0))) {
+         if (auto error = load_doc(Self, Self->Path, FALSE, 0)) {
             return error;
          }
       }
@@ -898,7 +878,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 HideIndex: Hides the content held within a named index.
@@ -918,7 +898,7 @@ NullArgs
 Search
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
 {
@@ -991,7 +971,7 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 InsertXML: Inserts new content into a loaded document (XML format).
@@ -1014,7 +994,7 @@ Okay
 NullArgs
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
 {
@@ -1069,7 +1049,7 @@ static ERROR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 InsertText: Inserts new content into a loaded document (raw text format).
@@ -1093,7 +1073,7 @@ Okay
 NullArgs
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
 {
@@ -1162,7 +1142,7 @@ static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR DOCUMENT_NewObject(extDocument *Self, APTR Void)
 {
@@ -1171,7 +1151,7 @@ static ERROR DOCUMENT_NewObject(extDocument *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR DOCUMENT_NewOwner(extDocument *Self, struct acNewOwner *Args)
 {
@@ -1186,7 +1166,7 @@ static ERROR DOCUMENT_NewOwner(extDocument *Self, struct acNewOwner *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 ReadContent: Returns selected content from the document, either as plain text or original byte code.
@@ -1211,7 +1191,7 @@ OutOfRange: The Start and/or End indexes are not within the stream.
 Args
 NoData: Operation successful, but no data was present for extraction.
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args)
 {
@@ -1262,11 +1242,11 @@ static ERROR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args
    else return log.warning(ERR_Args);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 Refresh: Reloads the document data from the original source location.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_Refresh(extDocument *Self, APTR Void)
 {
@@ -1331,7 +1311,7 @@ static ERROR DOCUMENT_Refresh(extDocument *Self, APTR Void)
    return error;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 RemoveContent: Removes content from a loaded document.
@@ -1349,7 +1329,7 @@ NullArgs
 OutOfRange: The area to be removed is outside the bounds of the document's data stream.
 Args
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_RemoveContent(extDocument *Self, struct docRemoveContent *Args)
 {
@@ -1368,7 +1348,7 @@ static ERROR DOCUMENT_RemoveContent(extDocument *Self, struct docRemoveContent *
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 RemoveListener: Removes a previously configured listener from the document.
@@ -1384,7 +1364,7 @@ ptr(func) Function: The function that is called when the trigger activates.
 Okay
 NullArgs
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_RemoveListener(extDocument *Self, struct docRemoveListener *Args)
 {
@@ -1419,11 +1399,11 @@ static ERROR DOCUMENT_RemoveListener(extDocument *Self, struct docRemoveListener
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 SaveToObject: Use this action to save edited information as an XML document file.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_SaveToObject(extDocument *Self, struct acSaveToObject *Args)
 {
@@ -1434,7 +1414,7 @@ static ERROR DOCUMENT_SaveToObject(extDocument *Self, struct acSaveToObject *Arg
 
    log.branch("Destination: %d, Lines: %d", Args->DestID, Self->SegCount);
 
-   if (!AccessObject(Args->DestID, 5000, &Object)) {
+   if (!AccessObjectID(Args->DestID, 5000, &Object)) {
       acWrite(Object, "Save not supported.", 0, NULL);
       ReleaseObject(Object);
    }
@@ -1442,11 +1422,11 @@ static ERROR DOCUMENT_SaveToObject(extDocument *Self, struct acSaveToObject *Arg
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 ScrollToPoint: Scrolls a document object's graphical content.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_ScrollToPoint(extDocument *Self, struct acScrollToPoint *Args)
 {
@@ -1470,7 +1450,7 @@ static ERROR DOCUMENT_ScrollToPoint(extDocument *Self, struct acScrollToPoint *A
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 SelectLink: Selects links in the document.
@@ -1495,7 +1475,7 @@ NullArgs
 OutOfRange
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_SelectLink(extDocument *Self, struct docSelectLink *Args)
 {
@@ -1529,11 +1509,11 @@ static ERROR DOCUMENT_SelectLink(extDocument *Self, struct docSelectLink *Args)
    else return log.warning(ERR_OutOfRange);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 SetVar: Passes variable parameters to loaded documents.
 -END-
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_SetVar(extDocument *Self, struct acSetVar *Args)
 {
@@ -1549,7 +1529,7 @@ static ERROR DOCUMENT_SetVar(extDocument *Self, struct acSetVar *Args)
    return VarSetString(Self->Vars, Args->Field, Args->Value);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 ShowIndex: Shows the content held within a named index.
@@ -1569,7 +1549,7 @@ NullArgs
 Search: The index could not be found.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
 {
@@ -1671,7 +1651,7 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
    return ERR_Search;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 #include "document_def.c"
 

@@ -1,7 +1,7 @@
 // This source file manages basic pixel drawing routines.  For more pixel routines, see the other pixel
 // files in the machine specific directories.
 
-//****************************************************************************
+//********************************************************************************************************************
 // CHUNKY32
 
 static void MemDrawPixel32(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour)
@@ -42,7 +42,7 @@ static void MemReadRGBIndex32(objBitmap *Bitmap, ULONG *Data, struct RGB8 *RGB)
    RGB->Alpha = colour >> ((extBitmap *)Bitmap)->prvColourFormat.AlphaPos;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // CHUNKY24 LSB
 
 static void MemDrawLSBPixel24(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour)
@@ -91,7 +91,7 @@ static void MemReadLSBRGBIndex24(objBitmap *Bitmap, UBYTE *Data, struct RGB8 *RG
    RGB->Alpha = 255;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // CHUNKY24 MSB
 
 static void MemDrawMSBPixel24(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour)
@@ -148,7 +148,7 @@ static void MemReadMSBRGBIndex24(objBitmap *Bitmap, UBYTE *Data, struct RGB8 *RG
    RGB->Alpha = 255;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // CHUNKY16
 
 static void MemDrawPixel16(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour)
@@ -189,7 +189,7 @@ static void MemReadRGBIndex16(objBitmap *Bitmap, UWORD *Data, struct RGB8 *RGB)
    RGB->Alpha = 255;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // CHUNKY8
 
 static void MemDrawPixel8(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour)
@@ -230,7 +230,7 @@ static void MemReadRGBIndex8(objBitmap *Bitmap, UBYTE *Data, struct RGB8 *RGB)
    RGB->Alpha = 255;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // PLANAR
 
 static ULONG MemReadPixelPlanar(objBitmap *Bitmap, LONG X, LONG Y)

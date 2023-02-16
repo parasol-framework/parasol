@@ -1,5 +1,5 @@
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** Initialise SSL for the first time.  NB: Refer to MODExpunge() for the resource termination code.
 */
 
@@ -21,7 +21,7 @@ static ERROR sslInit(void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void sslDisconnect(extNetSocket *Self)
 {
@@ -42,7 +42,7 @@ static void sslDisconnect(extNetSocket *Self)
    }
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void sslMsgCallback(const ssl_st *s, int where, int ret)
 {
@@ -77,7 +77,7 @@ static void sslMsgCallback(const ssl_st *s, int where, int ret)
    else log.msg("%s: Unknown: %s", state, SSL_state_string_long(s));
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static void sslCtxMsgCallback(SSL *s, int where, int ret) __attribute__ ((unused));
 static void sslCtxMsgCallback(SSL *s, int where, int ret)
@@ -85,7 +85,7 @@ static void sslCtxMsgCallback(SSL *s, int where, int ret)
    sslMsgCallback(s, where, ret);
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 ** This only needs to be called once to setup the unique SSL context for the NetSocket object and the locations of the
 ** certificates.
 */
@@ -140,7 +140,7 @@ static ERROR sslSetup(extNetSocket *Self)
    return error;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR sslLinkSocket(extNetSocket *Self)
 {
@@ -159,7 +159,7 @@ static ERROR sslLinkSocket(extNetSocket *Self)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 // To establish an SSL connection, this function must be called after the initial connect() has succeeded.  If a
 // NetSocket has the NSF_SSL flag set, then the connection is handled automatically.  Otherwise a plain text socket
 // connection can be converted to SSL at any time (if the server is ready for it) by calling this function.

@@ -205,7 +205,7 @@ struct object {
    OBJECTID  ObjectID;        // If the object is referenced externally, access is managed by ID
    CLASSID   ClassID;         // Class identifier
    UBYTE     Detached:1;      // TRUE if the object is an external reference or is not to be garbage collected
-   UBYTE     Locked:1;        // Can be TRUE only if a lock has been acquired from AccessObject()
+   UBYTE     Locked:1;        // Can be TRUE only if a lock has been acquired from AccessObjectID()
    UBYTE     DelayCall:1;     // If TRUE, the next action/method call is to be delayed.
    ULONG     AccessCount;     // Controlled by access_object() and release_object()
 };
@@ -289,7 +289,7 @@ extern void x64ExecFunction(APTR, LONG, LARGE *, LONG);
 extern void x86ExecFunction(APTR, APTR, LONG);
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 // Standard hash computation, but stops when it encounters a character outside of A-Za-z0-9 range
 // Note that struct name hashes are case sensitive.
 

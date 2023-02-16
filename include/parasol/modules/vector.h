@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      vector.h
-// Copyright: Paul Manias © 2010-2022
+// Copyright: Paul Manias © 2010-2023
 // Generator: idl-c
 
 #include <parasol/main.h>
@@ -1255,7 +1255,7 @@ inline ERROR vecParseTransform(struct VectorMatrix * Matrix, CSTRING Transform) 
 inline ERROR vecResetMatrix(struct VectorMatrix * Matrix) { return VectorBase->_ResetMatrix(Matrix); }
 #endif
 
-//****************************************************************************
+//********************************************************************************************************************
 
 INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green, DOUBLE Blue, DOUBLE Alpha) {
    Colour->ClassID = ID_VECTORCOLOUR;

@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      system/fields.h
-// Copyright: Paul Manias © 1996-2022
+// Copyright: Paul Manias © 1996-2023
 // Generator: idl-c
 
 #define FID_Category 0x19ee1863LL

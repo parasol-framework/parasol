@@ -13,7 +13,7 @@
     <idstring>ID_DOCUMENT</idstring>
     <category>GUI</category>
     <include>modules/document.h</include>
-    <copyright>Paul Manias © 2005-2022</copyright>
+    <copyright>Paul Manias © 2005-2023</copyright>
     <description>
 <p>The Document class is a complete Page Layout Engine, providing rich text display features for creating complex documents and manuals.</p></description>
     <source>

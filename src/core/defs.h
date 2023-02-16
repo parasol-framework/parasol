@@ -182,11 +182,6 @@ enum {
 
 //********************************************************************************************************************
 
-struct Stats {
-   LONG NotifyFlags[2];     // Action subscription flags - space for 64 actions max
-   char Name[MAX_NAME_LEN]; // The name of the object (optional)
-};
-
 struct ActionSubscription {
    OBJECTPTR Context;
    void (*Callback)(OBJECTPTR, ACTIONID, ERROR, APTR);
@@ -997,7 +992,6 @@ extern "C" {
 ERROR MGR_Init(OBJECTPTR, APTR);
 ERROR MGR_Free(OBJECTPTR, APTR);
 ERROR MGR_GetField(OBJECTPTR, struct acGetVar *);
-ERROR MGR_OwnerDestroyed(OBJECTPTR, APTR);
 ERROR MGR_SetField(OBJECTPTR, struct acSetVar *);
 ERROR MGR_Signal(OBJECTPTR, APTR);
 

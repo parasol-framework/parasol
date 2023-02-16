@@ -1,17 +1,17 @@
-/*****************************************************************************
+/*********************************************************************************************************************
 
 The source code of the Parasol project is made publicly available under the
 terms described in the LICENSE.TXT file that is distributed with this package.
 Please refer to it for further information on licensing.
 
-******************************************************************************
+**********************************************************************************************************************
 
 -CLASS-
 ScintillaSearch: Provides search functionality for use on Scintilla objects.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 #define PRV_SCINTILLA
 
@@ -53,7 +53,7 @@ ScintillaSearch: Provides search functionality for use on Scintilla objects.
 
 #define SCICALL     ((extScintilla *)(Self->Scintilla))->API->SendScintilla
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Find: Searches for a specific text string.
@@ -74,7 +74,7 @@ NullArgs:
 Search: The string sequence was not found.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SEARCH_Find(objScintillaSearch *Self, struct ssFind *Args)
 {
@@ -160,7 +160,7 @@ static ERROR SEARCH_Find(objScintillaSearch *Self, struct ssFind *Args)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR SEARCH_Free(objScintillaSearch *Self, APTR Void)
 {
@@ -168,7 +168,7 @@ static ERROR SEARCH_Free(objScintillaSearch *Self, APTR Void)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static ERROR SEARCH_Init(objScintillaSearch *Self, APTR Void)
 {
@@ -188,7 +188,7 @@ static ERROR SEARCH_Init(objScintillaSearch *Self, APTR Void)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Next: Continues a text search.
@@ -207,7 +207,7 @@ Search: The string could not be found.
 
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SEARCH_Next(objScintillaSearch *Self, struct ssNext *Args)
 {
@@ -296,7 +296,7 @@ static ERROR SEARCH_Next(objScintillaSearch *Self, struct ssNext *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Prev: Continues a text search in reverse.
@@ -313,7 +313,7 @@ NullArgs
 Search: The string could not be found.
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SEARCH_Prev(objScintillaSearch *Self, struct ssPrev *Args)
 {
@@ -331,7 +331,7 @@ static ERROR SEARCH_Prev(objScintillaSearch *Self, struct ssPrev *Args)
    return ERR_Okay;
 }
 
-/*****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Flags: Optional flags.
@@ -349,7 +349,7 @@ Text: The string sequence to search for.
 This field defines the string sequence that will be searched for when calling either #Find(), #Next() or #Prev().
 -END-
 
-*****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Text(objScintillaSearch *Self, CSTRING Value)
 {
@@ -360,7 +360,7 @@ static ERROR SET_Text(objScintillaSearch *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const ActionArray clActions[] = {
    { AC_Free, (APTR)SEARCH_Free },
@@ -368,7 +368,7 @@ static const ActionArray clActions[] = {
    { 0, NULL }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const FunctionField argsNext[] = { { "Pos", FD_LONG|FD_RESULT }, { NULL, 0 } };
 static const FunctionField argsPrev[] = { { "Pos", FD_LONG|FD_RESULT }, { NULL, 0 } };
@@ -381,7 +381,7 @@ static const MethodArray clMethods[] = {
    { 0, NULL, NULL, NULL, 0 }
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 static const FieldDef clFlags[] = {
    { "Case",          STF_CASE },
@@ -400,7 +400,7 @@ static const FieldArray clFields[] = {
    END_FIELD
 };
 
-//****************************************************************************
+//********************************************************************************************************************
 
 OBJECTPTR clScintillaSearch = NULL;
 
