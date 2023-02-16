@@ -1773,7 +1773,9 @@ class Create {
 
                      target->threadRelease();
 
-                     if (error) return;
+                     // NB: NoSupport is considered a 'soft' error that does not warrant failure.
+
+                     if ((error) and (error != ERR_NoSupport)) return;
                   }
                }
                else { error = log.warning(ERR_UnsupportedField); return; }
