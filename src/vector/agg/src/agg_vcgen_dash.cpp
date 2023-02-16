@@ -38,9 +38,11 @@ namespace agg
 
    void vcgen_dash::add_dash(double dash_len, double gap_len) {
       if (m_num_dashes < max_dashes) {
-         m_total_dash_len += dash_len + gap_len;
-         m_dashes[m_num_dashes++] = dash_len;
-         m_dashes[m_num_dashes++] = gap_len;
+         if ((dash_len >= 0) and (gap_len >= 0)) {
+            m_total_dash_len += dash_len + gap_len;
+            m_dashes[m_num_dashes++] = dash_len;
+            m_dashes[m_num_dashes++] = gap_len;
+         }
       }
    }
 

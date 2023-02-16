@@ -1126,25 +1126,29 @@ static ERROR VECTOR_SET_DashArray(extVector *Self, DOUBLE *Value, LONG Elements)
    if (Self->DashArray) { delete Self->DashArray; Self->DashArray = NULL; }
 
    if ((Value) and (Elements >= 2)) {
-      LONG total = Elements;
-      if (total & 1) total++; // There must be an even count of dashes and gaps.
+      LONG total;
+
+      if (Elements & 1) total = Elements * 2; // To satisfy requirements, the dash path can be doubled to make an even number.
+      else total = Elements;
 
       Self->DashArray = new (std::nothrow) DashedStroke(Self->BasePath, total);
       if (Self->DashArray) {
-         Self->DashArray->values.assign(*Value, Elements);
-         if (total > Elements) Self->DashArray->values[Elements] = 0;
+         for (LONG i=0; i < Elements; i++) Self->DashArray->values[i] = Value[i];
+         if (Elements & 1) {
+            for (LONG i=0; i < Elements; i++) Self->DashArray->values[Elements+i] = Value[i];
+         }
 
          DOUBLE total_length = 0;
-         for (LONG i=0; i < total-1; i+=2) {
-            if (Value[i] < 0) { // Negative values can cause an infinite drawing cycle.
-               log.warning("Invalid dash array value %f", Value[i]);
+         for (LONG i=0; i < (LONG)Self->DashArray->values.size()-1; i+=2) {
+            if ((Self->DashArray->values[i] < 0) or (Self->DashArray->values[i+1] < 0)) { // Negative values can cause an infinite drawing cycle.
+               log.warning("Invalid dash array value pair (%f, %f)", Self->DashArray->values[i], Self->DashArray->values[i+1]);
                delete Self->DashArray;
                Self->DashArray = NULL;
                return ERR_InvalidValue;
             }
 
-            Self->DashArray->path.add_dash(Value[i], Value[i+1]);
-            total_length += Value[i] + Value[i+1];
+            Self->DashArray->path.add_dash(Self->DashArray->values[i], Self->DashArray->values[i+1]);
+            total_length += Self->DashArray->values[i] + Self->DashArray->values[i+1];
          }
 
          // The stroke-dashoffset is used to set how far into dash pattern to start the pattern.  E.g. a
