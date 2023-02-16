@@ -1712,6 +1712,7 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
       }
 
       if ((len = winGetCurrentDirectory(sizeof(buffer), buffer))) {
+         if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
          if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->Path, NULL)) {
             for (i=0; i < len; i++) Self->Path[i] = buffer[i];
             if (Self->Path[i-1] != '\\') Self->Path[i++] = '\\';
@@ -1748,6 +1749,7 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
 
          if (!Self->Path) { // Set the working folder
             if (getcwd(buffer, sizeof(buffer))) {
+               if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
                for (len=0; buffer[len]; len++);
                if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->Path, NULL)) {
                   for (i=0; buffer[i]; i++) Self->Path[i] = buffer[i];
@@ -2441,6 +2443,7 @@ static ERROR SET_Path(extTask *Self, CSTRING Value)
       if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
       Self->Path = new_path;
    }
+   else if (new_path) FreeResource(new_path);
 
    return error;
 }
