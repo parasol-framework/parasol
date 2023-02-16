@@ -564,7 +564,7 @@ static void free_private_memory(void)
    LONG count = 0;
    for (auto & [ id, mem ] : glPrivateMemory) {
       if ((mem.Address) and (mem.Flags & MEM_STRING)) {
-         if (!glCrashStatus) log.warning("Unfreed string \"%.80s\" (%p).", (CSTRING)mem.Address, mem.Address);
+         if (!glCrashStatus) log.warning("Unfreed string \"%.80s\" (%p, #%d)", (CSTRING)mem.Address, mem.Address, mem.MemoryID);
          mem.AccessCount = 0;
          FreeResource(mem.Address);
          mem.Address = NULL;

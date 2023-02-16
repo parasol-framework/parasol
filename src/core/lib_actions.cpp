@@ -179,7 +179,7 @@ static void free_private_children(OBJECTPTR Object)
 
             if (glLogLevel >= 3) {
                if (mem.Flags & MEM_STRING) {
-                  log.warning("Unfreed string \"%.40s\"", (CSTRING)mem.Address);
+                  log.warning("Unfreed string \"%.40s\" (%p, #%d)", (CSTRING)mem.Address, mem.Address, mem.MemoryID);
                }
                else if (mem.Flags & MEM_MANAGED) {
                   auto res = (ResourceManager **)((char *)mem.Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
