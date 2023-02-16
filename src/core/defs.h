@@ -820,68 +820,6 @@ class ObjectContext {
 #endif
 
 //********************************************************************************************************************
-
-#define ZIP_PARASOL 0x7e // Use this identifier to declare Parasol zipped files
-
-// The following flags can be tagged to each file entry in the zip file and are Parasol-specific (identifiable by the
-// ZIP_PARASOL OS tag).  NOTE: The low order bits aren't used because WinZip, WinRar and so forth assume that
-// those bits have meaning.
-
-#define ZIP_LINK   0x00010000 // The entry is a symbolic link
-#define ZIP_UEXEC  0x00020000 // Executable-access allowed (user)
-#define ZIP_GEXEC  0x00040000 // Executable-access allowed (group)
-#define ZIP_OEXEC  0x00080000 // Executable-access allowed (others/everyone)
-#define ZIP_UREAD  0x00100000 // Read-access allowed (user)
-#define ZIP_GREAD  0x00200000 // Read-access allowed (group)
-#define ZIP_OREAD  0x00400000 // Read-access allowed (others/everyone)
-#define ZIP_UWRITE 0x00800000 // Write-access allowed (user)
-#define ZIP_GWRITE 0x01000000 // Write-access allowed (group)
-#define ZIP_OWRITE 0x02000000 // Write-access allowed (others/everyone)
-
-#define ZIP_SECURITY (ZIP_UEXEC | ZIP_GEXEC | ZIP_OEXEC | ZIP_UREAD | ZIP_GREAD | ZIP_OREAD | ZIP_UWRITE | ZIP_GWRITE | ZIP_OWRITE)
-
-// This structure is used by the FileList field
-
-struct CompressedFile {
-   struct CompressedFile *Next;
-   struct CompressedFile *Prev;
-   STRING Name;
-   STRING Comment;
-   ULONG  CompressedSize;
-   ULONG  OriginalSize;
-   LONG   Year;
-   UBYTE  Month;
-   UBYTE  Day;
-   UBYTE  Hour;
-   UBYTE  Minute;
-};
-
-struct ZipFile : public CompressedFile {
-   ULONG TimeStamp;     // Time stamp information
-   ULONG CRC;           // CRC validation number
-   ULONG Offset;        // Byte offset of the file within the archive
-   UWORD NameLen;       // Length of name string
-   UWORD CommentLen;    // Length of comment string
-   UWORD DeflateMethod; // Set to 8 for normal deflation
-   LONG  Flags;         // These match the zip 'attrib' value
-   UBYTE IsFolder:1;
-};
-
-#define SIZE_COMPRESSION_BUFFER 16384
-
-//********************************************************************************************************************
-// File header.  Compressed data is prefixed with this information.
-
-#define HEAD_DEFLATEMETHOD  8
-#define HEAD_TIMESTAMP      10
-#define HEAD_CRC            14
-#define HEAD_COMPRESSEDSIZE 18
-#define HEAD_FILESIZE       22
-#define HEAD_NAMELEN        26   // File name
-#define HEAD_EXTRALEN       28   // System specific information
-#define HEAD_LENGTH         30   // END
-
-//********************************************************************************************************************
 // Central folder structure for each archived file.  This appears at the end of the zip file.
 
 #define LIST_SIGNATURE      0
