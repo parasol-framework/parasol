@@ -2239,8 +2239,11 @@ inline ULONG StrHash(CSTRING String, LONG CaseSensitive) { return CoreBase->_Str
 inline OBJECTPTR GetParentContext() { return (OBJECTPTR)(MAXINT)GetResource(RES_PARENT_CONTEXT); }
 inline APTR GetResourcePtr(LONG ID) { return (APTR)(MAXINT)GetResource(ID); }
 
-inline ERROR StrMatch(CSTRING A, CSTRING B) {
-   return StrCompare(A, B, 0, STR_MATCH_LEN);
+inline CSTRING to_cstring(std::string &A) { return A.c_str(); }
+inline CSTRING to_cstring(CSTRING A) { return A; }
+
+template <class T, class U> inline ERROR StrMatch(T &&A, U &&B) {
+   return StrCompare(to_cstring(A), to_cstring(B), 0, STR_MATCH_LEN);
 }
 
 #ifndef PRV_CORE_MODULE
@@ -2282,28 +2285,30 @@ inline LONG StrLength(CSTRING String) {
    else return 0;
 }
 
-inline LARGE StrToInt(CSTRING String) {
-   if (!String) return 0;
+template <class T> inline LARGE StrToInt(T &&String) {
+   CSTRING str = to_cstring(String);
+   if (!str) return 0;
 
-   while ((*String < '0') or (*String > '9')) { // Ignore any leading characters
-      if (!String[0]) return 0;
-      else if (*String IS '-') break;
-      else if (*String IS '+') break;
-      else String++;
+   while ((*str < '0') or (*str > '9')) { // Ignore any leading characters
+      if (!str[0]) return 0;
+      else if (*str IS '-') break;
+      else if (*str IS '+') break;
+      else str++;
    }
 
-   return strtoll(String, NULL, 0);
+   return strtoll(str, NULL, 0);
 }
 
-inline DOUBLE StrToFloat(CSTRING String) {
-   if (!String) return 0;
+template <class T> inline DOUBLE StrToFloat(T &&String) {
+   CSTRING str = to_cstring(String);
+   if (!str) return 0;
 
-   while ((*String != '-') and (*String != '.') and ((*String < '0') or (*String > '9'))) {
-      if (!*String) return 0;
-      String++;
+   while ((*str != '-') and (*str != '.') and ((*str < '0') or (*str > '9'))) {
+      if (!*str) return 0;
+      str++;
    }
 
-   return strtod(String, NULL);
+   return strtod(str, NULL);
 }
 
 // NB: Prefer std::to_string(value) where viable to get the std::string of a number.
@@ -2700,28 +2705,8 @@ class Create {
 };
 }
 
-#define ClassName(a) ((a)->Class->Name)
-
 inline OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UID; }
 inline APTR SetResourcePtr(LONG Res, APTR Value) { return (APTR)(MAXINT)(CoreBase->_SetResource(Res, (MAXINT)Value)); }
-#define CONV_TIME_DATETIME(a) ((DateTime *)(&(a)->Year))
-
-inline BYTE CMP_DATETIME(DateTime *one, DateTime *two)
-{
-   if (one->Year < two->Year) return -1;
-   if (one->Year > two->Year) return 1;
-   if (one->Month < two->Month) return -1;
-   if (one->Month > two->Month) return 1;
-   if (one->Day < two->Day) return -1;
-   if (one->Day > two->Day) return 1;
-   if (one->Minute < two->Minute) return -1;
-   if (one->Minute > two->Minute) return 1;
-   if (one->Hour < two->Hour) return -1;
-   if (one->Hour > two->Hour) return 1;
-   if (one->Second < two->Second) return -1;
-   if (one->Second > two->Second) return 1;
-   return 0;
-}
 
 // Action and Notification Structures
 
@@ -3183,7 +3168,7 @@ class objConfig : public BaseClass {
    public:
    ConfigGroups *Groups;
 
-   // For C++ only, these read variants avoid the standard method for speed but apply identical logic.
+   // For C++ only, these read variants avoid method calls for speed, but apply identical logic.
 
    inline ERROR read(CSTRING pGroup, CSTRING pKey, DOUBLE *pValue) {
       for (auto& [group, keys] : Groups[0]) {
