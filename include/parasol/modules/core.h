@@ -2249,31 +2249,31 @@ template <class T, class U> inline ERROR StrMatch(T &&A, U &&B) {
 #ifndef PRV_CORE_DATA
 
 inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address) {
-   return CoreBase->_AllocMemory(Size, Flags, Address, NULL);
+   return AllocMemory(Size, Flags, (APTR *)Address, NULL);
 }
 
 template<class T> inline ERROR NewObject(LARGE ClassID, T **Result) {
-   return CoreBase->_NewObject(ClassID, NF::NIL, Result);
+   return NewObject(ClassID, NF::NIL, Result);
 }
 
 inline ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo) {
-   return CoreBase->_MemoryIDInfo(ID,MemInfo,sizeof(struct MemInfo));
+   return MemoryIDInfo(ID,MemInfo,sizeof(struct MemInfo));
 }
 
 inline ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo) {
-   return CoreBase->_MemoryPtrInfo(Address,MemInfo,sizeof(struct MemInfo));
+   return MemoryPtrInfo(Address,MemInfo,sizeof(struct MemInfo));
 }
 
 inline ERROR QueueAction(LONG Action, OBJECTID ObjectID) {
-   return CoreBase->_QueueAction(Action, ObjectID, NULL);
+   return QueueAction(Action, ObjectID, NULL);
 }
 
 template <class T, class U> inline ERROR StrCompare(T &&A, U &&B, LONG Length, LONG Flags) {
-   return CoreBase->_StrCompare(to_cstring(A), to_cstring(B), Length, Flags);
+   return StrCompare(to_cstring(A), to_cstring(B), Length, Flags);
 }
 
 template <class T> inline LONG StrCopy(T &&A, STRING B, LONG Length) {
-   return CoreBase->_StrCopy(to_cstring(A), B, Length);
+   return StrCopy(to_cstring(A), B, Length);
 }
 
 #endif
