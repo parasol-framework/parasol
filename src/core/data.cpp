@@ -1,4 +1,6 @@
 
+#define PRV_CORE_DATA TRUE
+
 #include "defs.h"
 #include <parasol/main.h>
 #include <parasol/modules/core.h>

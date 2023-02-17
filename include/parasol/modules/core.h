@@ -2246,26 +2246,34 @@ template <class T, class U> inline ERROR StrMatch(T &&A, U &&B) {
    return StrCompare(to_cstring(A), to_cstring(B), 0, STR_MATCH_LEN);
 }
 
-#ifndef PRV_CORE_MODULE
+#ifndef PRV_CORE_DATA
 
 inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address) {
-   return AllocMemory(Size, Flags, Address, NULL);
+   return CoreBase->_AllocMemory(Size, Flags, Address, NULL);
 }
 
 template<class T> inline ERROR NewObject(LARGE ClassID, T **Result) {
-   return NewObject(ClassID, NF::NIL, Result);
+   return CoreBase->_NewObject(ClassID, NF::NIL, Result);
 }
 
 inline ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo) {
-   return MemoryIDInfo(ID,MemInfo,sizeof(struct MemInfo));
+   return CoreBase->_MemoryIDInfo(ID,MemInfo,sizeof(struct MemInfo));
 }
 
 inline ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo) {
-   return MemoryPtrInfo(Address,MemInfo,sizeof(struct MemInfo));
+   return CoreBase->_MemoryPtrInfo(Address,MemInfo,sizeof(struct MemInfo));
 }
 
 inline ERROR QueueAction(LONG Action, OBJECTID ObjectID) {
-   return QueueAction(Action, ObjectID, NULL);
+   return CoreBase->_QueueAction(Action, ObjectID, NULL);
+}
+
+template <class T, class U> inline ERROR StrCompare(T &&A, U &&B, LONG Length, LONG Flags) {
+   return CoreBase->_StrCompare(to_cstring(A), to_cstring(B), Length, Flags);
+}
+
+template <class T> inline LONG StrCopy(T &&A, STRING B, LONG Length) {
+   return CoreBase->_StrCopy(to_cstring(A), B, Length);
 }
 
 #endif
@@ -2276,7 +2284,6 @@ typedef std::vector<ConfigGroup> ConfigGroups;
 
 inline void CopyMemory(const void *Src, APTR Dest, LONG Length)
 {
-   if ((!Src) or (!Dest) or (Length < 0)) return;
    memmove(Dest, Src, Length);
 }
 
