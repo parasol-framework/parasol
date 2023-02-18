@@ -8284,26 +8284,13 @@ static void exec_link(extDocument *Self, LONG Index)
                   if ((lk[end] IS '?') or (lk[end] IS '#') or (lk[end] IS '&')) break;
                }
 
-               STRING cmd;
-               if (!IdentifyFile(lk.substr(0, end).c_str(), "Open", 0, &class_id, &subclass_id, &cmd)) {
+               if (!IdentifyFile(lk.substr(0, end).c_str(), &class_id, &subclass_id)) {
                   if (class_id IS ID_DOCUMENT) {
                      Self->set(FID_Path, lk);
 
                      if (Self->Bookmark) show_bookmark(Self, Self->Bookmark);
                      else log.msg("No bookmark was preset.");
                   }
-                  else if (cmd) { // If the link is supported by a program, run that program and pass it the link.
-                     std::string scmd(cmd);
-                     auto i = scmd.find("[@file]");
-                     if (i != std::string::npos) scmd.replace(i, 7, strlink);
-
-                     std::string args;
-                     split_command(scmd, args);
-
-                     objTask::create task = { fl::Path(scmd), fl::Args(args) };
-                     if (task.ok()) task->activate();
-                  }
-                  FreeResource(cmd);
                }
                else {
                   auto msg = std::string("It is not possible to follow this link as the type of file is not recognised.  The referenced link is:\n\n") + lk;

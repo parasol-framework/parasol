@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol Framework is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol Framework is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 -CATEGORY-
 Name: Files
@@ -106,8 +105,7 @@ public:
 
 namespace std {
    template <>
-   struct hash<CacheFileIndex>
-   {
+   struct hash<CacheFileIndex> {
       std::size_t operator()(const CacheFileIndex& k) const {
          return ((std::hash<std::string>()(k.path)
             ^ (std::hash<LARGE>()(k.timestamp) << 1)) >> 1)
@@ -163,8 +161,7 @@ extern "C" LONG CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
       return routine(Feedback);
    }
    else if (Callback->Type IS CALL_SCRIPT) {
-      OBJECTPTR script;
-      if ((script = Callback->Script.Script)) {
+      if (auto script = Callback->Script.Script) {
          const ScriptArg args[] = {
             { "Size",     FD_LARGE,   { .Large   = Feedback->Size } },
             { "Position", FD_LARGE,   { .Large   = Feedback->Position } },
@@ -379,7 +376,7 @@ ERROR AnalysePath(CSTRING Path, LONG *PathType)
       log.trace("Testing path type for '%s'", test_path);
 
       ERROR error;
-      const virtual_drive *vd = get_fs(test_path);
+      auto vd = get_fs(test_path);
       if (vd->TestPath) {
          if (!PathType) PathType = &len; // Dummy variable, helps to avoid bugs
          error = vd->TestPath(test_path, 0, PathType);
@@ -402,7 +399,7 @@ CompareFilePaths: Checks if two file paths refer to the same physical file.
 
 This function will test two file paths, checking if they refer to the same file in a storage device.  It uses a string
 comparison on the resolved path names, then attempts a second test based on an in-depth analysis of file attributes if
-the string comparison fails.  In the event of a match, ERR_Okay is returned.  All other error codes indicate a
+the string comparison fails.  In the event of a match, `ERR_Okay` is returned.  All other error codes indicate a
 mis-match or internal failure.
 
 The targeted paths do not have to refer to an existing file or folder in order to match (i.e. match on string
@@ -505,10 +502,9 @@ CSTRING ResolveGroupID(LONG GroupID)
 #ifdef __unix__
 
    static THREADVAR char group[40];
-   struct group *info;
-   LONG i;
 
-   if ((info = getgrgid(GroupID))) {
+   if (auto info = getgrgid(GroupID)) {
+      LONG i;
       for (i=0; (info->gr_name[i]) and ((size_t)i < sizeof(group)-1); i++) group[i] = info->gr_name[i];
       group[i] = 0;
       return group;
@@ -543,10 +539,9 @@ CSTRING ResolveUserID(LONG UserID)
 #ifdef __unix__
 
    static THREADVAR char user[40];
-   struct passwd *info;
-   LONG i;
 
-   if ((info = getpwuid(UserID))) {
+   if (auto info = getpwuid(UserID)) {
+      LONG i;
       for (i=0; (info->pw_name[i]) and ((size_t)i < sizeof(user)-1); i++) user[i] = info->pw_name[i];
       user[i] = 0;
       return user;
@@ -656,16 +651,15 @@ ERROR CreateLink(CSTRING From, CSTRING To)
 #else
 
    parasol::Log log(__FUNCTION__);
-   STRING src, dest;
-   LONG err;
 
    if ((!From) or (!To)) return ERR_NullArgs;
 
    log.branch("From: %.40s, To: %s", From, To);
 
+   STRING src, dest;
    if (!ResolvePath(From, RSF_NO_FILE_CHECK, &src)) {
       if (!ResolvePath(To, RSF_NO_FILE_CHECK, &dest)) {
-         err = symlink(dest, src);
+         auto err = symlink(dest, src);
          FreeResource(dest);
          FreeResource(src);
 
@@ -854,76 +848,6 @@ ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 
       FreeResource(path);
    }
-
-   return error;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-TranslateCmdRef: Converts program references into command-line format.
-Status: Private
-
-TBA
-
--INPUT-
-cstr String: String to translate
-!str Command: The resulting command string is returned in this parameter.
-
--ERRORS-
-Okay
-NullArgs
-StringFormat
-NoData
--END-
-
-*********************************************************************************************************************/
-
-ERROR TranslateCmdRef(CSTRING String, STRING *Command)
-{
-   parasol::Log log(__FUNCTION__);
-
-   if ((!String) or (!Command)) return ERR_NullArgs;
-
-   if (StrCompare("[PROG:", String, sizeof("[PROG:")-1, 0) != ERR_Okay) return ERR_StringFormat;
-
-   *Command = NULL;
-
-   LONG i;
-   char buffer[400];
-   LONG cmdindex = sizeof("[PROG:") - 1;
-   for (i=0; String[cmdindex] and (String[cmdindex] != ']'); i++) buffer[i] = String[cmdindex++];
-   buffer[i] = 0;
-
-   log.traceBranch("Command references program '%s'", buffer);
-
-   if (String[cmdindex] IS ']') cmdindex++;
-   while ((String[cmdindex]) and (String[cmdindex] <= 0x20)) cmdindex++;
-
-   ERROR error;
-   objConfig::create cfgprog = { fl::Path("config:software/programs.cfg") };
-   if (cfgprog.ok()) {
-      ConfigGroups *groups;
-      if (!cfgprog->getPtr(FID_Data, &groups)) {
-         error = ERR_Failed;
-         for (auto& [group, keys] : groups[0]) {
-            if (!StrMatch(buffer, group.c_str())) {
-               CSTRING cmd, args;
-               if (!cfgReadValue(*cfgprog, group.c_str(), "CommandFile", &cmd)) {
-                  if (cfgReadValue(*cfgprog, group.c_str(), "Args", &args)) args = "";
-                  snprintf(buffer, sizeof(buffer), "\"%s\" %s %s", cmd, args, String + cmdindex);
-
-                  *Command = StrClone(buffer);
-                  error = ERR_Okay;
-               }
-               else log.warning("CommandFile value not present for group %s", group.c_str());
-               break;
-            }
-         }
-      }
-      else error = ERR_NoData;
-   }
-   else error = ERR_File;
 
    return error;
 }
@@ -1198,12 +1122,12 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRe
 #if defined(__unix__) || defined(_WIN32)
    if ((!Path) or (BufferSize <= 0) or (!Buffer)) return ERR_Args;
 
-   BYTE approx;
+   bool approx;
    if (*Path IS '~') {
       Path++;
-      approx = TRUE;
+      approx = true;
    }
-   else approx = FALSE;
+   else approx = false;
 
    if (BytesRead) *BytesRead = 0;
 

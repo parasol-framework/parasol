@@ -192,9 +192,9 @@ struct ActionSubscription {
 };
 
 struct virtual_drive {
-   ULONG VirtualID;  // Hash name of the volume, not including the trailing colon
-   LONG PrivateSize; // The driver may reserve a private area for its own structure attached to DirInfo.
-   char Name[32];    // Volume name, including the trailing colon at the end
+   ULONG VirtualID;   // Hash name of the volume, not including the trailing colon
+   LONG  DriverSize;  // The driver may reserve a private area for its own structure attached to DirInfo.
+   char  Name[32];    // Volume name, including the trailing colon at the end
    ULONG CaseSensitive:1;
    ERROR (*ScanDir)(DirInfo *);
    ERROR (*Rename)(STRING, STRING);

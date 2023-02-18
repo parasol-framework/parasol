@@ -1926,7 +1926,7 @@ case the ID has been changed after initialisation of the file object.
 
 You can also change the group ID of a file by writing an integer value to this field.
 
-If the file system does not support group ID's, ERR_NoSupport is returned.
+If the file system does not support group ID's, `ERR_NoSupport` is returned.
 
 *********************************************************************************************************************/
 
@@ -1957,7 +1957,7 @@ static ERROR SET_Group(extFile *Self, LONG Value)
 #endif
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Handle: The native system handle for the file opened by the file object.
 
@@ -1965,7 +1965,7 @@ This field returns the native file system handle for the file opened by the file
 integer or pointer value in 32 or 64-bit format.  In order to manage this issue in a multi-platform manner, the value
 is returned as a 64-bit integer.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Handle(extFile *Self, LARGE *Value)
 {
@@ -1973,7 +1973,7 @@ static ERROR GET_Handle(extFile *Self, LARGE *Value)
    return ERR_Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Icon: Returns an icon reference that is suitable for this file in the UI.
 
@@ -1982,7 +1982,7 @@ list.  The icon style is determined by analysing the File's #Path.
 
 The resulting string is returned in the format `icons:category/name` and can be opened with the @Picture class.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Icon(extFile *Self, CSTRING *Value)
 {
@@ -2089,7 +2089,7 @@ static ERROR GET_Icon(extFile *Self, CSTRING *Value)
          std::string subclass, baseclass;
 
          CLASSID class_id, subclass_id;
-         if (!IdentifyFile(Self->Path, NULL, 0, &class_id, &subclass_id, NULL)) {
+         if (!IdentifyFile(Self->Path, &class_id, &subclass_id)) {
             if (glClassDB.contains(subclass_id)) {
                subclass = glClassDB[subclass_id].Name;
             }
@@ -2133,15 +2133,15 @@ static ERROR GET_Icon(extFile *Self, CSTRING *Value)
    return ERR_Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Link: Returns the link path for symbolically linked files.
 
-If a file represents a symbolic link (indicated by the SYMLINK flag setting) then reading the Link field will return
+If a file represents a symbolic link (indicated by the `SYMLINK` flag setting) then reading the Link field will return
 the link path.  No assurance is made as to the validity of the path.  If the path is not absolute, then the parent
 folder containing the link will need to be taken into consideration when calculating the path that the link refers to.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Link(extFile *Self, STRING *Value)
 {
@@ -2187,7 +2187,7 @@ static ERROR SET_Link(extFile *Self, STRING Value)
    return ERR_NoSupport;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Path: Specifies the location of a file or folder.
 
@@ -2203,7 +2203,7 @@ as the point of origin.
 The accepted method for referencing parent folders is `../`, which can be repeated for as many parent folders as needed
 to traverse the folder hierarchy.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Path(extFile *Self, STRING *Value)
 {

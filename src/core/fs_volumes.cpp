@@ -409,6 +409,10 @@ ERROR VirtualVolume(CSTRING Name, ...)
    LONG tagid;
    while ((tagid = va_arg(list, LONG))) {
       switch (tagid) {
+         case VAS_DRIVER_SIZE:
+            glVirtual[id].DriverSize = va_arg(list, LONG);
+            break;
+
          case VAS_DEREGISTER:
             glVirtual.erase(id);
             va_end(list);

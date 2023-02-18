@@ -71,14 +71,14 @@ ERROR OpenDir(CSTRING Path, LONG Flags, DirInfo **Result)
    STRING resolved_path;
    if (!Path[0]) Path = ":";
    if (!(error = ResolvePath(Path, 0, &resolved_path))) {
-      const virtual_drive *vd = get_fs(resolved_path);
+      auto vd = get_fs(resolved_path);
 
       // NB: We use MAX_FILENAME rather than resolve_len in the allocation size because fs_opendir() requires more space.
       LONG path_len = StrLength(Path) + 1;
       LONG resolve_len = StrLength(resolved_path) + 1;
       DirInfo *dir;
-      LONG size = sizeof(DirInfo) + sizeof(FileInfo) + MAX_FILENAME + path_len + MAX_FILENAME;
-      size += vd->PrivateSize;
+      // Layout: [DirInfo] [FileInfo] [Driver] [Name] [Path]
+      LONG size = sizeof(DirInfo) + sizeof(FileInfo) + vd->DriverSize + MAX_FILENAME + path_len + MAX_FILENAME;
       if (AllocMemory(size, MEM_DATA|MEM_MANAGED, (APTR *)&dir, NULL) != ERR_Okay) {
          FreeResource(resolved_path);
          return ERR_AllocMemory;
@@ -86,13 +86,14 @@ ERROR OpenDir(CSTRING Path, LONG Flags, DirInfo **Result)
 
       set_memory_manager(dir, &glResourceFolder);
 
-      dir->Info         = (FileInfo *)(dir + 1);
-      dir->Info->Name   = (STRING)(dir->Info + 1);
-      dir->prvPath      = dir->Info->Name + MAX_FILENAME;
-      dir->prvFlags     = Flags | RDF_OPENDIR;
-      dir->prvVirtualID = DEFAULT_VIRTUALID;
+      dir->Info            = (FileInfo *)(dir + 1);
+      dir->Info->Name      = STRING(dir->Info + 1) + vd->DriverSize;
+      dir->Driver          = dir->Info + 1;
+      dir->prvPath         = dir->Info->Name + MAX_FILENAME;
+      dir->prvFlags        = Flags | RDF_OPENDIR;
+      dir->prvVirtualID    = DEFAULT_VIRTUALID;
       dir->prvResolvedPath = dir->prvPath + path_len;
-      dir->prvResolveLen = resolve_len;
+      dir->prvResolveLen   = resolve_len;
       #ifdef _WIN32
          dir->prvHandle = (WINHANDLE)-1;
       #endif

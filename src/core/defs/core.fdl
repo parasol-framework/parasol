@@ -290,7 +290,8 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "SAME_FILE",
     "CASE_SENSITIVE: Set to true if the volume's paths are case-sensitive.",
     "READ_LINK",
-    "CREATE_LINK")
+    "CREATE_LINK",
+    "DRIVER_SIZE")
 
   enum("AST", { start=1, bits=64, comment="Tags for SetVolume()" }, -- Note: Tag names are not normally capitalised.
     "Path|PATH: Required.  Follow this tag with the path to be set against the volume.  If setting multiple paths, separate each path with a semi-colon character.  Each path must terminate with a forward slash to denote a folder.",
@@ -1137,6 +1138,7 @@ struct FieldValue {
   ]],
   [[
    #ifdef PRV_FILE
+   APTR   Driver;
    APTR   prvHandle;        // Directory handle.  If virtual, may store a private data address
    STRING prvPath;          // Original folder location string
    STRING prvResolvedPath;  // Resolved folder location
@@ -1324,14 +1326,13 @@ extern struct CoreBase *CoreBase;
     "SetDefaultPermissions",
     "CompareFilePaths",
     "GetSystemState",
-    "TranslateCmdRef",
+    "StrHash",
     "AddInfoTag",
     "UTF8Copy",
     "Base64Encode",
     "VarSetString",
     "VarGetString",
-    "VarCopy",
-    "StrHash")
+    "VarCopy")
 
   c_insert([[
 

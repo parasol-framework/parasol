@@ -163,12 +163,6 @@
       <const name="SMART_NAMES">Parse numeric object names as ID references and support use of the 'Owner' reserved keyword.</const>
     </constants>
 
-    <constants lookup="IDF" comment="IdentifyFile() values">
-      <const name="HOST">Query the host platform's file associations only.</const>
-      <const name="IGNORE_HOST">Ignore the host platform's file assocations.</const>
-      <const name="SECTION">Return the name of the Config group that supports the file association, rather than an executable command.</const>
-    </constants>
-
     <constants lookup="IDTYPE" comment="Types for AllocateID()">
       <const name="FUNCTION">Function ID's are used to track FUNCTION types and are assigned to the function ID field.</const>
       <const name="GLOBAL">Global ID's have no specific association with anything.</const>
