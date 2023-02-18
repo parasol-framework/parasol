@@ -140,7 +140,7 @@ ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION *Routine, MsgHandler **H
 
    if (!Routine) return log.warning(ERR_NullArgs);
 
-   log.branch("Custom: %p, MsgType: %d, Routine: %p, Type: %d", Custom, MsgType, Routine, Routine->Type);
+   log.branch("Custom: %p, MsgType: %d", Custom, MsgType);
 
    ThreadLock lock(TL_MSGHANDLER, 5000);
    if (lock.granted()) {

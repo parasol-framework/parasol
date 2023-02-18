@@ -120,6 +120,23 @@ static std::unordered_map<CacheFileIndex, CacheFile *> glCache;
 static std::mutex glCacheLock;
 
 //********************************************************************************************************************
+
+static const ULONG get_volume_id(CSTRING Path)
+{
+   if ((Path[0] IS ':') or (!Path[0])) return 0;
+
+   LONG len;
+   ULONG hash = 5381;
+   for (len=0; (Path[len]) and (Path[len] != ':'); len++) {
+      char c = Path[len];
+      if ((c IS '/') or (c IS '\\')) return 0; // If a slash is encountered early, the path belongs to the local FS
+      if ((c >= 'A') and (c <= 'Z')) hash = (hash<<5) + hash + c - 'A' + 'a';
+      else hash = (hash<<5) + hash + c;
+   }
+   return hash;
+}
+
+//********************************************************************************************************************
 // Called during shutdown
 
 void free_file_cache(void)
@@ -133,23 +150,6 @@ void free_file_cache(void)
    for (auto it=glCache.begin(); it != glCache.end(); it = glCache.erase(it)) {
       FreeResource(it->second);
    }
-}
-
-//********************************************************************************************************************
-// Check if a Path refers to a virtual volume, and if so, return the matching virtual_drive definition.
-
-static virtual_drive * get_virtual(CSTRING Path)
-{
-   LONG len;
-   for (len=0; (Path[len]) and (Path[len] != ':'); len++); // The Path may end with a NULL terminator or a colon
-   if ((size_t)len < sizeof(glVirtual[0].Name)) {
-      for (LONG i=0; i < glVirtualTotal; i++) {
-         if (glVirtual[i].Name[len] IS ':') {
-            if (!StrCompare(glVirtual[i].Name, Path, len, 0)) return glVirtual+i;
-         }
-      }
-   }
-   return NULL;
 }
 
 //********************************************************************************************************************
@@ -222,38 +222,30 @@ static STRING cleaned_path(CSTRING Path)
 #endif
 }
 
-/*********************************************************************************************************************
-** Returns a virtual_drive structure for all path types. Defaults to the host file system if no virtual drive was
-** identified.
-**
-** The Path must be resolved before you call this function, this is necessary to solve cases where a volume is a
-** shortcut to multiple paths for example.
-*/
+//********************************************************************************************************************
+// Check if a Path refers to a virtual volume, and if so, return the matching virtual_drive definition.
+
+static virtual_drive * get_virtual(CSTRING Path)
+{
+   if (auto id = get_volume_id(Path)) {
+      if (glVirtual.contains(id)) return &glVirtual[id];
+   }
+   return NULL;
+}
+
+//********************************************************************************************************************
+// Returns a virtual_drive structure for ALL path types. Defaults to the host file system if no virtual drive was
+// identified.
+//
+// The Path must be resolved before you call this function, this is necessary to solve cases where a volume is a
+// shortcut to multiple paths for example.
 
 const virtual_drive * get_fs(CSTRING Path)
 {
-   if (Path[0] IS ':') return (const virtual_drive *)(&glVirtual[0]);
-
-   LONG len;
-   ULONG hash = 5381;
-   for (len=0; (Path[len]) and (Path[len] != ':'); len++) {
-      char c = Path[len];
-      if ((c IS '/') or (c IS '\\')) return (const virtual_drive *)&glVirtual[0]; // If a slash is encountered early, the path belongs to the local FS
-      if ((c >= 'A') and (c <= 'Z')) hash = (hash<<5) + hash + c - 'A' + 'a';
-      else hash = (hash<<5) + hash + c;
+   if (auto id = get_volume_id(Path)) {
+      if (glVirtual.contains(id)) return &glVirtual[id];
    }
-
-   // Determine ownership based on the volume name
-
-   if ((size_t)len < sizeof(glVirtual[0].Name)) {
-      for (LONG i=0; i < glVirtualTotal; i++) {
-         if ((hash IS glVirtual[i].VirtualID) and (glVirtual[i].Name[len] IS ':')) {
-            if (!StrCompare(glVirtual[i].Name, Path, len, 0)) return glVirtual+i;
-         }
-      }
-   }
-
-   return (const virtual_drive *)&glVirtual[0];
+   return &glVirtual[0];
 }
 
 //********************************************************************************************************************

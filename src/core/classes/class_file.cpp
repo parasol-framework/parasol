@@ -1525,14 +1525,11 @@ static ERROR FILE_Watch(extFile *Self, struct flWatch *Args)
    // Drop any previously configured watch.
 
    if (Self->prvWatch) {
-      LONG v;
-      for (v=0; v < glVirtualTotal; v++) {
-         if (glVirtual[v].VirtualID IS Self->prvWatch->VirtualID) {
-            if (glVirtual[v].IgnoreFile) glVirtual[v].IgnoreFile(Self);
-            break;
-         }
+      auto id = Self->prvWatch->VirtualID;
+      if (glVirtual.contains(id)) {
+         if (glVirtual[id].IgnoreFile) glVirtual[id].IgnoreFile(Self);
       }
-      if (v IS glVirtualTotal) log.warning("Failed to find virtual volume ID #%d", Self->prvWatch->VirtualID);
+      else log.warning("Failed to find virtual volume ID $%.8x", id);
 
       FreeResource(Self->prvWatch);
       Self->prvWatch = NULL;
@@ -1556,7 +1553,7 @@ static ERROR FILE_Watch(extFile *Self, struct flWatch *Args)
    CSTRING resolve;
    ERROR error;
    if (!(error = GET_ResolvedPath(Self, &resolve))) {
-      const virtual_drive *vd = get_fs(resolve);
+      auto vd = get_fs(resolve);
 
       if (vd->WatchPath) {
          #ifdef _WIN32

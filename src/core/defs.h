@@ -193,6 +193,7 @@ struct ActionSubscription {
 
 struct virtual_drive {
    ULONG VirtualID;  // Hash name of the volume, not including the trailing colon
+   LONG PrivateSize; // The driver may reserve a private area for its own structure attached to DirInfo.
    char Name[32];    // Volume name, including the trailing colon at the end
    ULONG CaseSensitive:1;
    ERROR (*ScanDir)(DirInfo *);
@@ -213,9 +214,8 @@ struct virtual_drive {
    ERROR (*CreateLink)(CSTRING, CSTRING);
 };
 
-extern const struct virtual_drive glFSDefault;
-extern LONG glVirtualTotal;
-extern struct virtual_drive glVirtual[20];
+extern const virtual_drive glFSDefault;
+extern std::unordered_map<ULONG, virtual_drive> glVirtual;
 
 //********************************************************************************************************************
 // Resource definitions.
