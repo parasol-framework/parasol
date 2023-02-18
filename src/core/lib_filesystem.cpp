@@ -827,7 +827,7 @@ ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
          NameBuffer[pos++] = ':';
          NameBuffer[pos] = 0;
 
-         if (vfs->VirtualID != 0xffffffff) {
+         if (vfs->is_virtual()) {
             Info->Flags |= RDF_VIRTUAL;
             if (vfs->GetInfo) error = vfs->GetInfo(Path, Info, InfoSize);
          }
@@ -841,10 +841,10 @@ ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 
    STRING path;
    if (!(error = ResolvePath(Path, 0, &path))) {
-      const virtual_drive *vfs = get_fs(path);
+      auto vfs = get_fs(path);
 
       if (vfs->GetInfo) {
-         if (vfs->VirtualID != 0xffffffff) Info->Flags |= RDF_VIRTUAL;
+         if (vfs->is_virtual()) Info->Flags |= RDF_VIRTUAL;
 
          if (!(error = vfs->GetInfo(path, Info, InfoSize))) {
             Info->TimeStamp = calc_timestamp(&Info->Modified);
@@ -1698,7 +1698,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    feedback.Path = src;
    feedback.Dest = dest;
 
-   if ((srcvirtual->VirtualID != 0xffffffff) or (destvirtual->VirtualID != 0xffffffff)) {
+   if (srcvirtual->is_virtual() or destvirtual->is_virtual()) {
       log.trace("Using virtual copy routine.");
 
       // Open the source and destination
@@ -2251,7 +2251,7 @@ ERROR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *C
             AdjustLogLevel(1);
                error = CreateFolder(Dest, (glDefaultPermissions) ? glDefaultPermissions : file->Permissions);
 #ifdef __unix__
-               if (vdest->VirtualID IS 0xffffffff) {
+               if (vdest->is_default()) {
                   chown(Dest, (glForceUID != -1) ? glForceUID : file->UserID, (glForceGID != -1) ? glForceGID : file->GroupID);
                }
 #endif

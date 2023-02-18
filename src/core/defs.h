@@ -212,6 +212,8 @@ struct virtual_drive {
    ERROR (*SameFile)(CSTRING, CSTRING);
    ERROR (*ReadLink)(STRING, STRING *);
    ERROR (*CreateLink)(CSTRING, CSTRING);
+   inline bool is_default() const { return VirtualID IS 0; }
+   inline bool is_virtual() const { return VirtualID != 0; }
 };
 
 extern const virtual_drive glFSDefault;
