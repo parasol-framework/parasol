@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol Framework is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol Framework is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 -CATEGORY-
 Name: Files
@@ -106,8 +105,7 @@ public:
 
 namespace std {
    template <>
-   struct hash<CacheFileIndex>
-   {
+   struct hash<CacheFileIndex> {
       std::size_t operator()(const CacheFileIndex& k) const {
          return ((std::hash<std::string>()(k.path)
             ^ (std::hash<LARGE>()(k.timestamp) << 1)) >> 1)
@@ -118,6 +116,23 @@ namespace std {
 
 static std::unordered_map<CacheFileIndex, CacheFile *> glCache;
 static std::mutex glCacheLock;
+
+//********************************************************************************************************************
+
+static const ULONG get_volume_id(CSTRING Path)
+{
+   if ((Path[0] IS ':') or (!Path[0])) return 0;
+
+   LONG len;
+   ULONG hash = 5381;
+   for (len=0; (Path[len]) and (Path[len] != ':'); len++) {
+      char c = Path[len];
+      if ((c IS '/') or (c IS '\\')) return 0; // If a slash is encountered early, the path belongs to the local FS
+      if ((c >= 'A') and (c <= 'Z')) hash = (hash<<5) + hash + c - 'A' + 'a';
+      else hash = (hash<<5) + hash + c;
+   }
+   return hash;
+}
 
 //********************************************************************************************************************
 // Called during shutdown
@@ -136,23 +151,6 @@ void free_file_cache(void)
 }
 
 //********************************************************************************************************************
-// Check if a Path refers to a virtual volume, and if so, return the matching virtual_drive definition.
-
-static virtual_drive * get_virtual(CSTRING Path)
-{
-   LONG len;
-   for (len=0; (Path[len]) and (Path[len] != ':'); len++); // The Path may end with a NULL terminator or a colon
-   if ((size_t)len < sizeof(glVirtual[0].Name)) {
-      for (LONG i=0; i < glVirtualTotal; i++) {
-         if (glVirtual[i].Name[len] IS ':') {
-            if (!StrCompare(glVirtual[i].Name, Path, len, 0)) return glVirtual+i;
-         }
-      }
-   }
-   return NULL;
-}
-
-//********************************************************************************************************************
 
 extern "C" LONG CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
 {
@@ -163,8 +161,7 @@ extern "C" LONG CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
       return routine(Feedback);
    }
    else if (Callback->Type IS CALL_SCRIPT) {
-      OBJECTPTR script;
-      if ((script = Callback->Script.Script)) {
+      if (auto script = Callback->Script.Script) {
          const ScriptArg args[] = {
             { "Size",     FD_LARGE,   { .Large   = Feedback->Size } },
             { "Position", FD_LARGE,   { .Large   = Feedback->Position } },
@@ -222,38 +219,29 @@ static STRING cleaned_path(CSTRING Path)
 #endif
 }
 
-/*********************************************************************************************************************
-** Returns a virtual_drive structure for all path types. Defaults to the host file system if no virtual drive was
-** identified.
-**
-** The Path must be resolved before you call this function, this is necessary to solve cases where a volume is a
-** shortcut to multiple paths for example.
-*/
+//********************************************************************************************************************
+// Check if a Path refers to a virtual volume, and if so, return the matching virtual_drive definition.
+
+static const virtual_drive * get_virtual(CSTRING Path)
+{
+   if ((Path[0] IS ':') or (!Path[0])) return &glVirtual[0]; // Root level counts as virtual
+   auto id = get_volume_id(Path);
+   if ((id) and (glVirtual.contains(id))) return &glVirtual[id];
+   return NULL;
+}
+
+//********************************************************************************************************************
+// Returns a virtual_drive structure for ALL path types. Defaults to the host file system if no virtual drive was
+// identified.
+//
+// The Path must be resolved before you call this function, this is necessary to solve cases where a volume is a
+// shortcut to multiple paths for example.
 
 const virtual_drive * get_fs(CSTRING Path)
 {
-   if (Path[0] IS ':') return (const virtual_drive *)(&glVirtual[0]);
-
-   LONG len;
-   ULONG hash = 5381;
-   for (len=0; (Path[len]) and (Path[len] != ':'); len++) {
-      char c = Path[len];
-      if ((c IS '/') or (c IS '\\')) return (const virtual_drive *)&glVirtual[0]; // If a slash is encountered early, the path belongs to the local FS
-      if ((c >= 'A') and (c <= 'Z')) hash = (hash<<5) + hash + c - 'A' + 'a';
-      else hash = (hash<<5) + hash + c;
-   }
-
-   // Determine ownership based on the volume name
-
-   if ((size_t)len < sizeof(glVirtual[0].Name)) {
-      for (LONG i=0; i < glVirtualTotal; i++) {
-         if ((hash IS glVirtual[i].VirtualID) and (glVirtual[i].Name[len] IS ':')) {
-            if (!StrCompare(glVirtual[i].Name, Path, len, 0)) return glVirtual+i;
-         }
-      }
-   }
-
-   return (const virtual_drive *)&glVirtual[0];
+   auto id = get_volume_id(Path);
+   if (glVirtual.contains(id)) return &glVirtual[id];
+   return &glVirtual[0];
 }
 
 //********************************************************************************************************************
@@ -387,7 +375,7 @@ ERROR AnalysePath(CSTRING Path, LONG *PathType)
       log.trace("Testing path type for '%s'", test_path);
 
       ERROR error;
-      const virtual_drive *vd = get_fs(test_path);
+      auto vd = get_fs(test_path);
       if (vd->TestPath) {
          if (!PathType) PathType = &len; // Dummy variable, helps to avoid bugs
          error = vd->TestPath(test_path, 0, PathType);
@@ -410,7 +398,7 @@ CompareFilePaths: Checks if two file paths refer to the same physical file.
 
 This function will test two file paths, checking if they refer to the same file in a storage device.  It uses a string
 comparison on the resolved path names, then attempts a second test based on an in-depth analysis of file attributes if
-the string comparison fails.  In the event of a match, ERR_Okay is returned.  All other error codes indicate a
+the string comparison fails.  In the event of a match, `ERR_Okay` is returned.  All other error codes indicate a
 mis-match or internal failure.
 
 The targeted paths do not have to refer to an existing file or folder in order to match (i.e. match on string
@@ -513,10 +501,9 @@ CSTRING ResolveGroupID(LONG GroupID)
 #ifdef __unix__
 
    static THREADVAR char group[40];
-   struct group *info;
-   LONG i;
 
-   if ((info = getgrgid(GroupID))) {
+   if (auto info = getgrgid(GroupID)) {
+      LONG i;
       for (i=0; (info->gr_name[i]) and ((size_t)i < sizeof(group)-1); i++) group[i] = info->gr_name[i];
       group[i] = 0;
       return group;
@@ -551,10 +538,9 @@ CSTRING ResolveUserID(LONG UserID)
 #ifdef __unix__
 
    static THREADVAR char user[40];
-   struct passwd *info;
-   LONG i;
 
-   if ((info = getpwuid(UserID))) {
+   if (auto info = getpwuid(UserID)) {
+      LONG i;
       for (i=0; (info->pw_name[i]) and ((size_t)i < sizeof(user)-1); i++) user[i] = info->pw_name[i];
       user[i] = 0;
       return user;
@@ -664,16 +650,15 @@ ERROR CreateLink(CSTRING From, CSTRING To)
 #else
 
    parasol::Log log(__FUNCTION__);
-   STRING src, dest;
-   LONG err;
 
    if ((!From) or (!To)) return ERR_NullArgs;
 
    log.branch("From: %.40s, To: %s", From, To);
 
+   STRING src, dest;
    if (!ResolvePath(From, RSF_NO_FILE_CHECK, &src)) {
       if (!ResolvePath(To, RSF_NO_FILE_CHECK, &dest)) {
-         err = symlink(dest, src);
+         auto err = symlink(dest, src);
          FreeResource(dest);
          FreeResource(src);
 
@@ -835,7 +820,7 @@ ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
          NameBuffer[pos++] = ':';
          NameBuffer[pos] = 0;
 
-         if (vfs->VirtualID != 0xffffffff) {
+         if (vfs->is_virtual()) {
             Info->Flags |= RDF_VIRTUAL;
             if (vfs->GetInfo) error = vfs->GetInfo(Path, Info, InfoSize);
          }
@@ -849,10 +834,10 @@ ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 
    STRING path;
    if (!(error = ResolvePath(Path, 0, &path))) {
-      const virtual_drive *vfs = get_fs(path);
+      auto vfs = get_fs(path);
 
       if (vfs->GetInfo) {
-         if (vfs->VirtualID != 0xffffffff) Info->Flags |= RDF_VIRTUAL;
+         if (vfs->is_virtual()) Info->Flags |= RDF_VIRTUAL;
 
          if (!(error = vfs->GetInfo(path, Info, InfoSize))) {
             Info->TimeStamp = calc_timestamp(&Info->Modified);
@@ -862,76 +847,6 @@ ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 
       FreeResource(path);
    }
-
-   return error;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-TranslateCmdRef: Converts program references into command-line format.
-Status: Private
-
-TBA
-
--INPUT-
-cstr String: String to translate
-!str Command: The resulting command string is returned in this parameter.
-
--ERRORS-
-Okay
-NullArgs
-StringFormat
-NoData
--END-
-
-*********************************************************************************************************************/
-
-ERROR TranslateCmdRef(CSTRING String, STRING *Command)
-{
-   parasol::Log log(__FUNCTION__);
-
-   if ((!String) or (!Command)) return ERR_NullArgs;
-
-   if (StrCompare("[PROG:", String, sizeof("[PROG:")-1, 0) != ERR_Okay) return ERR_StringFormat;
-
-   *Command = NULL;
-
-   LONG i;
-   char buffer[400];
-   LONG cmdindex = sizeof("[PROG:") - 1;
-   for (i=0; String[cmdindex] and (String[cmdindex] != ']'); i++) buffer[i] = String[cmdindex++];
-   buffer[i] = 0;
-
-   log.traceBranch("Command references program '%s'", buffer);
-
-   if (String[cmdindex] IS ']') cmdindex++;
-   while ((String[cmdindex]) and (String[cmdindex] <= 0x20)) cmdindex++;
-
-   ERROR error;
-   objConfig::create cfgprog = { fl::Path("config:software/programs.cfg") };
-   if (cfgprog.ok()) {
-      ConfigGroups *groups;
-      if (!cfgprog->getPtr(FID_Data, &groups)) {
-         error = ERR_Failed;
-         for (auto& [group, keys] : groups[0]) {
-            if (!StrMatch(buffer, group.c_str())) {
-               CSTRING cmd, args;
-               if (!cfgReadValue(*cfgprog, group.c_str(), "CommandFile", &cmd)) {
-                  if (cfgReadValue(*cfgprog, group.c_str(), "Args", &args)) args = "";
-                  snprintf(buffer, sizeof(buffer), "\"%s\" %s %s", cmd, args, String + cmdindex);
-
-                  *Command = StrClone(buffer);
-                  error = ERR_Okay;
-               }
-               else log.warning("CommandFile value not present for group %s", group.c_str());
-               break;
-            }
-         }
-      }
-      else error = ERR_NoData;
-   }
-   else error = ERR_File;
 
    return error;
 }
@@ -1206,12 +1121,12 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRe
 #if defined(__unix__) || defined(_WIN32)
    if ((!Path) or (BufferSize <= 0) or (!Buffer)) return ERR_Args;
 
-   BYTE approx;
+   bool approx;
    if (*Path IS '~') {
       Path++;
-      approx = TRUE;
+      approx = true;
    }
-   else approx = FALSE;
+   else approx = false;
 
    if (BytesRead) *BytesRead = 0;
 
@@ -1287,7 +1202,6 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRe
 ERROR test_path(STRING Path, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
-   virtual_drive *vd;
    LONG len, type;
 #ifdef _WIN32
    LONG j;
@@ -1299,7 +1213,7 @@ ERROR test_path(STRING Path, LONG Flags)
 
    log.trace("%s", Path);
 
-   if ((vd = get_virtual(Path))) {
+   if (auto vd = get_virtual(Path)) {
       if (vd->TestPath) {
          if (!vd->TestPath(Path, Flags, &type)) {
             return ERR_Okay;
@@ -1706,7 +1620,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    feedback.Path = src;
    feedback.Dest = dest;
 
-   if ((srcvirtual->VirtualID != 0xffffffff) or (destvirtual->VirtualID != 0xffffffff)) {
+   if (srcvirtual->is_virtual() or destvirtual->is_virtual()) {
       log.trace("Using virtual copy routine.");
 
       // Open the source and destination
@@ -2259,7 +2173,7 @@ ERROR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *C
             AdjustLogLevel(1);
                error = CreateFolder(Dest, (glDefaultPermissions) ? glDefaultPermissions : file->Permissions);
 #ifdef __unix__
-               if (vdest->VirtualID IS 0xffffffff) {
+               if (vdest->is_default()) {
                   chown(Dest, (glForceUID != -1) ? glForceUID : file->UserID, (glForceGID != -1) ? glForceGID : file->GroupID);
                }
 #endif

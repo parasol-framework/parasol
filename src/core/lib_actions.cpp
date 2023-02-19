@@ -1301,7 +1301,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
    }
    else if ((error IS ERR_NoSupport) and (!GetField(Object, FID_Path|TSTR, &path)) and (path)) {
       CLASSID classid;
-      if (!IdentifyFile(path, NULL, 0, &classid, &Object->SubID, NULL)) {
+      if (!IdentifyFile(path, &classid, &Object->SubID)) {
          if ((classid IS Object->ClassID) and (Object->SubID)) {
             log.msg("Searching for subclass $%.8x", Object->SubID);
             if ((Object->ExtClass = (extMetaClass *)FindClass(Object->SubID))) {

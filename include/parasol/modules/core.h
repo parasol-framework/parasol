@@ -1035,6 +1035,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 #define VAS_CASE_SENSITIVE 15
 #define VAS_READ_LINK 16
 #define VAS_CREATE_LINK 17
+#define VAS_DRIVER_SIZE 18
 
 // Tags for SetVolume()
 
@@ -1889,6 +1890,7 @@ struct FileInfo {
 struct DirInfo {
    struct FileInfo * Info;    // Pointer to a FileInfo structure
    #ifdef PRV_FILE
+   APTR   Driver;
    APTR   prvHandle;        // Directory handle.  If virtual, may store a private data address
    STRING prvPath;          // Original folder location string
    STRING prvResolvedPath;  // Resolved folder location
@@ -1980,7 +1982,7 @@ struct CoreBase {
    ERROR (*_StrReadLocale)(CSTRING Key, CSTRING * Value);
    CSTRING (*_UTF8ValidEncoding)(CSTRING String, CSTRING Encoding);
    ERROR (*_ProcessMessages)(LONG Flags, LONG TimeOut);
-   ERROR (*_IdentifyFile)(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID * Class, CLASSID * SubClass, STRING * Command);
+   ERROR (*_IdentifyFile)(CSTRING Path, CLASSID * Class, CLASSID * SubClass);
    ERROR (*_ReallocMemory)(APTR Memory, LONG Size, APTR Address, MEMORYID * ID);
    ERROR (*_GetMessage)(MEMORYID Queue, LONG Type, LONG Flags, APTR Buffer, LONG Size);
    MEMORYID (*_ReleaseMemory)(APTR Address);
@@ -2072,14 +2074,13 @@ struct CoreBase {
    void (*_SetDefaultPermissions)(LONG User, LONG Group, LONG Permissions);
    ERROR (*_CompareFilePaths)(CSTRING PathA, CSTRING PathB);
    const struct SystemState * (*_GetSystemState)(void);
-   ERROR (*_TranslateCmdRef)(CSTRING String, STRING * Command);
+   ULONG (*_StrHash)(CSTRING String, LONG CaseSensitive);
    ERROR (*_AddInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING Value);
    LONG (*_UTF8Copy)(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
    LONG (*_Base64Encode)(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
    ERROR (*_VarSetString)(struct KeyStore * Store, CSTRING Key, CSTRING Value);
    CSTRING (*_VarGetString)(struct KeyStore * Store, CSTRING Key);
    ERROR (*_VarCopy)(struct KeyStore * Source, struct KeyStore * Dest);
-   ULONG (*_StrHash)(CSTRING String, LONG CaseSensitive);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2124,7 +2125,7 @@ inline void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERROR Er
 inline ERROR StrReadLocale(CSTRING Key, CSTRING * Value) { return CoreBase->_StrReadLocale(Key,Value); }
 inline CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding) { return CoreBase->_UTF8ValidEncoding(String,Encoding); }
 inline ERROR ProcessMessages(LONG Flags, LONG TimeOut) { return CoreBase->_ProcessMessages(Flags,TimeOut); }
-inline ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID * Class, CLASSID * SubClass, STRING * Command) { return CoreBase->_IdentifyFile(Path,Mode,Flags,Class,SubClass,Command); }
+inline ERROR IdentifyFile(CSTRING Path, CLASSID * Class, CLASSID * SubClass) { return CoreBase->_IdentifyFile(Path,Class,SubClass); }
 inline ERROR ReallocMemory(APTR Memory, LONG Size, APTR Address, MEMORYID * ID) { return CoreBase->_ReallocMemory(Memory,Size,Address,ID); }
 inline ERROR GetMessage(MEMORYID Queue, LONG Type, LONG Flags, APTR Buffer, LONG Size) { return CoreBase->_GetMessage(Queue,Type,Flags,Buffer,Size); }
 inline MEMORYID ReleaseMemory(APTR Address) { return CoreBase->_ReleaseMemory(Address); }
@@ -2216,14 +2217,13 @@ inline void UnloadFile(struct CacheFile * Cache) { return CoreBase->_UnloadFile(
 inline void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions) { return CoreBase->_SetDefaultPermissions(User,Group,Permissions); }
 inline ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB) { return CoreBase->_CompareFilePaths(PathA,PathB); }
 inline const struct SystemState * GetSystemState(void) { return CoreBase->_GetSystemState(); }
-inline ERROR TranslateCmdRef(CSTRING String, STRING * Command) { return CoreBase->_TranslateCmdRef(String,Command); }
+inline ULONG StrHash(CSTRING String, LONG CaseSensitive) { return CoreBase->_StrHash(String,CaseSensitive); }
 inline ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
 inline LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size) { return CoreBase->_UTF8Copy(Src,Dest,Chars,Size); }
 inline LONG Base64Encode(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize) { return CoreBase->_Base64Encode(State,Input,InputSize,Output,OutputSize); }
 inline ERROR VarSetString(struct KeyStore * Store, CSTRING Key, CSTRING Value) { return CoreBase->_VarSetString(Store,Key,Value); }
 inline CSTRING VarGetString(struct KeyStore * Store, CSTRING Key) { return CoreBase->_VarGetString(Store,Key); }
 inline ERROR VarCopy(struct KeyStore * Source, struct KeyStore * Dest) { return CoreBase->_VarCopy(Source,Dest); }
-inline ULONG StrHash(CSTRING String, LONG CaseSensitive) { return CoreBase->_StrHash(String,CaseSensitive); }
 #endif
 
 
@@ -2239,14 +2239,17 @@ inline ULONG StrHash(CSTRING String, LONG CaseSensitive) { return CoreBase->_Str
 inline OBJECTPTR GetParentContext() { return (OBJECTPTR)(MAXINT)GetResource(RES_PARENT_CONTEXT); }
 inline APTR GetResourcePtr(LONG ID) { return (APTR)(MAXINT)GetResource(ID); }
 
-inline ERROR StrMatch(CSTRING A, CSTRING B) {
-   return StrCompare(A, B, 0, STR_MATCH_LEN);
+inline CSTRING to_cstring(std::string &A) { return A.c_str(); }
+inline CSTRING to_cstring(CSTRING A) { return A; }
+
+template <class T, class U> inline ERROR StrMatch(T &&A, U &&B) {
+   return StrCompare(to_cstring(A), to_cstring(B), 0, STR_MATCH_LEN);
 }
 
-#ifndef PRV_CORE_MODULE
+#ifndef PRV_CORE_DATA
 
 inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address) {
-   return AllocMemory(Size, Flags, Address, NULL);
+   return AllocMemory(Size, Flags, (APTR *)Address, NULL);
 }
 
 template<class T> inline ERROR NewObject(LARGE ClassID, T **Result) {
@@ -2265,6 +2268,14 @@ inline ERROR QueueAction(LONG Action, OBJECTID ObjectID) {
    return QueueAction(Action, ObjectID, NULL);
 }
 
+template <class T, class U> inline ERROR StrCompare(T &&A, U &&B, LONG Length, LONG Flags) {
+   return StrCompare(to_cstring(A), to_cstring(B), Length, Flags);
+}
+
+template <class T> inline LONG StrCopy(T &&A, STRING B, LONG Length) {
+   return StrCopy(to_cstring(A), B, Length);
+}
+
 #endif
 
 typedef std::map<std::string, std::string> ConfigKeys;
@@ -2273,7 +2284,6 @@ typedef std::vector<ConfigGroup> ConfigGroups;
 
 inline void CopyMemory(const void *Src, APTR Dest, LONG Length)
 {
-   if ((!Src) or (!Dest) or (Length < 0)) return;
    memmove(Dest, Src, Length);
 }
 
@@ -2282,28 +2292,30 @@ inline LONG StrLength(CSTRING String) {
    else return 0;
 }
 
-inline LARGE StrToInt(CSTRING String) {
-   if (!String) return 0;
+template <class T> inline LARGE StrToInt(T &&String) {
+   CSTRING str = to_cstring(String);
+   if (!str) return 0;
 
-   while ((*String < '0') or (*String > '9')) { // Ignore any leading characters
-      if (!String[0]) return 0;
-      else if (*String IS '-') break;
-      else if (*String IS '+') break;
-      else String++;
+   while ((*str < '0') or (*str > '9')) { // Ignore any leading characters
+      if (!str[0]) return 0;
+      else if (*str IS '-') break;
+      else if (*str IS '+') break;
+      else str++;
    }
 
-   return strtoll(String, NULL, 0);
+   return strtoll(str, NULL, 0);
 }
 
-inline DOUBLE StrToFloat(CSTRING String) {
-   if (!String) return 0;
+template <class T> inline DOUBLE StrToFloat(T &&String) {
+   CSTRING str = to_cstring(String);
+   if (!str) return 0;
 
-   while ((*String != '-') and (*String != '.') and ((*String < '0') or (*String > '9'))) {
-      if (!*String) return 0;
-      String++;
+   while ((*str != '-') and (*str != '.') and ((*str < '0') or (*str > '9'))) {
+      if (!*str) return 0;
+      str++;
    }
 
-   return strtod(String, NULL);
+   return strtod(str, NULL);
 }
 
 // NB: Prefer std::to_string(value) where viable to get the std::string of a number.
@@ -2700,28 +2712,8 @@ class Create {
 };
 }
 
-#define ClassName(a) ((a)->Class->Name)
-
 inline OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UID; }
 inline APTR SetResourcePtr(LONG Res, APTR Value) { return (APTR)(MAXINT)(CoreBase->_SetResource(Res, (MAXINT)Value)); }
-#define CONV_TIME_DATETIME(a) ((DateTime *)(&(a)->Year))
-
-inline BYTE CMP_DATETIME(DateTime *one, DateTime *two)
-{
-   if (one->Year < two->Year) return -1;
-   if (one->Year > two->Year) return 1;
-   if (one->Month < two->Month) return -1;
-   if (one->Month > two->Month) return 1;
-   if (one->Day < two->Day) return -1;
-   if (one->Day > two->Day) return 1;
-   if (one->Minute < two->Minute) return -1;
-   if (one->Minute > two->Minute) return 1;
-   if (one->Hour < two->Hour) return -1;
-   if (one->Hour > two->Hour) return 1;
-   if (one->Second < two->Second) return -1;
-   if (one->Second > two->Second) return 1;
-   return 0;
-}
 
 // Action and Notification Structures
 
@@ -3183,7 +3175,7 @@ class objConfig : public BaseClass {
    public:
    ConfigGroups *Groups;
 
-   // For C++ only, these read variants avoid the standard method for speed but apply identical logic.
+   // For C++ only, these read variants avoid method calls for speed, but apply identical logic.
 
    inline ERROR read(CSTRING pGroup, CSTRING pKey, DOUBLE *pValue) {
       for (auto& [group, keys] : Groups[0]) {

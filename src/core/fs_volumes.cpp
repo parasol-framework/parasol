@@ -393,24 +393,15 @@ ERROR VirtualVolume(CSTRING Name, ...)
 
    log.branch("%s", Name);
 
-   ULONG name_hash = StrHash(Name, FALSE);
+   ULONG id = StrHash(Name, FALSE);
 
-   // Check if the volume already exists, otherwise use the first empty entry
-   // Overwriting or interfering with other volumes via hash collisions is prevented.
+   if (glVirtual.contains(id)) return ERR_Exists;
 
-   LONG index;
-   for (index=0; index < glVirtualTotal; index++) {
-      if (name_hash IS glVirtual[index].VirtualID) return ERR_Exists;
-   }
-
-   if (index >= ARRAYSIZE(glVirtual)) return log.warning(ERR_ArrayFull);
-
-   LONG i = StrCopy(Name, glVirtual[index].Name, sizeof(glVirtual[0].Name)-2);
-   glVirtual[index].Name[i++] = ':';
-   glVirtual[index].Name[i] = 0;
-
-   glVirtual[index].VirtualID = name_hash; // Virtual ID = Hash of the name, not including the colon
-   glVirtual[index].CaseSensitive = FALSE;
+   LONG i = StrCopy(Name, glVirtual[id].Name, sizeof(glVirtual[id].Name)-2);
+   glVirtual[id].Name[i++] = ':';
+   glVirtual[id].Name[i] = 0;
+   glVirtual[id].VirtualID = id; // Virtual ID = Hash of the name, not including the colon
+   glVirtual[id].CaseSensitive = false;
 
    va_list list;
    va_start(list, Name);
@@ -418,72 +409,69 @@ ERROR VirtualVolume(CSTRING Name, ...)
    LONG tagid;
    while ((tagid = va_arg(list, LONG))) {
       switch (tagid) {
-         case VAS_DEREGISTER: // If the deregister option is used, remove the virtual volume from the system
-            if (index < glVirtualTotal) {
-               if (index < ARRAYSIZE(glVirtual)-1) {
-                  CopyMemory(glVirtual + index + 1, glVirtual + index, sizeof(glVirtual[0]) * (ARRAYSIZE(glVirtual) - index - 1));
-                  glVirtualTotal--;
-               }
-               else ClearMemory(glVirtual + index, sizeof(glVirtual[0]));
-            }
+         case VAS_DRIVER_SIZE:
+            glVirtual[id].DriverSize = va_arg(list, LONG);
+            break;
+
+         case VAS_DEREGISTER:
+            glVirtual.erase(id);
             va_end(list);
             return ERR_Okay; // The volume has been removed, so any further tags are redundant.
 
          case VAS_CASE_SENSITIVE:
-            if (va_arg(list, LONG)) glVirtual[index].CaseSensitive = TRUE;
-            else glVirtual[index].CaseSensitive = FALSE;
+            glVirtual[id].CaseSensitive = va_arg(list, LONG) ? true : false;
             break;
 
          case VAS_CLOSE_DIR:
-            glVirtual[index].CloseDir = va_arg(list, ERROR (*)(DirInfo*));
+            glVirtual[id].CloseDir = va_arg(list, ERROR (*)(DirInfo*));
             break;
 
          case VAS_DELETE:
-            glVirtual[index].Delete = va_arg(list, ERROR (*)(STRING, FUNCTION*));
+            glVirtual[id].Delete = va_arg(list, ERROR (*)(STRING, FUNCTION*));
             break;
 
          case VAS_GET_INFO:
-            glVirtual[index].GetInfo =  va_arg(list, ERROR (*)(CSTRING, FileInfo*, LONG));
+            glVirtual[id].GetInfo =  va_arg(list, ERROR (*)(CSTRING, FileInfo*, LONG));
             break;
 
          case VAS_GET_DEVICE_INFO:
-            glVirtual[index].GetDeviceInfo = va_arg(list, ERROR (*)(CSTRING, objStorageDevice*));
+            glVirtual[id].GetDeviceInfo = va_arg(list, ERROR (*)(CSTRING, objStorageDevice*));
             break;
 
          case VAS_IDENTIFY_FILE:
-            glVirtual[index].IdentifyFile = va_arg(list, ERROR (*)(STRING, CLASSID*, CLASSID*));
+            glVirtual[id].IdentifyFile = va_arg(list, ERROR (*)(STRING, CLASSID*, CLASSID*));
             break;
 
          case VAS_IGNORE_FILE:
-            glVirtual[index].IgnoreFile = va_arg(list, void (*)(extFile*));
+            glVirtual[id].IgnoreFile = va_arg(list, void (*)(extFile*));
             break;
 
          case VAS_MAKE_DIR:
-            glVirtual[index].CreateFolder = va_arg(list, ERROR (*)(CSTRING, LONG));
+            glVirtual[id].CreateFolder = va_arg(list, ERROR (*)(CSTRING, LONG));
             break;
 
          case VAS_OPEN_DIR:
-            glVirtual[index].OpenDir = va_arg(list, ERROR (*)(DirInfo*));
+            glVirtual[id].OpenDir = va_arg(list, ERROR (*)(DirInfo*));
             break;
 
          case VAS_RENAME:
-            glVirtual[index].Rename = va_arg(list, ERROR (*)(STRING, STRING));
+            glVirtual[id].Rename = va_arg(list, ERROR (*)(STRING, STRING));
             break;
 
          case VAS_SAME_FILE:
-            glVirtual[index].SameFile = va_arg(list, ERROR (*)(CSTRING, CSTRING));
+            glVirtual[id].SameFile = va_arg(list, ERROR (*)(CSTRING, CSTRING));
             break;
 
          case VAS_SCAN_DIR:
-            glVirtual[index].ScanDir = va_arg(list, ERROR (*)(DirInfo*));
+            glVirtual[id].ScanDir = va_arg(list, ERROR (*)(DirInfo*));
             break;
 
          case VAS_TEST_PATH:
-            glVirtual[index].TestPath = va_arg(list, ERROR (*)(CSTRING, LONG, LONG*));
+            glVirtual[id].TestPath = va_arg(list, ERROR (*)(CSTRING, LONG, LONG*));
             break;
 
          case VAS_WATCH_PATH:
-            glVirtual[index].WatchPath = va_arg(list, ERROR (*)(extFile*));
+            glVirtual[id].WatchPath = va_arg(list, ERROR (*)(extFile*));
             break;
 
          default:
@@ -493,10 +481,6 @@ ERROR VirtualVolume(CSTRING Name, ...)
       }
       arg++;
    }
-
-   // Increase the total if the virtual volume is new
-
-   if (index >= glVirtualTotal) glVirtualTotal++;
 
    va_end(list);
    return ERR_Okay;

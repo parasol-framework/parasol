@@ -1862,7 +1862,6 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
 
    log.branch("Initialising filesystem volumes.");
 
-   glVirtualTotal = 1;
    glVirtual[0] = glFSDefault;
 
    log.trace("Attempting to create SystemVolumes object.");
@@ -1951,11 +1950,11 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
    }
 
    char buffer[300];
-   if (!StrMatch("default", glUserHomeFolder.c_str())) {
+   if (!StrMatch("default", glUserHomeFolder)) {
       StrCopy("config:users/", buffer, sizeof(buffer));
       for (auto& [group, keys] : glVolumes) {
          if (!group.compare("User")) {
-            if (keys.contains("Path")) StrCopy(keys["Path"].c_str(), buffer, sizeof(buffer));
+            if (keys.contains("Path")) StrCopy(keys["Path"], buffer, sizeof(buffer));
          }
       }
    }

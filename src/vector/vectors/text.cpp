@@ -495,13 +495,16 @@ static ERROR TEXT_SET_DX(extVectorText *Self, DOUBLE *Values, LONG Elements)
 {
    if (Self->txDX) { FreeResource(Self->txDX); Self->txDX = NULL; Self->txTotalDX = 0; }
 
-   if (!AllocMemory(sizeof(DOUBLE) * Elements, MEM_DATA, &Self->txDX)) {
-      CopyMemory(Values, Self->txDX, Elements * sizeof(DOUBLE));
-      Self->txTotalDX = Elements;
-      reset_path(Self);
-      return ERR_Okay;
+   if ((Values) and (Elements > 0)) {
+      if (!AllocMemory(sizeof(DOUBLE) * Elements, MEM_DATA, &Self->txDX)) {
+         CopyMemory(Values, Self->txDX, Elements * sizeof(DOUBLE));
+         Self->txTotalDX = Elements;
+         reset_path(Self);
+         return ERR_Okay;
+      }
+      else return ERR_AllocMemory;
    }
-   else return ERR_AllocMemory;
+   else return ERR_Okay;
 }
 
 /*********************************************************************************************************************
@@ -523,13 +526,16 @@ static ERROR TEXT_SET_DY(extVectorText *Self, DOUBLE *Values, LONG Elements)
 {
    if (Self->txDY) { FreeResource(Self->txDY); Self->txDY = NULL; Self->txTotalDY = 0; }
 
-   if (!AllocMemory(sizeof(DOUBLE) * Elements, MEM_DATA, &Self->txDY)) {
-      CopyMemory(Values, Self->txDY, Elements * sizeof(DOUBLE));
-      Self->txTotalDY = Elements;
-      reset_path(Self);
-      return ERR_Okay;
+   if ((Values) and (Elements > 0)) {
+      if (!AllocMemory(sizeof(DOUBLE) * Elements, MEM_DATA, &Self->txDY)) {
+         CopyMemory(Values, Self->txDY, Elements * sizeof(DOUBLE));
+         Self->txTotalDY = Elements;
+         reset_path(Self);
+         return ERR_Okay;
+      }
+      else return ERR_AllocMemory;
    }
-   else return ERR_AllocMemory;
+   else return ERR_Okay;
 }
 
 /*********************************************************************************************************************

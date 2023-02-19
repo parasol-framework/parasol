@@ -41,7 +41,7 @@ static ERROR STORAGE_Init(extStorageDevice *Self, APTR Void)
 
    const virtual_drive *vd = get_fs(Self->Volume);
 
-   if (vd->VirtualID != 0xffffffff) Self->DeviceFlags |= DEVICE_SOFTWARE;
+   if (vd->is_virtual()) Self->DeviceFlags |= DEVICE_SOFTWARE;
 
    Self->BytesFree  = -1;
    Self->BytesUsed  = 0;

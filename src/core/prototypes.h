@@ -45,7 +45,7 @@ void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERROR Error);
 ERROR StrReadLocale(CSTRING Key, CSTRING * Value);
 CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding);
 ERROR ProcessMessages(LONG Flags, LONG TimeOut);
-ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID * Class, CLASSID * SubClass, STRING * Command);
+ERROR IdentifyFile(CSTRING Path, CLASSID * Class, CLASSID * SubClass);
 ERROR ReallocMemory(APTR Memory, LONG Size, APTR * Address, MEMORYID * ID);
 ERROR GetMessage(MEMORYID Queue, LONG Type, LONG Flags, APTR Buffer, LONG Size);
 MEMORYID ReleaseMemory(APTR Address);
@@ -137,14 +137,13 @@ void UnloadFile(struct CacheFile * Cache);
 void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions);
 ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB);
 const struct SystemState * GetSystemState();
-ERROR TranslateCmdRef(CSTRING String, STRING * Command);
+ULONG StrHash(CSTRING String, LONG CaseSensitive);
 ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
 LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
 LONG Base64Encode(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
 ERROR VarSetString(struct KeyStore * Store, CSTRING Key, CSTRING Value);
 CSTRING VarGetString(struct KeyStore * Store, CSTRING Key);
 ERROR VarCopy(struct KeyStore * Source, struct KeyStore * Dest);
-ULONG StrHash(CSTRING String, LONG CaseSensitive);
 
 #ifdef  __cplusplus
 }
