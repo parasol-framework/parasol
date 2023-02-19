@@ -125,7 +125,7 @@ CSTRING glIDL = MOD_IDL;
 
 HOSTHANDLE glConsoleFD = (HOSTHANDLE)-1; // Managed by GetResource()
 
-LARGE glTimeLog   = 0;
+LARGE glTimeLog      = 0;
 WORD glCrashStatus   = 0;
 WORD glCodeIndex     = CP_FINISHED;
 WORD glLastCodeIndex = 0;
@@ -136,15 +136,14 @@ WORD glFunctionIndex = 0;
    WORD glLogLevel  = 0;
 #endif
 WORD glMaxDepth     = 20; // Thread global
-WORD glShowIO       = FALSE;
-WORD glShowPrivate  = FALSE;
-WORD glShowPublic   = FALSE;
+bool glShowIO       = false;
+bool glShowPrivate  = false;
+bool glShowPublic   = false;
+bool glPrivileged   = false;
+bool glSync         = false;
 BYTE *SharedMemory  = 0;
 BYTE glProgramStage = STAGE_STARTUP;
-BYTE glPrivileged   = FALSE;
-BYTE glSync         = FALSE;
 UBYTE glTaskState   = TSTATE_RUNNING;
-
 struct KeyStore *glCache = NULL;
 LONG glInotify = -1;
 
@@ -188,11 +187,6 @@ THREADVAR BYTE tlMainThread = FALSE; // Will be set to TRUE on open, any other t
 THREADVAR WORD tlPreventSleep = 0;
 THREADVAR WORD tlPublicLockCount = 0; // This variable is controlled by GLOBAL_LOCK() and can be used to check if locks are being held prior to sleeping.
 THREADVAR WORD tlPrivateLockCount = 0; // Count of private *memory* locks held per-thread
-#ifdef _WIN32
-THREADVAR WINHANDLE tlThreadReadMsg = 0;
-#else
-THREADVAR LONG tlThreadReadMsg = 0;
-#endif
 
 struct BaseClass glDummyObject;
 class ObjectContext glTopContext; // Top-level context is a dummy and can be thread-shared
