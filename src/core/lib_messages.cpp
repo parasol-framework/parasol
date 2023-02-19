@@ -319,7 +319,7 @@ ERROR ProcessMessages(LONG Flags, LONG TimeOut)
    parasol::Log log(__FUNCTION__);
 
    // Message processing is only possible from the main thread (for system design and synchronisation reasons)
-   if ((!tlMainThread) and (!tlThreadWriteMsg)) return log.warning(ERR_OutsideMainThread);
+   if (!tlMainThread) return log.warning(ERR_OutsideMainThread);
 
    // Ensure that all resources allocated by sub-routines are assigned to the Task object by default.
    parasol::SwitchContext ctx(glCurrentTask);
@@ -1145,7 +1145,7 @@ ERROR WaitForObjects(LONG Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
    if (!glWFOList.empty()) return log.warning(ERR_Recursion);
 
    // Message processing is only possible from the main thread (for system design and synchronisation reasons)
-   if ((!tlMainThread) and (!tlThreadWriteMsg)) return log.warning(ERR_OutsideMainThread);
+   if (!tlMainThread) return log.warning(ERR_OutsideMainThread);
 
    log.branch("Flags: $%.8x, Timeout: %d, Signals: %p", Flags, TimeOut, ObjectSignals);
 

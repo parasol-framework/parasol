@@ -190,10 +190,8 @@ THREADVAR WORD tlPublicLockCount = 0; // This variable is controlled by GLOBAL_L
 THREADVAR WORD tlPrivateLockCount = 0; // Count of private *memory* locks held per-thread
 #ifdef _WIN32
 THREADVAR WINHANDLE tlThreadReadMsg = 0;
-THREADVAR WINHANDLE tlThreadWriteMsg = 0;
 #else
 THREADVAR LONG tlThreadReadMsg = 0;
-THREADVAR LONG tlThreadWriteMsg = 0;
 #endif
 
 struct BaseClass glDummyObject;

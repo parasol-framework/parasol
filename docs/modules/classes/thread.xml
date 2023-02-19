@@ -167,7 +167,6 @@ if (thread.ok()) thread-&gt;activate(thread);
   <types>
     <constants lookup="THF" comment="Thread flags">
       <const name="AUTO_FREE">Automatically destroy the Thread object when the user routine has completed.</const>
-      <const name="MSG_HANDLER">Allow the thread to handle messages that target objects that it has created.</const>
     </constants>
 
   </types>

@@ -426,8 +426,7 @@ void ActionList(struct ActionTable **List, LONG *Size)
 -FUNCTION-
 ActionMsg: Execute an action or method by way of object ID.
 
-Use ActionMsg() to execute an action where only the object ID is known.  In cases where the object belongs to another
-thread, the call is messaged to that thread for delayed execution, and this function returns immediately.
+Use ActionMsg() to execute an action where only the object ID is known.
 
 -INPUT-
 int Action: The ID of the action or method to be executed.
@@ -452,81 +451,9 @@ ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args)
 
    OBJECTPTR object;
    if (!AccessObjectID(ObjectID, 3000, &object)) {
-      if (object->ThreadMsg != tlThreadWriteMsg) {
-         // If the object belongs to a separate thread, release it and let the other
-         // thread handle it via messaging.
-         ReleaseObject(object);
-
-         #ifdef _WIN32
-            WINHANDLE thread_msg = object->ThreadMsg;
-         #else
-            LONG thread_msg = object->ThreadMsg;
-         #endif
-
-         struct {
-            ActionMessage Action;
-            BYTE Buffer[SIZE_ACTIONBUFFER];
-         } msg;
-
-         msg.Action = {
-            .ObjectID = ObjectID,
-            .Time     = 0,
-            .ActionID = ActionID,
-            .SendArgs = false
-         };
-
-         LONG msgsize = 0;
-
-         if (Args) {
-            if (ActionID > 0) {
-               if (ActionTable[ActionID].Size) {
-                  const FunctionField *fields = ActionTable[ActionID].Args;
-                  LONG argssize = ActionTable[ActionID].Size;
-                  WORD waitresult;
-                  if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, &waitresult, ActionTable[ActionID].Name) != ERR_Okay) {
-                     log.warning("Failed to buffer arguments for action \"%s\".", ActionTable[ActionID].Name);
-                     return ERR_Failed;
-                  }
-
-                  msg.Action.SendArgs = TRUE;
-               }
-            }
-            else if (auto cl = (extMetaClass *)FindClass(GetClassID(ObjectID))) {
-               if (-ActionID < cl->TotalMethods) {
-                  const FunctionField *fields = cl->Methods[-ActionID].Args;
-                  LONG argssize = cl->Methods[-ActionID].Size;
-                  WORD waitresult;
-                  if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, &waitresult, cl->Methods[-ActionID].Name) != ERR_Okay) {
-                     log.warning("Failed to buffer arguments for method \"%s\".", cl->Methods[-ActionID].Name);
-                     return ERR_Failed;
-                  }
-                  msg.Action.SendArgs = TRUE;
-               }
-               else {
-                  log.warning("Illegal method ID %d executed on class %s.", ActionID, cl->ClassName);
-                  return ERR_IllegalMethodID;
-               }
-            }
-            else return log.warning(ERR_MissingClass);
-         }
-
-         ERROR error = send_thread_msg(thread_msg, MSGID_ACTION, &msg, msgsize + sizeof(ActionMessage));
-
-         if (error) {
-            if (ActionID > 0) {
-               log.warning("Action %s on object #%d failed, SendMsg error: %s", ActionTable[ActionID].Name, ObjectID, glMessages[error]);
-            }
-            else log.warning("Method %d on object #%d failed, SendMsg error: %s", ActionID, ObjectID, glMessages[error]);
-
-            if (error IS ERR_MemoryDoesNotExist) error = ERR_NoMatchingObject;
-         }
-         return error;
-      }
-      else {
-         ERROR error = Action(ActionID, object, Args);
-         ReleaseObject(object);
-         return error;
-      }
+      ERROR error = Action(ActionID, object, Args);
+      ReleaseObject(object);
+      return error;
    }
    else return log.warning(ERR_AccessObject);
 }

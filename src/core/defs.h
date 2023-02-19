@@ -706,12 +706,12 @@ extern void (*glNetProcessMessages)(LONG, APTR);
 extern WINHANDLE glProcessHandle;
 extern WINHANDLE glValidationSemaphore;
 extern THREADVAR WORD tlMessageBreak;
-extern THREADVAR WINHANDLE tlThreadReadMsg, tlThreadWriteMsg;
+extern THREADVAR WINHANDLE tlThreadReadMsg;
 #endif
 
 #ifdef __unix__
 extern THREADVAR LONG glSocket;
-extern THREADVAR LONG tlThreadReadMsg, tlThreadWriteMsg;
+extern THREADVAR LONG tlThreadReadMsg;
 extern struct FileMonitor *glFileMonitor;
 #endif
 

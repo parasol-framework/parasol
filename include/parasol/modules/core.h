@@ -850,7 +850,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 // Thread flags
 
 #define THF_AUTO_FREE 0x00000001
-#define THF_MSG_HANDLER 0x00000002
 
 // Flags for the SetDate() file method.
 
@@ -2355,11 +2354,6 @@ struct BaseClass { // Must be 64-bit aligned
    NF       Flags;              // Object flags
    LONG     NotifyFlags[2];     // Action subscription flags - space for 64 actions max
    volatile LONG  ThreadID;     // Managed by locking functions
-   #ifdef _WIN32
-      WINHANDLE ThreadMsg;      // Pipe for sending messages to the owner thread.
-   #else
-      LONG ThreadMsg;
-   #endif
    char Name[MAX_NAME_LEN];     // The name of the object (optional)
    UBYTE ThreadPending;         // ActionThread() increments this.
    volatile BYTE Queue;         // Managed by locking functions

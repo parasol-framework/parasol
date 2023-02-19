@@ -124,8 +124,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "SYSTEM_PROBE: Indicates that the module is being probed.  Do not use outside of the core library.")
 
   flags("THF", { comment="Thread flags" },
-    "AUTO_FREE: Automatically destroy the Thread object when the user routine has completed.",
-    "MSG_HANDLER: Allow the thread to handle messages that target objects that it has created.")
+    "AUTO_FREE: Automatically destroy the Thread object when the user routine has completed.")
 
   enum("FDT", { start=0, comment="Flags for the SetDate() file method." },
     "MODIFIED: The date on which the file was last modified.",
@@ -1464,11 +1463,6 @@ struct BaseClass { // Must be 64-bit aligned
    NF       Flags;              // Object flags
    LONG     NotifyFlags[2];     // Action subscription flags - space for 64 actions max
    volatile LONG  ThreadID;     // Managed by locking functions
-   #ifdef _WIN32
-      WINHANDLE ThreadMsg;      // Pipe for sending messages to the owner thread.
-   #else
-      LONG ThreadMsg;
-   #endif
    char Name[MAX_NAME_LEN];     // The name of the object (optional)
    UBYTE ThreadPending;         // ActionThread() increments this.
    volatile BYTE Queue;         // Managed by locking functions

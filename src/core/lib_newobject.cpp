@@ -101,10 +101,6 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
       if (mc->BaseClassID IS mc->SubClassID) head->SubID = 0; // Object derived from a base class
       else head->SubID = mc->SubClassID; // Object derived from a sub-class
 
-      if ((Flags & NF::UNTRACKED) IS NF::NIL) { // Don't track untracked objects to specific threads.
-         head->ThreadMsg = tlThreadWriteMsg; // If the object needs to belong to a thread, this will record it.
-      }
-
       // Tracking for our new object is configured here.
 
       if (mc->Flags & CLF_NO_OWNERSHIP) { }
