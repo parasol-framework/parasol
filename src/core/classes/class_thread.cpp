@@ -50,16 +50,26 @@ struct ActionThread {
    extThread *Thread;
    bool InUse;
 
+   // Move constructor
+   ActionThread(ActionThread &&Other) noexcept : Thread(NULL), InUse(false) {
+      Thread = Other.Thread;
+      InUse  = Other.InUse;
+      Other.Thread = NULL;
+      Other.InUse  = false;
+   }
+
    ActionThread() : Thread(0), InUse(0) { }
 
    ActionThread(extThread *pThread) {
       Thread = pThread;
-      InUse = pThread ? true : false;
+      InUse  = pThread ? true : false;
    }
 
    ~ActionThread() {
-      parasol::Log log(__FUNCTION__);
-      if (InUse) log.warning("Pooled thread #%d is still in use on shutdown.", Thread->UID);
+      if (InUse) {
+         parasol::Log log(__FUNCTION__);
+         log.warning("Pooled thread #%d is still in use on closure.", Thread->UID);
+      }
    }
 };
 
@@ -128,7 +138,7 @@ void remove_threadpool(void)
 {
    parasol::Log log("Core");
 
-   log.traceBranch("Removing the internal thread pool, size %d.", (LONG)glActionThreads.size());
+   log.branch("Removing the internal thread pool, size %d.", (LONG)glActionThreads.size());
 
    ThreadLock lock(TL_THREADPOOL, 2000);
    if (lock.granted()) glActionThreads.clear();
@@ -221,11 +231,6 @@ static void * thread_entry(extThread *Self)
    tlThreadRef = Self;
    pthread_cleanup_push(&thread_entry_cleanup, Self);
 
-   if (Self->Flags & THF_MSG_HANDLER) {
-      tlThreadReadMsg  = Self->Msgs[0];
-      tlThreadWriteMsg = Self->Msgs[1];
-   }
-
    // ENTRY
 
    if (Self->Routine.Type) {
@@ -245,10 +250,6 @@ static void * thread_entry(extThread *Self)
                ReleaseObject(script);
             }
          }
-      }
-
-      if (Self->Flags & THF_MSG_HANDLER) {
-         while (!ProcessMessages(0, -1));
       }
 
       tlThreadRef = NULL;
@@ -294,7 +295,6 @@ static void thread_entry_cleanup(void *Arg)
    }
 
    tlThreadReadMsg  = 0;
-   tlThreadWriteMsg = 0;
 
    #ifdef _WIN32
       free_threadlock();
@@ -406,17 +406,22 @@ static ERROR THREAD_Free(extThread *Self, APTR Void)
 static ERROR THREAD_FreeWarning(extThread *Self, APTR Void)
 {
    parasol::Log log;
-   if (Self->Active) {
-      log.warning("Attempt to free an active thread.  Process will wait for the thread to terminate.");
-      struct thWait wait = { 60 * 1000 };
-      Action(MT_ThWait, Self, &wait);
 
-      if (Self->Active) {
-         log.warning("Thread still in use - marking it for automatic termination.");
-         Self->Flags |= THF_AUTO_FREE;
-         return ERR_InUse;
-      }
-      else return ERR_Okay;
+   if (!Self->Active) return ERR_Okay;
+
+   if (!tlMainThread) { // Only the main thread should be terminating child threads.
+      Self->Flags |= THF_AUTO_FREE;
+      return ERR_InUse;
+   }
+
+   log.msg("Attempt to free an active thread.  Process will wait for the thread to terminate.");
+   struct thWait wait = { 60 * 1000 };
+   Action(MT_ThWait, Self, &wait);
+
+   if (Self->Active) {
+      log.warning("Thread #%d still in use - marking it for automatic termination.", Self->UID);
+      Self->Flags |= THF_AUTO_FREE;
+      return ERR_InUse;
    }
    else return ERR_Okay;
 }
@@ -429,18 +434,6 @@ static ERROR THREAD_Init(extThread *Self, APTR Void)
 
    if (Self->StackSize < 1024) Self->StackSize = 1024;
    else if (Self->StackSize > 1024 * 1024) return log.warning(ERR_OutOfRange);
-
-   if (Self->Flags & THF_MSG_HANDLER) {
-      #ifdef _WIN32
-         if (winCreatePipe(&Self->Msgs[0], &Self->Msgs[1])) return log.warning(ERR_SystemCall);
-      #else
-         if (!pipe(Self->Msgs)) {
-            //fcntl(Self->Msgs[0], F_SETFL, fcntl(Self->Msgs[0], F_GETFL)|O_NONBLOCK); // Do not block on read
-            fcntl(Self->Msgs[1], F_SETFL, fcntl(Self->Msgs[1], F_GETFL)|O_NONBLOCK); // Do not block on write (see send_thread_msg())
-         }
-         else return log.warning(ERR_SystemCall);
-      #endif
-   }
 
    return ERR_Okay;
 }
@@ -634,7 +627,6 @@ On some platforms it may not be possible to preset the stack size and the provid
 
 static const FieldDef clThreadFlags[] = {
    { "AutoFree",   THF_AUTO_FREE },
-   { "MsgHandler", THF_MSG_HANDLER },
    { NULL, 0 }
 };
 

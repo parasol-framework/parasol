@@ -177,7 +177,7 @@ struct FunctionField argsResize[] = {
       <param type="APTR" name="Args">The parameter structure required by Action.</param>
     </input>
     <description>
-<p>Use ActionMsg() to execute an action where only the object ID is known.  In cases where the object belongs to another thread, the call is messaged to that thread for delayed execution, and this function returns immediately.</p>
+<p>Use ActionMsg() to execute an action where only the object ID is known.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -3932,7 +3932,6 @@ end
 
     <constants lookup="THF" comment="Thread flags">
       <const name="AUTO_FREE">Automatically destroy the Thread object when the user routine has completed.</const>
-      <const name="MSG_HANDLER">Allow the thread to handle messages that target objects that it has created.</const>
     </constants>
 
     <constants lookup="TOI">

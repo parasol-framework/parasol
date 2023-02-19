@@ -57,15 +57,11 @@ static ERROR test_path(STRING, LONG, LONG *);
 //********************************************************************************************************************
 // Return the portion of the string that follows the last discovered '/' or '\'
 
-INLINE CSTRING name_from_path(CSTRING Path)
+inline CSTRING name_from_path(std::string Path)
 {
-   for (LONG i=0; Path[i]; i++) {
-      if ((Path[i] IS '/') or (Path[i] IS '\\')) {
-         Path = Path + i + 1;
-         i = -1;
-      }
-   }
-   return Path;
+   auto i = Path.find_last_of("/\\");
+   if (i IS std::string::npos) return Path.c_str();
+   else return Path.c_str() + i;
 }
 
 //********************************************************************************************************************
