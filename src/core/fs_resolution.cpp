@@ -311,8 +311,7 @@ static ERROR resolve(STRING Source, STRING Dest, LONG Flags)
    LONG j, k, pos, loop;
    ERROR error;
 
-   struct virtual_drive *vdrive;
-   if ((vdrive = get_virtual(Source))) {
+   if (get_virtual(Source)) {
       StrCopy(Source, Dest, COPY_ALL);
       return ERR_VirtualVolume;
    }
@@ -325,8 +324,8 @@ static ERROR resolve(STRING Source, STRING Dest, LONG Flags)
    Source[pos-1] = 0; // Remove the volume symbol for the string comparison
    fullpath[0] = 0;
    for (auto& [group, keys] : glVolumes) {
-      if (!StrMatch(keys["Name"].c_str(), Source)) {
-         StrCopy(keys["Path"].c_str(), fullpath, sizeof(fullpath));
+      if (!StrMatch(keys["Name"], Source)) {
+         StrCopy(keys["Path"], fullpath, sizeof(fullpath));
          break;
       }
    }
@@ -353,7 +352,9 @@ static ERROR resolve(STRING Source, STRING Dest, LONG Flags)
    if (!StrCompare("EXT:", path, 4, STR_MATCH_CASE)) {
       StrCopy(Source, Dest, MAX_FILENAME); // Return an exact duplicate of the original source string
 
-      if (get_virtual(Source)) return ERR_VirtualVolume;
+      if (get_virtual(Source)) {
+         return ERR_VirtualVolume;
+      }
 
       if (tlClassLoaded) { // Already attempted to load the module on a previous occasion - we must fail
          return ERR_Failed;

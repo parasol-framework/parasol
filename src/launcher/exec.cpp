@@ -1,64 +1,5 @@
 
 //********************************************************************************************************************
-// This function targets a data file for opening.
-
-static ERROR exec_data_file(CSTRING TargetFile)
-{
-   parasol::Log log(__FUNCTION__);
-
-   log.msg("Executing target '%s' using the Task class.", TargetFile);
-
-   CLASSID class_id;
-   STRING command;
-   ERROR error;
-
-   if (!(error = IdentifyFile(TargetFile, "Open", 0, &class_id, NULL, &command))) {
-      objTask::create run = { fl::Location(command) };
-      if (run.ok()) {
-         if (glArgs) {
-            char argbuffer[100];
-            STRING argname = argbuffer;
-            LONG i, j;
-            for (i=0; glArgs[i]; i++) {
-               CSTRING arg = glArgs[i];
-               for (j=0; (arg[j]) and (arg[j] != '=') and (j < (LONG)sizeof(argbuffer)-10); j++) argname[j] = arg[j];
-               argname[j] = 0;
-               LONG al = j;
-
-               if (arg[j] IS '=') {
-                  j++;
-                  if (arg[j] IS '{') {
-                     // Array definition, e.g. files={ file1.txt file2.txt }
-                     // This will be converted to files(0)=file.txt files(1)=file2.txt files:size=2
-
-                     // Check in case of no gap, e.g. files={arg1 ... }
-
-                     j++;
-                     if (arg[j] > 0x20) SetVar(*run, argbuffer, arg + j);
-
-                     i++;
-                     LONG arg_index = 0;
-                     while ((arg) and (arg[0] != '}')) {
-                        snprintf(argbuffer+al, sizeof(argbuffer)-al, "(%d)", arg_index);
-                        SetVar(*run, argbuffer, arg);
-                        arg_index++;
-                        i++;
-                     }
-                  }
-                  else SetVar(*run, argname, arg+j);
-               }
-               else SetVar(*run, argname, "1");
-            }
-         }
-
-         run->activate();
-      }
-   }
-
-   return(ERR_LimitedSuccess);
-}
-
-//********************************************************************************************************************
 // Executes the target.
 
 ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
@@ -70,7 +11,7 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
    log.msg("Identifying file '%s'", TargetFile);
 
    CLASSID class_id, subclass;
-   if ((error = IdentifyFile(TargetFile, "Open", 0, &class_id, &subclass, NULL))) {
+   if ((error = IdentifyFile(TargetFile, &class_id, &subclass))) {
       print("Failed to identify the type of file for path '%s', error: %s.  Assuming ID_SCRIPT.", TargetFile, GetErrorMsg(error));
       subclass = ID_SCRIPT;
       class_id = ID_SCRIPT;
@@ -169,9 +110,6 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
       }
 
       return(error);
-   }
-   else if (class_id != ID_SCRIPT) { // Target is a data file, may be able to run it if it has a file association.
-      return(exec_data_file(TargetFile));
    }
 
    if (!NewObject(subclass ? subclass : class_id, &glScript)) {

@@ -388,7 +388,7 @@
       <description>
 <p>The group ID assigned to a file can be read from this field.  The ID is retrieved from the file system in real time in case the ID has been changed after initialisation of the file object.</p>
 <p>You can also change the group ID of a file by writing an integer value to this field.</p>
-<p>If the file system does not support group ID's, ERR_NoSupport is returned.</p>
+<p>If the file system does not support group ID's, <code>ERR_NoSupport</code> is returned.</p>
       </description>
     </field>
 
@@ -419,7 +419,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>If a file represents a symbolic link (indicated by the SYMLINK flag setting) then reading the Link field will return the link path.  No assurance is made as to the validity of the path.  If the path is not absolute, then the parent folder containing the link will need to be taken into consideration when calculating the path that the link refers to.</p>
+<p>If a file represents a symbolic link (indicated by the <code>SYMLINK</code> flag setting) then reading the Link field will return the link path.  No assurance is made as to the validity of the path.  If the path is not absolute, then the parent folder containing the link will need to be taken into consideration when calculating the path that the link refers to.</p>
       </description>
     </field>
 

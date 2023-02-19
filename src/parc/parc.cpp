@@ -90,7 +90,7 @@ static ERROR PARC_Activate(extParc *Self, APTR Void)
       if (!SetVolume(AST_NAME, "parc", AST_PATH, "archive:parc/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, TAGEND)) {
          CLASSID class_id, subclass_id;
          ERROR error;
-         if (!(error = IdentifyFile(path, "Open", IDF_IGNORE_HOST, &class_id, &subclass_id, NULL))) {
+         if (!(error = IdentifyFile(path, &class_id, &subclass_id))) {
             // Run the default script as specified in "parc.xml".
 
             if (class_id IS ID_SCRIPT) {

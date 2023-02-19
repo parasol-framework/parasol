@@ -46,6 +46,25 @@ class ScopedAccessMemory { // C++ wrapper for automatically releasing shared mem
 };
 
 //********************************************************************************************************************
+// Defer() function for calling lambdas at end-of-scope
+
+template <typename FUNC> struct deferred_call {
+   deferred_call(const deferred_call& that) = delete;
+   deferred_call& operator=(const deferred_call& that) = delete;
+   deferred_call(deferred_call&& that) = delete;
+   deferred_call(FUNC&& f) : func(std::forward<FUNC>(f)) { }
+
+   ~deferred_call() { func(); }
+
+private:
+   FUNC func;
+};
+
+template <typename F> deferred_call<F> Defer(F&& f) {
+   return deferred_call<F>(std::forward<F>(f));
+}
+
+//********************************************************************************************************************
 
 template <class T = BaseClass>
 class ScopedObject { // C++ wrapper for automatically freeing an object

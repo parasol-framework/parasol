@@ -1,4 +1,6 @@
 
+#define PRV_CORE_DATA TRUE
+
 #include "defs.h"
 #include <parasol/main.h>
 #include <parasol/modules/core.h>
@@ -147,11 +149,11 @@ struct KeyStore *glCache = NULL;
 LONG glInotify = -1;
 
 const struct virtual_drive glFSDefault = {
-   0xffffffff, ":",
+   0, 0, ":",
 #ifdef _WIN32
-   FALSE,     // Windows is not case sensitive by default
+   false,     // Windows is not case sensitive by default
 #else
-   TRUE,      // Unix file systems are usually case sensitive
+   true,      // Unix file systems are usually case sensitive
 #endif
    fs_scandir,
    fs_rename,
@@ -171,8 +173,7 @@ const struct virtual_drive glFSDefault = {
    fs_createlink
 };
 
-LONG glVirtualTotal = 0;
-struct virtual_drive glVirtual[20];
+std::unordered_map<ULONG, virtual_drive> glVirtual;
 
 #ifdef __unix__
 LONG glMutexLockSize = sizeof(THREADLOCK);

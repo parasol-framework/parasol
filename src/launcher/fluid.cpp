@@ -128,7 +128,7 @@ static LONG run_script(objScript *Script)
 static LONG exec_source(CSTRING TargetFile, CSTRING Procedure)
 {
    CLASSID class_id, subclass;
-   if (IdentifyFile(TargetFile, "Open", 0, &class_id, &subclass, NULL)) {
+   if (IdentifyFile(TargetFile, &class_id, &subclass)) {
       subclass = ID_FLUID;
       class_id = ID_SCRIPT;
    }

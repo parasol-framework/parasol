@@ -7,18 +7,16 @@ Name: Files
 static void folder_free(APTR Address)
 {
    parasol::Log log("CloseDir");
-   DirInfo *folder = (DirInfo *)Address;
+   auto folder = (DirInfo *)Address;
 
    // Note: Virtual file systems should focus on destroying handles as fs_closedir() will take care of memory and list
    // deallocations.
 
    if ((folder->prvVirtualID) and (folder->prvVirtualID != DEFAULT_VIRTUALID)) {
-      for (auto v=0; v < glVirtualTotal; v++) {
-         if (glVirtual[v].VirtualID IS folder->prvVirtualID) {
-            log.trace("Virtual file driver function @ %p", glVirtual[v].CloseDir);
-            if (glVirtual[v].CloseDir) glVirtual[v].CloseDir(folder);
-            break;
-         }
+      auto id = folder->prvVirtualID;
+      if (glVirtual.contains(id)) {
+         log.trace("Virtual file driver function @ %p", glVirtual[id].CloseDir);
+         if (glVirtual[id].CloseDir) glVirtual[id].CloseDir(folder);
       }
    }
 
@@ -71,27 +69,31 @@ ERROR OpenDir(CSTRING Path, LONG Flags, DirInfo **Result)
 
    ERROR error;
    STRING resolved_path;
-   if (!Path[0]) Path = ":";
+   if (!Path[0]) Path = ":"; // A path of ':' will return all known volumes.
    if (!(error = ResolvePath(Path, 0, &resolved_path))) {
+      auto vd = get_fs(resolved_path);
+
       // NB: We use MAX_FILENAME rather than resolve_len in the allocation size because fs_opendir() requires more space.
       LONG path_len = StrLength(Path) + 1;
       LONG resolve_len = StrLength(resolved_path) + 1;
       DirInfo *dir;
-      if (AllocMemory(sizeof(DirInfo) + sizeof(FileInfo) + MAX_FILENAME + path_len + MAX_FILENAME,
-            MEM_DATA|MEM_MANAGED, (APTR *)&dir, NULL) != ERR_Okay) {
+      // Layout: [DirInfo] [FileInfo] [Driver] [Name] [Path]
+      LONG size = sizeof(DirInfo) + sizeof(FileInfo) + vd->DriverSize + MAX_FILENAME + path_len + MAX_FILENAME;
+      if (AllocMemory(size, MEM_DATA|MEM_MANAGED, (APTR *)&dir, NULL) != ERR_Okay) {
          FreeResource(resolved_path);
          return ERR_AllocMemory;
       }
 
       set_memory_manager(dir, &glResourceFolder);
 
-      dir->Info         = (FileInfo *)(dir + 1);
-      dir->Info->Name   = (STRING)(dir->Info + 1);
-      dir->prvPath      = dir->Info->Name + MAX_FILENAME;
-      dir->prvFlags     = Flags | RDF_OPENDIR;
-      dir->prvVirtualID = DEFAULT_VIRTUALID;
+      dir->Info            = (FileInfo *)(dir + 1);
+      dir->Info->Name      = STRING(dir->Info + 1) + vd->DriverSize;
+      dir->Driver          = dir->Info + 1;
+      dir->prvPath         = dir->Info->Name + MAX_FILENAME;
+      dir->prvFlags        = Flags | RDF_OPENDIR;
+      dir->prvVirtualID    = DEFAULT_VIRTUALID;
       dir->prvResolvedPath = dir->prvPath + path_len;
-      dir->prvResolveLen = resolve_len;
+      dir->prvResolveLen   = resolve_len;
       #ifdef _WIN32
          dir->prvHandle = (WINHANDLE)-1;
       #endif
@@ -108,8 +110,6 @@ ERROR OpenDir(CSTRING Path, LONG Flags, DirInfo **Result)
          *Result = dir;
          return ERR_Okay;
       }
-
-      const virtual_drive *vd = get_fs(dir->prvResolvedPath);
 
       if (!vd->OpenDir) {
          FreeResource(dir);
@@ -226,10 +226,8 @@ ERROR ScanDir(DirInfo *Dir)
       error = fs_scandir(Dir);
    }
    else {
-      for (auto v=0; v < glVirtualTotal; v++) {
-         if (glVirtual[v].VirtualID != Dir->prvVirtualID) continue;
-         if (glVirtual[v].ScanDir) error = glVirtual[v].ScanDir(Dir);
-         break;
+      if (glVirtual.contains(Dir->prvVirtualID)) {
+         if (glVirtual[Dir->prvVirtualID].ScanDir) error = glVirtual[Dir->prvVirtualID].ScanDir(Dir);
       }
    }
 

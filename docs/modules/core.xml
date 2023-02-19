@@ -533,7 +533,7 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
       <param type="CSTRING" name="PathB">File location 2.</param>
     </input>
     <description>
-<p>This function will test two file paths, checking if they refer to the same file in a storage device.  It uses a string comparison on the resolved path names, then attempts a second test based on an in-depth analysis of file attributes if the string comparison fails.  In the event of a match, ERR_Okay is returned.  All other error codes indicate a mis-match or internal failure.</p>
+<p>This function will test two file paths, checking if they refer to the same file in a storage device.  It uses a string comparison on the resolved path names, then attempts a second test based on an in-depth analysis of file attributes if the string comparison fails.  In the event of a match, <code>ERR_Okay</code> is returned.  All other error codes indicate a mis-match or internal failure.</p>
 <p>The targeted paths do not have to refer to an existing file or folder in order to match (i.e. match on string comparison succeeds).</p>
     </description>
     <result type="ERROR">
@@ -1133,20 +1133,17 @@ GetFields(screen,
   <function>
     <name>IdentifyFile</name>
     <category>Files</category>
-    <comment>Identifies the class and/or command that may be used to load a file.</comment>
-    <prototype>ERROR IdentifyFile(CSTRING Path, CSTRING Mode, LONG Flags, CLASSID * Class, CLASSID * SubClass, STRING * Command)</prototype>
+    <comment>Analyse a file and identify a class that can process it.</comment>
+    <prototype>ERROR IdentifyFile(CSTRING Path, CLASSID * Class, CLASSID * SubClass)</prototype>
     <input>
       <param type="CSTRING" name="Path">The location of the object data.</param>
-      <param type="CSTRING" name="Mode">Common modes are "Open", "View", "Edit" or "Print".  The default mode is "Open".</param>
-      <param type="LONG" name="Flags" lookup="IDF">Use IDF_HOST to query the host platform's file associations only.  IDF_IGNORE_HOST queries the internal file assocations only.</param>
       <param type="CLASSID *" name="Class">Must refer to a CLASSID variable that will store the resulting class ID.</param>
       <param type="CLASSID *" name="SubClass">Optional argument that can refer to a variable that will store the resulting sub-class ID (if the result is a base-class, this variable will receive a value of zero).</param>
-      <param type="STRING *" name="Command">The command associated with the datatype will be returned here.  Set to NULL if this is not required.  The resulting string must be destroyed once no longer required.</param>
     </input>
     <description>
-<p>This function examines the relationship between file data and the available system classes.  It allows a JPEG file to be identified as a datatype of the picture object, or an MP3 file to be identified as a datatype of the sound object for instance.</p>
-<p>The function works by analysing the Path's file extension and comparing it to the supported extensions of all available classes.  If a class supports the file extension then the ID of that class will be returned. If the file extension is not listed in the class dictionary or if it is listed more than once, the first 80 bytes of the file's data will be loaded and checked against classes that can match against file header information.  If a match is found, the ID of the matching class will be returned.</p>
-<p>This function returns an error code of ERR_Search in the event that a suitable class is not available to match against the given file.</p>
+<p>This function examines the relationship between file data and installed classes.  It allows for instance, a JPEG file to be identified as a datatype of the <class name="Picture">Picture</class> class, or an MP3 file to be identified as a datatype of the <class name="Sound">Sound</class> class.</p>
+<p>The method involves analysing the Path's file extension and comparing it to the supported extensions of all available classes.  If a class supports the file extension then the ID of that class will be returned. If the file extension is not listed in the class dictionary or if it is listed more than once, the first 80 bytes of the file's data will be loaded and checked against classes that can match against file header information.  If a match is found, the ID of the matching class will be returned.</p>
+<p>This function returns an error code of <code>ERR_Search</code> in the event that a suitable class is not available to match against the given file.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -3972,6 +3969,7 @@ end
       <const name="CREATE_LINK"/>
       <const name="DELETE"/>
       <const name="DEREGISTER">Remove the virtual volume from the system.</const>
+      <const name="DRIVER_SIZE"/>
       <const name="GET_DEVICE_INFO"/>
       <const name="GET_INFO"/>
       <const name="IDENTIFY_FILE"/>
