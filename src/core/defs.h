@@ -607,7 +607,8 @@ extern char glSystemPath[SIZE_SYSTEM_PATH];
 extern char glModulePath[SIZE_SYSTEM_PATH];
 extern char glRootPath[SIZE_SYSTEM_PATH];
 extern char glDisplayDriver[28];
-extern WORD glLogLevel, glShowIO, glShowPrivate, glShowPublic, glMaxDepth;
+extern bool glShowIO, glShowPrivate, glShowPublic;
+extern WORD glLogLevel, glMaxDepth;
 extern UBYTE glTaskState;
 extern LARGE glTimeLog;
 extern struct ModuleMaster   *glModuleList;    // Locked with TL_GENERIC.  Maintained as a linked-list; hashmap unsuitable.
@@ -639,7 +640,8 @@ extern LONG glValidateProcessID; // Not a threading concern
 extern LONG glMutexLockSize; // Read only constant
 extern WORD glCrashStatus, glCodeIndex, glLastCodeIndex;
 extern UWORD glFunctionID;
-extern BYTE glProgramStage, glPrivileged, glSync;
+extern BYTE glProgramStage;
+extern bool glPrivileged, glSync;
 extern LONG glPageSize; // Read only
 extern TIMER glCacheTimer;
 extern APTR glJNIEnv;
@@ -706,12 +708,10 @@ extern void (*glNetProcessMessages)(LONG, APTR);
 extern WINHANDLE glProcessHandle;
 extern WINHANDLE glValidationSemaphore;
 extern THREADVAR WORD tlMessageBreak;
-extern THREADVAR WINHANDLE tlThreadReadMsg;
 #endif
 
 #ifdef __unix__
 extern THREADVAR LONG glSocket;
-extern THREADVAR LONG tlThreadReadMsg;
 extern struct FileMonitor *glFileMonitor;
 #endif
 

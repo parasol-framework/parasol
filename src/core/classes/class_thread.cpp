@@ -294,8 +294,6 @@ static void thread_entry_cleanup(void *Arg)
       if (tlThreadRef) tlThreadRef->Active = FALSE;
    }
 
-   tlThreadReadMsg  = 0;
-
    #ifdef _WIN32
       free_threadlock();
    #endif
