@@ -69,7 +69,7 @@ ERROR OpenDir(CSTRING Path, LONG Flags, DirInfo **Result)
 
    ERROR error;
    STRING resolved_path;
-   if (!Path[0]) Path = ":";
+   if (!Path[0]) Path = ":"; // A path of ':' will return all known volumes.
    if (!(error = ResolvePath(Path, 0, &resolved_path))) {
       auto vd = get_fs(resolved_path);
 

@@ -222,11 +222,11 @@ static STRING cleaned_path(CSTRING Path)
 //********************************************************************************************************************
 // Check if a Path refers to a virtual volume, and if so, return the matching virtual_drive definition.
 
-static virtual_drive * get_virtual(CSTRING Path)
+static const virtual_drive * get_virtual(CSTRING Path)
 {
-   if (auto id = get_volume_id(Path)) {
-      if (glVirtual.contains(id)) return &glVirtual[id];
-   }
+   if ((Path[0] IS ':') or (!Path[0])) return &glVirtual[0]; // Root level counts as virtual
+   auto id = get_volume_id(Path);
+   if ((id) and (glVirtual.contains(id))) return &glVirtual[id];
    return NULL;
 }
 
@@ -239,9 +239,8 @@ static virtual_drive * get_virtual(CSTRING Path)
 
 const virtual_drive * get_fs(CSTRING Path)
 {
-   if (auto id = get_volume_id(Path)) {
-      if (glVirtual.contains(id)) return &glVirtual[id];
-   }
+   auto id = get_volume_id(Path);
+   if (glVirtual.contains(id)) return &glVirtual[id];
    return &glVirtual[0];
 }
 
@@ -1203,7 +1202,6 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRe
 ERROR test_path(STRING Path, LONG Flags)
 {
    parasol::Log log(__FUNCTION__);
-   virtual_drive *vd;
    LONG len, type;
 #ifdef _WIN32
    LONG j;
@@ -1215,7 +1213,7 @@ ERROR test_path(STRING Path, LONG Flags)
 
    log.trace("%s", Path);
 
-   if ((vd = get_virtual(Path))) {
+   if (auto vd = get_virtual(Path)) {
       if (vd->TestPath) {
          if (!vd->TestPath(Path, Flags, &type)) {
             return ERR_Okay;

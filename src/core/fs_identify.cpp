@@ -20,11 +20,11 @@ inline CSTRING get_filename(CSTRING Path)
 /*********************************************************************************************************************
 
 -FUNCTION-
-IdentifyFile: Identifies the class and/or command that may be used to load a file.
+IdentifyFile: Analyse a file and identify a class that can process it.
 
-This function examines the relationship between file data and the available system classes.  It allows a JPEG file to
-be identified as a datatype of the picture object, or an MP3 file to be identified as a datatype of the sound object
-for instance.
+This function examines the relationship between file data and installed classes.  It allows for instance, a JPEG file
+to be identified as a datatype of the @Picture class, or an MP3 file to be identified as a datatype of the @Sound
+class.
 
 The method involves analysing the Path's file extension and comparing it to the supported extensions of all available
 classes.  If a class supports the file extension then the ID of that class will be returned. If the file extension is
@@ -32,8 +32,8 @@ not listed in the class dictionary or if it is listed more than once, the first 
 loaded and checked against classes that can match against file header information.  If a match is found, the ID of the
 matching class will be returned.
 
-This function returns an error code of ERR_Search in the event that a suitable class is not available to match against
-the given file.
+This function returns an error code of `ERR_Search` in the event that a suitable class is not available to match
+against the given file.
 
 -INPUT-
 cstr Path:     The location of the object data.
@@ -83,8 +83,7 @@ ERROR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
          // Note: A virtual volume may return ERR_Okay even without identifying the class of the queried file.  This
          // means that the file was analysed but belongs to no known class.
 
-         virtual_drive *vd;
-         if ((vd = get_virtual(res_path))) {
+         if (auto vd = get_virtual(res_path)) {
             if (vd->IdentifyFile) {
                if (!vd->IdentifyFile(res_path, ClassID, SubClassID)) {
                   log.trace("Virtual volume identified the target file.");
