@@ -822,68 +822,6 @@ class ObjectContext {
 #endif
 
 //********************************************************************************************************************
-// Central folder structure for each archived file.  This appears at the end of the zip file.
-
-#define LIST_SIGNATURE      0
-#define LIST_VERSION        4
-#define LIST_OS             5
-#define LIST_REQUIRED_VER   6
-#define LIST_REQUIRED_OS    7
-#define LIST_FLAGS          8
-#define LIST_METHOD         10
-#define LIST_TIMESTAMP      12
-#define LIST_CRC            16  // Checksum
-#define LIST_COMPRESSEDSIZE 20
-#define LIST_FILESIZE       24  // Original file size
-#define LIST_NAMELEN        28  // File name
-#define LIST_EXTRALEN       30  // System specific information
-#define LIST_COMMENTLEN     32  // Optional comment
-#define LIST_DISKNO         34  // Disk number start
-#define LIST_IFILE          36  // Internal file attributes (pkzip specific)
-#define LIST_ATTRIB         38  // System specific file attributes
-#define LIST_OFFSET         42  // Relative offset of local header
-#define LIST_LENGTH         46  // END
-
-struct zipentry {
-   UBYTE version;
-   UBYTE ostype;
-   UBYTE required_version;
-   UBYTE required_os;
-   UWORD flags;
-   UWORD deflatemethod;
-   ULONG timestamp;
-   ULONG crc32;
-   ULONG compressedsize;
-   ULONG originalsize;
-   UWORD namelen;
-   UWORD extralen;
-   UWORD commentlen;
-   UWORD diskno;
-   UWORD ifile;
-   ULONG attrib;
-   ULONG offset;
-} __attribute__((__packed__));
-
-//********************************************************************************************************************
-
-#define TAIL_FILECOUNT      8
-#define TAIL_TOTALFILECOUNT 10
-#define TAIL_FILELISTSIZE   12
-#define TAIL_FILELISTOFFSET 16
-#define TAIL_COMMENTLEN     20
-#define TAIL_LENGTH         22
-
-struct ziptail {
-   ULONG header;
-   ULONG size;
-   UWORD filecount;
-   UWORD diskfilecount;
-   ULONG listsize;
-   ULONG listoffset;
-   UWORD commentlen;
-} __attribute__((__packed__));
-
-//********************************************************************************************************************
 // File Descriptor table.  This is for RegisterFD()
 
 #define MAX_FDS 40
@@ -983,7 +921,6 @@ EXPORT void Expunge(WORD);
 
 extern void add_archive(class extCompression *);
 extern void remove_archive(class extCompression *);
-extern void zipfile_to_item(struct ZipFile *ZF, struct CompressedItem *Item);
 
 void print_diagnosis(LONG ProcessID, LONG Signal);
 CSTRING action_name(OBJECTPTR Object, LONG ActionID);

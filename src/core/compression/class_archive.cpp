@@ -46,6 +46,10 @@ struct prvFileArchive {
    bool     Inflating;
 };
 
+struct ArchiveDriver {
+   std::list<ZipFile>::iterator Index;
+};
+
 static std::unordered_map<ULONG, extCompression *> glArchives;
 
 static ERROR close_folder(DirInfo *);
@@ -82,32 +86,32 @@ static void reset_state(extFile *Self)
 static ERROR seek_to_item(extFile *Self)
 {
    auto prv = (prvFileArchive *)Self->ChildPrivate;
-   ZipFile *item = &prv->Info;
+   auto &item = prv->Info;
 
-   acSeekStart(prv->FileStream, item->Offset + HEAD_EXTRALEN);
+   acSeekStart(prv->FileStream, item.Offset + HEAD_EXTRALEN);
    prv->ReadPtr = NULL;
 
    UWORD extra_len;
    if (flReadLE(prv->FileStream, &extra_len)) return ERR_Read;
-   ULONG stream_start = item->Offset + HEAD_LENGTH + item->NameLen + extra_len;
+   ULONG stream_start = item.Offset + HEAD_LENGTH + item.Name.size() + extra_len;
    if (acSeekStart(prv->FileStream, stream_start) != ERR_Okay) return ERR_Seek;
 
-   if (item->CompressedSize > 0) {
+   if (item.CompressedSize > 0) {
       Self->Flags |= FL_FILE;
 
-      if (item->DeflateMethod IS 0) { // The file is stored rather than compressed
-         Self->Size = item->CompressedSize;
+      if (item.DeflateMethod IS 0) { // The file is stored rather than compressed
+         Self->Size = item.CompressedSize;
          return ERR_Okay;
       }
-      else if ((item->DeflateMethod IS 8) and (!inflateInit2(&prv->Stream, -MAX_WBITS))) {
+      else if ((item.DeflateMethod IS 8) and (!inflateInit2(&prv->Stream, -MAX_WBITS))) {
          prv->Inflating = true;
-         Self->Size = item->OriginalSize;
+         Self->Size = item.OriginalSize;
          return ERR_Okay;
       }
       else return ERR_Failed;
    }
    else { // Folder or empty file
-      if (item->IsFolder) Self->Flags |= FL_FOLDER;
+      if (item.IsFolder) Self->Flags |= FL_FOLDER;
       else Self->Flags |= FL_FILE;
       Self->Size = 0;
       return ERR_Okay;
@@ -170,7 +174,7 @@ static ERROR ARCHIVE_Activate(extFile *Self, APTR Void)
 
    if (prv->FileStream) return ERR_Okay; // Already activated
 
-   log.msg("Allocating file stream for item %s", prv->Info.Name);
+   log.msg("Allocating file stream for item %s", prv->Info.Name.c_str());
 
    if ((prv->FileStream = extFile::create::integral(
       fl::Name("ArchiveFileStream"),
@@ -191,6 +195,7 @@ static ERROR ARCHIVE_Free(extFile *Self, APTR Void)
    auto prv = (prvFileArchive *)Self->ChildPrivate;
 
    if (prv) {
+      prv->~prvFileArchive();
       if (prv->FileStream) { acFree(prv->FileStream); prv->FileStream = NULL; }
       if (prv->Inflating)  { inflateEnd(&prv->Stream); prv->Inflating = false; }
    }
@@ -212,45 +217,49 @@ static ERROR ARCHIVE_Init(extFile *Self, APTR Void)
 
    ERROR error = ERR_Search;
    if (!AllocMemory(sizeof(prvFileArchive), MEM_DATA, &Self->ChildPrivate, NULL)) {
+      auto prv = (prvFileArchive *)Self->ChildPrivate;
+      new (prv) prvFileArchive;
+
       if (Self->Path[StrLength(Self->Path)-1] IS ':') { // Nothing is referenced
          return ERR_Okay;
       }
       else {
          std::string file_path;
 
-         auto prv = (prvFileArchive *)(Self->ChildPrivate);
          prv->Archive = find_archive(Self->Path, file_path);
 
          if (prv->Archive) {
             // TODO: This is a slow scan and could be improved if a hashed directory structure was
             // generated during add_archive() first; then we could perform a quick lookup here.
 
-            ZipFile *item;
-            for (item=prv->Archive->prvFiles; item; item=(ZipFile *)item->Next) {
-               if (!StrCompare(file_path.c_str(), item->Name, 0, STR_CASE|STR_MATCH_LEN)) break;
+            auto it = prv->Archive->Files.begin();
+            for (; it != prv->Archive->Files.end(); it++) {
+               if (!StrCompare(file_path, it->Name, 0, STR_CASE|STR_MATCH_LEN)) break;
             }
 
-            if ((!item) and (Self->Flags & FL_APPROXIMATE)) {
+            if ((it IS prv->Archive->Files.end()) and (Self->Flags & FL_APPROXIMATE)) {
                file_path.append(".*");
-               for (item=prv->Archive->prvFiles; item; item=(ZipFile *)item->Next) {
-                  if (!StrCompare(file_path.c_str(), item->Name, 0, STR_WILDCARD)) break;
+               for (it = prv->Archive->Files.begin(); it != prv->Archive->Files.end(); it++) {
+                  if (!StrCompare(file_path, it->Name, 0, STR_WILDCARD)) break;
                }
             }
 
-            if (item) {
-               ((prvFileArchive *)(Self->ChildPrivate))->Info = *item;
-               if (!(error = acActivate(Self))) {
-                  error = acQuery(Self);
+            if (it != prv->Archive->Files.end()) {
+               prv->Info = *it;
+               if (!(error = Self->activate())) {
+                  error = Self->query();
                }
             }
          }
       }
+
+      if (error) {
+         prv->~prvFileArchive();
+         FreeResource(Self->ChildPrivate);
+         Self->ChildPrivate = NULL;
+      }
    }
    else error = ERR_AllocMemory;
-
-   if (error) {
-      if (Self->ChildPrivate) { FreeResource(Self->ChildPrivate); Self->ChildPrivate = NULL; }
-   }
 
    return error;
 }
@@ -271,20 +280,20 @@ static ERROR ARCHIVE_Query(extFile *Self, APTR Void)
 
    // If security flags are present, convert them to file system permissions.
 
-   ZipFile *item = &prv->Info;
-   if (item->Flags & ZIP_SECURITY) {
+   auto &item = prv->Info;
+   if (item.Flags & ZIP_SECURITY) {
       LONG permissions = 0;
-      if (item->Flags & ZIP_UEXEC) permissions |= PERMIT_USER_EXEC;
-      if (item->Flags & ZIP_GEXEC) permissions |= PERMIT_GROUP_EXEC;
-      if (item->Flags & ZIP_OEXEC) permissions |= PERMIT_OTHERS_EXEC;
+      if (item.Flags & ZIP_UEXEC) permissions |= PERMIT_USER_EXEC;
+      if (item.Flags & ZIP_GEXEC) permissions |= PERMIT_GROUP_EXEC;
+      if (item.Flags & ZIP_OEXEC) permissions |= PERMIT_OTHERS_EXEC;
 
-      if (item->Flags & ZIP_UREAD) permissions |= PERMIT_USER_READ;
-      if (item->Flags & ZIP_GREAD) permissions |= PERMIT_GROUP_READ;
-      if (item->Flags & ZIP_OREAD) permissions |= PERMIT_OTHERS_READ;
+      if (item.Flags & ZIP_UREAD) permissions |= PERMIT_USER_READ;
+      if (item.Flags & ZIP_GREAD) permissions |= PERMIT_GROUP_READ;
+      if (item.Flags & ZIP_OREAD) permissions |= PERMIT_OTHERS_READ;
 
-      if (item->Flags & ZIP_UWRITE) permissions |= PERMIT_USER_WRITE;
-      if (item->Flags & ZIP_GWRITE) permissions |= PERMIT_GROUP_WRITE;
-      if (item->Flags & ZIP_OWRITE) permissions |= PERMIT_OTHERS_WRITE;
+      if (item.Flags & ZIP_UWRITE) permissions |= PERMIT_USER_WRITE;
+      if (item.Flags & ZIP_GWRITE) permissions |= PERMIT_GROUP_WRITE;
+      if (item.Flags & ZIP_OWRITE) permissions |= PERMIT_OTHERS_WRITE;
 
       Self->Permissions = permissions;
    }
@@ -464,39 +473,43 @@ static ERROR scan_folder(DirInfo *Dir)
 
    // Retrieve the file path, skipping the "archive:name/" part.
 
-   CSTRING path = Dir->prvResolvedPath + LEN_ARCHIVE + 1;
-   while ((*path) and (*path != '/') and (*path != '\\')) path++;
-   if ((*path IS '/') or (*path IS '\\')) path++;
+   CSTRING name = Dir->prvResolvedPath + LEN_ARCHIVE + 1;
+   while ((*name) and (*name != '/') and (*name != '\\')) name++;
+   if ((*name IS '/') or (*name IS '\\')) name++;
 
-   log.traceBranch("Path: \"%s\", Flags: $%.8x", path, Dir->prvFlags);
+   log.traceBranch("Path: \"%s\", Flags: $%.8x", name, Dir->prvFlags);
+
+   std::string path(name);
 
    auto archive = (extCompression *)Dir->prvHandle;
 
-   ZipFile *zf = archive->prvFiles;
-   if (Dir->prvIndexPtr) zf = (ZipFile *)Dir->prvIndexPtr;
+   auto it = archive->Files.begin();
+   if (Dir->prvTotal) {
+      it = ((ArchiveDriver *)Dir->Driver)->Index;
+      it++;
+   }
 
-   for (; zf; zf=(ZipFile *)zf->Next) {
-      if (*path) {
-         if (StrCompare(path, zf->Name, 0, 0) != ERR_Okay) continue;
+   for (; it != archive->Files.end(); it++) {
+      ZipFile &zf = *it;
+
+      if (!path.empty()) {
+         if (StrCompare(path, zf.Name, 0, 0) != ERR_Okay) continue;
       }
 
       // Single folders will appear as 'ABCDEF/'
       // Single files will appear as 'ABCDEF.ABC' (no slash)
 
-      LONG name_len = strlen(zf->Name);
-      LONG path_len = strlen(path);
-
-      if (name_len <= path_len) continue;
+      if (zf.Name.size() <= path.size()) continue;
 
       // Is this item in a sub-folder?  If so, ignore it.
 
       {
          LONG i;
-         for (i=path_len; (zf->Name[i]) and (zf->Name[i] != '/') and (zf->Name[i] != '\\'); i++);
-         if (zf->Name[i]) continue;
+         for (i=path.size(); (zf.Name[i]) and (zf.Name[i] != '/') and (zf.Name[i] != '\\'); i++);
+         if (zf.Name[i]) continue;
       }
 
-      if ((Dir->prvFlags & RDF_FILE) and (!zf->IsFolder)) {
+      if ((Dir->prvFlags & RDF_FILE) and (!zf.IsFolder)) {
 
          if (Dir->prvFlags & RDF_PERMISSIONS) {
             Dir->Info->Flags |= RDF_PERMISSIONS;
@@ -505,31 +518,35 @@ static ERROR scan_folder(DirInfo *Dir)
 
          if (Dir->prvFlags & RDF_SIZE) {
             Dir->Info->Flags |= RDF_SIZE;
-            Dir->Info->Size = zf->OriginalSize;
+            Dir->Info->Size = zf.OriginalSize;
          }
 
          if (Dir->prvFlags & RDF_DATE) {
             Dir->Info->Flags |= RDF_DATE;
-            Dir->Info->Modified.Year   = zf->Year;
-            Dir->Info->Modified.Month  = zf->Month;
-            Dir->Info->Modified.Day    = zf->Day;
-            Dir->Info->Modified.Hour   = zf->Hour;
-            Dir->Info->Modified.Minute = zf->Minute;
+            Dir->Info->Modified.Year   = zf.Year;
+            Dir->Info->Modified.Month  = zf.Month;
+            Dir->Info->Modified.Day    = zf.Day;
+            Dir->Info->Modified.Hour   = zf.Hour;
+            Dir->Info->Modified.Minute = zf.Minute;
             Dir->Info->Modified.Second = 0;
          }
 
          Dir->Info->Flags |= RDF_FILE;
-         StrCopy(name_from_path(zf->Name), Dir->Info->Name, MAX_FILENAME);
+         auto offset = zf.Name.find_last_of("/\\");
+         if (offset IS std::string::npos) offset = 0;
+         StrCopy(zf.Name.c_str() + offset, Dir->Info->Name, MAX_FILENAME);
 
-         Dir->prvIndexPtr = zf->Next;
+         ((ArchiveDriver *)Dir->Driver)->Index = it;
          Dir->prvTotal++;
          return ERR_Okay;
       }
 
-      if ((Dir->prvFlags & RDF_FOLDER) and (zf->IsFolder)) {
+      if ((Dir->prvFlags & RDF_FOLDER) and (zf.IsFolder)) {
          Dir->Info->Flags |= RDF_FOLDER;
 
-         LONG i = StrCopy(name_from_path(zf->Name), Dir->Info->Name, MAX_FILENAME-2);
+         auto offset = zf.Name.find_last_of("/\\");
+         if (offset IS std::string::npos) offset = 0;
+         LONG i = StrCopy(zf.Name.c_str() + offset, Dir->Info->Name, MAX_FILENAME-2);
 
          if (Dir->prvFlags & RDF_QUALIFY) {
             Dir->Info->Name[i++] = '/';
@@ -541,7 +558,7 @@ static ERROR scan_folder(DirInfo *Dir)
             Dir->Info->Permissions = PERMIT_READ|PERMIT_GROUP_READ|PERMIT_OTHERS_READ;
          }
 
-         Dir->prvIndexPtr = zf->Next;
+         ((ArchiveDriver *)Dir->Driver)->Index = it;
          Dir->prvTotal++;
          return ERR_Okay;
       }
@@ -576,9 +593,9 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
    }
    else return ERR_DoesNotExist;
 
-   Info->Size = item->OriginalSize;
-   Info->Flags = 0;
-   Info->Created = item->Created;
+   Info->Size     = item->OriginalSize;
+   Info->Flags    = 0;
+   Info->Created  = item->Created;
    Info->Modified = item->Modified;
 
    if (item->Flags & FL_FOLDER) Info->Flags |= RDF_FOLDER;
@@ -694,10 +711,11 @@ extern "C" ERROR add_archive_class(void)
 extern "C" ERROR create_archive_volume(void)
 {
    return VirtualVolume("archive",
-      VAS_OPEN_DIR,  &open_folder,
-      VAS_SCAN_DIR,  &scan_folder,
-      VAS_CLOSE_DIR, &close_folder,
-      VAS_TEST_PATH, &test_path,
-      VAS_GET_INFO,  &get_info,
+      VAS_DRIVER_SIZE, sizeof(ArchiveDriver),
+      VAS_OPEN_DIR,    &open_folder,
+      VAS_SCAN_DIR,    &scan_folder,
+      VAS_CLOSE_DIR,   &close_folder,
+      VAS_TEST_PATH,   &test_path,
+      VAS_GET_INFO,    &get_info,
       0);
 }

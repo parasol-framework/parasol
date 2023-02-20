@@ -405,20 +405,17 @@ timer_cycle:
                else error = ERR_AccessObject;
             }
             else if (timer->Routine.Type IS CALL_SCRIPT) { // Script callback
-               objScript *script;
-               if ((script = (objScript *)timer->Routine.Script.Script)) {
-                  const ScriptArg scargs[] = {
-                     { "Subscriber",  FDF_OBJECTID, { .Long = timer->SubscriberID } },
-                     { "Elapsed",     FD_LARGE, { .Large = elapsed } },
-                     { "CurrentTime", FD_LARGE, { .Large = current_time } }
-                  };
+               const ScriptArg scargs[] = {
+                  { "Subscriber",  FDF_OBJECTID, { .Long = timer->SubscriberID } },
+                  { "Elapsed",     FD_LARGE, { .Large = elapsed } },
+                  { "CurrentTime", FD_LARGE, { .Large = current_time } }
+               };
 
-                  thread_unlock(TL_TIMER);
-                  relock = true;
+               thread_unlock(TL_TIMER);
+               relock = true;
 
-                  if (scCallback(script, timer->Routine.Script.ProcedureID, scargs, ARRAYSIZE(scargs), &error)) error = ERR_Terminate;
-               }
-               else error = ERR_SystemCorrupt;
+               auto script = (objScript *)timer->Routine.Script.Script;
+               if (scCallback(script, timer->Routine.Script.ProcedureID, scargs, ARRAYSIZE(scargs), &error)) error = ERR_Terminate;
             }
             else error = ERR_Terminate;
 
@@ -536,17 +533,15 @@ timer_cycle:
                      else result = msghandler(handler->Custom, msg->UniqueID, msg->Type, NULL, 0);
                   }
                   else if (handler->Function.Type IS CALL_SCRIPT) {
-                     OBJECTPTR script;
-                     if ((script = handler->Function.Script.Script)) {
-                        const ScriptArg args[] = {
-                           { "Custom",   FD_PTR,  { .Address  = handler->Custom } },
-                           { "UniqueID", FD_LONG, { .Long = msg->UniqueID } },
-                           { "Type",     FD_LONG, { .Long = msg->Type } },
-                           { "Data",     FD_PTR|FD_BUFFER, { .Address = msg + 1} },
-                           { "Size",     FD_LONG|FD_BUFSIZE, { .Long = msg->Size } }
-                        };
-                        if (scCallback(script, handler->Function.Script.ProcedureID, args, ARRAYSIZE(args), &result)) result = ERR_Terminate;
-                     }
+                     const ScriptArg args[] = {
+                        { "Custom",   FD_PTR,  { .Address  = handler->Custom } },
+                        { "UniqueID", FD_LONG, { .Long = msg->UniqueID } },
+                        { "Type",     FD_LONG, { .Long = msg->Type } },
+                        { "Data",     FD_PTR|FD_BUFFER, { .Address = msg + 1} },
+                        { "Size",     FD_LONG|FD_BUFSIZE, { .Long = msg->Size } }
+                     };
+                     auto script = handler->Function.Script.Script;
+                     if (scCallback(script, handler->Function.Script.ProcedureID, args, ARRAYSIZE(args), &result)) result = ERR_Terminate;
                   }
                   else log.warning("Handler uses function type %d, not understood.", handler->Function.Type);
 
