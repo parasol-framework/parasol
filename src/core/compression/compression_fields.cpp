@@ -237,8 +237,8 @@ information that may identify the compressed data is not included in the total.
 static ERROR GET_UncompressedSize(extCompression *Self, LARGE *Value)
 {
    LARGE size = 0;
-   for (ZipFile *f=Self->prvFiles; f; f=(ZipFile *)f->Next) {
-      size += f->OriginalSize;
+   for (auto &f : Self->Files) {
+      size += f.OriginalSize;
    }
    *Value = size;
    return ERR_Okay;

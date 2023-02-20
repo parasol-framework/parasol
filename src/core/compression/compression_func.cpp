@@ -45,14 +45,11 @@ static void print(extCompression *Self, std::string Buffer)
 
 //*********************************************************************************************************************
 
-static ERROR compress_folder(extCompression *Self, CSTRING Location, CSTRING Path)
+static ERROR compress_folder(extCompression *Self, std::string Location, std::string Path)
 {
    parasol::Log log(__FUNCTION__);
 
-   log.branch("Compressing folder \"%s\" to \"%s\"", Location, Path);
-
-   if ((!Self) or (!Location)) return ERR_NullArgs;
-   if (!Path) Path = "";
+   log.branch("Compressing folder \"%s\" to \"%s\"", Location.c_str(), Path.c_str());
 
    objFile::create file = { fl::Path(Location) };
    if (!file.ok()) return log.warning(ERR_File);
@@ -72,9 +69,9 @@ static ERROR compress_folder(extCompression *Self, CSTRING Location, CSTRING Pat
 
    CompressionFeedback feedback = {
       .FeedbackID     = FDB_COMPRESS_FILE,
-      .Index          = Self->prvFileIndex,
-      .Path           = Location,
-      .Dest           = Path,
+      .Index          = Self->FileIndex,
+      .Path           = Location.c_str(),
+      .Dest           = Path.c_str(),
       .Progress       = 0,
       .OriginalSize   = 0,
       .CompressedSize = 0
@@ -82,120 +79,88 @@ static ERROR compress_folder(extCompression *Self, CSTRING Location, CSTRING Pat
 
    ERROR error = send_feedback(Self, &feedback);
 
-   Self->prvFileIndex++;
+   Self->FileIndex++;
    if ((error IS ERR_Terminate) or (error IS ERR_Cancelled)) return ERR_Cancelled;
    else if (error IS ERR_Skip) return ERR_Okay;
-   else error = ERR_Okay;
 
-   // Clear default variables
-
-   ZipFile *fileexists = NULL;
-   ZipFile *entry      = NULL;
-
-   LONG i, j, len;
-   LONG pathlen = StrLength(Path);
-
-   error = ERR_Failed;
-   if (pathlen > 0) {
+   if (!Path.empty()) {
       // Seek to the position at which this new directory entry will be added
 
       ULONG dataoffset = 0;
-      if (auto chain = Self->prvFiles) {
-         while (chain->Next) chain = (ZipFile *)chain->Next;
-         if (acSeekStart(Self->FileIO, chain->Offset + HEAD_NAMELEN) != ERR_Okay) {
+      if (!Self->Files.empty()) {
+         auto &last = Self->Files.back();
+         if (acSeekStart(Self->FileIO, last.Offset + HEAD_NAMELEN) != ERR_Okay) {
             return log.warning(ERR_Seek);
          }
 
          UWORD namelen, extralen;
          if (flReadLE(Self->FileIO, &namelen)) return ERR_Read;
          if (flReadLE(Self->FileIO, &extralen)) return ERR_Read;
-         dataoffset = chain->Offset + HEAD_LENGTH + namelen + extralen + chain->CompressedSize;
+         dataoffset = last.Offset + HEAD_LENGTH + namelen + extralen + last.CompressedSize;
       }
 
-      if (acSeekStart(Self->FileIO, dataoffset) != ERR_Okay) goto exit;
+      if (acSeekStart(Self->FileIO, dataoffset) != ERR_Okay) return ERR_Seek;
 
       // If a matching file name already exists in the archive, make a note of its position
 
-      for (fileexists=Self->prvFiles; fileexists; fileexists=(ZipFile *)fileexists->Next) {
-         if (!StrMatch(fileexists->Name, Location)) break;
+      std::list<ZipFile>::iterator file_index;
+      bool file_exists = false;
+      for (file_index = Self->Files.begin(); file_index != Self->Files.end(); file_index++) {
+         if (!StrMatch(file_index->Name, Location)) { file_exists = true; break; }
       }
 
       // Allocate the file entry structure and set up some initial variables.
 
-      if (AllocMemory(sizeof(ZipFile) + pathlen + 1, MEM_DATA, (APTR *)&entry, NULL) != ERR_Okay) {
-         return ERR_AllocMemory;
-      }
+      ZipFile entry(Path);
 
-      entry->Name = (STRING)(entry+1);
-      entry->NameLen = pathlen;
-      for (i=0; i < pathlen; i++) entry->Name[i] = Path[i];
-      entry->Name[i] = 0;
-      entry->CRC        = 0;
-      entry->Offset     = dataoffset;
-      entry->CompressedSize = 0;
-      entry->OriginalSize   = 0;
-      entry->DeflateMethod  = 0;
+      entry.Offset = dataoffset;
 
       // Convert the file date stamp into a DOS time stamp for zip
 
       DateTime *tm;
       if (!file->getPtr(FID_Date, &tm)) {
-         if (tm->Year < 1980) entry->TimeStamp = 0x00210000;
-         else entry->TimeStamp = ((tm->Year-1980)<<25) | (tm->Month<<21) | (tm->Day<<16) | (tm->Hour<<11) | (tm->Minute<<5) | (tm->Second>>1);
+         if (tm->Year < 1980) entry.TimeStamp = 0x00210000;
+         else entry.TimeStamp = ((tm->Year-1980)<<25) | (tm->Month<<21) | (tm->Day<<16) | (tm->Hour<<11) | (tm->Minute<<5) | (tm->Second>>1);
       }
 
       // Write the compression file entry
 
-      if (acSeekStart(Self->FileIO, entry->Offset) != ERR_Okay) goto exit;
+      if (acSeekStart(Self->FileIO, entry.Offset) != ERR_Okay) return ERR_Seek;
 
       UBYTE header[sizeof(glHeader)];
       CopyMemory(glHeader, header, sizeof(glHeader));
 
-      wrb(entry->DeflateMethod, header + HEAD_DEFLATEMETHOD);
-      wrb(entry->TimeStamp, header + HEAD_TIMESTAMP);
-      wrb(entry->CRC, header + HEAD_CRC);
-      wrb(entry->CompressedSize, header + HEAD_COMPRESSEDSIZE);
-      wrb(entry->OriginalSize, header + HEAD_FILESIZE);
-      wrb(entry->NameLen, header + HEAD_NAMELEN);
-      if (acWriteResult(Self->FileIO, header, HEAD_LENGTH) != HEAD_LENGTH) goto exit;
-      if (acWriteResult(Self->FileIO, entry->Name, entry->NameLen) != entry->NameLen) goto exit;
+      wrb<UWORD>(entry.DeflateMethod, header + HEAD_DEFLATEMETHOD);
+      wrb<ULONG>(entry.TimeStamp, header + HEAD_TIMESTAMP);
+      wrb<ULONG>(entry.CRC, header + HEAD_CRC);
+      wrb<ULONG>(entry.CompressedSize, header + HEAD_COMPRESSEDSIZE);
+      wrb<ULONG>(entry.OriginalSize, header + HEAD_FILESIZE);
+      wrb<UWORD>(entry.Name.size(), header + HEAD_NAMELEN);
+      if (acWriteResult(Self->FileIO, header, HEAD_LENGTH) != HEAD_LENGTH) return ERR_Okay;
+      if (acWriteResult(Self->FileIO, entry.Name.c_str(), entry.Name.size()) != (LONG)entry.Name.size()) return ERR_Okay;
 
-      // Add the entry to the file chain
-
-      if (auto chain = Self->prvFiles) {
-         while (chain->Next) chain = (ZipFile *)chain->Next;
-         entry->Prev = (CompressedFile *)chain;
-         chain->Next = (CompressedFile *)entry;
-      }
-      else Self->prvFiles = entry;
+      Self->Files.push_back(entry);
 
       // If this new data replaces an existing directory, remove the old directory now
 
-      if (fileexists) remove_file(Self, &fileexists);
+      if (file_exists) remove_file(Self, file_index);
 
-      Self->prvCompressionCount++;
+      Self->CompressionCount++;
    }
 
    // Enter the directory and compress its contents
 
    DirInfo *dir;
-   if (!OpenDir(Location, RDF_FILE|RDF_FOLDER|RDF_QUALIFY, &dir)) {
-      len = StrLength(Location);
-      pathlen = StrLength(Path);
+   if (!OpenDir(Location.c_str(), RDF_FILE|RDF_FOLDER|RDF_QUALIFY, &dir)) {
       while (!ScanDir(dir)) { // Recurse for each directory in the list
          FileInfo *scan = dir->Info;
          if ((scan->Flags & RDF_FOLDER) and (!(scan->Flags & RDF_LINK))) {
-            j = StrLength(scan->Name);
-            char location[len+j+1];
-            char path[pathlen+j+1];
-            snprintf(location, sizeof(location), "%s%s", Location, scan->Name);
-            snprintf(path, sizeof(path), "%s%s", Path, scan->Name);
+            std::string location = Location + scan->Name;
+            std::string path = Path + scan->Name;
             compress_folder(Self, location, path);
          }
          else if (scan->Flags & (RDF_FILE|RDF_LINK)) {
-            char location[len+StrLength(scan->Name)+1];
-            j = StrCopy(Location, location, sizeof(location));
-            StrCopy(scan->Name, location + j, sizeof(location) - j);
+            std::string location = Location + scan->Name;
             compress_file(Self, location, Path, (scan->Flags & RDF_LINK) ? true : false);
          }
       }
@@ -204,43 +169,35 @@ static ERROR compress_folder(extCompression *Self, CSTRING Location, CSTRING Pat
    }
 
    return ERR_Okay;
-
-exit:
-   if (entry) {
-      FreeFromLL((CompressedFile *)entry, (CompressedFile *)Self->prvFiles, (CompressedFile **)&Self->prvFiles);
-      FreeResource(entry);
-   }
-
-   return error;
 }
 
 //*********************************************************************************************************************
 
-static ERROR compress_file(extCompression *Self, CSTRING Location, CSTRING Path, bool Link)
+static ERROR compress_file(extCompression *Self, std::string Location, std::string Path, bool Link)
 {
    parasol::Log log(__FUNCTION__);
 
-   if ((!Self) or (!Location) or (!Path)) return ERR_NullArgs;
+   log.branch("Compressing file \"%s\" to \"%s\"", Location.c_str(), Path.c_str());
 
-   log.branch("Compressing file \"%s\" to \"%s\"", Location, Path);
-
-   ZipFile *fileexists = NULL;
-   ZipFile *entry = NULL;
    STRING symlink = NULL;
    bool deflateend = false;
-   ERROR error = ERR_Failed;
-   ZipFile *chain;
    ULONG dataoffset = 0;
-   char filename[512] = "";
+   std::string filename;
+   std::list<ZipFile>::iterator file_index;
    LONG i, len;
 
    WORD level = Self->CompressionLevel / 10;
    if (level < 0) level = 0;
    else if (level > 9) level = 9;
 
+   parasol::Defer([Self, deflateend] {
+      if (deflateend) deflateEnd(&Self->prvZip);
+      Self->FileIndex++;
+   });
+
    // Open the source file for reading only
 
-   objFile::create file = { fl::Path(Location), fl::Flags((Link IS TRUE) ? 0 : FL_READ) };
+   objFile::create file = { fl::Path(Location), fl::Flags(Link ? 0 : FL_READ) };
 
    if (!file.ok()) {
       if (Self->OutputID) {
@@ -248,47 +205,47 @@ static ERROR compress_file(extCompression *Self, CSTRING Location, CSTRING Path,
          out << "  Error opening file \"" << Location << "\".";
          print(Self, out.str());
       }
-      error = log.warning(ERR_OpenFile);
-      goto exit;
+      return log.warning(ERR_OpenFile);
    }
 
 
    if ((Link) and (!(file->Flags & FL_LINK))) {
       log.warning("Internal Error: Expected a link, but the file is not.");
-      error = ERR_Failed;
-      goto exit;
+      return ERR_Failed;
    }
 
    // Determine the name that will be used for storing this file
 
-   for (i=0; Location[i]; i++);
-   if ((i > 0) and ((Location[i-1] IS '/') or (Location[i-1] IS '\\'))) i--; // Ignore trailing slashes for symbolically linked folders
+   i = Location.size();
+   if ((Location.back() IS '/') or (Location.back() IS '\\')) i--; // Ignore trailing slashes for symbolically linked folders
    while ((i > 0) and (Location[i-1] != ':') and (Location[i-1] != '/') and (Location[i-1] != '\\')) i--;
-   if (Path) {
-      len = StrCopy(Path, filename, sizeof(filename));
-      len += StrCopy(Location+i, filename+len, sizeof(filename)-len);
-   }
-   else len = StrCopy(Location+i, filename, sizeof(filename));
 
-   if (Link) {
-      if (filename[len-1] IS '/') filename[len-1] = 0;
+   if (!Path.empty()) {
+      filename.assign(Path);
+      filename.append(Location, i);
    }
+   else filename.assign(Location, i);
+
+   if ((Link) and (filename.back() IS '/')) filename.pop_back();
 
    // Send feedback
 
    CompressionFeedback fb;
    fb.FeedbackID     = FDB_COMPRESS_FILE;
-   fb.Index          = Self->prvFileIndex;
-   fb.Path           = Location;
-   fb.Dest           = filename;
+   fb.Index          = Self->FileIndex;
+   fb.Path           = Location.c_str();
+   fb.Dest           = filename.c_str();
    file->get(FID_Size, &fb.OriginalSize);
    fb.CompressedSize = 0;
    fb.Progress       = 0;
-   error = send_feedback(Self, &fb);
 
-   if ((error IS ERR_Terminate) or (error IS ERR_Cancelled)) { error = ERR_Cancelled; goto exit; }
-   else if (error IS ERR_Skip) { error = ERR_Okay; goto exit; }
-   else error = ERR_Okay;
+   switch (send_feedback(Self, &fb)) {
+      case ERR_Terminate:
+      case ERR_Cancelled:
+         return ERR_Cancelled;
+      case ERR_Skip:
+         return ERR_Okay;
+   }
 
    // Send informative output to the user
 
@@ -300,21 +257,22 @@ static ERROR compress_file(extCompression *Self, CSTRING Location, CSTRING Path,
 
    // Seek to the position at which this new file will be added
 
-   if ((chain = Self->prvFiles)) {
-      while (chain->Next) chain = (ZipFile *)chain->Next;
-      if (acSeek(Self->FileIO, chain->Offset + HEAD_NAMELEN, SEEK_START) != ERR_Okay) return log.warning(ERR_Seek);
+   if (!Self->Files.empty()) {
+      auto &chain = Self->Files.back();
+
+      if (acSeek(Self->FileIO, chain.Offset + HEAD_NAMELEN, SEEK_START) != ERR_Okay) return log.warning(ERR_Seek);
 
       UWORD namelen, extralen;
-      if (flReadLE(Self->FileIO, &namelen)) { error = ERR_Read; goto exit; }
-      if (flReadLE(Self->FileIO, &extralen)) { error = ERR_Read; goto exit; }
-      dataoffset = chain->Offset + HEAD_LENGTH + namelen + extralen + chain->CompressedSize;
+      if (flReadLE(Self->FileIO, &namelen)) return ERR_Read;
+      if (flReadLE(Self->FileIO, &extralen)) return ERR_Read;
+      dataoffset = chain.Offset + HEAD_LENGTH + namelen + extralen + chain.CompressedSize;
    }
 
-   if (acSeek(Self->FileIO, dataoffset, SEEK_START) != ERR_Okay) goto exit;
+   if (acSeek(Self->FileIO, dataoffset, SEEK_START) != ERR_Okay) return ERR_Seek;
 
    // Initialise the compression algorithm
 
-   Self->prvCompressionCount++;
+   Self->CompressionCount++;
 
    Self->prvZip.next_in   = 0;
    Self->prvZip.avail_in  = 0;
@@ -328,76 +286,61 @@ static ERROR compress_file(extCompression *Self, CSTRING Location, CSTRING Path,
       Self->prvZip.next_out  = Self->prvOutput;
       Self->prvZip.avail_out = SIZE_COMPRESSION_BUFFER;
    }
-   else {
-      error = ERR_Failed;
-      goto exit;
-   }
+   else return ERR_Failed;
 
    // If a matching file name already exists in the archive, make a note of its position
 
-   for (fileexists=Self->prvFiles; fileexists; fileexists=(ZipFile *)fileexists->Next) {
-      if (!StrCompare(fileexists->Name, filename, 0, STR_MATCH_LEN)) break;
+   bool file_exists = false;
+   for (file_index = Self->Files.begin(); file_index != Self->Files.end(); file_index++) {
+      if (!StrCompare(file_index->Name, filename, 0, STR_MATCH_LEN)) { file_exists = true; break; }
    }
 
    // Allocate the file entry structure and set up some initial variables.
 
-   len = StrLength(filename);
-   if (!AllocMemory(sizeof(ZipFile) + len + 1, MEM_DATA, (APTR *)&entry, NULL)) {
-      entry->Name = (STRING)(entry+1);
-      entry->NameLen = len;
-      for (i=0; i < entry->NameLen; i++) entry->Name[i] = filename[i];
-      entry->Name[i] = 0;
-      entry->CRC        = 0;
-      entry->Offset     = dataoffset;
-      entry->Comment    = 0;
-      entry->CommentLen = 0;
+   ZipFile entry(filename);
+   entry.Offset = dataoffset;
 
-      if ((!(Self->Flags & CMF_NO_LINKS)) and (file->Flags & FL_LINK)) {
-         if (!file->get(FID_Link, &symlink)) {
-            log.msg("Note: File \"%s\" is a symbolic link to \"%s\"", filename, symlink);
-            entry->Flags |= ZIP_LINK;
-         }
+   if ((!(Self->Flags & CMF_NO_LINKS)) and (file->Flags & FL_LINK)) {
+      if (!file->get(FID_Link, &symlink)) {
+         log.msg("Note: File \"%s\" is a symbolic link to \"%s\"", filename.c_str(), symlink);
+         entry.Flags |= ZIP_LINK;
       }
-
-      // Convert the file date stamp into a DOS time stamp for zip
-
-      DateTime *time;
-      if (!file->getPtr(FID_Date, &time)) {
-         if (time->Year < 1980) entry->TimeStamp = 0x00210000;
-         else entry->TimeStamp = ((time->Year-1980)<<25) | (time->Month<<21) | (time->Day<<16) | (time->Hour<<11) | (time->Minute<<5) | (time->Second>>1);
-      }
-      else entry->TimeStamp = 0;
    }
-   else {
-      error = ERR_AllocMemory;
-      goto exit;
+
+   // Convert the file date stamp into a DOS time stamp for zip
+
+   DateTime *time;
+   if (!file->getPtr(FID_Date, &time)) {
+      if (time->Year < 1980) entry.TimeStamp = 0x00210000;
+      else entry.TimeStamp = ((time->Year-1980)<<25) | (time->Month<<21) | (time->Day<<16) | (time->Hour<<11) | (time->Minute<<5) | (time->Second>>1);
    }
+   else entry.TimeStamp = 0;
 
    LONG permissions;
    if (!file->get(FID_Permissions, &permissions)) {
-      if (permissions & PERMIT_USER_READ) entry->Flags |= ZIP_UREAD;
-      if (permissions & PERMIT_GROUP_READ) entry->Flags |= ZIP_GREAD;
-      if (permissions & PERMIT_OTHERS_READ) entry->Flags |= ZIP_OREAD;
+      if (permissions & PERMIT_USER_READ)   entry.Flags |= ZIP_UREAD;
+      if (permissions & PERMIT_GROUP_READ)  entry.Flags |= ZIP_GREAD;
+      if (permissions & PERMIT_OTHERS_READ) entry.Flags |= ZIP_OREAD;
 
-      if (permissions & PERMIT_USER_WRITE) entry->Flags |= ZIP_UWRITE;
-      if (permissions & PERMIT_GROUP_WRITE) entry->Flags |= ZIP_GWRITE;
-      if (permissions & PERMIT_OTHERS_WRITE) entry->Flags |= ZIP_OWRITE;
+      if (permissions & PERMIT_USER_WRITE)   entry.Flags |= ZIP_UWRITE;
+      if (permissions & PERMIT_GROUP_WRITE)  entry.Flags |= ZIP_GWRITE;
+      if (permissions & PERMIT_OTHERS_WRITE) entry.Flags |= ZIP_OWRITE;
 
-      if (permissions & PERMIT_USER_EXEC) entry->Flags |= ZIP_UEXEC;
-      if (permissions & PERMIT_GROUP_EXEC) entry->Flags |= ZIP_GEXEC;
-      if (permissions & PERMIT_OTHERS_EXEC) entry->Flags |= ZIP_OEXEC;
+      if (permissions & PERMIT_USER_EXEC)   entry.Flags |= ZIP_UEXEC;
+      if (permissions & PERMIT_GROUP_EXEC)  entry.Flags |= ZIP_GEXEC;
+      if (permissions & PERMIT_OTHERS_EXEC) entry.Flags |= ZIP_OEXEC;
    }
 
-   entry->Flags &= 0xffffff00; // Do not write anything to the low order bits, they have meaning exclusive to MSDOS
+   entry.Flags &= 0xffffff00; // Do not write anything to the low order bits, they have meaning exclusive to MSDOS
 
    // Skip over the PKZIP header that will be written for this file (we will be updating the header later).
 
-   if (acWriteResult(Self->FileIO, NULL, HEAD_LENGTH + entry->NameLen + entry->CommentLen) != HEAD_LENGTH + entry->NameLen + entry->CommentLen) goto exit;
+   if (acWriteResult(Self->FileIO, NULL, HEAD_LENGTH + entry.Name.size() + entry.Comment.size()) != LONG(HEAD_LENGTH + entry.Name.size() + entry.Comment.size())) return ERR_Write;
 
    // Specify the limitations of our buffer so that the compression routine doesn't overwrite its boundaries.  Then
    // start the compression of the input file.
 
-   if (entry->Flags & ZIP_LINK) {
+   if (entry.Flags & ZIP_LINK) {
       // Compress the symbolic link to the zip file, rather than the data
       len = StrLength(symlink);
       Self->prvZip.next_in   = (Bytef *)symlink;
@@ -406,9 +349,9 @@ static ERROR compress_file(extCompression *Self, CSTRING Location, CSTRING Path,
       Self->prvZip.avail_out = SIZE_COMPRESSION_BUFFER;
       if (deflate(&Self->prvZip, Z_NO_FLUSH) != ERR_Okay) {
          log.warning("Failure during data compression.");
-         goto exit;
+         return ERR_Failed;
       }
-      entry->CRC = GenCRC32(entry->CRC, symlink, len);
+      entry.CRC = GenCRC32(entry.CRC, symlink, len);
    }
    else {
       struct acRead read = { .Buffer = Self->prvInput, .Length = SIZE_COMPRESSION_BUFFER };
@@ -433,103 +376,83 @@ static ERROR compress_file(extCompression *Self, CSTRING Location, CSTRING Path,
 
             if (deflate(&Self->prvZip, Z_NO_FLUSH) != ERR_Okay) {
                log.warning("Failure during data compression.");
-               goto exit;
+               return ERR_Failed;
             }
          }
 
-         entry->CRC = GenCRC32(entry->CRC, Self->prvInput, read.Result);
+         entry.CRC = GenCRC32(entry.CRC, Self->prvInput, read.Result);
       }
    }
 
-   if (acFlush(Self) != ERR_Okay) goto exit;
+   if (acFlush(Self) != ERR_Okay) return ERR_Failed;
    deflateEnd(&Self->prvZip);
    deflateend = false;
 
    // Finalise entry details
 
-   entry->CompressedSize = Self->prvZip.total_out;
-   entry->OriginalSize   = Self->prvZip.total_in;
+   entry.CompressedSize = Self->prvZip.total_out;
+   entry.OriginalSize   = Self->prvZip.total_in;
 
-   if (entry->OriginalSize > 0) {
-      entry->DeflateMethod = 8;
-   }
+   if (entry.OriginalSize > 0) entry.DeflateMethod = 8;
    else {
-      entry->DeflateMethod = 0;
-      entry->CompressedSize = 0;
+      entry.DeflateMethod = 0;
+      entry.CompressedSize = 0;
    }
 
-   if ((chain = Self->prvFiles)) {
-      while (chain->Next) chain = (ZipFile *)chain->Next;
-      entry->Prev = (CompressedFile *)chain;
-      chain->Next = (CompressedFile *)entry;
-   }
-   else Self->prvFiles = entry;
+   Self->Files.push_back(entry);
 
    // Update the header that we earlier wrote for our file entry.  Note that the header stores only some of the file's
    // meta information.  The majority is stored in the directory at the end of the zip file.
 
-   if (acSeek(Self->FileIO, (DOUBLE)entry->Offset, SEEK_START) != ERR_Okay) goto exit;
+   if (acSeek(Self->FileIO, (DOUBLE)entry.Offset, SEEK_START) != ERR_Okay) return ERR_Seek;
 
    UBYTE header[sizeof(glHeader)];
    CopyMemory(glHeader, header, sizeof(glHeader));
-   wrb(entry->DeflateMethod, header + HEAD_DEFLATEMETHOD);
-   wrb(entry->TimeStamp, header + HEAD_TIMESTAMP);
-   wrb(entry->CRC, header + HEAD_CRC);
-   wrb(entry->CompressedSize, header + HEAD_COMPRESSEDSIZE);
-   wrb(entry->OriginalSize, header + HEAD_FILESIZE);
-   wrb(entry->NameLen, header + HEAD_NAMELEN);
-   if (acWriteResult(Self->FileIO, header, HEAD_LENGTH) != HEAD_LENGTH) goto exit;
-   if (acWriteResult(Self->FileIO, entry->Name, entry->NameLen) != entry->NameLen) goto exit;
+   wrb<UWORD>(entry.DeflateMethod, header + HEAD_DEFLATEMETHOD);
+   wrb<ULONG>(entry.TimeStamp, header + HEAD_TIMESTAMP);
+   wrb<ULONG>(entry.CRC, header + HEAD_CRC);
+   wrb<ULONG>(entry.CompressedSize, header + HEAD_COMPRESSEDSIZE);
+   wrb<ULONG>(entry.OriginalSize, header + HEAD_FILESIZE);
+   wrb<UWORD>(entry.Name.size(), header + HEAD_NAMELEN);
+   if (acWriteResult(Self->FileIO, header, HEAD_LENGTH) != HEAD_LENGTH) return ERR_Write;
+   if (acWriteResult(Self->FileIO, entry.Name.c_str(), entry.Name.size()) != (LONG)entry.Name.size()) return ERR_Write;
 
    // Send updated feedback if necessary
 
    if (fb.Progress < fb.OriginalSize) {
-      fb.CompressedSize = entry->CompressedSize;
-      fb.Progress       = fb.OriginalSize; // 100
+      fb.CompressedSize = entry.CompressedSize;
+      fb.Progress       = fb.OriginalSize;
       send_feedback(Self, &fb);
    }
 
    // If this new data replaces an existing file, remove the old file now
 
-   if (fileexists) remove_file(Self, &fileexists);
+   if (file_exists) remove_file(Self, file_index);
 
-   Self->prvFileIndex++;
    return ERR_Okay;
-
-exit:
-   if (deflateend) deflateEnd(&Self->prvZip);
-
-   if (entry) {
-      FreeFromLL((CompressedFile *)entry, (CompressedFile *)Self->prvFiles, (CompressedFile **)&Self->prvFiles);
-      FreeResource(entry);
-   }
-
-   Self->prvFileIndex++;
-   return error;
 }
 
 //*********************************************************************************************************************
 
-ERROR remove_file(extCompression *Self, ZipFile **File)
+static ERROR remove_file(extCompression *Self, std::list<ZipFile>::iterator File)
 {
    parasol::Log log(__FUNCTION__);
-   auto file = *File;
 
-   log.branch("Deleting \"%s\"", file->Name);
+   log.branch("Deleting \"%s\"", File->Name.c_str());
 
    // Seek to the end of the compressed file.  We are going to delete the file by shifting all the data after the file
    // to the start of the file's position.
 
-   if (acSeekStart(Self->FileIO, file->Offset + HEAD_NAMELEN) != ERR_Okay) return log.warning(ERR_Seek);
+   if (acSeekStart(Self->FileIO, File->Offset + HEAD_NAMELEN) != ERR_Okay) return log.warning(ERR_Seek);
 
    UWORD namelen, extralen;
    if (flReadLE(Self->FileIO, &namelen)) return ERR_Read;
    if (flReadLE(Self->FileIO, &extralen)) return ERR_Read;
-   LONG chunksize  = HEAD_LENGTH + namelen + extralen + file->CompressedSize;
-   DOUBLE currentpos = file->Offset + chunksize;
+   LONG chunksize  = HEAD_LENGTH + namelen + extralen + File->CompressedSize;
+   DOUBLE currentpos = File->Offset + chunksize;
    if (acSeekStart(Self->FileIO, currentpos) != ERR_Okay) return log.warning(ERR_Seek);
 
-   DOUBLE writepos = file->Offset;
+   DOUBLE writepos = File->Offset;
 
    struct acRead read = { Self->prvInput, SIZE_COMPRESSION_BUFFER };
    while ((!Action(AC_Read, Self->FileIO, &read)) and (read.Result > 0)) {
@@ -544,17 +467,12 @@ ERROR remove_file(extCompression *Self, ZipFile **File)
 
    Self->FileIO->set(FID_Size, writepos);
 
-   // Remove the file reference from the chain
+   // Adjust the offset of files that are ahead of this one
 
-   auto next = (ZipFile *)file->Next;
-   FreeFromLL((CompressedFile *)file, (CompressedFile *)Self->prvFiles, (CompressedFile **)&Self->prvFiles);
-   FreeResource(file);
+   auto scan = File;
+   for (++scan; scan != Self->Files.end(); scan++) scan->Offset -= chunksize;
 
-   // Adjust the offset of files that were ahead of this one
-
-   for (file=next; file != NULL; file=(ZipFile *)file->Next) file->Offset -= chunksize;
-
-   *File = next;
+   Self->Files.erase(File); // Remove the file reference from the chain
    return ERR_Okay;
 }
 
@@ -597,21 +515,14 @@ static ERROR fast_scan_zip(extCompression *Self)
          return scan_zip(Self);
       }
 
-      ZipFile *lastentry = NULL;
       #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
       ULONG *head = (ULONG *)list;
       #pragma GCC diagnostic warning "-Waddress-of-packed-member"
-      LONG i;
-      for (i=0; i < tail.filecount; i++) {
-         ZipFile *zf, *next;
 
+      for (LONG i=0; i < tail.filecount; i++) {
          if (0x02014b50 != head[0]) {
             log.warning("Zip file has corrupt end-of-file signature.");
-            for (zf=Self->prvFiles; zf != NULL; zf=next) {
-               next = (ZipFile *)zf->Next;
-               FreeResource(zf);
-            }
-            Self->prvFiles = NULL;
+            Self->Files.clear();
             FreeResource(list);
             return scan_zip(Self);
          }
@@ -633,71 +544,33 @@ static ERROR fast_scan_zip(extCompression *Self)
          scan->offset         = le32_cpu(scan->offset);
 #endif
 
-         // Check the header validity
+         total_files++;
 
-         if (!AllocMemory(sizeof(ZipFile) + scan->namelen + 1 + scan->commentlen + 1, MEM_DATA, (APTR *)&zf, NULL)) {
-            total_files++;
+         ZipFile zf;
+         zf.CompressedSize = scan->compressedsize;
+         zf.OriginalSize   = scan->originalsize;
+         zf.DeflateMethod  = scan->deflatemethod;
+         zf.TimeStamp      = scan->timestamp;
+         zf.CRC            = scan->crc32;
+         zf.Offset         = scan->offset;
 
-            // Build the file entry structure
+         if (scan->ostype IS ZIP_PARASOL) zf.Flags = scan->attrib;
+         else zf.Flags = 0;
 
-            zf->NameLen        = scan->namelen;
-            zf->CommentLen     = scan->commentlen;
-            zf->CompressedSize = scan->compressedsize;
-            zf->OriginalSize   = scan->originalsize;
-            zf->DeflateMethod  = scan->deflatemethod;
-            zf->TimeStamp      = scan->timestamp;
-            zf->CRC            = scan->crc32;
-            zf->Offset         = scan->offset;
+         // Read string information
 
-            if (scan->ostype IS ZIP_PARASOL) {
-               zf->Flags = scan->attrib;
-            }
-            else zf->Flags = 0;
-
-            // Read string information
-
-            STRING str = ((STRING)head) + LIST_LENGTH;
-
-            zf->Name = (STRING)(zf+1);
-
-            if ((str[0] IS '.') and (str[1] IS '/')) { // Get rid of any useless './' prefix that sometimes make their way into zip files
-               CopyMemory(str+2, zf->Name, scan->namelen-2);
-               zf->Name[zf->NameLen] = 0;
-               zf->Name[zf->NameLen-1] = 0;
-               zf->Name[zf->NameLen-2] = 0;
-            }
-            else {
-               CopyMemory(str, zf->Name, scan->namelen);
-               zf->Name[zf->NameLen] = 0;
-            }
-
-            str += scan->namelen;
-            str += scan->extralen;
-
-            zf->Comment = (STRING)(zf+1) + scan->namelen + 1;
-            CopyMemory(str, zf->Comment, scan->commentlen);
-            zf->Comment[scan->commentlen] = 0;
-            str += scan->commentlen;
-
-            if (zf->Flags & ZIP_LINK);
-            else if (zf->OriginalSize == 0) {
-               if (zf->Name[StrLength(zf->Name)-1] IS '/') zf->IsFolder = TRUE;
-               //else zf->IsFolder = TRUE;
-            }
+         STRING str = STRING(head) + LIST_LENGTH;
+         if ((str[0] IS '.') and (str[1] IS '/')) { // Get rid of any useless './' prefix that sometimes make their way into zip files
+            zf.Name.assign(str+2, scan->namelen-2);
          }
-         else {
-            FreeResource(list);
-            return ERR_AllocMemory;
-         }
+         else zf.Name.assign(str, scan->namelen);
 
-         // Linked-list management
+         zf.Comment.assign(str + scan->namelen + scan->extralen, scan->commentlen);
 
-         if (lastentry) {
-            zf->Prev = (CompressedFile *)lastentry;
-            lastentry->Next = (CompressedFile *)zf;
-         }
-         else Self->prvFiles = zf;
-         lastentry = zf;
+         if (zf.Flags & ZIP_LINK);
+         else if ((!zf.OriginalSize) and (zf.Name.back() IS '/')) zf.IsFolder = true;
+
+         Self->Files.push_back(zf);
 
          head = (ULONG *)(((UBYTE *)head) + LIST_LENGTH + scan->commentlen + scan->namelen + scan->extralen);
       }
@@ -718,7 +591,6 @@ static ERROR scan_zip(extCompression *Self)
 
    if (acSeek(Self->FileIO, 0.0, SEEK_START) != ERR_Okay) return log.warning(ERR_Seek);
 
-   ZipFile *lastentry = NULL;
    LONG type, result;
    LONG total_files = 0;
    while (!flReadLE(Self->FileIO, &type)) {
@@ -768,75 +640,50 @@ static ERROR scan_zip(extCompression *Self)
          zipentry.offset         = le32_cpu(zipentry.offset);
 #endif
 
-         // Note: Hidden memory is allocated to save time and resource tracking space when loading huge compressed files.
+         ZipFile entry;
 
-         ZipFile *entry;
-         if (AllocMemory(sizeof(ZipFile) + zipentry.namelen + 1 + zipentry.commentlen + 1, MEM_DATA, (APTR *)&entry, NULL) != ERR_Okay) return log.warning(ERR_Memory);
-
-         // Read the file name string
-
-         entry->Name = (STRING)(entry+1);
-         if (!acRead(Self->FileIO, entry->Name, zipentry.namelen, &result)) {
-            entry->Name[zipentry.namelen] = 0;
+         char name[zipentry.namelen+1];
+         if (!acRead(Self->FileIO, name, zipentry.namelen, &result)) {
+            name[zipentry.namelen] = 0;
+            entry.Name.assign(name);
          }
          else return log.warning(ERR_Read);
 
-         // Read extra file information
-
-         char strbuffer[256];
          if (zipentry.extralen > 0) {
-            struct acRead read = { strbuffer, zipentry.extralen };
+            char extra[zipentry.extralen];
+            struct acRead read = { extra, zipentry.extralen };
             if (Action(AC_Read, Self->FileIO, &read)) return log.warning(ERR_Read);
          }
 
-         // Read the file comment string, if any
-
          if (zipentry.commentlen > 0) {
-            entry->Comment = entry->Name + zipentry.namelen + 1;
-            if (!acRead(Self->FileIO, strbuffer, zipentry.commentlen, &result)) {
-               CopyMemory(strbuffer, entry->Comment, zipentry.commentlen);
-               entry->Comment[zipentry.commentlen] = 0;
+            char comment[zipentry.commentlen+1];
+            if (!acRead(Self->FileIO, comment, zipentry.commentlen, &result)) {
+               comment[zipentry.commentlen] = 0;
+               entry.Comment.assign(comment);
             }
             else return log.warning(ERR_Read);
          }
 
-         // Build the file entry structure
+         entry.CompressedSize = zipentry.compressedsize;
+         entry.OriginalSize   = zipentry.originalsize;
+         entry.DeflateMethod  = zipentry.deflatemethod;
+         entry.TimeStamp      = zipentry.timestamp;
+         entry.CRC            = zipentry.crc32;
+         entry.Offset         = zipentry.offset;
 
-         entry->NameLen        = zipentry.namelen;
-         entry->CommentLen     = zipentry.commentlen;
-         entry->Comment        = NULL;
-         entry->CompressedSize = zipentry.compressedsize;
-         entry->OriginalSize   = zipentry.originalsize;
-         entry->DeflateMethod  = zipentry.deflatemethod;
-         entry->TimeStamp      = zipentry.timestamp;
-         entry->CRC            = zipentry.crc32;
-         entry->Offset         = zipentry.offset;
-         if (zipentry.ostype IS ZIP_PARASOL) {
-            entry->Flags = zipentry.attrib;
-         }
-         else entry->Flags = 0;
+         if (zipentry.ostype IS ZIP_PARASOL) entry.Flags = zipentry.attrib;
+         else entry.Flags = 0;
 
-         if ((entry->Name[0] IS '.') and (entry->Name[1] IS '/')) {
-            // Get rid of any useless './' prefix that sometimes make their way into zip files
-            CopyMemory(entry->Name + 2, entry->Name, (entry->NameLen - 2) + 1);
-            entry->Name[entry->NameLen-1] = 0;
-            entry->Name[entry->NameLen-2] = 0;
+         // Get rid of any useless './' prefix that sometimes make their way into zip files
+
+         if ((entry.Name[0] IS '.') and (entry.Name[1] IS '/')) {
+            entry.Name.erase(0, 2);
          }
 
-         if (entry->Flags & ZIP_LINK);
-         else if (entry->OriginalSize == 0) {
-            if (entry->Name[StrLength(entry->Name)-1] IS '/') entry->IsFolder = TRUE;
-         }
+         if (entry.Flags & ZIP_LINK);
+         else if ((!entry.OriginalSize) and (entry.Name.back() IS '/')) entry.IsFolder = true;
 
-         // Chain management
-
-         if (lastentry) {
-            entry->Prev = (CompressedFile *)lastentry;
-            lastentry->Next = (CompressedFile *)entry;
-         }
-         else Self->prvFiles = entry;
-
-         lastentry = entry;
+         Self->Files.push_back(entry);
       }
       else if (type IS 0x06054b50) {
          // PKZIP end of file directory signature detected
@@ -861,36 +708,31 @@ static ERROR send_feedback(extCompression *Self, CompressionFeedback *Feedback)
    parasol::Log log(__FUNCTION__);
    ERROR error;
 
-   if (Self->Feedback.Type) {
-      Self->FeedbackInfo = Feedback;
+   if (!Self->Feedback.Type) return ERR_Okay;
 
-      if (Self->Feedback.Type IS CALL_STDC) {
-         auto routine = (ERROR (*)(extCompression *, CompressionFeedback *))Self->Feedback.StdC.Routine;
-         if (Self->Feedback.StdC.Context) {
-            parasol::SwitchContext context(Self->Feedback.StdC.Context);
-            error = routine(Self, Feedback);
-         }
-         else error = routine(Self, Feedback);
-      }
-      else if (Self->Feedback.Type IS CALL_SCRIPT) {
-         OBJECTPTR script = Self->Feedback.Script.Script;
-         if (script) {
-            const ScriptArg args[] = {
-               { "Compression", FD_OBJECTPTR, { .Address = Self } },
-               { "Feedback",    FD_POINTER, { .Address = Feedback } }
-            };
-            if (scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
-         }
-         else error = ERR_Failed;
-      }
-      else {
-         log.warning("Callback function structure does not specify a recognised Type.");
-         error = ERR_Terminate;
-      }
+   Self->FeedbackInfo = Feedback;
 
-      Self->FeedbackInfo = NULL;
+   if (Self->Feedback.Type IS CALL_STDC) {
+      auto routine = (ERROR (*)(extCompression *, CompressionFeedback *))Self->Feedback.StdC.Routine;
+      if (Self->Feedback.StdC.Context) {
+         parasol::SwitchContext context(Self->Feedback.StdC.Context);
+         error = routine(Self, Feedback);
+      }
+      else error = routine(Self, Feedback);
    }
-   else error = ERR_Okay;
+   else if (Self->Feedback.Type IS CALL_SCRIPT) {
+      const ScriptArg args[] = {
+         { "Compression", FD_OBJECTPTR, { .Address = Self } },
+         { "Feedback",    FD_POINTER, { .Address = Feedback } }
+      };
+      if (scCallback(Self->Feedback.Script.Script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
+   }
+   else {
+      log.warning("Callback function structure does not specify a recognised Type.");
+      error = ERR_Terminate;
+   }
+
+   Self->FeedbackInfo = NULL;
 
    return error;
 }
@@ -899,108 +741,104 @@ static ERROR send_feedback(extCompression *Self, CompressionFeedback *Feedback)
 
 static void write_eof(extCompression *Self)
 {
-   ZipFile *chain;
+   if ((Self->FileIO) and (!Self->SubID) and (Self->CompressionCount > 0)) {
+      if (!Self->Files.empty()) {
+         // Calculate the start of the list offset
 
-   if ((Self->FileIO) and (!Self->SubID) and (Self->prvCompressionCount > 0)) {
-      if ((chain = Self->prvFiles)) {
-         // Determine the start of the list offset
-
-         while (chain->Next) chain = (ZipFile *)chain->Next;
-         acSeekStart(Self->FileIO, chain->Offset + HEAD_NAMELEN);
+         auto &last = Self->Files.back();
+         acSeekStart(Self->FileIO, last.Offset + HEAD_NAMELEN);
 
          UWORD namelen, extralen;
          if (flReadLE(Self->FileIO, &namelen)) return;
          if (flReadLE(Self->FileIO, &extralen)) return;
-         acSeekCurrent(Self->FileIO, chain->CompressedSize + namelen + extralen);
-         ULONG listoffset = chain->Offset + chain->CompressedSize + namelen + extralen + HEAD_LENGTH;
+         acSeekCurrent(Self->FileIO, last.CompressedSize + namelen + extralen);
+         ULONG listoffset = last.Offset + last.CompressedSize + namelen + extralen + HEAD_LENGTH;
 
          // Write out the central directory
 
          ULONG listsize  = 0;
          UWORD filecount = 0;
-         for (chain=Self->prvFiles; chain != NULL; chain=(ZipFile *)chain->Next) {
+         for (auto &chain : Self->Files) {
             UBYTE elist[sizeof(glList)];
             CopyMemory(glList, elist, sizeof(glList));
 
-            wrb(chain->DeflateMethod, elist+LIST_METHOD);
-            wrb(chain->TimeStamp, elist+LIST_TIMESTAMP);
-            wrb(chain->CRC, elist+LIST_CRC);
-            wrb(chain->CompressedSize, elist+LIST_COMPRESSEDSIZE);
-            wrb(chain->OriginalSize, elist+LIST_FILESIZE);
-            wrb(chain->NameLen, elist+LIST_NAMELEN);
+            wrb<UWORD>(chain.DeflateMethod, elist+LIST_METHOD);
+            wrb<ULONG>(chain.TimeStamp, elist+LIST_TIMESTAMP);
+            wrb<ULONG>(chain.CRC, elist+LIST_CRC);
+            wrb<ULONG>(chain.CompressedSize, elist+LIST_COMPRESSEDSIZE);
+            wrb<ULONG>(chain.OriginalSize, elist+LIST_FILESIZE);
+            wrb<UWORD>(chain.Name.size(), elist+LIST_NAMELEN);
             wrb<UWORD>(0, elist+LIST_EXTRALEN);
-            wrb(chain->CommentLen, elist+LIST_COMMENTLEN);
+            wrb<UWORD>(chain.Comment.size(), elist+LIST_COMMENTLEN);
             wrb<UWORD>(0, elist+LIST_DISKNO);
             wrb<UWORD>(0, elist+LIST_IFILE);
-            wrb(chain->Flags, elist+LIST_ATTRIB);
-            wrb(chain->Offset, elist+LIST_OFFSET);
+            wrb<ULONG>(chain.Flags, elist+LIST_ATTRIB);
+            wrb<ULONG>(chain.Offset, elist+LIST_OFFSET);
 
             acWriteResult(Self->FileIO, elist, LIST_LENGTH);
 
-            acWriteResult(Self->FileIO, chain->Name, chain->NameLen);
-            if (chain->Comment) acWriteResult(Self->FileIO, chain->Comment, chain->CommentLen);
+            acWriteResult(Self->FileIO, chain.Name.c_str(), chain.Name.size());
+            if (!chain.Comment.empty()) acWriteResult(Self->FileIO, chain.Comment.c_str(), chain.Comment.size());
 
-            listsize += LIST_LENGTH + chain->NameLen + chain->CommentLen;
+            listsize += LIST_LENGTH + chain.Name.size() + chain.Comment.size();
             filecount++;
          }
 
          UBYTE tail[sizeof(glTail)];
          CopyMemory(glTail, tail, sizeof(glTail));
 
-         wrb(filecount,  tail + TAIL_FILECOUNT); // File count for this file
-         wrb(filecount,  tail + TAIL_TOTALFILECOUNT); // File count for all zip files when spanning multiple archives
-         wrb(listsize,   tail + TAIL_FILELISTSIZE);
-         wrb(listoffset, tail + TAIL_FILELISTOFFSET);
+         wrb<UWORD>(filecount,  tail + TAIL_FILECOUNT); // File count for this file
+         wrb<UWORD>(filecount,  tail + TAIL_TOTALFILECOUNT); // File count for all zip files when spanning multiple archives
+         wrb<ULONG>(listsize,   tail + TAIL_FILELISTSIZE);
+         wrb<ULONG>(listoffset, tail + TAIL_FILELISTOFFSET);
          acWriteResult(Self->FileIO, tail, TAIL_LENGTH);
       }
-      else SetFields(Self->FileIO, FID_Size|TLONG, 0, TAGEND);
+      else Self->FileIO->set(FID_Size, 0);
 
-      Self->prvCompressionCount = 0;
+      Self->CompressionCount = 0;
    }
 }
 
 //*********************************************************************************************************************
 
-void zipfile_to_item(ZipFile *ZF, CompressedItem *Item)
+void zipfile_to_item(ZipFile &ZF, CompressedItem &Item)
 {
-   ClearMemory(Item, sizeof(*Item));
+   ClearMemory(&Item, sizeof(Item));
 
-   Item->Modified.Year   = 1980 + ((ZF->TimeStamp>>25) & 0x3f);
-   Item->Modified.Month  = (ZF->TimeStamp>>21) & 0x0f;
-   Item->Modified.Day    = (ZF->TimeStamp>>16) & 0x1f;
-   Item->Modified.Hour   = (ZF->TimeStamp>>11) & 0x1f;
-   Item->Modified.Minute = (ZF->TimeStamp>>5)  & 0x3f;
-   Item->Modified.Second = (ZF->TimeStamp>>1)  & 0x0f;
-   Item->Path            = ZF->Name;
-   Item->OriginalSize    = ZF->OriginalSize;
-   Item->CompressedSize  = ZF->CompressedSize;
+   Item.Modified.Year   = 1980 + ((ZF.TimeStamp>>25) & 0x3f);
+   Item.Modified.Month  = (ZF.TimeStamp>>21) & 0x0f;
+   Item.Modified.Day    = (ZF.TimeStamp>>16) & 0x1f;
+   Item.Modified.Hour   = (ZF.TimeStamp>>11) & 0x1f;
+   Item.Modified.Minute = (ZF.TimeStamp>>5)  & 0x3f;
+   Item.Modified.Second = (ZF.TimeStamp>>1)  & 0x0f;
+   Item.Path            = ZF.Name.c_str();
+   Item.OriginalSize    = ZF.OriginalSize;
+   Item.CompressedSize  = ZF.CompressedSize;
 
-   if (ZF->Flags & ZIP_LINK) Item->Flags |= FL_LINK;
+   if (ZF.Flags & ZIP_LINK) Item.Flags |= FL_LINK;
    else {
-      if (Item->OriginalSize == 0) {
-         LONG len;
-         for (len=0; ZF->Name[len]; len++);
-         if (ZF->Name[len-1] IS '/') Item->Flags |= FL_FOLDER;
-         else Item->Flags |= FL_FOLDER;
+      if (!Item.OriginalSize) {
+         if (ZF.Name.back() IS '/') Item.Flags |= FL_FOLDER;
+         else Item.Flags |= FL_FOLDER;
       }
-      else Item->Flags |= FL_FILE;
+      else Item.Flags |= FL_FILE;
    }
 
-   if (ZF->Flags & ZIP_SECURITY) {
+   if (ZF.Flags & ZIP_SECURITY) {
       LONG permissions = 0;
-      if (ZF->Flags & ZIP_UEXEC) permissions |= PERMIT_USER_EXEC;
-      if (ZF->Flags & ZIP_GEXEC) permissions |= PERMIT_GROUP_EXEC;
-      if (ZF->Flags & ZIP_OEXEC) permissions |= PERMIT_OTHERS_EXEC;
+      if (ZF.Flags & ZIP_UEXEC) permissions |= PERMIT_USER_EXEC;
+      if (ZF.Flags & ZIP_GEXEC) permissions |= PERMIT_GROUP_EXEC;
+      if (ZF.Flags & ZIP_OEXEC) permissions |= PERMIT_OTHERS_EXEC;
 
-      if (ZF->Flags & ZIP_UREAD) permissions |= PERMIT_USER_READ;
-      if (ZF->Flags & ZIP_GREAD) permissions |= PERMIT_GROUP_READ;
-      if (ZF->Flags & ZIP_OREAD) permissions |= PERMIT_OTHERS_READ;
+      if (ZF.Flags & ZIP_UREAD) permissions |= PERMIT_USER_READ;
+      if (ZF.Flags & ZIP_GREAD) permissions |= PERMIT_GROUP_READ;
+      if (ZF.Flags & ZIP_OREAD) permissions |= PERMIT_OTHERS_READ;
 
-      if (ZF->Flags & ZIP_UWRITE) permissions |= PERMIT_USER_WRITE;
-      if (ZF->Flags & ZIP_GWRITE) permissions |= PERMIT_GROUP_WRITE;
-      if (ZF->Flags & ZIP_OWRITE) permissions |= PERMIT_OTHERS_WRITE;
+      if (ZF.Flags & ZIP_UWRITE) permissions |= PERMIT_USER_WRITE;
+      if (ZF.Flags & ZIP_GWRITE) permissions |= PERMIT_GROUP_WRITE;
+      if (ZF.Flags & ZIP_OWRITE) permissions |= PERMIT_OTHERS_WRITE;
 
-      Item->Permissions = permissions;
+      Item.Permissions = permissions;
    }
 }
 
