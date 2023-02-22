@@ -516,7 +516,7 @@ static ERROR fast_scan_zip(extCompression *Self)
       }
 
       #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
-      ULONG *head = (ULONG *)list;
+      auto head = (ULONG *)list;
       #pragma GCC diagnostic warning "-Waddress-of-packed-member"
 
       for (LONG i=0; i < tail.filecount; i++) {
