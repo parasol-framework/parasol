@@ -547,6 +547,9 @@ static ERROR fast_scan_zip(extCompression *Self)
          total_files++;
 
          ZipFile zf;
+
+         zf.NameLen        = scan->namelen;
+         zf.CommentLen     = scan->commentlen;
          zf.CompressedSize = scan->compressedsize;
          zf.OriginalSize   = scan->originalsize;
          zf.DeflateMethod  = scan->deflatemethod;
@@ -664,6 +667,8 @@ static ERROR scan_zip(extCompression *Self)
             else return log.warning(ERR_Read);
          }
 
+         entry.NameLen        = zipentry.namelen;
+         entry.CommentLen     = zipentry.commentlen;
          entry.CompressedSize = zipentry.compressedsize;
          entry.OriginalSize   = zipentry.originalsize;
          entry.DeflateMethod  = zipentry.deflatemethod;

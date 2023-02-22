@@ -93,7 +93,7 @@ static ERROR seek_to_item(extFile *Self)
 
    UWORD extra_len;
    if (flReadLE(prv->FileStream, &extra_len)) return ERR_Read;
-   ULONG stream_start = item.Offset + HEAD_LENGTH + item.Name.size() + extra_len;
+   ULONG stream_start = item.Offset + HEAD_LENGTH + item.NameLen + extra_len;
    if (acSeekStart(prv->FileStream, stream_start) != ERR_Okay) return ERR_Seek;
 
    if (item.CompressedSize > 0) {

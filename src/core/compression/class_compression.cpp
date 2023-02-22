@@ -146,6 +146,8 @@ struct ZipFile {
    ULONG  TimeStamp = 0;     // Time stamp information
    ULONG  CRC = 0;           // CRC validation number
    ULONG  Offset = 0;        // Byte offset of the file within the archive
+   UWORD  NameLen = 0;       // The zip record's name length, including padding.
+   UWORD  CommentLen = 0;    // The zip record's comment length, including padding.
    UWORD  DeflateMethod = 0; // Set to 8 for normal deflation
    UBYTE  Month = 0;
    UBYTE  Day = 0;
@@ -971,7 +973,7 @@ static ERROR COMPRESSION_CompressFile(extCompression *Self, struct cmpCompressFi
 
    // Check the location string for wildcards, * and ?
 
-   BYTE wildcard = FALSE;
+   bool wildcard = false;
    LONG pathlen;
    LONG len = StrLength(src);
    for (pathlen=len; pathlen > 0; pathlen--) {
@@ -979,7 +981,7 @@ static ERROR COMPRESSION_CompressFile(extCompression *Self, struct cmpCompressFi
       else if ((src[pathlen-1] IS ':') or (src[pathlen-1] IS '/') or (src[pathlen-1] IS '\\')) break;
    }
 
-   if (wildcard IS FALSE) {
+   if (!wildcard) {
       return compress_file(Self, src, path, FALSE);
    }
    else {
