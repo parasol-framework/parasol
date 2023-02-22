@@ -202,8 +202,8 @@ class extCompression : public objCompression {
    LONG   TotalFiles;
    LONG   FileIndex;
    WORD   CompressionCount;  // Counter of times that compression has occurred
-   UBYTE  Deflating;
-   UBYTE  Inflating;
+   bool   Deflating;
+   bool   Inflating;
 };
 
 static ERROR compress_folder(extCompression *, std::string, std::string);
@@ -899,65 +899,54 @@ static ERROR COMPRESSION_CompressFile(extCompression *Self, struct cmpCompressFi
       print(Self, out.str());
    }
 
-   CSTRING src = Args->Location;
-   CSTRING path;
+   std::string src(Args->Location);
+   std::string path;
    bool incdir = false;
    if (!Args->Path) path = "";
    else { // Accept the path by default but check it for illegal symbols just in case
-      path = Args->Path;
-
-      if (*path IS '/') { // Special mode: prefix src folder name to the root path
+      if (Args->Path[0] IS '/') { // Special mode: prefix src folder name to the root path
          incdir = true;
-         path++;
+         path.assign(Args->Path + 1);
       }
+      else path.assign(Args->Path);
 
       for (LONG i=0; path[i]; i++) {
-         if ((path[i] IS '*') or (path[i] IS '?') or (path[i] IS '"') or
-             (path[i] IS ':') or (path[i] IS '|') or (path[i] IS '<') or
-             (path[i] IS '>')) {
-            log.warning("Illegal characters in path: %s", path);
+         if (path.find_first_of("*?\":|<>") != std::string::npos) {
+            log.warning("Illegal characters in path: %s", path.c_str());
             if (Self->OutputID) {
                std::ostringstream out;
                out << "Warning - path ignored due to illegal characters: " << path << "\n";
                print(Self, out.str());
             }
-            path = "";
+            path.clear();
             break;
          }
       }
    }
 
-   log.branch("Location: %s, Path: %s", src, path);
+   log.branch("Location: %s, Path: %s", src.c_str(), path.c_str());
 
    Self->FileIndex = 0;
 
-   LONG i = StrLength(src);
-   if ((src[i-1] IS '/') or (src[i-1] IS '\\') or (src[i-1] IS ':')) { // The source is a folder
-      if ((*path) or (incdir)) {
+   if ((src.back() IS '/') or (src.back() IS '\\') or (src.back() IS ':')) { // The source is a folder
+      if ((!path.empty()) or (incdir)) {
          // This subroutine creates a path custom string if the inclusive folder name option is on, or if the path is
          // missing a terminating slash character.
 
-         LONG inclen = 0;
+         LONG inclen = 0, i = 0;
          if (incdir) {
-            i -= 1;
+            i = src.size() - 1;
             while ((i > 0) and (src[i-1] != '/') and (src[i-1] != '\\') and (src[i-1] != ':')) {
                inclen++;
                i--;
             }
          }
 
-         LONG pathlen = StrLength(path);
-
-         if ((inclen) or ((path[pathlen-1] != '/') and (path[pathlen-1] != '\\'))) {
-            char newpath[inclen+1+pathlen+2];
-
-            LONG j = 0;
-            if (inclen > 0) j = StrCopy(src+i, newpath, COPY_ALL);
-
-            CopyMemory(path, newpath+j, pathlen);
-            j += pathlen;
-            if ((j > 0) and (newpath[j-1] != '/') and (newpath[j-1] != '\\')) newpath[j++] = '/';
-            newpath[j] = 0;
+         if ((inclen) or ((path.back() != '/') and (path.back() != '\\'))) {
+            std::string newpath;
+            if (inclen > 0) newpath.append(src, i);
+            newpath += path;
+            if ((newpath.back() != '/') and (newpath.back() != '\\')) newpath += '/';
 
             return compress_folder(Self, src, newpath);
          }
@@ -972,8 +961,7 @@ static ERROR COMPRESSION_CompressFile(extCompression *Self, struct cmpCompressFi
 
    bool wildcard = false;
    LONG pathlen;
-   LONG len = StrLength(src);
-   for (pathlen=len; pathlen > 0; pathlen--) {
+   for (pathlen=src.size(); pathlen > 0; pathlen--) {
       if ((src[pathlen-1] IS '*') or (src[pathlen-1] IS '?')) wildcard = true;
       else if ((src[pathlen-1] IS ':') or (src[pathlen-1] IS '/') or (src[pathlen-1] IS '\\')) break;
    }
@@ -982,22 +970,18 @@ static ERROR COMPRESSION_CompressFile(extCompression *Self, struct cmpCompressFi
       return compress_file(Self, src, path, FALSE);
    }
    else {
-      char filename[len-pathlen+1];
-      CopyMemory(src + pathlen, filename, len - pathlen + 1); // Extract the file name without the path
+      std::string filename;
+      filename.assign(src, pathlen, src.size() - pathlen); // Extract the file name without the path
 
-      char srcfolder[len+1];
-      CopyMemory(src, srcfolder, pathlen); // Extract the path without the file name
-      srcfolder[pathlen] = 0;
+      std::string srcfolder(src, pathlen); // Extract the path without the file name
 
       DirInfo *dir;
-      if (!OpenDir(srcfolder, RDF_FILE, &dir)) {
+      if (!OpenDir(srcfolder.c_str(), RDF_FILE, &dir)) {
          while (!ScanDir(dir)) {
             FileInfo *scan = dir->Info;
             if (!StrCompare(filename, scan->Name, 0, STR_WILDCARD)) {
-               len = StrLength(scan->Name);
-               char folder[pathlen+len+1];
-               CopyMemory(src, folder, pathlen);
-               CopyMemory(scan->Name, folder+pathlen, len+1);
+               auto folder = src.substr(0, pathlen);
+               folder.append(scan->Name);
                error = compress_file(Self, folder, path, FALSE);
             }
          }
@@ -1153,8 +1137,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
 
    log.branch("%s TO %s, Permissions: $%.8x", Args->Path, Args->Dest, Self->Permissions);
 
-   char destpath[400];
-   UWORD pos = StrCopy(Args->Dest, destpath, sizeof(destpath));
+   std::string destpath(Args->Dest);
 
    UWORD pathend = 0;
    for (UWORD i=0; Args->Path[i]; i++) if ((Args->Path[i] IS '/') or (Args->Path[i] IS '\\')) pathend = i + 1;
@@ -1180,17 +1163,15 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
          // If the destination path specifies a folder, add the name of the file to the destination to generate the
          // correct file name.
 
-         UWORD j = pos;
-         if ((destpath[j-1] IS '/') or (destpath[j-1] IS '\\') or (destpath[j-1] IS ':')) {
-            for (UWORD i=pathend; zf.Name[i]; i++) destpath[j++] = zf.Name[i];
-            destpath[j] = 0;
+         if ((destpath.back() IS '/') or (destpath.back() IS '\\') or (destpath.back() IS ':')) {
+            destpath.append(zf.Name, pathend);
          }
 
          // If the destination is a folder that already exists, skip this compression entry
 
-         if ((destpath[j-1] IS '/') or (destpath[j-1] IS '\\')) {
+         if ((destpath.back() IS '/') or (destpath.back() IS '\\')) {
             LONG result;
-            if ((!AnalysePath(destpath, &result)) and (result IS LOC_DIRECTORY)) {
+            if ((!AnalysePath(destpath.c_str(), &result)) and (result IS LOC_DIRECTORY)) {
                Self->FileIndex++;
                continue;
             }
@@ -1207,7 +1188,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
          feedback.FeedbackID     = FDB_DECOMPRESS_FILE;
          feedback.Index          = Self->FileIndex;
          feedback.Path           = zf.Name.c_str();
-         feedback.Dest           = destpath;
+         feedback.Dest           = destpath.c_str();
          feedback.OriginalSize   = zf.OriginalSize;
          feedback.CompressedSize = zf.CompressedSize;
          feedback.Progress       = 0;
@@ -1254,8 +1235,8 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
                   struct acRead read = { .Buffer = Self->Input, .Length = SIZE_COMPRESSION_BUFFER-1 };
                   if (!(error = Action(AC_Read, Self->FileIO, &read))) {
                      Self->Input[read.Result] = 0;
-                     DeleteFile(destpath, NULL);
-                     error = CreateLink(destpath, (CSTRING)Self->Input);
+                     DeleteFile(destpath.c_str(), NULL);
+                     error = CreateLink(destpath.c_str(), (CSTRING)Self->Input);
                      if (error IS ERR_NoSupport) error = ERR_Okay;
                   }
 
@@ -1289,8 +1270,8 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
                   }
 
                   Self->Output[zf.OriginalSize] = 0; // !!! We should terminate according to the amount of data decompressed
-                  DeleteFile(destpath, NULL);
-                  error = CreateLink(destpath, (CSTRING)Self->Output);
+                  DeleteFile(destpath.c_str(), NULL);
+                  error = CreateLink(destpath.c_str(), (CSTRING)Self->Output);
                   if (error IS ERR_NoSupport) error = ERR_Okay;
 
                   inflateEnd(&Self->Zip);
@@ -1327,7 +1308,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
             };
 
             if (!file.ok()) {
-               log.warning("Error %d creating file \"%s\".", file.error, destpath);
+               log.warning("Error %d creating file \"%s\".", file.error, destpath.c_str());
                error = ERR_File;
                goto exit;
             }
@@ -1730,7 +1711,7 @@ static ERROR COMPRESSION_Flush(extCompression *Self, APTR Void)
 
    Self->Zip.avail_in = 0;
 
-   BYTE done = false;
+   bool done = false;
 
    for (;;) {
       // Write out any bytes that are still left in the compression buffer
@@ -1849,12 +1830,12 @@ static ERROR COMPRESSION_Init(extCompression *Self, APTR Void)
       else error = ERR_DoesNotExist;
 
       if (!error) { // Test the given location to see if it matches our supported file format (pkzip).
-         struct acRead read = { Self->Header, sizeof(Self->Header) };
-         if (Action(AC_Read, Self->FileIO, &read) != ERR_Okay) return log.warning(ERR_Read);
+         LONG result;
+         if (acRead(Self->FileIO, Self->Header, sizeof(Self->Header), &result) != ERR_Okay) return log.warning(ERR_Read);
 
          // If the file is empty then we will accept it as a zip file
 
-         if (read.Result IS 0) return ERR_Okay;
+         if (!result) return ERR_Okay;
 
          // Check for a pkzip header
 
