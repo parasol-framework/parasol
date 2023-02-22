@@ -188,9 +188,9 @@ static ERROR ARCHIVE_Free(extFile *Self, APTR Void)
    auto prv = (prvFileArchive *)Self->ChildPrivate;
 
    if (prv) {
-      prv->~prvFileArchive();
       if (prv->FileStream) { acFree(prv->FileStream); prv->FileStream = NULL; }
       if (prv->Inflating)  { inflateEnd(&prv->Stream); prv->Inflating = false; }
+      prv->~prvFileArchive();
    }
 
    return ERR_Okay;
@@ -316,21 +316,21 @@ static ERROR ARCHIVE_Read(extFile *Self, struct acRead *Args)
    else {
       Args->Result = 0;
 
-      auto zf = &prv->Info;
+      auto &zf = prv->Info;
 
-      //log.trace("Decompressing %d bytes to %d, buffer size %d", zf->CompressedSize, zf->OriginalSize, Args->Length);
+      //log.trace("Decompressing %d bytes to %d, buffer size %d", zf.CompressedSize, zf.OriginalSize, Args->Length);
 
       if ((prv->Inflating) and (!prv->Stream.avail_in)) { // Initial setup
          struct acRead read = {
             .Buffer = prv->InputBuffer,
-            .Length = (zf->CompressedSize < SIZE_COMPRESSION_BUFFER) ? (LONG)zf->CompressedSize : SIZE_COMPRESSION_BUFFER
+            .Length = (zf.CompressedSize < SIZE_COMPRESSION_BUFFER) ? (LONG)zf.CompressedSize : SIZE_COMPRESSION_BUFFER
          };
 
          if (Action(AC_Read, prv->FileStream, &read)) return ERR_Read;
          if (read.Result <= 0) return ERR_Read;
 
          prv->ReadPtr          = prv->OutputBuffer;
-         prv->InputLength      = zf->CompressedSize - read.Result;
+         prv->InputLength      = zf.CompressedSize - read.Result;
          prv->Stream.next_in   = prv->InputBuffer;
          prv->Stream.avail_in  = read.Result;
          prv->Stream.next_out  = prv->OutputBuffer;
@@ -350,7 +350,7 @@ static ERROR ARCHIVE_Read(extFile *Self, struct acRead *Args)
 
          // Stop if necessary
 
-         if (prv->Stream.total_out IS zf->OriginalSize) break; // All data decompressed
+         if (prv->Stream.total_out IS zf.OriginalSize) break; // All data decompressed
          if (Args->Result >= Args->Length) return ERR_Okay;
          if (!prv->Inflating) return ERR_Okay;
 
