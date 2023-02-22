@@ -2,6 +2,32 @@
 -- Flute tests for the Compression module
 
 -----------------------------------------------------------------------------------------------------------------------
+-- This test takes advantage of the icon archive to test our compatibility levels (icons are compressed by the host
+-- system rather than our compression API).
+
+function testIconArchive()
+   local file_count = 0
+   local cmp = obj.new('compression', {
+      path     = 'styles:icons/Default.zip',
+      feedback = function(Compression, Info)
+         if (Info.progress == 0) then
+            file_count = file_count + 1
+         end
+      end
+   })
+
+   if not cmp then return end -- Non-existance of the icon archive means this test is skipped
+
+   err = cmp.mtDecompressFile('devices/harddisk.svg', 'temp:cmp_icons/')
+   assert(err == ERR_Okay, 'DecompressFile() failed: ' .. mSys.GetErrorMsg(err))
+
+   err = cmp.mtDecompressFile('nature/*', 'temp:cmp_icons/')
+   assert(err == ERR_Okay, 'DecompressFile() failed: ' .. mSys.GetErrorMsg(err))
+
+   assert(file_count == 5, 'Decompressed file count is ' .. file_count)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- Compress a few files and then decompress them.
 
 function testCreateCompress()
@@ -21,27 +47,57 @@ function testDecompressWild()
    local cmp = obj.new('compression', { path='temp:cmp_test_json.zip' } )
 
    err = cmp.mtDecompressFile('*.bin', 'temp:')
-   if (err != ERR_Okay) then error('DecompressFile() failed: ' .. mSys.GetErrorMsg(err)) end
+   assert(err == ERR_Okay, 'DecompressFile() failed: ' .. mSys.GetErrorMsg(err))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Compress an entire folder and then decompress it to a new location.
 
 function testCompressFolder()
-   local cmp = obj.new('compression', { path='temp:cmp_test_scripts.zip', flags='!NEW' } )
+   local file_count = 0
+   glCompressedFiles = { }
+
+   local cmp = obj.new('compression', {
+      path     = 'temp:cmp_test_scripts.zip',
+      flags    = '!NEW',
+      feedback = function(Compression, Info)
+         if (Info.progress == 0) then
+            print('Compressing file #' .. Info.index .. ', Path: \"' .. nz(Info.dest, 'NIL') .. '"')
+            glCompressedFiles[Info.dest] = Info
+            file_count = file_count + 1
+         end
+      end
+   } )
 
    err = cmp.mtCompressFile('system:scripts/dev/', 'scripts')
-   if (err != ERR_Okay) then error('CompressFile() failed: ' .. mSys.GetErrorMsg(err)) end
+   assert(err == ERR_Okay, 'CompressFile() failed: ' .. mSys.GetErrorMsg(err))
+
+   print('Compressed ' .. file_count .. ' files.')
+   glCompressedFiles['COUNT'] = file_count
 
    cmp = null
    collectgarbage() // Flush the compressed file to disk
 end
 
 function testDecompressFolder()
-   local cmp = obj.new('compression', { path='temp:cmp_test_scripts.zip' } )
+   local file_count = 0
+   local cmp = obj.new('compression', {
+      path     = 'temp:cmp_test_scripts.zip',
+      feedback = function(Compression, Info)
+         if (Info.progress == 0) then
+            file_count = file_count + 1
+            if (glCompressedFiles[Info.path]) then
+               glCompressedFiles[Info.path].found = true
+            else
+               print('File "' .. Info.path .. '" not registered.')
+            end
+         end
+      end
+   } )
 
    err = cmp.mtDecompressFile('*', 'temp:cmp_test/')
-   if (err != ERR_Okay) then error('DecompressFile() failed: ' .. mSys.GetErrorMsg(err)) end
+   assert(err == ERR_Okay, 'DecompressFile() failed: ' .. mSys.GetErrorMsg(err))
+   assert(file_count == glCompressedFiles['COUNT'], 'Decompressed file count of ' .. file_count .. ' != ' .. glCompressedFiles['COUNT'])
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -51,29 +107,28 @@ function testStreamedCompression()
    local cmp = obj.new('compression' , { } )
 
    local file = obj.new('file', { src='fonts:truetype/OpenSans-Regular.ttf', flags='!READ' } )
-   if nz(file) then
-      glOutFile = obj.new('file', { src='temp:fonts.gz', flags='!WRITE|NEW' } )
-      if nz(glOutFile) then
-         if (cmp.mtCompressStreamStart() == ERR_Okay) then
-            local input = string.rep(' ', 16384)
-            while (err == ERR_Okay) do
-               local len
-               err, len = file.acRead(input)
-               if (err != ERR_Okay) or (len <= 0) then break end
-               err = cmp.mtCompressStream(input, len, 'streamedOutput')
-            end
+   assert(file, 'Failed to open source file.')
 
-            if (err == ERR_Okay) then
-               err = cmp.mtCompressStreamEnd('streamedOutput')
-            else
-               error('Inner compression loop failed.')
-            end
+   glOutFile = obj.new('file', { src='temp:fonts.gz', flags='!WRITE|NEW' } )
+   if nz(glOutFile) then
+      if (cmp.mtCompressStreamStart() == ERR_Okay) then
+         local input = string.rep(' ', 16384)
+         while (err == ERR_Okay) do
+            local len
+            err, len = file.acRead(input)
+            if (err != ERR_Okay) or (len <= 0) then break end
+            err = cmp.mtCompressStream(input, len, 'streamedOutput')
+         end
+
+         if (err == ERR_Okay) then
+            err = cmp.mtCompressStreamEnd('streamedOutput')
+         else
+            error('Inner compression loop failed.')
          end
       end
-      assert(glOutFile.size > 0, "The size of the compressed output file is zero.")
-   else
-      error('Failed to open source file.')
    end
+
+   assert(glOutFile.size > 0, "The size of the compressed output file is zero.")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -119,33 +174,31 @@ function testStreamedDecompression()
    local cmp = obj.new('compression' , { } )
 
    local file = obj.new('file', { src='temp:fonts.gz', flags='!READ' } )
-   if nz(file) then
-      glOutFile = obj.new('file', { src='temp:OpenSans-Regular.ttf', flags='!WRITE|NEW' } )
-      if nz(glOutFile) then
-         if (cmp.mtDecompressStreamStart() == ERR_Okay) then
-            local input = string.rep(' ', 16384)
-            while (err == ERR_Okay) do
-               local len
-               err, len = file.acRead(input)
-               if (err == ERR_Okay) then
-                  if (len <= 0) then break end
-                  err = cmp.mtDecompressStream(input, len, 'streamedOutput')
-               end
-            end
+   assert(file, 'Failed to open source file.')
 
+   glOutFile = obj.new('file', { src='temp:OpenSans-Regular.ttf', flags='!WRITE|NEW' } )
+   if nz(glOutFile) then
+      if (cmp.mtDecompressStreamStart() == ERR_Okay) then
+         local input = string.rep(' ', 16384)
+         while (err == ERR_Okay) do
+            local len
+            err, len = file.acRead(input)
             if (err == ERR_Okay) then
-               err = cmp.mtDecompressStreamEnd('streamedOutput')
-            else
-               error('Inner decompression loop failed.')
+               if (len <= 0) then break end
+               err = cmp.mtDecompressStream(input, len, 'streamedOutput')
             end
-         else
-            error('Failed to initialise decompression.')
          end
+
+         if (err == ERR_Okay) then
+            err = cmp.mtDecompressStreamEnd('streamedOutput')
+         else
+            error('Inner decompression loop failed.')
+         end
+      else
+         error('Failed to initialise decompression.')
       end
-      glOutFile = nil
-   else
-      error('Failed to open source file.')
    end
+   glOutFile = nil
 end
 
 function streamedOutput(CompressedID, Data)
@@ -161,7 +214,8 @@ end
         'testCreateCompress', 'testDecompressWild',
         'testCompressFolder', 'testDecompressFolder',
         'testStreamedCompression', 'testStreamedDecompression',
-        'testArchiveVolume'
+        'testArchiveVolume',
+        'testIconArchive'
       },
       init = nil,
       cleanup = function()

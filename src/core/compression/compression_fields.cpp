@@ -58,9 +58,6 @@ The &CompressionFeedback structure consists of the following fields:
 
 &CompressionFeedback
 
-Scripts should read the #FeedbackInfo field to get the structure content.  Do not attempt to convert the
-CompressionFeedback pointer to a readable structure.
-
 ****************************************************************************/
 
 static ERROR GET_Feedback(extCompression *Self, FUNCTION **Value)
@@ -84,26 +81,6 @@ static ERROR SET_Feedback(extCompression *Self, FUNCTION *Value)
    }
    else Self->Feedback.Type = CALL_NONE;
    return ERR_Okay;
-}
-
-/****************************************************************************
-
--FIELD-
-FeedbackInfo: For script usage only, returns a CompressionFeedback structure.
-
-#Feedback routines can read this field to get the most recent CompressionFeedback values.
-
-****************************************************************************/
-
-static ERROR GET_FeedbackInfo(extCompression *Self, struct CompressionFeedback **Value)
-{
-   parasol::Log log;
-
-   if (Self->FeedbackInfo) {
-      *Value  = Self->FeedbackInfo;
-      return ERR_Okay;
-   }
-   else return log.warning(ERR_FieldNotSet);
 }
 
 /****************************************************************************

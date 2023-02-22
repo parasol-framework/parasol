@@ -580,13 +580,12 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 {
    Log log(__FUNCTION__);
    CompressedItem *item;
-   extCompression *cmp;
    std::string file_path;
    ERROR error;
 
    log.traceBranch("%s", Path);
 
-   if ((cmp = find_archive(Path, file_path))) {
+   if (auto cmp = find_archive(Path, file_path)) {
       struct cmpFind find = { .Path=file_path.c_str(), .Flags=STR_CASE|STR_MATCH_LEN };
       if ((error = Action(MT_CmpFind, cmp, &find))) return error;
       item = find.Item;

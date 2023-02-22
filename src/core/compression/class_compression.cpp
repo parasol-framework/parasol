@@ -185,18 +185,17 @@ class extCompression : public objCompression {
    OBJECTPTR FileIO;             // File input/output
    STRING *  FileList;           // List of all files held in the compression object
    STRING    Path;               // Location of the compressed data
-   CompressionFeedback *FeedbackInfo;
    UBYTE     Header[32];         // The first 32 bytes of data from the compressed file (for sub-classes only)
    char      Password[128];      // Password for the compressed object
    FUNCTION  Feedback;           // Set a function here to get de/compression feedack
    ULONG     ArchiveHash;        // Archive reference, used for the 'archive:' volume
 
    // Zip only fields
-   z_stream prvZip;
+   z_stream Zip;
    z_stream Stream;
    std::list<ZipFile> Files;    // List of files in the archive (must be in order of the archive's entries)
-   UBYTE  *prvOutput;
-   UBYTE  *prvInput;
+   UBYTE  *Output;
+   UBYTE  *Input;
    UBYTE  *OutputBuffer;        // Output buffer for compressed data
    LONG   OutputSize;           // Size of OutputBuffer
    LONG   TotalFiles;
@@ -210,7 +209,7 @@ static ERROR compress_folder(extCompression *, std::string, std::string);
 static ERROR compress_file(extCompression *, std::string, std::string, bool);
 static void print(extCompression *, CSTRING);
 static void print(extCompression *, std::string);
-static ERROR remove_file(extCompression *, std::list<ZipFile>::iterator Index);
+static ERROR remove_file(extCompression *, std::list<ZipFile>::iterator &);
 static ERROR scan_zip(extCompression *);
 static ERROR fast_scan_zip(extCompression *);
 static ERROR send_feedback(extCompression *, CompressionFeedback *);
@@ -339,29 +338,29 @@ static ERROR COMPRESSION_CompressBuffer(extCompression *Self, struct cmpCompress
       return log.warning(ERR_Args);
    }
 
-   Self->prvZip.next_in   = (Bytef *)Args->Input;
-   Self->prvZip.avail_in  = Args->InputSize;
-   Self->prvZip.next_out  = (Bytef *)Args->Output + 8;
-   Self->prvZip.avail_out = Args->OutputSize - 8;
+   Self->Zip.next_in   = (Bytef *)Args->Input;
+   Self->Zip.avail_in  = Args->InputSize;
+   Self->Zip.next_out  = (Bytef *)Args->Output + 8;
+   Self->Zip.avail_out = Args->OutputSize - 8;
 
    LONG level = Self->CompressionLevel / 10;
    if (level < 0) level = 0;
    else if (level > 9) level = 9;
 
-   if (deflateInit2(&Self->prvZip, level, Z_DEFLATED, Self->WindowBits, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY) IS ERR_Okay) {
-      if (deflate(&Self->prvZip, Z_FINISH) IS Z_STREAM_END) {
-         Args->Result = Self->prvZip.total_out + 8;
-         deflateEnd(&Self->prvZip);
+   if (deflateInit2(&Self->Zip, level, Z_DEFLATED, Self->WindowBits, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY) IS ERR_Okay) {
+      if (deflate(&Self->Zip, Z_FINISH) IS Z_STREAM_END) {
+         Args->Result = Self->Zip.total_out + 8;
+         deflateEnd(&Self->Zip);
 
          ((char *)Args->Output)[0] = 'Z';
          ((char *)Args->Output)[1] = 'L';
          ((char *)Args->Output)[2] = 'I';
          ((char *)Args->Output)[3] = 'B';
-         ((LONG *)Args->Output)[1] = Self->prvZip.total_out;
+         ((LONG *)Args->Output)[1] = Self->Zip.total_out;
          return ERR_Okay;
       }
       else {
-         deflateEnd(&Self->prvZip);
+         deflateEnd(&Self->Zip);
          return log.warning(ERR_BufferOverflow);
       }
    }
@@ -1051,21 +1050,21 @@ static ERROR COMPRESSION_DecompressBuffer(extCompression *Self, struct cmpDecomp
       return log.warning(ERR_NullArgs);
    }
 
-   Self->prvZip.next_in   = (Bytef *)Args->Input + 8;
-   Self->prvZip.avail_in  = ((LONG *)Args->Input)[1];
-   Self->prvZip.next_out  = (Bytef *)Args->Output;
-   Self->prvZip.avail_out = Args->OutputSize;
+   Self->Zip.next_in   = (Bytef *)Args->Input + 8;
+   Self->Zip.avail_in  = ((LONG *)Args->Input)[1];
+   Self->Zip.next_out  = (Bytef *)Args->Output;
+   Self->Zip.avail_out = Args->OutputSize;
 
-   if (inflateInit2(&Self->prvZip, Self->WindowBits) IS ERR_Okay) {
+   if (inflateInit2(&Self->Zip, Self->WindowBits) IS ERR_Okay) {
       LONG err;
-      if ((err = inflate(&Self->prvZip, Z_FINISH)) IS Z_STREAM_END) {
-         Args->Result = Self->prvZip.total_out;
-         inflateEnd(&Self->prvZip);
+      if ((err = inflate(&Self->Zip, Z_FINISH)) IS Z_STREAM_END) {
+         Args->Result = Self->Zip.total_out;
+         inflateEnd(&Self->Zip);
          return ERR_Okay;
       }
       else {
-         inflateEnd(&Self->prvZip);
-         if (Self->prvZip.msg) log.warning("%s", Self->prvZip.msg);
+         inflateEnd(&Self->Zip);
+         if (Self->Zip.msg) log.warning("%s", Self->Zip.msg);
          else log.warning(ERR_BufferOverflow);
          return ERR_BufferOverflow;
       }
@@ -1245,32 +1244,32 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
          if (zf.Flags & ZIP_LINK) {
             // For symbolic links, decompress the data to get the destination link string
 
-            Self->prvZip.next_in   = 0;
-            Self->prvZip.avail_in  = 0;
-            Self->prvZip.next_out  = 0;
-            Self->prvZip.avail_out = 0;
+            Self->Zip.next_in   = 0;
+            Self->Zip.avail_in  = 0;
+            Self->Zip.next_out  = 0;
+            Self->Zip.avail_out = 0;
 
             if (zf.CompressedSize > 0) {
                if (zf.DeflateMethod IS 0) {
                   // This routine is used if the file is stored rather than compressed
 
-                  struct acRead read = { .Buffer = Self->prvInput, .Length = SIZE_COMPRESSION_BUFFER-1 };
+                  struct acRead read = { .Buffer = Self->Input, .Length = SIZE_COMPRESSION_BUFFER-1 };
                   if (!(error = Action(AC_Read, Self->FileIO, &read))) {
-                     Self->prvInput[read.Result] = 0;
+                     Self->Input[read.Result] = 0;
                      DeleteFile(destpath, NULL);
-                     error = CreateLink(destpath, (CSTRING)Self->prvInput);
+                     error = CreateLink(destpath, (CSTRING)Self->Input);
                      if (error IS ERR_NoSupport) error = ERR_Okay;
                   }
 
                   if (error) goto exit;
                }
-               else if ((zf.DeflateMethod IS 8) and (inflateInit2(&Self->prvZip, -MAX_WBITS) IS ERR_Okay)) {
+               else if ((zf.DeflateMethod IS 8) and (inflateInit2(&Self->Zip, -MAX_WBITS) IS ERR_Okay)) {
                   // Decompressing a link
 
                   inflateend = TRUE;
 
                   struct acRead read;
-                  read.Buffer = Self->prvInput;
+                  read.Buffer = Self->Input;
                   if (zf.CompressedSize < SIZE_COMPRESSION_BUFFER) read.Length = zf.CompressedSize;
                   else read.Length = SIZE_COMPRESSION_BUFFER;
 
@@ -1278,25 +1277,25 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
                   if ((error = Action(AC_Read, Self->FileIO, &read)) != ERR_Okay) goto exit;
                   if (read.Result <= 0) { error = ERR_Read; goto exit; }
 
-                  Self->prvZip.next_in   = Self->prvInput;
-                  Self->prvZip.avail_in  = read.Result;
-                  Self->prvZip.next_out  = Self->prvOutput;
-                  Self->prvZip.avail_out = SIZE_COMPRESSION_BUFFER-1;
+                  Self->Zip.next_in   = Self->Input;
+                  Self->Zip.avail_in  = read.Result;
+                  Self->Zip.next_out  = Self->Output;
+                  Self->Zip.avail_out = SIZE_COMPRESSION_BUFFER-1;
 
-                  err = inflate(&Self->prvZip, Z_SYNC_FLUSH);
+                  err = inflate(&Self->Zip, Z_SYNC_FLUSH);
 
                   if ((err != ERR_Okay) and (err != Z_STREAM_END)) {
-                     if (Self->prvZip.msg) log.warning("%s", Self->prvZip.msg);
+                     if (Self->Zip.msg) log.warning("%s", Self->Zip.msg);
                      error = ERR_Failed;
                      goto exit;
                   }
 
-                  Self->prvOutput[zf.OriginalSize] = 0; // !!! We should terminate according to the amount of data decompressed
+                  Self->Output[zf.OriginalSize] = 0; // !!! We should terminate according to the amount of data decompressed
                   DeleteFile(destpath, NULL);
-                  error = CreateLink(destpath, (CSTRING)Self->prvOutput);
+                  error = CreateLink(destpath, (CSTRING)Self->Output);
                   if (error IS ERR_NoSupport) error = ERR_Okay;
 
-                  inflateEnd(&Self->prvZip);
+                  inflateEnd(&Self->Zip);
                   inflateend = FALSE;
                }
             }
@@ -1335,10 +1334,10 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
                goto exit;
             }
 
-            Self->prvZip.next_in   = 0;
-            Self->prvZip.avail_in  = 0;
-            Self->prvZip.next_out  = 0;
-            Self->prvZip.avail_out = 0;
+            Self->Zip.next_in   = 0;
+            Self->Zip.avail_in  = 0;
+            Self->Zip.next_out  = 0;
+            Self->Zip.avail_out = 0;
 
             if ((zf.CompressedSize > 0) and (file->Flags & FL_FILE)) {
                if (zf.DeflateMethod IS 0) {
@@ -1349,12 +1348,12 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
                   LONG inputlen = zf.CompressedSize;
 
                   struct acRead read = {
-                     .Buffer = Self->prvInput,
+                     .Buffer = Self->Input,
                      .Length = (inputlen < SIZE_COMPRESSION_BUFFER) ? inputlen : SIZE_COMPRESSION_BUFFER
                   };
 
                   while ((!(error = Action(AC_Read, Self->FileIO, &read))) and (read.Result > 0)) {
-                     struct acWrite write = { .Buffer = Self->prvInput, .Length = read.Result };
+                     struct acWrite write = { .Buffer = Self->Input, .Length = read.Result };
                      if (Action(AC_Write, *file, &write) != ERR_Okay) { error = log.warning(ERR_Write); goto exit; }
 
                      inputlen -= read.Result;
@@ -1365,7 +1364,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
 
                   if (error) goto exit;
                }
-               else if ((zf.DeflateMethod IS 8) and (inflateInit2(&Self->prvZip, -MAX_WBITS) IS ERR_Okay)) {
+               else if ((zf.DeflateMethod IS 8) and (inflateInit2(&Self->Zip, -MAX_WBITS) IS ERR_Okay)) {
                   // Decompressing a file
 
                   log.trace("Inflating file from %d -> %d bytes @ offset %d.", zf.CompressedSize, zf.OriginalSize, zf.Offset);
@@ -1373,7 +1372,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
                   inflateend = TRUE;
 
                   struct acRead read = {
-                     .Buffer = Self->prvInput,
+                     .Buffer = Self->Input,
                      .Length = (zf.CompressedSize < SIZE_COMPRESSION_BUFFER) ? (LONG)zf.CompressedSize : SIZE_COMPRESSION_BUFFER
                   };
 
@@ -1381,19 +1380,19 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
                   if (read.Result <= 0) { error = ERR_Read; goto exit; }
                   LONG inputlen = zf.CompressedSize - read.Result;
 
-                  Self->prvZip.next_in   = Self->prvInput;
-                  Self->prvZip.avail_in  = read.Result;
-                  Self->prvZip.next_out  = Self->prvOutput;
-                  Self->prvZip.avail_out = SIZE_COMPRESSION_BUFFER;
+                  Self->Zip.next_in   = Self->Input;
+                  Self->Zip.avail_in  = read.Result;
+                  Self->Zip.next_out  = Self->Output;
+                  Self->Zip.avail_out = SIZE_COMPRESSION_BUFFER;
 
                   // Keep loooping until Z_STREAM_END or an error is returned
 
                   ERROR err = ERR_Okay;
                   while (err IS ERR_Okay) {
-                     err = inflate(&Self->prvZip, Z_SYNC_FLUSH);
+                     err = inflate(&Self->Zip, Z_SYNC_FLUSH);
 
                      if ((err != ERR_Okay) and (err != Z_STREAM_END)) {
-                        if (Self->prvZip.msg) log.warning("%s", Self->prvZip.msg);
+                        if (Self->Zip.msg) log.warning("%s", Self->Zip.msg);
                         error = ERR_Failed;
                         goto exit;
                      }
@@ -1401,26 +1400,26 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
                      // Write out the decompressed data
 
                      struct acWrite write = {
-                        .Buffer = Self->prvOutput,
-                        .Length = (LONG)(SIZE_COMPRESSION_BUFFER - Self->prvZip.avail_out)
+                        .Buffer = Self->Output,
+                        .Length = (LONG)(SIZE_COMPRESSION_BUFFER - Self->Zip.avail_out)
                      };
                      if (Action(AC_Write, *file, &write) != ERR_Okay) { error = log.warning(ERR_Write); goto exit; }
 
                      // Exit if all data has been written out
 
-                     if (Self->prvZip.total_out IS zf.OriginalSize) break;
+                     if (Self->Zip.total_out IS zf.OriginalSize) break;
 
-                     feedback.Progress = Self->prvZip.total_out;
+                     feedback.Progress = Self->Zip.total_out;
                      send_feedback(Self, &feedback);
 
                      // Reset the output buffer
 
-                     Self->prvZip.next_out  = Self->prvOutput;
-                     Self->prvZip.avail_out = SIZE_COMPRESSION_BUFFER;
+                     Self->Zip.next_out  = Self->Output;
+                     Self->Zip.avail_out = SIZE_COMPRESSION_BUFFER;
 
                      // Read more data if necessary
 
-                     if ((Self->prvZip.avail_in <= 0) and (inputlen > 0)) {
+                     if ((Self->Zip.avail_in <= 0) and (inputlen > 0)) {
                         if (inputlen < SIZE_COMPRESSION_BUFFER) read.Length = inputlen;
                         else read.Length = SIZE_COMPRESSION_BUFFER;
 
@@ -1428,14 +1427,14 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
                         if (read.Result <= 0) { error = ERR_Read; break; }
                         inputlen -= read.Result;
 
-                        Self->prvZip.next_in  = Self->prvInput;
-                        Self->prvZip.avail_in = read.Result;
+                        Self->Zip.next_in  = Self->Input;
+                        Self->Zip.avail_in = read.Result;
                      }
                   }
 
                   // Terminate the inflation process
 
-                  inflateEnd(&Self->prvZip);
+                  inflateEnd(&Self->Zip);
                   inflateend = FALSE;
                }
             }
@@ -1457,7 +1456,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
    if (Self->OutputID) print(Self, "\nDecompression complete.");
 
 exit:
-   if (inflateend) inflateEnd(&Self->prvZip);
+   if (inflateend) inflateEnd(&Self->Zip);
 
    if ((error IS ERR_Okay) and (Self->FileIndex <= 0)) {
       log.msg("No files matched the path \"%s\".", Args->Path);
@@ -1555,10 +1554,10 @@ static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecomp
          return ERR_Failed;
       }
       else { // Create the destination file or folder
-         Self->prvZip.next_in   = 0;
-         Self->prvZip.avail_in  = 0;
-         Self->prvZip.next_out  = 0;
-         Self->prvZip.avail_out = 0;
+         Self->Zip.next_in   = 0;
+         Self->Zip.avail_in  = 0;
+         Self->Zip.next_out  = 0;
+         Self->Zip.avail_out = 0;
 
          if (list.CompressedSize > 0) {
             if (list.DeflateMethod IS 0) {
@@ -1566,12 +1565,12 @@ static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecomp
 
                LONG inputlen = list.CompressedSize;
 
-               struct acRead read = { .Buffer = Self->prvInput };
+               struct acRead read = { .Buffer = Self->Input };
                if (inputlen < SIZE_COMPRESSION_BUFFER) read.Length = inputlen;
                else read.Length = SIZE_COMPRESSION_BUFFER;
 
                while ((!(error = Action(AC_Read, Self->FileIO, &read))) and (read.Result > 0)) {
-                  struct acWrite write = { .Buffer = Self->prvInput, .Length = read.Result };
+                  struct acWrite write = { .Buffer = Self->Input, .Length = read.Result };
                   if (Action(AC_Write, Args->Object, &write) != ERR_Okay) { error = ERR_Write; goto exit; }
 
                   inputlen -= read.Result;
@@ -1582,13 +1581,13 @@ static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecomp
 
                if (error) goto exit;
             }
-            else if ((list.DeflateMethod IS 8) and (inflateInit2(&Self->prvZip, -MAX_WBITS) IS ERR_Okay)) {
+            else if ((list.DeflateMethod IS 8) and (inflateInit2(&Self->Zip, -MAX_WBITS) IS ERR_Okay)) {
                // Decompressing a file
 
                inflate_end = true;
 
                struct acRead read;
-               read.Buffer = Self->prvInput;
+               read.Buffer = Self->Input;
                if (list.CompressedSize < SIZE_COMPRESSION_BUFFER) read.Length = list.CompressedSize;
                else read.Length = SIZE_COMPRESSION_BUFFER;
 
@@ -1597,42 +1596,42 @@ static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecomp
                if (read.Result <= 0) { error = ERR_Read; goto exit; }
                LONG inputlen = list.CompressedSize - read.Result;
 
-               Self->prvZip.next_in   = Self->prvInput;
-               Self->prvZip.avail_in  = read.Result;
-               Self->prvZip.next_out  = Self->prvOutput;
-               Self->prvZip.avail_out = SIZE_COMPRESSION_BUFFER;
+               Self->Zip.next_in   = Self->Input;
+               Self->Zip.avail_in  = read.Result;
+               Self->Zip.next_out  = Self->Output;
+               Self->Zip.avail_out = SIZE_COMPRESSION_BUFFER;
 
                // Keep loooping until Z_STREAM_END or an error is returned
 
                while (err IS ERR_Okay) {
-                  err = inflate(&Self->prvZip, Z_SYNC_FLUSH);
+                  err = inflate(&Self->Zip, Z_SYNC_FLUSH);
 
                   if ((err != ERR_Okay) and (err != Z_STREAM_END)) {
-                     if (Self->prvZip.msg) log.warning("%s", Self->prvZip.msg);
+                     if (Self->Zip.msg) log.warning("%s", Self->Zip.msg);
                      error = ERR_Decompression;
                      goto exit;
                   }
 
                   // Write out the decompressed data
 
-                  struct acWrite write = { Self->prvOutput, (LONG)(SIZE_COMPRESSION_BUFFER - Self->prvZip.avail_out) };
+                  struct acWrite write = { Self->Output, (LONG)(SIZE_COMPRESSION_BUFFER - Self->Zip.avail_out) };
                   if (Action(AC_Write, Args->Object, &write) != ERR_Okay) { error = ERR_Write; goto exit; }
 
                   // Exit if all data has been written out
 
-                  if (Self->prvZip.total_out IS list.OriginalSize) break;
+                  if (Self->Zip.total_out IS list.OriginalSize) break;
 
-                  fb.Progress = Self->prvZip.total_out;
+                  fb.Progress = Self->Zip.total_out;
                   send_feedback(Self, &fb);
 
                   // Reset the output buffer
 
-                  Self->prvZip.next_out  = Self->prvOutput;
-                  Self->prvZip.avail_out = SIZE_COMPRESSION_BUFFER;
+                  Self->Zip.next_out  = Self->Output;
+                  Self->Zip.avail_out = SIZE_COMPRESSION_BUFFER;
 
                   // Read more data if necessary
 
-                  if ((Self->prvZip.avail_in <= 0) and (inputlen > 0)) {
+                  if ((Self->Zip.avail_in <= 0) and (inputlen > 0)) {
                      if (inputlen < SIZE_COMPRESSION_BUFFER) read.Length = inputlen;
                      else read.Length = SIZE_COMPRESSION_BUFFER;
 
@@ -1640,26 +1639,25 @@ static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecomp
                      if (read.Result <= 0) { error = ERR_Read; break; }
                      inputlen -= read.Result;
 
-                     Self->prvZip.next_in  = Self->prvInput;
-                     Self->prvZip.avail_in = read.Result;
+                     Self->Zip.next_in  = Self->Input;
+                     Self->Zip.avail_in = read.Result;
                   }
                }
 
                // Terminate the inflation process
 
-               inflateEnd(&Self->prvZip);
+               inflateEnd(&Self->Zip);
                inflate_end = false;
             }
          }
       }
 
       if (fb.Progress < fb.OriginalSize) {
-         fb.Progress = fb.OriginalSize; //100;
+         fb.Progress = fb.OriginalSize;
          send_feedback(Self, &fb);
       }
 
       Self->FileIndex++;
-
       break;
    }
 
@@ -1669,7 +1667,7 @@ static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecomp
    }
 
 exit:
-   if (inflate_end) inflateEnd(&Self->prvZip);
+   if (inflate_end) inflateEnd(&Self->Zip);
    if (error) log.warning(error);
    return error;
 }
@@ -1732,7 +1730,7 @@ static ERROR COMPRESSION_Flush(extCompression *Self, APTR Void)
 {
    if (Self->SubID) return ERR_Okay;
 
-   Self->prvZip.avail_in = 0;
+   Self->Zip.avail_in = 0;
 
    BYTE done = FALSE;
 
@@ -1740,22 +1738,22 @@ static ERROR COMPRESSION_Flush(extCompression *Self, APTR Void)
       // Write out any bytes that are still left in the compression buffer
 
       LONG length, zerror;
-      if ((length = SIZE_COMPRESSION_BUFFER - Self->prvZip.avail_out) > 0) {
-         struct acWrite write = { Self->prvOutput, length };
+      if ((length = SIZE_COMPRESSION_BUFFER - Self->Zip.avail_out) > 0) {
+         struct acWrite write = { Self->Output, length };
          if (Action(AC_Write, Self->FileIO, &write) != ERR_Okay) return ERR_Write;
-         Self->prvZip.next_out  = Self->prvOutput;
-         Self->prvZip.avail_out = SIZE_COMPRESSION_BUFFER;
+         Self->Zip.next_out  = Self->Output;
+         Self->Zip.avail_out = SIZE_COMPRESSION_BUFFER;
       }
 
       if (done) break;
 
-      zerror = deflate(&Self->prvZip, Z_FINISH);
+      zerror = deflate(&Self->Zip, Z_FINISH);
 
       // Ignore the second of two consecutive flushes:
 
       if ((!length) and (zerror IS Z_BUF_ERROR)) zerror = ERR_Okay;
 
-      done = ((Self->prvZip.avail_out != 0) or (zerror IS Z_STREAM_END));
+      done = ((Self->Zip.avail_out != 0) or (zerror IS Z_STREAM_END));
 
       if ((zerror != ERR_Okay) and (zerror != Z_STREAM_END)) break;
    }
@@ -1779,8 +1777,8 @@ static ERROR COMPRESSION_Free(extCompression *Self, APTR Void)
    }
 
    if (Self->OutputBuffer) { FreeResource(Self->OutputBuffer); Self->OutputBuffer = NULL; }
-   if (Self->prvInput)     { FreeResource(Self->prvInput); Self->prvInput = NULL; }
-   if (Self->prvOutput)    { FreeResource(Self->prvOutput); Self->prvOutput = NULL; }
+   if (Self->Input)     { FreeResource(Self->Input); Self->Input = NULL; }
+   if (Self->Output)    { FreeResource(Self->Output); Self->Output = NULL; }
    if (Self->FileIO)       { acFree(Self->FileIO); Self->FileIO = NULL; }
    if (Self->Path)         { FreeResource(Self->Path); Self->Path = NULL; }
 
@@ -1898,8 +1896,8 @@ static ERROR COMPRESSION_NewObject(extCompression *Self, APTR Void)
 
    new (Self) extCompression;
 
-   if (!AllocMemory(SIZE_COMPRESSION_BUFFER, MEM_DATA, (APTR *)&Self->prvOutput, NULL)) {
-      if (!AllocMemory(SIZE_COMPRESSION_BUFFER, MEM_DATA, (APTR *)&Self->prvInput, NULL)) {
+   if (!AllocMemory(SIZE_COMPRESSION_BUFFER, MEM_DATA, (APTR *)&Self->Output, NULL)) {
+      if (!AllocMemory(SIZE_COMPRESSION_BUFFER, MEM_DATA, (APTR *)&Self->Input, NULL)) {
          Self->CompressionLevel = 60; // 60% compression by default
          Self->Permissions      = 0; // Inherit permissions by default. PERMIT_READ|PERMIT_WRITE|PERMIT_GROUP_READ|PERMIT_GROUP_WRITE;
          Self->MinOutputSize    = (32 * 1024) + 2048; // Has to at least match the minimum 'window size' of each compression block, plus extra in case of overflow.  Min window size is typically 16k
@@ -2114,7 +2112,6 @@ static const FieldArray clFields[] = {
    { "ArchiveName",      FDF_STRING|FDF_W,       0, NULL, (APTR)SET_ArchiveName },
    { "Path",             FDF_STRING|FDF_RW,      0, (APTR)GET_Path, (APTR)SET_Path },
    { "Feedback",         FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_Feedback, (APTR)SET_Feedback },
-   { "FeedbackInfo",     FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)"CompressionFeedback", (APTR)GET_FeedbackInfo, NULL },
    { "Header",           FDF_POINTER|FDF_R,      0, (APTR)GET_Header,   NULL },
    { "Password",         FDF_STRING|FDF_RW,      0, (APTR)GET_Password, (APTR)SET_Password },
    { "Size",             FDF_LARGE|FDF_R,        0, (APTR)GET_Size, NULL },

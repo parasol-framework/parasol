@@ -103,10 +103,10 @@ static ERROR compress_folder(extCompression *Self, std::string Location, std::st
 
       // If a matching file name already exists in the archive, make a note of its position
 
-      std::list<ZipFile>::iterator file_index;
-      bool file_exists = false;
-      for (file_index = Self->Files.begin(); file_index != Self->Files.end(); file_index++) {
-         if (!StrMatch(file_index->Name, Location)) { file_exists = true; break; }
+
+      auto replace_file = Self->Files.begin();
+      for (; replace_file != Self->Files.end(); replace_file++) {
+         if (!StrMatch(replace_file->Name, Location)) break;
       }
 
       // Allocate the file entry structure and set up some initial variables.
@@ -143,7 +143,7 @@ static ERROR compress_folder(extCompression *Self, std::string Location, std::st
 
       // If this new data replaces an existing directory, remove the old directory now
 
-      if (file_exists) remove_file(Self, file_index);
+      if (replace_file != Self->Files.end()) remove_file(Self, replace_file);
 
       Self->CompressionCount++;
    }
@@ -191,7 +191,7 @@ static ERROR compress_file(extCompression *Self, std::string Location, std::stri
    else if (level > 9) level = 9;
 
    parasol::Defer([Self, deflateend] {
-      if (deflateend) deflateEnd(&Self->prvZip);
+      if (deflateend) deflateEnd(&Self->Zip);
       Self->FileIndex++;
    });
 
@@ -274,30 +274,31 @@ static ERROR compress_file(extCompression *Self, std::string Location, std::stri
 
    Self->CompressionCount++;
 
-   Self->prvZip.next_in   = 0;
-   Self->prvZip.avail_in  = 0;
-   Self->prvZip.next_out  = 0;
-   Self->prvZip.avail_out = 0;
-   Self->prvZip.total_in  = 0;
-   Self->prvZip.total_out = 0;
+   Self->Zip.next_in   = 0;
+   Self->Zip.avail_in  = 0;
+   Self->Zip.next_out  = 0;
+   Self->Zip.avail_out = 0;
+   Self->Zip.total_in  = 0;
+   Self->Zip.total_out = 0;
 
-   if (deflateInit2(&Self->prvZip, level, Z_DEFLATED, -MAX_WBITS, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY) IS ERR_Okay) {
+   if (deflateInit2(&Self->Zip, level, Z_DEFLATED, -MAX_WBITS, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY) IS ERR_Okay) {
       deflateend = true;
-      Self->prvZip.next_out  = Self->prvOutput;
-      Self->prvZip.avail_out = SIZE_COMPRESSION_BUFFER;
+      Self->Zip.next_out  = Self->Output;
+      Self->Zip.avail_out = SIZE_COMPRESSION_BUFFER;
    }
    else return ERR_Failed;
 
    // If a matching file name already exists in the archive, make a note of its position
 
-   bool file_exists = false;
-   for (file_index = Self->Files.begin(); file_index != Self->Files.end(); file_index++) {
-      if (!StrCompare(file_index->Name, filename, 0, STR_MATCH_LEN)) { file_exists = true; break; }
+   auto replace_file = Self->Files.begin();
+   for (; replace_file != Self->Files.end(); replace_file++) {
+      if (!StrCompare(replace_file->Name, filename, 0, STR_MATCH_LEN)) break;
    }
 
    // Allocate the file entry structure and set up some initial variables.
 
    ZipFile entry(filename);
+
    entry.Offset = dataoffset;
 
    if ((!(Self->Flags & CMF_NO_LINKS)) and (file->Flags & FL_LINK)) {
@@ -314,7 +315,6 @@ static ERROR compress_file(extCompression *Self, std::string Location, std::stri
       if (time->Year < 1980) entry.TimeStamp = 0x00210000;
       else entry.TimeStamp = ((time->Year-1980)<<25) | (time->Month<<21) | (time->Day<<16) | (time->Hour<<11) | (time->Minute<<5) | (time->Second>>1);
    }
-   else entry.TimeStamp = 0;
 
    LONG permissions;
    if (!file->get(FID_Permissions, &permissions)) {
@@ -343,55 +343,55 @@ static ERROR compress_file(extCompression *Self, std::string Location, std::stri
    if (entry.Flags & ZIP_LINK) {
       // Compress the symbolic link to the zip file, rather than the data
       len = StrLength(symlink);
-      Self->prvZip.next_in   = (Bytef *)symlink;
-      Self->prvZip.avail_in  = len;
-      Self->prvZip.next_out  = Self->prvOutput;
-      Self->prvZip.avail_out = SIZE_COMPRESSION_BUFFER;
-      if (deflate(&Self->prvZip, Z_NO_FLUSH) != ERR_Okay) {
+      Self->Zip.next_in   = (Bytef *)symlink;
+      Self->Zip.avail_in  = len;
+      Self->Zip.next_out  = Self->Output;
+      Self->Zip.avail_out = SIZE_COMPRESSION_BUFFER;
+      if (deflate(&Self->Zip, Z_NO_FLUSH) != ERR_Okay) {
          log.warning("Failure during data compression.");
          return ERR_Failed;
       }
       entry.CRC = GenCRC32(entry.CRC, symlink, len);
    }
    else {
-      struct acRead read = { .Buffer = Self->prvInput, .Length = SIZE_COMPRESSION_BUFFER };
+      struct acRead read = { .Buffer = Self->Input, .Length = SIZE_COMPRESSION_BUFFER };
       while ((!Action(AC_Read, *file, &read)) and (read.Result > 0)) {
-         Self->prvZip.next_in  = Self->prvInput;
-         Self->prvZip.avail_in = read.Result;
+         Self->Zip.next_in  = Self->Input;
+         Self->Zip.avail_in = read.Result;
 
-         while (Self->prvZip.avail_in) {
-            if (!Self->prvZip.avail_out) {
+         while (Self->Zip.avail_in) {
+            if (!Self->Zip.avail_out) {
                // Write out the compression buffer because it is at capacity
-               struct acWrite write = { .Buffer = Self->prvOutput, .Length = SIZE_COMPRESSION_BUFFER };
+               struct acWrite write = { .Buffer = Self->Output, .Length = SIZE_COMPRESSION_BUFFER };
                Action(AC_Write, Self->FileIO, &write);
 
                // Reset the compression buffer
-               Self->prvZip.next_out  = Self->prvOutput;
-               Self->prvZip.avail_out = SIZE_COMPRESSION_BUFFER;
+               Self->Zip.next_out  = Self->Output;
+               Self->Zip.avail_out = SIZE_COMPRESSION_BUFFER;
 
-               fb.CompressedSize = Self->prvZip.total_out;
-               fb.Progress       = Self->prvZip.total_in; //fb.CompressedSize * 100 / fb.OriginalSize;
+               fb.CompressedSize = Self->Zip.total_out;
+               fb.Progress       = Self->Zip.total_in; //fb.CompressedSize * 100 / fb.OriginalSize;
                send_feedback(Self, &fb);
             }
 
-            if (deflate(&Self->prvZip, Z_NO_FLUSH) != ERR_Okay) {
+            if (deflate(&Self->Zip, Z_NO_FLUSH) != ERR_Okay) {
                log.warning("Failure during data compression.");
                return ERR_Failed;
             }
          }
 
-         entry.CRC = GenCRC32(entry.CRC, Self->prvInput, read.Result);
+         entry.CRC = GenCRC32(entry.CRC, Self->Input, read.Result);
       }
    }
 
    if (acFlush(Self) != ERR_Okay) return ERR_Failed;
-   deflateEnd(&Self->prvZip);
+   deflateEnd(&Self->Zip);
    deflateend = false;
 
    // Finalise entry details
 
-   entry.CompressedSize = Self->prvZip.total_out;
-   entry.OriginalSize   = Self->prvZip.total_in;
+   entry.CompressedSize = Self->Zip.total_out;
+   entry.OriginalSize   = Self->Zip.total_in;
 
    if (entry.OriginalSize > 0) entry.DeflateMethod = 8;
    else {
@@ -427,14 +427,14 @@ static ERROR compress_file(extCompression *Self, std::string Location, std::stri
 
    // If this new data replaces an existing file, remove the old file now
 
-   if (file_exists) remove_file(Self, file_index);
+   if (replace_file != Self->Files.end()) remove_file(Self, replace_file);
 
    return ERR_Okay;
 }
 
 //*********************************************************************************************************************
 
-static ERROR remove_file(extCompression *Self, std::list<ZipFile>::iterator File)
+static ERROR remove_file(extCompression *Self, std::list<ZipFile>::iterator &File)
 {
    parasol::Log log(__FUNCTION__);
 
@@ -454,10 +454,10 @@ static ERROR remove_file(extCompression *Self, std::list<ZipFile>::iterator File
 
    DOUBLE writepos = File->Offset;
 
-   struct acRead read = { Self->prvInput, SIZE_COMPRESSION_BUFFER };
+   struct acRead read = { Self->Input, SIZE_COMPRESSION_BUFFER };
    while ((!Action(AC_Read, Self->FileIO, &read)) and (read.Result > 0)) {
       if (acSeekStart(Self->FileIO, writepos) != ERR_Okay) return log.warning(ERR_Seek);
-      struct acWrite write = { Self->prvInput, read.Result };
+      struct acWrite write = { Self->Input, read.Result };
       if (Action(AC_Write, Self->FileIO, &write) != ERR_Okay) return log.warning(ERR_Write);
       writepos += write.Result;
 
@@ -472,7 +472,7 @@ static ERROR remove_file(extCompression *Self, std::list<ZipFile>::iterator File
    auto scan = File;
    for (++scan; scan != Self->Files.end(); scan++) scan->Offset -= chunksize;
 
-   Self->Files.erase(File); // Remove the file reference from the chain
+   File = Self->Files.erase(File); // Remove the file reference from the chain
    return ERR_Okay;
 }
 
@@ -659,10 +659,9 @@ static ERROR scan_zip(extCompression *Self)
          }
 
          if (zipentry.commentlen > 0) {
-            char comment[zipentry.commentlen+1];
+            char comment[zipentry.commentlen];
             if (!acRead(Self->FileIO, comment, zipentry.commentlen, &result)) {
-               comment[zipentry.commentlen] = 0;
-               entry.Comment.assign(comment);
+               entry.Comment.assign(comment, zipentry.commentlen);
             }
             else return log.warning(ERR_Read);
          }
@@ -715,8 +714,6 @@ static ERROR send_feedback(extCompression *Self, CompressionFeedback *Feedback)
 
    if (!Self->Feedback.Type) return ERR_Okay;
 
-   Self->FeedbackInfo = Feedback;
-
    if (Self->Feedback.Type IS CALL_STDC) {
       auto routine = (ERROR (*)(extCompression *, CompressionFeedback *))Self->Feedback.StdC.Routine;
       if (Self->Feedback.StdC.Context) {
@@ -728,7 +725,7 @@ static ERROR send_feedback(extCompression *Self, CompressionFeedback *Feedback)
    else if (Self->Feedback.Type IS CALL_SCRIPT) {
       const ScriptArg args[] = {
          { "Compression", FD_OBJECTPTR, { .Address = Self } },
-         { "Feedback",    FD_POINTER, { .Address = Feedback } }
+         { "CompressionFeedback:Feedback", FD_POINTER|FD_STRUCT, { .Address = Feedback } }
       };
       if (scCallback(Self->Feedback.Script.Script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
    }
@@ -736,8 +733,6 @@ static ERROR send_feedback(extCompression *Self, CompressionFeedback *Feedback)
       log.warning("Callback function structure does not specify a recognised Type.");
       error = ERR_Terminate;
    }
-
-   Self->FeedbackInfo = NULL;
 
    return error;
 }

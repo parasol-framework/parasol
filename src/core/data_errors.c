@@ -107,7 +107,7 @@ CSTRING glMessages[ERR_END] = {
  "A new resource could not be created because a matching resource exists.",
  "An attempt to Refresh() an object failed.",
  "An error occurred in a call to ListChildren().",
- "A call to the underlying system's native functions has failed.",
+ "A call to the host system has failed.",
  "The size of the mask is smaller than the source Bitmap's dimensions.",
  "A required string value contains no characters.",
  "Object exists.",
