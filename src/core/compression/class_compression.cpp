@@ -192,7 +192,8 @@ class extCompression : public objCompression {
 
    // Zip only fields
    z_stream Zip;
-   z_stream Stream;
+   z_stream InflateStream;
+   z_stream DeflateStream;
    std::list<ZipFile> Files;    // List of files in the archive (must be in order of the archive's entries)
    UBYTE  *Output;
    UBYTE  *Input;
@@ -385,21 +386,21 @@ static ERROR COMPRESSION_CompressStreamStart(extCompression *Self, APTR Void)
    parasol::Log log;
 
    if (Self->Deflating) {
-      deflateEnd(&Self->Stream);
-      Self->Deflating = FALSE;
+      deflateEnd(&Self->DeflateStream);
+      Self->Deflating = false;
    }
 
    LONG level = Self->CompressionLevel / 10;
    if (level < 0) level = 0;
    else if (level > 9) level = 9;
 
-   ClearMemory(&Self->Stream, sizeof(Self->Stream));
+   ClearMemory(&Self->DeflateStream, sizeof(Self->DeflateStream));
 
    Self->TotalOutput = 0;
    LONG err;
-   if ((err = deflateInit2(&Self->Stream, level, Z_DEFLATED, Self->WindowBits, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY)) IS ERR_Okay) {
+   if ((err = deflateInit2(&Self->DeflateStream, level, Z_DEFLATED, Self->WindowBits, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY)) IS ERR_Okay) {
       log.trace("Compression stream initialised.");
-      Self->Deflating = TRUE;
+      Self->Deflating = true;
       return ERR_Okay;
    }
    else return log.warning(ERR_Failed);
@@ -484,8 +485,8 @@ static ERROR COMPRESSION_CompressStream(extCompression *Self, struct cmpCompress
 
    if (!Self->Deflating) return log.warning(ERR_Failed);
 
-   Self->Stream.next_in   = (Bytef *)Args->Input;
-   Self->Stream.avail_in  = Args->Length;
+   Self->DeflateStream.next_in   = (Bytef *)Args->Input;
+   Self->DeflateStream.avail_in  = Args->Length;
 
    APTR output;
    LONG err, outputsize;
@@ -514,18 +515,18 @@ static ERROR COMPRESSION_CompressStream(extCompression *Self, struct cmpCompress
    // output buffer is not large enough (so keep calling until avail_out > 0).
 
    ERROR error;
-   Self->Stream.avail_out = 0;
-   while (Self->Stream.avail_out IS 0) {
-      Self->Stream.next_out  = (Bytef *)output;
-      Self->Stream.avail_out = outputsize;
-      if ((err = deflate(&Self->Stream, Z_NO_FLUSH))) {
-         deflateEnd(&Self->Stream);
+   Self->DeflateStream.avail_out = 0;
+   while (Self->DeflateStream.avail_out IS 0) {
+      Self->DeflateStream.next_out  = (Bytef *)output;
+      Self->DeflateStream.avail_out = outputsize;
+      if ((err = deflate(&Self->DeflateStream, Z_NO_FLUSH))) {
+         deflateEnd(&Self->DeflateStream);
          error = ERR_BufferOverflow;
          break;
       }
       else error = ERR_Okay;
 
-      LONG len = outputsize - Self->Stream.avail_out; // Get number of compressed bytes that were output
+      LONG len = outputsize - Self->DeflateStream.avail_out; // Get number of compressed bytes that were output
 
       if (len > 0) {
          Self->TotalOutput += len;
@@ -610,33 +611,33 @@ static ERROR COMPRESSION_CompressStreamEnd(extCompression *Self, struct cmpCompr
 
    log.trace("Output Size: %d", outputsize);
 
-   Self->Stream.next_in   = 0;
-   Self->Stream.avail_in  = 0;
-   Self->Stream.avail_out = 0;
+   Self->DeflateStream.next_in   = 0;
+   Self->DeflateStream.avail_in  = 0;
+   Self->DeflateStream.avail_out = 0;
 
    ERROR error;
    LONG err = Z_OK;
-   while ((Self->Stream.avail_out IS 0) and (err IS Z_OK)) {
-      Self->Stream.next_out  = (Bytef *)output;
-      Self->Stream.avail_out = outputsize;
-      if ((err = deflate(&Self->Stream, Z_FINISH)) and (err != Z_STREAM_END)) {
+   while ((Self->DeflateStream.avail_out IS 0) and (err IS Z_OK)) {
+      Self->DeflateStream.next_out  = (Bytef *)output;
+      Self->DeflateStream.avail_out = outputsize;
+      if ((err = deflate(&Self->DeflateStream, Z_FINISH)) and (err != Z_STREAM_END)) {
          error = log.warning(ERR_BufferOverflow);
          break;
       }
 
-      Self->TotalOutput += outputsize - Self->Stream.avail_out;
+      Self->TotalOutput += outputsize - Self->DeflateStream.avail_out;
 
       if (Args->Callback->Type IS CALL_STDC) {
          parasol::SwitchContext context(Args->Callback->StdC.Context);
          auto routine = (ERROR (*)(extCompression *, APTR, LONG))Args->Callback->StdC.Routine;
-         error = routine(Self, output, outputsize - Self->Stream.avail_out);
+         error = routine(Self, output, outputsize - Self->DeflateStream.avail_out);
       }
       else if (Args->Callback->Type IS CALL_SCRIPT) {
          OBJECTPTR script = Args->Callback->Script.Script;
          const ScriptArg args[] = {
             { "Compression",  FD_OBJECTPTR, { .Address = Self } },
             { "Output",       FD_BUFFER, { .Address = output } },
-            { "OutputLength", FD_LONG|FD_BUFSIZE, { .Long = (LONG)(outputsize - Self->Stream.avail_out) } }
+            { "OutputLength", FD_LONG|FD_BUFSIZE, { .Long = (LONG)(outputsize - Self->DeflateStream.avail_out) } }
          };
          if (script) {
             if (scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
@@ -654,9 +655,9 @@ static ERROR COMPRESSION_CompressStreamEnd(extCompression *Self, struct cmpCompr
       Self->OutputSize = 0;
    }
 
-   deflateEnd(&Self->Stream);
-   ClearMemory(&Self->Stream, sizeof(Self->Stream));
-   Self->Deflating = FALSE;
+   deflateEnd(&Self->DeflateStream);
+   ClearMemory(&Self->DeflateStream, sizeof(Self->DeflateStream));
+   Self->Deflating = false;
    return error;
 }
 
@@ -683,19 +684,16 @@ static ERROR COMPRESSION_DecompressStreamStart(extCompression *Self, APTR Void)
 {
    parasol::Log log;
 
-   if (Self->Inflating) {
-      inflateEnd(&Self->Stream);
-      Self->Inflating = FALSE;
-   }
+   if (Self->Inflating) { inflateEnd(&Self->InflateStream); Self->Inflating = false; }
 
-   ClearMemory(&Self->Stream, sizeof(Self->Stream));
+   ClearMemory(&Self->InflateStream, sizeof(Self->InflateStream));
 
    Self->TotalOutput = 0;
 
    LONG err;
-   if ((err = inflateInit2(&Self->Stream, Self->WindowBits)) IS ERR_Okay) {
+   if ((err = inflateInit2(&Self->InflateStream, Self->WindowBits)) IS ERR_Okay) {
       log.trace("Decompression stream initialised.");
-      Self->Inflating = TRUE;
+      Self->Inflating = true;
       return ERR_Okay;
    }
    else return log.warning(ERR_Failed);
@@ -763,20 +761,20 @@ static ERROR COMPRESSION_DecompressStream(extCompression *Self, struct cmpDecomp
       outputsize = Self->OutputSize;
    }
 
-   Self->Stream.next_in  = (Bytef *)Args->Input;
-   Self->Stream.avail_in = Args->Length;
+   Self->InflateStream.next_in  = (Bytef *)Args->Input;
+   Self->InflateStream.avail_in = Args->Length;
 
    // Keep looping until Z_STREAM_END or an error is returned
 
    ERROR error = ERR_Okay;
    LONG result = Z_OK;
-   while ((result IS Z_OK) and (Self->Stream.avail_in > 0)) {
-      Self->Stream.next_out  = (Bytef *)output;
-      Self->Stream.avail_out = outputsize;
-      result = inflate(&Self->Stream, Z_SYNC_FLUSH);
+   while ((result IS Z_OK) and (Self->InflateStream.avail_in > 0)) {
+      Self->InflateStream.next_out  = (Bytef *)output;
+      Self->InflateStream.avail_out = outputsize;
+      result = inflate(&Self->InflateStream, Z_SYNC_FLUSH);
 
       if ((result) and (result != Z_STREAM_END)) {
-         error = convert_zip_error(&Self->Stream, result);
+         error = convert_zip_error(&Self->InflateStream, result);
          break;
       }
 
@@ -784,7 +782,7 @@ static ERROR COMPRESSION_DecompressStream(extCompression *Self, struct cmpDecomp
 
       // Write out the decompressed data
 
-      LONG len = outputsize - Self->Stream.avail_out;
+      LONG len = outputsize - Self->InflateStream.avail_out;
       if (len > 0) {
          if (Args->Callback->Type IS CALL_STDC) {
             parasol::SwitchContext context(Args->Callback->StdC.Context);
@@ -811,9 +809,10 @@ static ERROR COMPRESSION_DecompressStream(extCompression *Self, struct cmpDecomp
 
       if (error) break;
 
-      if (result IS Z_STREAM_END) { // Decompression is complete
-         Self->Inflating = FALSE;
-         Self->TotalOutput = Self->Stream.total_out;
+      if (result IS Z_STREAM_END) { // Decompression is complete, auto-perform DecompressStreamEnd()
+         inflateEnd(&Self->InflateStream);
+         Self->Inflating = false;
+         Self->TotalOutput = Self->InflateStream.total_out;
          break;
       }
    }
@@ -843,14 +842,13 @@ static ERROR COMPRESSION_DecompressStreamEnd(extCompression *Self, struct cmpDec
 {
    parasol::Log log;
 
-   if (Self->Inflating IS FALSE) return ERR_Okay;
+   if (!Self->Inflating) return ERR_Okay; // If not inflating, not a problem
 
    if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
 
-   Self->TotalOutput = Self->Stream.total_out;
-   inflateEnd(&Self->Stream);
-   ClearMemory(&Self->Stream, sizeof(Self->Stream));
-   Self->Inflating = FALSE;
+   Self->TotalOutput = Self->InflateStream.total_out;
+   inflateEnd(&Self->InflateStream);
+   Self->Inflating = false;
    return ERR_Okay;
 }
 
@@ -903,13 +901,13 @@ static ERROR COMPRESSION_CompressFile(extCompression *Self, struct cmpCompressFi
 
    CSTRING src = Args->Location;
    CSTRING path;
-   BYTE incdir = FALSE;
+   bool incdir = false;
    if (!Args->Path) path = "";
    else { // Accept the path by default but check it for illegal symbols just in case
       path = Args->Path;
 
       if (*path IS '/') { // Special mode: prefix src folder name to the root path
-         incdir = TRUE;
+         incdir = true;
          path++;
       }
 
@@ -976,7 +974,7 @@ static ERROR COMPRESSION_CompressFile(extCompression *Self, struct cmpCompressFi
    LONG pathlen;
    LONG len = StrLength(src);
    for (pathlen=len; pathlen > 0; pathlen--) {
-      if ((src[pathlen-1] IS '*') or (src[pathlen-1] IS '?')) wildcard = TRUE;
+      if ((src[pathlen-1] IS '*') or (src[pathlen-1] IS '?')) wildcard = true;
       else if ((src[pathlen-1] IS ':') or (src[pathlen-1] IS '/') or (src[pathlen-1] IS '\\')) break;
    }
 
@@ -1162,7 +1160,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
    for (UWORD i=0; Args->Path[i]; i++) if ((Args->Path[i] IS '/') or (Args->Path[i] IS '\\')) pathend = i + 1;
 
    ERROR error      = ERR_Okay;
-   UWORD inflateend = FALSE;
+   bool inflate_end = false;
    Self->FileIndex = 0;
 
    CompressionFeedback feedback;
@@ -1266,7 +1264,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
                else if ((zf.DeflateMethod IS 8) and (inflateInit2(&Self->Zip, -MAX_WBITS) IS ERR_Okay)) {
                   // Decompressing a link
 
-                  inflateend = TRUE;
+                  inflate_end = true;
 
                   struct acRead read;
                   read.Buffer = Self->Input;
@@ -1296,7 +1294,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
                   if (error IS ERR_NoSupport) error = ERR_Okay;
 
                   inflateEnd(&Self->Zip);
-                  inflateend = FALSE;
+                  inflate_end = false;
                }
             }
          }
@@ -1369,7 +1367,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
 
                   log.trace("Inflating file from %d -> %d bytes @ offset %d.", zf.CompressedSize, zf.OriginalSize, zf.Offset);
 
-                  inflateend = TRUE;
+                  inflate_end = true;
 
                   struct acRead read = {
                      .Buffer = Self->Input,
@@ -1435,7 +1433,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
                   // Terminate the inflation process
 
                   inflateEnd(&Self->Zip);
-                  inflateend = FALSE;
+                  inflate_end = false;
                }
             }
 
@@ -1445,7 +1443,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
          }
 
          if (feedback.Progress < feedback.OriginalSize) {
-            feedback.Progress = feedback.OriginalSize; //100;
+            feedback.Progress = feedback.OriginalSize;
             send_feedback(Self, &feedback);
          }
 
@@ -1456,7 +1454,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
    if (Self->OutputID) print(Self, "\nDecompression complete.");
 
 exit:
-   if (inflateend) inflateEnd(&Self->Zip);
+   if (inflate_end) inflateEnd(&Self->Zip);
 
    if ((error IS ERR_Okay) and (Self->FileIndex <= 0)) {
       log.msg("No files matched the path \"%s\".", Args->Path);
@@ -1732,7 +1730,7 @@ static ERROR COMPRESSION_Flush(extCompression *Self, APTR Void)
 
    Self->Zip.avail_in = 0;
 
-   BYTE done = FALSE;
+   BYTE done = false;
 
    for (;;) {
       // Write out any bytes that are still left in the compression buffer
@@ -1781,6 +1779,8 @@ static ERROR COMPRESSION_Free(extCompression *Self, APTR Void)
       Self->Feedback.Type = CALL_NONE;
    }
 
+   if (Self->Inflating)    { inflateEnd(&Self->InflateStream); Self->Inflating = false; }
+   if (Self->Deflating)    { deflateEnd(&Self->DeflateStream); Self->Deflating = false; }
    if (Self->OutputBuffer) { FreeResource(Self->OutputBuffer); Self->OutputBuffer = NULL; }
    if (Self->Input)        { FreeResource(Self->Input); Self->Input = NULL; }
    if (Self->Output)       { FreeResource(Self->Output); Self->Output = NULL; }
