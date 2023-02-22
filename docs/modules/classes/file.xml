@@ -268,7 +268,7 @@
         <error code="Okay">Operation successful.</error>
         <error code="NoSupport">The platform does not support file date setting.</error>
         <error code="ResolvePath">A volume could not be resolved.</error>
-        <error code="SystemCall">A call to the underlying system's native functions has failed.</error>
+        <error code="SystemCall">A call to the host system has failed.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>

@@ -406,18 +406,6 @@ if (!error) {
 <p>During the processing of multiple files, any individual file can be skipped by returning <code>ERR_Skip</code> and the entire process can be cancelled by returning ERR_Terminate.  All other error codes are ignored.</p>
 <p>The <struct>CompressionFeedback</struct> structure consists of the following fields:</p>
 <struct lookup="CompressionFeedback"/>
-<p>Scripts should read the <field>FeedbackInfo</field> field to get the structure content.  Do not attempt to convert the CompressionFeedback pointer to a readable structure.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>FeedbackInfo</name>
-      <comment>For script usage only, returns a CompressionFeedback structure.</comment>
-      <access read="G">Get</access>
-      <type>APTR</type>
-      <description>
-<p>
-<field>Feedback</field> routines can read this field to get the most recent CompressionFeedback values.</p>
       </description>
     </field>
 

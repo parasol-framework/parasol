@@ -44,6 +44,7 @@ struct prvFileArchive {
    UBYTE    *ReadPtr;      // Current position within OutputBuffer
    LONG     InputLength;
    bool     Inflating;
+   bool     InvalidState; // Set to true if the archive is corrupt.
 };
 
 struct ArchiveDriver {
@@ -57,16 +58,6 @@ static ERROR open_folder(DirInfo *);
 static ERROR get_info(CSTRING, FileInfo *, LONG);
 static ERROR scan_folder(DirInfo *);
 static ERROR test_path(STRING, LONG, LONG *);
-
-//********************************************************************************************************************
-// Return the portion of the string that follows the last discovered '/' or '\'
-
-inline CSTRING name_from_path(std::string Path)
-{
-   auto i = Path.find_last_of("/\\");
-   if (i IS std::string::npos) return Path.c_str();
-   else return Path.c_str() + i;
-}
 
 //********************************************************************************************************************
 
@@ -86,6 +77,8 @@ static void reset_state(extFile *Self)
 static ERROR seek_to_item(extFile *Self)
 {
    auto prv = (prvFileArchive *)Self->ChildPrivate;
+   if (prv->InvalidState) return ERR_InvalidState;
+
    auto &item = prv->Info;
 
    acSeekStart(prv->FileStream, item.Offset + HEAD_EXTRALEN);
@@ -313,6 +306,8 @@ static ERROR ARCHIVE_Read(extFile *Self, struct acRead *Args)
 
    auto prv = (prvFileArchive *)Self->ChildPrivate;
 
+   if (prv->InvalidState) return ERR_InvalidState;
+
    if (prv->Info.DeflateMethod IS 0) {
       ERROR error = acRead(prv->FileStream, Args->Buffer, Args->Length, &Args->Result);
       if (!error) Self->Position += Args->Result;
@@ -369,6 +364,7 @@ static ERROR ARCHIVE_Read(extFile *Self, struct acRead *Args)
          prv->ReadPtr = prv->OutputBuffer;
 
          if ((result) and (result != Z_STREAM_END)) {
+            prv->InvalidState = true;
             return convert_zip_error(&prv->Stream, result);
          }
 

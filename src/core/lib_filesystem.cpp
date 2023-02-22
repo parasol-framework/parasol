@@ -942,7 +942,6 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
          cache->LastUse   = PreciseTime();
 
          CopyMemory(path, cache->Path, pathlen);
-         FreeResource(path);
 
          if (file_size) {
             LONG result;
@@ -960,6 +959,7 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
                SubscribeTimer(60, &call, &glCacheTimer);
             }
 
+            FreeResource(path);
             return ERR_Okay;
          }
 

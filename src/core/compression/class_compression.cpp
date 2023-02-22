@@ -153,7 +153,7 @@ struct ZipFile {
    UBYTE  Day = 0;
    UBYTE  Hour = 0;
    UBYTE  Minute = 0;
-   bool  IsFolder = false;
+   bool   IsFolder = false;
 
    ZipFile() { }
 
@@ -1776,9 +1776,14 @@ static ERROR COMPRESSION_Free(extCompression *Self, APTR Void)
       Self->ArchiveHash = 0;
    }
 
+   if (Self->Feedback.Type IS CALL_SCRIPT) {
+      UnsubscribeAction(Self->Feedback.Script.Script, AC_Free);
+      Self->Feedback.Type = CALL_NONE;
+   }
+
    if (Self->OutputBuffer) { FreeResource(Self->OutputBuffer); Self->OutputBuffer = NULL; }
-   if (Self->Input)     { FreeResource(Self->Input); Self->Input = NULL; }
-   if (Self->Output)    { FreeResource(Self->Output); Self->Output = NULL; }
+   if (Self->Input)        { FreeResource(Self->Input); Self->Input = NULL; }
+   if (Self->Output)       { FreeResource(Self->Output); Self->Output = NULL; }
    if (Self->FileIO)       { acFree(Self->FileIO); Self->FileIO = NULL; }
    if (Self->Path)         { FreeResource(Self->Path); Self->Path = NULL; }
 
