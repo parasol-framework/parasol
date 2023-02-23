@@ -110,7 +110,6 @@ struct RGB8;
 struct rkBase64Decode;
 struct FileInfo;
 struct DirInfo;
-struct CacheFile;
 class objFile;
 class objStorageDevice;
 class objConfig;

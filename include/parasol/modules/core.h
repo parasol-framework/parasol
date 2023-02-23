@@ -1832,13 +1832,11 @@ struct KeyStore {
 };
 
 struct CacheFile {
-   LARGE  TimeStamp;   // The file's last-modified timestamp.
-   LARGE  Size;        // Byte size of the cached data.
-   LARGE  LastUse;     // The last time that this file was requested.
-   STRING Path;        // Pointer to the resolved file path.
-   APTR   Data;        // Pointer to the cached data.
-   WORD   Locks;       // Internal count of active locks for this element.
-   WORD   PathLength;  // Length of the Path string, including trailing zero.
+   LARGE   TimeStamp;  // The file's last-modified timestamp.
+   LARGE   Size;       // Byte size of the cached data.
+   LARGE   LastUse;    // The last time that this file was requested.
+   CSTRING Path;       // Pointer to the resolved file path.
+   APTR    Data;       // Pointer to the cached data.
 };
 
 struct CompressionFeedback {
