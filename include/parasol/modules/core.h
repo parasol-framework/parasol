@@ -3020,16 +3020,19 @@ class objFile : public BaseClass {
    }
    inline ERROR init() { return Action(AC_Init, this, NULL); }
    inline ERROR query() { return Action(AC_Query, this, NULL); }
-   template <class T> ERROR read(APTR Buffer, T Bytes, LONG *Result) {
+   template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) {
+      static_assert(std::is_integral<U>::value, "Result value must be an integer type");
+      static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       ERROR error;
-      const LONG bytes = (Bytes > 0x7fffffff) ? 0x7fffffff : Bytes;
+      const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
-      if (!(error = Action(AC_Read, this, &read))) *Result = read.Result;
+      if (!(error = Action(AC_Read, this, &read))) *Result = static_cast<U>(read.Result);
       else *Result = 0;
       return error;
    }
-   template <class T> ERROR read(APTR Buffer, T Bytes) {
-      const LONG bytes = (Bytes > 0x7fffffff) ? 0x7fffffff : Bytes;
+   template <class T> ERROR read(APTR Buffer, T Size) {
+      static_assert(std::is_integral<T>::value, "Size value must be an integer type");
+      const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
       return Action(AC_Read, this, &read);
    }
@@ -3045,9 +3048,9 @@ class objFile : public BaseClass {
    inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK_START); }
    inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK_END); }
    inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK_CURRENT); }
-   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result = NULL) {
+   inline ERROR write(CPTR Buffer, LONG Size, LONG *Result = NULL) {
       ERROR error;
-      struct acWrite write = { (BYTE *)Buffer, Bytes };
+      struct acWrite write = { (BYTE *)Buffer, Size };
       if (!(error = Action(AC_Write, this, &write))) {
          if (Result) *Result = write.Result;
       }
@@ -3063,8 +3066,8 @@ class objFile : public BaseClass {
       else if (Result) *Result = 0;
       return error;
    }
-   inline LONG writeResult(CPTR Buffer, LONG Bytes) {
-      struct acWrite write = { (BYTE *)Buffer, Bytes };
+   inline LONG writeResult(CPTR Buffer, LONG Size) {
+      struct acWrite write = { (BYTE *)Buffer, Size };
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
    }
@@ -3477,9 +3480,9 @@ class objTask : public BaseClass {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);
    }
-   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result = NULL) {
+   inline ERROR write(CPTR Buffer, LONG Size, LONG *Result = NULL) {
       ERROR error;
-      struct acWrite write = { (BYTE *)Buffer, Bytes };
+      struct acWrite write = { (BYTE *)Buffer, Size };
       if (!(error = Action(AC_Write, this, &write))) {
          if (Result) *Result = write.Result;
       }
@@ -3495,8 +3498,8 @@ class objTask : public BaseClass {
       else if (Result) *Result = 0;
       return error;
    }
-   inline LONG writeResult(CPTR Buffer, LONG Bytes) {
-      struct acWrite write = { (BYTE *)Buffer, Bytes };
+   inline LONG writeResult(CPTR Buffer, LONG Size) {
+      struct acWrite write = { (BYTE *)Buffer, Size };
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
    }
