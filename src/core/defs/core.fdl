@@ -1081,10 +1081,8 @@ struct FieldValue {
     large TimeStamp   # The file's last-modified timestamp.
     large Size        # Byte size of the cached data.
     large LastUse     # The last time that this file was requested.
-    str Path          # Pointer to the resolved file path.
+    cstr Path         # Pointer to the resolved file path.
     ptr Data          # Pointer to the cached data.
-    short Locks       # Internal count of active locks for this element.
-    short PathLength  # Length of the Path string, including trailing zero.
   ]])
 
   struct("CompressionFeedback", { }, [[

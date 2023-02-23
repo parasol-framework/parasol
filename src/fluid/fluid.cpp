@@ -212,7 +212,8 @@ APTR get_meta(lua_State *Lua, LONG Arg, CSTRING MetaTable)
 }
 
 /*********************************************************************************************************************
-** Returns a pointer to an object (if the object exists).
+** Returns a pointer to an object (if the object exists).  To guarantee safety, object access always utilises the ID
+** so that we don't run into issues if the object has been collected.
 */
 
 OBJECTPTR access_object(struct object *Object)
