@@ -144,7 +144,6 @@ bool glSync         = false;
 BYTE *SharedMemory  = 0;
 BYTE glProgramStage = STAGE_STARTUP;
 UBYTE glTaskState   = TSTATE_RUNNING;
-struct KeyStore *glCache = NULL;
 LONG glInotify = -1;
 
 const struct virtual_drive glFSDefault = {
