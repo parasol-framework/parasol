@@ -88,7 +88,7 @@ objFile *glClassFile   = NULL;
 objTask *glCurrentTask = NULL;
 objConfig *glDatatypes = NULL;
 std::list<CoreTimer> glTimers;
-ConfigGroups glVolumes;
+std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes;
 APTR glJNIEnv = 0;
 UWORD glFunctionID = 3333; // IDTYPE_FUNCTION
 LONG glPageSize = 4096; // Default page size is 4k

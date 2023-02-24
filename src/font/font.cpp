@@ -1519,16 +1519,16 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING
             flReadLE(*file, &size_shift);
 
             for (flReadLE(*file, &type_id); type_id; flReadLE(*file, &type_id)) {
-               flReadLE(*file, &count);
+               if (!flReadLE(*file, &count)) {
+                  if (type_id IS 0x8008) {
+                     font_count  = count;
+                     file->get(FID_Position, &font_offset);
+                     font_offset = font_offset + 4;
+                     break;
+                  }
 
-               if (type_id IS 0x8008) {
-                  font_count  = count;
-                  file->get(FID_Position, &font_offset);
-                  font_offset = font_offset + 4;
-                  break;
+                  file->seekCurrent(4 + count * 12);
                }
-
-               file->seekCurrent(4 + count * 12);
             }
 
             if ((!font_count) or (!font_offset)) {
