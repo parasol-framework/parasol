@@ -597,6 +597,14 @@ struct MemoryMessage {
 };
 
 //********************************************************************************************************************
+
+struct CaseInsensitiveMap {
+    bool operator() (const std::string& lhs, const std::string& rhs) const {
+        return stricmp(lhs.c_str(), rhs.c_str()) < 0;
+    }
+};
+
+//********************************************************************************************************************
 // Global data variables.
 
 extern extMetaClass glMetaClass;
@@ -648,7 +656,7 @@ extern class ObjectContext glTopContext; // Read-only, not a threading concern.
 extern OBJECTPTR modIconv;
 extern OBJECTPTR glLocale;
 extern objTime *glTime;
-extern ConfigGroups glVolumes;
+extern std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes; // VolumeName = { Key, Value }
 extern objConfig *glDatatypes;
 extern struct KeyStore *glClassMap; // Register of all classes.
 extern struct KeyStore *glFields; // Reverse lookup for converting field hashes back to their respective names.

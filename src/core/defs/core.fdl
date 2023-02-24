@@ -132,12 +132,11 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "ACCESSED: The date on which the file was last accessed by a user or application.",
     "ARCHIVED: The date on which the file was most recently archived.  Not supported by most filesystems.")
 
-  flags("VOLUME", { },
+  flags("VOLUME", { comment="Options for SetVolume()" },
     "REPLACE: If the volume already exists, all paths that are attached to it will be replaced with the new path setting.",
     "PRIORITY: If the volume already exists, the path will be inserted at the beginning of the path list so that it has priority over the others.",
     "HIDDEN: Hides the volume so that it will not show up when reading the root folder.",
-    "SAVE: The volume will be saved to user:config/volumes.cfg if this flag is set.  This allows the volume to be automatically restored on the next reboot.  See also VOLUME_SYSTEM.",
-    "SYSTEM: If the VOLUME_SAVE option is used in conjunction with VOLUME_SYSTEM, the volume is saved to config:volumes.cfg as opposed to the user's home folder.  This means that the change is global to all users.  On secure platforms the current process may need administrative rights to write to the file.")
+    "SYSTEM: Identifies the volume as being created by the system, is immutable and persistent between sessions.")
 
   flags("FDL", { comment="Options for the File Delete() method." },
     "FEEDBACK: Automatically manage user feedback for deleting files by presenting dialog boxes.")

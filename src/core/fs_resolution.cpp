@@ -322,13 +322,11 @@ static ERROR resolve(STRING Source, STRING Dest, LONG Flags)
    pos++;
 
    Source[pos-1] = 0; // Remove the volume symbol for the string comparison
-   fullpath[0] = 0;
-   for (auto& [group, keys] : glVolumes) {
-      if (!StrMatch(keys["Name"], Source)) {
-         StrCopy(keys["Path"], fullpath, sizeof(fullpath));
-         break;
-      }
+
+   if (glVolumes.contains(Source)) {
+      StrCopy(glVolumes[Source]["Path"], fullpath, sizeof(fullpath));
    }
+   else fullpath[0] = 0;
 
    if (!fullpath[0]) {
       log.msg("No matching volume for \"%s\".", Source);
@@ -336,7 +334,7 @@ static ERROR resolve(STRING Source, STRING Dest, LONG Flags)
       return ERR_Search;
    }
 
-   Source[pos-1] = ':'; // Put back the volume symbol
+   Source[pos-1] = ':'; // Restore the volume symbol
 
    // Handle the ":ObjectName" case
 

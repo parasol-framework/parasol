@@ -858,11 +858,12 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 #define FDT_ACCESSED 2
 #define FDT_ARCHIVED 3
 
+// Options for SetVolume()
+
 #define VOLUME_REPLACE 0x00000001
 #define VOLUME_PRIORITY 0x00000002
 #define VOLUME_HIDDEN 0x00000004
-#define VOLUME_SAVE 0x00000008
-#define VOLUME_SYSTEM 0x00000010
+#define VOLUME_SYSTEM 0x00000008
 
 // Options for the File Delete() method.
 

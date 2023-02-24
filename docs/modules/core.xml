@@ -682,13 +682,12 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
       <param type="CSTRING" name="Name">The name of the volume.</param>
     </input>
     <description>
-<p>This function deletes volume names from the system.  Once a volume is deleted, any further references to it will result in errors unless the volume is recreated.  All paths that are related to the volume are destroyed as a result of calling this function.</p>
+<p>This function deletes volume names from the system.  Once a volume is deleted, any further references to it will result in errors unless the volume is recreated.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
+      <error code="LockFailed">Failed to lock a required resource.</error>
       <error code="NoPermission">General security violation.</error>
-      <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
-      <error code="GetField">A call to GetField() failed to retrieve a field value.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -3996,12 +3995,11 @@ end
       <const name="WARNING"/>
     </constants>
 
-    <constants lookup="VOLUME">
+    <constants lookup="VOLUME" comment="Options for SetVolume()">
       <const name="HIDDEN">Hides the volume so that it will not show up when reading the root folder.</const>
       <const name="PRIORITY">If the volume already exists, the path will be inserted at the beginning of the path list so that it has priority over the others.</const>
       <const name="REPLACE">If the volume already exists, all paths that are attached to it will be replaced with the new path setting.</const>
-      <const name="SAVE">The volume will be saved to user:config/volumes.cfg if this flag is set.  This allows the volume to be automatically restored on the next reboot.  See also VOLUME_SYSTEM.</const>
-      <const name="SYSTEM">If the VOLUME_SAVE option is used in conjunction with VOLUME_SYSTEM, the volume is saved to config:volumes.cfg as opposed to the user's home folder.  This means that the change is global to all users.  On secure platforms the current process may need administrative rights to write to the file.</const>
+      <const name="SYSTEM">Identifies the volume as being created by the system, is immutable and persistent between sessions.</const>
     </constants>
 
   </types>
