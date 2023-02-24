@@ -30,7 +30,7 @@ static ERROR save_vectorpath(extSVG *Self, objXML *XML, objVector *Vector, LONG 
 
 static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LONG Parent)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    KeyStore *keystore;
 
    if (!Scene->getPtr(FID_Defs, &keystore)) {
@@ -217,7 +217,7 @@ static ERROR save_svg_transform(VectorMatrix *Transform, char *Buffer, LONG Size
 
 static ERROR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LONG Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    char buffer[160];
    STRING str;
    FLOAT *colour;
@@ -389,7 +389,7 @@ static ERROR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LON
 
 static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Parent)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    LONG new_index = -1;
 

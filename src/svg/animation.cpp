@@ -88,7 +88,7 @@ restart:
 
    if (SVG->FrameCallback.Type != CALL_NONE) {
       if (SVG->FrameCallback.Type IS CALL_STDC) {
-         parasol::SwitchContext context(SVG->FrameCallback.StdC.Context);
+         pf::SwitchContext context(SVG->FrameCallback.StdC.Context);
          auto routine = (void (*)(extSVG *))SVG->FrameCallback.StdC.Routine;
          routine(SVG);
       }

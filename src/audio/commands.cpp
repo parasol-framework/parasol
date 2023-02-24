@@ -3,7 +3,7 @@
 
 template <class T> void add_mix_cmd(objAudio *Audio, CMD Command, LONG Handle, T Data)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    auto ea = (extAudio *)Audio;
    LONG index = Handle>>16;
 
@@ -19,7 +19,7 @@ template <class T> void add_mix_cmd(objAudio *Audio, CMD Command, LONG Handle, T
 
 static void add_mix_cmd(objAudio *Audio, CMD Command, LONG Handle)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    auto ea = (extAudio *)Audio;
    LONG index = Handle>>16;
 
@@ -91,7 +91,7 @@ NullArgs
 
 static ERROR sndMixStartSequence(objAudio *Audio, LONG Handle)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
@@ -122,7 +122,7 @@ NullArgs
 
 static ERROR sndMixEndSequence(objAudio *Audio, LONG Handle)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
@@ -158,7 +158,7 @@ NullArgs
 
 static ERROR sndMixContinue(objAudio *Audio, LONG Handle)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
@@ -189,7 +189,7 @@ static ERROR sndMixContinue(objAudio *Audio, LONG Handle)
       shadow->State = CHS::PLAYING;
    }
 
-   parasol::SwitchContext context(Audio);
+   pf::SwitchContext context(Audio);
 
    if (((extAudio *)Audio)->Timer) UpdateTimer(((extAudio *)Audio)->Timer, -MIX_INTERVAL);
    else {
@@ -221,7 +221,7 @@ NullArgs
 
 static ERROR sndMixMute(objAudio *Audio, LONG Handle, LONG Mute)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
@@ -261,7 +261,7 @@ NullArgs
 
 static ERROR sndMixFrequency(objAudio *Audio, LONG Handle, LONG Frequency)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
@@ -299,7 +299,7 @@ NullArgs
 
 static ERROR sndMixPan(objAudio *Audio, LONG Handle, DOUBLE Pan)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
@@ -342,7 +342,7 @@ NullArgs
 
 static ERROR sndMixPlay(objAudio *Audio, LONG Handle, LONG Position)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
@@ -503,7 +503,7 @@ static ERROR sndMixPlay(objAudio *Audio, LONG Handle, LONG Position)
    fade_in((extAudio *)Audio, channel);
 
    if (channel->State IS CHS::PLAYING) {
-      parasol::SwitchContext context(Audio);
+      pf::SwitchContext context(Audio);
       if (((extAudio *)Audio)->Timer) UpdateTimer(((extAudio *)Audio)->Timer, -MIX_INTERVAL);
       else {
          auto call = make_function_stdc(audio_timer);
@@ -536,7 +536,7 @@ NullArgs
 
 static ERROR sndMixRate(objAudio *Audio, LONG Handle, LONG Rate)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
@@ -584,7 +584,7 @@ NullArgs
 
 ERROR sndMixSample(objAudio *Audio, LONG Handle, LONG SampleIndex)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Audio) or (!Handle)) return log.warning(ERR_NullArgs);
 
@@ -652,7 +652,7 @@ NullArgs
 
 ERROR sndMixStop(objAudio *Audio, LONG Handle)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
@@ -697,7 +697,7 @@ NullArgs
 
 static ERROR sndMixStopLoop(objAudio *Audio, LONG Handle)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 
@@ -743,7 +743,7 @@ NullArgs
 
 static ERROR sndMixVolume(objAudio *Audio, LONG Handle, DOUBLE Volume)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("Audio: #%d, Channel: $%.8x", Audio->UID, Handle);
 

@@ -308,7 +308,7 @@ static ERROR GET_Path(extDocument *Self, STRING *Value)
 
 static ERROR SET_Path(extDocument *Self, CSTRING Value)
 {
-   parasol::Log log;
+   pf::Log log;
    static BYTE recursion = 0;
    LONG i, len;
 
@@ -376,7 +376,7 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
       else if (trigger->Function.Type IS CALL_STDC) {
          auto routine = (void (*)(APTR, extDocument *, STRING, STRING))trigger->Function.StdC.Routine;
          if (routine) {
-            parasol::SwitchContext context(trigger->Function.StdC.Context);
+            pf::SwitchContext context(trigger->Function.StdC.Context);
             routine(trigger->Function.StdC.Context, Self, Self->Path, newpath);
          }
       }
@@ -493,7 +493,7 @@ static ERROR GET_PageWidth(extDocument *Self, Variable *Value)
 
 static ERROR SET_PageWidth(extDocument *Self, Variable *Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Value->Type & FD_DOUBLE) {
       if (Value->Double <= 0) {
@@ -646,7 +646,7 @@ You can manually change the working path by setting the #Origin field without af
 
 static ERROR GET_WorkingPath(extDocument *Self, CSTRING *Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Self->Path) {
       log.warning("Document has no defined Path.");
@@ -673,7 +673,7 @@ static ERROR GET_WorkingPath(extDocument *Self, CSTRING *Value)
       if ((Self->Path[k] IS ':') or (Self->Path[k] IS '/') or (Self->Path[k] IS '\\')) j = k+1;
    }
 
-   parasol::SwitchContext context(Self);
+   pf::SwitchContext context(Self);
 
    STRING workingpath;
    if (path) { // Extract absolute path

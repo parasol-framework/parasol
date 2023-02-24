@@ -290,7 +290,7 @@ int pthread_mutex_timedlock (pthread_mutex_t *mutex, int Timeout)
 #ifdef _GLES_
 ERROR lock_graphics_active(CSTRING Caller)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    //log.traceBranch("%s, Count: %d, State: %d, Display: $%x, Context: $%x", Caller, glLockCount, glEGLState, (LONG)glEGLDisplay, (LONG)glEGLContext); // See unlock_graphics() for the matching step.
    if (!pthread_mutex_lock(&glGraphicsMutex)) {
@@ -362,7 +362,7 @@ APTR glDGAMemory = NULL;
 
 LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankSize)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    STRING displayname;
 
    glX11->DGACount++;
@@ -438,7 +438,7 @@ LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankSize)
 
 XErrorHandler CatchRedirectError(Display *XDisplay, XErrorEvent *event)
 {
-   parasol::Log log("X11");
+   pf::Log log("X11");
    log.msg("A window manager has been detected on this X11 server.");
    glX11->Manager = FALSE;
    return 0;
@@ -466,7 +466,7 @@ const CSTRING glXProtoList[] = { NULL,
 
 XErrorHandler CatchXError(Display *XDisplay, XErrorEvent *XEvent)
 {
-   parasol::Log log("X11");
+   pf::Log log("X11");
    char buffer[80];
 
    if (XDisplay) {
@@ -483,7 +483,7 @@ XErrorHandler CatchXError(Display *XDisplay, XErrorEvent *XEvent)
 
 int CatchXIOError(Display *XDisplay)
 {
-   parasol::Log log("X11");
+   pf::Log log("X11");
    log.error("A fatal XIO error occurred in relation to display \"%s\".", XDisplayName(NULL));
    return 0;
 }
@@ -504,7 +504,7 @@ LONG x11WindowManager(void)
 
 ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
   //log.traceBranch("Display: %d, Info: %p, Size: %d", DisplayID, Info, InfoSize);
 
@@ -737,7 +737,7 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    ERROR error;
    #ifdef __xwindows__
       XGCValues gcv;
@@ -1158,7 +1158,7 @@ static ERROR CMDOpen(OBJECTPTR Module)
 
 static ERROR CMDExpunge(void)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    ERROR error = ERR_Okay;
 
    if (glAlphaLookup)         { ReleaseMemory(glAlphaLookup); glAlphaLookup = NULL; }
@@ -1294,7 +1294,7 @@ GLenum alloc_texture(LONG Width, LONG Height, GLuint *TextureID)
 
 ERROR init_egl(void)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    EGLint format;
    LONG depth;
 
@@ -1403,7 +1403,7 @@ ERROR init_egl(void)
 
 void refresh_display_from_egl(extDisplay *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("%dx%dx%d", glEGLWidth, glEGLHeight, glEGLDepth);
 
@@ -1434,7 +1434,7 @@ void refresh_display_from_egl(extDisplay *Self)
 
 void free_egl(void)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.branch("Current Display: $%x", (LONG)glEGLDisplay);
 

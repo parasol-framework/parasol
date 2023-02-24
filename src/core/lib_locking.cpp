@@ -37,7 +37,7 @@ Most technical code regarding system locking is managed in this area.  Also chec
 
 #include "defs.h"
 
-using namespace parasol;
+using namespace pf;
 
 static BYTE glAlwaysUnpage = FALSE; // Forces unpaging of memory in all circumstances (slows system, good for debugging)
 
@@ -191,7 +191,7 @@ static void free_cond(CONDLOCK *Cond)
 
 static ERROR pthread_lock(THREADLOCK *Lock, LONG Timeout) // Timeout in milliseconds
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG result;
 
 retry:
@@ -257,7 +257,7 @@ void thread_unlock(UBYTE Index)
 
 ERROR public_cond_wait(THREADLOCK *Lock, CONDLOCK *Cond, LONG Timeout)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
 #ifdef __ANDROID__
    if (Timeout <= 0) pthread_cond_wait(Cond, Lock);
@@ -325,7 +325,7 @@ void cond_wake_all(UBYTE Index)
 
 ERROR page_memory(PublicAddress *Block, APTR *Address)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    ThreadLock lock(TL_MEMORY_PAGES, 4000);
    if (lock.granted()) {
@@ -435,7 +435,7 @@ ERROR page_memory(PublicAddress *Block, APTR *Address)
 
 ERROR unpage_memory(APTR Address)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    ThreadLock lock(TL_MEMORY_PAGES, 4000);
    if (lock.granted()) {
@@ -486,7 +486,7 @@ ERROR unpage_memory(APTR Address)
 
 ERROR unpage_memory_id(MEMORYID MemoryID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    ThreadLock lock(TL_MEMORY_PAGES, 4000);
    if (lock.granted()) {
@@ -544,7 +544,7 @@ static THREADVAR WORD glWLIndex = -1;
 
 ERROR init_sleep(LONG OtherProcessID, LONG OtherThreadID, LONG ResourceID, LONG ResourceType, WORD *Index)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    //log.trace("Sleeping on thread %d.%d for resource #%d, Total Threads: %d", OtherProcessID, OtherThreadID, ResourceID, glSharedControl->WLIndex);
 
@@ -614,7 +614,7 @@ ERROR init_sleep(LONG OtherProcessID, LONG OtherThreadID, LONG ResourceID, LONG 
 
 void wake_sleepers(LONG ResourceID, LONG ResourceType)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.trace("Resource: %d, Type: %d, Total: %d", ResourceID, ResourceType, glSharedControl->WLIndex);
 
@@ -662,7 +662,7 @@ void wake_sleepers(LONG ResourceID, LONG ResourceType)
 
 void remove_process_waitlocks(void)
 {
-   parasol::Log log("Shutdown");
+   pf::Log log("Shutdown");
 
    log.trace("Removing process waitlocks...");
 
@@ -734,7 +734,7 @@ void remove_process_waitlocks(void)
 
 ERROR clear_waitlock(WORD Index)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    ERROR error = ERR_Okay;
 
    // A sys-lock is not required so long as we only operate on our thread entry.
@@ -777,7 +777,7 @@ static THREADVAR WINHANDLE tlThreadLock = 0; // Local to the thread.
 
 WINHANDLE get_threadlock(void)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (tlThreadLock) return tlThreadLock; // Thread-local, no problem...
 
@@ -867,7 +867,7 @@ SystemLocked
 
 ERROR AccessMemoryID(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Result)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG i, entry;
 
    if ((!MemoryID) or (!Result)) return log.warning(ERR_NullArgs);
@@ -1130,7 +1130,7 @@ TimeOut
 
 ERROR AccessObjectID(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    ERROR error;
 
    if ((!Result) or (!ObjectID)) return log.warning(ERR_NullArgs);
@@ -1189,7 +1189,7 @@ TimeOut:
 
 ERROR LockObject(OBJECTPTR Object, LONG Timeout)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Object) {
       DEBUG_BREAK
@@ -1326,7 +1326,7 @@ AllocMemory
 #ifdef __unix__
 ERROR AllocMutex(LONG Flags, APTR *Result)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Result) return ERR_NullArgs;
 
@@ -1535,7 +1535,7 @@ mem: Returns the memory ID of the block that was released, or zero if an error o
 
 MEMORYID ReleaseMemory(APTR Address)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Address) {
       log.warning(ERR_NullArgs);
@@ -1728,7 +1728,7 @@ NullArgs
 
 ERROR ReleaseMemoryID(MEMORYID MemoryID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG entry;
    BYTE permit;
 
@@ -1902,7 +1902,7 @@ obj Object: Pointer to the object to be released.
 
 void ReleaseObject(OBJECTPTR Object)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Object) return;
 
@@ -1992,7 +1992,7 @@ TimeOut
 
 ERROR SysLock(LONG Index, LONG Timeout)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG result;
 
    if (!glSharedControl) {
@@ -2062,7 +2062,7 @@ retry:
 
 ERROR SysLock(LONG Index, LONG Timeout)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG result;
 
    result = winWaitForSingleObject(glPublicLocks[Index].Lock, Timeout);
@@ -2108,7 +2108,7 @@ Okay
 
 ERROR SysUnlock(LONG Index)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (glSharedControl) {
       tlPublicLockCount--;

@@ -3,7 +3,7 @@
 
 static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG State)
 {
-   parasol::Log log("http_feedback");
+   pf::Log log("http_feedback");
 
    log.msg("Socket: %p, Client: %p, State: %d, Context: %d", Socket, Client, State, CurrentContext()->UID);
 
@@ -155,7 +155,7 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG 
 
 static ERROR socket_outgoing(objNetSocket *Socket)
 {
-   parasol::Log log("http_outgoing");
+   pf::Log log("http_outgoing");
 
    #define CHUNK_LENGTH_OFFSET 16
    #define CHUNK_TAIL 2 // CRLF
@@ -370,7 +370,7 @@ continue_upload:
 
 static ERROR socket_incoming(objNetSocket *Socket)
 {
-   parasol::Log log("http_incoming");
+   pf::Log log("http_incoming");
    LONG len;
    auto Self = (extHTTP *)Socket->UserData;
 
@@ -685,7 +685,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
 
          LONG i, count;
          for (count=2; count > 0; count--) { //while (Self->ChunkIndex < Self->ChunkBuffered) {
-            parasol::Log log("http_incoming");
+            pf::Log log("http_incoming");
             log.traceBranch("Receiving content (chunk mode) Index: %d/%d/%d, Length: %d", Self->ChunkIndex, Self->ChunkBuffered, Self->ChunkSize, Self->ChunkLen);
 
             // Compress the buffer
@@ -887,7 +887,7 @@ static CSTRING adv_crlf(CSTRING String)
 
 static ERROR parse_response(extHTTP *Self, CSTRING Buffer)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Args) Self->Args->clear();
    else {
@@ -966,7 +966,7 @@ static ERROR parse_response(extHTTP *Self, CSTRING Buffer)
 
 static ERROR process_data(extHTTP *Self, APTR Buffer, LONG Length)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.trace("Buffer: %p, Length: %d", Buffer, Length);
 
@@ -1042,7 +1042,7 @@ static ERROR process_data(extHTTP *Self, APTR Buffer, LONG Length)
       if (error) SET_ERROR(Self, error);
 
       if (Self->Error IS ERR_Terminate) {
-         parasol::Log log(__FUNCTION__);
+         pf::Log log(__FUNCTION__);
          log.branch("State changing to HGS_TERMINATED (terminate message received).");
          Self->set(FID_CurrentState, HGS_TERMINATED);
       }
@@ -1166,7 +1166,7 @@ static void digest_calc_ha1(extHTTP *Self, HASHHEX SessionKey)
 
 static void digest_calc_response(extHTTP *Self, std::string Request, CSTRING NonceCount, HASHHEX HA1, HASHHEX HEntity, HASHHEX Response)
 {
-   parasol::Log log;
+   pf::Log log;
    MD5_CTX md5;
    HASH HA2;
    HASH RespHash;
@@ -1224,7 +1224,7 @@ static void digest_calc_response(extHTTP *Self, std::string Request, CSTRING Non
 
 static ERROR write_socket(extHTTP *Self, CPTR Buffer, LONG Length, LONG *Result)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (Length > 0) {
       //log.trace("Length: %d", Length);
@@ -1256,7 +1256,7 @@ static ERROR write_socket(extHTTP *Self, CPTR Buffer, LONG Length, LONG *Result)
 
 static ERROR timeout_manager(extHTTP *Self, LARGE Elapsed, LARGE CurrentTime)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.warning("Timeout detected - disconnecting from server (connect %.2fs, data %.2fs).", Self->ConnectTimeout, Self->DataTimeout);
    Self->TimeoutManager = 0;
@@ -1270,7 +1270,7 @@ static ERROR timeout_manager(extHTTP *Self, LARGE Elapsed, LARGE CurrentTime)
 
 static ERROR check_incoming_end(extHTTP *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (Self->CurrentState IS HGS_AUTHENTICATING) return ERR_False;
    if (Self->CurrentState >= HGS_COMPLETED) return ERR_True;

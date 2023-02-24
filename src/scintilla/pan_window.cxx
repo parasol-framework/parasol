@@ -15,7 +15,7 @@ inline OBJECTID getSurfaceID(Scintilla::Window* win)
 
 Scintilla::Window::~Window()
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.branch();
    Destroy();
 }
@@ -24,7 +24,7 @@ Scintilla::Window::~Window()
 
 void Scintilla::Window::Destroy()
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.branch();
 
    wid = 0; // this object doesn't actually own the Scintilla drawable
@@ -34,7 +34,7 @@ void Scintilla::Window::Destroy()
 
 bool Scintilla::Window::HasFocus()
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    SURFACEINFO *info;
 
    log.branch();
@@ -51,7 +51,7 @@ bool Scintilla::Window::HasFocus()
 
 Scintilla::PRectangle Scintilla::Window::GetPosition()
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    SURFACEINFO *info;
 
    // Before any size allocated pretend its 1000 wide so not scrolled
@@ -73,7 +73,7 @@ Scintilla::PRectangle Scintilla::Window::GetPosition()
 
 void Scintilla::Window::SetPosition(Scintilla::PRectangle rc)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.branch();
 
    // Surface class supports the redimension action
@@ -84,7 +84,7 @@ void Scintilla::Window::SetPosition(Scintilla::PRectangle rc)
 
 void Scintilla::Window::SetPositionRelative(Scintilla::PRectangle rc, Scintilla::Window relativeTo)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    SURFACEINFO *info;
 
    log.branch();
@@ -127,7 +127,7 @@ Scintilla::PRectangle Scintilla::Window::GetMonitorRect(Scintilla::Point)
 
 void Scintilla::Window::Show(bool show)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.branch();
 
    if (show) acShow(getSurfaceID(this));
@@ -138,7 +138,7 @@ void Scintilla::Window::Show(bool show)
 
 void Scintilla::Window::InvalidateAll()
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    auto scintilla = (extScintilla *)this->GetID();
 
@@ -154,7 +154,7 @@ void Scintilla::Window::InvalidateAll()
 
 void Scintilla::Window::InvalidateRectangle(Scintilla::PRectangle rc)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    auto scintilla = (extScintilla *)this->GetID();
 
@@ -172,7 +172,7 @@ void Scintilla::Window::InvalidateRectangle(Scintilla::PRectangle rc)
 
 void Scintilla::Window::SetFont(Scintilla::Font &)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.branch("[UNSUPPORTED]");
    // Can not be done generically but only needed for ListBox
 }

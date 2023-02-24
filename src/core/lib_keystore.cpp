@@ -49,7 +49,7 @@ INLINE LONG GET_KEY_SIZE(KeyPair *KP) { return KP->ValueOffset + KP->ValueLength
 
 static void KeyStore_free(APTR Address)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    KeyStore *store = (KeyStore *)Address;
 
    if (store->Flags & KSF_AUTO_REMOVE) {
@@ -126,7 +126,7 @@ static KeyPair * build_hashed_key_pair(KeyStore *Store, ULONG Key, const void *V
 
 static ERROR hm_rehash(KeyStore *Store)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    KeyPair **nv;
    KeyPair **old = Store->Data;
    LONG old_size = Store->TableSize;
@@ -180,7 +180,7 @@ retry:
 
 static LONG hm_newkey(KeyStore *Store, KeyPair *KeyPair)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (Store->Total >= Store->TableSize / 2) {
       log.trace("Hashmap is full and requires expansion.");
@@ -269,7 +269,7 @@ AllocMemory
 
 ERROR VarCopy(KeyStore *Source, KeyStore *Dest)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Source) or (!Dest)) return ERR_NullArgs;
 
@@ -352,7 +352,7 @@ DoesNotExist
 
 ERROR VarGet(KeyStore *Store, CSTRING Name, APTR *Data, LONG *Size)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Name) or (!*Name) or (!Store)) return ERR_NullArgs;
 
@@ -559,7 +559,7 @@ resource(KeyStore): The allocated resource is returned or NULL if a memory alloc
 
 KeyStore * VarNew(LONG InitialSize, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (InitialSize < INITIAL_SIZE) InitialSize = INITIAL_SIZE;
 
@@ -626,7 +626,7 @@ AllocMemory
 
 ERROR VarSetString(KeyStore *Store, CSTRING Key, CSTRING Value)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Key) or (!Store)) return ERR_NullArgs;
 
@@ -703,7 +703,7 @@ ptr: A pointer to the cached version of the data is returned, or NULL if failure
 
 APTR VarSet(KeyStore *Store, CSTRING Key, APTR Data, LONG Size)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Key) or (!Store)) return NULL;
 
@@ -774,7 +774,7 @@ AllocMemory:
 
 ERROR VarSetSized(KeyStore *Store, CSTRING Key, LONG Size, APTR *Data, LONG *DataSize)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Key) or (!Store) or (!Size) or (!Data)) return ERR_NullArgs;
 

@@ -289,7 +289,7 @@ INLINE BYTE strmatch(CSTRING Name1, CSTRING Name2)
 
 static void xml_unescape(extXML *Self, STRING String)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG len, i;
    ULONG val;
 

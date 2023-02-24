@@ -82,7 +82,7 @@ static ERROR win32_audio_stream(extSound *, LARGE, LARGE);
 static void sound_stopped_event(extSound *Self)
 {
    if (Self->OnStop.Type IS CALL_STDC) {
-      parasol::SwitchContext context(Self->OnStop.StdC.Context);
+      pf::SwitchContext context(Self->OnStop.StdC.Context);
       auto routine = (void (*)(extSound *))Self->OnStop.StdC.Routine;
       routine(Self);
    }
@@ -129,7 +129,7 @@ static void onstop_event(LONG SampleHandle)
 #ifdef _WIN32
 static ERROR timer_playback_ended(extSound *Self, LARGE Elapsed, LARGE CurrentTime)
 {
-   parasol::Log log;
+   pf::Log log;
    log.trace("Sound streaming completed.");
    sound_stopped_event(Self);
    Self->PlaybackTimer = 0;
@@ -146,7 +146,7 @@ static ERROR timer_playback_ended(extSound *Self, LARGE Elapsed, LARGE CurrentTi
 static ERROR set_playback_trigger(extSound *Self)
 {
    if (Self->OnStop.Type) {
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
       const LONG bytes_per_sample = ((((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1) * (Self->BitsPerSample>>3));
       const DOUBLE playback_time = DOUBLE((Self->Length - Self->Position) / bytes_per_sample) / DOUBLE(Self->Playback);
       if (playback_time < 0.01) {
@@ -172,8 +172,8 @@ void end_of_stream(OBJECTPTR Object, LONG BytesRemaining)
    if (Object->ClassID IS ID_SOUND) {
       auto Self = (extSound *)Object;
       if (Self->OnStop.Type) {
-         parasol::Log log(__FUNCTION__);
-         parasol::SwitchContext context(Object);
+         pf::Log log(__FUNCTION__);
+         pf::SwitchContext context(Object);
          const LONG bytes_per_sample = ((((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1) * (Self->BitsPerSample>>3));
          const DOUBLE playback_time = (DOUBLE(BytesRemaining / bytes_per_sample) / DOUBLE(Self->Playback)) + 0.01;
 
@@ -212,7 +212,7 @@ static LONG sample_format(extSound *Self)
 static ERROR snd_init_audio(extSound *Self) __attribute__((unused));
 static ERROR snd_init_audio(extSound *Self)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!FindObject("SystemAudio", ID_AUDIO, 0, &Self->AudioID)) return ERR_Okay;
 
@@ -249,7 +249,7 @@ Activate: Plays the audio sample.
 
 static ERROR SOUND_Activate(extSound *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.traceBranch("Position: %" PF64, Self->Position);
 
@@ -306,7 +306,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
    }
 
    if (Self->AudioID) {
-      parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
+      pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
          sndVolume((PlatformData *)Self->PlatformData, audio->MasterVolume * Self->Volume);
       }
@@ -438,7 +438,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
 
    Self->Active = true;
 
-   parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 2000);
+   pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 2000);
    if (audio.granted()) {
       // Restricted and streaming audio can be played on only one channel at any given time.  This search will check
       // if the sound object is already active on one of our channels.
@@ -510,7 +510,7 @@ Deactivate: Stops the audio sample and resets the playback position.
 
 static ERROR SOUND_Deactivate(extSound *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.branch();
 
@@ -523,7 +523,7 @@ static ERROR SOUND_Deactivate(extSound *Self, APTR Void)
    sndStop((PlatformData *)Self->PlatformData);
 #else
    if (Self->ChannelIndex) {
-      parasol::ScopedObjectLock<extAudio> audio(Self->AudioID);
+      pf::ScopedObjectLock<extAudio> audio(Self->AudioID);
       if (audio.granted()) { // Stop the sample if it's live.
          if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
             if (channel->SampleHandle IS Self->Handle) sndMixStop(*audio, Self->ChannelIndex);
@@ -544,7 +544,7 @@ Disable: Disable playback of an active audio sample, equivalent to pausing.
 
 static ERROR SOUND_Disable(extSound *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.branch();
 
@@ -553,7 +553,7 @@ static ERROR SOUND_Disable(extSound *Self, APTR Void)
 #else
    if (!Self->ChannelIndex) return ERR_Okay;
 
-   parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 5000);
+   pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 5000);
    if (audio.granted()) {
       if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
          if (channel->SampleHandle IS Self->Handle) sndMixStop(*audio, Self->ChannelIndex);
@@ -573,7 +573,7 @@ Enable: Continues playing a sound if it has been disabled.
 
 static ERROR SOUND_Enable(extSound *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    log.branch();
 
 #ifdef USE_WIN32_PLAYBACK
@@ -585,7 +585,7 @@ static ERROR SOUND_Enable(extSound *Self, APTR Void)
 #else
    if (!Self->ChannelIndex) return ERR_Okay;
 
-   parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 5000);
+   pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 5000);
    if (audio.granted()) {
       if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
          if (channel->SampleHandle IS Self->Handle) sndMixContinue(*audio, Self->ChannelIndex);
@@ -616,7 +616,7 @@ static ERROR SOUND_Free(extSound *Self, APTR Void)
    Self->deactivate();
 
    if ((Self->Handle) and (Self->AudioID)) {
-      parasol::ScopedObjectLock<extAudio> audio(Self->AudioID);
+      pf::ScopedObjectLock<extAudio> audio(Self->AudioID);
       if (audio.granted()) {
          sndRemoveSample(*audio, Self->Handle);
          Self->Handle = 0;
@@ -670,7 +670,7 @@ Init: Prepares a sound object for usage.
 
 static ERROR SOUND_Init(extSound *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    LONG id, len;
    ERROR error;
 
@@ -683,7 +683,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    // Open channels for sound sample playback.
 
    if (!(Self->ChannelIndex = glSoundChannels[Self->AudioID])) {
-      parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 3000);
+      pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 3000);
       if (audio.granted()) {
          if (!sndOpenChannels(*audio, audio->MaxChannels, &Self->ChannelIndex)) {
             glSoundChannels[Self->AudioID] = Self->ChannelIndex;
@@ -772,7 +772,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
 static ERROR SOUND_Init(extSound *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    LONG id, len, result, pos;
    ERROR error;
 
@@ -783,7 +783,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    // Open channels for sound sample playback.
 
    if (!(Self->ChannelIndex = glSoundChannels[Self->AudioID])) {
-      parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 3000);
+      pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 3000);
       if (audio.granted()) {
          if (!sndOpenChannels(*audio, audio->MaxChannels, &Self->ChannelIndex)) {
             glSoundChannels[Self->AudioID] = Self->ChannelIndex;
@@ -924,7 +924,7 @@ is determined by the #Position value.
 
 static ERROR SOUND_Read(extSound *Self, struct acRead *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -957,7 +957,7 @@ SaveToObject: Saves audio sample data to an object.
 
 static ERROR SOUND_SaveToObject(extSound *Self, struct acSaveToObject *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    // This routine is used if the developer is trying to save the sound data as a specific subclass type.
 
@@ -994,7 +994,7 @@ Read action.  If the sample is in active playback at the time of the call, the p
 
 static ERROR SOUND_Seek(extSound *Self, struct acSeek *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    // NB: Sub-classes may divert their functionality to this routine if the sample is fully buffered.
 
@@ -1016,7 +1016,7 @@ static ERROR SOUND_Seek(extSound *Self, struct acSeek *Args)
 
    log.traceBranch("Seek to %" PF64 " + %d", Self->Position, Self->DataOffset);
 
-   parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 2000);
+   pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 2000);
    if (audio.granted()) {
       if ((Self->File) and (!Self->isSubClass())) {
          Self->File->seekStart(Self->DataOffset + Self->Position);
@@ -1073,7 +1073,7 @@ Active: Returns TRUE if the sound sample is being played back.
 static ERROR SOUND_GET_Active(extSound *Self, LONG *Value)
 {
 #ifdef USE_WIN32_PLAYBACK
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Active) {
       WORD status = sndCheckActivity((PlatformData *)Self->PlatformData);
@@ -1092,7 +1092,7 @@ static ERROR SOUND_GET_Active(extSound *Self, LONG *Value)
    *Value = FALSE;
 
    if (Self->ChannelIndex) {
-      parasol::ScopedObjectLock<extAudio> audio(Self->AudioID);
+      pf::ScopedObjectLock<extAudio> audio(Self->AudioID);
       if (audio.granted()) {
          if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
             if (!channel->isStopped()) *Value = TRUE;
@@ -1202,7 +1202,7 @@ value by the #BytesPerSecond field.
 
 static ERROR SOUND_SET_Length(extSound *Self, LONG Value)
 {
-   parasol::Log log;
+   pf::Log log;
    if (Value >= 0) {
       Self->Length = Value;
 
@@ -1213,7 +1213,7 @@ static ERROR SOUND_SET_Length(extSound *Self, LONG Value)
          return ERR_Okay;
       #else
          if ((Self->Handle) and (Self->AudioID)) {
-            parasol::ScopedObjectLock<objAudio> audio(Self->AudioID);
+            pf::ScopedObjectLock<objAudio> audio(Self->AudioID);
             if (audio.granted()) {
                return sndSetSampleLength(*audio, Self->Handle, Value);
             }
@@ -1329,7 +1329,7 @@ static ERROR SOUND_GET_Note(extSound *Self, CSTRING *Value)
 
 static ERROR SOUND_SET_Note(extSound *Self, CSTRING Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!*Value) return ERR_Okay;
 
@@ -1404,7 +1404,7 @@ static ERROR SOUND_SET_Note(extSound *Self, CSTRING Value)
    }
 #else
    if (Self->ChannelIndex) {
-      parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
+      pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
          sndMixFrequency(*audio, Self->ChannelIndex, Self->Playback);
       }
@@ -1498,7 +1498,7 @@ static ERROR SOUND_SET_Pan(extSound *Self, DOUBLE Value)
    }
 #else
    if (Self->ChannelIndex) {
-      parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
+      pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
          sndMixPan(*audio, Self->ChannelIndex, Self->Pan);
       }
@@ -1527,7 +1527,7 @@ static ERROR SOUND_GET_Path(extSound *Self, STRING *Value)
 
 static ERROR SOUND_SET_Path(extSound *Self, CSTRING Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
@@ -1554,7 +1554,7 @@ any time, including during audio playback if real-time adjustments to a sample's
 
 static ERROR SOUND_SET_Playback(extSound *Self, LONG Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((Value < 0) or (Value > 500000)) return ERR_OutOfRange;
 
@@ -1568,7 +1568,7 @@ static ERROR SOUND_SET_Playback(extSound *Self, LONG Value)
    }
 #else
    if (Self->ChannelIndex) {
-      parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
+      pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
          sndMixFrequency(*audio, Self->ChannelIndex, Self->Playback);
       }
@@ -1636,14 +1636,14 @@ static ERROR SOUND_SET_Volume(extSound *Self, DOUBLE Value)
 
 #ifdef USE_WIN32_PLAYBACK
    if (Self->initialised()) {
-      parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
+      pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
          sndVolume((PlatformData *)Self->PlatformData, audio->MasterVolume * Self->Volume);
       }
    }
 #else
    if (Self->ChannelIndex) {
-      parasol::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
+      pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
          sndMixVolume(*audio, Self->ChannelIndex, Self->Volume);
       }
@@ -1677,7 +1677,7 @@ static ERROR find_chunk(extSound *Self, objFile *File, CSTRING ChunkName)
 #ifdef USE_WIN32_PLAYBACK
 static ERROR win32_audio_stream(extSound *Self, LARGE Elapsed, LARGE CurrentTime)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    // See sndStreamAudio() for further information on streaming in Win32
 

@@ -218,7 +218,7 @@ APTR get_meta(lua_State *Lua, LONG Arg, CSTRING MetaTable)
 
 OBJECTPTR access_object(struct object *Object)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (Object->AccessCount) {
       Object->AccessCount++;
@@ -251,7 +251,7 @@ OBJECTPTR access_object(struct object *Object)
 
 void release_object(struct object *Object)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.trace("#%d Current Locked: %d, Accesses: %d", Object->ObjectID, Object->Locked, Object->AccessCount);
 
@@ -282,7 +282,7 @@ INLINE struct KeyStore * GET_INCLUDES(objScript *Script)
 
 void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    CSTRING module_name;
    ERROR error;
@@ -380,7 +380,7 @@ ObjectCorrupt: Privately maintained memory has become inaccessible.
 
 static ERROR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    prvFluid *prv;
    va_list list;
 
@@ -412,7 +412,7 @@ static ERROR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
 
 void hook_debug(lua_State *Lua, lua_Debug *Info)
 {
-   parasol::Log log("Lua");
+   pf::Log log("Lua");
 
    if (Info->event IS LUA_HOOKCALL) {
       if (lua_getinfo(Lua, "nSl", Info)) {
@@ -441,7 +441,7 @@ void hook_debug(lua_State *Lua, lua_Debug *Info)
 
 void make_table(lua_State *Lua, LONG Type, LONG Elements, CPTR Data)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("Type: $%.8x, Elements: %d, Data: %p", Type, Elements, Data);
 
@@ -486,7 +486,7 @@ void make_table(lua_State *Lua, LONG Type, LONG Elements, CPTR Data)
 
 void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, LONG Elements, CPTR *Values)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.trace("%s, Elements: %d, Values: %p", StructName, Elements, Values);
 
@@ -521,7 +521,7 @@ void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, LONG Elements, CP
 
 void make_struct_serial_table(lua_State *Lua, CSTRING StructName, LONG Elements, CPTR Data)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (Elements < 0) Elements = 0; // The total number of structs is a hard requirement.
 
@@ -603,7 +603,7 @@ void get_line(objScript *Self, LONG Line, STRING Buffer, LONG Size)
 
 ERROR load_include(objScript *Script, CSTRING IncName)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.branch("Definition: %s", IncName);
 
@@ -681,7 +681,7 @@ ERROR load_include(objScript *Script, CSTRING IncName)
 
 static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
 {
-   parasol::Log log("load_include");
+   pf::Log log("load_include");
    char name[80];
    LONG i;
    for (i=0; (Line[i] >= 0x20) and (Line[i] != ':') and ((size_t)i < sizeof(name)-1); i++) name[i] = Line[i];
@@ -716,7 +716,7 @@ static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
 
 static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Source)
 {
-   parasol::Log log("load_include");
+   pf::Log log("load_include");
    char name[80];
    LONG i;
    for (i=0; (*Line > 0x20) and (*Line != ':') and ((size_t)i < sizeof(name)-1); i++) name[i] = *Line++;
@@ -785,7 +785,7 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
 
 int code_writer_id(lua_State *Lua, CPTR Data, size_t Size, void *FileID)
 {
-   parasol::Log log("code_writer");
+   pf::Log log("code_writer");
 
    if (Size <= 0) return 0; // Ignore bad size requests
 
@@ -800,7 +800,7 @@ int code_writer_id(lua_State *Lua, CPTR Data, size_t Size, void *FileID)
 
 int code_writer(lua_State *Lua, CPTR Data, size_t Size, OBJECTPTR File)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (Size <= 0) return 0; // Ignore bad size requests
 

@@ -20,7 +20,7 @@ static ERROR gradient_defaults(extSVG *Self, objVectorGradient *Gradient, ULONG 
 
 static ERROR process_gradient_stops(extSVG *Self, const XMLTag *Tag, GradientStop *Stops)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("");
 
@@ -78,7 +78,7 @@ static ERROR process_gradient_stops(extSVG *Self, const XMLTag *Tag, GradientSto
 
 static ERROR xtag_lineargradient(extSVG *Self, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
 
    CSTRING id = NULL;
@@ -164,7 +164,7 @@ static ERROR xtag_lineargradient(extSVG *Self, const XMLTag *Tag)
 
 static ERROR xtag_radialgradient(extSVG *Self, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
    CSTRING id = NULL;
 
@@ -241,7 +241,7 @@ static ERROR xtag_radialgradient(extSVG *Self, const XMLTag *Tag)
 
 static ERROR xtag_diamondgradient(extSVG *Self, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
    CSTRING id = NULL;
 
@@ -318,7 +318,7 @@ static ERROR xtag_diamondgradient(extSVG *Self, const XMLTag *Tag)
 
 static ERROR xtag_contourgradient(extSVG *Self, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
    CSTRING id = NULL;
 
@@ -389,7 +389,7 @@ static ERROR xtag_contourgradient(extSVG *Self, const XMLTag *Tag)
 
 static ERROR xtag_conicgradient(extSVG *Self, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
 
    if (!NewObject(ID_VECTORGRADIENT, &gradient)) {

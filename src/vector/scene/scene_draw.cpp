@@ -316,7 +316,7 @@ void set_filter(agg::image_filter_lut &Filter, UBYTE Method)
       case VSM_LANCZOS8:  Filter.calculate(agg::image_filter_lanczos(8.0), true); break;
       case VSM_BLACKMAN8: Filter.calculate(agg::image_filter_blackman(8.0), true); break;
       default: {
-         parasol::Log log;
+         pf::Log log;
          log.warning("Unrecognised sampling method %d", Method);
          Filter.calculate(agg::image_filter_bicubic(), true);
          break;
@@ -954,7 +954,7 @@ public:
    VMAdaptor() { }
 
    void draw(objBitmap *Bitmap) {
-      parasol::Log log;
+      pf::Log log;
 
       log.traceBranch("Bitmap: %dx%d,%dx%d, Viewport: %p", Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right, Bitmap->Clip.Bottom, Scene->Viewport);
 
@@ -1105,7 +1105,7 @@ private:
 
    void draw_vectors(extVector *CurrentVector, VectorState &ParentState) {
       for (auto shape=CurrentVector; shape; shape=(extVector *)shape->Next) {
-         parasol::Log log(__FUNCTION__);
+         pf::Log log(__FUNCTION__);
          VectorState state = VectorState(ParentState);
 
          if (shape->ClassID != ID_VECTOR) {
@@ -1420,7 +1420,7 @@ private:
 
 void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle)
 {
-   parasol::Log log("draw_path");
+   pf::Log log("draw_path");
 
    agg::scanline_u8 scanline;
    agg::pixfmt_psl format;
@@ -1564,7 +1564,7 @@ void agg::pixfmt_psl::rawBitmap(UBYTE *Data, LONG Width, LONG Height, LONG Strid
    }
    else if (BitsPerPixel IS 16) {
       // Deprecated.  16-bit client code should use 24-bit and downscale instead.
-      parasol::Log log;
+      pf::Log log;
       log.warning("Support for 16-bit bitmaps is deprecated.");
    }
 }

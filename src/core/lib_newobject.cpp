@@ -48,7 +48,7 @@ ObjectExists: An object with the provided Name already exists in the system (app
 
 ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    ULONG class_id = (ULONG)(ClassID & 0xffffffff);
    if ((!class_id) or (!Object)) return log.warning(ERR_NullArgs);
@@ -126,7 +126,7 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
       // After the header has been created we can set the context, then call the base class's NewObject() support.  If this
       // object belongs to a sub-class, we will also call its supporting NewObject() action if it has specified one.
 
-      parasol::SwitchContext context(head);
+      pf::SwitchContext context(head);
 
       ERROR error = ERR_Okay;
       if (mc->Base) {
@@ -180,7 +180,7 @@ cid: Returns the class ID identified from the class name, or NULL if the class c
 CLASSID ResolveClassName(CSTRING ClassName)
 {
    if ((!ClassName) or (!*ClassName)) {
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
       log.warning(ERR_NullArgs);
       return 0;
    }
@@ -211,7 +211,7 @@ CSTRING ResolveClassID(CLASSID ID)
 {
    if (glClassDB.contains(ID)) return glClassDB[ID].Name.c_str();
 
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.warning("Failed to resolve ID $%.8x", ID);
    return NULL;
 }

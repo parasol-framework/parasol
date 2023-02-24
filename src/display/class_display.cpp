@@ -82,7 +82,7 @@ static const CSTRING names[] = {
 
 static void printConfig(EGLDisplay display, EGLConfig config) __attribute__ ((unused));
 static void printConfig(EGLDisplay display, EGLConfig config) {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG value[1];
 
    log.branch();
@@ -108,7 +108,7 @@ static resolution * get_resolutions(extDisplay *Self)
 {
 #ifdef __xwindows__
 
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (XRandRBase) {
       static resolution resolutions[30];
@@ -183,13 +183,13 @@ static void update_displayinfo(extDisplay *Self)
 
 void resize_feedback(FUNCTION *Feedback, OBJECTID DisplayID, LONG X, LONG Y, LONG Width, LONG Height)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("%dx%d, %dx%d", X, Y, Width, Height);
 
    if (Feedback->Type IS CALL_STDC) {
       auto routine = (ERROR (*)(OBJECTID, LONG, LONG, LONG, LONG))Feedback->StdC.Routine;
-      parasol::SwitchContext ctx(Feedback->StdC.Context);
+      pf::SwitchContext ctx(Feedback->StdC.Context);
       routine(DisplayID, X, Y, Width, Height);
    }
    else if (Feedback->Type IS CALL_SCRIPT) {
@@ -244,7 +244,7 @@ static ERROR DISPLAY_CheckXWindow(extDisplay *Self, APTR Void)
    XTranslateCoordinates(XDisplay, Self->XWindowHandle, DefaultRootWindow(XDisplay), 0, 0, &absx, &absy, &childwin);
 
    if ((Self->X != absx) or (Self->Y != absy)) {
-      parasol::Log log;
+      pf::Log log;
       log.msg("Repairing coordinates, pos is %dx%d, was %dx%d", absx, absy, Self->X, Self->Y);
 
       Self->X = absx;
@@ -286,7 +286,7 @@ DataFeed: Declared for internal purposes - do not call.
 
 static ERROR DISPLAY_DataFeed(extDisplay *Self, struct acDataFeed *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -364,7 +364,7 @@ static ERROR DISPLAY_Disable(extDisplay *Self, APTR Void)
 {
 #ifdef __snap__
 
-   parasol::Log log;
+   pf::Log log;
    LONG cap = 0;
    if (glSNAP->gsDPMS.DPMSdetect(&cap)) {
       if ((Self->DPMS IS DPMS_SUSPEND) and (cap & DPMS_suspend)) cap = DPMS_suspend;
@@ -407,7 +407,7 @@ static ERROR DISPLAY_Enable(extDisplay *Self, APTR Void)
 {
 #ifdef __snap__
 
-   parasol::Log log;
+   pf::Log log;
    log.branch();
 
    if (!glSNAP->gsDPMS.DPMSsetState) {
@@ -469,7 +469,7 @@ static ERROR DISPLAY_Flush(extDisplay *Self, APTR Void)
 
 static ERROR DISPLAY_Focus(extDisplay *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.traceBranch("");
 #ifdef _WIN32
@@ -484,7 +484,7 @@ static ERROR DISPLAY_Focus(extDisplay *Self, APTR Void)
 
 static ERROR DISPLAY_Free(extDisplay *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Flags & SCR_AUTO_SAVE) {
       log.trace("Autosave enabled.");
@@ -561,7 +561,7 @@ GetVar: Retrieve formatted information from the display.
 
 static ERROR DISPLAY_GetVar(extDisplay *Self, struct acGetVar *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    ULONG colours;
 
    if (!Args) return log.warning(ERR_NullArgs);
@@ -630,7 +630,7 @@ displays available then the user's viewport will be blank after calling this act
 
 static ERROR DISPLAY_Hide(extDisplay *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.branch();
 
@@ -661,7 +661,7 @@ static ERROR DISPLAY_Hide(extDisplay *Self, APTR Void)
 
 static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    struct gfxUpdatePalette pal;
    objBitmap *bmp;
    #ifdef __xwindows__
@@ -1021,7 +1021,7 @@ Okay
 
 static ERROR DISPLAY_Minimise(extDisplay *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    log.branch();
 #ifdef _WIN32
    winMinimiseWindow(Self->WindowHandle);
@@ -1061,7 +1061,7 @@ Move: Move the display to a new display position (relative coordinates).
 
 static ERROR DISPLAY_Move(extDisplay *Self, struct acMove *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return ERR_NullArgs;
 
@@ -1106,7 +1106,7 @@ MoveToBack: Move the display to the back of the display list.
 
 static ERROR DISPLAY_MoveToBack(extDisplay *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    log.branch("%s", GetName(Self));
 
 #ifdef _WIN32
@@ -1126,7 +1126,7 @@ MoveToFront: Move the display to the front of the display list.
 
 static ERROR DISPLAY_MoveToFront(extDisplay *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    log.branch("%s", GetName(Self));
 #ifdef _WIN32
    winMoveToFront(Self->WindowHandle);
@@ -1153,7 +1153,7 @@ unavailable.
 
 static ERROR DISPLAY_MoveToPoint(extDisplay *Self, struct acMoveToPoint *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return ERR_NullArgs;
 
@@ -1291,7 +1291,7 @@ If the display is hosted, the Width and Height values will determine the size of
 
 static ERROR DISPLAY_Resize(extDisplay *Self, struct acResize *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.branch();
 
@@ -1407,7 +1407,7 @@ SaveSettings: Saves the current display settings as the default.
 
 static ERROR DISPLAY_SaveSettings(extDisplay *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
 #ifdef __xwindows__
 
@@ -1545,7 +1545,7 @@ Failed: Failed to switch to the requested display mode.
 
 static ERROR DISPLAY_SetDisplay(extDisplay *Self, struct gfxSetDisplay *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -1645,7 +1645,7 @@ NoSupport: The graphics hardware does not support gamma correction.
 static ERROR DISPLAY_SetGamma(extDisplay *Self, struct gfxSetGamma *Args)
 {
 #ifdef __snap__
-   parasol::Log log;
+   pf::Log log;
    GA_palette palette[256];
    DOUBLE intensity, red, green, blue;
 
@@ -1707,7 +1707,7 @@ NullArgs:
 static ERROR DISPLAY_SetGammaLinear(extDisplay *Self, struct gfxSetGammaLinear *Args)
 {
 #ifdef __snap__
-   parasol::Log log;
+   pf::Log log;
    GA_palette palette[256];
 
    if (!Args) return log.warning(ERR_NullArgs);
@@ -1785,7 +1785,7 @@ NullArgs
 static ERROR DISPLAY_SetMonitor(extDisplay *Self, struct gfxSetMonitor *Args)
 {
 #ifdef __snap__
-   parasol::Log log;
+   pf::Log log;
    OBJECTPTR config;
    GA_monitor monitor;
    ERROR priverror;
@@ -1898,7 +1898,7 @@ The `VISIBLE` flag in the #Flags field will be set if the Show operation is succ
 
 ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.branch();
 
@@ -2019,7 +2019,7 @@ NullArgs
 
 static ERROR DISPLAY_UpdateDisplay(extDisplay *Self, struct gfxUpdateDisplay *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Bitmap)) return log.warning(ERR_NullArgs);
 
@@ -2126,7 +2126,7 @@ NullArgs
 
 static ERROR DISPLAY_UpdatePalette(extDisplay *Self, struct gfxUpdatePalette *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->NewPalette)) return ERR_NullArgs;
 
@@ -2252,7 +2252,7 @@ ERROR GET_HDensity(extDisplay *Self, LONG *Value)
 
    OBJECTID style_id;
    if (!FindObject("glStyle", ID_XML, 0, &style_id)) {
-      parasol::ScopedObjectLock<objXML> style(style_id, 3000);
+      pf::ScopedObjectLock<objXML> style(style_id, 3000);
       if (style.granted()) {
          char strdpi[32];
          if (!acGetVar(style.obj, "/interface/@dpi", strdpi, sizeof(strdpi))) {
@@ -2322,7 +2322,7 @@ ERROR GET_VDensity(extDisplay *Self, LONG *Value)
 
    OBJECTID style_id;
    if (!FindObject("glStyle", ID_XML, 0, &style_id)) {
-      parasol::ScopedObjectLock<objXML> style(style_id, 3000);
+      pf::ScopedObjectLock<objXML> style(style_id, 3000);
       if (style.granted()) {
          char strdpi[32];
          if (!acGetVar(style.obj, "/interface/@dpi", strdpi, sizeof(strdpi))) {
@@ -2468,7 +2468,7 @@ BORDERLESS.
 
 static ERROR SET_Flags(extDisplay *Self, LONG Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->initialised()) {
       // Only flags that are explicitly supported here may be set post-initialisation.
@@ -2804,7 +2804,7 @@ output device.
 
 static ERROR SET_PopOver(extDisplay *Self, OBJECTID Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
 #ifdef __xwindows__
 
@@ -3084,7 +3084,7 @@ static ERROR SET_Y(extDisplay *Self, LONG Value)
 
 void alloc_display_buffer(extDisplay *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.branch("Allocating a video based buffer bitmap.");
 

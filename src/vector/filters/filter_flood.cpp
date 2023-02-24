@@ -18,7 +18,7 @@ class extFloodFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = ID_FLOODFX;
    static constexpr CSTRING CLASS_NAME = "FloodFX";
-   using create = parasol::Create<extFloodFX>;
+   using create = pf::Create<extFloodFX>;
 
    FRGB   Colour;
    RGB8   ColourRGB;
@@ -42,7 +42,7 @@ Draw: Render the effect to the target bitmap.
 
 static ERROR FLOODFX_Draw(extFloodFX *Self, struct acDraw *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    auto &filter = Self->Filter;
 
@@ -96,7 +96,7 @@ static ERROR FLOODFX_GET_Colour(extFloodFX *Self, FLOAT **Value, LONG *Elements)
 
 static ERROR FLOODFX_SET_Colour(extFloodFX *Self, FLOAT *Value, LONG Elements)
 {
-   parasol::Log log;
+   pf::Log log;
    if (Value) {
       if (Elements >= 3) {
          Self->Colour.Red   = Value[0];
@@ -130,7 +130,7 @@ static ERROR FLOODFX_GET_Opacity(extFloodFX *Self, DOUBLE *Value)
 
 static ERROR FLOODFX_SET_Opacity(extFloodFX *Self, DOUBLE Value)
 {
-   parasol::Log log;
+   pf::Log log;
    if ((Value >= 0.0) and (Value <= 1.0)) {
       Self->Opacity = Value;
       return ERR_Okay;

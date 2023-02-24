@@ -28,7 +28,7 @@ contains the pattern content.
 
 static ERROR PATTERN_Draw(extVectorPattern *Self, struct acDraw *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Self->Scene->PageWidth) return log.warning(ERR_FieldNotSet);
    if (!Self->Scene->PageHeight) return log.warning(ERR_FieldNotSet);
@@ -72,7 +72,7 @@ static ERROR PATTERN_Free(extVectorPattern *Self, APTR Void)
 
 static ERROR PATTERN_Init(extVectorPattern *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((Self->SpreadMethod <= 0) or (Self->SpreadMethod >= VSPREAD_END)) {
       log.traceWarning("Invalid SpreadMethod value of %d", Self->SpreadMethod);
@@ -280,7 +280,7 @@ A transform can be applied to the pattern by setting this field with an SVG comp
 
 static ERROR PATTERN_SET_Transform(extVectorPattern *Self, CSTRING Commands)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Commands) return log.warning(ERR_InvalidValue);
 

@@ -36,7 +36,7 @@ static int module_load(lua_State *Lua)
       return 0;
    }
 
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.branch("Module: %s", modname);
 
    // Check if there is an include file with the same name as this module.
@@ -129,7 +129,7 @@ static int module_index(lua_State *Lua)
 
 static int module_call(lua_State *Lua)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objScript *Self = Lua->Script;
    UBYTE buffer[256]; // +8 for overflow protection
    FUNCTION func;
@@ -721,7 +721,7 @@ static int module_call(lua_State *Lua)
 
 static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField *args, LONG result)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG i;
    APTR var;
 
@@ -890,7 +890,7 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
 
 void register_module_class(lua_State *Lua)
 {
-   parasol::Log log;
+   pf::Log log;
 
    static const struct luaL_Reg modlib_functions[] = {
       { "new",  module_load },

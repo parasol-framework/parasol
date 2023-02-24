@@ -15,7 +15,7 @@ class extVectorSpiral : public extVector {
    public:
    static constexpr CLASSID CLASS_ID = ID_VECTORSPIRAL;
    static constexpr CSTRING CLASS_NAME = "VectorSpiral";
-   using create = parasol::Create<extVectorSpiral>;
+   using create = pf::Create<extVectorSpiral>;
 
    DOUBLE Scale;
    DOUBLE Offset;
@@ -90,7 +90,7 @@ static ERROR SPIRAL_GET_CenterX(extVectorSpiral *Self, Variable *Value)
 
 static ERROR SPIRAL_SET_CenterX(extVectorSpiral *Self, Variable *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    DOUBLE val;
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -128,7 +128,7 @@ static ERROR SPIRAL_GET_CenterY(extVectorSpiral *Self, Variable *Value)
 
 static ERROR SPIRAL_SET_CenterY(extVectorSpiral *Self, Variable *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    DOUBLE val;
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -165,7 +165,7 @@ static ERROR SPIRAL_GET_Height(extVectorSpiral *Self, Variable *Value)
 
 static ERROR SPIRAL_SET_Height(extVectorSpiral *Self, Variable *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    DOUBLE val;
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -246,7 +246,7 @@ static ERROR SPIRAL_GET_Radius(extVectorSpiral *Self, Variable *Value)
 
 static ERROR SPIRAL_SET_Radius(extVectorSpiral *Self, Variable *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    DOUBLE val;
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -335,7 +335,7 @@ static ERROR SPIRAL_GET_Width(extVectorSpiral *Self, Variable *Value)
 
 static ERROR SPIRAL_SET_Width(extVectorSpiral *Self, Variable *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    DOUBLE val;
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;

@@ -18,7 +18,7 @@ definition.  This will ensure that the VectorImage is de-allocated when the scen
 
 static ERROR IMAGE_Init(objVectorImage *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((Self->SpreadMethod <= 0) or (Self->SpreadMethod >= VSPREAD_END)) {
       log.traceWarning("Invalid SpreadMethod value of %d", Self->SpreadMethod);

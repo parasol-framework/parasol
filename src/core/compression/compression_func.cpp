@@ -13,7 +13,7 @@ template<class T> void wrb(T Value, APTR Target) {
 
 static void print(extCompression *Self, CSTRING Buffer)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->OutputID) {
       struct acDataFeed feed = {
@@ -29,7 +29,7 @@ static void print(extCompression *Self, CSTRING Buffer)
 
 static void print(extCompression *Self, std::string Buffer)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->OutputID) {
       struct acDataFeed feed = {
@@ -47,7 +47,7 @@ static void print(extCompression *Self, std::string Buffer)
 
 static ERROR compress_folder(extCompression *Self, std::string Location, std::string Path)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.branch("Compressing folder \"%s\" to \"%s\"", Location.c_str(), Path.c_str());
 
@@ -175,7 +175,7 @@ static ERROR compress_folder(extCompression *Self, std::string Location, std::st
 
 static ERROR compress_file(extCompression *Self, std::string Location, std::string Path, bool Link)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.branch("Compressing file \"%s\" to \"%s\"", Location.c_str(), Path.c_str());
 
@@ -190,7 +190,7 @@ static ERROR compress_file(extCompression *Self, std::string Location, std::stri
    if (level < 0) level = 0;
    else if (level > 9) level = 9;
 
-   parasol::Defer([Self, deflateend] {
+   pf::Defer([Self, deflateend] {
       if (deflateend) deflateEnd(&Self->Zip);
       Self->FileIndex++;
    });
@@ -436,7 +436,7 @@ static ERROR compress_file(extCompression *Self, std::string Location, std::stri
 
 static ERROR remove_file(extCompression *Self, std::list<ZipFile>::iterator &File)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.branch("Deleting \"%s\"", File->Name.c_str());
 
@@ -485,7 +485,7 @@ static ERROR remove_file(extCompression *Self, std::list<ZipFile>::iterator &Fil
 
 static ERROR fast_scan_zip(extCompression *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    ziptail tail;
 
    log.traceBranch("");
@@ -588,7 +588,7 @@ static ERROR fast_scan_zip(extCompression *Self)
 
 static ERROR scan_zip(extCompression *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("");
 
@@ -709,7 +709,7 @@ static ERROR scan_zip(extCompression *Self)
 
 static ERROR send_feedback(extCompression *Self, CompressionFeedback *Feedback)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    ERROR error;
 
    if (!Self->Feedback.Type) return ERR_Okay;
@@ -717,7 +717,7 @@ static ERROR send_feedback(extCompression *Self, CompressionFeedback *Feedback)
    if (Self->Feedback.Type IS CALL_STDC) {
       auto routine = (ERROR (*)(extCompression *, CompressionFeedback *))Self->Feedback.StdC.Routine;
       if (Self->Feedback.StdC.Context) {
-         parasol::SwitchContext context(Self->Feedback.StdC.Context);
+         pf::SwitchContext context(Self->Feedback.StdC.Context);
          error = routine(Self, Feedback);
       }
       else error = routine(Self, Feedback);

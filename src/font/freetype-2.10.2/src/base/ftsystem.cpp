@@ -246,7 +246,7 @@ extern struct CoreBase *CoreBase;
 
    {
       extern OBJECTPTR modFont;
-      parasol::SwitchContext ctx(modFont);
+      pf::SwitchContext ctx(modFont);
       file = objFile::create::integral(fl::Name("FreetypeTTFile"), fl::Path(filepathname), fl::Flags(FL_READ));
    }
 

@@ -6,7 +6,7 @@ Name: Files
 
 static void folder_free(APTR Address)
 {
-   parasol::Log log("CloseDir");
+   pf::Log log("CloseDir");
    auto folder = (DirInfo *)Address;
 
    // Note: Virtual file systems should focus on destroying handles as fs_closedir() will take care of memory and list
@@ -57,7 +57,7 @@ AllocMemory
 
 ERROR OpenDir(CSTRING Path, LONG Flags, DirInfo **Result)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Path) or (!Result)) return log.warning(ERR_NullArgs);
 
@@ -167,7 +167,7 @@ DirEmpty: There are no more items to scan.
 
 ERROR ScanDir(DirInfo *Dir)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Dir) return log.warning(ERR_NullArgs);
 

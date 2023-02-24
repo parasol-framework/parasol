@@ -49,7 +49,7 @@ static void key_event(struct finput *, evKey *, LONG);
 
 static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    auto Self = (objScript *)CurrentContext();
    auto prv = (prvFluid *)Self->ChildPrivate;
@@ -95,7 +95,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 
 static int input_index(lua_State *Lua)
 {
-   parasol::Log log;
+   pf::Log log;
    auto input = (struct finput *)luaL_checkudata(Lua, 1, "Fluid.input");
 
    if (input) {
@@ -122,7 +122,7 @@ static int input_index(lua_State *Lua)
 
 static int input_keyboard(lua_State *Lua)
 {
-   parasol::Log log("input.keyboard");
+   pf::Log log("input.keyboard");
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    OBJECTID object_id;
@@ -281,7 +281,7 @@ static int input_request_item(lua_State *Lua)
 
       {
          // The source will return a DATA_RECEIPT for the items that we've asked for (see the DataFeed action).
-         parasol::Log log("input.request_item");
+         pf::Log log("input.request_item");
          log.branch();
          error = ActionMsg(AC_DataFeed, source_id, &dc);
       }
@@ -300,7 +300,7 @@ static int input_request_item(lua_State *Lua)
 
 static int input_subscribe(lua_State *Lua)
 {
-   parasol::Log log("input.subscribe");
+   pf::Log log("input.subscribe");
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    LONG mask = lua_tointeger(Lua, 1); // Optional
@@ -321,7 +321,7 @@ static int input_subscribe(lua_State *Lua)
 
    ERROR error;
    if (!modDisplay) {
-      parasol::SwitchContext context(modFluid);
+      pf::SwitchContext context(modFluid);
       if ((error = objModule::load("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase))) {
          luaL_error(Lua, "Failed to load display module.");
          return 0;
@@ -378,7 +378,7 @@ static int input_unsubscribe(lua_State *Lua)
       return 0;
    }
 
-   parasol::Log log("input.unsubscribe");
+   pf::Log log("input.unsubscribe");
    log.traceBranch("");
 
    if (input->InputValue)  { luaL_unref(Lua, LUA_REGISTRYINDEX, input->InputValue); input->InputValue = 0; }
@@ -396,7 +396,7 @@ static int input_unsubscribe(lua_State *Lua)
 
 static int input_destruct(lua_State *Lua)
 {
-   parasol::Log log("input.destroy");
+   pf::Log log("input.destroy");
 
    auto input = (struct finput *)lua_touserdata(Lua, 1);
    if (input) {
@@ -432,7 +432,7 @@ static int input_destruct(lua_State *Lua)
 
 static void key_event(struct finput *Input, evKey *Event, LONG Size)
 {
-   parasol::Log log("input.key_event");
+   pf::Log log("input.key_event");
    objScript *script = Input->Script;
    auto prv = (prvFluid *)script->ChildPrivate;
 
@@ -468,7 +468,7 @@ static void key_event(struct finput *Input, evKey *Event, LONG Size)
 
 static void focus_event(lua_State *Lua, evFocus *Event, LONG Size)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
    objScript *script = Lua->Script;
 
@@ -536,7 +536,7 @@ void register_input_class(lua_State *Lua)
       { NULL, NULL }
    };
 
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.trace("Registering input interface.");
 
    luaL_newmetatable(Lua, "Fluid.input");

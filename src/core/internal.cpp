@@ -22,7 +22,7 @@ Functions that are internal to the Core.
 
 #include "defs.h"
 
-using namespace parasol;
+using namespace pf;
 
 //********************************************************************************************************************
 // If a function has reason to believe that a process has crashed or is failing to unlock memory blocks, it can call
@@ -30,7 +30,7 @@ using namespace parasol;
 
 ERROR validate_process(LONG ProcessID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    OBJECTID task_id;
    LONG i;
    BYTE broadcastpid;
@@ -140,7 +140,7 @@ public|untracked and private memory flags as necessary.  Example:
 ERROR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffer, BYTE *Buffer, LONG BufferSize,
                     LONG *NewSize, WORD *WaitResult, CSTRING ActionName)
 {
-   parasol::Log log("CopyArguments");
+   pf::Log log("CopyArguments");
    BYTE *src, *data;
    MEMORYID memoryid;
    LONG memsize, i, j, len, pos, offset;
@@ -291,7 +291,7 @@ looperror:
 ERROR local_copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffer, BYTE *Buffer, LONG BufferSize,
                     LONG *NewSize, CSTRING ActionName)
 {
-   parasol::Log log("CopyArguments");
+   pf::Log log("CopyArguments");
    BYTE *src, *data;
    LONG memsize, j, len;
    ERROR error;
@@ -448,7 +448,7 @@ void local_free_args(APTR Parameters, const struct FunctionField *Args)
 
 ERROR resolve_args(APTR Parameters, const struct FunctionField *Args)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG i;
    ERROR error;
    BYTE *Buffer = (BYTE *)Parameters;
@@ -561,7 +561,7 @@ TaskList * find_process(LONG ProcessID)
 ERROR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
 {
 #ifdef __unix__
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    // Call waitpid() to check for zombie processes first.  This covers all processes within our own context, so our child processes, children of those children etc.
 

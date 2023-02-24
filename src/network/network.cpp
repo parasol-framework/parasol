@@ -265,7 +265,7 @@ static MsgHandler *glResolveAddrHandler = NULL;
 
 ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
-   parasol::Log log;
+   pf::Log log;
 
    CoreBase = argCoreBase;
 
@@ -321,7 +321,7 @@ ERROR MODOpen(OBJECTPTR Module)
 
 static ERROR MODExpunge(void)
 {
-   parasol::Log log;
+   pf::Log log;
 
 #ifdef _WIN32
    SetResourcePtr(RES_NET_PROCESSING, NULL);
@@ -372,7 +372,7 @@ struct(IPAddress) IPAddress: A pointer to the IPAddress structure.
 
 static CSTRING netAddressToStr(IPAddress *Address)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Address) return NULL;
 
@@ -559,7 +559,7 @@ static ERROR netSetSSL(extNetSocket *Socket, ...)
 
    va_start(list, Socket);
    while ((tagid = va_arg(list, LONG))) {
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
       log.traceBranch("Command: %d", tagid);
 
       switch(tagid) {
@@ -612,7 +612,7 @@ static void client_server_pending(SOCKET_HANDLE FD, APTR Self)
 
 static ERROR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG BufferSize, LONG Flags, LONG *Result)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("Socket: %d, BufSize: %d, Flags: $%.8x, SSLBusy: %d", Socket, BufferSize, Flags, Self->SSLBusy);
 
@@ -729,7 +729,7 @@ static ERROR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
 
 static ERROR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *Length, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!*Length) return ERR_Okay;
 

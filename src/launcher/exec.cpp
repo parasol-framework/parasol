@@ -4,7 +4,7 @@
 
 ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG i, j;
    ERROR error;
 

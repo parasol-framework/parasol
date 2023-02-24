@@ -16,7 +16,7 @@ static void audio_stopped_event(extAudio &Audio, LONG SampleHandle)
 {
    auto &sample = Audio.Samples[SampleHandle];
    if (sample.OnStop.Type IS CALL_STDC) {
-      parasol::SwitchContext context(sample.OnStop.StdC.Context);
+      pf::SwitchContext context(sample.OnStop.StdC.Context);
       auto routine = (void (*)(extAudio *, LONG))sample.OnStop.StdC.Routine;
       routine(&Audio, SampleHandle);
    }
@@ -39,7 +39,7 @@ static void audio_stopped_event(extAudio &Audio, LONG SampleHandle)
 static BYTELEN fill_stream_buffer(LONG Handle, AudioSample &Sample, LONG Offset)
 {
    if (Sample.Callback.Type IS CALL_STDC) {
-      parasol::SwitchContext context(Sample.Callback.StdC.Context);
+      pf::SwitchContext context(Sample.Callback.StdC.Context);
       auto routine = (BYTELEN (*)(LONG, LONG, UBYTE *, LONG))Sample.Callback.StdC.Routine;
       return routine(Handle, Offset, Sample.Data, Sample.SampleLength<<sample_shift(Sample.SampleType));
    }
@@ -127,7 +127,7 @@ void dsSeekData(BaseClass *Self, LONG Offset) {
 
 static ERROR set_channel_volume(extAudio *Self, AudioChannel *Channel)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Self) or (!Channel)) return log.warning(ERR_NullArgs);
 
@@ -182,7 +182,7 @@ static ERROR set_channel_volume(extAudio *Self, AudioChannel *Channel)
 
 ERROR process_commands(extAudio *Self, SAMPLE Elements)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    for (LONG index=1; index < (LONG)Self->Sets.size(); index++) {
       Self->Sets[index].MixLeft -= Elements;
@@ -230,7 +230,7 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
 {
 #ifdef ALSA_ENABLED
 
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    static WORD errcount = 0;
 
    // Check if we need to send out any OnStop events
@@ -400,7 +400,7 @@ static void convert_float(FLOAT *buf, LONG TotalSamples, FLOAT *dest)
 
 static LONG samples_until_end(extAudio *Self, AudioChannel &Channel, LONG *NextOffset)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG num, lp_start, lp_end;
    LTYPE lp_type;
 
@@ -512,7 +512,7 @@ static bool amiga_change(extAudio *Self, AudioChannel &Channel)
 
 static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG lp_start, lp_end;
    LTYPE lp_type;
 
@@ -641,7 +641,7 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
 
 static ERROR mix_data(extAudio *Self, LONG Elements, APTR Dest)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    while (Elements > 0) {
       // Mix only as much as we can fit in our mixing buffer
@@ -696,7 +696,7 @@ static ERROR mix_data(extAudio *Self, LONG Elements, APTR Dest)
 
 static void mix_channel(extAudio *Self, AudioChannel &Channel, LONG TotalSamples, APTR Dest)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    auto &sample = Self->Samples[Channel.SampleHandle];
 

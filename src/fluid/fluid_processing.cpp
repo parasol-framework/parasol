@@ -106,12 +106,12 @@ static int processing_new(lua_State *Lua)
 static int processing_sleep(lua_State *Lua)
 {
    { // Always collect your garbage before going to sleep
-      parasol::Log log;
+      pf::Log log;
       log.traceBranch("Collecting garbage.");
       lua_gc(Lua, LUA_GCCOLLECT, 0);
    }
 
-   parasol::Log log;
+   pf::Log log;
    static std::recursive_mutex recursion; // Intentionally accessible to all threads
 
    ERROR error;
@@ -231,7 +231,7 @@ static const luaL_Reg processinglib_methods[] = {
 
 void register_processing_class(lua_State *Lua)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.trace("Registering processing interface.");
 
    luaL_newmetatable(Lua, "Fluid.processing");

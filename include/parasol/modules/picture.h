@@ -34,7 +34,7 @@ class objPicture : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_PICTURE;
    static constexpr CSTRING CLASS_NAME = "Picture";
 
-   using create = parasol::Create<objPicture>;
+   using create = pf::Create<objPicture>;
 
    objBitmap * Bitmap;    // Represents a picture's image data.
    objBitmap * Mask;      // Refers to a Bitmap that imposes a mask on the image.

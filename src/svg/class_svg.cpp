@@ -247,7 +247,7 @@ SaveToObject: Saves the SVG document to a data object.
 
 static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    static char header[] =
 "<?xml version=\"1.0\" standalone=\"no\"?>\n\
 <!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n";

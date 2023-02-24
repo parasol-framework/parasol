@@ -69,7 +69,7 @@ The following parameters can be used when executing script files:\n\
 
 static ERROR process_args(void)
 {
-   parasol::Log log("Parasol");
+   pf::Log log("Parasol");
    CSTRING *args;
    LONG i, j;
 
@@ -162,7 +162,7 @@ static ERROR process_args(void)
 
 int main(int argc, CSTRING *argv)
 {
-   parasol::Log log("Parasol");
+   pf::Log log("Parasol");
 
    const char *msg = init_parasol(argc, argv);
    if (msg) {
@@ -223,7 +223,7 @@ exit:
 
 ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)
 {
-   parasol::Log log("Parasol");
+   pf::Log log("Parasol");
    log.branch("Win: %d, Size: %dx%d", WindowHandle, Width, Height);
 
    ERROR error;

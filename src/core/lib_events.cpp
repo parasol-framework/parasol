@@ -34,7 +34,7 @@ static UBYTE glEventListAltered = FALSE;
 
 void free_events(void)
 {
-   parasol::Log log("Core");
+   pf::Log log("Core");
 
    log.function("Freeing the event list.");
 
@@ -80,7 +80,7 @@ NullArgs
 
 ERROR BroadcastEvent(APTR Event, LONG EventSize)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Event) or ((size_t)EventSize < sizeof(rkEvent))) return ERR_NullArgs;
 
@@ -130,7 +130,7 @@ large: The EventID is returned as a 64-bit integer.
 
 LARGE GetEventID(LONG Group, CSTRING SubGroup, CSTRING Event)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Group) return 0;
 
@@ -172,7 +172,7 @@ AllocMemory
 
 ERROR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR Custom, APTR *Handle)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Callback) or (!EventID) or (!Handle)) return ERR_NullArgs;
 
@@ -224,7 +224,7 @@ ptr Event: An event handle returned from SubscribeEvent()
 
 void UnsubscribeEvent(APTR Event)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Event) return;
    if (!glEventList) return; // All events have already been freed (i.e. Core is closing)
@@ -257,7 +257,7 @@ void UnsubscribeEvent(APTR Event)
 
 ERROR msg_event(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Message) or ((size_t)MsgSize < sizeof(rkEvent))) return ERR_Okay;
 
@@ -279,9 +279,9 @@ restart:
 
          glEventListAltered = FALSE;
 
-         parasol::ScopedObjectLock lock(event->ContextID, 3000);
+         pf::ScopedObjectLock lock(event->ContextID, 3000);
          if (lock.granted()) {
-            parasol::SwitchContext ctx(lock.obj);
+            pf::SwitchContext ctx(lock.obj);
             event->Callback(event->Custom, Message, MsgSize);
          }
 

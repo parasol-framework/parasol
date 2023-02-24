@@ -46,7 +46,7 @@ An inactive audio object can operate in a limited fashion but is without access 
 
 static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Initialising) return ERR_Okay;
 
@@ -176,7 +176,7 @@ AllocMemory: Failed to allocate enough memory to hold the sample data.
 
 ERROR AUDIO_AddSample(extAudio *Self, struct sndAddSample *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -289,7 +289,7 @@ static const LONG MAX_STREAM_BUFFER = 16 * 1024; // Max stream buffer length in 
 
 static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->SampleFormat)) return log.warning(ERR_NullArgs);
    if (!Args->Callback.Type) return log.warning(ERR_NullArgs);
@@ -408,7 +408,7 @@ Args
 
 static ERROR AUDIO_CloseChannels(extAudio *Self, struct sndCloseChannels *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -432,7 +432,7 @@ resources back to the host system.  The audio object will remain in a suspended 
 
 static ERROR AUDIO_Deactivate(extAudio *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.branch();
 
@@ -457,7 +457,7 @@ static ERROR AUDIO_Deactivate(extAudio *Self, APTR Void)
 
 static void user_login(APTR Reference, APTR Info, LONG InfoSize)
 {
-   parasol::Log log("Audio");
+   pf::Log log("Audio");
    extAudio *Self;
 
    if (!AccessObjectID((OBJECTID)(MAXINT)Reference, 3000, &Self)) {
@@ -505,7 +505,7 @@ static ERROR AUDIO_Free(extAudio *Self, APTR Void)
 
 static ERROR AUDIO_Init(extAudio *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
 #ifdef _WIN32
    Self->OutputRate = 44100; // Mix rate is forced for direct sound
@@ -523,7 +523,7 @@ static ERROR AUDIO_Init(extAudio *Self, APTR Void)
 
 static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    new (Self) extAudio;
 
@@ -592,7 +592,7 @@ AllocMemory: Memory for the audio channels could not be allocated.
 
 static ERROR AUDIO_OpenChannels(extAudio *Self, struct sndOpenChannels *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -646,7 +646,7 @@ OutOfRange: The provided sample handle is not within the valid range.
 
 static ERROR AUDIO_RemoveSample(extAudio *Self, struct sndRemoveSample *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -683,7 +683,7 @@ SaveToObject: Saves the current audio settings to another object.
 
 static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
 
@@ -804,7 +804,7 @@ Failed: Sample is not a stream.
 
 static ERROR AUDIO_SetSampleLength(extAudio *Self, struct sndSetSampleLength *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -859,7 +859,7 @@ OutOfRange: The Volume or Index is out of the acceptable range.
 
 static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
 #ifdef ALSA_ENABLED
 
@@ -1316,7 +1316,7 @@ static ERROR SET_Stereo(extAudio *Self, LONG Value)
 
 static void load_config(extAudio *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    // Attempt to get the user's preferred pointer settings from the user:config/pointer file.
 

@@ -41,7 +41,7 @@ static ERROR cache_host(KeyStore *, CSTRING, struct addrinfo *, DNSEntry **);
 
 static ERROR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    auto r = (resolve_buffer *)Message;
 
@@ -70,7 +70,7 @@ static ERROR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR M
 
 static ERROR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    auto r = (resolve_buffer *)Message;
 
@@ -100,7 +100,7 @@ static ERROR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR M
 
 static ERROR thread_resolve_name(objThread *Thread)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    auto rb = (resolve_buffer *)Thread->Data;
 
@@ -117,7 +117,7 @@ static ERROR thread_resolve_name(objThread *Thread)
 
 static ERROR thread_resolve_addr(objThread *Thread)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    auto rb = (resolve_buffer *)Thread->Data;
 
@@ -162,7 +162,7 @@ Failed: The address could not be resolved
 
 static ERROR NETLOOKUP_BlockingResolveAddress(extNetLookup *Self, struct nlBlockingResolveAddress *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    ERROR error;
 
    if (!Args->Address) return log.warning(ERR_NullArgs);
@@ -209,7 +209,7 @@ Failed:
 
 static ERROR NETLOOKUP_BlockingResolveName(extNetLookup *Self, struct nlResolveName *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    ERROR error;
 
    if (!Args->HostName) return log.error(ERR_NullArgs);
@@ -255,7 +255,7 @@ static ERROR NETLOOKUP_Free(extNetLookup *Self, APTR Void)
 static ERROR NETLOOKUP_FreeWarning(extNetLookup *Self, APTR Void)
 {
    if (not Self->Threads->empty()) {
-      parasol::Log log;
+      pf::Log log;
       log.msg("Waiting on %d threads that remain active...", (LONG)Self->Threads->size());
       while (not Self->Threads->empty()) { // Threads will automatically remove themselves
 restart:
@@ -305,7 +305,7 @@ Failed: The address could not be resolved
 
 static ERROR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nlResolveAddress *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args->Address) return log.warning(ERR_NullArgs);
    if (!Self->Callback.Type) return log.warning(ERR_FieldNotSet);
@@ -372,7 +372,7 @@ Failed:
 
 static ERROR NETLOOKUP_ResolveName(extNetLookup *Self, struct nlResolveName *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args->HostName) return log.error(ERR_NullArgs);
 
@@ -496,7 +496,7 @@ static ERROR cache_host(KeyStore *Store, CSTRING Key, struct hostent *Host, DNSE
       if (!(Key = Host->h_name)) return ERR_Args;
    }
 
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.debug("Key: %s, Addresses: %p (IPV6: %d)", Key, Host->h_addr_list, (Host->h_addrtype == AF_INET6));
 
@@ -571,7 +571,7 @@ static ERROR cache_host(KeyStore *Store, CSTRING Key, struct addrinfo *Host, DNS
       if (!(Key = Host->ai_canonname)) return ERR_Args;
    }
 
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.debug("Key: %s, Addresses: %p (IPV6: %d)", Key, Host->ai_addr, (Host->ai_family == AF_INET6));
 
@@ -732,11 +732,11 @@ static ERROR resolve_name(CSTRING HostName, DNSEntry **Info)
 
 static void resolve_callback(extNetLookup *Self, ERROR Error, CSTRING HostName, IPAddress *Addresses, LONG TotalAddresses)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.traceBranch("Host: %s", HostName);
 
    if (Self->Callback.Type IS CALL_STDC) {
-      parasol::SwitchContext context(Self->Callback.StdC.Context);
+      pf::SwitchContext context(Self->Callback.StdC.Context);
       auto routine = (ERROR (*)(extNetLookup *, ERROR, CSTRING, IPAddress *, LONG))(Self->Callback.StdC.Routine);
       routine(Self, Error, HostName, Addresses, TotalAddresses);
    }

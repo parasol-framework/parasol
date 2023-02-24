@@ -33,7 +33,7 @@ static void write_string(objFile *File, CSTRING String)
 
 ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
-   parasol::Log log("XRandR");
+   pf::Log log("XRandR");
    WORD i;
    XRRScreenSize *sizes;
    XPixmapFormatValues *list;
@@ -168,7 +168,7 @@ Okay
 
 static ERROR xrSetDisplayMode(LONG *Width, LONG *Height)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG count;
    WORD i;
 
@@ -271,7 +271,7 @@ int: Returns the total number of known display modes.
 
 static LONG xrGetDisplayTotal(void)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!glActualCount) {
       for (LONG i=0; i < glSizeCount; i++) {
@@ -302,7 +302,7 @@ ptr: An xrMode structure is returned or NULL on failure.
 
 static struct xrMode * xrGetDisplayMode(LONG Index)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    static struct xrMode mode;
    LONG i, j;
 

@@ -39,7 +39,7 @@ static objModule *modDriver = NULL;
 
 static LONG scrUnsupported(void)
 {
-   parasol::Log log("Display");
+   pf::Log log("Display");
    log.warning("Unhandled display function called - driver is not complete.");
    return 0;
 }
@@ -124,7 +124,7 @@ Function JumpTable[] = {
 #if defined(__linux__) && !defined(__ANDROID__)
 static LONG test_x11(STRING Path)
 {
-   parasol::Log log("test_x11_socket");
+   pf::Log log("test_x11_socket");
    struct sockaddr_un sockname;
    LONG namelen, fd, err;
    WORD i;

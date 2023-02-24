@@ -67,7 +67,7 @@ static void generate_polygon(extVectorPoly *Vector)
 
 static ERROR read_points(extVectorPoly *Self, VectorPoint **Array, LONG *PointCount, CSTRING Value)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    // Count the number of values (note that a point consists of 2 values)
 
@@ -130,7 +130,7 @@ Move: Moves a polygon to a new position.
 
 static ERROR POLYGON_Move(extVectorPoly *Self, struct acMove *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -165,7 +165,7 @@ The operation will abort if any of the points in the polygon are discovered to b
 
 static ERROR POLYGON_MoveToPoint(extVectorPoly *Self, struct acMoveToPoint *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -225,7 +225,7 @@ If a Width and/or Height value of zero is passed, no scaling on the associated a
 
 static ERROR POLYGON_Resize(extVectorPoly *Self, struct acResize *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -389,7 +389,7 @@ static ERROR POLY_GET_X1(extVectorPoly *Self, Variable *Value)
 
 static ERROR POLY_SET_X1(extVectorPoly *Self, Variable *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    DOUBLE val;
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -430,7 +430,7 @@ static ERROR POLY_GET_X2(extVectorPoly *Self, Variable *Value)
 
 static ERROR POLY_SET_X2(extVectorPoly *Self, Variable *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    DOUBLE val;
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -471,7 +471,7 @@ static ERROR POLY_GET_Y1(extVectorPoly *Self, Variable *Value)
 
 static ERROR POLY_SET_Y1(extVectorPoly *Self, Variable *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    DOUBLE val;
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -512,7 +512,7 @@ static ERROR POLY_GET_Y2(extVectorPoly *Self, Variable *Value)
 
 static ERROR POLY_SET_Y2(extVectorPoly *Self, Variable *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    DOUBLE val;
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
