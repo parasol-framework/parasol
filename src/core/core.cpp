@@ -133,7 +133,7 @@ DLLCALL void WINAPI CloseHandle(APTR);
 #endif
 
 static TIMER glProcessJanitor = 0;
-static std::string glUserHomeFolder;
+static std::string glHomeFolderName;
 
 static void print_class_list(void) __attribute__ ((unused));
 static void print_class_list(void)
@@ -181,6 +181,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       fprintf(stderr, "Core module has already been initialised (OpenCore() called more than once.)\n");
    }
 
+   if (alloc_private_lock(TL_FIELDKEYS, 0)) return NULL; // For access to glFields
    if (alloc_private_lock(TL_CLASSDB, 0)) return NULL; // For access to glClassDB
    if (alloc_private_lock(TL_VOLUMES, 0)) return NULL; // For access to glVolumes
    if (alloc_private_lock(TL_GENERIC, 0)) return NULL; // A misc. internal mutex, strictly not recursive.
@@ -412,12 +413,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          #if defined(__unix__) && !defined(__ANDROID__)
          else if (!StrMatch(arg, "holdpriority")) hold_priority = TRUE;
          #endif
-         // Define the user: volume.  If the user folder does not exist then we create it so that the volume can be made.
-         //
-         // Note: In the volumes config file, 'user' is a special section that can define a name for the user folder other
-         // than 'ParasolXX'.  This is useful for customised distributions.  If the folder is named as 'default' then no
-         // user-specific folder is assigned.
-         else if (!StrCompare("home=", arg, 7, 0)) glUserHomeFolder.assign(arg + 7);
+         else if (!StrCompare("home=", arg, 7, 0)) glHomeFolderName.assign(arg + 7);
          else newargs[na++] = arg;
       }
 
@@ -707,18 +703,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    ManagedActions[AC_Free] = (LONG (*)(OBJECTPTR, APTR))MGR_Free;
    ManagedActions[AC_Signal] = (LONG (*)(OBJECTPTR, APTR))MGR_Signal;
 
-   if (!(glClassMap = VarNew(0, KSF_THREAD_SAFE))) {
-      fprintf(stderr, "Failed to allocate glClassMap.\n");
-      CloseCore();
-      return NULL;
-   }
-
-   if (!(glObjectLookup = VarNew(0, 0))) {
-      fprintf(stderr, "Failed to allocate glObjectLookup.\n");
-      CloseCore();
-      return NULL;
-   }
-
    if (add_task_class() != ERR_Okay) {
       fprintf(stderr, "Failed call to add_task_class().\n");
       CloseCore();
@@ -753,7 +737,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       return NULL;
    }
 
-   fs_initialised = TRUE;
+   fs_initialised = true;
 
    if (!(Info->Flags & OPF_SCAN_MODULES)) {
       ERROR error;
@@ -769,9 +753,17 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
             if (hdr IS CLASSDB_HEADER) {
                while (file->Position + ClassRecord::MIN_SIZE < filesize) {
                   ClassRecord item;
-                  item.read(*file);
+                  if ((error = item.read(*file))) break;
+
+                  if (glClassDB.contains(item.ClassID)) {
+                     log.warning("Invalid class dictionary file, %s is registered twice.", item.Name.c_str());
+                     error = ERR_Failed;
+                     break;
+                  }
                   glClassDB[item.ClassID] = item;
                }
+
+               if (error) glScanClasses = true;
             }
             else {
                // File is probably from an old version and requires recalculation.
@@ -1874,51 +1866,51 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
    // OPF_SYSTEM_PATH : system  : glSystemPath = %ROOT%/share/parasol
 
    #ifdef _WIN32
-      SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/filemanager", TAGEND);
-      SetVolume(AST_NAME, "system", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "misc/brick", TAGEND);
+      SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "programs/filemanager", TAGEND);
+      SetVolume(AST_NAME, "system", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick", TAGEND);
 
       if (glModulePath[0]) {
-         SetVolume(AST_NAME, "modules", AST_PATH, glModulePath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "misc/brick", TAGEND);
+         SetVolume(AST_NAME, "modules", AST_PATH, glModulePath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick", TAGEND);
       }
       else {
-         SetVolume(AST_NAME, "modules", AST_PATH, "system:lib/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "misc/brick", TAGEND);
+         SetVolume(AST_NAME, "modules", AST_PATH, "system:lib/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick", TAGEND);
       }
    #elif __unix__
-      SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "programs/filemanager",  TAGEND);
-      SetVolume(AST_NAME, "system", AST_PATH, glSystemPath, AST_FLAGS, VOLUME_REPLACE, AST_ICON, "misc/brick",  TAGEND);
+      SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "programs/filemanager",  TAGEND);
+      SetVolume(AST_NAME, "system", AST_PATH, glSystemPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_SYSTEM, AST_ICON, "misc/brick",  TAGEND);
 
       if (glModulePath[0]) {
-         SetVolume(AST_NAME, "modules", AST_PATH, glModulePath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "misc/brick",  TAGEND);
+         SetVolume(AST_NAME, "modules", AST_PATH, glModulePath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick",  TAGEND);
       }
       else {
-         char path[200];
-         snprintf(path, sizeof(path), "%slib/parasol/", glRootPath);
-         SetVolume(AST_NAME, "modules", AST_PATH, path, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "misc/brick",  TAGEND);
+         std::string path(glRootPath);
+         path.append("lib/parasol/");
+         SetVolume(AST_NAME, "modules", AST_PATH, path, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick",  TAGEND);
       }
 
-      SetVolume(AST_NAME, "drive1", AST_PATH, "/", AST_LABEL, "Linux", AST_FLAGS, VOLUME_REPLACE, AST_ICON, "devices/storage", AST_DEVICE, "hd", TAGEND);
+      SetVolume(AST_NAME, "drive1", AST_PATH, "/", AST_LABEL, "Linux", AST_FLAGS, VOLUME_REPLACE|VOLUME_SYSTEM, AST_ICON, "devices/storage", AST_DEVICE, "hd", TAGEND);
    #endif
 
    // Configure some standard volumes.
 
    #ifdef __ANDROID__
-      SetVolume(AST_NAME, "assets", AST_PATH, "EXT:FileAssets", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, TAGEND);
-      SetVolume(AST_NAME, "templates", AST_PATH, "assets:templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "misc/openbook", TAGEND);
-      SetVolume(AST_NAME, "config", AST_PATH, "localcache:config/|assets:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "tools/cog",  TAGEND);
+      SetVolume(AST_NAME, "assets", AST_PATH, "EXT:FileAssets", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, TAGEND);
+      SetVolume(AST_NAME, "templates", AST_PATH, "assets:templates/", AST_FLAGS, VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/openbook", TAGEND);
+      SetVolume(AST_NAME, "config", AST_PATH, "localcache:config/|assets:config/", AST_FLAGS, VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "tools/cog",  TAGEND);
    #else
-      SetVolume(AST_NAME, "templates", AST_PATH, "scripts:templates/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "misc/openbook", TAGEND);
-      SetVolume(AST_NAME, "config", AST_PATH, "system:config/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "tools/cog",  TAGEND);
+      SetVolume(AST_NAME, "templates", AST_PATH, "scripts:templates/", AST_FLAGS, VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/openbook", TAGEND);
+      SetVolume(AST_NAME, "config", AST_PATH, "system:config/", AST_FLAGS, VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "tools/cog",  TAGEND);
       if (!AnalysePath("parasol:bin/", NULL)) { // Bin is the location of the fluid and parasol binaries
-         SetVolume(AST_NAME, "bin", AST_PATH, "parasol:bin/", AST_FLAGS, VOLUME_HIDDEN, TAGEND);
+         SetVolume(AST_NAME, "bin", AST_PATH, "parasol:bin/", AST_FLAGS, VOLUME_HIDDEN|VOLUME_SYSTEM, TAGEND);
       }
-      else SetVolume(AST_NAME, "bin", AST_PATH, "parasol:", AST_FLAGS, VOLUME_HIDDEN, TAGEND);
+      else SetVolume(AST_NAME, "bin", AST_PATH, "parasol:", AST_FLAGS, VOLUME_HIDDEN|VOLUME_SYSTEM, TAGEND);
    #endif
 
-   SetVolume(AST_NAME, "temp", AST_PATH, "user:temp/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/trash", TAGEND);
-   SetVolume(AST_NAME, "fonts", AST_PATH, "system:fonts/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "items/font",  TAGEND);
-   SetVolume(AST_NAME, "scripts", AST_PATH, "system:scripts/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "filetypes/source",  TAGEND);
+   SetVolume(AST_NAME, "temp", AST_PATH, "user:temp/", AST_FLAGS, VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "items/trash", TAGEND);
+   SetVolume(AST_NAME, "fonts", AST_PATH, "system:fonts/", AST_FLAGS, VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "items/font",  TAGEND);
+   SetVolume(AST_NAME, "scripts", AST_PATH, "system:scripts/", AST_FLAGS, VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "filetypes/source",  TAGEND);
    SetVolume(AST_NAME, "styles", AST_PATH, "system:styles/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "tools/image_gallery",  TAGEND);
-   SetVolume(AST_NAME, "icons", AST_PATH, "EXT:widget", AST_FLAGS, VOLUME_HIDDEN, AST_ICON,  "misc/picture", TAGEND); // Refer to widget module for actual configuration
+   SetVolume(AST_NAME, "icons", AST_PATH, "EXT:widget", AST_FLAGS, VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON,  "misc/picture", TAGEND); // Refer to widget module for actual configuration
 
    // Some platforms need to have special volumes added - these are provided in the OpenInfo structure passed to
    // the Core.
@@ -1927,115 +1919,76 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
       for (LONG i=0; glOpenInfo->Options[i].Tag != TAGEND; i++) {
          switch (glOpenInfo->Options[i].Tag) {
             case TOI_LOCAL_CACHE: {
-               SetVolume(AST_NAME, "localcache", AST_PATH, glOpenInfo->Options[i].Value.String, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, TAGEND);
+               SetVolume(AST_NAME, "localcache", AST_PATH, glOpenInfo->Options[i].Value.String, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, TAGEND);
                break;
             }
             case TOI_LOCAL_STORAGE: {
-               SetVolume(AST_NAME, "localstorage", AST_PATH, glOpenInfo->Options[i].Value.String, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, TAGEND);
+               SetVolume(AST_NAME, "localstorage", AST_PATH, glOpenInfo->Options[i].Value.String, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, TAGEND);
                break;
             }
          }
       }
    }
 
-   if (glUserHomeFolder.empty()) {
-      for (auto& [group, keys] : glVolumes) {
-         if (!group.compare("User")) {
-            if (keys.contains("Name")) glUserHomeFolder.assign(keys["Name"]);
-            break;
-         }
+   // The client can specify glHomeFolderName on the command-line if desired.
+
+   if (glHomeFolderName.empty()) glHomeFolderName.assign("parasol");
+
+   std::string buffer("config:users/default/");
+
+   #ifdef __unix__
+      STRING homedir, logname;
+      if ((homedir = getenv("HOME")) and (homedir[0]) and (StrMatch("/", homedir) != ERR_Okay)) {
+         buffer = homedir;
+         if (buffer.back() IS '/') buffer.pop_back();
+         buffer += "/." + glHomeFolderName + std::to_string(F2T(VER_CORE)) + "/";
+      }
+      else if ((logname = getenv("LOGNAME")) and (logname[0])) {
+         buffer = std::string("config:users/") + logname + "/";
+      }
+   #elif _WIN32
+      // Attempt to get the path of the user's personal folder.  If the Windows system doesn't have this
+      // facility, attempt to retrieve the login name and store the user files in the system folder.
+
+      char user_folder[256];
+      if (winGetUserFolder(user_folder, sizeof(user_folder))) {
+         buffer = user_folder + glHomeFolderName + std::to_string(F2T(VER_CORE)) + std::to_string(REV_CORE) + "\\";
+      }
+      else if (winGetUserName(user_folder, sizeof(user_folder)) and (user_folder[0])) {
+         buffer.append(user_folder);
+         buffer += "/";
+      }
+   #endif
+
+   // Copy the default configuration files to the user: folder.  This also has the effect of creating the user
+   // folder if it does not already exist.
+
+   if (buffer != "config:users/default/") {
+      LONG location_type = 0;
+      if ((AnalysePath(buffer.c_str(), &location_type) != ERR_Okay) or (location_type != LOC_DIRECTORY)) {
+         buffer.pop_back();
+         SetDefaultPermissions(-1, -1, PERMIT_READ|PERMIT_WRITE);
+            CopyFile("config:users/default/", buffer.c_str(), NULL);
+         SetDefaultPermissions(-1, -1, 0);
+         buffer += '/';
       }
 
-      if (glUserHomeFolder.empty()) glUserHomeFolder.assign("parasol");
+      buffer += "|config:users/default/";
    }
 
-   char buffer[300];
-   if (!StrMatch("default", glUserHomeFolder)) {
-      StrCopy("config:users/", buffer, sizeof(buffer));
-      for (auto& [group, keys] : glVolumes) {
-         if (!group.compare("User")) {
-            if (keys.contains("Path")) StrCopy(keys["Path"], buffer, sizeof(buffer));
-         }
-      }
-   }
-   else {
-      LONG i;
-      #ifdef __unix__
-         STRING homedir, logname;
-         if ((homedir = getenv("HOME")) and (homedir[0]) and (StrMatch("/", homedir) != ERR_Okay)) {
-            log.msg("Home folder is \"%s\".", homedir);
-            for (i=0; (homedir[i]) and (i < (LONG)sizeof(buffer)-1); i++) buffer[i] = homedir[i];
-            while ((i > 0) and (buffer[i-1] IS '/')) i--;
-            i += snprintf(buffer+i, sizeof(buffer)-i, "/.%s%d/", glUserHomeFolder.c_str(), F2T(VER_CORE));
-         }
-         else if ((logname = getenv("LOGNAME")) and (logname[0])) {
-            log.msg("Login name for home folder is \"%s\".", logname);
-            i = snprintf(buffer, sizeof(buffer), "config:users/%s/", logname);
-            buffer[i] = 0;
-         }
-         else {
-            log.msg("Unable to determine home folder, using default.");
-            i = StrCopy("config:users/default/", buffer, COPY_ALL);
-         }
-      #elif _WIN32
-         // Attempt to get the path of the user's personal folder.  If the Windows system doesn't have this
-         // facility, attempt to retrieve the login name and store the user files in the system folder.
-
-         if ((i = winGetUserFolder(buffer, sizeof(buffer)-40))) {
-            snprintf(buffer+i, sizeof(buffer)-i, "%s%d%d\\", glUserHomeFolder.c_str(), F2T(VER_CORE), REV_CORE);
-            while (buffer[i]) i++;
-         }
-         else {
-            i = StrCopy("config:users/", buffer, 0);
-            if ((winGetUserName(buffer+i, sizeof(buffer)-i) and (buffer[i]))) {
-               while (buffer[i]) i++;
-               buffer[i++] = '/';
-               buffer[i] = 0;
-            }
-            else i += StrCopy("default/", buffer+i, COPY_ALL);
-         }
-      #else
-         i = StrCopy("config:users/default/", buffer, COPY_ALL);
-      #endif
-
-      // Copy the default configuration files to the user: folder.  This also has the effect of creating the user
-      // folder if it does not already exist.
-
-      if (StrMatch("config:users/default/", buffer) != ERR_Okay) {
-         LONG location_type = 0;
-         if ((AnalysePath(buffer, &location_type) != ERR_Okay) or (location_type != LOC_DIRECTORY)) {
-            buffer[i-1] = 0;
-            SetDefaultPermissions(-1, -1, PERMIT_READ|PERMIT_WRITE);
-               CopyFile("config:users/default/", buffer, NULL);
-            SetDefaultPermissions(-1, -1, 0);
-            buffer[i-1] = '/';
-         }
-
-         i += StrCopy("|config:users/default/", buffer+i, sizeof(buffer)-i);
-         buffer[i] = 0;
-      }
-   }
-
-   // Reset the user: volume
-
-   log.msg("Home Folder: %s", buffer);
-
-   SetVolume(AST_NAME, "user:", AST_PATH, buffer, AST_Flags, VOLUME_REPLACE, AST_ICON, "users/user", TAGEND);
+   SetVolume(AST_NAME, "user:", AST_PATH, buffer.c_str(), AST_Flags, VOLUME_REPLACE|VOLUME_SYSTEM, AST_ICON, "users/user", TAGEND);
 
    // Make sure that certain default directories exist
 
    CreateFolder("user:config/", PERMIT_READ|PERMIT_EXEC|PERMIT_WRITE);
    CreateFolder("user:temp/", PERMIT_READ|PERMIT_EXEC|PERMIT_WRITE);
 
-   // Set the default folder from temp:.  It is possible for the user to overwrite this in volumes.cfg if he
-   // would like temporary files to be written somewhere else.
-
    if (AnalysePath("temp:", NULL) != ERR_Okay) {
-      SetVolume(AST_NAME, "temp:", AST_PATH, "user:temp/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "items/trash", TAGEND);
+      SetVolume(AST_NAME, "temp:", AST_PATH, "user:temp/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "items/trash", TAGEND);
    }
 
    if (AnalysePath("clipboard:", NULL) != ERR_Okay) {
-      SetVolume(AST_NAME, "clipboard:", AST_PATH, "temp:clipboard/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN, AST_ICON, "items/clipboard", TAGEND);
+      SetVolume(AST_NAME, "clipboard:", AST_PATH, "temp:clipboard/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "items/clipboard", TAGEND);
    }
 
    // Look for the following drive types:
@@ -2050,6 +2003,7 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
    const SystemState *state = GetSystemState();
    if (StrMatch("Native", state->Platform) != ERR_Okay) {
 #ifdef _WIN32
+      char buffer[256];
       LONG len;
       if ((len = winGetLogicalDriveStrings(buffer, sizeof(buffer))) > 0) {
          char disk[] = "disk1";
@@ -2164,15 +2118,6 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
          }
       }
 #endif
-   }
-
-   // Merge user preferences into the system volume list
-
-   {
-      objConfig::create user = { fl::Path("user:config/volumes.cfg") };
-      if (user.ok()) {
-         merge_groups(glVolumes, user->Groups[0]);
-      }
    }
 
    // Create the 'archive' volume (non-essential)

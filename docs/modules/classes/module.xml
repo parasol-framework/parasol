@@ -32,16 +32,6 @@ if (modDisplay) modDisplay-&gt;getPtr(FID_ModBase, &amp;DisplayBase);
   </info>
 
   <actions>
-    <action>
-      <name>GetVar</name>
-      <comment>Module parameters can be retrieved through this action.</comment>
-    </action>
-
-    <action>
-      <name>SetVar</name>
-      <comment>Passes variable parameters to loaded modules.</comment>
-    </action>
-
   </actions>
 
   <methods>

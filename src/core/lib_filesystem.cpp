@@ -86,6 +86,29 @@ typedef int HANDLE;
 
 //********************************************************************************************************************
 
+struct extCacheFile : public CacheFile {
+   std::string FullPath;
+   std::vector<BYTE> Buffer;
+   WORD Locks;       // Internal count of active locks for this element.
+
+   extCacheFile() {}
+
+   extCacheFile(CSTRING pPath, LARGE pSize, LARGE pTimestamp) {
+      FullPath  = pPath;
+      Path      = FullPath.c_str();
+      Locks     = 1;
+      Size      = pSize;
+      TimeStamp = pTimestamp;
+      LastUse   = PreciseTime();
+
+      Buffer.resize(pSize + 1);
+      Buffer[pSize] = 0; // Null terminator is added to help with text file processing
+      Data = Buffer.data(); // Client has direct access
+   }
+};
+
+//********************************************************************************************************************
+
 class CacheFileIndex {
 public:
    std::string path;
@@ -114,7 +137,7 @@ namespace std {
    };
 }
 
-static std::unordered_map<CacheFileIndex, CacheFile *> glCache;
+static std::unordered_map<CacheFileIndex, extCacheFile> glCache;
 static std::mutex glCacheLock;
 
 //********************************************************************************************************************
@@ -139,15 +162,7 @@ static const ULONG get_volume_id(CSTRING Path)
 
 void free_file_cache(void)
 {
-   parasol::Log log(__FUNCTION__);
-
-   log.branch();
-
-   const std::lock_guard<std::mutex> lock(glCacheLock);
-
-   for (auto it=glCache.begin(); it != glCache.end(); it = glCache.erase(it)) {
-      FreeResource(it->second);
-   }
+   glCache.clear();
 }
 
 //********************************************************************************************************************
@@ -255,9 +270,8 @@ ERROR check_cache(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)
 
    const std::lock_guard<std::mutex> lock(glCacheLock);
    for (auto it=glCache.begin(); it != glCache.end(); ) {
-      if ((CurrentTime - it->second->LastUse >= 60LL * 1000000LL) and (it->second->Locks <= 0)) {
-         log.msg("Removing expired cache file: %.80s", it->second->Path);
-         FreeResource(it->second);
+      if ((CurrentTime - it->second.LastUse >= 60LL * 1000000LL) and (it->second.Locks <= 0)) {
+         log.msg("Removing expired cache file: %.80s", it->second.Path);
          it = glCache.erase(it);
       }
       else it++;
@@ -359,12 +373,10 @@ ERROR AnalysePath(CSTRING Path, LONG *PathType)
    if (Path[len-1] IS ':') {
       ThreadLock lock(TL_VOLUMES, 6000);
       if (lock.granted()) {
-         for (auto& [group, keys] : glVolumes) {
-            if ((!StrCompare(Path, keys["Name"].c_str(), len-1, 0)) and
-                (keys["Name"].size() IS (size_t)len-1)) {
-               if (PathType) *PathType = LOC_VOLUME;
-               return ERR_Okay;
-            }
+         std::string path_vol(Path, len-1);
+         if (glVolumes.contains(path_vol)) {
+            if (PathType) *PathType = LOC_VOLUME;
+            return ERR_Okay;
          }
       }
       return ERR_DoesNotExist;
@@ -803,16 +815,9 @@ ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 
       ThreadLock lock(TL_VOLUMES, 4000);
       if (lock.granted()) {
-         for (auto& [group, keys] : glVolumes) {
-            if (!StrMatch(NameBuffer, keys["Name"].c_str())) {
-               if (keys.contains("Hidden")) {
-                  if ((!StrMatch("Yes", keys["Hidden"].c_str())) or (!keys["Hidden"].compare("1"))) Info->Flags |= RDF_HIDDEN;
-               }
-
-               break;
-            }
+         if (glVolumes.contains(NameBuffer)) {
+            if (glVolumes[NameBuffer]["Hidden"] == "Yes") Info->Flags |= RDF_HIDDEN;
          }
-
       }
       else error = ERR_LockFailed;
 
@@ -912,9 +917,8 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
       if (glCache.contains(index)) {
          FreeResource(path);
 
-         auto cf = glCache[index];
-         *Cache = cf;
-         if (!(Flags & LDF_CHECK_EXISTS)) cf->Locks++;
+         *((extCacheFile **)Cache) = &glCache[index];
+         if (!(Flags & LDF_CHECK_EXISTS)) glCache[index].Locks++;
          return ERR_Okay;
       }
 
@@ -925,47 +929,26 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
          return ERR_Search;
       }
 
-      LONG pathlen = StrLength(path) + 1;
+      glCache.emplace(index, extCacheFile(path, file_size, timestamp));
 
-      // An additional byte is allocated below so that a null terminator can be attached to the end of the buffer
-      // (assists with text file processing).
-
-      CacheFile *cache;
-      if (!AllocMemory(sizeof(CacheFile) + pathlen + file_size + 1, MEM_NO_CLEAR|MEM_UNTRACKED, (APTR *)&cache, NULL)) {
-         ClearMemory(cache, sizeof(CacheFile));
-         cache->Path = (STRING)(cache + 1);
-         cache->Data = cache->Path + pathlen;
-         ((STRING)cache->Data)[file_size] = 0; // Null terminator is added to help with text file processing
-         cache->Locks     = 1;
-         cache->Size      = file_size;
-         cache->TimeStamp = timestamp;
-         cache->LastUse   = PreciseTime();
-
-         CopyMemory(path, cache->Path, pathlen);
-
-         if (file_size) {
-            LONG result;
-            error = file->read(cache->Data, file_size, &result);
-            if ((!error) and (file_size != result)) error = ERR_Read;
-         }
-
-         if (!error) {
-            glCache[index] = cache;
-            *Cache = cache;
-
-            if (!glCacheTimer) {
-               parasol::SwitchContext context(CurrentTask());
-               auto call = make_function_stdc(check_cache);
-               SubscribeTimer(60, &call, &glCacheTimer);
-            }
-
-            FreeResource(path);
-            return ERR_Okay;
-         }
-
-         FreeResource(cache);
+      if (file_size) {
+         LONG result;
+         error = file->read(glCache[index].Data, file_size, &result);
+         if ((!error) and (file_size != result)) error = ERR_Read;
       }
-      else error = ERR_AllocMemory;
+
+      if (!error) {
+         *((extCacheFile **)Cache) = &glCache[index];
+
+         if (!glCacheTimer) {
+            parasol::SwitchContext context(CurrentTask());
+            auto call = make_function_stdc(check_cache);
+            SubscribeTimer(60, &call, &glCacheTimer);
+         }
+
+         FreeResource(path);
+         return ERR_Okay;
+      }
    }
    else error = ERR_CreateObject;
 
@@ -1296,11 +1279,11 @@ void UnloadFile(CacheFile *Cache)
 
    parasol::Log log(__FUNCTION__);
 
-   log.function("%.80s, Locks: %d", Cache->Path, Cache->Locks);
+   log.function("%.80s, Locks: %d", Cache->Path, ((extCacheFile *)Cache)->Locks);
 
    const std::lock_guard<std::mutex> lock(glCacheLock);
 
-   if (Cache->Locks > 0) Cache->Locks--;
+   if (((extCacheFile*)Cache)->Locks > 0) ((extCacheFile*)Cache)->Locks--;
 
    // Cache entries are never removed here because this determination is handled by check_cache().
 }
@@ -2735,26 +2718,13 @@ ERROR fs_getdeviceinfo(CSTRING Path, objStorageDevice *Info)
 
 restart:
          for (pathend=0; (Path[pathend]) and (Path[pathend] != ':'); pathend++);
+         std::string vol(Path, pathend);
 
-         for (auto& [group, keys] : glVolumes) {
-            if (not keys.contains("Name")) continue;
-            auto& name = keys["Name"];
+         if (glVolumes.contains(vol)) {
+            if (!glVolumes[vol]["Path"].compare(0, 6, "EXT:")) Info->DeviceFlags |= DEVICE_SOFTWARE; // Virtual device
 
-            bool match = false;
-            ULONG j;
-            for (j=0; (j < (ULONG)name.size()) and (j < pathend); j++) {
-               if (std::tolower(Path[j]) != std::tolower(name[j])) break;
-            }
-            if ((j IS pathend) and ((j IS (ULONG)name.size()) or (name[j] IS ':'))) match = true;
-
-            if (!match) continue;
-
-            if (keys.contains("Path")) {
-               if (!keys["Path"].compare(0, 6, "EXT:")) Info->DeviceFlags |= DEVICE_SOFTWARE; // Virtual device
-            }
-
-            if (keys.contains("Device")) {
-               auto& device = keys["Device"];
+            if (glVolumes[vol].contains("Device")) {
+               auto &device = glVolumes[vol]["Device"];
                if (!device.compare("disk"))     Info->DeviceFlags |= DEVICE_FLOPPY_DISK|DEVICE_REMOVABLE|DEVICE_READ|DEVICE_WRITE;
                else if (!device.compare("hd"))  Info->DeviceFlags |= DEVICE_HARD_DISK|DEVICE_READ|DEVICE_WRITE;
                else if (!device.compare("cd"))  Info->DeviceFlags |= DEVICE_COMPACT_DISC|DEVICE_REMOVABLE|DEVICE_READ;

@@ -1,9 +1,0 @@
---$FLUID:Include
-
-module({ name="Parc", copyright="Paul Manias © 2023", version=1.0 }, function()
-
-  class("Parc", { src="parc.cpp", output="parc_def.c" }, [[
-    str Message    # Stores user readable messages on error.
-    oid Output     # Object to receive output messages
-  ]])
-end)

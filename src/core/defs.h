@@ -110,7 +110,6 @@ struct RGB8;
 struct rkBase64Decode;
 struct FileInfo;
 struct DirInfo;
-struct CacheFile;
 class objFile;
 class objStorageDevice;
 class objConfig;
@@ -171,6 +170,7 @@ enum {
    TL_THREADPOOL,
    TL_VOLUMES,
    TL_CLASSDB,
+   TL_FIELDKEYS,
    TL_END
 };
 
@@ -458,7 +458,6 @@ class extModule : public objModule {
    using create = parasol::Create<extModule>;
    char   Name[60];      // Name of the module
    APTR   prvMBMemory;   // Module base memory
-   struct KeyStore *Vars;
 };
 
 //********************************************************************************************************************
@@ -537,24 +536,29 @@ struct ClassRecord {
          File->read(buffer, size);
          Name.assign(buffer, size);
       }
+      else return ERR_BufferOverflow;
 
       File->read(&size, sizeof(size));
       if (size < (LONG)sizeof(buffer)) {
          File->read(buffer, size);
          Path.assign(buffer, size);
       }
+      else return ERR_BufferOverflow;
 
       File->read(&size, sizeof(size));
       if (size < (LONG)sizeof(buffer)) {
          File->read(buffer, size);
          Match.assign(buffer, size);
       }
+      else return ERR_BufferOverflow;
 
       File->read(&size, sizeof(size));
       if (size < (LONG)sizeof(buffer)) {
          File->read(buffer, size);
          Header.assign(buffer, size);
       }
+      else return ERR_BufferOverflow;
+
       return ERR_Okay;
    }
 };
@@ -598,6 +602,14 @@ struct MemoryMessage {
 };
 
 //********************************************************************************************************************
+
+struct CaseInsensitiveMap {
+   bool operator() (const std::string &lhs, const std::string &rhs) const {
+      return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
+   }
+};
+
+//********************************************************************************************************************
 // Global data variables.
 
 extern extMetaClass glMetaClass;
@@ -618,17 +630,21 @@ extern struct SharedControl  *glSharedControl; // Locked with PL_FORBID
 extern struct TaskList       *shTasks, *glTaskEntry; // Locked with PL_PROCESSES
 extern struct SemaphoreEntry *shSemaphores;    // Locked with PL_SEMAPHORES
 extern struct MemoryPage     *glMemoryPages;   // Locked with TL_MEMORY_PAGES
-extern struct KeyStore       *glObjectLookup;  // Locked with TL_OBJECT_LOOKUP
 extern struct ModuleHeader   *glModules;       // Read-only.  Module database.
 extern struct OpenInfo       *glOpenInfo;      // Read-only.  The OpenInfo structure initially passed to OpenCore()
 extern objTask *glCurrentTask;
 extern const struct ActionTable ActionTable[];
 extern const struct Function    glFunctions[];
 extern std::list<CoreTimer> glTimers;           // Locked with TL_TIMER
+extern std::map<std::string, std::vector<BaseClass *>, CaseInsensitiveMap> glObjectLookup;  // Locked with TL_OBJECT_LOOKUP
 extern std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with TL_PRIVATE_MEM: Note that best performance for looking up ID's is achieved as a sorted array.
 extern std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory; // Locked with TL_PRIVATE_MEM.  Sorted with the most recent private memory first
 extern std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren; // Locked with TL_PRIVATE_MEM.  Sorted with most recent object first
 extern std::unordered_map<CLASSID, ClassRecord> glClassDB;
+extern std::unordered_map<CLASSID, extMetaClass *> glClassMap;
+extern std::unordered_map<FIELD, std::string> glFields; // Reverse lookup for converting field hashes back to their respective names.
+extern std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
+extern std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes; // VolumeName = { Key, Value }
 extern CSTRING glMessages[ERR_END];       // Read-only table of error messages.
 extern const LONG glTotalMessages;
 extern LONG glTotalPages; // Read-only
@@ -649,13 +665,9 @@ extern class ObjectContext glTopContext; // Read-only, not a threading concern.
 extern OBJECTPTR modIconv;
 extern OBJECTPTR glLocale;
 extern objTime *glTime;
-extern ConfigGroups glVolumes;
 extern objConfig *glDatatypes;
-extern struct KeyStore *glClassMap; // Register of all classes.
-extern struct KeyStore *glFields; // Reverse lookup for converting field hashes back to their respective names.
 extern objFile *glClassFile;
 extern CSTRING glIDL;
-extern std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
 extern struct BaseClass glDummyObject;
 
 extern CSTRING glClassBinPath;
@@ -954,7 +966,6 @@ ERROR  page_memory(struct PublicAddress *, APTR *);
 void   PrepareSleep(void);
 ERROR  process_janitor(OBJECTID, LONG, LONG);
 ERROR  remove_memlock(void);
-void   remove_object_hash(OBJECTPTR);
 void   remove_process_waitlocks(void);
 void   remove_public_locks(LONG);
 void   remove_semaphores(void);
@@ -1130,20 +1141,6 @@ void winEnumSpecialFolders(void (*callback)(CSTRING, CSTRING, CSTRING, CSTRING, 
 
 //********************************************************************************************************************
 
-extern THREADVAR char tlFieldName[10]; // $12345678\0
-
-INLINE CSTRING GET_FIELD_NAME(ULONG FieldID)
-{
-   CSTRING name;
-   if (!KeyGet(glFields, FieldID, (APTR *)&name, NULL)) return name;
-   else {
-      snprintf(tlFieldName, sizeof(tlFieldName), "$%.8x", FieldID);
-      return tlFieldName;
-   }
-}
-
-//********************************************************************************************************************
-
 class ScopedObjectAccess {
    private:
       OBJECTPTR obj;
@@ -1215,5 +1212,28 @@ class ThreadLock { // C++ wrapper for terminating resources when scope is lost
          }
       }
 };
+
+//********************************************************************************************************************
+
+extern THREADVAR char tlFieldName[10]; // $12345678\0
+
+inline CSTRING GET_FIELD_NAME(ULONG FieldID)
+{
+   ThreadLock lock(TL_FIELDKEYS, 1000);
+   if (lock.granted()) {
+      if (glFields.contains(FieldID)) return glFields[FieldID].c_str();
+   }
+   snprintf(tlFieldName, sizeof(tlFieldName), "$%.8x", FieldID);
+   return tlFieldName;
+}
+
+//********************************************************************************************************************
+// NOTE: To be called with TL_OBJECT_LOOKUP only.
+
+inline void remove_object_hash(OBJECTPTR Object)
+{
+   std::erase(glObjectLookup[Object->Name], Object);
+   if (glObjectLookup[Object->Name].empty()) glObjectLookup.erase(Object->Name);
+}
 
 #endif // DEFS_H

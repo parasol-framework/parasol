@@ -1091,7 +1091,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
    if ((mc->Base) and (mc->Base->OpenCount > 0)) mc->Base->OpenCount--; // Child detected
    if (mc->OpenCount > 0) mc->OpenCount--;
 
-   if ((glObjectLookup) and (Object->Name[0])) { // Remove the object from the name lookup list
+   if (Object->Name[0]) { // Remove the object from the name lookup list
       ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
       if (lock.granted()) remove_object_hash(Object);
    }
@@ -1157,7 +1157,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
       //
       // ERR_UseSubClass: Similar to ERR_NoSupport, but avoids scanning of sub-classes that aren't loaded in memory.
 
-      extMetaClass * sublist[16];
+      std::array<extMetaClass *, 16> sublist;
       LONG sli = -1;
 
       while (Object->ExtClass) {
@@ -1193,15 +1193,14 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
             // Initialise a list of all sub-classes already in memory for querying in sequence.
             sli = 0;
             LONG i = 0;
-            extMetaClass **ptr;
-            CSTRING key = NULL;
-            while ((i < ARRAYSIZE(sublist)-1) and (!VarIterate(glClassMap, key, &key, (APTR *)&ptr, NULL))) {
-               extMetaClass *mc = ptr[0];
-               if ((Object->ClassID IS mc->BaseClassID) and (mc->BaseClassID != mc->SubClassID)) {
-                  sublist[i++] = mc;
+            for (auto & [ id, class_ptr ] : glClassMap) {
+               if (i >= LONG(sublist.size())-1) break;
+               if ((Object->ClassID IS class_ptr->BaseClassID) and (class_ptr->BaseClassID != class_ptr->SubClassID)) {
+                  sublist[i++] = class_ptr;
                }
             }
-            sublist[i++] = NULL;
+
+            sublist[i] = NULL;
          }
 
          // Attempt to initialise with the next known sub-class.

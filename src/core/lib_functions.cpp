@@ -198,12 +198,7 @@ objMetaClass * FindClass(CLASSID ClassID)
       return NULL;
    }
    else {
-      // A simple KeyGet() works for base-classes and sub-classes because the hash map is indexed by class name.
-
-      extMetaClass **ptr;
-      if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) {
-         return ptr[0];
-      }
+      if (glClassMap.contains(ClassID)) return glClassMap[ClassID];
 
       if (glProgramStage IS STAGE_SHUTDOWN) return NULL; // No new module loading during shutdown
 
@@ -229,8 +224,8 @@ objMetaClass * FindClass(CLASSID ClassID)
 
             objModule::create mod = { fl::Name(path) };
             if (mod.ok()) {
-               if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) {
-                  return ptr[0];
+               if (glClassMap.contains(ClassID)) {
+                  return glClassMap[ClassID];
                }
                else log.warning("Module \"%s\" did not configure class \"%s\"", path.c_str(), glClassDB[ClassID].Name.c_str());
             }
@@ -329,16 +324,18 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Res
 
    ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
    if (lock.granted()) {
-      OBJECTPTR *list;
-      LONG list_size;
-      if (!VarGet(glObjectLookup, InitialName, (APTR *)&list, &list_size)) {
-         // Return the most recently created object, i.e. the one at the end of the list.
-         for (LONG i=(list_size / sizeof(OBJECTPTR)) - 1; i >= 0; i--) {
-            if (list[i]) {
-               if ((!ClassID) or (list[i]->ClassID IS ClassID)) {
-                  *Result = list[i]->UID;
-                  return ERR_Okay;
-               }
+      if (glObjectLookup.contains(InitialName)) {
+         auto &list = glObjectLookup[InitialName];
+         if (!ClassID) {
+            *Result = list.back()->UID;
+            return ERR_Okay;
+         }
+
+         for (auto it=list.rbegin(); it != list.rend(); it++) {
+            auto obj = *it;
+            if (obj->ClassID IS ClassID) {
+               *Result = obj->UID;
+               return ERR_Okay;
             }
          }
       }
@@ -1396,7 +1393,6 @@ static const char sn_lookup[256] = {
 ERROR SetName(OBJECTPTR Object, CSTRING NewName)
 {
    parasol::Log log(__FUNCTION__);
-   LONG i;
 
    if ((!Object) or (!NewName)) return log.warning(ERR_NullArgs);
 
@@ -1408,25 +1404,11 @@ ERROR SetName(OBJECTPTR Object, CSTRING NewName)
 
    if (Object->Name[0]) remove_object_hash(Object);
 
+   LONG i;
    for (i=0; (i < (MAX_NAME_LEN-1)) and (NewName[i]); i++) Object->Name[i] = sn_lookup[UBYTE(NewName[i])];
    Object->Name[i] = 0;
 
-   if (Object->Name[0]) {
-      OBJECTPTR *list;
-      LONG list_size;
-      if (!VarGet(glObjectLookup, Object->Name, (APTR *)&list, &list_size)) {
-         list_size = list_size / sizeof(OBJECTPTR);
-         OBJECTPTR new_list[list_size + 1];
-         LONG j = 0;
-         for (i=0; i < list_size; i++) {
-            if (list[i]) new_list[j++] = list[i];
-         }
-         new_list[j++] = Object;
-
-         VarSet(glObjectLookup, Object->Name, &new_list, sizeof(OBJECTPTR) * j);
-      }
-      else VarSet(glObjectLookup, Object->Name, &Object, sizeof(OBJECTPTR));
-   }
+   if (Object->Name[0]) glObjectLookup[Object->Name].push_back(Object);
 
    return ERR_Okay;
 }
@@ -1858,31 +1840,4 @@ void WaitTime(LONG Seconds, LONG MicroSeconds)
          #warn Platform needs support for WaitTime()
       #endif
    }
-}
-
-//********************************************************************************************************************
-// NOTE: To be called with TL_OBJECT_LOOKUP only.
-
-void remove_object_hash(OBJECTPTR Object)
-{
-   parasol::Log log(__FUNCTION__);
-
-   OBJECTPTR *list;
-   LONG list_size;
-   if (!VarGet(glObjectLookup, Object->Name, (APTR *)&list, &list_size)) {
-      list_size = list_size / sizeof(OBJECTPTR);
-
-      LONG count_others = 0;
-      if (list_size > 1) {
-         for (LONG i=0; i < list_size; i++) {
-            if (list[i] IS Object) list[i] = NULL;
-            else count_others++;
-         }
-      }
-
-      if (!count_others) { // If no other objects exist for this key, remove the key.
-         VarSet(glObjectLookup, Object->Name, NULL, 0);
-      }
-   }
-   else log.trace("No hash entry for object '%s'", Object->Name);
 }

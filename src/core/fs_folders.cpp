@@ -191,25 +191,25 @@ ERROR ScanDir(DirInfo *Dir)
       if (!lock.granted()) return log.warning(ERR_LockFailed);
 
       LONG count = 0;
-      for (auto& [group, keys] : glVolumes) {
+      for (auto const &pair : glVolumes) {
          if (count IS Dir->prvIndex) {
             Dir->prvIndex++;
-            if (keys.contains("Name")) {
-               LONG j = StrCopy(keys["Name"].c_str(), file->Name, MAX_FILENAME-2);
-               if (Dir->prvFlags & RDF_QUALIFY) {
-                  file->Name[j++] = ':';
-                  file->Name[j] = 0;
-               }
-               file->Flags |= RDF_VOLUME;
+            auto &volume = pair.first;
+            LONG j = StrCopy(volume.c_str(), file->Name, MAX_FILENAME-2);
+            if (Dir->prvFlags & RDF_QUALIFY) {
+               file->Name[j++] = ':';
+               file->Name[j] = 0;
             }
 
-            if (keys.contains("Hidden") and (keys["Hidden"].compare("Yes"))) {
+            if (glVolumes[volume]["Hidden"] == "Yes") {
                file->Flags |= RDF_HIDDEN;
             }
 
-            if (keys.contains("Label")) {
-               AddInfoTag(file, "Label", keys["Label"].c_str());
+            if (glVolumes[volume].contains("Label")) {
+               AddInfoTag(file, "Label", glVolumes[volume]["Label"].c_str());
             }
+
+            file->Flags |= RDF_VOLUME;
 
             return ERR_Okay;
          }

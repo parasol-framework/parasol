@@ -905,7 +905,7 @@ static ERROR fntInstallFont(CSTRING Files)
 
       objFile::create file = { fl::Flags(FL_READ), fl::Path(buffer) };
       if (file.ok()) {
-         if (!file->read(buffer, 256, NULL)) {
+         if (!file->read(buffer, 256)) {
             CSTRING directory = ((buffer[0] IS 'M') and (buffer[1] IS 'Z')) ? "fixed" : "truetype";
             snprintf(buffer, sizeof(buffer), "fonts:%s/", directory);
             flCopy(*file, buffer, NULL);
@@ -1505,12 +1505,12 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING
    *FaceName = NULL;
    objFile::create file = { fl::Path(Path), fl::Flags(FL_READ) };
    if (file.ok()) {
-      file->read(&mz_header, sizeof(mz_header), NULL);
+      file->read(&mz_header, sizeof(mz_header));
 
       if (mz_header.magic IS ID_WINMZ) {
          file->seekStart(mz_header.lfanew);
 
-         if ((!file->read(&ne_header, sizeof(ne_header), NULL)) and (ne_header.magic IS ID_WINNE)) {
+         if ((!file->read(&ne_header, sizeof(ne_header))) and (ne_header.magic IS ID_WINNE)) {
             res_offset = mz_header.lfanew + ne_header.resource_tab_offset;
             file->seekStart(res_offset);
 
@@ -1519,16 +1519,16 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING
             flReadLE(*file, &size_shift);
 
             for (flReadLE(*file, &type_id); type_id; flReadLE(*file, &type_id)) {
-               flReadLE(*file, &count);
+               if (!flReadLE(*file, &count)) {
+                  if (type_id IS 0x8008) {
+                     font_count  = count;
+                     file->get(FID_Position, &font_offset);
+                     font_offset = font_offset + 4;
+                     break;
+                  }
 
-               if (type_id IS 0x8008) {
-                  font_count  = count;
-                  file->get(FID_Position, &font_offset);
-                  font_offset = font_offset + 4;
-                  break;
+                  file->seekCurrent(4 + count * 12);
                }
-
-               file->seekCurrent(4 + count * 12);
             }
 
             if ((!font_count) or (!font_offset)) {
@@ -1556,7 +1556,7 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING
 
                for (i=0; (i < font_count) and (i < MaxPoints-1); i++) {
                   file->seekStart(fonts[i].Offset);
-                  if (!file->read(Header, sizeof(winfnt_header_fields), NULL)) {
+                  if (!file->read(Header, sizeof(winfnt_header_fields))) {
                      Points[i] = Header->nominal_point_size;
                   }
                }
@@ -1566,7 +1566,7 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING
 
                file->seekStart(fonts[0].Offset);
 
-               if (file->read(Header, sizeof(winfnt_header_fields), NULL)) {
+               if (file->read(Header, sizeof(winfnt_header_fields))) {
                   return ERR_Read;
                }
 
@@ -1587,7 +1587,7 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING
                file->seekStart(fonts[0].Offset + Header->face_name_offset);
 
                for (i=0; (size_t)i < sizeof(face)-1; i++) {
-                  if ((file->read(face+i, 1, NULL)) or (!face[i])) break;
+                  if ((file->read(face+i, 1)) or (!face[i])) break;
                }
                face[i] = 0;
                *FaceName = StrClone(face);
