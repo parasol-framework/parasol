@@ -82,7 +82,7 @@ ERROR named_struct_to_table(lua_State *Lua, CSTRING StructName, CPTR Address)
       return struct_to_table(Lua, NULL, def, Address);
    }
    else {
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
       log.warning("Unknown struct name '%s'", StructName);
       return ERR_Search;
    }
@@ -90,7 +90,7 @@ ERROR named_struct_to_table(lua_State *Lua, CSTRING StructName, CPTR Address)
 
 ERROR struct_to_table(lua_State *Lua, struct references *References, struct structentry *StructDef, CPTR Address)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    // Do not push a Lua value in the event of an error.
 
@@ -214,7 +214,7 @@ ERROR struct_to_table(lua_State *Lua, struct references *References, struct stru
 
 struct fstruct * push_struct(objScript *Self, APTR Address, CSTRING StructName, BYTE Deallocate, BYTE AllowEmpty)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("Struct: %s, Address: %p, Deallocate: %d", StructName, Address, Deallocate);
 
@@ -308,7 +308,7 @@ static ERROR eval_type(objScript *Self, CSTRING Sequence, LONG *Pos, LONG *Type,
             *Size = def->Size;
          }
          else {
-            parasol::Log log(__FUNCTION__);
+            pf::Log log(__FUNCTION__);
             log.warning("Failed to find referenced struct '%s'", Sequence+i);
             return ERR_NotFound;
          }
@@ -337,7 +337,7 @@ static ERROR eval_type(objScript *Self, CSTRING Sequence, LONG *Pos, LONG *Type,
 static ERROR generate_structdef(objScript *Self, CSTRING StructName, CSTRING Sequence, BYTE *Buffer, LONG *Offset,
       LONG *TotalFields, LONG *BufferEnd)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG offset = 0;
    LONG pos    = 0;
    LONG total  = 0;
@@ -456,7 +456,7 @@ ERROR make_struct(lua_State *Lua, CSTRING StructName, CSTRING Sequence)
       return ERR_AllocMemory;
    }
 
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.msg(VLF_BRANCH|VLF_DEBUG, "%s, %.50s", StructName, Sequence);
 
    UBYTE buffer[sizeof(struct structentry) + MAX_STRUCT_DEF + 8];
@@ -576,7 +576,7 @@ static int struct_new(lua_State *Lua)
          fs->Deallocate  = FALSE;
 
          if (lua_istable(Lua, 2)) {
-            parasol::Log log(__FUNCTION__);
+            pf::Log log(__FUNCTION__);
             log.trace("struct.new(%p, fields: %d, size: %d)", def, def->Total, def->Size);
             ERROR field_error = ERR_Okay;
             CSTRING field_name = NULL;
@@ -778,7 +778,7 @@ static int struct_set(lua_State *Lua)
          CSTRING structname;
          LONG offset, type;
          if ((find_field(fs, ref, &structname, &offset, &type, NULL))) {
-            parasol::Log log;
+            pf::Log log;
             log.trace("struct.set() %s, Offset %d, $%.8x", ref, offset, type);
 
             APTR address = (BYTE *)fs->Data + offset;
@@ -840,7 +840,7 @@ static const luaL_Reg structlib_methods[] = {
 
 void register_struct_class(lua_State *Lua)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.trace("Registering struct interface.");
 
    luaL_newmetatable(Lua, "Fluid.struct");

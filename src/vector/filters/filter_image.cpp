@@ -28,7 +28,7 @@ class extImageFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = ID_IMAGEFX;
    static constexpr CSTRING CLASS_NAME = "ImageFX";
-   using create = parasol::Create<extImageFX>;
+   using create = pf::Create<extImageFX>;
 
    objBitmap *Bitmap;    // Bitmap containing source image data.
    objPicture *Picture;  // Origin picture if loading a source file.
@@ -44,7 +44,7 @@ Draw: Render the effect to the target bitmap.
 
 static ERROR IMAGEFX_Draw(extImageFX *Self, struct acDraw *Args)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    auto &filter = Self->Filter;
 
@@ -147,7 +147,7 @@ static ERROR IMAGEFX_Free(extImageFX *Self, APTR Void)
 
 static ERROR IMAGEFX_Init(extImageFX *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Self->Bitmap) return log.warning(ERR_UndefinedField);
 
@@ -159,7 +159,7 @@ static ERROR IMAGEFX_Init(extImageFX *Self, APTR Void)
 
 static ERROR IMAGEFX_NewChild(extImageFX *Self, struct acNewChild *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Args->Object->ClassID IS ID_BITMAP) {
       if (!Self->Bitmap) {

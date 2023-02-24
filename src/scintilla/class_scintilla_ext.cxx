@@ -57,7 +57,7 @@ static const struct styledef c_styles[] = {
 
 void ScintillaParasol::SetStyles(const struct styledef *Def, LONG Total)
 {
-   parasol::Log log("SetStyles");
+   pf::Log log("SetStyles");
    LONG i, index;
 
    log.branch("%d", Total);
@@ -120,7 +120,7 @@ ScintillaParasol::~ScintillaParasol()
 
 void ScintillaParasol::Finalise()
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.trace("");
 
@@ -132,7 +132,7 @@ void ScintillaParasol::Finalise()
 
 void ScintillaParasol::CreateCallTipWindow(Scintilla::PRectangle rc)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.trace("");
 }
 
@@ -140,7 +140,7 @@ void ScintillaParasol::CreateCallTipWindow(Scintilla::PRectangle rc)
 
 void ScintillaParasol::AddToPopUp(const char *label, int cmD, bool enabled)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.trace("%s", label);
 
    // The one and only Menu object is a member of ScintillaBase: Menu popup;
@@ -158,7 +158,7 @@ void ScintillaParasol::AddToPopUp(const char *label, int cmD, bool enabled)
 
 void ScintillaParasol::SetVerticalScrollPos()
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("%d", topLine);
 
@@ -179,7 +179,7 @@ void ScintillaParasol::SetVerticalScrollPos()
 
 void ScintillaParasol::SetHorizontalScrollPos()
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("%d", xOffset);
 
@@ -201,7 +201,7 @@ void ScintillaParasol::SetHorizontalScrollPos()
 
 bool ScintillaParasol::ModifyScrollBars(int nMax, int nPage)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (scintilla->ScrollLocked) return FALSE;
 #if 0
@@ -254,7 +254,7 @@ bool ScintillaParasol::ModifyScrollBars(int nMax, int nPage)
 
 void ScintillaParasol::ReconfigureScrollBars()
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.traceBranch("");
 
 /*
@@ -272,7 +272,7 @@ void ScintillaParasol::ReconfigureScrollBars()
 
 void ScintillaParasol::CopyToClipboard(const Scintilla::SelectionText &selectedText)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.traceBranch("");
 
    objClipboard::create clipboard = { };
@@ -289,7 +289,7 @@ void ScintillaParasol::CopyToClipboard(const Scintilla::SelectionText &selectedT
 
 void ScintillaParasol::Cut()
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.traceBranch("");
 
    if (SendScintilla(SCI_GETSELECTIONSTART) != SendScintilla(SCI_GETSELECTIONEND)) {
@@ -306,7 +306,7 @@ void ScintillaParasol::Cut()
 
 void ScintillaParasol::Copy()
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.traceBranch("");
 
    if (SendScintilla(SCI_GETSELECTIONSTART) != SendScintilla(SCI_GETSELECTIONEND)) {
@@ -320,7 +320,7 @@ void ScintillaParasol::Copy()
 
 void ScintillaParasol::Paste()
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("");
 
@@ -369,7 +369,7 @@ void ScintillaParasol::Paste()
 
 void ScintillaParasol::ClaimSelection()
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.traceBranch("");
    if (!SelectionEmpty()) primarySelection = true;
    else primarySelection = false;
@@ -388,7 +388,7 @@ void ScintillaParasol::NotifyChange()
 
 void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
 {
-   parasol::Log log("SciMsg");
+   pf::Log log("SciMsg");
    LONG code;
 
    if (!(code = scn.nmhdr.code)) return;
@@ -656,7 +656,7 @@ void ScintillaParasol::ScrollText(int linesToMove)
 
 void ScintillaParasol::SetTicking(bool On)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.traceBranch("State: %d", On);
 
    if (!On) ticking_on = FALSE;
@@ -672,7 +672,7 @@ void ScintillaParasol::SetTicking(bool On)
 
 void ScintillaParasol::SetMouseCapture(bool On)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.traceBranch("State: %d", On);
    captured_mouse = On;
 }
@@ -727,7 +727,7 @@ sptr_t ScintillaParasol::DefWndProc(unsigned int iMessage, uptr_t wParam, sptr_t
 
 void ScintillaParasol::panDraw(objSurface *TargetSurface, objBitmap *Bitmap)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    Scintilla::PRectangle rcClient;
    Scintilla::Surface *surface;
 
@@ -768,7 +768,7 @@ void ScintillaParasol::panDraw(objSurface *TargetSurface, objBitmap *Bitmap)
 
 void ScintillaParasol::panFontChanged(void *Font, void *BoldFont, void *ItalicFont, void *BIFont)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.traceBranch("");
 
    glFont       = (OBJECTPTR)Font;
@@ -784,7 +784,7 @@ void ScintillaParasol::panFontChanged(void *Font, void *BoldFont, void *ItalicFo
 
 void ScintillaParasol::panWordwrap(int Value)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.traceBranch("%d", Value);
 
 //   LONG bytepos = SendScintilla(SCI_POSITIONFROMLINE, topLine);
@@ -858,7 +858,7 @@ int ScintillaParasol::KeyDefault(int key, int modifiers)
 
 void ScintillaParasol::panMousePress(int Button, double x, double y)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("%.0fx%.0f", x, y);
 
@@ -889,7 +889,7 @@ void ScintillaParasol::panMouseMove(double x, double y)
 
 void ScintillaParasol::panMouseRelease(int Button, double x, double y)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    Scintilla::Point point((int)x, (int)y);
 
    log.trace("%.0fx%.0f", x, y);
@@ -903,7 +903,7 @@ void ScintillaParasol::panMouseRelease(int Button, double x, double y)
 
 void ScintillaParasol::panResized()
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.traceBranch("");
    ChangeSize();
 }
@@ -912,7 +912,7 @@ void ScintillaParasol::panResized()
 
 void ScintillaParasol::panScrollToX(double x)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.traceBranch("%.2f", x);
    HorizontalScrollTo((int)(x));
 }
@@ -921,7 +921,7 @@ void ScintillaParasol::panScrollToX(double x)
 
 void ScintillaParasol::panScrollToY(double y)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.traceBranch("%.2f", y);
    ScrollTo((int)(y / vs.lineHeight));
 }
@@ -930,7 +930,7 @@ void ScintillaParasol::panScrollToY(double y)
 #if 0
 void ScintillaParasol::SetSelectedTextStyle(int style)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.traceBranch("Style: %d", style);
 
    WndProc(SCI_STARTSTYLING, SelectionStart(), 0x1f);//mask - only overwrite the 5 style bits
@@ -973,7 +973,7 @@ void ScintillaParasol::panGetCursorPosition(int *line, int *index)
 
 void ScintillaParasol::panSetCursorPosition(int line, int index)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG pos, eol;
 
    log.trace("Line: %d, Index: %d", line, index);
@@ -1001,7 +1001,7 @@ void ScintillaParasol::panEnsureLineVisible(int line)
 
 void ScintillaParasol::SetLexer(uptr_t LexID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.branch("Using lexer %d", (LONG)LexID);
 
 //   SendScintilla(SCI_STYLERESETDEFAULT);

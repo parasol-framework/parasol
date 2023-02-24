@@ -227,7 +227,7 @@ class objXML : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_XML;
    static constexpr CSTRING CLASS_NAME = "XML";
 
-   using create = parasol::Create<objXML>;
+   using create = pf::Create<objXML>;
 
    STRING    Path;            // Set this field if the XML document originates from a file source.
    struct XMLTag * * Tags;    // Points to an array of tags loaded into an XML object.

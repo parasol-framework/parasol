@@ -239,7 +239,7 @@ class objDocument : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_DOCUMENT;
    static constexpr CSTRING CLASS_NAME = "Document";
 
-   using create = parasol::Create<objDocument>;
+   using create = pf::Create<objDocument>;
 
    LARGE    EventMask;        // Specifies events that need to be reported from the Document object.
    STRING   Description;      // A description of the document, provided by its author.

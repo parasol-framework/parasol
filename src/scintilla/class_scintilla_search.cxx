@@ -78,7 +78,7 @@ Search: The string sequence was not found.
 
 static ERROR SEARCH_Find(objScintillaSearch *Self, struct ssFind *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    LONG start, end, flags, pos, startLine, endLine, i, targstart, targend;
 
    if (!Self->Text) return log.warning(ERR_FieldNotSet);
@@ -172,7 +172,7 @@ static ERROR SEARCH_Free(objScintillaSearch *Self, APTR Void)
 
 static ERROR SEARCH_Init(objScintillaSearch *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Self->Scintilla) { // Find our parent surface
       OBJECTID owner_id = Self->ownerID();
@@ -211,7 +211,7 @@ Search: The string could not be found.
 
 static ERROR SEARCH_Next(objScintillaSearch *Self, struct ssNext *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 

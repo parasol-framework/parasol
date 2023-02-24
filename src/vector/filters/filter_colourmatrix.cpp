@@ -326,7 +326,7 @@ class extColourFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = ID_COLOURFX;
    static constexpr CSTRING CLASS_NAME = "ColourFX";
-   using create = parasol::Create<extColourFX>;
+   using create = pf::Create<extColourFX>;
 
    DOUBLE Values[CM_SIZE];
    ColourMatrix *Matrix;
@@ -409,7 +409,7 @@ static ERROR COLOURFX_Free(extColourFX *Self, APTR Void)
 
 static ERROR COLOURFX_Init(extColourFX *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Self->SourceType) return log.warning(ERR_UndefinedField);
 

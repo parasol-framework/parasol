@@ -24,7 +24,7 @@ Name: Locks/Semaphores
 
 #include "defs.h"
 
-using namespace parasol;
+using namespace pf;
 
 //#define DBG_SEMAPHORES TRUE
 
@@ -102,7 +102,7 @@ void plUnlockSemaphore(APTR Semaphore)
 
 void remove_semaphores(void)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.debug("Removing semaphores.");
 
@@ -138,7 +138,7 @@ void remove_semaphores(void)
 
 static LONG DeadSemaphoreProcesses(SemaphoreEntry *Semaphore)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    bool dead = false;
    for (LONG i=0; i < ARRAYSIZE(Semaphore->Processes); i++) {
@@ -203,7 +203,7 @@ int(SMF) Flags: Optional flags.
 
 ERROR AccessSemaphore(LONG SemaphoreID, LONG Timeout, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((SemaphoreID < 1) or (SemaphoreID > MAX_SEMAPHORES)) return log.warning(ERR_Args);
 
@@ -406,7 +406,7 @@ int(SMF) Flags: Optional flags, currently SMF_EXISTS is supported.
 
 ERROR AllocSemaphore(CSTRING Name, LONG Value, LONG Flags, LONG *SemaphoreID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    SemaphoreEntry *semaphore;
    LONG index;
 
@@ -522,7 +522,7 @@ Semaphore: The handle of the semaphore that you want to deallocate.
 
 ERROR FreeSemaphore(LONG SemaphoreID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (SemaphoreID <= 0) return log.warning(ERR_Args);
 
@@ -597,7 +597,7 @@ Flags:     Must be set to the flags originally passed to AccessSemaphore().
 
 ERROR pReleaseSemaphore(LONG SemaphoreID, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((SemaphoreID < 1) or (SemaphoreID > MAX_SEMAPHORES)) return log.warning(ERR_Args);
 
@@ -710,7 +710,7 @@ tags Tag: A tag value that is relevant to the Command.
 
 ERROR SemaphoreCtrl(LONG SemaphoreID, LONG Command, ...)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    va_list list;
 
    if ((SemaphoreID < 1) or (SemaphoreID > MAX_SEMAPHORES)) return log.warning(ERR_Args);

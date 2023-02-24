@@ -5,7 +5,7 @@
 
 static ERROR sslInit(void)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (ssl_init) return ERR_Okay;
 
@@ -25,7 +25,7 @@ static ERROR sslInit(void)
 
 static void sslDisconnect(extNetSocket *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (Self->SSL) {
       log.traceBranch("Closing SSL connection.");
@@ -47,7 +47,7 @@ static void sslDisconnect(extNetSocket *Self)
 static void sslMsgCallback(const ssl_st *s, int where, int ret)
 {
    const char *state;
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    LONG w = where & (~SSL_ST_MASK);
 
@@ -94,7 +94,7 @@ static ERROR sslSetup(extNetSocket *Self)
 {
    STRING path;
    ERROR error;
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!ssl_init) {
       error = sslInit();
@@ -144,7 +144,7 @@ static ERROR sslSetup(extNetSocket *Self)
 
 static ERROR sslLinkSocket(extNetSocket *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("");
 
@@ -170,7 +170,7 @@ static ERROR sslLinkSocket(extNetSocket *Self)
 
 static ERROR sslConnect(extNetSocket *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("");
 
@@ -227,7 +227,7 @@ static ERROR sslConnect(extNetSocket *Self)
 
 static void ssl_handshake_write(SOCKET_HANDLE Socket, APTR Data)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    extNetSocket *Self = reinterpret_cast<extNetSocket *>(Data);
    LONG result;
 
@@ -269,7 +269,7 @@ static void ssl_handshake_write(SOCKET_HANDLE Socket, APTR Data)
 
 static void ssl_handshake_read(SOCKET_HANDLE Socket, APTR Data)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    extNetSocket *Self = reinterpret_cast<extNetSocket *>(Data);
    LONG result;
 

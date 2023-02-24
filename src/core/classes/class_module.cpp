@@ -205,7 +205,7 @@ static ERROR MODULE_Free(extModule *Self, APTR Void)
 
 static ERROR MODULE_Init(extModule *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    #define AF_MODULEMASTER 0x0001
    #define AF_SEGMENT      0x0002
    ERROR error = ERR_Failed;
@@ -645,7 +645,7 @@ NoSupport: The host platform does not support this method.
 
 static ERROR MODULE_ResolveSymbol(extModule *Self, struct modResolveSymbol *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
 
@@ -688,7 +688,7 @@ IDL: Returns a compressed IDL string from the module, if available.
 
 static ERROR GET_IDL(extModule *Self, CSTRING *Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((Self->Master) and (Self->Master->Header)) {
       *Value = Self->Master->Header->Definitions;
@@ -815,7 +815,7 @@ After initialisation, the Version field will be updated to reflect the actual ve
 
 APTR build_jump_table(LONG JumpType, const Function *FList, LONG MemFlags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!JumpType) or (!FList)) log.warning("JumpTable() Invalid arguments.");
 
@@ -892,7 +892,7 @@ static LONG cmp_mod_names(CSTRING String1, CSTRING String2)
 
 static ModuleMaster * check_resident(extModule *Self, CSTRING ModuleName)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    ModuleMaster *master;
    static BYTE kminit = FALSE;
 
@@ -937,7 +937,7 @@ static ModuleMaster * check_resident(extModule *Self, CSTRING ModuleName)
 
 ModuleItem * find_module(ULONG Hash)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (glModules) {
       auto offsets = (LONG *)(glModules + 1);
@@ -963,7 +963,7 @@ ModuleItem * find_module(ULONG Hash)
 
 static void free_module(MODHANDLE handle)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!handle) return;
 

@@ -72,7 +72,7 @@ NoFieldAccess:    The field is read-only.
 
 ERROR SetArray(OBJECTPTR Object, FIELD FieldID, APTR Array, LONG Elements)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Object) return log.warning(ERR_NullArgs);
    if (Elements <= 0) log.warning("Element count not specified.");
@@ -160,7 +160,7 @@ NoFieldAccess:    The field is read-only.
 
 ERROR SetField(OBJECTPTR Object, FIELD FieldID, ...)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Object) return log.warning(ERR_NullArgs);
 
@@ -261,7 +261,7 @@ Failed: A field setting failed due to an unspecified error.
 
 ERROR SetFields(OBJECTPTR Object, ...)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Object) return log.warning(ERR_NullArgs);
 
@@ -276,7 +276,7 @@ ERROR SetFieldsF(OBJECTPTR Object, va_list List)
 {
    if (!Object) return ERR_NullArgs;
 
-   parasol::Log log("SetFields");
+   pf::Log log("SetFields");
 
    Object->threadLock();
 
@@ -427,7 +427,7 @@ static LONG write_array(CSTRING String, LONG Flags, WORD ArraySize, APTR Dest)
 
 ERROR writeval_default(OBJECTPTR Object, Field *Field, LONG flags, CPTR Data, LONG Elements)
 {
-   parasol::Log log("WriteField");
+   pf::Log log("WriteField");
 
    //log.trace("[%s:%d] Name: %s, SetValue: %c, FieldFlags: $%.8x, SrcFlags: $%.8x", Object->className(), Object->UID, Field->Name, Field->SetValue ? 'Y' : 'N', Field->Flags, flags);
 
@@ -465,7 +465,7 @@ ERROR writeval_default(OBJECTPTR Object, Field *Field, LONG flags, CPTR Data, LO
 
 static ERROR writeval_array(OBJECTPTR Object, Field *Field, LONG SrcType, CPTR Source, LONG Elements)
 {
-   parasol::Log log("WriteField");
+   pf::Log log("WriteField");
 
    // Direct writing to field arrays without a SET function is only supported for the RGB type.  The client should
    // define a SET function for all other cases.
@@ -494,7 +494,7 @@ static ERROR writeval_array(OBJECTPTR Object, Field *Field, LONG SrcType, CPTR S
 
 static ERROR writeval_flags(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
-   parasol::Log log("WriteField");
+   pf::Log log("WriteField");
    LONG j, int32;
 
    // Converts flags to numeric form if the source value is a string.
@@ -570,7 +570,7 @@ static ERROR writeval_flags(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Dat
 
 static ERROR writeval_lookup(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
-   parasol::Log log("WriteField");
+   pf::Log log("WriteField");
    LONG int32;
 
    if (Flags & FD_STRING) {
@@ -774,7 +774,7 @@ static ERROR setval_array(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data,
       else return ERR_AllocMemory;
    }
    else {
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
       log.warning("Arrays can only be set using the FD_ARRAY type.");
       return ERR_SetValueNotArray;
    }
@@ -874,7 +874,7 @@ static ERROR setval_large(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data,
 
 void optimise_write_field(Field *Field)
 {
-   parasol::Log log("WriteField");
+   pf::Log log("WriteField");
 
    if (Field->Flags & FD_FLAGS)       Field->WriteValue = writeval_flags;
    else if (Field->Flags & FD_LOOKUP) Field->WriteValue = writeval_lookup;

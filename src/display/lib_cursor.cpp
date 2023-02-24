@@ -37,7 +37,7 @@ static XCursor XCursors[] = {
 
 static Cursor create_blank_cursor(void)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    Pixmap data_pixmap, mask_pixmap;
    XColor black = { 0, 0, 0, 0 };
    Window rootwindow;
@@ -66,7 +66,7 @@ static Cursor create_blank_cursor(void)
 
 static Cursor get_x11_cursor(LONG CursorID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    for (WORD i=0; i < ARRAYSIZE(XCursors); i++) {
       if (XCursors[i].CursorID IS CursorID) return XCursors[i].XCursor;
@@ -102,7 +102,7 @@ APTR GetWinCursor(LONG CursorID)
       if (winCursors[i].CursorID IS CursorID) return winCursors[i].WinCursor;
    }
 
-   parasol::Log log;
+   pf::Log log;
    log.warning("Cursor #%d is not a recognised cursor ID.", CursorID);
    return winCursors[0].WinCursor;
 }
@@ -219,7 +219,7 @@ ERROR gfxGetCursorPos(DOUBLE *X, DOUBLE *Y)
       return ERR_Okay;
    }
    else {
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
       log.warning("Failed to grab the mouse pointer.");
       return ERR_Failed;
    }
@@ -239,7 +239,7 @@ oid: The UID of the modal surface, or zero.
 
 OBJECTID gfxGetModalSurface(void)
 {
-   parasol::ScopedSysLock proc(PL_PROCESSES, 3000);
+   pf::ScopedSysLock proc(PL_PROCESSES, 3000);
 
    if (proc.granted()) {
       LONG maxtasks = GetResource(RES_MAX_PROCESSES);
@@ -288,7 +288,7 @@ AccessObject: Failed to access the SystemPointer object.
 
 ERROR gfxGetRelativeCursorPos(OBJECTID SurfaceID, DOUBLE *X, DOUBLE *Y)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objPointer *pointer;
    LONG absx, absy;
 
@@ -337,7 +337,7 @@ AccessObject: Failed to access the pointer object.
 ERROR gfxLockCursor(OBJECTID SurfaceID)
 {
 #ifdef __native__
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    extPointer *pointer;
 
    if (!SurfaceID) return log.warning(ERR_NullArgs);
@@ -393,7 +393,7 @@ Args
 
 ERROR gfxRestoreCursor(LONG Cursor, OBJECTID OwnerID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    extPointer *pointer;
 
    if ((pointer = (extPointer *)gfxAccessPointer())) {
@@ -469,7 +469,7 @@ AccessObject: Failed to access the internally maintained image object.
 
 ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, OBJECTID OwnerID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    extPointer *pointer;
    LONG flags;
 
@@ -698,7 +698,7 @@ AccessObject: Failed to access the internally maintained image object.
 ERROR gfxSetCustomCursor(OBJECTID ObjectID, LONG Flags, objBitmap *Bitmap, LONG HotX, LONG HotY, OBJECTID OwnerID)
 {
 #ifdef __snap__
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    extPointer *pointer;
    objBitmap *buffer;
    ERROR error;
@@ -832,7 +832,7 @@ InUse: A drag and drop operation has already been started.
 
 ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.branch("Source: %d, Item: %d, Surface: %d", Source, Item, Surface);
 
@@ -893,7 +893,7 @@ NotLocked: A lock is not present, or the lock belongs to another surface.
 
 ERROR gfxUnlockCursor(OBJECTID SurfaceID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!SurfaceID) return log.warning(ERR_NullArgs);
 

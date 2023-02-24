@@ -866,7 +866,7 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 ERROR CMDExpunge(void)
 {
    {
-      parasol::Log log;
+      pf::Log log;
       log.msg("Freeing %d internally allocated fonts.", glTotalFonts);
       for (LONG i=0; i < glTotalFonts; i++) acFree(glFonts[i].Font);
    }

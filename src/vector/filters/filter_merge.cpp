@@ -28,7 +28,7 @@ class extMergeFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = ID_MERGEFX;
    static constexpr CSTRING CLASS_NAME = "MergeFX";
-   using create = parasol::Create<extMergeFX>;
+   using create = pf::Create<extMergeFX>;
 
    std::vector<MergeSource> List;
 };

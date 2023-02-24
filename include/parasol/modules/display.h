@@ -474,7 +474,7 @@ class objBitmap : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_BITMAP;
    static constexpr CSTRING CLASS_NAME = "Bitmap";
 
-   using create = parasol::Create<objBitmap>;
+   using create = pf::Create<objBitmap>;
 
    struct RGBPalette * Palette;                                      // Points to a bitmap's colour palette.
    struct ColourFormat * ColourFormat;                               // Describes the colour format used to construct each bitmap pixel.
@@ -591,16 +591,19 @@ class objBitmap : public BaseClass {
    inline ERROR init() { return Action(AC_Init, this, NULL); }
    inline ERROR lock() { return Action(AC_Lock, this, NULL); }
    inline ERROR query() { return Action(AC_Query, this, NULL); }
-   template <class T> ERROR read(APTR Buffer, T Bytes, LONG *Result) {
+   template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) {
+      static_assert(std::is_integral<U>::value, "Result value must be an integer type");
+      static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       ERROR error;
-      const LONG bytes = (Bytes > 0x7fffffff) ? 0x7fffffff : Bytes;
+      const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
-      if (!(error = Action(AC_Read, this, &read))) *Result = read.Result;
+      if (!(error = Action(AC_Read, this, &read))) *Result = static_cast<U>(read.Result);
       else *Result = 0;
       return error;
    }
-   template <class T> ERROR read(APTR Buffer, T Bytes) {
-      const LONG bytes = (Bytes > 0x7fffffff) ? 0x7fffffff : Bytes;
+   template <class T> ERROR read(APTR Buffer, T Size) {
+      static_assert(std::is_integral<T>::value, "Size value must be an integer type");
+      const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
       return Action(AC_Read, this, &read);
    }
@@ -620,9 +623,9 @@ class objBitmap : public BaseClass {
    inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK_END); }
    inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK_CURRENT); }
    inline ERROR unlock() { return Action(AC_Unlock, this, NULL); }
-   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result = NULL) {
+   inline ERROR write(CPTR Buffer, LONG Size, LONG *Result = NULL) {
       ERROR error;
-      struct acWrite write = { (BYTE *)Buffer, Bytes };
+      struct acWrite write = { (BYTE *)Buffer, Size };
       if (!(error = Action(AC_Write, this, &write))) {
          if (Result) *Result = write.Result;
       }
@@ -638,8 +641,8 @@ class objBitmap : public BaseClass {
       else if (Result) *Result = 0;
       return error;
    }
-   inline LONG writeResult(CPTR Buffer, LONG Bytes) {
-      struct acWrite write = { (BYTE *)Buffer, Bytes };
+   inline LONG writeResult(CPTR Buffer, LONG Size) {
+      struct acWrite write = { (BYTE *)Buffer, Size };
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
    }
@@ -717,7 +720,7 @@ class objDisplay : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_DISPLAY;
    static constexpr CSTRING CLASS_NAME = "Display";
 
-   using create = parasol::Create<objDisplay>;
+   using create = pf::Create<objDisplay>;
 
    DOUBLE   RefreshRate;  // This field manages the display refresh rate.
    objBitmap * Bitmap;    // Reference to the display's bitmap information.
@@ -857,7 +860,7 @@ class objClipboard : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_CLIPBOARD;
    static constexpr CSTRING CLASS_NAME = "Clipboard";
 
-   using create = parasol::Create<objClipboard>;
+   using create = pf::Create<objClipboard>;
 
    LONG     Flags;      // Optional flags.
    MEMORYID ClusterID;  // Identifies a unique cluster of items targeted by a clipboard object.
@@ -892,7 +895,7 @@ class objPointer : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_POINTER;
    static constexpr CSTRING CLASS_NAME = "Pointer";
 
-   using create = parasol::Create<objPointer>;
+   using create = pf::Create<objPointer>;
 
    DOUBLE   Speed;         // Speed multiplier for Pointer movement.
    DOUBLE   Acceleration;  // The rate of acceleration for relative pointer movement.
@@ -986,7 +989,7 @@ class objSurface : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_SURFACE;
    static constexpr CSTRING CLASS_NAME = "Surface";
 
-   using create = parasol::Create<objSurface>;
+   using create = pf::Create<objSurface>;
 
    OBJECTID DragID;     // This object-based field is used to control the dragging of objects around the display.
    OBJECTID BufferID;   // The ID of the bitmap that manages the surface's graphics.

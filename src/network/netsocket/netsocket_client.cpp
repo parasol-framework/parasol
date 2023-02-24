@@ -6,7 +6,7 @@
 #ifdef __linux__
 static void client_connect(SOCKET_HANDLE Void, APTR Data)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    extNetSocket *Self = (extNetSocket *)Data;
 
    log.trace("Connection from server received.");
@@ -15,7 +15,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
    socklen_t optlen = sizeof(result);
    getsockopt(Self->SocketHandle, SOL_SOCKET, SO_ERROR, &result, &optlen);
 
-   parasol::SwitchContext context(Self);
+   pf::SwitchContext context(Self);
 
    // Remove the write callback
 
@@ -70,10 +70,10 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
 
 static void client_server_incoming(SOCKET_HANDLE FD, extNetSocket *Data)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    extNetSocket *Self = Data;
 
-   parasol::SwitchContext context(Self);
+   pf::SwitchContext context(Self);
 
    if (Self->Terminating) {
       log.trace("[NetSocket:%d] Socket terminating...", Self->UID);
@@ -115,7 +115,7 @@ restart:
       if (Self->Incoming.Type IS CALL_STDC) {
          auto routine = (ERROR (*)(extNetSocket *))Self->Incoming.StdC.Routine;
          if (routine) {
-            parasol::SwitchContext context(Self->Incoming.StdC.Context);
+            pf::SwitchContext context(Self->Incoming.StdC.Context);
             error = routine(Self);
          }
       }
@@ -172,7 +172,7 @@ restart:
 
 static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    extNetSocket *Self = Data;
 
    if (Self->Terminating) return;
@@ -189,7 +189,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
       return;
    }
 
-   parasol::SwitchContext context(Self);
+   pf::SwitchContext context(Self);
 
    log.traceBranch("");
 
@@ -238,7 +238,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
          if (Self->Outgoing.Type IS CALL_STDC) {
             auto routine = (ERROR (*)(extNetSocket *))Self->Outgoing.StdC.Routine;
             if (routine) {
-               parasol::SwitchContext context(Self->Outgoing.StdC.Context);
+               pf::SwitchContext context(Self->Outgoing.StdC.Context);
                error = routine(Self);
             }
          }

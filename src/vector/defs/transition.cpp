@@ -66,7 +66,7 @@ void apply_transition(objVectorTransition *Self, DOUBLE Index, agg::trans_affine
          //log.trace("Index: %.2f, Scale: %.2f, Left: %d, Right: %d, TotalStops: %d", Index, scale, left, right, Self->TotalStops);
       }
       else {
-         parasol::Log log(__FUNCTION__);
+         pf::Log log(__FUNCTION__);
          log.warning("Invalid transition.  Index: %.2f, Left: %d, Right: %d, TotalStops: %d", Index, left, right, Self->TotalStops);
       }
    }
@@ -112,7 +112,7 @@ void apply_transition_xy(objVectorTransition *Self, DOUBLE Index, DOUBLE *X, DOU
 
 static ERROR set_stop_transform(objVectorTransition *Self, TransitionStop *Stop, CSTRING Commands)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.traceBranch("%s", Commands);
 
@@ -149,7 +149,7 @@ static ERROR TRANSITION_Free(objVectorTransition *Self, APTR Void)
 
 static ERROR TRANSITION_Init(objVectorTransition *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    if (Self->TotalStops < 2) return log.warning(ERR_FieldNotSet);
    return ERR_Okay;
 }
@@ -180,7 +180,7 @@ a transform string.  The Transition structure consists of the following fields:
 
 static ERROR TRANSITION_SET_Stops(objVectorTransition *Self, Transition *Value, LONG Elements)
 {
-   parasol::Log log;
+   pf::Log log;
    if ((Elements >= 2) and (Elements < MAX_TRANSITION_STOPS)) {
       Self->TotalStops = Elements;
       DOUBLE last_offset = 0;

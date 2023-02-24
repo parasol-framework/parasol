@@ -49,7 +49,7 @@ static ERROR CSTREAM_Free(extCompressedStream *Self, APTR Void)
 
 static ERROR CSTREAM_Init(extCompressedStream *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Self->Input) and (!Self->Output)) return log.warning(ERR_FieldNotSet);
 
@@ -78,7 +78,7 @@ Read: Decompress data from the input stream and write it to the supplied buffer.
 
 static ERROR CSTREAM_Read(extCompressedStream *Self, struct acRead *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
    if (!Self->initialised()) return log.warning(ERR_NotInitialised);
@@ -195,7 +195,7 @@ Seek: For use in decompressing streams only.  Seeks to a position within the str
 
 static ERROR CSTREAM_Seek(extCompressedStream *Self, struct acSeek *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return ERR_NullArgs;
 
@@ -236,7 +236,7 @@ Write: Compress raw data in a buffer and write it to the Output object.
 
 static ERROR CSTREAM_Write(extCompressedStream *Self, struct acWrite *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
    if (!Self->initialised()) return log.warning(ERR_NotInitialised);

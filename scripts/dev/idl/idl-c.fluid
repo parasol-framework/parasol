@@ -1406,7 +1406,7 @@ function outputClassHeader(class, Private, Custom)
       output('   static constexpr CLASSID CLASS_ID = ID_' .. class.name:upper() .. ';')
       output("   static constexpr CSTRING CLASS_NAME = \"" .. class.name .. "\";")
       output('')
-      output('   using create = parasol::Create<obj' .. class.name .. '>;')
+      output('   using create = pf::Create<obj' .. class.name .. '>;')
 
       if physicalFields then
          output('')

@@ -94,7 +94,7 @@ static ERROR SET_Source(extXML *Self, OBJECTPTR Value);
 static void debug_tree(STRING Header, extXML *Self) __attribute__ ((unused));
 static void debug_tree(STRING Header, extXML *Self)
 {
-   parasol::Log log(Header);
+   pf::Log log(Header);
    LONG i, j;
    char buffer[1000];
 
@@ -229,7 +229,7 @@ static THREADVAR LONG tlXMLCounter;
 
 static ERROR xml_count(extXML *Self, XMLTag *Tag, CSTRING Attrib)
 {
-   parasol::Log log;
+   pf::Log log;
    tlXMLCounter++;
    log.trace("IncCount: %d, Tag: %d: %s", tlXMLCounter, Tag->Index, Tag->Attrib->Name);
    return ERR_Okay;
@@ -237,7 +237,7 @@ static ERROR xml_count(extXML *Self, XMLTag *Tag, CSTRING Attrib)
 
 static ERROR XML_Count(extXML *Self, struct xmlCount *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->XPath)) return log.warning(ERR_NullArgs);
 
@@ -259,7 +259,7 @@ DataFeed: XML data can be added to an XML object through this action.
 
 static ERROR XML_DataFeed(extXML *Self, struct acDataFeed *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -393,7 +393,7 @@ Search: A matching tag could not be found.
 
 static ERROR XML_FindTag(extXML *Self, struct xmlFindTag *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return ERR_NullArgs;
    if (Self->Flags & XMF_DEBUG) log.msg("XPath: %s", Args->XPath);
@@ -443,7 +443,7 @@ OutOfRange: The Index is invalid.
 
 static ERROR XML_FindTagFromIndex(extXML *Self, struct xmlFindTagFromIndex *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
    if (Self->Flags & XMF_DEBUG) log.msg("XPath: %s", Args->XPath);
@@ -494,7 +494,7 @@ NotFound: The attribute name was not found.
 
 static ERROR XML_GetAttrib(extXML *Self, struct xmlGetAttrib *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -560,7 +560,7 @@ attribute will be returned.  If the Attrib name is omitted, the content of the m
 
 static ERROR XML_GetVar(extXML *Self, struct acGetVar *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    XMLTag *tags;
    LONG i, j, count;
 
@@ -820,7 +820,7 @@ BufferOverflow: The buffer was not large enough to hold the content (the resulti
 
 static ERROR XML_GetContent(extXML *Self, struct xmlGetContent *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
    if (Args->Length < 1) return log.warning(ERR_Args);
@@ -855,7 +855,7 @@ AllocMemory: Failed to allocate an XML string for the result.
 
 static ERROR XML_GetString(extXML *Self, struct xmlGetString *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->TagCount <= 0) return log.warning(ERR_NoData);
    if (!Args) return log.warning(ERR_NullArgs);
@@ -930,7 +930,7 @@ OutOfRange: The Index parameter is invalid.
 
 static ERROR XML_GetTag(extXML *Self, struct xmlGetTag *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
    if ((Args->Index < 0) or (Args->Index >= Self->TagCount)) return log.warning(ERR_OutOfRange);
@@ -943,7 +943,7 @@ static ERROR XML_GetTag(extXML *Self, struct xmlGetTag *Args)
 
 static ERROR XML_Init(extXML *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->SubID) return ERR_Okay; // Break here for sub-classes to perform initialisation
 
@@ -1011,7 +1011,7 @@ ReadOnly
 
 static ERROR XML_InsertContent(extXML *Self, struct xmlInsertContent *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
    if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
@@ -1080,7 +1080,7 @@ ReadOnly: Changes to the XML data are not permitted.
 
 static ERROR XML_InsertXML(extXML *Self, struct xmlInsertXML *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
    if ((Args->Index < 0) or (Args->Index > Self->TagCount)) return log.warning(ERR_OutOfRange);
@@ -1184,7 +1184,7 @@ Search: The XPath could not be resolved.
 
 ERROR XML_InsertXPath(extXML *Self, struct xmlInsertXPath *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->XPath) or (!Args->XML)) return log.warning(ERR_NullArgs);
 
@@ -1237,7 +1237,7 @@ static void recalc_indexes(extXML *Self, XMLTag *Tag, LONG *Index, LONG *);
 
 static ERROR XML_MoveTags(extXML *Self, struct xmlMoveTags *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    LONG min_index, max_index;
 
    if (!Args) return log.warning(ERR_NullArgs);
@@ -1412,7 +1412,7 @@ ReadOnly
 
 static ERROR XML_RemoveTag(extXML *Self, struct xmlRemoveTag *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    LONG i;
 
    if (!Args) return log.warning(ERR_NullArgs);
@@ -1531,7 +1531,7 @@ ReadOnly
 
 static ERROR XML_RemoveXPath(extXML *Self, struct xmlRemoveXPath *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->XPath)) return ERR_NullArgs;
 
@@ -1587,7 +1587,7 @@ SaveToObject: Saves XML data to a storage object (e.g. file).
 
 static ERROR XML_SaveToObject(extXML *Self, struct acSaveToObject *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
    if (Self->TagCount <= 0) return ERR_Okay;
@@ -1651,7 +1651,7 @@ ReadOnly: The XML object is read-only.
 
 static ERROR XML_SetAttrib(extXML *Self, struct xmlSetAttrib *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    XMLTag *newtag;
    STRING buffer;
    CSTRING name, value;
@@ -1968,7 +1968,7 @@ OutOfRange: The Index parameter is invalid.
 
 static ERROR XML_SetRoot(extXML *Self, struct xmlSetRoot *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) {
       Self->RootIndex = 0;
@@ -2012,7 +2012,7 @@ Search: Failed to find the tag referenced by the XPath.
 
 static ERROR XML_SetVar(extXML *Self, struct acSetVar *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Field)) return log.warning(ERR_NullArgs);
    if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
@@ -2078,7 +2078,7 @@ NothingDone: The XML array was already sorted to your specifications.   Dependen
 
 static ERROR XML_SortXML(extXML *Self, struct xmlSort *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Sort)) return log.warning(ERR_NullArgs);
    if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
@@ -2459,7 +2459,7 @@ static ERROR SET_RootIndex(extXML *Self, LONG Value)
       return ERR_Okay;
    }
    else {
-      parasol::Log log;
+      pf::Log log;
       return log.warning(ERR_OutOfRange);
    }
 }

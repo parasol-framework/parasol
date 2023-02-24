@@ -47,7 +47,7 @@ class extDisplacementFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = ID_DISPLACEMENTFX;
    static constexpr CSTRING CLASS_NAME = "DisplacementFX";
-   using create = parasol::Create<extDisplacementFX>;
+   using create = pf::Create<extDisplacementFX>;
 
    DOUBLE Scale;
    LONG XChannel, YChannel;
@@ -61,7 +61,7 @@ Draw: Render the effect to the target bitmap.
 
 static ERROR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    // SVG rules state that the Input texture is pre-multiplied.  The Mix displacement map is not.  In practice however,
    // this should not make any difference to Input because the pixels are copied verbatim (not-withstanding pixel

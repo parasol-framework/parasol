@@ -87,7 +87,7 @@ CSTRING get_name(OBJECTPTR Vector)
 
 ERROR read_path(std::vector<PathCommand> &Path, CSTRING Value)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    PathCommand path;
 
@@ -215,7 +215,7 @@ void calc_aspectratio(CSTRING Caller, LONG AspectRatio,
    DOUBLE SourceWidth, DOUBLE SourceHeight,
    DOUBLE *X, DOUBLE *Y, DOUBLE *XScale, DOUBLE *YScale)
 {
-   parasol::Log log(Caller);
+   pf::Log log(Caller);
 
    // Prevent division by zero errors.  Note that the client can legitimately set these values to zero, so we cannot
    // treat such situations as an error on the client's part.
@@ -340,7 +340,7 @@ static void debug_tree_ptrs(CSTRING Header, OBJECTPTR Vector, LONG *Level) __att
 
 static void debug_tree_ptrs(CSTRING Header, OBJECTPTR Vector, LONG *Level)
 {
-   parasol::Log log(Header);
+   pf::Log log(Header);
    UBYTE spacing[*Level + 1];
    LONG i;
 

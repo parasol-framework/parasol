@@ -42,7 +42,7 @@ ERROR write_nonblock(LONG Handle, APTR Data, LONG Size, LARGE EndTime);
 
 static void msghandler_free(APTR Address)
 {
-   parasol::Log log("RemoveMsgHandler");
+   pf::Log log("RemoveMsgHandler");
    log.trace("Handle: %p", Address);
 
    ThreadLock lock(TL_MSGHANDLER, 5000);
@@ -76,7 +76,7 @@ static void notify_signal_wfo(OBJECTPTR Object, ACTIONID ActionID, ERROR Result,
 {
    auto lref = glWFOList.find(Object->UID);
    if (lref != glWFOList.end()) {
-      parasol::Log log;
+      pf::Log log;
       auto &ref = lref->second;
       log.trace("Object #%d has been signalled from action %d.", Object->UID, ActionID);
 
@@ -136,7 +136,7 @@ AllocMemory
 
 ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION *Routine, MsgHandler **Handle)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Routine) return log.warning(ERR_NullArgs);
 
@@ -205,7 +205,7 @@ Search: No more messages are left on the queue, or no messages that match the gi
 
 ERROR GetMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Buffer, LONG BufferSize)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    //log.branch("Queue: %d, Type: %d, Flags: $%.8x, Size: %d", MessageMID, Type, Flags, BufferSize);
 
@@ -316,13 +316,13 @@ TimeOut:
 
 ERROR ProcessMessages(LONG Flags, LONG TimeOut)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    // Message processing is only possible from the main thread (for system design and synchronisation reasons)
    if (!tlMainThread) return log.warning(ERR_OutsideMainThread);
 
    // Ensure that all resources allocated by sub-routines are assigned to the Task object by default.
-   parasol::SwitchContext ctx(glCurrentTask);
+   pf::SwitchContext ctx(glCurrentTask);
 
    // This recursion blocker prevents ProcessMessages() from being called to breaking point.  Excessive nesting can
    // occur on occasions where ProcessMessages() sends an action to an object that performs some activity before it
@@ -392,7 +392,7 @@ timer_cycle:
                   error = routine(NULL, elapsed, current_time);
                }
                else if (!AccessObjectID(timer->SubscriberID, 50, &subscriber)) {
-                  parasol::SwitchContext context(subscriber);
+                  pf::SwitchContext context(subscriber);
 
                   auto routine = (ERROR (*)(OBJECTPTR, LARGE, LARGE))timer->Routine.StdC.Routine;
                   thread_unlock(TL_TIMER);
@@ -695,7 +695,7 @@ Search: No more messages are left on the queue, or no messages that match the gi
 
 ERROR ScanMessages(APTR MessageQueue, LONG *Index, LONG Type, APTR Buffer, LONG BufferSize)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!MessageQueue) or (!Index)) return log.warning(ERR_NullArgs);
    if (!Buffer) BufferSize = 0;
@@ -787,7 +787,7 @@ static void view_messages(MessageHeader *Header) __attribute__ ((unused));
 
 static void view_messages(MessageHeader *Header)
 {
-   parasol::Log log("Messages");
+   pf::Log log("Messages");
 
    log.warning("Count: %d, Next: %d", Header->Count, Header->NextEntry);
 
@@ -809,7 +809,7 @@ static void view_messages(MessageHeader *Header)
 
 ERROR SendMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Data, LONG Size)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (glLogLevel >= 9) log.function("MessageMID: %d, Type: %d, Data: %p, Size: %d", MessageMID, Type, Data, Size);
 
@@ -1017,7 +1017,7 @@ OutsideMainThread
 ERROR WaitForObjects(LONG Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
 {
    // Refer to the Task class for the message interception routines
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!glWFOList.empty()) return log.warning(ERR_Recursion);
 
@@ -1026,14 +1026,14 @@ ERROR WaitForObjects(LONG Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
 
    log.branch("Flags: $%.8x, Timeout: %d, Signals: %p", Flags, TimeOut, ObjectSignals);
 
-   parasol::SwitchContext ctx(glCurrentTask);
+   pf::SwitchContext ctx(glCurrentTask);
 
    ERROR error = ERR_Okay;
    glWFOList.clear();
 
    if (ObjectSignals) {
       for (LONG i=0; ((error IS ERR_Okay) and (ObjectSignals[i].Object)); i++) {
-         parasol::ScopedObjectLock<OBJECTPTR> lock(ObjectSignals[i].Object); // For thread safety
+         pf::ScopedObjectLock<OBJECTPTR> lock(ObjectSignals[i].Object); // For thread safety
 
          if (ObjectSignals[i].Object->defined(NF::SIGNALLED)) {
             // Objects that have already been signalled do not require monitoring
@@ -1077,7 +1077,7 @@ ERROR WaitForObjects(LONG Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
 
    if (not glWFOList.empty()) { // Clean up if there are dangling subscriptions
       for (auto &ref : glWFOList) {
-         parasol::ScopedObjectLock<OBJECTPTR> lock(ref.second.Object); // For thread safety
+         pf::ScopedObjectLock<OBJECTPTR> lock(ref.second.Object); // For thread safety
          UnsubscribeAction(ref.second.Object, AC_Free);
          UnsubscribeAction(ref.second.Object, AC_Signal);
       }
@@ -1097,7 +1097,7 @@ ERROR send_thread_msg(WINHANDLE Handle, LONG Type, APTR Data, LONG Size)
 ERROR send_thread_msg(LONG Handle, LONG Type, APTR Data, LONG Size)
 #endif
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    ERROR error;
 
    log.function("Type: %d, Data: %p, Size: %d", Type, Data, Size);
@@ -1213,7 +1213,7 @@ Search: The ID that you supplied does not refer to a message in the queue.
 
 ERROR UpdateMessage(APTR Queue, LONG MessageID, LONG Type, APTR Buffer, LONG BufferSize)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Queue) or (!MessageID)) return log.warning(ERR_NullArgs);
 
@@ -1269,7 +1269,7 @@ Search: The referenced process was not found.
 
 ERROR WakeProcess(LONG ProcessID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!ProcessID) return log.warning(ERR_NullArgs);
 
@@ -1288,7 +1288,7 @@ ERROR WakeProcess(LONG ProcessID)
 #ifdef __unix__
 ERROR sleep_task(LONG Timeout)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!tlMainThread) {
       log.warning("Only the main thread can call this function.");
@@ -1453,7 +1453,7 @@ ERROR sleep_task(LONG Timeout)
 #ifdef _WIN32
 ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!tlMainThread) {
       log.warning("Only the main thread can call this function.");
@@ -1608,7 +1608,7 @@ static void thread_socket_init(void) { pthread_key_create(&keySocket, thread_soc
 
 ERROR wake_task(LONG TaskIndex, CSTRING Caller)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (TaskIndex < 0) return ERR_Args;
    if (!shTasks[TaskIndex].ProcessID) return ERR_Args;

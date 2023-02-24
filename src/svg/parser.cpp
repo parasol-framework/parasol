@@ -28,7 +28,7 @@ static LONG parse_aspect_ratio(CSTRING Value)
 
 static LONG shape_rendering_to_render_quality(CSTRING Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!StrMatch("auto", Value)) return RQ_AUTO;
    else if (!StrMatch("optimize-speed", Value)) return RQ_FAST;
@@ -48,7 +48,7 @@ static LONG shape_rendering_to_render_quality(CSTRING Value)
 
 static void apply_state(svgState *State, OBJECTPTR Vector)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("%s: Fill: %s, Stroke: %s, Opacity: %.2f, Font: %s %s", Vector->Class->ClassName, State->Fill, State->Stroke, State->Opacity, State->FontFamily, State->FontSize);
 
@@ -73,7 +73,7 @@ static void apply_state(svgState *State, OBJECTPTR Vector)
 
 static void set_state(svgState *State, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("Total Attributes: %d", Tag->TotalAttrib);
 
@@ -128,7 +128,7 @@ static void process_children(extSVG *Self, objXML *XML, svgState *State, const X
 
 static void xtag_pathtransition(extSVG *Self, objXML *XML, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("Tag: %p", Tag);
 
@@ -173,7 +173,7 @@ static void xtag_pathtransition(extSVG *Self, objXML *XML, const XMLTag *Tag)
 
 static void xtag_clippath(extSVG *Self, objXML *XML, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("Tag: %p", Tag);
 
@@ -222,7 +222,7 @@ static void xtag_clippath(extSVG *Self, objXML *XML, const XMLTag *Tag)
 
 static ERROR parse_fe_blur(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
    if (NewObject(ID_BLURFX, &fx) != ERR_Okay) return ERR_NewObject;
@@ -267,7 +267,7 @@ static ERROR parse_fe_blur(extSVG *Self, objVectorFilter *Filter, const XMLTag *
 
 static ERROR parse_fe_offset(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
    if (NewObject(ID_OFFSETFX, &fx) != ERR_Okay) return ERR_NewObject;
@@ -297,7 +297,7 @@ static ERROR parse_fe_offset(extSVG *Self, objVectorFilter *Filter, const XMLTag
 
 static ERROR parse_fe_merge(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
    if (NewObject(ID_MERGEFX, &fx) != ERR_Okay) return ERR_NewObject;
@@ -385,7 +385,7 @@ static const DOUBLE glAchromatomaly[20] = { 0.618,0.320,0.062,0,0, 0.163,0.775,0
 
 static ERROR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
    if (NewObject(ID_COLOURFX, &fx) != ERR_Okay) return ERR_NewObject;
@@ -470,7 +470,7 @@ static ERROR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, const
 
 static ERROR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
    if (NewObject(ID_CONVOLVEFX, &fx) != ERR_Okay) return ERR_NewObject;
@@ -570,7 +570,7 @@ static ERROR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, con
 
 static ERROR parse_fe_lighting(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag, LONG Type)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
    if (NewObject(ID_LIGHTINGFX, &fx) != ERR_Okay) return ERR_NewObject;
@@ -695,7 +695,7 @@ static ERROR parse_fe_lighting(extSVG *Self, objVectorFilter *Filter, const XMLT
 
 static ERROR parse_fe_displacement_map(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
    if (NewObject(ID_DISPLACEMENTFX, &fx) != ERR_Okay) return ERR_NewObject;
@@ -750,7 +750,7 @@ static ERROR parse_fe_displacement_map(extSVG *Self, objVectorFilter *Filter, co
 
 static ERROR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
    if (NewObject(ID_REMAPFX, &fx) != ERR_Okay) return ERR_NewObject;
@@ -841,7 +841,7 @@ static ERROR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, cons
 
 static ERROR parse_fe_composite(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
    if (NewObject(ID_COMPOSITEFX, &fx) != ERR_Okay) return ERR_NewObject;
@@ -944,7 +944,7 @@ static ERROR parse_fe_composite(extSVG *Self, objVectorFilter *Filter, const XML
 
 static ERROR parse_fe_flood(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
    if (NewObject(ID_FLOODFX, &fx) != ERR_Okay) return ERR_NewObject;
@@ -999,7 +999,7 @@ static ERROR parse_fe_flood(extSVG *Self, objVectorFilter *Filter, const XMLTag 
 
 static ERROR parse_fe_turbulence(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
    if (NewObject(ID_TURBULENCEFX, &fx) != ERR_Okay) return ERR_NewObject;
@@ -1059,7 +1059,7 @@ static ERROR parse_fe_turbulence(extSVG *Self, objVectorFilter *Filter, const XM
 
 static ERROR parse_fe_morphology(extSVG *Self, objVectorFilter *Filter, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
    if (NewObject(ID_MORPHOLOGYFX, &fx) != ERR_Okay) return ERR_NewObject;
@@ -1106,7 +1106,7 @@ static ERROR parse_fe_morphology(extSVG *Self, objVectorFilter *Filter, const XM
 
 static ERROR parse_fe_source(extSVG *Self, objXML *XML, svgState *State, objVectorFilter *Filter, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
    if (NewObject(ID_SOURCEFX, &fx) != ERR_Okay) return ERR_NewObject;
@@ -1163,7 +1163,7 @@ static ERROR parse_fe_source(extSVG *Self, objXML *XML, svgState *State, objVect
 
 static ERROR parse_fe_image(extSVG *Self, objXML *XML, svgState *State, objVectorFilter *Filter, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    // Check if the client has specified an href that refers to a pattern name instead of an image file.  In that
    // case we need to divert to the SourceFX parser.
@@ -1259,7 +1259,7 @@ static ERROR parse_fe_image(extSVG *Self, objXML *XML, svgState *State, objVecto
 
 static void xtag_filter(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    objVectorFilter *filter;
    CSTRING id = NULL;
@@ -1386,7 +1386,7 @@ static void xtag_filter(extSVG *Self, objXML *XML, svgState *State, const XMLTag
 
 static void process_pattern(extSVG *Self, objXML *XML, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objVectorPattern *pattern;
    CSTRING id = NULL;
 
@@ -1497,7 +1497,7 @@ static void process_pattern(extSVG *Self, objXML *XML, const XMLTag *Tag)
 static ERROR process_shape(extSVG *Self, CLASSID VectorID, objXML *XML, svgState *State, const XMLTag *Tag,
    OBJECTPTR Parent, objVector **Result)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    ERROR error;
    objVector *vector;
 
@@ -1556,7 +1556,7 @@ static ERROR process_shape(extSVG *Self, CLASSID VectorID, objXML *XML, svgState
 
 static ERROR xtag_default(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent, objVector **Vector)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("%s", Tag->Attrib->Name);
 
@@ -1641,7 +1641,7 @@ static ERROR xtag_default(extSVG *Self, objXML *XML, svgState *State, const XMLT
 
 static ERROR load_pic(extSVG *Self, CSTRING Path, objPicture **Picture)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    *Picture = NULL;
    objFile *file = NULL;
@@ -1707,7 +1707,7 @@ static ERROR load_pic(extSVG *Self, CSTRING Path, objPicture **Picture)
 
 static void def_image(extSVG *Self, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objVectorImage *image;
    CSTRING id = NULL;
    objPicture *pic = NULL;
@@ -1772,7 +1772,7 @@ static void def_image(extSVG *Self, const XMLTag *Tag)
 
 static ERROR xtag_image(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent, objVector **Vector)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG ratio = 0;
    bool width_set = false;
    bool height_set = false;
@@ -1837,7 +1837,7 @@ static ERROR xtag_image(extSVG *Self, objXML *XML, svgState *State, const XMLTag
 
 static ERROR xtag_defs(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("Tag: %p", Tag);
 
@@ -1875,7 +1875,7 @@ static ERROR xtag_defs(extSVG *Self, objXML *XML, svgState *State, const XMLTag 
 
 static ERROR xtag_style(extSVG *Self, objXML *XML, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    ERROR error = ERR_Okay;
    CSTRING type = XMLATTRIB(Tag, "type");
 
@@ -1934,7 +1934,7 @@ static ERROR xtag_style(extSVG *Self, objXML *XML, const XMLTag *Tag)
 
 static void xtag_symbol(extSVG *Self, objXML *XML, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.traceBranch("Tag: %p", Tag);
 
    CSTRING id = XMLATTRIB(Tag, "id");
@@ -1948,7 +1948,7 @@ static void xtag_symbol(extSVG *Self, objXML *XML, const XMLTag *Tag)
 
 static void xtag_morph(extSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR Parent)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Parent) or (Parent->ClassID != ID_VECTOR)) {
       log.traceWarning("Unable to apply morph to non-vector parent object.");
@@ -2053,7 +2053,7 @@ static void xtag_morph(extSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR P
 
 static void xtag_use(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    CSTRING ref = NULL;
 
    for (LONG a=1; (a < Tag->TotalAttrib) and (!ref); a++) {
@@ -2183,7 +2183,7 @@ static void xtag_use(extSVG *Self, objXML *XML, svgState *State, const XMLTag *T
 
 static void xtag_group(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent, objVector **Vector)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("Tag: %p", Tag);
 
@@ -2215,7 +2215,7 @@ static void xtag_group(extSVG *Self, objXML *XML, svgState *State, const XMLTag 
 
 static void xtag_svg(extSVG *Self, objXML *XML, svgState *State, const XMLTag *Tag, OBJECTPTR Parent, objVector **Vector)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG a;
 
    if (!Parent) {
@@ -2349,7 +2349,7 @@ static void xtag_svg(extSVG *Self, objXML *XML, svgState *State, const XMLTag *T
 
 static ERROR xtag_animatetransform(extSVG *Self, objXML *XML, const XMLTag *Tag, OBJECTPTR Parent)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    svgAnimation anim;
 
    Self->Animated = TRUE;
@@ -2535,7 +2535,7 @@ static ERROR xtag_animatemotion(extSVG *Self, objXML *XML, const XMLTag *Tag, OB
 
 static void process_attrib(extSVG *Self, objXML *XML, const XMLTag *Tag, objVector *Vector)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    for (LONG t=1; t < Tag->TotalAttrib; t++) {
       if (!Tag->Attrib[t].Value) continue;
@@ -2563,7 +2563,7 @@ static void process_attrib(extSVG *Self, objXML *XML, const XMLTag *Tag, objVect
 
 static void apply_rule(extSVG *Self, objXML *XML, KatanaArray *Properties, const XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    for (ULONG i=0; i < Properties->length; i++) {
       auto prop = (KatanaDeclaration *)Properties->data[i];
@@ -2654,7 +2654,7 @@ static void apply_rule(extSVG *Self, objXML *XML, KatanaArray *Properties, const
 
 static void process_rule(extSVG *Self, objXML *XML, KatanaRule *Rule)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Rule) return;
 
@@ -2732,7 +2732,7 @@ static void process_rule(extSVG *Self, objXML *XML, KatanaRule *Rule)
 
 static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, objXML *XML, const XMLTag *Tag, CSTRING StrValue)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    DOUBLE num;
 
    // Ignore stylesheet attributes

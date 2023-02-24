@@ -35,7 +35,7 @@ static ERROR STORAGE_Free(extStorageDevice *Self, APTR Void)
 
 static ERROR STORAGE_Init(extStorageDevice *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Self->Volume) return log.warning(ERR_FieldNotSet);
 
@@ -118,7 +118,7 @@ static ERROR GET_Volume(extStorageDevice *Self, STRING *Value)
 
 static ERROR SET_Volume(extStorageDevice *Self, CSTRING Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->initialised()) return log.warning(ERR_Immutable);
 

@@ -30,7 +30,7 @@ class extMorphologyFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = ID_MORPHOLOGYFX;
    static constexpr CSTRING CLASS_NAME = "MorphologyFX";
-   using create = parasol::Create<extMorphologyFX>;
+   using create = pf::Create<extMorphologyFX>;
 
    LONG RadiusX, RadiusY;
    UBYTE Operator;

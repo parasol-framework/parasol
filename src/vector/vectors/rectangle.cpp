@@ -55,7 +55,7 @@ Move: Moves the vector to a new position.
 
 static ERROR RECTANGLE_Move(extVectorRectangle *Self, struct acMove *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -73,7 +73,7 @@ MoveToPoint: Moves the vector to a new fixed position.
 
 static ERROR RECTANGLE_MoveToPoint(extVectorRectangle *Self, struct acMoveToPoint *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -101,7 +101,7 @@ Resize: Changes the rectangle dimensions.
 
 static ERROR RECTANGLE_Resize(extVectorRectangle *Self, struct acResize *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -165,7 +165,7 @@ static ERROR RECTANGLE_GET_Height(extVectorRectangle *Self, Variable *Value)
 
 static ERROR RECTANGLE_SET_Height(extVectorRectangle *Self, Variable *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    DOUBLE val;
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -252,7 +252,7 @@ static ERROR RECTANGLE_GET_X(extVectorRectangle *Self, Variable *Value)
 
 static ERROR RECTANGLE_SET_X(extVectorRectangle *Self, Variable *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    DOUBLE val;
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -292,7 +292,7 @@ static ERROR RECTANGLE_GET_Width(extVectorRectangle *Self, Variable *Value)
 
 static ERROR RECTANGLE_SET_Width(extVectorRectangle *Self, Variable *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    DOUBLE val;
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
@@ -332,7 +332,7 @@ static ERROR RECTANGLE_GET_Y(extVectorRectangle *Self, Variable *Value)
 
 static ERROR RECTANGLE_SET_Y(extVectorRectangle *Self, Variable *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    DOUBLE val;
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;

@@ -94,7 +94,7 @@ LimitedSuccess: The file item was successfully added to the internal clipboard, 
 
 static ERROR CLIPBOARD_AddFile(objClipboard *Self, struct clipAddFile *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
    if ((!Args->Path) or (!Args->Path[0])) return log.warning(ERR_MissingPath);
@@ -106,10 +106,10 @@ static ERROR CLIPBOARD_AddFile(objClipboard *Self, struct clipAddFile *Args)
 #ifdef _WIN32
    // Add the file to the host clipboard
    if ((!(Self->Flags & CLF_DRAG_DROP)) and (!error)) {
-      parasol::ScopedAccessMemory<ClipHeader> header(Self->ClusterID, MEM_READ_WRITE, 3000);
+      pf::ScopedAccessMemory<ClipHeader> header(Self->ClusterID, MEM_READ_WRITE, 3000);
       if (header.granted()) {
          auto clips = (ClipEntry *)(header.ptr + 1);
-         parasol::ScopedAccessMemory<char> str(clips->Files, MEM_READ_WRITE, 3000);
+         pf::ScopedAccessMemory<char> str(clips->Files, MEM_READ_WRITE, 3000);
          if (str.granted()) {
             // Build a list of resolved path names in a new buffer that is suitable for passing to Windows.
 
@@ -208,7 +208,7 @@ Args
 
 static ERROR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Objects) or (!Args->Objects[0])) return log.warning(ERR_NullArgs);
 
@@ -226,7 +226,7 @@ static ERROR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Arg
    LONG datatype = 0;
    if (!add_clip(Self->ClusterID, datatype, 0, Args->Flags & CEF_EXTEND, 0, total, &counter)) {
       for (LONG i=0; list[i]; i++) {
-         parasol::ScopedObjectLock<BaseClass> object(list[i], 5000);
+         pf::ScopedObjectLock<BaseClass> object(list[i], 5000);
          if (object.granted()) {
             if (!classid) classid = object.obj->ClassID;
 
@@ -289,7 +289,7 @@ File
 
 static ERROR CLIPBOARD_AddText(objClipboard *Self, struct clipAddText *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->String)) return log.warning(ERR_NullArgs);
    if (!Args->String[0]) return ERR_Okay;
@@ -327,7 +327,7 @@ static ERROR CLIPBOARD_AddText(objClipboard *Self, struct clipAddText *Args)
       char buffer[200];
       snprintf(buffer, sizeof(buffer), "clipboard:text%d.000", counter);
 
-      parasol::Create<objFile> file = { fl::Path(buffer), fl::Flags(FL_WRITE|FL_NEW), fl::Permissions(PERMIT_READ|PERMIT_WRITE) };
+      pf::Create<objFile> file = { fl::Path(buffer), fl::Flags(FL_WRITE|FL_NEW), fl::Permissions(PERMIT_READ|PERMIT_WRITE) };
       if (file.ok()) {
          file->write(Args->String, StrLength(Args->String), 0);
          return ERR_Okay;
@@ -356,7 +356,7 @@ static ERROR CLIPBOARD_Clear(objClipboard *Self, APTR Void)
 
    // Annihilate all historical clip information
 
-   parasol::ScopedAccessMemory<ClipHeader> clips(Self->ClusterID, MEM_READ_WRITE, 3000);
+   pf::ScopedAccessMemory<ClipHeader> clips(Self->ClusterID, MEM_READ_WRITE, 3000);
    if (clips.granted()) {
       auto history = (ClipEntry *)(clips.ptr + 1);
       ClearMemory(history, MAX_CLIPS * sizeof(ClipEntry));
@@ -377,7 +377,7 @@ given data type.
 
 static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    char buffer[200];
    LONG counter;
 
@@ -448,7 +448,7 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
          ERROR error;
          if (Self->RequestHandler.Type IS CALL_STDC) {
             auto routine = (ERROR (*)(objClipboard *, OBJECTID, LONG, char *))Self->RequestHandler.StdC.Routine;
-            parasol::SwitchContext ctx(Self->RequestHandler.StdC.Context);
+            pf::SwitchContext ctx(Self->RequestHandler.StdC.Context);
             error = routine(Self, Args->ObjectID, request->Item, request->Preference);
          }
          else if (Self->RequestHandler.Type IS CALL_SCRIPT) {
@@ -529,7 +529,7 @@ NoData: No clip was available that matched the requested data type.
 
 static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -669,7 +669,7 @@ AccessMemoryID: The clipboard memory data was not accessible.
 
 static ERROR CLIPBOARD_Remove(objClipboard *Self, struct clipRemove *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Datatype)) return log.warning(ERR_NullArgs);
 
@@ -714,7 +714,7 @@ The following variable field types are supported by the Clipboard class:
 
 static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    char datatype[20], index[20];
    WORD i, j;
 
@@ -818,7 +818,7 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
 
       LONG total = 0;
       if (value) {
-         parasol::ScopedAccessMemory<ClipHeader> header(Self->ClusterID, MEM_READ, 3000);
+         pf::ScopedAccessMemory<ClipHeader> header(Self->ClusterID, MEM_READ, 3000);
          if (header.granted()) {
             auto clips = (ClipEntry *)(header.ptr + 1);
             for (WORD i=0; i < MAX_CLIPS; i++) {
@@ -840,7 +840,7 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
 
 static ERROR CLIPBOARD_Init(objClipboard *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Self->ClusterID) or (Self->Flags & CLF_DRAG_DROP)) {
       // Create a new grouping for this clipboard.  It will be possible for any other clipboard to attach
@@ -936,7 +936,7 @@ static ERROR SET_RequestHandler(objClipboard *Self, FUNCTION *Value)
 
 static void free_clip(ClipEntry *Clip)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (Clip->TotalItems > 16384) Clip->TotalItems = 16384;
 
@@ -965,7 +965,7 @@ static void free_clip(ClipEntry *Clip)
 static ERROR add_clip(MEMORYID ClusterID, LONG Datatype, CSTRING File, LONG Flags,
    CLASSID ClassID, LONG TotalItems, LONG *Counter)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.branch("Datatype: $%x, File: %s, Flags: $%x, Class: %d, Total Items: %d", Datatype, File, Flags, ClassID, TotalItems);
 
@@ -1089,7 +1089,7 @@ extern "C" void report_windows_clip_text(CSTRING String)
 void report_windows_clip_text(CSTRING String)
 #endif
 {
-   parasol::Log log("Clipboard");
+   pf::Log log("Clipboard");
    log.branch("Application has detected text on the clipboard.");
 
    objClipboard::create clipboard = { fl::Flags(CLF_HOST) };
@@ -1107,7 +1107,7 @@ void report_windows_clip_text(CSTRING String)
 #ifdef _WIN32
 extern "C" void report_windows_files(APTR Data, LONG CutOperation)
 {
-   parasol::Log log("Clipboard");
+   pf::Log log("Clipboard");
 
    log.branch("Application has detected files on the clipboard.  Cut: %d", CutOperation);
 
@@ -1127,7 +1127,7 @@ extern "C" void report_windows_files(APTR Data, LONG CutOperation)
 #ifdef _WIN32
 extern "C" void report_windows_hdrop(STRING Data, LONG CutOperation)
 {
-   parasol::Log log("Clipboard");
+   pf::Log log("Clipboard");
 
    log.branch("Application has detected files on the clipboard.  Cut: %d", CutOperation);
 
@@ -1149,7 +1149,7 @@ extern "C" void report_windows_hdrop(STRING Data, LONG CutOperation)
 #ifdef _WIN32
 extern "C" void report_windows_clip_utf16(UWORD *String)
 {
-   parasol::Log log("Clipboard");
+   pf::Log log("Clipboard");
 
    log.branch("Application has detected unicode text on the clipboard.");
 

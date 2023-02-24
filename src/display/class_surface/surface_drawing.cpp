@@ -3,7 +3,7 @@ void copy_bkgd(SurfaceList *, LONG, LONG, LONG, WORD, WORD, WORD, WORD, extBitma
 
 ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG Total, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags)
 {
-   parasol::Log log("expose_surface");
+   pf::Log log("expose_surface");
    extBitmap *bitmap;
    ClipRectangle abs;
    LONG i, j;
@@ -87,7 +87,7 @@ ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG To
       if (cursor < Total) {
          if ((list[cursor].SurfaceID) and (list[cursor].Bottom < abs.Bottom) and (list[cursor].Bottom > abs.Top) and
              (list[cursor].Right > abs.Left) and (list[cursor].Left < abs.Right)) {
-            parasol::Log log("expose_surface");
+            pf::Log log("expose_surface");
             log.traceBranch("Splitting cursor.");
             _expose_surface(SurfaceID, list, index, Total, abs.Left, abs.Top, abs.Right, list[cursor].Bottom, EXF_CURSOR_SPLIT|EXF_ABSOLUTE|Flags);
             _expose_surface(SurfaceID, list, index, Total, abs.Left, list[cursor].Bottom, abs.Right, abs.Bottom, EXF_CURSOR_SPLIT|EXF_ABSOLUTE|Flags);
@@ -203,7 +203,7 @@ ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG To
          while ((i < Total) and (list[i].BitmapID IS list[index].BitmapID)) i++;
       }
 
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
       log.traceBranch("Redraw volatiles from idx %d, area %dx%d,%dx%d", i, abs.Left, abs.Top, abs.Right - abs.Left, abs.Bottom - abs.Top);
 
       if (i < tlVolatileIndex) i = tlVolatileIndex; // Volatile index allows the starting point to be specified
@@ -245,7 +245,7 @@ ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG To
          if ((list[i].Right > abs.Left) and (list[i].Bottom > abs.Top) and
              (list[i].Left < abs.Right) and (list[i].Top < abs.Bottom)) {
 
-            parasol::Log log(__FUNCTION__);
+            pf::Log log(__FUNCTION__);
             log.traceBranch("Redrawing/Exposing cursor.");
 
             if (!(list[i].Flags & RNF_COMPOSITE)) { // Composites never require redrawing because they are not completely volatile
@@ -292,7 +292,7 @@ the surface area first).</li>
 
 ERROR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    // If the Surface object is invisible, return immediately
 
@@ -557,7 +557,7 @@ static ERROR SURFACE_InvalidateRegion(extSurface *Self, struct drwInvalidateRegi
 
 void move_layer(extSurface *Self, LONG X, LONG Y)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    // If the coordinates are unchanged, do nothing
 
@@ -678,7 +678,7 @@ void move_layer(extSurface *Self, LONG X, LONG Y)
 
 void prepare_background(extSurface *Self, SurfaceList *list, LONG Total, LONG Index, extBitmap *DestBitmap, ClipRectangle *clip, BYTE Stage)
 {
-   parasol::Log log("prepare_bkgd");
+   pf::Log log("prepare_bkgd");
 
    log.traceBranch("%d Position: %dx%d,%dx%d", list[Index].SurfaceID, clip->Left, clip->Top, clip->Right-clip->Left, clip->Bottom-clip->Top);
 
@@ -774,7 +774,7 @@ void prepare_background(extSurface *Self, SurfaceList *list, LONG Total, LONG In
 void copy_bkgd(SurfaceList *list, LONG Index, LONG End, LONG Master, WORD Left, WORD Top, WORD Right, WORD Bottom,
    extBitmap *DestBitmap, extBitmap *SrcBitmap, WORD Opacity, BYTE Pervasive)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    // Scan for overlapping parent/sibling regions and avoid them
 

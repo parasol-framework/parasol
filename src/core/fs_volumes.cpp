@@ -26,7 +26,7 @@ NoPermission: An attempt to delete a system volume was denied.
 
 ERROR DeleteVolume(CSTRING Name)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Name) or (!Name[0])) return ERR_NullArgs;
 
@@ -58,7 +58,7 @@ RenameVolume: Renames a volume.
 
 ERROR RenameVolume(CSTRING Volume, CSTRING Name)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    ThreadLock lock(TL_VOLUMES, 6000);
    if (lock.granted()) {
@@ -131,7 +131,7 @@ AllocMemory:
 
 ERROR SetVolume(LARGE TagID, ...)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG i;
 
    va_list list;
@@ -262,7 +262,7 @@ Exists: The named volume already exists.
 
 ERROR VirtualVolume(CSTRING Name, ...)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Name) or (!Name[0])) return log.warning(ERR_NullArgs);
 

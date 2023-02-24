@@ -136,7 +136,7 @@ static void tag_advance(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chi
 
 static void tag_body(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    #define MAX_BODY_MARGIN 500
 
@@ -302,7 +302,7 @@ static void tag_cache(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
 
 static void tag_call(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    OBJECTPTR script = Self->DefaultScript;
 
    STRING function = NULL;
@@ -334,7 +334,7 @@ static void tag_call(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
    }
 
    {
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
       log.traceBranch("Calling script #%d function '%s'", script->UID, function);
 
       if (Tag->TotalAttrib > 2) {
@@ -396,7 +396,7 @@ static void tag_caps(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 
 static void tag_debug(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
-   parasol::Log log("DocMsg");
+   pf::Log log("DocMsg");
    for (LONG i=1; i < Tag->TotalAttrib; i++) {
       if (!StrMatch("msg", Tag->Attrib[i].Name)) {
          log.warning("%s", Tag->Attrib[i].Value); // Using %s rather than a direct reference to msg to prevent formatting interpretation
@@ -410,7 +410,7 @@ static void tag_debug(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
 
 static void tag_div(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    style_status savestatus;
 
    savestatus = Self->Style;
@@ -439,7 +439,7 @@ static void tag_div(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, 
 
 static void tag_editdef(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    LONG totalargs = 0;
    LONG bufsize   = 0;
@@ -677,7 +677,7 @@ static void tag_head(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 
 static void tag_include(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (auto src = XMLATTRIB(Tag, "src")) {
       if (auto xmlinc = objXML::create::integral(fl::Path(src), fl::Flags(XMF_PARSE_HTML|XMF_STRIP_HEADERS))) {
@@ -701,7 +701,7 @@ static void tag_parse(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
       if (*tagname IS '$') tagname++;
 
       if (!StrMatch("value", tagname)) {
-         parasol::Log log(__FUNCTION__);
+         pf::Log log(__FUNCTION__);
 
          StrCopy(Tag->Attrib[1].Value, Self->Temp, Self->TempSize);
 
@@ -736,7 +736,7 @@ static void tag_parse(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
 
 static void tag_index(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    ULONG name = 0;
    bool visible = TRUE;
@@ -802,7 +802,7 @@ static void tag_index(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
 
 static void tag_link(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    escLink link;
    link.Type  = 0;
@@ -1006,7 +1006,7 @@ static void tag_list(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 
 static void tag_paragraph(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    style_status savestatus;
    escParagraph esc;
 
@@ -1053,7 +1053,7 @@ static void tag_paragraph(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *C
 
 static void tag_print(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    // Copy the content from the value attribute into the document stream.  If used inside an object, the data is sent
    // to that object as XML.
@@ -1099,7 +1099,7 @@ static void tag_print(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
 
 static void tag_set(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (Tag->TotalAttrib > 1) {
       if (!StrMatch("object", Tag->Attrib[1].Name)) {
@@ -1172,7 +1172,7 @@ static void tag_xmltranslate(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag
 
 static void tag_xml_content(extDocument *Self, objXML *XML, XMLTag *Tag, WORD Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    MemInfo meminfo;
    OBJECTPTR target;
    STRING xmlstr, str;
@@ -1260,7 +1260,7 @@ static void tag_xml_content(extDocument *Self, objXML *XML, XMLTag *Tag, WORD Fl
 
 static void tag_font(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    style_status savestatus = Self->Style; // Save the current style
    UBYTE preformat = FALSE;
    LONG flags = 0;
@@ -1345,7 +1345,7 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
   objXML *XML, XMLTag *Tag, XMLTag *child, LONG *Index,
   LONG Flags, UBYTE *s_revert, UBYTE *e_revert, LONG *b_revert)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    Field *field;
    STRING content, argname;
    OBJECTPTR object;
@@ -1487,7 +1487,7 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
       // document content are passed to the object as XML.
 
       if (Tag->Child) {
-         parasol::Log log(__FUNCTION__);
+         pf::Log log(__FUNCTION__);
          log.traceBranch("Processing child tags for object #%d.", object->UID);
          auto prevobject = Self->CurrentObject;
          Self->CurrentObject = object;
@@ -1496,7 +1496,7 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
       }
 
       if (child != Tag->Child) {
-         parasol::Log log(__FUNCTION__);
+         pf::Log log(__FUNCTION__);
          log.traceBranch("Processing further child tags for object #%d.", object->UID);
          auto prevobject = Self->CurrentObject;
          Self->CurrentObject = object;
@@ -1619,7 +1619,7 @@ static void tag_pre(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, 
 
 static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    OBJECTPTR script;
    ERROR error;
 
@@ -1917,7 +1917,7 @@ static void tag_italic(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
 
 static void tag_li(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Self->Style.List) {
       log.warning("<li> not used inside a <list> tag.");
@@ -2026,7 +2026,7 @@ static void tag_underline(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *C
 
 static void tag_repeat(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG loopstart = 0;
    LONG loopend = 0;
    LONG count = 0;
@@ -2121,7 +2121,7 @@ static void tag_repeat(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
 
 static void tag_table(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    escTable start, *table;
    process_table var, *savevar;
    STRING columns, *list;
@@ -2259,7 +2259,7 @@ static void tag_table(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
 
 static void tag_row(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    escRow escrow;
 
    if (!Self->Style.Table) {
@@ -2308,7 +2308,7 @@ static void tag_row(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, 
 
 static void tag_cell(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    struct {
       escCell cell;
       UBYTE buffer[200];
@@ -2489,7 +2489,7 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 
 static void tag_inject(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    if (Self->InTemplate) {
       if (Self->InjectTag) {
          parse_tag(Self, Self->InjectXML, Self->InjectTag, Index, Flags);
@@ -2503,7 +2503,7 @@ static void tag_inject(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
 
 static void tag_page(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    CSTRING name, str;
 
    if ((name = str = XMLATTRIB(Tag, "name"))) {
@@ -2528,7 +2528,7 @@ static void tag_page(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 
 static void tag_trigger(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, LONG *Index, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG trigger_code;
    OBJECTPTR script;
    LARGE function_id;

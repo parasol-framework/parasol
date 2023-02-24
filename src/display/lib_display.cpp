@@ -240,7 +240,7 @@ Okay
 ERROR gfxSetHostOption(LONG Option, LARGE Value)
 {
 #if defined(_WIN32) || defined(__xwindows__)
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    switch (Option) {
       case HOST_TRAY_ICON:

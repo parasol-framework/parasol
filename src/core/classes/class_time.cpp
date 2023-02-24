@@ -110,7 +110,7 @@ work if the user is logged in as the administrator.
 static ERROR TIME_SetTime(objTime *Self, APTR Void)
 {
 #ifdef __unix__
-   parasol::Log log;
+   pf::Log log;
    struct timeval tmday;
    struct tm time;
    LONG fd;

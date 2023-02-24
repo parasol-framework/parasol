@@ -19,7 +19,7 @@
 #include <memory>
 #include <optional>
 
-namespace parasol {
+namespace pf {
 
 template <class T>
 class ScopedAccessMemory { // C++ wrapper for automatically releasing shared memory
@@ -136,7 +136,7 @@ class ScopedSysLock { // C++ wrapper for terminating a system lock when scope is
 //********************************************************************************************************************
 // Resource guard for any allocation that can be freed with FreeResource()
 //
-// Usage: parasol::GuardedResource resource(thing)
+// Usage: pf::GuardedResource resource(thing)
 
 template <class T>
 class GuardedResource { // C++ wrapper for terminating resources when scope is lost
@@ -150,7 +150,7 @@ class GuardedResource { // C++ wrapper for terminating resources when scope is l
 //********************************************************************************************************************
 // Resource guard for temporarily switching context and back when out of scope.
 //
-// Usage: parasol::SwitchContext context(YourObject)
+// Usage: pf::SwitchContext context(YourObject)
 
 template <class T>
 class SwitchContext { // C++ wrapper for changing the current context with a resource guard in place
@@ -172,7 +172,7 @@ class SwitchContext { // C++ wrapper for changing the current context with a res
 class objBitmap;
 
 namespace fl {
-   using namespace parasol;
+   using namespace pf;
 
 constexpr FieldValue Path(CSTRING Value) { return FieldValue(FID_Path, Value); }
 inline FieldValue Path(std::string Value) { return FieldValue(FID_Path, Value.c_str()); }

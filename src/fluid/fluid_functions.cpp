@@ -313,7 +313,7 @@ static void receive_event(eventsub *Event, APTR Info, LONG InfoSize)
    auto prv = (prvFluid *)Script->ChildPrivate;
    if (!prv) return;
 
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.trace("Received event $%.8x%.8x", (LONG)((Event->EventID>>32) & 0xffffffff), (LONG)(Event->EventID & 0xffffffff));
 
    lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, Event->Function);
@@ -337,7 +337,7 @@ int fcmd_unsubscribe_event(lua_State *Lua)
 
    APTR handle;
    if ((handle = lua_touserdata(Lua, 1))) {
-      parasol::Log log("unsubscribe_event");
+      pf::Log log("unsubscribe_event");
       if (Lua->Script->Flags & SCF_DEBUG) log.msg("Handle: %p", handle);
 
       for (auto event=prv->EventList; event; event=event->Next) {
@@ -478,7 +478,7 @@ int fcmd_msg(lua_State *Lua)
       if (!s) return luaL_error(Lua, LUA_QL("tostring") " must return a string to " LUA_QL("print"));
 
       {
-         parasol::Log log("Fluid");
+         pf::Log log("Fluid");
          log.msg("%s", s);
       }
 
@@ -504,7 +504,7 @@ int fcmd_print(lua_State *Lua)
 
       #ifdef __ANDROID__
          {
-            parasol::Log log("Fluid");
+            pf::Log log("Fluid");
             log.msg("%s", s);
          }
       #else
@@ -641,7 +641,7 @@ int fcmd_loadfile(lua_State *Lua)
    ERROR error = ERR_Okay;
 
    if (auto path = lua_tostring(Lua, 1)) {
-      parasol::Log log("loadfile");
+      pf::Log log("loadfile");
       LONG pathlen = strlen(path);
       char fbpath[pathlen+6];
 
@@ -778,7 +778,7 @@ int fcmd_exec(lua_State *Lua)
       CSTRING error_msg = NULL;
 
       {
-         parasol::Log log("exec");
+         pf::Log log("exec");
          log.branch();
 
          // Check for the presence of a compiled header and skip it if present

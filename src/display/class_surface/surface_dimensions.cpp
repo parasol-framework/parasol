@@ -13,7 +13,7 @@ It is possible to set this field, but only after initialisation of the surface o
 
 static ERROR GET_AbsX(extSurface *Self, LONG *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    SurfaceControl *ctl;
    LONG i;
 
@@ -34,7 +34,7 @@ static ERROR GET_AbsX(extSurface *Self, LONG *Value)
 
 static ERROR SET_AbsX(extSurface *Self, LONG Value)
 {
-   parasol::Log log;
+   pf::Log log;
    LONG parent, x;
 
    if (Self->initialised()) {
@@ -71,7 +71,7 @@ It is possible to set this field, but only after initialisation of the surface o
 
 static ERROR GET_AbsY(extSurface *Self, LONG *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    SurfaceControl *ctl;
    LONG i;
 
@@ -92,7 +92,7 @@ static ERROR GET_AbsY(extSurface *Self, LONG *Value)
 
 static ERROR SET_AbsY(extSurface *Self, LONG Value)
 {
-   parasol::Log log;
+   pf::Log log;
    LONG parent, y;
 
    if (Self->initialised()) {
@@ -194,7 +194,7 @@ FIXED_X, FIXED_XOFFSET and FIXED_WIDTH simultaneously.
 
 static ERROR SET_Dimensions(extSurface *Self, LONG Value)
 {
-   parasol::Log log;
+   pf::Log log;
    SURFACEINFO *parent;
 
    if (!gfxGetSurfaceInfo(Self->ParentID, &parent)) {
@@ -301,7 +301,7 @@ static ERROR GET_Height(extSurface *Self, Variable *Value)
 
 static ERROR SET_Height(extSurface *Self, Variable *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    extSurface *parent;
    Variable var;
    DOUBLE value;
@@ -663,7 +663,7 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 static ERROR GET_VisibleHeight(extSurface *Self, LONG *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    SurfaceControl *ctl;
    struct ClipRectangle clip;
    WORD i;
@@ -710,7 +710,7 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 static ERROR GET_VisibleWidth(extSurface *Self, LONG *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    SurfaceControl *ctl;
    struct ClipRectangle clip;
    WORD i;
@@ -757,7 +757,7 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 static ERROR GET_VisibleX(extSurface *Self, LONG *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    SurfaceControl *ctl;
    struct ClipRectangle clip;
    WORD i;
@@ -804,7 +804,7 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 static ERROR GET_VisibleY(extSurface *Self, LONG *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    SurfaceControl *ctl;
 
    if (!Self->ParentID) {
@@ -869,7 +869,7 @@ static ERROR GET_Width(extSurface *Self, Variable *Value)
 
 static ERROR SET_Width(extSurface *Self, Variable *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    Variable var;
    extSurface *parent;
    DOUBLE value;
@@ -947,7 +947,7 @@ static ERROR GET_XCoord(extSurface *Self, Variable *Value)
       else Value->Large = Self->X;
    }
    else {
-      parasol::Log log;
+      pf::Log log;
       return log.warning(ERR_FieldTypeMismatch);
    }
    return ERR_Okay;
@@ -955,7 +955,7 @@ static ERROR GET_XCoord(extSurface *Self, Variable *Value)
 
 static ERROR SET_XCoord(extSurface *Self, Variable *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    extSurface *parent;
    DOUBLE value;
 
@@ -1012,7 +1012,7 @@ an X coordinate calculated from the formula `X = ContainerWidth - SurfaceWidth -
 
 static ERROR GET_XOffset(extSurface *Self, Variable *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    Variable xoffset;
    extSurface *parent;
    DOUBLE value;
@@ -1050,7 +1050,7 @@ static ERROR GET_XOffset(extSurface *Self, Variable *Value)
 
 static ERROR SET_XOffset(extSurface *Self, Variable *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    extSurface *parent;
    DOUBLE value;
 
@@ -1123,7 +1123,7 @@ static ERROR GET_YCoord(extSurface *Self, Variable *Value)
       else Value->Large = Self->Y;
    }
    else {
-      parasol::Log log;
+      pf::Log log;
       return log.warning(ERR_FieldTypeMismatch);
    }
    return ERR_Okay;
@@ -1131,7 +1131,7 @@ static ERROR GET_YCoord(extSurface *Self, Variable *Value)
 
 static ERROR SET_YCoord(extSurface *Self, Variable *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    extSurface *parent;
    DOUBLE value;
 
@@ -1178,7 +1178,7 @@ at a Y coordinate calculated from the formula "Y = ContainerHeight - SurfaceHeig
 
 static ERROR GET_YOffset(extSurface *Self, Variable *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    Variable yoffset;
    extSurface *parent;
    DOUBLE value;
@@ -1214,7 +1214,7 @@ static ERROR GET_YOffset(extSurface *Self, Variable *Value)
 
 static ERROR SET_YOffset(extSurface *Self, Variable *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    extSurface *parent;
    DOUBLE value;
 

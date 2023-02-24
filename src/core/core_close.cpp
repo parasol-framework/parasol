@@ -9,7 +9,7 @@ static void free_shared_control(void);
 
 EXPORT void CloseCore(void)
 {
-   parasol::Log log("Shutdown");
+   pf::Log log("Shutdown");
    LONG i, j, count;
 
    if (glCodeIndex IS CP_FINISHED) return;
@@ -39,7 +39,7 @@ EXPORT void CloseCore(void)
    // Destroy all other tasks in our instance that we have created.
 
    {
-      parasol::Log log("Shutdown");
+      pf::Log log("Shutdown");
       log.branch("Removing any child processes...");
 
       #ifdef KILL_PROCESS_GROUP
@@ -207,7 +207,7 @@ EXPORT void CloseCore(void)
       // Remove the Task structure and child objects
 
       if (glCurrentTask) {
-         parasol::Log log("Shutdown");
+         pf::Log log("Shutdown");
          log.branch("Freeing the task object and its resources.");
          acFree(glCurrentTask);
       }
@@ -415,7 +415,7 @@ EXPORT void CloseCore(void)
 
 EXPORT void Expunge(WORD Force)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!tlMainThread) {
       log.warning("Only the main thread can expunge modules.");
@@ -454,7 +454,7 @@ EXPORT void Expunge(WORD Force)
 
             if (!class_in_use) {
                if (mod_master->Expunge) {
-                  parasol::Log log(__FUNCTION__);
+                  pf::Log log(__FUNCTION__);
                   log.branch("Sending expunge request to the %s module #%d.", mod_master->Name, mod_master->UID);
                   if (!mod_master->Expunge()) {
                      ccount++;
@@ -523,7 +523,7 @@ EXPORT void Expunge(WORD Force)
       while (mod_master) {
          auto next = mod_master->Next;
          if (mod_master->Expunge) {
-            parasol::Log log(__FUNCTION__);
+            pf::Log log(__FUNCTION__);
             log.branch("Forcing the expunge of stubborn module %s.", mod_master->Name);
             mod_master->Expunge();
             mod_master->NoUnload = TRUE; // Do not actively destroy the module code as a precaution
@@ -542,7 +542,7 @@ EXPORT void Expunge(WORD Force)
 
 static void free_private_memory(void)
 {
-   parasol::Log log("Shutdown");
+   pf::Log log("Shutdown");
 
    log.branch("Freeing private memory allocations...");
 
@@ -586,13 +586,13 @@ static void free_private_memory(void)
 
 void free_public_resources(OBJECTID TaskID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!TaskID) return;
 
    log.msg("Freeing all public memory for task %d", TaskID);
 
-   parasol::ScopedSysLock lock(PL_PUBLICMEM, 4000);
+   pf::ScopedSysLock lock(PL_PUBLICMEM, 4000);
    if (lock.granted()) {
       for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
          if ((glSharedBlocks[i].TaskID IS TaskID) or (glSharedBlocks[i].ObjectID IS TaskID)) {
@@ -612,13 +612,13 @@ void free_public_resources(OBJECTID TaskID)
 
 void remove_public_locks(LONG ProcessID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!glSharedControl) or (!glSharedBlocks)) return;
 
    log.branch("Process: %d", ProcessID);
 
-   parasol::ScopedSysLock lock(PL_PUBLICMEM, 4000);
+   pf::ScopedSysLock lock(PL_PUBLICMEM, 4000);
    if (lock.granted()) {
       // Release owned public blocks
 
@@ -666,7 +666,7 @@ void remove_public_locks(LONG ProcessID)
 
 static void remove_private_locks(void)
 {
-   parasol::Log log("Shutdown");
+   pf::Log log("Shutdown");
 
    for (auto & [ id, mem ] : glPrivateMemory) {
       if ((mem.Address) and (mem.AccessCount > 0)) {
@@ -681,7 +681,7 @@ static void remove_private_locks(void)
 #ifdef __unix__
 static void free_shared_control(void)
 {
-   parasol::Log log("Shutdown");
+   pf::Log log("Shutdown");
 
    KMSG("free_shared_control()\n");
 

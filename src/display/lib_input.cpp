@@ -98,7 +98,7 @@ NullArgs:
 ERROR gfxSubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, LONG InputMask, OBJECTID DeviceFilter, LONG *Handle)
 {
    #define CHUNK_INPUT 50
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Callback) or (!Handle)) return log.warning(ERR_NullArgs);
 
@@ -183,7 +183,7 @@ NotFound
 
 ERROR gfxUnsubscribeInput(LONG Handle)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Handle) return log.warning(ERR_NullArgs);
 
@@ -233,7 +233,7 @@ ERROR gfxUnsubscribeInput(LONG Handle)
 void input_event_loop(HOSTHANDLE FD, APTR Data) // Data is not defined
 {
    static ULONG current_index = 0;
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (current_index IS glInputEvents->IndexCounter) return; // Check if there are events to consume
 
@@ -272,9 +272,9 @@ void input_event_loop(HOSTHANDLE FD, APTR Data) // Data is not defined
 
          auto &cb = sub.Callback;
          if (cb.Type IS CALL_STDC) {
-            parasol::ScopedObjectLock lock(cb.StdC.Context, 2000); // Ensure that the object can't be removed until after input processing
+            pf::ScopedObjectLock lock(cb.StdC.Context, 2000); // Ensure that the object can't be removed until after input processing
             if (lock.granted()) {
-               parasol::SwitchContext ctx(cb.StdC.Context);
+               pf::SwitchContext ctx(cb.StdC.Context);
                auto func = (ERROR (*)(InputEvent *, LONG))cb.StdC.Routine;
                func(events, handle);
             }

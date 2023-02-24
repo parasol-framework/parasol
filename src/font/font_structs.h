@@ -108,7 +108,7 @@ public:
    font_cache(std::string pPath, FT_Face pFace) : Path(pPath), Face(pFace), Usage(0) { }
 
    ~font_cache() {
-      parasol::Log log;
+      pf::Log log;
       FT_Done_Face(Face);
       log.trace("Terminated cache entry for '%s'", Path.c_str());
    }

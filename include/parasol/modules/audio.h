@@ -222,7 +222,7 @@ class objAudio : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_AUDIO;
    static constexpr CSTRING CLASS_NAME = "Audio";
 
-   using create = parasol::Create<objAudio>;
+   using create = pf::Create<objAudio>;
 
    LONG OutputRate;    // Determines the frequency to use for the output of audio data.
    LONG InputRate;     // Determines the frequency to use when recording audio data.
@@ -253,7 +253,7 @@ class objSound : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_SOUND;
    static constexpr CSTRING CLASS_NAME = "Sound";
 
-   using create = parasol::Create<objSound>;
+   using create = pf::Create<objSound>;
 
    DOUBLE   Volume;        // The volume to use when playing the sound sample.
    DOUBLE   Pan;           // Determines the horizontal position of a sound when played through stereo speakers.
