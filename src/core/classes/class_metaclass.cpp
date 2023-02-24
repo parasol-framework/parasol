@@ -1241,7 +1241,7 @@ void scan_classes(void)
 
    log.branch("Scanning for available classes.");
 
-   glClassDB.clear()
+   glClassDB.clear();
    DeleteFile(glClassBinPath, NULL);
    DeleteFile(glModuleBinPath, NULL);
 
