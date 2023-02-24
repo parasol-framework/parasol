@@ -536,24 +536,29 @@ struct ClassRecord {
          File->read(buffer, size);
          Name.assign(buffer, size);
       }
+      else return ERR_BufferOverflow;
 
       File->read(&size, sizeof(size));
       if (size < (LONG)sizeof(buffer)) {
          File->read(buffer, size);
          Path.assign(buffer, size);
       }
+      else return ERR_BufferOverflow;
 
       File->read(&size, sizeof(size));
       if (size < (LONG)sizeof(buffer)) {
          File->read(buffer, size);
          Match.assign(buffer, size);
       }
+      else return ERR_BufferOverflow;
 
       File->read(&size, sizeof(size));
       if (size < (LONG)sizeof(buffer)) {
          File->read(buffer, size);
          Header.assign(buffer, size);
       }
+      else return ERR_BufferOverflow;
+
       return ERR_Okay;
    }
 };

@@ -753,9 +753,17 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
             if (hdr IS CLASSDB_HEADER) {
                while (file->Position + ClassRecord::MIN_SIZE < filesize) {
                   ClassRecord item;
-                  item.read(*file);
+                  if ((error = item.read(*file))) break;
+
+                  if (glClassDB.contains(item.ClassID)) {
+                     log.warning("Invalid class dictionary file, %s is registered twice.", item.Name.c_str());
+                     error = ERR_Failed;
+                     break;
+                  }
                   glClassDB[item.ClassID] = item;
                }
+
+               if (error) glScanClasses = true;
             }
             else {
                // File is probably from an old version and requires recalculation.
