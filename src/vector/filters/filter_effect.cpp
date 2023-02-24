@@ -34,7 +34,7 @@ static ERROR FILTEREFFECT_Free(extFilterEffect *Self, APTR Void)
 
 static ERROR FILTEREFFECT_Init(extFilterEffect *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Self->Filter) return log.warning(ERR_UnsupportedOwner);
 
@@ -140,7 +140,7 @@ previous effect if available, otherwise the source graphic is used.
 
 static ERROR FILTEREFFECT_SET_Input(extFilterEffect *Self, extFilterEffect *Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Value IS Self) return log.warning(ERR_InvalidValue);
 
@@ -199,7 +199,7 @@ This field is the SVG equivalent to `in2`.  It does nothing if the effect does n
 
 static ERROR FILTEREFFECT_SET_Mix(extFilterEffect *Self, extFilterEffect *Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Value IS Self) return log.warning(ERR_InvalidValue);
 

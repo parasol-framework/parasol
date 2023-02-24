@@ -219,7 +219,7 @@ NullArgs
 ERROR vecDrawPath(objBitmap *Bitmap, class SimpleVector *Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle,
    OBJECTPTR FillStyle)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Bitmap) or (!Path)) return log.warning(ERR_NullArgs);
    if (StrokeWidth < 0.001) StrokeStyle = NULL;
@@ -300,7 +300,7 @@ AllocMemory
 
 ERROR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR *Path)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Path) return log.warning(ERR_NullArgs);
 
@@ -373,7 +373,7 @@ AllocMemory
 
 ERROR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR *Path)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Path) return log.warning(ERR_NullArgs);
 
@@ -529,7 +529,7 @@ ERROR vecMultiply(VectorMatrix *Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE She
    DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY)
 {
    if (!Matrix) {
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
       return log.warning(ERR_NullArgs);
    }
 
@@ -569,7 +569,7 @@ NullArgs:
 ERROR vecMultiplyMatrix(VectorMatrix *Target, VectorMatrix *Source)
 {
    if ((!Target) or (!Source)) {
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
       return log.warning(ERR_NullArgs);
    }
 
@@ -616,7 +616,7 @@ NullArgs:
 ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
 {
    if ((!Matrix) or (!Commands)) {
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
       return log.warning(ERR_NullArgs);
    }
 
@@ -761,7 +761,7 @@ Failed:
 ERROR vecReadPainter(objVectorScene *Scene, CSTRING IRI, FRGB *RGB, objVectorGradient **Gradient,
    objVectorImage **Image, objVectorPattern **Pattern)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    ULONG i;
 
    if (!IRI) return ERR_NullArgs;
@@ -945,7 +945,7 @@ NullArgs:
 ERROR vecResetMatrix(VectorMatrix *Matrix)
 {
    if (!Matrix) {
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
       return log.warning(ERR_NullArgs);
    }
 
@@ -1003,7 +1003,7 @@ NullArgs:
 ERROR vecRotate(VectorMatrix *Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY)
 {
    if (!Matrix) {
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
       return log.warning(ERR_NullArgs);
    }
 
@@ -1058,7 +1058,7 @@ NullArgs
 ERROR vecScale(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
 {
    if (!Matrix) {
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
       return log.warning(ERR_NullArgs);
    }
 
@@ -1096,7 +1096,7 @@ OutOfRange: At least one of the angles is out of the allowable range.
 
 ERROR vecSkew(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Matrix) return log.warning(ERR_NullArgs);
 
@@ -1194,7 +1194,7 @@ NullArgs:
 ERROR vecTranslate(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
 {
    if (!Matrix) {
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
       return log.warning(ERR_NullArgs);
    }
 

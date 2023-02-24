@@ -5,7 +5,7 @@ static void debug_branch(CSTRING Header, OBJECTPTR, LONG *Level) __attribute__ (
 
 static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG *Level)
 {
-   parasol::Log log(Header);
+   pf::Log log(Header);
    UBYTE spacing[*Level + 1];
    LONG i;
 
@@ -89,7 +89,7 @@ static void parse_input(extSVG *Self, OBJECTPTR Effect, CSTRING Input, FIELD Sou
             Effect->set(RefField, Self->Effects[Input]);
          }
          else {
-            parasol::Log log;
+            pf::Log log;
             log.warning("Unrecognised input '%s'", Input);
          }
          break;
@@ -114,7 +114,7 @@ static LONG count_stops(extSVG *Self, const XMLTag *Tag)
 
 static ERROR process_transition_stops(extSVG *Self, const XMLTag *Tag, Transition *Stops)
 {
-   parasol::Log log("process_stops");
+   pf::Log log("process_stops");
 
    log.traceBranch("");
 
@@ -406,7 +406,7 @@ static CSTRING read_numseq(CSTRING Value, ...)
 
 static void add_inherit(extSVG *Self, OBJECTPTR Object, CSTRING ID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    svgInherit *inherit;
    log.trace("Object: %d, ID: %s", Object->UID, ID);
    if (!AllocMemory(sizeof(svgInherit), MEM_DATA|MEM_NO_CLEAR, &inherit)) {
@@ -436,7 +436,7 @@ static void reset_state(svgState *State)
 
 static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Path) return ERR_NullArgs;
 
@@ -545,7 +545,7 @@ end:
 
 static void convert_styles(objXML *XML)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    for (LONG t=0; t < XML->TagCount; t++) {
       char value[1024];

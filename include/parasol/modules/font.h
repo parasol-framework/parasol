@@ -54,7 +54,7 @@ class objFont : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_FONT;
    static constexpr CSTRING CLASS_NAME = "Font";
 
-   using create = parasol::Create<objFont>;
+   using create = pf::Create<objFont>;
 
    DOUBLE Angle;                                         // A rotation angle to use when drawing scalable fonts.
    DOUBLE Point;                                         // The point size of a font.

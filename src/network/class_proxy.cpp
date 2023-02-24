@@ -81,7 +81,7 @@ Okay: Proxy deleted.
 
 static ERROR PROXY_Delete(extProxy *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Self->GroupName[0]) or (!Self->Record)) return log.error(ERR_Failed);
 
@@ -168,7 +168,7 @@ NoSearchResult: No matching proxy was discovered.
 
 static ERROR PROXY_Find(extProxy *Self, struct prxFind *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.traceBranch("Port: %d, Enabled: %d", (Args) ? Args->Port : 0, (Args) ? Args->Enabled : -1);
 
@@ -343,7 +343,7 @@ static ERROR PROXY_FindNext(extProxy *Self, APTR Void)
 
 static ERROR find_proxy(extProxy *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    clear_values(Self);
 
@@ -468,7 +468,7 @@ administrator to define proxy settings as the default for all users by copying t
 
 static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Self->Server) or (!Self->ServerPort)) return log.error(ERR_FieldNotSet);
 
@@ -752,7 +752,7 @@ The port used to communicate with the proxy server must be defined here.
 
 static ERROR SET_ServerPort(extProxy *Self, LONG Value)
 {
-   parasol::Log log;
+   pf::Log log;
    if ((Value > 0) and (Value <= 65536)) {
       Self->ServerPort = Value;
       return ERR_Okay;
@@ -806,7 +806,7 @@ static ERROR SET_Record(extProxy *Self, LONG Value)
 
 static ERROR get_record(extProxy *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("Group: %s", Self->GroupName);
 
@@ -833,7 +833,7 @@ static ERROR get_record(extProxy *Self)
 
 static void clear_values(extProxy *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.trace("");
 

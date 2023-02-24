@@ -61,7 +61,7 @@ INLINE void prv_release(OBJECTPTR Object)
 
 static void * thread_entry(struct thread_info *info)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG i;
    ERROR error;
 

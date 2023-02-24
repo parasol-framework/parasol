@@ -62,7 +62,7 @@ static THREADVAR bool tlClassLoaded;
 
 ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG i, loop;
    char src[MAX_FILENAME];
    char dest[MAX_FILENAME];
@@ -218,7 +218,7 @@ resolved_path:
 
 static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result)
 {
-   parasol::Log log("ResolvePath");
+   pf::Log log("ResolvePath");
    struct stat64 info;
    CSTRING path;
    char src[512];
@@ -255,7 +255,7 @@ static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result)
 
 static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result)
 {
-   parasol::Log log("ResolvePath");
+   pf::Log log("ResolvePath");
    struct stat64 info;
    CSTRING path;
    char src[512];
@@ -305,7 +305,7 @@ static ERROR resolve_object_path(STRING, STRING, STRING, LONG);
 
 static ERROR resolve(STRING Source, STRING Dest, LONG Flags)
 {
-   parasol::Log log("ResolvePath");
+   pf::Log log("ResolvePath");
    char fullpath[MAX_FILENAME];
    char buffer[MAX_FILENAME];
    LONG j, k, pos, loop;
@@ -459,7 +459,7 @@ static ERROR resolve(STRING Source, STRING Dest, LONG Flags)
 
 static ERROR resolve_object_path(STRING Path, STRING Source, STRING Dest, LONG PathSize)
 {
-   parasol::Log log("ResolvePath");
+   pf::Log log("ResolvePath");
    ERROR (*resolve_virtual)(OBJECTPTR, STRING, STRING, LONG);
    ERROR error = ERR_VirtualVolume;
 

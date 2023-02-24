@@ -216,7 +216,7 @@ NullArgs
 
 static ERROR VECTORPATH_AddCommand(extVectorPath *Self, struct vpAddCommand *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Commands)) return log.warning(ERR_NullArgs);
 
@@ -254,7 +254,7 @@ OutOfRange
 
 static ERROR VECTORPATH_GetCommand(extVectorPath *Self, struct vpGetCommand *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
    if ((Args->Index < 0) or ((size_t)Args->Index >= Self->Commands.size())) return log.warning(ERR_OutOfRange);
@@ -285,7 +285,7 @@ NothingDone
 
 static ERROR VECTORPATH_RemoveCommand(extVectorPath *Self, struct vpRemoveCommand *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return ERR_NullArgs;
    if ((Args->Index < 0) or ((size_t)Args->Index > Self->Commands.size()-1)) return log.warning(ERR_OutOfRange);
@@ -321,7 +321,7 @@ BufferOverflow
 
 static ERROR VECTORPATH_SetCommand(extVectorPath *Self, struct vpSetCommand *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Command)) return ERR_NullArgs;
    if (Args->Index < 0) return log.warning(ERR_OutOfRange);
@@ -362,7 +362,7 @@ Args
 
 static ERROR VECTORPATH_SetCommandList(extVectorPath *Self, struct vpSetCommandList *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Size)) return log.warning(ERR_NullArgs);
 
@@ -483,7 +483,7 @@ static ERROR VECTORPATH_GET_TotalCommands(extVectorPath *Self, LONG *Value)
 
 static ERROR VECTORPATH_SET_TotalCommands(extVectorPath *Self, LONG Value)
 {
-   parasol::Log log;
+   pf::Log log;
    if (Value < 0) return log.warning(ERR_OutOfRange);
    Self->Commands.resize(Value);
    return ERR_Okay;

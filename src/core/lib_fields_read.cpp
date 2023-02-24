@@ -158,7 +158,7 @@ UnsupportedField: The Field is not supported by the object's class.
 
 ERROR GetField(OBJECTPTR Object, FIELD FieldID, APTR Result)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    if ((!Object) or (!Result)) return log.warning(ERR_NullArgs);
 
    ULONG type = FieldID>>32;
@@ -221,7 +221,7 @@ Mismatch
 
 ERROR GetFieldArray(OBJECTPTR Object, FIELD FieldID, APTR *Result, LONG *Elements)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Object) or (!Result) or (!Elements)) return log.warning(ERR_NullArgs);
 
@@ -295,7 +295,7 @@ UnsupportedField
 
 ERROR GetFields(OBJECTPTR Object, ...)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    FIELD field_id;
 
    if (!Object) return log.warning(ERR_NullArgs);
@@ -391,7 +391,7 @@ Mismatch:         The field value cannot be converted into a string.
 
 ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG BufferSize)
 {
-   parasol::Log log("GetVariable");
+   pf::Log log("GetVariable");
 
    if ((!Object) or (!FieldName) or (!Buffer) or (BufferSize < 2)) {
       return log.warning(ERR_Args);
@@ -585,7 +585,7 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG 
 
 ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Result, CSTRING Option, LONG *TotalElements)
 {
-   parasol::Log log("GetField");
+   pf::Log log("GetField");
 
    //log.msg("[%s:%d] Name: %s, Flags: $%x", ((extMetaClass *)Object->Class)->Name, Object->UID, Field->Name, DestFlags);
 

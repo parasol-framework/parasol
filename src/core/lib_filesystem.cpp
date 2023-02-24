@@ -264,7 +264,7 @@ const virtual_drive * get_fs(CSTRING Path)
 
 ERROR check_cache(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.branch("Scanning file cache for unused entries...");
 
@@ -349,7 +349,7 @@ DoesNotExist:
 
 ERROR AnalysePath(CSTRING Path, LONG *PathType)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (PathType) *PathType = 0;
    if (!Path) return ERR_NullArgs;
@@ -661,7 +661,7 @@ ERROR CreateLink(CSTRING From, CSTRING To)
 
 #else
 
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!From) or (!To)) return ERR_NullArgs;
 
@@ -725,7 +725,7 @@ NoSupport: The filesystem driver does not support deletion.
 
 ERROR DeleteFile(CSTRING Path, FUNCTION *Callback)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Path) return ERR_NullArgs;
 
@@ -768,7 +768,7 @@ int(PERMIT) Permissions: Permission flags to be applied to new files.
 
 void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    glForceUID = User;
    glForceGID = Group;
@@ -788,7 +788,7 @@ void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions)
 
 ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG i, len;
    ERROR error;
 
@@ -891,7 +891,7 @@ Search: If LDF_CHECK_EXISTS is specified, this failure indicates that the file i
 
 ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Path) or (!Cache)) return ERR_NullArgs;
 
@@ -941,7 +941,7 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
          *((extCacheFile **)Cache) = &glCache[index];
 
          if (!glCacheTimer) {
-            parasol::SwitchContext context(CurrentTask());
+            pf::SwitchContext context(CurrentTask());
             auto call = make_function_stdc(check_cache);
             SubscribeTimer(60, &call, &glCacheTimer);
          }
@@ -985,7 +985,7 @@ Failed:
 
 ERROR CreateFolder(CSTRING Path, LONG Permissions)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Path) or (!*Path)) return log.warning(ERR_NullArgs);
 
@@ -1058,7 +1058,7 @@ Failed
 
 ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Source) or (!Dest)) return ERR_NullArgs;
 
@@ -1097,7 +1097,7 @@ File
 
 ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRead)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("Path: %s, Buffer Size: %d", Path, BufferSize);
 
@@ -1184,7 +1184,7 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRe
 
 ERROR test_path(STRING Path, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG len, type;
 #ifdef _WIN32
    LONG j;
@@ -1277,7 +1277,7 @@ void UnloadFile(CacheFile *Cache)
 {
    if (!Cache) return;
 
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.function("%.80s, Locks: %d", Cache->Path, ((extCacheFile *)Cache)->Locks);
 
@@ -1302,7 +1302,7 @@ struct olddirent {
 
 ERROR findfile(STRING Path)
 {
-   parasol::Log log("FindFile");
+   pf::Log log("FindFile");
    struct stat64 info;
    DIR *dummydir;
    LONG namelen, len;
@@ -1501,7 +1501,7 @@ LONG convert_fs_permissions(LONG Permissions)
 
 ERROR check_paths(CSTRING Path, LONG Permissions)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("%s", Path);
 
@@ -1528,7 +1528,7 @@ ERROR check_paths(CSTRING Path, LONG Permissions)
 
 ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 {
-   parasol::Log log(Move ? "MoveFile" : "CopyFile");
+   pf::Log log(Move ? "MoveFile" : "CopyFile");
 #ifdef __unix__
    struct stat64 stinfo;
    LONG parentpermissions, gid, uid;
@@ -2084,7 +2084,7 @@ exit:
 
 ERROR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *Callback, BYTE Move)
 {
-   parasol::Log log("copy_file");
+   pf::Log log("copy_file");
 
    const virtual_drive *vsrc = get_fs(Source);
    const virtual_drive *vdest = get_fs(Dest);
@@ -2191,7 +2191,7 @@ ERROR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *C
 
 LONG get_parent_permissions(CSTRING Path, LONG *UserID, LONG *GroupID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    char folder[512];
    LONG i;
 
@@ -2446,7 +2446,7 @@ ERROR fs_scandir(DirInfo *Dir)
 
 ERROR fs_opendir(DirInfo *Info)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.trace("Resolve '%.40s'/ '%.40s'", Info->prvPath, Info->prvResolvedPath);
 
@@ -2479,7 +2479,7 @@ ERROR fs_opendir(DirInfo *Info)
 
 ERROR fs_closedir(DirInfo *Dir)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.trace("Dir: %p, VirtualID: %d", Dir, Dir->prvVirtualID);
 
@@ -2568,7 +2568,7 @@ ERROR fs_testpath(CSTRING Path, LONG Flags, LONG *Type)
 
 ERROR fs_getinfo(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
 #ifdef __unix__
    // In order to tell if a folder is a symbolic link or not, we have to remove any trailing slash...
@@ -2702,7 +2702,7 @@ ERROR fs_getinfo(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
 
 ERROR fs_getdeviceinfo(CSTRING Path, objStorageDevice *Info)
 {
-   parasol::Log log("GetDeviceInfo");
+   pf::Log log("GetDeviceInfo");
 
    STRING location;
    ERROR error;
@@ -2849,7 +2849,7 @@ restart:
 
 ERROR fs_makedir(CSTRING Path, LONG Permissions)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
 #ifdef __unix__
 
@@ -2957,7 +2957,7 @@ ERROR fs_makedir(CSTRING Path, LONG Permissions)
 // The Android release does not keep an associations.cfg file.
 ERROR load_datatypes(void)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!glDatatypes) {
       if (!(glDatatypes = objConfig::create::untracked(fl::Path("user:config/locale.cfg")))) {
@@ -2970,7 +2970,7 @@ ERROR load_datatypes(void)
 #else
 ERROR load_datatypes(void)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    FileInfo info;
    static LARGE user_ts = 0;
    bool reload;
@@ -3014,7 +3014,7 @@ ERROR load_datatypes(void)
 
 ERROR delete_tree(STRING Path, LONG Size, FUNCTION *Callback, FileFeedback *Feedback)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    struct dirent *direntry;
    LONG len;
    DIR *dummydir, *stream;

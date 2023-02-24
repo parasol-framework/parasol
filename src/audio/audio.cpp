@@ -99,7 +99,7 @@ static const WORD glAlsaConvert[6] = {
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
-   parasol::Log log;
+   pf::Log log;
 
    CoreBase = argCoreBase;
    glAudioModule = argModule;
@@ -135,7 +135,7 @@ static ERROR CMDExpunge(void)
    for (auto& [id, handle] : glSoundChannels) {
       // NB: Most Audio objects will be disposed of prior to this module being expunged.
       if (handle) {
-         parasol::ScopedObjectLock<extAudio> audio(id, 3000);
+         pf::ScopedObjectLock<extAudio> audio(id, 3000);
          if (audio.granted()) sndCloseChannels(*audio, handle);
       }
    }

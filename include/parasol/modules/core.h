@@ -1603,7 +1603,7 @@ template <class T> inline APTR ResolveAddress(T *Pointer, LONG Offset) {
 //********************************************************************************************************************
 // FieldValue is used to simplify the initialisation of new objects.
 
-namespace parasol {
+namespace pf {
 
 struct FieldValue {
    ULONG FieldID;
@@ -2449,7 +2449,7 @@ struct BaseClass { // Must be 64-bit aligned
 
 } __attribute__ ((aligned (8)));
 
-namespace parasol {
+namespace pf {
 
 // For extremely verbose debug logs, run cmake with -DPARASOL_VLOG=ON
 
@@ -2601,7 +2601,7 @@ class Create {
       // Return an unscoped direct object pointer.  NB: Globals are still tracked
 
       template <typename... Args> static T * global(Args... Fields) {
-         parasol::Create<T> object = { Fields... };
+         pf::Create<T> object = { Fields... };
          if (object.ok()) {
             auto result = *object;
             object.obj = NULL;
@@ -2613,7 +2613,7 @@ class Create {
       // Return an unscoped integral object (suitable for class allocations only).
 
       template <typename... Args> static T * integral(Args... Fields) {
-         parasol::Create<T> object({ Fields... }, NF::INTEGRAL);
+         pf::Create<T> object({ Fields... }, NF::INTEGRAL);
          if (object.ok()) return *object;
          else return NULL;
       }
@@ -2621,7 +2621,7 @@ class Create {
       // Return an unscoped and untracked object pointer.
 
       template <typename... Args> static T * untracked(Args... Fields) {
-         parasol::Create<T> object({ Fields... }, NF::UNTRACKED);
+         pf::Create<T> object({ Fields... }, NF::UNTRACKED);
          if (object.ok()) return *object;
          else return NULL;
       }
@@ -2637,7 +2637,7 @@ class Create {
       // Create a scoped object that is fully initialised.
 
       Create(std::initializer_list<FieldValue> Fields, NF Flags = NF::NIL) : obj(NULL), error(ERR_Failed) {
-         parasol::Log log("CreateObject");
+         pf::Log log("CreateObject");
          log.branch(T::CLASS_NAME);
 
          if (!NewObject(T::CLASS_ID, NF::SUPPRESS_LOG|Flags, (BaseClass **)&obj)) {
@@ -2921,7 +2921,7 @@ class objStorageDevice : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_STORAGEDEVICE;
    static constexpr CSTRING CLASS_NAME = "StorageDevice";
 
-   using create = parasol::Create<objStorageDevice>;
+   using create = pf::Create<objStorageDevice>;
 
    LARGE DeviceFlags;    // These read-only flags identify the type of device and its features.
    LARGE DeviceSize;     // The storage size of the device in bytes, without accounting for the file system format.
@@ -3002,7 +3002,7 @@ class objFile : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_FILE;
    static constexpr CSTRING CLASS_NAME = "File";
 
-   using create = parasol::Create<objFile>;
+   using create = pf::Create<objFile>;
 
    LARGE    Position; // The current read/write byte position in a file.
    LONG     Flags;    // File flags and options.
@@ -3162,7 +3162,7 @@ class objConfig : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_CONFIG;
    static constexpr CSTRING CLASS_NAME = "Config";
 
-   using create = parasol::Create<objConfig>;
+   using create = pf::Create<objConfig>;
 
    STRING Path;         // Set this field to the location of the source configuration file.
    STRING KeyFilter;    // Set this field to enable key filtering.
@@ -3320,7 +3320,7 @@ class objScript : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_SCRIPT;
    static constexpr CSTRING CLASS_NAME = "Script";
 
-   using create = parasol::Create<objScript>;
+   using create = pf::Create<objScript>;
 
    OBJECTID TargetID;  // Reference to the default container that new script objects will be initialised to.
    LONG     Flags;     // Optional flags.
@@ -3392,7 +3392,7 @@ class objMetaClass : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_METACLASS;
    static constexpr CSTRING CLASS_NAME = "MetaClass";
 
-   using create = parasol::Create<objMetaClass>;
+   using create = pf::Create<objMetaClass>;
 
    DOUBLE  ClassVersion;                // The version number of the class.
    struct MethodArray * Methods;        // Set this field to define the methods supported by the class.
@@ -3458,7 +3458,7 @@ class objTask : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_TASK;
    static constexpr CSTRING CLASS_NAME = "Task";
 
-   using create = parasol::Create<objTask>;
+   using create = pf::Create<objTask>;
 
    DOUBLE TimeOut;    // Limits the amount of time to wait for a launched process to return.
    LONG   Flags;      // Optional flags.
@@ -3532,7 +3532,7 @@ class objThread : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_THREAD;
    static constexpr CSTRING CLASS_NAME = "Thread";
 
-   using create = parasol::Create<objThread>;
+   using create = pf::Create<objThread>;
 
    APTR  Data;       // Pointer to initialisation data for the thread.
    LONG  DataSize;   // The size of the buffer referenced in the Data field.
@@ -3595,7 +3595,7 @@ class objModule : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_MODULE;
    static constexpr CSTRING CLASS_NAME = "Module";
 
-   using create = parasol::Create<objModule>;
+   using create = pf::Create<objModule>;
 
    DOUBLE Version;                          // Minimum required version number.
    const struct Function * FunctionList;    // Refers to a list of public functions exported by the module.
@@ -3605,7 +3605,7 @@ class objModule : public BaseClass {
    LONG   Flags;                            // Optional flags.
    public:
    static ERROR load(std::string Name, DOUBLE Version, OBJECTPTR *Module = NULL, APTR Functions = NULL) {
-      if (auto module = objModule::create::global(parasol::FieldValue(FID_Name, Name.c_str()), parasol::FieldValue(FID_Version, Version))) {
+      if (auto module = objModule::create::global(pf::FieldValue(FID_Name, Name.c_str()), pf::FieldValue(FID_Version, Version))) {
          APTR functionbase;
          if (!module->getPtr(FID_ModBase, &functionbase)) {
             if (Module) *Module = module;
@@ -3638,7 +3638,7 @@ class objTime : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_TIME;
    static constexpr CSTRING CLASS_NAME = "Time";
 
-   using create = parasol::Create<objTime>;
+   using create = pf::Create<objTime>;
 
    LARGE SystemTime;    // Represents the system time when the time object was last queried.
    LONG  Year;          // Year (-ve for BC, +ve for AD).
@@ -3768,7 +3768,7 @@ class objCompression : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_COMPRESSION;
    static constexpr CSTRING CLASS_NAME = "Compression";
 
-   using create = parasol::Create<objCompression>;
+   using create = pf::Create<objCompression>;
 
    LARGE    TotalOutput;     // The total number of bytes that have been output during the compression or decompression of streamed data.
    OBJECTID OutputID;        // Resulting messages will be sent to the object referred to in this field.
@@ -3794,7 +3794,7 @@ class objCompressedStream : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_COMPRESSEDSTREAM;
    static constexpr CSTRING CLASS_NAME = "CompressedStream";
 
-   using create = parasol::Create<objCompressedStream>;
+   using create = pf::Create<objCompressedStream>;
 
    LARGE     TotalOutput; // A live counter of total bytes that have been output by the stream.
    OBJECTPTR Input;      // An input object that will supply data for decompression.

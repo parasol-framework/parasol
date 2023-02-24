@@ -40,7 +40,7 @@ static void decompress_jpeg(prvPicture *, objBitmap *, struct jpeg_decompress_st
 
 static ERROR JPEG_Activate(prvPicture *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    struct jpeg_decompress_struct cinfo;
    struct jpeg_error_mgr jerr;
 
@@ -114,7 +114,7 @@ static ERROR JPEG_Activate(prvPicture *Self, APTR Void)
 
 static void decompress_jpeg(prvPicture *Self, objBitmap *Bitmap, struct jpeg_decompress_struct *Cinfo)
 {
-   parasol::Log log;
+   pf::Log log;
    RGB8 rgb;
 
    jpeg_start_decompress(Cinfo);
@@ -167,7 +167,7 @@ static void decompress_jpeg(prvPicture *Self, objBitmap *Bitmap, struct jpeg_dec
 
 static ERROR JPEG_Init(prvPicture *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    UBYTE *buffer;
    STRING path = NULL;
 
@@ -205,7 +205,7 @@ static ERROR JPEG_Init(prvPicture *Self, APTR Void)
 
 static ERROR JPEG_Query(prvPicture *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    struct jpeg_decompress_struct *cinfo;
    struct jpeg_error_mgr jerr;
 
@@ -251,7 +251,7 @@ static ERROR JPEG_Query(prvPicture *Self, APTR Void)
 
 static ERROR JPEG_SaveImage(prvPicture *Self, struct acSaveImage *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.branch();
 

@@ -236,7 +236,7 @@ ERROR CLASS_Free(extMetaClass *Self, APTR Void)
 
 ERROR CLASS_Init(extMetaClass *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    extMetaClass *base;
 
    if (!Self->ClassName) return log.warning(ERR_MissingClassName);
@@ -654,7 +654,7 @@ static ERROR GET_Methods(extMetaClass *Self, const MethodArray **Methods, LONG *
 
 static ERROR SET_Methods(extMetaClass *Self, const MethodArray *Methods, LONG Elements)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Methods) return ERR_Failed;
 
@@ -734,7 +734,7 @@ The resulting array must be terminated with ~FreeResource() after use.
 
 static ERROR GET_PrivateObjects(extMetaClass *Self, OBJECTID **Array, LONG *Elements)
 {
-   parasol::Log log;
+   pf::Log log;
    std::list<OBJECTID> objlist;
 
    ThreadLock lock(TL_PRIVATE_MEM, 4000);
@@ -849,7 +849,7 @@ static ERROR GET_TotalMethods(extMetaClass *Class, LONG *Value)
 
 static ERROR field_setup(extMetaClass *Class)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG i, j;
 
    if (Class->Base) {
@@ -1042,7 +1042,7 @@ static void register_fields(extMetaClass *Class)
 
 static void copy_field(extMetaClass *Class, const FieldArray *Source, Field *Dest, LONG *Offset)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    Dest->Name       = Source->Name;
    Dest->FieldID    = StrHash(Source->Name, FALSE);
@@ -1201,7 +1201,7 @@ static ERROR OBJECT_GetOwner(OBJECTPTR Self, OBJECTID *OwnerID)
 
 static ERROR OBJECT_SetOwner(OBJECTPTR Self, OBJECTID OwnerID)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (OwnerID) {
       OBJECTPTR newowner;
@@ -1237,7 +1237,7 @@ static ERROR OBJECT_SetName(OBJECTPTR Self, CSTRING Name)
 
 void scan_classes(void)
 {
-   parasol::Log log("Core");
+   pf::Log log("Core");
 
    log.branch("Scanning for available classes.");
 

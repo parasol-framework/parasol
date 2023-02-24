@@ -34,7 +34,7 @@ static ERROR RSVG_Free(prvPicture *Self, APTR Void)
 
 static ERROR RSVG_Init(prvPicture *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    STRING path;
 
    Self->get(FID_Path, &path);
@@ -68,7 +68,7 @@ static ERROR RSVG_Init(prvPicture *Self, APTR Void)
 
 static ERROR RSVG_Query(prvPicture *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    prvSVG *prv;
    objBitmap *bmp;
 

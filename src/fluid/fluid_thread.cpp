@@ -91,7 +91,7 @@ static ERROR thread_script_entry(objThread *Thread)
 
 static ERROR thread_script_callback(objThread *Thread)
 {
-   parasol::Log log("thread");
+   pf::Log log("thread");
    thread_callback *cb;
 
    if ((!Thread->getPtr(FID_Data, &cb)) and (cb)) {
@@ -113,7 +113,7 @@ static ERROR thread_script_callback(objThread *Thread)
 
 static int thread_action(lua_State *Lua)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    // Args: Object (1), Action (2), Callback (3), Key (4), Parameters...
 
@@ -213,7 +213,7 @@ static int thread_action(lua_State *Lua)
 
 static int thread_method(lua_State *Lua)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    struct object *object;
    CSTRING method;
 
@@ -332,7 +332,7 @@ static const luaL_Reg threadlib_methods[] = {
 
 void register_thread_class(lua_State *Lua)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.trace("Registering thread interface.");
 

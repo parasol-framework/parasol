@@ -124,7 +124,7 @@ Bitmap using its available drawing methods.
 
 static ERROR PIC_Activate(prvPicture *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Bitmap->initialised()) return ERR_Okay;
 
@@ -358,7 +358,7 @@ Query actions to load or find out more information about the image format.
 
 static ERROR PIC_Init(prvPicture *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Self->prvPath) or (Self->Flags & PCF_NEW)) {
       // If no path has been specified, assume that the picture is being created from scratch (e.g. to save an
@@ -437,7 +437,7 @@ static ERROR PIC_Init(prvPicture *Self, APTR Void)
 
 static ERROR PIC_NewObject(prvPicture *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    Self->Quality = 80; // 80% quality rating when saving
 
@@ -451,7 +451,7 @@ static ERROR PIC_NewObject(prvPicture *Self, APTR Void)
 
 static ERROR PIC_Query(prvPicture *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    STRING path;
    png_uint_32 width, height;
    int bit_depth, color_type;
@@ -555,7 +555,7 @@ If no destination is specified then the image will be saved as a new file target
 
 static ERROR PIC_SaveImage(prvPicture *Self, struct acSaveImage *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    STRING path;
    LONG y, i;
    png_bytep row_pointers;
@@ -817,7 +817,7 @@ SaveToObject: Saves the picture image to a data object.
 
 static ERROR PIC_SaveToObject(prvPicture *Self, struct acSaveToObject *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    ERROR (**routine)(OBJECTPTR, APTR);
 
    if ((Args->ClassID) and (Args->ClassID != ID_PICTURE)) {
@@ -937,7 +937,7 @@ static ERROR GET_Description(prvPicture *Self, STRING *Value)
 
 static ERROR SET_Description(prvPicture *Self, CSTRING Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->prvDescription) { FreeResource(Self->prvDescription); Self->prvDescription = NULL; }
 
@@ -969,7 +969,7 @@ static ERROR GET_Disclaimer(prvPicture *Self, STRING *Value)
 
 static ERROR SET_Disclaimer(prvPicture *Self, CSTRING Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->prvDisclaimer) { FreeResource(Self->prvDisclaimer); Self->prvDisclaimer = NULL; }
 
@@ -1043,7 +1043,7 @@ static ERROR GET_Path(prvPicture *Self, STRING *Value)
 
 static ERROR SET_Path(prvPicture *Self, CSTRING Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->prvPath) { FreeResource(Self->prvPath); Self->prvPath = NULL; }
 
@@ -1171,14 +1171,14 @@ void png_set_write_fn(png_structp png_ptr, png_voidp io_ptr, png_rw_ptr write_da
 
 static void png_error_hook(png_structp png_ptr, png_const_charp message)
 {
-   parasol::Log log;
+   pf::Log log;
    log.warning("%s", message);
    tlError = true;
 }
 
 static void png_warning_hook(png_structp png_ptr, png_const_charp message)
 {
-   parasol::Log log;
+   pf::Log log;
    log.warning("Warning: %s", message);
 }
 
@@ -1197,7 +1197,7 @@ static ERROR decompress_png(prvPicture *Self, objBitmap *Bitmap, int BitDepth, i
    png_bytep row_pointers;
    RGB8 rgb;
    LONG i, x, y;
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    // Read the image data into our Bitmap
 

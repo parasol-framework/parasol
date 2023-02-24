@@ -130,7 +130,7 @@ class extRemapFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = ID_REMAPFX;
    static constexpr CSTRING CLASS_NAME = "RemapFX";
-   using create = parasol::Create<extRemapFX>;
+   using create = pf::Create<extRemapFX>;
 
    Component Red;
    Component Green;
@@ -252,7 +252,7 @@ NullArgs:
 
 static ERROR REMAPFX_SelectDiscrete(extRemapFX *Self, struct rfSelectDiscrete *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Values)) return log.warning(ERR_NullArgs);
    if ((Args->Size < 1) or (Args->Size > 1024)) return log.warning(ERR_Args);
@@ -284,7 +284,7 @@ NullArgs:
 
 static ERROR REMAPFX_SelectIdentity(extRemapFX *Self, struct rfSelectIdentity *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -318,7 +318,7 @@ NullArgs:
 
 static ERROR REMAPFX_SelectGamma(extRemapFX *Self, struct rfSelectGamma *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -352,7 +352,7 @@ NullArgs:
 
 static ERROR REMAPFX_SelectInvert(extRemapFX *Self, struct rfSelectInvert *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -386,7 +386,7 @@ NullArgs:
 
 static ERROR REMAPFX_SelectLinear(extRemapFX *Self, struct rfSelectLinear *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
    if (Args->Slope < 0) return log.warning(ERR_Args);
@@ -423,7 +423,7 @@ NullArgs:
 
 static ERROR REMAPFX_SelectMask(extRemapFX *Self, struct rfSelectMask *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -459,7 +459,7 @@ NullArgs:
 
 static ERROR REMAPFX_SelectTable(extRemapFX *Self, struct rfSelectTable *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Values)) return log.warning(ERR_NullArgs);
    if ((Args->Size < 1) or (Args->Size > 1024)) return log.warning(ERR_Args);

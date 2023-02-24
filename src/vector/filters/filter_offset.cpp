@@ -14,7 +14,7 @@ class extOffsetFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = ID_OFFSETFX;
    static constexpr CSTRING CLASS_NAME = "OffsetFX";
-   using create = parasol::Create<extOffsetFX>;
+   using create = pf::Create<extOffsetFX>;
 
    LONG XOffset, YOffset;
 };

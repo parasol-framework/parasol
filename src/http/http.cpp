@@ -362,7 +362,7 @@ HostNotFound: DNS resolution of the domain name in the URI failed.
 
 static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    LONG i;
 
    if (!Self->initialised()) return log.warning(ERR_NotInitialised);
@@ -520,7 +520,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
             }
             else if (Self->InputObjectID) {
                if (!Self->Size) {
-                  parasol::ScopedObjectLock<BaseClass> input(Self->InputObjectID, 3000);
+                  pf::ScopedObjectLock<BaseClass> input(Self->InputObjectID, 3000);
                   if (input.granted()) {
                      if (!input->get(FID_Size, &Self->ContentLength));
                   }
@@ -712,7 +712,7 @@ Active HTTP requests can be manually cancelled by calling the Deactivate action 
 
 static ERROR HTTP_Deactivate(extHTTP *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.branch("Closing connection to server & signalling children.");
 
@@ -815,7 +815,7 @@ static ERROR HTTP_GetVar(extHTTP *Self, struct acGetVar *Args)
 
 static ERROR HTTP_Init(extHTTP *Self, APTR Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Self->ProxyDefined) {
       if (glProxy) {
@@ -1096,7 +1096,7 @@ An alternative is to set the #InputObject for abstracting the data source.
 
 static ERROR SET_InputFile(extHTTP *Self, CSTRING Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.trace("InputFile: %.80s", Value);
 
@@ -1157,7 +1157,7 @@ static ERROR GET_Location(extHTTP *Self, STRING *Value)
    ERROR error;
    LONG len;
    {
-      parasol::SwitchContext context(Self);
+      pf::SwitchContext context(Self);
       len = 7 + StrLength(Self->Host) + 16 + StrLength(Self->Path) + 1;
       error = AllocMemory(len, MEM_STRING|MEM_NO_CLEAR, &Self->URI);
    }
@@ -1181,7 +1181,7 @@ static ERROR GET_Location(extHTTP *Self, STRING *Value)
 
 static ERROR SET_Location(extHTTP *Self, CSTRING Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->initialised()) {
       if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
@@ -1514,7 +1514,7 @@ On completion of an HTTP request, the state will be changed to either `COMPLETED
 
 static ERROR SET_CurrentState(extHTTP *Self, LONG Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((Value < 0) or (Value >= HGS_END)) return log.warning(ERR_OutOfRange);
 

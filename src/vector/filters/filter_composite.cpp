@@ -15,7 +15,7 @@ class extCompositeFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = ID_COMPOSITEFX;
    static constexpr CSTRING CLASS_NAME = "CompositeFX";
-   using create = parasol::Create<extCompositeFX>;
+   using create = pf::Create<extCompositeFX>;
 
    DOUBLE K1, K2, K3, K4; // For the arithmetic operator
    LONG Operator; // OP constant
@@ -555,7 +555,7 @@ Draw: Render the effect to the target bitmap.
 
 static ERROR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Target->BytesPerPixel != 4) return ERR_Failed;
 
@@ -740,7 +740,7 @@ static ERROR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
 
 static ERROR COMPOSITEFX_Init(extCompositeFX *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Self->MixType) {
       log.warning("A mix input is required.");

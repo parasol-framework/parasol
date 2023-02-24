@@ -171,10 +171,10 @@ static bool glPointSet = false;
 static DOUBLE global_point_size(void)
 {
    if (!glPointSet) {
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
       OBJECTID style_id;
       if (!FindObject("glStyle", ID_XML, 0, &style_id)) {
-         parasol::ScopedObjectLock<objXML> style(style_id, 3000);
+         pf::ScopedObjectLock<objXML> style(style_id, 3000);
          if (style.granted()) {
             char fontsize[20];
             glPointSet = true;
@@ -259,7 +259,7 @@ static objConfig *glConfig = NULL;
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
-   parasol::Log log;
+   pf::Log log;
 
    CoreBase = argCoreBase;
 
@@ -349,7 +349,7 @@ static LONG fntCharWidth(extFont *Font, ULONG Char, ULONG KChar, LONG *Kerning)
          return cache->AdvanceX + Font->GlyphSpacing;
       }
       else {
-         parasol::Log log(__FUNCTION__);
+         pf::Log log(__FUNCTION__);
          log.trace("No glyph for character %u", Char);
          if (Font->prvChar) return Font->prvChar[(LONG)Font->prvDefaultChar].Advance;
          else return 0;
@@ -357,7 +357,7 @@ static LONG fntCharWidth(extFont *Font, ULONG Char, ULONG KChar, LONG *Kerning)
    }
    else if (Char < 256) return Font->prvChar[Char].Advance;
    else {
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
       log.traceWarning("Character %u out of range.", Char);
       return Font->prvChar[(LONG)Font->prvDefaultChar].Advance;
    }
@@ -382,7 +382,7 @@ AccessObject: Font configuration information could not be accessed.
 
 static ERROR fntGetList(FontList **Result)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Result) return log.warning(ERR_NullArgs);
 
@@ -390,7 +390,7 @@ static ERROR fntGetList(FontList **Result)
 
    *Result = NULL;
 
-   parasol::ScopedObjectLock<objConfig> config(glConfig, 3000);
+   pf::ScopedObjectLock<objConfig> config(glConfig, 3000);
    if (!config.granted()) return log.warning(ERR_AccessObject);
 
    size_t size = 0;
@@ -886,7 +886,7 @@ NoSupport: One of the font files is in an unsupported file format.
 
 static ERROR fntInstallFont(CSTRING Files)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Files) return log.warning(ERR_NullArgs);
 
@@ -948,14 +948,14 @@ DeleteFile: Removal aborted due to a file deletion failure.
 
 static ERROR fntRemoveFont(CSTRING Name)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Name) return log.warning(ERR_NullArgs);
    if (!Name[0]) return log.warning(ERR_EmptyString);
 
    log.branch("%s", Name);
 
-   parasol::ScopedObjectLock<objConfig> config(glConfig);
+   pf::ScopedObjectLock<objConfig> config(glConfig);
    if (!config.granted()) return log.warning(ERR_AccessObject);
 
    // Delete all files related to this font
@@ -1031,7 +1031,7 @@ Search: Unable to find a suitable font.
 
 static std::optional<std::string> get_font_path(ConfigKeys &Keys, const std::string& Type, const std::string& Style)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    std::string cfg_style(Type + ":" + Style);
    log.trace("Looking for font style %s", cfg_style.c_str());
@@ -1045,13 +1045,13 @@ static std::optional<std::string> get_font_path(ConfigKeys &Keys, const std::str
 
 static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, CSTRING *Path)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.branch("%s:%d:%s, Flags: $%.8x", Name, Point, Style, Flags);
 
    if (!Name) return log.warning(ERR_NullArgs);
 
-   parasol::ScopedObjectLock<objConfig> config(glConfig, 5000);
+   pf::ScopedObjectLock<objConfig> config(glConfig, 5000);
    if (!config.granted()) return log.warning(ERR_AccessObject);
 
    ConfigGroups *groups;
@@ -1060,13 +1060,13 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
    bool multi = (Flags & FTF_ALLOW_SCALE) ? true : false; // ALLOW_SCALE is equivalent to '*' for fixed fonts
 
    std::string style_name(Style);
-   parasol::camelcase(style_name);
+   pf::camelcase(style_name);
 
    std::string fixed_group_name, scale_group_name;
    ConfigKeys *fixed_group = NULL, *scale_group = NULL;
 
    std::vector<std::string> names;
-   parasol::split(std::string(Name), std::back_inserter(names));
+   pf::split(std::string(Name), std::back_inserter(names));
 
    for (auto &name : names) {
       if (!name.compare("*")) {
@@ -1076,8 +1076,8 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
          break;
       }
 
-      parasol::ltrim(name, "'\"");
-      parasol::rtrim(name, "'\"");
+      pf::ltrim(name, "'\"");
+      pf::rtrim(name, "'\"");
 
       for (auto & [group, keys] : groups[0]) {
          if (!StrCompare(name.c_str(), keys["Name"].c_str(), 0, STR_WILDCARD)) {
@@ -1118,7 +1118,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
          if (!default_font[0]) { // Static value only needs to be calculated once
             OBJECTID style_id;
             if (!FindObject("glStyle", ID_XML, 0, &style_id)) {
-               parasol::ScopedObjectLock<objXML> style(style_id, 3000);
+               pf::ScopedObjectLock<objXML> style(style_id, 3000);
                if (style.granted()) {
                   if (acGetVar(style.obj, "/fonts/font(@name='scalable')/@face", default_font, sizeof(default_font))) {
                      StrCopy("Hera Sans", default_font, sizeof(default_font));
@@ -1155,7 +1155,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
    if ((fixed_group) and (scale_group) and (Point)) {
       bool acceptable = false;
       std::vector<std::string> points;
-      parasol::split(fixed_group[0]["Points"], std::back_inserter(points));
+      pf::split(fixed_group[0]["Points"], std::back_inserter(points));
 
       for (auto &point : points) {
          auto diff = StrToInt(point.c_str()) - Point;
@@ -1247,11 +1247,11 @@ AccessObject: Access to the SytsemFonts object was denied, or the object does no
 
 static ERROR fntRefreshFonts(void)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.branch("Refreshing the fonts: directory.");
 
-   parasol::ScopedObjectLock<objConfig> config(glConfig, 3000);
+   pf::ScopedObjectLock<objConfig> config(glConfig, 3000);
    if (!config.granted()) return log.warning(ERR_AccessObject);
 
    acClear(glConfig); // Clear out existing font information
@@ -1306,7 +1306,7 @@ static ERROR fntRefreshFonts(void)
 
 static void scan_truetype_folder(objConfig *Config)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    DirInfo *dir;
    LONG j;
    char location[100];
@@ -1395,7 +1395,7 @@ static void scan_truetype_folder(objConfig *Config)
 
 static void scan_fixed_folder(objConfig *Config)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.branch("Scanning for fixed fonts.");
 
@@ -1493,7 +1493,7 @@ static void scan_fixed_folder(objConfig *Config)
 
 static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING *FaceName, UBYTE *Points, UBYTE MaxPoints)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    winmz_header_fields mz_header;
    winne_header_fields ne_header;
    LONG i, res_offset, font_offset;

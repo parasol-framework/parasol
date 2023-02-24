@@ -4,7 +4,7 @@
 
 static int object_call(lua_State *Lua)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    struct object *object;
    if (!(object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
@@ -152,7 +152,7 @@ static int object_call(lua_State *Lua)
 
 ERROR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE *argbuffer, LONG *ResultCount)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    struct memory *memory;
    struct array *farray;
    struct fstruct *fstruct;
@@ -385,7 +385,7 @@ ERROR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE 
 
 static LONG get_results(lua_State *Lua, const FunctionField *args, const BYTE *ArgBuf)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG i;
 
    RMSG("get_results(%p)", ArgBuf);

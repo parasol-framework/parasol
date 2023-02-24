@@ -196,7 +196,7 @@ void register_number_class(lua_State *Lua)
       { NULL, NULL }
    };
 
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.trace("Registering number interface.");
 
    luaL_newmetatable(Lua, "Fluid.num");

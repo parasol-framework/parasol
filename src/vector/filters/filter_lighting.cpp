@@ -163,7 +163,7 @@ class extLightingFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = ID_LIGHTINGFX;
    static constexpr CSTRING CLASS_NAME = "LightingFX";
-   using create = parasol::Create<extLightingFX>;
+   using create = pf::Create<extLightingFX>;
 
    FRGB   Colour;           // Colour of the light source.
    FRGB   LinearColour;     // Colour of the light source in linear sRGB space.
@@ -280,7 +280,7 @@ Draw: Render the effect to the target bitmap.
 
 static ERROR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Target->BytesPerPixel != 4) return log.warning(ERR_InvalidState);
 
@@ -559,7 +559,7 @@ NullArgs:
 
 static ERROR LIGHTINGFX_SetDistantLight(extLightingFX *Self, struct ltSetDistantLight *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -598,7 +598,7 @@ NullArgs:
 
 static ERROR LIGHTINGFX_SetPointLight(extLightingFX *Self, struct ltSetPointLight *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -645,7 +645,7 @@ NullArgs:
 
 static ERROR LIGHTINGFX_SetSpotLight(extLightingFX *Self, struct ltSetSpotLight *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 

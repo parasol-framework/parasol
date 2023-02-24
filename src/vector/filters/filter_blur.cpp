@@ -77,7 +77,7 @@ class extBlurFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = ID_BLURFX;
    static constexpr CSTRING CLASS_NAME = "BlurFX";
-   using create = parasol::Create<extBlurFX>;
+   using create = pf::Create<extBlurFX>;
 
    DOUBLE SX, SY;
 };

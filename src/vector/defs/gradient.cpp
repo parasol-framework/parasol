@@ -24,7 +24,7 @@ definition.  This will ensure that the VectorGradient is de-allocated when the s
 
 GRADIENT_TABLE * get_fill_gradient_table(extVector &Vector, DOUBLE Opacity)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    GradientColours *cols = ((extVectorGradient *)Vector.FillGradient)->Colours;
    if (!cols) {
@@ -63,7 +63,7 @@ GRADIENT_TABLE * get_fill_gradient_table(extVector &Vector, DOUBLE Opacity)
 
 GRADIENT_TABLE * get_stroke_gradient_table(extVector &Vector)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    GradientColours *cols = ((extVectorGradient *)Vector.StrokeGradient)->Colours;
    if (!cols) {
@@ -158,7 +158,7 @@ static ERROR VECTORGRADIENT_Free(extVectorGradient *Self, APTR Void)
 
 static ERROR VECTORGRADIENT_Init(extVectorGradient *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((Self->SpreadMethod <= 0) or (Self->SpreadMethod >= VSPREAD_END)) {
       log.traceWarning("Invalid SpreadMethod value of %d", Self->SpreadMethod);
@@ -559,7 +559,7 @@ static ERROR VECTORGRADIENT_SET_Stops(extVectorGradient *Self, GradientStop *Val
       else return ERR_AllocMemory;
    }
    else {
-      parasol::Log log;
+      pf::Log log;
       log.warning("Array size %d < 2", Elements);
       return ERR_InvalidValue;
    }
@@ -581,7 +581,7 @@ A transform can be applied to the gradient by setting this field with an SVG com
 
 static ERROR VECTORGRADIENT_SET_Transform(extVectorGradient *Self, CSTRING Commands)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Commands) return log.warning(ERR_InvalidValue);
 

@@ -173,7 +173,7 @@ void MsgButtonPress(LONG button, LONG State)
 void MsgResizedWindow(OBJECTID SurfaceID, LONG WinX, LONG WinY, LONG WinWidth, LONG WinHeight,
    LONG ClientX, LONG ClientY, LONG ClientWidth, LONG ClientHeight)
 {
-   parasol::Log log("ResizedWindow");
+   pf::Log log("ResizedWindow");
    //log.branch("#%d, Window: %dx%d,%dx%d, Client: %dx%d,%dx%d", SurfaceID, WinX, WinY, WinWidth, WinHeight, ClientX, ClientY, ClientWidth, ClientHeight);
 
    if ((!SurfaceID) or (WinWidth < 1) or (WinHeight < 1)) return;
@@ -211,7 +211,7 @@ void MsgResizedWindow(OBJECTID SurfaceID, LONG WinX, LONG WinY, LONG WinWidth, L
 
 void MsgSetFocus(OBJECTID SurfaceID)
 {
-   parasol::Log log;
+   pf::Log log;
    objSurface *surface;
    if (!AccessObjectID(SurfaceID, 3000, &surface)) {
       if ((!(surface->Flags & RNF_HAS_FOCUS)) and (surface->Flags & RNF_VISIBLE)) {
@@ -285,7 +285,7 @@ void MsgTimer(void)
 
 void MsgWindowClose(OBJECTID SurfaceID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (SurfaceID) {
       const WindowHook hook(SurfaceID, WH_CLOSE);
@@ -295,7 +295,7 @@ void MsgWindowClose(OBJECTID SurfaceID)
          ERROR result;
 
          if (func->Type IS CALL_STDC) {
-            parasol::SwitchContext ctx(func->StdC.Context);
+            pf::SwitchContext ctx(func->StdC.Context);
             auto callback = (ERROR (*)(OBJECTID SurfaceID))func->StdC.Routine;
             result = callback(SurfaceID);
          }
@@ -323,7 +323,7 @@ void MsgWindowClose(OBJECTID SurfaceID)
 void MsgWindowDestroyed(OBJECTID SurfaceID)
 {
    if (SurfaceID) {
-      parasol::Log log("WinMgr");
+      pf::Log log("WinMgr");
       log.branch("Freeing window surface #%d.", SurfaceID);
       acFree(SurfaceID);
    }

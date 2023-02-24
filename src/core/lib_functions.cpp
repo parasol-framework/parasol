@@ -42,7 +42,7 @@ Name: System
 
 #include "defs.h"
 
-using namespace parasol;
+using namespace pf;
 
 /*********************************************************************************************************************
 
@@ -64,7 +64,7 @@ int: A unique ID matching the requested type will be returned.  This function ca
 
 LONG AllocateID(LONG Type)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (Type IS IDTYPE_MESSAGE) {
       if (glSharedControl->MessageIDCount < 10000) glSharedControl->MessageIDCount = 10000;
@@ -108,7 +108,7 @@ LockFailed:
 
 ERROR CheckObjectExists(OBJECTID ObjectID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    ThreadLock lock(TL_PRIVATE_MEM, 4000);
    if (lock.granted()) {
@@ -189,7 +189,7 @@ obj(MetaClass): Returns a pointer to the MetaClass structure that has been found
 
 objMetaClass * FindClass(CLASSID ClassID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (ClassID IS ID_METACLASS) { // Return the internal pointer to the MetaClass.
       return (objMetaClass *)&glMetaClass;
@@ -276,7 +276,7 @@ DoesNotExist:
 
 ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Result)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Result) or (!InitialName)) return ERR_NullArgs;
    if (!InitialName[0]) return log.warning(ERR_EmptyString);
@@ -366,7 +366,7 @@ cid: Returns the base class ID of the object or NULL if failure.
 
 CLASSID GetClassID(OBJECTID ObjectID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!ObjectID) return 0;
 
@@ -968,7 +968,7 @@ NullArgs
 
 ERROR ListChildren(OBJECTID ObjectID, ChildEntry *List, LONG *Count)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!ObjectID) or (!List) or (!Count)) return log.warning(ERR_NullArgs);
    if ((*Count < 0) or (*Count > 3000)) return log.warning(ERR_Args);
@@ -1020,7 +1020,7 @@ NullArgs
 
 ERROR ListTasks(LONG Flags, struct ListTasks **Detail)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Detail) return ERR_NullArgs;
 
@@ -1133,7 +1133,7 @@ ERROR RegisterFD(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), A
 ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
 #endif
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    // Note that FD's < -1 are permitted for the registering of functions marked with RFD_ALWAYS_CALL
 
@@ -1228,7 +1228,7 @@ Args
 
 ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Object) or (!Owner)) return log.warning(ERR_NullArgs);
 
@@ -1392,7 +1392,7 @@ static const char sn_lookup[256] = {
 
 ERROR SetName(OBJECTPTR Object, CSTRING NewName)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Object) or (!NewName)) return log.warning(ERR_NullArgs);
 
@@ -1434,7 +1434,7 @@ NullArgs:
 
 ERROR SetResourcePath(LONG PathType, CSTRING Path)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!PathType) return ERR_NullArgs;
 
@@ -1518,7 +1518,7 @@ large: Returns the previous value used for the resource that you have set.  If t
 
 LARGE SetResource(LONG Resource, LARGE Value)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
 #ifdef __unix__
    static WORD privileged = 0;
@@ -1636,7 +1636,7 @@ SystemLocked:
 
 ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Interval) or (!Callback)) return log.warning(ERR_NullArgs);
    if (Interval < 0) return log.warning(ERR_Args);
@@ -1731,7 +1731,7 @@ Search:
 
 ERROR UpdateTimer(APTR Subscription, DOUBLE Interval)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Subscription) return log.warning(ERR_NullArgs);
 

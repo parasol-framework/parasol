@@ -81,7 +81,7 @@ static STRING printable2(CSTRING String, LONG Length)
 
 static void print_xmltree(XMLTag *Tag, LONG *Indent)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    XMLTag *child;
    LONG i, j;
    char buffer[1000];
@@ -407,7 +407,7 @@ static bool read_rgb8(CSTRING Value, RGB8 *RGB)
 
 static bool test_statement(CSTRING TestString, CSTRING CompareString, LONG Condition)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    //log.msg("\"%s\" %d \"%s\"", TestString, Condition, CompareString);
 
@@ -684,7 +684,7 @@ KEEP_ESCAPE flag is used.  To escape a single right or left bracket, use `[rb]` 
 
 static ERROR eval(extDocument *Self, STRING Buffer, LONG BufferLength, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG pos, i, j;
 
    if ((!Buffer) or (BufferLength < 3)) return log.warning(ERR_Args);
@@ -909,7 +909,7 @@ repeat:
 
 static bool eval_condition(CSTRING String)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    static const FieldDef table[] = {
       { "<>", COND_NOT_EQUAL },
@@ -1076,7 +1076,7 @@ static LONG safe_file_path(extDocument *Self, CSTRING Path)
 
 static BYTE check_tag_conditions(extDocument *Self, XMLTag *Tag)
 {
-   parasol::Log log("eval");
+   pf::Log log("eval");
 
    BYTE satisfied = FALSE;
    BYTE reverse = FALSE;
@@ -1143,7 +1143,7 @@ static BYTE check_tag_conditions(extDocument *Self, XMLTag *Tag)
 
 static ERROR insert_xml(extDocument *Self, objXML *XML, XMLTag *Tag, LONG Index, UBYTE Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objFont *font;
    LONG insert_index, start;
 
@@ -1276,7 +1276,7 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, XMLTag *Tag, LONG Index,
 
 static LONG parse_tag(extDocument *Self, objXML *XML, XMLTag *Tag, LONG *Index, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    XMLTag *child, *object_template;
    CSTRING content;
    LONG i, b_revert, result, filter;
@@ -1391,7 +1391,7 @@ static LONG parse_tag(extDocument *Self, objXML *XML, XMLTag *Tag, LONG *Index, 
                   // list that will be processed in reverse by convert_xml_args().
 
                   if (Self->ArgNestIndex < ARRAYSIZE(Self->ArgNest)) {
-                     parasol::Log log(__FUNCTION__);
+                     pf::Log log(__FUNCTION__);
 
                      START_TEMPLATE(Tag->Child, XML, Tag); // Required for the <inject/> feature to work inside the template
 
@@ -1617,7 +1617,7 @@ static ERROR insert_text(extDocument *Self, LONG *Index, CSTRING Text, LONG Leng
    LONG pos, i;
 
 #ifdef DBG_STREAM
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.trace("Index: %d, WSpace: %d", *Index, Self->NoWhitespace);
 #endif
 
@@ -1725,7 +1725,7 @@ static ERROR insert_text(extDocument *Self, LONG *Index, CSTRING Text, LONG Leng
 
 static ERROR insert_escape(extDocument *Self, LONG *Index, WORD EscapeCode, APTR Data, LONG Length)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    UBYTE *stream;
 
 #ifdef DBG_STREAM
@@ -1904,7 +1904,7 @@ static void end_line(extDocument *Self, layout *l, LONG NewLine, LONG Index, DOU
 static UBYTE check_wordwrap(CSTRING Type, extDocument *Self, LONG Index, layout *l, LONG X, LONG *Width,
    LONG ObjectIndex, LONG *GraphicX, LONG *GraphicY, LONG GraphicWidth, LONG GraphicHeight)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG minwidth;
    UBYTE result;
    LONG breakloop;
@@ -2136,7 +2136,7 @@ static LONG layout_section(extDocument *Self, LONG Offset, objFont **Font,
    LONG AbsX, LONG AbsY, LONG *Width, LONG *Height,
    LONG LeftMargin, LONG TopMargin, LONG RightMargin, LONG BottomMargin, BYTE *VerticalRepass)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    layout l;
    escFont *style;
    escAdvance *advance;
@@ -4091,7 +4091,7 @@ static void free_links(extDocument *Self)
 
 static void add_link(extDocument *Self, UBYTE EscapeCode, APTR Escape, LONG X, LONG Y, LONG Width, LONG Height, CSTRING Caller)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Self) or (!Escape)) return;
 
@@ -4142,7 +4142,7 @@ static void draw_background(extDocument *Self, objSurface *Surface, objBitmap *B
 
 static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bitmap)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    escList *esclist;
    escLink *esclink;
    escParagraph *escpara;
@@ -4624,7 +4624,7 @@ static void xml_extract_content(XMLTag *Tag, char *Buffer, LONG *Index, BYTE Whi
 
 static ERROR keypress(extDocument *Self, LONG Flags, LONG Value, LONG Unicode)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    struct acScroll scroll;
 
    log.function("Value: %d, Flags: $%.8x, ActiveEdit: %p", Value, Flags, Self->ActiveEditDef);
@@ -4952,7 +4952,7 @@ static ERROR keypress(extDocument *Self, LONG Flags, LONG Value, LONG Unicode)
 
 static ERROR load_doc(extDocument *Self, CSTRING Path, BYTE Unload, BYTE UnloadFlags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.branch("Loading file '%s', page '%s'", Path, Self->PageName);
 
@@ -5003,7 +5003,7 @@ static ERROR load_doc(extDocument *Self, CSTRING Path, BYTE Unload, BYTE UnloadF
 
 static void layout_doc(extDocument *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objFont *font;
    LONG pagewidth, pageheight, hscroll_offset;
    BYTE vertical_repass;
@@ -5204,7 +5204,7 @@ restart:
          else if (trigger->Function.Type IS CALL_STDC) {
             auto routine = (void (*)(APTR, extDocument *, LONG, LONG, LONG, LONG))trigger->Function.StdC.Routine;
             if (routine) {
-               parasol::SwitchContext context(trigger->Function.StdC.Context);
+               pf::SwitchContext context(trigger->Function.StdC.Context);
                routine(trigger->Function.StdC.Context, Self, Self->AreaWidth, Self->AreaHeight, Self->CalcWidth, Self->PageHeight);
             }
          }
@@ -5227,7 +5227,7 @@ static ERROR process_page(extDocument *Self, objXML *xml)
 
    if (!xml) return ERR_NoData;
 
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.branch("Page: %s, XML: %d, Tags: %d", Self->PageName, xml->UID, xml->TagCount);
 
@@ -5301,7 +5301,7 @@ static ERROR process_page(extDocument *Self, objXML *xml)
       // Process tags at the root level, but only those that we allow up to the first <page> entry.
 
       {
-         parasol::Log log(__FUNCTION__);
+         pf::Log log(__FUNCTION__);
 
          log.traceBranch("Processing root level tags.");
 
@@ -5369,13 +5369,13 @@ static ERROR process_page(extDocument *Self, objXML *xml)
       }
 
       if ((Self->HeaderTag) and (noheader IS FALSE)) {
-         parasol::Log log(__FUNCTION__);
+         pf::Log log(__FUNCTION__);
          log.traceBranch("Processing header.");
          insert_xml(Self, xml, Self->HeaderTag, Self->StreamLen, IXF_SIBLINGS|IXF_RESETSTYLE);
       }
 
       if (Self->BodyTag) {
-         parasol::Log log(__FUNCTION__);
+         pf::Log log(__FUNCTION__);
          log.traceBranch("Processing this page through the body tag.");
 
          START_TEMPLATE(page[0]->Child, xml, NULL)
@@ -5385,13 +5385,13 @@ static ERROR process_page(extDocument *Self, objXML *xml)
          END_TEMPLATE()
       }
       else {
-         parasol::Log log(__FUNCTION__);
+         pf::Log log(__FUNCTION__);
          log.traceBranch("Processing page '%s'.", XMLATTRIB(page[0], "name"));
          insert_xml(Self, xml, page[0]->Child, Self->StreamLen, IXF_SIBLINGS|IXF_RESETSTYLE);
       }
 
       if ((Self->FooterTag) and (!nofooter)) {
-         parasol::Log log(__FUNCTION__);
+         pf::Log log(__FUNCTION__);
          log.traceBranch("Processing footer.");
          insert_xml(Self, xml, Self->FooterTag, Self->StreamLen, IXF_SIBLINGS|IXF_RESETSTYLE);
       }
@@ -5448,7 +5448,7 @@ static ERROR process_page(extDocument *Self, objXML *xml)
          }
          else if (trigger->Function.Type IS CALL_STDC) {
             if (auto routine = (void (*)(APTR, extDocument *))trigger->Function.StdC.Routine) {
-               parasol::SwitchContext context(trigger->Function.StdC.Context);
+               pf::SwitchContext context(trigger->Function.StdC.Context);
                routine(trigger->Function.StdC.Context, Self);
             }
          }
@@ -5505,7 +5505,7 @@ static docresource * add_resource_ptr(extDocument *Self, APTR Address, LONG Type
 
 static ERROR unload_doc(extDocument *Self, BYTE Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.branch("Flags: $%.2x", Flags);
 
@@ -5674,7 +5674,7 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
    // Remove all page related resources
 
    {
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
       log.traceBranch("Freeing page-allocated resources.");
 
       auto resource = Self->Resources;
@@ -5735,7 +5735,7 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
 
 static void redraw(extDocument *Self, BYTE Focus)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("");
 
@@ -5771,7 +5771,7 @@ static LONG get_line_from_index(extDocument *Self, LONG Index)
 
 static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    static OBJECTID dialog_id = 0;
 
    log.warning("%s", Message);
@@ -5822,7 +5822,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
 
 static void add_template(extDocument *Self, objXML *XML, XMLTag *Tag)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG i;
 
    // Validate the template (must have a name)
@@ -5866,7 +5866,7 @@ static objFont * lookup_font(LONG Index, CSTRING Caller)
 {
    if ((glFonts) and (Index < glTotalFonts) and (Index >= 0)) return glFonts[Index].Font;
    else {
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
       log.warning("Bad font index %d.  Max: %d.  Caller: %s", Index, glTotalFonts, Caller);
       if (glFonts) return glFonts[0].Font; // Always try to return a font rather than NULL
       else return NULL;
@@ -5881,7 +5881,7 @@ static objFont * lookup_font(LONG Index, CSTRING Caller)
 
 static LONG create_font(CSTRING Face, CSTRING Style, LONG Point)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG i;
    #define FONT_BLOCK_SIZE 20
 
@@ -5955,7 +5955,7 @@ exit:
 static LONG add_drawsegment(extDocument *Self, LONG Offset, LONG Stop, layout *Layout,
    LONG Y, LONG Width, LONG AlignWidth, CSTRING Debug)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG i;
 
    // Determine trailing whitespace at the end of the line.  This helps
@@ -6182,7 +6182,7 @@ static LONG add_drawsegment(extDocument *Self, LONG Offset, LONG Stop, layout *L
 
 static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    Field *classfield;
    STRING src, Buffer;
    CSTRING str;
@@ -6595,7 +6595,7 @@ repeat:
                                  GetFieldVariable(object, name, Self->TBuffer, Self->TBufferSize);
                                  if (Self->TBuffer[Self->TBufferSize-1]) {
                                     STRING newbuf;
-                                    parasol::SwitchContext context(modDocument);
+                                    pf::SwitchContext context(modDocument);
                                     if (!AllocMemory(Self->TBufferSize + 1024, MEM_STRING|MEM_NO_CLEAR, &newbuf)) {
                                        FreeResource(Self->TBuffer);
                                        Self->TBuffer = newbuf;
@@ -6789,7 +6789,7 @@ static LONG getutf8(CSTRING Value, LONG *Unicode)
 
 static ERROR activate_edit(extDocument *Self, LONG CellIndex, LONG CursorIndex)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    escCell *cell;
    DocEdit *edit;
    UBYTE *stream;
@@ -6888,7 +6888,7 @@ static ERROR activate_edit(extDocument *Self, LONG CellIndex, LONG CursorIndex)
 
 static void deactivate_edit(extDocument *Self, BYTE Redraw)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    UBYTE *stream;
 
    if (!(stream = Self->Stream)) return;
@@ -7056,7 +7056,7 @@ static void check_pointer_exit(extDocument *Self, LONG X, LONG Y)
 
 static void pointer_enter(extDocument *Self, LONG Index, CSTRING Function, LONG Left, LONG Top, LONG Right, LONG Bottom)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    MouseOver *mouseover;
    CSTRING function_name, argstring;
 
@@ -7094,7 +7094,7 @@ static void pointer_enter(extDocument *Self, LONG Index, CSTRING Function, LONG 
 
 static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG segment, bytepos;
 
    Self->ClickX = X;
@@ -7218,7 +7218,7 @@ static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
 static void check_mouse_release(extDocument *Self, DOUBLE X, DOUBLE Y)
 {
    if ((std::abs(X - Self->ClickX) > 3) or (std::abs(Y - Self->ClickY) > 3)) {
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
       log.trace("User click cancelled due to mouse shift.");
       return;
    }
@@ -7376,7 +7376,7 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
 
 static ERROR resolve_font_pos(extDocument *Self, LONG Segment, LONG X, LONG *CharX, LONG *BytePos)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG i, index;
 
    if ((Segment >= 0) and (Segment < Self->SegCount)) {
@@ -7460,7 +7460,7 @@ static ERROR resolve_font_pos(extDocument *Self, LONG Segment, LONG X, LONG *Cha
 
 static ERROR resolve_fontx_by_index(extDocument *Self, LONG Index, LONG *CharX)
 {
-   parasol::Log log("resolve_fontx");
+   pf::Log log("resolve_fontx");
    LONG segment;
 
    log.branch("Index: %d", Index);
@@ -7550,7 +7550,7 @@ static LONG find_segment(extDocument *Self, LONG Index, LONG InclusiveStop)
 
 static void deselect_text(extDocument *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    // Return immediately if there is nothing to deselect
 
@@ -7621,7 +7621,7 @@ static LONG find_tabfocus(extDocument *Self, UBYTE Type, LONG Reference)
 
 static LONG add_tabfocus(extDocument *Self, UBYTE Type, LONG Reference)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    //log.function("Type: %d, Ref: %d", Type, Reference);
 
@@ -7703,7 +7703,7 @@ static LONG add_tabfocus(extDocument *Self, UBYTE Type, LONG Reference)
 
 static void set_focus(extDocument *Self, LONG Index, CSTRING Caller)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Self->Tabs) or (Self->TabIndex < 1)) {
       log.trace("No tab markers in document.");
@@ -7798,7 +7798,7 @@ static void set_focus(extDocument *Self, LONG Index, CSTRING Caller)
 
 static BYTE view_area(extDocument *Self, LONG Left, LONG Top, LONG Right, LONG Bottom)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    LONG hgap = Self->AreaWidth * 0.1;
    LONG vgap = Self->AreaHeight * 0.1;
@@ -7852,7 +7852,7 @@ static BYTE view_area(extDocument *Self, LONG Left, LONG Top, LONG Right, LONG B
 
 static void advance_tabfocus(extDocument *Self, BYTE Direction)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG i;
 
    if ((!Self->Tabs) or (Self->TabIndex < 1)) return;
@@ -7910,7 +7910,7 @@ static void advance_tabfocus(extDocument *Self, BYTE Direction)
 
 static void process_parameters(extDocument *Self, CSTRING String)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG i, setsize;
    STRING set;
 
@@ -8012,7 +8012,7 @@ static void process_parameters(extDocument *Self, CSTRING String)
 static void calc_scroll(extDocument *Self) __attribute__((unused));
 static void calc_scroll(extDocument *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("PageHeight: %d/%d, PageWidth: %d/%d, XPos: %d, YPos: %d", Self->PageHeight, Self->AreaHeight, Self->CalcWidth, Self->AreaWidth, Self->XPosition, Self->YPosition);
 }
@@ -8023,7 +8023,7 @@ static void calc_scroll(extDocument *Self)
 
 static ERROR extract_script(extDocument *Self, CSTRING Link, OBJECTPTR *Script, CSTRING *Function, CSTRING *Args)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG len, pos;
    STRING scriptref;
 
@@ -8127,7 +8127,7 @@ static ERROR extract_script(extDocument *Self, CSTRING Link, OBJECTPTR *Script, 
 
 static void exec_link(extDocument *Self, LONG Index)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((Index IS -1) or (Index >= Self->TotalLinks)) {
       log.trace("No links in document or %d >= %d.", Index, Self->TotalLinks);
@@ -8335,7 +8335,7 @@ static void set_object_style(extDocument *Self, OBJECTPTR Object)
 
 static void show_bookmark(extDocument *Self, CSTRING Bookmark)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.branch("%s", Bookmark);
 
@@ -8374,7 +8374,7 @@ static ERROR flash_cursor(extDocument *Self, LARGE TimeElapsed, LARGE CurrentTim
 
 static void reset_cursor(extDocument *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.function("");
 
@@ -8390,7 +8390,7 @@ static void reset_cursor(extDocument *Self)
 
 static ERROR report_event(extDocument *Self, LARGE Event, APTR EventData, CSTRING StructName)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    ERROR result = ERR_Okay;
 
    if (Event & Self->EventMask) {
@@ -8398,7 +8398,7 @@ static ERROR report_event(extDocument *Self, LARGE Event, APTR EventData, CSTRIN
 
       if (Self->EventCallback.Type IS CALL_STDC) {
          auto routine = (ERROR (*)(extDocument *, LARGE, APTR))Self->EventCallback.StdC.Routine;
-         parasol::SwitchContext context(Self->EventCallback.StdC.Context);
+         pf::SwitchContext context(Self->EventCallback.StdC.Context);
          result = routine(Self, Event, EventData);
       }
       else if (Self->EventCallback.Type IS CALL_SCRIPT) {

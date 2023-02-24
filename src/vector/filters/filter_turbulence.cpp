@@ -40,7 +40,7 @@ class extTurbulenceFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = ID_TURBULENCEFX;
    static constexpr CSTRING CLASS_NAME = "TurbulenceFX";
-   using create = parasol::Create<extTurbulenceFX>;
+   using create = pf::Create<extTurbulenceFX>;
 
    DOUBLE Gradient[GSIZE][LSIZE][GSUBSIZE];
    LONG Lattice[LSIZE];

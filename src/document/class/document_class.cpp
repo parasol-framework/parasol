@@ -57,7 +57,7 @@ static void notify_free_event(OBJECTPTR Object, ACTIONID ActionID, ERROR Result,
 
 static void notify_lostfocus_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    auto Self = (extDocument *)CurrentContext();
 
    if (Result) return;
@@ -82,7 +82,7 @@ static void notify_lostfocus_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR 
 
 static void notify_redimension_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, struct acRedimension *Args)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    auto Self = (extDocument *)CurrentContext();
 
    gfxGetSurfaceCoords(Self->SurfaceID, NULL, NULL, NULL, NULL, &Self->SurfaceWidth, &Self->SurfaceHeight);
@@ -114,7 +114,7 @@ static void notify_redimension_surface(OBJECTPTR Object, ACTIONID ActionID, ERRO
       else if (trigger->Function.Type IS CALL_STDC) {
          auto routine = (void (*)(APTR, extDocument *, LONG Width, LONG Height))trigger->Function.StdC.Routine;
          if (routine) {
-            parasol::SwitchContext context(trigger->Function.StdC.Context);
+            pf::SwitchContext context(trigger->Function.StdC.Context);
             routine(trigger->Function.StdC.Context, Self, Self->AreaWidth, Self->AreaHeight);
          }
       }
@@ -139,7 +139,7 @@ belong to the document object.
 
 static ERROR DOCUMENT_Activate(extDocument *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    log.branch();
 
    ChildEntry list[16];
@@ -228,7 +228,7 @@ NullArgs
 
 static ERROR DOCUMENT_ApplyFontStyle(extDocument *Self, struct docApplyFontStyle *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    objFont *font;
    DOCSTYLE *style;
 
@@ -278,7 +278,7 @@ NullArgs
 
 static ERROR DOCUMENT_CallFunction(extDocument *Self, struct docCallFunction *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Function)) return log.warning(ERR_NullArgs);
 
@@ -305,7 +305,7 @@ data will be deleted from the object and the graphics will be automatically upda
 
 static ERROR DOCUMENT_Clear(extDocument *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.branch();
    unload_doc(Self, 0);
@@ -324,7 +324,7 @@ Clipboard: Full support for clipboard activity is provided through this action.
 
 static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    STRING buffer;
    LONG size;
 
@@ -431,7 +431,7 @@ Mismatch:    The data type that was passed to the action is not supported by the
 
 static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
 
@@ -569,7 +569,7 @@ NullArgs
 
 static ERROR DOCUMENT_FeedParser(extDocument *Self, struct docFeedParser *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->String)) return ERR_NullArgs;
 
@@ -610,7 +610,7 @@ Search: The index was not found.
 
 static ERROR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
 
@@ -746,7 +746,7 @@ static ERROR DOCUMENT_GetVar(extDocument *Self, struct acGetVar *Args)
 
 static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Self->SurfaceID) return log.warning(ERR_UnsupportedOwner);
 
@@ -902,7 +902,7 @@ Search
 
 static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG tab;
 
    if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
@@ -998,7 +998,7 @@ NullArgs
 
 static ERROR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->XML)) return log.warning(ERR_NullArgs);
    if ((Args->Index < -1) or (Args->Index > Self->StreamLen)) return log.warning(ERR_OutOfRange);
@@ -1077,7 +1077,7 @@ NullArgs
 
 static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Args) or (!Args->Text)) return log.warning(ERR_NullArgs);
    if ((Args->Index < -1) or (Args->Index > Self->StreamLen)) return log.warning(ERR_OutOfRange);
@@ -1195,7 +1195,7 @@ NoData: Operation successful, but no data was present for extraction.
 
 static ERROR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -1250,7 +1250,7 @@ Refresh: Reloads the document data from the original source location.
 
 static ERROR DOCUMENT_Refresh(extDocument *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Processing) {
       log.msg("Recursion detected - refresh will be delayed.");
@@ -1278,7 +1278,7 @@ static ERROR DOCUMENT_Refresh(extDocument *Self, APTR Void)
       else if (trigger->Function.Type IS CALL_STDC) {
          auto routine = (void (*)(APTR, extDocument *))trigger->Function.StdC.Routine;
          if (routine) {
-            parasol::SwitchContext context(trigger->Function.StdC.Context);
+            pf::SwitchContext context(trigger->Function.StdC.Context);
             routine(trigger->Function.StdC.Context, Self);
          }
       }
@@ -1333,7 +1333,7 @@ Args
 
 static ERROR DOCUMENT_RemoveContent(extDocument *Self, struct docRemoveContent *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -1407,7 +1407,7 @@ SaveToObject: Use this action to save edited information as an XML document file
 
 static ERROR DOCUMENT_SaveToObject(extDocument *Self, struct acSaveToObject *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    OBJECTPTR Object;
 
    if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
@@ -1479,7 +1479,7 @@ OutOfRange
 
 static ERROR DOCUMENT_SelectLink(extDocument *Self, struct docSelectLink *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -1553,7 +1553,7 @@ Search: The index could not be found.
 
 static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
 

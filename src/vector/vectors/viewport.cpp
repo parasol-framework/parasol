@@ -47,7 +47,7 @@ static ERROR drag_callback(extVectorViewport *Viewport, const InputEvent *Events
             DOUBLE y = glDragOriginY + (event->AbsY - glAnchorY);
 
             if (Viewport->vpDragCallback.Type IS CALL_STDC) {
-               parasol::SwitchContext context(Viewport->vpDragCallback.StdC.Context);
+               pf::SwitchContext context(Viewport->vpDragCallback.StdC.Context);
                auto routine = (void (*)(extVectorViewport *, DOUBLE, DOUBLE, DOUBLE, DOUBLE))Viewport->vpDragCallback.StdC.Routine;
                routine(Viewport, x, y, glDragOriginX, glDragOriginY);
             }
@@ -360,7 +360,7 @@ static ERROR VIEW_SET_DragCallback(extVectorViewport *Self, FUNCTION *Value)
 
    if (Value) {
       if ((!Self->Scene) or (!Self->Scene->SurfaceID)) {
-         parasol::Log log;
+         pf::Log log;
          return log.warning(ERR_FieldNotSet);
       }
 
@@ -725,7 +725,7 @@ static ERROR VIEW_GET_X(extVectorViewport *Self, Variable *Value)
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
    else {
-      parasol::Log log;
+      pf::Log log;
       return log.warning(ERR_FieldTypeMismatch);
    }
 
@@ -790,7 +790,7 @@ static ERROR VIEW_GET_XOffset(extVectorViewport *Self, Variable *Value)
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
    else {
-      parasol::Log log;
+      pf::Log log;
       return log.warning(ERR_FieldTypeMismatch);
    }
 
@@ -854,7 +854,7 @@ static ERROR VIEW_GET_Y(extVectorViewport *Self, Variable *Value)
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
    else {
-      parasol::Log log;
+      pf::Log log;
       return log.warning(ERR_FieldTypeMismatch);
    }
 
@@ -919,7 +919,7 @@ static ERROR VIEW_GET_YOffset(extVectorViewport *Self, Variable *Value)
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
    else {
-      parasol::Log log;
+      pf::Log log;
       return log.warning(ERR_FieldTypeMismatch);
    }
 

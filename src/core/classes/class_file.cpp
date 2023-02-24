@@ -115,7 +115,7 @@ Activate: Opens the file.  Performed automatically if NEW, READ or WRITE flags w
 
 static ERROR FILE_Activate(extFile *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Handle != -1) return ERR_Okay;
    if (!(Self->Flags & (FL_NEW|FL_READ|FL_WRITE))) return log.warning(ERR_NothingDone);
@@ -266,7 +266,7 @@ Read: Failed to read the file content.
 
 static ERROR FILE_BufferContent(extFile *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    LONG len;
 
    if (Self->Buffer) return ERR_Okay;
@@ -341,7 +341,7 @@ Streaming data of any type to a file will result in the content being written to
 
 static ERROR FILE_DataFeed(extFile *Self, struct acDataFeed *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
 
@@ -414,7 +414,7 @@ BufferOverflow: The file path string is too long.
 
 static ERROR FILE_Delete(extFile *Self, struct flDelete *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Self->Path) or (!*Self->Path)) return log.warning(ERR_MissingPath);
 
@@ -491,7 +491,7 @@ static ERROR FILE_Delete(extFile *Self, struct flDelete *Args)
 
 static ERROR FILE_Free(extFile *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->prvWatch) Action(MT_FlWatch, Self, NULL);
 
@@ -575,7 +575,7 @@ NoPermission: Permission was denied when accessing or creating the file.
 
 static ERROR FILE_Init(extFile *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    LONG j, len;
    ERROR error;
 
@@ -800,7 +800,7 @@ Failed
 
 static ERROR FILE_MoveFile(extFile *Self, struct flMove *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Dest)) return log.warning(ERR_NullArgs);
    if (!Self->Path) return log.warning(ERR_FieldNotSet);
@@ -914,7 +914,7 @@ DirEmpty: The index has reached the end of the file list.
 
 static ERROR FILE_NextFile(extFile *Self, struct flNext *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
    if (!(Self->Flags & FL_FOLDER)) return log.warning(ERR_ExpectedFolder);
@@ -993,7 +993,7 @@ Failed: The file object refers to a folder, or the object is corrupt.
 
 static ERROR FILE_Read(extFile *Self, struct acRead *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
    else if (Args->Length == 0) return ERR_Okay;
@@ -1089,7 +1089,7 @@ NoData: There is no more data left to read.
 
 static ERROR FILE_ReadLine(extFile *Self, struct flReadLine *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
    if (!(Self->Flags & FL_READ)) return log.warning(ERR_FileReadFlag);
@@ -1164,7 +1164,7 @@ Rename: Changes the name of a file.
 
 static ERROR FILE_Rename(extFile *Self, struct acRename *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    LONG j;
    STRING n;
 
@@ -1277,7 +1277,7 @@ Seek: Seeks to a new read/write position within a file.
 
 static ERROR FILE_Seek(extFile *Self, struct acSeek *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    LARGE oldpos = Self->Position;
 
@@ -1354,7 +1354,7 @@ NoSupport: The platform does not support file date setting.
 
 static ERROR FILE_SetDate(extFile *Self, struct flSetDate *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -1451,7 +1451,7 @@ NoSupport: The file is not streamed.
 
 static ERROR FILE_StartStream(extFile *Self, struct flStartStream *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->SubscriberID)) return log.warning(ERR_NullArgs);
 
@@ -1518,7 +1518,7 @@ NullArgs
 
 static ERROR FILE_Watch(extFile *Self, struct flWatch *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.branch("%s, Flags: $%.8x", Self->Path, (Args) ? Args->Flags : 0);
 
@@ -1600,7 +1600,7 @@ LimitedSuccess: Only some of the data was written to the file.  Check the Result
 
 static ERROR FILE_Write(extFile *Self, struct acWrite *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
    if (Args->Length <= 0) return ERR_Args;
@@ -1725,7 +1725,7 @@ To simplify time management, information is read and set via a &DateTime structu
 
 static ERROR GET_Created(extFile *Self, DateTime **Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    *Value = 0;
 
@@ -1798,7 +1798,7 @@ Information is read and set using a standard &DateTime structure.
 
 static ERROR GET_Date(extFile *Self, DateTime **Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    *Value = 0;
 
@@ -1862,7 +1862,7 @@ static ERROR GET_Date(extFile *Self, DateTime **Value)
 
 ERROR SET_Date(extFile *Self, DateTime *Date)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Date) return log.warning(ERR_NullArgs);
 
@@ -1945,7 +1945,7 @@ static ERROR GET_Group(extFile *Self, LONG *Value)
 static ERROR SET_Group(extFile *Self, LONG Value)
 {
 #ifdef __unix__
-   parasol::Log log;
+   pf::Log log;
    if (Self->initialised()) {
       log.msg("Changing group to #%d", Value);
       if (!fchown(Self->Handle, -1, Value)) return ERR_Okay;
@@ -1991,7 +1991,7 @@ static ERROR GET_Icon(extFile *Self, CSTRING *Value)
       return ERR_Okay;
    }
 
-   parasol::SwitchContext context(Self);
+   pf::SwitchContext context(Self);
 
    if ((!Self->Path) or (!Self->Path[0])) {
       *Value = Self->prvIcon = StrClone("icons:filetypes/empty");
@@ -2138,7 +2138,7 @@ folder containing the link will need to be taken into consideration when calcula
 static ERROR GET_Link(extFile *Self, STRING *Value)
 {
 #ifdef __unix__
-   parasol::Log log;
+   pf::Log log;
    STRING path;
    char buffer[512];
 
@@ -2211,7 +2211,7 @@ static ERROR GET_Path(extFile *Self, STRING *Value)
 
 static ERROR SET_Path(extFile *Self, CSTRING Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->initialised()) return log.warning(ERR_Immutable);
 
@@ -2307,7 +2307,7 @@ Lookup: PERMIT
 
 static ERROR GET_Permissions(extFile *Self, LONG *Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    *Value = 0;
 
@@ -2368,7 +2368,7 @@ static ERROR SET_Permissions(extFile *Self, LONG Value)
 
 static ERROR set_permissions(extFile *Self, LONG Permissions)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 #ifdef __unix__
 
    if (Self->Handle != -1) {
@@ -2493,7 +2493,7 @@ static ERROR GET_ResolvedPath(extFile *Self, CSTRING *Value)
       else flags |= RSF_NO_FILE_CHECK;
 
       ERROR error;
-      parasol::SwitchContext ctx(Self);
+      pf::SwitchContext ctx(Self);
       if ((error = ResolvePath(Self->Path, flags, &Self->prvResolvedPath)) != ERR_Okay) {
          return ERR_ResolvePath;
       }
@@ -2515,7 +2515,7 @@ position being set to the end of the file.
 
 static ERROR GET_Size(extFile *Self, LARGE *Size)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Flags & FL_FOLDER) {
       *Size = 0;
@@ -2550,7 +2550,7 @@ static ERROR GET_Size(extFile *Self, LARGE *Size)
 
 static ERROR SET_Size(extFile *Self, LARGE Size)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Size IS Self->Size) return ERR_Okay;
    if (Size < 0) return log.warning(ERR_OutOfRange);
@@ -2672,7 +2672,7 @@ for comparison to the time stamps of other files.  For a parsed time structure, 
 
 static ERROR GET_TimeStamp(extFile *Self, LARGE *Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    *Value = 0;
 
@@ -2757,7 +2757,7 @@ static ERROR GET_User(extFile *Self, LONG *Value)
 static ERROR SET_User(extFile *Self, LONG Value)
 {
 #ifdef __unix__
-   parasol::Log log;
+   pf::Log log;
    if (Self->initialised()) {
       log.msg("Changing user to #%d", Value);
       if (!fchown(Self->Handle, Value, -1)) {

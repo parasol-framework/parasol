@@ -9,7 +9,7 @@
 void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes)
 {
 #ifdef WIN_DRAGDROP
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.branch("Surface: %d", SurfaceID);
 
@@ -50,7 +50,7 @@ void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes)
 ERROR lock_surface(extBitmap *Bitmap, WORD Access)
 {
    if (!Bitmap->Data) {
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
       log.warning("[Bitmap:%d] Bitmap is missing the Data field.", Bitmap->UID);
       return ERR_FieldNotSet;
    }
@@ -125,7 +125,7 @@ ERROR unlock_surface(extBitmap *Bitmap)
 
 ERROR lock_surface(extBitmap *Bitmap, WORD Access)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (Bitmap->DataFlags & MEM_VIDEO) {
       // MEM_VIDEO represents the video display in OpenGL.  Read/write CPU access is not available to this area but
@@ -251,7 +251,7 @@ ERROR get_surface_abs(OBJECTID SurfaceID, LONG *AbsX, LONG *AbsY, LONG *Width, L
 void redraw_nonintersect(OBJECTID SurfaceID, SurfaceList *List, LONG Index, LONG Total,
    ClipRectangle *Region, ClipRectangle *RegionB, LONG RedrawFlags, LONG ExposeFlags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!SurfaceID) { // Implemented this check because an invalid SurfaceID has happened before.
       log.warning("SurfaceID == 0");
@@ -317,7 +317,7 @@ LONG find_bitmap_owner(SurfaceList *List, LONG Index)
 
 ERROR track_layer(extSurface *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    SurfaceControl *ctl;
    LONG i;
 
@@ -459,7 +459,7 @@ ERROR track_layer(extSurface *Self)
 
 void untrack_layer(OBJECTID ObjectID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    SurfaceControl *ctl;
    if ((ctl = gfxAccessList(ARF_WRITE))) {
       auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
@@ -506,7 +506,7 @@ void untrack_layer(OBJECTID ObjectID)
 
 ERROR update_surface_copy(extSurface *Self, SurfaceList *Copy)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG i, j, level;
 
    if (!Self) return log.warning(ERR_NullArgs);
@@ -690,12 +690,12 @@ ERROR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
       return ERR_Okay;
    }
 
-   parasol::Log log;
+   pf::Log log;
 
    log.traceBranch("resize_layer() %dx%d,%dx%d TO %dx%d,%dx%dx%d", Self->X, Self->Y, Self->Width, Self->Height, X, Y, Width, Height, BPP);
 
    if (Self->BitmapOwnerID IS Self->UID) {
-      parasol::ScopedObjectLock<objBitmap> bitmap(Self->BufferID, 5000);
+      pf::ScopedObjectLock<objBitmap> bitmap(Self->BufferID, 5000);
       if (bitmap.granted()) {
          if (!bitmap->resize(Width, Height, BPP)) {
             Self->LineWidth     = bitmap->LineWidth;
@@ -771,7 +771,7 @@ ERROR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
          return ERR_Search;
       }
 
-      parasol::Log log;
+      pf::Log log;
       log.traceBranch("Redrawing the resized surface.");
 
       _redraw_surface(Self->UID, cplist, index, total, cplist[index].Left, cplist[index].Top, cplist[index].Right, cplist[index].Bottom, 0);
@@ -837,7 +837,7 @@ static UBYTE check_visibility(SurfaceList *list, LONG index)
 
 static void check_bmp_buffer_depth(extSurface *Self, objBitmap *Bitmap)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (Bitmap->Flags & BMF_FIXED_DEPTH) return;  // Don't change bitmaps marked as fixed-depth
 
@@ -859,7 +859,7 @@ static void check_bmp_buffer_depth(extSurface *Self, objBitmap *Bitmap)
 
 void process_surface_callbacks(extSurface *Self, extBitmap *Bitmap)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    #ifdef DBG_DRAW_ROUTINES
       log.traceBranch("Bitmap: %d, Count: %d", Bitmap->UID, Self->CallbackCount);
@@ -871,12 +871,12 @@ void process_surface_callbacks(extSurface *Self, extBitmap *Bitmap)
          auto routine = (void (*)(APTR, extSurface *, objBitmap *))Self->Callback[i].Function.StdC.Routine;
 
          #ifdef DBG_DRAW_ROUTINES
-            parasol::Log log(__FUNCTION__);
+            pf::Log log(__FUNCTION__);
             log.branch("%d/%d: Routine: %p, Object: %p, Context: %p", i, Self->CallbackCount, routine, Self->Callback[i].Object, Self->Callback[i].Function.StdC.Context);
          #endif
 
          if (Self->Callback[i].Function.StdC.Context) {
-            parasol::SwitchContext context(Self->Callback[i].Function.StdC.Context);
+            pf::SwitchContext context(Self->Callback[i].Function.StdC.Context);
             routine(Self->Callback[i].Function.StdC.Context, Self, Bitmap);
          }
          else routine(Self->Callback[i].Object, Self, Bitmap);
@@ -1091,7 +1091,7 @@ AccessMemory: Failed to access the internal surface list.
 
 ERROR gfxCheckIfChild(OBJECTID ParentID, OBJECTID ChildID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("Parent: %d, Child: %d", ParentID, ChildID);
 
@@ -1156,7 +1156,7 @@ AccessMemory: Failed to access the internal surfacelist memory structure
 ERROR gfxCopySurface(OBJECTID SurfaceID, extBitmap *Bitmap, LONG Flags,
           LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!SurfaceID) or (!Bitmap)) return log.warning(ERR_NullArgs);
 
@@ -1265,7 +1265,7 @@ AccessMemory: The internal surfacelist could not be accessed
 
 ERROR gfxExposeSurface(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (tlNoDrawing) return ERR_Okay;
    if (!SurfaceID) return ERR_NullArgs;
@@ -1314,7 +1314,7 @@ AccessMemory: Failed to access the internal surfacelist memory structure.
 
 ERROR gfxGetSurfaceCoords(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!SurfaceID) {
       DISPLAYINFO *display;
@@ -1377,7 +1377,7 @@ AccessMemory
 
 ERROR gfxGetSurfaceFlags(OBJECTID SurfaceID, LONG *Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (Flags) *Flags = 0;
    else return log.warning(ERR_NullArgs);
@@ -1425,7 +1425,7 @@ AccessMemory: Failed to access the internal surfacelist memory structure.
 
 ERROR gfxGetSurfaceInfo(OBJECTID SurfaceID, SURFACEINFO **Info)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    static THREADVAR SURFACEINFO info;
 
    // Note that a SurfaceID of zero is fine (returns the root surface).
@@ -1525,7 +1525,7 @@ AccessMemory: Failed to access the internal surfacelist memory structure.
 
 ERROR gfxGetVisibleArea(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!SurfaceID) {
       DISPLAYINFO *display;
@@ -1611,7 +1611,7 @@ AccessMemory: Failed to access the internal surface list.
 
 ERROR gfxRedrawSurface(OBJECTID SurfaceID, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (tlNoDrawing) {
       log.trace("tlNoDrawing: %d", tlNoDrawing);
@@ -1643,7 +1643,7 @@ ERROR gfxRedrawSurface(OBJECTID SurfaceID, LONG Left, LONG Top, LONG Right, LONG
 ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG Total,
    LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Flags)
 {
-   parasol::Log log("redraw_surface");
+   pf::Log log("redraw_surface");
    static THREADVAR BYTE recursive = 0;
 
    if (list[index].Flags & RNF_TOTAL_REDRAW) {
@@ -1783,7 +1783,7 @@ ERROR _redraw_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG To
 void _redraw_surface_do(extSurface *Self, SurfaceList *list, LONG Total, LONG Index,
                                LONG Left, LONG Top, LONG Right, LONG Bottom, extBitmap *DestBitmap, LONG Flags)
 {
-   parasol::Log log("redraw_surface");
+   pf::Log log("redraw_surface");
 
    if (Self->Flags & RNF_TRANSPARENT) return;
 
@@ -2042,7 +2042,7 @@ oid: The object ID of the previous modal surface is returned (zero if there was 
 
 OBJECTID gfxSetModalSurface(OBJECTID SurfaceID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (GetClassID(SurfaceID) != ID_SURFACE) return 0;
 
@@ -2131,7 +2131,7 @@ Args
 
 ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LONG *Info)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 #if 0
    // This technique that we're using to acquire the bitmap is designed to prevent deadlocking.
    //
@@ -2304,7 +2304,7 @@ void gfxReleaseList(LONG Flags)
       }
    }
    else {
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
       log.warning("drwReleaseList() called without an existing lock.");
    }
 }

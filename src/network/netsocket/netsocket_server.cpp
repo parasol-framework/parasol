@@ -4,13 +4,13 @@
 
 static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    UBYTE ip[8];
    SOCKET_HANDLE clientfd;
 
    log.traceBranch("FD: %d", FD);
 
-   parasol::SwitchContext context(Self);
+   pf::SwitchContext context(Self);
 
    if (Self->IPV6) {
 #ifdef __linux__
@@ -143,7 +143,7 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
    }
 
    if (Self->Feedback.Type IS CALL_STDC) {
-      parasol::SwitchContext context(Self->Feedback.StdC.Context);
+      pf::SwitchContext context(Self->Feedback.StdC.Context);
       auto routine = (void (*)(extNetSocket *, objClientSocket *, LONG))Self->Feedback.StdC.Routine;
       if (routine) routine(Self, client_socket, NTC_CONNECTED);
    }
@@ -169,7 +169,7 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
 
 static void free_client(extNetSocket *Self, struct NetClient *Client)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    static THREADVAR BYTE recursive = 0;
 
    if (!Client) return;
@@ -212,7 +212,7 @@ static void free_client(extNetSocket *Self, struct NetClient *Client)
 
 static void free_client_socket(extNetSocket *Socket, extClientSocket *ClientSocket, BYTE Signal)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!ClientSocket) return;
 
@@ -220,7 +220,7 @@ static void free_client_socket(extNetSocket *Socket, extClientSocket *ClientSock
 
    if ((Signal) and (Socket->Feedback.Type)) {
       if (Socket->Feedback.Type IS CALL_STDC) {
-         parasol::SwitchContext context(Socket->Feedback.StdC.Context);
+         pf::SwitchContext context(Socket->Feedback.StdC.Context);
          auto routine = (void (*)(extNetSocket *, objClientSocket *, LONG))Socket->Feedback.StdC.Routine;
          if (routine) routine(Socket, ClientSocket, NTC_DISCONNECTED);
       }

@@ -79,7 +79,7 @@ public:
    ERROR Result;
 
    BitmapCache(winfnt_header_fields &pFace, CSTRING pStyle, CSTRING pPath, objFile *pFile, winFont &pWinFont) {
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
 
       log.branch("Caching font %s : %d : %s", pPath, pFace.nominal_point_size, pStyle);
 
@@ -302,7 +302,7 @@ public:
 
    ~BitmapCache() {
       if (OpenCount) {
-         parasol::Log log(__FUNCTION__);
+         pf::Log log(__FUNCTION__);
          log.warning("Removing \"%s : %d : $%.8x\" with an open count of %d", Path.c_str(), Header.nominal_point_size, StyleFlags, OpenCount);
       }
       if (mData) { FreeResource(mData); mData = NULL; }
@@ -318,7 +318,7 @@ static APTR glCacheTimer = NULL;
 
 static BitmapCache * check_bitmap_cache(extFont *Self, LONG Style)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    for (auto & cache : glBitmapCache) {
       if (cache.Result != ERR_Okay) continue;
@@ -342,7 +342,7 @@ static BitmapCache * check_bitmap_cache(extFont *Self, LONG Style)
 
 ERROR bitmap_cache_cleaner(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.msg("Checking bitmap font cache for unused fonts...");
 

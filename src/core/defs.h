@@ -349,7 +349,7 @@ enum {
 
 class extMetaClass : public objMetaClass {
    public:
-   using create = parasol::Create<extMetaClass>;
+   using create = pf::Create<extMetaClass>;
    class extMetaClass *Base;            // Reference to the base class if this is a sub-class
    struct Field *prvFields;             // Internal field structure
    const struct FieldArray *SubFields;  // Extra fields defined by the sub-class
@@ -362,7 +362,7 @@ class extMetaClass : public objMetaClass {
 
 class extFile : public objFile {
    public:
-   using create = parasol::Create<extFile>;
+   using create = pf::Create<extFile>;
    struct DateTime prvModified;  // [28 byte structure]
    struct DateTime prvCreated;  // [28 byte structure]
    LARGE Size;
@@ -388,20 +388,20 @@ class extFile : public objFile {
 
 class extConfig : public objConfig {
    public:
-   using create = parasol::Create<extConfig>;
+   using create = pf::Create<extConfig>;
    ULONG    CRC;   // CRC32, for determining if config data has been altered
 };
 
 class extStorageDevice : public objStorageDevice {
    public:
-   using create = parasol::Create<extStorageDevice>;
+   using create = pf::Create<extStorageDevice>;
    STRING DeviceID;   // Unique ID for the filesystem, if available
    STRING Volume;
 };
 
 class extThread : public objThread {
    public:
-   using create = parasol::Create<extThread>;
+   using create = pf::Create<extThread>;
    #ifdef __unix__
       pthread_t PThread;
       LONG Msgs[2];
@@ -418,7 +418,7 @@ class extThread : public objThread {
 
 class extTask : public objTask {
    public:
-   using create = parasol::Create<extTask>;
+   using create = pf::Create<extTask>;
    MEMORYID MessageMID;
    STRING   LaunchPath;
    STRING   Path;
@@ -455,7 +455,7 @@ class extTask : public objTask {
 
 class extModule : public objModule {
    public:
-   using create = parasol::Create<extModule>;
+   using create = pf::Create<extModule>;
    char   Name[60];      // Name of the module
    APTR   prvMBMemory;   // Module base memory
 };

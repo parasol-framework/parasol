@@ -315,7 +315,7 @@ Surface field, if available.  If this does not yield a valid surface then ERR_In
 
 static ERROR SET_PopOver(extSurface *Self, OBJECTID Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Value IS Self->UID) return ERR_Okay;
 
@@ -364,7 +364,7 @@ This example uses percentages to create two regions: `(0%,0%,20%,20%) (5%,5%,10%
 
 static ERROR SET_PrecopyRegion(extSurface *Self, STRING Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.branch("%s", Value);
 
@@ -536,7 +536,7 @@ Returns the surface object that has the primary user focus.  Returns NULL if no 
 
 static ERROR GET_UserFocus(extSurface *Self, OBJECTID *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    OBJECTID *focuslist;
 
    if (!AccessMemoryID(RPM_FocusList, MEM_READ, 1000, &focuslist)) {
@@ -600,7 +600,7 @@ static ERROR GET_WindowType(extSurface *Self, LONG *Value)
 static ERROR SET_WindowType(extSurface *Self, LONG Value)
 {
    if (Self->initialised()) {
-      parasol::Log log;
+      pf::Log log;
       BYTE border;
       LONG flags;
       objDisplay *display;

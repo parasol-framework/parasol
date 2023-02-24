@@ -76,7 +76,7 @@ static ERROR refresh_pointer_timer(OBJECTPTR Task, LARGE Elapsed, LARGE CurrentT
 void refresh_pointer(extSurface *Self)
 {
    if (!glRefreshPointerTimer) {
-      parasol::SwitchContext context(glModule);
+      pf::SwitchContext context(glModule);
       auto call = make_function_stdc(refresh_pointer_timer);
       SubscribeTimer(0.02, &call, &glRefreshPointerTimer);
    }
@@ -175,7 +175,7 @@ static bool check_volatile(SurfaceList *list, LONG index)
 static void expose_buffer(SurfaceList *list, LONG Total, LONG Index, LONG ScanIndex, LONG Left, LONG Top,
                    LONG Right, LONG Bottom, OBJECTID DisplayID, extBitmap *Bitmap)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    // Scan for overlapping parent/sibling regions and avoid them
 
@@ -356,7 +356,7 @@ static void expose_buffer(SurfaceList *list, LONG Total, LONG Index, LONG ScanIn
 static void invalidate_overlap(extSurface *Self, SurfaceList *list, LONG Total, LONG OldIndex, LONG Index,
    LONG Left, LONG Top, LONG Right, LONG Bottom, objBitmap *Bitmap)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG j;
 
    log.traceBranch("%dx%d %dx%d, Between %d to %d", Left, Top, Right-Left, Bottom-Top, OldIndex, Index);
@@ -415,7 +415,7 @@ skipcontent:
 
 static BYTE check_surface_list(void)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("Validating the surface list...");
 
@@ -465,7 +465,7 @@ static void display_resized(OBJECTID DisplayID, LONG X, LONG Y, LONG Width, LONG
 
 static void notify_free_parent(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Void)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    auto Self = (extSurface *)CurrentContext();
 
    // Free ourselves in advance if our parent is in the process of being killed.  This causes a chain reaction
@@ -479,7 +479,7 @@ static void notify_free_parent(OBJECTPTR Object, ACTIONID ActionID, ERROR Result
 
 static void notify_free_callback(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Void)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    auto Self = (extSurface *)CurrentContext();
 
    for (LONG i=0; i < Self->CallbackCount; i++) {
@@ -500,7 +500,7 @@ static void notify_free_callback(OBJECTPTR Object, ACTIONID ActionID, ERROR Resu
 
 static void notify_draw_display(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, struct acDraw *Args)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    auto Self = (extSurface *)CurrentContext();
 
    if (Self->collecting()) return;
@@ -521,7 +521,7 @@ static void notify_draw_display(OBJECTPTR Object, ACTIONID ActionID, ERROR Resul
 
 static void notify_redimension_parent(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, struct acRedimension *Args)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    auto Self = (extSurface *)CurrentContext();
 
    if (Self->Document) return;
@@ -672,7 +672,7 @@ AllocMemory
 
 static ERROR SURFACE_AddCallback(extSurface *Self, struct drwAddCallback *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -792,7 +792,7 @@ static ERROR SURFACE_Enable(extSurface *Self, APTR Void)
 
 static void event_task_removed(OBJECTID *SurfaceID, APTR Info, LONG InfoSize)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.function("Dead task detected - checking surfaces.");
 
@@ -810,7 +810,7 @@ static void event_task_removed(OBJECTID *SurfaceID, APTR Info, LONG InfoSize)
 
 static void event_user_login(extSurface *Self, APTR Info, LONG InfoSize)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.function("User login detected - resetting screen mode.");
 
@@ -879,7 +879,7 @@ static LARGE glLastFocusTime = 0;
 
 static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Flags & RNF_DISABLED) return ERR_Okay|ERF_Notified;
 
@@ -1129,7 +1129,7 @@ static ERROR SURFACE_Free(extSurface *Self, APTR Void)
    }
 
    if (Self->Flags & RNF_AUTO_QUIT) {
-      parasol::Log log;
+      pf::Log log;
       log.msg("Posting a quit message due to use of AUTOQUIT.");
       SendMessage(NULL, MSGID_QUIT, NULL, NULL, NULL);
    }
@@ -1154,7 +1154,7 @@ Hide: Hides a surface object from the display.
 
 static ERROR SURFACE_Hide(extSurface *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.traceBranch("");
 
@@ -1248,7 +1248,7 @@ static ERROR SURFACE_InheritedFocus(extSurface *Self, struct gfxInheritedFocus *
 
 static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    objBitmap *bitmap;
 
    BYTE require_store = FALSE;
@@ -1277,7 +1277,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
    ERROR error = ERR_Okay;
    if (Self->ParentID) {
-      parasol::ScopedObjectLock<extSurface> parent(Self->ParentID, 3000);
+      pf::ScopedObjectLock<extSurface> parent(Self->ParentID, 3000);
       if (!parent.granted()) return ERR_AccessObject;
 
       log.trace("Initialising surface to parent #%d.", Self->ParentID);
@@ -1589,7 +1589,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
    if (require_store) {
       Self->BitmapOwnerID = Self->UID;
 
-      parasol::ScopedObjectLock<objDisplay> display(Self->DisplayID, 3000);
+      pf::ScopedObjectLock<objDisplay> display(Self->DisplayID, 3000);
 
       if (display.granted()) {
          LONG memflags = MEM_DATA;
@@ -1762,7 +1762,7 @@ Move: Moves a surface object to a new display position.
 
 static ERROR SURFACE_Move(extSurface *Self, struct acMove *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    struct acMove move;
    LONG i;
 
@@ -1898,7 +1898,7 @@ MoveToBack: Moves a surface object to the back of its container.
 
 static ERROR SURFACE_MoveToBack(extSurface *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Self->ParentID) {
       acMoveToBack(Self->DisplayID);
@@ -1972,7 +1972,7 @@ MoveToFront: Moves a surface object to the front of its container.
 
 static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    LONG currentindex, i;
 
    log.branch("%s", GetName(Self));
@@ -2175,7 +2175,7 @@ Search
 
 static ERROR SURFACE_RemoveCallback(extSurface *Self, struct drwRemoveCallback *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    OBJECTPTR context = NULL;
 
    if (Args) {
@@ -2275,7 +2275,7 @@ AccessMemoryID: Unable to access internal surface list.
 
 static ERROR SURFACE_ResetDimensions(extSurface *Self, struct drwResetDimensions *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -2403,7 +2403,7 @@ the user's preferred default file format is used.
 
 static ERROR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    LONG i, j, level;
 
    if (!Args) return log.warning(ERR_NullArgs);
@@ -2579,7 +2579,7 @@ NullArgs
 
 static ERROR SURFACE_SetOpacity(extSurface *Self, struct drwSetOpacity *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -2613,7 +2613,7 @@ Show: Shows a surface object on the display.
 
 static ERROR SURFACE_Show(extSurface *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.traceBranch("%dx%d, %dx%d, Parent: %d, Modal: %d", Self->X, Self->Y, Self->Width, Self->Height, Self->ParentID, Self->Modal);
 
@@ -2733,7 +2733,7 @@ static void draw_region(extSurface *Self, extSurface *Parent, extBitmap *Bitmap)
 
 static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    auto Self = (extSurface *)CurrentContext();
 

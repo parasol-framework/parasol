@@ -301,7 +301,7 @@ static void notify_dragdrop(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, s
 
 static void notify_focus(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    auto Self = (extScintilla *)CurrentContext();
 
    if (Result) return;
@@ -336,7 +336,7 @@ static void notify_hide(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR 
 
 static void notify_lostfocus(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.branch();
 
    auto Self = (extScintilla *)CurrentContext();
@@ -376,7 +376,7 @@ static void notify_redimension(OBJECTPTR Object, ACTIONID ActionID, ERROR Result
 
 static void notify_write(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, struct acWrite *Args)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    auto Self = (extScintilla *)CurrentContext();
 
    if (!Args) return;
@@ -411,7 +411,7 @@ Clear: Clears all content from the editor.
 
 static ERROR SCINTILLA_Clear(extScintilla *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.branch();
 
@@ -429,7 +429,7 @@ Clipboard: Full support for clipboard activity is provided through this action.
 
 static ERROR SCINTILLA_Clipboard(extScintilla *Self, struct acClipboard *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Mode)) return log.warning(ERR_NullArgs);
 
@@ -452,7 +452,7 @@ static ERROR SCINTILLA_Clipboard(extScintilla *Self, struct acClipboard *Args)
 
 static ERROR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -479,7 +479,7 @@ static ERROR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
                if (auto path = XMLATTRIB(tag, "path")) {
                   if (Self->FileDrop.Type) {
                      if (Self->FileDrop.Type IS CALL_STDC) {
-                        parasol::SwitchContext ctx(Self->FileDrop.StdC.Context);
+                        pf::SwitchContext ctx(Self->FileDrop.StdC.Context);
                         auto routine = (void (*)(extScintilla *, STRING))Self->FileDrop.StdC.Routine;
                         routine(Self, path);
                      }
@@ -542,7 +542,7 @@ Okay
 
 static ERROR SCINTILLA_DeleteLine(extScintilla *Self, struct sciDeleteLine *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    LONG line, pos, start, end, linecount;
 
    linecount = SCICALL(SCI_GETLINECOUNT);
@@ -632,7 +632,7 @@ static ERROR SCINTILLA_Focus(extScintilla *Self, APTR Void)
 
 static ERROR SCINTILLA_Free(extScintilla *Self, APTR)
 {
-   parasol::Log log;
+   pf::Log log;
    OBJECTPTR object;
 
    delete Self->API;
@@ -697,7 +697,7 @@ BufferOverflow: The supplied buffer is not large enough to contain the
 
 static ERROR SCINTILLA_GetLine(extScintilla *Self, struct sciGetLine *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
    if ((Args->Line < 0) or (Args->Length < 1)) return log.warning(ERR_OutOfRange);
@@ -757,7 +757,7 @@ OutOfRange: The Line is less than zero.
 
 static ERROR SCINTILLA_GotoLine(extScintilla *Self, struct sciGotoLine *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
    if (Args->Line < 0) return ERR_OutOfRange;
@@ -772,7 +772,7 @@ static ERROR SCINTILLA_GotoLine(extScintilla *Self, struct sciGotoLine *Args)
 static ERROR SCINTILLA_Hide(extScintilla *Self, APTR Void)
 {
    if (Self->Visible) {
-      parasol::Log log;
+      pf::Log log;
 
       log.branch();
 
@@ -787,7 +787,7 @@ static ERROR SCINTILLA_Hide(extScintilla *Self, APTR Void)
 
 static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Self->SurfaceID) return log.warning(ERR_UnsupportedOwner);
 
@@ -989,7 +989,7 @@ OutOfRange
 
 static ERROR SCINTILLA_InsertText(extScintilla *Self, struct sciInsertText *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    LONG pos;
 
    if ((!Args) or (!Args->String)) return log.warning(ERR_NullArgs);
@@ -1084,7 +1084,7 @@ Redo: Redo the most recently undone activity.
 
 static ERROR SCINTILLA_Redo(extScintilla *Self, struct acRedo *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.branch();
 
@@ -1115,7 +1115,7 @@ OutOfRange: The line index is less than zero or greater than the available numbe
 
 static ERROR SCINTILLA_ReplaceLine(extScintilla *Self, struct sciReplaceLine *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return ERR_NullArgs;
    if (Args->Line < 0) return log.warning(ERR_OutOfRange);
@@ -1160,7 +1160,7 @@ Search: The keyword could not be found.
 
 static ERROR SCINTILLA_ReplaceText(extScintilla *Self, struct sciReplaceText *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    LONG start, end;
 
    if ((!Args) or (!Args->Find) or (!*Args->Find)) return log.warning(ERR_NullArgs);
@@ -1258,7 +1258,7 @@ SaveToObject: Save content as a text stream to another object.
 
 static ERROR SCINTILLA_SaveToObject(extScintilla *Self, struct acSaveToObject *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
 
@@ -1307,7 +1307,7 @@ CreateObject: Failed to create a Font object.
 
 static ERROR SCINTILLA_SetFont(extScintilla *Self, struct sciSetFont *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Face)) return log.warning(ERR_NullArgs);
 
@@ -1328,7 +1328,7 @@ static ERROR SCINTILLA_SetFont(extScintilla *Self, struct sciSetFont *Args)
 
 static ERROR SCINTILLA_ScrollToPoint(extScintilla *Self, struct acScrollToPoint *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.traceBranch("Sending Scroll requests to Scintilla: %dx%d.", (Args->Flags & STP_X) ? (LONG)Args->X : 0, (Args->Flags & STP_Y) ? (LONG)Args->Y : 0);
 
@@ -1360,7 +1360,7 @@ Okay:
 
 static ERROR SCINTILLA_SelectRange(extScintilla *Self, struct sciSelectRange *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or ((!Args->Start) and (!Args->End))) { // Deselect all text
       LONG pos = SCICALL(SCI_GETCURRENTPOS);
@@ -1389,7 +1389,7 @@ static ERROR SCINTILLA_SelectRange(extScintilla *Self, struct sciSelectRange *Ar
 static ERROR SCINTILLA_Show(extScintilla *Self, APTR Void)
 {
    if (!Self->Visible) {
-      parasol::Log log;
+      pf::Log log;
 
       log.branch();
 
@@ -1416,7 +1416,7 @@ The position of the cursor is reset to the left margin as a result of calling th
 
 static ERROR SCINTILLA_TrimWhitespace(extScintilla *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.traceBranch("");
 
@@ -1456,7 +1456,7 @@ Undo: Undo the last user action.
 
 static ERROR SCINTILLA_Undo(extScintilla *Self, struct acUndo *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.branch();
 
@@ -1665,7 +1665,7 @@ static ERROR SET_Lexer(extScintilla *Self, LONG Value)
 {
    Self->Lexer = Value;
    if (Self->initialised()) {
-      parasol::Log log;
+      pf::Log log;
       log.branch("Changing lexer to %d", Value);
       Self->API->SetLexer(Self->Lexer);
    }
@@ -1758,7 +1758,7 @@ static ERROR GET_Path(extScintilla *Self, CSTRING *Value)
 
 static ERROR SET_Path(extScintilla *Self, CSTRING Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.branch("%s", Value);
 
@@ -1951,7 +1951,7 @@ SelectFore: Defines the colour of selected text.  Supports alpha blending.
 
 static ERROR SET_SelectFore(extScintilla *Self, RGB8 *Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.msg("New SelectFore colour: %d,%d,%d,%d", Value->Red, Value->Green, Value->Blue, Value->Alpha);
    if ((Value) and (Value->Alpha)) {
@@ -2113,7 +2113,7 @@ static ERROR SET_Wordwrap(extScintilla *Self, LONG Value)
 
 static void create_styled_fonts(extScintilla *Self)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.msg("create_styled_fonts(%s,%.2f,$%.8x)", Self->Font->Face, Self->Font->Point, Self->Font->Flags);
 
@@ -2155,7 +2155,7 @@ static THREADVAR objBitmap *glBitmap = NULL;
 
 static void draw_scintilla(extScintilla *Self, objSurface *Surface, objBitmap *Bitmap)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Self->Visible) return;
    if (!Self->initialised()) return;
@@ -2182,7 +2182,7 @@ static void draw_scintilla(extScintilla *Self, objSurface *Surface, objBitmap *B
 
 static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
 {
-   parasol::Log log;
+   pf::Log log;
    static OBJECTID dialog_id = 0;
 
    log.warning("%s", Message);
@@ -2233,7 +2233,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
 
 static ERROR load_file(extScintilla *Self, CSTRING Path)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    STRING str;
    LONG size, len;
    ERROR error = ERR_Okay;
@@ -2285,7 +2285,7 @@ static ERROR load_file(extScintilla *Self, CSTRING Path)
 
       for (i=0; i < ARRAYSIZE(glLexers); i++) {
          if (!StrCompare(glLexers[i].File, Path, 0, STR_WILDCARD)) {
-            parasol::Log log;
+            pf::Log log;
             Self->Lexer = glLexers[i].Lexer;
             log.branch("Lexer for the loaded file is %d.", Self->Lexer);
             Self->API->SetLexer(Self->Lexer);
@@ -2302,7 +2302,7 @@ static ERROR load_file(extScintilla *Self, CSTRING Path)
 
 static void key_event(extScintilla *Self, evKey *Event, LONG Size)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Flags & SCF_DISABLED) return;
    if (!(Self->Flags & SCF_EDIT)) return;
@@ -2402,7 +2402,7 @@ static void report_event(extScintilla *Self, LARGE Event)
    if (Event & Self->EventFlags) {
       if (Self->EventCallback.Type) {
           if (Self->EventCallback.Type IS CALL_STDC) {
-            parasol::SwitchContext ctx(Self->EventCallback.StdC.Context);
+            pf::SwitchContext ctx(Self->EventCallback.StdC.Context);
             auto routine = (void (*)(extScintilla *, LARGE)) Self->EventCallback.StdC.Routine;
             routine(Self, Event);
          }
@@ -2438,7 +2438,7 @@ static void calc_longest_line(extScintilla *Self)
 
    if (!Self->Font) return;
 
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.traceBranch("Wrap: %d", Self->Wordwrap);
 
    LONG lines = SCICALL(SCI_GETLINECOUNT);

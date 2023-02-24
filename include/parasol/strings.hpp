@@ -3,7 +3,7 @@
 #include <sstream>
 #include <algorithm>
 
-namespace parasol {
+namespace pf {
 
 template <class InType, class OutIt>
 void split(InType Input, OutIt Output)

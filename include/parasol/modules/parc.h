@@ -19,7 +19,7 @@ class objParc : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_PARC;
    static constexpr CSTRING CLASS_NAME = "Parc";
 
-   using create = parasol::Create<objParc>;
+   using create = pf::Create<objParc>;
 
    STRING   Message;  // Stores user readable messages on error.
    OBJECTID OutputID; // Nominate an object for receiving program output.

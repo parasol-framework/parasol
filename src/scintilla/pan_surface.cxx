@@ -112,7 +112,7 @@ void SurfacePan::InitPixMap(int width, int height, Scintilla::Surface *surface_,
 {
    if (bitmap) return;
 
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.traceBranch("Size: %dx%d", width, height);
 
    if (!(bitmap = objBitmap::create::global(fl::Name("sciPixmap"), fl::Width(width), fl::Height(height)))) {
@@ -192,7 +192,7 @@ void SurfacePan::LineTo(int x, int y)
 
 void SurfacePan::DrawRGBAImage(Scintilla::PRectangle rc, int width, int height, const unsigned char *pixelsImage)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.warning("Unsupported.");
 }
 
@@ -290,7 +290,7 @@ void SurfacePan::Ellipse(Scintilla::PRectangle rc, Scintilla::ColourAllocated fo
 
 void SurfacePan::Copy(Scintilla::PRectangle rc, Scintilla::Point from, Scintilla::Surface &surfaceSource)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    SurfacePan &src_surface = static_cast<SurfacePan&>(surfaceSource);
 
    if ((bitmap) and (src_surface.bitmap)) {
@@ -311,7 +311,7 @@ void SurfacePan::Copy(Scintilla::PRectangle rc, Scintilla::Point from, Scintilla
 
 void SurfacePan::DrawTextBase(Scintilla::PRectangle rc, Scintilla::Font &font_, int ybase, const char *String, int len, Scintilla::ColourAllocated fore)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objFont *font;
    ULONG col32;
    LONG i;
@@ -583,7 +583,7 @@ OBJECTPTR SurfacePan::GetFont(Scintilla::Font& font_)
 void SurfacePan::AlphaRectangle(Scintilla::PRectangle rc, int cornerSize, Scintilla::ColourAllocated fill, int alphaFill,
 		Scintilla::ColourAllocated outline, int alphaOutline, int flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.trace("UNSUPPORTED");
 

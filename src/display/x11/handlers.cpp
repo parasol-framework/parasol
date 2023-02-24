@@ -23,7 +23,7 @@ static inline OBJECTID get_display(Window Window)
 
 void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
 {
-   parasol::Log log("X11Mgr");
+   pf::Log log("X11Mgr");
    XEvent xevent;
    OBJECTID surface_id, display_id, *list;
    WORD i;
@@ -75,7 +75,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
                      ERROR result;
 
                      if (func->Type IS CALL_STDC) {
-                        parasol::SwitchContext ctx(func->StdC.Context);
+                        pf::SwitchContext ctx(func->StdC.Context);
                         auto callback = (ERROR (*)(OBJECTID))func->StdC.Routine;
                         result = callback(surface_id);
                      }
@@ -152,7 +152,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
 
 void handle_button_press(XEvent *xevent)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    struct acDataFeed feed;
    struct dcDeviceInput input;
    objPointer *pointer;
@@ -216,7 +216,7 @@ void handle_button_press(XEvent *xevent)
 
 void handle_button_release(XEvent *xevent)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("Button: %d", xevent->xbutton.button);
 
@@ -265,7 +265,7 @@ void handle_button_release(XEvent *xevent)
 
 void handle_stack_change(XCirculateEvent *xevent)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.trace("Window %d stack position has changed.", (int)xevent->window);
 }
 
@@ -273,7 +273,7 @@ void handle_stack_change(XCirculateEvent *xevent)
 
 void handle_configure_notify(XConfigureEvent *xevent)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    extDisplay *display;
    OBJECTID display_id;
 
@@ -333,7 +333,7 @@ void handle_configure_notify(XConfigureEvent *xevent)
 
 void handle_exposure(XExposeEvent *event)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    OBJECTID display_id;
 
    if ((display_id = get_display(event->window))) {
@@ -545,7 +545,7 @@ LONG xkeysym_to_pkey(KeySym KSym)
 
 void handle_key_press(XEvent *xevent)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    ULONG unicode = 0;
    KeySym mod_sym; // A KeySym is an encoding of a symbol on the cap of a key.  See X11/keysym.h
    static XComposeStatus glXComposeStatus = { 0, 0 };
@@ -606,7 +606,7 @@ void handle_key_press(XEvent *xevent)
 
 void handle_key_release(XEvent *xevent)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    // Check if the key is -really- released (when keys are held down, X11 annoyingly generates a stream of release
    // events until it is really released).

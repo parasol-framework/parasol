@@ -93,7 +93,7 @@ static ERROR FONT_Draw(extFont *Self, APTR Void)
 
 static ERROR FONT_Free(extFont *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    CACHE_LOCK lock(glCacheMutex);
 
@@ -102,7 +102,7 @@ static ERROR FONT_Free(extFont *Self, APTR Void)
       Self->BmpCache->OpenCount--;
       if (!Self->BmpCache->OpenCount) {
          if (!glCacheTimer) {
-            parasol::SwitchContext ctx(modFont);
+            pf::SwitchContext ctx(modFont);
             auto callback = make_function_stdc(bitmap_cache_cleaner);
             SubscribeTimer(60.0, &callback, &glCacheTimer);
          }
@@ -140,7 +140,7 @@ static ERROR FONT_Free(extFont *Self, APTR Void)
 
 static ERROR FONT_Init(extFont *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    LONG diff, style;
    ERROR error;
 
@@ -801,7 +801,7 @@ static ERROR GET_Point(extFont *Self, Variable *Value)
 
 static ERROR SET_Point(extFont *Self, Variable *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    DOUBLE value;
 
    if (Value->Type & FD_DOUBLE) value = Value->Double;
@@ -1152,7 +1152,7 @@ static void draw_vector_outline(extFont *Self, objBitmap *Bitmap, font_glyph *sr
 
 static ERROR draw_vector_font(extFont *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    ULONG unicode;
    LONG dx, dy, charlen;
    FT_Matrix matrix;
@@ -1453,7 +1453,7 @@ static ERROR draw_vector_font(extFont *Self)
 
 static ERROR cache_truetype_font(extFont *Self, CSTRING Path)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    FT_Open_Args openargs;
    ERROR error;
 
@@ -1584,7 +1584,7 @@ static const UBYTE bias[26] = { 9,3,6,6,9,6,3,6,9,1,1,6,6,9,9,3,1,9,9,9,6,3,3,1,
 
 static font_glyph * get_glyph(extFont *Self, ULONG Unicode, bool GetBitmap)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    glyph_cache &cache = Self->Cache->Glyphs.at(Self->Point);
    auto &face = Self->Cache->Face;
@@ -1718,7 +1718,7 @@ static font_glyph * get_glyph(extFont *Self, ULONG Unicode, bool GetBitmap)
 
 static ERROR draw_bitmap_font(extFont *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objBitmap *bitmap;
    RGB8 rgb;
    static const UBYTE table[] = { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 };
@@ -2098,7 +2098,7 @@ static ERROR draw_bitmap_font(extFont *Self)
 
 static void unload_glyph_cache(extFont *Font)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    CACHE_LOCK lock(glCacheMutex);
 

@@ -92,7 +92,7 @@ static void set_script_args(objScript *Script, CSTRING *Args)
 
 static LONG run_script(objScript *Script)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    DOUBLE start_time = (DOUBLE)PreciseTime() / 1000000.0;
    ERROR error;
 
@@ -234,7 +234,7 @@ static std::ostringstream glScriptBuffer;
 
 static void read_stdin(objTask *Task, char *Buffer, LONG Size, ERROR Status)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (Status IS ERR_Finished) {
       SendMessage(0, glScriptReceivedMsg, MSF_WAIT, NULL, 0);
