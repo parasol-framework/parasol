@@ -181,6 +181,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       fprintf(stderr, "Core module has already been initialised (OpenCore() called more than once.)\n");
    }
 
+   if (alloc_private_lock(TL_FIELDKEYS, 0)) return NULL; // For access to glFields
    if (alloc_private_lock(TL_CLASSDB, 0)) return NULL; // For access to glClassDB
    if (alloc_private_lock(TL_VOLUMES, 0)) return NULL; // For access to glVolumes
    if (alloc_private_lock(TL_GENERIC, 0)) return NULL; // A misc. internal mutex, strictly not recursive.

@@ -170,6 +170,7 @@ enum {
    TL_THREADPOOL,
    TL_VOLUMES,
    TL_CLASSDB,
+   TL_FIELDKEYS,
    TL_END
 };
 
@@ -659,7 +660,7 @@ extern objTime *glTime;
 extern std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes; // VolumeName = { Key, Value }
 extern objConfig *glDatatypes;
 extern std::unordered_map<CLASSID, extMetaClass *> glClassMap;
-extern struct KeyStore *glFields; // Reverse lookup for converting field hashes back to their respective names.
+extern std::unordered_map<FIELD, std::string> glFields; // Reverse lookup for converting field hashes back to their respective names.
 extern objFile *glClassFile;
 extern CSTRING glIDL;
 extern std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
@@ -1137,20 +1138,6 @@ void winEnumSpecialFolders(void (*callback)(CSTRING, CSTRING, CSTRING, CSTRING, 
 
 //********************************************************************************************************************
 
-extern THREADVAR char tlFieldName[10]; // $12345678\0
-
-INLINE CSTRING GET_FIELD_NAME(ULONG FieldID)
-{
-   CSTRING name;
-   if (!KeyGet(glFields, FieldID, (APTR *)&name, NULL)) return name;
-   else {
-      snprintf(tlFieldName, sizeof(tlFieldName), "$%.8x", FieldID);
-      return tlFieldName;
-   }
-}
-
-//********************************************************************************************************************
-
 class ScopedObjectAccess {
    private:
       OBJECTPTR obj;
@@ -1222,5 +1209,19 @@ class ThreadLock { // C++ wrapper for terminating resources when scope is lost
          }
       }
 };
+
+//********************************************************************************************************************
+
+extern THREADVAR char tlFieldName[10]; // $12345678\0
+
+inline CSTRING GET_FIELD_NAME(ULONG FieldID)
+{
+   ThreadLock lock(TL_FIELDKEYS, 1000);
+   if (lock.granted()) {
+      if (glFields.contains(FieldID)) return glFields[FieldID].c_str();
+   }
+   snprintf(tlFieldName, sizeof(tlFieldName), "$%.8x", FieldID);
+   return tlFieldName;
+}
 
 #endif // DEFS_H

@@ -1194,7 +1194,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
             sli = 0;
             LONG i = 0;
             for (auto & [ id, class_ptr ] : glClassMap) {
-               if (i >= sublist.size()-1) break;
+               if (i >= LONG(sublist.size())-1) break;
                if ((Object->ClassID IS class_ptr->BaseClassID) and (class_ptr->BaseClassID != class_ptr->SubClassID)) {
                   sublist[i++] = class_ptr;
                }

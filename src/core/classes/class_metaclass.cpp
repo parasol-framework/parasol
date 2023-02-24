@@ -1028,17 +1028,13 @@ static ERROR field_setup(extMetaClass *Class)
 
 static void register_fields(extMetaClass *Class)
 {
-   if (!glFields) {
-      glFields = VarNew(0, KSF_THREAD_SAFE|KSF_UNTRACKED);
-      if (!glFields) return;
-   }
-
-   if (!VarLock(glFields, 4000)) {
-      Field *fields = Class->prvFields;
+   ThreadLock lock(TL_FIELDKEYS, 1000);
+   if (lock.granted()) {
       for (LONG i=0; i < Class->TotalFields; i++) {
-         KeySet(glFields, fields[i].FieldID, fields[i].Name, StrLength(fields[i].Name)+1);
+         if (!glFields.contains(Class->prvFields[i].FieldID)) {
+            glFields[Class->prvFields[i].FieldID] = Class->prvFields[i].Name;
+         }
       }
-      VarUnlock(glFields);
    }
 }
 
