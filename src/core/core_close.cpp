@@ -327,31 +327,21 @@ EXPORT void CloseCore(void)
       }
    }
 
-   // The object name lookup table is no longer required
-
-   if (glObjectLookup) { FreeResource(glObjectLookup); glObjectLookup = NULL; }
-
    // Unless we have crashed, free the Task class
 
    if (!glCrashStatus) {
       if (TaskClass) { acFree(TaskClass); TaskClass = 0; }
    }
 
-   // Free the program's personal function base as it won't be making any more calls.
-
    if (glCodeIndex < CP_FREE_COREBASE) {
       glCodeIndex = CP_FREE_COREBASE;
       if (LocalCoreBase) { FreeResource(LocalCoreBase); LocalCoreBase = NULL; }
    }
 
-   // Free memory pages
-
    if (glCodeIndex < CP_FREE_MEMORY_PAGES) {
       glCodeIndex = CP_FREE_MEMORY_PAGES;
       if (glMemoryPages) { free(glMemoryPages); glMemoryPages = NULL; }
    }
-
-   // Free private memory blocks
 
    if (glCodeIndex < CP_FREE_PRIVATE_MEMORY) {
       glCodeIndex = CP_FREE_PRIVATE_MEMORY;
@@ -359,8 +349,6 @@ EXPORT void CloseCore(void)
    }
 
    log.debug("Detaching from the shared memory control structure.");
-
-   // Detach from the shared memory control structure
 
    #ifdef _WIN32
       if (glSharedControl) {

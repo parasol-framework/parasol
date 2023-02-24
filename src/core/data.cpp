@@ -67,6 +67,10 @@ std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjec
 std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory;
 std::unordered_map<CLASSID, ClassRecord> glClassDB;
 std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
+std::map<std::string, std::vector<BaseClass *>, CaseInsensitiveMap> glObjectLookup;
+std::unordered_map<CLASSID, extMetaClass *> glClassMap;
+std::unordered_map<FIELD, std::string> glFields;
+std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes;
 
 struct PublicAddress  *glSharedBlocks  = NULL;
 struct SortedAddress  *glSortedBlocks  = NULL;
@@ -77,18 +81,14 @@ struct TaskList       *shTasks         = NULL;
 struct TaskList       *glTaskEntry     = NULL;
 struct SemaphoreEntry *shSemaphores    = NULL;
 struct MemoryPage     *glMemoryPages   = NULL;
-struct KeyStore       *glObjectLookup  = NULL;
 struct ModuleHeader   *glModules       = NULL;
 struct OpenInfo       *glOpenInfo      = NULL;
 struct MsgHandler     *glMsgHandlers   = NULL, *glLastMsgHandler = 0;
-std::unordered_map<CLASSID, extMetaClass *> glClassMap;
-std::unordered_map<FIELD, std::string> glFields;
 struct FDTable        *glFDTable       = NULL;
 objFile *glClassFile   = NULL;
 objTask *glCurrentTask = NULL;
 objConfig *glDatatypes = NULL;
 std::list<CoreTimer> glTimers;
-std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes;
 APTR glJNIEnv = 0;
 UWORD glFunctionID = 3333; // IDTYPE_FUNCTION
 LONG glPageSize = 4096; // Default page size is 4k

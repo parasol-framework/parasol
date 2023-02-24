@@ -1091,7 +1091,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
    if ((mc->Base) and (mc->Base->OpenCount > 0)) mc->Base->OpenCount--; // Child detected
    if (mc->OpenCount > 0) mc->OpenCount--;
 
-   if ((glObjectLookup) and (Object->Name[0])) { // Remove the object from the name lookup list
+   if (Object->Name[0]) { // Remove the object from the name lookup list
       ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
       if (lock.granted()) remove_object_hash(Object);
    }
