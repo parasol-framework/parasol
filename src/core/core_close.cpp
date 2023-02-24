@@ -336,7 +336,6 @@ EXPORT void CloseCore(void)
 
    if (!glCrashStatus) {
       if (TaskClass) { acFree(TaskClass); TaskClass = 0; }
-      if (glClassMap) { FreeResource(glClassMap); glClassMap = NULL; }
    }
 
    // Free the program's personal function base as it won't be making any more calls.

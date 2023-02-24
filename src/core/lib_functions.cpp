@@ -198,12 +198,7 @@ objMetaClass * FindClass(CLASSID ClassID)
       return NULL;
    }
    else {
-      // A simple KeyGet() works for base-classes and sub-classes because the hash map is indexed by class name.
-
-      extMetaClass **ptr;
-      if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) {
-         return ptr[0];
-      }
+      if (glClassMap.contains(ClassID)) return glClassMap[ClassID];
 
       if (glProgramStage IS STAGE_SHUTDOWN) return NULL; // No new module loading during shutdown
 
@@ -229,8 +224,8 @@ objMetaClass * FindClass(CLASSID ClassID)
 
             objModule::create mod = { fl::Name(path) };
             if (mod.ok()) {
-               if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) {
-                  return ptr[0];
+               if (glClassMap.contains(ClassID)) {
+                  return glClassMap[ClassID];
                }
                else log.warning("Module \"%s\" did not configure class \"%s\"", path.c_str(), glClassDB[ClassID].Name.c_str());
             }

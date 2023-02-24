@@ -702,12 +702,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    ManagedActions[AC_Free] = (LONG (*)(OBJECTPTR, APTR))MGR_Free;
    ManagedActions[AC_Signal] = (LONG (*)(OBJECTPTR, APTR))MGR_Signal;
 
-   if (!(glClassMap = VarNew(0, KSF_THREAD_SAFE))) {
-      fprintf(stderr, "Failed to allocate glClassMap.\n");
-      CloseCore();
-      return NULL;
-   }
-
    if (!(glObjectLookup = VarNew(0, 0))) {
       fprintf(stderr, "Failed to allocate glObjectLookup.\n");
       CloseCore();

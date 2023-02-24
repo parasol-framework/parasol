@@ -66,9 +66,8 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
       }
    }
    else if (!(mc = (extMetaClass *)FindClass(class_id))) {
-      extMetaClass **ptr;
-      if (!KeyGet(glClassMap, ClassID, (APTR *)&ptr, NULL)) {
-         log.function("Class %s was not found in the system.", ptr[0]->ClassName);
+      if (glClassMap.contains(class_id)) {
+         log.function("Class %s was not found in the system.", glClassMap[class_id]->ClassName);
       }
       else log.function("Class $%.8x was not found in the system.", class_id);
       return ERR_MissingClass;
