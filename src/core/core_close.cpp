@@ -330,7 +330,6 @@ EXPORT void CloseCore(void)
    // The object name lookup table is no longer required
 
    if (glObjectLookup) { FreeResource(glObjectLookup); glObjectLookup = NULL; }
-   if (glFields) { FreeResource(glFields); glFields = NULL; }
 
    // Unless we have crashed, free the Task class
 
@@ -390,6 +389,7 @@ EXPORT void CloseCore(void)
       winShutdown();
    #endif
 
+   free_private_lock(TL_FIELDKEYS);
    free_private_lock(TL_CLASSDB);
    free_private_lock(TL_VOLUMES);
    free_private_lock(TL_GENERIC);
