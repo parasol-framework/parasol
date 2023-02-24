@@ -1241,6 +1241,10 @@ void scan_classes(void)
 
    log.branch("Scanning for available classes.");
 
+   glClassDB.clear()
+   DeleteFile(glClassBinPath, NULL);
+   DeleteFile(glModuleBinPath, NULL);
+
    DirInfo *dir;
    if (!OpenDir("modules:", RDF_QUALIFY, &dir)) {
       LONG total = 0;
