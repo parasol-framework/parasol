@@ -458,7 +458,6 @@ class extModule : public objModule {
    using create = parasol::Create<extModule>;
    char   Name[60];      // Name of the module
    APTR   prvMBMemory;   // Module base memory
-   struct KeyStore *Vars;
 };
 
 //********************************************************************************************************************
