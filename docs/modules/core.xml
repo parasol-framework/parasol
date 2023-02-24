@@ -2100,7 +2100,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <param type="..." name="Tags">A list of AST tags, terminated with a single TAGEND entry.</param>
     </input>
     <description>
-<p>The SetVolume() function is used to assign one or more paths to a volume name.  It can preserve any existing paths that are attributed to the volume if the name already exists.  If the volume does not already exist, a new one will be created from scratch.</p>
+<p>The SetVolume() function is used to create a volume with one or more paths assigned to it.  If the volume already exists, it possible to append more paths or replace them entirely.</p>
 <p>This function uses tags to create new volumes.  The following table lists all tags that are accepted by this function.  Remember to terminate the taglist with <code>TAGEND</code>.</p>
 <types type="Tag">
 <type name="AST_NAME">Required.  Follow this tag with the string name of the volume.</type>

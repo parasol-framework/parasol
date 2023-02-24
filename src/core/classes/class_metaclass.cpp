@@ -224,7 +224,7 @@ ERROR CLASS_FindField(extMetaClass *Class, struct mcFindField *Args)
 
 ERROR CLASS_Free(extMetaClass *Self, APTR Void)
 {
-   VarSet(glClassMap, Self->ClassName, NULL, 0); // Deregister the class.
+   if (Self->SubClassID) glClassMap.erase(Self->SubClassID);
 
    if (Self->prvFields) { FreeResource(Self->prvFields); Self->prvFields = NULL; }
    if (Self->Methods)   { FreeResource(Self->Methods);   Self->Methods   = NULL; }
@@ -327,10 +327,7 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
 
    if (field_setup(Self) != ERR_Okay) return ERR_Failed;
 
-   // Note that classes are keyed by their unique name and not the base-class name.  This reduces the need for
-   // iteration over the hash-map.
-
-   VarSet(glClassMap, Self->ClassName, &Self, sizeof(APTR));
+   glClassMap[Self->SubClassID] = Self;
 
    // Record the name of the module that owns this class.
 

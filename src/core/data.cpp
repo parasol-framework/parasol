@@ -81,7 +81,7 @@ struct KeyStore       *glObjectLookup  = NULL;
 struct ModuleHeader   *glModules       = NULL;
 struct OpenInfo       *glOpenInfo      = NULL;
 struct MsgHandler     *glMsgHandlers   = NULL, *glLastMsgHandler = 0;
-struct KeyStore       *glClassMap      = NULL;
+std::unordered_map<CLASSID, extMetaClass *> glClassMap;
 struct KeyStore       *glFields        = NULL;
 struct FDTable        *glFDTable       = NULL;
 objFile *glClassFile   = NULL;

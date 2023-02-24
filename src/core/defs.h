@@ -599,9 +599,9 @@ struct MemoryMessage {
 //********************************************************************************************************************
 
 struct CaseInsensitiveMap {
-    bool operator() (const std::string& lhs, const std::string& rhs) const {
-        return stricmp(lhs.c_str(), rhs.c_str()) < 0;
-    }
+   bool operator() (const std::string& lhs, const std::string& rhs) const {
+      return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
+   }
 };
 
 //********************************************************************************************************************
@@ -658,7 +658,7 @@ extern OBJECTPTR glLocale;
 extern objTime *glTime;
 extern std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes; // VolumeName = { Key, Value }
 extern objConfig *glDatatypes;
-extern struct KeyStore *glClassMap; // Register of all classes.
+extern std::unordered_map<CLASSID, extMetaClass *> glClassMap;
 extern struct KeyStore *glFields; // Reverse lookup for converting field hashes back to their respective names.
 extern objFile *glClassFile;
 extern CSTRING glIDL;
