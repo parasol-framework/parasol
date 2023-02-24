@@ -703,12 +703,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    ManagedActions[AC_Free] = (LONG (*)(OBJECTPTR, APTR))MGR_Free;
    ManagedActions[AC_Signal] = (LONG (*)(OBJECTPTR, APTR))MGR_Signal;
 
-   if (!(glObjectLookup = VarNew(0, 0))) {
-      fprintf(stderr, "Failed to allocate glObjectLookup.\n");
-      CloseCore();
-      return NULL;
-   }
-
    if (add_task_class() != ERR_Okay) {
       fprintf(stderr, "Failed call to add_task_class().\n");
       CloseCore();
