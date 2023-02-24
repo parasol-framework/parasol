@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -36,7 +35,7 @@ static ERROR cache_host(KeyStore *, CSTRING, struct hostent *, DNSEntry **);
 static ERROR cache_host(KeyStore *, CSTRING, struct addrinfo *, DNSEntry **);
 #endif
 
-//***************************************************************************
+//********************************************************************************************************************
 // Used for receiving asynchronous execution results (sent as a message).
 // These routines execute in the main process.
 
@@ -67,7 +66,7 @@ static ERROR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR M
    return ERR_Okay;
 }
 
-//***************************************************************************
+//********************************************************************************************************************
 
 static ERROR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
@@ -96,7 +95,7 @@ static ERROR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR M
    return ERR_Okay;
 }
 
-//***************************************************************************
+//********************************************************************************************************************
 // Thread routines for asynchronous name & address resolution
 
 static ERROR thread_resolve_name(objThread *Thread)
@@ -251,7 +250,7 @@ static ERROR NETLOOKUP_Free(extNetLookup *Self, APTR Void)
    return ERR_Okay;
 }
 
-//***************************************************************************
+//********************************************************************************************************************
 
 static ERROR NETLOOKUP_FreeWarning(extNetLookup *Self, APTR Void)
 {
@@ -273,7 +272,7 @@ restart:
    return ERR_Okay;
 }
 
-//***************************************************************************
+//********************************************************************************************************************
 
 static ERROR NETLOOKUP_NewObject(extNetLookup *Self, APTR Void)
 {
@@ -413,14 +412,14 @@ static ERROR NETLOOKUP_ResolveName(extNetLookup *Self, struct nlResolveName *Arg
    return log.warning(error);
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Addresses: List of resolved IP addresses.
 
 A list of the most recently resolved IP addresses can be read from this field.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Addresses(extNetLookup *Self, BYTE **Value, LONG *Elements)
 {
@@ -432,7 +431,7 @@ static ERROR GET_Addresses(extNetLookup *Self, BYTE **Value, LONG *Elements)
    else return ERR_FieldNotSet;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Callback: This function will be called on the completion of any name or address resolution.
@@ -443,7 +442,7 @@ is `Function(*NetLookup, ERROR Error, CSTRING HostName, IPAddress *Addresses, LO
 The Fluid prototype is as follows, with results readable from the #HostName and #Addresses fields:
 `function(NetLookup, Error)`.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Callback(extNetLookup *Self, FUNCTION **Value)
 {
@@ -469,14 +468,14 @@ static ERROR SET_Callback(extNetLookup *Self, FUNCTION *Value)
    return ERR_Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 HostName: Name of the most recently resolved host.
 
 The name of the most recently resolved host is readable from this field.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_HostName(extNetLookup *Self, CSTRING *Value)
 {
@@ -487,7 +486,7 @@ static ERROR GET_HostName(extNetLookup *Self, CSTRING *Value)
    else return ERR_FieldNotSet;
 }
 
-//***************************************************************************
+//********************************************************************************************************************
 
 static ERROR cache_host(KeyStore *Store, CSTRING Key, struct hostent *Host, DNSEntry **Cache)
 {
@@ -640,7 +639,7 @@ static ERROR cache_host(KeyStore *Store, CSTRING Key, struct addrinfo *Host, DNS
 
 #endif
 
-//***************************************************************************
+//********************************************************************************************************************
 
 static ERROR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry **Info)
 {
@@ -692,7 +691,7 @@ static ERROR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry **In
 #endif
 }
 
-//***************************************************************************
+//********************************************************************************************************************
 
 static ERROR resolve_name(CSTRING HostName, DNSEntry **Info)
 {
@@ -729,7 +728,7 @@ static ERROR resolve_name(CSTRING HostName, DNSEntry **Info)
 #endif
 }
 
-//***************************************************************************
+//********************************************************************************************************************
 
 static void resolve_callback(extNetLookup *Self, ERROR Error, CSTRING HostName, IPAddress *Addresses, LONG TotalAddresses)
 {
@@ -753,7 +752,7 @@ static void resolve_callback(extNetLookup *Self, ERROR Error, CSTRING HostName, 
    }
 }
 
-//***************************************************************************
+//********************************************************************************************************************
 
 static const FieldArray clNetLookupFields[] = {
    { "UserData", FDF_LARGE|FDF_RW, 0, NULL, NULL },
