@@ -160,7 +160,7 @@ class extVectorText : public extVector {
    public:
    static constexpr CLASSID CLASS_ID = ID_VECTORTEXT;
    static constexpr CSTRING CLASS_NAME = "VectorText";
-   using create = parasol::Create<extVectorText>;
+   using create = pf::Create<extVectorText>;
 
    FUNCTION txValidateInput;
    DOUBLE txInlineSize; // Enables word-wrapping
@@ -295,7 +295,7 @@ static ERROR VECTORTEXT_Free(extVectorText *Self, APTR Void)
    if (Self->txKeyEvent)    { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = NULL; }
 
    if (Self->txFocusID) {
-      parasol::ScopedObjectLock<> focus(Self->txFocusID, 5000);
+      pf::ScopedObjectLock<> focus(Self->txFocusID, 5000);
       if (focus.granted()) {
          auto callback = make_function_stdc(text_focus_event);
          vecSubscribeFeedback(*focus, 0, &callback);
@@ -315,7 +315,7 @@ static ERROR VECTORTEXT_Init(extVectorText *Self, APTR Void)
       }
 
       {
-         parasol::ScopedObjectLock<> focus(Self->txFocusID, 5000);
+         pf::ScopedObjectLock<> focus(Self->txFocusID, 5000);
          if (focus.granted()) {
             auto callback = make_function_stdc(text_focus_event);
             vecSubscribeFeedback(*focus, FM_HAS_FOCUS|FM_CHILD_HAS_FOCUS|FM_LOST_FOCUS, &callback);
@@ -1121,7 +1121,7 @@ static void calc_cursor_position(TextLine &Line, agg::trans_affine &transform, D
 
 static void generate_text(extVectorText *Vector)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Vector->txFont) {
       reset_font(Vector);
@@ -1422,7 +1422,7 @@ static void generate_text(extVectorText *Vector)
 
 static void generate_text_bitmap(extVectorText *Vector)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Vector->txFont) {
       reset_font(Vector);
@@ -1755,9 +1755,9 @@ static void reset_font(extVectorText *Vector)
 {
    if (!Vector->initialised()) return;
 
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.branch("Style: %s, Weight: %d", Vector->txFontStyle, Vector->txWeight);
-   parasol::SwitchContext context(Vector);
+   pf::SwitchContext context(Vector);
 
    objFont *font;
    if (!NewObject(ID_FONT, NF::INTEGRAL, &font)) {
@@ -1812,7 +1812,7 @@ static void reset_font(extVectorText *Vector)
 static ERROR cursor_timer(extVectorText *Self, LARGE Elapsed, LARGE CurrentTime)
 {
    if ((Self->txFlags & VTXF_EDITABLE) and (Self->txCursor.vector)) {
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
       Self->txCursor.flash ^= 1;
       Self->txCursor.vector->set(FID_Visibility, Self->txCursor.flash ? VIS_VISIBLE : VIS_HIDDEN);
       acDraw(Self);
@@ -1900,7 +1900,7 @@ static ERROR text_input_events(extVector *Vector, const InputEvent *Events)
 {
    auto Self = (extVectorText *)CurrentContext();
 
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    while (Events) {
       if ((Events->Type IS JET_LMB) and (!(Events->Flags & JTYPE_REPEATED)) and (Events->Value IS 1)) {
@@ -1970,7 +1970,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
 {
    if (!(Event->Qualifiers & KQ_PRESSED)) return;
 
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.trace("$%.8x, Value: %d", Event->Qualifiers, Event->Code);
 

@@ -66,7 +66,7 @@ Available commands:\n\
 
 extern "C" void program(void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    LONG i, j;
 
@@ -218,7 +218,7 @@ exit:
 
 ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.branch("Win: %d, Size: %dx%d", WindowHandle, Width, Height);
 

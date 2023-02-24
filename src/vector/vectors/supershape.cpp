@@ -19,7 +19,7 @@ class extVectorShape : public extVector {
    public:
    static constexpr CLASSID CLASS_ID = ID_VECTORSHAPE;
    static constexpr CSTRING CLASS_NAME = "VectorShape";
-   using create = parasol::Create<extVectorShape>;
+   using create = pf::Create<extVectorShape>;
 
    DOUBLE Radius;
    DOUBLE CX, CY;

@@ -682,7 +682,7 @@ Hello         World.
  Log          Back to normal.
 </pre>
 
-In C++ the scope-managed `parasol::Log` class should be used instead.  It automatically debranches the messaging chain
+In C++ the scope-managed `pf::Log` class should be used instead.  It automatically debranches the messaging chain
 when code goes out of scope.
 
 -END-

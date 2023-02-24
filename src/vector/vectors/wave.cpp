@@ -20,7 +20,7 @@ class extVectorWave : public extVector {
    public:
    static constexpr CLASSID CLASS_ID = ID_VECTORWAVE;
    static constexpr CSTRING CLASS_NAME = "VectorWave";
-   using create = parasol::Create<extVectorWave>;
+   using create = pf::Create<extVectorWave>;
 
    DOUBLE wX, wY;
    DOUBLE wWidth, wHeight;
@@ -159,7 +159,7 @@ Move: Moves the vector to a new position.
 
 static ERROR WAVE_Move(extVectorWave *Self, struct acMove *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -177,7 +177,7 @@ MoveToPoint: Moves the vector to a new fixed position.
 
 static ERROR WAVE_MoveToPoint(extVectorWave *Self, struct acMoveToPoint *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 

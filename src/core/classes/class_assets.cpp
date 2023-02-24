@@ -87,7 +87,7 @@ static AAssetManager * get_asset_manager(void);
 
 ERROR add_asset_class(void)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    OpenInfo *openinfo;
    CSTRING classname;
    LONG i;
@@ -200,7 +200,7 @@ static ERROR ASSET_Free(objFile *Self, APTR Void)
 
 static ERROR ASSET_Init(objFile *Self, APTR Void)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    prvFileAsset *prv;
 
    if (!Self->Path) return ERR_FieldNotSet;
@@ -273,7 +273,7 @@ static ERROR ASSET_Move(objFile *Self, struct mtFileMove *Args)
 
 static ERROR ASSET_Read(objFile *Self, struct acRead *Args)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    prvFileAsset *prv;
 
    if (!(prv = Self->ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
@@ -371,7 +371,7 @@ static ERROR GET_Size(objFile *Self, LARGE *Value)
 
 static ERROR open_dir(DirInfo *Dir)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    AAssetManager *mgr;
    LONG len;
 
@@ -464,7 +464,7 @@ static ERROR close_dir(DirInfo *Dir)
 
 static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    BYTE dir;
    LONG i, len;
 
@@ -530,7 +530,7 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 
 static ERROR test_path(CSTRING Path, LONG Flags, LONG *Type)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    AAssetManager *mgr;
    AAsset *asset;
    AAssetDir *dir;

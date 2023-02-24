@@ -33,7 +33,7 @@ Name: Memory
 
 #define freemem(a)  free(a)
 
-using namespace parasol;
+using namespace pf;
 
 static void compress_public_memory(SharedControl *);
 #ifdef RANDOMISE_MEM
@@ -134,7 +134,7 @@ ResourceExists: This error is returned if MEM_RESERVED was used and the memory b
 
 ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG offset;
    LONG i, memid;
    OBJECTID object_id;
@@ -545,12 +545,12 @@ SystemCorrupt: The internal memory tables are corrupt.
 
 ERROR CheckMemoryExists(MEMORYID MemoryID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!MemoryID) return log.warning(ERR_NullArgs);
 
    if (MemoryID < 0) {
-      parasol::ScopedSysLock lock(PL_PUBLICMEM, 5000);
+      pf::ScopedSysLock lock(PL_PUBLICMEM, 5000);
 
       if (lock.granted()) {
          if (find_public_mem_id(glSharedControl, MemoryID, NULL) IS ERR_Okay) {
@@ -601,7 +601,7 @@ Memory: The supplied memory address is not a recognised memory block.
 
 ERROR FreeResource(const void *Address)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Address) return log.warning(ERR_NullArgs);
 
@@ -714,7 +714,7 @@ LockFailed: Failed to lock the public memory controller.
 
 ERROR FreeResourceID(MEMORYID MemoryID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (MemoryID < 0) { // Search the public memory control table
       ScopedSysLock lock(PL_PUBLICMEM, 5000);
@@ -896,7 +896,7 @@ SystemCorrupt: Internal memory tables are corrupt.
 
 ERROR MemoryIDInfo(MEMORYID MemoryID, struct MemInfo *MemInfo, LONG Size)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG entry;
 
    if ((!MemInfo) or (!MemoryID)) return log.warning(ERR_NullArgs);
@@ -979,7 +979,7 @@ MemoryDoesNotExist
 
 ERROR MemoryPtrInfo(APTR Memory, struct MemInfo *MemInfo, LONG Size)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG i;
 
    if ((!MemInfo) or (!Memory)) return log.warning(ERR_NullArgs);
@@ -1089,7 +1089,7 @@ Memory: The memory block to be re-allocated is invalid.
 
 ERROR ReallocMemory(APTR Address, LONG NewSize, APTR *Memory, MEMORYID *MemoryID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    MemInfo meminfo;
    ULONG copysize;
 
@@ -1178,7 +1178,7 @@ static void compress_public_memory(SharedControl *Control)
 
 LONG find_public_address(SharedControl *Control, APTR Address)
 {
-   parasol::Log log;
+   pf::Log log;
 
    // Check if the address is in the shared memory pool (in which case it will not be found in the page list).
 

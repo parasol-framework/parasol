@@ -373,7 +373,7 @@ int(SBF) Flags: Set to SBF_SORT to sort the list, SBF_NO_DUPLICATES to sort the 
 
 STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!List) return NULL;
 
@@ -693,7 +693,7 @@ int: Returns the total amount of characters that were copied, not including the 
 
 LONG StrCopy(CSTRING String, STRING Dest, LONG Length)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (Length < 0) return 0;
 
@@ -847,7 +847,7 @@ NoData: Locale information is not available.
 
 ERROR StrReadLocale(CSTRING Key, CSTRING *Value)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Key) or (!Value)) return ERR_NullArgs;
 
@@ -858,7 +858,7 @@ ERROR StrReadLocale(CSTRING Key, CSTRING *Value)
          static char code[4] = { 0, 0, 0, 0 };
          if (!code[0]) {
             if (!AndroidBase) {  // Note that the module is terminated through resource tracking, we don't free it during our CMDExpunge() sequence for system integrity reasons.
-               parasol::SwitchContext ctx(CurrentTask());
+               pf::SwitchContext ctx(CurrentTask());
                OBJECTPTR module;
                objModule::load("android", MODVERSION_FLUID, &module, &AndroidBase);
                if (!AndroidBase) return NULL;
@@ -927,7 +927,7 @@ int: Returns the byte position of the first occurrence of the Keyword within the
 LONG StrSearch(CSTRING Keyword, CSTRING String, LONG Flags)
 {
    if ((!String) or (!Keyword)) {
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
       log.warning(ERR_NullArgs);
       return -1;
    }

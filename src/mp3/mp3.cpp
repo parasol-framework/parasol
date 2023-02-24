@@ -140,7 +140,7 @@ static LARGE calc_length(objSound *, LONG);
 
 static bool parse_id3v1(objSound *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    auto prv = (prvMP3 *)Self->ChildPrivate;
    bool processed = false;
@@ -156,19 +156,19 @@ static bool parse_id3v1(objSound *Self)
          log.extmsg("ID3v1 tag found.");
 
          std::string title(id3.title);
-         parasol::ltrim(title, " ");
+         pf::ltrim(title, " ");
          SetVar(Self, "Title", title.c_str());
 
          std::string artist(id3.artist);
-         parasol::ltrim(artist, " ");
+         pf::ltrim(artist, " ");
          SetVar(Self, "Author", artist.c_str());
 
          std::string album(id3.album);
-         parasol::ltrim(album, " ");
+         pf::ltrim(album, " ");
          SetVar(Self, "Album", album.c_str());
 
          std::string comment(id3.comment);
-         parasol::ltrim(comment, " ");
+         pf::ltrim(comment, " ");
          SetVar(Self, "Description", comment.c_str());
 
          if (id3.genre <= genre_table.size()) {
@@ -215,7 +215,7 @@ const LONG XING_SCALE        = 8; // VBR quality is indicated from 0 (best) to 1
 
 static int check_xing(objSound *Self, const UBYTE *Frame)
 {
-   parasol::Log log;
+   pf::Log log;
 
    auto prv = (prvMP3 *)Self->ChildPrivate;
 
@@ -317,7 +317,7 @@ static ERROR MP3_Free(objSound *Self, APTR Void)
 
 static ERROR MP3_Init(objSound *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    STRING location;
    Self->get(FID_Path, &location);
@@ -403,7 +403,7 @@ static ERROR MP3_Init(objSound *Self, APTR Void)
 
 static ERROR MP3_Read(objSound *Self, struct acRead *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -547,7 +547,7 @@ static ERROR MP3_Read(objSound *Self, struct acRead *Args)
 
 static ERROR MP3_Seek(objSound *Self, struct acSeek *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
    if (!Self->initialised()) return log.warning(ERR_NotInitialised);
@@ -655,7 +655,7 @@ static ERROR MP3_Seek(objSound *Self, struct acSeek *Args)
 
 static LARGE calc_length(objSound *Self, LONG ReduceEnd)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG buffer_size;
    std::array<UWORD, 16> avg;  // Used to compute the interquartile mean
    std::vector<UWORD> fsizes;  // List of all compressed frame sizes
@@ -804,7 +804,7 @@ static LARGE calc_length(objSound *Self, LONG ReduceEnd)
 
 static LONG find_frame(objSound *Self, UBYTE *Buffer, LONG BufferSize)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG bitrate, frame_size;
    auto prv = (prvMP3 *)Self->ChildPrivate;
 

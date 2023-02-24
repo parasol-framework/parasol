@@ -20,7 +20,7 @@ Name: Objects
 
 #include "defs.h"
 
-using namespace parasol;
+using namespace pf;
 
 #define SIZE_ACTIONBUFFER 2048
 
@@ -139,7 +139,7 @@ static ERROR thread_action(extThread *Thread)
 
 static void free_private_children(OBJECTPTR Object)
 {
-   parasol::Log log;
+   pf::Log log;
 
    ThreadLock lock(TL_PRIVATE_MEM, 4000);
    if (lock.granted()) {
@@ -204,7 +204,7 @@ static void free_private_children(OBJECTPTR Object)
 
 static void free_public_children(OBJECTPTR Object)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Object->defined(NF::HAS_SHARED_RESOURCES)) return;
 
@@ -275,7 +275,7 @@ ObjectCorrupt:   The object that was received is badly corrupted in a critical a
 
 ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!argObject) return log.warning(ERR_NullArgs);
 
@@ -345,7 +345,7 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
 
       if ((glSubscriptions.contains(object_id)) and (glSubscriptions[object_id].contains(ActionID))) {
          for (auto &list : glSubscriptions[object_id][ActionID]) {
-            parasol::SwitchContext ctx(list.Context);
+            pf::SwitchContext ctx(list.Context);
             list.Callback(obj, ActionID, (error IS ERR_NoAction) ? ERR_Okay : error, Parameters);
          }
       }
@@ -444,7 +444,7 @@ Failed: Failed to build buffered arguments.
 
 ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!ActionID) or (!ObjectID)) log.warning(ERR_NullArgs);
    if (ActionID >= AC_END) return log.warning(ERR_OutOfRange);
@@ -500,7 +500,7 @@ Init
 
 ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *Callback, LONG Key)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!ActionID) or (!Object)) return ERR_NullArgs;
 
@@ -609,7 +609,7 @@ LostClass: The object has lost its class reference (object corrupt).
 
 ERROR CheckAction(OBJECTPTR Object, LONG ActionID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((Object) and (ActionID)) {
       if (Object->ClassID IS ID_METACLASS) {
@@ -682,7 +682,7 @@ error Error: The error code that is associated with the action result.
 
 void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR ErrorCode)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    // No need for prv_access() since this function is called from within class action code only.
 
@@ -697,7 +697,7 @@ void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR E
    if ((!glSubscriptions[Object->UID].empty()) and (!glSubscriptions[Object->UID][ActionID].empty())) {
       for (auto &sub : glSubscriptions[Object->UID][ActionID]) {
          if (sub.Context) {
-            parasol::SwitchContext ctx(sub.Context);
+            pf::SwitchContext ctx(sub.Context);
             sub.Callback(Object, ActionID, ErrorCode, Parameters);
          }
       }
@@ -741,7 +741,7 @@ IllegalMethodID:
 
 ERROR QueueAction(LONG ActionID, OBJECTID ObjectID, APTR Args)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!ActionID) or (!ObjectID)) log.warning(ERR_NullArgs);
    if (ActionID >= AC_END) return log.warning(ERR_OutOfRange);
@@ -868,7 +868,7 @@ OutOfRange: The Action parameter is invalid.
 
 ERROR SubscribeAction(OBJECTPTR Object, ACTIONID ActionID, FUNCTION *Callback)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Object) or (!Callback)) return log.warning(ERR_NullArgs);
    if ((ActionID < 0) or (ActionID >= AC_END)) return log.warning(ERR_OutOfRange);
@@ -910,7 +910,7 @@ Args:
 
 ERROR UnsubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Object) return log.warning(ERR_NullArgs);
    if ((ActionID < 0) or (ActionID >= AC_END)) return log.warning(ERR_Args);
@@ -975,7 +975,7 @@ restart:
 
 ERROR MGR_Free(OBJECTPTR Object, APTR Void)
 {
-   parasol::Log log("Free");
+   pf::Log log("Free");
    extMetaClass *mc;
 
    Object->ActionDepth--; // See Action() regarding this
@@ -1110,7 +1110,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
 
 ERROR MGR_Init(OBJECTPTR Object, APTR Void)
 {
-   parasol::Log log("Init");
+   pf::Log log("Init");
 
    extMetaClass *cl;
    if (!(cl = Object->ExtClass)) return log.warning(ERR_LostClass);

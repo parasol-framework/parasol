@@ -14,7 +14,7 @@ static void free_alsa(extAudio *Self)
 
 static ERROR init_audio(extAudio *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    struct sndSetVolume setvol;
    snd_pcm_hw_params_t *hwparams;
    snd_pcm_stream_t stream;

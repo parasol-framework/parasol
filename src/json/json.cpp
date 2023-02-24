@@ -148,7 +148,7 @@ static void free_tags(objXML *Self)
 
 static void debug_tree(objXML *Self)
 {
-   parasol::Log log("Tree");
+   pf::Log log("Tree");
    LONG i, j;
    char buffer[1000];
 
@@ -183,7 +183,7 @@ static void debug_tree(objXML *Self)
 
 static ERROR JSON_Init(objXML *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    STRING location, statement;
 
    log.trace("Attempting JSON interpretation of source data.");
@@ -234,7 +234,7 @@ static ERROR JSON_SaveToObject(objXML *Self, struct acSaveToObject *Args)
 
 static ERROR txt_to_json(objXML *Self, CSTRING Text)
 {
-   parasol::Log log;
+   pf::Log log;
    XMLTag **tag, *prevtag;
    exttag ext;
    CSTRING str;
@@ -354,7 +354,7 @@ static ERROR txt_to_json(objXML *Self, CSTRING Text)
 
 static ERROR extract_item(objXML *Self, exttag *Status, CSTRING *Input)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    char item_name[80];
 
    log.traceBranch("Index: %d, Line: %d, %.20s", Status->TagIndex, Self->LineNo, *Input);
@@ -881,7 +881,7 @@ static ERROR extract_item(objXML *Self, exttag *Status, CSTRING *Input)
 
 static ERROR create_tag(objXML *Self, LONG LineNo, exttag *Status, ...)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG attribsize = 0;
    LONG totalattrib = 0;
 
@@ -951,7 +951,7 @@ static ERROR create_tag(objXML *Self, LONG LineNo, exttag *Status, ...)
 
 static ERROR create_content(objXML *Self, LONG LineNo, exttag *Status, CSTRING Content)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    XMLTag *xtag;
    LONG attribsize = StrLength(Content) + 1;
 

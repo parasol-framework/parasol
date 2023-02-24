@@ -256,7 +256,7 @@ class extAudio : public objAudio {
 
    inline DOUBLE MixerLag() {
       if (!mixerLag) {
-         parasol::Log log(__FUNCTION__);
+         pf::Log log(__FUNCTION__);
          #ifdef _WIN32
             // Windows uses a split buffer technique, so the write cursor is always 1/2 a buffer ahead.
             mixerLag = MIX_INTERVAL + (DOUBLE(MixElements>>1) / DOUBLE(OutputRate));

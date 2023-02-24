@@ -35,7 +35,7 @@ static ERROR VECTOR_Push(extVector *, struct vecPush *);
 
 void debug_tree(extVector *Vector, LONG &Level)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    char buffer[80];
    LONG i;
 
@@ -52,7 +52,7 @@ void debug_tree(extVector *Vector, LONG &Level)
       }
 
       if ((v->ClassID IS ID_VECTOR) and (v->Child)) {
-         parasol::Log blog(__FUNCTION__);
+         pf::Log blog(__FUNCTION__);
          blog.branch("#%d%s %s %s %s", v->UID, indent, v->Class->ClassName, GetName(v) ? GetName(v) : "", buffer);
          debug_tree((extVector *)v->Child, Level);
       }
@@ -67,7 +67,7 @@ void debug_tree(extVector *Vector, LONG &Level)
 static void validate_tree(extVector *Vector) __attribute__((unused));
 static void validate_tree(extVector *Vector)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    for (auto v=Vector; v; v=(extVector *)v->Next) {
       if ((v->Next) and (v->Next->Prev != v)) {
@@ -222,7 +222,7 @@ static ERROR VECTOR_Draw(extVector *Self, struct acDraw *Args)
       else return ERR_AccessObject;
    }
    else {
-      parasol::Log log;
+      pf::Log log;
       return log.warning(ERR_FieldNotSet);
    }
 }
@@ -379,7 +379,7 @@ NotPossible: The vector does not support path generation.
 
 static ERROR VECTOR_GetBoundary(extVector *Self, struct vecGetBoundary *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -441,7 +441,7 @@ static ERROR VECTOR_Hide(extVector *Self, APTR Void)
 
 static ERROR VECTOR_Init(extVector *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Self->SubID) or (Self->SubID IS ID_VECTOR)) {
       log.warning("Vector cannot be instantiated directly (use a sub-class).");
@@ -530,7 +530,7 @@ static ERROR VECTOR_NewObject(extVector *Self, APTR Void)
 
 static ERROR VECTOR_NewOwner(extVector *Self, struct acNewOwner *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Self->SubID) return ERR_Okay;
 
@@ -617,7 +617,7 @@ NoSupport: The vector type does not support path generation.
 
 static ERROR VECTOR_PointInPath(extVector *Self, struct vecPointInPath *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -704,7 +704,7 @@ NullArgs:
 
 static ERROR VECTOR_Push(extVector *Self, struct vecPush *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
    if (!Args->Position) return ERR_Okay;
@@ -790,7 +790,7 @@ NullArgs:
 
 static ERROR VECTOR_SubscribeFeedback(extVector *Self, struct vecSubscribeFeedback *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
 
@@ -850,7 +850,7 @@ Function: A call to gfxSubscribeInput() failed.
 
 static ERROR VECTOR_SubscribeInput(extVector *Self, struct vecSubscribeInput *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
 
@@ -918,7 +918,7 @@ Function: A call to gfxSubscribeInput() failed.
 
 static ERROR VECTOR_SubscribeKeyboard(extVector *Self, struct vecSubscribeKeyboard *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
 
@@ -959,7 +959,7 @@ NullArgs:
 
 static ERROR VECTOR_TracePath(extVector *Self, struct vecTracePath *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (Args->Callback)) return log.warning(ERR_NullArgs);
 
@@ -975,7 +975,7 @@ static ERROR VECTOR_TracePath(extVector *Self, struct vecTracePath *Args)
   if (Args->Callback->Type IS CALL_STDC) {
       auto routine = ((void (*)(extVector *, LONG, LONG, DOUBLE, DOUBLE))(Args->Callback->StdC.Routine));
 
-      parasol::SwitchContext context(GetParentContext());
+      pf::SwitchContext context(GetParentContext());
 
       LONG index = 0;
       do {
@@ -1121,7 +1121,7 @@ static ERROR VECTOR_GET_DashArray(extVector *Self, DOUBLE **Value, LONG *Element
 
 static ERROR VECTOR_SET_DashArray(extVector *Self, DOUBLE *Value, LONG Elements)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->DashArray) { delete Self->DashArray; Self->DashArray = NULL; }
 
@@ -1288,7 +1288,7 @@ static ERROR VECTOR_GET_FillOpacity(extVector *Self, DOUBLE *Value)
 
 static ERROR VECTOR_SET_FillOpacity(extVector *Self, DOUBLE Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((Value >= 0) and (Value <= 1.0)) {
       Self->FillOpacity = Value;
@@ -1319,7 +1319,7 @@ static ERROR VECTOR_GET_Filter(extVector *Self, CSTRING *Value)
 
 static ERROR VECTOR_SET_Filter(extVector *Self, CSTRING Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Value) or (!Value[0])) {
       if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
@@ -1540,7 +1540,7 @@ static ERROR VECTOR_GET_Mask(extVector *Self, extVectorClip **Value)
 
 static ERROR VECTOR_SET_Mask(extVector *Self, extVectorClip *Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Value) {
       if (Self->ClipMask) {
@@ -1592,7 +1592,7 @@ them for theta less than approximately 29 degrees, and a limit of 10.0 converts 
 
 static ERROR VECTOR_SET_MiterLimit(extVector *Self, DOUBLE Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Value >= 1.0) {
       Self->MiterLimit = Value;
@@ -1622,7 +1622,7 @@ static ERROR VECTOR_GET_Morph(extVector *Self, extVector **Value)
 
 static ERROR VECTOR_SET_Morph(extVector *Self, extVector *Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Value) {
       if (Self->Morph) {
@@ -1684,7 +1684,7 @@ UnsupportedOwner: The referenced vector does not share the same owner.
 
 static ERROR VECTOR_SET_Next(extVector *Self, extVector *Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Value->ClassID != ID_VECTOR) return log.warning(ERR_InvalidObject);
    if ((!Value) or (Value IS Self)) return log.warning(ERR_InvalidValue);
@@ -1787,7 +1787,7 @@ UnsupportedOwner: The referenced vector does not share the same owner.
 
 static ERROR VECTOR_SET_Prev(extVector *Self, extVector *Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Value->ClassID != ID_VECTOR) return log.warning(ERR_InvalidObject);
    if (!Value) return log.warning(ERR_InvalidValue);
@@ -1888,7 +1888,7 @@ of the previous command).
 
 static ERROR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Self->GeneratePath) return log.warning(ERR_Mismatch); // Path generation must be supported by the vector.
 
@@ -2146,7 +2146,7 @@ static ERROR VECTOR_GET_Transition(extVector *Self, objVectorTransition **Value)
 
 static ERROR VECTOR_SET_Transition(extVector *Self, objVectorTransition *Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Value) {
       if (Self->Transition) {
@@ -2191,7 +2191,7 @@ void send_feedback(extVector *Vector, LONG Event)
          sub.Mask &= ~Event; // Turned off to prevent recursion
 
          if (sub.Callback.Type IS CALL_STDC) {
-            parasol::SwitchContext ctx(sub.Callback.StdC.Context);
+            pf::SwitchContext ctx(sub.Callback.StdC.Context);
             auto callback = (ERROR (*)(extVector *, LONG))sub.Callback.StdC.Routine;
             result = callback(Vector, Event);
          }

@@ -56,7 +56,7 @@ INLINE void call_userinput(CSTRING Debug, InputEvent *input, LONG Flags, OBJECTI
    InputSubscription *list;
 
    if ((glSharedControl->InputMID) and (!AccessMemoryID(glSharedControl->InputMID, MEM_READ, 1000, &list))) {
-      //parasol::Log log(__FUNCTION__);
+      //pf::Log log(__FUNCTION__);
       //log.trace("Type: %s, Value: %.2f, Recipient: %d, Over: %d %.2fx%.2f, Abs: %.2fx%.2f %s",
       //   (input->Type < JET_END) ? glInputNames[input->Type] : (CSTRING)"", input->Value, RecipientID, OverID, OverX, OverY, AbsX, AbsY, Debug);
 
@@ -79,7 +79,7 @@ INLINE void call_userinput(CSTRING Debug, InputEvent *input, LONG Flags, OBJECTI
 
 static void send_inputmsg(InputEvent *Event, InputSubscription *List)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    // Store the message in the input message queue
 
@@ -184,7 +184,7 @@ flag for that button.
 
 static ERROR PTR_DataFeed(extPointer *Self, struct acDataFeed *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -217,7 +217,7 @@ static ERROR PTR_DataFeed(extPointer *Self, struct acDataFeed *Args)
 
 static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    InputEvent userinput;
    OBJECTID target;
    LONG buttonflag, bi;
@@ -416,7 +416,7 @@ static void process_ptr_wheel(extPointer *Self, struct dcDeviceInput *Input)
 
 static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    InputEvent userinput;
 
    ClearMemory(&userinput, sizeof(userinput));
@@ -637,7 +637,7 @@ Hide: Hides the pointer from the display.
 
 static ERROR PTR_Hide(extPointer *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.branch();
 
@@ -664,7 +664,7 @@ static ERROR PTR_Hide(extPointer *Self, APTR Void)
 
 static ERROR PTR_Init(extPointer *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    // Find the Surface object that we are associated with.  Note that it is okay if no surface is available at this
    // stage, but the host system must have a mechanism for setting the Surface field at a later stage or else
@@ -736,7 +736,7 @@ change).
 
 static ERROR PTR_Move(extPointer *Self, struct acMove *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_Args);
    if ((!Args->DeltaX) and (!Args->DeltaY)) return ERR_Okay;
@@ -759,7 +759,7 @@ The client can subscribe to this action to listen for changes to the cursor's po
 
 static ERROR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs)|ERF_Notified;
 /*
@@ -875,7 +875,7 @@ Reset: Resets the pointer settings back to the default.
 
 static ERROR PTR_Reset(extPointer *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    log.branch();
 
    Self->Speed        = 150;
@@ -895,7 +895,7 @@ SaveToObject: Saves the current pointer settings to another object.
 
 static ERROR PTR_SaveToObject(extPointer *Self, struct acSaveToObject *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
 
@@ -921,7 +921,7 @@ Show: Shows the pointer if it is not already on the display.
 
 static ERROR PTR_Show(extPointer *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.branch();
 
@@ -993,7 +993,7 @@ static ERROR GET_ButtonOrder(extPointer *Self, CSTRING *Value)
 
 static ERROR SET_ButtonOrder(extPointer *Self, CSTRING Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.msg("%s", Value);
 
@@ -1244,7 +1244,7 @@ static void set_pointer_defaults(extPointer *Self)
 
 static BYTE get_over_object(extPointer *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    SurfaceControl *ctl;
 
    if ((Self->SurfaceID) and (CheckObjectExists(Self->SurfaceID) != ERR_Okay)) Self->SurfaceID = 0;
@@ -1276,7 +1276,7 @@ static BYTE get_over_object(extPointer *Self)
       ReleaseMemory(ctl);
 
       if (Self->OverObjectID != li_objectid) {
-         parasol::Log log(__FUNCTION__);
+         pf::Log log(__FUNCTION__);
          InputSubscription *subs;
 
          log.traceBranch("OverObject changing from #%d to #%d.  InputMID: %d", Self->OverObjectID, li_objectid, glSharedControl->InputMID);
@@ -1356,7 +1356,7 @@ static WORD examine_chain(extPointer *Self, WORD Index, SurfaceControl *Ctl, WOR
 
 static ERROR repeat_timer(extPointer *Self, LARGE Elapsed, LARGE Unused)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!glSharedControl->InputMID) return ERR_Terminate;
 
@@ -1419,7 +1419,7 @@ static ERROR repeat_timer(extPointer *Self, LARGE Elapsed, LARGE Unused)
 
 static ERROR init_mouse_driver(void)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    STRING str;
    WORD port;
    ERROR error;
@@ -1500,7 +1500,7 @@ static ERROR init_mouse_driver(void)
    // Initialise the mouse now if the driver is already selected
 
    if (glDriverIndex) {
-      parasol::Log log;
+      pf::Log log;
       log.branch("Using pre-selected driver \"%s\" on all ports.", glMouseTypes[glDriverIndex].ShortName);
 
       for (LONG port=0; port < ARRAYSIZE(glPorts); port++) {

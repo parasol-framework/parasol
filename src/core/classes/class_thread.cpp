@@ -67,7 +67,7 @@ struct ActionThread {
 
    ~ActionThread() {
       if (InUse) {
-         parasol::Log log(__FUNCTION__);
+         pf::Log log(__FUNCTION__);
          log.warning("Pooled thread #%d is still in use on closure.", Thread->UID);
       }
    }
@@ -80,7 +80,7 @@ static std::vector<struct ActionThread> glActionThreads;
 
 ERROR threadpool_get(extThread **Result)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.traceBranch("");
 
@@ -111,7 +111,7 @@ ERROR threadpool_get(extThread **Result)
 
 void threadpool_release(extThread *Thread)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.traceBranch("Thread: #%d, Total: %d", Thread->UID, (LONG)glActionThreads.size());
 
@@ -136,7 +136,7 @@ void threadpool_release(extThread *Thread)
 
 void remove_threadpool(void)
 {
-   parasol::Log log("Core");
+   pf::Log log("Core");
 
    log.branch("Removing the internal thread pool, size %d.", (LONG)glActionThreads.size());
 
@@ -307,7 +307,7 @@ Activate: Spawn a new thread that calls the function referenced in the #Routine 
 
 static ERROR THREAD_Activate(extThread *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Active) return ERR_NothingDone;
 
@@ -403,7 +403,7 @@ static ERROR THREAD_Free(extThread *Self, APTR Void)
 
 static ERROR THREAD_FreeWarning(extThread *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Self->Active) return ERR_Okay;
 
@@ -428,7 +428,7 @@ static ERROR THREAD_FreeWarning(extThread *Self, APTR Void)
 
 static ERROR THREAD_Init(extThread *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->StackSize < 1024) Self->StackSize = 1024;
    else if (Self->StackSize > 1024 * 1024) return log.warning(ERR_OutOfRange);
@@ -475,7 +475,7 @@ AllocMemory
 
 static ERROR THREAD_SetData(extThread *Self, struct thSetData *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Data)) return log.warning(ERR_NullArgs);
    if (Args->Size < 0) return log.warning(ERR_Args);
@@ -520,7 +520,7 @@ TimeOut: The timeout was reached before the thread was terminated.
 
 static ERROR THREAD_Wait(extThread *Self, struct thWait *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 

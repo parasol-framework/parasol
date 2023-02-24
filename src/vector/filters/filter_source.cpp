@@ -24,7 +24,7 @@ class extSourceFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = ID_SOURCEFX;
    static constexpr CSTRING CLASS_NAME = "SourceFX";
-   using create = parasol::Create<extSourceFX>;
+   using create = pf::Create<extSourceFX>;
 
    objBitmap *Bitmap;     // Rendered image cache.
    objVector *Source;     // The vector branch to render as source graphic.
@@ -50,7 +50,7 @@ Draw: Render the source vector to the target bitmap.
 
 static ERROR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Self->Source) return ERR_Okay;
 
@@ -182,7 +182,7 @@ static ERROR SOURCEFX_Free(extSourceFX *Self, APTR Void)
 
 static ERROR SOURCEFX_Init(extSourceFX *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Self->Source) return log.warning(ERR_UndefinedField);
 
@@ -248,7 +248,7 @@ ownership of the same @VectorScene that the filter pipeline belongs.
 
 static ERROR SOURCEFX_SET_Source(extSourceFX *Self, objVector *Value)
 {
-   parasol::Log log;
+   pf::Log log;
    if (!Value) return log.warning(ERR_InvalidValue);
    if (Value->ClassID != ID_VECTOR) return log.warning(ERR_WrongClass);
 
@@ -274,7 +274,7 @@ Vectors are registered via the @VectorScene AddDef() method.
 
 static ERROR SOURCEFX_SET_SourceName(extSourceFX *Self, CSTRING Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Self->Filter) or (!Self->Filter->Scene)) log.warning(ERR_UndefinedField);
 

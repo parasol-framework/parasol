@@ -138,7 +138,7 @@ static std::string glHomeFolderName;
 static void print_class_list(void) __attribute__ ((unused));
 static void print_class_list(void)
 {
-   parasol::Log log("Class List");
+   pf::Log log("Class List");
    std::ostringstream out;
    for (auto & [ cid, v ] : glClassDB) {
       out << v.Name << " ";
@@ -494,7 +494,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    setrlimit(RLIMIT_FSIZE, &rlp);
 #endif
 
-   parasol::Log log("Core");
+   pf::Log log("Core");
 
 #ifdef _WIN32
 
@@ -833,7 +833,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
 EXPORT void CleanSystem(LONG Flags)
 {
-   parasol::Log log("Core");
+   pf::Log log("Core");
    log.msg("Flags: $%.8x", Flags);
    Expunge(FALSE);
 }
@@ -852,7 +852,7 @@ static LONG glMemorySize = sizeof(SharedControl) +
 #ifdef _WIN32
 static ERROR open_shared_control(void)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.trace("");
 
@@ -901,7 +901,7 @@ static ERROR open_shared_control(void)
 
 static ERROR open_shared_control(void)
 {
-   parasol::Log log("Core");
+   pf::Log log("Core");
 
    // Generate a resource sharing key based on the unique file inode of the core library.  This prevents
    // conflicts with other installations of the system core on this machine.
@@ -1448,7 +1448,7 @@ static void DiagnosisHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
 #ifdef __unix__
 static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
 {
-   parasol::Log log("Core");
+   pf::Log log("Core");
 
    if (glCrashStatus > 1) {
       if ((glCodeIndex) and (glCodeIndex IS glLastCodeIndex)) {
@@ -1572,7 +1572,7 @@ APTR glExceptionAddress = 0;
 
 static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
 {
-   parasol::Log log("Core");
+   pf::Log log("Core");
 
    //winDeathBringer(0);  // Win7 doesn't like us calling SendMessage() during our handler?
 
@@ -1631,7 +1631,7 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
 
 static ERROR load_modules(void)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG i, j;
 
    // Entry structure:
@@ -1814,7 +1814,7 @@ ERROR convert_errno(LONG Error, ERROR Default)
 #ifdef _WIN32
 static void BreakHandler(void)
 {
-   parasol::Log log("Core");
+   pf::Log log("Core");
 
    //winDeathBringer(0);  // Win7 doesn't like us calling SendMessage() during our handler?
 
@@ -1850,7 +1850,7 @@ static void win32_enum_folders(CSTRING Volume, CSTRING Label, CSTRING Path, CSTR
 
 static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
 {
-   parasol::Log log("Core");
+   pf::Log log("Core");
 
    log.branch("Initialising filesystem volumes.");
 

@@ -33,7 +33,7 @@ static int object_newindex(lua_State *Lua)
 
 static int object_get(lua_State *Lua)
 {
-   parasol::Log log;
+   pf::Log log;
    struct object *object;
 
    if (!(object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
@@ -61,7 +61,7 @@ static int object_get(lua_State *Lua)
 
 static int object_getvar(lua_State *Lua)
 {
-   parasol::Log log;
+   pf::Log log;
    struct object *object;
 
    if (!(object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
@@ -101,7 +101,7 @@ static int object_getvar(lua_State *Lua)
 
 static int object_set(lua_State *Lua)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.trace("obj.set()");
 
@@ -143,7 +143,7 @@ static int object_set(lua_State *Lua)
 
 static int object_setvar(lua_State *Lua)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.msg("obj.setVar()");
 
@@ -184,7 +184,7 @@ static int object_setvar(lua_State *Lua)
 
 static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
 {
-   parasol::Log log("obj.get");
+   pf::Log log("obj.get");
 
    log.traceBranch("#%d, Field: %s", object->ObjectID, FName);
 
@@ -311,7 +311,7 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
 
 static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG ValueIndex)
 {
-   parasol::Log log("obj.setfield");
+   pf::Log log("obj.setfield");
 
    LONG type = lua_type(Lua, ValueIndex);
 

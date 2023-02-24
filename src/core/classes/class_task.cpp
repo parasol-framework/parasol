@@ -357,7 +357,7 @@ static void output_callback(extTask *Task, FUNCTION *Callback, APTR Buffer, LONG
 
 static void task_incoming_stdout(WINHANDLE Handle, extTask *Task)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    static UBYTE recursive = 0;
 
    if (recursive) return;
@@ -379,7 +379,7 @@ static void task_incoming_stdout(WINHANDLE Handle, extTask *Task)
 
 static void task_incoming_stderr(WINHANDLE Handle, extTask *Task)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    static UBYTE recursive = 0;
 
    if (recursive) return;
@@ -404,14 +404,14 @@ static void task_incoming_stderr(WINHANDLE Handle, extTask *Task)
 
 extern "C" void task_register_stdout(extTask *Task, WINHANDLE Handle)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.traceBranch("Handle: %d", (LONG)(MAXINT)Handle);
    RegisterFD(Handle, RFD_READ, (void (*)(void *, void *))&task_incoming_stdout, Task);
 }
 
 extern "C" void task_register_stderr(extTask *Task, WINHANDLE Handle)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.traceBranch("Handle: %d", (LONG)(MAXINT)Handle);
    RegisterFD(Handle, RFD_READ, (void (*)(void *, void *))&task_incoming_stderr, Task);
 }
@@ -449,7 +449,7 @@ static CSTRING action_id_name(LONG ActionID)
 
 static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
-   parasol::Log log("ProcessMessages");
+   pf::Log log("ProcessMessages");
    ActionMessage *action;
 
    if (!(action = (ActionMessage *)Message)) {
@@ -524,7 +524,7 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
 
 static ERROR msg_debug(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
-   parasol::Log log("Debug");
+   pf::Log log("Debug");
    DebugMessage *debug;
    LONG j;
 
@@ -576,7 +576,7 @@ static ERROR msg_quit(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG 
 #ifdef _WIN32
 static void task_process_end(WINHANDLE FD, extTask *Task)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    winGetExitCodeProcess(Task->Platform, &Task->ReturnCode);
    if (Task->ReturnCode != 259) {
@@ -644,14 +644,14 @@ static void task_process_end(WINHANDLE FD, extTask *Task)
 #ifdef _WIN32
 extern "C" void register_process_pipes(extTask *Self, WINHANDLE ProcessHandle)
 {
-   parasol::Log log;
+   pf::Log log;
    log.traceBranch("Process: %d", (LONG)(MAXINT)ProcessHandle);
    RegisterFD(ProcessHandle, RFD_READ, (void (*)(void *, void *))&task_process_end, Self);
 }
 
 extern "C" void deregister_process_pipes(extTask *Self, WINHANDLE ProcessHandle)
 {
-   parasol::Log log;
+   pf::Log log;
    log.traceBranch("Process: %d", (LONG)(MAXINT)ProcessHandle);
    if (ProcessHandle) RegisterFD(ProcessHandle, RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT, NULL, NULL);
 }
@@ -703,7 +703,7 @@ TimeOut:     Can be returned if the WAIT flag is used.  Indicates that the proce
 
 static ERROR TASK_Activate(extTask *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    LONG i, j, k;
    char buffer[1000];
    STRING path, *args;
@@ -1223,7 +1223,7 @@ AllocMemory: Memory for the new Parameters could not be allocated.
 
 static ERROR TASK_AddArgument(extTask *Self, struct taskAddArgument *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Argument) or (!*Args->Argument)) return log.warning(ERR_NullArgs);
 
@@ -1324,7 +1324,7 @@ static ERROR TASK_Expunge(extTask *Self, APTR Void)
 
 static ERROR TASK_Free(extTask *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
 #ifdef __unix__
    check_incoming(Self);
@@ -1411,7 +1411,7 @@ NoSupport: The platform does not support environment variables.
 
 static ERROR TASK_GetEnv(extTask *Self, struct taskGetEnv *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
 
@@ -1549,7 +1549,7 @@ NoSupport: The platform does not support environment variables.
 
 static ERROR TASK_SetEnv(extTask *Self, struct taskSetEnv *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
 
@@ -1646,7 +1646,7 @@ GetVar: Retrieves variable field values.
 
 static ERROR TASK_GetVar(extTask *Self, struct acGetVar *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    LONG j;
 
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
@@ -1674,7 +1674,7 @@ static ERROR TASK_GetVar(extTask *Self, struct acGetVar *Args)
 
 static ERROR TASK_Init(extTask *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    MessageHeader *msgblock;
    LONG i, len;
 
@@ -1841,7 +1841,7 @@ Okay
 
 static ERROR TASK_Quit(extTask *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((Self->ProcessID) and (Self->ProcessID != glProcessID)) {
       log.msg("Terminating foreign process %d", Self->ProcessID);
@@ -1873,7 +1873,7 @@ SetVar: Variable fields are supported for the general storage of program variabl
 
 static ERROR TASK_SetVar(extTask *Self, struct acSetVar *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Field) or (!Args->Value)) return ERR_NullArgs;
 
@@ -1915,7 +1915,7 @@ process that no more data is incoming).
 
 static ERROR TASK_Write(extTask *Task, struct acWrite *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -2034,7 +2034,7 @@ CSTRING Args[] = {
 
 static ERROR GET_Parameters(extTask *Self, CSTRING **Value, LONG *Elements)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Parameters) {
       *Value = Self->Parameters;
@@ -2051,7 +2051,7 @@ static ERROR GET_Parameters(extTask *Self, CSTRING **Value, LONG *Elements)
 
 static ERROR SET_Parameters(extTask *Self, CSTRING *Value, LONG Elements)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Parameters) { FreeResource(Self->Parameters); Self->Parameters = 0; }
 
@@ -2244,7 +2244,7 @@ static ERROR GET_LaunchPath(extTask *Self, STRING *Value)
 
 static ERROR SET_LaunchPath(extTask *Self, CSTRING Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->LaunchPath) { FreeResource(Self->LaunchPath); Self->LaunchPath = NULL; }
 
@@ -2281,7 +2281,7 @@ static ERROR GET_Location(extTask *Self, STRING *Value)
 
 static ERROR SET_Location(extTask *Self, CSTRING Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Location) { FreeResource(Self->Location); Self->Location = NULL; }
 
@@ -2399,7 +2399,7 @@ static ERROR SET_Path(extTask *Self, CSTRING Value)
 {
    STRING new_path = NULL;
 
-   parasol::Log log;
+   pf::Log log;
 
    log.trace("ChDir: %s", Value);
 
@@ -2509,7 +2509,7 @@ DoesNotExist: The task is yet to be successfully launched with the Activate acti
 
 static ERROR GET_ReturnCode(extTask *Self, LONG *Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->ReturnCodeSet) {
       *Value = Self->ReturnCode;

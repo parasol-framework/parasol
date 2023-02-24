@@ -58,7 +58,7 @@ INLINE void SET_CONTEXT(lua_State *Lua, APTR Function)
 
 static LONG get_action_info(lua_State *Lua, LONG ClassID, CSTRING action, const FunctionField **Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    *Args = NULL;
 
@@ -116,7 +116,7 @@ static LONG get_action_info(lua_State *Lua, LONG ClassID, CSTRING action, const 
 
 static int object_new(lua_State *Lua)
 {
-   parasol::Log log("obj.new");
+   pf::Log log("obj.new");
    CSTRING class_name;
    CLASSID class_id;
 
@@ -244,7 +244,7 @@ static int object_state(lua_State *Lua)
    // Note: At this time no cleanup is performed on the StateMap.  Ideally this would be done with a hook into garbage
    // collection cycles.
 
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    auto it = prv->StateMap->find(object->ObjectID);
    if (it != prv->StateMap->end()) {
       lua_rawgeti(Lua, LUA_REGISTRYINDEX, it->second);
@@ -265,7 +265,7 @@ static int object_state(lua_State *Lua)
 
 static int object_newchild(lua_State *Lua)
 {
-   parasol::Log log("obj.child");
+   pf::Log log("obj.child");
    struct object *parent;
 
    if (!(parent = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
@@ -458,7 +458,7 @@ static int object_find_ptr(lua_State *Lua, OBJECTPTR obj)
 
 static int object_find(lua_State *Lua)
 {
-   parasol::Log log("object.find");
+   pf::Log log("object.find");
    OBJECTPTR obj;
    CSTRING object_name;
    CLASSID class_id;
@@ -543,7 +543,7 @@ static int object_class(lua_State *Lua)
 
 static int object_children(lua_State *Lua)
 {
-   parasol::Log log("obj.children");
+   pf::Log log("obj.children");
 
    log.trace("");
 
@@ -603,7 +603,7 @@ static int object_lock(lua_State *Lua)
    }
 
    if (access_object(def)) {
-      parasol::Log log("obj.lock");
+      pf::Log log("obj.lock");
       log.branch("Object: %d", def->ObjectID);
       lua_pcall(Lua, 0, 0, 0);
       release_object(def);
@@ -626,7 +626,7 @@ static int object_detach(lua_State *Lua)
       return 0;
    }
 
-   parasol::Log log("obj.detach");
+   pf::Log log("obj.detach");
    log.traceBranch("Detached: %d", def->Detached);
 
    if (!def->Detached) {
@@ -700,7 +700,7 @@ static int object_subscribe(lua_State *Lua)
       return 0;
    }
 
-   parasol::Log log("obj.subscribe");
+   pf::Log log("obj.subscribe");
    log.trace("Object: %d, Action: %s (ID %d)", def->ObjectID, action, action_id);
 
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
@@ -751,7 +751,7 @@ static int object_subscribe(lua_State *Lua)
 
 static int object_unsubscribe(lua_State *Lua)
 {
-   parasol::Log log("unsubscribe");
+   pf::Log log("unsubscribe");
 
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
@@ -830,7 +830,7 @@ static int object_delaycall(lua_State *Lua)
 
 static int object_destruct(lua_State *Lua)
 {
-   parasol::Log log("obj.destruct");
+   pf::Log log("obj.destruct");
    struct object *def;
 
    if ((def = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) {
@@ -876,7 +876,7 @@ static int object_tostring(lua_State *Lua)
 {
    struct object *def;
    if ((def = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) {
-      parasol::Log log("obj.tostring");
+      pf::Log log("obj.tostring");
       log.trace("#%d", def->ObjectID);
       lua_pushfstring(Lua, "#%d", def->ObjectID);
    }
@@ -889,7 +889,7 @@ static int object_tostring(lua_State *Lua)
 
 static int object_index(lua_State *Lua)
 {
-   parasol::Log log;
+   pf::Log log;
    struct object *def;
 
    if ((def = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) {
@@ -1070,7 +1070,7 @@ static const struct luaL_Reg objectlib_methods[] = {
 
 void register_object_class(lua_State *Lua)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.trace("Registering object interface.");
 

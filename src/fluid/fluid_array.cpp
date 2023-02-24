@@ -58,7 +58,7 @@ static int array_copy(lua_State *);
 
 void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, LONG Total, BYTE Cache)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    objScript *Self = Lua->Script;
    auto prv = (prvFluid *)Self->ChildPrivate;
 
@@ -204,7 +204,7 @@ static int array_new(lua_State *Lua)
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
    CSTRING type;
    if ((type = lua_tostring(Lua, 2))) {
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
       LONG total;
 
       log.trace("");
@@ -325,7 +325,7 @@ static int array_get(lua_State *Lua)
 {
    auto a = (struct array *)luaL_checkudata(Lua, 1, "Fluid.array");
    if (a) {
-      parasol::Log log(__FUNCTION__);
+      pf::Log log(__FUNCTION__);
       CSTRING field;
       if (lua_type(Lua, 2) IS LUA_TNUMBER) { // Array reference discovered, e.g. myarray[18]
          LONG index = lua_tonumber(Lua, 2);
@@ -582,7 +582,7 @@ static int array_len(lua_State *Lua)
 
 void register_array_class(lua_State *Lua)
 {
-   parasol::Log log;
+   pf::Log log;
 
    static const struct luaL_Reg functions[] = {
       { "new",  array_new },

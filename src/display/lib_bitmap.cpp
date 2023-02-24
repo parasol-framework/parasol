@@ -29,7 +29,7 @@ static size_t glDitherSize = 0;
 static ERROR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LONG Width, LONG Height,
    LONG SrcX, LONG SrcY, LONG DestX, LONG DestY)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    RGB16 *buf1, *buf2, *buffer;
    RGB8 brgb;
    UBYTE *srcdata, *destdata, *data;
@@ -245,7 +245,7 @@ InvalidState: The BAF_LINEAR flag was used when at least one bitmap is using a l
 
 UBYTE validate_clip(CSTRING Header, CSTRING Name, extBitmap *Bitmap)
 {
-   parasol::Log log(Header);
+   pf::Log log(Header);
 
 #ifdef DEBUG // Force break if clipping is wrong (use gdb)
    if (((Bitmap->XOffset + Bitmap->Clip.Right) > Bitmap->Width) or
@@ -294,7 +294,7 @@ UBYTE validate_clip(CSTRING Header, CSTRING Name, extBitmap *Bitmap)
 
 ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG DestX, LONG DestY)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    RGB8 pixel, src;
    UBYTE *srctable, *desttable;
    LONG i;
@@ -1199,7 +1199,7 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
           LONG Flags, LONG X, LONG Y, LONG Width, LONG Height,
           LONG XDest, LONG YDest)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    RGB8 pixel, src;
    UBYTE *srctable, *desttable;
    LONG i;
@@ -1593,7 +1593,7 @@ int(BAF) Flags: Use BAF_FILL to fill the rectangle.  Use of BAF_BLEND will enabl
 
 void gfxDrawRectangle(extBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    RGB8 pixel;
    UBYTE *data;
    UWORD *word;

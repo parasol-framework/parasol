@@ -53,11 +53,11 @@ void gen_vector_tree(extVector *Vector)
 
 void gen_vector_path(extVector *Vector)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Vector->GeneratePath) and (Vector->SubID != ID_VECTORVIEWPORT) and (Vector->SubID != ID_VECTORGROUP)) return;
 
-   parasol::SwitchContext context(Vector);
+   pf::SwitchContext context(Vector);
 
    log.traceBranch("%s: #%d, Dirty: $%.2x, ParentView: #%d", Vector->Class->ClassName, Vector->UID, Vector->Dirty, Vector->ParentView ? Vector->ParentView->UID : 0);
 
@@ -391,7 +391,7 @@ void gen_vector_path(extVector *Vector)
 
 void apply_parent_transforms(extVector *Start, agg::trans_affine &AGGTransform)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    for (auto scan=Start; scan; scan=(extVector *)get_parent(scan)) {
       if (scan->ClassID != ID_VECTOR) continue;

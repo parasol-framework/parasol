@@ -35,7 +35,7 @@ struct thread_info{
 
 static void * test_locking(struct thread_info *info)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG i;
    ERROR error;
    BYTE *memory;

@@ -36,7 +36,7 @@ class objSVG : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_SVG;
    static constexpr CSTRING CLASS_NAME = "SVG";
 
-   using create = parasol::Create<objSVG>;
+   using create = pf::Create<objSVG>;
 
    OBJECTPTR Target;    // The root Viewport that is generated during SVG initialisation can be created as a child of this target object.
    STRING    Path;      // The location of the source SVG data.

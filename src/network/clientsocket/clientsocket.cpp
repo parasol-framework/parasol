@@ -19,7 +19,7 @@ is opened by a client.  This is a very simple class that assists in the manageme
 
 static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    auto ClientSocket = (extClientSocket *)Data;
    if (!ClientSocket->Client) return;
    auto Socket = (extNetSocket *)(ClientSocket->Client->NetSocket);
@@ -32,7 +32,7 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
    ERROR error = ERR_Okay;
    if (Socket->Incoming.Type) {
       if (Socket->Incoming.Type IS CALL_STDC) {
-         parasol::SwitchContext context(Socket->Incoming.StdC.Context);
+         pf::SwitchContext context(Socket->Incoming.StdC.Context);
          auto routine = (ERROR (*)(extNetSocket *, extClientSocket *))Socket->Incoming.StdC.Routine;
          if (routine) error = routine(Socket, ClientSocket);
       }
@@ -82,7 +82,7 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
 
 static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    auto ClientSocket = (extClientSocket *)Data;
    auto Socket = (extNetSocket *)(ClientSocket->Client->NetSocket);
 
@@ -147,7 +147,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
          if (ClientSocket->Outgoing.Type IS CALL_STDC) {
             ERROR (*routine)(extNetSocket *, extClientSocket *);
             if ((routine = reinterpret_cast<ERROR (*)(extNetSocket *, extClientSocket *)>(ClientSocket->Outgoing.StdC.Routine))) {
-               parasol::SwitchContext context(ClientSocket->Outgoing.StdC.Context);
+               pf::SwitchContext context(ClientSocket->Outgoing.StdC.Context);
                error = routine(Socket, ClientSocket);
             }
          }
@@ -186,7 +186,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
 
 static ERROR CLIENTSOCKET_Free(extClientSocket *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->SocketHandle) {
 #ifdef __linux__
@@ -266,7 +266,7 @@ Failed: A permanent failure has occurred and socket has been closed.
 
 static ERROR CLIENTSOCKET_Read(extClientSocket *Self, struct acRead *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    if ((!Args) or (!Args->Buffer)) return log.error(ERR_NullArgs);
    if (Self->SocketHandle IS NOHANDLE) return log.error(ERR_Disconnected);
    Self->ReadCalled = TRUE;
@@ -304,7 +304,7 @@ AllocMemory: A message buffer could not be allocated.
 
 static ERROR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct csReadClientMsg *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.error(ERR_NullArgs);
 
@@ -432,7 +432,7 @@ software queue are governed by the #MsgLimit field setting.
 
 static ERROR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return ERR_NullArgs;
    Args->Result = 0;
@@ -481,7 +481,7 @@ OutOfRange
 
 static ERROR CLIENTSOCKET_WriteClientMsg(extClientSocket *Self, struct csWriteClientMsg *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Message) or (Args->Length < 1)) return log.error(ERR_Args);
    if ((Args->Length < 1) or (Args->Length > NETMSG_SIZE_LIMIT)) return log.error(ERR_OutOfRange);

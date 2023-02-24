@@ -118,7 +118,7 @@ static ERROR GET_Path(extCompression *Self, CSTRING *Value)
 
 static ERROR SET_Path(extCompression *Self, CSTRING Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
@@ -239,7 +239,7 @@ To support GZIP decompression, please set the WindowBits value to 47.
 
 static ERROR SET_WindowBits(extCompression *Self, LONG Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (((Value >= 8) and (Value <= 15)) or ((Value >= -15) and (Value <= -8)) or
        (Value IS 15 + 32) or (Value IS 16 + 32)) {

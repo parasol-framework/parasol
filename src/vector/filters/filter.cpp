@@ -118,7 +118,7 @@ static void compute_target_area(extVectorFilter *Self)
 
 static ERROR get_banked_bitmap(extVectorFilter *Self, objBitmap **BitmapResult)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    auto bi = Self->BankIndex;
    if (bi >= 256) return log.warning(ERR_ArrayFull);
@@ -148,11 +148,11 @@ static ERROR get_banked_bitmap(extVectorFilter *Self, objBitmap **BitmapResult)
 
 static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, UBYTE SourceType, objFilterEffect *Effect, bool Premultiply)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!BitmapResult) return log.warning(ERR_NullArgs);
 
-   parasol::SwitchContext ctx(Self);
+   pf::SwitchContext ctx(Self);
 
    log.branch("%s #%d <- ID: #%u, Type: %d", Self->ActiveEffect->Class->ClassName, Self->ActiveEffect->UID, Effect ? Effect->UID : 0, SourceType);
 
@@ -256,7 +256,7 @@ static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, 
 
 objBitmap * get_source_graphic(extVectorFilter *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Self->ClientVector) {
       log.warning("%s No ClientVector defined.", Self->ActiveEffect->Class->ClassName);
@@ -265,7 +265,7 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
 
    if (Self->Rendered) return Self->SourceGraphic; // Source bitmap already exists and drawn at the correct size.
 
-   parasol::SwitchContext ctx(Self);
+   pf::SwitchContext ctx(Self);
 
    if (!Self->SourceGraphic) {
       if (!(Self->SourceGraphic = objBitmap::create::integral(fl::Name("source_graphic"),
@@ -326,7 +326,7 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
 
 static ERROR set_clip_region(extVectorFilter *Self, extVectorViewport *Viewport, extVector *Vector)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    const DOUBLE container_width  = Viewport->vpFixedWidth;
    const DOUBLE container_height = Viewport->vpFixedHeight;
@@ -414,13 +414,13 @@ static ERROR set_clip_region(extVectorFilter *Self, extVectorViewport *Viewport,
 
 ERROR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVector *Vector, objBitmap *BkgdBitmap, objBitmap **Output)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Vector) return log.warning(ERR_NullArgs);
    if (Self->Disabled) return ERR_NothingDone;
    if (!Self->Effects) return log.warning(ERR_UndefinedField);
 
-   parasol::SwitchContext context(Self);
+   pf::SwitchContext context(Self);
 
    auto filter_name = GetName(Self);
    if ((!filter_name) or (!filter_name[0])) filter_name = "Unnamed";
@@ -497,7 +497,7 @@ Clear: Removes all filter effects.
 
 static ERROR VECTORFILTER_Clear(extVectorFilter *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.branch("");
    while (Self->Effects) acFree(Self->Effects);
@@ -525,7 +525,7 @@ static ERROR VECTORFILTER_Free(extVectorFilter *Self, APTR Void)
 
 static ERROR VECTORFILTER_Init(extVectorFilter *Self, APTR Void)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((Self->Units <= 0) or (Self->Units >= VUNIT_END)) {
       log.traceWarning("Invalid Units value of %d", Self->Units);

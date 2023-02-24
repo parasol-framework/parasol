@@ -124,7 +124,7 @@ class objHTTP : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_HTTP;
    static constexpr CSTRING CLASS_NAME = "HTTP";
 
-   using create = parasol::Create<objHTTP>;
+   using create = pf::Create<objHTTP>;
 
    DOUBLE   DataTimeout;     // The data timeout value, relevant when receiving or sending data.
    DOUBLE   ConnectTimeout;  // The initial connection timeout value, measured in seconds.

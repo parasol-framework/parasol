@@ -35,7 +35,7 @@ extern "C" void path_monitor(HOSTHANDLE, extFile *);
 
 ERROR fs_watch_path(extFile *File)
 {
-   parasol::Log log;
+   pf::Log log;
    STRING path;
    if ((path = StrClone(File->prvResolvedPath))) {
       strip_folder(path); // Remove trailing slash if there is one
@@ -73,7 +73,7 @@ ERROR fs_watch_path(extFile *File)
 
 ERROR fs_watch_path(extFile *File)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    HOSTHANDLE handle;
    LONG winflags;
    ERROR error;
@@ -107,7 +107,7 @@ ERROR fs_watch_path(extFile *File)
 void path_monitor(HOSTHANDLE FD, extFile *File)
 {
 #if 0
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    static THREADVAR BYTE recursion = FALSE; // Recursion avoidance is essential for correct queuing
    if (recursion) return;
    recursion = TRUE;
@@ -244,7 +244,7 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
 
 void path_monitor(HOSTHANDLE Handle, extFile *File)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    static THREADVAR BYTE recursion = FALSE; // Recursion avoidance is essential for correct queuing
    if ((recursion) or (!File->prvWatch)) return;
@@ -270,7 +270,7 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
          }
 
          if (File->prvWatch->Routine.StdC.Context) {
-            parasol::SwitchContext context(File->prvWatch->Routine.StdC.Context);
+            pf::SwitchContext context(File->prvWatch->Routine.StdC.Context);
 
             if (File->prvWatch->Routine.Type IS CALL_STDC) {
                routine = (ERROR (*)(extFile *, CSTRING, LARGE, LONG))File->prvWatch->Routine.StdC.Routine;
@@ -302,7 +302,7 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
    else {
       routine = (ERROR (*)(extFile *, CSTRING, LARGE, LONG))File->prvWatch->Routine.StdC.Routine;
       if (File->prvWatch->Routine.StdC.Context) {
-         parasol::SwitchContext context(File->prvWatch->Routine.StdC.Context);
+         pf::SwitchContext context(File->prvWatch->Routine.StdC.Context);
          error = routine(File, File->Path, File->prvWatch->Custom, 0);
       }
       else error = routine(File, File->Path, File->prvWatch->Custom, 0);

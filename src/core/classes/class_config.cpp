@@ -203,7 +203,7 @@ be overwritten with new values.
 
 static ERROR CONFIG_DataFeed(extConfig *Self, struct acDataFeed *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -240,7 +240,7 @@ Search
 
 static ERROR CONFIG_DeleteKey(extConfig *Self, struct cfgDeleteKey *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Group) or (!Args->Key)) return ERR_NullArgs;
 
@@ -302,7 +302,7 @@ static ERROR CONFIG_Flush(extConfig *Self, APTR Void)
 
 static ERROR CONFIG_Free(extConfig *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Flags & CNF_AUTO_SAVE) {
       if (Self->Path) {
@@ -346,7 +346,7 @@ NoData: There is no data loaded into the config object.
 
 static ERROR CONFIG_GetGroupFromIndex(extConfig *Self, struct cfgGetGroupFromIndex *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (Args->Index < 0)) return log.warning(ERR_Args);
 
@@ -361,7 +361,7 @@ static ERROR CONFIG_GetGroupFromIndex(extConfig *Self, struct cfgGetGroupFromInd
 
 static ERROR CONFIG_Init(extConfig *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Flags & CNF_NEW) return ERR_Okay; // Do not load any data even if the path is defined.
 
@@ -429,7 +429,7 @@ File: Failed to load the source file.
 
 static ERROR CONFIG_MergeFile(extConfig *Self, struct cfgMergeFile *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Path)) return log.warning(ERR_NullArgs);
 
@@ -481,7 +481,7 @@ Search: The requested configuration entry does not exist.
 
 static ERROR CONFIG_ReadValue(extConfig *Self, struct cfgReadValue *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -532,7 +532,7 @@ Search: The requested configuration entry does not exist.
 
 static ERROR CONFIG_ReadIValue(extConfig *Self, struct cfgReadValue *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -569,7 +569,7 @@ This action will save the configuration data back to its original file source (a
 
 static ERROR CONFIG_SaveSettings(extConfig *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.branch();
 
@@ -600,7 +600,7 @@ SaveToObject: Saves configuration data to an object, using standard config text 
 
 static ERROR CONFIG_SaveToObject(extConfig *Self, struct acSaveToObject *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.msg("Saving %d groups to object #%d.", (LONG)Self->Groups->size(), Args->DestID);
 
@@ -666,7 +666,7 @@ Sort: Sorts config groups into alphabetical order.
 
 static ERROR CONFIG_Sort(extConfig *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.branch("Sorting by group name.");
 
@@ -701,7 +701,7 @@ static ERROR CONFIG_SortByKey(extConfig *Self, struct cfgSortByKey *Args)
 {
    if ((!Args) or (!Args->Key)) return CONFIG_Sort(Self, NULL);  // If no args are provided then use the default Sort action instead
 
-   parasol::Log log;
+   pf::Log log;
 
    log.branch("Key: %s, Descending: %d", Args->Key, Args->Descending);
 
@@ -751,7 +751,7 @@ GetField: The Entries field could not be retrieved.
 
 static ERROR CONFIG_WriteValue(extConfig *Self, struct cfgWriteValue *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Group) or (!Args->Key)) return log.warning(ERR_NullArgs);
    if ((!Args->Group[0]) or (!Args->Key[0])) return log.warning(ERR_EmptyString);
@@ -1039,7 +1039,7 @@ static FilterConfig parse_filter(std::string Filter, bool KeyValue = false)
 
 static ERROR parse_config(extConfig *Self, CSTRING Buffer)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Buffer) return ERR_NoData;
 
@@ -1105,7 +1105,7 @@ static ERROR parse_config(extConfig *Self, CSTRING Buffer)
 
 static void apply_key_filter(extConfig *Self, CSTRING Filter)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Filter) or (!Filter[0])) return;
 
@@ -1135,7 +1135,7 @@ static void apply_key_filter(extConfig *Self, CSTRING Filter)
 
 static void apply_group_filter(extConfig *Self, CSTRING Filter)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Filter) or (!Filter[0])) return;
 

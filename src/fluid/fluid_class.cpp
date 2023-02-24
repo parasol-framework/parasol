@@ -37,7 +37,7 @@ static void dump_global_table(objScript *, STRING Global) __attribute__ ((unused
 
 static void dump_global_table(objScript *Self, STRING Global)
 {
-   parasol::Log log("print_env");
+   pf::Log log("print_env");
    lua_State *lua = ((prvFluid *)Self->ChildPrivate)->Lua;
    lua_getglobal(lua, Global);
    if (lua_istable(lua, -1) ) {
@@ -144,7 +144,7 @@ void process_error(objScript *Self, CSTRING Procedure)
       if (Self->Error <= ERR_Terminate) flags = VLF_EXTAPI; // Non-critical errors are muted to prevent log noise.
    }
 
-   parasol::Log log;
+   pf::Log log;
    CSTRING str = lua_tostring(prv->Lua, -1);
    lua_pop(prv->Lua, 1);  // pop returned value
    Self->set(FID_ErrorString, str);
@@ -173,7 +173,7 @@ void process_error(objScript *Self, CSTRING Procedure)
 
 static ERROR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *args, BYTE *Buffer)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG j;
 
    if (!args) return ERR_Okay;
@@ -242,7 +242,7 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
          LONG depth = GetResource(RES_LOG_DEPTH); // Required because thrown errors cause the debugger to lose its branch
 
          {
-            parasol::Log log;
+            pf::Log log;
 
             log.msg(VLF_BRANCH|VLF_EXTAPI, "Action notification for object #%d, action %d.  Top: %d", Object->UID, ActionID, lua_gettop(prv->Lua));
 
@@ -276,7 +276,7 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 
 static ERROR FLUID_Activate(objScript *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Self->String) or (!Self->String[0])) return log.warning(ERR_FieldNotSet);
 
@@ -292,7 +292,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
       if (error) Self->Error = error;
 
       {
-         parasol::Log log;
+         pf::Log log;
          log.traceBranch("Collecting garbage.");
          lua_gc(prv->Lua, LUA_GCCOLLECT, 0);
       }
@@ -468,7 +468,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
       // The Lua script needs to have been executed at least once in order for the procedures to be initialised and recognised.
 
       if ((Self->ActivationCount IS 1) or (reload)) {
-         parasol::Log log;
+         pf::Log log;
          log.traceBranch("Collecting functions prior to procedure call...");
 
          if (lua_pcall(prv->Lua, 0, 0, 0)) {
@@ -485,7 +485,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 failure:
 
    if (prv->Lua) {
-      parasol::Log log;
+      pf::Log log;
       log.traceBranch("Collecting garbage.");
       lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
    }
@@ -513,7 +513,7 @@ failure:
 
 static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return ERR_NullArgs;
 
@@ -583,7 +583,7 @@ restart:
       }
 
       {
-         parasol::Log log;
+         pf::Log log;
          log.traceBranch("Collecting garbage.");
          lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
       }
@@ -596,7 +596,7 @@ restart:
 
 static ERROR FLUID_DerefProcedure(objScript *Self, struct scDerefProcedure *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return ERR_NullArgs;
 
@@ -630,7 +630,7 @@ static ERROR FLUID_Free(objScript *Self, APTR Void)
 
 static ERROR FLUID_GetProcedureID(objScript *Self, struct scGetProcedureID *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Procedure) or (!Args->Procedure[0])) return log.warning(ERR_NullArgs);
 
@@ -658,7 +658,7 @@ static ERROR FLUID_GetProcedureID(objScript *Self, struct scGetProcedureID *Args
 
 static ERROR FLUID_Init(objScript *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Path) {
       if (StrCompare("*.fluid|*.fb|*.lua", Self->Path, 0, STR_WILDCARD) != ERR_Okay) {
@@ -676,7 +676,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
    ERROR error;
    BYTE compile = FALSE;
    LONG loaded_size = 0;
-   parasol::ScopedObject<objFile> src_file;
+   pf::ScopedObject<objFile> src_file;
    if ((!Self->String) and (Self->Path)) {
       LARGE src_ts, src_size;
 
@@ -798,7 +798,7 @@ usage.
 
 static ERROR FLUID_SaveToObject(objScript *Self, struct acSaveToObject *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
 
@@ -873,7 +873,7 @@ static ERROR save_binary(objScript *Self, OBJECTID FileID)
 
    return ERR_NoSupport;
 /*
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    prvFluid *prv;
    OBJECTPTR dest;
    const Proto *f;
@@ -916,7 +916,7 @@ static ERROR save_binary(objScript *Self, OBJECTID FileID)
 
 static ERROR run_script(objScript *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    auto prv = (prvFluid *)Self->ChildPrivate;
 
@@ -1090,7 +1090,7 @@ static ERROR run_script(objScript *Self)
 
 static ERROR register_interfaces(objScript *Self)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.traceBranch("Registering Parasol and Fluid interfaces with Lua.");
 

@@ -129,7 +129,7 @@ UnsupportedOwner: The definition is not owned by the scene.
 
 static ERROR VECTORSCENE_AddDef(extVectorScene *Self, struct scAddDef *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Name) or (!Args->Def)) return log.warning(ERR_NullArgs);
 
@@ -194,7 +194,7 @@ Okay:
 
 static ERROR VECTORSCENE_Debug(extVectorScene *Self, APTR Void)
 {
-   parasol::Log log("debug_tree");
+   pf::Log log("debug_tree");
 
    ChildEntry list[128];
    LONG count = ARRAYSIZE(list);
@@ -232,7 +232,7 @@ FieldNotSet: The Bitmap field is NULL.
 
 static ERROR VECTORSCENE_Draw(extVectorScene *Self, struct acDraw *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    objBitmap *bmp;
 
    if (!(bmp = Self->Bitmap)) return log.warning(ERR_FieldNotSet);
@@ -299,7 +299,7 @@ Search: A definition with the given Name was not found.
 
 static ERROR VECTORSCENE_FindDef(extVectorScene *Self, struct scFindDef *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
 
@@ -364,7 +364,7 @@ static ERROR VECTORSCENE_Init(extVectorScene *Self, APTR Void)
    // match the width and height of the surface at all times when in this mode.
 
    if (Self->SurfaceID) {
-      parasol::ScopedObjectLock<objSurface> surface(Self->SurfaceID, 5000);
+      pf::ScopedObjectLock<objSurface> surface(Self->SurfaceID, 5000);
       if (surface.granted()) {
          auto callback = make_function_stdc(render_to_surface);
          struct drwAddCallback args = { &callback };
@@ -713,7 +713,7 @@ void apply_focus(extVectorScene *Scene, extVector *Vector)
       }
 
       if ((no_focus) or (lost_focus_to_child) or (was_child_now_primary)) {
-         parasol::ScopedObjectLock<extVector> vec(fgv, 1000);
+         pf::ScopedObjectLock<extVector> vec(fgv, 1000);
          if (vec.granted()) {
             send_feedback((extVector *)fgv, focus_event);
             focus_event = FM_CHILD_HAS_FOCUS;
@@ -725,7 +725,7 @@ void apply_focus(extVectorScene *Scene, extVector *Vector)
 
    for (auto const fv : glFocusList) {
       if (std::find(focus_gained.begin(), focus_gained.end(), fv) IS focus_gained.end()) {
-         parasol::ScopedObjectLock<extVector> vec(fv, 1000);
+         pf::ScopedObjectLock<extVector> vec(fv, 1000);
          if (vec.granted()) send_feedback(fv, FM_LOST_FOCUS);
       }
       else break;
@@ -800,7 +800,7 @@ static void process_resize_msgs(extVectorScene *Self)
             auto vector = sub.first;
             auto func   = sub.second;
             if (func.Type IS CALL_STDC) {
-               parasol::SwitchContext ctx(func.StdC.Context);
+               pf::SwitchContext ctx(func.StdC.Context);
                auto callback = (ERROR (*)(extVectorViewport *, objVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE))func.StdC.Routine;
                result = callback(view, vector, view->FinalX, view->FinalY, view->vpFixedWidth, view->vpFixedHeight);
             }
@@ -831,7 +831,7 @@ static ERROR vector_keyboard_events(extVector *Vector, const evKey *Event)
       ERROR result;
       auto &sub = *it;
       if (sub.Callback.Type IS CALL_STDC) {
-         parasol::SwitchContext ctx(sub.Callback.StdC.Context);
+         pf::SwitchContext ctx(sub.Callback.StdC.Context);
          auto callback = (ERROR (*)(objVector *, LONG, LONG, LONG))sub.Callback.StdC.Routine;
          result = callback(Vector, Event->Qualifiers, Event->Code, Event->Unicode);
       }
@@ -909,7 +909,7 @@ static void scene_key_event(extVectorScene *Self, evKey *Event, LONG Size)
 
 static void send_input_events(extVector *Vector, InputEvent *Event)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (!Vector->InputSubscriptions) return;
 
@@ -920,7 +920,7 @@ static void send_input_events(extVector *Vector, InputEvent *Event)
       else if (sub.Mask & Event->Mask) {
          ERROR result;
          if (sub.Callback.Type IS CALL_STDC) {
-            parasol::SwitchContext ctx(sub.Callback.StdC.Context);
+            pf::SwitchContext ctx(sub.Callback.StdC.Context);
             auto callback = (ERROR (*)(objVector *, InputEvent *))sub.Callback.StdC.Routine;
             result = callback(Vector, Event);
          }
@@ -1010,7 +1010,7 @@ static void send_wheel_event(extVectorScene *Scene, extVector *Vector, const Inp
 
 ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    auto Self = (extVectorScene *)CurrentContext();
    if (!Self->SurfaceID) return ERR_Okay;
@@ -1035,13 +1035,13 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 
       if (input->Type IS JET_WHEEL) {
          if (Self->ActiveVector) {
-            parasol::ScopedObjectLock<extVector> lock(Self->ActiveVector);
+            pf::ScopedObjectLock<extVector> lock(Self->ActiveVector);
             if (lock.granted()) send_wheel_event(Self, lock.obj, input);
          }
       }
       else if (input->Type IS JET_LEFT_SURFACE) {
          if (Self->ActiveVector) {
-            parasol::ScopedObjectLock<extVector> lock(Self->ActiveVector);
+            pf::ScopedObjectLock<extVector> lock(Self->ActiveVector);
             if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
          }
       }
@@ -1050,7 +1050,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
          OBJECTID target = Self->ButtonLock ? Self->ButtonLock : Self->ActiveVector;
 
          if (target) {
-            parasol::ScopedObjectLock<extVector> lock(target);
+            pf::ScopedObjectLock<extVector> lock(target);
             if (lock.granted()) {
                InputEvent event = *input;
                event.Next = NULL;
@@ -1086,7 +1086,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
                if (!in_bounds) continue;
             }
 
-            parasol::ScopedObjectLock<extVector> lock(bounds.VectorID);
+            pf::ScopedObjectLock<extVector> lock(bounds.VectorID);
             if (!lock.granted()) continue;
             auto vector = lock.obj;
 
@@ -1117,7 +1117,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 
                if (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
                   if ((Self->ActiveVector) and (Self->ActiveVector != vector->UID)) {
-                     parasol::ScopedObjectLock<extVector> lock(Self->ActiveVector);
+                     pf::ScopedObjectLock<extVector> lock(Self->ActiveVector);
                      if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
                   }
 
@@ -1137,7 +1137,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
          // cursor left its area.
 
          if ((Self->ActiveVector) and (!processed)) {
-            parasol::ScopedObjectLock<extVector> lock(Self->ActiveVector);
+            pf::ScopedObjectLock<extVector> lock(Self->ActiveVector);
             Self->ActiveVector = 0;
             if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
          }
@@ -1147,7 +1147,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 
    if ((cursor != -1) and (!Self->ButtonLock) and (Self->SurfaceID)) {
       Self->Cursor = cursor;
-      parasol::ScopedObjectLock<objSurface> lock(Self->SurfaceID);
+      pf::ScopedObjectLock<objSurface> lock(Self->SurfaceID);
       if (lock.granted() and (lock.obj->Cursor != Self->Cursor)) {
          lock.obj->set(FID_Cursor, cursor);
       }

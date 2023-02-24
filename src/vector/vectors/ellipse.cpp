@@ -13,7 +13,7 @@ class extVectorEllipse : public extVector {
    public:
    static constexpr CLASSID CLASS_ID = ID_VECTORELLIPSE;
    static constexpr CSTRING CLASS_NAME = "VectorEllipse";
-   using create = parasol::Create<extVectorEllipse>;
+   using create = pf::Create<extVectorEllipse>;
 
    DOUBLE eCX, eCY;
    DOUBLE eRadiusX, eRadiusY;

@@ -134,7 +134,7 @@ public:
    };
 
    objBitmap * get_bitmap(LONG Width, LONG Height, ClipRectangle &Clip, bool Debug) {
-      parasol::Log log;
+      pf::Log log;
 
       if (Width < Clip.Right) Width = Clip.Right;
       if (Height < Clip.Bottom) Height = Clip.Bottom;
@@ -219,7 +219,7 @@ class objVectorTransition : public BaseClass {
 
 class extVectorGradient : public objVectorGradient {
    public:
-   using create = parasol::Create<extVectorGradient>;
+   using create = pf::Create<extVectorGradient>;
 
    struct GradientStop *Stops;  // An array of gradient stop colours.
    struct VectorMatrix *Matrices;
@@ -231,7 +231,7 @@ class extVectorGradient : public objVectorGradient {
 
 class extVectorPattern : public objVectorPattern {
    public:
-   using create = parasol::Create<extVectorPattern>;
+   using create = pf::Create<extVectorPattern>;
 
    struct VectorMatrix *Matrices;
    extVectorViewport *Viewport;
@@ -240,7 +240,7 @@ class extVectorPattern : public objVectorPattern {
 
 class extVectorFilter : public objVectorFilter {
    public:
-   using create = parasol::Create<extVectorFilter>;
+   using create = pf::Create<extVectorFilter>;
 
    extVector *ClientVector;            // Client vector or viewport supplied by Scene.acDraw()
    extVectorViewport *ClientViewport;  // The nearest viewport containing the vector.
@@ -262,7 +262,7 @@ class extVectorFilter : public objVectorFilter {
 
 class extFilterEffect : public objFilterEffect {
    public:
-   using create = parasol::Create<extFilterEffect>;
+   using create = pf::Create<extFilterEffect>;
 
    extVectorFilter *Filter; // Direct reference to the parent filter
    UWORD UsageCount;        // Total number of other effects utilising this effect to build a pipeline
@@ -270,7 +270,7 @@ class extFilterEffect : public objFilterEffect {
 
 class extVector : public objVector {
    public:
-   using create = parasol::Create<extVector>;
+   using create = pf::Create<extVector>;
 
    DOUBLE FinalX, FinalY;
    DOUBLE BX1, BY1, BX2, BY2;
@@ -330,7 +330,7 @@ __inline__ bool TabOrderedVector::operator()(const extVector *a, const extVector
 
 class extVectorScene : public objVectorScene {
    public:
-   using create = parasol::Create<extVectorScene>;
+   using create = pf::Create<extVectorScene>;
 
    DOUBLE ActiveVectorX, ActiveVectorY; // X,Y location of the active vector.
    class VMAdaptor *Adaptor; // Drawing adaptor, targeted to bitmap pixel type
@@ -355,7 +355,7 @@ class extVectorViewport : public extVector {
    public:
    static constexpr CLASSID CLASS_ID = ID_VECTORVIEWPORT;
    static constexpr CSTRING CLASS_NAME = "VectorViewport";
-   using create = parasol::Create<extVectorViewport>;
+   using create = pf::Create<extVectorViewport>;
 
    FUNCTION vpDragCallback;
    DOUBLE vpViewX, vpViewY, vpViewWidth, vpViewHeight;     // Viewbox values determine the area of the SVG content that is being sourced.  These values are always fixed pixel units.
@@ -377,7 +377,7 @@ class extVectorPoly : public extVector {
    public:
    static constexpr CLASSID CLASS_ID = ID_VECTORPOLYGON;
    static constexpr CSTRING CLASS_NAME = "VectorPolygon";
-   using create = parasol::Create<extVectorPoly>;
+   using create = pf::Create<extVectorPoly>;
 
    struct VectorPoint *Points;
    LONG TotalPoints;
@@ -388,7 +388,7 @@ class extVectorPath : public extVector {
    public:
    static constexpr CLASSID CLASS_ID = ID_VECTORPATH;
    static constexpr CSTRING CLASS_NAME = "VectorPath";
-   using create = parasol::Create<extVectorPath>;
+   using create = pf::Create<extVectorPath>;
 
    std::vector<PathCommand> Commands;
    agg::path_storage *CustomPath;
@@ -398,7 +398,7 @@ class extVectorRectangle : public extVector {
    public:
    static constexpr CLASSID CLASS_ID = ID_VECTORRECTANGLE;
    static constexpr CSTRING CLASS_NAME = "VectorRectangle";
-   using create = parasol::Create<extVectorRectangle>;
+   using create = pf::Create<extVectorRectangle>;
 
    DOUBLE rX, rY;
    DOUBLE rWidth, rHeight;
@@ -418,7 +418,7 @@ class extVectorClip : public extVector {
    public:
    static constexpr CLASSID CLASS_ID = ID_VECTORCLIP;
    static constexpr CSTRING CLASS_NAME = "VectorClip";
-   using create = parasol::Create<extVectorClip>;
+   using create = pf::Create<extVectorClip>;
 
    UBYTE *ClipData;
    agg::path_storage *ClipPath; // Internally generated path

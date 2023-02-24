@@ -121,7 +121,7 @@ Args:
 
 static ERROR SCRIPT_Callback(objScript *Self, struct scCallback *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
    if ((Args->TotalArgs < 0) or (Args->TotalArgs > 1024)) return log.warning(ERR_Args);
@@ -222,7 +222,7 @@ Args: The TotalArgs value is invalid.
 
 static ERROR SCRIPT_Exec(objScript *Self, struct scExec *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
    if ((Args->TotalArgs < 0) or (Args->TotalArgs > 32)) return log.warning(ERR_Args);
@@ -293,7 +293,7 @@ NullArgs
 
 static ERROR SCRIPT_GetProcedureID(objScript *Self, struct scGetProcedureID *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Procedure) or (!Args->Procedure[0])) return log.warning(ERR_NullArgs);
    Args->ProcedureID = StrHash(Args->Procedure, 0);
@@ -308,7 +308,7 @@ GetVar: Script parameters can be retrieved through this action.
 
 static ERROR SCRIPT_GetVar(objScript *Self, struct acGetVar *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Buffer) or (!Args->Field)) return ERR_NullArgs;
    if (Args->Size < 2) return log.warning(ERR_Args);
@@ -329,7 +329,7 @@ static ERROR SCRIPT_GetVar(objScript *Self, struct acGetVar *Args)
 
 static ERROR SCRIPT_Init(objScript *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Self->TargetID) { // Define the target if it has not been set already
       log.debug("Target not set, defaulting to owner #%d.", Self->ownerID());
@@ -376,7 +376,7 @@ SetVar: Script parameters can be set through this action.
 
 static ERROR SCRIPT_SetVar(objScript *Self, struct acSetVar *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    // It is acceptable to set zero-length string values (this has its uses in some scripts).
 
@@ -631,7 +631,7 @@ static ERROR GET_Owner(objScript *Self, OBJECTID *Value)
 
 static ERROR SET_Owner(objScript *Self, OBJECTID Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Value) {
       OBJECTPTR newowner;
@@ -700,7 +700,7 @@ static ERROR GET_Results(objScript *Self, STRING **Value, LONG *Elements)
 
 static ERROR SET_Results(objScript *Self, CSTRING *Value, LONG Elements)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Results) { FreeResource(Self->Results); Self->Results = 0; }
 
@@ -784,7 +784,7 @@ PRIVATE: Variables
 static ERROR GET_Variables(objScript *Self, KeyStore **Value)
 {
    if (!Self->Vars) {
-      parasol::SwitchContext ctx(Self);
+      pf::SwitchContext ctx(Self);
       Self->Vars = VarNew(0, 0);
       if (!Self->Vars) return ERR_AllocMemory;
    }
@@ -811,7 +811,7 @@ You can manually change the working path by setting this field with a custom str
 
 static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    // The working path is determined when the first attempt to read it is made.
 
@@ -842,7 +842,7 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
 
       STRING workingpath;
       if (path) { // Extract absolute path
-         parasol::SwitchContext ctx(Self);
+         pf::SwitchContext ctx(Self);
          char save = Self->Path[j];
          Self->Path[j] = 0;
          Self->WorkingPath = StrClone(Self->Path);
@@ -861,7 +861,7 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
          }
          else snprintf(buf, sizeof(buf), "%s", workingpath);
 
-         parasol::SwitchContext ctx(Self);
+         pf::SwitchContext ctx(Self);
          if (ResolvePath(buf, RSF_APPROXIMATE, &Self->WorkingPath) != ERR_Okay) {
             Self->WorkingPath = StrClone(workingpath);
          }

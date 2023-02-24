@@ -273,7 +273,7 @@ static const UBYTE glTail[TAIL_LENGTH] = {
 
 ERROR convert_zip_error(struct z_stream_s *Stream, LONG Result)
 {
-   parasol::Log log;
+   pf::Log log;
 
    ERROR error;
    switch(Result) {
@@ -333,7 +333,7 @@ BufferOverflow: The output buffer is not large enough.
 
 static ERROR COMPRESSION_CompressBuffer(extCompression *Self, struct cmpCompressBuffer *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Input) or (Args->InputSize <= 0) or (!Args->Output) or (Args->OutputSize <= 8)) {
       return log.warning(ERR_Args);
@@ -383,7 +383,7 @@ Failed: Failed to initialise the decompression process.
 
 static ERROR COMPRESSION_CompressStreamStart(extCompression *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Deflating) {
       deflateEnd(&Self->DeflateStream);
@@ -479,7 +479,7 @@ Retry: Please recall the method using a larger output buffer.
 
 static ERROR COMPRESSION_CompressStream(extCompression *Self, struct cmpCompressStream *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Input) or (!Args->Callback)) return log.warning(ERR_NullArgs);
 
@@ -534,7 +534,7 @@ static ERROR COMPRESSION_CompressStream(extCompression *Self, struct cmpCompress
          log.trace("%d bytes (total %" PF64 ") were compressed.", len, Self->TotalOutput);
 
          if (Args->Callback->Type IS CALL_STDC) {
-            parasol::SwitchContext context(Args->Callback->StdC.Context);
+            pf::SwitchContext context(Args->Callback->StdC.Context);
             auto routine = (ERROR (*)(extCompression *, APTR, LONG))Args->Callback->StdC.Routine;
             error = routine(Self, output, len);
          }
@@ -592,7 +592,7 @@ BufferOverflow: The supplied Output buffer is not large enough (check the MinOut
 
 static ERROR COMPRESSION_CompressStreamEnd(extCompression *Self, struct cmpCompressStreamEnd *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
    if (!Self->Deflating) return ERR_Okay;
@@ -628,7 +628,7 @@ static ERROR COMPRESSION_CompressStreamEnd(extCompression *Self, struct cmpCompr
       Self->TotalOutput += outputsize - Self->DeflateStream.avail_out;
 
       if (Args->Callback->Type IS CALL_STDC) {
-         parasol::SwitchContext context(Args->Callback->StdC.Context);
+         pf::SwitchContext context(Args->Callback->StdC.Context);
          auto routine = (ERROR (*)(extCompression *, APTR, LONG))Args->Callback->StdC.Routine;
          error = routine(Self, output, outputsize - Self->DeflateStream.avail_out);
       }
@@ -682,7 +682,7 @@ Failed: Failed to initialise the decompression process.
 
 static ERROR COMPRESSION_DecompressStreamStart(extCompression *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Inflating) { inflateEnd(&Self->InflateStream); Self->Inflating = false; }
 
@@ -737,7 +737,7 @@ BufferOverflow: The output buffer is not large enough.
 
 static ERROR COMPRESSION_DecompressStream(extCompression *Self, struct cmpDecompressStream *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Input) or (!Args->Callback)) return log.warning(ERR_NullArgs);
    if (!Self->Inflating) return ERR_Okay; // Decompression is complete
@@ -785,7 +785,7 @@ static ERROR COMPRESSION_DecompressStream(extCompression *Self, struct cmpDecomp
       LONG len = outputsize - Self->InflateStream.avail_out;
       if (len > 0) {
          if (Args->Callback->Type IS CALL_STDC) {
-            parasol::SwitchContext context(Args->Callback->StdC.Context);
+            pf::SwitchContext context(Args->Callback->StdC.Context);
             auto routine = (ERROR (*)(extCompression *, APTR, LONG))Args->Callback->StdC.Routine;
             error = routine(Self, output, len);
          }
@@ -840,7 +840,7 @@ NullArgs
 
 static ERROR COMPRESSION_DecompressStreamEnd(extCompression *Self, struct cmpDecompressStreamEnd *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Self->Inflating) return ERR_Okay; // If not inflating, not a problem
 
@@ -884,7 +884,7 @@ NoSupport: The sub-class does not support this method.
 
 static ERROR COMPRESSION_CompressFile(extCompression *Self, struct cmpCompressFile *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Location) or (!*Args->Location)) return log.warning(ERR_NullArgs);
    if (!Self->FileIO) return log.warning(ERR_MissingPath);
@@ -1026,7 +1026,7 @@ BufferOverflow: The output buffer is not large enough to hold the decompressed i
 
 static ERROR COMPRESSION_DecompressBuffer(extCompression *Self, struct cmpDecompressBuffer *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Input) or (!Args->Output) or (Args->OutputSize <= 0)) {
       return log.warning(ERR_NullArgs);
@@ -1091,7 +1091,7 @@ Failed
 
 static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompressFile *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Files.empty()) return ERR_NoData;
 
@@ -1474,7 +1474,7 @@ Failed
 
 static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecompressObject *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Path) or (!Args->Path[0])) return log.warning(ERR_NullArgs);
    if (!Args->Object) return log.warning(ERR_NullArgs);
@@ -1682,7 +1682,7 @@ static THREADVAR CompressedItem glFindMeta;
 
 static ERROR COMPRESSION_Find(extCompression *Self, struct cmpFind *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Path)) return log.warning(ERR_NullArgs);
    if (Self->SubID) return ERR_NoSupport;
@@ -1777,7 +1777,7 @@ static ERROR COMPRESSION_Free(extCompression *Self, APTR Void)
 
 static ERROR COMPRESSION_Init(extCompression *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    STRING path;
 
    Self->get(FID_Path, &path);
@@ -1809,7 +1809,7 @@ static ERROR COMPRESSION_Init(extCompression *Self, APTR Void)
       bool exists = ((!AnalysePath(path, &type)) and (type IS LOC_FILE));
 
       if (exists) {
-         parasol::Create<objFile> file({
+         pf::Create<objFile> file({
             fl::Path(path),
             fl::Flags(FL_READ|FL_APPROXIMATE|((Self->Flags & CMF_READ_ONLY) ? 0 : FL_WRITE))
          }, NF::INTEGRAL);
@@ -1878,7 +1878,7 @@ static ERROR COMPRESSION_Init(extCompression *Self, APTR Void)
 
 static ERROR COMPRESSION_NewObject(extCompression *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    new (Self) extCompression;
 
@@ -1922,7 +1922,7 @@ NoSupport
 
 static ERROR COMPRESSION_RemoveFile(extCompression *Self, struct cmpRemoveFile *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Path)) return log.warning(ERR_NullArgs);
 
@@ -1982,7 +1982,7 @@ NullArgs
 
 static ERROR COMPRESSION_Scan(extCompression *Self, struct cmpScan *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
 
@@ -2030,7 +2030,7 @@ static ERROR COMPRESSION_Scan(extCompression *Self, struct cmpScan *Args)
 
       {
          if (Args->Callback->Type IS CALL_STDC) {
-            parasol::SwitchContext context(Args->Callback->StdC.Context);
+            pf::SwitchContext context(Args->Callback->StdC.Context);
             auto routine = (ERROR (*)(extCompression *, CompressedItem *))Args->Callback->StdC.Routine;
             error = routine(Self, &meta);
          }

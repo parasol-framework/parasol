@@ -52,7 +52,7 @@ Read
 
 ERROR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    LONG i, bytes_read;
    #define HEADER_SIZE 80
 

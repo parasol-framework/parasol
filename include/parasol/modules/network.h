@@ -136,7 +136,7 @@ class objClientSocket : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_CLIENTSOCKET;
    static constexpr CSTRING CLASS_NAME = "ClientSocket";
 
-   using create = parasol::Create<objClientSocket>;
+   using create = pf::Create<objClientSocket>;
 
    LARGE    ConnectTime;         // System time for the creation of this socket
    objClientSocket * Prev;       // Previous socket in the chain
@@ -216,7 +216,7 @@ class objProxy : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_PROXY;
    static constexpr CSTRING CLASS_NAME = "Proxy";
 
-   using create = parasol::Create<objProxy>;
+   using create = pf::Create<objProxy>;
 
    STRING NetworkFilter;    // The name of the network that the proxy is limited to.
    STRING GatewayFilter;    // The IP address of the gateway that the proxy is limited to.
@@ -280,7 +280,7 @@ class objNetLookup : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_NETLOOKUP;
    static constexpr CSTRING CLASS_NAME = "NetLookup";
 
-   using create = parasol::Create<objNetLookup>;
+   using create = pf::Create<objNetLookup>;
 
    LARGE UserData;    // Optional user data storage
    LONG  Flags;       // Optional flags
@@ -351,7 +351,7 @@ class objNetSocket : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_NETSOCKET;
    static constexpr CSTRING CLASS_NAME = "NetSocket";
 
-   using create = parasol::Create<objNetSocket>;
+   using create = pf::Create<objNetSocket>;
 
    struct NetClient * Clients;    // For server sockets, lists all clients connected to the server.
    APTR   UserData;               // A user-defined pointer that can be useful in action notify events.

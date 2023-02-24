@@ -44,7 +44,7 @@ Short: Renders the vector clipping shape(s) to an internal buffer.
 
 static ERROR CLIP_Draw(extVectorClip *Self, struct acDraw *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    // Calculate the bounds of all the paths defined and contained by the clip object
 
@@ -141,7 +141,7 @@ static ERROR CLIP_Free(extVectorClip *Self, APTR Void)
 
 static ERROR CLIP_Init(extVectorClip *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((Self->ClipUnits <= 0) or (Self->ClipUnits >= VUNIT_END)) {
       log.traceWarning("Invalid Units value of %d", Self->ClipUnits);
@@ -177,7 +177,7 @@ string.
 
 static ERROR CLIP_SET_Transform(extVectorClip *Self, CSTRING Commands)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Commands) return log.warning(ERR_InvalidValue);
 

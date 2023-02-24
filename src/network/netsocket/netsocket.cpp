@@ -127,7 +127,7 @@ static void connect_name_resolved(extNetSocket *, ERROR, CSTRING, IPAddress *, L
 
 static ERROR NETSOCKET_Connect(extNetSocket *Self, struct nsConnect *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Address) or (Args->Port <= 0) or (Args->Port >= 65536)) return log.warning(ERR_Args);
 
@@ -180,7 +180,7 @@ static void connect_name_resolved_nl(objNetLookup *NetLookup, ERROR Error, CSTRI
 
 static void connect_name_resolved(extNetSocket *Socket, ERROR Error, CSTRING HostName, IPAddress *IPs, LONG TotalIPs)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    struct sockaddr_in server_address;
 
    if (Error != ERR_Okay) {
@@ -243,7 +243,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERROR Error, CSTRING Hos
 
 static ERROR NETSOCKET_DataFeed(extNetSocket *Self, struct acDataFeed *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -265,7 +265,7 @@ Failed: Shutdown operation failed.
 
 static ERROR NETSOCKET_Disable(extNetSocket *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.trace("");
 
@@ -365,7 +365,7 @@ static ERROR NETSOCKET_Free(extNetSocket *Self, APTR Void)
 
 static ERROR NETSOCKET_FreeWarning(extNetSocket *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->InUse) {
       if (!Self->Terminating) { // Check terminating state to prevent flooding of the message queue
@@ -399,7 +399,7 @@ Failed
 
 static ERROR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct nsGetLocalIPAddress *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    log.traceBranch("");
 
@@ -432,7 +432,7 @@ static ERROR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct nsGetLocalIP
 
 static ERROR NETSOCKET_Init(extNetSocket *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    ERROR error;
 
    if (Self->SocketHandle != (SOCKET_HANDLE)-1) return ERR_Okay; // The socket has been pre-configured by the developer
@@ -600,7 +600,7 @@ Failed: A permanent failure has occurred and socket has been closed.
 
 static ERROR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
 
@@ -656,7 +656,7 @@ AllocMemory: A message buffer could not be allocated.
 
 static ERROR NETSOCKET_ReadMsg(extNetSocket *Self, struct nsReadMsg *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -794,7 +794,7 @@ and automatically send it once the first connection has been made.
 
 static ERROR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return ERR_NullArgs;
 
@@ -866,7 +866,7 @@ OutOfRange
 
 static ERROR NETSOCKET_WriteMsg(extNetSocket *Self, struct nsWriteMsg *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((!Args) or (!Args->Message) or (Args->Length < 1)) return log.warning(ERR_Args);
    if ((Args->Length < 1) or (Args->Length > NETMSG_SIZE_LIMIT)) return log.warning(ERR_OutOfRange);
@@ -1058,7 +1058,7 @@ static ERROR GET_Outgoing(extNetSocket *Self, FUNCTION **Value)
 
 static ERROR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Flags & NSF_SERVER) {
       return log.warning(ERR_NoSupport);
@@ -1146,7 +1146,7 @@ State: The current connection state of the netsocket object.
 
 static ERROR SET_State(extNetSocket *Self, LONG Value)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Value != Self->State) {
       if (Self->Flags & NSF_DEBUG) log.msg("State changed from %d to %d", Self->State, Value);
@@ -1168,7 +1168,7 @@ static ERROR SET_State(extNetSocket *Self, LONG Value)
          log.traceBranch("Reporting state change to subscriber, operation %d, context %p.", Self->State, Self->Feedback.StdC.Context);
 
          if (Self->Feedback.Type IS CALL_STDC) {
-            parasol::SwitchContext context(Self->Feedback.StdC.Context);
+            pf::SwitchContext context(Self->Feedback.StdC.Context);
             auto routine = (void (*)(extNetSocket *, objClientSocket *, LONG))Self->Feedback.StdC.Routine;
             if (routine) routine(Self, NULL, Self->State);
          }
@@ -1246,7 +1246,7 @@ static ERROR GET_ValidCert(extNetSocket *Self, LONG *Value)
 
 static void free_socket(extNetSocket *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.branch("Handle: %d", Self->SocketHandle);
 
@@ -1286,7 +1286,7 @@ static void free_socket(extNetSocket *Self)
 
 static ERROR write_queue(extNetSocket *Self, NetQueue *Queue, CPTR Message, LONG Length)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("Queuing a socket message of %d bytes.", Length);
 
@@ -1342,7 +1342,7 @@ static ERROR write_queue(extNetSocket *Self, NetQueue *Queue, CPTR Message, LONG
 #ifdef _WIN32
 void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, LONG Message, ERROR Error)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    extNetSocket *Socket;
    objClientSocket *ClientSocket;
@@ -1361,7 +1361,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, LONG 
    log.traceBranch("[%d:%d:%p], %s, Error %d, InUse: %d, WinRecursion: %d", Socket->UID, SocketHandle, ClientSocket, msg[Message], Error, Socket->InUse, Socket->WinRecursion);
    #endif
 
-   parasol::SwitchContext context(Socket);
+   pf::SwitchContext context(Socket);
 
    Socket->InUse++;
 

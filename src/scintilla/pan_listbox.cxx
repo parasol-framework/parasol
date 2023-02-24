@@ -51,7 +51,7 @@ private:
 
 ListBoxImp::ListBoxImp()
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.branch();
 
    menu = NULL;
@@ -59,7 +59,7 @@ ListBoxImp::ListBoxImp()
 
 ListBoxImp::~ListBoxImp()
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    log.branch();
 
    if (menu) {
@@ -76,7 +76,7 @@ Scintilla::ListBox * Scintilla::ListBox::Allocate()
 
 void ListBoxImp::Create(Scintilla::Window &Window, int, Scintilla::Point, int, bool)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    OBJECTID surface_id = getSurfaceID(&Window);
 

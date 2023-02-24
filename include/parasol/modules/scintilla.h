@@ -147,7 +147,7 @@ class objScintilla : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_SCINTILLA;
    static constexpr CSTRING CLASS_NAME = "Scintilla";
 
-   using create = parasol::Create<objScintilla>;
+   using create = pf::Create<objScintilla>;
 
    LARGE     EventFlags;         // Specifies events that need to be reported from the Scintilla object.
    objFont * Font;               // Refers to the font that is used for drawing text in the document.
@@ -250,7 +250,7 @@ class objScintillaSearch : public BaseClass {
    static constexpr CLASSID CLASS_ID = ID_SCINTILLASEARCH;
    static constexpr CSTRING CLASS_NAME = "ScintillaSearch";
 
-   using create = parasol::Create<objScintillaSearch>;
+   using create = pf::Create<objScintillaSearch>;
 
    objScintilla * Scintilla;    // Targets a Scintilla object for searching.
    CSTRING Text;                // The string sequence to search for.

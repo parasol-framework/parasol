@@ -1,7 +1,7 @@
 
 static ERROR count_tags(extXML *Self, CSTRING Text, CSTRING *Result)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (*Text != '<') {
       log.warning("Malformed XML statement detected.");
@@ -157,7 +157,7 @@ static ERROR count_tags(extXML *Self, CSTRING Text, CSTRING *Result)
 
 static ERROR txt_to_xml(extXML *Self, CSTRING Text)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if ((!Self) or (!Text)) return ERR_NullArgs;
 
@@ -369,7 +369,7 @@ static CSTRING extract_tag_attrib(extXML *Self, CSTRING Str, LONG *AttribSize, W
 
 static ERROR extract_tag(extXML *Self, exttag *Status)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("Index: %d, Level: %d, %.30s", Status->TagIndex, Status->Branch, Status->Pos);
 
@@ -676,7 +676,7 @@ static ERROR extract_tag(extXML *Self, exttag *Status)
 
 static ERROR extract_content(extXML *Self, exttag *Status)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    XMLTag *tag;
    STRING buffer;
    LONG i, len;
@@ -822,7 +822,7 @@ static LONG content_output(CSTRING String, STRING Output)
 
 XMLTag * build_xml_string(XMLTag *Tag, STRING Buffer, LONG Flags, LONG *Offset)
 {
-   parasol::Log log("build_xml");
+   pf::Log log("build_xml");
    XMLTag *xmltag;
 
    log.traceBranch("Index: %d, CurrentLength: %d", Tag->Index, *Offset);
@@ -903,7 +903,7 @@ XMLTag * build_xml_string(XMLTag *Tag, STRING Buffer, LONG Flags, LONG *Offset)
 
 XMLTag * len_xml_str(XMLTag *Tag, LONG Flags, LONG *Length)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    log.traceBranch("Index: %d, CurrentLength: %d", Tag->Index, *Length);
 
@@ -1107,7 +1107,7 @@ static ERROR find_tag2(extXML *Self, XMLTag **Tag, CSTRING XPath, CSTRING *Attri
 
 static XMLTag * find_tag(extXML *Self, XMLTag *Tag, CSTRING XPath, CSTRING *Attrib, FUNCTION *Callback)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (Attrib) *Attrib = NULL;
 
@@ -1127,7 +1127,7 @@ static XMLTag * find_tag(extXML *Self, XMLTag *Tag, CSTRING XPath, CSTRING *Attr
 
 static ERROR find_tag2(extXML *Self, XMLTag **Tag, CSTRING XPath, CSTRING *Attrib, FUNCTION *Callback)
 {
-   parasol::Log log("find_tag");
+   pf::Log log("find_tag");
    char tagname[120];
    CSTRING filter_attrib_name;
    LONG pos, subscript, i, filter_attrib_name_len, filter_attrib_value_len, filter_attrib_svalue, attribwild, j;
@@ -1483,7 +1483,7 @@ parse_error:
 
 static ERROR parse_source(extXML *Self)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
    CacheFile *filecache;
 
    log.traceBranch("");
@@ -1551,7 +1551,7 @@ static ERROR get_content(extXML *Self, XMLTag *Tag, STRING Buffer, LONG Size)
       }
 
       if (j >= Size) {
-         parasol::Log log(__FUNCTION__);
+         pf::Log log(__FUNCTION__);
          return log.warning(ERR_BufferOverflow);
       }
    }

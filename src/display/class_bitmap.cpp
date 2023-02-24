@@ -278,7 +278,7 @@ CreateObject: A Compression object could not be created.
 
 static ERROR BITMAP_Compress(extBitmap *Self, struct bmpCompress *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -362,7 +362,7 @@ InvalidDimension: The clipping region is invalid.
 
 ERROR BITMAP_ConvertToLinear(extBitmap *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->ColourSpace IS CS_LINEAR_RGB) return log.warning(ERR_NothingDone);
    if (Self->BytesPerPixel != 4) return log.warning(ERR_InvalidState);
@@ -438,7 +438,7 @@ InvalidDimension: The clipping region is invalid.
 
 ERROR BITMAP_ConvertToRGB(extBitmap *Self, APTR Void)
 {
-   parasol::Log log(__FUNCTION__);
+   pf::Log log(__FUNCTION__);
 
    if (Self->ColourSpace IS CS_SRGB) return log.warning(ERR_NothingDone);
    if (Self->BytesPerPixel != 4) return log.warning(ERR_InvalidState);
@@ -543,7 +543,7 @@ AllocMemory: Insufficient memory in recreating the bitmap data buffer.
 
 static ERROR BITMAP_Decompress(extBitmap *Self, struct bmpDecompress *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    struct cmpDecompressBuffer dbuf;
 
    if (!Self->prvCompress) return ERR_Okay;
@@ -599,7 +599,7 @@ This action features automatic clipping and remapping, for occasions where the b
 
 static ERROR BITMAP_CopyData(extBitmap *Self, struct acCopyData *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    extBitmap *Dest;
    LONG MaxHeight;
 
@@ -652,7 +652,7 @@ InvalidDimension: The clipping region is invalid.
 
 static ERROR BITMAP_Demultiply(extBitmap *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    static std::mutex mutex;
    if (!glDemultiply) {
@@ -772,7 +772,7 @@ NullArgs
 
 static ERROR BITMAP_Flip(extBitmap *Self, struct bmpFlip *Args)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -937,7 +937,7 @@ This action will not work unless you have defined the #Width and #Height fields 
 
 static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    #ifdef __xwindows__
       WORD alignment;
    #endif
@@ -1359,7 +1359,7 @@ InvalidDimension: The clipping region is invalid.
 
 static ERROR BITMAP_Premultiply(extBitmap *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Flags & BMF_PREMUL) {
       return log.warning(ERR_NothingDone);
@@ -1417,7 +1417,7 @@ you set the #BytesPerPixel field to 2 then it will determine that the bitmap is 
 
 static ERROR BITMAP_Query(extBitmap *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
    objDisplay *display;
    OBJECTID display_id;
    LONG i;
@@ -1620,7 +1620,7 @@ FieldNotSet
 
 static ERROR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    LONG width, height, bytewidth, bpp, amtcolours, size;
 
    if (!Args) return log.warning(ERR_NullArgs);
@@ -1804,7 +1804,7 @@ SaveImage: Saves a bitmap's image to a data object of your choosing in PCX forma
 
 static ERROR BITMAP_SaveImage(extBitmap *Self, struct acSaveImage *Args)
 {
-   parasol::Log log;
+   pf::Log log;
    struct {
       BYTE Signature;
       BYTE Version;
@@ -2256,7 +2256,7 @@ ERROR SET_Data(extBitmap *Self, UBYTE *Data)
       if (!Self->DataFlags) {
          MemInfo info;
          if (MemoryPtrInfo(Data, &info) != ERR_Okay) {
-            parasol::Log log;
+            pf::Log log;
             log.warning("Could not obtain flags from address %p.", Data);
          }
          else if (Self->DataFlags != info.Flags) {
@@ -2408,7 +2408,7 @@ to be propagated to the video display.
 
 ERROR SET_Palette(extBitmap *Self, RGBPalette *SrcPalette)
 {
-   parasol::Log log;
+   pf::Log log;
 
    // The objective here is to copy the given source palette to the bitmap's palette.  To see how the hook is set up,
    // refer to the bitmap's object definition structure that is compiled into the module.
@@ -2565,7 +2565,7 @@ YOffset: Private. Provided for surface/video drawing purposes - considered too a
 
 static ERROR CalculatePixelRoutines(extBitmap *Self)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (Self->Type IS BMP_PLANAR) {
       Self->ReadUCPixel  = MemReadPixelPlanar;

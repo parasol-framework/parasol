@@ -65,7 +65,7 @@ class extConvolveFX : public extFilterEffect {
    public:
    static constexpr CLASSID CLASS_ID = ID_CONVOLVEFX;
    static constexpr CSTRING CLASS_NAME = "ConvolveFX";
-   using create = parasol::Create<extConvolveFX>;
+   using create = pf::Create<extConvolveFX>;
 
    DOUBLE UnitX, UnitY;
    DOUBLE Divisor;
@@ -254,7 +254,7 @@ static ERROR CONVOLVEFX_Draw(extConvolveFX *Self, struct acDraw *Args)
 
 static ERROR CONVOLVEFX_Init(extConvolveFX *Self, APTR Void)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if (!Self->UnitY) Self->UnitY = Self->UnitX;
 
@@ -352,7 +352,7 @@ static ERROR CONVOLVEFX_GET_Divisor(extConvolveFX *Self, DOUBLE *Value)
 
 static ERROR CONVOLVEFX_SET_Divisor(extConvolveFX *Self, DOUBLE Value)
 {
-   parasol::Log log;
+   pf::Log log;
    if (Value <= 0) return log.warning(ERR_InvalidValue);
    Self->Divisor = Value;
    return ERR_Okay;
@@ -399,7 +399,7 @@ static ERROR CONVOLVEFX_GET_Matrix(extConvolveFX *Self, DOUBLE **Value, LONG *El
 
 static ERROR CONVOLVEFX_SET_Matrix(extConvolveFX *Self, DOUBLE *Value, LONG Elements)
 {
-   parasol::Log log;
+   pf::Log log;
 
    if ((Elements > 0) and (Elements <= ARRAYSIZE(Self->Matrix))) {
       Self->MatrixSize = Elements;
@@ -428,7 +428,7 @@ static ERROR CONVOLVEFX_GET_MatrixRows(extConvolveFX *Self, LONG *Value)
 
 static ERROR CONVOLVEFX_SET_MatrixRows(extConvolveFX *Self, LONG Value)
 {
-   parasol::Log log;
+   pf::Log log;
    if (Value <= 0) return log.warning(ERR_InvalidValue);
 
    Self->MatrixRows = Value;
@@ -454,7 +454,7 @@ static ERROR CONVOLVEFX_GET_MatrixColumns(extConvolveFX *Self, LONG *Value)
 
 static ERROR CONVOLVEFX_SET_MatrixColumns(extConvolveFX *Self, LONG Value)
 {
-   parasol::Log log;
+   pf::Log log;
    if (Value <= 0) return log.warning(ERR_InvalidValue);
 
    Self->MatrixColumns = Value;
@@ -501,7 +501,7 @@ static ERROR CONVOLVEFX_GET_TargetX(extConvolveFX *Self, LONG *Value)
 static ERROR CONVOLVEFX_SET_TargetX(extConvolveFX *Self, LONG Value)
 {
    if (Self->initialised()) {
-      parasol::Log log;
+      pf::Log log;
       if ((Value < 0) or (Value >= Self->MatrixColumns)) return log.warning(ERR_OutOfRange);
    }
 
@@ -530,7 +530,7 @@ static ERROR CONVOLVEFX_GET_TargetY(extConvolveFX *Self, LONG *Value)
 static ERROR CONVOLVEFX_SET_TargetY(extConvolveFX *Self, LONG Value)
 {
    if (Self->initialised()) {
-      parasol::Log log;
+      pf::Log log;
       if ((Value < 0) or (Value >= Self->MatrixRows)) return log.warning(ERR_OutOfRange);
    }
 
