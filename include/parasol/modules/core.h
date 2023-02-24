@@ -3619,17 +3619,7 @@ class objModule : public BaseClass {
 
    // Action stubs
 
-   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
-      struct acGetVar args = { FieldName, Buffer, Size };
-      ERROR error = Action(AC_GetVar, this, &args);
-      if ((error) and (Buffer)) Buffer[0] = 0;
-      return error;
-   }
    inline ERROR init() { return Action(AC_Init, this, NULL); }
-   inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) {
-      struct acSetVar args = { FieldName, Value };
-      return Action(AC_SetVar, this, &args);
-   }
 };
 
 // Time class definition
