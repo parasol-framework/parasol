@@ -10,8 +10,7 @@ Name: Files
 DeleteVolume: Deletes volumes from the system.
 
 This function deletes volume names from the system.  Once a volume is deleted, any further references to it will result
-in errors unless the volume is recreated.  All paths that are related to the volume are destroyed as a result of
-calling this function.
+in errors unless the volume is recreated.
 
 -INPUT-
 cstr Name: The name of the volume.
@@ -19,9 +18,8 @@ cstr Name: The name of the volume.
 -ERRORS-
 Okay: The volume was removed.
 NullArgs:
-AccessObject: Access to the SystemVolumes object was denied.
-NoPermission: The volume name is reserved.
-GetField:
+LockFailed:
+NoPermission: An attempt to delete a system volume was denied.
 -END-
 
 *********************************************************************************************************************/
@@ -37,67 +35,17 @@ ERROR DeleteVolume(CSTRING Name)
    ThreadLock lock(TL_VOLUMES, 4000);
    if (!lock.granted()) return log.warning(ERR_LockFailed);
 
-   std::string vol;
    LONG i;
    for (i=0; (Name[i]) and (Name[i] != ':'); i++);
-   vol.append(Name, i);
+   std::string vol(Name, i);
 
-   // Check that the name of the volume is not reserved by the system
+   if (glVolumes.contains(vol)) {
+      if (glVolumes[vol]["System"] == "Yes") return log.warning(ERR_NoPermission);
 
-   if ((!StrMatch("parasol", vol.c_str())) or (!StrMatch("programs", vol.c_str())) or
-       (!StrMatch("system", vol.c_str())) or (!StrMatch("temp", vol.c_str())) or
-       (!StrMatch("user", vol.c_str()))) {
-      return ERR_NoPermission;
+      glVolumes.erase(vol);
    }
 
-   for (auto& [group, keys] : glVolumes) {
-      if (StrMatch(vol.c_str(), keys["Name"].c_str())) continue;
-
-      for (auto it = glVolumes.begin(); it != glVolumes.end(); it++) {
-         if (!it->first.compare(group)) {
-            glVolumes.erase(it);
-            break;
-         }
-      }
-      break;
-   }
-
-   // Delete the volume if it appears in the user:config/volumes.cfg file.
-
-   ERROR error = ERR_Okay;
-   objConfig::create userconfig = { fl::Path("user:config/volumes.cfg") };
-   if (userconfig.ok()) {
-      ConfigGroups *groups;
-      if (!userconfig->getPtr(FID_Data, &groups)) {
-         for (auto& [group, keys] : groups[0]) {
-            if (!StrMatch(vol.c_str(), keys["Name"].c_str())) {
-               cfgDeleteGroup(*userconfig, group.c_str());
-
-               objFile::create file = {
-                  fl::Path("user:config/volumes.cfg"),
-                  fl::Flags(FL_WRITE|FL_NEW),
-                  fl::Permissions(PERMIT_READ|PERMIT_WRITE),
-               };
-
-               if (file.ok()) {
-                  error = userconfig->saveToObject(file->UID, 0);
-               }
-               else error = ERR_CreateFile;
-
-               // Broadcast the change
-
-               LONG strlen = vol.size() + 1;
-               UBYTE evbuf[sizeof(EVENTID) + strlen];
-               ((EVENTID *)evbuf)[0] = GetEventID(EVG_FILESYSTEM, "volume", "deleted");
-               CopyMemory(vol.c_str(), evbuf + sizeof(EVENTID), strlen);
-               BroadcastEvent(evbuf, sizeof(EVENTID) + strlen);
-               break;
-            }
-         }
-      }
-   }
-
-   return error;
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
@@ -114,31 +62,29 @@ ERROR RenameVolume(CSTRING Volume, CSTRING Name)
 
    ThreadLock lock(TL_VOLUMES, 6000);
    if (lock.granted()) {
-      std::string vol;
       LONG i;
-
       for (i=0; (Volume[i]) and (Volume[i] != ':'); i++);
+
+      std::string vol;
       vol.append(Volume, i);
 
-      for (auto& [group, keys] : glVolumes) {
-         if (!StrMatch(keys["Name"].c_str(), vol.c_str())) {
-            keys["Name"] = Name;
+      if (glVolumes.contains(vol)) {
+         glVolumes[Name] = glVolumes[vol];
+         glVolumes.erase(vol);
 
-            // Broadcast the change
+         // Broadcast the change
 
-            LONG strlen = vol.size() + 1;
-            UBYTE evdeleted[sizeof(EVENTID) + strlen];
-            ((EVENTID *)evdeleted)[0] = GetEventID(EVG_FILESYSTEM, "volume", "deleted");
-            CopyMemory(vol.c_str(), evdeleted + sizeof(EVENTID), strlen);
-            BroadcastEvent(evdeleted, sizeof(EVENTID) + strlen);
+         UBYTE evdeleted[sizeof(EVENTID) + vol.size() + 1];
+         ((EVENTID *)evdeleted)[0] = GetEventID(EVG_FILESYSTEM, "volume", "deleted");
+         CopyMemory(vol.c_str(), evdeleted + sizeof(EVENTID), vol.size() + 1);
+         BroadcastEvent(evdeleted, sizeof(EVENTID) + vol.size() + 1);
 
-            strlen = StrLength(Name) + 1;
-            UBYTE evcreated[sizeof(EVENTID) + strlen];
-            ((EVENTID *)evcreated)[0] = EVID_FILESYSTEM_VOLUME_CREATED;
-            CopyMemory(Name, evcreated + sizeof(EVENTID), strlen);
-            BroadcastEvent(evcreated, sizeof(EVENTID) + strlen);
-            return ERR_Okay;
-         }
+         LONG namelen = StrLength(Name) + 1;
+         UBYTE evcreated[sizeof(EVENTID) + namelen];
+         ((EVENTID *)evcreated)[0] = EVID_FILESYSTEM_VOLUME_CREATED;
+         CopyMemory(Name, evcreated + sizeof(EVENTID), namelen);
+         BroadcastEvent(evcreated, sizeof(EVENTID) + namelen);
+         return ERR_Okay;
       }
 
       return ERR_Search;
@@ -151,9 +97,8 @@ ERROR RenameVolume(CSTRING Volume, CSTRING Name)
 -FUNCTION-
 SetVolume: Adds a new volume name to the system.
 
-The SetVolume() function is used to assign one or more paths to a volume name.  It can preserve any existing
-paths that are attributed to the volume if the name already exists.  If the volume does not already exist, a new one
-will be created from scratch.
+The SetVolume() function is used to create a volume with one or more paths assigned to it.  If the volume already
+exists, it possible to append more paths or replace them entirely.
 
 This function uses tags to create new volumes.  The following table lists all tags that are accepted by this
 function.  Remember to terminate the taglist with `TAGEND`.
@@ -200,8 +145,7 @@ ERROR SetVolume(LARGE TagID, ...)
    CSTRING device  = NULL;
    CSTRING devpath = NULL;
    CSTRING devid   = NULL;
-   char name[LEN_VOLUME_NAME];
-   name[0] = 0;
+   std::string name;
    LONG count = 0;
    LARGE tagid = TagID;
    while (tagid) {
@@ -210,16 +154,16 @@ ERROR SetVolume(LARGE TagID, ...)
          switch ((ULONG)tagid) {
             case AST_NAME: {
                CSTRING str = va_arg(list, CSTRING);
-               for (i=0; (str[i]) and (str[i] != ':') and ((size_t)i < sizeof(name)-1); i++) name[i] = str[i];
-               name[i] = 0;
+               for (i=0; (str[i]) and (str[i] != ':'); i++);
+               name.append(str, 0, i);
                goto next;
             }
 
             case AST_DEVICE_PATH: devpath = va_arg(list, CSTRING); goto next;
-            case AST_PATH:    path = std::string(va_arg(list, CSTRING)); goto next;
-            case AST_ICON:    icon = va_arg(list, CSTRING); goto next;
-            case AST_COMMENT: comment = va_arg(list, CSTRING); goto next;
-            case AST_DEVICE:  device = va_arg(list, CSTRING); goto next;
+            case AST_PATH:        path    = std::string(va_arg(list, CSTRING)); goto next;
+            case AST_ICON:        icon    = va_arg(list, CSTRING); goto next;
+            case AST_COMMENT:     comment = va_arg(list, CSTRING); goto next;
+            case AST_DEVICE:      device  = va_arg(list, CSTRING); goto next;
 
             case AST_LABEL:
                label = va_arg(list, CSTRING);
@@ -254,113 +198,44 @@ next:
 
    va_end(list);
 
-   if ((!name[0]) or (path.empty())) return log.warning(ERR_NullArgs);
+   if (name.empty() or path.empty()) return log.warning(ERR_NullArgs);
 
-   if (label) log.branch("Name: %s (%s), Path: %s", name, label, path.c_str());
-   else log.branch("Name: %s, Path: %s", name, path.c_str());
+   if (label) log.branch("Name: %s (%s), Path: %s", name.c_str(), label, path.c_str());
+   else log.branch("Name: %s, Path: %s", name.c_str(), path.c_str());
 
    ThreadLock lock(TL_VOLUMES, 6000);
    if (!lock.granted()) return log.warning(ERR_LockFailed);
-
-   std::string savefile;
-   LONG savepermissions;
-   if (flags & VOLUME_SYSTEM) {
-      savefile = "config:volumes.cfg";
-      savepermissions = PERMIT_ALL_READ|PERMIT_WRITE|PERMIT_GROUP_WRITE;
-   }
-   else {
-      savefile = "user:config/volumes.cfg";
-      savepermissions = PERMIT_READ|PERMIT_WRITE;
-   }
 
    // If we are not in replace mode, check if the volume already exists with configured path.  If so, add the path as a complement
    // to the existing volume.  In this mode nothing else besides the path is changed, even if other tags are specified.
 
    if (!(flags & VOLUME_REPLACE)) {
-      for (auto& [group, keys] : glVolumes) {
-         if (keys.contains("Name") and (!StrMatch(name, keys["Name"].c_str()))) {
-            if (keys.contains("Path")) {
-               if (flags & VOLUME_PRIORITY) keys["Path"] = path + "|" + keys["Path"];
-               else keys["Path"] = keys["Path"] + "|" + path;
-
-               if (flags & VOLUME_SAVE) { // Save the volume permanently
-                  objConfig::create cfg = { fl::Path(savefile) };
-
-                  if (cfg.ok()) {
-                     cfg->write(group.c_str(), "Path", keys["Path"]);
-                     objFile::create file = {
-                        fl::Path(savefile), fl::Flags(FL_WRITE|FL_NEW), fl::Permissions(savepermissions)
-                     };
-                     if (file.ok()) cfg->saveToObject(file->UID, 0);
-                  }
-               }
-
-               return ERR_Okay;
-            }
-         }
+      if (glVolumes.contains(name)) {
+         auto &keys = glVolumes[name];
+         if (flags & VOLUME_PRIORITY) keys["Path"] = path + "|" + keys["Path"];
+         else keys["Path"] = keys["Path"] + "|" + path;
+         return ERR_Okay;
       }
    }
 
-   bool set = false;
-   for (auto& [group, keys] : glVolumes) {
-      if (!group.compare(name)) {
-         keys["Name"] = name;
-         set = true;
-         break;
-      }
-   }
+   auto &keys = glVolumes[name];
 
-   if (!set) {
-      auto &ng = glVolumes.emplace_back();
-      ng.first.assign(name);
-      ng.second["Name"].assign(name);
-   }
+   keys["Path"] = path;
 
-   for (auto& [group, keys] : glVolumes) {
-      if (!StrMatch(group.c_str(), name)) {
-         keys["Path"] = path;
+   if (icon)    keys["Icon"]       = icon;
+   if (comment) keys["Comment"]    = comment;
+   if (label)   keys["Label"]      = label;
+   if (device)  keys["Device"]     = device;
+   if (devpath) keys["DevicePath"] = devpath;
+   if (devid)   keys["ID"]         = devid;
 
-         if (icon)    keys["Icon"]       = icon;
-         if (comment) keys["Comment"]    = comment;
-         if (label)   keys["Label"]      = label;
-         if (device)  keys["Device"]     = device;
-         if (devpath) keys["DevicePath"] = devpath;
-         if (devid)   keys["ID"]         = devid;
+   if (flags & VOLUME_HIDDEN) keys["Hidden"] = "Yes";
+   if (flags & VOLUME_SYSTEM) keys["System"] = "Yes";
 
-         if (flags & VOLUME_HIDDEN) keys["Hidden"] = "Yes";
-
-         if (flags & VOLUME_SAVE) { // Save the volume permanently
-            objConfig::create userconfig = { fl::Path(savefile) };
-
-            if (userconfig.ok()) {
-               userconfig->write(name, "Name", name); // Ensure that an entry for the volume exists before we search for it.
-               ConfigGroups *usergroups;
-               if (userconfig->getPtr(FID_Data, &usergroups)) {
-                  for (auto& [group, ukeys] : usergroups[0]) {
-                     if (!StrMatch(group.c_str(), name)) {
-                        ukeys["Path"] = path;
-                        if (icon)    ukeys["Icon"]    = icon;
-                        if (comment) ukeys["Comment"] = comment;
-                        if (devid)   ukeys["ID"]      = devid;
-                        if (flags & VOLUME_HIDDEN) ukeys["Hidden"] = "Yes";
-                        break;
-                     }
-                  }
-               }
-
-               objFile::create file = { fl::Path(savefile), fl::Flags(FL_WRITE|FL_NEW), fl::Permissions(savepermissions) };
-               if (file.ok()) userconfig->saveToObject(file->UID, 0);
-            }
-         }
-         break;
-      }
-   }
-
-   LONG strlen = StrLength(name) + 1;
-   UBYTE evbuf[sizeof(EVENTID) + strlen];
+   UBYTE evbuf[sizeof(EVENTID) + name.size() + 1];
    ((EVENTID *)evbuf)[0] = GetEventID(EVG_FILESYSTEM, "volume", "created");
-   CopyMemory(name, evbuf + sizeof(EVENTID), strlen);
-   BroadcastEvent(evbuf, sizeof(EVENTID) + strlen);
+   CopyMemory(name.c_str(), evbuf + sizeof(EVENTID), name.size() + 1);
+   BroadcastEvent(evbuf, sizeof(EVENTID) + name.size() + 1);
    return ERR_Okay;
 }
 

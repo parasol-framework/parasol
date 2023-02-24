@@ -2008,18 +2008,10 @@ static ERROR GET_Icon(extFile *Self, CSTRING *Value)
 
       ThreadLock lock(TL_VOLUMES, 6000);
       if (lock.granted()) {
-         if (glVolumes.size() > 0) {
-            std::string volume(Self->Path, i);
+         std::string volume(Self->Path, i);
 
-            for (auto& [group, keys] : glVolumes) {
-               if (!StrMatch(volume.c_str(), keys["Name"].c_str())) {
-                  if (keys.contains("Icon")) {
-                     icon = "icons:";
-                     icon += keys["Icon"];
-                     break;
-                  }
-               }
-            }
+         if ((glVolumes.contains(volume)) and (glVolumes[volume].contains("Icon"))) {
+            icon = "icons:" + glVolumes[volume]["Icon"];
          }
       }
 

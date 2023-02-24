@@ -510,8 +510,6 @@ static ERROR GET_Path(objScript *Self, STRING *Value)
 
 static ERROR SET_Path(objScript *Self, CSTRING Value)
 {
-   parasol::Log log;
-
    if (Self->Path) {
       // If the location has already been set, throw the value to SetVar instead.
 

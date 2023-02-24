@@ -130,12 +130,10 @@ function testStringify()
    local fl = obj.new('file', { src=glRawPath, flags='!READ|WRITE' } )
    local buf = string.rep(' ', fl.size)
    local err, result = fl.acRead(buf, fl.size)
-   if (err == ERR_Okay) then
-      fl.acSeek(POS_START, 0)
-      fl.acWrite(buf:reverse())
-   else
-      error('Failed to read file ' .. fl.location);
-   end
+   assert(err == ERR_Okay, 'Failed to read file ' .. fl.location)
+
+   fl.acSeek(POS_START, 0)
+   fl.acWrite(buf:reverse())
 end
 
 --=====================================================================================================================
@@ -160,8 +158,30 @@ end
 
 --=====================================================================================================================
 
+function testAnalyseVolume()
+   local err, type = mSys.AnalysePath('drive1:')
+   assert(err == ERR_Okay, 'AnalysePath() failed with error: ' .. mSys.GetErrorMsg(err))
+
+   assert(type == LOC_VOLUME, 'AnalysePath() returned type ' .. type .. ' and not LOC_VOLUME')
+end
+
+--=====================================================================================================================
+
+function testAnalyseFile()
+   local err, type = mSys.AnalysePath('fonts:fonts.cfg')
+   assert(err == ERR_Okay, 'AnalysePath() failed with error: ' .. mSys.GetErrorMsg(err))
+
+   assert(type == LOC_FILE, 'AnalysePath() returned type ' .. type .. ' and not LOC_FILE')
+end
+
+--=====================================================================================================================
+
    return {
-      tests = { 'testPathExtract', 'testFolderScan', 'testScanDir', 'testStringify', 'testScanVolumes', 'testFileIcons' },
+      tests = {
+         'testPathExtract', 'testFolderScan', 'testScanDir',
+         'testStringify', 'testScanVolumes', 'testFileIcons',
+         'testAnalyseVolume', 'testAnalyseFile'
+      },
       init = function()
          glRawPath = 'user:test.out'
          local out = obj.new('file', { src=glRawPath, flags='!NEW|WRITE' } )

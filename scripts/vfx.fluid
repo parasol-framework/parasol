@@ -20,6 +20,8 @@ vfx.fadeIn = function(Viewport, Seconds, Delay)
    Viewport.opacity = 0
    local err
    err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
+      if not Viewport.exists() then check(ERR_Terminate) end
+
       if (state.time == nil) then state.time = CurrentTime end
       if (state.delay > 0) then
          if ((CurrentTime - state.time) >= state.delay * 1000000) then
@@ -58,6 +60,8 @@ vfx.zoomIn = function(Viewport, Seconds, Delay, CallbackOnCompletion)
    Viewport.acDraw()
 
    err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
+      if not Viewport.exists() then check(ERR_Terminate) end
+
       if (state.time == nil) then state.time = CurrentTime end
       if (state.delay > 0) then
          if ((CurrentTime - state.time) >= state.delay * 1000000) then
@@ -99,6 +103,8 @@ vfx.zoomOut = function(Viewport, Seconds, Delay, CallbackOnCompletion)
    Viewport.acDraw()
 
    err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
+      if not Viewport.exists() then check(ERR_Terminate) end
+
       if (state.time == nil) then state.time = CurrentTime end
       if (state.delay > 0) then
          if ((CurrentTime - state.time) >= state.delay * 1000000) then
@@ -159,6 +165,8 @@ vfx.shake = function(Viewport, Seconds, Delay, Intensity, CallbackOnCompletion)
    local err
    err, state.matrix = Viewport.mtNewMatrix()
    err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
+      if not Viewport.exists() then check(ERR_Terminate) end
+
       if (state.time == nil) then state.time = CurrentTime end
       if (state.delay > 0) then
          if ((CurrentTime - state.time) >= state.delay * 1000000) then
@@ -204,6 +212,8 @@ vfx.rotate = function(Viewport, Seconds, Delay, CallbackOnCompletion)
    local err
    err, state.matrix = Viewport.mtNewMatrix()
    err, state.timerID = mSys.SubscribeTimer(1*vfx.fps, function(Subscriber, Elapsed, CurrentTime)
+      if not Viewport.exists() then check(ERR_Terminate) end
+
       if (state.time == nil) then state.time = CurrentTime end
       if (state.delay > 0) then
          if ((CurrentTime - state.time) >= state.delay * 1000000) then

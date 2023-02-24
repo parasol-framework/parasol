@@ -90,16 +90,12 @@ static const FieldArray glModuleFields[] = {
    END_FIELD
 };
 
-static ERROR MODULE_GetVar(extModule *, struct acGetVar *);
 static ERROR MODULE_Init(extModule *, APTR);
 static ERROR MODULE_Free(extModule *, APTR);
-static ERROR MODULE_SetVar(extModule *, struct acSetVar *);
 
 static const ActionArray glModuleActions[] = {
    { AC_Free,   (APTR)MODULE_Free },
-   { AC_GetVar, (APTR)MODULE_GetVar },
    { AC_Init,   (APTR)MODULE_Init },
-   { AC_SetVar, (APTR)MODULE_SetVar },
    { 0, NULL }
 };
 
@@ -202,34 +198,7 @@ static ERROR MODULE_Free(extModule *Self, APTR Void)
    }
 
    if (Self->prvMBMemory) { FreeResource(Self->prvMBMemory); Self->prvMBMemory = NULL; }
-   if (Self->Vars) { FreeResource(Self->Vars); Self->Vars = NULL; }
    return ERR_Okay;
-}
-
-/*********************************************************************************************************************
--ACTION-
-GetVar: Module parameters can be retrieved through this action.
--END-
-**********************************************************************************************************************/
-
-static ERROR MODULE_GetVar(extModule *Self, struct acGetVar *Args)
-{
-   parasol::Log log;
-
-   if ((!Args) or (!Args->Buffer) or (!Args->Field)) return log.warning(ERR_NullArgs);
-   if (Args->Size < 2) return log.warning(ERR_Args);
-   if (!Self->Vars) return ERR_UnsupportedField;
-
-   CSTRING arg = VarGetString(Self->Vars, Args->Field);
-
-   if (arg) {
-      StrCopy(arg, Args->Buffer, Args->Size);
-      return ERR_Okay;
-   }
-   else {
-      Args->Buffer[0] = 0;
-      return ERR_UnsupportedField;
-   }
 }
 
 //********************************************************************************************************************
@@ -303,10 +272,9 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
          // resort to looking in the modules: folder.
 
          if (!path[0]) {
-            ModuleItem *item;
             ULONG hashname = StrHash(name, FALSE);
 
-            if ((item = find_module(hashname))) {
+            if (auto item = find_module(hashname)) {
                StrCopy((CSTRING)(item + 1), path, sizeof(path));
 
                STRING volume;
@@ -705,26 +673,6 @@ static ERROR MODULE_ResolveSymbol(extModule *Self, struct modResolveSymbol *Args
    #warning Platform not supported.
    return ERR_NoSupport;
 #endif
-}
-
-/*********************************************************************************************************************
--ACTION-
-SetVar: Passes variable parameters to loaded modules.
--END-
-*********************************************************************************************************************/
-
-static ERROR MODULE_SetVar(extModule *Self, struct acSetVar *Args)
-{
-   parasol::Log log;
-
-   if ((!Args) or (!Args->Field)) return ERR_NullArgs;
-   if (!Args->Field[0]) return ERR_EmptyString;
-
-   if (!Self->Vars) {
-      if (!(Self->Vars = VarNew(0, 0))) return log.warning(ERR_AllocMemory);
-   }
-
-   return VarSetString(Self->Vars, Args->Field, Args->Value);
 }
 
 /*********************************************************************************************************************

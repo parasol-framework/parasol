@@ -7608,36 +7608,6 @@ static void deselect_text(extDocument *Self)
 
 //********************************************************************************************************************
 
-static void split_command(std::string &Command, std::string &Args)
-{
-   if (Command[0] IS '"') {
-      Command.erase(0, 1);
-      LONG i = 0;
-      while ((Command[i]) and (Command[i] != '"')) i++;
-      if (Command[i] IS '"') {
-         LONG a = i + 1;
-         while ((Command[a]) and (Command[a] <= 0x20)) a++;
-         Args = Command.substr(a);
-
-         Command.erase(i);
-      }
-   }
-   else {
-      LONG i = 0;
-      while (Command[i] > 0x20) i++;
-
-      if (Command[i]) {
-         LONG a = i;
-         while ((Command[a]) and (Command[a] <= 0x20)) a++;
-         Args = Command.substr(a);
-
-         Command.resize(i);
-      }
-   }
-}
-
-//********************************************************************************************************************
-
 static LONG find_tabfocus(extDocument *Self, UBYTE Type, LONG Reference)
 {
    for (LONG i=0; i < Self->TabIndex; i++) {

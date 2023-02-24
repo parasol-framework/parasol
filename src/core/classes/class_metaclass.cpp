@@ -224,7 +224,7 @@ ERROR CLASS_FindField(extMetaClass *Class, struct mcFindField *Args)
 
 ERROR CLASS_Free(extMetaClass *Self, APTR Void)
 {
-   VarSet(glClassMap, Self->ClassName, NULL, 0); // Deregister the class.
+   if (Self->SubClassID) glClassMap.erase(Self->SubClassID);
 
    if (Self->prvFields) { FreeResource(Self->prvFields); Self->prvFields = NULL; }
    if (Self->Methods)   { FreeResource(Self->Methods);   Self->Methods   = NULL; }
@@ -327,10 +327,7 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
 
    if (field_setup(Self) != ERR_Okay) return ERR_Failed;
 
-   // Note that classes are keyed by their unique name and not the base-class name.  This reduces the need for
-   // iteration over the hash-map.
-
-   VarSet(glClassMap, Self->ClassName, &Self, sizeof(APTR));
+   glClassMap[Self->SubClassID] = Self;
 
    // Record the name of the module that owns this class.
 
@@ -1031,17 +1028,13 @@ static ERROR field_setup(extMetaClass *Class)
 
 static void register_fields(extMetaClass *Class)
 {
-   if (!glFields) {
-      glFields = VarNew(0, KSF_THREAD_SAFE|KSF_UNTRACKED);
-      if (!glFields) return;
-   }
-
-   if (!VarLock(glFields, 4000)) {
-      Field *fields = Class->prvFields;
+   ThreadLock lock(TL_FIELDKEYS, 1000);
+   if (lock.granted()) {
       for (LONG i=0; i < Class->TotalFields; i++) {
-         KeySet(glFields, fields[i].FieldID, fields[i].Name, StrLength(fields[i].Name)+1);
+         if (!glFields.contains(Class->prvFields[i].FieldID)) {
+            glFields[Class->prvFields[i].FieldID] = Class->prvFields[i].Name;
+         }
       }
-      VarUnlock(glFields);
    }
 }
 
@@ -1247,6 +1240,10 @@ void scan_classes(void)
    parasol::Log log("Core");
 
    log.branch("Scanning for available classes.");
+
+   glClassDB.clear();
+   DeleteFile(glClassBinPath, NULL);
+   DeleteFile(glModuleBinPath, NULL);
 
    DirInfo *dir;
    if (!OpenDir("modules:", RDF_QUALIFY, &dir)) {
