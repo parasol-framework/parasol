@@ -1941,7 +1941,7 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
          buffer += "/." + glHomeFolderName + std::to_string(F2T(VER_CORE)) + "/";
       }
       else if ((logname = getenv("LOGNAME")) and (logname[0])) {
-         buffer = "config:users/" + logname + "/"
+         buffer = std::string("config:users/") + logname + "/";
       }
    #elif _WIN32
       // Attempt to get the path of the user's personal folder.  If the Windows system doesn't have this
