@@ -233,7 +233,7 @@ Year: Year (-ve for BC, +ve for AD).
 -END-
 *********************************************************************************************************************/
 
-static const FieldArray TimeFields[] = {
+static const FieldArray clFields[] = {
    { "SystemTime",   FDF_LARGE|FDF_RW, 0, 0, 0 },
    { "Year",         FDF_LONG|FDF_RW, 0, 0, 0 },
    { "Month",        FDF_LONG|FDF_RW, 0, 0, 0 },
@@ -250,13 +250,13 @@ static const FieldArray TimeFields[] = {
    END_FIELD
 };
 
-static const ActionArray TimeActions[] = {
+static const ActionArray clActions[] = {
    { AC_Query,      (APTR)TIME_Query },
    { AC_Refresh,    (APTR)TIME_Query },
    { 0, NULL }
 };
 
-static const MethodArray TimeMethods[] = {
+static const MethodArray clMethods[] = {
    { MT_TmSetTime, (APTR)TIME_SetTime, "SetTime", 0, 0 },
    { 0, NULL, NULL }
 };
@@ -265,16 +265,16 @@ static const MethodArray TimeMethods[] = {
 
 extern "C" ERROR add_time_class(void)
 {
-   TimeClass = objMetaClass::create::global(
+   glTimeClass = objMetaClass::create::global(
       fl::BaseClassID(ID_TIME),
       fl::ClassVersion(VER_TIME),
       fl::Name("Time"),
       fl::Category(CCF_SYSTEM),
-      fl::Actions(TimeActions),
-      fl::Methods(TimeMethods),
-      fl::Fields(TimeFields),
+      fl::Actions(clActions),
+      fl::Methods(clMethods),
+      fl::Fields(clFields),
       fl::Size(sizeof(objTime)),
       fl::Path("modules:core"));
 
-   return TimeClass ? ERR_Okay : ERR_AddClass;
+   return glTimeClass ? ERR_Okay : ERR_AddClass;
 }

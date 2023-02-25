@@ -127,7 +127,7 @@ static const ActionArray glModuleMasterActions[] = {
 
 extern "C" ERROR add_module_class(void)
 {
-   if (!(ModuleClass = extMetaClass::create::global(
+   if (!(glModuleClass = extMetaClass::create::global(
       fl::BaseClassID(ID_MODULE),
       fl::ClassVersion(VER_MODULE),
       fl::Name("Module"),
@@ -140,7 +140,7 @@ extern "C" ERROR add_module_class(void)
       fl::Size(sizeof(extModule)),
       fl::Path("modules:core")))) return ERR_AddClass;
 
-   if (!(ModuleMasterClass = extMetaClass::create::global(
+   if (!(glModuleMasterClass = extMetaClass::create::global(
       fl::BaseClassID(ID_MODULEMASTER),
       fl::ClassVersion(1.0),
       fl::Name("ModuleMaster"),

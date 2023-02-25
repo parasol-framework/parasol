@@ -2599,7 +2599,7 @@ static const FieldArray clFields[] = {
 
 extern "C" ERROR add_task_class(void)
 {
-   TaskClass = objMetaClass::create::global(
+   glTaskClass = objMetaClass::create::global(
       fl::ClassVersion(VER_TASK),
       fl::Name("Task"),
       fl::Category(CCF_SYSTEM),
@@ -2612,5 +2612,5 @@ extern "C" ERROR add_task_class(void)
       fl::Size(sizeof(extTask)),
       fl::Path("modules:core"));
 
-   return TaskClass ? ERR_Okay : ERR_AddClass;
+   return glTaskClass ? ERR_Okay : ERR_AddClass;
 }
