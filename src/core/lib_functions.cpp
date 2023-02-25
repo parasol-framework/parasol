@@ -211,11 +211,6 @@ objMetaClass * FindClass(CLASSID ClassID)
       if (glClassDB.contains(ClassID)) {
          auto &path = glClassDB[ClassID].Path;
 
-         if (path.empty()) {
-            ModuleItem *mod;
-            if ((mod = find_module(ClassID))) path.assign(STRING(mod + 1));
-         }
-
          if (!path.empty()) {
             // Load the module from the associated location and then find the class that it contains.  If the module fails,
             // we keep on looking for other installed modules that may handle the class.
@@ -923,7 +918,6 @@ const SystemState * GetSystemState(void)
       state.TotalErrorMessages = ARRAYSIZE(glMessages);
       state.RootPath      = glRootPath;
       state.SystemPath    = glSystemPath;
-      state.ModulePath    = glModulePath;
       #ifdef __unix__
          state.Platform = "Linux";
       #elif _WIN32
@@ -1457,16 +1451,14 @@ ERROR SetResourcePath(LONG PathType, CSTRING Path)
 
       case RP_MODULE_PATH: // An alternative path to the system modules.  This was introduced for Android, which holds the module binaries in the assets folders.
          if (Path) {
-            WORD i;
-            for (i=0; (Path[i]) and ((size_t)i < sizeof(glModulePath)-2); i++) glModulePath[i] = Path[i];
-            if ((glModulePath[i-1] != '/') and (glModulePath[i-1] != '\\')) {
+            glModulePath = Path;
+            if ((glModulePath.back() != '/') and (glModulePath.back() != '\\')) {
                #ifdef _WIN32
-                  glModulePath[i++] = '\\';
+                  glModulePath += '\\';
                #else
-                  glModulePath[i++] = '/';
+                  glModulePath += '/';
                #endif
             }
-            glModulePath[i] = 0;
          }
          return ERR_Okay;
 

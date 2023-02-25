@@ -34,12 +34,11 @@
 
 char glRootPath[SIZE_SYSTEM_PATH] = "" ROOT_PATH "";
 char glSystemPath[SIZE_SYSTEM_PATH] = "" SYSTEM_PATH "";
-char glModulePath[SIZE_SYSTEM_PATH] = "" MODULE_PATH "";
+std::string glModulePath = "" MODULE_PATH ""; // NB: This path will be updated to its resolved-form during Core initialisation.
 
 char glDisplayDriver[28] = "";
 
 CSTRING glClassBinPath = "system:config/classes.bin";
-CSTRING glModuleBinPath = "system:config/modules.bin";
 objMetaClass *glModuleMasterClass = 0;
 objMetaClass *glModuleClass = 0;
 objMetaClass *glTaskClass = 0;
@@ -72,6 +71,7 @@ std::unordered_map<CLASSID, extMetaClass *> glClassMap;
 std::unordered_map<FIELD, std::string> glFields;
 std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes;
 std::list<FDRecord> glFDTable;
+std::list<CoreTimer> glTimers;
 
 struct PublicAddress  *glSharedBlocks  = NULL;
 struct SortedAddress  *glSortedBlocks  = NULL;
@@ -82,13 +82,13 @@ struct TaskList       *shTasks         = NULL;
 struct TaskList       *glTaskEntry     = NULL;
 struct SemaphoreEntry *shSemaphores    = NULL;
 struct MemoryPage     *glMemoryPages   = NULL;
-struct ModuleHeader   *glModules       = NULL;
 struct OpenInfo       *glOpenInfo      = NULL;
 struct MsgHandler     *glMsgHandlers   = NULL, *glLastMsgHandler = 0;
+
 objFile *glClassFile   = NULL;
 objTask *glCurrentTask = NULL;
 objConfig *glDatatypes = NULL;
-std::list<CoreTimer> glTimers;
+
 APTR glJNIEnv = 0;
 UWORD glFunctionID = 3333; // IDTYPE_FUNCTION
 LONG glPageSize = 4096; // Default page size is 4k

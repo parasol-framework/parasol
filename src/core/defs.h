@@ -616,7 +616,7 @@ extern extMetaClass glMetaClass;
 extern LONG glEUID, glEGID, glUID, glGID;
 extern LONG glKeyState;
 extern char glSystemPath[SIZE_SYSTEM_PATH];
-extern char glModulePath[SIZE_SYSTEM_PATH];
+extern std::string glModulePath;
 extern char glRootPath[SIZE_SYSTEM_PATH];
 extern char glDisplayDriver[28];
 extern bool glShowIO, glShowPrivate, glShowPublic;
@@ -630,7 +630,6 @@ extern struct SharedControl  *glSharedControl; // Locked with PL_FORBID
 extern struct TaskList       *shTasks, *glTaskEntry; // Locked with PL_PROCESSES
 extern struct SemaphoreEntry *shSemaphores;    // Locked with PL_SEMAPHORES
 extern struct MemoryPage     *glMemoryPages;   // Locked with TL_MEMORY_PAGES
-extern struct ModuleHeader   *glModules;       // Read-only.  Module database.
 extern struct OpenInfo       *glOpenInfo;      // Read-only.  The OpenInfo structure initially passed to OpenCore()
 extern objTask *glCurrentTask;
 extern const struct ActionTable ActionTable[];
@@ -671,7 +670,6 @@ extern CSTRING glIDL;
 extern struct BaseClass glDummyObject;
 
 extern CSTRING glClassBinPath;
-extern CSTRING glModuleBinPath;
 extern objMetaClass *glModuleMasterClass;
 extern objMetaClass *glModuleClass;
 extern objMetaClass *glTaskClass;
@@ -950,7 +948,6 @@ ERROR  copy_field_to_buffer(OBJECTPTR Object, struct Field *Field, LONG DestFlag
 ERROR  create_archive_volume(void);
 ERROR  delete_tree(STRING, LONG, FUNCTION *, struct FileFeedback *);
 struct ClassItem * find_class(CLASSID);
-struct ModuleItem * find_module(ULONG);
 LONG   find_public_address(struct SharedControl *, APTR);
 ERROR  find_private_object_entry(OBJECTID, LONG *);
 ERROR  find_public_mem_id(struct SharedControl *, MEMORYID, LONG *);
@@ -1083,7 +1080,7 @@ LONG winIsDebuggerPresent(void);
 void winDeleteCriticalSection(APTR Lock);
 LONG winLaunchProcess(APTR, STRING, STRING, BYTE Group, BYTE Redirect, APTR *ProcessResult, BYTE, STRING, STRING, LONG *);
 void winLeaveCriticalSection(APTR);
-WINHANDLE winLoadLibrary(STRING);
+WINHANDLE winLoadLibrary(CSTRING);
 void winLowerPriority(void);
 ERROR winMapMemory(WINHANDLE, LONG, APTR *);
 WINHANDLE winOpenSemaphore(unsigned char *Name);

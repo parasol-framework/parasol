@@ -50,12 +50,6 @@ DLLCALL LONG WINAPI FreeLibrary(APTR);
 DLLCALL APTR WINAPI GetProcAddress(APTR, STRING);
 #endif
 
-#ifdef DLL
-APTR LoadLibraryA(STRING);
-void * GetProcAddress(APTR, STRING);
-int FreeLibrary(APTR);
-#endif
-
 static ModuleMaster glCoreMaster;
 static ModHeader glCoreHeader;
 
@@ -209,8 +203,8 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
    #define AF_MODULEMASTER 0x0001
    #define AF_SEGMENT      0x0002
    ERROR error = ERR_Failed;
-   LONG i, len;
-   WORD ext, aflags = 0;
+   LONG i;
+   WORD aflags = 0;
    char name[60];
 
    if (!Self->Name[0]) return log.warning(ERR_FieldNotSet);
@@ -231,7 +225,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
       Self->Master = master;
    }
    else if (!NewObject(ID_MODULEMASTER, NF::UNTRACKED, (OBJECTPTR *)&master)) {
-      char path[300];
+      std::string path;
 
       master->Next = glModuleList; // Insert the ModuleMaster at the start of the chain.
       if (glModuleList) glModuleList->Prev = master;
@@ -250,15 +244,14 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
       }
       else {
          for (i=0; (Self->Name[i]) and (Self->Name[i] != ':'); i++);
-         path[0] = 0;
 
          if ((Self->Name[0] IS '/') or (Self->Name[i] IS ':')) {
             log.trace("Module location is absolute.");
-            StrCopy(Self->Name, path, sizeof(path));
+            path = Self->Name;
 
             STRING volume;
-            if (!ResolvePath(path, RSF_APPROXIMATE, &volume)) {
-               StrCopy(volume, path, sizeof(path));
+            if (!ResolvePath(path.c_str(), RSF_APPROXIMATE, &volume)) {
+               path = volume;
                FreeResource(volume);
             }
             else {
@@ -268,105 +261,60 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
             }
          }
 
-         // Scan the module database to find the location(s) of the module.  If the module is not registered, we will
-         // resort to looking in the modules: folder.
-
-         if (!path[0]) {
-            ULONG hashname = StrHash(name, FALSE);
-
-            if (auto item = find_module(hashname)) {
-               StrCopy((CSTRING)(item + 1), path, sizeof(path));
-
-               STRING volume;
-               if (!ResolvePath(path, RSF_APPROXIMATE, &volume)) {
-                  StrCopy(volume, path, sizeof(path));
-                  FreeResource(volume);
-               }
-               else {
-                  log.warning("Found registered module %s, but failed to resolve path '%s'", name, path);
-                  error = ERR_ResolvePath;
-                  goto exit;
-               }
-            }
-            else log.msg("Module '%s' #%.8x is not registered in the database.", name, hashname);
-         }
-
-         if (!path[0]) {
-            // If the file system module hasn't been loaded yet, we have to manually calculate the location of the
-            // module.
-
+         if (path.empty()) {
             #ifdef __unix__
-               if (glModulePath[0]) { // If no specific module path is defined, default to the system path and tack on the modules/ suffix.
-                  i = StrCopy(glModulePath, path, sizeof(path));
+               if (!glModulePath.empty()) { // If no specific module path is defined, default to the system path and tack on the modules/ suffix.
+                  path = glModulePath;
                }
-               else i = snprintf(path, sizeof(path), "%slib/parasol/", glRootPath);
+               else path = std::string(glRootPath) + "lib/parasol/";
 
-               if (Self->Flags & MOF_LINK_LIBRARY) i += StrCopy("lib/", path+i, sizeof(path-i));
+               if (Self->Flags & MOF_LINK_LIBRARY) path += "lib/";
 
                #ifdef __ANDROID__
                   if ((Self->Name[0] IS 'l') and (Self->Name[1] IS 'i') and (Self->Name[2] IS 'b'));
-                  else for (j=0; "lib"[j]; j++) path[i++] = "lib"[j]; // Packaged Android modules have to begin with 'lib'
+                  else path += "lib"; // Packaged Android modules have to begin with 'lib'
                #endif
 
-               StrCopy(Self->Name, path+i, sizeof(path)-i);
+               path.append(Self->Name);
 
             #elif _WIN32
-               if (glModulePath[0]) {
-                  i = StrCopy(glModulePath, path, sizeof(path)-32);
-                  if (path[i-1] != '\\') path[i++] = '\\';
+               if (!glModulePath.empty()) {
+                  path = glModulePath;
+                  if ((path.back() != '\\') and (path.back() != '/')) path.push_back('\\');
                }
                else if (glSystemPath[0]) {
-                  i = StrCopy(glSystemPath, path, sizeof(path)-32);
-                  if (path[i-1] != '\\') path[i++] = '\\';
-                  i += StrCopy("lib\\", path+i, sizeof(path)-i);
+                  path = glSystemPath;
+                  if ((path.back() != '\\') and (path.back() != '/')) path.push_back('\\');
+                  path += "lib\\";
                }
                else {
-                  const char modlocation[] = "lib\\";
-                  i = StrCopy(glRootPath, path, sizeof(path));
-                  if (path[i-1] != '\\') path[i++] = '\\';
-                  i += StrCopy(modlocation, path+i, sizeof(path)-i);
+                  path = glRootPath;
+                  if ((path.back() != '\\') and (path.back() != '/')) path.push_back('\\');
+                  path += "lib\\";
                }
 
-               if (Self->Flags & MOF_LINK_LIBRARY) i += StrCopy("lib\\", path+i, sizeof(path-i));
-               StrCopy(Self->Name, path+i, sizeof(path)-i);
+               if (Self->Flags & MOF_LINK_LIBRARY) path += "lib\\";
+               path.append(Self->Name);
             #endif
          }
 
          // Deal with the file extensions
 
-         len = StrLength(path);
-         ext = len;
-         while ((ext > 0) and (path[ext] != '.') and (path[ext] != ':') and (path[ext] != '\\') and (path[ext] != '/')) ext--;
-
-         if (path[ext] IS '.') {
-            if (StrMatch(".dll", path+ext) != ERR_Okay) { len=ext; ext = -1; }
-            else if (StrMatch(".so", path+ext) != ERR_Okay) { len=ext; ext = -1; }
+         if (path.ends_with(".dll"));
+         else if (path.ends_with(".so"));
+         else {
+            #ifdef __unix__
+               path.append(".so");
+            #elif _WIN32
+               path.append(".dll");
+            #elif __APPLE__ // OSX uses .dylib but is compatible with .so
+               path.append(".so");
+            #else
+               #error What is the module extension for this machine type (.so/.mod/...)?
+            #endif
          }
-         else ext = -1;
 
-         if (ext IS -1) {
-            if ((size_t)len < sizeof(path)-12) {
-                ext = len;
-
-                #ifdef __unix__
-                   path[ext] = '.'; path[ext+1] = 's'; path[ext+2] = 'o'; path[ext+3] = 0;
-                #elif _WIN32
-                   path[ext] = '.'; path[ext+1] = 'd'; path[ext+2] = 'l'; path[ext+3] = 'l'; path[ext+4] = 0;
-                #elif __APPLE__
-                   // OSX uses .dylib but is compatible with .so
-                   path[ext] = '.'; path[ext+1] = 's'; path[ext+2] = 'o'; path[ext+3] = 0;
-                #else
-                   #error What is the module extension for this machine type (.so/.mod/...)?
-                #endif
-            }
-            else {
-               error = ERR_BufferOverflow;
-               goto exit;
-            }
-         }
-         else ext = 0;
-
-         log.trace("Loading module \"%s\".", path);
+         log.trace("Loading module \"%s\".", path.c_str());
 
          // Open the module file.  Note that we will dlclose() the module in the expunge sequence of the Core (see core.c).
 
@@ -382,41 +330,17 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
             // other libraries.  SSL is an example of this as the libssl library is dependent
             // on symbols found in libcrypto, therefore libcrypto needs RTLD_GLOBAL.
 
-            if ((master->LibraryBase = dlopen(path, (Self->Flags & MOF_LINK_LIBRARY) ? (RTLD_LAZY|RTLD_GLOBAL) : RTLD_LAZY))) {
+            if ((master->LibraryBase = dlopen(path.c_str(), (Self->Flags & MOF_LINK_LIBRARY) ? (RTLD_LAZY|RTLD_GLOBAL) : RTLD_LAZY))) {
                aflags |= AF_SEGMENT;
 
                if (!(Self->Flags & MOF_LINK_LIBRARY)) {
                   if (!(table = (ModHeader *)dlsym(master->LibraryBase, "ModHeader"))) {
-                     log.warning("The 'ModHeader' structure is missing from module %s.", path);
+                     log.warning("The 'ModHeader' structure is missing from module %s.", path.c_str());
                      goto exit;
                   }
                }
             }
             else {
-
-               #ifdef DLL
-                  if (ext) {
-                     path[ext] = '.'; path[ext+1] = 'd'; path[ext+2] = 'l'; path[ext+3] = 'l'; path[ext+4] = 0;
-                  }
-
-                  log.trace("Attempting to load module as a DLL.");
-                  if ((master->LibraryBase = LoadLibraryA(path))) {
-                     log.trace("Identified module as a DLL.");
-                     master->DLL = TRUE;
-                     aflags |= AF_SEGMENT;
-                     if (!(Self->Flags & MOF_LINK_LIBRARY)) {
-                        if (!(table = GetProcAddress(master->LibraryBase, "ModHeader"))) {
-                           if (!(table = GetProcAddress(master->LibraryBase, "_ModHeader"))) {
-                              log.warning("The 'ModHeader' structure is missing from module %s.", path);
-                              goto exit;
-                           }
-                        }
-                     }
-
-                     log.trace("Retrieved ModHeader: $%.8x", table);
-                  }
-               #endif
-
                log.warning("%s: %s", name, (CSTRING)dlerror());
                error = ERR_NoSupport;
                goto exit;
@@ -424,13 +348,13 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
 
          #elif _WIN32
 
-            if ((master->LibraryBase = winLoadLibrary(path))) {
+            if ((master->LibraryBase = winLoadLibrary(path.c_str()))) {
                aflags |= AF_SEGMENT;
 
                if (!(Self->Flags & MOF_LINK_LIBRARY)) {
                   if (!(table = (ModHeader *)winGetProcAddress(master->LibraryBase, "ModHeader"))) {
                      if (!(table = (ModHeader *)winGetProcAddress(master->LibraryBase, "_ModHeader"))) {
-                        log.warning("The 'ModHeader' structure is missing from module %s.", path);
+                        log.warning("The 'ModHeader' structure is missing from module %s.", path.c_str());
                         goto exit;
                      }
                   }
@@ -438,7 +362,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
             }
             else {
                char msg[100];
-               log.error("Failed to load DLL '%s' (call: winLoadLibrary(): %s).", path, winFormatMessage(0, msg, sizeof(msg)));
+               log.error("Failed to load DLL '%s' (call: winLoadLibrary(): %s).", path.c_str(), winFormatMessage(0, msg, sizeof(msg)));
                error = ERR_Read;
                goto exit;
             }
@@ -452,7 +376,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
 
       if (table) {
          if ((table->ModVersion > 500) or (table->ModVersion < 0)) {
-            log.warning("Corrupt module version number %d for module '%s'", (LONG)master->ModVersion, path);
+            log.warning("Corrupt module version number %d for module '%s'", (LONG)master->ModVersion, path.c_str());
             goto exit;
          }
          else if ((table->HeaderVersion < MODULE_HEADER_V1) or (table->HeaderVersion > MODULE_HEADER_V1 + 256)) {
@@ -928,33 +852,6 @@ static ModuleMaster * check_resident(extModule *Self, CSTRING ModuleName)
          master = master->Next;
       }
    }
-
-   return NULL;
-}
-
-//********************************************************************************************************************
-// Search the module database (loaded from disk).
-
-ModuleItem * find_module(ULONG Hash)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (glModules) {
-      auto offsets = (LONG *)(glModules + 1);
-
-      log.traceBranch("Scanning %d modules for %x", glModules->Total, Hash);
-
-      LONG floor = 0;
-      LONG ceiling = glModules->Total;
-      while (floor < ceiling) {
-         LONG i = (floor + ceiling)>>1;
-         ModuleItem *item = (ModuleItem *)((BYTE *)glModules + offsets[i]);
-         if (item->Hash < Hash) floor = i + 1;
-         else if (item->Hash > Hash) ceiling = i;
-         else return item;
-      }
-   }
-   else log.trace("glModules not defined.");
 
    return NULL;
 }

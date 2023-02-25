@@ -255,18 +255,6 @@ EXPORT void CloseCore(void)
       if (glThreadClass)       { acFree(glThreadClass);       glThreadClass    = 0; }
       if (glModuleMasterClass) { acFree(glModuleMasterClass); glModuleMasterClass = 0; }
 
-      // Remove access to module database
-
-      if (glModules) {
-         MemInfo info;
-         log.debug("Removing module database.");
-         if (!MemoryPtrInfo(glModules, &info, sizeof(info))) {
-            FreeResourceID(info.MemoryID); // Mark for deletion
-         }
-      }
-
-      if (glModules) { ReleaseMemory(glModules); glModules = NULL; }
-
       #ifdef __unix__
          if (glSocket != -1) RegisterFD(glSocket, RFD_REMOVE, NULL, NULL);
       #endif
