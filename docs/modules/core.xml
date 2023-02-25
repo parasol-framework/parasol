@@ -1633,7 +1633,6 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="NoSupport">This request is not supported.</error>
-      <error code="ArrayFull">Array has reached capacity and cannot be expanded.</error>
     </result>
   </function>
 
@@ -4094,13 +4093,6 @@ end
       <field name="Top" type="LONG">Top coordinate</field>
       <field name="Right" type="LONG">Right-most coordinate</field>
       <field name="Bottom" type="LONG">Bottom coordinate</field>
-    </struct>
-
-    <struct name="FDTable" comment="Internal record for processing FD activity.">
-      <field name="FD" type="HOSTHANDLE">The file descriptor that is managed by this record.</field>
-      <field name="Routine" type="FUNCTION *" prototype="void (*Routine)(HOSTHANDLE, APTR)">The routine that will process read/write messages for the FD.</field>
-      <field name="Data" type="APTR">A user specific data pointer.</field>
-      <field name="Flags" type="LONG">Set to RFD_READ, RFD_WRITE or RFD_EXCEPT.</field>
     </struct>
 
     <struct name="FRGB" comment="64-bit floating point RGB colour value.">

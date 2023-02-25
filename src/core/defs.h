@@ -834,11 +834,19 @@ class ObjectContext {
 #endif
 
 //********************************************************************************************************************
-// File Descriptor table.  This is for RegisterFD()
+// File Descriptor table for RegisterFD()
 
-#define MAX_FDS 40
-extern struct FDTable *glFDTable;
-extern WORD glTotalFDs, glLastFD;
+struct FDRecord {
+   HOSTHANDLE FD;                         // The file descriptor that is managed by this record.
+   void (*Routine)(HOSTHANDLE, APTR);     // The routine that will process read/write messages for the FD.
+   APTR Data;                             // A user specific data pointer.
+   LONG Flags;                            // Set to RFD_READ, RFD_WRITE or RFD_EXCEPT.
+
+   FDRecord(HOSTHANDLE pFD, void (*pRoutine)(HOSTHANDLE, APTR), APTR pData, LONG pFlags) :
+      FD(pFD), Routine(pRoutine), Data(pData), Flags(pFlags) { }
+};
+
+extern std::list<FDRecord> glFDTable;
 extern LONG glInotify;
 
 #define LRT_Exclusive 1

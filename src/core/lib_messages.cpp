@@ -1321,40 +1321,40 @@ ERROR sleep_task(LONG Timeout)
    if (glTotalFDs > 0) {
       FD_ZERO(&fread);
       FD_ZERO(&fwrite);
-      for (LONG i=0; i < glTotalFDs; i++) {
-         if (glFDTable[i].Flags & RFD_STOP_RECURSE) continue; // This is an internally managed flag to prevent recursion
-         if (glFDTable[i].Flags & RFD_READ) FD_SET(glFDTable[i].FD, &fread);
-         if (glFDTable[i].Flags & RFD_WRITE) FD_SET(glFDTable[i].FD, &fwrite);
-         //log.trace("Listening to %d, Read: %d, Write: %d, Routine: %p, Flags: $%.2x", glFDTable[i].FD, (glFDTable[i].Flags & RFD_READ) ? 1 : 0, (glFDTable[i].Flags & RFD_WRITE) ? 1 : 0, glFDTable[i].Routine, glFDTable[i].Flags);
-         if (glFDTable[i].FD > maxfd) maxfd = glFDTable[i].FD;
+      for (auto &fd : glFDTable) {
+         if (fd.Flags & RFD_STOP_RECURSE) continue; // This is an internally managed flag to prevent recursion
+         if (fd.Flags & RFD_READ) FD_SET(fd.FD, &fread);
+         if (fd.Flags & RFD_WRITE) FD_SET(fd.FD, &fwrite);
+         //log.trace("Listening to %d, Read: %d, Write: %d, Routine: %p, Flags: $%.2x", fd.FD, (fd.Flags & RFD_READ) ? 1 : 0, (fd.Flags & RFD_WRITE) ? 1 : 0, fd.Routine, fd.Flags);
+         if (fd.FD > maxfd) maxfd = fd.FD;
 
-         if (glFDTable[i].Flags & RFD_ALWAYS_CALL) {
-            if (glFDTable[i].Routine) glFDTable[i].Routine(glFDTable[i].FD, glFDTable[i].Data);
+         if (fd.Flags & RFD_ALWAYS_CALL) {
+            if (fd.Routine) fd.Routine(fd.FD, fd.Data);
          }
-         else if (glFDTable[i].Flags & RFD_RECALL) {
+         else if (fd.Flags & RFD_RECALL) {
             // If the RECALL flag is set against an FD, it was done so because the subscribed routine needs to manually check
             // for incoming/outgoing data.  These are considered 'one-off' checks, so the subscriber will need to set the RECALL flag
             // again if it wants this service maintained.
             //
             // See the SSL support routines as an example of this requirement.
 
-            glFDTable[i].Flags &= ~RFD_RECALL; // Turn off the recall flag as each call is a one-off
+            fd.Flags &= ~RFD_RECALL; // Turn off the recall flag as each call is a one-off
 
-            if (!(glFDTable[i].Flags & RFD_ALLOW_RECURSION)) {
-               glFDTable[i].Flags |= RFD_STOP_RECURSE;
+            if (!(fd.Flags & RFD_ALLOW_RECURSION)) {
+               fd.Flags |= RFD_STOP_RECURSE;
             }
 
-            if (glFDTable[i].Routine) {
-               glFDTable[i].Routine(glFDTable[i].FD, glFDTable[i].Data);
+            if (fd.Routine) {
+               fd.Routine(fd.FD, fd.Data);
 
-               if (glFDTable[i].Flags & RFD_RECALL) {
+               if (fd.Flags & RFD_RECALL) {
                   // If the RECALL flag was re-applied by the subscriber, we need to employ a reduced timeout so that the subscriber doesn't get 'stuck'.
 
                   if (Timeout > 10) Timeout = 10;
                }
             }
 
-            glFDTable[i].Flags &= ~RFD_STOP_RECURSE;
+            fd.Flags &= ~RFD_STOP_RECURSE;
          }
       }
    }
@@ -1388,38 +1388,33 @@ ERROR sleep_task(LONG Timeout)
    UBYTE buffer[64];
    if (result > 0) {
       for (LONG i=0; i < glTotalFDs; i++) {
-         if (glFDTable[i].Flags & RFD_READ) {  // Readable FD support
-            if (FD_ISSET(glFDTable[i].FD, &fread)) {
-               if (!(glFDTable[i].Flags & RFD_ALLOW_RECURSION)) {
-                  glFDTable[i].Flags |= RFD_STOP_RECURSE;
+         if (fd.Flags & RFD_READ) {  // Readable FD support
+            if (FD_ISSET(fd.FD, &fread)) {
+               if (!(fd.Flags & RFD_ALLOW_RECURSION)) {
+                  fd.Flags |= RFD_STOP_RECURSE;
                }
 
-               if (glFDTable[i].Routine) {
-                  glFDTable[i].Routine(glFDTable[i].FD, glFDTable[i].Data);
+               if (fd.Routine) {
+                  fd.Routine(fd.FD, fd.Data);
                }
-               else if (glFDTable[i].FD IS glSocket) {
+               else if (fd.FD IS glSocket) {
                   socklen_t socklen;
                   struct sockaddr_un *sockpath = get_socket_path(glProcessID, &socklen);
                   recvfrom(glSocket, &buffer, sizeof(buffer), 0, (struct sockaddr *)sockpath, &socklen);
                }
-               else while (read(glFDTable[i].FD, &buffer, sizeof(buffer)) > 0);
+               else while (read(fd.FD, &buffer, sizeof(buffer)) > 0);
             }
 
-            glFDTable[i].Flags &= ~RFD_STOP_RECURSE;
+            fd.Flags &= ~RFD_STOP_RECURSE;
          }
 
-         if (glFDTable[i].Flags & RFD_WRITE) { // Writeable FD support
-            if (FD_ISSET(glFDTable[i].FD, &fwrite)) {
-               if (!(glFDTable[i].Flags & RFD_ALLOW_RECURSION)) {
-                  glFDTable[i].Flags |= RFD_STOP_RECURSE;
-               }
-
-               if (glFDTable[i].Routine) {
-                  glFDTable[i].Routine(glFDTable[i].FD, glFDTable[i].Data);
-               }
+         if (fd.Flags & RFD_WRITE) { // Writeable FD support
+            if (FD_ISSET(fd.FD, &fwrite)) {
+               if (!(fd.Flags & RFD_ALLOW_RECURSION)) fd.Flags |= RFD_STOP_RECURSE;
+               if (fd.Routine) fd.Routine(fd.FD, fd.Data);
             }
 
-            glFDTable[i].Flags &= ~RFD_STOP_RECURSE;
+            fd.Flags &= ~RFD_STOP_RECURSE;
          }
       }
    }
@@ -1431,10 +1426,10 @@ ERROR sleep_task(LONG Timeout)
 
          struct stat info;
          for (LONG i=0; i < glTotalFDs; i++) {
-            if (fstat(glFDTable[i].FD, &info) < 0) {
+            if (fstat(fd.FD, &info) < 0) {
                if (errno IS EBADF) {
-                  log.warning("FD %d was closed without a call to deregister it.", glFDTable[i].FD);
-                  RegisterFD(glFDTable[i].FD, RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT, NULL, NULL);
+                  log.warning("FD %d was closed without a call to deregister it.", fd.FD);
+                  RegisterFD(fd.FD, RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT, NULL, NULL);
                   break;
                }
             }
@@ -1477,7 +1472,6 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
    }
 
    LARGE time_end;
-   LONG i;
 
    //log.traceBranch("Time-out: %d, TotalFDs: %d", Timeout, glTotalFDs);
 
@@ -1487,42 +1481,36 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
    }
    else time_end = (PreciseTime() / 1000LL) + Timeout;
 
-   while (1) {
+   while (true) {
       // This subroutine will wait until either:
       //   Something is received on a registered WINHANDLE
       //   The thread-lock is released by another task (see wake_task).
       //   A window message is received (if tlMessageBreak is TRUE)
 
-      WINHANDLE handles[glTotalFDs+2]; // +1 for thread-lock, +1 for validation lock.
-      LONG lookup[glTotalFDs+2]; // Lookup into glFDTable
-
+      WINHANDLE handles[glFDTable.size()+2]; // +1 for thread-lock, +1 for validation lock.
       handles[0] = get_threadlock();
       handles[1] = glValidationSemaphore;
-      lookup[0] = 0; // Zero disables the lookup.
-      lookup[1] = 0;
       LONG total = 2;
 
       if ((SystemOnly) and (!tlMessageBreak)) {
          log.trace("Sleeping on process semaphore only.");
       }
       else {
-         for (LONG i=0; i < glTotalFDs; i++) {
-            if (glFDTable[i].Flags & RFD_SOCKET) continue; // Ignore network socket FDs (triggered as normal windows messages)
-
-            //log.trace("Listening to %d, Read: %d, Write: %d, Routine: %p, Flags: $%.2x", (LONG)(MAXINT)glFDTable[i].FD, (glFDTable[i].Flags & RFD_READ) ? 1 : 0, (glFDTable[i].Flags & RFD_WRITE) ? 1 : 0, glFDTable[i].Routine, glFDTable[i].Flags);
-
-            if (glFDTable[i].Flags & RFD_ALWAYS_CALL) {
-               if (glFDTable[i].Routine) glFDTable[i].Routine(glFDTable[i].FD, glFDTable[i].Data);
+         for (auto it = glFDTable.begin(); it != glFDTable.end(); ) {
+            auto &fd = *it;
+            if (fd.Flags & RFD_SOCKET); // Ignore network socket FDs (triggered as normal windows messages)
+            else if (fd.Flags & RFD_ALWAYS_CALL) {
+               if (fd.Routine) fd.Routine(fd.FD, fd.Data);
             }
-            else if (glFDTable[i].Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT)) {
-               lookup[total] = i;
-               handles[total++] = glFDTable[i].FD;
+            else if (fd.Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT)) {
+               handles[total++] = fd.FD;
             }
             else {
-               log.warning("FD %" PF64 " has no READ/WRITE/EXCEPT flag setting - de-registering.", (LARGE)glFDTable[i].FD);
-               RegisterFD(glFDTable[i].FD, RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT, NULL, NULL);
-               i--;
+               log.warning("FD %" PF64 " has no READ/WRITE/EXCEPT flag setting - de-registering.", (LARGE)fd.FD);
+               it = glFDTable.erase(it);
+               continue;
             }
+            it++;
          }
       }
 
@@ -1531,7 +1519,7 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
       LONG sleeptime = time_end - (PreciseTime() / 1000LL);
       if (sleeptime < 0) sleeptime = 0;
 
-      i = winWaitForObjects(total, handles, sleeptime, tlMessageBreak);
+      LONG i = winWaitForObjects(total, handles, sleeptime, tlMessageBreak);
 
       // Return Codes/Reasons for breaking:
       //
@@ -1549,18 +1537,16 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
          }
       }
       else if ((i > 1) and (i < total)) {
-         //log.trace("WaitForObjects() Handle: %d (%d) of %d, Timeout: %d, Break: %d", i, lookup[i], total, Timeout, tlMessageBreak);
+         // Process only the handle routine that was signalled: NOTE: This is potentially an issue if the handle is
+         // early on in the list and is being frequently signalled - it will mean that the other handles aren't
+         // going to get signalled until the earlier one stops being signalled.
 
-         // Process only the handle routine that was signalled: NOTE: This is potentially an issue if the handle is early on in the list and is being frequently
-         // signalled - it will mean that the other handles aren't going to get signalled until the earlier one stops being signalled.
+         for (auto it = glFDTable.begin(); it != glFDTable.end(); it++) {
+            if (it->FD != handles[i]) continue;
 
-         LONG ifd = lookup[i];
-         if (glFDTable[ifd].Routine) glFDTable[ifd].Routine(glFDTable[ifd].FD, glFDTable[ifd].Data);
-
-         if ((glTotalFDs > 1) and (ifd < glTotalFDs-1)) { // Move the most recently signalled handle to the end of the queue
-            FDTable last = glFDTable[glTotalFDs-1];
-            glFDTable[glTotalFDs-1] = glFDTable[ifd];
-            glFDTable[ifd] = last;
+            if (it->Routine) it->Routine(it->FD, it->Data);
+            glFDTable.splice(glFDTable.end(), glFDTable, it);
+            break;
          }
 
          break;

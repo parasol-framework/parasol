@@ -1009,13 +1009,6 @@ struct FieldValue {
      struct(*MemoryLocks) MemoryLocks # An array of memory locks currently held by the process.
   ]])
 
-  struct("FDTable", { comment="Internal record for processing FD activity." }, [[
-     hhandle FD           # The file descriptor that is managed by this record.
-     fptr(void hhandle ptr) Routine  # The routine that will process read/write messages for the FD.
-     ptr  Data            # A user specific data pointer.
-     int Flags            # Set to RFD_READ, RFD_WRITE or RFD_EXCEPT.
-  ]])
-
   struct("Message", { comment="Messaging structures.  Note: This structure is utilised by NextMsg" }, [[
      large Time    # A timestamp acquired from PreciseTime() when the message was first passed to SendMessage().
      int UniqueID  # A unique identifier automatically created by SendMessage().
