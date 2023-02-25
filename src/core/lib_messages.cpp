@@ -1318,7 +1318,7 @@ ERROR sleep_task(LONG Timeout)
    //log.trace("Time-out: %d", Timeout);
 
    LONG maxfd = -1;
-   if (glTotalFDs > 0) {
+   if (!glFDTable.empty()) {
       FD_ZERO(&fread);
       FD_ZERO(&fwrite);
       for (auto &fd : glFDTable) {
@@ -1361,18 +1361,18 @@ ERROR sleep_task(LONG Timeout)
 
    LONG result = 0;
    if (Timeout < 0) { // Sleep indefinitely
-      if (glTotalFDs > 0) result = select(maxfd + 1, &fread, &fwrite, NULL, NULL);
+      if (!glFDTable.empty()) result = select(maxfd + 1, &fread, &fwrite, NULL, NULL);
       else pause();
    }
    else if (Timeout IS 0) { // A zero second timeout means that we just poll the FD's and call them if they have data.  This is really useful for periodically flushing the FD's.
-      if (glTotalFDs > 0) {
+      if (!glFDTable.empty()) {
          tv.tv_sec = 0;
          tv.tv_usec = 0;
          result = select(maxfd + 1, &fread, &fwrite, NULL, &tv);
       }
    }
    else {
-      if (glTotalFDs > 0) {
+      if (!glFDTable.empty()) {
          tv.tv_sec = Timeout / 1000;
          tv.tv_usec = (Timeout - (tv.tv_sec * 1000)) * 1000;
          result = select(maxfd + 1, &fread, &fwrite, NULL, &tv);
@@ -1387,7 +1387,7 @@ ERROR sleep_task(LONG Timeout)
 
    UBYTE buffer[64];
    if (result > 0) {
-      for (LONG i=0; i < glTotalFDs; i++) {
+      for (auto &fd : glFDTable) {
          if (fd.Flags & RFD_READ) {  // Readable FD support
             if (FD_ISSET(fd.FD, &fread)) {
                if (!(fd.Flags & RFD_ALLOW_RECURSION)) {
@@ -1425,7 +1425,7 @@ ERROR sleep_task(LONG Timeout)
          // code responsible did not de-register the descriptor.
 
          struct stat info;
-         for (LONG i=0; i < glTotalFDs; i++) {
+         for (auto &fd : glFDTable) {
             if (fstat(fd.FD, &info) < 0) {
                if (errno IS EBADF) {
                   log.warning("FD %d was closed without a call to deregister it.", fd.FD);

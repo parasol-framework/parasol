@@ -265,6 +265,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
             #ifdef __unix__
                if (!glModulePath.empty()) { // If no specific module path is defined, default to the system path and tack on the modules/ suffix.
                   path = glModulePath;
+                  if (path.back() != '/') path.push_back('/');
                }
                else path = std::string(glRootPath) + "lib/parasol/";
 
@@ -764,7 +765,7 @@ APTR build_jump_table(LONG JumpType, const Function *FList, LONG MemFlags)
 }
 
 //********************************************************************************************************************
-// This special routine will compare strings up to a '.' extension or null character.
+// Compare strings up to a '.' extension or null character.
 
 static LONG cmp_mod_names(CSTRING String1, CSTRING String2)
 {

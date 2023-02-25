@@ -25,8 +25,6 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
 {
    pf::Log log("X11Mgr");
    XEvent xevent;
-   OBJECTID surface_id, display_id, *list;
-   WORD i;
 
    if (!XDisplay) return;
 
