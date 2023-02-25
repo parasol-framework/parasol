@@ -268,7 +268,7 @@ struct public_lock {
    WINHANDLE Lock;
    LONG PID;
    WORD Count;
-   UBYTE Event:1; // Set to TRUE if the lock is for a broadcast-able event
+   bool Event; // Set to true if the lock is for a broadcast-able event
 };
 
 extern struct public_lock glPublicLocks[PL_END];
@@ -672,12 +672,12 @@ extern struct BaseClass glDummyObject;
 
 extern CSTRING glClassBinPath;
 extern CSTRING glModuleBinPath;
-extern objMetaClass *ModuleMasterClass;
-extern objMetaClass *ModuleClass;
-extern objMetaClass *TaskClass;
-extern objMetaClass *ThreadClass;
-extern objMetaClass *TimeClass;
-extern objMetaClass *ConfigClass;
+extern objMetaClass *glModuleMasterClass;
+extern objMetaClass *glModuleClass;
+extern objMetaClass *glTaskClass;
+extern objMetaClass *glThreadClass;
+extern objMetaClass *glTimeClass;
+extern objMetaClass *glConfigClass;
 extern objMetaClass *glFileClass;
 extern objMetaClass *glStorageClass;
 extern objMetaClass *glScriptClass;

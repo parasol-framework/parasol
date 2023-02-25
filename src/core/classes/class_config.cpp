@@ -1190,7 +1190,7 @@ static const FieldArray clFields[] = {
 
 extern "C" ERROR add_config_class(void)
 {
-   ConfigClass = extMetaClass::create::global(
+   glConfigClass = extMetaClass::create::global(
       fl::BaseClassID(ID_CONFIG),
       fl::ClassVersion(VER_CONFIG),
       fl::Name("Config"),
@@ -1203,6 +1203,6 @@ extern "C" ERROR add_config_class(void)
       fl::Size(sizeof(extConfig)),
       fl::Path("modules:core"));
 
-   return ConfigClass ? ERR_Okay : ERR_AddClass;
+   return glConfigClass ? ERR_Okay : ERR_AddClass;
 }
 
