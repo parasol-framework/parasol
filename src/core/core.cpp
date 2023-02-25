@@ -111,7 +111,6 @@ extern "C" EXPORT void CloseCore(void);
 extern "C" EXPORT struct CoreBase * OpenCore(OpenInfo *);
 static ERROR open_shared_control(void);
 static ERROR init_shared_control(void);
-static ERROR load_modules(void);
 static ERROR init_volumes(std::forward_list<CSTRING> &);
 
 #ifdef _WIN32
@@ -741,43 +740,35 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    if (!(Info->Flags & OPF_SCAN_MODULES)) {
       ERROR error;
-      if (!(error = load_modules())) {
-         objFile::create file = { fl::Path(glClassBinPath), fl::Flags(FL_READ) };
+      objFile::create file = { fl::Path(glClassBinPath), fl::Flags(FL_READ) };
 
-         if (file.ok()) {
-            LONG filesize;
-            file->get(FID_Size, &filesize);
+      if (file.ok()) {
+         LONG filesize;
+         file->get(FID_Size, &filesize);
 
-            LONG hdr;
-            file->read(&hdr, sizeof(hdr));
-            if (hdr IS CLASSDB_HEADER) {
-               while (file->Position + ClassRecord::MIN_SIZE < filesize) {
-                  ClassRecord item;
-                  if ((error = item.read(*file))) break;
+         LONG hdr;
+         file->read(&hdr, sizeof(hdr));
+         if (hdr IS CLASSDB_HEADER) {
+            while (file->Position + ClassRecord::MIN_SIZE < filesize) {
+               ClassRecord item;
+               if ((error = item.read(*file))) break;
 
-                  if (glClassDB.contains(item.ClassID)) {
-                     log.warning("Invalid class dictionary file, %s is registered twice.", item.Name.c_str());
-                     error = ERR_Failed;
-                     break;
-                  }
-                  glClassDB[item.ClassID] = item;
+               if (glClassDB.contains(item.ClassID)) {
+                  log.warning("Invalid class dictionary file, %s is registered twice.", item.Name.c_str());
+                  error = ERR_Failed;
+                  break;
                }
+               glClassDB[item.ClassID] = item;
+            }
 
-               if (error) glScanClasses = true;
-            }
-            else {
-               // File is probably from an old version and requires recalculation.
-               glScanClasses = true;
-            }
+            if (error) glScanClasses = true;
          }
-         else glScanClasses = true; // If no file, a database rebuild is required.
+         else {
+            // File is probably from an old version and requires recalculation.
+            glScanClasses = true;
+         }
       }
-      else {
-         log.warning("Failed to load the system classes.");
-         if (Info->Flags & OPF_ERROR) Info->Error = error;
-         CloseCore();
-         return NULL;
-      }
+      else glScanClasses = true; // If no file, a database rebuild is required.
    }
 
    if (na > 0) SetArray(glCurrentTask, FID_Parameters, newargs, na);
@@ -1622,166 +1613,6 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
 }
 #endif
 
-/*********************************************************************************************************************
-** Loads the module cache file.  If the cache file does not exist, it is created.
-**
-** The cache merely holds the location of each system module that is installed in the system.  No modules are loaded
-** for inspection by this routine.
-*/
-
-static ERROR load_modules(void)
-{
-   pf::Log log(__FUNCTION__);
-   LONG i, j;
-
-   // Entry structure:
-   //
-   //   ULONG Hash
-   //   LONG  Size
-   //   char  Path[]
-
-   ERROR error;
-   if (glSharedControl->ModulesMID) {
-      if (!AccessMemoryID(glSharedControl->ModulesMID, MEM_READ, 2000, (APTR *)&glModules)) {
-         return ERR_Okay;
-      }
-      else return log.warning(ERR_AccessMemory);
-   }
-
-   {
-      objFile::create file = {
-         fl::Path(glModuleBinPath),
-         fl::Flags(FL_READ)
-      };
-
-      if (file.ok()) {
-         LONG size;
-         if (!(error = file->get(FID_Size, &size))) {
-            if (!(error = AllocMemory(size, MEM_NO_CLEAR|MEM_PUBLIC|MEM_UNTRACKED|MEM_NO_BLOCK, (APTR *)&glModules, &glSharedControl->ModulesMID))) {
-               error = file->read(glModules, size);
-            }
-         }
-
-         if (!error) return ERR_Okay;
-         else {
-            log.error("Failed to read %s", glModuleBinPath);
-            return ERR_File;
-         }
-      }
-   }
-
-   log.branch("Scanning for available modules.");
-   char modules[16384];
-
-   size_t pos = 0;
-   LONG total = 0;
-
-   DirInfo *dir;
-   if (!OpenDir("modules:", RDF_QUALIFY, &dir)) {
-      while ((!ScanDir(dir)) and (pos < (sizeof(modules)-256))) {
-         FileInfo *folder = dir->Info;
-         if (folder->Flags & RDF_FILE) {
-            auto item = (ModuleItem *)(modules + pos);
-
-            #ifdef __ANDROID__
-               char modname[60];
-               CSTRING foldername = folder->Name;
-
-               // Android modules are in the format "libcategory_modname.so"
-
-               if ((foldername[0] IS 'l') and (foldername[1] IS 'i') and (foldername[2] IS 'b')) {
-                  foldername += 3;
-
-                  // Skip category if one is specified, since we just want the module's short name.
-
-                  for (LONG j=0; foldername[j]; j++) {
-                     if (foldername[j] IS '_') {
-                        foldername += j + 1;
-                        break;
-                     }
-                  }
-
-                  for (i=0; foldername[i] and (foldername[i] != '.') and (i < sizeof(modname)); i++) modname[i] = foldername[i];
-                  modname[i] = 0;
-
-                  item->Hash = StrHash(modname, FALSE);
-
-                  pos += sizeof(ModuleItem);
-                  pos += StrCopy("modules:", modules+pos, sizeof(modules)-pos-1);
-                  for (i=0; folder->Name[i] and (folder->Name[i] != '.') and (pos < sizeof(modules)-1); i++) modules[pos++] = folder->Name[i]; // Copy everything up to the extension.
-                  modules[pos++] = 0; // Include the null byte.
-               }
-               else continue;  // Anything not starting with 'lib' is ignored.
-            #else
-               char modname[60];
-
-               for (i=0; folder->Name[i] and (folder->Name[i] != '.') and (i < (LONG)sizeof(modname)); i++) modname[i] = folder->Name[i];
-               modname[i] = 0;
-
-               item->Hash = StrHash(modname, FALSE);
-
-               pos += sizeof(ModuleItem);
-               pos += StrCopy("modules:", modules+pos, sizeof(modules)-pos-1);
-               pos += StrCopy(modname, modules+pos, sizeof(modules)-pos-1);
-               pos++; // Include the null byte.
-            #endif
-
-            item->Size = (MAXINT)(modules + pos) - (MAXINT)item;
-
-            total++;
-         }
-      }
-      FreeResource(dir);
-   }
-
-   if ((total > 0) and (!(error = AllocMemory(sizeof(ModuleHeader) + (total * sizeof(LONG)) + pos, MEM_NO_CLEAR|MEM_PUBLIC|MEM_UNTRACKED|MEM_NO_BLOCK, (APTR *)&glModules, &glSharedControl->ModulesMID)))) {
-      glModules->Total = total;
-
-      // Generate the offsets
-
-      LONG *offsets = (LONG *)(glModules + 1);
-      ModuleItem *item = (ModuleItem *)((APTR)modules);
-      for (LONG i=0; i < total; i++) {
-         offsets[i] = (MAXINT)item - (MAXINT)modules + sizeof(ModuleHeader) + (total<<2);
-         item = (ModuleItem *)(((char *)item) + item->Size);
-      }
-
-      CopyMemory(modules, offsets + total, pos);
-
-      // Sort the offsets
-
-      LONG h = 1;
-      while (h < total / 9) h = 3 * h + 1;
-      for (; h > 0; h /= 3) {
-         for (LONG i=h; i < total; i++) {
-            LONG temp = offsets[i];
-            for (j=i; (j >= h) and (((ModuleItem *)((char *)glModules + offsets[j-h]))->Hash > ((ModuleItem *)((char *)glModules + temp))->Hash); j -= h) {
-               offsets[j] = offsets[j - h];
-            }
-            offsets[j] = temp;
-         }
-      }
-
-      objFile::create file = {
-         fl::Path(glModuleBinPath),
-         fl::Flags(FL_NEW|FL_WRITE),
-         fl::Permissions(PERMIT_USER_READ|PERMIT_USER_WRITE|PERMIT_GROUP_READ|PERMIT_GROUP_WRITE|PERMIT_OTHERS_READ)
-      };
-
-      if (file.ok()) {
-         file->write(&total, sizeof(total), NULL);
-         file->write(offsets, total * sizeof(LONG), NULL);
-         file->write(modules, pos, NULL);
-      }
-   }
-   else {
-      log.warning("Failed to find anything in 'modules:'");
-      error = ERR_Search;
-   }
-
-   return error;
-}
-
 //**********************************************************************
 
 ERROR convert_errno(LONG Error, ERROR Default)
@@ -1869,8 +1700,8 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
       SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "programs/filemanager", TAGEND);
       SetVolume(AST_NAME, "system", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick", TAGEND);
 
-      if (glModulePath[0]) {
-         SetVolume(AST_NAME, "modules", AST_PATH, glModulePath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick", TAGEND);
+      if (!glModulePath.empty()) {
+         SetVolume(AST_NAME, "modules", AST_PATH, glModulePath.c_str(), AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick", TAGEND);
       }
       else {
          SetVolume(AST_NAME, "modules", AST_PATH, "system:lib/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick", TAGEND);
@@ -1879,8 +1710,8 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
       SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "programs/filemanager",  TAGEND);
       SetVolume(AST_NAME, "system", AST_PATH, glSystemPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_SYSTEM, AST_ICON, "misc/brick",  TAGEND);
 
-      if (glModulePath[0]) {
-         SetVolume(AST_NAME, "modules", AST_PATH, glModulePath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick",  TAGEND);
+      if (!glModulePath.empty()) {
+         SetVolume(AST_NAME, "modules", AST_PATH, glModulePath.c_str(), AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick",  TAGEND);
       }
       else {
          std::string path(glRootPath);
@@ -2134,6 +1965,14 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
          path[p] = 0;
          SetVolume(AST_NAME, name, AST_PATH, path, AST_FLAGS, VOLUME_PRIORITY, TAGEND);
       }
+   }
+
+   // Change glModulePath to an absolute path to optimise the loading of modules.
+
+   STRING mpath;
+   if (!ResolvePath("modules:", RSF_NO_FILE_CHECK, &mpath)) {
+      glModulePath = mpath;
+      FreeResource(mpath);
    }
 
    return ERR_Okay;
