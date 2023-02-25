@@ -60,7 +60,6 @@ FDEF argsKeyGet[] = { { "Error", FD_LONG|FD_ERROR }, { "KeyStore:Store", FD_PTR|
 FDEF argsKeyIterate[] = { { "Error", FD_LONG|FD_ERROR }, { "KeyStore:Store", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "Index", FD_LONG|FD_UNSIGNED }, { "Key", FD_LONG|FD_UNSIGNED|FD_RESULT }, { "Data", FD_PTR|FD_RESULT }, { "Size", FD_LONG|FD_BUFSIZE|FD_RESULT }, { 0, 0 } };
 FDEF argsKeySet[] = { { "Error", FD_LONG|FD_ERROR }, { "KeyStore:Store", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "Key", FD_LONG|FD_UNSIGNED }, { "Data", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsListChildren[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTID }, { "ChildEntry:List", FD_BUFFER|FD_ARRAY|FD_STRUCT|FD_RESOURCE }, { "Count", FD_LONG|FD_ARRAYSIZE|FD_RESULT }, { 0, 0 } };
-FDEF argsListTasks[] = { { "Error", FD_LONG|FD_ERROR }, { "Flags", FD_LONG }, { "ListTasks:List", FD_PTR|FD_STRUCT|FD_RESULT }, { 0, 0 } };
 FDEF argsLoadFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Flags", FD_LONG }, { "CacheFile:Cache", FD_PTR|FD_STRUCT|FD_RESOURCE|FD_RESULT }, { 0, 0 } };
 FDEF argsLockMutex[] = { { "Error", FD_LONG|FD_ERROR }, { "Mutex", FD_PTR }, { "MilliSeconds", FD_LONG }, { 0, 0 } };
 FDEF argsLockObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "MilliSeconds", FD_LONG }, { 0, 0 } };
@@ -155,7 +154,7 @@ const struct Function glFunctions[] = {
    { (APTR)AllocateID, "AllocateID", argsAllocateID },
    { (APTR)AllocMemory, "AllocMemory", argsAllocMemory },
    { (APTR)AccessObjectID, "AccessObjectID", argsAccessObjectID },
-   { (APTR)ListTasks, "ListTasks", argsListTasks },
+   { (APTR)VarCopy, "VarCopy", argsVarCopy },
    { (APTR)CheckAction, "CheckAction", argsCheckAction },
    { (APTR)CheckMemoryExists, "CheckMemoryExists", argsCheckMemoryExists },
    { (APTR)CheckObjectExists, "CheckObjectExists", argsCheckObjectExists },
@@ -285,7 +284,6 @@ const struct Function glFunctions[] = {
    { (APTR)Base64Encode, "Base64Encode", argsBase64Encode },
    { (APTR)VarSetString, "VarSetString", argsVarSetString },
    { (APTR)VarGetString, "VarGetString", argsVarGetString },
-   { (APTR)VarCopy, "VarCopy", argsVarCopy },
    { NULL, NULL, NULL }
 };
 

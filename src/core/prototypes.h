@@ -13,7 +13,7 @@ CSTRING ResolveClassID(CLASSID ID);
 LONG AllocateID(LONG Type);
 ERROR AllocMemory(LONG Size, LONG Flags, APTR * Address, MEMORYID * ID);
 ERROR AccessObjectID(OBJECTID Object, LONG MilliSeconds, OBJECTPTR * Result);
-ERROR ListTasks(LONG Flags, struct ListTasks ** List);
+ERROR VarCopy(struct KeyStore * Source, struct KeyStore * Dest);
 ERROR CheckAction(OBJECTPTR Object, LONG Action);
 ERROR CheckMemoryExists(MEMORYID ID);
 ERROR CheckObjectExists(OBJECTID Object);
@@ -143,7 +143,6 @@ LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
 LONG Base64Encode(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
 ERROR VarSetString(struct KeyStore * Store, CSTRING Key, CSTRING Value);
 CSTRING VarGetString(struct KeyStore * Store, CSTRING Key);
-ERROR VarCopy(struct KeyStore * Source, struct KeyStore * Dest);
 
 #ifdef  __cplusplus
 }

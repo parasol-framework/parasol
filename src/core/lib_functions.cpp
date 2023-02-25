@@ -912,7 +912,6 @@ const SystemState * GetSystemState(void)
       state.ConsoleFD     = glConsoleFD;
       state.CoreVersion   = VER_CORE;
       state.CoreRevision  = REV_CORE;
-      state.InstanceID    = glInstanceID;
       state.ErrorMessages = glMessages;
       state.TotalErrorMessages = ARRAYSIZE(glMessages);
       #ifdef __unix__
@@ -989,93 +988,6 @@ ERROR ListChildren(OBJECTID ObjectID, ChildEntry *List, LONG *Count)
 
    *Count = i;
    return error;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-ListTasks: Returns a list of all active processes that are in the system.
-Status: private
-
-Limited to use by the desktop and some other internal programs.
-
--INPUT-
-int(LTF) Flags: Optional flags.
-&struct(ListTasks) List: A reference to the process list is returned in this parameter.
-
--ERRORS-
-Okay
-NullArgs
-
-*********************************************************************************************************************/
-
-ERROR ListTasks(LONG Flags, struct ListTasks **Detail)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (!Detail) return ERR_NullArgs;
-
-   ScopedSysLock lock(PL_PROCESSES, 4000);
-   if (lock.granted()) {
-      WORD taskcount = 0;
-      LONG memlocks = 0;
-      struct ListTasks *list;
-      for (LONG i=0; i < MAX_TASKS; i++) {
-         if ((shTasks[i].ProcessID) and (shTasks[i].TaskID) and (shTasks[i].MessageID)) {
-            if (Flags & LTF_CURRENT_PROCESS) {
-               if (shTasks[i].TaskID != glCurrentTask->UID) continue;
-            }
-
-            taskcount++;
-            for (LONG j=0; j < ARRAYSIZE(shTasks[i].NoBlockLocks); j++) {
-                if (shTasks[i].NoBlockLocks[j].MemoryID) memlocks++;
-            }
-         }
-      }
-
-      if (!AllocMemory((sizeof(struct ListTasks) * (taskcount + 1)) + (sizeof(shTasks[0].NoBlockLocks[0]) * memlocks), MEM_NO_CLEAR, (void **)&list, NULL)) {
-         *Detail = list;
-
-         LONG j = 0;
-         for (LONG i=0; (i < MAX_TASKS) and (j < taskcount); i++) {
-            if ((shTasks[i].ProcessID) and (shTasks[i].TaskID) and (shTasks[i].MessageID)) {
-               if (Flags & LTF_CURRENT_PROCESS) {
-                  if (shTasks[i].TaskID != glCurrentTask->UID) continue;
-               }
-
-               list->ProcessID   = shTasks[i].ProcessID;
-               list->TaskID      = shTasks[i].TaskID;
-               list->MessageID   = shTasks[i].MessageID;
-               list->OutputID    = shTasks[i].OutputID;
-               list->InstanceID  = shTasks[i].InstanceID;
-               list->ModalID     = shTasks[i].ModalID;
-               list->MemoryLocks = (MemoryLocks *)(list + 1);
-
-               memlocks = 0; // Insert memory locks for this task entry
-               for (LONG k=0; k < ARRAYSIZE(shTasks[i].NoBlockLocks); k++) {
-                  if (shTasks[i].NoBlockLocks[k].MemoryID) {
-                     list->MemoryLocks[memlocks].MemoryID = shTasks[i].NoBlockLocks[k].MemoryID;
-                     list->MemoryLocks[memlocks].Locks = shTasks[i].NoBlockLocks[k].AccessCount;
-                  }
-               }
-               list->TotalMemoryLocks = memlocks;
-
-               if (!memlocks) list->MemoryLocks = NULL;
-
-               // Next task
-
-               list = (struct ListTasks *) ( ((BYTE *)(list+1)) + (memlocks * sizeof(shTasks[0].NoBlockLocks[0])) );
-               j++;
-            }
-         }
-
-         ClearMemory(list, sizeof(struct ListTasks));
-
-         return ERR_Okay;
-      }
-      else return ERR_AllocMemory;
-   }
-   else return ERR_SystemLocked;
 }
 
 /*********************************************************************************************************************

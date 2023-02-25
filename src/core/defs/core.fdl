@@ -373,10 +373,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
      WAIT_FOR_OBJECTS = 90
   })
 
-  const("LTF", { comment="Flags for ListTasks()" }, {
-     CURRENT_PROCESS = 0x0000001
-  })
-
   enum("IDTYPE", { start=1, comment="Types for AllocateID()" },
     "MESSAGE: Message ID's are allocated for the purpose of sending uniquely identifiable messages between tasks.",
     "GLOBAL: Global ID's have no specific association with anything.",
@@ -946,7 +942,6 @@ struct FieldValue {
     hhandle ConsoleFD          # Internal
     int  CoreVersion           # Reflects the Core version number.
     int  CoreRevision          # Reflects the Core revision number.
-    int  InstanceID            # This is the ID of the instance that the calling process resides in.
     int  TotalErrorMessages    # The total number of error codes listed in the ErrorMessages array.
     int  Stage                 # The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.
   ]])
@@ -974,11 +969,6 @@ struct FieldValue {
     int  Size       # Total byte-size of all accepted parameters when they are assembled as a C structure.
   ]])
 
-  struct("MemoryLocks", { comment="A supplement structure for ListTasks." }, [[
-    mem  MemoryID  # Reference to a memory ID.
-    short Locks    # The total number of locks on the memory block.
-  ]])
-
   struct("ActionTable", { comment="Structure for ActionList" }, [[
     uint Hash   # Hash of the action name.
     int  Size   # Byte-size of the structure for this action.
@@ -989,21 +979,6 @@ struct FieldValue {
   struct("ChildEntry", { comment="Structure for ListChildren() function" }, [[
     oid ObjectID  # Object ID
     cid ClassID   # The class ID of the referenced object.
-  ]])
-
-  struct("ListTasks", { comment="Structure for ListTasks()" }, [[
-     int     ProcessID         # Core process ID
-     oid     TaskID            # Task ID for this array entry
-     int     WaitingProcessID  # If the task is waiting, this field reflects the other task's ID
-     mem     WaitingMemoryID   # If the task is waiting, this field reflects the memory ID
-     int     WaitingTime       # If the task is waiting, the time at which the sleep started (msec)
-     mem     MessageID         # Message queue ID
-     oid     OutputID          # The object that the task should output information to
-     hhandle Semaphore         # Semaphore for IPC
-     int     InstanceID        # Instance that the task belongs to
-     int     TotalMemoryLocks  # Total number of held memory locks
-     oid     ModalID           # Refers to any surface that currently holds a modal lock.
-     struct(*MemoryLocks) MemoryLocks # An array of memory locks currently held by the process.
   ]])
 
   struct("Message", { comment="Messaging structures.  Note: This structure is utilised by NextMsg" }, [[
@@ -1186,7 +1161,7 @@ extern struct CoreBase *CoreBase;
     "AllocateID",
     "AllocMemory",
     "AccessObjectID",
-    "ListTasks",
+    "VarCopy",
     "CheckAction",
     "CheckMemoryExists",
     "CheckObjectExists",
@@ -1315,8 +1290,7 @@ extern struct CoreBase *CoreBase;
     "UTF8Copy",
     "Base64Encode",
     "VarSetString",
-    "VarGetString",
-    "VarCopy")
+    "VarGetString")
 
   c_insert([[
 
@@ -2244,7 +2218,6 @@ struct TaskList {
    OBJECTID TaskID;        // Task ID for this array entry.  Also see the ParentID field
    MEMORYID MessageID;     // Message queue ID
    OBJECTID OutputID;      // The object that the task should output information to
-   LONG     InstanceID;    // Instance that the task belongs to
    LONG     ReturnCode;    // Return code
    OBJECTID ParentID;      // The task responsible for creating this task slot
    OBJECTID ModalID;       // Set if a modal surface is to have the user's attention
@@ -2454,7 +2427,6 @@ struct PublicAddress {
    OBJECTID ObjectID;          // Object that the address belongs to
    OBJECTID TaskID;            // The task that the block is tracked back to
    OBJECTID ContextID;         // Context that locked the memory block (for debugging purposes only)
-   LONG     InstanceID;        // Reference to the instance that this memory block is restricted to
    WORD     ActionID;          // Action that locked the memory block (for debugging purposes only)
    WORD     Flags;             // Special MEM_ address flags
    volatile UBYTE AccessCount;  // Count of locks on this address
@@ -2482,7 +2454,6 @@ struct SortedAddress {
 
 struct SemaphoreEntry {   // The index of each semaphore in the array indicates their IDs
    ULONG NameID;          // Hashed name of the semaphore
-   LONG  InstanceID;      // Reference to the instance that this semaphore is restricted to
    LONG  BlockingProcess; // Process ID of the blocker
    LONG  BlockingThread;  // Global thread ID of the blocker
    LARGE Data;            // User configurable 64-bit data
@@ -2551,7 +2522,6 @@ struct SharedControl {
    LONG InputSize;                  // Maximum number of subscribers allowed in InputMID
    LONG InstanceMsgPort;            // The message port of the process that created the instance.
    MEMORYID SurfacesMID;
-   MEMORYID ModulesMID;             // Module database
    MEMORYID InputMID;
    #ifdef __unix__
       struct {

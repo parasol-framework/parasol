@@ -113,21 +113,19 @@ void remove_semaphores(void)
       auto semlist = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
 
       for (WORD index=1; index < MAX_SEMAPHORES; index++) {
-         if (semlist[index].InstanceID IS glInstanceID) {
-            for (WORD j=0; j < ARRAYSIZE(semlist[index].Processes); j++) {
-               if (semlist[index].Processes[j].ProcessID IS glProcessID) {
-                  #ifdef DBG_SEMAPHORES
-                     log.msg("Deallocating semaphore #%d.", index);
-                  #endif
+         for (WORD j=0; j < ARRAYSIZE(semlist[index].Processes); j++) {
+            if (semlist[index].Processes[j].ProcessID IS glProcessID) {
+               #ifdef DBG_SEMAPHORES
+                  log.msg("Deallocating semaphore #%d.", index);
+               #endif
 
-                  if (semlist[index].Processes[j].AccessCount) semlist[index].Counter++;
-                  if (semlist[index].Processes[j].BlockCount)  semlist[index].Counter += semlist[index].BlockingValue;
+               if (semlist[index].Processes[j].AccessCount) semlist[index].Counter++;
+               if (semlist[index].Processes[j].BlockCount)  semlist[index].Counter += semlist[index].BlockingValue;
 
-                  // Remove this process from the semaphore registrar
+               // Remove this process from the semaphore registrar
 
-                  ClearMemory(semlist[index].Processes + j, sizeof(semlist[index].Processes[j]));
-                  break;
-               }
+               ClearMemory(semlist[index].Processes + j, sizeof(semlist[index].Processes[j]));
+               break;
             }
          }
       }
@@ -431,7 +429,7 @@ ERROR AllocSemaphore(CSTRING Name, LONG Value, LONG Flags, LONG *SemaphoreID)
          if ((Name) and (*Name)) {
             ULONG name_id = StrHash(Name, TRUE);
             for (index=1; index < MAX_SEMAPHORES; index++) {
-               if ((semlist[index].InstanceID IS glInstanceID) and (semlist[index].NameID IS name_id)) break;
+               if (semlist[index].NameID IS name_id) break;
             }
 
             if (index IS MAX_SEMAPHORES) {
@@ -484,7 +482,6 @@ restart:
 
       if (!semaphore->MaxValue) {
          semaphore->MaxValue   = Value;
-         semaphore->InstanceID = glInstanceID;
          semaphore->Flags      = Flags & MEM_UNTRACKED;
          semaphore->Counter    = Value;
          semaphore->Data       = 0;

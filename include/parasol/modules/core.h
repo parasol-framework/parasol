@@ -1135,10 +1135,6 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 #define MSGID_BREAK 102
 #define MSGID_QUIT 1000
 
-// Flags for ListTasks()
-
-#define LTF_CURRENT_PROCESS 1
-
 // Types for AllocateID()
 
 #define IDTYPE_MESSAGE 1
@@ -1698,7 +1694,6 @@ struct SystemState {
    HOSTHANDLE ConsoleFD;       // Internal
    LONG      CoreVersion;      // Reflects the Core version number.
    LONG      CoreRevision;     // Reflects the Core revision number.
-   LONG      InstanceID;       // This is the ID of the instance that the calling process resides in.
    LONG      TotalErrorMessages; // The total number of error codes listed in the ErrorMessages array.
    LONG      Stage;            // The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.
 };
@@ -1724,11 +1719,6 @@ struct MethodArray {
    LONG    Size;                         // Total byte-size of all accepted parameters when they are assembled as a C structure.
 };
 
-struct MemoryLocks {
-   MEMORYID MemoryID;    // Reference to a memory ID.
-   WORD     Locks;       // The total number of locks on the memory block.
-};
-
 struct ActionTable {
    ULONG   Hash;                         // Hash of the action name.
    LONG    Size;                         // Byte-size of the structure for this action.
@@ -1739,21 +1729,6 @@ struct ActionTable {
 struct ChildEntry {
    OBJECTID ObjectID;    // Object ID
    CLASSID  ClassID;     // The class ID of the referenced object.
-};
-
-struct ListTasks {
-   LONG     ProcessID;                  // Core process ID
-   OBJECTID TaskID;                     // Task ID for this array entry
-   LONG     WaitingProcessID;           // If the task is waiting, this field reflects the other task's ID
-   MEMORYID WaitingMemoryID;            // If the task is waiting, this field reflects the memory ID
-   LONG     WaitingTime;                // If the task is waiting, the time at which the sleep started (msec)
-   MEMORYID MessageID;                  // Message queue ID
-   OBJECTID OutputID;                   // The object that the task should output information to
-   HOSTHANDLE Semaphore;                // Semaphore for IPC
-   LONG     InstanceID;                 // Instance that the task belongs to
-   LONG     TotalMemoryLocks;           // Total number of held memory locks
-   OBJECTID ModalID;                    // Refers to any surface that currently holds a modal lock.
-   struct MemoryLocks * MemoryLocks;    // An array of memory locks currently held by the process.
 };
 
 struct Message {
@@ -1936,7 +1911,7 @@ struct CoreBase {
    LONG (*_AllocateID)(LONG Type);
    ERROR (*_AllocMemory)(LONG Size, LONG Flags, APTR Address, MEMORYID * ID);
    ERROR (*_AccessObjectID)(OBJECTID Object, LONG MilliSeconds, APTR Result);
-   ERROR (*_ListTasks)(LONG Flags, struct ListTasks ** List);
+   ERROR (*_VarCopy)(struct KeyStore * Source, struct KeyStore * Dest);
    ERROR (*_CheckAction)(OBJECTPTR Object, LONG Action);
    ERROR (*_CheckMemoryExists)(MEMORYID ID);
    ERROR (*_CheckObjectExists)(OBJECTID Object);
@@ -2066,7 +2041,6 @@ struct CoreBase {
    LONG (*_Base64Encode)(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
    ERROR (*_VarSetString)(struct KeyStore * Store, CSTRING Key, CSTRING Value);
    CSTRING (*_VarGetString)(struct KeyStore * Store, CSTRING Key);
-   ERROR (*_VarCopy)(struct KeyStore * Source, struct KeyStore * Dest);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2079,7 +2053,7 @@ inline CSTRING ResolveClassID(CLASSID ID) { return CoreBase->_ResolveClassID(ID)
 inline LONG AllocateID(LONG Type) { return CoreBase->_AllocateID(Type); }
 inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address, MEMORYID * ID) { return CoreBase->_AllocMemory(Size,Flags,Address,ID); }
 inline ERROR AccessObjectID(OBJECTID Object, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessObjectID(Object,MilliSeconds,Result); }
-inline ERROR ListTasks(LONG Flags, struct ListTasks ** List) { return CoreBase->_ListTasks(Flags,List); }
+inline ERROR VarCopy(struct KeyStore * Source, struct KeyStore * Dest) { return CoreBase->_VarCopy(Source,Dest); }
 inline ERROR CheckAction(OBJECTPTR Object, LONG Action) { return CoreBase->_CheckAction(Object,Action); }
 inline ERROR CheckMemoryExists(MEMORYID ID) { return CoreBase->_CheckMemoryExists(ID); }
 inline ERROR CheckObjectExists(OBJECTID Object) { return CoreBase->_CheckObjectExists(Object); }
@@ -2209,7 +2183,6 @@ inline LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size) { return C
 inline LONG Base64Encode(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize) { return CoreBase->_Base64Encode(State,Input,InputSize,Output,OutputSize); }
 inline ERROR VarSetString(struct KeyStore * Store, CSTRING Key, CSTRING Value) { return CoreBase->_VarSetString(Store,Key,Value); }
 inline CSTRING VarGetString(struct KeyStore * Store, CSTRING Key) { return CoreBase->_VarGetString(Store,Key); }
-inline ERROR VarCopy(struct KeyStore * Source, struct KeyStore * Dest) { return CoreBase->_VarCopy(Source,Dest); }
 #endif
 
 
@@ -3536,7 +3509,6 @@ struct TaskList {
    OBJECTID TaskID;        // Task ID for this array entry.  Also see the ParentID field
    MEMORYID MessageID;     // Message queue ID
    OBJECTID OutputID;      // The object that the task should output information to
-   LONG     InstanceID;    // Instance that the task belongs to
    LONG     ReturnCode;    // Return code
    OBJECTID ParentID;      // The task responsible for creating this task slot
    OBJECTID ModalID;       // Set if a modal surface is to have the user's attention
@@ -3890,7 +3862,6 @@ struct PublicAddress {
    OBJECTID ObjectID;          // Object that the address belongs to
    OBJECTID TaskID;            // The task that the block is tracked back to
    OBJECTID ContextID;         // Context that locked the memory block (for debugging purposes only)
-   LONG     InstanceID;        // Reference to the instance that this memory block is restricted to
    WORD     ActionID;          // Action that locked the memory block (for debugging purposes only)
    WORD     Flags;             // Special MEM_ address flags
    volatile UBYTE AccessCount;  // Count of locks on this address
@@ -3918,7 +3889,6 @@ struct SortedAddress {
 
 struct SemaphoreEntry {   // The index of each semaphore in the array indicates their IDs
    ULONG NameID;          // Hashed name of the semaphore
-   LONG  InstanceID;      // Reference to the instance that this semaphore is restricted to
    LONG  BlockingProcess; // Process ID of the blocker
    LONG  BlockingThread;  // Global thread ID of the blocker
    LARGE Data;            // User configurable 64-bit data
@@ -3987,7 +3957,6 @@ struct SharedControl {
    LONG InputSize;                  // Maximum number of subscribers allowed in InputMID
    LONG InstanceMsgPort;            // The message port of the process that created the instance.
    MEMORYID SurfacesMID;
-   MEMORYID ModulesMID;             // Module database
    MEMORYID InputMID;
    #ifdef __unix__
       struct {

@@ -3564,10 +3564,6 @@ end
       <const name="VOLUME">The path refers to a volume name.</const>
     </constants>
 
-    <constants lookup="LTF" comment="Flags for ListTasks()">
-      <const name="CURRENT_PROCESS"/>
-    </constants>
-
     <constants lookup="MAX">
       <const name="NAME_LEN"/>
     </constants>
@@ -4191,21 +4187,6 @@ end
       <field name="Flags" type="LONG" lookup="KSF">Optional flags used for VarNew()</field>
     </struct>
 
-    <struct name="ListTasks" comment="Structure for ListTasks()">
-      <field name="ProcessID" type="LONG">Core process ID</field>
-      <field name="TaskID" type="OBJECTID">Task ID for this array entry</field>
-      <field name="WaitingProcessID" type="LONG">If the task is waiting, this field reflects the other task's ID</field>
-      <field name="WaitingMemoryID" type="MEMORYID">If the task is waiting, this field reflects the memory ID</field>
-      <field name="WaitingTime" type="LONG">If the task is waiting, the time at which the sleep started (msec)</field>
-      <field name="MessageID" type="MEMORYID">Message queue ID</field>
-      <field name="OutputID" type="OBJECTID">The object that the task should output information to</field>
-      <field name="Semaphore" type="HOSTHANDLE">Semaphore for IPC</field>
-      <field name="InstanceID" type="LONG">Instance that the task belongs to</field>
-      <field name="TotalMemoryLocks" type="LONG">Total number of held memory locks</field>
-      <field name="ModalID" type="OBJECTID">Refers to any surface that currently holds a modal lock.</field>
-      <field name="MemoryLocks" type="struct MemoryLocks *">An array of memory locks currently held by the process.</field>
-    </struct>
-
     <struct name="MemInfo" typeName="MEMINFO">
       <field name="Start" type="APTR">The starting address of the memory block (does not apply to shared blocks).</field>
       <field name="ObjectID" type="OBJECTID">The object that owns the memory block.</field>
@@ -4216,11 +4197,6 @@ end
       <field name="LockID" type="OBJECTID">Reference to the task that currently has a lock on the block.</field>
       <field name="TaskID" type="OBJECTID">The Task that owns the memory block</field>
       <field name="Handle" type="LONG">Native system handle (e.g. the shmid in Linux)</field>
-    </struct>
-
-    <struct name="MemoryLocks" comment="A supplement structure for ListTasks.">
-      <field name="MemoryID" type="MEMORYID">Reference to a memory ID.</field>
-      <field name="Locks" type="WORD">The total number of locks on the memory block.</field>
     </struct>
 
     <struct name="Message" comment="Messaging structures.  Note: This structure is utilised by NextMsg">
@@ -4266,7 +4242,6 @@ end
       <field name="ConsoleFD" type="HOSTHANDLE">Internal</field>
       <field name="CoreVersion" type="LONG">Reflects the Core version number.</field>
       <field name="CoreRevision" type="LONG">Reflects the Core revision number.</field>
-      <field name="InstanceID" type="LONG">This is the ID of the instance that the calling process resides in.</field>
       <field name="TotalErrorMessages" type="LONG">The total number of error codes listed in the ErrorMessages array.</field>
       <field name="Stage" type="LONG">The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.</field>
     </struct>
