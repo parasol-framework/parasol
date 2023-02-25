@@ -137,7 +137,6 @@ ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
    pf::Log log(__FUNCTION__);
    LONG offset;
    LONG i, memid;
-   OBJECTID object_id;
    #ifdef _WIN32
       WINHANDLE handle;
    #endif
@@ -160,10 +159,10 @@ ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
 
    if (Address) *Address = NULL;
 
-   // Figure out what object the memory block will belong to.  The preferred default is for it to belong to the current context.
+   // Determine the object that will own the memory block.  The preferred default is for it to belong to the current context.
 
-   if (Flags & MEM_HIDDEN)         object_id = 0;
-   else if (Flags & MEM_UNTRACKED) object_id = 0;
+   OBJECTID object_id = 0;
+   if (Flags & (MEM_HIDDEN|MEM_UNTRACKED));
    else if (Flags & MEM_CALLER) {
       // Rarely used, but this feature allows methods to return memory that is tracked to the caller.
       if (tlContext->Stack) object_id = tlContext->Stack->resource()->UID;
@@ -171,7 +170,6 @@ ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
    }
    else if (tlContext != &glTopContext) object_id = tlContext->resource()->UID;
    else if (glCurrentTask) object_id = glCurrentTask->UID;
-   else object_id = 0;
 
    // Allocate the memory block according to whether it is public or private.
 
@@ -439,6 +437,8 @@ retry:
             }
          }
       }
+
+      if (object_id) glObjectMemory[object_id].insert(memid);
 
       *MemoryID = glSharedBlocks[blk].MemoryID;
 
@@ -798,6 +798,10 @@ ERROR FreeResourceID(MEMORYID MemoryID)
                // Do nothing for mmap'ed memory since it uses the offset method
             #endif
 
+            if (glObjectMemory.contains(glSharedBlocks[entry].ObjectID)) {
+               glObjectMemory[glSharedBlocks[entry].ObjectID].erase(MemoryID);
+            }
+
             ClearMemory(glSharedBlocks + entry, sizeof(PublicAddress));
             return ERR_Okay;
          }
@@ -877,7 +881,8 @@ if (!MemoryIDInfo(memid, &info)) {
 }
 </pre>
 
-If the call to MemoryIDInfo() fails, the MemInfo structure's fields will be driven to NULL and an error code will be returned.
+If the call to MemoryIDInfo() fails, the MemInfo structure's fields will be driven to NULL and an error code will be
+returned.
 
 -INPUT-
 mem ID: Pointer to a valid memory ID.
@@ -959,8 +964,8 @@ if (!MemoryPtrInfo(ptr, &info)) {
 }
 </pre>
 
-If the call to MemoryPtrInfo() fails then the MemInfo structure's fields will be driven to NULL and an error code will be
-returned.
+If the call to MemoryPtrInfo() fails then the MemInfo structure's fields will be driven to NULL and an error code
+will be returned.
 
 Please note that referencing by a pointer requires a slow reverse-lookup to be employed in this function's search
 routine.  We recommend that calls to this function are avoided unless circumstances absolutely require it.

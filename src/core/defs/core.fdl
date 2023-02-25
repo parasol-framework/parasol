@@ -325,7 +325,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "TIMER_SUB: The object is subscribed to a timer interval.",
     "SUPPRESS_LOG: Private.  Turns off the initial log message.",
     "COLLECT: Marked for garbage collection.",
-    "HAS_SHARED_RESOURCES: Private. The object owns a shared memory resource.",
     "RECLASSED: The object switched from the base-class to a sub-class during initialisation.",
     "MESSAGE: Action has been called against the object through the message system (managed by ProcessMessages()).",
     "SIGNALLED: The object has been signalled and is awaiting processing.",

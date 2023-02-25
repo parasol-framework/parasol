@@ -135,13 +135,6 @@ EXPORT void CloseCore(void)
          glCodeIndex = CP_REMOVE_PUBLIC_LOCKS;
          remove_public_locks(glProcessID);
       }
-
-      // Free all public memory blocks that are tracked to this Task
-
-      if ((glCodeIndex < CP_FREE_PUBLIC_MEMORY) and (glCurrentTask)) {
-         glCodeIndex = CP_FREE_PUBLIC_MEMORY;
-         free_public_resources(glCurrentTask->UID);
-      }
    }
    else { // This code is only safe to execute if the process hasn't crashed.
       // Remove locks on public objects that we have not unlocked yet.  We do this by setting the lock-count to zero so
@@ -201,8 +194,6 @@ EXPORT void CloseCore(void)
          glProcessJanitor = 0;
          UpdateTimer(id, 0);
       }
-
-      OBJECTID task_id = glCurrentTask->UID;
 
       // Remove the Task structure and child objects
 
@@ -305,14 +296,6 @@ EXPORT void CloseCore(void)
       remove_private_locks();
 
       remove_public_locks(glProcessID);
-
-      // Free all public memory blocks that are tracked to this process.
-
-      if (glCodeIndex < CP_FREE_PUBLIC_MEMORY) {
-         glCodeIndex = CP_FREE_PUBLIC_MEMORY;
-         free_public_resources(task_id);
-      }
-
    }
 
    // Remove our process from the global list completely.  From this point onwards

@@ -137,7 +137,7 @@ static ERROR thread_action(extThread *Thread)
 
 // Free all private memory resources tracked to an object.
 
-static void free_private_children(OBJECTPTR Object)
+static void free_children(OBJECTPTR Object)
 {
    pf::Log log;
 
@@ -171,53 +171,41 @@ static void free_private_children(OBJECTPTR Object)
          const auto list = glObjectMemory[Object->UID]; // Take an immutable copy of the resource list
 
          for (const auto id : list) {
-            auto it = glPrivateMemory.find(id);
-            if ((it IS glPrivateMemory.end()) or (!it->second.Address)) continue;
-            auto &mem = it->second;
-
-            if ((mem.Flags & MEM_DELETE) or (!mem.Address)) continue;
-
-            if (glLogLevel >= 3) {
-               if (mem.Flags & MEM_STRING) {
-                  log.warning("Unfreed string \"%.40s\" (%p, #%d)", (CSTRING)mem.Address, mem.Address, mem.MemoryID);
+            if (id < 0) {
+               ScopedSysLock lock(PL_PUBLICMEM, 5000);
+               if (lock.granted()) {
+                  log.warning("Unfreed public memory #%d.", id);
+                  FreeResourceID(id);
                }
-               else if (mem.Flags & MEM_MANAGED) {
-                  auto res = (ResourceManager **)((char *)mem.Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
-                  if (res[0]) {
-                     log.warning("Unfreed %s resource at %p.", res[0]->Name, mem.Address);
-                  }
-                  else log.warning("Unfreed resource at %p.", mem.Address);
-               }
-               else log.warning("Unfreed memory block %p, Size %d", mem.Address, mem.Size);
             }
+            else {
+               auto it = glPrivateMemory.find(id);
+               if ((it IS glPrivateMemory.end()) or (!it->second.Address)) continue;
+               auto &mem = it->second;
 
-            if (FreeResource(mem.Address) != ERR_Okay) log.warning("Error freeing tracked address %p", mem.Address);
+               if ((mem.Flags & MEM_DELETE) or (!mem.Address)) continue;
+
+               if (glLogLevel >= 3) {
+                  if (mem.Flags & MEM_STRING) {
+                     log.warning("Unfreed string \"%.40s\" (%p, #%d)", (CSTRING)mem.Address, mem.Address, mem.MemoryID);
+                  }
+                  else if (mem.Flags & MEM_MANAGED) {
+                     auto res = (ResourceManager **)((char *)mem.Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
+                     if (res[0]) {
+                        log.warning("Unfreed %s resource at %p.", res[0]->Name, mem.Address);
+                     }
+                     else log.warning("Unfreed resource at %p.", mem.Address);
+                  }
+                  else log.warning("Unfreed memory block %p, Size %d", mem.Address, mem.Size);
+               }
+
+               if (FreeResource(mem.Address) != ERR_Okay) log.warning("Error freeing tracked address %p", mem.Address);
+            }
          }
       }
 
       glObjectChildren.erase(Object->UID);
       glObjectMemory.erase(Object->UID);
-   }
-}
-
-// Free all public memory resources tracked to this object
-
-static void free_public_children(OBJECTPTR Object)
-{
-   pf::Log log;
-
-   if (!Object->defined(NF::HAS_SHARED_RESOURCES)) return;
-
-   ScopedSysLock lock(PL_PUBLICMEM, 5000);
-   if (lock.granted()) {
-      for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
-         if ((glSharedBlocks[i].ObjectID IS Object->UID) and (glSharedBlocks[i].MemoryID)) {
-            if (glSharedBlocks[i].Flags & MEM_DELETE) continue; // Ignore blocks already marked for deletion
-
-            log.warning("Unfreed public memory: #%d, Size %d, Object #%d, Access %d.", glSharedBlocks[i].MemoryID, glSharedBlocks[i].Size, glSharedBlocks[i].ObjectID, glSharedBlocks[i].AccessCount);
-            FreeResourceID(glSharedBlocks[i].MemoryID);
-         }
-      }
    }
 }
 
@@ -1072,8 +1060,7 @@ ERROR MGR_Free(OBJECTPTR Object, APTR Void)
       Object->ChildPrivate = NULL;
    }
 
-   free_private_children(Object);
-   free_public_children(Object);
+   free_children(Object);
 
    if (Object->defined(NF::TIMER_SUB)) {
       ThreadLock lock(TL_TIMER, 200);
