@@ -1759,13 +1759,6 @@ struct ListTasks {
    struct MemoryLocks * MemoryLocks;    // An array of memory locks currently held by the process.
 };
 
-struct FDTable {
-   HOSTHANDLE FD;                         // The file descriptor that is managed by this record.
-   void (*Routine)(HOSTHANDLE, APTR);     // The routine that will process read/write messages for the FD.
-   APTR Data;                             // A user specific data pointer.
-   LONG Flags;                            // Set to RFD_READ, RFD_WRITE or RFD_EXCEPT.
-};
-
 struct Message {
    LARGE Time;       // A timestamp acquired from PreciseTime() when the message was first passed to SendMessage().
    LONG  UniqueID;   // A unique identifier automatically created by SendMessage().

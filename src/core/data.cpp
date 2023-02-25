@@ -71,6 +71,7 @@ std::map<std::string, std::vector<BaseClass *>, CaseInsensitiveMap> glObjectLook
 std::unordered_map<CLASSID, extMetaClass *> glClassMap;
 std::unordered_map<FIELD, std::string> glFields;
 std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes;
+std::list<FDRecord> glFDTable;
 
 struct PublicAddress  *glSharedBlocks  = NULL;
 struct SortedAddress  *glSortedBlocks  = NULL;
@@ -84,7 +85,6 @@ struct MemoryPage     *glMemoryPages   = NULL;
 struct ModuleHeader   *glModules       = NULL;
 struct OpenInfo       *glOpenInfo      = NULL;
 struct MsgHandler     *glMsgHandlers   = NULL, *glLastMsgHandler = 0;
-struct FDTable        *glFDTable       = NULL;
 objFile *glClassFile   = NULL;
 objTask *glCurrentTask = NULL;
 objConfig *glDatatypes = NULL;

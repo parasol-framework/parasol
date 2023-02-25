@@ -204,8 +204,7 @@ EXPORT void CloseCore(void)
 
       for (const auto & [ id, mem ] : glPrivateMemory) {
          if ((mem.Flags & MEM_OBJECT) and (mem.AccessCount > 0)) {
-            auto obj = mem.Object;
-            if (obj) {
+            if (auto obj = mem.Object) {
                log.warning("Removing locks on object #%d, Owner: %d, Locks: %d", obj->UID, obj->OwnerID, mem.AccessCount);
                for (count=mem.AccessCount; count > 0; count--) ReleaseObject(obj);
             }
@@ -268,24 +267,16 @@ EXPORT void CloseCore(void)
 
       if (glModules) { ReleaseMemory(glModules); glModules = NULL; }
 
-      // Check FD list and report FD's that have not been removed
-
       #ifdef __unix__
          if (glSocket != -1) RegisterFD(glSocket, RFD_REMOVE, NULL, NULL);
       #endif
 
-      if ((!glCrashStatus) and (glFDTable)) {
-         for (LONG i=0; i < glTotalFDs; i++) {
-            if (glFDTable[i].FD) {
-               log.warning("FD %" PF64 " was not deregistered prior to program close.  Routine: %p, Data: %p, Flags: $%.8x", (LARGE)glFDTable[i].FD, glFDTable[i].Routine, glFDTable[i].Data, glFDTable[i].Flags);
-            }
-         }
-      }
+      // Report FD's that have not been removed by the client
 
-      if (glFDTable) {
-         free(glFDTable);
-         glFDTable = NULL;
-         glTotalFDs = 0;
+      if (!glCrashStatus) {
+         for (auto &fd : glFDTable) {
+            log.warning("FD %" PF64 " was not deregistered prior to program close.  Routine: %p, Data: %p, Flags: $%.8x", (LARGE)fd.FD, fd.Routine, fd.Data, fd.Flags);
+         }
       }
 
       log.trace("Removing private and public memory locks.");

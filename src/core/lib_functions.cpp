@@ -1121,7 +1121,6 @@ ptr Data: User specific data pointer that will be passed to the Routine.  Separa
 -ERRORS-
 Okay: The FD was successfully registered.
 Args: The FD was set to a value of -1.
-ArrayFull: The maximum number of registrable file descriptors has been reached.
 NoSupport: The host platform does not support file descriptors.
 -END-
 
@@ -1144,41 +1143,31 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
    if (FD IS -1) return log.warning(ERR_Args);
 #endif
 
-   if (glTotalFDs >= MAX_FDS) return log.warning(ERR_ArrayFull);
-
-   if (!glFDTable) {
-      if (!(glFDTable = (FDTable *)malloc(sizeof(FDTable) * MAX_FDS))) return ERR_AllocMemory;
-   }
-
    if (Flags & RFD_REMOVE) {
       if (!(Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL))) Flags |= RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL;
 
-      for (LONG i=glTotalFDs-1; i >= 0; i--) {
-         if ((glFDTable[i].FD IS FD) and ((glFDTable[i].Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL)) & Flags)) {
-            // If the routine address was specified with the remove option, the routine must match.
-
-            if ((Routine) and (glFDTable[i].Routine != Routine)) continue;
-
-            if (i+1 < glTotalFDs) {
-               CopyMemory(glFDTable+i+1, glFDTable+i, sizeof(FDTable) * (glTotalFDs-i-1));
-            }
-
-            glTotalFDs--;
+      for (auto it = glFDTable.begin(); it != glFDTable.end();) {
+         if ((it->FD IS FD) and ((it->Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL)) & Flags)) {
+            if ((Routine) and (it->Routine != Routine)) it++;
+            else it = glFDTable.erase(it);
          }
+         else it++;
       }
       return ERR_Okay;
    }
 
    if (!(Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_REMOVE|RFD_ALWAYS_CALL))) Flags |= RFD_READ;
 
-   LONG i;
-   for (i=0; i < glTotalFDs; i++) {
-      if ((glFDTable[i].FD IS FD) and (Flags & (glFDTable[i].Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL)))) break;
+   for (auto &fd : glFDTable) {
+      if ((fd.FD IS FD) and (Flags & (fd.Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL)))) {
+         fd.Routine = Routine;
+         fd.Flags   = Flags;
+         fd.Data    = Data;
+         return ERR_Okay;
+      }
    }
 
-   if (i >= MAX_FDS) return log.warning(ERR_ArrayFull);
-
-   if (i IS glTotalFDs) log.function("FD: %" PF64 ", Routine: %p, Flags: $%.2x (New)", (MAXINT)FD, Routine, Flags);
+   log.function("FD: %" PF64 ", Routine: %p, Flags: $%.2x (New)", (MAXINT)FD, Routine, Flags);
 
 #ifdef _WIN32
    // Nothing to do for Win32
@@ -1186,12 +1175,7 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
    if ((!Routine) and (FD > 0)) fcntl(FD, F_SETFL, fcntl(FD, F_GETFL) | O_NONBLOCK); // Ensure that the FD is non-blocking
 #endif
 
-   glFDTable[i].FD      = FD;
-   glFDTable[i].Routine = Routine;
-   glFDTable[i].Data    = Data;
-   glFDTable[i].Flags   = Flags;
-   if (i >= glTotalFDs) glTotalFDs++;
-
+   glFDTable.emplace_back(FD, Routine, Data, Flags);
    return ERR_Okay;
 }
 
