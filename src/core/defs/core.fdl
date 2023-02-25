@@ -942,8 +942,6 @@ struct FieldValue {
 
   struct("SystemState", { comment="Returned by the GetSystemState() function." }, [[
     array(cstr) ErrorMessages  # A sorted array of all error codes, translated into human readable strings.
-    cstr RootPath              # The current root path, which defaults to the location of the installation folder.
-    cstr SystemPath            # The current path of the 'system:' volume.
     cstr Platform              # String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.
     hhandle ConsoleFD          # Internal
     int  CoreVersion           # Reflects the Core version number.

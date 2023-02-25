@@ -614,10 +614,9 @@ struct CaseInsensitiveMap {
 
 extern extMetaClass glMetaClass;
 extern LONG glEUID, glEGID, glUID, glGID;
-extern LONG glKeyState;
-extern char glSystemPath[SIZE_SYSTEM_PATH];
+extern std::string glSystemPath;
 extern std::string glModulePath;
-extern char glRootPath[SIZE_SYSTEM_PATH];
+extern std::string glRootPath;
 extern char glDisplayDriver[28];
 extern bool glShowIO, glShowPrivate, glShowPublic;
 extern WORD glLogLevel, glMaxDepth;

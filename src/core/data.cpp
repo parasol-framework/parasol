@@ -32,8 +32,8 @@
    #endif
 #endif
 
-char glRootPath[SIZE_SYSTEM_PATH] = "" ROOT_PATH "";
-char glSystemPath[SIZE_SYSTEM_PATH] = "" SYSTEM_PATH "";
+std::string glRootPath = "" ROOT_PATH "";
+std::string glSystemPath = "" SYSTEM_PATH "";
 std::string glModulePath = "" MODULE_PATH ""; // NB: This path will be updated to its resolved-form during Core initialisation.
 
 char glDisplayDriver[28] = "";
@@ -96,13 +96,11 @@ LONG glTotalPages = 0;
 LONG glStdErrFlags = 0;
 TIMER glCacheTimer = 0;
 LONG glMemoryFD = -1;
-LONG glKeyState = 0;
 LONG glTaskMessageMID = 0;
 LONG glValidateProcessID = 0;
 LONG glProcessID  = 0;
 LONG glInstanceID = 0;
 LONG glEUID = -1, glEGID = -1, glGID = -1, glUID = -1;
-WORD glTotalFDs = 0, glLastFD = 0;
 UBYTE glTimerCycle = 1;
 CSTRING glIDL = MOD_IDL;
 

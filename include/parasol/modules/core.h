@@ -1694,8 +1694,6 @@ struct FieldDef {
 
 struct SystemState {
    CSTRING * ErrorMessages;    // A sorted array of all error codes, translated into human readable strings.
-   CSTRING   RootPath;         // The current root path, which defaults to the location of the installation folder.
-   CSTRING   SystemPath;       // The current path of the 'system:' volume.
    CSTRING   Platform;         // String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.
    HOSTHANDLE ConsoleFD;       // Internal
    LONG      CoreVersion;      // Reflects the Core version number.
