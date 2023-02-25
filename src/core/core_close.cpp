@@ -244,15 +244,15 @@ EXPORT void CloseCore(void)
       if (glAssetClass) { acFree(glAssetClass); glAssetClass = 0; }
       #endif
       if (glCompressedStreamClass) { acFree(glCompressedStreamClass); glCompressedStreamClass  = 0; }
-      if (glArchiveClass)      { acFree(glArchiveClass);      glArchiveClass  = 0; }
-      if (glCompressionClass)  { acFree(glCompressionClass);  glCompressionClass = 0; }
-      if (glScriptClass)       { acFree(glScriptClass);       glScriptClass  = 0; }
-      if (glFileClass)         { acFree(glFileClass);         glFileClass    = 0; }
-      if (glStorageClass)      { acFree(glStorageClass);      glStorageClass = 0; }
-      if (glConfigClass)       { acFree(glConfigClass);       glConfigClass    = 0; }
-      if (glTimeClass)         { acFree(glTimeClass);         glTimeClass      = 0; }
-      if (glModuleClass)       { acFree(glModuleClass);       glModuleClass    = 0; }
-      if (glThreadClass)       { acFree(glThreadClass);       glThreadClass    = 0; }
+      if (glArchiveClass)      { acFree(glArchiveClass);      glArchiveClass      = 0; }
+      if (glCompressionClass)  { acFree(glCompressionClass);  glCompressionClass  = 0; }
+      if (glScriptClass)       { acFree(glScriptClass);       glScriptClass       = 0; }
+      if (glFileClass)         { acFree(glFileClass);         glFileClass         = 0; }
+      if (glStorageClass)      { acFree(glStorageClass);      glStorageClass      = 0; }
+      if (glConfigClass)       { acFree(glConfigClass);       glConfigClass       = 0; }
+      if (glTimeClass)         { acFree(glTimeClass);         glTimeClass         = 0; }
+      if (glModuleClass)       { acFree(glModuleClass);       glModuleClass       = 0; }
+      if (glThreadClass)       { acFree(glThreadClass);       glThreadClass       = 0; }
       if (glModuleMasterClass) { acFree(glModuleMasterClass); glModuleMasterClass = 0; }
 
       #ifdef __unix__

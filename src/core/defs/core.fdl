@@ -2040,15 +2040,14 @@ inline ERROR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
 
   methods("config", "Cfg", {
     { id=1,  name="ReadValue" },
-    { id=2,  name="ReadIValue" },
+    { id=2,  name="Set" },
     { id=3,  name="WriteValue" },
     { id=4,  name="DeleteKey" },
     { id=5,  name="DeleteGroup" },
     { id=6,  name="GetGroupFromIndex" },
     { id=7,  name="SortByKey" },
     { id=9,  name="MergeFile" },
-    { id=10, name="Merge" },
-    { id=11, name="Set" }
+    { id=10, name="Merge" }
   })
 
   class("Config", { src="../classes/class_config.cpp", output="../classes/class_config_def.c" }, [[

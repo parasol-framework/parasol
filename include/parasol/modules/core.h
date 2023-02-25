@@ -3069,7 +3069,7 @@ class objFile : public BaseClass {
 // Config methods
 
 #define MT_CfgReadValue -1
-#define MT_CfgReadIValue -2
+#define MT_CfgSet -2
 #define MT_CfgWriteValue -3
 #define MT_CfgDeleteKey -4
 #define MT_CfgDeleteGroup -5
@@ -3077,10 +3077,9 @@ class objFile : public BaseClass {
 #define MT_CfgSortByKey -7
 #define MT_CfgMergeFile -9
 #define MT_CfgMerge -10
-#define MT_CfgSet -11
 
 struct cfgReadValue { CSTRING Group; CSTRING Key; CSTRING Data;  };
-struct cfgReadIValue { CSTRING Group; CSTRING Key; CSTRING Data;  };
+struct cfgSet { CSTRING Group; CSTRING Key; CSTRING Data;  };
 struct cfgWriteValue { CSTRING Group; CSTRING Key; CSTRING Data;  };
 struct cfgDeleteKey { CSTRING Group; CSTRING Key;  };
 struct cfgDeleteGroup { CSTRING Group;  };
@@ -3088,7 +3087,6 @@ struct cfgGetGroupFromIndex { LONG Index; CSTRING Group;  };
 struct cfgSortByKey { CSTRING Key; LONG Descending;  };
 struct cfgMergeFile { CSTRING Path;  };
 struct cfgMerge { OBJECTPTR Source;  };
-struct cfgSet { CSTRING Group; CSTRING Key; CSTRING Data;  };
 
 INLINE ERROR cfgReadValue(APTR Ob, CSTRING Group, CSTRING Key, CSTRING * Data) {
    struct cfgReadValue args = { Group, Key, 0 };
@@ -3097,11 +3095,9 @@ INLINE ERROR cfgReadValue(APTR Ob, CSTRING Group, CSTRING Key, CSTRING * Data) {
    return(error);
 }
 
-INLINE ERROR cfgReadIValue(APTR Ob, CSTRING Group, CSTRING Key, CSTRING * Data) {
-   struct cfgReadIValue args = { Group, Key, 0 };
-   ERROR error = Action(MT_CfgReadIValue, (OBJECTPTR)Ob, &args);
-   if (Data) *Data = args.Data;
-   return(error);
+INLINE ERROR cfgSet(APTR Ob, CSTRING Group, CSTRING Key, CSTRING Data) {
+   struct cfgSet args = { Group, Key, Data };
+   return(Action(MT_CfgSet, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR cfgWriteValue(APTR Ob, CSTRING Group, CSTRING Key, CSTRING Data) {
@@ -3139,11 +3135,6 @@ INLINE ERROR cfgMergeFile(APTR Ob, CSTRING Path) {
 INLINE ERROR cfgMerge(APTR Ob, OBJECTPTR Source) {
    struct cfgMerge args = { Source };
    return(Action(MT_CfgMerge, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR cfgSet(APTR Ob, CSTRING Group, CSTRING Key, CSTRING Data) {
-   struct cfgSet args = { Group, Key, Data };
-   return(Action(MT_CfgSet, (OBJECTPTR)Ob, &args));
 }
 
 

@@ -9,7 +9,7 @@ static const struct FieldDef clConfigFlags[] = {
 };
 
 FDEF maReadValue[] = { { "Group", FD_STR }, { "Key", FD_STR }, { "Data", FD_STR|FD_RESULT }, { 0, 0 } };
-FDEF maReadIValue[] = { { "Group", FD_STR }, { "Key", FD_STR }, { "Data", FD_STR|FD_RESULT }, { 0, 0 } };
+FDEF maSet[] = { { "Group", FD_STR }, { "Key", FD_STR }, { "Data", FD_STR }, { 0, 0 } };
 FDEF maWriteValue[] = { { "Group", FD_STR }, { "Key", FD_STR }, { "Data", FD_STR }, { 0, 0 } };
 FDEF maDeleteKey[] = { { "Group", FD_STR }, { "Key", FD_STR }, { 0, 0 } };
 FDEF maDeleteGroup[] = { { "Group", FD_STR }, { 0, 0 } };
@@ -17,11 +17,10 @@ FDEF maGetGroupFromIndex[] = { { "Index", FD_LONG }, { "Group", FD_STR|FD_RESULT
 FDEF maSortByKey[] = { { "Key", FD_STR }, { "Descending", FD_LONG }, { 0, 0 } };
 FDEF maMergeFile[] = { { "Path", FD_STR }, { 0, 0 } };
 FDEF maMerge[] = { { "Source", FD_OBJECTPTR }, { 0, 0 } };
-FDEF maSet[] = { { "Group", FD_STR }, { "Key", FD_STR }, { "Data", FD_STR }, { 0, 0 } };
 
 static const struct MethodArray clConfigMethods[] = {
    { -1, (APTR)CONFIG_ReadValue, "ReadValue", maReadValue, sizeof(struct cfgReadValue) },
-   { -2, (APTR)CONFIG_ReadIValue, "ReadIValue", maReadIValue, sizeof(struct cfgReadIValue) },
+   { -2, (APTR)CONFIG_Set, "Set", maSet, sizeof(struct cfgSet) },
    { -3, (APTR)CONFIG_WriteValue, "WriteValue", maWriteValue, sizeof(struct cfgWriteValue) },
    { -4, (APTR)CONFIG_DeleteKey, "DeleteKey", maDeleteKey, sizeof(struct cfgDeleteKey) },
    { -5, (APTR)CONFIG_DeleteGroup, "DeleteGroup", maDeleteGroup, sizeof(struct cfgDeleteGroup) },
@@ -29,7 +28,6 @@ static const struct MethodArray clConfigMethods[] = {
    { -7, (APTR)CONFIG_SortByKey, "SortByKey", maSortByKey, sizeof(struct cfgSortByKey) },
    { -9, (APTR)CONFIG_MergeFile, "MergeFile", maMergeFile, sizeof(struct cfgMergeFile) },
    { -10, (APTR)CONFIG_Merge, "Merge", maMerge, sizeof(struct cfgMerge) },
-   { -11, (APTR)CONFIG_Set, "Set", maSet, sizeof(struct cfgSet) },
    { 0, 0, 0, 0, 0 }
 };
 
