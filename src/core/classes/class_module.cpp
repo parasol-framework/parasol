@@ -40,16 +40,6 @@ It is critical that the module object is permanently retained until the program 
 #include "../defs.h"
 #include <parasol/main.h>
 
-#ifdef _WIN32
-#define DLLCALL // __declspec(dllimport)
-#define WINAPI  __stdcall
-#define HKEY_LOCAL_MACHINE 0x80000002
-#define KEY_READ 0x20019
-DLLCALL APTR WINAPI LoadLibraryA(STRING);
-DLLCALL LONG WINAPI FreeLibrary(APTR);
-DLLCALL APTR WINAPI GetProcAddress(APTR, STRING);
-#endif
-
 static ModuleMaster glCoreMaster;
 static ModHeader glCoreHeader;
 
@@ -872,12 +862,7 @@ static void free_module(MODHANDLE handle)
       // addresses can be looked up correctly.
    #else
       #ifdef __unix__
-         #ifdef DLL
-            if (Self->DLL) FreeLibrary(handle);
-            else dlclose(handle);
-         #else
-            dlclose(handle);
-         #endif
+         dlclose(handle);
       #elif _WIN32
          winFreeLibrary(handle);
       #else

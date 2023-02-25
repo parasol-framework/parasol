@@ -140,9 +140,6 @@ function testReadValues()
 
    local err, value = cfg.mtReadValue('Clean', 'STYLES')
    assert(err != ERR_Okay, 'ReadValue() returned ' .. mSys.GetErrorMsg(err))
-
-   local err, value = cfg.mtReadIValue('Clean', 'STYLES')
-   assert(err == ERR_Okay, 'ReadIValue() returned ' .. mSys.GetErrorMsg(err))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
