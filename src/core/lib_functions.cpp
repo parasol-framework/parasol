@@ -787,7 +787,6 @@ LARGE GetResource(LONG Resource)
       case RES_MESSAGE_QUEUE:   return glTaskMessageMID;
       case RES_SHARED_CONTROL:  return (MAXINT)glSharedControl;
       case RES_PRIVILEGED:      return glPrivileged;
-      case RES_KEY_STATE:       return glKeyState;
       case RES_LOG_LEVEL:       return glLogLevel;
       case RES_SHARED_BLOCKS:   return (MAXINT)glSharedBlocks;
       case RES_TASK_CONTROL:    return (MAXINT)glTaskEntry;
@@ -916,8 +915,6 @@ const SystemState * GetSystemState(void)
       state.InstanceID    = glInstanceID;
       state.ErrorMessages = glMessages;
       state.TotalErrorMessages = ARRAYSIZE(glMessages);
-      state.RootPath      = glRootPath;
-      state.SystemPath    = glSystemPath;
       #ifdef __unix__
          state.Platform = "Linux";
       #elif _WIN32
@@ -1421,31 +1418,27 @@ ERROR SetResourcePath(LONG PathType, CSTRING Path)
    switch(PathType) {
       case RP_ROOT_PATH:
          if (Path) {
-            WORD i;
-            for (i=0; (Path[i]) and ((size_t)i < sizeof(glRootPath)-2); i++) glRootPath[i] = Path[i];
-            if ((glRootPath[i-1] != '/') and (glRootPath[i-1] != '\\')) {
+            glRootPath = Path;
+            if ((glRootPath.back() != '/') and (glRootPath.back() != '\\')) {
                #ifdef _WIN32
-                  glRootPath[i++] = '\\';
+                  glRootPath.push_back('\\');
                #else
-                  glRootPath[i++] = '/';
+                  glRootPath.push_back('/');
                #endif
             }
-            glRootPath[i] = 0;
          }
          return ERR_Okay;
 
       case RP_SYSTEM_PATH:
          if (Path) {
-            WORD i;
-            for (i=0; (Path[i]) and ((size_t)i < sizeof(glSystemPath)-2); i++) glSystemPath[i] = Path[i];
-            if ((glSystemPath[i-1] != '/') and (glSystemPath[i-1] != '\\')) {
+            glSystemPath = Path;
+            if ((glSystemPath.back() != '/') and (glSystemPath.back() != '\\')) {
                #ifdef _WIN32
-                  glSystemPath[i++] = '\\';
+                  glSystemPath.push_back('\\');
                #else
-                  glSystemPath[i++] = '/';
+                  glSystemPath.push_back('/');
                #endif
             }
-            glSystemPath[i] = 0;
          }
          return ERR_Okay;
 
@@ -1504,8 +1497,6 @@ LARGE SetResource(LONG Resource, LARGE Value)
 
    switch(Resource) {
       case RES_CONSOLE_FD: glConsoleFD = (HOSTHANDLE)(MAXINT)Value; break;
-
-      case RES_KEY_STATE: glKeyState = (LONG)Value; break;
 
       case RES_EXCEPTION_HANDLER:
          // Note: You can set your own crash handler, or set a value of NULL - this resets the existing handler which is useful if an external DLL function is suspected to have changed the filter.

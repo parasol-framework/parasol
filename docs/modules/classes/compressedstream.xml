@@ -479,8 +479,6 @@
 
     <struct name="SystemState" comment="Returned by the GetSystemState() function.">
       <field name="ErrorMessages" type="CSTRING *">A sorted array of all error codes, translated into human readable strings.</field>
-      <field name="RootPath" type="CSTRING">The current root path, which defaults to the location of the installation folder.</field>
-      <field name="SystemPath" type="CSTRING">The current path of the 'system:' volume.</field>
       <field name="Platform" type="CSTRING">String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.</field>
       <field name="ConsoleFD" type="HOSTHANDLE">Internal</field>
       <field name="CoreVersion" type="LONG">Reflects the Core version number.</field>

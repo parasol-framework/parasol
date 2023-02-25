@@ -257,7 +257,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
                   path = glModulePath;
                   if (path.back() != '/') path.push_back('/');
                }
-               else path = std::string(glRootPath) + "lib/parasol/";
+               else path = glRootPath + "lib/parasol/";
 
                if (Self->Flags & MOF_LINK_LIBRARY) path += "lib/";
 
@@ -273,7 +273,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
                   path = glModulePath;
                   if ((path.back() != '\\') and (path.back() != '/')) path.push_back('\\');
                }
-               else if (glSystemPath[0]) {
+               else if (!glSystemPath.empty()) {
                   path = glSystemPath;
                   if ((path.back() != '\\') and (path.back() != '/')) path.push_back('\\');
                   path += "lib\\";

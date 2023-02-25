@@ -294,44 +294,43 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    if (Info->Flags & OPF_SYSTEM_PATH) SetResourcePath(RP_SYSTEM_PATH, Info->SystemPath);
 
-   if (!glRootPath[0])   {
+   if (glRootPath.empty())   {
       #ifdef _WIN32
-         glRootPath[0] = 0;
-
+         char buffer[128];
          LONG len;
-         if (winGetExeDirectory(sizeof(glRootPath), glRootPath)) {
-            len = StrLength(glRootPath);
-            while ((len > 1) and (glRootPath[len-1] != '/') and (glRootPath[len-1] != '\\') and (glRootPath[len-1] != ':')) len--;
-            glRootPath[len] = 0;
+         if (winGetExeDirectory(sizeof(buffer), buffer)) {
+            glRootPath = buffer;
+            len = glRootPath.find_last_of("/\\:");
          }
-         else if ((!winGetCurrentDirectory(sizeof(glRootPath), glRootPath))) {
+         else if (winGetCurrentDirectory(sizeof(buffer), buffer)) {
+            glRootPath = buffer;
+         }
+         else {
             fprintf(stderr, "Failed to determine root folder.\n");
             return NULL;
          }
       #else
          // Get the folder of the running process.
+         char buffer[128];
          char procfile[50];
          snprintf(procfile, sizeof(procfile), "/proc/%d/exe", getpid());
 
          LONG len;
-         if ((len = readlink(procfile, glRootPath, sizeof(glRootPath)-1)) > 0) {
-            while (len > 0) { // Strip the process name
-               if (glRootPath[len-1] IS '/') break;
-               len--;
-            }
-            glRootPath[len] = 0;
+         if ((len = readlink(procfile, buffer, sizeof(buffer)-1)) > 0) {
+            glRootPath.assign(buffer, len);
+            // Strip process name
+            auto i = glRootPath.find_last("/");
+            if (i != std::string::npos) glRootPath.resize(i);
 
             // If the binary is in a 'bin' folder then the root is considered to be the parent folder.
-            if (!StrCompare("bin/", glRootPath+len-4, 4, 0)) {
-               glRootPath[len-4] = 0;
-            }
+            if (glRootPath.ends_with("bin/")) glRootPath.resize(glRootPath.size()-4);
         }
       #endif
    }
 
-   if (!glSystemPath[0]) {
+   if (glSystemPath.empty()) {
       // When no system path is specified then treat the install as 'run-anywhere' so that "parasol:" == "system:"
-      StrCopy(glRootPath, glSystemPath, sizeof(glSystemPath));
+      glSystemPath = glRootPath;
    }
 
    // Process the Information structure
@@ -681,7 +680,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    // Print task information
 
    log.msg("Version: %.1f : Process: %d, Instance: %d, MemPool Address: %p", VER_CORE, glProcessID, glInstanceID, glSharedControl);
-   log.msg("Blocks Used: %d, MaxBlocks: %d, Sync: %s, Root: %s", glSharedControl->BlocksUsed, glSharedControl->MaxBlocks, (glSync) ? "Y" : "N", glRootPath);
+   log.msg("Blocks Used: %d, MaxBlocks: %d, Sync: %s, Root: %s", glSharedControl->BlocksUsed, glSharedControl->MaxBlocks, (glSync) ? "Y" : "N", glRootPath.c_str());
 #ifdef __unix__
    log.msg("UID: %d (%d), EUID: %d (%d); GID: %d (%d), EGID: %d (%d)", getuid(), glUID, geteuid(), glEUID, getgid(), glGID, getegid(), glEGID);
 #endif
@@ -1697,8 +1696,8 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
    // OPF_SYSTEM_PATH : system  : glSystemPath = %ROOT%/share/parasol
 
    #ifdef _WIN32
-      SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "programs/filemanager", TAGEND);
-      SetVolume(AST_NAME, "system", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick", TAGEND);
+      SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath.c_str(), AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "programs/filemanager", TAGEND);
+      SetVolume(AST_NAME, "system", AST_PATH, glRootPath.c_str(), AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick", TAGEND);
 
       if (!glModulePath.empty()) {
          SetVolume(AST_NAME, "modules", AST_PATH, glModulePath.c_str(), AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick", TAGEND);
@@ -1707,16 +1706,15 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
          SetVolume(AST_NAME, "modules", AST_PATH, "system:lib/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick", TAGEND);
       }
    #elif __unix__
-      SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "programs/filemanager",  TAGEND);
-      SetVolume(AST_NAME, "system", AST_PATH, glSystemPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_SYSTEM, AST_ICON, "misc/brick",  TAGEND);
+      SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath.c_str(), AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "programs/filemanager",  TAGEND);
+      SetVolume(AST_NAME, "system", AST_PATH, glSystemPath.c_str(), AST_FLAGS, VOLUME_REPLACE|VOLUME_SYSTEM, AST_ICON, "misc/brick",  TAGEND);
 
       if (!glModulePath.empty()) {
          SetVolume(AST_NAME, "modules", AST_PATH, glModulePath.c_str(), AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick",  TAGEND);
       }
       else {
-         std::string path(glRootPath);
-         path.append("lib/parasol/");
-         SetVolume(AST_NAME, "modules", AST_PATH, path, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick",  TAGEND);
+         std::string path = glRootPath + "lib/parasol/";
+         SetVolume(AST_NAME, "modules", AST_PATH, path.c_str(), AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick",  TAGEND);
       }
 
       SetVolume(AST_NAME, "drive1", AST_PATH, "/", AST_LABEL, "Linux", AST_FLAGS, VOLUME_REPLACE|VOLUME_SYSTEM, AST_ICON, "devices/storage", AST_DEVICE, "hd", TAGEND);
