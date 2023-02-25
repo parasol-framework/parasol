@@ -220,6 +220,9 @@ LONG glpWindowType = SWIN_HOST;
 char glpDPMS[20] = "Standby";
 UBYTE *glDemultiply = NULL;
 
+std::vector<OBJECTID> glFocusList;
+std::mutex glFocusLock;
+
 THREADVAR APTR glSurfaceMutex = NULL;
 THREADVAR WORD tlNoDrawing = 0, tlNoExpose = 0, tlVolatileIndex = 0;
 THREADVAR UBYTE tlListCount = 0; // For drwAccesslist()
@@ -778,14 +781,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    auto call = make_function_stdc(msg_handler);
    if (AddMsgHandler(NULL, MSGID_EXPOSE, &call, &glExposeHandler) != ERR_Okay) {
       return log.warning(ERR_Failed);
-   }
-
-   // Allocate the FocusList memory block
-
-   MEMORYID mem_id = RPM_FocusList;
-   error = AllocMemory((SIZE_FOCUSLIST) * sizeof(OBJECTID), MEM_UNTRACKED|MEM_RESERVED|MEM_PUBLIC, NULL, &mem_id);
-   if ((error != ERR_Okay) and (error != ERR_ResourceExists)) {
-      return log.warning(ERR_AllocMemory);
    }
 
    // The SurfaceList mutex controls any attempt to update the glSharedControl->SurfacesMID field.

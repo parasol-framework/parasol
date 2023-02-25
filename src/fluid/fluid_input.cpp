@@ -141,7 +141,7 @@ static int input_keyboard(lua_State *Lua)
 
    log.traceBranch("Surface: %d", object_id);
 
-   BYTE sub_keyevent = FALSE;
+   bool sub_keyevent = false;
    if (object_id) {
       if (!prv->FocusEventHandle) { // Monitor the focus state of the target surface with a global function.
          auto callback = make_function_stdc(focus_event);
@@ -150,7 +150,7 @@ static int input_keyboard(lua_State *Lua)
 
       objSurface *surface;
       if (!AccessObjectID(object_id, 5000, &surface)) {
-         if (surface->Flags & RNF_HAS_FOCUS) sub_keyevent = TRUE;
+         if (surface->Flags & RNF_HAS_FOCUS) sub_keyevent = true;
          ReleaseObject(surface);
       }
       else {
@@ -158,7 +158,7 @@ static int input_keyboard(lua_State *Lua)
          return 0;
       }
    }
-   else sub_keyevent = TRUE; // Global subscription independent of any surface.
+   else sub_keyevent = true; // Global subscription independent of any surface.
 
    auto input = (struct finput *)lua_newuserdata(Lua, sizeof(struct finput));
    if (input) {

@@ -536,15 +536,9 @@ Returns the surface object that has the primary user focus.  Returns NULL if no 
 
 static ERROR GET_UserFocus(extSurface *Self, OBJECTID *Value)
 {
-   pf::Log log;
-   OBJECTID *focuslist;
-
-   if (!AccessMemoryID(RPM_FocusList, MEM_READ, 1000, &focuslist)) {
-      *Value = focuslist[0];
-      ReleaseMemoryID(RPM_FocusList);
-      return ERR_Okay;
-   }
-   else return log.warning(ERR_AccessMemory);
+   const std::lock_guard<std::mutex> lock(glFocusLock);
+   *Value = glFocusList[0];
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************

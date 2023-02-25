@@ -45,29 +45,29 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
          case CirculateNotify:  handle_stack_change(&xevent.xcirculate); break;
 
          case FocusIn:
-            if ((display_id = get_display(xevent.xany.window))) {
-               surface_id = GetOwnerID(display_id);
+            if (auto display_id = get_display(xevent.xany.window)) {
+               auto surface_id = GetOwnerID(display_id);
                log.trace("XFocusIn Surface: %d", surface_id);
                acFocus(surface_id);
             }
             else log.trace("XFocusIn Failed to get window display ID.");
             break;
 
-         case FocusOut:
+         case FocusOut: {
             log.traceBranch("XFocusOut");
-            if (!AccessMemoryID(RPM_FocusList, MEM_READ_WRITE, 1000, &list)) {
-               for (i=0; list[i]; i++) {
-                  acLostFocus(list[i]);
-               }
-               list[0] = 0;
-               ReleaseMemory(list);
+            std::vector<OBJECTID> list;
+            {
+               const std::lock_guard<std::mutex> lock(glFocusLock);
+               list = glFocusList;
             }
+            for (auto &id : list) acLostFocus(id);
             break;
+         }
 
          case ClientMessage:
             if ((Atom)xevent.xclient.data.l[0] == XWADeleteWindow) {
-               if ((display_id = get_display(xevent.xany.window))) {
-                  surface_id = GetOwnerID(display_id);
+               if (auto display_id = get_display(xevent.xany.window)) {
+                  auto surface_id = GetOwnerID(display_id);
                   const WindowHook hook(surface_id, WH_CLOSE);
 
                   if (glWindowHooks.contains(hook)) {
@@ -106,8 +106,8 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
 
          case DestroyNotify:
             if (glPlugin) {
-               if ((display_id = get_display(xevent.xany.window))) {
-                  surface_id = GetOwnerID(display_id);
+               if (auto display_id = get_display(xevent.xany.window)) {
+                  auto surface_id = GetOwnerID(display_id);
                   acFree(surface_id);
                }
             }
@@ -119,19 +119,17 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
          // If randr indicates that the display has been resized, we must adjust the system display to match.  Refer to
          // SetDisplay() for more information.
 
-         XRRScreenChangeNotifyEvent *notify;
-         extDisplay *display;
-         objSurface *surface;
+         auto notify = (XRRScreenChangeNotifyEvent *)&xevent;
 
-         notify = (XRRScreenChangeNotifyEvent *)&xevent;
-
-         if ((display_id = get_display(xevent.xany.window))) {
-            surface_id = GetOwnerID(display_id);
+         if (auto display_id = get_display(xevent.xany.window)) {
+            auto surface_id = GetOwnerID(display_id);
+            objSurface *surface;
             if (!AccessObjectID(surface_id, 5000, &surface)) {
                // Update the display width/height so that we don't recursively post further display mode updates to the
                // X server.
 
-               if (!AccessObjectID(display_id, 5000, &display)) {
+             extDisplay *display;
+              if (!AccessObjectID(display_id, 5000, &display)) {
                   display->Width  = notify->width;
                   display->Height = notify->height;
                   acResize(surface, notify->width, notify->height, 0);

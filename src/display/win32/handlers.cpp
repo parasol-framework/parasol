@@ -95,25 +95,12 @@ void MsgWheelMovement(OBJECTID SurfaceID, FLOAT Wheel)
 
 void MsgFocusState(OBJECTID SurfaceID, LONG State)
 {
-   //LogMsg("Windows focus state for surface #%d: %d", SurfaceID, State);
+   //log.msg("Windows focus state for surface #%d: %d", SurfaceID, State);
 
    if (State) acFocus(SurfaceID);
    else {
       acLostFocus(SurfaceID);
-
-      /*
-      OBJECTID *list;
-      WORD i;
-
-      if (!AccessMemoryID(RPM_FocusList, MEM_READ_WRITE, &list)) {
-         for (i=0; list[i]; i++) {
-            LogMsg("Lost Focus: %d: %d", i, list[i]);
-            acLostFocus(list[i]);
-         }
-         list[0] = 0;
-         ReleaseMemory(list);
-      }
-      */
+      // for (auto &id : glFocusList) acLostFocus(id);
    }
 }
 

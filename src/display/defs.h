@@ -462,6 +462,9 @@ extern char glpDPMS[20];
 extern std::unordered_map<WindowHook, FUNCTION> glWindowHooks;
 extern UBYTE *glDemultiply;
 
+extern std::vector<OBJECTID> glFocusList;
+extern std::mutex glFocusLock;
+
 // Thread-specific variables.
 
 extern THREADVAR APTR glSurfaceMutex;
