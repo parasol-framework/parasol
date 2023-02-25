@@ -186,10 +186,6 @@
       <const name="VOLUME">The path refers to a volume name.</const>
     </constants>
 
-    <constants lookup="LTF" comment="Flags for ListTasks()">
-      <const name="CURRENT_PROCESS"/>
-    </constants>
-
     <constants lookup="MEM" comment="Memory types used by AllocMemory().  The lower 16 bits are stored with allocated blocks, the upper 16 bits are function-relative only.">
       <const name="AUDIO">The memory space is reserved by an audio device such as a sound card.</const>
       <const name="CALLER">This flag is usable only in routines that are supporting a class method.  It forces the memory allocation to be tracked to the object that made the method call.  This is particularly important in methods that return memory blocks that do not form a part of the object itself.</const>
@@ -439,21 +435,6 @@
       <field name="Flags" type="LONG" lookup="KSF">Optional flags used for VarNew()</field>
     </struct>
 
-    <struct name="ListTasks" comment="Structure for ListTasks()">
-      <field name="ProcessID" type="LONG">Core process ID</field>
-      <field name="TaskID" type="OBJECTID">Task ID for this array entry</field>
-      <field name="WaitingProcessID" type="LONG">If the task is waiting, this field reflects the other task's ID</field>
-      <field name="WaitingMemoryID" type="MEMORYID">If the task is waiting, this field reflects the memory ID</field>
-      <field name="WaitingTime" type="LONG">If the task is waiting, the time at which the sleep started (msec)</field>
-      <field name="MessageID" type="MEMORYID">Message queue ID</field>
-      <field name="OutputID" type="OBJECTID">The object that the task should output information to</field>
-      <field name="Semaphore" type="HOSTHANDLE">Semaphore for IPC</field>
-      <field name="InstanceID" type="LONG">Instance that the task belongs to</field>
-      <field name="TotalMemoryLocks" type="LONG">Total number of held memory locks</field>
-      <field name="ModalID" type="OBJECTID">Refers to any surface that currently holds a modal lock.</field>
-      <field name="MemoryLocks" type="struct MemoryLocks *">An array of memory locks currently held by the process.</field>
-    </struct>
-
     <struct name="MemInfo" typeName="MEMINFO">
       <field name="Start" type="APTR">The starting address of the memory block (does not apply to shared blocks).</field>
       <field name="ObjectID" type="OBJECTID">The object that owns the memory block.</field>
@@ -483,7 +464,6 @@
       <field name="ConsoleFD" type="HOSTHANDLE">Internal</field>
       <field name="CoreVersion" type="LONG">Reflects the Core version number.</field>
       <field name="CoreRevision" type="LONG">Reflects the Core revision number.</field>
-      <field name="InstanceID" type="LONG">This is the ID of the instance that the calling process resides in.</field>
       <field name="TotalErrorMessages" type="LONG">The total number of error codes listed in the ErrorMessages array.</field>
       <field name="Stage" type="LONG">The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.</field>
     </struct>

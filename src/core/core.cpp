@@ -593,7 +593,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       for (i=0; i < MAX_TASKS; i++) {
          if (shTasks[i].ProcessID IS glProcessID) {
             // A slot has been pre-allocated by a parent process that launched us
-            glInstanceID = shTasks[i].InstanceID;
             break;
          }
       }
@@ -639,7 +638,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
       if (i < MAX_TASKS) {
          shTasks[i].ProcessID    = glProcessID;
-         shTasks[i].InstanceID   = glInstanceID;
          #ifdef _WIN32
             shTasks[i].Lock = get_threadlock(); // The main semaphore (for waking the message queue)
          #endif
@@ -651,7 +649,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          KMSG("Core: The system has reached its limit of %d processes.\n", MAX_TASKS);
 /*
          for (i=0; i < MAX_TASKS; i++) {
-            KMSG("Core: %d: Instance: %d, Process: %d, Created: %d", i, shTasks[i].InstanceID, shTasks[i].ProcessID, (LONG)shTasks[i].CreationTime);
+            KMSG("Core: %d: Process: %d, Created: %d", i, shTasks[i].ProcessID, (LONG)shTasks[i].CreationTime);
          }
 */
          if (Info->Flags & OPF_ERROR) Info->Error = ERR_ArrayFull;
@@ -661,8 +659,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       }
 
       // Use a process ID as a unique instance ID by default
-
-      if ((glInstanceID = glProcessID) < 0) glInstanceID = -glInstanceID;
 
       glSharedControl->InstanceMsgPort = glTaskMessageMID;
 
@@ -679,7 +675,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    // Print task information
 
-   log.msg("Version: %.1f : Process: %d, Instance: %d, MemPool Address: %p", VER_CORE, glProcessID, glInstanceID, glSharedControl);
+   log.msg("Version: %.1f : Process: %d, MemPool Address: %p", VER_CORE, glProcessID, glSharedControl);
    log.msg("Blocks Used: %d, MaxBlocks: %d, Sync: %s, Root: %s", glSharedControl->BlocksUsed, glSharedControl->MaxBlocks, (glSync) ? "Y" : "N", glRootPath.c_str());
 #ifdef __unix__
    log.msg("UID: %d (%d), EUID: %d (%d); GID: %d (%d), EGID: %d (%d)", getuid(), glUID, geteuid(), glEUID, getgid(), glGID, getegid(), glEGID);
@@ -1356,12 +1352,10 @@ void print_diagnosis(LONG ProcessID, LONG Signal)
          auto semlist = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
 
          for (LONG index=1; index < MAX_SEMAPHORES; index++) {
-            if (semlist[index].InstanceID IS glInstanceID) {
-               for (LONG j=0; j < ARRAYSIZE(semlist[index].Processes); j++) {
-                  if (semlist[index].Processes[j].ProcessID IS ProcessID) {
-                     fprintf(fd, "  Semaphore[%.4d]:  Access: %d,  Blocking: %d\n", index, semlist[index].Processes[j].AccessCount, semlist[index].Processes[j].BlockCount);
-                     break;
-                  }
+            for (LONG j=0; j < ARRAYSIZE(semlist[index].Processes); j++) {
+               if (semlist[index].Processes[j].ProcessID IS ProcessID) {
+                  fprintf(fd, "  Semaphore[%.4d]:  Access: %d,  Blocking: %d\n", index, semlist[index].Processes[j].AccessCount, semlist[index].Processes[j].BlockCount);
+                  break;
                }
             }
          }

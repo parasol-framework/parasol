@@ -647,7 +647,7 @@ extern CSTRING glMessages[ERR_END];       // Read-only table of error messages.
 extern const LONG glTotalMessages;
 extern LONG glTotalPages; // Read-only
 extern MEMORYID glTaskMessageMID;        // Read-only
-extern LONG glProcessID, glInstanceID;   // Read only
+extern LONG glProcessID;   // Read only
 extern HOSTHANDLE glConsoleFD;
 extern LONG glStdErrFlags; // Read only
 extern LONG glValidateProcessID; // Not a threading concern
