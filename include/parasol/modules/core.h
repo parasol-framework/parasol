@@ -1103,7 +1103,6 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 #define RPM_X11 -1003
 #define RPM_AlphaBlend -1004
 #define RPM_XWindowLookup -1005
-#define RPM_FocusList -1006
 #define RPM_InputEvents -1007
 #define RPM_DisplayInfo -1008
 

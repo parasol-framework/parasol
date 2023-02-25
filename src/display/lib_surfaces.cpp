@@ -1488,14 +1488,9 @@ oid: Returns the ID of the surface object that has the user focus, or zero on fa
 
 OBJECTID gfxGetUserFocus(void)
 {
-   OBJECTID *focuslist, objectid;
-
-   if (!AccessMemoryID(RPM_FocusList, MEM_READ, 1000, &focuslist)) {
-      objectid = focuslist[0];
-      ReleaseMemory(focuslist);
-      return objectid;
-   }
-   else return NULL;
+   const std::lock_guard<std::mutex> lock(glFocusLock);
+   auto objectid = glFocusList[0];
+   return objectid;
 }
 
 /*********************************************************************************************************************

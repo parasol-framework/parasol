@@ -922,154 +922,137 @@ static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
       }
    }
 
-   OBJECTID *focuslist;
-   if (!AccessMemoryID(RPM_FocusList, MEM_READ_WRITE, 1000, &focuslist)) {
-      // Return immediately if this surface object already has the -primary- focus
+   const std::lock_guard<std::mutex> lock(glFocusLock);
 
-      if ((Self->Flags & RNF_HAS_FOCUS) and (focuslist[0] IS Self->UID)) {
-         FOCUSMSG("Surface already has the primary focus.");
-         ReleaseMemory(focuslist);
-         glLastFocusTime = PreciseTime();
-         return ERR_Okay|ERF_Notified;
-      }
+   // Return immediately if this surface object already has the -primary- focus
 
-      LONG j;
-      LONG lost = 0; // Count of surfaces that have lost the focus
-      LONG has_focus = 0; // Count of surfaces with the focus
-      SurfaceControl *ctl;
-      OBJECTID lostfocus[SIZE_FOCUSLIST];
-      if ((ctl = gfxAccessList(ARF_READ))) {
-         auto surfacelist = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+   if ((Self->Flags & RNF_HAS_FOCUS) and (glFocusList[0] IS Self->UID)) {
+      FOCUSMSG("Surface already has the primary focus.");
+      glLastFocusTime = PreciseTime();
+      return ERR_Okay|ERF_Notified;
+   }
 
-         LONG surface_index;
-         OBJECTID surface_id = Self->UID;
-         if ((surface_index = find_own_index(ctl, Self)) IS -1) {
-            // This is not a critical failure as child surfaces can be expected to disappear from the surface list
-            // during the free process.
+   LONG j;
+   std::vector<OBJECTID> lostfocus;
+   glFocusList.clear();
+   if (auto ctl = gfxAccessList(ARF_READ)) {
+      auto surfacelist = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
 
-            gfxReleaseList(ARF_READ);
-            ReleaseMemory(focuslist);
-            glLastFocusTime = PreciseTime();
-            return ERR_Failed|ERF_Notified;
-         }
-
-         // Build the new focus chain in a local focus list.  Also also reset the HAS_FOCUS flag.  Surfaces that have
-         // lost the focus go in the lostfocus list.
-
-         // Starting from the end of the list, everything leading towards the target surface will need to lose the focus.
-
-         for (j=ctl->Total-1; j > surface_index; j--) {
-            if (surfacelist[j].Flags & RNF_HAS_FOCUS) {
-               if (lost < ARRAYSIZE(lostfocus)-1) lostfocus[lost++] = surfacelist[j].SurfaceID;
-               surfacelist[j].Flags &= ~RNF_HAS_FOCUS;
-            }
-         }
-
-         // The target surface and all its parents will need to gain the focus
-
-         for (j=surface_index; j >= 0; j--) {
-            if (surfacelist[j].SurfaceID != surface_id) {
-               if (surfacelist[j].Flags & RNF_HAS_FOCUS) {
-                  if (lost < ARRAYSIZE(lostfocus)-1) lostfocus[lost++] = surfacelist[j].SurfaceID;
-                  surfacelist[j].Flags &= ~RNF_HAS_FOCUS;
-               }
-            }
-            else {
-               surfacelist[j].Flags |= RNF_HAS_FOCUS;
-               if (has_focus < SIZE_FOCUSLIST-1) focuslist[has_focus++] = surface_id;
-               surface_id = surfacelist[j].ParentID;
-               if (!surface_id) {
-                  j--;
-                  break; // Break out of the loop when there are no more parents left
-               }
-            }
-         }
-
-         // This next loop is important for hosted environments where multiple windows are active.  It ensures that
-         // surfaces contained by other windows also lose the focus.
-
-         while (j >= 0) {
-            if (surfacelist[j].Flags & RNF_HAS_FOCUS) {
-               if (lost < ARRAYSIZE(lostfocus)-1) lostfocus[lost++] = surfacelist[j].SurfaceID;
-               surfacelist[j].Flags &= ~RNF_HAS_FOCUS;
-            }
-            j--;
-         }
-
-         focuslist[has_focus] = 0;
-         lostfocus[lost] = 0;
+      LONG surface_index;
+      OBJECTID surface_id = Self->UID;
+      if ((surface_index = find_own_index(ctl, Self)) IS -1) {
+         // This is not a critical failure as child surfaces can be expected to disappear from the surface list
+         // during the free process.
 
          gfxReleaseList(ARF_READ);
-      }
-      else {
-         ReleaseMemory(focuslist);
          glLastFocusTime = PreciseTime();
-         return log.warning(ERR_AccessMemory);
+         return ERR_Failed|ERF_Notified;
       }
 
-      // Send a Focus action to all parent surface objects in our generated focus list.
+      // Build the new focus chain in a local focus list.  Also also reset the HAS_FOCUS flag.  Surfaces that have
+      // lost the focus go in the lostfocus list.
 
-      struct drwInheritedFocus inherit = {
-         .FocusID = Self->UID,
-         .Flags   = Self->Flags
-      };
-      for (LONG i=1; focuslist[i]; i++) { // Start from one to skip Self
-         ActionMsg(MT_DrwInheritedFocus, focuslist[i], &inherit);
-      }
+      // Starting from the end of the list, everything leading towards the target surface will need to lose the focus.
 
-      // Send out LostFocus actions to all objects that do not intersect with the new focus chain.
-
-      for (LONG i=0; lostfocus[i]; i++) {
-         acLostFocus(lostfocus[i]);
-      }
-
-      // Send a global focus event to all listeners
-
-      LONG event_size = sizeof(evFocus) + (has_focus * sizeof(OBJECTID)) + (lost * sizeof(OBJECTID));
-      UBYTE buffer[event_size];
-      evFocus *ev = (evFocus *)buffer;
-      ev->EventID        = EVID_GUI_SURFACE_FOCUS;
-      ev->TotalWithFocus = has_focus;
-      ev->TotalLostFocus = lost;
-
-      OBJECTID *outlist = &ev->FocusList[0];
-      LONG o = 0;
-      for (LONG i=0; i < has_focus; i++) outlist[o++] = focuslist[i];
-      for (LONG i=0; i < lost; i++) outlist[o++] = lostfocus[i];
-      BroadcastEvent(ev, event_size);
-
-      ReleaseMemory(focuslist);
-
-      if (Self->Flags & RNF_HAS_FOCUS) {
-         // Return without notification as we already have the focus
-
-         if (Self->RevertFocusID) {
-            Self->RevertFocusID = 0;
-            ActionMsg(AC_Focus, Self->RevertFocusID, NULL);
+      for (j=ctl->Total-1; j > surface_index; j--) {
+         if (surfacelist[j].Flags & RNF_HAS_FOCUS) {
+            lostfocus.push_back(surfacelist[j].SurfaceID);
+            surfacelist[j].Flags &= ~RNF_HAS_FOCUS;
          }
-         glLastFocusTime = PreciseTime();
-         return ERR_Okay|ERF_Notified;
       }
-      else {
-         Self->Flags |= RNF_HAS_FOCUS;
-         UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
 
-         // Focussing on the display window is important in hosted environments
+      // The target surface and all its parents will need to gain the focus
 
-         if (Self->DisplayID) acFocus(Self->DisplayID);
-
-         if (Self->RevertFocusID) {
-            Self->RevertFocusID = 0;
-            ActionMsg(AC_Focus, Self->RevertFocusID, NULL);
+      for (j=surface_index; j >= 0; j--) {
+         if (surfacelist[j].SurfaceID != surface_id) {
+            if (surfacelist[j].Flags & RNF_HAS_FOCUS) {
+               lostfocus.push_back(surfacelist[j].SurfaceID);
+               surfacelist[j].Flags &= ~RNF_HAS_FOCUS;
+            }
          }
-
-         glLastFocusTime = PreciseTime();
-         return ERR_Okay;
+         else {
+            surfacelist[j].Flags |= RNF_HAS_FOCUS;
+            glFocusList.push_back(surface_id);
+            surface_id = surfacelist[j].ParentID;
+            if (!surface_id) {
+               j--;
+               break; // Break out of the loop when there are no more parents left
+            }
+         }
       }
+
+      // This next loop is important for hosted environments where multiple windows are active.  It ensures that
+      // surfaces contained by other windows also lose the focus.
+
+      while (j >= 0) {
+         if (surfacelist[j].Flags & RNF_HAS_FOCUS) {
+            lostfocus.push_back(surfacelist[j].SurfaceID);
+            surfacelist[j].Flags &= ~RNF_HAS_FOCUS;
+         }
+         j--;
+      }
+
+      gfxReleaseList(ARF_READ);
    }
    else {
       glLastFocusTime = PreciseTime();
-      return log.warning(ERR_AccessMemory)|ERF_Notified;
+      return log.warning(ERR_AccessMemory);
+   }
+
+   // Send a Focus action to all parent surface objects in our generated focus list.
+
+   struct drwInheritedFocus inherit = { .FocusID = Self->UID, .Flags = Self->Flags };
+   auto it = glFocusList.begin() + 1; // Skip Self
+   while (it != glFocusList.end()) {
+      ActionMsg(MT_DrwInheritedFocus, *it, &inherit);
+      it++;
+   }
+
+   // Send out LostFocus actions to all objects that do not intersect with the new focus chain.
+
+   for (auto &id : lostfocus) acLostFocus(id);
+
+   // Send a global focus event to all listeners
+
+   LONG event_size = sizeof(evFocus) + (glFocusList.size() * sizeof(OBJECTID)) + (lostfocus.size() * sizeof(OBJECTID));
+   UBYTE buffer[event_size];
+   auto ev = (evFocus *)buffer;
+   ev->EventID        = EVID_GUI_SURFACE_FOCUS;
+   ev->TotalWithFocus = glFocusList.size();
+   ev->TotalLostFocus = lostfocus.size();
+
+   OBJECTID *outlist = &ev->FocusList[0];
+   LONG o = 0;
+   for (auto &id : glFocusList) outlist[o++] = id;
+   for (auto &id : lostfocus) outlist[o++] = id;
+   BroadcastEvent(ev, event_size);
+
+   if (Self->Flags & RNF_HAS_FOCUS) {
+      // Return without notification as we already have the focus
+
+      if (Self->RevertFocusID) {
+         Self->RevertFocusID = 0;
+         ActionMsg(AC_Focus, Self->RevertFocusID, NULL);
+      }
+
+      glLastFocusTime = PreciseTime();
+      return ERR_Okay|ERF_Notified;
+   }
+   else {
+      Self->Flags |= RNF_HAS_FOCUS;
+      UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
+
+      // Focussing on the display window is important in hosted environments
+
+      if (Self->DisplayID) acFocus(Self->DisplayID);
+
+      if (Self->RevertFocusID) {
+         Self->RevertFocusID = 0;
+         ActionMsg(AC_Focus, Self->RevertFocusID, NULL);
+      }
+
+      glLastFocusTime = PreciseTime();
+      return ERR_Okay;
    }
 }
 

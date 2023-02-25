@@ -340,7 +340,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     X11            = "-1003: X11 global variables.",
     AlphaBlend     = "-1004: Alpha blending lookup table (Bitmap module).",
     XWindowLookup  = "-1005: X Window to Surface lookup table (Display/Surface modules).",
-    FocusList      = "-1006: The Surface class uses this to store the focus hierarchy.",
     InputEvents    = "-1007: Input message cyclic array.",
     DisplayInfo    = "-1008: DisplayInfo structure, managed by the Display module"
   })
