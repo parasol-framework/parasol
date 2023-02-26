@@ -515,7 +515,7 @@ static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
                StrCopy(servers, server_buffer, sizeof(server_buffer));
 
                snprintf(buffer, sizeof(buffer), "%s=", portname);
-               if ((index = StrSearch(buffer, server_buffer, 0)) != -1) { // Entry already exists - remove it first
+               if ((index = StrSearch(buffer, server_buffer)) != -1) { // Entry already exists - remove it first
                   for (end=index; server_buffer[end]; end++) {
                      if (server_buffer[end] IS ';') {
                         end++;

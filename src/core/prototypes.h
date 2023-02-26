@@ -108,7 +108,7 @@ void FreeSharedMutex(APTR Mutex);
 ERROR LockSharedMutex(APTR Mutex, LONG MilliSeconds);
 void UnlockSharedMutex(APTR Mutex);
 void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args);
-LONG StrSearch(CSTRING Keyword, CSTRING String, LONG Flags);
+LONG Base64Encode(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
 ERROR VarSetSized(struct KeyStore * Store, CSTRING Key, LONG Size, APTR * Data, LONG * DataSize);
 ERROR VarLock(struct KeyStore * Store, LONG Timeout);
 ERROR WakeProcess(LONG ProcessID);
@@ -140,7 +140,6 @@ const struct SystemState * GetSystemState();
 ULONG StrHash(CSTRING String, LONG CaseSensitive);
 ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
 LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
-LONG Base64Encode(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
 
 #ifdef  __cplusplus
 }

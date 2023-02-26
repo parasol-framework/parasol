@@ -557,7 +557,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                            else if (!StrCompare("qop=", auth+i, 0, 0)) {
                               STRING value;
                               i += extract_value(auth+i, &value);
-                              if (StrSearch("auth-int", value, 0) >= 0) {
+                              if (StrSearch("auth-int", value) >= 0) {
                                  StrCopy("auth-int", (STRING)Self->AuthQOP, sizeof(Self->AuthQOP));
                               }
                               else StrCopy("auth", (STRING)Self->AuthQOP, sizeof(Self->AuthQOP));

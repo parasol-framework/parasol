@@ -1343,12 +1343,12 @@ static void scan_truetype_folder(objConfig *Config)
 
             LONG style = 0;
             if (ftface->style_name) {
-               if ((n = StrSearch(" Bold", group, STR_MATCH_CASE)) != -1) {
+               if ((n = StrSearchCase(" Bold", group)) != -1) {
                   for (j=0; " Bold"[j]; j++) group[n++] = ' ';
                   style |= FTF_BOLD;
                }
 
-               if ((n = StrSearch(" Italic", group, STR_MATCH_CASE)) != -1) {
+               if ((n = StrSearchCase(" Italic", group)) != -1) {
                   for (j=0; " Italic"[j]; j++) group[n++] = ' ';
                   style |= FTF_ITALIC;
                }

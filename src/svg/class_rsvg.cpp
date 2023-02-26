@@ -47,7 +47,7 @@ static ERROR RSVG_Init(prvPicture *Self, APTR Void)
 
    if (!StrCompare("*.svg|*.svgz", path, 0, STR_WILDCARD));
    else if (!Self->getPtr(FID_Header, &buffer)) {
-      if (StrSearch("<svg", buffer, 0) >= 0) {
+      if (StrSearch("<svg", buffer) >= 0) {
       }
       else return ERR_NoSupport;
    }

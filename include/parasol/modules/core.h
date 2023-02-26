@@ -2004,7 +2004,7 @@ struct CoreBase {
    ERROR (*_LockSharedMutex)(APTR Mutex, LONG MilliSeconds);
    void (*_UnlockSharedMutex)(APTR Mutex);
    void (*_VLogF)(int Flags, const char *Header, const char *Message, va_list Args);
-   LONG (*_StrSearch)(CSTRING Keyword, CSTRING String, LONG Flags);
+   LONG (*_Base64Encode)(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
    ERROR (*_VarSetSized)(struct KeyStore * Store, CSTRING Key, LONG Size, APTR Data, LONG * DataSize);
    ERROR (*_VarLock)(struct KeyStore * Store, LONG Timeout);
    ERROR (*_WakeProcess)(LONG ProcessID);
@@ -2036,7 +2036,6 @@ struct CoreBase {
    ULONG (*_StrHash)(CSTRING String, LONG CaseSensitive);
    ERROR (*_AddInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING Value);
    LONG (*_UTF8Copy)(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
-   LONG (*_Base64Encode)(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2144,7 +2143,7 @@ inline void FreeSharedMutex(APTR Mutex) { return CoreBase->_FreeSharedMutex(Mute
 inline ERROR LockSharedMutex(APTR Mutex, LONG MilliSeconds) { return CoreBase->_LockSharedMutex(Mutex,MilliSeconds); }
 inline void UnlockSharedMutex(APTR Mutex) { return CoreBase->_UnlockSharedMutex(Mutex); }
 inline void VLogF(int Flags, const char *Header, const char *Message, va_list Args) { return CoreBase->_VLogF(Flags,Header,Message,Args); }
-inline LONG StrSearch(CSTRING Keyword, CSTRING String, LONG Flags) { return CoreBase->_StrSearch(Keyword,String,Flags); }
+inline LONG Base64Encode(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize) { return CoreBase->_Base64Encode(State,Input,InputSize,Output,OutputSize); }
 inline ERROR VarSetSized(struct KeyStore * Store, CSTRING Key, LONG Size, APTR Data, LONG * DataSize) { return CoreBase->_VarSetSized(Store,Key,Size,Data,DataSize); }
 inline ERROR VarLock(struct KeyStore * Store, LONG Timeout) { return CoreBase->_VarLock(Store,Timeout); }
 inline ERROR WakeProcess(LONG ProcessID) { return CoreBase->_WakeProcess(ProcessID); }
@@ -2176,7 +2175,6 @@ inline const struct SystemState * GetSystemState(void) { return CoreBase->_GetSy
 inline ULONG StrHash(CSTRING String, LONG CaseSensitive) { return CoreBase->_StrHash(String,CaseSensitive); }
 inline ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
 inline LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size) { return CoreBase->_UTF8Copy(Src,Dest,Chars,Size); }
-inline LONG Base64Encode(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize) { return CoreBase->_Base64Encode(State,Input,InputSize,Output,OutputSize); }
 #endif
 
 
@@ -2254,6 +2252,32 @@ typedef std::vector<ConfigGroup> ConfigGroups;
 inline void CopyMemory(const void *Src, APTR Dest, LONG Length)
 {
    memmove(Dest, Src, Length);
+}
+
+inline LONG StrSearchCase(CSTRING Keyword, CSTRING String)
+{
+   LONG i;
+   LONG pos = 0;
+   while (String[pos]) {
+      for (i=0; Keyword[i]; i++) if (String[pos+i] != Keyword[i]) break;
+      if (!Keyword[i]) return pos;
+      for (++pos; (String[pos] & 0xc0) IS 0x80; pos++);
+   }
+
+   return -1;
+}
+
+inline LONG StrSearch(CSTRING Keyword, CSTRING String)
+{
+   LONG i;
+   LONG pos = 0;
+   while (String[pos]) {
+      for (i=0; Keyword[i]; i++) if (std::toupper(String[pos+i]) != std::toupper(Keyword[i])) break;
+      if (!Keyword[i]) return pos;
+      for (++pos; (String[pos] & 0xc0) IS 0x80; pos++);
+   }
+
+   return -1;
 }
 
 inline STRING StrClone(CSTRING String)

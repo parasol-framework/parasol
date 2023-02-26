@@ -822,52 +822,6 @@ ERROR StrReadLocale(CSTRING Key, CSTRING *Value)
    else return ERR_Search;
 }
 
-/*********************************************************************************************************************
-
--FUNCTION-
-StrSearch: Searches a string for a particular keyword/phrase.
-
-This function allows you to search for a particular Keyword or phrase inside a String.  You may search on a case
-sensitive or case insensitive basis.
-
--INPUT-
-cstr Keyword: A string that specifies the keyword/phrase you are searching for.
-cstr String: The string data that you wish to search.
-int(STR) Flags:  Optional flags (currently STR_MATCH_CASE is supported for case sensitivity).
-
--RESULT-
-int: Returns the byte position of the first occurrence of the Keyword within the String (possible values start from position 0).  If the Keyword could not be found, this function returns a value of -1.
-
-*********************************************************************************************************************/
-
-LONG StrSearch(CSTRING Keyword, CSTRING String, LONG Flags)
-{
-   if ((!String) or (!Keyword)) {
-      pf::Log log(__FUNCTION__);
-      log.warning(ERR_NullArgs);
-      return -1;
-   }
-
-   LONG i;
-   LONG pos = 0;
-   if (Flags & STR_MATCH_CASE) {
-      while (String[pos]) {
-         for (i=0; Keyword[i]; i++) if (String[pos+i] != Keyword[i]) break;
-         if (!Keyword[i]) return pos;
-         for (++pos; (String[pos] & 0xc0) IS 0x80; pos++);
-      }
-   }
-   else {
-      while (String[pos]) {
-         for (i=0; Keyword[i]; i++) if (std::toupper(String[pos+i]) != std::toupper(Keyword[i])) break;
-         if (!Keyword[i]) return pos;
-         for (++pos; (String[pos] & 0xc0) IS 0x80; pos++);
-      }
-   }
-
-   return -1;
-}
-
 //********************************************************************************************************************
 
 #include "lib_base64.cpp"

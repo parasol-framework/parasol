@@ -408,7 +408,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
          CSTRING errorstr;
          if ((errorstr = lua_tostring(prv->Lua,-1))) {
             // Format: [string "..."]:Line:Error
-            if ((i = StrSearch("\"]:", errorstr, STR_MATCH_CASE)) != -1) {
+            if ((i = StrSearchCase("\"]:", errorstr)) != -1) {
                char buffer[240];
                i += 3;
                LONG line = StrToInt(errorstr + i);
