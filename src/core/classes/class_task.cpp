@@ -1883,8 +1883,8 @@ static ERROR TASK_SetVar(extTask *Self, struct acSetVar *Args)
       if (!AllocMemory(StrLength(Args->Field) + StrLength(Args->Value) + 2,
             MEM_STRING|MEM_NO_CLEAR, (void **)&field, NULL)) {
 
-         LONG pos = StrCopy(Args->Field, field, COPY_ALL) + 1;
-         StrCopy(Args->Value, field + pos, COPY_ALL);
+         LONG pos = StrCopy(Args->Field, field) + 1;
+         StrCopy(Args->Value, field + pos);
 
          if (Self->Fields[i]) FreeResource(Self->Fields[i]);
          Self->Fields[i] = field;

@@ -411,12 +411,12 @@ static ERROR fntGetList(FontList **Result)
 
             if (keys.contains("Name")) {
                list->Name = buffer;
-               buffer += StrCopy(keys["Name"].c_str(), buffer, COPY_ALL) + 1;
+               buffer += StrCopy(keys["Name"].c_str(), buffer) + 1;
             }
 
             if (keys.contains("Styles")) {
                list->Styles = buffer;
-               buffer += StrCopy(keys["Styles"].c_str(), buffer, COPY_ALL) + 1;
+               buffer += StrCopy(keys["Styles"].c_str(), buffer) + 1;
             }
 
             if (keys.contains("Scalable")) {

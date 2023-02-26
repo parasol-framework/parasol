@@ -2120,23 +2120,6 @@ SetField(Object, FID_Statement|TSTR, "string");
   </function>
 
   <function>
-    <name>StrCopy</name>
-    <category>Strings</category>
-    <comment>Copies the characters of one string to another.</comment>
-    <prototype>LONG StrCopy(CSTRING Src, STRING Dest, LONG Length)</prototype>
-    <input>
-      <param type="CSTRING" name="Src">Pointer to the string that you are copying from.</param>
-      <param type="STRING" name="Dest">Pointer to the buffer that you are copying to.</param>
-      <param type="LONG" name="Length">The maximum number of characters to copy, including the NULL byte.  The Length typically indicates the buffer size of the Dest pointer.  Setting the Length to COPY_ALL will copy all characters from the Src string.</param>
-    </input>
-    <description>
-<p>This function copies part of one string over to another.  If the Length is set to zero then this function will copy the entire Src string over to the Dest.  Note that if this function encounters the end of the Src string (i.e. the null byte) while copying, then it will stop automatically to prevent copying of junk characters.</p>
-<p>Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of the Length value. For example, copying <code>123</code> into the middle of string <code>ABCDEFGHI</code> would result in <code>ABC123</code>.  The <code>GHI</code> part of the string would be lost.</p>
-    </description>
-    <result type="LONG">Returns the total amount of characters that were copied, not including the null byte at the end.</result>
-  </function>
-
-  <function>
     <name>StrDatatype</name>
     <category>Strings</category>
     <comment>Determines the data type of a string.</comment>
@@ -2992,10 +2975,6 @@ end
       <const name="NEW">On initialisation, do not load any data from the referenced configuration file.</const>
       <const name="OPTIONAL_FILES">Files are optional (do not fail if a requested file does not exist).</const>
       <const name="STRIP_QUOTES">Removes quotes from key values that are quote-encapsulated.</const>
-    </constants>
-
-    <constants lookup="COPY" comment="Flags for StrCopy()">
-      <const name="ALL">Copy all characters from the source string.</const>
     </constants>
 
     <constants lookup="DATA" comment="Data codes">

@@ -332,7 +332,7 @@ static ERROR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nlResolveAddres
          rb->NetLookupID = Self->UID;
          rb->ThreadID = th->UID;
          CopyMemory(&ip, (rb + 1), sizeof(ip));
-         StrCopy(Args->Address, ((STRING)(rb + 1)) + sizeof(IPAddress), COPY_ALL);
+         StrCopy(Args->Address, ((STRING)(rb + 1)) + sizeof(IPAddress));
          if ((!thSetData(th, rb, pkg_size)) and (!th->activate())) {
             std::lock_guard<std::mutex> lock(*Self->ThreadLock);
             Self->Threads->insert(th->UID);
@@ -396,7 +396,7 @@ static ERROR NETLOOKUP_ResolveName(extNetLookup *Self, struct nlResolveName *Arg
       auto rb = (resolve_buffer *)&buffer;
       rb->NetLookupID = Self->UID;
       rb->ThreadID = th->UID;
-      StrCopy(Args->HostName, (STRING)(rb + 1), COPY_ALL);
+      StrCopy(Args->HostName, (STRING)(rb + 1));
       if ((!thSetData(th, buffer, pkg_size)) and (!th->activate())) {
          std::lock_guard<std::mutex> lock(*Self->ThreadLock);
          Self->Threads->insert(th->UID);
@@ -554,7 +554,7 @@ static ERROR cache_host(KeyStore *Store, CSTRING Key, struct hostent *Host, DNSE
    else cache->Addresses = NULL;
 
    cache->HostName = (STRING)(buffer + offset);
-   StrCopy(real_name, (STRING)cache->HostName, COPY_ALL);
+   StrCopy(real_name, (STRING)cache->HostName);
    cache->TotalAddresses = address_count;
 
    *Cache = cache;
@@ -631,7 +631,7 @@ static ERROR cache_host(KeyStore *Store, CSTRING Key, struct addrinfo *Host, DNS
    else cache->Addresses = NULL;
 
    cache->HostName = (STRING)(buffer + offset);
-   StrCopy(real_name, (STRING)cache->HostName, COPY_ALL);
+   StrCopy(real_name, (STRING)cache->HostName);
    cache->TotalAddresses = address_count;
    *Cache = cache;
    return ERR_Okay;

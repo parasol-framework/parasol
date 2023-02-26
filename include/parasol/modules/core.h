@@ -1107,10 +1107,6 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 
 #define MAX_FILENAME 256
 
-// Flags for StrCopy()
-
-#define COPY_ALL 0x7fffffff
-
 // Module file header constants
 
 #define MODULE_HEADER_V1 1297040385
@@ -2016,7 +2012,7 @@ struct CoreBase {
    OBJECTPTR (*_CurrentTask)(void);
    ERROR (*_KeyIterate)(struct KeyStore * Store, ULONG Index, ULONG * Key, APTR Data, LONG * Size);
    CSTRING (*_ResolveGroupID)(LONG Group);
-   LONG (*_StrCopy)(CSTRING Src, STRING Dest, LONG Length);
+   ERROR (*_VarSetString)(struct KeyStore * Store, CSTRING Key, CSTRING Value);
    CSTRING (*_VarGetString)(struct KeyStore * Store, CSTRING Key);
    void (*_VarUnlock)(struct KeyStore * Store);
    CSTRING (*_ResolveUserID)(LONG User);
@@ -2041,7 +2037,6 @@ struct CoreBase {
    ERROR (*_AddInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING Value);
    LONG (*_UTF8Copy)(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
    LONG (*_Base64Encode)(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
-   ERROR (*_VarSetString)(struct KeyStore * Store, CSTRING Key, CSTRING Value);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2157,7 +2152,7 @@ inline ERROR SetResourcePath(LONG PathType, CSTRING Path) { return CoreBase->_Se
 inline OBJECTPTR CurrentTask(void) { return CoreBase->_CurrentTask(); }
 inline ERROR KeyIterate(struct KeyStore * Store, ULONG Index, ULONG * Key, APTR Data, LONG * Size) { return CoreBase->_KeyIterate(Store,Index,Key,Data,Size); }
 inline CSTRING ResolveGroupID(LONG Group) { return CoreBase->_ResolveGroupID(Group); }
-inline LONG StrCopy(CSTRING Src, STRING Dest, LONG Length) { return CoreBase->_StrCopy(Src,Dest,Length); }
+inline ERROR VarSetString(struct KeyStore * Store, CSTRING Key, CSTRING Value) { return CoreBase->_VarSetString(Store,Key,Value); }
 inline CSTRING VarGetString(struct KeyStore * Store, CSTRING Key) { return CoreBase->_VarGetString(Store,Key); }
 inline void VarUnlock(struct KeyStore * Store) { return CoreBase->_VarUnlock(Store); }
 inline CSTRING ResolveUserID(LONG User) { return CoreBase->_ResolveUserID(User); }
@@ -2182,7 +2177,6 @@ inline ULONG StrHash(CSTRING String, LONG CaseSensitive) { return CoreBase->_Str
 inline ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
 inline LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size) { return CoreBase->_UTF8Copy(Src,Dest,Chars,Size); }
 inline LONG Base64Encode(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize) { return CoreBase->_Base64Encode(State,Input,InputSize,Output,OutputSize); }
-inline ERROR VarSetString(struct KeyStore * Store, CSTRING Key, CSTRING Value) { return CoreBase->_VarSetString(Store,Key,Value); }
 #endif
 
 
@@ -2203,6 +2197,22 @@ inline CSTRING to_cstring(CSTRING A) { return A; }
 
 template <class T, class U> inline ERROR StrMatch(T &&A, U &&B) {
    return StrCompare(to_cstring(A), to_cstring(B), 0, STR_MATCH_LEN);
+}
+
+inline LONG StrCopy(CSTRING String, STRING Dest, LONG Length = 0x7fffffff)
+{
+   if ((Length > 0) and (String) and (Dest)) {
+      LONG i = 0;
+      while ((i < Length) and (*String)) Dest[i++] = *String++;
+
+      if ((*String) and (i >= Length)) {
+         Dest[i-1] = 0; // Ran out of buffer space, terminate from one character back
+      }
+      else Dest[i] = 0;
+      return i;
+   }
+
+   return 0;
 }
 
 #ifndef PRV_CORE_DATA
@@ -2231,7 +2241,7 @@ template <class T, class U> inline ERROR StrCompare(T &&A, U &&B, LONG Length, L
    return StrCompare(to_cstring(A), to_cstring(B), Length, Flags);
 }
 
-template <class T> inline LONG StrCopy(T &&A, STRING B, LONG Length) {
+template <class T> inline LONG StrCopy(T &&A, STRING B, LONG Length = 0x7fffffff) {
    return StrCopy(to_cstring(A), B, Length);
 }
 

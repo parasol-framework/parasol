@@ -100,7 +100,6 @@ FDEF argsSetResourcePath[] = { { "Error", FD_LONG|FD_ERROR }, { "PathType", FD_L
 FDEF argsSetVolume[] = { { "Error", FD_LONG|FD_ERROR }, { "Tags", FD_VARTAGS }, { 0, 0 } };
 FDEF argsStrBuildArray[] = { { "Result", FD_ARRAY|FD_STR|FD_ALLOC }, { "List", FD_STR }, { "Size", FD_LONG }, { "Total", FD_LONG }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsStrCompare[] = { { "Error", FD_LONG|FD_ERROR }, { "String1", FD_STR }, { "String2", FD_STR }, { "Length", FD_LONG }, { "Flags", FD_LONG }, { 0, 0 } };
-FDEF argsStrCopy[] = { { "Result", FD_LONG }, { "Src", FD_STR }, { "Dest", FD_STR }, { "Length", FD_LONG }, { 0, 0 } };
 FDEF argsStrDatatype[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsStrHash[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "String", FD_STR }, { "CaseSensitive", FD_LONG }, { 0, 0 } };
 FDEF argsStrReadLocale[] = { { "Error", FD_LONG|FD_ERROR }, { "Key", FD_STR }, { "Value", FD_STR|FD_RESULT }, { 0, 0 } };
@@ -256,7 +255,7 @@ const struct Function glFunctions[] = {
    { (APTR)CurrentTask, "CurrentTask", argsCurrentTask },
    { (APTR)KeyIterate, "KeyIterate", argsKeyIterate },
    { (APTR)ResolveGroupID, "ResolveGroupID", argsResolveGroupID },
-   { (APTR)StrCopy, "StrCopy", argsStrCopy },
+   { (APTR)VarSetString, "VarSetString", argsVarSetString },
    { (APTR)VarGetString, "VarGetString", argsVarGetString },
    { (APTR)VarUnlock, "VarUnlock", argsVarUnlock },
    { (APTR)ResolveUserID, "ResolveUserID", argsResolveUserID },
@@ -281,7 +280,6 @@ const struct Function glFunctions[] = {
    { (APTR)AddInfoTag, "AddInfoTag", argsAddInfoTag },
    { (APTR)UTF8Copy, "UTF8Copy", argsUTF8Copy },
    { (APTR)Base64Encode, "Base64Encode", argsBase64Encode },
-   { (APTR)VarSetString, "VarSetString", argsVarSetString },
    { NULL, NULL, NULL }
 };
 
