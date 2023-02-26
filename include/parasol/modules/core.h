@@ -2041,6 +2041,8 @@ struct CoreBase {
    LONG (*_Base64Encode)(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
    ERROR (*_VarSetString)(struct KeyStore * Store, CSTRING Key, CSTRING Value);
    CSTRING (*_VarGetString)(struct KeyStore * Store, CSTRING Key);
+   LONG (*_TotalChildren)(OBJECTID Object);
+   CSTRING (*_FieldName)(ULONG FieldID);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2183,6 +2185,8 @@ inline LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size) { return C
 inline LONG Base64Encode(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize) { return CoreBase->_Base64Encode(State,Input,InputSize,Output,OutputSize); }
 inline ERROR VarSetString(struct KeyStore * Store, CSTRING Key, CSTRING Value) { return CoreBase->_VarSetString(Store,Key,Value); }
 inline CSTRING VarGetString(struct KeyStore * Store, CSTRING Key) { return CoreBase->_VarGetString(Store,Key); }
+inline LONG TotalChildren(OBJECTID Object) { return CoreBase->_TotalChildren(Object); }
+inline CSTRING FieldName(ULONG FieldID) { return CoreBase->_FieldName(FieldID); }
 #endif
 
 

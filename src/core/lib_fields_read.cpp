@@ -68,6 +68,37 @@ Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target)
 /*********************************************************************************************************************
 
 -FUNCTION-
+FieldName: Resolves a field ID to its registered name.
+
+Resolves a field identifier to its name.  For this to work successfully, the field must have been registered with the
+internal dictionary.  This is handled automatically when a new class is added to the system.
+
+If the FieldID is not registered, the value is returned back as a hex string.  The inclusion of this feature
+guarantees that an empty string will never be returned.
+
+-INPUT-
+uint FieldID: The unique field hash to resolve.
+
+-RESULT-
+cstr: The name of the field is returned.
+
+*********************************************************************************************************************/
+
+extern THREADVAR char tlFieldName[10]; // $12345678\0
+
+CSTRING FieldName(ULONG FieldID)
+{
+   ThreadLock lock(TL_FIELDKEYS, 1000);
+   if (lock.granted()) {
+      if (glFields.contains(FieldID)) return glFields[FieldID].c_str();
+   }
+   snprintf(tlFieldName, sizeof(tlFieldName), "$%.8x", FieldID);
+   return tlFieldName;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
 FindField: Finds field descriptors for any class, by ID.
 
 The FindField() function checks if an object supports a specified field by scanning its class descriptor for a FieldID.
@@ -176,7 +207,7 @@ ERROR GetField(OBJECTPTR Object, FIELD FieldID, APTR Result)
 
    if (auto field = lookup_id(Object, FieldID, &Object)) {
       if (!(field->Flags & FD_READ)) {
-         if (!field->Name) log.warning("Illegal attempt to read field %s.", GET_FIELD_NAME(FieldID));
+         if (!field->Name) log.warning("Illegal attempt to read field %s.", FieldName(FieldID));
          else log.warning("Illegal attempt to read field %s.", field->Name);
          return ERR_NoFieldAccess;
       }
@@ -184,7 +215,7 @@ ERROR GetField(OBJECTPTR Object, FIELD FieldID, APTR Result)
       ScopedObjectAccess objlock(Object);
       return copy_field_to_buffer(Object, field, type, Result, NULL, NULL);
    }
-   else log.warning("Unsupported field %s", GET_FIELD_NAME(FieldID));
+   else log.warning("Unsupported field %s", FieldName(FieldID));
 
    return ERR_UnsupportedField;
 }
@@ -232,7 +263,7 @@ ERROR GetFieldArray(OBJECTPTR Object, FIELD FieldID, APTR *Result, LONG *Element
 
    if (auto field = lookup_id(Object, FieldID, &Object)) {
       if ((!(field->Flags & FD_READ)) or (!(field->Flags & FD_ARRAY))) {
-         if (!field->Name) log.warning("Illegal attempt to read field %s.", GET_FIELD_NAME(FieldID));
+         if (!field->Name) log.warning("Illegal attempt to read field %s.", FieldName(FieldID));
          else log.warning("Illegal attempt to read field %s.", field->Name);
          return ERR_NoFieldAccess;
       }
@@ -245,7 +276,7 @@ ERROR GetFieldArray(OBJECTPTR Object, FIELD FieldID, APTR *Result, LONG *Element
       ERROR error = copy_field_to_buffer(Object, field, FD_POINTER, Result, NULL, Elements);
       return error;
    }
-   else log.warning("Unsupported field %s", GET_FIELD_NAME(FieldID));
+   else log.warning("Unsupported field %s", FieldName(FieldID));
 
    return ERR_UnsupportedField;
 }
@@ -336,7 +367,7 @@ ERROR GetFields(OBJECTPTR Object, ...)
          if (!error) error = copy_field_to_buffer(target, field, fieldflags, value, NULL, NULL);
       }
       else {
-         log.warning("Field %s is not supported by class %s.", GET_FIELD_NAME(field_id), Object->className());
+         log.warning("Field %s is not supported by class %s.", FieldName(field_id), Object->className());
          error = ERR_UnsupportedField;
       }
    }

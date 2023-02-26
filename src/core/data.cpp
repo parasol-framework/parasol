@@ -68,7 +68,7 @@ std::unordered_map<CLASSID, ClassRecord> glClassDB;
 std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
 std::map<std::string, std::vector<BaseClass *>, CaseInsensitiveMap> glObjectLookup;
 std::unordered_map<CLASSID, extMetaClass *> glClassMap;
-std::unordered_map<FIELD, std::string> glFields;
+std::unordered_map<ULONG, std::string> glFields;
 std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes;
 std::list<FDRecord> glFDTable;
 std::list<CoreTimer> glTimers;

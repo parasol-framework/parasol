@@ -32,6 +32,7 @@ FDEF argsCurrentContext[] = { { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsCurrentTask[] = { { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsDeleteFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF argsDeleteVolume[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { 0, 0 } };
+FDEF argsFieldName[] = { { "Result", FD_STR }, { "FieldID", FD_LONG|FD_UNSIGNED }, { 0, 0 } };
 FDEF argsFindClass[] = { { "Object", FD_OBJECTPTR }, { "ClassID", FD_LONG|FD_UNSIGNED }, { 0, 0 } };
 FDEF argsFindField[] = { { "Field", FD_PTR|FD_STRUCT }, { "Object", FD_OBJECTPTR }, { "FieldID", FD_LONG|FD_UNSIGNED }, { "Target", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
 FDEF argsFindObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "ClassID", FD_LONG|FD_UNSIGNED }, { "Flags", FD_LONG }, { "ObjectID", FD_OBJECTID|FD_RESULT }, { 0, 0 } };
@@ -112,6 +113,7 @@ FDEF argsSubscribeEvent[] = { { "Error", FD_LONG|FD_ERROR }, { "Event", FD_LARGE
 FDEF argsSubscribeTimer[] = { { "Error", FD_LONG|FD_ERROR }, { "Interval", FD_DOUBLE }, { "Callback", FD_FUNCTIONPTR }, { "Subscription", FD_PTR|FD_RESULT }, { 0, 0 } };
 FDEF argsSysLock[] = { { "Error", FD_LONG|FD_ERROR }, { "Index", FD_LONG }, { "MilliSeconds", FD_LONG }, { 0, 0 } };
 FDEF argsSysUnlock[] = { { "Error", FD_LONG|FD_ERROR }, { "Index", FD_LONG }, { 0, 0 } };
+FDEF argsTotalChildren[] = { { "Result", FD_LONG }, { "Object", FD_OBJECTID }, { 0, 0 } };
 FDEF argsUTF8CharLength[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsUTF8CharOffset[] = { { "Result", FD_LONG }, { "String", FD_STR }, { "Offset", FD_LONG }, { 0, 0 } };
 FDEF argsUTF8Copy[] = { { "Result", FD_LONG }, { "Src", FD_STR }, { "Dest", FD_STR }, { "Chars", FD_LONG }, { "Size", FD_LONG }, { 0, 0 } };
@@ -284,6 +286,8 @@ const struct Function glFunctions[] = {
    { (APTR)Base64Encode, "Base64Encode", argsBase64Encode },
    { (APTR)VarSetString, "VarSetString", argsVarSetString },
    { (APTR)VarGetString, "VarGetString", argsVarGetString },
+   { (APTR)TotalChildren, "TotalChildren", argsTotalChildren },
+   { (APTR)FieldName, "FieldName", argsFieldName },
    { NULL, NULL, NULL }
 };
 

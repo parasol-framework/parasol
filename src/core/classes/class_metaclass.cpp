@@ -1024,7 +1024,7 @@ static ERROR field_setup(extMetaClass *Class)
 }
 
 //********************************************************************************************************************
-// Register a hashed field ID and its corresponding name.  Use GET_FIELD_NAME() to retrieve field names from the store.
+// Register a hashed field ID and its corresponding name.  Use FieldName() to retrieve field names from the store.
 
 static void register_fields(extMetaClass *Class)
 {
