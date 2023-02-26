@@ -2017,7 +2017,7 @@ struct CoreBase {
    ERROR (*_KeyIterate)(struct KeyStore * Store, ULONG Index, ULONG * Key, APTR Data, LONG * Size);
    CSTRING (*_ResolveGroupID)(LONG Group);
    LONG (*_StrCopy)(CSTRING Src, STRING Dest, LONG Length);
-   STRING (*_StrClone)(CSTRING String);
+   CSTRING (*_VarGetString)(struct KeyStore * Store, CSTRING Key);
    void (*_VarUnlock)(struct KeyStore * Store);
    CSTRING (*_ResolveUserID)(LONG User);
    ERROR (*_CreateLink)(CSTRING From, CSTRING To);
@@ -2042,7 +2042,6 @@ struct CoreBase {
    LONG (*_UTF8Copy)(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
    LONG (*_Base64Encode)(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
    ERROR (*_VarSetString)(struct KeyStore * Store, CSTRING Key, CSTRING Value);
-   CSTRING (*_VarGetString)(struct KeyStore * Store, CSTRING Key);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2159,7 +2158,7 @@ inline OBJECTPTR CurrentTask(void) { return CoreBase->_CurrentTask(); }
 inline ERROR KeyIterate(struct KeyStore * Store, ULONG Index, ULONG * Key, APTR Data, LONG * Size) { return CoreBase->_KeyIterate(Store,Index,Key,Data,Size); }
 inline CSTRING ResolveGroupID(LONG Group) { return CoreBase->_ResolveGroupID(Group); }
 inline LONG StrCopy(CSTRING Src, STRING Dest, LONG Length) { return CoreBase->_StrCopy(Src,Dest,Length); }
-inline STRING StrClone(CSTRING String) { return CoreBase->_StrClone(String); }
+inline CSTRING VarGetString(struct KeyStore * Store, CSTRING Key) { return CoreBase->_VarGetString(Store,Key); }
 inline void VarUnlock(struct KeyStore * Store) { return CoreBase->_VarUnlock(Store); }
 inline CSTRING ResolveUserID(LONG User) { return CoreBase->_ResolveUserID(User); }
 inline ERROR CreateLink(CSTRING From, CSTRING To) { return CoreBase->_CreateLink(From,To); }
@@ -2184,7 +2183,6 @@ inline ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value) { r
 inline LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size) { return CoreBase->_UTF8Copy(Src,Dest,Chars,Size); }
 inline LONG Base64Encode(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize) { return CoreBase->_Base64Encode(State,Input,InputSize,Output,OutputSize); }
 inline ERROR VarSetString(struct KeyStore * Store, CSTRING Key, CSTRING Value) { return CoreBase->_VarSetString(Store,Key,Value); }
-inline CSTRING VarGetString(struct KeyStore * Store, CSTRING Key) { return CoreBase->_VarGetString(Store,Key); }
 #endif
 
 
@@ -2246,6 +2244,19 @@ typedef std::vector<ConfigGroup> ConfigGroups;
 inline void CopyMemory(const void *Src, APTR Dest, LONG Length)
 {
    memmove(Dest, Src, Length);
+}
+
+inline STRING StrClone(CSTRING String)
+{
+   if (!String) return NULL;
+
+   LONG len = strlen(String);
+   STRING newstr;
+   if (!AllocMemory(len+1, MEM_STRING, (APTR *)&newstr, NULL)) {
+      CopyMemory(String, newstr, len+1);
+      return newstr;
+   }
+   else return NULL;
 }
 
 inline LONG StrLength(CSTRING String) {

@@ -466,40 +466,6 @@ STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags)
 /*********************************************************************************************************************
 
 -FUNCTION-
-StrClone: Clones string data.
-
-This function creates an exact duplicate of a string.  It analyses the length of the supplied String, allocates a
-private memory block for it and then copies the string characters into the new string buffer.
-
-You are expected to free the resulting memory block once it is no longer required with ~FreeResource().
-
--INPUT-
-cstr String: The string that is to be cloned.
-
--RESULT-
-str: Returns an exact duplicate of the String.  If this function fails to allocate the memory or if the String argument is NULL, NULL is returned.
-
-*********************************************************************************************************************/
-
-STRING StrClone(CSTRING String)
-{
-   if (!String) return NULL;
-
-   LONG i;
-   for (i=0; String[i]; i++);
-
-   STRING newstr;
-   if ((!AllocMemory(i+1, MEM_STRING, (APTR *)&newstr, NULL))) {
-      for (i=0; String[i]; i++) newstr[i] = String[i];
-      newstr[i] = 0;
-      return newstr;
-   }
-   else return NULL;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
 StrCompare: Compares strings to see if they are identical.
 
 This function compares two strings against each other.  If the strings match then it returns ERR_Okay, otherwise it
