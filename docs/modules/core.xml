@@ -2184,22 +2184,6 @@ SetField(Object, FID_Statement|TSTR, "string");
   </function>
 
   <function>
-    <name>StrSearch</name>
-    <category>Strings</category>
-    <comment>Searches a string for a particular keyword/phrase.</comment>
-    <prototype>LONG StrSearch(CSTRING Keyword, CSTRING String, LONG Flags)</prototype>
-    <input>
-      <param type="CSTRING" name="Keyword">A string that specifies the keyword/phrase you are searching for.</param>
-      <param type="CSTRING" name="String">The string data that you wish to search.</param>
-      <param type="LONG" name="Flags" lookup="STR">Optional flags (currently STR_MATCH_CASE is supported for case sensitivity).</param>
-    </input>
-    <description>
-<p>This function allows you to search for a particular Keyword or phrase inside a String.  You may search on a case sensitive or case insensitive basis.</p>
-    </description>
-    <result type="LONG">Returns the byte position of the first occurrence of the Keyword within the String (possible values start from position 0).  If the Keyword could not be found, this function returns a value of -1.</result>
-  </function>
-
-  <function>
     <name>SubscribeAction</name>
     <category>Objects</category>
     <comment>Monitor action calls made against an object.</comment>

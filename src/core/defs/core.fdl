@@ -1254,7 +1254,7 @@ extern struct CoreBase *CoreBase;
     "LockSharedMutex",
     "UnlockSharedMutex",
     "VLogF",
-    "StrSearch",
+    "Base64Encode",
     "VarSetSized",
     "VarLock",
     "WakeProcess",
@@ -1285,8 +1285,7 @@ extern struct CoreBase *CoreBase;
     "GetSystemState",
     "StrHash",
     "AddInfoTag",
-    "UTF8Copy",
-    "Base64Encode")
+    "UTF8Copy")
 
   c_insert([[
 
@@ -1364,6 +1363,32 @@ typedef std::vector<ConfigGroup> ConfigGroups;
 inline void CopyMemory(const void *Src, APTR Dest, LONG Length)
 {
    memmove(Dest, Src, Length);
+}
+
+inline LONG StrSearchCase(CSTRING Keyword, CSTRING String)
+{
+   LONG i;
+   LONG pos = 0;
+   while (String[pos]) {
+      for (i=0; Keyword[i]; i++) if (String[pos+i] != Keyword[i]) break;
+      if (!Keyword[i]) return pos;
+      for (++pos; (String[pos] & 0xc0) IS 0x80; pos++);
+   }
+
+   return -1;
+}
+
+inline LONG StrSearch(CSTRING Keyword, CSTRING String)
+{
+   LONG i;
+   LONG pos = 0;
+   while (String[pos]) {
+      for (i=0; Keyword[i]; i++) if (std::toupper(String[pos+i]) != std::toupper(Keyword[i])) break;
+      if (!Keyword[i]) return pos;
+      for (++pos; (String[pos] & 0xc0) IS 0x80; pos++);
+   }
+
+   return -1;
 }
 
 inline STRING StrClone(CSTRING String)

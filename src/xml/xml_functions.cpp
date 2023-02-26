@@ -384,7 +384,7 @@ static ERROR extract_tag(extXML *Self, exttag *Status)
       // Comments will be stripped - check if this is a comment and skip it if this is the case.
       if (!StrCompare("!--", str, 3, STR_MATCH_CASE)) {
          LONG i;
-         if ((i = StrSearch("-->", str, TRUE)) != -1) {
+         if ((i = StrSearchCase("-->", str)) != -1) {
             Status->Pos = str + i + 3;
             return ERR_NothingDone;
          }

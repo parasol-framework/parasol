@@ -406,7 +406,7 @@ convenience - we recommend that you set the Style field for determining font sty
 static ERROR GET_Bold(extFont *Self, LONG *Value)
 {
    if (Self->Flags & FTF_BOLD) *Value = TRUE;
-   else if (StrSearch("bold", Self->prvStyle, 0) != -1) *Value = TRUE;
+   else if (StrSearch("bold", Self->prvStyle) != -1) *Value = TRUE;
    else *Value = FALSE;
    return ERR_Okay;
 }
@@ -654,7 +654,7 @@ convenience only - we recommend that you set the Style field for determining fon
 static ERROR GET_Italic(extFont *Self, LONG *Value)
 {
    if (Self->Flags & FTF_ITALIC) *Value = TRUE;
-   else if (StrSearch("italic", Self->prvStyle, 0) != -1) *Value = TRUE;
+   else if (StrSearch("italic", Self->prvStyle) != -1) *Value = TRUE;
    else *Value = FALSE;
    return ERR_Okay;
 }
