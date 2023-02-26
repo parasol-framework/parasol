@@ -1932,7 +1932,7 @@ struct CoreBase {
    OBJECTID (*_GetOwnerID)(OBJECTID Object);
    ERROR (*_GetField)(OBJECTPTR Object, FIELD Field, APTR Result);
    ERROR (*_GetFieldVariable)(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size);
-   ERROR (*_GetFields)(OBJECTPTR Object, ...);
+   LONG (*_TotalChildren)(OBJECTID Object);
    CSTRING (*_GetName)(OBJECTPTR Object);
    ERROR (*_ListChildren)(OBJECTID Object, struct ChildEntry * List, LONG * Count);
    ERROR (*_Base64Decode)(struct rkBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
@@ -2043,7 +2043,6 @@ struct CoreBase {
    LONG (*_Base64Encode)(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
    ERROR (*_VarSetString)(struct KeyStore * Store, CSTRING Key, CSTRING Value);
    CSTRING (*_VarGetString)(struct KeyStore * Store, CSTRING Key);
-   LONG (*_TotalChildren)(OBJECTID Object);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2075,7 +2074,7 @@ inline CLASSID GetClassID(OBJECTID Object) { return CoreBase->_GetClassID(Object
 inline OBJECTID GetOwnerID(OBJECTID Object) { return CoreBase->_GetOwnerID(Object); }
 inline ERROR GetField(OBJECTPTR Object, FIELD Field, APTR Result) { return CoreBase->_GetField(Object,Field,Result); }
 inline ERROR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size) { return CoreBase->_GetFieldVariable(Object,Field,Buffer,Size); }
-template<class... Args> ERROR GetFields(OBJECTPTR Object, Args... Tags) { return CoreBase->_GetFields(Object,Tags...); }
+inline LONG TotalChildren(OBJECTID Object) { return CoreBase->_TotalChildren(Object); }
 inline CSTRING GetName(OBJECTPTR Object) { return CoreBase->_GetName(Object); }
 inline ERROR ListChildren(OBJECTID Object, struct ChildEntry * List, LONG * Count) { return CoreBase->_ListChildren(Object,List,Count); }
 inline ERROR Base64Decode(struct rkBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written) { return CoreBase->_Base64Decode(State,Input,InputSize,Output,Written); }
@@ -2186,7 +2185,6 @@ inline LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size) { return C
 inline LONG Base64Encode(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize) { return CoreBase->_Base64Encode(State,Input,InputSize,Output,OutputSize); }
 inline ERROR VarSetString(struct KeyStore * Store, CSTRING Key, CSTRING Value) { return CoreBase->_VarSetString(Store,Key,Value); }
 inline CSTRING VarGetString(struct KeyStore * Store, CSTRING Key) { return CoreBase->_VarGetString(Store,Key); }
-inline LONG TotalChildren(OBJECTID Object) { return CoreBase->_TotalChildren(Object); }
 #endif
 
 

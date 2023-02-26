@@ -2820,11 +2820,10 @@ list_repass:
                            layout->ParentSurface.Width = cell.Right - cell.Left;
                            layout->ParentSurface.Height = cell.Bottom - cell.Top;
 
-                           GetFields(object, FID_X|TLONG, &layout->BoundX,
-                                             FID_Y|TLONG, &layout->BoundY,
-                                             FID_Width|TLONG,  &layout->BoundWidth,
-                                             FID_Height|TLONG, &layout->BoundHeight,
-                                             TAGEND);
+                           object->get(FID_X, &layout->BoundX);
+                           object->get(FID_Y, &layout->BoundY);
+                           object->get(FID_Width, &layout->BoundWidth);
+                           object->get(FID_Height, &layout->BoundHeight);
 
                            layout->BoundX += cell.Left;
                            layout->BoundY += cell.Top;

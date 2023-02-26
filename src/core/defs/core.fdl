@@ -1182,7 +1182,7 @@ extern struct CoreBase *CoreBase;
     "GetOwnerID",
     "GetField",
     "GetFieldVariable",
-    "GetFields",
+    "TotalChildren",
     "GetName",
     "ListChildren",
     "Base64Decode",
@@ -1292,8 +1292,7 @@ extern struct CoreBase *CoreBase;
     "UTF8Copy",
     "Base64Encode",
     "VarSetString",
-    "VarGetString",
-    "TotalChildren")
+    "VarGetString")
 
   c_insert([[
 

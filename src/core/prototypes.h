@@ -32,7 +32,7 @@ CLASSID GetClassID(OBJECTID Object);
 OBJECTID GetOwnerID(OBJECTID Object);
 ERROR GetField(OBJECTPTR Object, FIELD Field, APTR Result);
 ERROR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size);
-ERROR GetFields(OBJECTPTR Object, ...);
+LONG TotalChildren(OBJECTID Object);
 CSTRING GetName(OBJECTPTR Object);
 ERROR ListChildren(OBJECTID Object, struct ChildEntry * List, LONG * Count);
 ERROR Base64Decode(struct rkBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
@@ -143,7 +143,6 @@ LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
 LONG Base64Encode(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
 ERROR VarSetString(struct KeyStore * Store, CSTRING Key, CSTRING Value);
 CSTRING VarGetString(struct KeyStore * Store, CSTRING Key);
-LONG TotalChildren(OBJECTID Object);
 
 #ifdef  __cplusplus
 }

@@ -674,14 +674,15 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
 
    STRING str;
    ERROR error;
-   BYTE compile = FALSE;
+   bool compile = false;
    LONG loaded_size = 0;
    pf::ScopedObject<objFile> src_file;
    if ((!Self->String) and (Self->Path)) {
       LARGE src_ts, src_size;
 
       if ((src_file.obj = objFile::create::integral(fl::Path(Self->Path)))) {
-         error = GetFields(src_file.obj, FID_TimeStamp|TLARGE, &src_ts, FID_Size|TLARGE, &src_size, TAGEND);
+         error = src_file.obj->get(FID_TimeStamp, &src_ts);
+         if (!error) error = src_file.obj->get(FID_Size, &src_size);
       }
       else error = ERR_File;
 
@@ -695,7 +696,8 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
          {
             objFile::create cache_file = { fl::Path(Self->CacheFile) };
             if (cache_file.ok()) {
-               GetFields(*cache_file, FID_TimeStamp|TLARGE, &cache_ts, FID_Size|TLARGE, &cache_size, TAGEND);
+               cache_file->get(FID_TimeStamp, &cache_ts);
+               cache_file->get(FID_Size, &cache_size);
             }
          }
 
@@ -724,7 +726,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
 
                loaded_size = len;
 
-               if (Self->CacheFile) compile = TRUE; // Saving a compilation of the source is desired
+               if (Self->CacheFile) compile = true; // Saving a compilation of the source is desired
             }
             else {
                log.trace("Failed to read %" PF64 " bytes from '%s'", src_size, Self->Path);
