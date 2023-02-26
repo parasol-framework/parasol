@@ -693,6 +693,21 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
   </function>
 
   <function>
+    <name>FieldName</name>
+    <category>Fields</category>
+    <comment>Resolves a field ID to its registered name.</comment>
+    <prototype>CSTRING FieldName(ULONG FieldID)</prototype>
+    <input>
+      <param type="ULONG" name="FieldID">The unique field hash to resolve.</param>
+    </input>
+    <description>
+<p>Resolves a field identifier to its name.  For this to work successfully, the field must have been registered with the internal dictionary.  This is handled automatically when a new class is added to the system.</p>
+<p>If the FieldID is not registered, the value is returned back as a hex string.  The inclusion of this feature guarantees that an empty string will never be returned.</p>
+    </description>
+    <result type="CSTRING">The name of the field is returned.</result>
+  </function>
+
+  <function>
     <name>FindClass</name>
     <category>Objects</category>
     <comment>Returns all class objects for a given class ID.</comment>
@@ -2365,6 +2380,20 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <error code="InvalidState">Object was in an incorrect state for the operation.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
+  </function>
+
+  <function>
+    <name>TotalChildren</name>
+    <category>System</category>
+    <comment>Returns the total number of children owned by an object.</comment>
+    <prototype>LONG TotalChildren(OBJECTID Object)</prototype>
+    <input>
+      <param type="OBJECTID" name="Object">The object to query.</param>
+    </input>
+    <description>
+<p>This function returns the total number of children that are owned by an object.  It is normally called as a precursor to <function module="Core">ListChildren</function>.</p>
+    </description>
+    <result type="LONG">The total number of children belonging to the object.  Returns zero if the object does not exist.</result>
   </function>
 
   <function>

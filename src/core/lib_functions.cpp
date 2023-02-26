@@ -1591,6 +1591,30 @@ LARGE PreciseTime(void)
 /*********************************************************************************************************************
 
 -FUNCTION-
+TotalChildren: Returns the total number of children owned by an object.
+
+This function returns the total number of children that are owned by an object.  It is normally called as a precursor
+to ~ListChildren().
+
+-INPUT-
+oid Object: The object to query.
+
+-RESULT-
+int: The total number of children belonging to the object.  Returns zero if the object does not exist.
+
+*********************************************************************************************************************/
+
+LONG TotalChildren(OBJECTID ObjectID)
+{
+   if (glObjectChildren.contains(ObjectID)) {
+      return glObjectChildren[ObjectID].size();
+   }
+   else return 0;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
 UpdateTimer: Modify or remove a subscription created by SubscribeTimer().
 
 This function complements ~SubscribeTimer().  It can change the interval for an existing timer subscription,

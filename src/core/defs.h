@@ -640,7 +640,7 @@ extern std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> 
 extern std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren; // Locked with TL_PRIVATE_MEM.  Sorted with most recent object first
 extern std::unordered_map<CLASSID, ClassRecord> glClassDB;
 extern std::unordered_map<CLASSID, extMetaClass *> glClassMap;
-extern std::unordered_map<FIELD, std::string> glFields; // Reverse lookup for converting field hashes back to their respective names.
+extern std::unordered_map<ULONG, std::string> glFields; // Reverse lookup for converting field hashes back to their respective names.
 extern std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
 extern std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes; // VolumeName = { Key, Value }
 extern CSTRING glMessages[ERR_END];       // Read-only table of error messages.
@@ -1216,20 +1216,6 @@ class ThreadLock { // C++ wrapper for terminating resources when scope is lost
          }
       }
 };
-
-//********************************************************************************************************************
-
-extern THREADVAR char tlFieldName[10]; // $12345678\0
-
-inline CSTRING GET_FIELD_NAME(ULONG FieldID)
-{
-   ThreadLock lock(TL_FIELDKEYS, 1000);
-   if (lock.granted()) {
-      if (glFields.contains(FieldID)) return glFields[FieldID].c_str();
-   }
-   snprintf(tlFieldName, sizeof(tlFieldName), "$%.8x", FieldID);
-   return tlFieldName;
-}
 
 //********************************************************************************************************************
 // NOTE: To be called with TL_OBJECT_LOOKUP only.

@@ -143,6 +143,8 @@ LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
 LONG Base64Encode(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
 ERROR VarSetString(struct KeyStore * Store, CSTRING Key, CSTRING Value);
 CSTRING VarGetString(struct KeyStore * Store, CSTRING Key);
+LONG TotalChildren(OBJECTID Object);
+CSTRING FieldName(ULONG FieldID);
 
 #ifdef  __cplusplus
 }

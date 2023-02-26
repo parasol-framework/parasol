@@ -1290,7 +1290,9 @@ extern struct CoreBase *CoreBase;
     "UTF8Copy",
     "Base64Encode",
     "VarSetString",
-    "VarGetString")
+    "VarGetString",
+    "TotalChildren",
+    "FieldName")
 
   c_insert([[
 

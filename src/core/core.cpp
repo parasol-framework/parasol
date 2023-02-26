@@ -289,26 +289,19 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    #endif
 
    if (Info->Flags & OPF_ROOT_PATH) SetResourcePath(RP_ROOT_PATH, Info->RootPath);
-
    if (Info->Flags & OPF_MODULE_PATH) SetResourcePath(RP_MODULE_PATH, Info->ModulePath);
-
    if (Info->Flags & OPF_SYSTEM_PATH) SetResourcePath(RP_SYSTEM_PATH, Info->SystemPath);
 
    if (glRootPath.empty())   {
       #ifdef _WIN32
          char buffer[128];
-         LONG len;
-         if (winGetExeDirectory(sizeof(buffer), buffer)) {
-            glRootPath = buffer;
-            len = glRootPath.find_last_of("/\\:");
-         }
-         else if (winGetCurrentDirectory(sizeof(buffer), buffer)) {
-            glRootPath = buffer;
-         }
+         if (winGetExeDirectory(sizeof(buffer), buffer)) glRootPath = buffer;
+         else if (winGetCurrentDirectory(sizeof(buffer), buffer)) glRootPath = buffer;
          else {
             fprintf(stderr, "Failed to determine root folder.\n");
             return NULL;
          }
+         if (glRootPath.back() != '\\') glRootPath += '\\';
       #else
          // Get the folder of the running process.
          char buffer[128];
@@ -319,8 +312,8 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          if ((len = readlink(procfile, buffer, sizeof(buffer)-1)) > 0) {
             glRootPath.assign(buffer, len);
             // Strip process name
-            auto i = glRootPath.find_last("/");
-            if (i != std::string::npos) glRootPath.resize(i);
+            auto i = glRootPath.find_last_of("/");
+            if (i != std::string::npos) glRootPath.resize(i+1);
 
             // If the binary is in a 'bin' folder then the root is considered to be the parent folder.
             if (glRootPath.ends_with("bin/")) glRootPath.resize(glRootPath.size()-4);
