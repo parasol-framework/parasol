@@ -929,15 +929,15 @@ static ERROR create_tag(objXML *Self, LONG LineNo, exttag *Status, ...)
 
    CSTRING tag = va_arg(tags, CSTRING);
    xtag->Attrib[0].Name = buffer; // The first tag is the XML tag name, or NULL if it is content (identified by a NULL string)
-   buffer += StrCopy(tag, buffer, COPY_ALL) + 1;
+   buffer += StrCopy(tag, buffer) + 1;
 
    for (LONG a=1; (tag = va_arg(tags, CSTRING)) != (CSTRING)TAGEND; a++) {
       xtag->Attrib[a].Name = buffer;
-      buffer += StrCopy(tag, buffer, COPY_ALL) + 1;
+      buffer += StrCopy(tag, buffer) + 1;
 
       if (((tag = va_arg(tags, CSTRING)) != (CSTRING)TAGEND)) {
          xtag->Attrib[a].Value = buffer;
-         buffer += StrCopy(tag, buffer, COPY_ALL) + 1;
+         buffer += StrCopy(tag, buffer) + 1;
       }
       else break;
    }

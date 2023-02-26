@@ -1344,7 +1344,7 @@ ERROR findfile(STRING Path)
 
          if ((!StrCompare(Path+len, entry->d_name, 0, 0)) and
              ((entry->d_name[namelen] IS '.') or (!entry->d_name[namelen]))) {
-            StrCopy(entry->d_name, Path+len, COPY_ALL);
+            StrCopy(entry->d_name, Path+len);
 
             // If it turns out that the Path is a folder, ignore it
 
@@ -1378,7 +1378,7 @@ ERROR findfile(STRING Path)
 
             if ((!StrCompare(Path+len, entry->d_name, 0, NULL)) and
                 ((entry->d_name[namelen] IS '.') or (!entry->d_name[namelen]))) {
-               StrCopy(entry->d_name, Path+len, COPY_ALL);
+               StrCopy(entry->d_name, Path+len);
 
                // If it turns out that the Path is a folder, ignore it
 
@@ -1427,7 +1427,7 @@ ERROR findfile(STRING Path)
    APTR handle = NULL;
    if ((handle = winFindFile(Path, &handle, buffer))) {
       while ((len > 0) and (Path[len-1] != ':') and (Path[len-1] != '/') and (Path[len-1] != '\\')) len--;
-      StrCopy(buffer, Path+len, COPY_ALL);
+      StrCopy(buffer, Path+len);
       winFindClose(handle);
       return ERR_Okay;
    }
@@ -2112,8 +2112,8 @@ ERROR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *C
          FileInfo *file = dir->Info;
          if (file->Flags & RDF_LINK) {
             if ((vsrc->ReadLink) and (vdest->CreateLink)) {
-               StrCopy(file->Name, Source+srclen, COPY_ALL);
-               StrCopy(file->Name, Dest+destlen, COPY_ALL);
+               StrCopy(file->Name, Source+srclen);
+               StrCopy(file->Name, Dest+destlen);
 
                if ((Callback) and (Callback->Type)) {
                   Feedback->Path = Source;
@@ -2135,15 +2135,15 @@ ERROR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *C
             }
          }
          else if (file->Flags & RDF_FILE) {
-            StrCopy(file->Name, Source+srclen, COPY_ALL);
-            StrCopy(file->Name, Dest+destlen, COPY_ALL);
+            StrCopy(file->Name, Source+srclen);
+            StrCopy(file->Name, Dest+destlen);
 
             AdjustLogLevel(1);
                error = fs_copy(Source, Dest, Callback, FALSE);
             AdjustLogLevel(-1);
          }
          else if (file->Flags & RDF_FOLDER) {
-            StrCopy(file->Name, Dest+destlen, COPY_ALL);
+            StrCopy(file->Name, Dest+destlen);
 
             if ((Callback) and (Callback->Type)) {
                Feedback->Path = Source;
@@ -2166,7 +2166,7 @@ ERROR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *C
             // Copy everything under the folder to the destination
 
             if (!error) {
-               StrCopy(file->Name, Source+srclen, COPY_ALL);
+               StrCopy(file->Name, Source+srclen);
                fs_copydir(Source, Dest, Feedback, Callback, Move);
             }
          }

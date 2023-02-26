@@ -6663,7 +6663,7 @@ static ERROR insert_string(CSTRING Insert, STRING Buffer, LONG BufferSize, LONG 
 
    if (inlen < ReplaceLen) {
       // The string to insert is smaller than the number of characters to replace.
-      StrCopy(Insert, Buffer, COPY_ALL);
+      StrCopy(Insert, Buffer);
       i = ReplaceLen;
       while (Buffer[i]) Buffer[inlen++] = Buffer[i++];
       Buffer[inlen] = 0;
@@ -7063,7 +7063,7 @@ static void pointer_enter(extDocument *Self, LONG Index, CSTRING Function, LONG 
       mouseover->Right     = Right;
       mouseover->Bottom    = Bottom;
       mouseover->ElementID = ESC_ELEMENTID(Self->Stream + Index);
-      StrCopy(Function, (STRING)(mouseover + 1), COPY_ALL);
+      StrCopy(Function, (STRING)(mouseover + 1));
 
       // Insert at the start of the chain
 
@@ -8079,7 +8079,7 @@ static ERROR extract_script(extDocument *Self, CSTRING Link, OBJECTPTR *Script, 
          else log.warning("Malformed function args: %s", Link);
       }
    }
-   else pos += StrCopy(Link+dot, exsbuffer+pos, COPY_ALL);
+   else pos += StrCopy(Link+dot, exsbuffer+pos);
 
    #ifdef DEBUG
    if (pos > len) {

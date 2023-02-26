@@ -527,17 +527,17 @@ static void tag_editdef(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chi
 
          if (onchange) {
             editptr->OnChange = offset;
-            offset += StrCopy(onchange, ((STRING)editptr)+offset, COPY_ALL) + 1;
+            offset += StrCopy(onchange, ((STRING)editptr)+offset) + 1;
          }
 
          if (onexit) {
             editptr->OnExit = offset;
-            offset += StrCopy(onexit, ((STRING)editptr)+offset, COPY_ALL) + 1;
+            offset += StrCopy(onexit, ((STRING)editptr)+offset) + 1;
          }
 
          if (onenter) {
             editptr->OnEnter = offset;
-            offset += StrCopy(onenter, ((STRING)editptr)+offset, COPY_ALL) + 1;
+            offset += StrCopy(onenter, ((STRING)editptr)+offset) + 1;
          }
 
          if (totalargs) {
@@ -548,13 +548,13 @@ static void tag_editdef(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chi
             for (LONG i=1; (i < Tag->TotalAttrib) and (count < totalargs); i++) {
                if (Tag->Attrib[i].Name[0] IS '@') {
                   count++;
-                  offset += StrCopy(Tag->Attrib[i].Name+1, ((STRING)editptr)+offset, COPY_ALL) + 1;
-                  offset += StrCopy(Tag->Attrib[i].Value, ((STRING)editptr)+offset, COPY_ALL) + 1;
+                  offset += StrCopy(Tag->Attrib[i].Name+1, ((STRING)editptr)+offset) + 1;
+                  offset += StrCopy(Tag->Attrib[i].Value, ((STRING)editptr)+offset) + 1;
                }
                else if (Tag->Attrib[i].Name[0] IS '_') {
                   count++;
-                  offset += StrCopy(Tag->Attrib[i].Name, ((STRING)editptr)+offset, COPY_ALL) + 1;
-                  offset += StrCopy(Tag->Attrib[i].Value, ((STRING)editptr)+offset, COPY_ALL) + 1;
+                  offset += StrCopy(Tag->Attrib[i].Name, ((STRING)editptr)+offset) + 1;
+                  offset += StrCopy(Tag->Attrib[i].Value, ((STRING)editptr)+offset) + 1;
                }
             }
          }
@@ -874,22 +874,22 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 
       LONG pos = sizeof(link);
       if (link.Type IS LINK_FUNCTION) {
-         pos += StrCopy(function, buffer + pos, COPY_ALL) + 1;
+         pos += StrCopy(function, buffer + pos) + 1;
       }
-      else pos += StrCopy(href ? href : "", buffer + pos, COPY_ALL) + 1;
+      else pos += StrCopy(href ? href : "", buffer + pos) + 1;
 
       LONG count = 0;
       for (LONG i=1; i < Tag->TotalAttrib; i++) {
          if ((Tag->Attrib[i].Name) and (Tag->Attrib[i].Name[0] IS '@')) {
             count++;
-            pos += StrCopy(Tag->Attrib[i].Name+1, buffer+pos, COPY_ALL) + 1;
-            pos += StrCopy(Tag->Attrib[i].Value, buffer+pos, COPY_ALL) + 1;
+            pos += StrCopy(Tag->Attrib[i].Name+1, buffer+pos) + 1;
+            pos += StrCopy(Tag->Attrib[i].Value, buffer+pos) + 1;
             if (count >= link.Args) break;
          }
          else if ((Tag->Attrib[i].Name) and (Tag->Attrib[i].Name[0] IS '_')) {
             count++;
-            pos += StrCopy(Tag->Attrib[i].Name, buffer+pos, COPY_ALL) + 1;
-            pos += StrCopy(Tag->Attrib[i].Value, buffer+pos, COPY_ALL) + 1;
+            pos += StrCopy(Tag->Attrib[i].Name, buffer+pos) + 1;
+            pos += StrCopy(Tag->Attrib[i].Value, buffer+pos) + 1;
             if (count >= link.Args) break;
          }
       }
@@ -897,7 +897,7 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 
       if (pointermotion) {
          link.PointerMotion = pos;
-         pos += StrCopy(pointermotion, buffer + pos, COPY_ALL) + 1;
+         pos += StrCopy(pointermotion, buffer + pos) + 1;
       }
 
       CopyMemory(&link, buffer, sizeof(link));
@@ -1956,13 +1956,14 @@ static void tag_li(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, L
    if ((Self->Style.List->Type IS LT_CUSTOM) and (value) and (*value)) {
       style_check(Self, Index); // Font changes must take place prior to the printing of custom string items
 
-      LONG len = sizeof(escParagraph) + StrLength(value) + 1;
+      LONG valuelen = StrLength(value) + 1;
+      LONG len = sizeof(escParagraph) + valuelen;
       UBYTE buffer[len];
 
-      para.CustomString = TRUE;
+      para.CustomString = true;
 
       CopyMemory(&para, buffer, sizeof(para));
-      StrCopy(value, (STRING)(buffer + sizeof(escParagraph)), COPY_ALL);
+      CopyMemory(value, (STRING)(buffer + sizeof(escParagraph)), valuelen);
 
       insert_escape(Self, Index, ESC_PARAGRAPH_START, buffer, len);
 
@@ -1986,12 +1987,13 @@ static void tag_li(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, L
       LONG save_item = Self->Style.List->ItemNum;
       Self->Style.List->ItemNum = 1;
 
-      LONG len = sizeof(escParagraph) + StrLength(Self->Style.List->Buffer) + 1;
+      LONG listlen = StrLength(Self->Style.List->Buffer) + 1;
+      LONG len = sizeof(escParagraph) + listlen;
       UBYTE buffer[len];
 
       para.CustomString = TRUE;
       CopyMemory(&para, buffer, sizeof(para));
-      StrCopy(Self->Style.List->Buffer, (STRING)(buffer + sizeof(escParagraph)), COPY_ALL);
+      CopyMemory(Self->Style.List->Buffer, (STRING)(buffer + sizeof(escParagraph)), listlen);
 
       insert_escape(Self, Index, ESC_PARAGRAPH_START, buffer, len);
          parse_tag(Self, XML, Child, Index, 0);
@@ -2436,14 +2438,14 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
       for (LONG i=1; i < Tag->TotalAttrib; i++) {
          if ((Tag->Attrib[i].Name) and (Tag->Attrib[i].Name[0] IS '@')) {
             count++;
-            pos += StrCopy(Tag->Attrib[i].Name+1, buffer+pos, COPY_ALL) + 1;
-            pos += StrCopy(Tag->Attrib[i].Value, buffer+pos, COPY_ALL) + 1;
+            pos += StrCopy(Tag->Attrib[i].Name+1, buffer+pos) + 1;
+            pos += StrCopy(Tag->Attrib[i].Value, buffer+pos) + 1;
             if (count >= totalargs) break;
          }
          else if ((Tag->Attrib[i].Name) and (Tag->Attrib[i].Name[0] IS '_')) {
             count++;
-            pos += StrCopy(Tag->Attrib[i].Name, buffer+pos, COPY_ALL) + 1;
-            pos += StrCopy(Tag->Attrib[i].Value, buffer+pos, COPY_ALL) + 1;
+            pos += StrCopy(Tag->Attrib[i].Name, buffer+pos) + 1;
+            pos += StrCopy(Tag->Attrib[i].Value, buffer+pos) + 1;
             if (count >= totalargs) break;
          }
       }

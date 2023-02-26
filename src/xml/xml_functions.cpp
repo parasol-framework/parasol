@@ -834,9 +834,9 @@ XMLTag * build_xml_string(XMLTag *Tag, STRING Buffer, LONG Flags, LONG *Offset)
    if (!Tag->Attrib->Name) {
       if (Tag->Attrib->Value) {
          if (Tag->CData) {
-            if (!(Flags & XMF_STRIP_CDATA)) offset += StrCopy("<![CDATA[", Buffer+offset, COPY_ALL);
-            offset += StrCopy(Tag->Attrib->Value, Buffer+offset, COPY_ALL);
-            if (!(Flags & XMF_STRIP_CDATA)) offset += StrCopy("]]>", Buffer+offset, COPY_ALL);
+            if (!(Flags & XMF_STRIP_CDATA)) offset += StrCopy("<![CDATA[", Buffer+offset);
+            offset += StrCopy(Tag->Attrib->Value, Buffer+offset);
+            if (!(Flags & XMF_STRIP_CDATA)) offset += StrCopy("]]>", Buffer+offset);
          }
          else offset += content_output(Tag->Attrib->Value, Buffer+offset);
          Buffer[offset] = 0;

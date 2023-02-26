@@ -116,7 +116,7 @@ ERROR SetResourcePath(LONG PathType, CSTRING Path);
 OBJECTPTR CurrentTask();
 ERROR KeyIterate(struct KeyStore * Store, ULONG Index, ULONG * Key, APTR * Data, LONG * Size);
 CSTRING ResolveGroupID(LONG Group);
-LONG StrCopy(CSTRING Src, STRING Dest, LONG Length);
+ERROR VarSetString(struct KeyStore * Store, CSTRING Key, CSTRING Value);
 CSTRING VarGetString(struct KeyStore * Store, CSTRING Key);
 void VarUnlock(struct KeyStore * Store);
 CSTRING ResolveUserID(LONG User);
@@ -141,7 +141,6 @@ ULONG StrHash(CSTRING String, LONG CaseSensitive);
 ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
 LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
 LONG Base64Encode(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
-ERROR VarSetString(struct KeyStore * Store, CSTRING Key, CSTRING Value);
 
 #ifdef  __cplusplus
 }

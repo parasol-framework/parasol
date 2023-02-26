@@ -637,56 +637,6 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
 /*********************************************************************************************************************
 
 -FUNCTION-
-StrCopy: Copies the characters of one string to another.
-
-This function copies part of one string over to another.  If the Length is set to zero then this function will copy the
-entire Src string over to the Dest.  Note that if this function encounters the end of the Src string (i.e. the null
-byte) while copying, then it will stop automatically to prevent copying of junk characters.
-
-Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of the Length value.
-For example, copying `123` into the middle of string `ABCDEFGHI` would result in `ABC123`.  The `GHI` part of the
-string would be lost.
-
--INPUT-
-cstr Src: Pointer to the string that you are copying from.
-str Dest: Pointer to the buffer that you are copying to.
-int Length: The maximum number of characters to copy, including the NULL byte.  The Length typically indicates the buffer size of the Dest pointer.  Setting the Length to COPY_ALL will copy all characters from the Src string.
-
--RESULT-
-int: Returns the total amount of characters that were copied, not including the null byte at the end.
-
-*********************************************************************************************************************/
-
-LONG StrCopy(CSTRING String, STRING Dest, LONG Length)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (Length < 0) return 0;
-
-   LONG i = 0;
-   if ((String) and (Dest)) {
-      if (!Length) {
-         log.warning("Warning - zero length given for copying string \"%s\".", String);
-         ((UBYTE *)0)[0] = 0;
-      }
-
-      while ((i < Length) and (*String)) {
-         Dest[i++] = *String++;
-      }
-
-      if ((*String) and (i >= Length)) {
-         //log.warning("Overflow: %d/%d \"%.20s\"", i, Length, Dest);
-         Dest[i-1] = 0; // If we ran out of buffer space, we have to terminate from one character back
-      }
-      else Dest[i] = 0;
-   }
-
-   return i;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
 StrDatatype: Determines the data type of a string.
 
 This function analyses a string and returns its data type.  Valid return values are `STT_FLOAT` for floating point

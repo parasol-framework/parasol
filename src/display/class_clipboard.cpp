@@ -1004,7 +1004,7 @@ static ERROR add_clip(MEMORYID ClusterID, LONG Datatype, CSTRING File, LONG Flag
                         MEMINFO meminfo;
                         if (!MemoryIDInfo(clips->Files, &meminfo)) {
                            if (!ReallocMemory(str, meminfo.Size + StrLength(File) + 1, &str, &clips->Files)) {
-                              StrCopy(File, str + meminfo.Size, COPY_ALL);
+                              StrCopy(File, str + meminfo.Size);
                               clips->TotalItems += TotalItems;
                            }
                            else error = ERR_ReallocMemory;

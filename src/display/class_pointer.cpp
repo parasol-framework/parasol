@@ -1427,7 +1427,7 @@ static ERROR init_mouse_driver(void)
    objConfig::create config = { fl::Path("config:hardware/drivers.cfg") };
 
    if (config.ok()) {
-      if (!cfgReadValue(*config, "MOUSE", "Device", &str)) StrCopy(str, Self->Device, COPY_ALL);
+      if (!cfgReadValue(*config, "MOUSE", "Device", &str)) StrCopy(str, Self->Device);
 
       if (!cfgReadValue(*config, "MOUSE", "Driver", &str)) {
          for (LONG i=0; glMouseTypes[i].Name; i++) {

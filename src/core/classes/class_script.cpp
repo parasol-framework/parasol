@@ -719,7 +719,7 @@ static ERROR SET_Results(objScript *Self, CSTRING *Value, LONG Elements)
          LONG i;
          for (i=0; Value[i]; i++) {
             Self->Results[i] = str;
-            str += StrCopy(Value[i], str, COPY_ALL) + 1;
+            str += StrCopy(Value[i], str) + 1;
          }
          Self->Results[i] = NULL;
          return ERR_Okay;
