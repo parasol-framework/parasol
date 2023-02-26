@@ -1989,38 +1989,6 @@ SetField(Object, FID_Statement|TSTR, "string");
   </function>
 
   <function>
-    <name>SetFields</name>
-    <category>Fields</category>
-    <comment>Sets multiple field values in an object.</comment>
-    <prototype>ERROR SetFields(OBJECTPTR Object, ...)</prototype>
-    <input>
-      <param type="OBJECTPTR" name="Object">Pointer to the object that you want to access.</param>
-      <param type="..." name="Tags">Each tag set consists of a field ID OR'd with a type flag, followed by a variable that matches the indicated type.</param>
-    </input>
-    <description>
-<p>This function can be used to set the values of more than one field in a single function call, by using tags.  It is provided for the purpose of giving a speed increase over calling the <function module="Core">SetField</function> function multiple times.</p>
-<p>The tags that you pass to this function must be arranged in a format of field ID's and values.  The following example illustrates:</p>
-<pre>SetFields(Surface,
-   FID_Name|TSTR,    "MySurface",
-   FID_Width|TLONG,  50,
-   FID_Height|TLONG, 100,
-   FID_X|TDOUBLE,    86.5,
-   FID_Y|TDOUBLE,    40.0,
-   TAGEND);
-</pre>
-<p>The field ID's that you specify must be logically or'd with tag definitions that indicate the type of values that you have set for each field.  For instance, if you set a floating point value for a field, then you must use the <code>TDOUBLE</code> tag so that the SetFields() function can interpret the paired value correctly.  Please note that failing to set the tag values correctly can cause a program to crash.</p>
-<p>The recognised tag types are <code>TPTR</code>, <code>TSTRING</code>, <code>TLONG</code>, <code>TLARGE</code>, <code>TFUNCTION</code> and <code>TDOUBLE</code>.  There is a special type, <code>TVAR</code>, which will divert the field setting through the <action>SetVar</action> action.</p>
-<p>If this function fails, it should be assumed that all of the field settings failed and we recommend that your routine aborts.  This function makes no attempt to 'salvage' any other fields that may be left in the list or undo any previously successful field settings.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Failed">General failure.</error>
-      <error code="UnsupportedField">The specified field is not supported by the object's class.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>SetName</name>
     <category>Objects</category>
     <comment>Sets the name of an object.</comment>

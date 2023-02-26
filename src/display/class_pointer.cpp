@@ -1231,13 +1231,12 @@ static void set_pointer_defaults(extPointer *Self)
 
    if (doubleclick < 0.2) doubleclick = 0.2;
 
-   SetFields(Self, FID_Speed|TDOUBLE,        speed,
-                   FID_Acceleration|TDOUBLE, acceleration,
-                   FID_MaxSpeed|TDOUBLE,     maxspeed,
-                   FID_WheelSpeed|TFLOAT,    wheelspeed,
-                   FID_DoubleClick|TDOUBLE,  doubleclick,
-                   FID_ButtonOrder|TSTRING,  buttonorder,
-                   TAGEND);
+   Self->setFields(fl::Speed(speed),
+       fl::Acceleration(acceleration),
+       fl::MaxSpeed(maxspeed),
+       fl::WheelSpeed(wheelspeed),
+       fl::DoubleClick(doubleclick),
+       fl::ButtonOrder(buttonorder));
 }
 
 //********************************************************************************************************************
