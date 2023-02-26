@@ -164,7 +164,7 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
             STRING str = (STRING)(a->ptrString + Total);
             for (LONG i=0; i < Total; i++) {
                a->ptrString[i] = str;
-               str += StrCopy((CSTRING)List[i], str, COPY_ALL) + 1;
+               str += StrCopy((CSTRING)List[i], str) + 1;
             }
          }
          else CopyMemory(List, a->ptrPointer, cache_size);

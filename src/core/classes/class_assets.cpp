@@ -225,7 +225,7 @@ static ERROR ASSET_Init(objFile *Self, APTR Void)
 
          UBYTE dirpath[len];
 
-         StrCopy(Self->Path+LEN_ASSETS, dirpath, COPY_ALL);
+         StrCopy(Self->Path+LEN_ASSETS, dirpath);
 
          log.trace("Checking that path exists for '%s'", dirpath);
 
@@ -661,7 +661,7 @@ static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
                }
 
                entry->Name = (STRING)(entry + 1);
-               StrCopy(filename, entry->Name, COPY_ALL);
+               StrCopy(filename, entry->Name);
 
                dirinfo->Total++;
             }
@@ -681,7 +681,7 @@ static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
                }
 
                entry->Name = (STRING)(entry + 1);
-               i = StrCopy(filename, entry->Name, COPY_ALL);
+               i = StrCopy(filename, entry->Name);
                if (Flags & RDF_QUALIFY) { entry->Name[i++] = '/'; entry->Name[i++] = 0; }
 
                dirinfo->Total++;

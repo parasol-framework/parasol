@@ -248,17 +248,6 @@
     </field>
 
     <field>
-      <name>Instance</name>
-      <comment>The instance ID that the process belongs to.</comment>
-      <access read="G">Get</access>
-      <type>INT</type>
-      <description>
-<p>All tasks that use the Parasol API belong to a run-time instance that can host multiple processes.  Tasks that share the same instance ID can easily communicate with each other, while those that do not will be in a separate namespace.</p>
-<p>It is not possible to change the instance ID once the process has started.  New processes can be assigned an instance ID on creation with the <code>--instance</code> commandline argument.  By default, any new process will share the same instance ID as its creator.</p>
-      </description>
-    </field>
-
-    <field>
       <name>LaunchPath</name>
       <comment>Launched executables will start in the path specified here.</comment>
       <access read="G" write="S">Get/Set</access>

@@ -2,7 +2,28 @@
 
 //  types.h
 //
-//  (C) Copyright 1996-2022 Paul Manias
+//  (C) Copyright 1996-2023 Paul Manias
+
+#include <type_traits>
+#include <utility>
+
+template <class Tag, typename T>
+class strong_typedef {
+   public:
+      strong_typedef() : val() { }
+
+      constexpr explicit strong_typedef(const T &Value) : val(Value) { }
+      explicit operator T&() noexcept { return val; }
+      explicit operator const T&() const noexcept { return val; }
+
+   private:
+      T val;
+};
+
+struct PERCENT : strong_typedef<PERCENT, DOUBLE> {
+    // Make constructors available
+    using strong_typedef::strong_typedef;
+};
 
 // Function structure, typically used for defining callbacks to functions and procedures of any kind (e.g. standard C,
 // Fluid).

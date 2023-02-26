@@ -268,7 +268,7 @@ struct public_lock {
    WINHANDLE Lock;
    LONG PID;
    WORD Count;
-   UBYTE Event:1; // Set to TRUE if the lock is for a broadcast-able event
+   bool Event; // Set to true if the lock is for a broadcast-able event
 };
 
 extern struct public_lock glPublicLocks[PL_END];
@@ -614,10 +614,9 @@ struct CaseInsensitiveMap {
 
 extern extMetaClass glMetaClass;
 extern LONG glEUID, glEGID, glUID, glGID;
-extern LONG glKeyState;
-extern char glSystemPath[SIZE_SYSTEM_PATH];
-extern char glModulePath[SIZE_SYSTEM_PATH];
-extern char glRootPath[SIZE_SYSTEM_PATH];
+extern std::string glSystemPath;
+extern std::string glModulePath;
+extern std::string glRootPath;
 extern char glDisplayDriver[28];
 extern bool glShowIO, glShowPrivate, glShowPublic;
 extern WORD glLogLevel, glMaxDepth;
@@ -630,7 +629,6 @@ extern struct SharedControl  *glSharedControl; // Locked with PL_FORBID
 extern struct TaskList       *shTasks, *glTaskEntry; // Locked with PL_PROCESSES
 extern struct SemaphoreEntry *shSemaphores;    // Locked with PL_SEMAPHORES
 extern struct MemoryPage     *glMemoryPages;   // Locked with TL_MEMORY_PAGES
-extern struct ModuleHeader   *glModules;       // Read-only.  Module database.
 extern struct OpenInfo       *glOpenInfo;      // Read-only.  The OpenInfo structure initially passed to OpenCore()
 extern objTask *glCurrentTask;
 extern const struct ActionTable ActionTable[];
@@ -642,14 +640,14 @@ extern std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> 
 extern std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren; // Locked with TL_PRIVATE_MEM.  Sorted with most recent object first
 extern std::unordered_map<CLASSID, ClassRecord> glClassDB;
 extern std::unordered_map<CLASSID, extMetaClass *> glClassMap;
-extern std::unordered_map<FIELD, std::string> glFields; // Reverse lookup for converting field hashes back to their respective names.
+extern std::unordered_map<ULONG, std::string> glFields; // Reverse lookup for converting field hashes back to their respective names.
 extern std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
 extern std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes; // VolumeName = { Key, Value }
 extern CSTRING glMessages[ERR_END];       // Read-only table of error messages.
 extern const LONG glTotalMessages;
 extern LONG glTotalPages; // Read-only
 extern MEMORYID glTaskMessageMID;        // Read-only
-extern LONG glProcessID, glInstanceID;   // Read only
+extern LONG glProcessID;   // Read only
 extern HOSTHANDLE glConsoleFD;
 extern LONG glStdErrFlags; // Read only
 extern LONG glValidateProcessID; // Not a threading concern
@@ -671,13 +669,12 @@ extern CSTRING glIDL;
 extern struct BaseClass glDummyObject;
 
 extern CSTRING glClassBinPath;
-extern CSTRING glModuleBinPath;
-extern objMetaClass *ModuleMasterClass;
-extern objMetaClass *ModuleClass;
-extern objMetaClass *TaskClass;
-extern objMetaClass *ThreadClass;
-extern objMetaClass *TimeClass;
-extern objMetaClass *ConfigClass;
+extern objMetaClass *glModuleMasterClass;
+extern objMetaClass *glModuleClass;
+extern objMetaClass *glTaskClass;
+extern objMetaClass *glThreadClass;
+extern objMetaClass *glTimeClass;
+extern objMetaClass *glConfigClass;
 extern objMetaClass *glFileClass;
 extern objMetaClass *glStorageClass;
 extern objMetaClass *glScriptClass;
@@ -834,11 +831,19 @@ class ObjectContext {
 #endif
 
 //********************************************************************************************************************
-// File Descriptor table.  This is for RegisterFD()
+// File Descriptor table for RegisterFD()
 
-#define MAX_FDS 40
-extern struct FDTable *glFDTable;
-extern WORD glTotalFDs, glLastFD;
+struct FDRecord {
+   HOSTHANDLE FD;                         // The file descriptor that is managed by this record.
+   void (*Routine)(HOSTHANDLE, APTR);     // The routine that will process read/write messages for the FD.
+   APTR Data;                             // A user specific data pointer.
+   LONG Flags;                            // Set to RFD_READ, RFD_WRITE or RFD_EXCEPT.
+
+   FDRecord(HOSTHANDLE pFD, void (*pRoutine)(HOSTHANDLE, APTR), APTR pData, LONG pFlags) :
+      FD(pFD), Routine(pRoutine), Data(pData), Flags(pFlags) { }
+};
+
+extern std::list<FDRecord> glFDTable;
 extern LONG glInotify;
 
 #define LRT_Exclusive 1
@@ -891,7 +896,6 @@ ERROR AccessSemaphore(LONG, LONG, LONG);
 ERROR AllocSemaphore(CSTRING, LONG, LONG, LONG *);
 ERROR FreeSemaphore(LONG SemaphoreID);
 ERROR SetFieldF(OBJECTPTR, FIELD, va_list);
-ERROR SetFieldsF(OBJECTPTR, va_list);
 ERROR pReleaseSemaphore(LONG, LONG);
 
 ERROR fs_closedir(struct DirInfo *);
@@ -942,7 +946,6 @@ ERROR  copy_field_to_buffer(OBJECTPTR Object, struct Field *Field, LONG DestFlag
 ERROR  create_archive_volume(void);
 ERROR  delete_tree(STRING, LONG, FUNCTION *, struct FileFeedback *);
 struct ClassItem * find_class(CLASSID);
-struct ModuleItem * find_module(ULONG);
 LONG   find_public_address(struct SharedControl *, APTR);
 ERROR  find_private_object_entry(OBJECTID, LONG *);
 ERROR  find_public_mem_id(struct SharedControl *, MEMORYID, LONG *);
@@ -1075,7 +1078,7 @@ LONG winIsDebuggerPresent(void);
 void winDeleteCriticalSection(APTR Lock);
 LONG winLaunchProcess(APTR, STRING, STRING, BYTE Group, BYTE Redirect, APTR *ProcessResult, BYTE, STRING, STRING, LONG *);
 void winLeaveCriticalSection(APTR);
-WINHANDLE winLoadLibrary(STRING);
+WINHANDLE winLoadLibrary(CSTRING);
 void winLowerPriority(void);
 ERROR winMapMemory(WINHANDLE, LONG, APTR *);
 WINHANDLE winOpenSemaphore(unsigned char *Name);
@@ -1212,20 +1215,6 @@ class ThreadLock { // C++ wrapper for terminating resources when scope is lost
          }
       }
 };
-
-//********************************************************************************************************************
-
-extern THREADVAR char tlFieldName[10]; // $12345678\0
-
-inline CSTRING GET_FIELD_NAME(ULONG FieldID)
-{
-   ThreadLock lock(TL_FIELDKEYS, 1000);
-   if (lock.granted()) {
-      if (glFields.contains(FieldID)) return glFields[FieldID].c_str();
-   }
-   snprintf(tlFieldName, sizeof(tlFieldName), "$%.8x", FieldID);
-   return tlFieldName;
-}
 
 //********************************************************************************************************************
 // NOTE: To be called with TL_OBJECT_LOOKUP only.

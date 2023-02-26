@@ -163,8 +163,7 @@ EXPORT void CloseCore(void)
       if (glLocale) { acFree(glLocale); glLocale = NULL; } // Allocated by StrReadLocale()
       if (glTime) { acFree(glTime); glTime = NULL; }
 
-      // Removing any objects that are tracked to the task before we perform the first expunge will help make for a
-      // cleaner exit.
+      // Removing objects that are tracked to the task before the first expunge will make for a cleaner exit.
 
       if (glCurrentTask) {
          const auto children = glObjectChildren[glCurrentTask->UID]; // Take an immutable copy of the resource list
@@ -177,9 +176,7 @@ EXPORT void CloseCore(void)
          else log.msg("There are no child objects belonging to task #%d.", glCurrentTask->UID);
       }
 
-      // Make our first attempt at expunging all modules.  Notice that we terminate all public objects that are owned
-      // by our processes first - we need to do this before the expunge because otherwise the module code won't be
-      // available to destroy the public objects.
+      // Make our first attempt at expunging all modules.
 
       Expunge(FALSE);
 
@@ -195,7 +192,7 @@ EXPORT void CloseCore(void)
          UpdateTimer(id, 0);
       }
 
-      // Remove the Task structure and child objects
+      // Remove the Task object and remaining children
 
       if (glCurrentTask) {
          pf::Log log("Shutdown");
@@ -207,15 +204,14 @@ EXPORT void CloseCore(void)
 
       for (const auto & [ id, mem ] : glPrivateMemory) {
          if ((mem.Flags & MEM_OBJECT) and (mem.AccessCount > 0)) {
-            auto obj = mem.Object;
-            if (obj) {
+            if (auto obj = mem.Object) {
                log.warning("Removing locks on object #%d, Owner: %d, Locks: %d", obj->UID, obj->OwnerID, mem.AccessCount);
                for (count=mem.AccessCount; count > 0; count--) ReleaseObject(obj);
             }
          }
       }
 
-      Expunge(FALSE);
+      Expunge(FALSE); // Second expunge.  Safety measures are still engaged.
 
       if (!glCrashStatus) {
          #ifdef __linux__
@@ -229,7 +225,7 @@ EXPORT void CloseCore(void)
          free_iconv();
       }
 
-      Expunge(TRUE);
+      Expunge(TRUE); // Third and final expunge.  Forcibly unloads modules.
 
       VirtualVolume("archive", VAS_DEREGISTER, TAGEND);
 
@@ -248,47 +244,27 @@ EXPORT void CloseCore(void)
       if (glAssetClass) { acFree(glAssetClass); glAssetClass = 0; }
       #endif
       if (glCompressedStreamClass) { acFree(glCompressedStreamClass); glCompressedStreamClass  = 0; }
-      if (glArchiveClass)     { acFree(glArchiveClass);     glArchiveClass  = 0; }
-      if (glCompressionClass) { acFree(glCompressionClass); glCompressionClass = 0; }
-      if (glScriptClass)      { acFree(glScriptClass);      glScriptClass  = 0; }
-      if (glFileClass)        { acFree(glFileClass);        glFileClass    = 0; }
-      if (glStorageClass)     { acFree(glStorageClass);     glStorageClass = 0; }
-      if (ConfigClass)        { acFree(ConfigClass);        ConfigClass    = 0; }
-      if (TimeClass)          { acFree(TimeClass);          TimeClass      = 0; }
-      if (ModuleClass)        { acFree(ModuleClass);        ModuleClass    = 0; }
-      if (ThreadClass)        { acFree(ThreadClass);        ThreadClass    = 0; }
-      if (ModuleMasterClass)  { acFree(ModuleMasterClass);  ModuleMasterClass = 0; }
-
-      // Remove access to module database
-
-      if (glModules) {
-         MemInfo info;
-         log.debug("Removing module database.");
-         if (!MemoryPtrInfo(glModules, &info, sizeof(info))) {
-            FreeResourceID(info.MemoryID); // Mark for deletion
-         }
-      }
-
-      if (glModules) { ReleaseMemory(glModules); glModules = NULL; }
-
-      // Check FD list and report FD's that have not been removed
+      if (glArchiveClass)      { acFree(glArchiveClass);      glArchiveClass      = 0; }
+      if (glCompressionClass)  { acFree(glCompressionClass);  glCompressionClass  = 0; }
+      if (glScriptClass)       { acFree(glScriptClass);       glScriptClass       = 0; }
+      if (glFileClass)         { acFree(glFileClass);         glFileClass         = 0; }
+      if (glStorageClass)      { acFree(glStorageClass);      glStorageClass      = 0; }
+      if (glConfigClass)       { acFree(glConfigClass);       glConfigClass       = 0; }
+      if (glTimeClass)         { acFree(glTimeClass);         glTimeClass         = 0; }
+      if (glModuleClass)       { acFree(glModuleClass);       glModuleClass       = 0; }
+      if (glThreadClass)       { acFree(glThreadClass);       glThreadClass       = 0; }
+      if (glModuleMasterClass) { acFree(glModuleMasterClass); glModuleMasterClass = 0; }
 
       #ifdef __unix__
          if (glSocket != -1) RegisterFD(glSocket, RFD_REMOVE, NULL, NULL);
       #endif
 
-      if ((!glCrashStatus) and (glFDTable)) {
-         for (LONG i=0; i < glTotalFDs; i++) {
-            if (glFDTable[i].FD) {
-               log.warning("FD %" PF64 " was not deregistered prior to program close.  Routine: %p, Data: %p, Flags: $%.8x", (LARGE)glFDTable[i].FD, glFDTable[i].Routine, glFDTable[i].Data, glFDTable[i].Flags);
-            }
-         }
-      }
+      // Report FD's that have not been removed by the client
 
-      if (glFDTable) {
-         free(glFDTable);
-         glFDTable = NULL;
-         glTotalFDs = 0;
+      if (!glCrashStatus) {
+         for (auto &fd : glFDTable) {
+            log.warning("FD %" PF64 " was not deregistered prior to program close.  Routine: %p, Data: %p, Flags: $%.8x", (LARGE)fd.FD, fd.Routine, fd.Data, fd.Flags);
+         }
       }
 
       log.trace("Removing private and public memory locks.");
@@ -313,7 +289,7 @@ EXPORT void CloseCore(void)
    // Unless we have crashed, free the Task class
 
    if (!glCrashStatus) {
-      if (TaskClass) { acFree(TaskClass); TaskClass = 0; }
+      if (glTaskClass) { acFree(glTaskClass); glTaskClass = 0; }
    }
 
    if (glCodeIndex < CP_FREE_COREBASE) {

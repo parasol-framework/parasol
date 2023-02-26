@@ -222,6 +222,9 @@ inline FieldValue Volume(std::string Value) { return FieldValue(FID_Volume, Valu
 constexpr FieldValue DPMS(CSTRING Value) { return FieldValue(FID_DPMS, Value); }
 inline FieldValue DPMS(std::string Value) { return FieldValue(FID_DPMS, Value.c_str()); }
 
+constexpr FieldValue Procedure(CSTRING Value) { return FieldValue(FID_Procedure, Value); }
+inline FieldValue Procedure(std::string Value) { return FieldValue(FID_Procedure, Value.c_str()); }
+
 constexpr FieldValue ReadOnly(LONG Value) { return FieldValue(FID_ReadOnly, Value); }
 constexpr FieldValue ReadOnly(bool Value) { return FieldValue(FID_ReadOnly, (Value ? 1 : 0)); }
 
@@ -239,6 +242,7 @@ constexpr FieldValue UserData(CPTR Value) { return FieldValue(FID_UserData, Valu
 constexpr FieldValue Routine(CPTR Value) { return FieldValue(FID_Routine, Value); }
 constexpr FieldValue Feedback(CPTR Value) { return FieldValue(FID_Feedback, Value); }
 constexpr FieldValue Incoming(CPTR Value) { return FieldValue(FID_Incoming, Value); }
+constexpr FieldValue HostScene(OBJECTPTR Value) { return FieldValue(FID_HostScene, Value); }
 constexpr FieldValue BaseClassID(LONG Value) { return FieldValue(FID_BaseClassID, Value); }
 constexpr FieldValue SubClassID(LONG Value) { return FieldValue(FID_SubClassID, Value); }
 constexpr FieldValue AmtColours(LONG Value) { return FieldValue(FID_AmtColours, Value); }
@@ -270,6 +274,18 @@ constexpr FieldValue PopOver(OBJECTID Value) { return FieldValue(FID_PopOver, Va
 constexpr FieldValue Parent(OBJECTID Value) { return FieldValue(FID_Parent, Value); }
 constexpr FieldValue MaxWidth(LONG Value) { return FieldValue(FID_MaxWidth, Value); }
 constexpr FieldValue MaxHeight(LONG Value) { return FieldValue(FID_MaxHeight, Value); }
+constexpr FieldValue MatrixColumns(LONG Value) { return FieldValue(FID_MatrixColumns, Value); }
+constexpr FieldValue MatrixRows(LONG Value) { return FieldValue(FID_MatrixRows, Value); }
+
+constexpr FieldValue Type(LONG Value) { return FieldValue(FID_Type, Value); }
+constexpr FieldValue Acceleration(DOUBLE Value) { return FieldValue(FID_Acceleration, Value); }
+constexpr FieldValue MaxSpeed(DOUBLE Value) { return FieldValue(FID_MaxSpeed, Value); }
+constexpr FieldValue WheelSpeed(DOUBLE Value) { return FieldValue(FID_WheelSpeed, Value); }
+constexpr FieldValue DoubleClick(DOUBLE Value) { return FieldValue(FID_DoubleClick, Value); }
+constexpr FieldValue Speed(DOUBLE Value) { return FieldValue(FID_Speed, Value); }
+
+constexpr FieldValue ButtonOrder(CSTRING Value) { return FieldValue(FID_ButtonOrder, Value); }
+inline FieldValue ButtonOrder(std::string Value) { return FieldValue(FID_ButtonOrder, Value.c_str()); }
 
 template <class T> FieldValue PageWidth(T Value) {
    static_assert(std::is_arithmetic<T>::value, "PageWidth value must be numeric");
@@ -281,43 +297,98 @@ template <class T> FieldValue PageHeight(T Value) {
    return FieldValue(FID_PageHeight, Value);
 }
 
+template <class T> FieldValue Radius(T Value) {
+   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "Radius value must be numeric");
+   return FieldValue(FID_Radius, Value);
+}
+
+template <class T> FieldValue CenterX(T Value) {
+   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "CenterX value must be numeric");
+   return FieldValue(FID_CenterX, Value);
+}
+
+template <class T> FieldValue CenterY(T Value) {
+   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "CenterY value must be numeric");
+   return FieldValue(FID_CenterY, Value);
+}
+
+template <class T> FieldValue FX(T Value) {
+   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "FX value must be numeric");
+   return FieldValue(FID_FX, Value);
+}
+
+template <class T> FieldValue FY(T Value) {
+   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "FY value must be numeric");
+   return FieldValue(FID_FY, Value);
+}
+
+template <class T> FieldValue ResX(T Value) {
+   static_assert(std::is_arithmetic<T>::value, "ResX value must be numeric");
+   return FieldValue(FID_ResX, Value);
+}
+
+template <class T> FieldValue ResY(T Value) {
+   static_assert(std::is_arithmetic<T>::value, "ResY value must be numeric");
+   return FieldValue(FID_ResY, Value);
+}
+
+template <class T> FieldValue ViewX(T Value) {
+   static_assert(std::is_arithmetic<T>::value, "ViewX value must be numeric");
+   return FieldValue(FID_ViewX, Value);
+}
+
+template <class T> FieldValue ViewY(T Value) {
+   static_assert(std::is_arithmetic<T>::value, "ViewY value must be numeric");
+   return FieldValue(FID_ViewY, Value);
+}
+
+template <class T> FieldValue ViewWidth(T Value) {
+   static_assert(std::is_arithmetic<T>::value, "ViewWidth value must be numeric");
+   return FieldValue(FID_ViewWidth, Value);
+}
+
+template <class T> FieldValue ViewHeight(T Value) {
+   static_assert(std::is_arithmetic<T>::value, "ViewHeight value must be numeric");
+   return FieldValue(FID_ViewHeight, Value);
+}
+
 template <class T> FieldValue Width(T Value) {
-   static_assert(std::is_arithmetic<T>::value, "Width value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "Width value must be numeric");
    return FieldValue(FID_Width, Value);
 }
 
 template <class T> FieldValue Height(T Value) {
-   static_assert(std::is_arithmetic<T>::value, "Height value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "Height value must be numeric");
    return FieldValue(FID_Height, Value);
 }
 
 template <class T> FieldValue X(T Value) {
-   static_assert(std::is_arithmetic<T>::value, "X value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "X value must be numeric");
    return FieldValue(FID_X, Value);
 }
 
 template <class T> FieldValue Y(T Value) {
-   static_assert(std::is_arithmetic<T>::value, "Y value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "Y value must be numeric");
    return FieldValue(FID_Y, Value);
 }
 
 template <class T> FieldValue X1(T Value) {
-   static_assert(std::is_arithmetic<T>::value, "X1 value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "X1 value must be numeric");
    return FieldValue(FID_X1, Value);
 }
 
 template <class T> FieldValue Y1(T Value) {
-   static_assert(std::is_arithmetic<T>::value, "Y1 value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "Y1 value must be numeric");
    return FieldValue(FID_Y1, Value);
 }
 
 template <class T> FieldValue X2(T Value) {
-   static_assert(std::is_arithmetic<T>::value, "X2 value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "X2 value must be numeric");
    return FieldValue(FID_X2, Value);
 }
 
 template <class T> FieldValue Y2(T Value) {
-   static_assert(std::is_arithmetic<T>::value, "Y2 value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "Y2 value must be numeric");
    return FieldValue(FID_Y2, Value);
 }
 

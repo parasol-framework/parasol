@@ -335,7 +335,7 @@ void SurfacePan::DrawTextBase(Scintilla::PRectangle rc, Scintilla::Font &font_, 
 
    BitmapClipper clipper(bitmap, cliprect);
 
-   SetFields(font, FID_String|TSTRING, nstr, TAGEND);
+   font->setFields(fl::String(nstr));
    font->Bitmap = bitmap;
    font->X = rc.left;
    font->Y = rc.top + font->Leading;

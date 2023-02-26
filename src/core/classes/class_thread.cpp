@@ -646,7 +646,7 @@ static const FieldArray clFields[] = {
 
 extern "C" ERROR add_thread_class(void)
 {
-   ThreadClass = objMetaClass::create::global(
+   glThreadClass = objMetaClass::create::global(
       fl::ClassVersion(VER_THREAD),
       fl::Name("Thread"),
       fl::Category(CCF_SYSTEM),
@@ -656,5 +656,5 @@ extern "C" ERROR add_thread_class(void)
       fl::Size(sizeof(extThread)),
       fl::Path("modules:core"));
 
-   return ThreadClass ? ERR_Okay : ERR_AddClass;
+   return glThreadClass ? ERR_Okay : ERR_AddClass;
 }

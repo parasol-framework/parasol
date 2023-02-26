@@ -345,10 +345,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 
   const("MAX", { }, { FILENAME = 256 })  -- Maximum length for file names (not necessarily including path)
 
-  const("COPY", { comment="Flags for StrCopy()" }, {
-     ALL = "0x7fffffff: Copy all characters from the source string."
-  })
-
   const("MODULE", { comment="Module file header constants", restrict="c" }, {
     HEADER_V1 = 0x4D4F4401,
     HEADER_V2 = 0x4D4F4402,
@@ -371,10 +367,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
      THREAD_CALLBACK  = 92,
      THREAD_ACTION    = 91,
      WAIT_FOR_OBJECTS = 90
-  })
-
-  const("LTF", { comment="Flags for ListTasks()" }, {
-     CURRENT_PROCESS = 0x0000001
   })
 
   enum("IDTYPE", { start=1, comment="Types for AllocateID()" },
@@ -854,6 +846,7 @@ struct FieldValue {
       APTR    Pointer;
       CPTR    CPointer;
       DOUBLE  Double;
+      PERCENT Percent;
       LARGE   Large;
       LONG    Long;
    };
@@ -863,6 +856,7 @@ struct FieldValue {
    constexpr FieldValue(ULONG pFID, LONG pValue)    : FieldID(pFID), Type(FD_LONG), Long(pValue) { };
    constexpr FieldValue(ULONG pFID, LARGE pValue)   : FieldID(pFID), Type(FD_LARGE), Large(pValue) { };
    constexpr FieldValue(ULONG pFID, DOUBLE pValue)  : FieldID(pFID), Type(FD_DOUBLE), Double(pValue) { };
+   constexpr FieldValue(ULONG pFID, PERCENT pValue) : FieldID(pFID), Type(FD_DOUBLE|FD_PERCENTAGE), Percent(pValue) { };
    constexpr FieldValue(ULONG pFID, APTR pValue)    : FieldID(pFID), Type(FD_POINTER), Pointer(pValue) { };
    constexpr FieldValue(ULONG pFID, CPTR pValue)    : FieldID(pFID), Type(FD_POINTER), CPointer(pValue) { };
    constexpr FieldValue(ULONG pFID, CPTR pValue, LONG pCustom) : FieldID(pFID), Type(pCustom), CPointer(pValue) { };
@@ -942,14 +936,10 @@ struct FieldValue {
 
   struct("SystemState", { comment="Returned by the GetSystemState() function." }, [[
     array(cstr) ErrorMessages  # A sorted array of all error codes, translated into human readable strings.
-    cstr RootPath              # The current root path, which defaults to the location of the installation folder.
-    cstr SystemPath            # The current path of the 'system:' volume.
-    cstr ModulePath            # The current path to the system modules, normally 'system:modules/'
     cstr Platform              # String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.
     hhandle ConsoleFD          # Internal
     int  CoreVersion           # Reflects the Core version number.
     int  CoreRevision          # Reflects the Core revision number.
-    int  InstanceID            # This is the ID of the instance that the calling process resides in.
     int  TotalErrorMessages    # The total number of error codes listed in the ErrorMessages array.
     int  Stage                 # The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.
   ]])
@@ -977,11 +967,6 @@ struct FieldValue {
     int  Size       # Total byte-size of all accepted parameters when they are assembled as a C structure.
   ]])
 
-  struct("MemoryLocks", { comment="A supplement structure for ListTasks." }, [[
-    mem  MemoryID  # Reference to a memory ID.
-    short Locks    # The total number of locks on the memory block.
-  ]])
-
   struct("ActionTable", { comment="Structure for ActionList" }, [[
     uint Hash   # Hash of the action name.
     int  Size   # Byte-size of the structure for this action.
@@ -992,28 +977,6 @@ struct FieldValue {
   struct("ChildEntry", { comment="Structure for ListChildren() function" }, [[
     oid ObjectID  # Object ID
     cid ClassID   # The class ID of the referenced object.
-  ]])
-
-  struct("ListTasks", { comment="Structure for ListTasks()" }, [[
-     int     ProcessID         # Core process ID
-     oid     TaskID            # Task ID for this array entry
-     int     WaitingProcessID  # If the task is waiting, this field reflects the other task's ID
-     mem     WaitingMemoryID   # If the task is waiting, this field reflects the memory ID
-     int     WaitingTime       # If the task is waiting, the time at which the sleep started (msec)
-     mem     MessageID         # Message queue ID
-     oid     OutputID          # The object that the task should output information to
-     hhandle Semaphore         # Semaphore for IPC
-     int     InstanceID        # Instance that the task belongs to
-     int     TotalMemoryLocks  # Total number of held memory locks
-     oid     ModalID           # Refers to any surface that currently holds a modal lock.
-     struct(*MemoryLocks) MemoryLocks # An array of memory locks currently held by the process.
-  ]])
-
-  struct("FDTable", { comment="Internal record for processing FD activity." }, [[
-     hhandle FD           # The file descriptor that is managed by this record.
-     fptr(void hhandle ptr) Routine  # The routine that will process read/write messages for the FD.
-     ptr  Data            # A user specific data pointer.
-     int Flags            # Set to RFD_READ, RFD_WRITE or RFD_EXCEPT.
   ]])
 
   struct("Message", { comment="Messaging structures.  Note: This structure is utilised by NextMsg" }, [[
@@ -1196,7 +1159,7 @@ extern struct CoreBase *CoreBase;
     "AllocateID",
     "AllocMemory",
     "AccessObjectID",
-    "ListTasks",
+    "VarCopy",
     "CheckAction",
     "CheckMemoryExists",
     "CheckObjectExists",
@@ -1215,7 +1178,7 @@ extern struct CoreBase *CoreBase;
     "GetOwnerID",
     "GetField",
     "GetFieldVariable",
-    "GetFields",
+    "TotalChildren",
     "GetName",
     "ListChildren",
     "Base64Decode",
@@ -1238,7 +1201,7 @@ extern struct CoreBase *CoreBase;
     "SetOwner",
     "SetContext",
     "SetField",
-    "SetFields",
+    "FieldName",
     "ScanDir",
     "SetName",
     "LogReturn",
@@ -1291,7 +1254,7 @@ extern struct CoreBase *CoreBase;
     "LockSharedMutex",
     "UnlockSharedMutex",
     "VLogF",
-    "StrSearch",
+    "Base64Encode",
     "VarSetSized",
     "VarLock",
     "WakeProcess",
@@ -1299,8 +1262,8 @@ extern struct CoreBase *CoreBase;
     "CurrentTask",
     "KeyIterate",
     "ResolveGroupID",
-    "StrCopy",
-    "StrClone",
+    "VarSetString",
+    "VarGetString",
     "VarUnlock",
     "ResolveUserID",
     "CreateLink",
@@ -1322,11 +1285,7 @@ extern struct CoreBase *CoreBase;
     "GetSystemState",
     "StrHash",
     "AddInfoTag",
-    "UTF8Copy",
-    "Base64Encode",
-    "VarSetString",
-    "VarGetString",
-    "VarCopy")
+    "UTF8Copy")
 
   c_insert([[
 
@@ -1347,6 +1306,22 @@ inline CSTRING to_cstring(CSTRING A) { return A; }
 
 template <class T, class U> inline ERROR StrMatch(T &&A, U &&B) {
    return StrCompare(to_cstring(A), to_cstring(B), 0, STR_MATCH_LEN);
+}
+
+inline LONG StrCopy(CSTRING String, STRING Dest, LONG Length = 0x7fffffff)
+{
+   if ((Length > 0) and (String) and (Dest)) {
+      LONG i = 0;
+      while ((i < Length) and (*String)) Dest[i++] = *String++;
+
+      if ((*String) and (i >= Length)) {
+         Dest[i-1] = 0; // Ran out of buffer space, terminate from one character back
+      }
+      else Dest[i] = 0;
+      return i;
+   }
+
+   return 0;
 }
 
 #ifndef PRV_CORE_DATA
@@ -1375,7 +1350,7 @@ template <class T, class U> inline ERROR StrCompare(T &&A, U &&B, LONG Length, L
    return StrCompare(to_cstring(A), to_cstring(B), Length, Flags);
 }
 
-template <class T> inline LONG StrCopy(T &&A, STRING B, LONG Length) {
+template <class T> inline LONG StrCopy(T &&A, STRING B, LONG Length = 0x7fffffff) {
    return StrCopy(to_cstring(A), B, Length);
 }
 
@@ -1388,6 +1363,45 @@ typedef std::vector<ConfigGroup> ConfigGroups;
 inline void CopyMemory(const void *Src, APTR Dest, LONG Length)
 {
    memmove(Dest, Src, Length);
+}
+
+inline LONG StrSearchCase(CSTRING Keyword, CSTRING String)
+{
+   LONG i;
+   LONG pos = 0;
+   while (String[pos]) {
+      for (i=0; Keyword[i]; i++) if (String[pos+i] != Keyword[i]) break;
+      if (!Keyword[i]) return pos;
+      for (++pos; (String[pos] & 0xc0) IS 0x80; pos++);
+   }
+
+   return -1;
+}
+
+inline LONG StrSearch(CSTRING Keyword, CSTRING String)
+{
+   LONG i;
+   LONG pos = 0;
+   while (String[pos]) {
+      for (i=0; Keyword[i]; i++) if (std::toupper(String[pos+i]) != std::toupper(Keyword[i])) break;
+      if (!Keyword[i]) return pos;
+      for (++pos; (String[pos] & 0xc0) IS 0x80; pos++);
+   }
+
+   return -1;
+}
+
+inline STRING StrClone(CSTRING String)
+{
+   if (!String) return NULL;
+
+   LONG len = strlen(String);
+   STRING newstr;
+   if (!AllocMemory(len+1, MEM_STRING, (APTR *)&newstr, NULL)) {
+      CopyMemory(String, newstr, len+1);
+      return newstr;
+   }
+   else return NULL;
 }
 
 inline LONG StrLength(CSTRING String) {
@@ -1440,119 +1454,6 @@ inline ERROR ClearMemory(APTR Memory, LONG Length) {
 // NB: Turning this off will cause issues between threads unless they call the necessary locking functions.
 
 //#define AUTO_OBJECT_LOCK 1
-
-//********************************************************************************************************************
-// Header used for all objects.
-
-struct BaseClass { // Must be 64-bit aligned
-   union {
-      objMetaClass *Class;          // [Public] Class pointer
-      class extMetaClass *ExtClass; // [Private] Internal version of the class pointer
-   };
-   APTR     ChildPrivate;       // Address for the ChildPrivate structure, if allocated
-   APTR     CreatorMeta;        // The creator (via NewObject) is permitted to store a custom data pointer here.
-   CLASSID  ClassID;            // The object's class ID
-   CLASSID  SubID;              // The object's sub-class ID, or zero if irrelevant.
-   OBJECTID UID;                // Unique object identifier
-   OBJECTID OwnerID;            // The owner of this object
-   NF       Flags;              // Object flags
-   LONG     NotifyFlags[2];     // Action subscription flags - space for 64 actions max
-   volatile LONG  ThreadID;     // Managed by locking functions
-   char Name[MAX_NAME_LEN];     // The name of the object (optional)
-   UBYTE ThreadPending;         // ActionThread() increments this.
-   volatile BYTE Queue;         // Managed by locking functions
-   volatile BYTE SleepQueue;    //
-   volatile bool Locked;        // Set if locked by AccessObjectID()/LockObject()
-   BYTE ActionDepth;            // Incremented each time an action or method is called on the object
-
-   inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
-   inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
-   inline bool isSubClass() { return SubID != 0; }
-   inline OBJECTID ownerID() { return OwnerID; }
-   inline NF flags() { return Flags; }
-
-   CSTRING className();
-
-   inline bool collecting() { // Is object being freed or marked for collection?
-      return (Flags & (NF::FREE|NF::COLLECT)) != NF::NIL;
-   }
-
-   inline bool terminating() { // Is object currently being freed?
-      return (Flags & NF::FREE) != NF::NIL;
-   }
-
-   inline ERROR threadLock() {
-      #ifdef AUTO_OBJECT_LOCK
-         if (INC_QUEUE(this) IS 1) {
-            ThreadID = get_thread_id();
-            return ERR_Okay;
-         }
-         else {
-            if (ThreadID IS get_thread_id()) return ERR_Okay; // If this is for the same thread then it's a nested lock, so there's no issue.
-            SUB_QUEUE(this); // Put the lock count back to normal before LockObject()
-            return LockObject(this, -1); // Can fail if object is marked for deletion.
-         }
-      #else
-         return ERR_Okay;
-      #endif
-   }
-
-   inline void threadRelease() {
-      #ifdef AUTO_OBJECT_LOCK
-         if (SleepQueue > 0) ReleaseObject(this);
-         else SUB_QUEUE(this);
-      #endif
-   }
-
-   // These are fast in-line calls for object locking.  They attempt to quickly 'steal' the
-   // object lock if the queue value was at zero.
-
-   inline LONG incQueue() {
-      return __sync_add_and_fetch(&Queue, 1);
-   }
-
-   inline LONG subQueue() {
-      return __sync_sub_and_fetch(&Queue, 1);
-   }
-
-   inline LONG incSleep() {
-      return __sync_add_and_fetch(&SleepQueue, 1);
-   }
-
-   inline LONG subSleep() {
-      return __sync_sub_and_fetch(&SleepQueue, 1);
-   }
-
-   inline bool hasOwner(OBJECTID ID) { // Return true if ID has ownership.
-      auto oid = this->OwnerID;
-      while ((oid) and (oid != ID)) oid = GetOwnerID(oid);
-      return oid ? true : false;
-   }
-
-   inline ERROR set(ULONG FieldID, int Value)             { return SetField(this, (FIELD)FieldID|TLONG, Value); }
-   inline ERROR set(ULONG FieldID, unsigned int Value)    { return SetField(this, (FIELD)FieldID|TLONG, Value); }
-   inline ERROR set(ULONG FieldID, LARGE Value)           { return SetField(this, (FIELD)FieldID|TLARGE, Value); }
-   inline ERROR set(ULONG FieldID, DOUBLE Value)          { return SetField(this, (FIELD)FieldID|TDOUBLE, Value); }
-   inline ERROR set(ULONG FieldID, const FUNCTION *Value) { return SetField(this, (FIELD)FieldID|TFUNCTION, Value); }
-   inline ERROR set(ULONG FieldID, const char *Value)     { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
-   inline ERROR set(ULONG FieldID, const unsigned char *Value) { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
-   inline ERROR set(ULONG FieldID, std::string &Value)    { return SetField(this, (FIELD)FieldID|TSTRING, Value.c_str()); }
-   inline ERROR set(ULONG FieldID, const Variable *Value) { return SetField(this, (FIELD)FieldID|TVAR, Value); }
-   // Works both for regular data pointers and function pointers if field is defined correctly.
-   inline ERROR set(ULONG FieldID, const void *Value) { return SetField(this, (FIELD)FieldID|TPTR, Value); }
-
-   inline ERROR setPercentage(ULONG FieldID, DOUBLE Value) { return SetField(this, (FIELD)FieldID|TDOUBLE|TPERCENT, Value); }
-
-   inline ERROR get(ULONG FieldID, LONG *Value) { return GetField(this, (FIELD)FieldID|TLONG, Value); }
-   inline ERROR get(ULONG FieldID, LARGE *Value) { return GetField(this, (FIELD)FieldID|TLARGE, Value); }
-   inline ERROR get(ULONG FieldID, DOUBLE *Value) { return GetField(this, (FIELD)FieldID|TDOUBLE, Value); }
-   inline ERROR get(ULONG FieldID, STRING *Value) { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
-   inline ERROR get(ULONG FieldID, CSTRING *Value) { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
-   inline ERROR get(ULONG FieldID, Variable *Value) { return GetField(this, (FIELD)FieldID|TVAR, Value); }
-   inline ERROR getPtr(ULONG FieldID, APTR Value) { return GetField(this, (FIELD)FieldID|TPTR, Value); }
-   inline ERROR getPercentage(ULONG FieldID, DOUBLE *Value) { return GetField(this, (FIELD)FieldID|TDOUBLE|TPERCENT, Value); }
-
-} __attribute__ ((aligned (8)));
 
 namespace pf {
 
@@ -1694,6 +1595,176 @@ class Log { // C++ wrapper for Parasol's log functionality
          #endif
       }
 };
+
+} // namespace
+
+//********************************************************************************************************************
+// Header used for all objects.
+
+struct BaseClass { // Must be 64-bit aligned
+   union {
+      objMetaClass *Class;          // [Public] Class pointer
+      class extMetaClass *ExtClass; // [Private] Internal version of the class pointer
+   };
+   APTR     ChildPrivate;       // Address for the ChildPrivate structure, if allocated
+   APTR     CreatorMeta;        // The creator (via NewObject) is permitted to store a custom data pointer here.
+   CLASSID  ClassID;            // The object's class ID
+   CLASSID  SubID;              // The object's sub-class ID, or zero if irrelevant.
+   OBJECTID UID;                // Unique object identifier
+   OBJECTID OwnerID;            // The owner of this object
+   NF       Flags;              // Object flags
+   LONG     NotifyFlags[2];     // Action subscription flags - space for 64 actions max
+   volatile LONG  ThreadID;     // Managed by locking functions
+   char Name[MAX_NAME_LEN];     // The name of the object (optional)
+   UBYTE ThreadPending;         // ActionThread() increments this.
+   volatile BYTE Queue;         // Managed by locking functions
+   volatile BYTE SleepQueue;    //
+   volatile bool Locked;        // Set if locked by AccessObjectID()/LockObject()
+   BYTE ActionDepth;            // Incremented each time an action or method is called on the object
+
+   inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
+   inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
+   inline bool isSubClass() { return SubID != 0; }
+   inline OBJECTID ownerID() { return OwnerID; }
+   inline NF flags() { return Flags; }
+
+   CSTRING className();
+
+   inline bool collecting() { // Is object being freed or marked for collection?
+      return (Flags & (NF::FREE|NF::COLLECT)) != NF::NIL;
+   }
+
+   inline bool terminating() { // Is object currently being freed?
+      return (Flags & NF::FREE) != NF::NIL;
+   }
+
+   inline ERROR threadLock() {
+      #ifdef AUTO_OBJECT_LOCK
+         if (INC_QUEUE(this) IS 1) {
+            ThreadID = get_thread_id();
+            return ERR_Okay;
+         }
+         else {
+            if (ThreadID IS get_thread_id()) return ERR_Okay; // If this is for the same thread then it's a nested lock, so there's no issue.
+            SUB_QUEUE(this); // Put the lock count back to normal before LockObject()
+            return LockObject(this, -1); // Can fail if object is marked for deletion.
+         }
+      #else
+         return ERR_Okay;
+      #endif
+   }
+
+   inline void threadRelease() {
+      #ifdef AUTO_OBJECT_LOCK
+         if (SleepQueue > 0) ReleaseObject(this);
+         else SUB_QUEUE(this);
+      #endif
+   }
+
+   // These are fast in-line calls for object locking.  They attempt to quickly 'steal' the
+   // object lock if the queue value was at zero.
+
+   inline LONG incQueue() {
+      return __sync_add_and_fetch(&Queue, 1);
+   }
+
+   inline LONG subQueue() {
+      return __sync_sub_and_fetch(&Queue, 1);
+   }
+
+   inline LONG incSleep() {
+      return __sync_add_and_fetch(&SleepQueue, 1);
+   }
+
+   inline LONG subSleep() {
+      return __sync_sub_and_fetch(&SleepQueue, 1);
+   }
+
+   inline bool hasOwner(OBJECTID ID) { // Return true if ID has ownership.
+      auto oid = this->OwnerID;
+      while ((oid) and (oid != ID)) oid = GetOwnerID(oid);
+      return oid ? true : false;
+   }
+
+   inline ERROR set(ULONG FieldID, int Value)             { return SetField(this, (FIELD)FieldID|TLONG, Value); }
+   inline ERROR set(ULONG FieldID, unsigned int Value)    { return SetField(this, (FIELD)FieldID|TLONG, Value); }
+   inline ERROR set(ULONG FieldID, LARGE Value)           { return SetField(this, (FIELD)FieldID|TLARGE, Value); }
+   inline ERROR set(ULONG FieldID, DOUBLE Value)          { return SetField(this, (FIELD)FieldID|TDOUBLE, Value); }
+   inline ERROR set(ULONG FieldID, const FUNCTION *Value) { return SetField(this, (FIELD)FieldID|TFUNCTION, Value); }
+   inline ERROR set(ULONG FieldID, const char *Value)     { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
+   inline ERROR set(ULONG FieldID, const unsigned char *Value) { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
+   inline ERROR set(ULONG FieldID, std::string &Value)    { return SetField(this, (FIELD)FieldID|TSTRING, Value.c_str()); }
+   inline ERROR set(ULONG FieldID, const Variable *Value) { return SetField(this, (FIELD)FieldID|TVAR, Value); }
+   // Works both for regular data pointers and function pointers if field is defined correctly.
+   inline ERROR set(ULONG FieldID, const void *Value) { return SetField(this, (FIELD)FieldID|TPTR, Value); }
+
+   inline ERROR setPercentage(ULONG FieldID, DOUBLE Value) { return SetField(this, (FIELD)FieldID|TDOUBLE|TPERCENT, Value); }
+
+   inline ERROR get(ULONG FieldID, LONG *Value) { return GetField(this, (FIELD)FieldID|TLONG, Value); }
+   inline ERROR get(ULONG FieldID, LARGE *Value) { return GetField(this, (FIELD)FieldID|TLARGE, Value); }
+   inline ERROR get(ULONG FieldID, DOUBLE *Value) { return GetField(this, (FIELD)FieldID|TDOUBLE, Value); }
+   inline ERROR get(ULONG FieldID, STRING *Value) { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
+   inline ERROR get(ULONG FieldID, CSTRING *Value) { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
+   inline ERROR get(ULONG FieldID, Variable *Value) { return GetField(this, (FIELD)FieldID|TVAR, Value); }
+   inline ERROR getPtr(ULONG FieldID, APTR Value) { return GetField(this, (FIELD)FieldID|TPTR, Value); }
+   inline ERROR getPercentage(ULONG FieldID, DOUBLE *Value) { return GetField(this, (FIELD)FieldID|TDOUBLE|TPERCENT, Value); }
+
+   template <typename... Args> ERROR setFields(Args... pFields) {
+      pf::Log log("setFields");
+
+      threadLock();
+
+      std::initializer_list<pf::FieldValue> Fields = { pFields... };
+
+      for (auto &f : Fields) {
+         OBJECTPTR target;
+         if (auto field = FindField(this, f.FieldID, &target)) {
+            if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (CurrentContext() != target)) {
+               log.warning("Field \"%s\" of class %s is not writeable.", field->Name, className());
+            }
+            else if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) {
+               log.warning("Field \"%s\" of class %s is init-only.", field->Name, className());
+            }
+            else {
+               if (target != this) target->threadLock();
+
+               ERROR error;
+               if (f.Type & (FD_POINTER|FD_STRING|FD_ARRAY|FD_FUNCTION|FD_VARIABLE)) {
+                  error = field->WriteValue(target, field, f.Type, f.Pointer, 0);
+               }
+               else if (f.Type & (FD_DOUBLE|FD_FLOAT)) {
+                  error = field->WriteValue(target, field, f.Type, &f.Double, 1);
+               }
+               else if (f.Type & FD_LARGE) {
+                  error = field->WriteValue(target, field, f.Type, &f.Large, 1);
+               }
+               else error = field->WriteValue(target, field, f.Type, &f.Long, 1);
+
+               if (target != this) target->threadRelease();
+
+               // NB: NoSupport is considered a 'soft' error that does not warrant failure.
+
+               if ((error) and (error != ERR_NoSupport)) {
+                  log.warning("(%s:%d) Failed to set field %s (error #%d).", target->className(), target->UID, field->Name, error);
+                  threadRelease();
+                  return error;
+               }
+            }
+         }
+         else {
+            log.warning("Field %s is not supported by class %s.", FieldName(f.FieldID), className());
+            threadRelease();
+            return ERR_UnsupportedField;
+         }
+      }
+
+      threadRelease();
+      return ERR_Okay;
+   }
+
+} __attribute__ ((aligned (8)));
+
+namespace pf {
 
 template<class T = BaseClass>
 class Create {
@@ -2048,15 +2119,14 @@ inline ERROR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
 
   methods("config", "Cfg", {
     { id=1,  name="ReadValue" },
-    { id=2,  name="ReadIValue" },
+    { id=2,  name="Set" },
     { id=3,  name="WriteValue" },
     { id=4,  name="DeleteKey" },
     { id=5,  name="DeleteGroup" },
     { id=6,  name="GetGroupFromIndex" },
     { id=7,  name="SortByKey" },
     { id=9,  name="MergeFile" },
-    { id=10, name="Merge" },
-    { id=11, name="Set" }
+    { id=10, name="Merge" }
   })
 
   class("Config", { src="../classes/class_config.cpp", output="../classes/class_config_def.c" }, [[
@@ -2255,7 +2325,6 @@ struct TaskList {
    OBJECTID TaskID;        // Task ID for this array entry.  Also see the ParentID field
    MEMORYID MessageID;     // Message queue ID
    OBJECTID OutputID;      // The object that the task should output information to
-   LONG     InstanceID;    // Instance that the task belongs to
    LONG     ReturnCode;    // Return code
    OBJECTID ParentID;      // The task responsible for creating this task slot
    OBJECTID ModalID;       // Set if a modal surface is to have the user's attention
@@ -2465,7 +2534,6 @@ struct PublicAddress {
    OBJECTID ObjectID;          // Object that the address belongs to
    OBJECTID TaskID;            // The task that the block is tracked back to
    OBJECTID ContextID;         // Context that locked the memory block (for debugging purposes only)
-   LONG     InstanceID;        // Reference to the instance that this memory block is restricted to
    WORD     ActionID;          // Action that locked the memory block (for debugging purposes only)
    WORD     Flags;             // Special MEM_ address flags
    volatile UBYTE AccessCount;  // Count of locks on this address
@@ -2493,7 +2561,6 @@ struct SortedAddress {
 
 struct SemaphoreEntry {   // The index of each semaphore in the array indicates their IDs
    ULONG NameID;          // Hashed name of the semaphore
-   LONG  InstanceID;      // Reference to the instance that this semaphore is restricted to
    LONG  BlockingProcess; // Process ID of the blocker
    LONG  BlockingThread;  // Global thread ID of the blocker
    LARGE Data;            // User configurable 64-bit data
@@ -2562,7 +2629,6 @@ struct SharedControl {
    LONG InputSize;                  // Maximum number of subscribers allowed in InputMID
    LONG InstanceMsgPort;            // The message port of the process that created the instance.
    MEMORYID SurfacesMID;
-   MEMORYID ModulesMID;             // Module database
    MEMORYID InputMID;
    #ifdef __unix__
       struct {

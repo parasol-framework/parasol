@@ -123,13 +123,8 @@ static ERROR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
 
       cache->Data = Self->BitmapData - (cache->Clip.Left * cache->BytesPerPixel) - (cache->Clip.Top * cache->LineWidth);
 
-      SetFields(Self->Scene->Viewport,
-         FID_X|TDOUBLE,         img_x,
-         FID_Y|TDOUBLE,         img_y,
-         FID_Width|TDOUBLE,     img_width,
-         FID_Height|TDOUBLE,    img_height,
-         FID_AspectRatio|TLONG, Self->AspectRatio,
-         TAGEND);
+      Self->Scene->Viewport->setFields(fl::X(img_x), fl::Y(img_y), fl::Width(img_width), fl::Height(img_height),
+         fl::AspectRatio(Self->AspectRatio));
 
       auto &t = filter->ClientVector->Transform;
       VectorMatrix matrix = {

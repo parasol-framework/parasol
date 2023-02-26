@@ -134,10 +134,10 @@ static void xtag_pathtransition(extSVG *Self, objXML *XML, const XMLTag *Tag)
 
    OBJECTPTR trans;
    if (!NewObject(ID_VECTORTRANSITION, &trans)) {
-      SetFields(trans,
-         FID_Owner|TLONG, Self->Scene->UID, // All clips belong to the root page to prevent hierarchy issues.
-         FID_Name|TSTR,   "SVGTransition",
-         TAGEND);
+      trans->setFields(
+         fl::Owner(Self->Scene->UID), // All clips belong to the root page to prevent hierarchy issues.
+         fl::Name("SVGTransition")
+      );
 
       CSTRING id = NULL;
       for (LONG a=1; a < Tag->TotalAttrib; a++) {
@@ -181,11 +181,11 @@ static void xtag_clippath(extSVG *Self, objXML *XML, const XMLTag *Tag)
    CSTRING id = NULL;
 
    if (!NewObject(ID_VECTORCLIP, &clip)) {
-      SetFields(clip,
-         FID_Owner|TLONG, Self->Scene->UID, // All clips belong to the root page to prevent hierarchy issues.
-         FID_Name|TSTR,   "SVGClip",
-         FID_Units|TLONG, VUNIT_BOUNDING_BOX,
-         TAGEND);
+      clip->setFields(
+         fl::Owner(Self->Scene->UID), // All clips belong to the root page to prevent hierarchy issues.
+         fl::Name("SVGClip"),
+         fl::Units(VUNIT_BOUNDING_BOX)
+      );
 
       for (LONG a=1; a < Tag->TotalAttrib; a++) {
          CSTRING val = Tag->Attrib[a].Value;
@@ -487,9 +487,7 @@ static ERROR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, con
             read_numseq(val, &ox, &oy, TAGEND);
             if (ox < 1) ox = 3;
             if (oy < 1) oy = ox;
-            SetFields(fx, FID_MatrixColumns|TLONG, F2T(ox),
-                          FID_MatrixRows|TLONG,    F2T(oy),
-                          TAGEND);
+            fx->setFields(fl::MatrixColumns(F2T(ox)), fl::MatrixRows(F2T(oy)));
             break;
          }
 
@@ -1015,7 +1013,7 @@ static ERROR parse_fe_turbulence(extSVG *Self, objVectorFilter *Filter, const XM
             read_numseq(val, &bfx, &bfy, TAGEND);
             if (bfx < 0) bfx = 0;
             if (bfy < 0) bfy = bfx;
-            SetFields(fx, FID_FX|TDOUBLE, bfx, FID_FY|TDOUBLE, bfy, TAGEND);
+            fx->setFields(fl::FX(bfx), fl::FY(bfy));
             break;
          }
 
@@ -1265,12 +1263,8 @@ static void xtag_filter(extSVG *Self, objXML *XML, svgState *State, const XMLTag
    CSTRING id = NULL;
 
    if (!NewObject(ID_VECTORFILTER, &filter)) {
-      SetFields(filter,
-         FID_Owner|TLONG,       Self->Scene->UID,
-         FID_Name|TSTR,         "SVGFilter",
-         FID_Units|TLONG,       VUNIT_BOUNDING_BOX,
-         FID_ColourSpace|TLONG, VCS_LINEAR_RGB,
-         TAGEND);
+      filter->setFields(fl::Owner(Self->Scene->UID), fl::Name("SVGFilter"),
+         fl::Units(VUNIT_BOUNDING_BOX), fl::ColourSpace(VCS_LINEAR_RGB));
 
       for (LONG a=1; a < Tag->TotalAttrib; a++) {
          CSTRING val = Tag->Attrib[a].Value;
@@ -1301,7 +1295,7 @@ static void xtag_filter(extSVG *Self, objXML *XML, svgState *State, const XMLTag
             case SVF_FILTERRES: {
                DOUBLE x = 0, y = 0;
                read_numseq(val, &x, &y, TAGEND);
-               SetFields(filter, FID_ResX|TLONG, F2T(x), FID_ResY|TLONG, F2T(y), TAGEND);
+               filter->setFields(fl::ResX(F2T(x)), fl::ResY(F2T(y)));
                break;
             }
 
@@ -1321,12 +1315,7 @@ static void xtag_filter(extSVG *Self, objXML *XML, svgState *State, const XMLTag
             case SVF_VIEWBOX: {
                DOUBLE x=0, y=0, width=0, height=0;
                read_numseq(val, &x, &y, &width, &height, TAGEND);
-               SetFields(filter->Viewport,
-                  FID_ViewX|TDOUBLE,      x,
-                  FID_ViewY|TDOUBLE,      y,
-                  FID_ViewWidth|TDOUBLE,  width,
-                  FID_ViewHeight|TDOUBLE, height,
-                  TAGEND);
+               filter->Viewport->setFields(fl::ViewX(x), fl::ViewY(y), fl::ViewWidth(width), fl::ViewHeight(height));
                break;
             }
 */
@@ -1392,12 +1381,10 @@ static void process_pattern(extSVG *Self, objXML *XML, const XMLTag *Tag)
 
    if (!NewObject(ID_VECTORPATTERN, &pattern)) {
       SetOwner(pattern, Self->Scene);
-      SetFields(pattern,
-         FID_Name|TSTR,          "SVGPattern",
-         FID_Units|TLONG,        VUNIT_BOUNDING_BOX,
-         FID_SpreadMethod|TLONG, VSPREAD_REPEAT,
-         FID_HostScene|TPTR,     Self->Scene,
-         TAGEND);
+      pattern->setFields(fl::Name("SVGPattern"),
+         fl::Units(VUNIT_BOUNDING_BOX),
+         fl::SpreadMethod(VSPREAD_REPEAT),
+         fl::HostScene(Self->Scene));
 
       objVectorViewport *viewport;
       pattern->getPtr(FID_Viewport, &viewport);
@@ -1448,12 +1435,7 @@ static void process_pattern(extSVG *Self, objXML *XML, const XMLTag *Tag)
                client_set_viewbox = true;
                pattern->ContentUnits = VUNIT_USERSPACE;
                read_numseq(val, &vx, &vy, &vwidth, &vheight, TAGEND);
-               SetFields(viewport,
-                  FID_ViewX|TDOUBLE,      vx,
-                  FID_ViewY|TDOUBLE,      vy,
-                  FID_ViewWidth|TDOUBLE,  vwidth,
-                  FID_ViewHeight|TDOUBLE, vheight,
-                  TAGEND);
+               viewport->setFields(fl::ViewX(vx), fl::ViewY(vy), fl::ViewWidth(vwidth), fl::ViewHeight(vheight));
                break;
             }
 
@@ -1469,12 +1451,7 @@ static void process_pattern(extSVG *Self, objXML *XML, const XMLTag *Tag)
       }
 
       /*if (!client_set_viewbox) {
-         SetFields(viewport,
-            FID_ViewX|TDOUBLE,   0,
-            FID_ViewY|TDOUBLE,   0,
-            FID_ViewWidth|TDOUBLE,  vwidth,
-            FID_ViewHeight|TDOUBLE, vheight,
-            TAGEND);
+         viewport->setFields(fl::ViewX(0), fl::ViewY(0), fl::ViewWidth(vwidth), fl::ViewHeight(vheight));
       }*/
 
       if (!acInit(pattern)) {
@@ -1713,12 +1690,10 @@ static void def_image(extSVG *Self, const XMLTag *Tag)
    objPicture *pic = NULL;
 
    if (!NewObject(ID_VECTORIMAGE, &image)) {
-      SetFields(image,
-         FID_Owner|TLONG,        Self->Scene->UID,
-         FID_Name|TSTR,          "SVGImage",
-         FID_Units|TLONG,        VUNIT_BOUNDING_BOX,
-         FID_SpreadMethod|TLONG, VSPREAD_PAD,
-         TAGEND);
+      image->setFields(fl::Owner(Self->Scene->UID),
+         fl::Name("SVGImage"),
+         fl::Units(VUNIT_BOUNDING_BOX),
+         fl::SpreadMethod(VSPREAD_PAD));
 
       for (LONG a=1; a < Tag->TotalAttrib; a++) {
          CSTRING val = Tag->Attrib[a].Value;
@@ -2105,7 +2080,7 @@ static void xtag_use(extSVG *Self, objXML *XML, svgState *State, const XMLTag *T
 
       if (NewObject(ID_VECTORVIEWPORT, &vector)) return;
       SetOwner(vector, Parent);
-      SetFields(vector, FID_Width|TPERCENT|TDOUBLE, 100.0, FID_Height|TPERCENT|TDOUBLE, 100.0, TAGEND); // SVG default
+      vector->setFields(fl::Width(PERCENT(100.0)), fl::Height(PERCENT(100.0))); // SVG default
 
       // Apply attributes from 'use' to the group and/or viewport
       for (LONG a=1; a < Tag->TotalAttrib; a++) {
@@ -2141,12 +2116,7 @@ static void xtag_use(extSVG *Self, objXML *XML, svgState *State, const XMLTag *T
             case SVF_VIEWBOX:  {
                DOUBLE x=0, y=0, width=0, height=0;
                read_numseq(val, &x, &y, &width, &height, TAGEND);
-               SetFields(vector,
-                  FID_ViewX|TDOUBLE,      x,
-                  FID_ViewY|TDOUBLE,      y,
-                  FID_ViewWidth|TDOUBLE,  width,
-                  FID_ViewHeight|TDOUBLE, height,
-                  TAGEND);
+               vector->setFields(fl::ViewX(x), fl::ViewY(y), fl::ViewWidth(width), fl::ViewHeight(height));
                break;
             }
             case SVF_ID: break; // Ignore (already processed).
@@ -2247,12 +2217,7 @@ static void xtag_svg(extSVG *Self, objXML *XML, svgState *State, const XMLTag *T
          case SVF_VIEWBOX:  {
             DOUBLE x, y, width, height;
             read_numseq(val, &x, &y, &width, &height, TAGEND);
-            SetFields(viewport,
-               FID_ViewX|TDOUBLE,      x,
-               FID_ViewY|TDOUBLE,      y,
-               FID_ViewWidth|TDOUBLE,  width,
-               FID_ViewHeight|TDOUBLE, height,
-               TAGEND);
+            viewport->setFields(fl::ViewX(x), fl::ViewY(y), fl::ViewWidth(width), fl::ViewHeight(height));
             break;
          }
 

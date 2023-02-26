@@ -36,7 +36,7 @@ function testCreateCompress()
    err = cmp.mtCompressFile('config:classes.bin', '')
    if (err != ERR_Okay) then error('CompressFile() failed: ' .. mSys.GetErrorMsg(err)) end
 
-   err = cmp.mtCompressFile('config:modules.bin', '')
+   err = cmp.mtCompressFile('fonts:fonts.cfg', '')
    if (err != ERR_Okay) then error('CompressFile() failed: ' .. mSys.GetErrorMsg(err)) end
 
    cmp = null

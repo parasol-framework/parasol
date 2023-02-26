@@ -72,10 +72,8 @@ static ERROR drag_callback(extVectorViewport *Viewport, const InputEvent *Events
             glAnchorX = event->AbsX;
             glAnchorY = event->AbsY;
 
-            GetFields(Viewport,
-               FID_X|TDOUBLE, &glDragOriginX,
-               FID_Y|TDOUBLE, &glDragOriginY,
-               TAGEND);
+            Viewport->get(FID_X, &glDragOriginX);
+            Viewport->get(FID_Y, &glDragOriginY);
 
             // Ensure that the X,Y coordinates are fixed.
 
