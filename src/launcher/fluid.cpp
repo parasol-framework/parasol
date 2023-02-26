@@ -137,12 +137,8 @@ static LONG exec_source(CSTRING TargetFile, CSTRING Procedure)
 
    objScript *script;
    if (!NewObject(ID_FLUID, &script)) {
-      SetFields(script, FID_Path|TSTR,      TargetFile,
-                        FID_Procedure|TSTR, Procedure,
-                        TAGEND);
-
+      script->setFields(fl::Path(TargetFile), fl::Procedure(Procedure));
       if (glArgs) set_script_args(script, glArgs);
-
       return run_script(script);
    }
    else {

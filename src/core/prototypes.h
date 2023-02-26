@@ -55,7 +55,7 @@ ERROR SendMessage(MEMORYID Queue, LONG Type, LONG Flags, APTR Data, LONG Size);
 ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner);
 OBJECTPTR SetContext(OBJECTPTR Object);
 ERROR SetField(OBJECTPTR Object, FIELD Field, ...);
-ERROR SetFields(OBJECTPTR Object, ...);
+CSTRING FieldName(ULONG FieldID);
 ERROR ScanDir(struct DirInfo * Info);
 ERROR SetName(OBJECTPTR Object, CSTRING Name);
 void LogReturn();
@@ -144,7 +144,6 @@ LONG Base64Encode(struct rkBase64Encode * State, const void * Input, LONG InputS
 ERROR VarSetString(struct KeyStore * Store, CSTRING Key, CSTRING Value);
 CSTRING VarGetString(struct KeyStore * Store, CSTRING Key);
 LONG TotalChildren(OBJECTID Object);
-CSTRING FieldName(ULONG FieldID);
 
 #ifdef  __cplusplus
 }

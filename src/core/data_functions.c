@@ -94,7 +94,6 @@ FDEF argsSetArray[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR 
 FDEF argsSetContext[] = { { "Object", FD_OBJECTPTR }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsSetDefaultPermissions[] = { { "Void", FD_VOID }, { "User", FD_LONG }, { "Group", FD_LONG }, { "Permissions", FD_LONG }, { 0, 0 } };
 FDEF argsSetField[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_LARGE }, { "Value", FD_VARTAGS }, { 0, 0 } };
-FDEF argsSetFields[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Tags", FD_VARTAGS }, { 0, 0 } };
 FDEF argsSetName[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Name", FD_STR }, { 0, 0 } };
 FDEF argsSetOwner[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Owner", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsSetResource[] = { { "Result", FD_LARGE }, { "Resource", FD_LONG }, { "Value", FD_LARGE }, { 0, 0 } };
@@ -198,7 +197,7 @@ const struct Function glFunctions[] = {
    { (APTR)SetOwner, "SetOwner", argsSetOwner },
    { (APTR)SetContext, "SetContext", argsSetContext },
    { (APTR)SetField, "SetField", argsSetField },
-   { (APTR)SetFields, "SetFields", argsSetFields },
+   { (APTR)FieldName, "FieldName", argsFieldName },
    { (APTR)ScanDir, "ScanDir", argsScanDir },
    { (APTR)SetName, "SetName", argsSetName },
    { (APTR)LogReturn, "LogReturn", argsLogReturn },
@@ -287,7 +286,6 @@ const struct Function glFunctions[] = {
    { (APTR)VarSetString, "VarSetString", argsVarSetString },
    { (APTR)VarGetString, "VarGetString", argsVarGetString },
    { (APTR)TotalChildren, "TotalChildren", argsTotalChildren },
-   { (APTR)FieldName, "FieldName", argsFieldName },
    { NULL, NULL, NULL }
 };
 

@@ -850,6 +850,7 @@ struct FieldValue {
       APTR    Pointer;
       CPTR    CPointer;
       DOUBLE  Double;
+      PERCENT Percent;
       LARGE   Large;
       LONG    Long;
    };
@@ -859,6 +860,7 @@ struct FieldValue {
    constexpr FieldValue(ULONG pFID, LONG pValue)    : FieldID(pFID), Type(FD_LONG), Long(pValue) { };
    constexpr FieldValue(ULONG pFID, LARGE pValue)   : FieldID(pFID), Type(FD_LARGE), Large(pValue) { };
    constexpr FieldValue(ULONG pFID, DOUBLE pValue)  : FieldID(pFID), Type(FD_DOUBLE), Double(pValue) { };
+   constexpr FieldValue(ULONG pFID, PERCENT pValue) : FieldID(pFID), Type(FD_DOUBLE|FD_PERCENTAGE), Percent(pValue) { };
    constexpr FieldValue(ULONG pFID, APTR pValue)    : FieldID(pFID), Type(FD_POINTER), Pointer(pValue) { };
    constexpr FieldValue(ULONG pFID, CPTR pValue)    : FieldID(pFID), Type(FD_POINTER), CPointer(pValue) { };
    constexpr FieldValue(ULONG pFID, CPTR pValue, LONG pCustom) : FieldID(pFID), Type(pCustom), CPointer(pValue) { };
@@ -1203,7 +1205,7 @@ extern struct CoreBase *CoreBase;
     "SetOwner",
     "SetContext",
     "SetField",
-    "SetFields",
+    "FieldName",
     "ScanDir",
     "SetName",
     "LogReturn",
@@ -1291,8 +1293,7 @@ extern struct CoreBase *CoreBase;
     "Base64Encode",
     "VarSetString",
     "VarGetString",
-    "TotalChildren",
-    "FieldName")
+    "TotalChildren")
 
   c_insert([[
 
@@ -1406,119 +1407,6 @@ inline ERROR ClearMemory(APTR Memory, LONG Length) {
 // NB: Turning this off will cause issues between threads unless they call the necessary locking functions.
 
 //#define AUTO_OBJECT_LOCK 1
-
-//********************************************************************************************************************
-// Header used for all objects.
-
-struct BaseClass { // Must be 64-bit aligned
-   union {
-      objMetaClass *Class;          // [Public] Class pointer
-      class extMetaClass *ExtClass; // [Private] Internal version of the class pointer
-   };
-   APTR     ChildPrivate;       // Address for the ChildPrivate structure, if allocated
-   APTR     CreatorMeta;        // The creator (via NewObject) is permitted to store a custom data pointer here.
-   CLASSID  ClassID;            // The object's class ID
-   CLASSID  SubID;              // The object's sub-class ID, or zero if irrelevant.
-   OBJECTID UID;                // Unique object identifier
-   OBJECTID OwnerID;            // The owner of this object
-   NF       Flags;              // Object flags
-   LONG     NotifyFlags[2];     // Action subscription flags - space for 64 actions max
-   volatile LONG  ThreadID;     // Managed by locking functions
-   char Name[MAX_NAME_LEN];     // The name of the object (optional)
-   UBYTE ThreadPending;         // ActionThread() increments this.
-   volatile BYTE Queue;         // Managed by locking functions
-   volatile BYTE SleepQueue;    //
-   volatile bool Locked;        // Set if locked by AccessObjectID()/LockObject()
-   BYTE ActionDepth;            // Incremented each time an action or method is called on the object
-
-   inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
-   inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
-   inline bool isSubClass() { return SubID != 0; }
-   inline OBJECTID ownerID() { return OwnerID; }
-   inline NF flags() { return Flags; }
-
-   CSTRING className();
-
-   inline bool collecting() { // Is object being freed or marked for collection?
-      return (Flags & (NF::FREE|NF::COLLECT)) != NF::NIL;
-   }
-
-   inline bool terminating() { // Is object currently being freed?
-      return (Flags & NF::FREE) != NF::NIL;
-   }
-
-   inline ERROR threadLock() {
-      #ifdef AUTO_OBJECT_LOCK
-         if (INC_QUEUE(this) IS 1) {
-            ThreadID = get_thread_id();
-            return ERR_Okay;
-         }
-         else {
-            if (ThreadID IS get_thread_id()) return ERR_Okay; // If this is for the same thread then it's a nested lock, so there's no issue.
-            SUB_QUEUE(this); // Put the lock count back to normal before LockObject()
-            return LockObject(this, -1); // Can fail if object is marked for deletion.
-         }
-      #else
-         return ERR_Okay;
-      #endif
-   }
-
-   inline void threadRelease() {
-      #ifdef AUTO_OBJECT_LOCK
-         if (SleepQueue > 0) ReleaseObject(this);
-         else SUB_QUEUE(this);
-      #endif
-   }
-
-   // These are fast in-line calls for object locking.  They attempt to quickly 'steal' the
-   // object lock if the queue value was at zero.
-
-   inline LONG incQueue() {
-      return __sync_add_and_fetch(&Queue, 1);
-   }
-
-   inline LONG subQueue() {
-      return __sync_sub_and_fetch(&Queue, 1);
-   }
-
-   inline LONG incSleep() {
-      return __sync_add_and_fetch(&SleepQueue, 1);
-   }
-
-   inline LONG subSleep() {
-      return __sync_sub_and_fetch(&SleepQueue, 1);
-   }
-
-   inline bool hasOwner(OBJECTID ID) { // Return true if ID has ownership.
-      auto oid = this->OwnerID;
-      while ((oid) and (oid != ID)) oid = GetOwnerID(oid);
-      return oid ? true : false;
-   }
-
-   inline ERROR set(ULONG FieldID, int Value)             { return SetField(this, (FIELD)FieldID|TLONG, Value); }
-   inline ERROR set(ULONG FieldID, unsigned int Value)    { return SetField(this, (FIELD)FieldID|TLONG, Value); }
-   inline ERROR set(ULONG FieldID, LARGE Value)           { return SetField(this, (FIELD)FieldID|TLARGE, Value); }
-   inline ERROR set(ULONG FieldID, DOUBLE Value)          { return SetField(this, (FIELD)FieldID|TDOUBLE, Value); }
-   inline ERROR set(ULONG FieldID, const FUNCTION *Value) { return SetField(this, (FIELD)FieldID|TFUNCTION, Value); }
-   inline ERROR set(ULONG FieldID, const char *Value)     { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
-   inline ERROR set(ULONG FieldID, const unsigned char *Value) { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
-   inline ERROR set(ULONG FieldID, std::string &Value)    { return SetField(this, (FIELD)FieldID|TSTRING, Value.c_str()); }
-   inline ERROR set(ULONG FieldID, const Variable *Value) { return SetField(this, (FIELD)FieldID|TVAR, Value); }
-   // Works both for regular data pointers and function pointers if field is defined correctly.
-   inline ERROR set(ULONG FieldID, const void *Value) { return SetField(this, (FIELD)FieldID|TPTR, Value); }
-
-   inline ERROR setPercentage(ULONG FieldID, DOUBLE Value) { return SetField(this, (FIELD)FieldID|TDOUBLE|TPERCENT, Value); }
-
-   inline ERROR get(ULONG FieldID, LONG *Value) { return GetField(this, (FIELD)FieldID|TLONG, Value); }
-   inline ERROR get(ULONG FieldID, LARGE *Value) { return GetField(this, (FIELD)FieldID|TLARGE, Value); }
-   inline ERROR get(ULONG FieldID, DOUBLE *Value) { return GetField(this, (FIELD)FieldID|TDOUBLE, Value); }
-   inline ERROR get(ULONG FieldID, STRING *Value) { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
-   inline ERROR get(ULONG FieldID, CSTRING *Value) { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
-   inline ERROR get(ULONG FieldID, Variable *Value) { return GetField(this, (FIELD)FieldID|TVAR, Value); }
-   inline ERROR getPtr(ULONG FieldID, APTR Value) { return GetField(this, (FIELD)FieldID|TPTR, Value); }
-   inline ERROR getPercentage(ULONG FieldID, DOUBLE *Value) { return GetField(this, (FIELD)FieldID|TDOUBLE|TPERCENT, Value); }
-
-} __attribute__ ((aligned (8)));
 
 namespace pf {
 
@@ -1660,6 +1548,176 @@ class Log { // C++ wrapper for Parasol's log functionality
          #endif
       }
 };
+
+} // namespace
+
+//********************************************************************************************************************
+// Header used for all objects.
+
+struct BaseClass { // Must be 64-bit aligned
+   union {
+      objMetaClass *Class;          // [Public] Class pointer
+      class extMetaClass *ExtClass; // [Private] Internal version of the class pointer
+   };
+   APTR     ChildPrivate;       // Address for the ChildPrivate structure, if allocated
+   APTR     CreatorMeta;        // The creator (via NewObject) is permitted to store a custom data pointer here.
+   CLASSID  ClassID;            // The object's class ID
+   CLASSID  SubID;              // The object's sub-class ID, or zero if irrelevant.
+   OBJECTID UID;                // Unique object identifier
+   OBJECTID OwnerID;            // The owner of this object
+   NF       Flags;              // Object flags
+   LONG     NotifyFlags[2];     // Action subscription flags - space for 64 actions max
+   volatile LONG  ThreadID;     // Managed by locking functions
+   char Name[MAX_NAME_LEN];     // The name of the object (optional)
+   UBYTE ThreadPending;         // ActionThread() increments this.
+   volatile BYTE Queue;         // Managed by locking functions
+   volatile BYTE SleepQueue;    //
+   volatile bool Locked;        // Set if locked by AccessObjectID()/LockObject()
+   BYTE ActionDepth;            // Incremented each time an action or method is called on the object
+
+   inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
+   inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
+   inline bool isSubClass() { return SubID != 0; }
+   inline OBJECTID ownerID() { return OwnerID; }
+   inline NF flags() { return Flags; }
+
+   CSTRING className();
+
+   inline bool collecting() { // Is object being freed or marked for collection?
+      return (Flags & (NF::FREE|NF::COLLECT)) != NF::NIL;
+   }
+
+   inline bool terminating() { // Is object currently being freed?
+      return (Flags & NF::FREE) != NF::NIL;
+   }
+
+   inline ERROR threadLock() {
+      #ifdef AUTO_OBJECT_LOCK
+         if (INC_QUEUE(this) IS 1) {
+            ThreadID = get_thread_id();
+            return ERR_Okay;
+         }
+         else {
+            if (ThreadID IS get_thread_id()) return ERR_Okay; // If this is for the same thread then it's a nested lock, so there's no issue.
+            SUB_QUEUE(this); // Put the lock count back to normal before LockObject()
+            return LockObject(this, -1); // Can fail if object is marked for deletion.
+         }
+      #else
+         return ERR_Okay;
+      #endif
+   }
+
+   inline void threadRelease() {
+      #ifdef AUTO_OBJECT_LOCK
+         if (SleepQueue > 0) ReleaseObject(this);
+         else SUB_QUEUE(this);
+      #endif
+   }
+
+   // These are fast in-line calls for object locking.  They attempt to quickly 'steal' the
+   // object lock if the queue value was at zero.
+
+   inline LONG incQueue() {
+      return __sync_add_and_fetch(&Queue, 1);
+   }
+
+   inline LONG subQueue() {
+      return __sync_sub_and_fetch(&Queue, 1);
+   }
+
+   inline LONG incSleep() {
+      return __sync_add_and_fetch(&SleepQueue, 1);
+   }
+
+   inline LONG subSleep() {
+      return __sync_sub_and_fetch(&SleepQueue, 1);
+   }
+
+   inline bool hasOwner(OBJECTID ID) { // Return true if ID has ownership.
+      auto oid = this->OwnerID;
+      while ((oid) and (oid != ID)) oid = GetOwnerID(oid);
+      return oid ? true : false;
+   }
+
+   inline ERROR set(ULONG FieldID, int Value)             { return SetField(this, (FIELD)FieldID|TLONG, Value); }
+   inline ERROR set(ULONG FieldID, unsigned int Value)    { return SetField(this, (FIELD)FieldID|TLONG, Value); }
+   inline ERROR set(ULONG FieldID, LARGE Value)           { return SetField(this, (FIELD)FieldID|TLARGE, Value); }
+   inline ERROR set(ULONG FieldID, DOUBLE Value)          { return SetField(this, (FIELD)FieldID|TDOUBLE, Value); }
+   inline ERROR set(ULONG FieldID, const FUNCTION *Value) { return SetField(this, (FIELD)FieldID|TFUNCTION, Value); }
+   inline ERROR set(ULONG FieldID, const char *Value)     { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
+   inline ERROR set(ULONG FieldID, const unsigned char *Value) { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
+   inline ERROR set(ULONG FieldID, std::string &Value)    { return SetField(this, (FIELD)FieldID|TSTRING, Value.c_str()); }
+   inline ERROR set(ULONG FieldID, const Variable *Value) { return SetField(this, (FIELD)FieldID|TVAR, Value); }
+   // Works both for regular data pointers and function pointers if field is defined correctly.
+   inline ERROR set(ULONG FieldID, const void *Value) { return SetField(this, (FIELD)FieldID|TPTR, Value); }
+
+   inline ERROR setPercentage(ULONG FieldID, DOUBLE Value) { return SetField(this, (FIELD)FieldID|TDOUBLE|TPERCENT, Value); }
+
+   inline ERROR get(ULONG FieldID, LONG *Value) { return GetField(this, (FIELD)FieldID|TLONG, Value); }
+   inline ERROR get(ULONG FieldID, LARGE *Value) { return GetField(this, (FIELD)FieldID|TLARGE, Value); }
+   inline ERROR get(ULONG FieldID, DOUBLE *Value) { return GetField(this, (FIELD)FieldID|TDOUBLE, Value); }
+   inline ERROR get(ULONG FieldID, STRING *Value) { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
+   inline ERROR get(ULONG FieldID, CSTRING *Value) { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
+   inline ERROR get(ULONG FieldID, Variable *Value) { return GetField(this, (FIELD)FieldID|TVAR, Value); }
+   inline ERROR getPtr(ULONG FieldID, APTR Value) { return GetField(this, (FIELD)FieldID|TPTR, Value); }
+   inline ERROR getPercentage(ULONG FieldID, DOUBLE *Value) { return GetField(this, (FIELD)FieldID|TDOUBLE|TPERCENT, Value); }
+
+   template <typename... Args> ERROR setFields(Args... pFields) {
+      pf::Log log("setFields");
+
+      threadLock();
+
+      std::initializer_list<pf::FieldValue> Fields = { pFields... };
+
+      for (auto &f : Fields) {
+         OBJECTPTR target;
+         if (auto field = FindField(this, f.FieldID, &target)) {
+            if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (CurrentContext() != target)) {
+               log.warning("Field \"%s\" of class %s is not writeable.", field->Name, className());
+            }
+            else if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) {
+               log.warning("Field \"%s\" of class %s is init-only.", field->Name, className());
+            }
+            else {
+               if (target != this) target->threadLock();
+
+               ERROR error;
+               if (f.Type & (FD_POINTER|FD_STRING|FD_ARRAY|FD_FUNCTION|FD_VARIABLE)) {
+                  error = field->WriteValue(target, field, f.Type, f.Pointer, 0);
+               }
+               else if (f.Type & (FD_DOUBLE|FD_FLOAT)) {
+                  error = field->WriteValue(target, field, f.Type, &f.Double, 1);
+               }
+               else if (f.Type & FD_LARGE) {
+                  error = field->WriteValue(target, field, f.Type, &f.Large, 1);
+               }
+               else error = field->WriteValue(target, field, f.Type, &f.Long, 1);
+
+               if (target != this) target->threadRelease();
+
+               // NB: NoSupport is considered a 'soft' error that does not warrant failure.
+
+               if ((error) and (error != ERR_NoSupport)) {
+                  log.warning("(%s:%d) Failed to set field %s (error #%d).", target->className(), target->UID, field->Name, error);
+                  threadRelease();
+                  return error;
+               }
+            }
+         }
+         else {
+            log.warning("Field %s is not supported by class %s.", FieldName(f.FieldID), className());
+            threadRelease();
+            return ERR_UnsupportedField;
+         }
+      }
+
+      threadRelease();
+      return ERR_Okay;
+   }
+
+} __attribute__ ((aligned (8)));
+
+namespace pf {
 
 template<class T = BaseClass>
 class Create {
