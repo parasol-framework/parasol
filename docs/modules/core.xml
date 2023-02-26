@@ -1004,36 +1004,6 @@ GetField(Object, FID_Y|TLONG, &amp;y);
   </function>
 
   <function>
-    <name>GetFields</name>
-    <category>Fields</category>
-    <comment>Retrieves multiple field values in a single function call.</comment>
-    <prototype>ERROR GetFields(OBJECTPTR Object, ...)</prototype>
-    <input>
-      <param type="OBJECTPTR" name="Object">Pointer to the object that you want to access.</param>
-      <param type="..." name="Tags">Each tag set consists of a field ID OR'd with a type flag, followed by a pointer to a matching variable type that will store the value.</param>
-    </input>
-    <description>
-<p>This function can be used to grab the values of multiple fields in a single function call.  It is primarily provided to give a speed increase over calling the <function module="Core">GetField</function> function multiple times.  The arguments passed to this function are tag-based and must be terminated with a <code>TAGEND</code> marker, as shown in the following example:</p>
-<pre>LONG width, height;
-
-GetFields(screen,
-   FID_Width|TLONG,  &amp;width,
-   FID_Height|TLONG, &amp;height,
-   TAGEND);
-</pre>
-<p>The field ID's that you specify must be logically or'd with tag definitions that indicate the type of values that you want to get from each field.  For instance, if want to retrieve a field in floating point format, then you must use the <code>TDOUBLE</code> tag and supply a pointer to a <code>DOUBLE</code> variable.  Please note that failing to set the tag values correctly can often cause a program to crash.</p>
-<p>The recognised tag types are <code>TPTR</code>, <code>TSTRING</code>, <code>TLONG</code>, <code>TLARGE</code> and <code>TDOUBLE</code>.</p>
-<p>If GetFields() does not return ERR_Okay, this is an indication that at least one of the field settings returned an error code, or there was an error in the processing of the tag list.  This function will attempt to process the entire tag list even in the event of an error.</p>
-<p>For further information on the field retrieval process, refer to the <function module="Core">GetField</function> function.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="UnsupportedField">The specified field is not supported by the object's class.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>GetMessage</name>
     <category>Messages</category>
     <comment>Reads messages from message queues.</comment>

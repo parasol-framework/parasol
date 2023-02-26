@@ -722,7 +722,8 @@ ERROR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
             return log.warning(ERR_Redimension);
          }
 
-         GetFields(display, FID_Width|TLONG, &Width, FID_Height|TLONG, &Height, TAGEND);
+         display->get(FID_Width, &Width);
+         display->get(FID_Height, &Height);
          ReleaseObject(display);
       }
       else return log.warning(ERR_AccessObject);

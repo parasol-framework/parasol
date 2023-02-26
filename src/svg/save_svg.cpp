@@ -428,11 +428,11 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       DOUBLE rx, ry, cx, cy;
       LONG dim;
 
-      error = GetFields(Vector, FID_Dimensions|TLONG, &dim,
-         FID_RadiusX|TDOUBLE, &rx, FID_RadiusY|TDOUBLE, &ry,
-         FID_CenterX|TDOUBLE, &cx, FID_CenterY|TDOUBLE, &cy,
-         TAGEND);
-
+      error = Vector->get(FID_Dimensions, &dim);
+      if (!error) error = Vector->get(FID_RadiusX, &rx);
+      if (!error) error = Vector->get(FID_RadiusY, &ry);
+      if (!error) error = Vector->get(FID_CenterX, &cx);
+      if (!error) error = Vector->get(FID_CenterY, &cy);
       if (!error) error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<ellipse/>", &new_index);
       if (!error) error = set_dimension(XML, new_index, "rx", rx, dim & DMF_RELATIVE_RADIUS_X);
       if (!error) error = set_dimension(XML, new_index, "ry", ry, dim & DMF_RELATIVE_RADIUS_Y);
@@ -696,7 +696,12 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
 
       error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<svg/>", &new_index);
 
-      if ((!error) and (!(error = GetFields(Vector, FID_ViewX|TDOUBLE, &x, FID_ViewY|TDOUBLE, &y, FID_ViewWidth|TDOUBLE, &width, FID_ViewHeight|TDOUBLE, &height, TAGEND)))) {
+      if (!error) error = Vector->get(FID_ViewX, &x);
+      if (!error) error = Vector->get(FID_ViewY, &y);
+      if (!error) error = Vector->get(FID_ViewWidth, &width);
+      if (!error) error = Vector->get(FID_ViewHeight, &height);
+
+      if (!error) {
          char buffer[80];
          snprintf(buffer, sizeof(buffer), "%g %g %g %g", x, y, width, height);
          error = xmlSetAttrib(XML, new_index, XMS_NEW, "viewBox", buffer);

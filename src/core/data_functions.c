@@ -49,7 +49,6 @@ FDEF argsGetEventID[] = { { "Result", FD_LARGE }, { "Group", FD_LONG }, { "SubGr
 FDEF argsGetField[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_LARGE }, { "Result", FD_PTR }, { 0, 0 } };
 FDEF argsGetFieldArray[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_LARGE }, { "Result", FD_PTR|FD_RESULT }, { "Elements", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsGetFieldVariable[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_STR }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
-FDEF argsGetFields[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Tags", FD_VARTAGS }, { 0, 0 } };
 FDEF argsGetMessage[] = { { "Error", FD_LONG|FD_ERROR }, { "Queue", FD_LONG }, { "Type", FD_LONG }, { "Flags", FD_LONG }, { "Buffer", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsGetName[] = { { "Result", FD_STR }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsGetObjectPtr[] = { { "Object", FD_OBJECTPTR }, { "Object", FD_OBJECTID }, { 0, 0 } };
@@ -174,7 +173,7 @@ const struct Function glFunctions[] = {
    { (APTR)GetOwnerID, "GetOwnerID", argsGetOwnerID },
    { (APTR)GetField, "GetField", argsGetField },
    { (APTR)GetFieldVariable, "GetFieldVariable", argsGetFieldVariable },
-   { (APTR)GetFields, "GetFields", argsGetFields },
+   { (APTR)TotalChildren, "TotalChildren", argsTotalChildren },
    { (APTR)GetName, "GetName", argsGetName },
    { (APTR)ListChildren, "ListChildren", argsListChildren },
    { (APTR)Base64Decode, "Base64Decode", argsBase64Decode },
@@ -285,7 +284,6 @@ const struct Function glFunctions[] = {
    { (APTR)Base64Encode, "Base64Encode", argsBase64Encode },
    { (APTR)VarSetString, "VarSetString", argsVarSetString },
    { (APTR)VarGetString, "VarGetString", argsVarGetString },
-   { (APTR)TotalChildren, "TotalChildren", argsTotalChildren },
    { NULL, NULL, NULL }
 };
 
