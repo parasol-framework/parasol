@@ -2095,21 +2095,6 @@ SetField(Object, FID_Statement|TSTR, "string");
   </function>
 
   <function>
-    <name>StrClone</name>
-    <category>Strings</category>
-    <comment>Clones string data.</comment>
-    <prototype>STRING StrClone(CSTRING String)</prototype>
-    <input>
-      <param type="CSTRING" name="String">The string that is to be cloned.</param>
-    </input>
-    <description>
-<p>This function creates an exact duplicate of a string.  It analyses the length of the supplied String, allocates a private memory block for it and then copies the string characters into the new string buffer.</p>
-<p>You are expected to free the resulting memory block once it is no longer required with <function module="Core">FreeResource</function>.</p>
-    </description>
-    <result type="STRING">Returns an exact duplicate of the String.  If this function fails to allocate the memory or if the String argument is NULL, NULL is returned.</result>
-  </function>
-
-  <function>
     <name>StrCompare</name>
     <category>Strings</category>
     <comment>Compares strings to see if they are identical.</comment>

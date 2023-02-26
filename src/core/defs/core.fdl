@@ -1267,7 +1267,7 @@ extern struct CoreBase *CoreBase;
     "KeyIterate",
     "ResolveGroupID",
     "StrCopy",
-    "StrClone",
+    "VarGetString",
     "VarUnlock",
     "ResolveUserID",
     "CreateLink",
@@ -1291,8 +1291,7 @@ extern struct CoreBase *CoreBase;
     "AddInfoTag",
     "UTF8Copy",
     "Base64Encode",
-    "VarSetString",
-    "VarGetString")
+    "VarSetString")
 
   c_insert([[
 
@@ -1354,6 +1353,19 @@ typedef std::vector<ConfigGroup> ConfigGroups;
 inline void CopyMemory(const void *Src, APTR Dest, LONG Length)
 {
    memmove(Dest, Src, Length);
+}
+
+inline STRING StrClone(CSTRING String)
+{
+   if (!String) return NULL;
+
+   LONG len = strlen(String);
+   STRING newstr;
+   if (!AllocMemory(len+1, MEM_STRING, (APTR *)&newstr, NULL)) {
+      CopyMemory(String, newstr, len+1);
+      return newstr;
+   }
+   else return NULL;
 }
 
 inline LONG StrLength(CSTRING String) {
