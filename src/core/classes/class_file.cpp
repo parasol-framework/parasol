@@ -830,7 +830,7 @@ static ERROR FILE_MoveFile(extFile *Self, struct flMove *Args)
 
       STRING newpath;
       if (!AllocMemory(len + 1, MEM_STRING|MEM_NO_CLEAR, (APTR *)&newpath, NULL)) {
-         LONG j = StrCopy(dest, newpath, COPY_ALL);
+         LONG j = StrCopy(dest, newpath);
          i++;
          while ((src[i]) and (src[i] != '/') and (src[i] != '\\')) newpath[j++] = src[i++];
          newpath[j] = 0;
@@ -2251,7 +2251,7 @@ static ERROR SET_Path(extFile *Self, CSTRING Value)
 
             for (j=0; Value[j] IS ':'; j++);
             if (!StrCompare("string:", Value, 7, 0)) {
-               i = StrCopy(Value, Self->Path, COPY_ALL);
+               i = StrCopy(Value, Self->Path);
             }
             else {
                i = 0;

@@ -2193,11 +2193,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
 
    OBJECTPTR dialog;
    if (!NewObject(ID_SCRIPT, &dialog)) {
-      SetFields(dialog,
-         FID_Name|TSTR,   "scDialog",
-         FID_Owner|TLONG, CurrentTaskID(),
-         FID_Path|TSTR,   "system:scripts/gui/dialog.fluid",
-         TAGEND);
+      dialog->setFields(fl::Name("scDialog"), fl::Owner(CurrentTaskID()), fl::Path("system:scripts/gui/dialog.fluid"));
 
       acSetVar(dialog, "modal", "1");
       acSetVar(dialog, "title", Title);

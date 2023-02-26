@@ -312,7 +312,7 @@ static ERROR resolve(STRING Source, STRING Dest, LONG Flags)
    ERROR error;
 
    if (get_virtual(Source)) {
-      StrCopy(Source, Dest, COPY_ALL);
+      StrCopy(Source, Dest);
       return ERR_VirtualVolume;
    }
 
@@ -477,7 +477,7 @@ static ERROR resolve_object_path(STRING Path, STRING Source, STRING Dest, LONG P
    }
 
    if (error IS ERR_VirtualVolume) { // Return an exact duplicate of the original source string
-      StrCopy(Source, Dest, COPY_ALL);
+      StrCopy(Source, Dest);
       return ERR_VirtualVolume;
    }
    else if (error != ERR_Okay) return log.warning(error);

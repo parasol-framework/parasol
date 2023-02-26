@@ -211,11 +211,6 @@ objMetaClass * FindClass(CLASSID ClassID)
       if (glClassDB.contains(ClassID)) {
          auto &path = glClassDB[ClassID].Path;
 
-         if (path.empty()) {
-            ModuleItem *mod;
-            if ((mod = find_module(ClassID))) path.assign(STRING(mod + 1));
-         }
-
          if (!path.empty()) {
             // Load the module from the associated location and then find the class that it contains.  If the module fails,
             // we keep on looking for other installed modules that may handle the class.
@@ -792,7 +787,6 @@ LARGE GetResource(LONG Resource)
       case RES_MESSAGE_QUEUE:   return glTaskMessageMID;
       case RES_SHARED_CONTROL:  return (MAXINT)glSharedControl;
       case RES_PRIVILEGED:      return glPrivileged;
-      case RES_KEY_STATE:       return glKeyState;
       case RES_LOG_LEVEL:       return glLogLevel;
       case RES_SHARED_BLOCKS:   return (MAXINT)glSharedBlocks;
       case RES_TASK_CONTROL:    return (MAXINT)glTaskEntry;
@@ -918,12 +912,8 @@ const SystemState * GetSystemState(void)
       state.ConsoleFD     = glConsoleFD;
       state.CoreVersion   = VER_CORE;
       state.CoreRevision  = REV_CORE;
-      state.InstanceID    = glInstanceID;
       state.ErrorMessages = glMessages;
       state.TotalErrorMessages = ARRAYSIZE(glMessages);
-      state.RootPath      = glRootPath;
-      state.SystemPath    = glSystemPath;
-      state.ModulePath    = glModulePath;
       #ifdef __unix__
          state.Platform = "Linux";
       #elif _WIN32
@@ -1003,93 +993,6 @@ ERROR ListChildren(OBJECTID ObjectID, ChildEntry *List, LONG *Count)
 /*********************************************************************************************************************
 
 -FUNCTION-
-ListTasks: Returns a list of all active processes that are in the system.
-Status: private
-
-Limited to use by the desktop and some other internal programs.
-
--INPUT-
-int(LTF) Flags: Optional flags.
-&struct(ListTasks) List: A reference to the process list is returned in this parameter.
-
--ERRORS-
-Okay
-NullArgs
-
-*********************************************************************************************************************/
-
-ERROR ListTasks(LONG Flags, struct ListTasks **Detail)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (!Detail) return ERR_NullArgs;
-
-   ScopedSysLock lock(PL_PROCESSES, 4000);
-   if (lock.granted()) {
-      WORD taskcount = 0;
-      LONG memlocks = 0;
-      struct ListTasks *list;
-      for (LONG i=0; i < MAX_TASKS; i++) {
-         if ((shTasks[i].ProcessID) and (shTasks[i].TaskID) and (shTasks[i].MessageID)) {
-            if (Flags & LTF_CURRENT_PROCESS) {
-               if (shTasks[i].TaskID != glCurrentTask->UID) continue;
-            }
-
-            taskcount++;
-            for (LONG j=0; j < ARRAYSIZE(shTasks[i].NoBlockLocks); j++) {
-                if (shTasks[i].NoBlockLocks[j].MemoryID) memlocks++;
-            }
-         }
-      }
-
-      if (!AllocMemory((sizeof(struct ListTasks) * (taskcount + 1)) + (sizeof(shTasks[0].NoBlockLocks[0]) * memlocks), MEM_NO_CLEAR, (void **)&list, NULL)) {
-         *Detail = list;
-
-         LONG j = 0;
-         for (LONG i=0; (i < MAX_TASKS) and (j < taskcount); i++) {
-            if ((shTasks[i].ProcessID) and (shTasks[i].TaskID) and (shTasks[i].MessageID)) {
-               if (Flags & LTF_CURRENT_PROCESS) {
-                  if (shTasks[i].TaskID != glCurrentTask->UID) continue;
-               }
-
-               list->ProcessID   = shTasks[i].ProcessID;
-               list->TaskID      = shTasks[i].TaskID;
-               list->MessageID   = shTasks[i].MessageID;
-               list->OutputID    = shTasks[i].OutputID;
-               list->InstanceID  = shTasks[i].InstanceID;
-               list->ModalID     = shTasks[i].ModalID;
-               list->MemoryLocks = (MemoryLocks *)(list + 1);
-
-               memlocks = 0; // Insert memory locks for this task entry
-               for (LONG k=0; k < ARRAYSIZE(shTasks[i].NoBlockLocks); k++) {
-                  if (shTasks[i].NoBlockLocks[k].MemoryID) {
-                     list->MemoryLocks[memlocks].MemoryID = shTasks[i].NoBlockLocks[k].MemoryID;
-                     list->MemoryLocks[memlocks].Locks = shTasks[i].NoBlockLocks[k].AccessCount;
-                  }
-               }
-               list->TotalMemoryLocks = memlocks;
-
-               if (!memlocks) list->MemoryLocks = NULL;
-
-               // Next task
-
-               list = (struct ListTasks *) ( ((BYTE *)(list+1)) + (memlocks * sizeof(shTasks[0].NoBlockLocks[0])) );
-               j++;
-            }
-         }
-
-         ClearMemory(list, sizeof(struct ListTasks));
-
-         return ERR_Okay;
-      }
-      else return ERR_AllocMemory;
-   }
-   else return ERR_SystemLocked;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
 RegisterFD: Registers a file descriptor for monitoring when the task is asleep.
 
 This function will register a file descriptor that will be monitored for activity when the task is sleeping.  If
@@ -1121,7 +1024,6 @@ ptr Data: User specific data pointer that will be passed to the Routine.  Separa
 -ERRORS-
 Okay: The FD was successfully registered.
 Args: The FD was set to a value of -1.
-ArrayFull: The maximum number of registrable file descriptors has been reached.
 NoSupport: The host platform does not support file descriptors.
 -END-
 
@@ -1144,41 +1046,31 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
    if (FD IS -1) return log.warning(ERR_Args);
 #endif
 
-   if (glTotalFDs >= MAX_FDS) return log.warning(ERR_ArrayFull);
-
-   if (!glFDTable) {
-      if (!(glFDTable = (FDTable *)malloc(sizeof(FDTable) * MAX_FDS))) return ERR_AllocMemory;
-   }
-
    if (Flags & RFD_REMOVE) {
       if (!(Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL))) Flags |= RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL;
 
-      for (LONG i=glTotalFDs-1; i >= 0; i--) {
-         if ((glFDTable[i].FD IS FD) and ((glFDTable[i].Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL)) & Flags)) {
-            // If the routine address was specified with the remove option, the routine must match.
-
-            if ((Routine) and (glFDTable[i].Routine != Routine)) continue;
-
-            if (i+1 < glTotalFDs) {
-               CopyMemory(glFDTable+i+1, glFDTable+i, sizeof(FDTable) * (glTotalFDs-i-1));
-            }
-
-            glTotalFDs--;
+      for (auto it = glFDTable.begin(); it != glFDTable.end();) {
+         if ((it->FD IS FD) and ((it->Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL)) & Flags)) {
+            if ((Routine) and (it->Routine != Routine)) it++;
+            else it = glFDTable.erase(it);
          }
+         else it++;
       }
       return ERR_Okay;
    }
 
    if (!(Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_REMOVE|RFD_ALWAYS_CALL))) Flags |= RFD_READ;
 
-   LONG i;
-   for (i=0; i < glTotalFDs; i++) {
-      if ((glFDTable[i].FD IS FD) and (Flags & (glFDTable[i].Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL)))) break;
+   for (auto &fd : glFDTable) {
+      if ((fd.FD IS FD) and (Flags & (fd.Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL)))) {
+         fd.Routine = Routine;
+         fd.Flags   = Flags;
+         fd.Data    = Data;
+         return ERR_Okay;
+      }
    }
 
-   if (i >= MAX_FDS) return log.warning(ERR_ArrayFull);
-
-   if (i IS glTotalFDs) log.function("FD: %" PF64 ", Routine: %p, Flags: $%.2x (New)", (MAXINT)FD, Routine, Flags);
+   log.function("FD: %" PF64 ", Routine: %p, Flags: $%.2x (New)", (MAXINT)FD, Routine, Flags);
 
 #ifdef _WIN32
    // Nothing to do for Win32
@@ -1186,12 +1078,7 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
    if ((!Routine) and (FD > 0)) fcntl(FD, F_SETFL, fcntl(FD, F_GETFL) | O_NONBLOCK); // Ensure that the FD is non-blocking
 #endif
 
-   glFDTable[i].FD      = FD;
-   glFDTable[i].Routine = Routine;
-   glFDTable[i].Data    = Data;
-   glFDTable[i].Flags   = Flags;
-   if (i >= glTotalFDs) glTotalFDs++;
-
+   glFDTable.emplace_back(FD, Routine, Data, Flags);
    return ERR_Okay;
 }
 
@@ -1443,46 +1330,40 @@ ERROR SetResourcePath(LONG PathType, CSTRING Path)
    switch(PathType) {
       case RP_ROOT_PATH:
          if (Path) {
-            WORD i;
-            for (i=0; (Path[i]) and ((size_t)i < sizeof(glRootPath)-2); i++) glRootPath[i] = Path[i];
-            if ((glRootPath[i-1] != '/') and (glRootPath[i-1] != '\\')) {
+            glRootPath = Path;
+            if ((glRootPath.back() != '/') and (glRootPath.back() != '\\')) {
                #ifdef _WIN32
-                  glRootPath[i++] = '\\';
+                  glRootPath.push_back('\\');
                #else
-                  glRootPath[i++] = '/';
+                  glRootPath.push_back('/');
                #endif
             }
-            glRootPath[i] = 0;
          }
          return ERR_Okay;
 
       case RP_SYSTEM_PATH:
          if (Path) {
-            WORD i;
-            for (i=0; (Path[i]) and ((size_t)i < sizeof(glSystemPath)-2); i++) glSystemPath[i] = Path[i];
-            if ((glSystemPath[i-1] != '/') and (glSystemPath[i-1] != '\\')) {
+            glSystemPath = Path;
+            if ((glSystemPath.back() != '/') and (glSystemPath.back() != '\\')) {
                #ifdef _WIN32
-                  glSystemPath[i++] = '\\';
+                  glSystemPath.push_back('\\');
                #else
-                  glSystemPath[i++] = '/';
+                  glSystemPath.push_back('/');
                #endif
             }
-            glSystemPath[i] = 0;
          }
          return ERR_Okay;
 
       case RP_MODULE_PATH: // An alternative path to the system modules.  This was introduced for Android, which holds the module binaries in the assets folders.
          if (Path) {
-            WORD i;
-            for (i=0; (Path[i]) and ((size_t)i < sizeof(glModulePath)-2); i++) glModulePath[i] = Path[i];
-            if ((glModulePath[i-1] != '/') and (glModulePath[i-1] != '\\')) {
+            glModulePath = Path;
+            if ((glModulePath.back() != '/') and (glModulePath.back() != '\\')) {
                #ifdef _WIN32
-                  glModulePath[i++] = '\\';
+                  glModulePath += '\\';
                #else
-                  glModulePath[i++] = '/';
+                  glModulePath += '/';
                #endif
             }
-            glModulePath[i] = 0;
          }
          return ERR_Okay;
 
@@ -1528,8 +1409,6 @@ LARGE SetResource(LONG Resource, LARGE Value)
 
    switch(Resource) {
       case RES_CONSOLE_FD: glConsoleFD = (HOSTHANDLE)(MAXINT)Value; break;
-
-      case RES_KEY_STATE: glKeyState = (LONG)Value; break;
 
       case RES_EXCEPTION_HANDLER:
          // Note: You can set your own crash handler, or set a value of NULL - this resets the existing handler which is useful if an external DLL function is suspected to have changed the filter.
@@ -1707,6 +1586,30 @@ LARGE PreciseTime(void)
 #else
    return winGetTickCount(); // NB: This timer does start from the boot time, but can be adjusted - therefore is not 100% on monotonic status
 #endif
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+TotalChildren: Returns the total number of children owned by an object.
+
+This function returns the total number of children that are owned by an object.  It is normally called as a precursor
+to ~ListChildren().
+
+-INPUT-
+oid Object: The object to query.
+
+-RESULT-
+int: The total number of children belonging to the object.  Returns zero if the object does not exist.
+
+*********************************************************************************************************************/
+
+LONG TotalChildren(OBJECTID ObjectID)
+{
+   if (glObjectChildren.contains(ObjectID)) {
+      return glObjectChildren[ObjectID].size();
+   }
+   else return 0;
 }
 
 /*********************************************************************************************************************

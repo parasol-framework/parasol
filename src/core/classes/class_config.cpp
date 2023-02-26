@@ -485,7 +485,7 @@ static ERROR CONFIG_ReadValue(extConfig *Self, struct cfgReadValue *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   for (auto& [group, keys] : Self->Groups[0]) {
+   for (auto & [group, keys] : Self->Groups[0]) {
       if ((Args->Group) and (group.compare(Args->Group))) continue;
 
       if (!Args->Key) {
@@ -495,61 +495,6 @@ static ERROR CONFIG_ReadValue(extConfig *Self, struct cfgReadValue *Args)
       else if (keys.contains(Args->Key)) {
          Args->Data = keys[Args->Key].c_str();
          return ERR_Okay;
-      }
-   }
-
-   log.trace("Could not find key %s : %s.", Args->Group, Args->Key);
-   Args->Data = NULL;
-   return ERR_Search;
-}
-
-/*********************************************************************************************************************
-
--METHOD-
-ReadIValue: Reads a key-value string (case insensitive lookup).
-
-This function retrieves key values in their original string format.  On success, the resulting string remains valid
-only for as long as the client has exclusive access to the config object.  The pointer can also be invalidated
-if more information is written to the config object.  For this reason, consider copying the result if it will be
-used extensively.
-
-If the Group parameter is set to NULL, the scan routine will treat all of the config data as a one dimensional array.
-If the Key parameter is set to NULL then the first key in the requested group is returned.  If both parameters
-are NULL then the first known key value will be returned.
-
--INPUT-
-cstr Group: The name of a group to examine for a key.  If NULL, all groups are scanned.
-cstr Key: The name of a key to retrieve (case insensitive).
-&cstr Data: The key value will be stored in this parameter on returning.
-
--ERRORS-
-Okay
-NullArgs
-Search: The requested configuration entry does not exist.
--END-
-
-*********************************************************************************************************************/
-
-static ERROR CONFIG_ReadIValue(extConfig *Self, struct cfgReadValue *Args)
-{
-   pf::Log log;
-
-   if (!Args) return log.warning(ERR_NullArgs);
-
-   for (auto& [group, keys] : Self->Groups[0]) {
-      if ((Args->Group) and (group.compare(Args->Group))) continue;
-
-      if (!Args->Key) {
-         Args->Data = keys.cbegin()->second.c_str();
-         return ERR_Okay;
-      }
-      else {
-         for (auto& [k, v] : keys) {
-            if ((!Args->Key) or (!StrMatch(Args->Key, k.c_str()))) {
-               Args->Data = v.c_str();
-               return ERR_Okay;
-            }
-         }
       }
    }
 
@@ -1114,9 +1059,9 @@ static void apply_key_filter(extConfig *Self, CSTRING Filter)
    FilterConfig f = parse_filter(Filter, true);
    for (auto group = Self->Groups->begin(); group != Self->Groups->end(); ) {
       bool matched = (f.reverse) ? true : false;
-      for (auto& [k, v] : group->second) {
+      for (auto & [k, v] : group->second) {
          if (!StrMatch(f.name.c_str(), k.c_str())) {
-            for (auto const& cmp : f.values) {
+            for (auto const &cmp : f.values) {
                if (!StrMatch(cmp.c_str(), v.c_str())) {
                   matched = f.reverse ? false : true;
                   break;
@@ -1144,7 +1089,7 @@ static void apply_group_filter(extConfig *Self, CSTRING Filter)
    FilterConfig f = parse_filter(Filter, false);
    for (auto group = Self->Groups->begin(); group != Self->Groups->end(); ) {
       bool matched = (f.reverse) ? true : false;
-      for (auto const& cmp : f.values) {
+      for (auto const &cmp : f.values) {
          if (!cmp.compare(group->first)) {
             matched = f.reverse ? false : true;
             break;
@@ -1163,7 +1108,7 @@ static ConfigKeys * find_group_wild(extConfig *Self, CSTRING Group)
 {
    if ((!Group) or (!*Group)) return NULL;
 
-   for (auto& [group, keys] : Self->Groups[0]) {
+   for (auto & [group, keys] : Self->Groups[0]) {
       if (!StrCompare(Group, group.c_str(), 0, STR_WILDCARD)) return &keys;
    }
 
@@ -1190,7 +1135,7 @@ static const FieldArray clFields[] = {
 
 extern "C" ERROR add_config_class(void)
 {
-   ConfigClass = extMetaClass::create::global(
+   glConfigClass = extMetaClass::create::global(
       fl::BaseClassID(ID_CONFIG),
       fl::ClassVersion(VER_CONFIG),
       fl::Name("Config"),
@@ -1203,6 +1148,6 @@ extern "C" ERROR add_config_class(void)
       fl::Size(sizeof(extConfig)),
       fl::Path("modules:core"));
 
-   return ConfigClass ? ERR_Okay : ERR_AddClass;
+   return glConfigClass ? ERR_Okay : ERR_AddClass;
 }
 

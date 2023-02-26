@@ -84,13 +84,13 @@ ERROR SetArray(OBJECTPTR Object, FIELD FieldID, APTR Array, LONG Elements)
       if (!(field->Flags & FD_ARRAY)) return log.warning(ERR_FieldTypeMismatch);
 
       if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->object() != Object)) {
-         if (!field->Name) log.warning("Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), Object->className());
+         if (!field->Name) log.warning("Field %s of class %s is not writeable.", FieldName(field->FieldID), Object->className());
          else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, Object->className());
          return ERR_NoFieldAccess;
       }
 
       if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->object() != Object)) {
-         if (!field->Name) log.warning("Field %s in class %s is init-only.", GET_FIELD_NAME(field->FieldID), Object->className());
+         if (!field->Name) log.warning("Field %s in class %s is init-only.", FieldName(field->FieldID), Object->className());
          else log.warning("Field \"%s\" in class %s is init-only.", field->Name, Object->className());
          return ERR_NoFieldAccess;
       }
@@ -102,7 +102,7 @@ ERROR SetArray(OBJECTPTR Object, FIELD FieldID, APTR Array, LONG Elements)
       return error;
    }
    else {
-      log.warning("Could not find field %s in object class %s.", GET_FIELD_NAME(FieldID), Object->className());
+      log.warning("Could not find field %s in object class %s.", FieldName(FieldID), Object->className());
       return ERR_UnsupportedField;
    }
 }
@@ -171,12 +171,12 @@ ERROR SetField(OBJECTPTR Object, FIELD FieldID, ...)
       // Validation
 
       if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->object() != Object)) {
-         if (!field->Name) log.warning("Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), Object->className());
+         if (!field->Name) log.warning("Field %s of class %s is not writeable.", FieldName(field->FieldID), Object->className());
          else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, Object->className());
          return ERR_NoFieldAccess;
       }
       else if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->object() != Object)) {
-         if (!field->Name) log.warning("Field %s in class %s is init-only.", GET_FIELD_NAME(field->FieldID), Object->className());
+         if (!field->Name) log.warning("Field %s in class %s is init-only.", FieldName(field->FieldID), Object->className());
          else log.warning("Field \"%s\" in class %s is init-only.", field->Name, Object->className());
          return ERR_NoFieldAccess;
       }
@@ -209,143 +209,9 @@ ERROR SetField(OBJECTPTR Object, FIELD FieldID, ...)
       return error;
    }
    else {
-      log.warning("Could not find field %s in object class %s.", GET_FIELD_NAME(FieldID), Object->className());
+      log.warning("Could not find field %s in object class %s.", FieldName(FieldID), Object->className());
       return ERR_UnsupportedField;
    }
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-SetFields: Sets multiple field values in an object.
-
-This function can be used to set the values of more than one field in a single function call, by using tags.  It is
-provided for the purpose of giving a speed increase over calling the ~SetField() function multiple times.
-
-The tags that you pass to this function must be arranged in a format of field ID's and values.  The following
-example illustrates:
-
-<pre>
-SetFields(Surface,
-   FID_Name|TSTR,    "MySurface",
-   FID_Width|TLONG,  50,
-   FID_Height|TLONG, 100,
-   FID_X|TDOUBLE,    86.5,
-   FID_Y|TDOUBLE,    40.0,
-   TAGEND);
-</pre>
-
-The field ID's that you specify must be logically or'd with tag definitions that indicate the type of values that you
-have set for each field.  For instance, if you set a floating point value for a field, then you must use the `TDOUBLE`
-tag so that the SetFields() function can interpret the paired value correctly.  Please note that failing to set the
-tag values correctly can cause a program to crash.
-
-The recognised tag types are `TPTR`, `TSTRING`, `TLONG`, `TLARGE`, `TFUNCTION` and `TDOUBLE`.  There is a special type,
-`TVAR`, which will divert the field setting through the #SetVar() action.
-
-If this function fails, it should be assumed that all of the field settings failed and we recommend that your routine
-aborts.  This function makes no attempt to 'salvage' any other fields that may be left in the list or undo any
-previously successful field settings.
-
--INPUT-
-obj Object:  Pointer to the object that you want to access.
-vtags Tags: Each tag set consists of a field ID OR'd with a type flag, followed by a variable that matches the indicated type.
-
--ERRORS-
-Okay:
-NullArgs:
-UnsupportedField: One of the fields is not supported by the target object.
-Failed: A field setting failed due to an unspecified error.
-
-*********************************************************************************************************************/
-
-ERROR SetFields(OBJECTPTR Object, ...)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (!Object) return log.warning(ERR_NullArgs);
-
-   va_list list;
-   va_start(list, Object);
-   ERROR error = SetFieldsF(Object, list);
-   va_end(list);
-   return error;
-}
-
-ERROR SetFieldsF(OBJECTPTR Object, va_list List)
-{
-   if (!Object) return ERR_NullArgs;
-
-   pf::Log log("SetFields");
-
-   Object->threadLock();
-
-   FIELD field_id;
-   while ((field_id = va_arg(List, LARGE)) != TAGEND) {
-      LONG flags = field_id>>32;
-
-      Field *field;
-      OBJECTPTR source;
-      if ((field = lookup_id(Object, (ULONG)field_id, &source))) {
-         // Validation checks
-
-         if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->object() != Object)) {
-            if (!field->Name) log.warning("Field %s of class %s is not writeable.", GET_FIELD_NAME(field->FieldID), Object->className());
-            else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, Object->className());
-
-            if (flags & (FD_DOUBLE|FD_FLOAT|FD_LARGE|FD_PTR64)) va_arg(List, LARGE);
-            #ifdef _LP64
-            else if (flags & FD_PTR) va_arg(List, APTR);
-            #endif
-            else va_arg(List, LONG);
-            continue;
-         }
-         else if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->object() != Object)) {
-            if (!field->Name) log.warning("Field %s of class %s is init-only.", GET_FIELD_NAME(field->FieldID), Object->className());
-            else log.warning("Field \"%s\" of class %s is init-only.", field->Name, Object->className());
-
-            if (flags & (FD_DOUBLE|FD_FLOAT|FD_LARGE|FD_PTR64)) va_arg(List, LARGE);
-            #ifdef _LP64
-            else if (flags & FD_PTR) va_arg(List, APTR);
-            #endif
-            else va_arg(List, LONG);
-            continue;
-         }
-
-         if (!flags) flags = field->Flags;
-
-         ERROR error;
-         if (flags & (FD_POINTER|FD_ARRAY|FD_STRING|FD_FUNCTION)) {
-            error = field->WriteValue(source, field, flags, va_arg(List, APTR), 0);
-         }
-         else if (flags & (FD_DOUBLE|FD_FLOAT)) {
-            DOUBLE value = va_arg(List, DOUBLE);
-            error = field->WriteValue(source, field, flags, &value, 1);
-         }
-         else if (flags & (FD_LARGE|FD_PTR64)) {
-            LARGE value = va_arg(List, LARGE);
-            error = field->WriteValue(source, field, flags, &value, 1);
-         }
-         else {
-            LONG value = va_arg(List, LONG);
-            error = field->WriteValue(source, field, flags, &value, 1);
-         }
-
-         if ((error) and (error != ERR_NoSupport)) {
-            log.warning("(%s:%d) Failed to set field %s (error #%d).", ((objMetaClass *)source->Class)->ClassName, source->UID, GET_FIELD_NAME(field_id), error);
-            Object->threadRelease();
-            return error;
-         }
-      }
-      else {
-         log.warning("Field %s is not supported by class %s.", GET_FIELD_NAME(field_id), Object->className());
-         Object->threadRelease();
-         return ERR_UnsupportedField;
-      }
-   }
-
-   Object->threadRelease();
-   return ERR_Okay;
 }
 
 //********************************************************************************************************************

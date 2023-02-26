@@ -520,7 +520,7 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 
             auto view = Self->Scene->Viewport;
             while ((view) and (view->SubID != ID_VECTORVIEWPORT)) view = (objVectorViewport *)view->Next;
-            if (view) SetFields(view, FID_Width|TDOUBLE|TPERCENT, 100.0, FID_Height|TDOUBLE|TPERCENT, 100.0, TAGEND);
+            if (view) view->setFields(fl::Width(PERCENT(100.0)), fl::Height(PERCENT(100.0)));
          }
       }
       else error = ERR_Init;

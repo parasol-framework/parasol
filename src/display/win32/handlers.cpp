@@ -221,31 +221,31 @@ void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
    if (!AccessObjectID(SurfaceID, 3000, &surface)) {
       LONG minwidth, minheight, maxwidth, maxheight;
       LONG left, right, top, bottom;
-      if (!GetFields(surface, FID_MinWidth|TLONG,     &minwidth,
-                              FID_MinHeight|TLONG,    &minheight,
-                              FID_MaxWidth|TLONG,     &maxwidth,
-                              FID_MaxHeight|TLONG,    &maxheight,
-                              FID_LeftMargin|TLONG,   &left,
-                              FID_TopMargin|TLONG,    &top,
-                              FID_BottomMargin|TLONG, &bottom,
-                              FID_RightMargin|TLONG,  &right,
-                              TAGEND)) {
-         if (*Width < minwidth + left + right)   *Width  = minwidth + left + right;
-         if (*Height < minheight + top + bottom) *Height = minheight + top + bottom;
-         if (*Width > maxwidth + left + right)   *Width  = maxwidth + left + right;
-         if (*Height > maxheight + top + bottom) *Height = maxheight + top + bottom;
+      surface->get(FID_MinWidth, &minwidth);
+      surface->get(FID_MinHeight, &minheight);
+      surface->get(FID_MaxWidth, &maxwidth);
+      surface->get(FID_MaxHeight, &maxheight);
+      surface->get(FID_LeftMargin, &left);
+      surface->get(FID_TopMargin, &top);
+      surface->get(FID_BottomMargin, &bottom);
+      surface->get(FID_RightMargin, &right);
 
-         if (surface->Flags & RNF_ASPECT_RATIO) {
-            if (minwidth > minheight) {
-               DOUBLE scale = (DOUBLE)minheight / (DOUBLE)minwidth;
-               *Height = *Width * scale;
-            }
-            else {
-               DOUBLE scale = (DOUBLE)minwidth / (DOUBLE)minheight;
-               *Width = *Height * scale;
-            }
+      if (*Width < minwidth + left + right)   *Width  = minwidth + left + right;
+      if (*Height < minheight + top + bottom) *Height = minheight + top + bottom;
+      if (*Width > maxwidth + left + right)   *Width  = maxwidth + left + right;
+      if (*Height > maxheight + top + bottom) *Height = maxheight + top + bottom;
+
+      if (surface->Flags & RNF_ASPECT_RATIO) {
+         if (minwidth > minheight) {
+            DOUBLE scale = (DOUBLE)minheight / (DOUBLE)minwidth;
+            *Height = *Width * scale;
+         }
+         else {
+            DOUBLE scale = (DOUBLE)minwidth / (DOUBLE)minheight;
+            *Width = *Height * scale;
          }
       }
+
       ReleaseObject(surface);
    }
 }

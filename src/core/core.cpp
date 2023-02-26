@@ -111,7 +111,6 @@ extern "C" EXPORT void CloseCore(void);
 extern "C" EXPORT struct CoreBase * OpenCore(OpenInfo *);
 static ERROR open_shared_control(void);
 static ERROR init_shared_control(void);
-static ERROR load_modules(void);
 static ERROR init_volumes(std::forward_list<CSTRING> &);
 
 #ifdef _WIN32
@@ -290,49 +289,41 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    #endif
 
    if (Info->Flags & OPF_ROOT_PATH) SetResourcePath(RP_ROOT_PATH, Info->RootPath);
-
    if (Info->Flags & OPF_MODULE_PATH) SetResourcePath(RP_MODULE_PATH, Info->ModulePath);
-
    if (Info->Flags & OPF_SYSTEM_PATH) SetResourcePath(RP_SYSTEM_PATH, Info->SystemPath);
 
-   if (!glRootPath[0])   {
+   if (glRootPath.empty())   {
       #ifdef _WIN32
-         glRootPath[0] = 0;
-
-         LONG len;
-         if (winGetExeDirectory(sizeof(glRootPath), glRootPath)) {
-            len = StrLength(glRootPath);
-            while ((len > 1) and (glRootPath[len-1] != '/') and (glRootPath[len-1] != '\\') and (glRootPath[len-1] != ':')) len--;
-            glRootPath[len] = 0;
-         }
-         else if ((!winGetCurrentDirectory(sizeof(glRootPath), glRootPath))) {
+         char buffer[128];
+         if (winGetExeDirectory(sizeof(buffer), buffer)) glRootPath = buffer;
+         else if (winGetCurrentDirectory(sizeof(buffer), buffer)) glRootPath = buffer;
+         else {
             fprintf(stderr, "Failed to determine root folder.\n");
             return NULL;
          }
+         if (glRootPath.back() != '\\') glRootPath += '\\';
       #else
          // Get the folder of the running process.
+         char buffer[128];
          char procfile[50];
          snprintf(procfile, sizeof(procfile), "/proc/%d/exe", getpid());
 
          LONG len;
-         if ((len = readlink(procfile, glRootPath, sizeof(glRootPath)-1)) > 0) {
-            while (len > 0) { // Strip the process name
-               if (glRootPath[len-1] IS '/') break;
-               len--;
-            }
-            glRootPath[len] = 0;
+         if ((len = readlink(procfile, buffer, sizeof(buffer)-1)) > 0) {
+            glRootPath.assign(buffer, len);
+            // Strip process name
+            auto i = glRootPath.find_last_of("/");
+            if (i != std::string::npos) glRootPath.resize(i+1);
 
             // If the binary is in a 'bin' folder then the root is considered to be the parent folder.
-            if (!StrCompare("bin/", glRootPath+len-4, 4, 0)) {
-               glRootPath[len-4] = 0;
-            }
+            if (glRootPath.ends_with("bin/")) glRootPath.resize(glRootPath.size()-4);
         }
       #endif
    }
 
-   if (!glSystemPath[0]) {
+   if (glSystemPath.empty()) {
       // When no system path is specified then treat the install as 'run-anywhere' so that "parasol:" == "system:"
-      StrCopy(glRootPath, glSystemPath, sizeof(glSystemPath));
+      glSystemPath = glRootPath;
    }
 
    // Process the Information structure
@@ -595,7 +586,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       for (i=0; i < MAX_TASKS; i++) {
          if (shTasks[i].ProcessID IS glProcessID) {
             // A slot has been pre-allocated by a parent process that launched us
-            glInstanceID = shTasks[i].InstanceID;
             break;
          }
       }
@@ -641,7 +631,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
       if (i < MAX_TASKS) {
          shTasks[i].ProcessID    = glProcessID;
-         shTasks[i].InstanceID   = glInstanceID;
          #ifdef _WIN32
             shTasks[i].Lock = get_threadlock(); // The main semaphore (for waking the message queue)
          #endif
@@ -653,7 +642,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          KMSG("Core: The system has reached its limit of %d processes.\n", MAX_TASKS);
 /*
          for (i=0; i < MAX_TASKS; i++) {
-            KMSG("Core: %d: Instance: %d, Process: %d, Created: %d", i, shTasks[i].InstanceID, shTasks[i].ProcessID, (LONG)shTasks[i].CreationTime);
+            KMSG("Core: %d: Process: %d, Created: %d", i, shTasks[i].ProcessID, (LONG)shTasks[i].CreationTime);
          }
 */
          if (Info->Flags & OPF_ERROR) Info->Error = ERR_ArrayFull;
@@ -663,8 +652,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       }
 
       // Use a process ID as a unique instance ID by default
-
-      if ((glInstanceID = glProcessID) < 0) glInstanceID = -glInstanceID;
 
       glSharedControl->InstanceMsgPort = glTaskMessageMID;
 
@@ -681,8 +668,8 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    // Print task information
 
-   log.msg("Version: %.1f : Process: %d, Instance: %d, MemPool Address: %p", VER_CORE, glProcessID, glInstanceID, glSharedControl);
-   log.msg("Blocks Used: %d, MaxBlocks: %d, Sync: %s, Root: %s", glSharedControl->BlocksUsed, glSharedControl->MaxBlocks, (glSync) ? "Y" : "N", glRootPath);
+   log.msg("Version: %.1f : Process: %d, MemPool Address: %p", VER_CORE, glProcessID, glSharedControl);
+   log.msg("Blocks Used: %d, MaxBlocks: %d, Sync: %s, Root: %s", glSharedControl->BlocksUsed, glSharedControl->MaxBlocks, (glSync) ? "Y" : "N", glRootPath.c_str());
 #ifdef __unix__
    log.msg("UID: %d (%d), EUID: %d (%d); GID: %d (%d), EGID: %d (%d)", getuid(), glUID, geteuid(), glEUID, getgid(), glGID, getegid(), glEGID);
 #endif
@@ -741,43 +728,35 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    if (!(Info->Flags & OPF_SCAN_MODULES)) {
       ERROR error;
-      if (!(error = load_modules())) {
-         objFile::create file = { fl::Path(glClassBinPath), fl::Flags(FL_READ) };
+      objFile::create file = { fl::Path(glClassBinPath), fl::Flags(FL_READ) };
 
-         if (file.ok()) {
-            LONG filesize;
-            file->get(FID_Size, &filesize);
+      if (file.ok()) {
+         LONG filesize;
+         file->get(FID_Size, &filesize);
 
-            LONG hdr;
-            file->read(&hdr, sizeof(hdr));
-            if (hdr IS CLASSDB_HEADER) {
-               while (file->Position + ClassRecord::MIN_SIZE < filesize) {
-                  ClassRecord item;
-                  if ((error = item.read(*file))) break;
+         LONG hdr;
+         file->read(&hdr, sizeof(hdr));
+         if (hdr IS CLASSDB_HEADER) {
+            while (file->Position + ClassRecord::MIN_SIZE < filesize) {
+               ClassRecord item;
+               if ((error = item.read(*file))) break;
 
-                  if (glClassDB.contains(item.ClassID)) {
-                     log.warning("Invalid class dictionary file, %s is registered twice.", item.Name.c_str());
-                     error = ERR_Failed;
-                     break;
-                  }
-                  glClassDB[item.ClassID] = item;
+               if (glClassDB.contains(item.ClassID)) {
+                  log.warning("Invalid class dictionary file, %s is registered twice.", item.Name.c_str());
+                  error = ERR_Failed;
+                  break;
                }
+               glClassDB[item.ClassID] = item;
+            }
 
-               if (error) glScanClasses = true;
-            }
-            else {
-               // File is probably from an old version and requires recalculation.
-               glScanClasses = true;
-            }
+            if (error) glScanClasses = true;
          }
-         else glScanClasses = true; // If no file, a database rebuild is required.
+         else {
+            // File is probably from an old version and requires recalculation.
+            glScanClasses = true;
+         }
       }
-      else {
-         log.warning("Failed to load the system classes.");
-         if (Info->Flags & OPF_ERROR) Info->Error = error;
-         CloseCore();
-         return NULL;
-      }
+      else glScanClasses = true; // If no file, a database rebuild is required.
    }
 
    if (na > 0) SetArray(glCurrentTask, FID_Parameters, newargs, na);
@@ -1366,12 +1345,10 @@ void print_diagnosis(LONG ProcessID, LONG Signal)
          auto semlist = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
 
          for (LONG index=1; index < MAX_SEMAPHORES; index++) {
-            if (semlist[index].InstanceID IS glInstanceID) {
-               for (LONG j=0; j < ARRAYSIZE(semlist[index].Processes); j++) {
-                  if (semlist[index].Processes[j].ProcessID IS ProcessID) {
-                     fprintf(fd, "  Semaphore[%.4d]:  Access: %d,  Blocking: %d\n", index, semlist[index].Processes[j].AccessCount, semlist[index].Processes[j].BlockCount);
-                     break;
-                  }
+            for (LONG j=0; j < ARRAYSIZE(semlist[index].Processes); j++) {
+               if (semlist[index].Processes[j].ProcessID IS ProcessID) {
+                  fprintf(fd, "  Semaphore[%.4d]:  Access: %d,  Blocking: %d\n", index, semlist[index].Processes[j].AccessCount, semlist[index].Processes[j].BlockCount);
+                  break;
                }
             }
          }
@@ -1622,166 +1599,6 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
 }
 #endif
 
-/*********************************************************************************************************************
-** Loads the module cache file.  If the cache file does not exist, it is created.
-**
-** The cache merely holds the location of each system module that is installed in the system.  No modules are loaded
-** for inspection by this routine.
-*/
-
-static ERROR load_modules(void)
-{
-   pf::Log log(__FUNCTION__);
-   LONG i, j;
-
-   // Entry structure:
-   //
-   //   ULONG Hash
-   //   LONG  Size
-   //   char  Path[]
-
-   ERROR error;
-   if (glSharedControl->ModulesMID) {
-      if (!AccessMemoryID(glSharedControl->ModulesMID, MEM_READ, 2000, (APTR *)&glModules)) {
-         return ERR_Okay;
-      }
-      else return log.warning(ERR_AccessMemory);
-   }
-
-   {
-      objFile::create file = {
-         fl::Path(glModuleBinPath),
-         fl::Flags(FL_READ)
-      };
-
-      if (file.ok()) {
-         LONG size;
-         if (!(error = file->get(FID_Size, &size))) {
-            if (!(error = AllocMemory(size, MEM_NO_CLEAR|MEM_PUBLIC|MEM_UNTRACKED|MEM_NO_BLOCK, (APTR *)&glModules, &glSharedControl->ModulesMID))) {
-               error = file->read(glModules, size);
-            }
-         }
-
-         if (!error) return ERR_Okay;
-         else {
-            log.error("Failed to read %s", glModuleBinPath);
-            return ERR_File;
-         }
-      }
-   }
-
-   log.branch("Scanning for available modules.");
-   char modules[16384];
-
-   size_t pos = 0;
-   LONG total = 0;
-
-   DirInfo *dir;
-   if (!OpenDir("modules:", RDF_QUALIFY, &dir)) {
-      while ((!ScanDir(dir)) and (pos < (sizeof(modules)-256))) {
-         FileInfo *folder = dir->Info;
-         if (folder->Flags & RDF_FILE) {
-            auto item = (ModuleItem *)(modules + pos);
-
-            #ifdef __ANDROID__
-               char modname[60];
-               CSTRING foldername = folder->Name;
-
-               // Android modules are in the format "libcategory_modname.so"
-
-               if ((foldername[0] IS 'l') and (foldername[1] IS 'i') and (foldername[2] IS 'b')) {
-                  foldername += 3;
-
-                  // Skip category if one is specified, since we just want the module's short name.
-
-                  for (LONG j=0; foldername[j]; j++) {
-                     if (foldername[j] IS '_') {
-                        foldername += j + 1;
-                        break;
-                     }
-                  }
-
-                  for (i=0; foldername[i] and (foldername[i] != '.') and (i < sizeof(modname)); i++) modname[i] = foldername[i];
-                  modname[i] = 0;
-
-                  item->Hash = StrHash(modname, FALSE);
-
-                  pos += sizeof(ModuleItem);
-                  pos += StrCopy("modules:", modules+pos, sizeof(modules)-pos-1);
-                  for (i=0; folder->Name[i] and (folder->Name[i] != '.') and (pos < sizeof(modules)-1); i++) modules[pos++] = folder->Name[i]; // Copy everything up to the extension.
-                  modules[pos++] = 0; // Include the null byte.
-               }
-               else continue;  // Anything not starting with 'lib' is ignored.
-            #else
-               char modname[60];
-
-               for (i=0; folder->Name[i] and (folder->Name[i] != '.') and (i < (LONG)sizeof(modname)); i++) modname[i] = folder->Name[i];
-               modname[i] = 0;
-
-               item->Hash = StrHash(modname, FALSE);
-
-               pos += sizeof(ModuleItem);
-               pos += StrCopy("modules:", modules+pos, sizeof(modules)-pos-1);
-               pos += StrCopy(modname, modules+pos, sizeof(modules)-pos-1);
-               pos++; // Include the null byte.
-            #endif
-
-            item->Size = (MAXINT)(modules + pos) - (MAXINT)item;
-
-            total++;
-         }
-      }
-      FreeResource(dir);
-   }
-
-   if ((total > 0) and (!(error = AllocMemory(sizeof(ModuleHeader) + (total * sizeof(LONG)) + pos, MEM_NO_CLEAR|MEM_PUBLIC|MEM_UNTRACKED|MEM_NO_BLOCK, (APTR *)&glModules, &glSharedControl->ModulesMID)))) {
-      glModules->Total = total;
-
-      // Generate the offsets
-
-      LONG *offsets = (LONG *)(glModules + 1);
-      ModuleItem *item = (ModuleItem *)((APTR)modules);
-      for (LONG i=0; i < total; i++) {
-         offsets[i] = (MAXINT)item - (MAXINT)modules + sizeof(ModuleHeader) + (total<<2);
-         item = (ModuleItem *)(((char *)item) + item->Size);
-      }
-
-      CopyMemory(modules, offsets + total, pos);
-
-      // Sort the offsets
-
-      LONG h = 1;
-      while (h < total / 9) h = 3 * h + 1;
-      for (; h > 0; h /= 3) {
-         for (LONG i=h; i < total; i++) {
-            LONG temp = offsets[i];
-            for (j=i; (j >= h) and (((ModuleItem *)((char *)glModules + offsets[j-h]))->Hash > ((ModuleItem *)((char *)glModules + temp))->Hash); j -= h) {
-               offsets[j] = offsets[j - h];
-            }
-            offsets[j] = temp;
-         }
-      }
-
-      objFile::create file = {
-         fl::Path(glModuleBinPath),
-         fl::Flags(FL_NEW|FL_WRITE),
-         fl::Permissions(PERMIT_USER_READ|PERMIT_USER_WRITE|PERMIT_GROUP_READ|PERMIT_GROUP_WRITE|PERMIT_OTHERS_READ)
-      };
-
-      if (file.ok()) {
-         file->write(&total, sizeof(total), NULL);
-         file->write(offsets, total * sizeof(LONG), NULL);
-         file->write(modules, pos, NULL);
-      }
-   }
-   else {
-      log.warning("Failed to find anything in 'modules:'");
-      error = ERR_Search;
-   }
-
-   return error;
-}
-
 //**********************************************************************
 
 ERROR convert_errno(LONG Error, ERROR Default)
@@ -1866,26 +1683,25 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
    // OPF_SYSTEM_PATH : system  : glSystemPath = %ROOT%/share/parasol
 
    #ifdef _WIN32
-      SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "programs/filemanager", TAGEND);
-      SetVolume(AST_NAME, "system", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick", TAGEND);
+      SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath.c_str(), AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "programs/filemanager", TAGEND);
+      SetVolume(AST_NAME, "system", AST_PATH, glRootPath.c_str(), AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick", TAGEND);
 
-      if (glModulePath[0]) {
-         SetVolume(AST_NAME, "modules", AST_PATH, glModulePath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick", TAGEND);
+      if (!glModulePath.empty()) {
+         SetVolume(AST_NAME, "modules", AST_PATH, glModulePath.c_str(), AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick", TAGEND);
       }
       else {
          SetVolume(AST_NAME, "modules", AST_PATH, "system:lib/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick", TAGEND);
       }
    #elif __unix__
-      SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "programs/filemanager",  TAGEND);
-      SetVolume(AST_NAME, "system", AST_PATH, glSystemPath, AST_FLAGS, VOLUME_REPLACE|VOLUME_SYSTEM, AST_ICON, "misc/brick",  TAGEND);
+      SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath.c_str(), AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "programs/filemanager",  TAGEND);
+      SetVolume(AST_NAME, "system", AST_PATH, glSystemPath.c_str(), AST_FLAGS, VOLUME_REPLACE|VOLUME_SYSTEM, AST_ICON, "misc/brick",  TAGEND);
 
-      if (glModulePath[0]) {
-         SetVolume(AST_NAME, "modules", AST_PATH, glModulePath, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick",  TAGEND);
+      if (!glModulePath.empty()) {
+         SetVolume(AST_NAME, "modules", AST_PATH, glModulePath.c_str(), AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick",  TAGEND);
       }
       else {
-         std::string path(glRootPath);
-         path.append("lib/parasol/");
-         SetVolume(AST_NAME, "modules", AST_PATH, path, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick",  TAGEND);
+         std::string path = glRootPath + "lib/parasol/";
+         SetVolume(AST_NAME, "modules", AST_PATH, path.c_str(), AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick",  TAGEND);
       }
 
       SetVolume(AST_NAME, "drive1", AST_PATH, "/", AST_LABEL, "Linux", AST_FLAGS, VOLUME_REPLACE|VOLUME_SYSTEM, AST_ICON, "devices/storage", AST_DEVICE, "hd", TAGEND);
@@ -2134,6 +1950,14 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
          path[p] = 0;
          SetVolume(AST_NAME, name, AST_PATH, path, AST_FLAGS, VOLUME_PRIORITY, TAGEND);
       }
+   }
+
+   // Change glModulePath to an absolute path to optimise the loading of modules.
+
+   STRING mpath;
+   if (!ResolvePath("modules:", RSF_NO_FILE_CHECK, &mpath)) {
+      glModulePath = mpath;
+      FreeResource(mpath);
    }
 
    return ERR_Okay;

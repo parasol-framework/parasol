@@ -726,11 +726,6 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
    if (!Self->Location) return log.warning(ERR_MissingPath);
 
 #ifdef _WIN32
-   //struct taskAddArgument add;
-   //snprintf(buffer, sizeof(buffer), "--instance %d", glInstanceID);
-   //add.Argument = buffer;
-   //Action(MT_AddTaskArgument, Self, &add);
-
    // Determine the launch folder
 
    launchdir[0] = 0;
@@ -1096,7 +1091,6 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
          shTasks[i].ProcessID    = pid;
          shTasks[i].ParentID     = glCurrentTask->UID;
          shTasks[i].CreationTime = PreciseTime() / 1000LL;
-         shTasks[i].InstanceID   = glInstanceID;
       }
 
       UNLOCK_PROCESS_TABLE();
@@ -1889,8 +1883,8 @@ static ERROR TASK_SetVar(extTask *Self, struct acSetVar *Args)
       if (!AllocMemory(StrLength(Args->Field) + StrLength(Args->Value) + 2,
             MEM_STRING|MEM_NO_CLEAR, (void **)&field, NULL)) {
 
-         LONG pos = StrCopy(Args->Field, field, COPY_ALL) + 1;
-         StrCopy(Args->Value, field + pos, COPY_ALL);
+         LONG pos = StrCopy(Args->Field, field) + 1;
+         StrCopy(Args->Value, field + pos);
 
          if (Self->Fields[i]) FreeResource(Self->Fields[i]);
          Self->Fields[i] = field;
@@ -2306,26 +2300,6 @@ static ERROR SET_Location(extTask *Self, CSTRING Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Instance: The instance ID that the process belongs to.
-
-All tasks that use the Parasol API belong to a run-time instance that can host multiple processes.  Tasks that share
-the same instance ID can easily communicate with each other, while those that do not will be in a separate namespace.
-
-It is not possible to change the instance ID once the process has started.  New processes can be assigned an instance
-ID on creation with the `--instance` commandline argument.  By default, any new process will share the same
-instance ID as its creator.
-
-*********************************************************************************************************************/
-
-static ERROR GET_Instance(extTask *Self, LONG *Value)
-{
-   *Value = glInstanceID;
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
 MessageQueue: Read this field to acquire a task's message queue ID.
 
 If you need the ID of a task's message queue, read this field to obtain it.  Once you have a task's message queue ID,
@@ -2579,7 +2553,6 @@ static const FieldArray clFields[] = {
    { "Parameters",     FDF_ARRAY|FDF_STRING|FDF_RW, 0, (APTR)GET_Parameters, (APTR)SET_Parameters },
    { "ErrorCallback",  FDF_FUNCTIONPTR|FDF_RI, 0, (APTR)GET_ErrorCallback,   (APTR)SET_ErrorCallback }, // STDERR
    { "ExitCallback",   FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_ExitCallback,    (APTR)SET_ExitCallback },
-   { "Instance",       FDF_LONG|FDF_R,         0, (APTR)GET_Instance,        NULL },
    { "InputCallback",  FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_InputCallback,   (APTR)SET_InputCallback }, // STDIN
    { "LaunchPath",     FDF_STRING|FDF_RW,      0, (APTR)GET_LaunchPath,      (APTR)SET_LaunchPath },
    { "Location",       FDF_STRING|FDF_RW,      0, (APTR)GET_Location,        (APTR)SET_Location },
@@ -2599,7 +2572,7 @@ static const FieldArray clFields[] = {
 
 extern "C" ERROR add_task_class(void)
 {
-   TaskClass = objMetaClass::create::global(
+   glTaskClass = objMetaClass::create::global(
       fl::ClassVersion(VER_TASK),
       fl::Name("Task"),
       fl::Category(CCF_SYSTEM),
@@ -2612,5 +2585,5 @@ extern "C" ERROR add_task_class(void)
       fl::Size(sizeof(extTask)),
       fl::Path("modules:core"));
 
-   return TaskClass ? ERR_Okay : ERR_AddClass;
+   return glTaskClass ? ERR_Okay : ERR_AddClass;
 }

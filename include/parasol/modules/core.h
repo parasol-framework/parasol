@@ -1107,10 +1107,6 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 
 #define MAX_FILENAME 256
 
-// Flags for StrCopy()
-
-#define COPY_ALL 0x7fffffff
-
 // Module file header constants
 
 #define MODULE_HEADER_V1 1297040385
@@ -1134,10 +1130,6 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 #define MSGID_COMMAND 101
 #define MSGID_BREAK 102
 #define MSGID_QUIT 1000
-
-// Flags for ListTasks()
-
-#define LTF_CURRENT_PROCESS 1
 
 // Types for AllocateID()
 
@@ -1611,6 +1603,7 @@ struct FieldValue {
       APTR    Pointer;
       CPTR    CPointer;
       DOUBLE  Double;
+      PERCENT Percent;
       LARGE   Large;
       LONG    Long;
    };
@@ -1620,6 +1613,7 @@ struct FieldValue {
    constexpr FieldValue(ULONG pFID, LONG pValue)    : FieldID(pFID), Type(FD_LONG), Long(pValue) { };
    constexpr FieldValue(ULONG pFID, LARGE pValue)   : FieldID(pFID), Type(FD_LARGE), Large(pValue) { };
    constexpr FieldValue(ULONG pFID, DOUBLE pValue)  : FieldID(pFID), Type(FD_DOUBLE), Double(pValue) { };
+   constexpr FieldValue(ULONG pFID, PERCENT pValue) : FieldID(pFID), Type(FD_DOUBLE|FD_PERCENTAGE), Percent(pValue) { };
    constexpr FieldValue(ULONG pFID, APTR pValue)    : FieldID(pFID), Type(FD_POINTER), Pointer(pValue) { };
    constexpr FieldValue(ULONG pFID, CPTR pValue)    : FieldID(pFID), Type(FD_POINTER), CPointer(pValue) { };
    constexpr FieldValue(ULONG pFID, CPTR pValue, LONG pCustom) : FieldID(pFID), Type(pCustom), CPointer(pValue) { };
@@ -1694,14 +1688,10 @@ struct FieldDef {
 
 struct SystemState {
    CSTRING * ErrorMessages;    // A sorted array of all error codes, translated into human readable strings.
-   CSTRING   RootPath;         // The current root path, which defaults to the location of the installation folder.
-   CSTRING   SystemPath;       // The current path of the 'system:' volume.
-   CSTRING   ModulePath;       // The current path to the system modules, normally 'system:modules/'
    CSTRING   Platform;         // String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.
    HOSTHANDLE ConsoleFD;       // Internal
    LONG      CoreVersion;      // Reflects the Core version number.
    LONG      CoreRevision;     // Reflects the Core revision number.
-   LONG      InstanceID;       // This is the ID of the instance that the calling process resides in.
    LONG      TotalErrorMessages; // The total number of error codes listed in the ErrorMessages array.
    LONG      Stage;            // The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.
 };
@@ -1727,11 +1717,6 @@ struct MethodArray {
    LONG    Size;                         // Total byte-size of all accepted parameters when they are assembled as a C structure.
 };
 
-struct MemoryLocks {
-   MEMORYID MemoryID;    // Reference to a memory ID.
-   WORD     Locks;       // The total number of locks on the memory block.
-};
-
 struct ActionTable {
    ULONG   Hash;                         // Hash of the action name.
    LONG    Size;                         // Byte-size of the structure for this action.
@@ -1742,28 +1727,6 @@ struct ActionTable {
 struct ChildEntry {
    OBJECTID ObjectID;    // Object ID
    CLASSID  ClassID;     // The class ID of the referenced object.
-};
-
-struct ListTasks {
-   LONG     ProcessID;                  // Core process ID
-   OBJECTID TaskID;                     // Task ID for this array entry
-   LONG     WaitingProcessID;           // If the task is waiting, this field reflects the other task's ID
-   MEMORYID WaitingMemoryID;            // If the task is waiting, this field reflects the memory ID
-   LONG     WaitingTime;                // If the task is waiting, the time at which the sleep started (msec)
-   MEMORYID MessageID;                  // Message queue ID
-   OBJECTID OutputID;                   // The object that the task should output information to
-   HOSTHANDLE Semaphore;                // Semaphore for IPC
-   LONG     InstanceID;                 // Instance that the task belongs to
-   LONG     TotalMemoryLocks;           // Total number of held memory locks
-   OBJECTID ModalID;                    // Refers to any surface that currently holds a modal lock.
-   struct MemoryLocks * MemoryLocks;    // An array of memory locks currently held by the process.
-};
-
-struct FDTable {
-   HOSTHANDLE FD;                         // The file descriptor that is managed by this record.
-   void (*Routine)(HOSTHANDLE, APTR);     // The routine that will process read/write messages for the FD.
-   APTR Data;                             // A user specific data pointer.
-   LONG Flags;                            // Set to RFD_READ, RFD_WRITE or RFD_EXCEPT.
 };
 
 struct Message {
@@ -1946,7 +1909,7 @@ struct CoreBase {
    LONG (*_AllocateID)(LONG Type);
    ERROR (*_AllocMemory)(LONG Size, LONG Flags, APTR Address, MEMORYID * ID);
    ERROR (*_AccessObjectID)(OBJECTID Object, LONG MilliSeconds, APTR Result);
-   ERROR (*_ListTasks)(LONG Flags, struct ListTasks ** List);
+   ERROR (*_VarCopy)(struct KeyStore * Source, struct KeyStore * Dest);
    ERROR (*_CheckAction)(OBJECTPTR Object, LONG Action);
    ERROR (*_CheckMemoryExists)(MEMORYID ID);
    ERROR (*_CheckObjectExists)(OBJECTID Object);
@@ -1965,7 +1928,7 @@ struct CoreBase {
    OBJECTID (*_GetOwnerID)(OBJECTID Object);
    ERROR (*_GetField)(OBJECTPTR Object, FIELD Field, APTR Result);
    ERROR (*_GetFieldVariable)(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size);
-   ERROR (*_GetFields)(OBJECTPTR Object, ...);
+   LONG (*_TotalChildren)(OBJECTID Object);
    CSTRING (*_GetName)(OBJECTPTR Object);
    ERROR (*_ListChildren)(OBJECTID Object, struct ChildEntry * List, LONG * Count);
    ERROR (*_Base64Decode)(struct rkBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
@@ -1988,7 +1951,7 @@ struct CoreBase {
    ERROR (*_SetOwner)(OBJECTPTR Object, OBJECTPTR Owner);
    OBJECTPTR (*_SetContext)(OBJECTPTR Object);
    ERROR (*_SetField)(OBJECTPTR Object, FIELD Field, ...);
-   ERROR (*_SetFields)(OBJECTPTR Object, ...);
+   CSTRING (*_FieldName)(ULONG FieldID);
    ERROR (*_ScanDir)(struct DirInfo * Info);
    ERROR (*_SetName)(OBJECTPTR Object, CSTRING Name);
    void (*_LogReturn)(void);
@@ -2041,7 +2004,7 @@ struct CoreBase {
    ERROR (*_LockSharedMutex)(APTR Mutex, LONG MilliSeconds);
    void (*_UnlockSharedMutex)(APTR Mutex);
    void (*_VLogF)(int Flags, const char *Header, const char *Message, va_list Args);
-   LONG (*_StrSearch)(CSTRING Keyword, CSTRING String, LONG Flags);
+   LONG (*_Base64Encode)(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
    ERROR (*_VarSetSized)(struct KeyStore * Store, CSTRING Key, LONG Size, APTR Data, LONG * DataSize);
    ERROR (*_VarLock)(struct KeyStore * Store, LONG Timeout);
    ERROR (*_WakeProcess)(LONG ProcessID);
@@ -2049,8 +2012,8 @@ struct CoreBase {
    OBJECTPTR (*_CurrentTask)(void);
    ERROR (*_KeyIterate)(struct KeyStore * Store, ULONG Index, ULONG * Key, APTR Data, LONG * Size);
    CSTRING (*_ResolveGroupID)(LONG Group);
-   LONG (*_StrCopy)(CSTRING Src, STRING Dest, LONG Length);
-   STRING (*_StrClone)(CSTRING String);
+   ERROR (*_VarSetString)(struct KeyStore * Store, CSTRING Key, CSTRING Value);
+   CSTRING (*_VarGetString)(struct KeyStore * Store, CSTRING Key);
    void (*_VarUnlock)(struct KeyStore * Store);
    CSTRING (*_ResolveUserID)(LONG User);
    ERROR (*_CreateLink)(CSTRING From, CSTRING To);
@@ -2073,10 +2036,6 @@ struct CoreBase {
    ULONG (*_StrHash)(CSTRING String, LONG CaseSensitive);
    ERROR (*_AddInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING Value);
    LONG (*_UTF8Copy)(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
-   LONG (*_Base64Encode)(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
-   ERROR (*_VarSetString)(struct KeyStore * Store, CSTRING Key, CSTRING Value);
-   CSTRING (*_VarGetString)(struct KeyStore * Store, CSTRING Key);
-   ERROR (*_VarCopy)(struct KeyStore * Source, struct KeyStore * Dest);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2089,7 +2048,7 @@ inline CSTRING ResolveClassID(CLASSID ID) { return CoreBase->_ResolveClassID(ID)
 inline LONG AllocateID(LONG Type) { return CoreBase->_AllocateID(Type); }
 inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address, MEMORYID * ID) { return CoreBase->_AllocMemory(Size,Flags,Address,ID); }
 inline ERROR AccessObjectID(OBJECTID Object, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessObjectID(Object,MilliSeconds,Result); }
-inline ERROR ListTasks(LONG Flags, struct ListTasks ** List) { return CoreBase->_ListTasks(Flags,List); }
+inline ERROR VarCopy(struct KeyStore * Source, struct KeyStore * Dest) { return CoreBase->_VarCopy(Source,Dest); }
 inline ERROR CheckAction(OBJECTPTR Object, LONG Action) { return CoreBase->_CheckAction(Object,Action); }
 inline ERROR CheckMemoryExists(MEMORYID ID) { return CoreBase->_CheckMemoryExists(ID); }
 inline ERROR CheckObjectExists(OBJECTID Object) { return CoreBase->_CheckObjectExists(Object); }
@@ -2108,7 +2067,7 @@ inline CLASSID GetClassID(OBJECTID Object) { return CoreBase->_GetClassID(Object
 inline OBJECTID GetOwnerID(OBJECTID Object) { return CoreBase->_GetOwnerID(Object); }
 inline ERROR GetField(OBJECTPTR Object, FIELD Field, APTR Result) { return CoreBase->_GetField(Object,Field,Result); }
 inline ERROR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size) { return CoreBase->_GetFieldVariable(Object,Field,Buffer,Size); }
-template<class... Args> ERROR GetFields(OBJECTPTR Object, Args... Tags) { return CoreBase->_GetFields(Object,Tags...); }
+inline LONG TotalChildren(OBJECTID Object) { return CoreBase->_TotalChildren(Object); }
 inline CSTRING GetName(OBJECTPTR Object) { return CoreBase->_GetName(Object); }
 inline ERROR ListChildren(OBJECTID Object, struct ChildEntry * List, LONG * Count) { return CoreBase->_ListChildren(Object,List,Count); }
 inline ERROR Base64Decode(struct rkBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written) { return CoreBase->_Base64Decode(State,Input,InputSize,Output,Written); }
@@ -2131,7 +2090,7 @@ inline ERROR SendMessage(MEMORYID Queue, LONG Type, LONG Flags, APTR Data, LONG 
 inline ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner) { return CoreBase->_SetOwner(Object,Owner); }
 inline OBJECTPTR SetContext(OBJECTPTR Object) { return CoreBase->_SetContext(Object); }
 template<class... Args> ERROR SetField(OBJECTPTR Object, FIELD Field, Args... Tags) { return CoreBase->_SetField(Object,Field,Tags...); }
-template<class... Args> ERROR SetFields(OBJECTPTR Object, Args... Tags) { return CoreBase->_SetFields(Object,Tags...); }
+inline CSTRING FieldName(ULONG FieldID) { return CoreBase->_FieldName(FieldID); }
 inline ERROR ScanDir(struct DirInfo * Info) { return CoreBase->_ScanDir(Info); }
 inline ERROR SetName(OBJECTPTR Object, CSTRING Name) { return CoreBase->_SetName(Object,Name); }
 inline void LogReturn(void) { return CoreBase->_LogReturn(); }
@@ -2184,7 +2143,7 @@ inline void FreeSharedMutex(APTR Mutex) { return CoreBase->_FreeSharedMutex(Mute
 inline ERROR LockSharedMutex(APTR Mutex, LONG MilliSeconds) { return CoreBase->_LockSharedMutex(Mutex,MilliSeconds); }
 inline void UnlockSharedMutex(APTR Mutex) { return CoreBase->_UnlockSharedMutex(Mutex); }
 inline void VLogF(int Flags, const char *Header, const char *Message, va_list Args) { return CoreBase->_VLogF(Flags,Header,Message,Args); }
-inline LONG StrSearch(CSTRING Keyword, CSTRING String, LONG Flags) { return CoreBase->_StrSearch(Keyword,String,Flags); }
+inline LONG Base64Encode(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize) { return CoreBase->_Base64Encode(State,Input,InputSize,Output,OutputSize); }
 inline ERROR VarSetSized(struct KeyStore * Store, CSTRING Key, LONG Size, APTR Data, LONG * DataSize) { return CoreBase->_VarSetSized(Store,Key,Size,Data,DataSize); }
 inline ERROR VarLock(struct KeyStore * Store, LONG Timeout) { return CoreBase->_VarLock(Store,Timeout); }
 inline ERROR WakeProcess(LONG ProcessID) { return CoreBase->_WakeProcess(ProcessID); }
@@ -2192,8 +2151,8 @@ inline ERROR SetResourcePath(LONG PathType, CSTRING Path) { return CoreBase->_Se
 inline OBJECTPTR CurrentTask(void) { return CoreBase->_CurrentTask(); }
 inline ERROR KeyIterate(struct KeyStore * Store, ULONG Index, ULONG * Key, APTR Data, LONG * Size) { return CoreBase->_KeyIterate(Store,Index,Key,Data,Size); }
 inline CSTRING ResolveGroupID(LONG Group) { return CoreBase->_ResolveGroupID(Group); }
-inline LONG StrCopy(CSTRING Src, STRING Dest, LONG Length) { return CoreBase->_StrCopy(Src,Dest,Length); }
-inline STRING StrClone(CSTRING String) { return CoreBase->_StrClone(String); }
+inline ERROR VarSetString(struct KeyStore * Store, CSTRING Key, CSTRING Value) { return CoreBase->_VarSetString(Store,Key,Value); }
+inline CSTRING VarGetString(struct KeyStore * Store, CSTRING Key) { return CoreBase->_VarGetString(Store,Key); }
 inline void VarUnlock(struct KeyStore * Store) { return CoreBase->_VarUnlock(Store); }
 inline CSTRING ResolveUserID(LONG User) { return CoreBase->_ResolveUserID(User); }
 inline ERROR CreateLink(CSTRING From, CSTRING To) { return CoreBase->_CreateLink(From,To); }
@@ -2216,10 +2175,6 @@ inline const struct SystemState * GetSystemState(void) { return CoreBase->_GetSy
 inline ULONG StrHash(CSTRING String, LONG CaseSensitive) { return CoreBase->_StrHash(String,CaseSensitive); }
 inline ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
 inline LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size) { return CoreBase->_UTF8Copy(Src,Dest,Chars,Size); }
-inline LONG Base64Encode(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize) { return CoreBase->_Base64Encode(State,Input,InputSize,Output,OutputSize); }
-inline ERROR VarSetString(struct KeyStore * Store, CSTRING Key, CSTRING Value) { return CoreBase->_VarSetString(Store,Key,Value); }
-inline CSTRING VarGetString(struct KeyStore * Store, CSTRING Key) { return CoreBase->_VarGetString(Store,Key); }
-inline ERROR VarCopy(struct KeyStore * Source, struct KeyStore * Dest) { return CoreBase->_VarCopy(Source,Dest); }
 #endif
 
 
@@ -2240,6 +2195,22 @@ inline CSTRING to_cstring(CSTRING A) { return A; }
 
 template <class T, class U> inline ERROR StrMatch(T &&A, U &&B) {
    return StrCompare(to_cstring(A), to_cstring(B), 0, STR_MATCH_LEN);
+}
+
+inline LONG StrCopy(CSTRING String, STRING Dest, LONG Length = 0x7fffffff)
+{
+   if ((Length > 0) and (String) and (Dest)) {
+      LONG i = 0;
+      while ((i < Length) and (*String)) Dest[i++] = *String++;
+
+      if ((*String) and (i >= Length)) {
+         Dest[i-1] = 0; // Ran out of buffer space, terminate from one character back
+      }
+      else Dest[i] = 0;
+      return i;
+   }
+
+   return 0;
 }
 
 #ifndef PRV_CORE_DATA
@@ -2268,7 +2239,7 @@ template <class T, class U> inline ERROR StrCompare(T &&A, U &&B, LONG Length, L
    return StrCompare(to_cstring(A), to_cstring(B), Length, Flags);
 }
 
-template <class T> inline LONG StrCopy(T &&A, STRING B, LONG Length) {
+template <class T> inline LONG StrCopy(T &&A, STRING B, LONG Length = 0x7fffffff) {
    return StrCopy(to_cstring(A), B, Length);
 }
 
@@ -2281,6 +2252,45 @@ typedef std::vector<ConfigGroup> ConfigGroups;
 inline void CopyMemory(const void *Src, APTR Dest, LONG Length)
 {
    memmove(Dest, Src, Length);
+}
+
+inline LONG StrSearchCase(CSTRING Keyword, CSTRING String)
+{
+   LONG i;
+   LONG pos = 0;
+   while (String[pos]) {
+      for (i=0; Keyword[i]; i++) if (String[pos+i] != Keyword[i]) break;
+      if (!Keyword[i]) return pos;
+      for (++pos; (String[pos] & 0xc0) IS 0x80; pos++);
+   }
+
+   return -1;
+}
+
+inline LONG StrSearch(CSTRING Keyword, CSTRING String)
+{
+   LONG i;
+   LONG pos = 0;
+   while (String[pos]) {
+      for (i=0; Keyword[i]; i++) if (std::toupper(String[pos+i]) != std::toupper(Keyword[i])) break;
+      if (!Keyword[i]) return pos;
+      for (++pos; (String[pos] & 0xc0) IS 0x80; pos++);
+   }
+
+   return -1;
+}
+
+inline STRING StrClone(CSTRING String)
+{
+   if (!String) return NULL;
+
+   LONG len = strlen(String);
+   STRING newstr;
+   if (!AllocMemory(len+1, MEM_STRING, (APTR *)&newstr, NULL)) {
+      CopyMemory(String, newstr, len+1);
+      return newstr;
+   }
+   else return NULL;
 }
 
 inline LONG StrLength(CSTRING String) {
@@ -2333,119 +2343,6 @@ inline ERROR ClearMemory(APTR Memory, LONG Length) {
 // NB: Turning this off will cause issues between threads unless they call the necessary locking functions.
 
 //#define AUTO_OBJECT_LOCK 1
-
-//********************************************************************************************************************
-// Header used for all objects.
-
-struct BaseClass { // Must be 64-bit aligned
-   union {
-      objMetaClass *Class;          // [Public] Class pointer
-      class extMetaClass *ExtClass; // [Private] Internal version of the class pointer
-   };
-   APTR     ChildPrivate;       // Address for the ChildPrivate structure, if allocated
-   APTR     CreatorMeta;        // The creator (via NewObject) is permitted to store a custom data pointer here.
-   CLASSID  ClassID;            // The object's class ID
-   CLASSID  SubID;              // The object's sub-class ID, or zero if irrelevant.
-   OBJECTID UID;                // Unique object identifier
-   OBJECTID OwnerID;            // The owner of this object
-   NF       Flags;              // Object flags
-   LONG     NotifyFlags[2];     // Action subscription flags - space for 64 actions max
-   volatile LONG  ThreadID;     // Managed by locking functions
-   char Name[MAX_NAME_LEN];     // The name of the object (optional)
-   UBYTE ThreadPending;         // ActionThread() increments this.
-   volatile BYTE Queue;         // Managed by locking functions
-   volatile BYTE SleepQueue;    //
-   volatile bool Locked;        // Set if locked by AccessObjectID()/LockObject()
-   BYTE ActionDepth;            // Incremented each time an action or method is called on the object
-
-   inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
-   inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
-   inline bool isSubClass() { return SubID != 0; }
-   inline OBJECTID ownerID() { return OwnerID; }
-   inline NF flags() { return Flags; }
-
-   CSTRING className();
-
-   inline bool collecting() { // Is object being freed or marked for collection?
-      return (Flags & (NF::FREE|NF::COLLECT)) != NF::NIL;
-   }
-
-   inline bool terminating() { // Is object currently being freed?
-      return (Flags & NF::FREE) != NF::NIL;
-   }
-
-   inline ERROR threadLock() {
-      #ifdef AUTO_OBJECT_LOCK
-         if (INC_QUEUE(this) IS 1) {
-            ThreadID = get_thread_id();
-            return ERR_Okay;
-         }
-         else {
-            if (ThreadID IS get_thread_id()) return ERR_Okay; // If this is for the same thread then it's a nested lock, so there's no issue.
-            SUB_QUEUE(this); // Put the lock count back to normal before LockObject()
-            return LockObject(this, -1); // Can fail if object is marked for deletion.
-         }
-      #else
-         return ERR_Okay;
-      #endif
-   }
-
-   inline void threadRelease() {
-      #ifdef AUTO_OBJECT_LOCK
-         if (SleepQueue > 0) ReleaseObject(this);
-         else SUB_QUEUE(this);
-      #endif
-   }
-
-   // These are fast in-line calls for object locking.  They attempt to quickly 'steal' the
-   // object lock if the queue value was at zero.
-
-   inline LONG incQueue() {
-      return __sync_add_and_fetch(&Queue, 1);
-   }
-
-   inline LONG subQueue() {
-      return __sync_sub_and_fetch(&Queue, 1);
-   }
-
-   inline LONG incSleep() {
-      return __sync_add_and_fetch(&SleepQueue, 1);
-   }
-
-   inline LONG subSleep() {
-      return __sync_sub_and_fetch(&SleepQueue, 1);
-   }
-
-   inline bool hasOwner(OBJECTID ID) { // Return true if ID has ownership.
-      auto oid = this->OwnerID;
-      while ((oid) and (oid != ID)) oid = GetOwnerID(oid);
-      return oid ? true : false;
-   }
-
-   inline ERROR set(ULONG FieldID, int Value)             { return SetField(this, (FIELD)FieldID|TLONG, Value); }
-   inline ERROR set(ULONG FieldID, unsigned int Value)    { return SetField(this, (FIELD)FieldID|TLONG, Value); }
-   inline ERROR set(ULONG FieldID, LARGE Value)           { return SetField(this, (FIELD)FieldID|TLARGE, Value); }
-   inline ERROR set(ULONG FieldID, DOUBLE Value)          { return SetField(this, (FIELD)FieldID|TDOUBLE, Value); }
-   inline ERROR set(ULONG FieldID, const FUNCTION *Value) { return SetField(this, (FIELD)FieldID|TFUNCTION, Value); }
-   inline ERROR set(ULONG FieldID, const char *Value)     { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
-   inline ERROR set(ULONG FieldID, const unsigned char *Value) { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
-   inline ERROR set(ULONG FieldID, std::string &Value)    { return SetField(this, (FIELD)FieldID|TSTRING, Value.c_str()); }
-   inline ERROR set(ULONG FieldID, const Variable *Value) { return SetField(this, (FIELD)FieldID|TVAR, Value); }
-   // Works both for regular data pointers and function pointers if field is defined correctly.
-   inline ERROR set(ULONG FieldID, const void *Value) { return SetField(this, (FIELD)FieldID|TPTR, Value); }
-
-   inline ERROR setPercentage(ULONG FieldID, DOUBLE Value) { return SetField(this, (FIELD)FieldID|TDOUBLE|TPERCENT, Value); }
-
-   inline ERROR get(ULONG FieldID, LONG *Value) { return GetField(this, (FIELD)FieldID|TLONG, Value); }
-   inline ERROR get(ULONG FieldID, LARGE *Value) { return GetField(this, (FIELD)FieldID|TLARGE, Value); }
-   inline ERROR get(ULONG FieldID, DOUBLE *Value) { return GetField(this, (FIELD)FieldID|TDOUBLE, Value); }
-   inline ERROR get(ULONG FieldID, STRING *Value) { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
-   inline ERROR get(ULONG FieldID, CSTRING *Value) { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
-   inline ERROR get(ULONG FieldID, Variable *Value) { return GetField(this, (FIELD)FieldID|TVAR, Value); }
-   inline ERROR getPtr(ULONG FieldID, APTR Value) { return GetField(this, (FIELD)FieldID|TPTR, Value); }
-   inline ERROR getPercentage(ULONG FieldID, DOUBLE *Value) { return GetField(this, (FIELD)FieldID|TDOUBLE|TPERCENT, Value); }
-
-} __attribute__ ((aligned (8)));
 
 namespace pf {
 
@@ -2587,6 +2484,176 @@ class Log { // C++ wrapper for Parasol's log functionality
          #endif
       }
 };
+
+} // namespace
+
+//********************************************************************************************************************
+// Header used for all objects.
+
+struct BaseClass { // Must be 64-bit aligned
+   union {
+      objMetaClass *Class;          // [Public] Class pointer
+      class extMetaClass *ExtClass; // [Private] Internal version of the class pointer
+   };
+   APTR     ChildPrivate;       // Address for the ChildPrivate structure, if allocated
+   APTR     CreatorMeta;        // The creator (via NewObject) is permitted to store a custom data pointer here.
+   CLASSID  ClassID;            // The object's class ID
+   CLASSID  SubID;              // The object's sub-class ID, or zero if irrelevant.
+   OBJECTID UID;                // Unique object identifier
+   OBJECTID OwnerID;            // The owner of this object
+   NF       Flags;              // Object flags
+   LONG     NotifyFlags[2];     // Action subscription flags - space for 64 actions max
+   volatile LONG  ThreadID;     // Managed by locking functions
+   char Name[MAX_NAME_LEN];     // The name of the object (optional)
+   UBYTE ThreadPending;         // ActionThread() increments this.
+   volatile BYTE Queue;         // Managed by locking functions
+   volatile BYTE SleepQueue;    //
+   volatile bool Locked;        // Set if locked by AccessObjectID()/LockObject()
+   BYTE ActionDepth;            // Incremented each time an action or method is called on the object
+
+   inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
+   inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
+   inline bool isSubClass() { return SubID != 0; }
+   inline OBJECTID ownerID() { return OwnerID; }
+   inline NF flags() { return Flags; }
+
+   CSTRING className();
+
+   inline bool collecting() { // Is object being freed or marked for collection?
+      return (Flags & (NF::FREE|NF::COLLECT)) != NF::NIL;
+   }
+
+   inline bool terminating() { // Is object currently being freed?
+      return (Flags & NF::FREE) != NF::NIL;
+   }
+
+   inline ERROR threadLock() {
+      #ifdef AUTO_OBJECT_LOCK
+         if (INC_QUEUE(this) IS 1) {
+            ThreadID = get_thread_id();
+            return ERR_Okay;
+         }
+         else {
+            if (ThreadID IS get_thread_id()) return ERR_Okay; // If this is for the same thread then it's a nested lock, so there's no issue.
+            SUB_QUEUE(this); // Put the lock count back to normal before LockObject()
+            return LockObject(this, -1); // Can fail if object is marked for deletion.
+         }
+      #else
+         return ERR_Okay;
+      #endif
+   }
+
+   inline void threadRelease() {
+      #ifdef AUTO_OBJECT_LOCK
+         if (SleepQueue > 0) ReleaseObject(this);
+         else SUB_QUEUE(this);
+      #endif
+   }
+
+   // These are fast in-line calls for object locking.  They attempt to quickly 'steal' the
+   // object lock if the queue value was at zero.
+
+   inline LONG incQueue() {
+      return __sync_add_and_fetch(&Queue, 1);
+   }
+
+   inline LONG subQueue() {
+      return __sync_sub_and_fetch(&Queue, 1);
+   }
+
+   inline LONG incSleep() {
+      return __sync_add_and_fetch(&SleepQueue, 1);
+   }
+
+   inline LONG subSleep() {
+      return __sync_sub_and_fetch(&SleepQueue, 1);
+   }
+
+   inline bool hasOwner(OBJECTID ID) { // Return true if ID has ownership.
+      auto oid = this->OwnerID;
+      while ((oid) and (oid != ID)) oid = GetOwnerID(oid);
+      return oid ? true : false;
+   }
+
+   inline ERROR set(ULONG FieldID, int Value)             { return SetField(this, (FIELD)FieldID|TLONG, Value); }
+   inline ERROR set(ULONG FieldID, unsigned int Value)    { return SetField(this, (FIELD)FieldID|TLONG, Value); }
+   inline ERROR set(ULONG FieldID, LARGE Value)           { return SetField(this, (FIELD)FieldID|TLARGE, Value); }
+   inline ERROR set(ULONG FieldID, DOUBLE Value)          { return SetField(this, (FIELD)FieldID|TDOUBLE, Value); }
+   inline ERROR set(ULONG FieldID, const FUNCTION *Value) { return SetField(this, (FIELD)FieldID|TFUNCTION, Value); }
+   inline ERROR set(ULONG FieldID, const char *Value)     { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
+   inline ERROR set(ULONG FieldID, const unsigned char *Value) { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
+   inline ERROR set(ULONG FieldID, std::string &Value)    { return SetField(this, (FIELD)FieldID|TSTRING, Value.c_str()); }
+   inline ERROR set(ULONG FieldID, const Variable *Value) { return SetField(this, (FIELD)FieldID|TVAR, Value); }
+   // Works both for regular data pointers and function pointers if field is defined correctly.
+   inline ERROR set(ULONG FieldID, const void *Value) { return SetField(this, (FIELD)FieldID|TPTR, Value); }
+
+   inline ERROR setPercentage(ULONG FieldID, DOUBLE Value) { return SetField(this, (FIELD)FieldID|TDOUBLE|TPERCENT, Value); }
+
+   inline ERROR get(ULONG FieldID, LONG *Value) { return GetField(this, (FIELD)FieldID|TLONG, Value); }
+   inline ERROR get(ULONG FieldID, LARGE *Value) { return GetField(this, (FIELD)FieldID|TLARGE, Value); }
+   inline ERROR get(ULONG FieldID, DOUBLE *Value) { return GetField(this, (FIELD)FieldID|TDOUBLE, Value); }
+   inline ERROR get(ULONG FieldID, STRING *Value) { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
+   inline ERROR get(ULONG FieldID, CSTRING *Value) { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
+   inline ERROR get(ULONG FieldID, Variable *Value) { return GetField(this, (FIELD)FieldID|TVAR, Value); }
+   inline ERROR getPtr(ULONG FieldID, APTR Value) { return GetField(this, (FIELD)FieldID|TPTR, Value); }
+   inline ERROR getPercentage(ULONG FieldID, DOUBLE *Value) { return GetField(this, (FIELD)FieldID|TDOUBLE|TPERCENT, Value); }
+
+   template <typename... Args> ERROR setFields(Args... pFields) {
+      pf::Log log("setFields");
+
+      threadLock();
+
+      std::initializer_list<pf::FieldValue> Fields = { pFields... };
+
+      for (auto &f : Fields) {
+         OBJECTPTR target;
+         if (auto field = FindField(this, f.FieldID, &target)) {
+            if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (CurrentContext() != target)) {
+               log.warning("Field \"%s\" of class %s is not writeable.", field->Name, className());
+            }
+            else if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) {
+               log.warning("Field \"%s\" of class %s is init-only.", field->Name, className());
+            }
+            else {
+               if (target != this) target->threadLock();
+
+               ERROR error;
+               if (f.Type & (FD_POINTER|FD_STRING|FD_ARRAY|FD_FUNCTION|FD_VARIABLE)) {
+                  error = field->WriteValue(target, field, f.Type, f.Pointer, 0);
+               }
+               else if (f.Type & (FD_DOUBLE|FD_FLOAT)) {
+                  error = field->WriteValue(target, field, f.Type, &f.Double, 1);
+               }
+               else if (f.Type & FD_LARGE) {
+                  error = field->WriteValue(target, field, f.Type, &f.Large, 1);
+               }
+               else error = field->WriteValue(target, field, f.Type, &f.Long, 1);
+
+               if (target != this) target->threadRelease();
+
+               // NB: NoSupport is considered a 'soft' error that does not warrant failure.
+
+               if ((error) and (error != ERR_NoSupport)) {
+                  log.warning("(%s:%d) Failed to set field %s (error #%d).", target->className(), target->UID, field->Name, error);
+                  threadRelease();
+                  return error;
+               }
+            }
+         }
+         else {
+            log.warning("Field %s is not supported by class %s.", FieldName(f.FieldID), className());
+            threadRelease();
+            return ERR_UnsupportedField;
+         }
+      }
+
+      threadRelease();
+      return ERR_Okay;
+   }
+
+} __attribute__ ((aligned (8)));
+
+namespace pf {
 
 template<class T = BaseClass>
 class Create {
@@ -3077,7 +3144,7 @@ class objFile : public BaseClass {
 // Config methods
 
 #define MT_CfgReadValue -1
-#define MT_CfgReadIValue -2
+#define MT_CfgSet -2
 #define MT_CfgWriteValue -3
 #define MT_CfgDeleteKey -4
 #define MT_CfgDeleteGroup -5
@@ -3085,10 +3152,9 @@ class objFile : public BaseClass {
 #define MT_CfgSortByKey -7
 #define MT_CfgMergeFile -9
 #define MT_CfgMerge -10
-#define MT_CfgSet -11
 
 struct cfgReadValue { CSTRING Group; CSTRING Key; CSTRING Data;  };
-struct cfgReadIValue { CSTRING Group; CSTRING Key; CSTRING Data;  };
+struct cfgSet { CSTRING Group; CSTRING Key; CSTRING Data;  };
 struct cfgWriteValue { CSTRING Group; CSTRING Key; CSTRING Data;  };
 struct cfgDeleteKey { CSTRING Group; CSTRING Key;  };
 struct cfgDeleteGroup { CSTRING Group;  };
@@ -3096,7 +3162,6 @@ struct cfgGetGroupFromIndex { LONG Index; CSTRING Group;  };
 struct cfgSortByKey { CSTRING Key; LONG Descending;  };
 struct cfgMergeFile { CSTRING Path;  };
 struct cfgMerge { OBJECTPTR Source;  };
-struct cfgSet { CSTRING Group; CSTRING Key; CSTRING Data;  };
 
 INLINE ERROR cfgReadValue(APTR Ob, CSTRING Group, CSTRING Key, CSTRING * Data) {
    struct cfgReadValue args = { Group, Key, 0 };
@@ -3105,11 +3170,9 @@ INLINE ERROR cfgReadValue(APTR Ob, CSTRING Group, CSTRING Key, CSTRING * Data) {
    return(error);
 }
 
-INLINE ERROR cfgReadIValue(APTR Ob, CSTRING Group, CSTRING Key, CSTRING * Data) {
-   struct cfgReadIValue args = { Group, Key, 0 };
-   ERROR error = Action(MT_CfgReadIValue, (OBJECTPTR)Ob, &args);
-   if (Data) *Data = args.Data;
-   return(error);
+INLINE ERROR cfgSet(APTR Ob, CSTRING Group, CSTRING Key, CSTRING Data) {
+   struct cfgSet args = { Group, Key, Data };
+   return(Action(MT_CfgSet, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR cfgWriteValue(APTR Ob, CSTRING Group, CSTRING Key, CSTRING Data) {
@@ -3147,11 +3210,6 @@ INLINE ERROR cfgMergeFile(APTR Ob, CSTRING Path) {
 INLINE ERROR cfgMerge(APTR Ob, OBJECTPTR Source) {
    struct cfgMerge args = { Source };
    return(Action(MT_CfgMerge, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR cfgSet(APTR Ob, CSTRING Group, CSTRING Key, CSTRING Data) {
-   struct cfgSet args = { Group, Key, Data };
-   return(Action(MT_CfgSet, (OBJECTPTR)Ob, &args));
 }
 
 
@@ -3555,7 +3613,6 @@ struct TaskList {
    OBJECTID TaskID;        // Task ID for this array entry.  Also see the ParentID field
    MEMORYID MessageID;     // Message queue ID
    OBJECTID OutputID;      // The object that the task should output information to
-   LONG     InstanceID;    // Instance that the task belongs to
    LONG     ReturnCode;    // Return code
    OBJECTID ParentID;      // The task responsible for creating this task slot
    OBJECTID ModalID;       // Set if a modal surface is to have the user's attention
@@ -3909,7 +3966,6 @@ struct PublicAddress {
    OBJECTID ObjectID;          // Object that the address belongs to
    OBJECTID TaskID;            // The task that the block is tracked back to
    OBJECTID ContextID;         // Context that locked the memory block (for debugging purposes only)
-   LONG     InstanceID;        // Reference to the instance that this memory block is restricted to
    WORD     ActionID;          // Action that locked the memory block (for debugging purposes only)
    WORD     Flags;             // Special MEM_ address flags
    volatile UBYTE AccessCount;  // Count of locks on this address
@@ -3937,7 +3993,6 @@ struct SortedAddress {
 
 struct SemaphoreEntry {   // The index of each semaphore in the array indicates their IDs
    ULONG NameID;          // Hashed name of the semaphore
-   LONG  InstanceID;      // Reference to the instance that this semaphore is restricted to
    LONG  BlockingProcess; // Process ID of the blocker
    LONG  BlockingThread;  // Global thread ID of the blocker
    LARGE Data;            // User configurable 64-bit data
@@ -4006,7 +4061,6 @@ struct SharedControl {
    LONG InputSize;                  // Maximum number of subscribers allowed in InputMID
    LONG InstanceMsgPort;            // The message port of the process that created the instance.
    MEMORYID SurfacesMID;
-   MEMORYID ModulesMID;             // Module database
    MEMORYID InputMID;
    #ifdef __unix__
       struct {

@@ -3005,7 +3005,7 @@ static ERROR GET_Title(extDisplay *Self, CSTRING *Value)
    buffer[0] = 0;
    winGetWindowTitle(Self->WindowHandle, buffer, sizeof(buffer));
    if (!AllocMemory(StrLength(buffer) + 1, MEM_STRING|MEM_UNTRACKED, &str)) {
-      StrCopy(buffer, str, COPY_ALL);
+      StrCopy(buffer, str);
       if (glWindowTitle) FreeResource(glWindowTitle);
       glWindowTitle = str;
       *Value = glWindowTitle;

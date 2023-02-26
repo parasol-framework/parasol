@@ -170,26 +170,6 @@ print('The Action class is located at ' .. str)
     </method>
 
     <method>
-      <name>ReadIValue</name>
-      <comment>Reads a key-value string (case insensitive lookup).</comment>
-      <prototype>ERROR cfgReadIValue(OBJECTPTR Object, CSTRING Group, CSTRING Key, CSTRING * Data)</prototype>
-      <input>
-        <param type="CSTRING" name="Group">The name of a group to examine for a key.  If NULL, all groups are scanned.</param>
-        <param type="CSTRING" name="Key">The name of a key to retrieve (case insensitive).</param>
-        <param type="CSTRING *" name="Data">The key value will be stored in this parameter on returning.</param>
-      </input>
-      <description>
-<p>This function retrieves key values in their original string format.  On success, the resulting string remains valid only for as long as the client has exclusive access to the config object.  The pointer can also be invalidated if more information is written to the config object.  For this reason, consider copying the result if it will be used extensively.</p>
-<p>If the Group parameter is set to NULL, the scan routine will treat all of the config data as a one dimensional array. If the Key parameter is set to NULL then the first key in the requested group is returned.  If both parameters are NULL then the first known key value will be returned.</p>
-      </description>
-      <result>
-        <error code="Okay">Operation successful.</error>
-        <error code="Search">The requested configuration entry does not exist.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-      </result>
-    </method>
-
-    <method>
       <name>ReadValue</name>
       <comment>Reads a key-value string.</comment>
       <prototype>ERROR cfgReadValue(OBJECTPTR Object, CSTRING Group, CSTRING Key, CSTRING * Data)</prototype>

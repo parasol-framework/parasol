@@ -32,20 +32,19 @@
    #endif
 #endif
 
-char glRootPath[SIZE_SYSTEM_PATH] = "" ROOT_PATH "";
-char glSystemPath[SIZE_SYSTEM_PATH] = "" SYSTEM_PATH "";
-char glModulePath[SIZE_SYSTEM_PATH] = "" MODULE_PATH "";
+std::string glRootPath = "" ROOT_PATH "";
+std::string glSystemPath = "" SYSTEM_PATH "";
+std::string glModulePath = "" MODULE_PATH ""; // NB: This path will be updated to its resolved-form during Core initialisation.
 
 char glDisplayDriver[28] = "";
 
 CSTRING glClassBinPath = "system:config/classes.bin";
-CSTRING glModuleBinPath = "system:config/modules.bin";
-objMetaClass *ModuleMasterClass = 0;
-objMetaClass *ModuleClass = 0;
-objMetaClass *TaskClass = 0;
-objMetaClass *ThreadClass = 0;
-objMetaClass *TimeClass = 0;
-objMetaClass *ConfigClass = 0;
+objMetaClass *glModuleMasterClass = 0;
+objMetaClass *glModuleClass = 0;
+objMetaClass *glTaskClass = 0;
+objMetaClass *glThreadClass = 0;
+objMetaClass *glTimeClass = 0;
+objMetaClass *glConfigClass = 0;
 objMetaClass *glFileClass = 0;
 objMetaClass *glScriptClass = 0;
 objMetaClass *glArchiveClass = 0;
@@ -69,8 +68,10 @@ std::unordered_map<CLASSID, ClassRecord> glClassDB;
 std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
 std::map<std::string, std::vector<BaseClass *>, CaseInsensitiveMap> glObjectLookup;
 std::unordered_map<CLASSID, extMetaClass *> glClassMap;
-std::unordered_map<FIELD, std::string> glFields;
+std::unordered_map<ULONG, std::string> glFields;
 std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes;
+std::list<FDRecord> glFDTable;
+std::list<CoreTimer> glTimers;
 
 struct PublicAddress  *glSharedBlocks  = NULL;
 struct SortedAddress  *glSortedBlocks  = NULL;
@@ -81,14 +82,13 @@ struct TaskList       *shTasks         = NULL;
 struct TaskList       *glTaskEntry     = NULL;
 struct SemaphoreEntry *shSemaphores    = NULL;
 struct MemoryPage     *glMemoryPages   = NULL;
-struct ModuleHeader   *glModules       = NULL;
 struct OpenInfo       *glOpenInfo      = NULL;
 struct MsgHandler     *glMsgHandlers   = NULL, *glLastMsgHandler = 0;
-struct FDTable        *glFDTable       = NULL;
+
 objFile *glClassFile   = NULL;
 objTask *glCurrentTask = NULL;
 objConfig *glDatatypes = NULL;
-std::list<CoreTimer> glTimers;
+
 APTR glJNIEnv = 0;
 UWORD glFunctionID = 3333; // IDTYPE_FUNCTION
 LONG glPageSize = 4096; // Default page size is 4k
@@ -96,13 +96,10 @@ LONG glTotalPages = 0;
 LONG glStdErrFlags = 0;
 TIMER glCacheTimer = 0;
 LONG glMemoryFD = -1;
-LONG glKeyState = 0;
 LONG glTaskMessageMID = 0;
 LONG glValidateProcessID = 0;
 LONG glProcessID  = 0;
-LONG glInstanceID = 0;
 LONG glEUID = -1, glEGID = -1, glGID = -1, glUID = -1;
-WORD glTotalFDs = 0, glLastFD = 0;
 UBYTE glTimerCycle = 1;
 CSTRING glIDL = MOD_IDL;
 

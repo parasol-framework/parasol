@@ -656,7 +656,7 @@ int fcmd_loadfile(lua_State *Lua)
          // production releases)
 
          StrCopy(path, fbpath, pathlen - 5);
-         StrCopy(".fb", fbpath + pathlen - 6, COPY_ALL);
+         StrCopy(".fb", fbpath + pathlen - 6);
 
          log.msg("Checking for a compiled Fluid file: %s", fbpath);
 

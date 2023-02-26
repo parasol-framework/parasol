@@ -466,40 +466,6 @@ STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags)
 /*********************************************************************************************************************
 
 -FUNCTION-
-StrClone: Clones string data.
-
-This function creates an exact duplicate of a string.  It analyses the length of the supplied String, allocates a
-private memory block for it and then copies the string characters into the new string buffer.
-
-You are expected to free the resulting memory block once it is no longer required with ~FreeResource().
-
--INPUT-
-cstr String: The string that is to be cloned.
-
--RESULT-
-str: Returns an exact duplicate of the String.  If this function fails to allocate the memory or if the String argument is NULL, NULL is returned.
-
-*********************************************************************************************************************/
-
-STRING StrClone(CSTRING String)
-{
-   if (!String) return NULL;
-
-   LONG i;
-   for (i=0; String[i]; i++);
-
-   STRING newstr;
-   if ((!AllocMemory(i+1, MEM_STRING, (APTR *)&newstr, NULL))) {
-      for (i=0; String[i]; i++) newstr[i] = String[i];
-      newstr[i] = 0;
-      return newstr;
-   }
-   else return NULL;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
 StrCompare: Compares strings to see if they are identical.
 
 This function compares two strings against each other.  If the strings match then it returns ERR_Okay, otherwise it
@@ -666,56 +632,6 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
    }
    else if ((Length) and (len > 0)) return ERR_False;
    else return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-StrCopy: Copies the characters of one string to another.
-
-This function copies part of one string over to another.  If the Length is set to zero then this function will copy the
-entire Src string over to the Dest.  Note that if this function encounters the end of the Src string (i.e. the null
-byte) while copying, then it will stop automatically to prevent copying of junk characters.
-
-Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of the Length value.
-For example, copying `123` into the middle of string `ABCDEFGHI` would result in `ABC123`.  The `GHI` part of the
-string would be lost.
-
--INPUT-
-cstr Src: Pointer to the string that you are copying from.
-str Dest: Pointer to the buffer that you are copying to.
-int Length: The maximum number of characters to copy, including the NULL byte.  The Length typically indicates the buffer size of the Dest pointer.  Setting the Length to COPY_ALL will copy all characters from the Src string.
-
--RESULT-
-int: Returns the total amount of characters that were copied, not including the null byte at the end.
-
-*********************************************************************************************************************/
-
-LONG StrCopy(CSTRING String, STRING Dest, LONG Length)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (Length < 0) return 0;
-
-   LONG i = 0;
-   if ((String) and (Dest)) {
-      if (!Length) {
-         log.warning("Warning - zero length given for copying string \"%s\".", String);
-         ((UBYTE *)0)[0] = 0;
-      }
-
-      while ((i < Length) and (*String)) {
-         Dest[i++] = *String++;
-      }
-
-      if ((*String) and (i >= Length)) {
-         //log.warning("Overflow: %d/%d \"%.20s\"", i, Length, Dest);
-         Dest[i-1] = 0; // If we ran out of buffer space, we have to terminate from one character back
-      }
-      else Dest[i] = 0;
-   }
-
-   return i;
 }
 
 /*********************************************************************************************************************
@@ -904,52 +820,6 @@ ERROR StrReadLocale(CSTRING Key, CSTRING *Value)
       return ERR_Okay;
    }
    else return ERR_Search;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-StrSearch: Searches a string for a particular keyword/phrase.
-
-This function allows you to search for a particular Keyword or phrase inside a String.  You may search on a case
-sensitive or case insensitive basis.
-
--INPUT-
-cstr Keyword: A string that specifies the keyword/phrase you are searching for.
-cstr String: The string data that you wish to search.
-int(STR) Flags:  Optional flags (currently STR_MATCH_CASE is supported for case sensitivity).
-
--RESULT-
-int: Returns the byte position of the first occurrence of the Keyword within the String (possible values start from position 0).  If the Keyword could not be found, this function returns a value of -1.
-
-*********************************************************************************************************************/
-
-LONG StrSearch(CSTRING Keyword, CSTRING String, LONG Flags)
-{
-   if ((!String) or (!Keyword)) {
-      pf::Log log(__FUNCTION__);
-      log.warning(ERR_NullArgs);
-      return -1;
-   }
-
-   LONG i;
-   LONG pos = 0;
-   if (Flags & STR_MATCH_CASE) {
-      while (String[pos]) {
-         for (i=0; Keyword[i]; i++) if (String[pos+i] != Keyword[i]) break;
-         if (!Keyword[i]) return pos;
-         for (++pos; (String[pos] & 0xc0) IS 0x80; pos++);
-      }
-   }
-   else {
-      while (String[pos]) {
-         for (i=0; Keyword[i]; i++) if (std::toupper(String[pos+i]) != std::toupper(Keyword[i])) break;
-         if (!Keyword[i]) return pos;
-         for (++pos; (String[pos] & 0xc0) IS 0x80; pos++);
-      }
-   }
-
-   return -1;
 }
 
 //********************************************************************************************************************

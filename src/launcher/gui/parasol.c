@@ -320,47 +320,44 @@ ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRI
    if (!NewObject(subclass ? subclass : class_id, 0, &glScript)) {
       if (!TargetID) TargetID = CurrentTaskID();
 
-      SetFields(glScript, FID_Path|TSTR,      ScriptFile,
-                          FID_Target|TLONG,   TargetID,
-                          FID_Procedure|TSTR, Procedure,
-                          TAGEND);
+      glScript->setFields(fl::Path(ScriptFile), fl::Target(TargetID), fl::Procedure(Procedure));
 
-         if (glArgs) {
-            argname = argbuffer+1; // Skip the first byte... reserved for '+'
-            argbuffer[0] = '+'; // Append arg indicator
-            for (i=0; glArgs[i]; i++) {
-               for (j=0; (glArgs[i][j]) and (glArgs[i][j] != '=') and (j < (LONG)sizeof(argbuffer)-10); j++) argname[j] = glArgs[i][j];
-               argname[j] = 0;
+      if (glArgs) {
+         argname = argbuffer+1; // Skip the first byte... reserved for '+'
+         argbuffer[0] = '+'; // Append arg indicator
+         for (i=0; glArgs[i]; i++) {
+            for (j=0; (glArgs[i][j]) and (glArgs[i][j] != '=') and (j < (LONG)sizeof(argbuffer)-10); j++) argname[j] = glArgs[i][j];
+            argname[j] = 0;
 
-               if (glArgs[i][j] IS '=') {
+            if (glArgs[i][j] IS '=') {
+               j++;
+               if (glArgs[i][j] IS '{') {
+                  // Array definition, e.g. files={ file1.txt file2.txt }
+
                   j++;
-                  if (glArgs[i][j] IS '{') {
-                     // Array definition, e.g. files={ file1.txt file2.txt }
+                  if (glArgs[i][j] > 0x20) {
+                     SetVar(glScript, argbuffer, glArgs[i] + j);
+                  }
 
-                     j++;
-                     if (glArgs[i][j] > 0x20) {
-                        SetVar(glScript, argbuffer, glArgs[i] + j);
-                     }
-
+                  i++;
+                  while ((glArgs[i]) and (glArgs[i][0] != '}')) {
+                     SetVar(glScript, argbuffer, glArgs[i]);
                      i++;
-                     while ((glArgs[i]) and (glArgs[i][0] != '}')) {
-                        SetVar(glScript, argbuffer, glArgs[i]);
-                        i++;
-                     }
-                     if (!glArgs[i]) break;
-                     // The last arg in the array will be the } that closes it
                   }
-                  else if (glArgs[i][j] IS '"') {
-                     j++;
-                     for (k=j; (glArgs[i][k]) and (glArgs[i][k] != '"'); k++);
-                     if (glArgs[i][k] IS '"') glArgs[i][k] = 0;
-                     SetVar(glScript, argname, glArgs[i]+j);
-                  }
-                  else SetVar(glScript, argname, glArgs[i]+j);
+                  if (!glArgs[i]) break;
+                  // The last arg in the array will be the } that closes it
                }
-               else SetVar(glScript, argname, "1");
+               else if (glArgs[i][j] IS '"') {
+                  j++;
+                  for (k=j; (glArgs[i][k]) and (glArgs[i][k] != '"'); k++);
+                  if (glArgs[i][k] IS '"') glArgs[i][k] = 0;
+                  SetVar(glScript, argname, glArgs[i]+j);
+               }
+               else SetVar(glScript, argname, glArgs[i]+j);
             }
+            else SetVar(glScript, argname, "1");
          }
+      }
 
       // Start the timer if requested
 

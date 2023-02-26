@@ -2820,11 +2820,10 @@ list_repass:
                            layout->ParentSurface.Width = cell.Right - cell.Left;
                            layout->ParentSurface.Height = cell.Bottom - cell.Top;
 
-                           GetFields(object, FID_X|TLONG, &layout->BoundX,
-                                             FID_Y|TLONG, &layout->BoundY,
-                                             FID_Width|TLONG,  &layout->BoundWidth,
-                                             FID_Height|TLONG, &layout->BoundHeight,
-                                             TAGEND);
+                           object->get(FID_X, &layout->BoundX);
+                           object->get(FID_Y, &layout->BoundY);
+                           object->get(FID_Width, &layout->BoundWidth);
+                           object->get(FID_Height, &layout->BoundHeight);
 
                            layout->BoundX += cell.Left;
                            layout->BoundY += cell.Top;
@@ -5782,11 +5781,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
 
    OBJECTPTR dialog;
    if (!NewObject(ID_SCRIPT, &dialog)) {
-      SetFields(dialog,
-         FID_Name|TSTR,    "scDialog",
-         FID_Owner|TLONG,  CurrentTaskID(),
-         FID_Path|TSTR,    "scripts:gui/dialog.fluid",
-         TAGEND);
+      dialog->setFields(fl::Name("scDialog"), fl::Owner(CurrentTaskID()), fl::Path("scripts:gui/dialog.fluid"));
 
       acSetVar(dialog, "modal", "1");
       acSetVar(dialog, "title", Title);
@@ -6668,7 +6663,7 @@ static ERROR insert_string(CSTRING Insert, STRING Buffer, LONG BufferSize, LONG 
 
    if (inlen < ReplaceLen) {
       // The string to insert is smaller than the number of characters to replace.
-      StrCopy(Insert, Buffer, COPY_ALL);
+      StrCopy(Insert, Buffer);
       i = ReplaceLen;
       while (Buffer[i]) Buffer[inlen++] = Buffer[i++];
       Buffer[inlen] = 0;
@@ -7068,7 +7063,7 @@ static void pointer_enter(extDocument *Self, LONG Index, CSTRING Function, LONG 
       mouseover->Right     = Right;
       mouseover->Bottom    = Bottom;
       mouseover->ElementID = ESC_ELEMENTID(Self->Stream + Index);
-      StrCopy(Function, (STRING)(mouseover + 1), COPY_ALL);
+      StrCopy(Function, (STRING)(mouseover + 1));
 
       // Insert at the start of the chain
 
@@ -8084,7 +8079,7 @@ static ERROR extract_script(extDocument *Self, CSTRING Link, OBJECTPTR *Script, 
          else log.warning("Malformed function args: %s", Link);
       }
    }
-   else pos += StrCopy(Link+dot, exsbuffer+pos, COPY_ALL);
+   else pos += StrCopy(Link+dot, exsbuffer+pos);
 
    #ifdef DEBUG
    if (pos > len) {

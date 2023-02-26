@@ -1024,7 +1024,7 @@ static ERROR field_setup(extMetaClass *Class)
 }
 
 //********************************************************************************************************************
-// Register a hashed field ID and its corresponding name.  Use GET_FIELD_NAME() to retrieve field names from the store.
+// Register a hashed field ID and its corresponding name.  Use FieldName() to retrieve field names from the store.
 
 static void register_fields(extMetaClass *Class)
 {
@@ -1243,7 +1243,6 @@ void scan_classes(void)
 
    glClassDB.clear();
    DeleteFile(glClassBinPath, NULL);
-   DeleteFile(glModuleBinPath, NULL);
 
    DirInfo *dir;
    if (!OpenDir("modules:", RDF_QUALIFY, &dir)) {
@@ -1259,10 +1258,9 @@ void scan_classes(void)
                if (!StrCompare("core.", list->Name, 0, 0)) continue;
             #endif
 
-            char modules[80] = "modules:";
-            StrCopy(list->Name, modules + 8, sizeof(modules)-8);
+            auto modules = std::string("modules:") + list->Name;
 
-            log.msg("Loading module for class scan: %s", modules);
+            log.msg("Loading module for class scan: %s", modules.c_str());
 
             objModule::create mod = { fl::Name(modules), fl::Flags(MOF_SYSTEM_PROBE) };
 

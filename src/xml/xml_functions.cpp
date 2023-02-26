@@ -384,7 +384,7 @@ static ERROR extract_tag(extXML *Self, exttag *Status)
       // Comments will be stripped - check if this is a comment and skip it if this is the case.
       if (!StrCompare("!--", str, 3, STR_MATCH_CASE)) {
          LONG i;
-         if ((i = StrSearch("-->", str, TRUE)) != -1) {
+         if ((i = StrSearchCase("-->", str)) != -1) {
             Status->Pos = str + i + 3;
             return ERR_NothingDone;
          }
@@ -834,9 +834,9 @@ XMLTag * build_xml_string(XMLTag *Tag, STRING Buffer, LONG Flags, LONG *Offset)
    if (!Tag->Attrib->Name) {
       if (Tag->Attrib->Value) {
          if (Tag->CData) {
-            if (!(Flags & XMF_STRIP_CDATA)) offset += StrCopy("<![CDATA[", Buffer+offset, COPY_ALL);
-            offset += StrCopy(Tag->Attrib->Value, Buffer+offset, COPY_ALL);
-            if (!(Flags & XMF_STRIP_CDATA)) offset += StrCopy("]]>", Buffer+offset, COPY_ALL);
+            if (!(Flags & XMF_STRIP_CDATA)) offset += StrCopy("<![CDATA[", Buffer+offset);
+            offset += StrCopy(Tag->Attrib->Value, Buffer+offset);
+            if (!(Flags & XMF_STRIP_CDATA)) offset += StrCopy("]]>", Buffer+offset);
          }
          else offset += content_output(Tag->Attrib->Value, Buffer+offset);
          Buffer[offset] = 0;

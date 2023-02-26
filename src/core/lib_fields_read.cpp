@@ -68,6 +68,37 @@ Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target)
 /*********************************************************************************************************************
 
 -FUNCTION-
+FieldName: Resolves a field ID to its registered name.
+
+Resolves a field identifier to its name.  For this to work successfully, the field must have been registered with the
+internal dictionary.  This is handled automatically when a new class is added to the system.
+
+If the FieldID is not registered, the value is returned back as a hex string.  The inclusion of this feature
+guarantees that an empty string will never be returned.
+
+-INPUT-
+uint FieldID: The unique field hash to resolve.
+
+-RESULT-
+cstr: The name of the field is returned.
+
+*********************************************************************************************************************/
+
+extern THREADVAR char tlFieldName[10]; // $12345678\0
+
+CSTRING FieldName(ULONG FieldID)
+{
+   ThreadLock lock(TL_FIELDKEYS, 1000);
+   if (lock.granted()) {
+      if (glFields.contains(FieldID)) return glFields[FieldID].c_str();
+   }
+   snprintf(tlFieldName, sizeof(tlFieldName), "$%.8x", FieldID);
+   return tlFieldName;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
 FindField: Finds field descriptors for any class, by ID.
 
 The FindField() function checks if an object supports a specified field by scanning its class descriptor for a FieldID.
@@ -176,7 +207,7 @@ ERROR GetField(OBJECTPTR Object, FIELD FieldID, APTR Result)
 
    if (auto field = lookup_id(Object, FieldID, &Object)) {
       if (!(field->Flags & FD_READ)) {
-         if (!field->Name) log.warning("Illegal attempt to read field %s.", GET_FIELD_NAME(FieldID));
+         if (!field->Name) log.warning("Illegal attempt to read field %s.", FieldName(FieldID));
          else log.warning("Illegal attempt to read field %s.", field->Name);
          return ERR_NoFieldAccess;
       }
@@ -184,7 +215,7 @@ ERROR GetField(OBJECTPTR Object, FIELD FieldID, APTR Result)
       ScopedObjectAccess objlock(Object);
       return copy_field_to_buffer(Object, field, type, Result, NULL, NULL);
    }
-   else log.warning("Unsupported field %s", GET_FIELD_NAME(FieldID));
+   else log.warning("Unsupported field %s", FieldName(FieldID));
 
    return ERR_UnsupportedField;
 }
@@ -232,7 +263,7 @@ ERROR GetFieldArray(OBJECTPTR Object, FIELD FieldID, APTR *Result, LONG *Element
 
    if (auto field = lookup_id(Object, FieldID, &Object)) {
       if ((!(field->Flags & FD_READ)) or (!(field->Flags & FD_ARRAY))) {
-         if (!field->Name) log.warning("Illegal attempt to read field %s.", GET_FIELD_NAME(FieldID));
+         if (!field->Name) log.warning("Illegal attempt to read field %s.", FieldName(FieldID));
          else log.warning("Illegal attempt to read field %s.", field->Name);
          return ERR_NoFieldAccess;
       }
@@ -245,104 +276,9 @@ ERROR GetFieldArray(OBJECTPTR Object, FIELD FieldID, APTR *Result, LONG *Element
       ERROR error = copy_field_to_buffer(Object, field, FD_POINTER, Result, NULL, Elements);
       return error;
    }
-   else log.warning("Unsupported field %s", GET_FIELD_NAME(FieldID));
+   else log.warning("Unsupported field %s", FieldName(FieldID));
 
    return ERR_UnsupportedField;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-GetFields: Retrieves multiple field values in a single function call.
-
-This function can be used to grab the values of multiple fields in a single function call.  It is primarily
-provided to give a speed increase over calling the ~GetField() function multiple times.  The arguments
-passed to this function are tag-based and must be terminated with a `TAGEND` marker, as shown in the following
-example:
-
-<pre>
-LONG width, height;
-
-GetFields(screen,
-   FID_Width|TLONG,  &width,
-   FID_Height|TLONG, &height,
-   TAGEND);
-</pre>
-
-The field ID's that you specify must be logically or'd with tag definitions that indicate the type of values that you
-want to get from each field.  For instance, if want to retrieve a field in floating point format, then you must use
-the `TDOUBLE` tag and supply a pointer to a `DOUBLE` variable.  Please note that failing to set the tag values correctly
-can often cause a program to crash.
-
-The recognised tag types are `TPTR`, `TSTRING`, `TLONG`, `TLARGE` and `TDOUBLE`.
-
-If GetFields() does not return ERR_Okay, this is an indication that at least one of the field settings returned an
-error code, or there was an error in the processing of the tag list.  This function will attempt to process the entire
-tag list even in the event of an error.
-
-For further information on the field retrieval process, refer to the ~GetField() function.
-
--INPUT-
-obj Object: Pointer to the object that you want to access.
-vtags Tags:  Each tag set consists of a field ID OR'd with a type flag, followed by a pointer to a matching variable type that will store the value.
-
--ERRORS-
-Okay
-NullArgs
-UnsupportedField
-
-*********************************************************************************************************************/
-
-ERROR GetFields(OBJECTPTR Object, ...)
-{
-   pf::Log log(__FUNCTION__);
-   FIELD field_id;
-
-   if (!Object) return log.warning(ERR_NullArgs);
-
-   // Please note that the loop runs through the entire list, even if an error occurs.  This ensures that all the field values are driven to zero.
-
-   va_list list;
-   va_start(list, Object);
-
-   ERROR error = ERR_Okay;
-
-   ScopedObjectAccess objlock(Object);
-   while ((field_id = va_arg(list, FIELD)) != TAGEND) {
-      LONG fieldflags = field_id>>32;
-      field_id &= 0xffffffff;
-
-      APTR value;
-      if (!(value = va_arg(list, APTR))) {
-         error = ERR_NullArgs;
-         break;
-      }
-
-      OBJECTPTR target;
-      if (auto field = lookup_id(Object, field_id, &target)) {
-         if (!(field->Flags & FD_READ)) {
-            if (!field->Name) log.warning("Field #%d is not readable.", (LONG)field_id);
-            else log.warning("Field \"%s\" is not readable.", field->Name);
-         }
-
-         #ifdef _LP64
-            if (fieldflags & (FD_LARGE|FD_DOUBLE|FD_PTR|FD_STRING)) *((LARGE *)value) = 0;
-            else *((LONG *)value) = 0;
-         #else
-            if (fieldflags & (FD_LARGE|FD_DOUBLE)) *((LARGE *)value) = 0;
-            else *((LONG *)value) = 0;
-         #endif
-
-         if (!error) error = copy_field_to_buffer(target, field, fieldflags, value, NULL, NULL);
-      }
-      else {
-         log.warning("Field %s is not supported by class %s.", GET_FIELD_NAME(field_id), Object->className());
-         error = ERR_UnsupportedField;
-      }
-   }
-
-   va_end(list);
-   return error;
 }
 
 /*********************************************************************************************************************
