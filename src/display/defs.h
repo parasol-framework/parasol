@@ -191,7 +191,7 @@ struct InputEventMgr {
    InputEvent Msgs[MAX_INPUTMSG];
 };
 
-extern InputEventMgr *glInputEvents;
+extern InputEventMgr glInputEvents;
 
 // InputSubscription is allocated as an array of items for glSharedControl->InputMID
 

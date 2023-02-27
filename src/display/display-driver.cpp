@@ -194,7 +194,7 @@ static LONG glLockCount = 0;
 static OBJECTID glActiveDisplayID = 0;
 #endif
 
-struct InputEventMgr *glInputEvents = NULL;
+struct InputEventMgr glInputEvents;
 OBJECTPTR glCompress = NULL;
 static objCompression *glIconArchive = NULL;
 struct CoreBase *CoreBase;
@@ -815,19 +815,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    glDisplayInfo.DisplayID = 0xffffffff; // Indicate a refresh of the cache is required.
 
-   // Allocate the input message cyclic array
-
-   MEMORYID memoryid = RPM_InputEvents;
-   error = AllocMemory(sizeof(glInputEvents[0]), MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, &glInputEvents, &memoryid);
-   if (error IS ERR_ResourceExists) {
-      if (!glInputEvents) {
-         if (AccessMemoryID(RPM_InputEvents, MEM_READ_WRITE|MEM_NO_BLOCKING, 1000, &glInputEvents) != ERR_Okay) {
-            return log.warning(ERR_AccessMemory);
-         }
-      }
-   }
-   else if (error) return ERR_AllocMemory;
-
 #ifdef __xwindows__
    if (!glHeadless) {
       log.trace("Allocating global memory structure.");
@@ -956,7 +943,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    winInitCursors(winCursors, ARRAYSIZE(winCursors));
 
-   memoryid = RPM_Clipboard;
+   MEMORYID memoryid = RPM_Clipboard;
    AllocMemory(sizeof(ClipHeader) + (MAX_CLIPS * sizeof(ClipEntry)), MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, NULL, &memoryid);
 
 #endif
@@ -1215,7 +1202,6 @@ static ERROR CMDExpunge(void)
 
 #endif
 
-   if (glInputEvents) { ReleaseMemory(glInputEvents); glInputEvents = NULL; }
    if (glIconArchive) { acFree(glIconArchive); glIconArchive = NULL; }
    if (clPointer)     { acFree(clPointer);     clPointer     = NULL; }
    if (clDisplay)     { acFree(clDisplay);     clDisplay     = NULL; }

@@ -83,8 +83,8 @@ static void send_inputmsg(InputEvent *Event, InputSubscription *List)
 
    // Store the message in the input message queue
 
-   CopyMemory(Event, glInputEvents->Msgs + (glInputEvents->IndexCounter & INPUT_MASK), sizeof(*Event));
-   glInputEvents->IndexCounter++;
+   CopyMemory(Event, glInputEvents.Msgs + (glInputEvents.IndexCounter & INPUT_MASK), sizeof(*Event));
+   glInputEvents.IndexCounter++;
 
    // Alert processes that a new input event is ready.  This is a two part process as processes
    // can have multiple subscriptions and we only want to wake them once.
@@ -101,12 +101,12 @@ static void send_inputmsg(InputEvent *Event, InputSubscription *List)
       // NB: When process ID's match we will instead process input events at the start of the next sleep cycle.
 
       if (List[i].ProcessID != task->ProcessID) {
-         if (List[i].LastAlerted < glInputEvents->IndexCounter) {
+         if (List[i].LastAlerted < glInputEvents.IndexCounter) {
             wake_processes.insert(List[i].ProcessID);
          }
       }
 
-      List[i].LastAlerted = glInputEvents->IndexCounter;
+      List[i].LastAlerted = glInputEvents.IndexCounter;
    }
 
    for (const auto & pid : wake_processes) {

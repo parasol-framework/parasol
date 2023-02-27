@@ -235,18 +235,18 @@ void input_event_loop(HOSTHANDLE FD, APTR Data) // Data is not defined
    static ULONG current_index = 0;
    pf::Log log(__FUNCTION__);
 
-   if (current_index IS glInputEvents->IndexCounter) return; // Check if there are events to consume
+   if (current_index IS glInputEvents.IndexCounter) return; // Check if there are events to consume
 
    // Check for underflow in case this process hasn't been active enough in consuming events.
 
-   if ((glInputEvents->IndexCounter > MAX_INPUTMSG) and (current_index < glInputEvents->IndexCounter - MAX_INPUTMSG + 1)) {
-      current_index = glInputEvents->IndexCounter - MAX_INPUTMSG + 1;
+   if ((glInputEvents.IndexCounter > MAX_INPUTMSG) and (current_index < glInputEvents.IndexCounter - MAX_INPUTMSG + 1)) {
+      current_index = glInputEvents.IndexCounter - MAX_INPUTMSG + 1;
    }
 
-   ULONG max_events = glInputEvents->IndexCounter - current_index;
+   ULONG max_events = glInputEvents.IndexCounter - current_index;
    InputEvent events[max_events];
 
-   //log.traceBranch("Index: %u/%u (%u events)", current_index, glInputEvents->IndexCounter, max_events);
+   //log.traceBranch("Index: %u/%u (%u events)", current_index, glInputEvents.IndexCounter, max_events);
 
    std::unordered_map<LONG, InputCallback> copyInputCallbacks(glInputCallbacks); // In case of modification
 
@@ -257,9 +257,9 @@ void input_event_loop(HOSTHANDLE FD, APTR Data) // Data is not defined
       for (ULONG i=0; i < max_events; i++) {
          LONG e = (current_index + i) & (MAX_INPUTMSG - 1); // Modulo cheat works as long as MAX_INPUTMSG is a ^2
 
-         if (((glInputEvents->Msgs[e].RecipientID IS sub.SurfaceFilter) or (!sub.SurfaceFilter)) and
-             (glInputEvents->Msgs[e].Flags & sub.InputMask)) {
-            events[total_events] = glInputEvents->Msgs[e];
+         if (((glInputEvents.Msgs[e].RecipientID IS sub.SurfaceFilter) or (!sub.SurfaceFilter)) and
+             (glInputEvents.Msgs[e].Flags & sub.InputMask)) {
+            events[total_events] = glInputEvents.Msgs[e];
             events[total_events].Next = &events[total_events + 1];
             total_events++;
          }
@@ -293,6 +293,6 @@ void input_event_loop(HOSTHANDLE FD, APTR Data) // Data is not defined
       }
    }
 
-   current_index = glInputEvents->IndexCounter;
+   current_index = glInputEvents.IndexCounter;
 }
 
