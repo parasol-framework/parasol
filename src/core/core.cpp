@@ -1924,7 +1924,7 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
 
    for (LONG i=0; i < ARRAYSIZE(cdroms); i++) {
       if (!access(cdroms[i], F_OK)) {
-         SetVolume(cdname, cdroms[i], "devices/compactdisc", "cd", 0);
+         SetVolume(cdname, cdroms[i], "devices/compactdisc", NULL, "cd", 0);
          cdname[2] = cdname[2] + 1;
       }
    }
