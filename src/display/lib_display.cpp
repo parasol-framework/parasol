@@ -288,6 +288,6 @@ double: The scaled value is returned.
 
 DOUBLE gfxScaleToDPI(DOUBLE Value)
 {
-   if ((!glDisplayInfo->HDensity) or (!glDisplayInfo->VDensity)) return Value;
-   else return 96.0 / (((DOUBLE)glDisplayInfo->HDensity + (DOUBLE)glDisplayInfo->VDensity) * 0.5) * Value;
+   if ((!glDisplayInfo.HDensity) or (!glDisplayInfo.VDensity)) return Value;
+   else return 96.0 / (((DOUBLE)glDisplayInfo.HDensity + (DOUBLE)glDisplayInfo.VDensity) * 0.5) * Value;
 }

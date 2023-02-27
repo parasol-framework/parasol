@@ -395,8 +395,8 @@ static ERROR NETLOOKUP_ResolveName(extNetLookup *Self, struct nlResolveName *Arg
       char buffer[pkg_size];
       auto rb = (resolve_buffer *)&buffer;
       rb->NetLookupID = Self->UID;
-      rb->ThreadID = th->UID;
-      StrCopy(Args->HostName, (STRING)(rb + 1));
+      rb->ThreadID    = th->UID;
+      StrCopy(Args->HostName, (STRING)(rb + 1), pkg_size - sizeof(resolve_buffer));
       if ((!thSetData(th, buffer, pkg_size)) and (!th->activate())) {
          std::lock_guard<std::mutex> lock(*Self->ThreadLock);
          Self->Threads->insert(th->UID);

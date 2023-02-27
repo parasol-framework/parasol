@@ -383,6 +383,13 @@
       <const name="WARNING"/>
     </constants>
 
+    <constants lookup="VOLUME" comment="Options for SetVolume()">
+      <const name="HIDDEN">Hides the volume so that it will not show up when reading the root folder.</const>
+      <const name="PRIORITY">If the volume already exists, the path will be inserted at the beginning of the path list so that it has priority over the others.</const>
+      <const name="REPLACE">If the volume already exists, all paths that are attached to it will be replaced with the new path setting.</const>
+      <const name="SYSTEM">Identifies the volume as being created by the system, is immutable and persistent between sessions.</const>
+    </constants>
+
   </types>
   <structs>
     <struct name="ActionTable" comment="Structure for ActionList">

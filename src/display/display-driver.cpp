@@ -203,7 +203,7 @@ bool glHeadless = false;
 OBJECTPTR glModule = NULL;
 OBJECTPTR clDisplay = NULL, clPointer = NULL, clBitmap = NULL, clClipboard = NULL, clSurface = NULL;
 OBJECTID glPointerID = 0;
-DISPLAYINFO *glDisplayInfo;
+DISPLAYINFO glDisplayInfo;
 APTR glDither = NULL;
 SharedControl *glSharedControl = NULL;
 bool glSixBitDisplay = false;
@@ -520,8 +520,8 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
 
    extDisplay *display;
    if (DisplayID) {
-      if (glDisplayInfo->DisplayID IS DisplayID) {
-         CopyMemory(glDisplayInfo, Info, InfoSize);
+      if (glDisplayInfo.DisplayID IS DisplayID) {
+         CopyMemory(&glDisplayInfo, Info, InfoSize);
          return ERR_Okay;
       }
       else if (!AccessObjectID(DisplayID, 5000, &display)) {
@@ -645,41 +645,41 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
             // TODO: The recommended pixel depth should be determined by analysing the device's CPU capability, the
             // graphics chip and available memory.
 
-            glDisplayInfo->DisplayID     = 0;
-            glDisplayInfo->Width         = ANativeWindow_getWidth(window);
-            glDisplayInfo->Height        = ANativeWindow_getHeight(window);
-            glDisplayInfo->BitsPerPixel  = 16;
-            glDisplayInfo->BytesPerPixel = 2;
-            glDisplayInfo->AccelFlags    = ACF_VIDEO_BLIT;
-            glDisplayInfo->Flags         = SCR_MAXSIZE;  // Indicates that the width and height are the display's maximum.
+            glDisplayInfo.DisplayID     = 0;
+            glDisplayInfo.Width         = ANativeWindow_getWidth(window);
+            glDisplayInfo.Height        = ANativeWindow_getHeight(window);
+            glDisplayInfo.BitsPerPixel  = 16;
+            glDisplayInfo.BytesPerPixel = 2;
+            glDisplayInfo.AccelFlags    = ACF_VIDEO_BLIT;
+            glDisplayInfo.Flags         = SCR_MAXSIZE;  // Indicates that the width and height are the display's maximum.
 
             AConfiguration *config;
             if (!adGetConfig(&config)) {
-               glDisplayInfo->HDensity = AConfiguration_getDensity(config);
-               if (glDisplayInfo->HDensity < 60) glDisplayInfo->HDensity = 160;
+               glDisplayInfo.HDensity = AConfiguration_getDensity(config);
+               if (glDisplayInfo.HDensity < 60) glDisplayInfo.HDensity = 160;
             }
-            else glDisplayInfo->HDensity = 160;
+            else glDisplayInfo.HDensity = 160;
 
-            glDisplayInfo->VDensity = glDisplayInfo->HDensity;
+            glDisplayInfo.VDensity = glDisplayInfo.HDensity;
 
             LONG pixel_format = ANativeWindow_getFormat(window);
             if ((pixel_format IS WINDOW_FORMAT_RGBA_8888) or (pixel_format IS WINDOW_FORMAT_RGBX_8888)) {
-               glDisplayInfo->BytesPerPixel = 32;
-               if (pixel_format IS WINDOW_FORMAT_RGBA_8888) glDisplayInfo->BitsPerPixel = 32;
-               else glDisplayInfo->BitsPerPixel = 24;
+               glDisplayInfo.BytesPerPixel = 32;
+               if (pixel_format IS WINDOW_FORMAT_RGBA_8888) glDisplayInfo.BitsPerPixel = 32;
+               else glDisplayInfo.BitsPerPixel = 24;
             }
 
-            CopyMemory(&glColourFormat, &glDisplayInfo->PixelFormat, sizeof(glDisplayInfo->PixelFormat));
+            CopyMemory(&glColourFormat, &glDisplayInfo.PixelFormat, sizeof(glDisplayInfo.PixelFormat));
 
-            if ((glDisplayInfo->BitsPerPixel < 8) or (glDisplayInfo->BitsPerPixel > 32)) {
-               if (glDisplayInfo->BitsPerPixel > 32) glDisplayInfo->BitsPerPixel = 32;
-               else if (glDisplayInfo->BitsPerPixel < 15) glDisplayInfo->BitsPerPixel = 16;
+            if ((glDisplayInfo.BitsPerPixel < 8) or (glDisplayInfo.BitsPerPixel > 32)) {
+               if (glDisplayInfo.BitsPerPixel > 32) glDisplayInfo.BitsPerPixel = 32;
+               else if (glDisplayInfo.BitsPerPixel < 15) glDisplayInfo.BitsPerPixel = 16;
             }
 
-            if (glDisplayInfo->BitsPerPixel > 24) glDisplayInfo->AmtColours = 1<<24;
-            else glDisplayInfo->AmtColours = 1<<glDisplayInfo->BitsPerPixel;
+            if (glDisplayInfo.BitsPerPixel > 24) glDisplayInfo.AmtColours = 1<<24;
+            else glDisplayInfo.AmtColours = 1<<glDisplayInfo.BitsPerPixel;
 
-            log.trace("%dx%dx%d", glDisplayInfo->Width, glDisplayInfo->Height, glDisplayInfo->BitsPerPixel);
+            log.trace("%dx%dx%d", glDisplayInfo.Width, glDisplayInfo.Height, glDisplayInfo.BitsPerPixel);
          }
          else {
             adUnlockAndroid();
@@ -694,7 +694,7 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
       return ERR_Okay;
 #else
 
-      if (glDisplayInfo->DisplayID) {
+      if (glDisplayInfo.DisplayID) {
          CopyMemory(glDisplayInfo, Info, InfoSize);
          return ERR_Okay;
       }
@@ -813,21 +813,11 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       }
    #endif
 
-   MEMORYID memoryid = RPM_DisplayInfo;
-   error = AllocMemory(sizeof(DISPLAYINFO), MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, &glDisplayInfo, &memoryid);
-   if (error IS ERR_ResourceExists) {
-      if (!glDisplayInfo) {
-         if (AccessMemoryID(RPM_DisplayInfo, MEM_READ_WRITE|MEM_NO_BLOCKING, 1000, &glDisplayInfo) != ERR_Okay) {
-            return log.warning(ERR_AccessMemory);
-         }
-      }
-   }
-   else if (error) return ERR_AllocMemory;
-   else glDisplayInfo->DisplayID = 0xffffffff; // Indicate a refresh of the cache is required.
+   glDisplayInfo.DisplayID = 0xffffffff; // Indicate a refresh of the cache is required.
 
    // Allocate the input message cyclic array
 
-   memoryid = RPM_InputEvents;
+   MEMORYID memoryid = RPM_InputEvents;
    error = AllocMemory(sizeof(glInputEvents[0]), MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, &glInputEvents, &memoryid);
    if (error IS ERR_ResourceExists) {
       if (!glInputEvents) {
@@ -1115,11 +1105,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // The icons: special volume is a simple reference to the archive path.
 
-   if (SetVolume(AST_NAME, "icons",
-      AST_PATH,  "archive:icons/",
-      AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN,
-      AST_ICON,  "misc/picture",
-      TAGEND) != ERR_Okay) return ERR_SetVolume;
+   if (SetVolume("icons", "archive:icons/", "misc/picture", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN)) return ERR_SetVolume;
 
 #ifdef _WIN32 // Get any existing Windows clipboard content
 
@@ -1230,7 +1216,6 @@ static ERROR CMDExpunge(void)
 #endif
 
    if (glInputEvents) { ReleaseMemory(glInputEvents); glInputEvents = NULL; }
-   if (glDisplayInfo) { ReleaseMemory(glDisplayInfo); glDisplayInfo = NULL; }
    if (glIconArchive) { acFree(glIconArchive); glIconArchive = NULL; }
    if (clPointer)     { acFree(clPointer);     clPointer     = NULL; }
    if (clDisplay)     { acFree(clDisplay);     clDisplay     = NULL; }
@@ -1369,7 +1354,7 @@ ERROR init_egl(void)
    glDisable(GL_LIGHTING); // Improves performance for 2D
    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-   glDisplayInfo->DisplayID = 0xffffffff; // Force refresh of display info cache.
+   glDisplayInfo.DisplayID = 0xffffffff; // Force refresh of display info cache.
 
    if (!glPointerID) {
       FindObject("SystemPointer", 0, 0, &glPointerID);

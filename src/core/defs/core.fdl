@@ -33,8 +33,8 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
   ]])
 
   flags("SCF", { comment="Script flags" },
-    "EXIT_ON_ERROR: The script will automatically terminate its execution process if an error is detected.",
-    "DEBUG: Enables execution debugging.  More information will be printed to the console in this mode.")
+     "EXIT_ON_ERROR: The script will automatically terminate its execution process if an error is detected.",
+     "DEBUG: Enables execution debugging.  More information will be printed to the console in this mode.")
 
   flags("STR", { bits=16 },
      "MATCH_CASE|CASE: Perform a case-sensitive match.",
@@ -291,17 +291,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "CREATE_LINK",
     "DRIVER_SIZE")
 
-  enum("AST", { start=1, bits=64, comment="Tags for SetVolume()" }, -- Note: Tag names are not normally capitalised.
-    "Path|PATH: Required.  Follow this tag with the path to be set against the volume.  If setting multiple paths, separate each path with a semi-colon character.  Each path must terminate with a forward slash to denote a folder.",
-    "Name|NAME: Required.  Follow this tag with the string name of the volume.",
-    "Flags|FLAGS: Optional VOLUME flags.",
-    "Icon|ICON: An icon can be associated with the volume so that it has graphical representation when viewed in the UI.  The required icon string format is 'category/name'.",
-    "Comment|COMMENT: A user comment string may be set against the volume with this tag.",
-    "Label|LABEL: An optional label or short comment may be applied to the volume.  This may be useful if the volume name has little meaning to the user (e.g. drive1, drive2 ...).",
-    "Device|DEVICE: If the volume references the root of a device, it's code name should be specified here, e.g. 'disk', 'cd', 'hd', 'network'.",
-    "DevicePath|DEVICE_PATH: For Unix systems, set this to the device path under '/dev/' if this is a root volume and a device path is applicable.",
-    "ID: A unique ID string can be specified against the volume.  This is useful for programs that want to identify volumes that they have created.")
-
   enum("FDB", { start=1, comment="Feedback event indicators." },
     "DECOMPRESS_FILE",
     "COMPRESS_FILE",
@@ -339,8 +328,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     X11            = "-1003: X11 global variables.",
     AlphaBlend     = "-1004: Alpha blending lookup table (Bitmap module).",
     XWindowLookup  = "-1005: X Window to Surface lookup table (Display/Surface modules).",
-    InputEvents    = "-1007: Input message cyclic array.",
-    DisplayInfo    = "-1008: DisplayInfo structure, managed by the Display module"
+    InputEvents    = "-1007: Input message cyclic array."
   })
 
   const("MAX", { }, { FILENAME = 256 })  -- Maximum length for file names (not necessarily including path)
@@ -1302,26 +1290,29 @@ inline OBJECTPTR GetParentContext() { return (OBJECTPTR)(MAXINT)GetResource(RES_
 inline APTR GetResourcePtr(LONG ID) { return (APTR)(MAXINT)GetResource(ID); }
 
 inline CSTRING to_cstring(std::string &A) { return A.c_str(); }
-inline CSTRING to_cstring(CSTRING A) { return A; }
+constexpr inline CSTRING to_cstring(CSTRING A) { return A; }
 
 template <class T, class U> inline ERROR StrMatch(T &&A, U &&B) {
    return StrCompare(to_cstring(A), to_cstring(B), 0, STR_MATCH_LEN);
 }
 
-inline LONG StrCopy(CSTRING String, STRING Dest, LONG Length = 0x7fffffff)
+template <class T> inline LONG StrCopy(T &&Source, STRING Dest, LONG Length = 0x7fffffff)
 {
-   if ((Length > 0) and (String) and (Dest)) {
+   auto src = to_cstring(Source);
+   if ((Length > 0) and (src) and (Dest)) {
       LONG i = 0;
-      while ((i < Length) and (*String)) Dest[i++] = *String++;
-
-      if ((*String) and (i >= Length)) {
-         Dest[i-1] = 0; // Ran out of buffer space, terminate from one character back
+      while (*src) {
+         if (i IS Length) {
+            Dest[i-1] = 0;
+            return i;
+         }
+         Dest[i++] = *src++;
       }
-      else Dest[i] = 0;
+
+      Dest[i] = 0;
       return i;
    }
-
-   return 0;
+   else return 0;
 }
 
 #ifndef PRV_CORE_DATA
@@ -1348,10 +1339,6 @@ inline ERROR QueueAction(LONG Action, OBJECTID ObjectID) {
 
 template <class T, class U> inline ERROR StrCompare(T &&A, U &&B, LONG Length, LONG Flags) {
    return StrCompare(to_cstring(A), to_cstring(B), Length, Flags);
-}
-
-template <class T> inline LONG StrCopy(T &&A, STRING B, LONG Length = 0x7fffffff) {
-   return StrCopy(to_cstring(A), B, Length);
 }
 
 #endif

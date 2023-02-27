@@ -443,7 +443,7 @@ extern bool glSixBitDisplay;
 extern OBJECTPTR glModule;
 extern OBJECTPTR clDisplay, clPointer, clBitmap, clClipboard, clSurface;
 extern OBJECTID glPointerID;
-extern DISPLAYINFO *glDisplayInfo;
+extern DISPLAYINFO glDisplayInfo;
 extern APTR glDither;
 extern OBJECTPTR glCompress;
 extern struct CoreBase *CoreBase;
