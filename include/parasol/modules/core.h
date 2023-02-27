@@ -1083,7 +1083,6 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 #define RPM_AlphaBlend -1004
 #define RPM_XWindowLookup -1005
 #define RPM_InputEvents -1007
-#define RPM_DisplayInfo -1008
 
 #define MAX_FILENAME 256
 
@@ -2170,8 +2169,8 @@ inline LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size) { return C
 inline OBJECTPTR GetParentContext() { return (OBJECTPTR)(MAXINT)GetResource(RES_PARENT_CONTEXT); }
 inline APTR GetResourcePtr(LONG ID) { return (APTR)(MAXINT)GetResource(ID); }
 
-inline CSTRING to_cstring(std::string &A) { return A.c_str(); }
-inline CSTRING to_cstring(CSTRING A) { return A; }
+constexpr inline CSTRING to_cstring(std::string &A) { return A.c_str(); }
+constexpr inline CSTRING to_cstring(CSTRING A) { return A; }
 
 template <class T, class U> inline ERROR StrMatch(T &&A, U &&B) {
    return StrCompare(to_cstring(A), to_cstring(B), 0, STR_MATCH_LEN);

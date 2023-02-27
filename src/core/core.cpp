@@ -1900,7 +1900,7 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
                if ((mount[0] IS '/') and (!mount[1]));
                else {
                   IntToStr(driveno++, drivename+5, 3);
-                  SetVolume(drivename, mount, AST_DEVICE_PATH, devpath, "devices/storage", AST_DEVICE, "hd");
+                  SetVolume(drivename, mount, "devices/storage", NULL, "hd", 0);
                }
             }
 
