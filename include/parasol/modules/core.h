@@ -1037,26 +1037,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 #define VAS_CREATE_LINK 17
 #define VAS_DRIVER_SIZE 18
 
-// Tags for SetVolume()
-
-#define AST_Path 1LL
-#define AST_PATH 1LL
-#define AST_Name 2LL
-#define AST_NAME 2LL
-#define AST_Flags 3LL
-#define AST_FLAGS 3LL
-#define AST_Icon 4LL
-#define AST_ICON 4LL
-#define AST_Comment 5LL
-#define AST_COMMENT 5LL
-#define AST_Label 6LL
-#define AST_LABEL 6LL
-#define AST_Device 7LL
-#define AST_DEVICE 7LL
-#define AST_DevicePath 8LL
-#define AST_DEVICE_PATH 8LL
-#define AST_ID 9LL
-
 // Feedback event indicators.
 
 #define FDB_DECOMPRESS_FILE 1
@@ -1975,7 +1955,7 @@ struct CoreBase {
    ERROR (*_SysUnlock)(LONG Index);
    ERROR (*_CreateFolder)(CSTRING Path, LONG Permissions);
    ERROR (*_LoadFile)(CSTRING Path, LONG Flags, struct CacheFile ** Cache);
-   ERROR (*_SetVolume)(...);
+   ERROR (*_SetVolume)(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, LONG Flags);
    ERROR (*_DeleteVolume)(CSTRING Name);
    ERROR (*_MoveFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
    ERROR (*_UpdateMessage)(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size);
@@ -2114,7 +2094,7 @@ inline ERROR SysLock(LONG Index, LONG MilliSeconds) { return CoreBase->_SysLock(
 inline ERROR SysUnlock(LONG Index) { return CoreBase->_SysUnlock(Index); }
 inline ERROR CreateFolder(CSTRING Path, LONG Permissions) { return CoreBase->_CreateFolder(Path,Permissions); }
 inline ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile ** Cache) { return CoreBase->_LoadFile(Path,Flags,Cache); }
-template<class... Args> ERROR SetVolume(Args... Tags) { return CoreBase->_SetVolume(Tags...); }
+inline ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, LONG Flags) { return CoreBase->_SetVolume(Name,Path,Icon,Label,Device,Flags); }
 inline ERROR DeleteVolume(CSTRING Name) { return CoreBase->_DeleteVolume(Name); }
 inline ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_MoveFile(Source,Dest,Callback); }
 inline ERROR UpdateMessage(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size) { return CoreBase->_UpdateMessage(Queue,Message,Type,Data,Size); }
@@ -2197,20 +2177,23 @@ template <class T, class U> inline ERROR StrMatch(T &&A, U &&B) {
    return StrCompare(to_cstring(A), to_cstring(B), 0, STR_MATCH_LEN);
 }
 
-inline LONG StrCopy(CSTRING String, STRING Dest, LONG Length = 0x7fffffff)
+template <class T> inline LONG StrCopy(T &&Source, STRING Dest, LONG Length = 0x7fffffff)
 {
-   if ((Length > 0) and (String) and (Dest)) {
+   auto src = to_cstring(Source);
+   if ((Length > 0) and (src) and (Dest)) {
       LONG i = 0;
-      while ((i < Length) and (*String)) Dest[i++] = *String++;
-
-      if ((*String) and (i >= Length)) {
-         Dest[i-1] = 0; // Ran out of buffer space, terminate from one character back
+      while (*src) {
+         if (i IS Length) {
+            Dest[i-1] = 0;
+            return i;
+         }
+         Dest[i++] = *src++;
       }
-      else Dest[i] = 0;
+
+      Dest[i] = 0;
       return i;
    }
-
-   return 0;
+   else return 0;
 }
 
 #ifndef PRV_CORE_DATA
@@ -2237,10 +2220,6 @@ inline ERROR QueueAction(LONG Action, OBJECTID ObjectID) {
 
 template <class T, class U> inline ERROR StrCompare(T &&A, U &&B, LONG Length, LONG Flags) {
    return StrCompare(to_cstring(A), to_cstring(B), Length, Flags);
-}
-
-template <class T> inline LONG StrCopy(T &&A, STRING B, LONG Length = 0x7fffffff) {
-   return StrCopy(to_cstring(A), B, Length);
 }
 
 #endif

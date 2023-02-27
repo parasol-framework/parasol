@@ -79,7 +79,7 @@ ERROR SysLock(LONG Index, LONG MilliSeconds);
 ERROR SysUnlock(LONG Index);
 ERROR CreateFolder(CSTRING Path, LONG Permissions);
 ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile ** Cache);
-ERROR SetVolume(LARGE,...);
+ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, LONG Flags);
 ERROR DeleteVolume(CSTRING Name);
 ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
 ERROR UpdateMessage(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size);

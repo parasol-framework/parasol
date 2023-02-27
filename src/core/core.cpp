@@ -1654,12 +1654,7 @@ static void BreakHandler(void)
 #ifdef _WIN32
 static void win32_enum_folders(CSTRING Volume, CSTRING Label, CSTRING Path, CSTRING Icon, BYTE Hidden)
 {
-   SetVolume(AST_NAME, Volume,
-      AST_PATH,  Path,
-      AST_FLAGS, VOLUME_REPLACE | (Hidden ? VOLUME_HIDDEN : 0),
-      AST_ICON,  Icon,
-      AST_LABEL, Label,
-      TAGEND);
+   SetVolume(Volume, Path, Icon, Label, NULL, VOLUME_REPLACE | (Hidden ? VOLUME_HIDDEN : 0));
 }
 #endif
 
@@ -1683,50 +1678,50 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
    // OPF_SYSTEM_PATH : system  : glSystemPath = %ROOT%/share/parasol
 
    #ifdef _WIN32
-      SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath.c_str(), AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "programs/filemanager", TAGEND);
-      SetVolume(AST_NAME, "system", AST_PATH, glRootPath.c_str(), AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick", TAGEND);
+      SetVolume("parasol", glRootPath.c_str(), "programs/filemanager", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+      SetVolume("system", glRootPath.c_str(), "misc/brick", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
 
       if (!glModulePath.empty()) {
-         SetVolume(AST_NAME, "modules", AST_PATH, glModulePath.c_str(), AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick", TAGEND);
+         SetVolume("modules", glModulePath.c_str(), "misc/brick", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
       }
       else {
-         SetVolume(AST_NAME, "modules", AST_PATH, "system:lib/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick", TAGEND);
+         SetVolume("modules", "system:lib/", "misc/brick", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
       }
    #elif __unix__
-      SetVolume(AST_NAME, "parasol", AST_PATH, glRootPath.c_str(), AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "programs/filemanager",  TAGEND);
-      SetVolume(AST_NAME, "system", AST_PATH, glSystemPath.c_str(), AST_FLAGS, VOLUME_REPLACE|VOLUME_SYSTEM, AST_ICON, "misc/brick",  TAGEND);
+      SetVolume("parasol", glRootPath.c_str(), "programs/filemanager", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+      SetVolume("system", glSystemPath.c_str(), "misc/brick", NULL, NULL, VOLUME_REPLACE|VOLUME_SYSTEM);
 
       if (!glModulePath.empty()) {
-         SetVolume(AST_NAME, "modules", AST_PATH, glModulePath.c_str(), AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick",  TAGEND);
+         SetVolume("modules", glModulePath.c_str(), "misc/brick", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
       }
       else {
          std::string path = glRootPath + "lib/parasol/";
-         SetVolume(AST_NAME, "modules", AST_PATH, path.c_str(), AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/brick",  TAGEND);
+         SetVolume("modules", path.c_str(), "misc/brick", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
       }
 
-      SetVolume(AST_NAME, "drive1", AST_PATH, "/", AST_LABEL, "Linux", AST_FLAGS, VOLUME_REPLACE|VOLUME_SYSTEM, AST_ICON, "devices/storage", AST_DEVICE, "hd", TAGEND);
+      SetVolume("drive1", "/", "devices/storage", "Linux", "hd", VOLUME_REPLACE|VOLUME_SYSTEM);
    #endif
 
    // Configure some standard volumes.
 
    #ifdef __ANDROID__
-      SetVolume(AST_NAME, "assets", AST_PATH, "EXT:FileAssets", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, TAGEND);
-      SetVolume(AST_NAME, "templates", AST_PATH, "assets:templates/", AST_FLAGS, VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/openbook", TAGEND);
-      SetVolume(AST_NAME, "config", AST_PATH, "localcache:config/|assets:config/", AST_FLAGS, VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "tools/cog",  TAGEND);
+      SetVolume("assets", "EXT:FileAssets", NULL, NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+      SetVolume("templates", "assets:templates/", "misc/openbook", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
+      SetVolume("config", "localcache:config/|assets:config/", "tools/cog", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
    #else
-      SetVolume(AST_NAME, "templates", AST_PATH, "scripts:templates/", AST_FLAGS, VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "misc/openbook", TAGEND);
-      SetVolume(AST_NAME, "config", AST_PATH, "system:config/", AST_FLAGS, VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "tools/cog",  TAGEND);
+      SetVolume("templates", "scripts:templates/", "misc/openbook", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
+      SetVolume("config", "system:config/", "tools/cog", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
       if (!AnalysePath("parasol:bin/", NULL)) { // Bin is the location of the fluid and parasol binaries
-         SetVolume(AST_NAME, "bin", AST_PATH, "parasol:bin/", AST_FLAGS, VOLUME_HIDDEN|VOLUME_SYSTEM, TAGEND);
+         SetVolume("bin", "parasol:bin/", NULL, NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
       }
-      else SetVolume(AST_NAME, "bin", AST_PATH, "parasol:", AST_FLAGS, VOLUME_HIDDEN|VOLUME_SYSTEM, TAGEND);
+      else SetVolume("bin", "parasol:", NULL, NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
    #endif
 
-   SetVolume(AST_NAME, "temp", AST_PATH, "user:temp/", AST_FLAGS, VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "items/trash", TAGEND);
-   SetVolume(AST_NAME, "fonts", AST_PATH, "system:fonts/", AST_FLAGS, VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "items/font",  TAGEND);
-   SetVolume(AST_NAME, "scripts", AST_PATH, "system:scripts/", AST_FLAGS, VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "filetypes/source",  TAGEND);
-   SetVolume(AST_NAME, "styles", AST_PATH, "system:styles/", AST_FLAGS, VOLUME_HIDDEN, AST_ICON, "tools/image_gallery",  TAGEND);
-   SetVolume(AST_NAME, "icons", AST_PATH, "EXT:widget", AST_FLAGS, VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON,  "misc/picture", TAGEND); // Refer to widget module for actual configuration
+   SetVolume("temp", "user:temp/", "items/trash", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
+   SetVolume("fonts", "system:fonts/", "items/font", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
+   SetVolume("scripts", "system:scripts/", "filetypes/source", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
+   SetVolume("styles", "system:styles/", "tools/image_gallery", NULL, NULL, VOLUME_HIDDEN);
+   SetVolume("icons", "EXT:widget", "misc/picture", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM); // Refer to widget module for actual configuration
 
    // Some platforms need to have special volumes added - these are provided in the OpenInfo structure passed to
    // the Core.
@@ -1735,11 +1730,11 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
       for (LONG i=0; glOpenInfo->Options[i].Tag != TAGEND; i++) {
          switch (glOpenInfo->Options[i].Tag) {
             case TOI_LOCAL_CACHE: {
-               SetVolume(AST_NAME, "localcache", AST_PATH, glOpenInfo->Options[i].Value.String, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, TAGEND);
+               SetVolume("localcache", glOpenInfo->Options[i].Value.String, NULL, NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
                break;
             }
             case TOI_LOCAL_STORAGE: {
-               SetVolume(AST_NAME, "localstorage", AST_PATH, glOpenInfo->Options[i].Value.String, AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, TAGEND);
+               SetVolume("localstorage", glOpenInfo->Options[i].Value.String, NULL, NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
                break;
             }
          }
@@ -1792,7 +1787,7 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
       buffer += "|config:users/default/";
    }
 
-   SetVolume(AST_NAME, "user:", AST_PATH, buffer.c_str(), AST_Flags, VOLUME_REPLACE|VOLUME_SYSTEM, AST_ICON, "users/user", TAGEND);
+   SetVolume("user:", buffer.c_str(), "users/user", NULL, NULL, VOLUME_REPLACE|VOLUME_SYSTEM);
 
    // Make sure that certain default directories exist
 
@@ -1800,11 +1795,11 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
    CreateFolder("user:temp/", PERMIT_READ|PERMIT_EXEC|PERMIT_WRITE);
 
    if (AnalysePath("temp:", NULL) != ERR_Okay) {
-      SetVolume(AST_NAME, "temp:", AST_PATH, "user:temp/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "items/trash", TAGEND);
+      SetVolume("temp:", "user:temp/", "items/trash", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
    }
 
    if (AnalysePath("clipboard:", NULL) != ERR_Okay) {
-      SetVolume(AST_NAME, "clipboard:", AST_PATH, "temp:clipboard/", AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM, AST_ICON, "items/clipboard", TAGEND);
+      SetVolume("clipboard:", "temp:clipboard/", "items/clipboard", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
    }
 
    // Look for the following drive types:
@@ -1816,9 +1811,8 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
    // NOTE: In the native release all media, including volumes, are controlled by the mountdrives program.
    // Mountdrives also happens to manage the system:hardware/drives.cfg file.
 
-   const SystemState *state = GetSystemState();
-   if (StrMatch("Native", state->Platform) != ERR_Okay) {
 #ifdef _WIN32
+   {
       char buffer[256];
       LONG len;
       if ((len = winGetLogicalDriveStrings(buffer, sizeof(buffer))) > 0) {
@@ -1837,19 +1831,19 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
             label[1] = 0;
 
             if (type IS DRIVETYPE_REMOVABLE) {
-               SetVolume(AST_NAME, disk, AST_PATH, buffer+i, AST_LABEL, label, AST_ICON, "devices/storage", AST_DEVICE, "disk", TAGEND);
+               SetVolume(disk, buffer+i, "devices/storage", label, "disk", 0);
                disk[4]++;
             }
             else if (type IS DRIVETYPE_CDROM) {
-               SetVolume(AST_NAME, cd, AST_PATH, buffer+i, AST_LABEL, label, AST_ICON, "devices/compactdisc", AST_DEVICE, "cd", TAGEND);
+               SetVolume(cd, buffer+i, "devices/compactdisc", label, "cd", 0);
                cd[2]++;
             }
             else if (type IS DRIVETYPE_FIXED) {
-               SetVolume(AST_Name, hd, AST_Path, buffer+i, AST_LABEL, label, AST_ICON, "devices/storage", AST_DEVICE, "hd", TAGEND);
+               SetVolume(hd, buffer+i, "devices/storage", label, "hd", 0);
                hd[5]++;
             }
             else if (type IS DRIVETYPE_NETWORK) {
-               SetVolume(AST_NAME, net, AST_PATH, buffer+i, AST_LABEL, label, AST_ICON, "devices/network", AST_DEVICE, "network", TAGEND);
+               SetVolume(net, buffer+i, "devices/network", label, "network", 0);
                net[3]++;
             }
             else log.warning("Drive %s identified as unsupported type %d.", buffer+i, type);
@@ -1859,82 +1853,82 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
       }
 
       winEnumSpecialFolders(&win32_enum_folders);
+   }
 #endif
 
 #if defined(__linux__) && !defined(__ANDROID__)
 
-      // /proc/mounts contains a list of all mounted file systems, one for each line.
-      //
-      // Format:  devicename mountpoint fstype access 0 0
-      // Example: /dev/hda1  /winnt     ntfs   ro     0 0
-      //
-      // We extract all lines with /dev/hd** and convert those into drives.
+   // /proc/mounts contains a list of all mounted file systems, one for each line.
+   //
+   // Format:  devicename mountpoint fstype access 0 0
+   // Example: /dev/hda1  /winnt     ntfs   ro     0 0
+   //
+   // We extract all lines with /dev/hd** and convert those into drives.
 
-      char mount[80], drivename[] = "driveXXX", devpath[40];
-      LONG file;
+   char mount[80], drivename[] = "driveXXX", devpath[40];
+   LONG file;
 
-      log.msg("Scanning /proc/mounts for hard disks");
+   log.msg("Scanning /proc/mounts for hard disks");
 
-      LONG driveno = 2; // Drive 1 is already assigned to root, so start from #2
-      if ((file = open("/proc/mounts", O_RDONLY)) != -1) {
-         LONG size = lseek(file, 0, SEEK_END);
-         lseek(file, 0, SEEK_SET);
-         if (size < 1) size = 8192;
+   LONG driveno = 2; // Drive 1 is already assigned to root, so start from #2
+   if ((file = open("/proc/mounts", O_RDONLY)) != -1) {
+      LONG size = lseek(file, 0, SEEK_END);
+      lseek(file, 0, SEEK_SET);
+      if (size < 1) size = 8192;
 
-         STRING buffer;
-         if (!AllocMemory(size, MEM_NO_CLEAR, (APTR *)&buffer, NULL)) {
-            size = read(file, buffer, size);
-            buffer[size] = 0;
+      STRING buffer;
+      if (!AllocMemory(size, MEM_NO_CLEAR, (APTR *)&buffer, NULL)) {
+         size = read(file, buffer, size);
+         buffer[size] = 0;
 
-            CSTRING str = buffer;
-            while (*str) {
-               if (!StrCompare("/dev/hd", str, 0, 0)) {
-                  // Extract mount point
+         CSTRING str = buffer;
+         while (*str) {
+            if (!StrCompare("/dev/hd", str, 0, 0)) {
+               // Extract mount point
 
-                  LONG i = 0;
-                  while ((*str) and (*str > 0x20)) {
-                     if (i < (LONG)sizeof(devpath)-1) devpath[i++] = *str;
-                     str++;
-                  }
-                  devpath[i] = 0;
-
-                  while ((*str) and (*str <= 0x20)) str++;
-                  for (i=0; (*str) and (*str > 0x20) and (i < (LONG)sizeof(mount)-1); i++) mount[i] = *str++;
-                  mount[i] = 0;
-
-                  if ((mount[0] IS '/') and (!mount[1]));
-                  else {
-                     IntToStr(driveno++, drivename+5, 3);
-                     SetVolume(AST_NAME, drivename, AST_DEVICE_PATH, devpath, AST_PATH, mount, AST_ICON, "devices/storage", AST_DEVICE, "hd", TAGEND);
-                  }
+               LONG i = 0;
+               while ((*str) and (*str > 0x20)) {
+                  if (i < (LONG)sizeof(devpath)-1) devpath[i++] = *str;
+                  str++;
                }
+               devpath[i] = 0;
 
-               // Next line
-               while ((*str) and (*str != '\n')) str++;
                while ((*str) and (*str <= 0x20)) str++;
+               for (i=0; (*str) and (*str > 0x20) and (i < (LONG)sizeof(mount)-1); i++) mount[i] = *str++;
+               mount[i] = 0;
+
+               if ((mount[0] IS '/') and (!mount[1]));
+               else {
+                  IntToStr(driveno++, drivename+5, 3);
+                  SetVolume(drivename, mount, AST_DEVICE_PATH, devpath, "devices/storage", AST_DEVICE, "hd");
+               }
             }
-            FreeResource(buffer);
+
+            // Next line
+            while ((*str) and (*str != '\n')) str++;
+            while ((*str) and (*str <= 0x20)) str++;
          }
-         else log.warning(ERR_AllocMemory);
-
-         close(file);
+         FreeResource(buffer);
       }
-      else log.warning(ERR_File);
+      else log.warning(ERR_AllocMemory);
 
-      const CSTRING cdroms[] = {
-         "/mnt/cdrom", "/mnt/cdrom0", "/mnt/cdrom1", "/mnt/cdrom2", "/mnt/cdrom3", "/mnt/cdrom4", "/mnt/cdrom5", "/mnt/cdrom6", // RedHat
-         "/cdrom0", "/cdrom1", "/cdrom2", "/cdrom3" // Debian
-      };
-      char cdname[] = "cd1";
-
-      for (LONG i=0; i < ARRAYSIZE(cdroms); i++) {
-         if (!access(cdroms[i], F_OK)) {
-            SetVolume(AST_Name, cdname, AST_Path, cdroms[i], AST_ICON, "devices/compactdisc", AST_DEVICE, "cd", TAGEND);
-            cdname[2] = cdname[2] + 1;
-         }
-      }
-#endif
+      close(file);
    }
+   else log.warning(ERR_File);
+
+   const CSTRING cdroms[] = {
+      "/mnt/cdrom", "/mnt/cdrom0", "/mnt/cdrom1", "/mnt/cdrom2", "/mnt/cdrom3", "/mnt/cdrom4", "/mnt/cdrom5", "/mnt/cdrom6", // RedHat
+      "/cdrom0", "/cdrom1", "/cdrom2", "/cdrom3" // Debian
+   };
+   char cdname[] = "cd1";
+
+   for (LONG i=0; i < ARRAYSIZE(cdroms); i++) {
+      if (!access(cdroms[i], F_OK)) {
+         SetVolume(cdname, cdroms[i], "devices/compactdisc", "cd", 0);
+         cdname[2] = cdname[2] + 1;
+      }
+   }
+#endif
 
    // Create the 'archive' volume (non-essential)
 
@@ -1948,7 +1942,7 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
       if (vol[v++] IS '=') {
          for (p=0; vol[v] and (p < sizeof(path)-1); v++) path[p++] = vol[v];
          path[p] = 0;
-         SetVolume(AST_NAME, name, AST_PATH, path, AST_FLAGS, VOLUME_PRIORITY, TAGEND);
+         SetVolume(name, path, NULL, NULL, NULL, VOLUME_PRIORITY);
       }
    }
 

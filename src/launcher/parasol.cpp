@@ -190,11 +190,11 @@ int main(int argc, CSTRING *argv)
          }
 
          if (!AnalysePath("parasol:pictures/", NULL)) {
-            SetVolume(AST_NAME, "pictures", AST_PATH, "parasol:pictures/", AST_FLAGS, VOLUME_REPLACE, AST_ICON, "misc/picture",  TAGEND);
+            SetVolume("pictures", "parasol:pictures/", "misc/picture", NULL, NULL, VOLUME_REPLACE);
          }
 
          if (!AnalysePath("parasol:programs/", NULL)) {
-            SetVolume(AST_NAME, "programs", AST_PATH, "parasol:programs/", AST_FLAGS, VOLUME_REPLACE, AST_ICON, "items/launch",  TAGEND);
+            SetVolume("programs", "parasol:programs/", "items/launch", NULL, NULL, VOLUME_REPLACE);
          }
 
          LONG type;

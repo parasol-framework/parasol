@@ -874,22 +874,22 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 
       LONG pos = sizeof(link);
       if (link.Type IS LINK_FUNCTION) {
-         pos += StrCopy(function, buffer + pos) + 1;
+         pos += StrCopy(function, buffer + pos, buffersize - pos) + 1;
       }
-      else pos += StrCopy(href ? href : "", buffer + pos) + 1;
+      else pos += StrCopy(href ? href : "", buffer + pos, buffersize - pos) + 1;
 
       LONG count = 0;
       for (LONG i=1; i < Tag->TotalAttrib; i++) {
          if ((Tag->Attrib[i].Name) and (Tag->Attrib[i].Name[0] IS '@')) {
             count++;
-            pos += StrCopy(Tag->Attrib[i].Name+1, buffer+pos) + 1;
-            pos += StrCopy(Tag->Attrib[i].Value, buffer+pos) + 1;
+            pos += StrCopy(Tag->Attrib[i].Name+1, buffer+pos, buffersize - pos) + 1;
+            pos += StrCopy(Tag->Attrib[i].Value, buffer+pos, buffersize - pos) + 1;
             if (count >= link.Args) break;
          }
          else if ((Tag->Attrib[i].Name) and (Tag->Attrib[i].Name[0] IS '_')) {
             count++;
-            pos += StrCopy(Tag->Attrib[i].Name, buffer+pos) + 1;
-            pos += StrCopy(Tag->Attrib[i].Value, buffer+pos) + 1;
+            pos += StrCopy(Tag->Attrib[i].Name, buffer+pos, buffersize - pos) + 1;
+            pos += StrCopy(Tag->Attrib[i].Value, buffer+pos, buffersize - pos) + 1;
             if (count >= link.Args) break;
          }
       }

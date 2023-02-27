@@ -1115,11 +1115,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // The icons: special volume is a simple reference to the archive path.
 
-   if (SetVolume(AST_NAME, "icons",
-      AST_PATH,  "archive:icons/",
-      AST_FLAGS, VOLUME_REPLACE|VOLUME_HIDDEN,
-      AST_ICON,  "misc/picture",
-      TAGEND) != ERR_Okay) return ERR_SetVolume;
+   if (SetVolume("icons", "archive:icons/", "misc/picture", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN)) return ERR_SetVolume;
 
 #ifdef _WIN32 // Get any existing Windows clipboard content
 

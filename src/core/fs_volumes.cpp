@@ -97,111 +97,43 @@ ERROR RenameVolume(CSTRING Volume, CSTRING Name)
 -FUNCTION-
 SetVolume: Adds a new volume name to the system.
 
-The SetVolume() function is used to create a volume with one or more paths assigned to it.  If the volume already
+The SetVolume() function is used to create a volume that is associated with one or more paths.  If the volume already
 exists, it possible to append more paths or replace them entirely.
 
-This function uses tags to create new volumes.  The following table lists all tags that are accepted by this
-function.  Remember to terminate the taglist with `TAGEND`.
-
-<types type="Tag">
-<type name="AST_NAME">Required.  Follow this tag with the string name of the volume.</>
-<type name="AST_PATH">Required.  Follow this tag with the path to be set against the volume.  If setting multiple paths, separate each path with a semi-colon character.  Each path must terminate with a forward slash to denote a folder.</>
-<type name="AST_COMMENT">A user comment string may be set against the volume with this tag.</>
-<type name="AST_FLAGS">Optional flags.  See below for more details.</>
-<type name="AST_ICON">You may set an icon to be associated with the volume, so that it has graphical representation when viewed in a file viewer for example.  The required icon string format is "category/name".</>
-<type name="AST_ID">A unique ID string can be specified against the volume.  This is useful for programs that want to identify volumes that they have created.</>
-<type name="AST_LABEL">An optional label or short comment may be applied to the volume.  This may be useful if the volume name has little meaning to the user (e.g. drive1, drive2 ...).</>
-</types>
-
-Flags that may be passed with the `AST_FLAGS` tag are as follows:
+Flags that may be passed are as follows:
 
 <types lookup="VOLUME"/>
 
 -INPUT-
-vtags Tags: A list of AST tags, terminated with a single TAGEND entry.
+cstr Name: Required.  The name of the volume.
+cstr Path: Required.  The path to be associated with the volume.  If setting multiple paths, separate each path with a semi-colon character.  Each path must terminate with a forward slash to denote a folder.
+cstr Icon: An icon can be associated with the volume so that it has graphical representation when viewed in the UI.  The required icon string format is 'category/name'.
+cstr Label: An optional label or short comment may be applied to the volume.  This may be useful if the volume name has little meaning to the user (e.g. drive1, drive2 ...).
+cstr Device: If the volume references the root of a device, specify a code of 'disk', 'hd', 'cd', 'network' or 'usb'.
+int(VOLUME) Flags: Optional flags.
 
 -ERRORS-
-Okay:         The volume was successfully added.
-Args:         A valid name and path string was not provided.
-AccessObject: Access to the SystemVolumes shared object was denied.
-AllocMemory:
+Okay: The volume was successfully added.
+NullArgs: A valid name and path string was not provided.
+LockFailed:
 -END-
 
 *********************************************************************************************************************/
 
-ERROR SetVolume(LARGE TagID, ...)
+ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, LONG Flags)
 {
    pf::Log log(__FUNCTION__);
-   LONG i;
 
-   va_list list;
-   va_start(list, TagID);
+   if ((!Name) or (!Path)) return log.warning(ERR_NullArgs);
 
-   LONG flags = 0;
-   std::string path;
-   CSTRING comment = NULL;
-   CSTRING icon    = NULL;
-   CSTRING label   = NULL;
-   CSTRING device  = NULL;
-   CSTRING devpath = NULL;
-   CSTRING devid   = NULL;
    std::string name;
-   LONG count = 0;
-   LARGE tagid = TagID;
-   while (tagid) {
-      ULONG type = tagid>>32;
-      if ((!type) or (type & FD_STRING)) {
-         switch ((ULONG)tagid) {
-            case AST_NAME: {
-               CSTRING str = va_arg(list, CSTRING);
-               for (i=0; (str[i]) and (str[i] != ':'); i++);
-               name.append(str, 0, i);
-               goto next;
-            }
 
-            case AST_DEVICE_PATH: devpath = va_arg(list, CSTRING); goto next;
-            case AST_PATH:        path    = std::string(va_arg(list, CSTRING)); goto next;
-            case AST_ICON:        icon    = va_arg(list, CSTRING); goto next;
-            case AST_COMMENT:     comment = va_arg(list, CSTRING); goto next;
-            case AST_DEVICE:      device  = va_arg(list, CSTRING); goto next;
+   LONG i;
+   for (i=0; (Name[i]) and (Name[i] != ':'); i++);
+   name.append(Name, 0, i);
 
-            case AST_LABEL:
-               label = va_arg(list, CSTRING);
-               if ((label) and (!label[0])) label = NULL;
-               goto next;
-
-            case AST_ID: // A unique ID string that can be associated with volumes, used by mountdrives
-               devid = va_arg(list, CSTRING);
-               goto next;
-         }
-      }
-
-      if ((!type) or (type & FD_LONG)) {
-         switch ((ULONG)tagid) {
-            case AST_FLAGS: flags = va_arg(list, LONG); goto next;
-         }
-      }
-
-      if ((!type) or (type & FD_DOUBLE)) {
-         switch ((ULONG)tagid) {
-            case AST_FLAGS: flags = F2T(va_arg(list, DOUBLE)); goto next;
-         }
-      }
-
-      log.warning("Bad tag ID $%.8x%.8x, unrecognised flags $%.8x @ tag-pair %d.", (ULONG)(tagid>>32), (ULONG)tagid, type, count);
-      va_end(list);
-      return log.warning(ERR_WrongType);
-next:
-      tagid = va_arg(list, LARGE);
-      count++;
-   }
-
-   va_end(list);
-
-   if (name.empty() or path.empty()) return log.warning(ERR_NullArgs);
-
-   if (label) log.branch("Name: %s (%s), Path: %s", name.c_str(), label, path.c_str());
-   else log.branch("Name: %s, Path: %s", name.c_str(), path.c_str());
+   if (Label) log.branch("Name: %s (%s), Path: %s", Name, Label, Path);
+   else log.branch("Name: %s, Path: %s", Name, Path);
 
    ThreadLock lock(TL_VOLUMES, 6000);
    if (!lock.granted()) return log.warning(ERR_LockFailed);
@@ -209,28 +141,25 @@ next:
    // If we are not in replace mode, check if the volume already exists with configured path.  If so, add the path as a complement
    // to the existing volume.  In this mode nothing else besides the path is changed, even if other tags are specified.
 
-   if (!(flags & VOLUME_REPLACE)) {
+   if (!(Flags & VOLUME_REPLACE)) {
       if (glVolumes.contains(name)) {
          auto &keys = glVolumes[name];
-         if (flags & VOLUME_PRIORITY) keys["Path"] = path + "|" + keys["Path"];
-         else keys["Path"] = keys["Path"] + "|" + path;
+         if (Flags & VOLUME_PRIORITY) keys["Path"] = std::string(Path) + "|" + keys["Path"];
+         else keys["Path"] = keys["Path"] + "|" + Path;
          return ERR_Okay;
       }
    }
 
    auto &keys = glVolumes[name];
 
-   keys["Path"] = path;
+   keys["Path"] = Path;
 
-   if (icon)    keys["Icon"]       = icon;
-   if (comment) keys["Comment"]    = comment;
-   if (label)   keys["Label"]      = label;
-   if (device)  keys["Device"]     = device;
-   if (devpath) keys["DevicePath"] = devpath;
-   if (devid)   keys["ID"]         = devid;
+   if (Icon)   keys["Icon"]   = Icon;
+   if (Label)  keys["Label"]  = Label;
+   if (Device) keys["Device"] = Device;
 
-   if (flags & VOLUME_HIDDEN) keys["Hidden"] = "Yes";
-   if (flags & VOLUME_SYSTEM) keys["System"] = "Yes";
+   if (Flags & VOLUME_HIDDEN) keys["Hidden"] = "Yes";
+   if (Flags & VOLUME_SYSTEM) keys["System"] = "Yes";
 
    UBYTE evbuf[sizeof(EVENTID) + name.size() + 1];
    ((EVENTID *)evbuf)[0] = GetEventID(EVG_FILESYSTEM, "volume", "created");
