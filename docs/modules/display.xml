@@ -330,7 +330,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <param type="LONG" name="Type" lookup="JET">JET type integer.</param>
     </input>
     <description>
-<p>This function converts JET integer constants to their string equivalent.  Refer to <function module="Display">SubscribeInput</function> for a list of JET constants.</p>
+<p>This function converts JET integer constants to their string equivalent.</p>
     </description>
     <result type="CSTRING">A string describing the input type is returned or NULL if the Type is invalid.</result>
   </function>
@@ -756,8 +756,8 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 <p>The SubscribeInput() function provides a systematic way of receiving input events as they occur.  Coverage is limited to device events that are linked to the display (i.e. events from track pads, mouse pointers, graphics tablets and touch screens).  Keyboard devices are not included.</p>
 <p>The client is required to remove the subscription with <function module="Display">UnsubscribeInput</function> once tracking is no longer required.</p>
 <p>Input events can be filtered so that they are received in relation to surfaces and devices.  An input mask can also be applied so that only certain types of events are received.</p>
-<p>A callback is required for receiving the input events.  The following C/C++ code illustrates a method for processing events in the callback:</p>
-<pre>ERROR consume_input_events(const struct InputEvent *Events, LONG Handle)
+<p>A callback is required for receiving the input events.  The following C++ code illustrates a method for processing events in the callback:</p>
+<pre>ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 {
    for (auto event=Events; event; event=event-&gt;Next) {
       if ((event-&gt;Flags &amp; JTYPE_BUTTON) and (event-&gt;Value &gt; 0)) {

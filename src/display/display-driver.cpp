@@ -194,7 +194,8 @@ static LONG glLockCount = 0;
 static OBJECTID glActiveDisplayID = 0;
 #endif
 
-struct InputEventMgr glInputEvents;
+std::recursive_mutex glInputLock;
+
 OBJECTPTR glCompress = NULL;
 static objCompression *glIconArchive = NULL;
 struct CoreBase *CoreBase;
@@ -207,7 +208,6 @@ DISPLAYINFO glDisplayInfo;
 APTR glDither = NULL;
 SharedControl *glSharedControl = NULL;
 bool glSixBitDisplay = false;
-std::unordered_map<LONG, InputCallback> glInputCallbacks;
 static MsgHandler *glExposeHandler = NULL;
 TIMER glRefreshPointerTimer = 0;
 extBitmap *glComposite = NULL;
@@ -1138,10 +1138,6 @@ static ERROR CMDExpunge(void)
    if (glDemultiply)          { FreeResource(glDemultiply); glDemultiply = NULL; }
 
    DeregisterFD((HOSTHANDLE)-2); // Disable input_event_loop()
-
-   for (const auto & [ handle, sub ] : glInputCallbacks) { // Check that all input subscriptions were terminated
-      log.warning("Found unfreed input subscription %d with filter #%d, mask $%.4x", handle, sub.SurfaceFilter, sub.InputMask);
-   }
 
 #ifdef __xwindows__
 

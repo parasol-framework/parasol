@@ -46,91 +46,30 @@ static BYTE get_over_object(extPointer *);
 static void process_ptr_button(extPointer *, struct dcDeviceInput *);
 static void process_ptr_movement(extPointer *, struct dcDeviceInput *);
 static void process_ptr_wheel(extPointer *, struct dcDeviceInput *);
-static void send_inputmsg(InputEvent *input, InputSubscription *List);
 
 //********************************************************************************************************************
 
-INLINE void call_userinput(CSTRING Debug, InputEvent *input, LONG Flags, OBJECTID RecipientID, OBJECTID OverID,
+inline void add_input(CSTRING Debug, InputEvent &input, LONG Flags, OBJECTID RecipientID, OBJECTID OverID,
    DOUBLE AbsX, DOUBLE AbsY, DOUBLE OverX, DOUBLE OverY)
 {
-   InputSubscription *list;
+   //pf::Log log(__FUNCTION__);
+   //log.trace("Type: %s, Value: %.2f, Recipient: %d, Over: %d %.2fx%.2f, Abs: %.2fx%.2f %s",
+   //   (input->Type < JET_END) ? glInputNames[input->Type] : (CSTRING)"", input->Value, RecipientID, OverID, OverX, OverY, AbsX, AbsY, Debug);
 
-   if ((glSharedControl->InputMID) and (!AccessMemoryID(glSharedControl->InputMID, MEM_READ, 1000, &list))) {
-      //pf::Log log(__FUNCTION__);
-      //log.trace("Type: %s, Value: %.2f, Recipient: %d, Over: %d %.2fx%.2f, Abs: %.2fx%.2f %s",
-      //   (input->Type < JET_END) ? glInputNames[input->Type] : (CSTRING)"", input->Value, RecipientID, OverID, OverX, OverY, AbsX, AbsY, Debug);
+   input.Mask        = glInputType[input.Type].Mask;
+   input.Flags       = glInputType[input.Type].Flags | Flags;
+   input.RecipientID = RecipientID;
+   input.OverID      = OverID;
+   input.AbsX        = AbsX;
+   input.AbsY        = AbsY;
+   input.X           = OverX;
+   input.Y           = OverY;
 
-      input->Mask        = glInputType[input->Type].Mask;
-      input->Flags       = glInputType[input->Type].Flags | Flags;
-      input->RecipientID = RecipientID;
-      input->OverID      = OverID;
-      input->AbsX        = AbsX;
-      input->AbsY        = AbsY;
-      input->X           = OverX;
-      input->Y           = OverY;
-      send_inputmsg(input, list);
-      ReleaseMemory(list);
-   }
+   const std::lock_guard<std::recursive_mutex> lock(glInputLock);
+   glInputEvents.push_back(input);
 }
 
 //********************************************************************************************************************
-// Adds an input event to the glInput event list, then scans through the list of subscribers and alerts any processes
-// that match the filter.
-
-static void send_inputmsg(InputEvent *Event, InputSubscription *List)
-{
-   pf::Log log(__FUNCTION__);
-
-   // Store the message in the input message queue
-
-   CopyMemory(Event, glInputEvents.Msgs + (glInputEvents.IndexCounter & INPUT_MASK), sizeof(*Event));
-   glInputEvents.IndexCounter++;
-
-   // Alert processes that a new input event is ready.  This is a two part process as processes
-   // can have multiple subscriptions and we only want to wake them once.
-
-   std::unordered_set<LONG> wake_processes;
-
-   auto task = (objTask *)CurrentTask();
-   for (LONG i=0; i < glSharedControl->InputTotal; i++) {
-      if ((List[i].SurfaceFilter) and (List[i].SurfaceFilter != Event->RecipientID)) continue;
-      if (!(List[i].InputMask & Event->Mask)) continue;
-
-      //log.msg("Process %d, Surface #%d, Mask: $%.8x & $%.8x, Last Alerted @ %" PF64, List[i].ProcessID, Event->RecipientID, Event->Mask, List[i].InputMask, List[i].LastAlerted);
-
-      // NB: When process ID's match we will instead process input events at the start of the next sleep cycle.
-
-      if (List[i].ProcessID != task->ProcessID) {
-         if (List[i].LastAlerted < glInputEvents.IndexCounter) {
-            wake_processes.insert(List[i].ProcessID);
-         }
-      }
-
-      List[i].LastAlerted = glInputEvents.IndexCounter;
-   }
-
-   for (const auto & pid : wake_processes) {
-      if (WakeProcess(pid) IS ERR_Search) {
-         log.warning("Process #%d deceased, removing from input subscription array.", pid);
-
-         for (LONG i=glSharedControl->InputTotal-1; i >= 0; i--) {
-            if (pid IS List[i].ProcessID) {
-               if (i+1 < glSharedControl->InputTotal) {
-                  CopyMemory(List+i+1, List+i, sizeof(InputSubscription) * (glSharedControl->InputTotal - i - 1));
-               }
-               else ClearMemory(List+i, sizeof(List[i]));
-
-               __sync_fetch_and_sub(&glSharedControl->InputTotal, 1);
-            }
-         }
-      }
-   }
-}
-
-/*********************************************************************************************************************
-
-*********************************************************************************************************************/
-
 #ifdef _WIN32
 static ERROR PTR_SetWinCursor(extPointer *Self, struct ptrSetWinCursor *Args)
 {
@@ -140,9 +79,8 @@ static ERROR PTR_SetWinCursor(extPointer *Self, struct ptrSetWinCursor *Args)
 }
 #endif
 
-/*********************************************************************************************************************
-** Private action used to grab the window cursor under X11.  Can only be executed by the task that owns the pointer.
-*/
+//********************************************************************************************************************
+// Private action used to grab the window cursor under X11.  Can only be executed by the task that owns the pointer.
 
 #ifdef __xwindows__
 static ERROR PTR_GrabX11Pointer(extPointer *Self, struct ptrGrabX11Pointer *Args)
@@ -240,7 +178,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
    else {
       // This subroutine is used when the button is not one of the regular 1-10 available button types
 
-      call_userinput("IrregularButton", &userinput, uiflags, Self->OverObjectID, Self->OverObjectID,
+      add_input("IrregularButton", userinput, uiflags, Self->OverObjectID, Self->OverObjectID,
          Self->X, Self->Y, Self->OverX, Self->OverY);
       return;
    }
@@ -271,7 +209,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
                if (!(uiflags & JTYPE_DRAGGED)) uiflags |= JTYPE_DBL_CLICK;
             }
 
-            call_userinput("ButtonRelease-LastClicked", &userinput, uiflags, Self->Buttons[bi].LastClicked, Self->OverObjectID,
+            add_input("ButtonRelease-LastClicked", userinput, uiflags, Self->Buttons[bi].LastClicked, Self->OverObjectID,
                Self->X, Self->Y, Self->X - absx, Self->Y - absy); // OverX/Y is reported relative to the click-held surface
          }
          Self->Buttons[bi].LastClicked = 0;
@@ -317,7 +255,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
          if (Self->Buttons[bi].LastClicked) {
             log.warning("Did not receive a release for button %d on surface #%d.", bi, Self->Buttons[bi].LastClicked);
 
-            call_userinput("ButtonPress-ForceRelease", &userinput, uiflags, Self->Buttons[bi].LastClicked, Self->OverObjectID,
+            add_input("ButtonPress-ForceRelease", userinput, uiflags, Self->Buttons[bi].LastClicked, Self->OverObjectID,
                Self->X, Self->Y, Self->OverX, Self->OverY);
          }
 
@@ -343,7 +281,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
 
          QueueAction(AC_Focus, target);
 
-         call_userinput("ButtonPress", &userinput, uiflags, target, Self->OverObjectID,
+         add_input("ButtonPress", userinput, uiflags, target, Self->OverObjectID,
             Self->X, Self->Y, Self->OverX, Self->OverY);
       //}
 
@@ -372,24 +310,23 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
 
 static void process_ptr_wheel(extPointer *Self, struct dcDeviceInput *Input)
 {
-   InputSubscription *subs;
+   InputEvent msg;
+   msg.Type        = JET_WHEEL;
+   msg.Flags       = JTYPE_ANALOG|JTYPE_EXT_MOVEMENT | Input->Flags;
+   msg.Mask        = JTYPE_EXT_MOVEMENT;
+   msg.Value       = Input->Value;
+   msg.Timestamp   = Input->Timestamp;
+   msg.DeviceID    = Input->DeviceID;
+   msg.RecipientID = Self->OverObjectID;
+   msg.OverID      = Self->OverObjectID;
+   msg.AbsX        = Self->X;
+   msg.AbsY        = Self->Y;
+   msg.X           = Self->OverX;
+   msg.Y           = Self->OverY;
 
-   if ((glSharedControl->InputMID) and (!AccessMemoryID(glSharedControl->InputMID, MEM_READ, 1000, &subs))) {
-      InputEvent msg;
-      msg.Type        = JET_WHEEL;
-      msg.Flags       = JTYPE_ANALOG|JTYPE_EXT_MOVEMENT | Input->Flags;
-      msg.Mask        = JTYPE_EXT_MOVEMENT;
-      msg.Value       = Input->Value;
-      msg.Timestamp   = Input->Timestamp;
-      msg.DeviceID    = Input->DeviceID;
-      msg.RecipientID = Self->OverObjectID;
-      msg.OverID      = Self->OverObjectID;
-      msg.AbsX        = Self->X;
-      msg.AbsY        = Self->Y;
-      msg.X           = Self->OverX;
-      msg.Y           = Self->OverY;
-      send_inputmsg(&msg, subs);
-      ReleaseMemory(subs);
+   {
+      const std::lock_guard<std::recursive_mutex> lock(glInputLock);
+      glInputEvents.push_back(msg);
    }
 
    // Convert wheel mouse usage into scroll messages
@@ -496,7 +433,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
             // is going to consolidate the messages, it will need to take this into account and not rely on AbsX/AbsY
             // representing a movement overview.
 
-            call_userinput("Movement-Anchored", &userinput, JTYPE_ANCHORED, Self->AnchorID, Self->AnchorID, current_x, current_y, xchange, ychange);
+            add_input("Movement-Anchored", userinput, JTYPE_ANCHORED, Self->AnchorID, Self->AnchorID, current_x, current_y, xchange, ychange);
          }
          else {
             acMoveToPoint(Self, current_x, current_y, 0, MTF_X|MTF_Y); // NB: This function will update the OverObject field for us
@@ -514,7 +451,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
             // environments we cannot maintain a true anchor since the pointer is out of our control, but we still must
             // perform the necessary notification.
 
-            call_userinput("Movement-Anchored", &userinput, 0, Self->AnchorID, Self->AnchorID, current_x, current_y, xchange, ychange);
+            add_input("Movement-Anchored", userinput, 0, Self->AnchorID, Self->AnchorID, current_x, current_y, xchange, ychange);
          }
          else {
             struct acMoveToPoint moveto = { Self->X, Self->Y, 0, MTF_X|MTF_Y };
@@ -554,7 +491,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
 
             // Send the movement message to the last clicked object
 
-            call_userinput("Movement-LastClicked", &userinput, uiflags, Self->Buttons[0].LastClicked, Self->OverObjectID,
+            add_input("Movement-LastClicked", userinput, uiflags, Self->Buttons[0].LastClicked, Self->OverObjectID,
                Self->X, Self->Y, Self->X - absx, Self->Y - absy); // OverX/Y reported relative to the click-held surface
 
             get_over_object(Self);
@@ -565,7 +502,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
             // JTYPE_SECONDARY indicates to the receiver of the input message that it is not the primary recipient.
 
             if (Self->Buttons[0].LastClicked != Self->OverObjectID) {
-               call_userinput("Movement-LastClicked", &userinput, uiflags|JTYPE_SECONDARY, Self->OverObjectID, Self->OverObjectID,
+               add_input("Movement-LastClicked", userinput, uiflags|JTYPE_SECONDARY, Self->OverObjectID, Self->OverObjectID,
                   Self->X, Self->Y, Self->OverX, Self->OverY);
             }
 
@@ -577,7 +514,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
       }
       else {
          if (Self->OverObjectID) {
-            call_userinput("OverObject", &userinput, 0, Self->OverObjectID, Self->OverObjectID,
+            add_input("OverObject", userinput, 0, Self->OverObjectID, Self->OverObjectID,
                Self->X, Self->Y, Self->OverX, Self->OverY);
          }
 
@@ -585,7 +522,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
          // pointer has moved for one final time.
 
          if ((Self->LastSurfaceID) and (Self->LastSurfaceID != Self->OverObjectID)) {
-            call_userinput("Movement-PrevSurface", &userinput, 0, Self->LastSurfaceID, Self->OverObjectID,
+            add_input("Movement-PrevSurface", userinput, 0, Self->LastSurfaceID, Self->OverObjectID,
                Self->X, Self->Y, Self->OverX, Self->OverY);
          }
       }
@@ -1276,37 +1213,35 @@ static BYTE get_over_object(extPointer *Self)
 
       if (Self->OverObjectID != li_objectid) {
          pf::Log log(__FUNCTION__);
-         InputSubscription *subs;
 
-         log.traceBranch("OverObject changing from #%d to #%d.  InputMID: %d", Self->OverObjectID, li_objectid, glSharedControl->InputMID);
+         log.traceBranch("OverObject changing from #%d to #%d.", Self->OverObjectID, li_objectid);
 
-         changed = TRUE;
+         changed = true;
 
-         if ((glSharedControl->InputMID) and (!AccessMemoryID(glSharedControl->InputMID, MEM_READ, 500, &subs))) {
-            InputEvent input = {
-               .Next        = NULL,
-               .Value       = (DOUBLE)Self->OverObjectID,
-               .Timestamp   = PreciseTime(),
-               .RecipientID = Self->OverObjectID, // Recipient is the surface we are leaving
-               .OverID      = li_objectid, // New surface (entering)
-               .AbsX        = Self->X,
-               .AbsY        = Self->Y,
-               .X           = Self->X - li_left,
-               .Y           = Self->Y - li_top,
-               .DeviceID    = Self->UID,
-               .Type        = JET_LEFT_SURFACE,
-               .Flags       = JTYPE_FEEDBACK,
-               .Mask        = JTYPE_FEEDBACK
-            };
-            send_inputmsg(&input, subs);
+         InputEvent input = {
+            .Next        = NULL,
+            .Value       = (DOUBLE)Self->OverObjectID,
+            .Timestamp   = PreciseTime(),
+            .RecipientID = Self->OverObjectID, // Recipient is the surface we are leaving
+            .OverID      = li_objectid, // New surface (entering)
+            .AbsX        = Self->X,
+            .AbsY        = Self->Y,
+            .X           = Self->X - li_left,
+            .Y           = Self->Y - li_top,
+            .DeviceID    = Self->UID,
+            .Type        = JET_LEFT_SURFACE,
+            .Flags       = JTYPE_FEEDBACK,
+            .Mask        = JTYPE_FEEDBACK
+         };
 
-            input.Type        = JET_ENTERED_SURFACE;
-            input.Value       = li_objectid;
-            input.RecipientID = li_objectid; // Recipient is the surface we are entering
-            send_inputmsg(&input, subs);
+         const std::lock_guard<std::recursive_mutex> lock(glInputLock);
+         glInputEvents.push_back(input);
 
-            ReleaseMemory(subs);
-         }
+         input.Type        = JET_ENTERED_SURFACE;
+         input.Value       = li_objectid;
+         input.RecipientID = li_objectid; // Recipient is the surface we are entering
+         glInputEvents.push_back(input);
+
          Self->OverObjectID = li_objectid;
       }
 
@@ -1357,55 +1292,48 @@ static ERROR repeat_timer(extPointer *Self, LARGE Elapsed, LARGE Unused)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!glSharedControl->InputMID) return ERR_Terminate;
-
    // The subscription is automatically removed if no buttons are held down
 
-   bool unsub;
-   InputSubscription *subs;
-   if (!AccessMemoryID(glSharedControl->InputMID, MEM_READ, 500, &subs)) {
-      unsub = true;
-      for (LONG i=0; i < ARRAYSIZE(Self->Buttons); i++) {
-         if (Self->Buttons[i].LastClicked) {
-            LARGE time = PreciseTime();
-            if (Self->Buttons[i].LastClickTime + 300000LL <= time) {
-               InputEvent input;
-               ClearMemory(&input, sizeof(input));
+   bool unsub = true;
+   for (LONG i=0; i < ARRAYSIZE(Self->Buttons); i++) {
+      if (Self->Buttons[i].LastClicked) {
+         LARGE time = PreciseTime();
+         if (Self->Buttons[i].LastClickTime + 300000LL <= time) {
+            InputEvent input;
+            ClearMemory(&input, sizeof(input));
 
-               LONG surface_x, surface_y;
-               if (Self->Buttons[i].LastClicked IS Self->OverObjectID) {
-                  input.X = Self->OverX;
-                  input.Y = Self->OverY;
-               }
-               else if (!get_surface_abs(Self->Buttons[i].LastClicked, &surface_x, &surface_y, 0, 0)) {
-                  input.X = Self->X - surface_x;
-                  input.Y = Self->Y - surface_y;
-               }
-               else {
-                  input.X = Self->OverX;
-                  input.Y = Self->OverY;
-               }
-
-               input.Type       = JET_BUTTON_1 + i;
-               input.Mask       = JTYPE_BUTTON|JTYPE_REPEATED;
-               input.Flags      = JTYPE_BUTTON|JTYPE_REPEATED;
-               input.Value      = 1.0; // Self->Buttons[i].LastValue
-               input.Timestamp  = time;
-               input.DeviceID   = 0;
-               input.RecipientID = Self->Buttons[i].LastClicked;
-               input.OverID     = Self->OverObjectID;
-               input.AbsX       = Self->X;
-               input.AbsY       = Self->Y;
-
-               send_inputmsg(&input, subs);
+            LONG surface_x, surface_y;
+            if (Self->Buttons[i].LastClicked IS Self->OverObjectID) {
+               input.X = Self->OverX;
+               input.Y = Self->OverY;
+            }
+            else if (!get_surface_abs(Self->Buttons[i].LastClicked, &surface_x, &surface_y, 0, 0)) {
+               input.X = Self->X - surface_x;
+               input.Y = Self->Y - surface_y;
+            }
+            else {
+               input.X = Self->OverX;
+               input.Y = Self->OverY;
             }
 
-            unsub = false;
+            input.Type       = JET_BUTTON_1 + i;
+            input.Mask       = JTYPE_BUTTON|JTYPE_REPEATED;
+            input.Flags      = JTYPE_BUTTON|JTYPE_REPEATED;
+            input.Value      = 1.0; // Self->Buttons[i].LastValue
+            input.Timestamp  = time;
+            input.DeviceID   = 0;
+            input.RecipientID = Self->Buttons[i].LastClicked;
+            input.OverID     = Self->OverObjectID;
+            input.AbsX       = Self->X;
+            input.AbsY       = Self->Y;
+
+            const std::lock_guard<std::recursive_mutex> lock(glInputLock);
+            glInputEvents.push_back(input);
          }
+
+         unsub = false;
       }
-      ReleaseMemory(subs);
    }
-   else return log.warning(ERR_AccessMemory);
 
    if (unsub) return ERR_Terminate;
    else return ERR_Okay;

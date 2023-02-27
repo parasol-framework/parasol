@@ -19,6 +19,7 @@
 
 #include <unordered_set>
 #include <mutex>
+#include <queue>
 #include <math.h>
 
 #ifdef __linux__
@@ -102,9 +103,6 @@
 
 #define MAX_CLIPS 10     // Maximum number of clips stored in the historical buffer
 
-#define MAX_INPUTMSG 2048 // Must be a value to the power of two
-#define INPUT_MASK        (MAX_INPUTMSG-1) // All bits will be set if MAX_INPUTMSG is a power of two
-
 #include <parasol/modules/display.h>
 #include <parasol/modules/xml.h>
 #include <parasol/linear_rgb.h>
@@ -112,11 +110,6 @@
 #define URF_REDRAWS_CHILDREN     0x00000001
 
 #define UpdateSurfaceList(a) update_surface_copy((a), 0)
-
-struct dcDisplayInputReady { // This is an internal structure used by the display module to replace dcInputReady
-   LARGE NextIndex;    // Next message index for the subscriber to look at
-   LONG  SubIndex;     // Index into the InputSubscription list
-};
 
 class WindowHook {
 public:
@@ -184,24 +177,42 @@ struct resolution {
    WORD bpp;
 };
 
-// glInputEvents is allocated in shared memory for all processes consuming input events.
+// Double-buffered input event system; helps to maintain pointer stability when messages are incoming.
 
-struct InputEventMgr {
-   ULONG  IndexCounter;   // Counter for message ID's
-   InputEvent Msgs[MAX_INPUTMSG];
+class EventBuffer {
+   public:
+   std::vector<InputEvent> *primary = &buffer_a;
+
+   // Change the primary pointer for new incoming messages.  Return the current stack of messages for
+   // processing.
+
+   std::vector<InputEvent> & retarget() {
+      if (primary IS &buffer_a) {
+         primary = &buffer_b;
+         primary->clear();
+         return buffer_a;
+      }
+      else {
+         primary = &buffer_a;
+         primary->clear();
+         return buffer_b;
+      }
+   }
+
+   constexpr bool empty() {
+      return primary->empty();
+   }
+
+   constexpr void push_back(InputEvent &Event) {
+      primary->push_back(Event);
+   }
+
+   private:
+   std::vector<InputEvent> buffer_a;
+   std::vector<InputEvent> buffer_b;
 };
 
-extern InputEventMgr glInputEvents;
-
-// InputSubscription is allocated as an array of items for glSharedControl->InputMID
-
-struct InputSubscription {
-   LONG     Handle;        // Identifier needed for removing the subscription.
-   LONG     ProcessID;     // The process to be woken when an input event occurs.
-   OBJECTID SurfaceFilter; // Optional.  Wake the process only if the event occurs within this surface.
-   WORD     InputMask;     // Process events that match this filter only.
-   ULONG    LastAlerted;   // The IndexCounter value when this subscription was last alerted.
-};
+extern EventBuffer glInputEvents;
 
 // Each input event subscription is registered as an InputCallback
 
@@ -437,7 +448,7 @@ extern ERROR gfxRedrawSurface(OBJECTID, LONG, LONG, LONG, LONG, LONG);
 extern void print_layer_list(STRING Function, SurfaceControl *Ctl, LONG POI)
 #endif
 
-extern std::unordered_map<LONG, InputCallback> glInputCallbacks;
+extern std::recursive_mutex glInputLock;
 extern SharedControl *glSharedControl;
 extern bool glSixBitDisplay;
 extern OBJECTPTR glModule;
