@@ -557,7 +557,7 @@ function resolveSDKPath(Path)
       error('Failed to resolve a path to the Parasol SDK.')
    end
 
-   mSys.SetVolume(AST_NAME, 'sdk', AST_PATH, sdk_path, AST_COMMENT, 'Parasol Software Development Kit')
+   mSys.SetVolume('sdk', sdk_path)
 end
 
 ------------------------------------------------------------------------------

@@ -415,7 +415,7 @@ static ERROR find_proxy(extProxy *Self)
 
       if (match) {
          log.trace("Found a matching proxy.");
-         StrCopy(group->first.c_str(), Self->GroupName, sizeof(Self->GroupName));
+         StrCopy(group->first, Self->GroupName, sizeof(Self->GroupName));
          return get_record(Self);
       }
    }

@@ -175,8 +175,8 @@ static void update_displayinfo(extDisplay *Self)
 {
    if (StrMatch("SystemDisplay", GetName(Self)) != ERR_Okay) return;
 
-   glDisplayInfo->DisplayID = 0;
-   get_display_info(Self->UID, glDisplayInfo, sizeof(DISPLAYINFO));
+   glDisplayInfo.DisplayID = 0;
+   get_display_info(Self->UID, &glDisplayInfo, sizeof(DISPLAYINFO));
 }
 
 //********************************************************************************************************************

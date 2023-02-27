@@ -952,9 +952,7 @@ gui.fileview = function(View, Options)
                local txtName = obj.find('txtName')
                local txtPath = obj.find('txtPath')
                if nz(txtName) and nz(txtPath) then
-                  mSys.SetVolume(AST_NAME, txtName.string,
-                     AST_PATH, txtPath.string,
-                     AST_FLAGS, bit.bor(ASSIGN_REPLACE, ASSIGN_SAVE))
+                  mSys.SetVolume(txtName.string, txtPath.string, nil, nil, nil, bit.bor(ASSIGN_REPLACE, ASSIGN_SAVE))
                end
             end
 

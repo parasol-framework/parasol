@@ -12,7 +12,7 @@ static void android_init_window(LONG MsgID)
    // We want EGL to be initialised in the Parasol Core thread, so we set glEGLState and let
    // lock_graphics() take care of the initialisation.
 
-   glDisplayInfo->DisplayID = 0xffffffff; // Inform that a refresh of the cache is required.
+   glDisplayInfo.DisplayID = 0xffffffff; // Inform that a refresh of the cache is required.
    glEGLState = EGL_REQUIRES_INIT;
 
    if (glActiveDisplayID) {
