@@ -2,6 +2,7 @@
 #include "defs.h"
 
 static std::unordered_map<LONG, InputCallback> glInputCallbacks;
+static std::vector<std::pair<LONG, InputCallback>> glNewSubscriptions;
 EventBuffer glInputEvents;
 
 /*********************************************************************************************************************
@@ -45,9 +46,9 @@ events in the callback:
 <pre>
 ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 {
-   for (auto event=Events; event; event=event->Next) {
-      if ((event->Flags & JTYPE_BUTTON) and (event->Value > 0)) {
-         process_click(Self, event->RecipientID, event->X, event->Y);
+   for (auto e=Events; e; e=e->Next) {
+      if ((e->Flags & JTYPE_BUTTON) and (e->Value > 0)) {
+         process_click(Self, e->RecipientID, e->X, e->Y);
       }
    }
 
@@ -116,7 +117,9 @@ ERROR gfxSubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, LONG InputMa
       .Callback      = *Callback
    };
 
-   glInputCallbacks.emplace(*Handle, is);
+   if (glInputEvents.processing) glNewSubscriptions.push_back(std::make_pair(*Handle, is));
+   else glInputCallbacks.emplace(*Handle, is);
+
    return ERR_Okay;
 }
 
@@ -150,7 +153,12 @@ ERROR gfxUnsubscribeInput(LONG Handle)
 
    auto it = glInputCallbacks.find(Handle);
    if (it IS glInputCallbacks.end()) return log.warning(ERR_NotFound);
-   else glInputCallbacks.erase(it);
+   else {
+      if (glInputEvents.processing) { // Cannot erase during input processing
+         ClearMemory(&it->second, sizeof(it->second));
+      }
+      else glInputCallbacks.erase(it);
+   }
 
    return ERR_Okay;
 }
@@ -165,7 +173,7 @@ void input_event_loop(HOSTHANDLE FD, APTR Data) // Data is not defined
 {
    glInputLock.lock();
 
-   if (glInputEvents.empty()) {
+   if ((glInputEvents.empty()) or (glInputEvents.processing)) {
       glInputLock.unlock();
       return;
    }
@@ -174,6 +182,8 @@ void input_event_loop(HOSTHANDLE FD, APTR Data) // Data is not defined
    // unstable std::vector
 
    auto events = glInputEvents.retarget();
+
+   glInputEvents.processing = true;
 
    for (const auto & [ handle, sub ] : glInputCallbacks) {
       InputEvent *last = NULL, *first = NULL;
@@ -210,6 +220,13 @@ void input_event_loop(HOSTHANDLE FD, APTR Data) // Data is not defined
 
          glInputLock.lock();
       }
+   }
+
+   glInputEvents.processing = false;
+
+   if (!glNewSubscriptions.empty()) {
+      for (auto &sub : glNewSubscriptions) glInputCallbacks[sub.first] = sub.second;
+      glNewSubscriptions.clear();
    }
 
    glInputLock.unlock();

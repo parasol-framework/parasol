@@ -759,9 +759,9 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 <p>A callback is required for receiving the input events.  The following C++ code illustrates a method for processing events in the callback:</p>
 <pre>ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 {
-   for (auto event=Events; event; event=event-&gt;Next) {
-      if ((event-&gt;Flags &amp; JTYPE_BUTTON) and (event-&gt;Value &gt; 0)) {
-         process_click(Self, event-&gt;RecipientID, event-&gt;X, event-&gt;Y);
+   for (auto e=Events; e; e=e-&gt;Next) {
+      if ((e-&gt;Flags &amp; JTYPE_BUTTON) and (e-&gt;Value &gt; 0)) {
+         process_click(Self, e-&gt;RecipientID, e-&gt;X, e-&gt;Y);
       }
    }
 

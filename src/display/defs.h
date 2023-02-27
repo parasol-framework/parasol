@@ -182,6 +182,7 @@ struct resolution {
 class EventBuffer {
    public:
    std::vector<InputEvent> *primary = &buffer_a;
+   bool processing = false;
 
    // Change the primary pointer for new incoming messages.  Return the current stack of messages for
    // processing.
