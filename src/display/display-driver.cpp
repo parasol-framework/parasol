@@ -934,17 +934,19 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    }
 #elif _WIN32
 
-   if ((glInstance = winGetModuleHandle())) {
-      if (!winCreateScreenClass()) return log.warning(ERR_SystemCall);
+   {
+      if ((glInstance = winGetModuleHandle())) {
+         if (!winCreateScreenClass()) return log.warning(ERR_SystemCall);
+      }
+      else return log.warning(ERR_SystemCall);
+
+      winDisableBatching();
+
+      winInitCursors(winCursors, ARRAYSIZE(winCursors));
+
+      MEMORYID memoryid = RPM_Clipboard;
+      AllocMemory(sizeof(ClipHeader) + (MAX_CLIPS * sizeof(ClipEntry)), MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, NULL, &memoryid);
    }
-   else return log.warning(ERR_SystemCall);
-
-   winDisableBatching();
-
-   winInitCursors(winCursors, ARRAYSIZE(winCursors));
-
-   MEMORYID memoryid = RPM_Clipboard;
-   AllocMemory(sizeof(ClipHeader) + (MAX_CLIPS * sizeof(ClipEntry)), MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, NULL, &memoryid);
 
 #endif
 
@@ -1082,8 +1084,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // Icons are stored in compressed archives, accessible via "archive:icons/<category>/<icon>.svg"
 
-   std::string src(icon_path);
-   src.append("Default.zip");
+   auto src = std::string(icon_path) + "Default.zip";
    if (!(glIconArchive = objCompression::create::integral(fl::Path(src), fl::ArchiveName("icons"), fl::Flags(CMF_READ_ONLY)))) {
       return ERR_CreateObject;
    }
