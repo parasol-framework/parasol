@@ -199,11 +199,11 @@ class EventBuffer {
       }
    }
 
-   constexpr bool empty() {
+   inline bool empty() {
       return primary->empty();
    }
 
-   constexpr void push_back(InputEvent &Event) {
+   inline void push_back(InputEvent &Event) {
       primary->push_back(Event);
    }
 

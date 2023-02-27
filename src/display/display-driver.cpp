@@ -819,7 +819,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (!glHeadless) {
       log.trace("Allocating global memory structure.");
 
-      memoryid = RPM_X11;
+      MEMORYID memoryid = RPM_X11;
       if (!(error = AllocMemory(sizeof(X11Globals), MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, (APTR)&glX11, &memoryid))) {
          glX11->Manager = TRUE; // Assume that we are the window manager
       }
@@ -1004,7 +1004,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    // Initialise 64K alpha blending table, for cutting down on multiplications.  This memory block is shared, so one
    // table serves all processes.
 
-   memoryid = RPM_AlphaBlend;
+   MEMORYID memoryid = RPM_AlphaBlend;
    if (!(error = AllocMemory(256 * 256, MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, &glAlphaLookup, &memoryid))) {
       LONG i = 0;
       for (WORD iAlpha=0; iAlpha < 256; iAlpha++) {
