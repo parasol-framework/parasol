@@ -2169,7 +2169,7 @@ inline LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size) { return C
 inline OBJECTPTR GetParentContext() { return (OBJECTPTR)(MAXINT)GetResource(RES_PARENT_CONTEXT); }
 inline APTR GetResourcePtr(LONG ID) { return (APTR)(MAXINT)GetResource(ID); }
 
-constexpr inline CSTRING to_cstring(std::string &A) { return A.c_str(); }
+inline CSTRING to_cstring(std::string &A) { return A.c_str(); }
 constexpr inline CSTRING to_cstring(CSTRING A) { return A; }
 
 template <class T, class U> inline ERROR StrMatch(T &&A, U &&B) {
