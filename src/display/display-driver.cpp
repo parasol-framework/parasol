@@ -194,7 +194,8 @@ static LONG glLockCount = 0;
 static OBJECTID glActiveDisplayID = 0;
 #endif
 
-struct InputEventMgr *glInputEvents = NULL;
+std::recursive_mutex glInputLock;
+
 OBJECTPTR glCompress = NULL;
 static objCompression *glIconArchive = NULL;
 struct CoreBase *CoreBase;
@@ -207,7 +208,6 @@ DISPLAYINFO glDisplayInfo;
 APTR glDither = NULL;
 SharedControl *glSharedControl = NULL;
 bool glSixBitDisplay = false;
-std::unordered_map<LONG, InputCallback> glInputCallbacks;
 static MsgHandler *glExposeHandler = NULL;
 TIMER glRefreshPointerTimer = 0;
 extBitmap *glComposite = NULL;
@@ -815,24 +815,11 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    glDisplayInfo.DisplayID = 0xffffffff; // Indicate a refresh of the cache is required.
 
-   // Allocate the input message cyclic array
-
-   MEMORYID memoryid = RPM_InputEvents;
-   error = AllocMemory(sizeof(glInputEvents[0]), MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, &glInputEvents, &memoryid);
-   if (error IS ERR_ResourceExists) {
-      if (!glInputEvents) {
-         if (AccessMemoryID(RPM_InputEvents, MEM_READ_WRITE|MEM_NO_BLOCKING, 1000, &glInputEvents) != ERR_Okay) {
-            return log.warning(ERR_AccessMemory);
-         }
-      }
-   }
-   else if (error) return ERR_AllocMemory;
-
 #ifdef __xwindows__
    if (!glHeadless) {
       log.trace("Allocating global memory structure.");
 
-      memoryid = RPM_X11;
+      MEMORYID memoryid = RPM_X11;
       if (!(error = AllocMemory(sizeof(X11Globals), MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, (APTR)&glX11, &memoryid))) {
          glX11->Manager = TRUE; // Assume that we are the window manager
       }
@@ -947,17 +934,19 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    }
 #elif _WIN32
 
-   if ((glInstance = winGetModuleHandle())) {
-      if (!winCreateScreenClass()) return log.warning(ERR_SystemCall);
+   {
+      if ((glInstance = winGetModuleHandle())) {
+         if (!winCreateScreenClass()) return log.warning(ERR_SystemCall);
+      }
+      else return log.warning(ERR_SystemCall);
+
+      winDisableBatching();
+
+      winInitCursors(winCursors, ARRAYSIZE(winCursors));
+
+      MEMORYID memoryid = RPM_Clipboard;
+      AllocMemory(sizeof(ClipHeader) + (MAX_CLIPS * sizeof(ClipEntry)), MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, NULL, &memoryid);
    }
-   else return log.warning(ERR_SystemCall);
-
-   winDisableBatching();
-
-   winInitCursors(winCursors, ARRAYSIZE(winCursors));
-
-   memoryid = RPM_Clipboard;
-   AllocMemory(sizeof(ClipHeader) + (MAX_CLIPS * sizeof(ClipEntry)), MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, NULL, &memoryid);
 
 #endif
 
@@ -1017,7 +1006,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    // Initialise 64K alpha blending table, for cutting down on multiplications.  This memory block is shared, so one
    // table serves all processes.
 
-   memoryid = RPM_AlphaBlend;
+   MEMORYID memoryid = RPM_AlphaBlend;
    if (!(error = AllocMemory(256 * 256, MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, &glAlphaLookup, &memoryid))) {
       LONG i = 0;
       for (WORD iAlpha=0; iAlpha < 256; iAlpha++) {
@@ -1095,8 +1084,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // Icons are stored in compressed archives, accessible via "archive:icons/<category>/<icon>.svg"
 
-   std::string src(icon_path);
-   src.append("Default.zip");
+   auto src = std::string(icon_path) + "Default.zip";
    if (!(glIconArchive = objCompression::create::integral(fl::Path(src), fl::ArchiveName("icons"), fl::Flags(CMF_READ_ONLY)))) {
       return ERR_CreateObject;
    }
@@ -1151,10 +1139,6 @@ static ERROR CMDExpunge(void)
    if (glDemultiply)          { FreeResource(glDemultiply); glDemultiply = NULL; }
 
    DeregisterFD((HOSTHANDLE)-2); // Disable input_event_loop()
-
-   for (const auto & [ handle, sub ] : glInputCallbacks) { // Check that all input subscriptions were terminated
-      log.warning("Found unfreed input subscription %d with filter #%d, mask $%.4x", handle, sub.SurfaceFilter, sub.InputMask);
-   }
 
 #ifdef __xwindows__
 
@@ -1215,7 +1199,6 @@ static ERROR CMDExpunge(void)
 
 #endif
 
-   if (glInputEvents) { ReleaseMemory(glInputEvents); glInputEvents = NULL; }
    if (glIconArchive) { acFree(glIconArchive); glIconArchive = NULL; }
    if (clPointer)     { acFree(clPointer);     clPointer     = NULL; }
    if (clDisplay)     { acFree(clDisplay);     clDisplay     = NULL; }

@@ -1082,7 +1082,6 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 #define RPM_X11 -1003
 #define RPM_AlphaBlend -1004
 #define RPM_XWindowLookup -1005
-#define RPM_InputEvents -1007
 
 #define MAX_FILENAME 256
 
@@ -4023,9 +4022,7 @@ struct SharedControl {
    volatile LONG ClassIDCount;      // Counter of class ID's
    volatile LONG GlobalIDCount;     // Counter for general ID's
    volatile LONG ThreadIDCount;
-   volatile LONG InputTotal;        // Total number of subscribers in InputMID
    volatile LONG ValidateProcess;
-   volatile LONG InputIDCounter;    // Counter for input event subscriptions
    WORD SystemState;
    volatile WORD WLIndex;           // Current insertion point for the wait-lock array.
    LONG MagicKey;                   // This magic key is set to the semaphore key (used only as an indicator for initialisation)
@@ -4036,10 +4033,8 @@ struct SharedControl {
    LONG MemoryOffset;               // Offset to the shared memory allocations
    LONG WLOffset;                   // Offset to the wait-lock array
    LONG SurfaceSemaphore;
-   LONG InputSize;                  // Maximum number of subscribers allowed in InputMID
    LONG InstanceMsgPort;            // The message port of the process that created the instance.
    MEMORYID SurfacesMID;
-   MEMORYID InputMID;
    #ifdef __unix__
       struct {
          pthread_mutex_t Mutex;
