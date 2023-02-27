@@ -4033,7 +4033,6 @@ struct SharedControl {
    LONG MemoryOffset;               // Offset to the shared memory allocations
    LONG WLOffset;                   // Offset to the wait-lock array
    LONG SurfaceSemaphore;
-   LONG InstanceMsgPort;            // The message port of the process that created the instance.
    MEMORYID SurfacesMID;
    #ifdef __unix__
       struct {

@@ -651,10 +651,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          return NULL;
       }
 
-      // Use a process ID as a unique instance ID by default
-
-      glSharedControl->InstanceMsgPort = glTaskMessageMID;
-
       auto call = make_function_stdc(process_janitor);
       SubscribeTimer(60, &call, &glProcessJanitor);
 
