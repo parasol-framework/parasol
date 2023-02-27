@@ -1,13 +1,16 @@
 
 #include "defs.h"
 
-/******************************************************************************
+static std::unordered_map<LONG, InputCallback> glInputCallbacks;
+static std::vector<std::pair<LONG, InputCallback>> glNewSubscriptions;
+EventBuffer glInputEvents;
+
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetInputTypeName: Returns the string name for an input type.
 
-This function converts JET integer constants to their string equivalent.  Refer to ~SubscribeInput() for a
-list of JET constants.
+This function converts JET integer constants to their string equivalent.
 
 -INPUT-
 int(JET) Type: JET type integer.
@@ -15,7 +18,7 @@ int(JET) Type: JET type integer.
 -RESULT-
 cstr: A string describing the input type is returned or NULL if the Type is invalid.
 
-******************************************************************************/
+*********************************************************************************************************************/
 
 CSTRING gfxGetInputTypeName(LONG Type)
 {
@@ -23,7 +26,7 @@ CSTRING gfxGetInputTypeName(LONG Type)
    return glInputNames[Type];
 }
 
-/******************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SubscribeInput: Subscribe to incoming input messages for any active surface object.
@@ -37,15 +40,15 @@ The client is required to remove the subscription with ~UnsubscribeInput() once 
 Input events can be filtered so that they are received in relation to surfaces and devices.  An input mask can also be
 applied so that only certain types of events are received.
 
-A callback is required for receiving the input events.  The following C/C++ code illustrates a method for processing
+A callback is required for receiving the input events.  The following C++ code illustrates a method for processing
 events in the callback:
 
 <pre>
-ERROR consume_input_events(const struct InputEvent *Events, LONG Handle)
+ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 {
-   for (auto event=Events; event; event=event->Next) {
-      if ((event->Flags & JTYPE_BUTTON) and (event->Value > 0)) {
-         process_click(Self, event->RecipientID, event->X, event->Y);
+   for (auto e=Events; e; e=e->Next) {
+      if ((e->Flags & JTYPE_BUTTON) and (e->Value > 0)) {
+         process_click(Self, e->RecipientID, e->X, e->Y);
       }
    }
 
@@ -93,77 +96,34 @@ oid DeviceFilter: Optional.  Only the input messages that match the given device
 Okay:
 NullArgs:
 
-******************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxSubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, LONG InputMask, OBJECTID DeviceFilter, LONG *Handle)
 {
-   #define CHUNK_INPUT 50
+   static LONG counter = 1;
    pf::Log log(__FUNCTION__);
 
    if ((!Callback) or (!Handle)) return log.warning(ERR_NullArgs);
 
-   log.branch("Surface Filter: #%d, Mask: $%.4x, Handle: %d", SurfaceFilter, InputMask, glSharedControl->InputIDCounter+1);
+   log.branch("Surface Filter: #%d, Mask: $%.4x", SurfaceFilter, InputMask);
 
-   // Allocate the subscription array if it does not exist.  NB: The memory is untracked and will be removed by the
-   // last task that cleans up the memory resource pool.
+   const std::lock_guard<std::recursive_mutex> lock(glInputLock);
 
-   if (!glSharedControl->InputMID) {
-      if (AllocMemory(sizeof(InputSubscription) * CHUNK_INPUT, MEM_PUBLIC|MEM_UNTRACKED, NULL, &glSharedControl->InputMID)) {
-         return log.warning(ERR_AllocMemory);
-      }
-      glSharedControl->InputSize = CHUNK_INPUT;
-   }
+   *Handle = counter++;
 
-   // Add the process to the subscription list.  Note that access to InputMID acts as a lock for variables like InputTotal.
+   const InputCallback is = {
+      .SurfaceFilter = SurfaceFilter,
+      .InputMask     = (!InputMask) ? WORD(0xffff) : WORD(InputMask),
+      .Callback      = *Callback
+   };
 
-   InputSubscription *list, *newlist;
-   if (!AccessMemoryID(glSharedControl->InputMID, MEM_READ_WRITE, 2000, &list)) {
-      if (glSharedControl->InputTotal >= glSharedControl->InputSize) {
-         log.msg("Input array needs to be expanded from %d entries.", glSharedControl->InputSize);
+   if (glInputEvents.processing) glNewSubscriptions.push_back(std::make_pair(*Handle, is));
+   else glInputCallbacks.emplace(*Handle, is);
 
-         MEMORYID newlistid;
-         if (AllocMemory(sizeof(InputSubscription) * (glSharedControl->InputSize + CHUNK_INPUT), MEM_PUBLIC|MEM_UNTRACKED, (APTR *)&newlist, &newlistid)) {
-            ReleaseMemory(list);
-            return ERR_AllocMemory;
-         }
-
-         CopyMemory(list, newlist, sizeof(InputSubscription) * glSharedControl->InputSize);
-
-         ReleaseMemory(list);
-
-         FreeResourceID(glSharedControl->InputMID);
-         glSharedControl->InputMID = newlistid;
-         glSharedControl->InputSize += CHUNK_INPUT;
-         list = newlist;
-      }
-
-      LONG i = glSharedControl->InputTotal;
-      list[i].SurfaceFilter = SurfaceFilter;
-      list[i].ProcessID = ((objTask *)CurrentTask())->ProcessID;
-
-      if (!InputMask) list[i].InputMask = 0xffff;
-      else list[i].InputMask = InputMask;
-
-      list[i].Handle = __sync_add_and_fetch(&glSharedControl->InputIDCounter, 1);
-      *Handle = list[i].Handle;
-
-      __sync_fetch_and_add(&glSharedControl->InputTotal, 1);
-
-      ReleaseMemory(list);
-
-      const InputCallback is = {
-         .SurfaceFilter = SurfaceFilter,
-         .InputMask     = (WORD)InputMask,
-         .Callback      = *Callback
-      };
-
-      glInputCallbacks.emplace(*Handle, is);
-      return ERR_Okay;
-   }
-   else return log.warning(ERR_AccessMemory);
+   return ERR_Okay;
 }
 
-/******************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 UnsubscribeInput: Removes an input subscription.
@@ -179,7 +139,7 @@ NullArgs
 NotFound
 -END-
 
-******************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxUnsubscribeInput(LONG Handle)
 {
@@ -189,86 +149,56 @@ ERROR gfxUnsubscribeInput(LONG Handle)
 
    log.branch("Handle: %d", Handle);
 
-   {
-      auto it = glInputCallbacks.find(Handle);
-      if (it IS glInputCallbacks.end()) return log.warning(ERR_NotFound);
+   const std::lock_guard<std::recursive_mutex> lock(glInputLock);
+
+   auto it = glInputCallbacks.find(Handle);
+   if (it IS glInputCallbacks.end()) return log.warning(ERR_NotFound);
+   else {
+      if (glInputEvents.processing) { // Cannot erase during input processing
+         ClearMemory(&it->second, sizeof(it->second));
+      }
       else glInputCallbacks.erase(it);
    }
 
-   InputSubscription *list;
-   if (!AccessMemoryID(glSharedControl->InputMID, MEM_READ_WRITE, 2000, &list)) {
-      bool removed = false;
-      for (LONG i=glSharedControl->InputTotal-1; i >= 0; i--) {
-         if (list[i].Handle != Handle) continue;
-
-         removed = true;
-         if (i+1 < glSharedControl->InputTotal) { // Remove by compacting the list
-            CopyMemory(list+i+1, list+i, sizeof(InputSubscription) * (glSharedControl->InputTotal - i - 1));
-         }
-
-         __sync_fetch_and_sub(&glSharedControl->InputTotal, 1);
-         break;
-      }
-
-      ReleaseMemory(list);
-
-      if (!glSharedControl->InputTotal) {
-         log.trace("Freeing subscriber memory (last subscription removed)");
-         FreeResourceID(glSharedControl->InputMID);
-         glSharedControl->InputMID   = 0;
-         glSharedControl->InputSize  = 0;
-         glSharedControl->InputTotal = 0;
-      }
-
-      if (!removed) return log.warning(ERR_NotFound);
-      else return ERR_Okay;
-   }
-   else return log.warning(ERR_AccessMemory);
+   return ERR_Okay;
 }
 
 //********************************************************************************************************************
 // This routine is called on every cycle of ProcessMessages() so that we can check if there are input events
 // that need to be processed.
+//
+// Input events are sent to each subscriber as a dynamically constructed linked-list of filtered input events.
 
 void input_event_loop(HOSTHANDLE FD, APTR Data) // Data is not defined
 {
-   static ULONG current_index = 0;
-   pf::Log log(__FUNCTION__);
+   glInputLock.lock();
 
-   if (current_index IS glInputEvents->IndexCounter) return; // Check if there are events to consume
-
-   // Check for underflow in case this process hasn't been active enough in consuming events.
-
-   if ((glInputEvents->IndexCounter > MAX_INPUTMSG) and (current_index < glInputEvents->IndexCounter - MAX_INPUTMSG + 1)) {
-      current_index = glInputEvents->IndexCounter - MAX_INPUTMSG + 1;
+   if ((glInputEvents.empty()) or (glInputEvents.processing)) {
+      glInputLock.unlock();
+      return;
    }
 
-   ULONG max_events = glInputEvents->IndexCounter - current_index;
-   InputEvent events[max_events];
+   // retarget() ensures that incoming input events during callback will target a secondary buffer and prevent an
+   // unstable std::vector
 
-   //log.traceBranch("Index: %u/%u (%u events)", current_index, glInputEvents->IndexCounter, max_events);
+   auto events = glInputEvents.retarget();
 
-   std::unordered_map<LONG, InputCallback> copyInputCallbacks(glInputCallbacks); // In case of modification
+   glInputEvents.processing = true;
 
-   for (const auto & [ handle, sub ] : copyInputCallbacks) {
-      // Construct a linked list of filtered input events for this subscription.
-
-      LONG total_events = 0;
-      for (ULONG i=0; i < max_events; i++) {
-         LONG e = (current_index + i) & (MAX_INPUTMSG - 1); // Modulo cheat works as long as MAX_INPUTMSG is a ^2
-
-         if (((glInputEvents->Msgs[e].RecipientID IS sub.SurfaceFilter) or (!sub.SurfaceFilter)) and
-             (glInputEvents->Msgs[e].Flags & sub.InputMask)) {
-            events[total_events] = glInputEvents->Msgs[e];
-            events[total_events].Next = &events[total_events + 1];
-            total_events++;
+   for (const auto & [ handle, sub ] : glInputCallbacks) {
+      InputEvent *last = NULL, *first = NULL;
+      for (auto &event : events) {
+         if (((event.RecipientID IS sub.SurfaceFilter) or (!sub.SurfaceFilter)) and (event.Flags & sub.InputMask)) {
+            if (last) last->Next = &event;
+            else first = &event;
+            last = &event;
          }
       }
 
-      //log.msg("Handle: %d, Filter: #%d, Mask: $%.8x, Events: %d", handle, sub.SurfaceFilter, sub.InputMask, total_events);
+      if (first) {
+         last->Next = NULL;
 
-      if (total_events > 0) {
-         events[total_events-1].Next = NULL;
+         glInputLock.unlock();
 
          auto &cb = sub.Callback;
          if (cb.Type IS CALL_STDC) {
@@ -276,23 +206,29 @@ void input_event_loop(HOSTHANDLE FD, APTR Data) // Data is not defined
             if (lock.granted()) {
                pf::SwitchContext ctx(cb.StdC.Context);
                auto func = (ERROR (*)(InputEvent *, LONG))cb.StdC.Routine;
-               func(events, handle);
+               func(first, handle);
             }
          }
          else if (cb.Type IS CALL_SCRIPT) {
-            OBJECTPTR script;
-            if ((script = cb.Script.Script)) {
-               const ScriptArg args[] = {
-                  { "Events:InputEvent", FD_PTR|FDF_STRUCT, { .Address  = events } },
-                  { "Handle", FD_LONG, { .Long = handle } },
-               };
-               ERROR result;
-               scCallback(script, cb.Script.ProcedureID, args, ARRAYSIZE(args), &result);
-            }
+            const ScriptArg args[] = {
+               { "Events:InputEvent", FD_PTR|FDF_STRUCT, { .Address  = first } },
+               { "Handle", FD_LONG, { .Long = handle } },
+            };
+            ERROR result;
+            scCallback(cb.Script.Script, cb.Script.ProcedureID, args, ARRAYSIZE(args), &result);
          }
+
+         glInputLock.lock();
       }
    }
 
-   current_index = glInputEvents->IndexCounter;
+   glInputEvents.processing = false;
+
+   if (!glNewSubscriptions.empty()) {
+      for (auto &sub : glNewSubscriptions) glInputCallbacks[sub.first] = sub.second;
+      glNewSubscriptions.clear();
+   }
+
+   glInputLock.unlock();
 }
 
