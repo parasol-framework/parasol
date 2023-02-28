@@ -342,7 +342,7 @@ the surface area first).</li>
       <access read="R" write="W">Read/Write</access>
       <type lookup="ALIGN">INT</type>
       <description>
-<p>If you would like to set an abstract position for a surface area, you can give it an alignment.  This feature is most commonly used for horizontal and vertical centring, as aligning to the the edges of a surface area is already handled by existing dimension fields.  Note that setting the alignment overrides any settings in related coordinate fields. Valid alignment flags are BOTTOM, CENTER/MIDDLE, LEFT, HORIZONTAL, RIGHT, TOP, VERTICAL.</p>
+<p>If you would like to set an abstract position for a surface area, you can give it an alignment.  This feature is most commonly used for horizontal and vertical centring, as aligning to the the edges of a surface area is already handled by existing dimension fields.  Note that setting the alignment overrides any settings in related coordinate fields. Valid alignment flags are <code>BOTTOM</code>, <code>CENTER/MIDDLE</code>, <code>LEFT</code>, <code>HORIZONTAL</code>, <code>RIGHT</code>, <code>TOP</code>, <code>VERTICAL</code>.</p>
 <types lookup="ALIGN"/>
       </description>
     </field>
@@ -429,7 +429,7 @@ the surface area first).</li>
       <type lookup="DMF">INT</type>
       <description>
 <p>The dimension settings of a surface object can be read from this field.  The flags indicate the dimension fields that are in use, and whether the values are fixed or relative.</p>
-<p>It is strongly recommended that this field is never set manually, because the flags are automatically managed for the client when setting fields such as <field>X</field> and <field>Width</field>.  If circumstances require manual configuration, take care to ensure that the flags do not conflict.  For instance, FIXED_X and RELATIVE_X cannot be paired, nor could FIXED_X, FIXED_XOFFSET and FIXED_WIDTH simultaneously.</p>
+<p>It is strongly recommended that this field is never set manually, because the flags are automatically managed for the client when setting fields such as <field>X</field> and <field>Width</field>.  If circumstances require manual configuration, take care to ensure that the flags do not conflict.  For instance, <code>FIXED_X</code> and <code>RELATIVE_X</code> cannot be paired, nor could <code>FIXED_X</code>, <code>FIXED_XOFFSET</code> and <code>FIXED_WIDTH</code> simultaneously.</p>
 <types lookup="DMF"/>
       </description>
     </field>
@@ -780,9 +780,9 @@ the surface area first).</li>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The width of a surface object is manipulated through this field, although you can also use the Resize() action, which is faster if you need to set both the Width and the Height.  You can set the Width as a fixed value by default, or as a relative value if you set the FD_PERCENT field.  Relative widths are always calculated in relationship to a surface object's container, e.g. if the container is 200 pixels wide and surface Width is 80%, then your surface object will be 160 pixels wide.</p>
+<p>The width of a surface object is manipulated through this field, although you can also use the Resize() action, which is faster if you need to set both the Width and the Height.  You can set the Width as a fixed value by default, or as a relative value if you set the <code>FD_PERCENT</code> field.  Relative widths are always calculated in relationship to a surface object's container, e.g. if the container is 200 pixels wide and surface Width is 80%, then your surface object will be 160 pixels wide.</p>
 <p>Setting the Width while a surface object is on display causes an immediate graphical update to reflect the change.  Any objects that are within the surface area will be re-drawn and resized as necessary.</p>
-<p>Width values of 0 or less are illegal, and will result in an ERR_OutOfRange error-code.</p>
+<p>Width values of 0 or less are illegal, and will result in an <code>ERR_OutOfRange</code> error-code.</p>
       </description>
     </field>
 
@@ -815,7 +815,7 @@ the surface area first).</li>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The horizontal position of a surface object can be set through this field.  You have the choice of setting a fixed coordinate (the default) or a relative coordinate if you use the FD_PERCENT flag.</p>
+<p>The horizontal position of a surface object can be set through this field.  You have the choice of setting a fixed coordinate (the default) or a relative coordinate if you use the <code>FD_PERCENT</code> flag.</p>
 <p>If you set the X while the surface object is on display, the position of the surface area will be updated immediately.</p>
       </description>
     </field>

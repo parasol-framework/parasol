@@ -1,5 +1,5 @@
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 AbsX: The absolute horizontal position of a surface object.
@@ -9,7 +9,7 @@ surface object's position relative to the top most surface object in the local h
 
 It is possible to set this field, but only after initialisation of the surface object has occurred.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_AbsX(extSurface *Self, LONG *Value)
 {
@@ -57,7 +57,7 @@ static ERROR SET_AbsX(extSurface *Self, LONG Value)
    else return log.warning(ERR_NotInitialised);
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 AbsY: The absolute vertical position of a surface object.
@@ -67,7 +67,7 @@ surface object's position relative to the top most surface object in the local h
 
 It is possible to set this field, but only after initialisation of the surface object has occurred.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_AbsY(extSurface *Self, LONG *Value)
 {
@@ -122,7 +122,7 @@ Align: This field allows you to align a surface area within its owner.
 If you would like to set an abstract position for a surface area, you can give it an alignment.  This feature is most
 commonly used for horizontal and vertical centring, as aligning to the the edges of a surface area is already handled
 by existing dimension fields.  Note that setting the alignment overrides any settings in related coordinate fields.
-Valid alignment flags are BOTTOM, CENTER/MIDDLE, LEFT, HORIZONTAL, RIGHT, TOP, VERTICAL.
+Valid alignment flags are `BOTTOM`, `CENTER/MIDDLE`, `LEFT`, `HORIZONTAL`, `RIGHT`, `TOP`, `VERTICAL`.
 
 -FIELD-
 Bottom: Returns the bottom-most coordinate of a surface object (Y + Height).
@@ -187,8 +187,8 @@ are in use, and whether the values are fixed or relative.
 
 It is strongly recommended that this field is never set manually, because the flags are automatically managed for the
 client when setting fields such as #X and #Width.  If circumstances require manual configuration,
-take care to ensure that the flags do not conflict.  For instance, FIXED_X and RELATIVE_X cannot be paired, nor could
-FIXED_X, FIXED_XOFFSET and FIXED_WIDTH simultaneously.
+take care to ensure that the flags do not conflict.  For instance, `FIXED_X` and `RELATIVE_X` cannot be paired, nor could
+`FIXED_X`, `FIXED_XOFFSET` and `FIXED_WIDTH` simultaneously.
 
 *********************************************************************************************************************/
 
@@ -263,7 +263,7 @@ static ERROR SET_Dimensions(extSurface *Self, LONG Value)
    else return ERR_Search;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Height: Defines the height of a surface object.
@@ -280,7 +280,7 @@ Any objects that are within the surface area will be re-drawn and resized as nec
 If a value less than zero is passed to an initialised surface, the height will be 'turned off' - this is convenient for
 pairing the Y and YOffset fields together for dynamic height adjustment.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Height(extSurface *Self, Variable *Value)
 {
@@ -356,7 +356,7 @@ static ERROR SET_Height(extSurface *Self, Variable *Value)
    return ERR_Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 InsideHeight: Defines the amount of space between the vertical margins.
@@ -367,7 +367,7 @@ result of calculating this formula: `Height - TopMargin - BottomMargin`.
 If you have not set the TopMargin and/or BottomMargin fields, then the returned value will be equal to the surface
 object's height.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_InsideHeight(extSurface *Self, LONG *Value)
 {
@@ -384,7 +384,7 @@ static ERROR SET_InsideHeight(extSurface *Self, LONG Value)
    return ERR_Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 InsideWidth: Defines the amount of space between the horizontal margins.
@@ -395,7 +395,7 @@ result of calculating this formula: `Width - LeftMargin - RightMargin`.
 If you have not set the LeftMargin and/or RightMargin fields, then the returned value will be equal to the surface
 object's width.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_InsideWidth(extSurface *Self, LONG *Value)
 {
@@ -841,14 +841,14 @@ Width: Defines the width of a surface object.
 
 The width of a surface object is manipulated through this field, although you can also use the Resize() action, which
 is faster if you need to set both the Width and the Height.  You can set the Width as a fixed value by default, or as a
-relative value if you set the FD_PERCENT field.  Relative widths are always calculated in relationship to a surface
+relative value if you set the `FD_PERCENT` field.  Relative widths are always calculated in relationship to a surface
 object's container, e.g. if the container is 200 pixels wide and surface Width is 80%, then your surface object will be
 160 pixels wide.
 
 Setting the Width while a surface object is on display causes an immediate graphical update to reflect the change.  Any
 objects that are within the surface area will be re-drawn and resized as necessary.
 
-Width values of 0 or less are illegal, and will result in an ERR_OutOfRange error-code.
+Width values of 0 or less are illegal, and will result in an `ERR_OutOfRange` error-code.
 
 *********************************************************************************************************************/
 
@@ -929,7 +929,7 @@ static ERROR SET_Width(extSurface *Self, Variable *Value)
 X: Determines the horizontal position of a surface object.
 
 The horizontal position of a surface object can be set through this field.  You have the choice of setting a fixed
-coordinate (the default) or a relative coordinate if you use the FD_PERCENT flag.
+coordinate (the default) or a relative coordinate if you use the `FD_PERCENT` flag.
 
 If you set the X while the surface object is on display, the position of the surface area will be updated
 immediately.
@@ -1032,7 +1032,7 @@ static ERROR GET_XOffset(extSurface *Self, Variable *Value)
       else if ((Self->Dimensions & DMF_WIDTH) and
                (Self->Dimensions & DMF_X) and
                (Self->ParentID)) {
-         if (AccessObjectID(Self->ParentID, 1000, &parent) IS ERR_Okay) {
+         if (!AccessObjectID(Self->ParentID, 1000, &parent)) {
             value = parent->Width - Self->X - Self->Width;
             ReleaseObject(parent);
          }

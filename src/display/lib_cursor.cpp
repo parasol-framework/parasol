@@ -336,38 +336,7 @@ AccessObject: Failed to access the pointer object.
 
 ERROR gfxLockCursor(OBJECTID SurfaceID)
 {
-#ifdef __native__
-   pf::Log log(__FUNCTION__);
-   extPointer *pointer;
-
-   if (!SurfaceID) return log.warning(ERR_NullArgs);
-
-   if ((pointer = gfxAccessPointer())) {
-      // Return if the cursor is currently locked by someone else
-
-      if ((pointer->AnchorID) and (pointer->AnchorID != SurfaceID)) {
-         if (CheckObjectExists(pointer->AnchorID) != ERR_True);
-         else if ((pointer->AnchorMsgQueue < 0) and (CheckMemoryExists(pointer->AnchorMsgQueue) != ERR_True));
-         else {
-            ReleaseObject(pointer);
-            return ERR_LockFailed; // The pointer is locked by someone else
-         }
-      }
-
-      pointer->AnchorID       = SurfaceID;
-      pointer->AnchorMsgQueue = GetResource(RES_MESSAGE_QUEUE);
-      pointer->AnchorTime     = PreciseTime() / 1000LL;
-
-      ReleaseObject(pointer);
-      return ERR_Okay;
-   }
-   else {
-      log.warning("Failed to access the mouse pointer.");
-      return ERR_AccessObject;
-   }
-#else
    return ERR_NoSupport;
-#endif
 }
 
 /******************************************************************************
