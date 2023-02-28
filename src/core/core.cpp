@@ -165,7 +165,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       struct timeval tmday;
       struct timezone tz;
       #ifndef __ANDROID__
-         BYTE hold_priority;
+         bool hold_priority;
       #endif
    #endif
    LONG i;
@@ -217,7 +217,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
 #if !defined(__ANDROID__) && defined(__unix__)
 
-   hold_priority = FALSE;
+   hold_priority = false;
 
    // If the executable has suid-root rights, we can use direct video access.  The first thing that we're going to
    // do here is actually drop this level of access so that we do not put system security at risk.  This is also
@@ -402,7 +402,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          else if (!StrMatch(arg, "log-all"))     glLogLevel = 9; // 9 is the absolute maximum
          else if (!StrMatch(arg, "time"))        glTimeLog = PreciseTime();
          #if defined(__unix__) && !defined(__ANDROID__)
-         else if (!StrMatch(arg, "holdpriority")) hold_priority = TRUE;
+         else if (!StrMatch(arg, "holdpriority")) hold_priority = true;
          #endif
          else if (!StrCompare("home=", arg, 7, 0)) glHomeFolderName.assign(arg + 7);
          else newargs[na++] = arg;
@@ -425,15 +425,10 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    glShowIO = (Info->Flags & OPF_SHOW_IO) ? TRUE : FALSE;
 
 #if defined(__unix__) && !defined(__ANDROID__)
-   // It is possible to write so much data to the terminal that the process can sleep on a printf().  If this
-   // happens while the process has important system resources locked, dead-locking can occur between the task and
-   // the terminal.  E.g. A process hangs on printf() while RPM_SurfaceList is locked; ZTerm tries to access
-   // RPM_SurfaceList and is dead-locked because the task cannot return until ZTerm clears the stdout buffer.
-   //
-   // A non-blocking stdout solves this problem at the cost of dropping output.  There would be better
-   // solutions, but this is a simple one.
+   // Setting stdout to non-blocking can prevent dead-locks at the cost of dropping excess output.  It is only
+   // necessary if the terminal has the means to lock a resource that is in use by the running program.
 
-   //if (glSync IS FALSE) {
+   //if (!glSync) {
    //   glStdErrFlags = fcntl(STDERR_FILENO, F_GETFL);
    //   if (!fcntl(STDERR_FILENO, F_SETFL, glStdErrFlags|O_NONBLOCK)) glStdErrFlags |= O_NONBLOCK;
    //}
@@ -650,10 +645,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          CloseCore();
          return NULL;
       }
-
-      // Use a process ID as a unique instance ID by default
-
-      glSharedControl->InstanceMsgPort = glTaskMessageMID;
 
       auto call = make_function_stdc(process_janitor);
       SubscribeTimer(60, &call, &glProcessJanitor);
@@ -1042,7 +1033,6 @@ static ERROR init_shared_control(void)
    glSharedControl->MagicKey         = MAGICKEY;
    glSharedControl->MaxBlocks        = MAX_BLOCKS;
    glSharedControl->MessageIDCount   = 1;
-   glSharedControl->ClassIDCount     = 1;
    glSharedControl->GlobalIDCount    = 1;
    glSharedControl->ThreadIDCount    = 1;
 
