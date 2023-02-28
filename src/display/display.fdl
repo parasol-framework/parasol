@@ -694,16 +694,6 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
 #define CFUnpackAlpha(a,b)        ((((b) >> (a)->AlphaPos) & (a)->AlphaMask))
 
 #define gfxReleasePointer(a)    (ReleaseObject(a))
-// Helper function for surface lookups.
-
-INLINE LONG FIND_SURFACE_INDEX(SurfaceControl *Ctl, OBJECTID SurfaceID) {
-   auto *list = (SurfaceList *)((char *)Ctl + Ctl->ArrayIndex);
-   for (LONG j=0; j < Ctl->Total; j++) {
-      if (list->SurfaceID IS SurfaceID) return j;
-      list = (SurfaceList *)((char *)list + Ctl->EntrySize);
-   }
-   return -1;
-}
 
 // Stubs
 

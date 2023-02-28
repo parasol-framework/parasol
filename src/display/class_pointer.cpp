@@ -42,7 +42,7 @@ static TIMER glRepeatTimer = 0;
 static ERROR repeat_timer(extPointer *, LARGE, LARGE);
 static void set_pointer_defaults(extPointer *);
 static WORD examine_chain(extPointer *, WORD, SurfaceControl *, WORD);
-static BYTE get_over_object(extPointer *);
+static bool get_over_object(extPointer *);
 static void process_ptr_button(extPointer *, struct dcDeviceInput *);
 static void process_ptr_movement(extPointer *, struct dcDeviceInput *);
 static void process_ptr_wheel(extPointer *, struct dcDeviceInput *);
@@ -402,67 +402,27 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
          }
       }
 
-      #ifdef __native__
+      DOUBLE xchange = current_x - Self->X;
+      DOUBLE ychange = current_y - Self->Y;
 
-         LONG xchange = current_x - Self->X;
-         LONG ychange = current_y - Self->Y;
+      Self->X = current_x;
+      Self->Y = current_y;
 
-         if (Self->RestrictID) {
-            LONG width, height;
+      if (Self->AnchorID) {
+         // When anchoring is enabled we send a movement message signal to the anchored object.  NOTE: In hosted
+         // environments we cannot maintain a true anchor since the pointer is out of our control, but we still must
+         // perform the necessary notification.
 
-            // Pointer cannot leave the surface that it is restricted to
+         add_input("Movement-Anchored", userinput, 0, Self->AnchorID, Self->AnchorID, current_x, current_y, xchange, ychange);
+      }
+      else {
+         struct acMoveToPoint moveto = { Self->X, Self->Y, 0, MTF_X|MTF_Y };
+         NotifySubscribers(Self, AC_MoveToPoint, &moveto, ERR_Okay);
 
-            if (!get_surface_abs(Self->RestrictID, &absx, &absy, &width, &height)) {
-               if (current_x < absx) current_x = absx;
-               if (current_y < absy) current_y = absy;
-               if (current_x > (absx + width - 1))  current_x = absx + width - 1;
-               if (current_y > (absy + height - 1)) current_y = absy + height - 1;
-            }
-         }
-         else {
-            // Pointer cannot leave the display boundaries
-            if (current_x < 0) current_x = 0;
-            if (current_y < 0) current_y = 0;
-            if (current_x > glSNAP->VideoMode.XResolution - 1) current_x = glSNAP->VideoMode.XResolution - 1;
-            if (current_y > glSNAP->VideoMode.YResolution - 1) current_y = glSNAP->VideoMode.YResolution - 1;
-         }
+         // Recalculate the OverObject due to cursor movement
 
-         if (Self->AnchorID) {
-            // NOTE: If the pointer is moving diagonally, the anchor surface will receive two separate messages,
-            // one for the vertical movement and another for the horizontal.  Therefore if the anchored object
-            // is going to consolidate the messages, it will need to take this into account and not rely on AbsX/AbsY
-            // representing a movement overview.
-
-            add_input("Movement-Anchored", userinput, JTYPE_ANCHORED, Self->AnchorID, Self->AnchorID, current_x, current_y, xchange, ychange);
-         }
-         else {
-            acMoveToPoint(Self, current_x, current_y, 0, MTF_X|MTF_Y); // NB: This function will update the OverObject field for us
-         }
-
-      #else
-         DOUBLE xchange = current_x - Self->X;
-         DOUBLE ychange = current_y - Self->Y;
-
-         Self->X = current_x;
-         Self->Y = current_y;
-
-         if (Self->AnchorID) {
-            // When anchoring is enabled we send a movement message signal to the anchored object.  NOTE: In hosted
-            // environments we cannot maintain a true anchor since the pointer is out of our control, but we still must
-            // perform the necessary notification.
-
-            add_input("Movement-Anchored", userinput, 0, Self->AnchorID, Self->AnchorID, current_x, current_y, xchange, ychange);
-         }
-         else {
-            struct acMoveToPoint moveto = { Self->X, Self->Y, 0, MTF_X|MTF_Y };
-            NotifySubscribers(Self, AC_MoveToPoint, &moveto, ERR_Okay);
-
-            // Recalculate the OverObject due to cursor movement
-
-            get_over_object(Self);
-         }
-
-      #endif
+         get_over_object(Self);
+      }
 
       if (Self->AnchorID) {
          // Do nothing as only the anchor surface receives a message (see earlier)
@@ -638,10 +598,6 @@ static ERROR PTR_Init(extPointer *Self, APTR Void)
    if (Self->MaxSpeed < 1) Self->MaxSpeed = 10;
    if (Self->Speed < 1)    Self->Speed    = 150;
 
-#ifdef __native__
-   init_mouse_driver();
-#endif
-
    auto call = make_function_stdc(ptr_user_login);
    SubscribeEvent(EVID_USER_STATUS_LOGIN, &call, Self, &Self->UserLoginHandle);
 
@@ -724,28 +680,6 @@ static ERROR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
       }
       ReleaseObject(surface);
    }
-#elif __native__
-   if (Self->Flags & PF_SOFTWARE) {
-      struct acMoveToPoint moveto;
-      OBJECTPTR surface;
-
-      if (Args->Flags & MTF_X) Self->X = Args->X;
-      if (Args->Flags & MTF_Y) Self->Y = Args->Y;
-      if (Self->X < 0) Self->X = 0;
-      if (Self->Y < 0) Self->Y = 0;
-      if (Self->X > glSNAP->VideoMode.XResolution - 1) Self->X = glSNAP->VideoMode.XResolution - 1;
-      if (Self->Y > glSNAP->VideoMode.YResolution - 1) Self->Y = glSNAP->VideoMode.YResolution - 1;
-
-      moveto.X = Self->X - Self->Cursors[Self->CursorID].HotX;
-      moveto.Y = Self->Y - Self->Cursors[Self->CursorID].HotY;
-      moveto.ZCoord = NULL;
-      moveto.Flags  = MTF_X|MTF_Y;
-      if (AccessObjectID(Self->CursorSurfaceID, 3000, &surface) IS ERR_Okay) {
-         Action(AC_MoveToPoint, surface, &moveto);
-         ReleaseObject(surface);
-      }
-      else ActionMsg(AC_MoveToPoint, Self->CursorSurfaceID, &moveto);
-   }
 #elif _WIN32
    OBJECTPTR surface;
 
@@ -778,14 +712,9 @@ static ERROR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
 
 static ERROR PTR_NewObject(extPointer *Self, APTR Void)
 {
-#ifdef __native__
-   StrCopy("AutoDetect", Self->Device, sizeof(Self->Device));
-#endif
-
    Self->CursorID = PTR_DEFAULT;
    Self->ClickSlop = 2;
    set_pointer_defaults(Self);
-
    return ERR_Okay;
 }
 
@@ -1178,7 +1107,7 @@ static void set_pointer_defaults(extPointer *Self)
 
 //********************************************************************************************************************
 
-static BYTE get_over_object(extPointer *Self)
+static bool get_over_object(extPointer *Self)
 {
    pf::Log log(__FUNCTION__);
    SurfaceControl *ctl;
@@ -1341,126 +1270,6 @@ static ERROR repeat_timer(extPointer *Self, LARGE Elapsed, LARGE Unused)
 
 //********************************************************************************************************************
 
-#ifdef __native__
-// Mouse driver initialisation
-
-static ERROR init_mouse_driver(void)
-{
-   pf::Log log(__FUNCTION__);
-   STRING str;
-   WORD port;
-   ERROR error;
-   LONG i;
-
-   objConfig::create config = { fl::Path("config:hardware/drivers.cfg") };
-
-   if (config.ok()) {
-      if (!cfgReadValue(*config, "MOUSE", "Device", &str)) StrCopy(str, Self->Device);
-
-      if (!cfgReadValue(*config, "MOUSE", "Driver", &str)) {
-         for (LONG i=0; glMouseTypes[i].Name; i++) {
-            if (!StrMatch(str, glMouseTypes[i].ShortName)) {
-               glDriverIndex = i;
-               break;
-            }
-         }
-      }
-   }
-
-   log.msg("Using mouse driver \"%s\" and device \"%s\"", glMouseTypes[glDriverIndex].Name, Self->Device);
-
-   if (!StrMatch("AutoDetect", Self->Device)) {
-      // If auto-detect is used, open both the PS/2 and USB ports and monitor them in parallel.  On some Linux systems, /dev/mouse
-      // could be an authentic device, so use that if it is set.  From kernel 2.6.9, /dev/input/mice is a software device that represents everything.
-
-      // NOTE: OPENING THESE DEVICES TYPICALLY REQUIRES SUPERUSER PRIVILEGES.
-
-      SetResource(RES_PRIVILEGEDUSER, TRUE);
-
-      if (glModernInput) {
-         log.msg("Using modern input mode on /dev/input/mice.");
-         if ((glPorts[PORT_CUSTOM].FD = open("/dev/input/mice", O_RDWR)) != -1) {
-            glPorts[PORT_CUSTOM].Device = "/dev/input/mice";
-            glDriverIndex = MODERN_DRIVER; // Force EXPS/2 when talking to /dev/input/mice
-         }
-         else glModernInput = FALSE;
-      }
-
-      if (glModernInput IS FALSE) {
-         // If /dev/mouse is active, it reflects a symbolic link to the user's preferred mouse device.
-
-         log.msg("Using auto-detect mode (PS/2, USB).");
-
-         if ((glPorts[PORT_CUSTOM].FD = open("/dev/mouse", O_RDWR)) != -1) {
-            glPorts[PORT_CUSTOM].Device = "/dev/mouse";
-         }
-         else {
-            glPorts[PORT_PS2].FD = open(glPorts[PORT_PS2].Device, O_RDWR);
-            glPorts[PORT_USB].FD = open(glPorts[PORT_USB].Device, O_RDWR);
-         }
-      }
-
-      SetResource(RES_PRIVILEGEDUSER, FALSE);
-   }
-   else {
-      glModernInput = FALSE;
-      if ((glPorts[PORT_CUSTOM].FD = open(Self->Device, O_RDWR)) != -1) {
-         glPorts[PORT_CUSTOM].Device = "Custom";
-      }
-      else {
-         log.error("Failed to open mouse device \"%s\".", Self->Device);
-         return ERR_Failed;
-      }
-   }
-
-   // Set all open ports to non-blocking and subscribe to the FD's
-
-   for (port=0; port < ARRAYSIZE(glPorts); port++) {
-      if (glPorts[port].FD != -1) {
-         log.msg("Setting open port %s, device %s to non-blocking.", glPorts[port].Name, glPorts[port].Device);
-         fcntl(glPorts[port].FD, F_SETFL, fcntl(glPorts[port].FD, F_GETFL)|O_NONBLOCK);
-         flush_mouse(port);
-         RegisterFD(glPorts[port].FD, RFD_READ, &read_mouseport, (APTR)Self->UID);
-      }
-   }
-
-   // Initialise the mouse now if the driver is already selected
-
-   if (glDriverIndex) {
-      pf::Log log;
-      log.branch("Using pre-selected driver \"%s\" on all ports.", glMouseTypes[glDriverIndex].ShortName);
-
-      for (LONG port=0; port < ARRAYSIZE(glPorts); port++) {
-         if (glPorts[port].FD != -1) {
-            glPorts[port].Driver = glDriverIndex;
-            if (init_mouse(port) != ERR_Okay) {
-               log.warning("Mouse protocol failure: %s.", glMouseTypes[glPorts[port].Driver].ShortName);
-            }
-         }
-      }
-   }
-
-   // Allocate the surface for software based cursor images
-
-   if (auto surface = objSurface::create::integral(
-         fl::Name("Pointer"),
-         fl::Parent(Self->SurfaceID),
-         fl::Owner(Self->UID),
-         fl::X(-64),
-         fl::Y(-64),
-         fl::Width(MAX_CURSOR_WIDTH),
-         fl::Height(MAX_CURSOR_HEIGHT),
-         fl::Flags(RNF_CURSOR|RNF_PRECOPY|RNF_COMPOSITE))) {
-      Self->CursorSurfaceID = surface->UID;
-      gfxAddCallback(surface, &DrawPointer);
-      return ERR_Okay;
-   }
-   else return log.warning(ERR_NewObject);
-}
-#endif
-
-//********************************************************************************************************************
-
 FieldDef CursorLookup[] = {
    { "None",            0 },
    { "Default",         PTR_DEFAULT },             // Values start from 1 and go up
@@ -1560,32 +1369,6 @@ static const FieldArray clPointerFields[] = {
 
 ERROR create_pointer_class(void)
 {
-#ifdef __native__
-   struct utsname syslinux;
-   WORD version, release;
-   STRING str;
-
-   // In Linux kernel version 2.6.x+, the mouse management system was changed so that all mouse communication is
-   // expected to go through /dev/input/mice.  It is not possible to communicate directly with mouse devices over
-   // /dev/input/mice, because it's an abstract service.
-
-   if (!uname(&syslinux)) {
-      str = syslinux.release;
-      version = StrToInt(str);
-      while ((*str >= '0') and (*str <= '9')) str++;
-      while ((*str) and ((*str < '0') or (*str > '9'))) str++;
-      release = StrToInt(str);
-
-      if (((version IS 2) and (release >= 6)) or (version >= 3)) {
-         glModernInput = TRUE;
-      }
-      else glModernInput = FALSE;
-   }
-
-   if (glModernInput) log.msg("Modern input system will be used for mouse communication.");
-   else log.msg("Old-style input system will be used for direct mouse communication.");
-#endif
-
    clPointer = objMetaClass::create::global(
       fl::BaseClassID(ID_POINTER),
       fl::ClassVersion(VER_POINTER),
