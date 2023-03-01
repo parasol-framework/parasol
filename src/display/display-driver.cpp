@@ -222,6 +222,7 @@ UBYTE *glDemultiply = NULL;
 
 std::vector<OBJECTID> glFocusList;
 std::mutex glFocusLock;
+std::recursive_mutex glSurfaceLock;
 
 THREADVAR WORD tlNoDrawing = 0, tlNoExpose = 0, tlVolatileIndex = 0;
 THREADVAR OBJECTID tlFreeExpose = 0;
@@ -942,30 +943,11 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // Initialise our classes
 
-   if (create_pointer_class() != ERR_Okay) {
-      log.warning("Failed to create Pointer class.");
-      return ERR_AddClass;
-   }
-
-   if (create_display_class() != ERR_Okay) {
-      log.warning("Failed to create Display class.");
-      return ERR_AddClass;
-   }
-
-   if (create_bitmap_class() != ERR_Okay) {
-      log.warning("Failed to create Bitmap class.");
-      return ERR_AddClass;
-   }
-
-   if (create_clipboard_class() != ERR_Okay) {
-      log.warning("Failed to create Clipboard class.");
-      return ERR_AddClass;
-   }
-
-   if (create_surface_class() != ERR_Okay) {
-      log.warning("Failed to create Surface class.");
-      return ERR_AddClass;
-   }
+   if (create_pointer_class() != ERR_Okay) return log.warning(ERR_AddClass);
+   if (create_display_class() != ERR_Okay) return log.warning(ERR_AddClass);
+   if (create_bitmap_class() != ERR_Okay) return log.warning(ERR_AddClass);
+   if (create_clipboard_class() != ERR_Okay) return log.warning(ERR_AddClass);
+   if (create_surface_class() != ERR_Okay) return log.warning(ERR_AddClass);
 
    // Initialise 64K alpha blending table, for cutting down on multiplications.  This memory block is shared, so one
    // table serves all processes.

@@ -191,7 +191,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
       // Restore the cursor to its default state if cursor release flags have been met
 
       if ((Self->CursorRelease & buttonflag) and (Self->CursorOwnerID)) {
-         gfxRestoreCursor(PTR_DEFAULT, NULL);
+         gfxRestoreCursor(PTR_DEFAULT, 0);
       }
 
       if (Self->Buttons[bi].LastClicked) {
@@ -492,15 +492,8 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
    // If a release object has been specified and the cursor is not positioned over it, call the RestoreCursor method.
 
    if ((Self->CursorReleaseID) and (Self->CursorReleaseID != Self->OverObjectID)) {
-      gfxRestoreCursor(PTR_DEFAULT, NULL);
+      gfxRestoreCursor(PTR_DEFAULT, 0);
    }
-}
-
-//********************************************************************************************************************
-
-static void ptr_user_login(extPointer *Self, APTR Info, LONG Size)
-{
-   set_pointer_defaults(Self);
 }
 
 //********************************************************************************************************************
@@ -595,21 +588,6 @@ static ERROR PTR_Init(extPointer *Self, APTR Void)
    if (Self->MaxSpeed < 1) Self->MaxSpeed = 10;
    if (Self->Speed < 1)    Self->Speed    = 150;
 
-   auto call = make_function_stdc(ptr_user_login);
-   SubscribeEvent(EVID_USER_STATUS_LOGIN, &call, Self, &Self->UserLoginHandle);
-
-   // 2016-07: Commented out this feed subscription as it had no purpose in MS Windows and unlikely that it's used for
-   // other platforms.
-/*
-   if (Self->SurfaceID) {
-      objSurface *surface;
-      if (!AccessObjectID(Self->SurfaceID, 5000, &surface)) {
-         SubscribeFeed(surface);
-         surface->set(FID_Flags, surface->Flags);
-         ReleaseObject(surface);
-      }
-   }
-*/
    return ERR_Okay;
 }
 
@@ -1108,22 +1086,24 @@ static bool get_over_object(extPointer *Self)
    if ((Self->SurfaceID) and (CheckObjectExists(Self->SurfaceID) != ERR_Okay)) Self->SurfaceID = 0;
 
    bool changed = false;
+
    // Find the surface that the pointer resides in (usually SystemSurface @ index 0)
 
+   const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
+
    LONG index;
-   auto &list = glSurfaces;
    if (!Self->SurfaceID) {
-      Self->SurfaceID = list[0].SurfaceID;
+      Self->SurfaceID = glSurfaces[0].SurfaceID;
       index = 0;
    }
-   else for (index=0; (index < LONG(list.size())) and (list[index].SurfaceID != Self->SurfaceID); index++);
+   else for (index=0; (index < LONG(glSurfaces.size())) and (glSurfaces[index].SurfaceID != Self->SurfaceID); index++);
 
-   auto i = examine_chain(Self, index, list, list.size());
+   auto i = examine_chain(Self, index, glSurfaces, glSurfaces.size());
 
-   OBJECTID li_objectid = list[i].SurfaceID;
-   DOUBLE li_left       = list[i].Left;
-   DOUBLE li_top        = list[i].Top;
-   LONG cursor_image    = list[i].Cursor; // Preferred cursor ID
+   OBJECTID li_objectid = glSurfaces[i].SurfaceID;
+   DOUBLE li_left       = glSurfaces[i].Left;
+   DOUBLE li_top        = glSurfaces[i].Top;
+   LONG cursor_image    = glSurfaces[i].Cursor; // Preferred cursor ID
 
    if (Self->OverObjectID != li_objectid) {
       pf::Log log(__FUNCTION__);
@@ -1165,11 +1145,11 @@ static bool get_over_object(extPointer *Self)
    //drwReleaseList(ARF_READ);
 
    if (cursor_image) {
-      if (cursor_image != Self->CursorID) gfxSetCursor(NULL, NULL, cursor_image, NULL, NULL);
+      if (cursor_image != Self->CursorID) gfxSetCursor(0, 0, cursor_image, NULL, 0);
    }
    else if ((Self->CursorID != PTR_DEFAULT) and (!Self->CursorOwnerID)) {
       // Restore the pointer to the default image if the cursor isn't locked
-      gfxSetCursor(NULL, NULL, PTR_DEFAULT, NULL, NULL);
+      gfxSetCursor(0, 0, PTR_DEFAULT, NULL, 0);
    }
 
    return changed;

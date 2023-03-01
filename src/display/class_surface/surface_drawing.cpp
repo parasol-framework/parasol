@@ -5,7 +5,6 @@ ERROR _expose_surface(OBJECTID SurfaceID, const SURFACELIST &List, LONG index, L
 {
    pf::Log log("expose_surface");
    extBitmap *bitmap;
-   ClipRectangle abs;
    LONG i, j;
    bool skip;
    OBJECTID parent_id;
@@ -21,6 +20,7 @@ ERROR _expose_surface(OBJECTID SurfaceID, const SURFACELIST &List, LONG index, L
 
    // Calculate the absolute coordinates of the exposed area
 
+   ClipRectangle abs;
    if (Flags & EXF_ABSOLUTE) {
       abs.Left   = X;
       abs.Top    = Y;
@@ -55,11 +55,12 @@ ERROR _expose_surface(OBJECTID SurfaceID, const SURFACELIST &List, LONG index, L
    }
 
    // Check if the exposed dimensions are outside of our boundary and/or our parent(s) boundaries.  If so then we must
-   // restrict the exposed dimensions.  NOTE: This loop looks strange but is both correct & fast.  Don't touch it!
+   // restrict the exposed dimensions.  NOTE: This loop looks strange but is both correct & fast.  Don't alter it!
 
    for (i=index, parent_id = SurfaceID; ;) {
       if (!(List[i].Flags & RNF_VISIBLE)) return ERR_Okay;
-      clip_rectangle(&abs, (ClipRectangle *)&List[i].Left);
+      auto area = List[i].area();
+      clip_rectangle(abs, area);
       if (!(parent_id = List[i].ParentID)) break;
       i--;
       while (List[i].SurfaceID != parent_id) i--;
@@ -125,7 +126,7 @@ ERROR _expose_surface(OBJECTID SurfaceID, const SURFACELIST &List, LONG index, L
       }
       if (skip) continue;
 
-      ClipRectangle childexpose = abs;
+      auto childexpose = abs;
 
       if (i != index) {
          // Check this child object and its parents to make sure they are visible
@@ -138,7 +139,8 @@ ERROR _expose_surface(OBJECTID SurfaceID, const SURFACELIST &List, LONG index, L
                   break;
                }
 
-               clip_rectangle(&childexpose, (ClipRectangle *)&List[j].Left);
+               auto area = List[j].area();
+               clip_rectangle(childexpose, area);
 
                parent_id = List[j].ParentID;
             }
@@ -249,7 +251,7 @@ ERROR _expose_surface(OBJECTID SurfaceID, const SURFACELIST &List, LONG index, L
             log.traceBranch("Redrawing/Exposing cursor.");
 
             if (!(List[i].Flags & RNF_COMPOSITE)) { // Composites never require redrawing because they are not completely volatile
-               _redraw_surface(List[i].SurfaceID, List, i, abs.Left, abs.Top, abs.Right, abs.Bottom, NULL);
+               _redraw_surface(List[i].SurfaceID, List, i, abs.Left, abs.Top, abs.Right, abs.Bottom, 0);
             }
 
             _expose_surface(List[i].SurfaceID, List, i, abs.Left, abs.Top, abs.Right, abs.Bottom, EXF_ABSOLUTE);
@@ -357,7 +359,7 @@ ERROR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
                   msgdraw->Height = bottom - msgdraw->Y;
                }
 
-               UpdateMessage(queue, ((Message *)msgbuffer)->UniqueID, NULL, action, sizeof(ActionMessage) + sizeof(struct acDraw));
+               UpdateMessage(queue, ((Message *)msgbuffer)->UniqueID, 0, action, sizeof(ActionMessage) + sizeof(struct acDraw));
             }
             else {
                // We do nothing here because the next draw message will draw everything.
@@ -442,7 +444,7 @@ static ERROR SURFACE_Expose(extSurface *Self, struct drwExpose *Args)
                   msgexpose->Flags  |= Args->Flags;
                }
 
-               UpdateMessage(queue, ((Message *)msgbuffer)->UniqueID, NULL, action, sizeof(ActionMessage) + sizeof(struct drwExpose));
+               UpdateMessage(queue, ((Message *)msgbuffer)->UniqueID, 0, action, sizeof(ActionMessage) + sizeof(struct drwExpose));
             }
             else {
                // We do nothing here because the next expose message will draw everything.
@@ -530,7 +532,7 @@ static ERROR SURFACE_InvalidateRegion(extSurface *Self, struct drwInvalidateRegi
                   msginvalid->Height = bottom - msginvalid->Y;
                }
 
-               UpdateMessage(queue, ((Message *)msgbuffer)->UniqueID, NULL, action, sizeof(ActionMessage) + sizeof(struct drwInvalidateRegion));
+               UpdateMessage(queue, ((Message *)msgbuffer)->UniqueID, 0, action, sizeof(ActionMessage) + sizeof(struct drwInvalidateRegion));
             }
             else { } // We do nothing here because the next invalidation message will draw everything.
 
@@ -633,14 +635,15 @@ void move_layer(extSurface *Self, LONG X, LONG Y)
    else if (glSurfaces[index].BitmapID IS glSurfaces[parent_index].BitmapID) redraw = true;
    else redraw = false;
 
-   if (redraw) _redraw_surface(Self->UID, glSurfaces, index, destx, desty, destx+Self->Width, desty+Self->Height, NULL);
+   if (redraw) _redraw_surface(Self->UID, glSurfaces, index, destx, desty, destx+Self->Width, desty+Self->Height, 0);
    _expose_surface(Self->UID, glSurfaces, index, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
 
    // Expose underlying graphics resulting from the movement
 
    for (vindex=index+1; glSurfaces[vindex].Level > glSurfaces[index].Level; vindex++);
    tlVolatileIndex = vindex;
-   redraw_nonintersect(Self->ParentID, glSurfaces, parent_index, (ClipRectangle *)(&glSurfaces[index].Left), &old,
+   auto clip = glSurfaces[index].area();
+   redraw_nonintersect(Self->ParentID, glSurfaces, parent_index, clip, old,
       (glSurfaces[index].BitmapID IS glSurfaces[parent_index].BitmapID) ? IRF_SINGLE_BITMAP : -1,
       EXF_CHILDREN|EXF_REDRAW_VOLATILE);
    tlVolatileIndex = 0;
@@ -659,7 +662,7 @@ void move_layer(extSurface *Self, LONG X, LONG Y)
 */
 
 void prepare_background(extSurface *Self, const SURFACELIST &List, LONG Index, extBitmap *DestBitmap,
-   ClipRectangle &clip, BYTE Stage)
+   const ClipRectangle &clip, BYTE Stage)
 {
    pf::Log log("prepare_bkgd");
 
@@ -719,7 +722,7 @@ void prepare_background(extSurface *Self, const SURFACELIST &List, LONG Index, e
 
       // Check the visibility of this layer and its parents
 
-      if (restrict_region_to_parents(List, i, &expose, TRUE) <= 0) continue;
+      if (restrict_region_to_parents(List, i, expose, true) <= 0) continue;
 
       LONG opaque;
       if (Stage IS STAGE_AFTERCOPY) {
@@ -804,7 +807,7 @@ void copy_bkgd(const SURFACELIST &List, LONG Index, LONG End, LONG Master, ClipR
    // restrict the exposed dimensions.
 
    auto expose = Area;
-   if (restrict_region_to_parents(List, Index, &expose, false) IS -1) return;
+   if (restrict_region_to_parents(List, Index, expose, false) IS -1) return;
 
    log.traceBranch("[%d] Pos: %dx%d,%dx%d Bitmap: %d, Index: %d/%d", List[Index].SurfaceID, expose.Left, expose.Top, expose.Right - expose.Left, expose.Bottom - expose.Top, List[Index].BitmapID, Index, End);
 

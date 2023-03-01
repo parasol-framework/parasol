@@ -644,6 +644,8 @@ struct ClipRectangle {
    LONG Bottom;  // Bottom coordinate
   ClipRectangle() { }
   ClipRectangle(LONG pLeft, LONG pTop, LONG pRight, LONG pBottom) : Left(pLeft), Top(pTop), Right(pRight), Bottom(pBottom) { }
+  int width() const { return Right - Left; }
+  int height() const { return Bottom - Top; }
 };
 
 struct Edges {

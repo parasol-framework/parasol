@@ -271,13 +271,14 @@ static ERROR SET_Parent(extSurface *Self, LONG Value)
       Self->ParentID = Value;
       Self->ParentDefined = true;
 
-      auto &list = glSurfaces;
+      const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
+
       LONG index, parent;
       if ((index = find_surface_list(Self)) != -1) {
          if (!Value) parent = 0;
-         else for (parent=0; (list[parent].SurfaceID) and (list[parent].SurfaceID != Self->ParentID); parent++);
+         else for (parent=0; (glSurfaces[parent].SurfaceID) and (glSurfaces[parent].SurfaceID != Self->ParentID); parent++);
 
-         if (list[parent].SurfaceID) move_layer_pos(list, index, parent + 1);
+         if (glSurfaces[parent].SurfaceID) move_layer_pos(glSurfaces, index, parent + 1);
 
          // Reset bitmap and buffer information in the list
 
