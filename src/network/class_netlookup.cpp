@@ -324,15 +324,15 @@ static ERROR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nlResolveAddres
 
    IPAddress ip;
    if (!netStrToAddress(Args->Address, &ip)) {
-      LONG pkg_size = sizeof(resolve_buffer) + sizeof(IPAddress) + StrLength(Args->Address) + 1;
-      if (auto th = objThread::create::integral(fl::Routine((CPTR)thread_resolve_addr),
-            fl::Flags(THF_AUTO_FREE))) {
+      auto addr_len = StrLength(Args->Address) + 1;
+      LONG pkg_size = sizeof(resolve_buffer) + sizeof(IPAddress) + addr_len;
+      if (auto th = objThread::create::integral(fl::Routine((CPTR)thread_resolve_addr), fl::Flags(THF_AUTO_FREE))) {
          char buffer[pkg_size];
          auto rb = (resolve_buffer *)&buffer;
          rb->NetLookupID = Self->UID;
          rb->ThreadID = th->UID;
          CopyMemory(&ip, (rb + 1), sizeof(ip));
-         StrCopy(Args->Address, ((STRING)(rb + 1)) + sizeof(IPAddress));
+         CopyMemory(Args->Address, ((STRING)(rb + 1)) + sizeof(IPAddress), addr_len);
          if ((!thSetData(th, rb, pkg_size)) and (!th->activate())) {
             std::lock_guard<std::mutex> lock(*Self->ThreadLock);
             Self->Threads->insert(th->UID);

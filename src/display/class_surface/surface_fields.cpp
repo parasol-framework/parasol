@@ -1,4 +1,4 @@
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 BitsPerPixel: Defines the number of bits per pixel for a surface.
@@ -7,7 +7,7 @@ The BitsPerPixel field may be set prior to initialisation in order to force a pa
 may not match the display.  This will result in the graphics system converting each pixel when drawing the surface to
 the display and as such is not recommended.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_BitsPerPixel(extSurface *Self, LONG *Value)
 {
@@ -25,7 +25,7 @@ static ERROR SET_BitsPerPixel(extSurface *Self, LONG Value)
    return ERR_Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Buffer: The ID of the bitmap that manages the surface's graphics.
@@ -61,13 +61,13 @@ The available cursor image settings are listed in the @Pointer.CursorID document
 
 The Cursor field may be written with valid cursor names or their ID's, as you prefer.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_Cursor(extSurface *Self, LONG Value)
 {
    Self->Cursor = Value;
    if (Self->initialised()) {
-      UpdateSurfaceField(Self, &SurfaceList::Cursor, (BYTE)Self->Cursor);
+      UpdateSurfaceField(Self, &SurfaceRecord::Cursor, (BYTE)Self->Cursor);
       OBJECTID pointer_id;
       if (!FindObject("SystemPointer", ID_POINTER, 0, &pointer_id)) {
          acRefresh(pointer_id);
@@ -139,7 +139,7 @@ static ERROR SET_Flags(extSurface *Self, LONG Value)
 
    if (flags != Self->Flags) {
       Self->Flags = flags;
-      UpdateSurfaceField(Self, &SurfaceList::Flags, flags);
+      UpdateSurfaceField(Self, &SurfaceRecord::Flags, flags);
    }
 
    return ERR_Okay;
@@ -193,11 +193,11 @@ static ERROR SET_Movement(extSurface *Self, LONG Flags)
    else if (Flags IS (MOVE_HORIZONTAL|MOVE_VERTICAL)) Self->Flags &= ~(RNF_NO_VERTICAL | RNF_NO_HORIZONTAL);
    else Self->Flags |= RNF_NO_HORIZONTAL|RNF_NO_VERTICAL;
 
-   UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
+   UpdateSurfaceField(Self, &SurfaceRecord::Flags, Self->Flags);
    return ERR_Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 Opacity: Affects the level of translucency applied to a surface object.
 
@@ -211,7 +211,7 @@ always ideal and you can sometimes get better results by using the pre-copy opti
 
 Please note that the use of translucency is realised at a significant cost to the CPU's time.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_Opacity(extSurface *Self, DOUBLE *Value)
 {
@@ -242,7 +242,7 @@ static ERROR SET_Opacity(extSurface *Self, DOUBLE Value)
    }
 
    Self->Opacity = opacity;
-   UpdateSurfaceList(Self); // Update Opacity, Flags
+   UpdateSurfaceRecord(Self); // Update Opacity, Flags
 
    return ERR_Okay;
 }
@@ -269,30 +269,26 @@ static ERROR SET_Parent(extSurface *Self, LONG Value)
       acHide(Self);
 
       Self->ParentID = Value;
-      Self->ParentDefined = TRUE;
+      Self->ParentDefined = true;
 
-      SurfaceControl *ctl;
-      if ((ctl = gfxAccessList(ARF_WRITE))) {
-         auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-         LONG index, parent;
-         if ((index = find_own_index(ctl, Self)) != -1) {
-            if (!Value) parent = 0;
-            else for (parent=0; (list[parent].SurfaceID) and (list[parent].SurfaceID != Self->ParentID); parent++);
+      auto &list = glSurfaces;
+      LONG index, parent;
+      if ((index = find_surface_list(Self)) != -1) {
+         if (!Value) parent = 0;
+         else for (parent=0; (list[parent].SurfaceID) and (list[parent].SurfaceID != Self->ParentID); parent++);
 
-            if (list[parent].SurfaceID) move_layer_pos(ctl, index, parent + 1);
+         if (list[parent].SurfaceID) move_layer_pos(list, index, parent + 1);
 
-            // Reset bitmap and buffer information in the list
+         // Reset bitmap and buffer information in the list
 
 
-         }
-         gfxReleaseList(ARF_WRITE);
       }
 
       acShow(Self);
    }
    else {
       Self->ParentID = Value;
-      Self->ParentDefined = TRUE;
+      Self->ParentDefined = true;
    }
 
    return ERR_Okay;
@@ -380,17 +376,17 @@ static ERROR SET_PrecopyRegion(extSurface *Self, STRING Value)
    for (i=0; (*Value) and (i < ARRAYSIZE(regions)); i++) {
       // X Coordinate / X Offset
 
-      BYTE offset   = FALSE;
-      BYTE relative = FALSE;
+      bool offset   = false;
+      bool relative = false;
       while ((*Value) and ((*Value < '0') or (*Value > '9'))) {
-         if (*Value IS '!') offset = TRUE;
+         if (*Value IS '!') offset = true;
          Value++;
       }
       if (!*Value) break;
 
       CSTRING str = Value;
       while ((*Value >= '0') and (*Value <= '9')) Value++;
-      if (*Value IS '%') relative = TRUE;
+      if (*Value IS '%') relative = true;
 
       if (offset) {
          if (relative) regions[i].Dimensions = (regions[i].Dimensions & ~DMF_FIXED_X_OFFSET) | DMF_RELATIVE_X_OFFSET;
@@ -407,17 +403,17 @@ static ERROR SET_PrecopyRegion(extSurface *Self, STRING Value)
 
       // Y Coordinate / Y Offset
 
-      offset = FALSE;
-      relative = FALSE;
+      offset = false;
+      relative = false;
       while ((*Value) and ((*Value < '0') or (*Value > '9'))) {
-         if (*Value IS '!') offset = TRUE;
+         if (*Value IS '!') offset = true;
          Value++;
       }
       if (!*Value) break;
 
       str = Value;
       while ((*Value >= '0') and (*Value <= '9')) Value++;
-      if (*Value IS '%') relative = TRUE;
+      if (*Value IS '%') relative = true;
 
       if (offset) {
          if (relative) regions[i].Dimensions = (regions[i].Dimensions & ~DMF_FIXED_Y_OFFSET) | DMF_RELATIVE_Y_OFFSET;
@@ -434,17 +430,17 @@ static ERROR SET_PrecopyRegion(extSurface *Self, STRING Value)
 
       // Width / X Offset
 
-      offset   = FALSE;
-      relative = FALSE;
+      offset   = false;
+      relative = false;
       while ((*Value) and ((*Value < '0') or (*Value > '9'))) {
-         if (*Value IS '!') offset = TRUE;
+         if (*Value IS '!') offset = true;
          Value++;
       }
       if (!*Value) break;
 
       str = Value;
       while ((*Value >= '0') and (*Value <= '9')) Value++;
-      if (*Value IS '%') relative = TRUE;
+      if (*Value IS '%') relative = true;
 
       if (offset) {
          if (relative) regions[i].Dimensions = (regions[i].Dimensions & ~DMF_FIXED_X_OFFSET) | DMF_RELATIVE_X_OFFSET;
@@ -461,17 +457,17 @@ static ERROR SET_PrecopyRegion(extSurface *Self, STRING Value)
 
       // Height / Y Offset
 
-      offset   = FALSE;
-      relative = FALSE;
+      offset   = false;
+      relative = false;
       while ((*Value) and ((*Value < '0') or (*Value > '9'))) {
-         if (*Value IS '!') offset = TRUE;
+         if (*Value IS '!') offset = true;
          Value++;
       }
       if (!*Value) break;
 
       str = Value;
       while ((*Value >= '0') and (*Value <= '9')) Value++;
-      if (*Value IS '%') relative = TRUE;
+      if (*Value IS '%') relative = true;
 
       if (offset) {
          if (relative) regions[i].Dimensions = (regions[i].Dimensions & ~DMF_FIXED_Y_OFFSET) | DMF_RELATIVE_Y_OFFSET;
@@ -495,7 +491,7 @@ static ERROR SET_PrecopyRegion(extSurface *Self, STRING Value)
          Self->PrecopyTotal = total;
          if (!Self->initialised()) {
             Self->Flags |= RNF_PRECOPY;
-            UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
+            UpdateSurfaceField(Self, &SurfaceRecord::Flags, Self->Flags);
          }
 
          return ERR_Okay;
@@ -521,7 +517,7 @@ RootLayer: Private
 static ERROR SET_RootLayer(extSurface *Self, OBJECTID Value)
 {
    Self->RootID = Value;
-   UpdateSurfaceField(Self, &SurfaceList::RootID, Value); // Update RootLayer
+   UpdateSurfaceField(Self, &SurfaceRecord::RootID, Value); // Update RootLayer
    return ERR_Okay;
 }
 
@@ -595,7 +591,7 @@ static ERROR SET_WindowType(extSurface *Self, LONG Value)
 {
    if (Self->initialised()) {
       pf::Log log;
-      BYTE border;
+      bool border;
       LONG flags;
       objDisplay *display;
 
@@ -612,10 +608,10 @@ static ERROR SET_WindowType(extSurface *Self, LONG Value)
                case SWIN_TASKBAR:
                case SWIN_ICON_TRAY:
                case SWIN_NONE:
-                  border = FALSE;
+                  border = false;
                   break;
                default:
-                  border = TRUE;
+                  border = true;
                   break;
             }
 

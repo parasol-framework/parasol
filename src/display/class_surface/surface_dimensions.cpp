@@ -14,22 +14,14 @@ It is possible to set this field, but only after initialisation of the surface o
 static ERROR GET_AbsX(extSurface *Self, LONG *Value)
 {
    pf::Log log;
-   SurfaceControl *ctl;
    LONG i;
 
-   if ((ctl = gfxAccessList(ARF_READ))) {
-      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-      if ((i = find_own_index(ctl, Self)) != -1) {
-         *Value = list[i].Left;
-         gfxReleaseList(ARF_READ);
-         return ERR_Okay;
-      }
-      else {
-         gfxReleaseList(ARF_READ);
-         return log.warning(ERR_Search);
-      }
+   auto &list = glSurfaces;
+   if ((i = find_surface_list(Self)) != -1) {
+      *Value = list[i].Left;
+      return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemory);
+   else return log.warning(ERR_Search);
 }
 
 static ERROR SET_AbsX(extSurface *Self, LONG Value)
@@ -38,21 +30,13 @@ static ERROR SET_AbsX(extSurface *Self, LONG Value)
    LONG parent, x;
 
    if (Self->initialised()) {
-      SurfaceControl *ctl;
-      if ((ctl = gfxAccessList(ARF_READ))) {
-         auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-         if ((parent = find_parent_index(ctl, Self)) != -1) {
-            x = Value - list[parent].Left;
-            gfxReleaseList(ARF_READ);
-            move_layer(Self, x, Self->Y);
-            return ERR_Okay;
-         }
-         else {
-            gfxReleaseList(ARF_READ);
-            return log.warning(ERR_Search);
-         }
+      auto &list = glSurfaces;
+      if ((parent = find_parent_list(list, Self)) != -1) {
+         x = Value - list[parent].Left;
+         move_layer(Self, x, Self->Y);
+         return ERR_Okay;
       }
-      else return log.warning(ERR_AccessMemory);
+      else return log.warning(ERR_Search);
    }
    else return log.warning(ERR_NotInitialised);
 }
@@ -72,44 +56,32 @@ It is possible to set this field, but only after initialisation of the surface o
 static ERROR GET_AbsY(extSurface *Self, LONG *Value)
 {
    pf::Log log;
-   SurfaceControl *ctl;
    LONG i;
 
-   if ((ctl = gfxAccessList(ARF_READ))) {
-      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-      if ((i = find_own_index(ctl, Self)) != -1) {
-         *Value = list[i].Top;
-         gfxReleaseList(ARF_READ);
-         return ERR_Okay;
-      }
-      else {
-         gfxReleaseList(ARF_READ);
-         return log.warning(ERR_Search);
-      }
+   auto &list = glSurfaces;
+
+   if ((i = find_surface_list(Self)) != -1) {
+      *Value = list[i].Top;
+      return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemory);
+   else return log.warning(ERR_Search);
 }
 
 static ERROR SET_AbsY(extSurface *Self, LONG Value)
 {
    pf::Log log;
-   LONG parent, y;
 
    if (Self->initialised()) {
-      SurfaceControl *ctl;
-      if ((ctl = gfxAccessList(ARF_READ))) {
-         auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-         if ((parent = find_parent_index(ctl, Self)) != -1) {
-            y = Value - list[parent].Top;
-            gfxReleaseList(ARF_READ);
-            move_layer(Self, Self->X, y);
-            return ERR_Okay;
-         }
+      auto &list = glSurfaces;
 
-         gfxReleaseList(ARF_READ);
-         return log.warning(ERR_Search);
+      LONG parent, y;
+      if ((parent = find_parent_list(list, Self)) != -1) {
+         y = Value - list[parent].Top;
+         move_layer(Self, Self->X, y);
+         return ERR_Okay;
       }
-      else return log.warning(ERR_AccessMemory);
+
+      return log.warning(ERR_Search);
    }
    else return log.warning(ERR_NotInitialised);
 }
@@ -186,15 +158,14 @@ The dimension settings of a surface object can be read from this field.  The fla
 are in use, and whether the values are fixed or relative.
 
 It is strongly recommended that this field is never set manually, because the flags are automatically managed for the
-client when setting fields such as #X and #Width.  If circumstances require manual configuration,
-take care to ensure that the flags do not conflict.  For instance, `FIXED_X` and `RELATIVE_X` cannot be paired, nor could
-`FIXED_X`, `FIXED_XOFFSET` and `FIXED_WIDTH` simultaneously.
+client when setting fields such as #X and #Width.  If circumstances require manual configuration, take care to ensure
+that the flags do not conflict.  For instance, `FIXED_X` and `RELATIVE_X` cannot be paired, nor could `FIXED_X`,
+`FIXED_XOFFSET` and `FIXED_WIDTH` simultaneously.
 
 *********************************************************************************************************************/
 
 static ERROR SET_Dimensions(extSurface *Self, LONG Value)
 {
-   pf::Log log;
    SURFACEINFO *parent;
 
    if (!gfxGetSurfaceInfo(Self->ParentID, &parent)) {
@@ -255,7 +226,6 @@ static ERROR SET_Dimensions(extSurface *Self, LONG Value)
 
       resize.Z = 0;
       resize.Depth  = 0;
-      //log.msg("$%.8x, Pos: %dx%d, Size: %dx%d", Self->Head.ID, Self->Dimensions, (LONG)resize.X, (LONG)resize.YCoord, (LONG)resize.Width, (LONG)resize.Height);
       Action(AC_Redimension, Self, &resize);
 
       return ERR_Okay;
@@ -277,8 +247,8 @@ be 160 pixels high.
 Setting the Height while a surface object is on display causes an immediate graphical update to reflect the change.
 Any objects that are within the surface area will be re-drawn and resized as necessary.
 
-If a value less than zero is passed to an initialised surface, the height will be 'turned off' - this is convenient for
-pairing the Y and YOffset fields together for dynamic height adjustment.
+If a value less than zero is passed to an initialised surface, the height will be 'turned off' - this is convenient
+for pairing the Y and YOffset fields together for dynamic height adjustment.
 
 *********************************************************************************************************************/
 
@@ -302,8 +272,6 @@ static ERROR GET_Height(extSurface *Self, Variable *Value)
 static ERROR SET_Height(extSurface *Self, Variable *Value)
 {
    pf::Log log;
-   extSurface *parent;
-   Variable var;
    DOUBLE value;
 
    if (Value->Type & FD_DOUBLE)      value = Value->Double;
@@ -322,6 +290,7 @@ static ERROR SET_Height(extSurface *Self, Variable *Value)
 
    if (Value->Type & FD_PERCENTAGE) {
       if (Self->ParentID) {
+         extSurface *parent;
          if (!AccessObjectID(Self->ParentID, 500, &parent)) {
             Self->HeightPercent = value;
             Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_HEIGHT) | DMF_RELATIVE_HEIGHT;
@@ -341,6 +310,8 @@ static ERROR SET_Height(extSurface *Self, Variable *Value)
       Self->Dimensions = (Self->Dimensions & ~DMF_RELATIVE_HEIGHT) | DMF_FIXED_HEIGHT;
 
       // If the offset flags are used, adjust the vertical position
+
+      Variable var;
       if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) {
          var.Type   = FD_DOUBLE|FD_PERCENTAGE;
          var.Double = Self->YOffsetPercent;
@@ -364,8 +335,8 @@ InsideHeight: Defines the amount of space between the vertical margins.
 You can determine the internal height of a surface object by reading the InsideHeight field.  The returned value is the
 result of calculating this formula: `Height - TopMargin - BottomMargin`.
 
-If you have not set the TopMargin and/or BottomMargin fields, then the returned value will be equal to the surface
-object's height.
+If the TopMargin and BottomMargin fields are not set, the returned value will be equal to the surface object's
+height.
 
 *********************************************************************************************************************/
 
@@ -392,8 +363,7 @@ InsideWidth: Defines the amount of space between the horizontal margins.
 You can determine the internal width of a surface object by reading the InsideWidth field.  The returned value is the
 result of calculating this formula: `Width - LeftMargin - RightMargin`.
 
-If you have not set the LeftMargin and/or RightMargin fields, then the returned value will be equal to the surface
-object's width.
+If the LeftMargin and RightMargin fields are not set, the returned value will be equal to the surface object's width.
 
 *********************************************************************************************************************/
 
@@ -663,34 +633,26 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 static ERROR GET_VisibleHeight(extSurface *Self, LONG *Value)
 {
-   pf::Log log;
-   SurfaceControl *ctl;
-   struct ClipRectangle clip;
-   WORD i;
-
    if (!Self->ParentID) {
       *Value = Self->Height;
       return ERR_Okay;
    }
-   else if ((ctl = gfxAccessList(ARF_READ))) {
-      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-      if ((i = find_own_index(ctl, Self)) IS -1) {
-         gfxReleaseList(ARF_READ);
-         return ERR_Search;
-      }
+   else {
+      auto &list = glSurfaces;
+      WORD i;
+      if ((i = find_surface_list(Self)) IS -1) return ERR_Search;
 
+      ClipRectangle clip;
       clip.Left   = list[i].Left;
       clip.Top    = list[i].Top;
       clip.Right  = list[i].Right;
       clip.Bottom = list[i].Bottom;
-      restrict_region_to_parents(list, i, &clip, FALSE);
+      restrict_region_to_parents(list, i, &clip, false);
 
       *Value = clip.Bottom - clip.Top;
 
-      gfxReleaseList(ARF_READ);
       return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemory);
 }
 
 /*********************************************************************************************************************
@@ -710,34 +672,27 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 static ERROR GET_VisibleWidth(extSurface *Self, LONG *Value)
 {
-   pf::Log log;
-   SurfaceControl *ctl;
-   struct ClipRectangle clip;
    WORD i;
 
    if (!Self->ParentID) {
       *Value = Self->Height;
       return ERR_Okay;
    }
-   else if ((ctl = gfxAccessList(ARF_READ))) {
-      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-      if ((i = find_own_index(ctl, Self)) IS -1) {
-         gfxReleaseList(ARF_READ);
-         return ERR_Search;
-      }
+   else {
+      auto &list = glSurfaces;
 
+      if ((i = find_surface_list(Self)) IS -1) return ERR_Search;
+
+      ClipRectangle clip;
       clip.Left   = list[i].Left;
       clip.Top    = list[i].Top;
       clip.Right  = list[i].Right;
       clip.Bottom = list[i].Bottom;
-      restrict_region_to_parents(list, i, &clip, FALSE);
+      restrict_region_to_parents(list, i, &clip, false);
 
       *Value = clip.Right - clip.Left;
-
-      gfxReleaseList(ARF_READ);
       return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemory);
 }
 
 /*********************************************************************************************************************
@@ -757,34 +712,25 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 static ERROR GET_VisibleX(extSurface *Self, LONG *Value)
 {
-   pf::Log log;
-   SurfaceControl *ctl;
-   struct ClipRectangle clip;
-   WORD i;
-
    if (!Self->ParentID) {
       *Value = Self->Height;
       return ERR_Okay;
    }
-   else if ((ctl = gfxAccessList(ARF_READ))) {
-      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-      if ((i = find_own_index(ctl, Self)) IS -1) {
-         gfxReleaseList(ARF_READ);
-         return ERR_Search;
-      }
+   else {
+      auto &list = glSurfaces;
+      WORD i;
+      if ((i = find_surface_list(Self)) IS -1) return ERR_Search;
 
+      ClipRectangle clip;
       clip.Left   = list[i].Left;
       clip.Top    = list[i].Top;
       clip.Right  = list[i].Right;
       clip.Bottom = list[i].Bottom;
-      restrict_region_to_parents(list, i, &clip, FALSE);
+      restrict_region_to_parents(list, i, &clip, false);
 
       *Value = clip.Left - list[i].Left;
-
-      gfxReleaseList(ARF_READ);
       return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemory);
 }
 
 /*********************************************************************************************************************
@@ -804,34 +750,25 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 static ERROR GET_VisibleY(extSurface *Self, LONG *Value)
 {
-   pf::Log log;
-   SurfaceControl *ctl;
-
    if (!Self->ParentID) {
       *Value = Self->Height;
       return ERR_Okay;
    }
-   else if ((ctl = gfxAccessList(ARF_READ))) {
-      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+   else {
+      auto &list = glSurfaces;
       WORD i;
-      if ((i = find_own_index(ctl, Self)) IS -1) {
-         gfxReleaseList(ARF_READ);
-         return ERR_Search;
-      }
+      if ((i = find_surface_list(Self)) IS -1) return ERR_Search;
 
-      struct ClipRectangle clip;
+      ClipRectangle clip;
       clip.Left   = list[i].Left;
       clip.Top    = list[i].Top;
       clip.Right  = list[i].Right;
       clip.Bottom = list[i].Bottom;
-      restrict_region_to_parents(list, i, &clip, FALSE);
+      restrict_region_to_parents(list, i, &clip, false);
 
       *Value = clip.Top - list[i].Top;
-
-      gfxReleaseList(ARF_READ);
       return ERR_Okay;
    }
-   else return log.warning(ERR_AccessMemory);
 }
 
 /*********************************************************************************************************************

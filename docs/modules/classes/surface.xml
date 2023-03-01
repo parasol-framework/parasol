@@ -244,7 +244,7 @@ the surface area first).</li>
       </input>
       <description>
 <p>The ResetDimensions method provides a simple way of re-declaring the dimensions of a surface object.  This is sometimes necessary when a surface needs to make a significant alteration to its method of display.  For instance if the width of the surface is declared through a combination of X and XOffset settings and the width needs to change to a fixed setting, then ResetDimensions will have to be used.</p>
-<p>It is not necessary to define a value for every parameter - only the ones that are relevant to the new dimension settings.  For instance if X and Width are set, XOffset is ignored and the Dimensions value must include DMF_FIXED_X and DMF_FIXED_WIDTH (or the relative equivalents).  Please refer to the <field>Dimensions</field> field for a full list of dimension flags that can be specified.</p>
+<p>It is not necessary to define a value for every parameter - only the ones that are relevant to the new dimension settings.  For instance if X and Width are set, XOffset is ignored and the Dimensions value must include <code>DMF_FIXED_X</code> and <code>DMF_FIXED_WIDTH</code> (or the relative equivalents).  Please refer to the <field>Dimensions</field> field for a full list of dimension flags that can be specified.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -497,7 +497,7 @@ the surface area first).</li>
       <type>INT</type>
       <description>
 <p>You can determine the internal height of a surface object by reading the InsideHeight field.  The returned value is the result of calculating this formula: <code>Height - TopMargin - BottomMargin</code>.</p>
-<p>If you have not set the TopMargin and/or BottomMargin fields, then the returned value will be equal to the surface object's height.</p>
+<p>If the TopMargin and BottomMargin fields are not set, the returned value will be equal to the surface object's height.</p>
       </description>
     </field>
 
@@ -508,7 +508,7 @@ the surface area first).</li>
       <type>INT</type>
       <description>
 <p>You can determine the internal width of a surface object by reading the InsideWidth field.  The returned value is the result of calculating this formula: <code>Width - LeftMargin - RightMargin</code>.</p>
-<p>If you have not set the LeftMargin and/or RightMargin fields, then the returned value will be equal to the surface object's width.</p>
+<p>If the LeftMargin and RightMargin fields are not set, the returned value will be equal to the surface object's width.</p>
       </description>
     </field>
 
@@ -857,13 +857,6 @@ the surface area first).</li>
 
   </fields>
   <types>
-    <constants lookup="ARF" comment="AccessSurfaceList() flags">
-      <const name="NO_DELAY">Do not delay when waiting for access</const>
-      <const name="READ">Read only access required</const>
-      <const name="UPDATE">Update a single entry (limited write access)</const>
-      <const name="WRITE">Full write access required</const>
-    </constants>
-
     <constants lookup="BAF" comment="Instructions for basic graphics operations.">
       <const name="BLEND">Enable alpha blending to the destination if the source supports an alpha channel.</const>
       <const name="COPY">Special CopyArea() option that avoids blending when the destination pixel is empty.</const>
@@ -875,7 +868,6 @@ the surface area first).</li>
     <constants lookup="BDF" comment="CopySurface() flags">
       <const name="DITHER">Allow the use of dithering to improve image quality at a cost of speed.</const>
       <const name="REDRAW">Redraw the surface before performing the copy operation.</const>
-      <const name="SYNC">Force synchronsiation so that changes to the source image do not occur mid-copy.</const>
     </constants>
 
     <constants lookup="CRF" comment="Flags for the SetCursor() function.">
@@ -1022,14 +1014,6 @@ the surface area first).</li>
       <field name="Index" type="LONG">Display mode ID (internal)</field>
       <field name="HDensity" type="LONG">Horizontal pixel density per inch.</field>
       <field name="VDensity" type="LONG">Vertical pixel density per inch.</field>
-    </struct>
-
-    <struct name="SurfaceControl" comment="Internal structure returned by AccessList()">
-      <field name="ListIndex" type="LONG">Byte offset of the ordered list</field>
-      <field name="ArrayIndex" type="LONG">Byte offset of the list array</field>
-      <field name="EntrySize" type="LONG">Byte size of each entry in the array</field>
-      <field name="Total" type="LONG">Total number of entries currently in the list array</field>
-      <field name="ArraySize" type="LONG">Max limit of entries in the list array</field>
     </struct>
 
     <struct name="SurfaceInfo" typeName="SURFACEINFO">

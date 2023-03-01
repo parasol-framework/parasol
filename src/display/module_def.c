@@ -4,7 +4,6 @@
 #define FDEF static const struct FunctionField
 #endif
 
-FDEF argsAccessList[] = { { "SurfaceControl", FD_PTR|FD_STRUCT }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsAccessPointer[] = { { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsCheckIfChild[] = { { "Error", FD_LONG|FD_ERROR }, { "Parent", FD_OBJECTID }, { "Child", FD_OBJECTID }, { 0, 0 } };
 FDEF argsCopyArea[] = { { "Error", FD_LONG|FD_ERROR }, { "Bitmap", FD_OBJECTPTR }, { "Dest", FD_OBJECTPTR }, { "Flags", FD_LONG }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "XDest", FD_LONG }, { "YDest", FD_LONG }, { 0, 0 } };
@@ -32,7 +31,6 @@ FDEF argsLockBitmap[] = { { "Error", FD_LONG|FD_ERROR }, { "Surface", FD_OBJECTI
 FDEF argsLockCursor[] = { { "Error", FD_LONG|FD_ERROR }, { "Surface", FD_OBJECTID }, { 0, 0 } };
 FDEF argsReadPixel[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { 0, 0 } };
 FDEF argsReadRGBPixel[] = { { "Void", FD_VOID }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "RGB8:RGB", FD_PTR|FD_STRUCT|FD_RESULT }, { 0, 0 } };
-FDEF argsReleaseList[] = { { "Void", FD_VOID }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsResample[] = { { "Error", FD_LONG|FD_ERROR }, { "Bitmap", FD_OBJECTPTR }, { "ColourFormat:ColourFormat", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsRestoreCursor[] = { { "Error", FD_LONG|FD_ERROR }, { "Cursor", FD_LONG }, { "Owner", FD_OBJECTID }, { 0, 0 } };
 FDEF argsScaleToDPI[] = { { "Result", FD_DOUBLE }, { "Value", FD_DOUBLE }, { 0, 0 } };
@@ -52,7 +50,6 @@ FDEF argsUnsubscribeInput[] = { { "Error", FD_LONG|FD_ERROR }, { "Handle", FD_LO
 FDEF argsWindowHook[] = { { "Error", FD_LONG|FD_ERROR }, { "SurfaceID", FD_OBJECTID }, { "Event", FD_LONG }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 
 const struct Function glFunctions[] = {
-   { (APTR)gfxAccessList, "AccessList", argsAccessList },
    { (APTR)gfxAccessPointer, "AccessPointer", argsAccessPointer },
    { (APTR)gfxCheckIfChild, "CheckIfChild", argsCheckIfChild },
    { (APTR)gfxCopyArea, "CopyArea", argsCopyArea },
@@ -80,7 +77,6 @@ const struct Function glFunctions[] = {
    { (APTR)gfxLockCursor, "LockCursor", argsLockCursor },
    { (APTR)gfxReadPixel, "ReadPixel", argsReadPixel },
    { (APTR)gfxReadRGBPixel, "ReadRGBPixel", argsReadRGBPixel },
-   { (APTR)gfxReleaseList, "ReleaseList", argsReleaseList },
    { (APTR)gfxResample, "Resample", argsResample },
    { (APTR)gfxRestoreCursor, "RestoreCursor", argsRestoreCursor },
    { (APTR)gfxScaleToDPI, "ScaleToDPI", argsScaleToDPI },

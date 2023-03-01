@@ -575,7 +575,6 @@ static ERROR SCINTILLA_DeleteLine(extScintilla *Self, struct sciDeleteLine *Args
 
    SCICALL(SCI_REPLACETARGET, 0UL, "");
 
-   LOGRETURN();
    return ERR_Okay;
 }
 
@@ -2479,8 +2478,6 @@ static void calc_longest_line(extScintilla *Self)
       }
       else SCICALL(SCI_SETSCROLLWIDTH, 1UL);
    }
-
-   LOGRETURN();
 }
 
 //********************************************************************************************************************

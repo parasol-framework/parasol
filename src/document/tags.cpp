@@ -897,7 +897,7 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
 
       if (pointermotion) {
          link.PointerMotion = pos;
-         pos += StrCopy(pointermotion, buffer + pos) + 1;
+         pos += StrCopy(pointermotion, buffer + pos, buffersize - pos) + 1;
       }
 
       CopyMemory(&link, buffer, sizeof(link));
