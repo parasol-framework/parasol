@@ -90,16 +90,6 @@
 
 #include <stdarg.h>
 
-struct translate {
-   BYTE Replaced;  // TRUE if the translation table has been replaced with a new one
-   LONG Total;     // Total number of array entries
-   char Language[4]; // 3 letter language code + null byte
-
-   // An array of STRING pointers, to a maximum of Total follows, sorted alphabetically
-
-   // The strings themselves then follow
-};
-
 struct ChildEntry;
 struct ObjectInfo;
 struct MemInfo;
@@ -886,8 +876,6 @@ extern "C" {
 
 ERROR MGR_Init(OBJECTPTR, APTR);
 ERROR MGR_Free(OBJECTPTR, APTR);
-ERROR MGR_GetField(OBJECTPTR, struct acGetVar *);
-ERROR MGR_SetField(OBJECTPTR, struct acSetVar *);
 ERROR MGR_Signal(OBJECTPTR, APTR);
 
 //********************************************************************************************************************
