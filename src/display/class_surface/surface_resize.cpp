@@ -52,13 +52,10 @@ static ERROR SURFACE_Redimension(extSurface *Self, struct acRedimension *Args)
 
    // Extract the new dimensions from the arguments
 
-   LONG newwidth, newheight;
    LONG newx = F2T(Args->X);
    LONG newy = F2T(Args->Y);
-   if (!Args->Width) newwidth = Self->Width;
-   else newwidth = F2T(Args->Width);
-   if (!Args->Height) newheight = Self->Height;
-   else newheight = F2T(Args->Height);
+   LONG newwidth  = (!Args->Width) ? Self->Width : F2T(Args->Width);
+   LONG newheight = (!Args->Height) ? Self->Height : F2T(Args->Height);
 
    // Ensure that the requested width does not exceed minimum and maximum values
 
@@ -96,7 +93,7 @@ static ERROR SURFACE_Redimension(extSurface *Self, struct acRedimension *Args)
 
    log.traceBranch("%dx%d %dx%d (req. %dx%d, %dx%d) Depth: %.0f $%.8x", newx, newy, newwidth, newheight, F2T(Args->X), F2T(Args->Y), F2T(Args->Width), F2T(Args->Height), Args->Depth, Self->Flags);
 
-   ERROR error = resize_layer(Self, newx, newy, newwidth, newheight, newwidth, newheight, F2T(Args->Depth), 0.0, NULL);
+   ERROR error = resize_layer(Self, newx, newy, newwidth, newheight, newwidth, newheight, F2T(Args->Depth), 0.0, 0);
    return error|ERF_Notified;
 }
 
@@ -160,13 +157,8 @@ static ERROR SURFACE_SetDisplay(extSurface *Self, struct gfxSetDisplay *Args)
 
    LONG newx = Args->X;
    LONG newy = Args->Y;
-
-   LONG newwidth, newheight;
-
-   if (!Args->Width) newwidth = Self->Width;
-   else newwidth = Args->Width;
-   if (!Args->Height) newheight = Self->Height;
-   else newheight = Args->Height;
+   LONG newwidth  = (!Args->Width) ? Self->Width : Args->Width;
+   LONG newheight = (!Args->Height) ? Self->Height : Args->Height;
 
    //if ((newx IS Self->X) and (newy IS Self->Y) and (newwidth IS Self->Width) and (newheight IS Self->Height)) return ERR_Okay;
 

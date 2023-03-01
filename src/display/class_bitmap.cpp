@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -157,7 +156,7 @@ static ERROR SET_Palette(extBitmap *, RGBPalette *);
 static const FieldDef clDataFlags[] = {
    { "Public",  MEM_PUBLIC  }, { "Video",   MEM_VIDEO   },
    { "Blit",    MEM_TEXTURE }, { "NoClear", MEM_NO_CLEAR },
-   { "Data",    NULL        },
+   { "Data",    0           },
    { NULL, 0 }
 };
 
@@ -529,8 +528,8 @@ Decompress: Decompresses a compressed bitmap.
 The Decompress method is used to restore a compressed bitmap to its original state.  If the bitmap is not compressed,
 the method does nothing.
 
-The compressed data will be terminated unless `RetainData` is TRUE.  Retaining the data will allow the client to repeatedly
-restore the content of the most recent #Compress() call.
+The compressed data will be terminated unless `RetainData` is TRUE.  Retaining the data will allow the client to
+repeatedly restore the content of the most recent #Compress() call.
 
 -INPUT-
 int RetainData: Retains the compression data if TRUE.
@@ -615,10 +614,10 @@ static ERROR BITMAP_CopyData(extBitmap *Self, struct acCopyData *Args)
       else MaxHeight = Self->Height;
 
       if (Self->Width >= Dest->Width) { // Source is wider or equal to the target
-         gfxCopyArea(Self, Dest, NULL, 0, 0, Dest->Width, MaxHeight, 0, 0);
+         gfxCopyArea(Self, Dest, 0, 0, 0, Dest->Width, MaxHeight, 0, 0);
       }
       else { // The target is wider than the source.  Cpoy the source first, then clear the exposed region on the right.
-         gfxCopyArea(Self, Dest, NULL, 0, 0, Self->Width, MaxHeight, 0, 0);
+         gfxCopyArea(Self, Dest, 0, 0, 0, Self->Width, MaxHeight, 0, 0);
          gfxDrawRectangle(Dest, Self->Width, 0, Dest->Width - Self->Width, MaxHeight, Dest->BkgdIndex, BAF_FILL);
       }
 
@@ -811,7 +810,8 @@ static ERROR BITMAP_Flip(extBitmap *Self, struct bmpFlip *Args)
    return ERR_Okay;
 }
 
-/******************************************************************************
+/*********************************************************************************************************************
+
 -ACTION-
 Flush: Flushes pending graphics operations and returns when the accelerator is idle.
 
@@ -821,7 +821,8 @@ result in corruption in the bitmap's graphics display.
 
 You do not have to use this function if you stick to using the graphics functions that are provided in the Bitmap class.
 -END-
-******************************************************************************/
+
+*********************************************************************************************************************/
 
 static ERROR BITMAP_Flush(extBitmap *Self, APTR Void)
 {

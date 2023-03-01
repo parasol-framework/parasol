@@ -71,7 +71,6 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "STICKY: Prevents any response to the Move action.  It can be circumvented by writing to coordinate fields directly.",
     "GRAB_FOCUS: Helps application windows manage the user's focus within the window",
     "HAS_FOCUS: Read-only.  If set, this flag indicates that the surface object currently has the focus.",
-    "FAST_RESIZE: Do not redraw when a surface is shrunk on either dimension.  If a dimension is expanded, only redraw the exposed portion.",
     "DISABLED: This flag is set if the Disable action has been called on a surface object.  Calling the Enable action will turn off the flag setting.",
     "AUTO_QUIT: The surface object will send a quit message to its supporting process when and if the Close method is called.  This flag is typically used when a surface object represents a core window for an application.",
     "HOST: Define host on initialisation to create a container that can host surfaces from other processes.",
@@ -93,7 +92,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "ASPECT_RATIO: When resizing, enforce the aspect ratio as defined by MinWidth and MinHeight.",
     { VOLATILE = "PRECOPY|AFTER_COPY|CURSOR" },
     { READ_ONLY = "HAS_FOCUS|CURSOR|AFTER_COPY" },
-    { INIT_ONLY = "HOST|TRANSPARENT|FAST_RESIZE|DISABLED|PRECOPY|VIDEO|FIXED_BUFFER|PERVASIVE_COPY|FIXED_DEPTH|FULL_SCREEN|IGNORE_FOCUS" })
+    { INIT_ONLY = "HOST|TRANSPARENT|DISABLED|PRECOPY|VIDEO|FIXED_BUFFER|PERVASIVE_COPY|FIXED_DEPTH|FULL_SCREEN|IGNORE_FOCUS" })
 
   enum("HOST", { start=1 },
     "TRAY_ICON: All new displays are represented in the system tray when this option is active.",
