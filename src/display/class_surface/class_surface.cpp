@@ -2794,7 +2794,6 @@ static const FieldArray clSurfaceFields[] = {
    { "InsideWidth",   FDF_VIRTUAL|FDF_LONG|FDF_RW,     0,         (APTR)GET_InsideWidth,    (APTR)SET_InsideWidth },
    { "Movement",      FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW,(MAXINT)&MovementFlags, NULL,        (APTR)SET_Movement },
    { "Opacity",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,   0,         (APTR)GET_Opacity,        (APTR)SET_Opacity },
-   { "PrecopyRegion", FDF_VIRTUAL|FDF_STRING|FDF_W,    0,         NULL,                     (APTR)SET_PrecopyRegion },
    { "RevertFocus",   FDF_SYSTEM|FDF_VIRTUAL|FDF_OBJECTID|FDF_W, 0, NULL, (APTR)SET_RevertFocus },
    { "Right",         FDF_VIRTUAL|FDF_LONG|FDF_R,      0,         (APTR)GET_Right,          NULL },
    { "UserFocus",     FDF_VIRTUAL|FDF_LONG|FDF_R,      0,         (APTR)GET_UserFocus,      NULL },

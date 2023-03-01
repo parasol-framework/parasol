@@ -607,8 +607,8 @@ the surface area first).</li>
       <type>DOUBLE</type>
       <description>
 <p>This field determines the translucency level of a surface area.  The default setting is 100%, which means that the surface will be solid.  Any other value that you set here will alter the impact of a surface over its destination area. High values will retain the boldness of the graphics, while low values can surface it close to invisible.</p>
-<p>Note: The translucent drawing routine works by drawing the surface content to its internal buffer first, then copying the graphics that are immediately in the background straight over the top with an alpha-blending routine.  This is not always ideal and you can sometimes get better results by using the pre-copy option instead (see the Precopy field).</p>
-<p>Please note that the use of translucency is realised at a significant cost to the CPU's time.</p>
+<p>Note: The translucent drawing routine works by drawing the surface content to its internal buffer first, then copying the graphics that are immediately in the background straight over the top with an alpha-blending routine.  This is not always ideal and better results might be obtainable with the pre-copy feature.</p>
+<p>Please note that the use of translucency is realised at a significant cost to CPU usage.</p>
       </description>
     </field>
 
@@ -631,19 +631,6 @@ the surface area first).</li>
 <p>Setting the PopOver field to a sibling surface ID will keep the surface in front of its sibling at all times.  For dialog windows, it is recommended that the popover and modal options be combined together to prevent interaction with other surfaces created by the current program.</p>
 <p>Setting the PopOver field to zero will return the surface to its normal state.</p>
 <p>If an object that does not belong to the Surface class is detected, an attempt will be made to read that object's Surface field, if available.  If this does not yield a valid surface then ERR_InvalidObject is returned.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>PrecopyRegion</name>
-      <comment>Defines the regions to be copied when precopy is enabled.</comment>
-      <access write="S">Set</access>
-      <type>STRING</type>
-      <description>
-<p>This field allows the client to define the regions that are precopied when the <code>PRECOPY</code> flag is enabled.  When precopying is enabled without a region specification, the entire background behind the surface will be copied, which can be sub-optimal in many circumstances.  By providing exact information to the precopy process, a faster redrawing process is achieved.</p>
-<p>PrecopyRegion requires that you specify the coordinates and dimensions for each region in sets of four numbers - that is, the X and Y coordinate followed by either the Width and Height or XOffset and YOffset.  To aid you in your visualisation of these numbers, you may insert brackets and commas to organise each region definition into a group. The following example illustrates the basic creation of two regions: <code>(0,0,20,20) (5,5,10,10)</code>.</p>
-<p>This would result in a region that is 20x20 pixels wide at position (0,0), and a region that is 10x10 pixels wide at position (5,5).  If you need to set an offset or percentage based value, then you will need to use the exclamation and/or percentage symbols.  This next example will create a region that surrounds its contained area with two region definitions: <code>(0,0,!0,!0) (1,1,!1,!1)</code>.</p>
-<p>This example uses percentages to create two regions: <code>(0%,0%,20%,20%) (5%,5%,10%,10%)</code>.</p>
       </description>
     </field>
 

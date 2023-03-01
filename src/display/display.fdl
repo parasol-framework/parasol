@@ -242,19 +242,6 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     int LineWidth       # Line width of the bitmap, in bytes
   ]])
 
-  -- Note: Floating point precision is not supported when designating precopy zones
-
-  struct("PrecopyRegion", { restrict="c", comment="Internal structure managed by the PrecopyRegion field."}, [[
-    int X             # X Coordinate
-    int Y             # Y Coordinate
-    int Width         # Width
-    int Height        # Height
-    int XOffset       # X offset
-    int YOffset       # Y offset
-    short(DMF) Dimensions  # Dimension flags
-    short(RNF) Flags
-  ]])
-
   struct("SurfaceCallback", { restrict="c", comment="Private structure for managing surface callbacks." }, [[
     obj Object    # Context to use for the function.
     func Function # void (*Routine)(OBJECTPTR, struct Surface *, objBitmap *);
