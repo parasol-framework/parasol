@@ -1,3 +1,10 @@
+/*********************************************************************************************************************
+
+-CATEGORY-
+Name: Surfaces
+-END-
+
+*********************************************************************************************************************/
 
 #include "defs.h"
 
@@ -223,17 +230,17 @@ ERROR unlock_surface(extBitmap *Bitmap)
 
 ERROR get_surface_abs(OBJECTID SurfaceID, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height)
 {
-   auto &list = glSurfaces;
+   const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
    LONG i;
-   for (i=0; (list[i].SurfaceID) and (list[i].SurfaceID != SurfaceID); i++);
+   for (i=0; (glSurfaces[i].SurfaceID) and (glSurfaces[i].SurfaceID != SurfaceID); i++);
 
-   if (!list[i].SurfaceID) return ERR_Search;
+   if (!glSurfaces[i].SurfaceID) return ERR_Search;
 
-   if (AbsX)   *AbsX = list[i].Left;
-   if (AbsY)   *AbsY = list[i].Top;
-   if (Width)  *Width  = list[i].Width;
-   if (Height) *Height = list[i].Height;
+   if (AbsX)   *AbsX = glSurfaces[i].Left;
+   if (AbsY)   *AbsY = glSurfaces[i].Top;
+   if (Width)  *Width  = glSurfaces[i].Width;
+   if (Height) *Height = glSurfaces[i].Height;
    return ERR_Okay;
 }
 
@@ -241,7 +248,7 @@ ERROR get_surface_abs(OBJECTID SurfaceID, LONG *AbsX, LONG *AbsY, LONG *Width, L
 // Redraw everything in RegionB that does not intersect with RegionA.
 
 void redraw_nonintersect(OBJECTID SurfaceID, const SURFACELIST &List, LONG Index,
-   ClipRectangle *Region, ClipRectangle *RegionB, LONG RedrawFlags, LONG ExposeFlags)
+   const ClipRectangle &Region, const ClipRectangle &RegionB, LONG RedrawFlags, LONG ExposeFlags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -250,40 +257,40 @@ void redraw_nonintersect(OBJECTID SurfaceID, const SURFACELIST &List, LONG Index
       return;
    }
 
-   log.traceBranch("redraw_nonintersect: (A) %dx%d,%dx%d Vs (B) %dx%d,%dx%d", Region->Left, Region->Top, Region->Right, Region->Bottom, RegionB->Left, RegionB->Top, RegionB->Right, RegionB->Bottom);
+   log.traceBranch("redraw_nonintersect: (A) %dx%d,%dx%d Vs (B) %dx%d,%dx%d", Region.Left, Region.Top, Region.Right, Region.Bottom, RegionB.Left, RegionB.Top, RegionB.Right, RegionB.Bottom);
 
    ExposeFlags |= EXF_ABSOLUTE;
 
-   struct { LONG left, top, right, bottom; } rect = { RegionB->Left, RegionB->Top, RegionB->Right, RegionB->Bottom };
+   auto rect = RegionB;
 
-   if (rect.right > Region->Right) { // Right
+   if (rect.Right > Region.Right) { // Right
       log.trace("redraw_nonrect: Right exposure");
 
-      if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, (rect.left > Region->Right) ? rect.left : Region->Right, rect.top, rect.right, rect.bottom, RedrawFlags);
-      if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, (rect.left > Region->Right) ? rect.left : Region->Right, rect.top, rect.right, rect.bottom, ExposeFlags);
-      rect.right = Region->Right;
-      if (rect.left >= rect.right) return;
+      if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, (rect.Left > Region.Right) ? rect.Left : Region.Right, rect.Top, rect.Right, rect.Bottom, RedrawFlags);
+      if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, (rect.Left > Region.Right) ? rect.Left : Region.Right, rect.Top, rect.Right, rect.Bottom, ExposeFlags);
+      rect.Right = Region.Right;
+      if (rect.Left >= rect.Right) return;
    }
 
-   if (rect.bottom > Region->Bottom) { // Bottom
+   if (rect.Bottom > Region.Bottom) { // Bottom
       log.trace("redraw_nonrect: Bottom exposure");
-      if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, rect.left, (rect.top > Region->Bottom) ? rect.top : Region->Bottom, rect.right, rect.bottom, RedrawFlags);
-      if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, rect.left, (rect.top > Region->Bottom) ? rect.top : Region->Bottom, rect.right, rect.bottom, ExposeFlags);
-      rect.bottom = Region->Bottom;
-      if (rect.top >= rect.bottom) return;
+      if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, rect.Left, (rect.Top > Region.Bottom) ? rect.Top : Region.Bottom, rect.Right, rect.Bottom, RedrawFlags);
+      if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, rect.Left, (rect.Top > Region.Bottom) ? rect.Top : Region.Bottom, rect.Right, rect.Bottom, ExposeFlags);
+      rect.Bottom = Region.Bottom;
+      if (rect.Top >= rect.Bottom) return;
    }
 
-   if (rect.top < Region->Top) { // Top
+   if (rect.Top < Region.Top) { // Top
       log.trace("redraw_nonrect: Top exposure");
-      if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, rect.left, rect.top, rect.right, (rect.bottom < Region->Top) ? rect.bottom : Region->Top, RedrawFlags);
-      if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, rect.left, rect.top, rect.right, (rect.bottom < Region->Top) ? rect.bottom : Region->Top, ExposeFlags);
-      rect.top = Region->Top;
+      if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, rect.Left, rect.Top, rect.Right, (rect.Bottom < Region.Top) ? rect.Bottom : Region.Top, RedrawFlags);
+      if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, rect.Left, rect.Top, rect.Right, (rect.Bottom < Region.Top) ? rect.Bottom : Region.Top, ExposeFlags);
+      rect.Top = Region.Top;
    }
 
-   if (rect.left < Region->Left) { // Left
+   if (rect.Left < Region.Left) { // Left
       log.trace("redraw_nonrect: Left exposure");
-      if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, rect.left, rect.top, (rect.right < Region->Left) ? rect.right : Region->Left, rect.bottom, RedrawFlags);
-      if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, rect.left, rect.top, (rect.right < Region->Left) ? rect.right : Region->Left, rect.bottom, ExposeFlags);
+      if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, rect.Left, rect.Top, (rect.Right < Region.Left) ? rect.Right : Region.Left, rect.Bottom, RedrawFlags);
+      if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, rect.Left, rect.Top, (rect.Right < Region.Left) ? rect.Right : Region.Left, rect.Bottom, ExposeFlags);
    }
 }
 
@@ -311,7 +318,7 @@ ERROR track_layer(extSurface *Self)
 {
    pf::Log log(__FUNCTION__);
 
-   auto &list = glSurfaces;
+   const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
    SurfaceRecord record;
 
@@ -336,39 +343,35 @@ ERROR track_layer(extSurface *Self)
    // Find the position at which the surface object should be inserted
 
    if (!Self->ParentID) {
-      record.Left   = Self->X;
-      record.Top    = Self->Y;
-      record.Right  = Self->X + Self->Width;
-      record.Bottom = Self->Y + Self->Height;
+      record.setArea(Self->X, Self->Y, Self->X + Self->Width, Self->Y + Self->Height);
       record.Level  = 1;
-      list.push_back(record);
+      glSurfaces.push_back(record);
    }
    else {
       LONG parent;
-      if ((parent = find_parent_list(list, Self)) IS -1) {
-         log.warning("Failed to find parent object #%d.", Self->ParentID);
+      if ((parent = find_parent_list(glSurfaces, Self)) IS -1) {
+         log.warning("Failed to find parent surface #%d.", Self->ParentID);
          return ERR_Search;
       }
 
-      record.Left   = list[parent].Left + Self->X;
-      record.Top    = list[parent].Top  + Self->Y;
-      record.Right  = record.Left + Self->Width;
-      record.Bottom = record.Top + Self->Height;
-      record.Level  = list[parent].Level + 1;
+      record.setArea(glSurfaces[parent].Left + Self->X, glSurfaces[parent].Top + Self->Y,
+         record.Left + Self->Width, record.Top + Self->Height);
+
+      record.Level = glSurfaces[parent].Level + 1;
 
       // Find the insertion point
 
       auto i = parent + 1;
-      while ((i < LONG(list.size())) and (list[i].Level >= record.Level)) {
+      while ((i < LONG(glSurfaces.size())) and (glSurfaces[i].Level >= record.Level)) {
          if (Self->Flags & RNF_STICK_TO_FRONT) {
-            if (list[i].Flags & RNF_POINTER) break;
+            if (glSurfaces[i].Flags & RNF_POINTER) break;
          }
-         else if ((list[i].Flags & RNF_STICK_TO_FRONT) and (list[i].Level IS record.Level)) break;
+         else if ((glSurfaces[i].Flags & RNF_STICK_TO_FRONT) and (glSurfaces[i].Level IS record.Level)) break;
          i++;
       }
 
-      if (i < LONG(list.size())) list.insert(list.begin() + i, record);
-      else list.push_back(record);
+      if (i < LONG(glSurfaces.size())) glSurfaces.insert(glSurfaces.begin() + i, record);
+      else glSurfaces.push_back(record);
    }
 
    return ERR_Okay;
@@ -378,28 +381,27 @@ ERROR track_layer(extSurface *Self)
 
 void untrack_layer(OBJECTID ObjectID)
 {
-   pf::Log log(__FUNCTION__);
-
-   auto &list = glSurfaces;
+   const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
    LONG i, end;
    if ((i = find_surface_list(ObjectID)) != -1) {
       #ifdef DBG_LAYERS
-         log.msg("%d, Index: %d/%d", ObjectID, i, LONG(list.size()));
-         //print_layer_list("untrack_layer", list, i);
+         pf::Log log(__FUNCTION__);
+         log.msg("%d, Index: %d/%d", ObjectID, i, LONG(glSurfaces.size()));
+         //print_layer_list("untrack_layer", glSurfaces, i);
       #endif
 
       // Mark all subsequent child layers as invisible
 
-      for (end=i+1; (end < LONG(list.size())) and (list[end].Level > list[i].Level); end++) {
-         list[end].Flags &= ~RNF_VISIBLE;
+      for (end=i+1; (end < LONG(glSurfaces.size())) and (glSurfaces[end].Level > glSurfaces[i].Level); end++) {
+         glSurfaces[end].Flags &= ~RNF_VISIBLE;
       }
 
-      if (end >= LONG(list.size())) list.resize(i);
-      else list.erase(list.begin() + i, list.begin() + end);
+      if (end >= LONG(glSurfaces.size())) glSurfaces.resize(i);
+      else glSurfaces.erase(glSurfaces.begin() + i, glSurfaces.begin() + end);
 
       #ifdef DBG_LAYERS
-         print_layer_list("untrack_layer_end", list, i);
+         print_layer_list("untrack_layer_end", glSurfaces, i);
       #endif
    }
 }
@@ -413,6 +415,7 @@ ERROR update_surface_copy(extSurface *Self)
    if (!Self) return ERR_NullArgs;
    if (!Self->initialised()) return ERR_Okay;
 
+   const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
    auto &list = glSurfaces;
 
    // Calculate absolute coordinates by looking for the parent of this object.  Then simply add the parent's
@@ -595,6 +598,7 @@ ERROR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
       // Post the drawing update.  This method is the only reliable way to generate updates when our surface may
       // contain children that belong to foreign tasks.
 
+      const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
       auto &list = glSurfaces;
 
       LONG index;
@@ -629,9 +633,9 @@ ERROR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
          ClipRectangle region_a(list[index].Left, list[index].Top, list[index].Right, list[index].Bottom);
 
          if (Self->BitmapOwnerID IS Self->UID) {
-            redraw_nonintersect(Self->ParentID, list, parent_index, &region_a, &region_b, -1, EXF_CHILDREN|EXF_REDRAW_VOLATILE);
+            redraw_nonintersect(Self->ParentID, list, parent_index, region_a, region_b, -1, EXF_CHILDREN|EXF_REDRAW_VOLATILE);
          }
-         else redraw_nonintersect(Self->ParentID, list, parent_index, &region_a, &region_b, 0, EXF_CHILDREN|EXF_REDRAW_VOLATILE);
+         else redraw_nonintersect(Self->ParentID, list, parent_index, region_a, region_b, 0, EXF_CHILDREN|EXF_REDRAW_VOLATILE);
 
          tlVolatileIndex = 0;
       }
@@ -724,7 +728,7 @@ void process_surface_callbacks(extSurface *Self, extBitmap *Bitmap)
 // returning TRUE or FALSE accordingly.  If the region is completely obscured regardless of visibility settings, -1 is
 // returned.
 
-BYTE restrict_region_to_parents(const SURFACELIST &List, LONG Index, ClipRectangle *Clip, bool MatchBitmap)
+BYTE restrict_region_to_parents(const SURFACELIST &List, LONG Index, ClipRectangle &Area, bool MatchBitmap)
 {
    bool visible = true;
    OBJECTID id = List[Index].SurfaceID;
@@ -735,17 +739,17 @@ BYTE restrict_region_to_parents(const SURFACELIST &List, LONG Index, ClipRectang
          id = List[j].ParentID;
 
          if ((!MatchBitmap) or (List[j].BitmapID IS List[Index].BitmapID)) {
-            if (Clip->Left   < List[j].Left)   Clip->Left   = List[j].Left;
-            if (Clip->Top    < List[j].Top)    Clip->Top    = List[j].Top;
-            if (Clip->Right  > List[j].Right)  Clip->Right  = List[j].Right;
-            if (Clip->Bottom > List[j].Bottom) Clip->Bottom = List[j].Bottom;
+            if (Area.Left   < List[j].Left)   Area.Left   = List[j].Left;
+            if (Area.Top    < List[j].Top)    Area.Top    = List[j].Top;
+            if (Area.Right  > List[j].Right)  Area.Right  = List[j].Right;
+            if (Area.Bottom > List[j].Bottom) Area.Bottom = List[j].Bottom;
          }
       }
    }
 
-   if ((Clip->Right <= Clip->Left) or (Clip->Bottom <= Clip->Top)) {
-      Clip->Right = Clip->Left;
-      Clip->Bottom = Clip->Top;
+   if ((Area.Right <= Area.Left) or (Area.Bottom <= Area.Top)) {
+      Area.Right  = Area.Left;
+      Area.Bottom = Area.Top;
       return -1;
    }
 
@@ -779,6 +783,7 @@ void permitExpose(void)
 #ifdef DBG_LAYERS
 void print_layer_list(STRING Function, LONG POI)
 {
+   const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
    auto &list = glSurfaces;
    fprintf(stderr, "LAYER LIST: %d, From %s()\n", LONG(list.size()), Function);
 
@@ -840,15 +845,15 @@ ERROR gfxCheckIfChild(OBJECTID ParentID, OBJECTID ChildID)
 
    if ((!ParentID) or (!ChildID)) return ERR_NullArgs;
 
-   auto &list = glSurfaces;
+   const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
    // Find the parent surface, then examine its children to find a match for child ID.
 
    LONG i;
    if ((i = find_surface_list(ParentID)) != -1) {
-      LONG level = list[i].Level;
-      for (++i; (i < LONG(list.size())) and (list[i].Level > level); i++) {
-         if (list[i].SurfaceID IS ChildID) {
+      LONG level = glSurfaces[i].Level;
+      for (++i; (i < LONG(glSurfaces.size())) and (glSurfaces[i].Level > level); i++) {
+         if (glSurfaces[i].SurfaceID IS ChildID) {
             log.trace("Child confirmed.");
             return ERR_True;
          }
@@ -895,22 +900,22 @@ ERROR gfxCopySurface(OBJECTID SurfaceID, extBitmap *Bitmap, LONG Flags,
 
    log.traceBranch("%dx%d,%dx%d TO %dx%d, Flags $%.8x", X, Y, Width, Height, XDest, YDest, Flags);
 
-   auto &list = glSurfaces;
+   const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
    BITMAPSURFACE surface;
-   for (LONG i=0; i < LONG(list.size()); i++) {
-      if (list[i].SurfaceID IS SurfaceID) {
+   for (LONG i=0; i < LONG(glSurfaces.size()); i++) {
+      if (glSurfaces[i].SurfaceID IS SurfaceID) {
          if (X < 0) { XDest -= X; Width  += X; X = 0; }
          if (Y < 0) { YDest -= Y; Height += Y; Y = 0; }
-         if (X+Width  > list[i].Width)  Width  = list[i].Width-X;
-         if (Y+Height > list[i].Height) Height = list[i].Height-Y;
+         if (X+Width  > glSurfaces[i].Width)  Width  = glSurfaces[i].Width-X;
+         if (Y+Height > glSurfaces[i].Height) Height = glSurfaces[i].Height-Y;
 
          // Find the bitmap root
 
-         LONG root = find_bitmap_owner(list, i);
+         LONG root = find_bitmap_owner(glSurfaces, i);
 
-         SurfaceRecord list_i = list[i];
-         SurfaceRecord list_root = list[root];
+         SurfaceRecord list_i = glSurfaces[i];
+         SurfaceRecord list_root = glSurfaces[root];
          //gfxReleaseList(ARF_READ);
 
          if (Flags & BDF_REDRAW) {
@@ -1000,14 +1005,54 @@ ERROR gfxExposeSurface(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Heig
    if (!SurfaceID) return ERR_NullArgs;
    if ((Width < 1) or (Height < 1)) return ERR_Okay;
 
-   auto &list = glSurfaces;
+   const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
    LONG index;
    if ((index = find_surface_list(SurfaceID)) IS -1) { // The surface might not be listed if the parent is in the process of being dstroyed.
       log.traceWarning("Surface %d is not in the surfacelist.", SurfaceID);
       return ERR_Search;
    }
 
-   return _expose_surface(SurfaceID, list, index, X, Y, Width, Height, Flags);
+   return _expose_surface(SurfaceID, glSurfaces, index, X, Y, Width, Height, Flags);
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+GetModalSurface: Returns the current modal surface (if defined).
+
+This function returns the modal surface for the running process.  Returns zero if no modal surface is active.
+
+-RESULT-
+oid: The UID of the modal surface, or zero.
+
+*********************************************************************************************************************/
+
+OBJECTID gfxGetModalSurface(void)
+{
+   pf::ScopedSysLock proc(PL_PROCESSES, 3000);
+
+   if (proc.granted()) {
+      LONG maxtasks = GetResource(RES_MAX_PROCESSES);
+      if (auto tasks = (TaskList *)GetResourcePtr(RES_TASK_LIST)) {
+         LONG i;
+         auto tid = CurrentTaskID();
+         for (i=0; i < maxtasks; i++) {
+            if (tasks[i].TaskID IS tid) break;
+         }
+
+         if (i < maxtasks) {
+            auto result = tasks[i].ModalID;
+
+            // Safety check: Confirm that the object still exists
+            if ((result) and (CheckObjectExists(result) != ERR_True)) {
+               tasks[i].ModalID = 0;
+               return result;
+            }
+         }
+      }
+   }
+
+   return 0;
 }
 
 /*********************************************************************************************************************
@@ -1053,15 +1098,15 @@ ERROR gfxGetSurfaceCoords(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG
    }
 
    LONG i;
-   auto &list = glSurfaces;
+   const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
    if ((i = find_surface_list(SurfaceID)) IS -1) return ERR_Search;
 
-   if (X)      *X      = list[i].X;
-   if (Y)      *Y      = list[i].Y;
-   if (Width)  *Width  = list[i].Width;
-   if (Height) *Height = list[i].Height;
-   if (AbsX)   *AbsX   = list[i].Left;
-   if (AbsY)   *AbsY   = list[i].Top;
+   if (X)      *X      = glSurfaces[i].X;
+   if (Y)      *Y      = glSurfaces[i].Y;
+   if (Width)  *Width  = glSurfaces[i].Width;
+   if (Height) *Height = glSurfaces[i].Height;
+   if (AbsX)   *AbsX   = glSurfaces[i].Left;
+   if (AbsY)   *AbsY   = glSurfaces[i].Top;
 
    return ERR_Okay;
 }
@@ -1097,11 +1142,11 @@ ERROR gfxGetSurfaceFlags(OBJECTID SurfaceID, LONG *Flags)
 
    if (!SurfaceID) return log.warning(ERR_NullArgs);
 
-   auto &list = glSurfaces;
+   const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
    LONG i;
    if ((i = find_surface_list(SurfaceID)) IS -1) return ERR_Search;
 
-   *Flags = list[i].Flags;
+   *Flags = glSurfaces[i].Flags;
    return ERR_Okay;
 }
 
@@ -1135,7 +1180,7 @@ ERROR gfxGetSurfaceInfo(OBJECTID SurfaceID, SURFACEINFO **Info)
 
    if (!Info) return log.warning(ERR_NullArgs);
 
-   auto &list = glSurfaces;
+   const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
    LONG i, root;
    if (!SurfaceID) {
@@ -1144,24 +1189,24 @@ ERROR gfxGetSurfaceInfo(OBJECTID SurfaceID, SURFACEINFO **Info)
    }
    else {
       if ((i = find_surface_list(SurfaceID)) IS -1) return ERR_Search;
-      root = find_bitmap_owner(list, i);
+      root = find_bitmap_owner(glSurfaces, i);
    }
 
-   info.ParentID      = list[i].ParentID;
-   info.BitmapID      = list[i].BitmapID;
-   info.DisplayID     = list[i].DisplayID;
-   info.Data          = list[root].Data;
-   info.Flags         = list[i].Flags;
-   info.X             = list[i].X;
-   info.Y             = list[i].Y;
-   info.Width         = list[i].Width;
-   info.Height        = list[i].Height;
-   info.AbsX          = list[i].Left;
-   info.AbsY          = list[i].Top;
-   info.Level         = list[i].Level;
-   info.BytesPerPixel = list[root].BytesPerPixel;
-   info.BitsPerPixel  = list[root].BitsPerPixel;
-   info.LineWidth     = list[root].LineWidth;
+   info.ParentID      = glSurfaces[i].ParentID;
+   info.BitmapID      = glSurfaces[i].BitmapID;
+   info.DisplayID     = glSurfaces[i].DisplayID;
+   info.Data          = glSurfaces[root].Data;
+   info.Flags         = glSurfaces[i].Flags;
+   info.X             = glSurfaces[i].X;
+   info.Y             = glSurfaces[i].Y;
+   info.Width         = glSurfaces[i].Width;
+   info.Height        = glSurfaces[i].Height;
+   info.AbsX          = glSurfaces[i].Left;
+   info.AbsY          = glSurfaces[i].Top;
+   info.Level         = glSurfaces[i].Level;
+   info.BytesPerPixel = glSurfaces[root].BytesPerPixel;
+   info.BitsPerPixel  = glSurfaces[root].BitsPerPixel;
+   info.LineWidth     = glSurfaces[root].LineWidth;
    *Info = &info;
 
    return ERR_Okay;
@@ -1229,18 +1274,18 @@ ERROR gfxGetVisibleArea(OBJECTID SurfaceID, LONG *X, LONG *Y, LONG *AbsX, LONG *
       else return ERR_Failed;
    }
 
-   auto &list = glSurfaces;
+   const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
    LONG i;
    if ((i = find_surface_list(SurfaceID)) IS -1) return ERR_Search;
 
-   ClipRectangle clip(list[i].Left, list[i].Top, list[i].Right, list[i].Bottom);
+   auto clip = glSurfaces[i].area();
 
-   restrict_region_to_parents(list, i, &clip, false);
+   restrict_region_to_parents(glSurfaces, i, clip, false);
 
-   if (X)      *X      = clip.Left - list[i].Left;
-   if (Y)      *Y      = clip.Top - list[i].Top;
-   if (Width)  *Width  = clip.Right - clip.Left;
+   if (X)      *X      = clip.Left   - glSurfaces[i].Left;
+   if (Y)      *Y      = clip.Top    - glSurfaces[i].Top;
+   if (Width)  *Width  = clip.Right  - clip.Left;
    if (Height) *Height = clip.Bottom - clip.Top;
    if (AbsX)   *AbsX   = clip.Left;
    if (AbsY)   *AbsY   = clip.Top;
@@ -1294,7 +1339,7 @@ ERROR gfxRedrawSurface(OBJECTID SurfaceID, LONG Left, LONG Top, LONG Right, LONG
       return ERR_Okay;
    }
 
-   auto &list = glSurfaces;
+   const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
    LONG index;
    if ((index = find_surface_list(SurfaceID)) IS -1) {
@@ -1302,7 +1347,7 @@ ERROR gfxRedrawSurface(OBJECTID SurfaceID, LONG Left, LONG Top, LONG Right, LONG
       return ERR_Search;
    }
 
-   return _redraw_surface(SurfaceID, list, index, Left, Top, Right, Bottom, Flags);
+   return _redraw_surface(SurfaceID, glSurfaces, index, Left, Top, Right, Bottom, Flags);
 }
 
 //********************************************************************************************************************
@@ -1314,7 +1359,7 @@ ERROR _redraw_surface(OBJECTID SurfaceID, const SURFACELIST &list, LONG index,
    static THREADVAR BYTE recursive = 0;
 
    if (list[index].Flags & RNF_TOTAL_REDRAW) {
-      // If the TOTALREDRAW flag is set against the surface then the entire surface must be redrawn regardless
+      // If the TOTAL_REDRAW flag is set against the surface then the entire surface must be redrawn regardless
       // of the circumstances.  This is often required for algorithmic effects as seen in the Blur class.
 
       Left   = list[index].Left;
@@ -1596,7 +1641,7 @@ void _redraw_surface_do(extSurface *Self, const SURFACELIST &list, LONG Index, C
 
       process_surface_callbacks(Self, DestBitmap);
 
-   tlFreeExpose = NULL;
+   tlFreeExpose = 0;
 
    // After-copy management
 
@@ -1759,7 +1804,7 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LONG *Info)
 
       ReleaseObject(surface);
 
-      auto &list = glSurfaces;
+      const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
       LONG i;
       if ((i = find_surface_list(SurfaceID)) IS -1) {
@@ -1767,20 +1812,20 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LONG *Info)
          return ERR_Search;
       }
 
-      LONG root = find_bitmap_owner(list, i);
+      LONG root = find_bitmap_owner(glSurfaces, i);
 
-      bitmap->XOffset     = list[i].Left - list[root].Left;
-      bitmap->YOffset     = list[i].Top - list[root].Top;
+      bitmap->XOffset     = glSurfaces[i].Left - glSurfaces[root].Left;
+      bitmap->YOffset     = glSurfaces[i].Top - glSurfaces[root].Top;
       bitmap->Clip.Left   = 0;
       bitmap->Clip.Top    = 0;
-      bitmap->Clip.Right  = list[i].Width;
-      bitmap->Clip.Bottom = list[i].Height;
+      bitmap->Clip.Right  = glSurfaces[i].Width;
+      bitmap->Clip.Bottom = glSurfaces[i].Height;
 
       if (Info) {
          // The developer will have to send an expose signal - unless the exposure can be gained for 'free'
          // (possible if the Draw action has been called on the Surface object).
 
-         if (tlFreeExpose IS list[i].BitmapID);
+         if (tlFreeExpose IS glSurfaces[i].BitmapID);
          else *Info |= LVF_EXPOSE_CHANGES;
       }
 
@@ -1807,30 +1852,29 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LONG *Info)
 
 #else
 
-   if (Info) *Info = NULL;
+   if (Info) *Info = 0;
 
    if ((!SurfaceID) or (!Bitmap)) return log.warning(ERR_NullArgs);
 
-   SurfaceRecord list_root;
-   SurfaceRecord list_zero;
+   SurfaceRecord list_root, list_zero;
    OBJECTID bitmap_id;
    ClipRectangle expose;
 
    {
-      auto &list = glSurfaces;
+      const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
       LONG i;
       if ((i = find_surface_list(SurfaceID)) IS -1) return ERR_Search;
 
-      LONG root = find_bitmap_owner(list, i);
+      LONG root = find_bitmap_owner(glSurfaces, i);
 
-      list_root = list[root];
-      list_zero = list[0];
-      bitmap_id = list[i].BitmapID;
+      list_root = glSurfaces[root];
+      list_zero = glSurfaces[0];
+      bitmap_id = glSurfaces[i].BitmapID;
 
       expose = ClipRectangle(list_root.Left, list_root.Top, list_root.Right, list_root.Bottom);
 
-      if (restrict_region_to_parents(list, i, &expose, true) IS -1) {
+      if (restrict_region_to_parents(glSurfaces, i, expose, true) IS -1) {
          // The surface is not within a visible area of the available bitmap space
          return ERR_OutOfBounds;
       }
@@ -1845,7 +1889,7 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LONG *Info)
       bmp->XOffset = expose.Left - list_root.Left; // The offset is the position of the surface within the root bitmap
       bmp->YOffset = expose.Top - list_root.Top;
 
-      expose.Left   -= list_zero.Left; // This adjustment is necessary for displays on hosted platforms (win32, X11)
+      expose.Left   -= list_zero.Left; // This adjustment is necessary for hosted displays (win32, X11)
       expose.Top    -= list_zero.Top;
       expose.Right  -= list_zero.Left;
       expose.Bottom -= list_zero.Top;

@@ -1,3 +1,10 @@
+/*********************************************************************************************************************
+
+-CATEGORY-
+Name: Cursor
+-END-
+
+*********************************************************************************************************************/
 
 #include "defs.h"
 
@@ -122,13 +129,11 @@ Call ~Core.ReleaseObject() to free the lock once it is no longer required.
 -RESULT-
 obj(Pointer): Returns the address of the default pointer object.
 
-******************************************************************************/
+*********************************************************************************************************************/
 
 objPointer * gfxAccessPointer(void)
 {
-   objPointer *pointer;
-
-   pointer = NULL;
+   objPointer *pointer = NULL;
 
    if (!glPointerID) {
       if (!FindObject("SystemPointer", ID_POINTER, 0, &glPointerID)) {
@@ -146,7 +151,7 @@ objPointer * gfxAccessPointer(void)
    return pointer;
 }
 
-/******************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetCursorInfo: Retrieves graphics information from the active mouse cursor.
@@ -171,7 +176,7 @@ Okay:
 NullArgs:
 NoSupport: The device does not support a cursor (common for touch screen displays).
 
-******************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxGetCursorInfo(CursorInfo *Info, LONG Size)
 {
@@ -190,7 +195,7 @@ ERROR gfxGetCursorInfo(CursorInfo *Info, LONG Size)
 #endif
 }
 
-/******************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetCursorPos: Returns the coordinates of the UI pointer.
@@ -206,7 +211,7 @@ based then the coordinates will reflect the last position that a touch event occ
 Okay
 AccessObject: Failed to access the SystemPointer object.
 
-******************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxGetCursorPos(DOUBLE *X, DOUBLE *Y)
 {
@@ -228,46 +233,6 @@ ERROR gfxGetCursorPos(DOUBLE *X, DOUBLE *Y)
 /*********************************************************************************************************************
 
 -FUNCTION-
-GetModalSurface: Returns the current modal surface (if defined).
-
-This function returns the modal surface for the running process.  Returns zero if no modal surface is active.
-
--RESULT-
-oid: The UID of the modal surface, or zero.
-
-*********************************************************************************************************************/
-
-OBJECTID gfxGetModalSurface(void)
-{
-   pf::ScopedSysLock proc(PL_PROCESSES, 3000);
-
-   if (proc.granted()) {
-      LONG maxtasks = GetResource(RES_MAX_PROCESSES);
-      if (auto tasks = (TaskList *)GetResourcePtr(RES_TASK_LIST)) {
-         LONG i;
-         auto tid = CurrentTaskID();
-         for (i=0; i < maxtasks; i++) {
-            if (tasks[i].TaskID IS tid) break;
-         }
-
-         if (i < maxtasks) {
-            auto result = tasks[i].ModalID;
-
-            // Safety check: Confirm that the object still exists
-            if ((result) and (CheckObjectExists(result) != ERR_True)) {
-               tasks[i].ModalID = 0;
-               return result;
-            }
-         }
-      }
-   }
-
-   return 0;
-}
-
-/******************************************************************************
-
--FUNCTION-
 GetRelativeCursorPos: Returns the coordinates of the pointer cursor, relative to a surface object.
 
 This function is used to retrieve the current coordinates of the pointer cursor. The coordinates are relative to the
@@ -284,7 +249,7 @@ oid Surface: Unique ID of the surface that the coordinates need to be relative t
 Okay:
 AccessObject: Failed to access the SystemPointer object.
 
-******************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxGetRelativeCursorPos(OBJECTID SurfaceID, DOUBLE *X, DOUBLE *Y)
 {
@@ -310,7 +275,7 @@ ERROR gfxGetRelativeCursorPos(OBJECTID SurfaceID, DOUBLE *X, DOUBLE *Y)
    }
 }
 
-/******************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 LockCursor: Anchors the cursor so that it cannot move without explicit movement signals.
@@ -332,14 +297,14 @@ NullArgs
 NoSupport: The pointer cannot be locked due to system limitations.
 AccessObject: Failed to access the pointer object.
 
-******************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxLockCursor(OBJECTID SurfaceID)
 {
    return ERR_NoSupport;
 }
 
-/******************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 RestoreCursor: Returns the pointer image to its original state.
@@ -347,7 +312,8 @@ RestoreCursor: Returns the pointer image to its original state.
 Use the RestoreCursor() function to undo an earlier call to ~SetCursor().  It is necessary to provide the same OwnerID
 that was used in the original call to ~SetCursor().
 
-To release ownership of the cursor without changing the current cursor image, use a Cursor setting of PTR_NOCHANGE.
+To release ownership of the cursor without changing the current cursor image, use a Cursor setting of
+`PTR_NOCHANGE`.
 
 -INPUT-
 int(PTR) Cursor: The cursor image that the pointer will be restored to (0 for the default).
@@ -358,7 +324,7 @@ Okay
 Args
 -END-
 
-******************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxRestoreCursor(LONG Cursor, OBJECTID OwnerID)
 {
@@ -373,12 +339,12 @@ ERROR gfxRestoreCursor(LONG Cursor, OBJECTID OwnerID)
 */
       if ((!OwnerID) or (OwnerID IS pointer->CursorOwnerID)) {
          // Restore the pointer to the given cursor image
-         if (!OwnerID) gfxSetCursor(NULL, CRF_RESTRICT, Cursor, NULL, pointer->CursorOwnerID);
-         else gfxSetCursor(NULL, CRF_RESTRICT, Cursor, NULL, OwnerID);
+         if (!OwnerID) gfxSetCursor(0, CRF_RESTRICT, Cursor, NULL, pointer->CursorOwnerID);
+         else gfxSetCursor(0, CRF_RESTRICT, Cursor, NULL, OwnerID);
 
-         pointer->CursorOwnerID   = NULL;
-         pointer->CursorRelease   = NULL;
-         pointer->CursorReleaseID = NULL;
+         pointer->CursorOwnerID   = 0;
+         pointer->CursorRelease   = 0;
+         pointer->CursorReleaseID = 0;
       }
 
       // If a cursor change has been buffered, enable it
@@ -387,7 +353,7 @@ ERROR gfxRestoreCursor(LONG Cursor, OBJECTID OwnerID)
          if (OwnerID != pointer->BufferOwner) {
             gfxSetCursor(pointer->BufferObject, pointer->BufferFlags, pointer->BufferCursor, NULL, pointer->BufferOwner);
          }
-         else pointer->BufferOwner = NULL; // Owner and Buffer are identical, so clear due to restored pointer
+         else pointer->BufferOwner = 0; // Owner and Buffer are identical, so clear due to restored pointer
       }
 
       ReleaseObject(pointer);
@@ -399,7 +365,7 @@ ERROR gfxRestoreCursor(LONG Cursor, OBJECTID OwnerID)
    }
 }
 
-/******************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SetCursor: Sets the cursor image and can anchor the pointer to any surface.
@@ -434,7 +400,7 @@ OutOfRange: The cursor ID is outside of acceptable range.
 AccessObject: Failed to access the internally maintained image object.
 -END-
 
-******************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, OBJECTID OwnerID)
 {
@@ -477,8 +443,8 @@ ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, O
    // Return if the cursor is currently pwn3d by someone
 
    if ((pointer->CursorOwnerID) and (pointer->CursorOwnerID != OwnerID)) {
-      if ((pointer->CursorOwnerID < 0) and (CheckObjectExists(pointer->CursorOwnerID) != ERR_True)) pointer->CursorOwnerID = NULL;
-      else if ((pointer->MessageQueue < 0) and (CheckMemoryExists(pointer->MessageQueue) != ERR_True)) pointer->CursorOwnerID = NULL;
+      if ((pointer->CursorOwnerID < 0) and (CheckObjectExists(pointer->CursorOwnerID) != ERR_True)) pointer->CursorOwnerID = 0;
+      else if ((pointer->MessageQueue < 0) and (CheckMemoryExists(pointer->MessageQueue) != ERR_True)) pointer->CursorOwnerID = 0;
       else if (Flags & CRF_BUFFER) {
          // If the BUFFER option is used, then we can buffer the change so that it
          // will be activated as soon as the current holder releases the cursor.
@@ -512,14 +478,14 @@ ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, O
 
    // Reset restrictions/anchoring if the correct flags are set, or if the cursor is having a change of ownership.
 
-   if ((Flags & CRF_RESTRICT) or (OwnerID != pointer->CursorOwnerID)) pointer->RestrictID = NULL;
+   if ((Flags & CRF_RESTRICT) or (OwnerID != pointer->CursorOwnerID)) pointer->RestrictID = 0;
 
-   if (OwnerID IS pointer->BufferOwner) pointer->BufferOwner = NULL;
+   if (OwnerID IS pointer->BufferOwner) pointer->BufferOwner = 0;
 
    pointer->CursorReleaseID = 0;
    pointer->CursorOwnerID   = 0;
-   pointer->CursorRelease   = NULL;
-   pointer->MessageQueue    = NULL;
+   pointer->CursorRelease   = 0;
+   pointer->MessageQueue    = 0;
 
    if (CursorID) {
       if ((CursorID IS pointer->CursorID) and (CursorID != PTR_CUSTOM)) {
@@ -609,7 +575,7 @@ ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, O
    return ERR_Okay;
 }
 
-/******************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SetCustomCursor: Sets the cursor to a customised bitmap image.
@@ -662,7 +628,7 @@ NoSupport:
 AccessObject: Failed to access the internally maintained image object.
 -END-
 
-******************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxSetCustomCursor(OBJECTID ObjectID, LONG Flags, objBitmap *Bitmap, LONG HotX, LONG HotY, OBJECTID OwnerID)
 {
@@ -728,7 +694,7 @@ ERROR gfxSetCustomCursor(OBJECTID ObjectID, LONG Flags, objBitmap *Bitmap, LONG 
 #endif
 }
 
-/******************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SetCursorPos: Changes the position of the pointer cursor.
@@ -743,7 +709,7 @@ double Y: The new vertical coordinate for the pointer.
 Okay:
 AccessObject: Failed to access the SystemPointer object.
 
-******************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxSetCursorPos(DOUBLE X, DOUBLE Y)
 {
@@ -841,7 +807,7 @@ ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID
    else return log.warning(ERR_AccessObject);
 }
 
-/******************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 UnlockCursor: Undoes an earlier call to LockCursor()
@@ -858,7 +824,7 @@ AccessObject: Failed to access the pointer object.
 NotLocked: A lock is not present, or the lock belongs to another surface.
 -END-
 
-******************************************************************************/
+*********************************************************************************************************************/
 
 ERROR gfxUnlockCursor(OBJECTID SurfaceID)
 {
@@ -868,8 +834,8 @@ ERROR gfxUnlockCursor(OBJECTID SurfaceID)
 
    if (auto pointer = (extPointer *)gfxAccessPointer()) {
       if (pointer->AnchorID IS SurfaceID) {
-         pointer->AnchorID = NULL;
-         pointer->AnchorMsgQueue = NULL;
+         pointer->AnchorID = 0;
+         pointer->AnchorMsgQueue = 0;
          ReleaseObject(pointer);
          return ERR_Okay;
       }

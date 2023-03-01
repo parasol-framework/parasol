@@ -14,10 +14,9 @@
     <include>modules/surface.h</include>
     <copyright>Paul Manias 2003-2023</copyright>
     <description>
-<p>The Surface class is used to manage the positioning, drawing and interaction with layered display interfaces.  It is supplemented by many classes in the GUI category that either draw graphics to or manage user interactivity with the surface objects that you create.</p>
-<p>Graphically, each surface object represents a rectangular area of space on the display.  The biggest surface object, often referred to as the 'Master' represents the screen space, and is as big as the display itself, if not larger. Surface objects can be placed inside the master and are typically known as children.  You can place more surface objects inside of these children, causing a hierarchy to develop that consists of many objects that are all working together on the display.</p>
-<p>In order to actually draw graphics onto the display, classes that have been specifically created for drawing graphics must be used to create a meaningful interface.  Classes such as Box, Image, Text and Gradient help to create an assemblage of imagery that has meaning to the user. The interface is then enhanced through the use of UI functionality that enables user feedback such as mouse and keyboard I/O.  With a little effort and imagination, a customised interface can thus be assembled and presented to the user without much difficulty on the part of the developer.</p>
-<p>While this is a simple concept, the Surface class is its foundation and forms one of the largest and most sophisticated class in our system. It provides a great deal of functionality which cannot be summarised in this introduction, but you will find a lot of technical detail on each individual field in this manual.  It is also recommended that you refer to the demo scripts that come with the core distribution if you require a real-world view of how the class is typically used.</p></description>
+<p>The Surface class is used to manage the positioning, drawing and interaction with layered display interfaces.  It works in conjunction with the <class name="Bitmap">Bitmap</class> class for rendering graphics, and <class name="Pointer">Pointer</class> for user interaction.</p>
+<p>On a platform such as Windows or Linux, the top-level surface will typically be hosted in an application window.  On Android or when a full screen display is required, a surface can cover the entire display and be window-less.  The top-level surface can act as a host to additional surfaces, which are referred to as children. Placing more surface objects inside of these children will create a hierarchy of many objects that requires sophisticated management that is provisioned by the Surface class.</p>
+<p>Although pure surface based UI's are possible, clients should always pursue the more simplistic approach of using surfaces to host <class name="VectorScene">VectorScene</class> objects that describe vector based interfaces.  Doing so is in keeping with our goal of proving fully scalable interfaces to users, and we optimise features with that use-case in mind.</p></description>
     <source>
       <file path="class_surface/">class_surface.cpp</file>
       <file path="class_surface/">surface_dimensions.cpp</file>
@@ -484,7 +483,7 @@ the surface area first).</li>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The height of a surface object is manipulated through this field, although you can also use the Resize() action, which is faster if you need to set both the Width and the Height.  You can set the Height as a fixed value by default, or as a relative value if you set the FD_PERCENT field. Relative heights are always calculated in relationship to a surface object's container, e.g. if the container is 200 pixels high and surface Height is 80%, then your surface object will be 160 pixels high.</p>
+<p>The height of a surface object is manipulated through this field, although you can also use the Resize() action, which is faster if you need to set both the Width and the Height.  You can set the Height as a fixed value by default, or as a relative value if you set the <code>FD_PERCENT</code> marker. Relative heights are always calculated in relationship to a surface object's container, e.g. if the container is 200 pixels high and surface Height is 80%, then your surface object will be 160 pixels high.</p>
 <p>Setting the Height while a surface object is on display causes an immediate graphical update to reflect the change. Any objects that are within the surface area will be re-drawn and resized as necessary.</p>
 <p>If a value less than zero is passed to an initialised surface, the height will be 'turned off' - this is convenient for pairing the Y and YOffset fields together for dynamic height adjustment.</p>
       </description>
@@ -919,7 +918,6 @@ the surface area first).</li>
       <const name="AUTO_QUIT">The surface object will send a quit message to its supporting process when and if the Close method is called.  This flag is typically used when a surface object represents a core window for an application.</const>
       <const name="COMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
       <const name="DISABLED">This flag is set if the Disable action has been called on a surface object.  Calling the Enable action will turn off the flag setting.</const>
-      <const name="FAST_RESIZE">Do not redraw when a surface is shrunk on either dimension.  If a dimension is expanded, only redraw the exposed portion.</const>
       <const name="FIXED_BUFFER">Passes the NEVER_SHRINK option to the surface bitmap</const>
       <const name="FIXED_DEPTH">The target buffer always remains at the same depth</const>
       <const name="FULL_SCREEN">Allow the surface to open as a new screen display</const>
@@ -927,7 +925,7 @@ the surface area first).</li>
       <const name="HAS_FOCUS">Read-only.  If set, this flag indicates that the surface object currently has the focus.</const>
       <const name="HOST">Define host on initialisation to create a container that can host surfaces from other processes.</const>
       <const name="IGNORE_FOCUS">Focus is diverted directly to the parent</const>
-      <const name="INIT_ONLY">Synonym for HOST | TRANSPARENT | FAST_RESIZE | DISABLED | PRECOPY | VIDEO | FIXED_BUFFER | PERVASIVE_COPY | FIXED_DEPTH | FULL_SCREEN | IGNORE_FOCUS</const>
+      <const name="INIT_ONLY">Synonym for HOST | TRANSPARENT | DISABLED | PRECOPY | VIDEO | FIXED_BUFFER | PERVASIVE_COPY | FIXED_DEPTH | FULL_SCREEN | IGNORE_FOCUS</const>
       <const name="NO_FOCUS">Prevents any kind of focussing on this object; no circumvention is possible</const>
       <const name="NO_HORIZONTAL">Turns off all horizontal movement (applies to the Move action only).</const>
       <const name="NO_PRECOMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>

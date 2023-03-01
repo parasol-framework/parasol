@@ -16,10 +16,18 @@
       <class>Pointer</class>
       <class>Surface</class>
     </classes>
+    <categories>
+      <category>Bitmap</category>
+      <category>Cursor</category>
+      <category>Display</category>
+      <category>Input</category>
+      <category>Surfaces</category>
+    </categories>
   </info>
 
   <function>
     <name>AccessPointer</name>
+    <category>Cursor</category>
     <comment>Returns a lock on the default pointer object.</comment>
     <prototype>objPointer * gfxAccessPointer()</prototype>
     <description>
@@ -31,6 +39,7 @@
 
   <function>
     <name>CheckIfChild</name>
+    <category>Surfaces</category>
     <comment>Checks if a surface is a child of another particular surface.</comment>
     <prototype>ERROR gfxCheckIfChild(OBJECTID Parent, OBJECTID Child)</prototype>
     <input>
@@ -50,6 +59,7 @@
 
   <function>
     <name>CopyArea</name>
+    <category>Bitmap</category>
     <comment>Copies a rectangular area from one bitmap to another.</comment>
     <prototype>ERROR gfxCopyArea(objBitmap * Bitmap, objBitmap * Dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
     <input>
@@ -79,6 +89,7 @@
 
   <function>
     <name>CopyRawBitmap</name>
+    <category>Bitmap</category>
     <comment>Copies graphics data from an arbitrary surface to a bitmap.</comment>
     <prototype>ERROR gfxCopyRawBitmap(struct BitmapSurfaceV2 * Surface, objBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
     <input>
@@ -105,6 +116,7 @@
 
   <function>
     <name>CopySurface</name>
+    <category>Surfaces</category>
     <comment>Copies surface graphics data into any bitmap object</comment>
     <prototype>ERROR gfxCopySurface(OBJECTID Surface, objBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
     <input>
@@ -131,6 +143,7 @@
 
   <function>
     <name>DrawPixel</name>
+    <category>Bitmap</category>
     <comment>Draws a single pixel to a bitmap.</comment>
     <prototype>void gfxDrawPixel(objBitmap * Bitmap, LONG X, LONG Y, ULONG Colour)</prototype>
     <input>
@@ -146,6 +159,7 @@
 
   <function>
     <name>DrawRGBPixel</name>
+    <category>Bitmap</category>
     <comment>Draws a 24 bit pixel to a bitmap.</comment>
     <prototype>void gfxDrawRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB)</prototype>
     <input>
@@ -161,6 +175,7 @@
 
   <function>
     <name>DrawRectangle</name>
+    <category>Bitmap</category>
     <comment>Draws rectangles, both filled and unfilled.</comment>
     <prototype>void gfxDrawRectangle(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags)</prototype>
     <input>
@@ -179,6 +194,7 @@
 
   <function>
     <name>ExposeSurface</name>
+    <category>Surfaces</category>
     <comment>Exposes the content of a surface to the display.</comment>
     <prototype>ERROR gfxExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags)</prototype>
     <input>
@@ -202,6 +218,7 @@
 
   <function>
     <name>FlipBitmap</name>
+    <category>Bitmap</category>
     <comment>Flips a bitmap around its horizontal or vertical axis.</comment>
     <prototype>void gfxFlipBitmap(objBitmap * Bitmap, LONG Orientation)</prototype>
     <input>
@@ -215,6 +232,7 @@
 
   <function>
     <name>GetColourFormat</name>
+    <category>Bitmap</category>
     <comment>Generates the values for a ColourFormat structure for a given bit depth.</comment>
     <prototype>void gfxGetColourFormat(struct ColourFormat * Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask)</prototype>
     <input>
@@ -256,6 +274,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>GetCursorInfo</name>
+    <category>Cursor</category>
     <comment>Retrieves graphics information from the active mouse cursor.</comment>
     <prototype>ERROR gfxGetCursorInfo(struct CursorInfo * Info, LONG Size)</prototype>
     <input>
@@ -276,6 +295,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>GetCursorPos</name>
+    <category>Cursor</category>
     <comment>Returns the coordinates of the UI pointer.</comment>
     <prototype>ERROR gfxGetCursorPos(DOUBLE * X, DOUBLE * Y)</prototype>
     <input>
@@ -293,6 +313,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>GetDisplayInfo</name>
+    <category>Display</category>
     <comment>Retrieves display information.</comment>
     <prototype>ERROR gfxGetDisplayInfo(OBJECTID Display, struct DisplayInfoV3 ** Info)</prototype>
     <input>
@@ -312,6 +333,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>GetDisplayType</name>
+    <category>Display</category>
     <comment>Returns the type of display supported.</comment>
     <prototype>LONG gfxGetDisplayType()</prototype>
     <description>
@@ -323,6 +345,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>GetInputTypeName</name>
+    <category>Input</category>
     <comment>Returns the string name for an input type.</comment>
     <prototype>CSTRING gfxGetInputTypeName(LONG Type)</prototype>
     <input>
@@ -336,6 +359,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>GetModalSurface</name>
+    <category>Surfaces</category>
     <comment>Returns the current modal surface (if defined).</comment>
     <prototype>OBJECTID gfxGetModalSurface()</prototype>
     <description>
@@ -346,6 +370,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>GetRelativeCursorPos</name>
+    <category>Cursor</category>
     <comment>Returns the coordinates of the pointer cursor, relative to a surface object.</comment>
     <prototype>ERROR gfxGetRelativeCursorPos(OBJECTID Surface, DOUBLE * X, DOUBLE * Y)</prototype>
     <input>
@@ -365,6 +390,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>GetSurfaceCoords</name>
+    <category>Surfaces</category>
     <comment>Returns the dimensions of a surface.</comment>
     <prototype>ERROR gfxGetSurfaceCoords(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height)</prototype>
     <input>
@@ -388,6 +414,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>GetSurfaceFlags</name>
+    <category>Surfaces</category>
     <comment>Retrieves the Flags field from a surface.</comment>
     <prototype>ERROR gfxGetSurfaceFlags(OBJECTID Surface, LONG * Flags)</prototype>
     <input>
@@ -407,6 +434,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>GetSurfaceInfo</name>
+    <category>Surfaces</category>
     <comment>Retrieves display information for any surface object without having to access it directly.</comment>
     <prototype>ERROR gfxGetSurfaceInfo(OBJECTID Surface, struct SurfaceInfoV2 ** Info)</prototype>
     <input>
@@ -426,6 +454,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>GetUserFocus</name>
+    <category>Surfaces</category>
     <comment>Returns the ID of the surface that currently has the user's focus.</comment>
     <prototype>OBJECTID gfxGetUserFocus()</prototype>
     <description>
@@ -436,6 +465,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>GetVisibleArea</name>
+    <category>Surfaces</category>
     <comment>Returns the visible region of a surface.</comment>
     <prototype>ERROR gfxGetVisibleArea(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height)</prototype>
     <input>
@@ -459,6 +489,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>LockBitmap</name>
+    <category>Surfaces</category>
     <comment>Returns a bitmap that represents the video area covered by the surface object.</comment>
     <prototype>ERROR gfxLockBitmap(OBJECTID Surface, objBitmap ** Bitmap, LONG * Info)</prototype>
     <input>
@@ -478,6 +509,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>LockCursor</name>
+    <category>Cursor</category>
     <comment>Anchors the cursor so that it cannot move without explicit movement signals.</comment>
     <prototype>ERROR gfxLockCursor(OBJECTID Surface)</prototype>
     <input>
@@ -497,6 +529,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>ReadPixel</name>
+    <category>Bitmap</category>
     <comment>Reads a pixel's colour from the target bitmap.</comment>
     <prototype>ULONG gfxReadPixel(objBitmap * Bitmap, LONG X, LONG Y)</prototype>
     <input>
@@ -512,6 +545,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>ReadRGBPixel</name>
+    <category>Bitmap</category>
     <comment>Reads a pixel's colour from the target bitmap.</comment>
     <prototype>void gfxReadRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 ** RGB)</prototype>
     <input>
@@ -528,6 +562,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>Resample</name>
+    <category>Bitmap</category>
     <comment>Resamples a bitmap by dithering it to a new set of colour masks.</comment>
     <prototype>ERROR gfxResample(objBitmap * Bitmap, struct ColourFormat * ColourFormat)</prototype>
     <input>
@@ -546,6 +581,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>RestoreCursor</name>
+    <category>Cursor</category>
     <comment>Returns the pointer image to its original state.</comment>
     <prototype>ERROR gfxRestoreCursor(LONG Cursor, OBJECTID Owner)</prototype>
     <input>
@@ -554,7 +590,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </input>
     <description>
 <p>Use the RestoreCursor() function to undo an earlier call to <function module="Display">SetCursor</function>.  It is necessary to provide the same OwnerID that was used in the original call to <function module="Display">SetCursor</function>.</p>
-<p>To release ownership of the cursor without changing the current cursor image, use a Cursor setting of PTR_NOCHANGE.</p>
+<p>To release ownership of the cursor without changing the current cursor image, use a Cursor setting of <code>PTR_NOCHANGE</code>.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -564,6 +600,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>ScaleToDPI</name>
+    <category>Display</category>
     <comment>Scales a value to the active display's DPI.</comment>
     <prototype>DOUBLE gfxScaleToDPI(DOUBLE Value)</prototype>
     <input>
@@ -578,6 +615,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>SetClipRegion</name>
+    <category>Bitmap</category>
     <comment>Sets a clipping region for a bitmap object.</comment>
     <prototype>void gfxSetClipRegion(objBitmap * Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate)</prototype>
     <input>
@@ -598,6 +636,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>SetCursor</name>
+    <category>Cursor</category>
     <comment>Sets the cursor image and can anchor the pointer to any surface.</comment>
     <prototype>ERROR gfxSetCursor(OBJECTID Surface, LONG Flags, LONG Cursor, CSTRING Name, OBJECTID Owner)</prototype>
     <input>
@@ -625,6 +664,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>SetCursorPos</name>
+    <category>Cursor</category>
     <comment>Changes the position of the pointer cursor.</comment>
     <prototype>ERROR gfxSetCursorPos(DOUBLE X, DOUBLE Y)</prototype>
     <input>
@@ -642,6 +682,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>SetCustomCursor</name>
+    <category>Cursor</category>
     <comment>Sets the cursor to a customised bitmap image.</comment>
     <prototype>ERROR gfxSetCustomCursor(OBJECTID Surface, LONG Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner)</prototype>
     <input>
@@ -685,6 +726,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>SetHostOption</name>
+    <category>Display</category>
     <comment>Alter options associated with the host display system.</comment>
     <prototype>ERROR gfxSetHostOption(LONG Option, LARGE Value)</prototype>
     <input>
@@ -701,6 +743,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>SetModalSurface</name>
+    <category>Surfaces</category>
     <comment>Enables a modal surface for the current task.</comment>
     <prototype>OBJECTID gfxSetModalSurface(OBJECTID Surface)</prototype>
     <input>
@@ -716,6 +759,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>StartCursorDrag</name>
+    <category>Cursor</category>
     <comment>Attaches an item to the cursor for the purpose of drag and drop.</comment>
     <prototype>ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface)</prototype>
     <input>
@@ -742,6 +786,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>SubscribeInput</name>
+    <category>Input</category>
     <comment>Subscribe to incoming input messages for any active surface object.</comment>
     <prototype>ERROR gfxSubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, LONG Mask, OBJECTID DeviceFilter, LONG * Handle)</prototype>
     <input>
@@ -795,6 +840,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>Sync</name>
+    <category>Bitmap</category>
     <comment>Waits for the completion of all active bitmap operations.</comment>
     <prototype>void gfxSync(objBitmap * Bitmap)</prototype>
     <input>
@@ -807,6 +853,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>UnlockBitmap</name>
+    <category>Surfaces</category>
     <comment>Unlocks any earlier call to gfxLockBitmap().</comment>
     <prototype>ERROR gfxUnlockBitmap(OBJECTID Surface, objBitmap * Bitmap)</prototype>
     <input>
@@ -824,6 +871,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>UnlockCursor</name>
+    <category>Cursor</category>
     <comment>Undoes an earlier call to LockCursor()</comment>
     <prototype>ERROR gfxUnlockCursor(OBJECTID Surface)</prototype>
     <input>
@@ -842,6 +890,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>UnsubscribeInput</name>
+    <category>Input</category>
     <comment>Removes an input subscription.</comment>
     <prototype>ERROR gfxUnsubscribeInput(LONG Handle)</prototype>
     <input>
@@ -859,6 +908,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
   <function>
     <name>WindowHook</name>
+    <category>Surfaces</category>
     <comment>Adds a function hook for receiving window messages from a host desktop.</comment>
     <prototype>ERROR gfxWindowHook(OBJECTID SurfaceID, LONG Event, FUNCTION * Callback)</prototype>
     <input>
@@ -1046,7 +1096,6 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="AUTO_QUIT">The surface object will send a quit message to its supporting process when and if the Close method is called.  This flag is typically used when a surface object represents a core window for an application.</const>
       <const name="COMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
       <const name="DISABLED">This flag is set if the Disable action has been called on a surface object.  Calling the Enable action will turn off the flag setting.</const>
-      <const name="FAST_RESIZE">Do not redraw when a surface is shrunk on either dimension.  If a dimension is expanded, only redraw the exposed portion.</const>
       <const name="FIXED_BUFFER">Passes the NEVER_SHRINK option to the surface bitmap</const>
       <const name="FIXED_DEPTH">The target buffer always remains at the same depth</const>
       <const name="FULL_SCREEN">Allow the surface to open as a new screen display</const>
@@ -1054,7 +1103,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="HAS_FOCUS">Read-only.  If set, this flag indicates that the surface object currently has the focus.</const>
       <const name="HOST">Define host on initialisation to create a container that can host surfaces from other processes.</const>
       <const name="IGNORE_FOCUS">Focus is diverted directly to the parent</const>
-      <const name="INIT_ONLY">Synonym for HOST | TRANSPARENT | FAST_RESIZE | DISABLED | PRECOPY | VIDEO | FIXED_BUFFER | PERVASIVE_COPY | FIXED_DEPTH | FULL_SCREEN | IGNORE_FOCUS</const>
+      <const name="INIT_ONLY">Synonym for HOST | TRANSPARENT | DISABLED | PRECOPY | VIDEO | FIXED_BUFFER | PERVASIVE_COPY | FIXED_DEPTH | FULL_SCREEN | IGNORE_FOCUS</const>
       <const name="NO_FOCUS">Prevents any kind of focussing on this object; no circumvention is possible</const>
       <const name="NO_HORIZONTAL">Turns off all horizontal movement (applies to the Move action only).</const>
       <const name="NO_PRECOMPOSITE">Do not copy background information into the surface buffer - composite on the fly instead</const>
