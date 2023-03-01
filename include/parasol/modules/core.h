@@ -642,6 +642,8 @@ struct ClipRectangle {
    LONG Top;     // Top coordinate
    LONG Right;   // Right-most coordinate
    LONG Bottom;  // Bottom coordinate
+  ClipRectangle() { }
+  ClipRectangle(LONG pLeft, LONG pTop, LONG pRight, LONG pBottom) : Left(pLeft), Top(pTop), Right(pRight), Bottom(pBottom) { }
 };
 
 struct Edges {
@@ -1374,11 +1376,9 @@ extern "C" {
 #ifdef DEBUG
  #define MSG(...)  LogF(0,__VA_ARGS__)
  #define FMSG(...) LogF(__VA_ARGS__)
- #define LOGRETURN()    LogReturn()
 #else
  #define MSG(...)
  #define FMSG(...)
- #define LOGRETURN()
 #endif
 
 #ifdef  __cplusplus
@@ -4031,7 +4031,6 @@ struct SharedControl {
    LONG TaskOffset;                 // Offset to the task control array
    LONG MemoryOffset;               // Offset to the shared memory allocations
    LONG WLOffset;                   // Offset to the wait-lock array
-   MEMORYID SurfacesMID;
    #ifdef __unix__
       struct {
          pthread_mutex_t Mutex;

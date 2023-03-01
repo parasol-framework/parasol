@@ -4,7 +4,6 @@
 extern "C" {
 #endif
 
-struct SurfaceControl * gfxAccessList(LONG Flags);
 objPointer * gfxAccessPointer();
 ERROR gfxCheckIfChild(OBJECTID Parent, OBJECTID Child);
 ERROR gfxCopyArea(extBitmap * Bitmap, extBitmap * Dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
@@ -32,7 +31,6 @@ ERROR gfxLockBitmap(OBJECTID Surface, objBitmap ** Bitmap, LONG * Info);
 ERROR gfxLockCursor(OBJECTID Surface);
 ULONG gfxReadPixel(extBitmap * Bitmap, LONG X, LONG Y);
 void gfxReadRGBPixel(extBitmap * Bitmap, LONG X, LONG Y, struct RGB8 ** RGB);
-void gfxReleaseList(LONG Flags);
 ERROR gfxResample(extBitmap * Bitmap, struct ColourFormat * ColourFormat);
 ERROR gfxRestoreCursor(LONG Cursor, OBJECTID Owner);
 DOUBLE gfxScaleToDPI(DOUBLE Value);
