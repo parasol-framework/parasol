@@ -1581,78 +1581,7 @@ void _redraw_surface_do(extSurface *Self, const SURFACELIST &list, LONG Index, C
    // Clear the background
 
    if ((Self->Flags & RNF_PRECOPY) and (!(Self->Flags & RNF_COMPOSITE))) {
-      LONG x, y, xoffset, yoffset, width, height;
-
-      if (auto regions = Self->Precopy) {
-         for (LONG j=0; j < Self->PrecopyTotal; j++) {
-            // Convert relative values to their fixed equivalent
-
-            if (regions[j].Dimensions & DMF_RELATIVE_X_OFFSET) xoffset = Self->Width * regions[j].XOffset / 100;
-            else xoffset = regions[j].XOffset;
-
-            if (regions[j].Dimensions & DMF_RELATIVE_Y_OFFSET) yoffset = Self->Height * regions[j].YOffset / 100;
-            else yoffset = regions[j].YOffset;
-
-            if (regions[j].Dimensions & DMF_RELATIVE_X) x = Self->Width * regions[j].X / 100;
-            else x = regions[j].X;
-
-            if (regions[j].Dimensions & DMF_RELATIVE_Y) y = Self->Height * regions[j].Y / 100;
-            else y = regions[j].Y;
-
-            // Calculate absolute width
-
-            if (regions[j].Dimensions & DMF_FIXED_WIDTH) width = regions[j].Width;
-            else if (regions[j].Dimensions & DMF_RELATIVE_WIDTH) width = Self->Width * regions[j].Width / 100;
-            else if ((regions[j].Dimensions & DMF_X_OFFSET) and (regions[j].Dimensions & DMF_X)) {
-               width = Self->Width - x - xoffset;
-            }
-            else continue;
-
-            // Calculate absolute height
-
-            if (regions[j].Dimensions & DMF_FIXED_HEIGHT) height = regions[j].Height;
-            else if (regions[j].Dimensions & DMF_RELATIVE_HEIGHT) height = Self->Height * regions[j].Height / 100;
-            else if ((regions[j].Dimensions & DMF_Y_OFFSET) and (regions[j].Dimensions & DMF_Y)) {
-               height = Self->Height - y - yoffset;
-            }
-            else continue;
-
-            if ((width < 1) or (height < 1)) continue;
-
-            // X coordinate check
-
-            if ((regions[j].Dimensions & DMF_X_OFFSET) and (regions[j].Dimensions & DMF_WIDTH)) {
-               x = Self->Width - xoffset - width;
-            }
-
-            // Y coordinate check
-
-            if ((regions[j].Dimensions & DMF_Y_OFFSET) and (regions[j].Dimensions & DMF_HEIGHT)) {
-               y = Self->Height - yoffset - height;
-            }
-
-            // Trim coordinates to bitmap clip area
-
-            abs.Left   = x;
-            abs.Top    = y;
-            abs.Right  = x + width;
-            abs.Bottom = y + height;
-
-            if (abs.Left   < DestBitmap->Clip.Left)   abs.Left   = DestBitmap->Clip.Left;
-            if (abs.Top    < DestBitmap->Clip.Top)    abs.Top    = DestBitmap->Clip.Top;
-            if (abs.Right  > DestBitmap->Clip.Right)  abs.Right  = DestBitmap->Clip.Right;
-            if (abs.Bottom > DestBitmap->Clip.Bottom) abs.Bottom = DestBitmap->Clip.Bottom;
-
-            abs.Left   += list[Index].Left;
-            abs.Top    += list[Index].Top;
-            abs.Right  += list[Index].Left;
-            abs.Bottom += list[Index].Top;
-
-            prepare_background(Self, list, Index, DestBitmap, abs, STAGE_PRECOPY);
-         }
-         ReleaseMemory(regions);
-      }
-      else prepare_background(Self, list, Index, DestBitmap, abs, STAGE_PRECOPY);
+      prepare_background(Self, list, Index, DestBitmap, abs, STAGE_PRECOPY);
    }
    else if (Self->Flags & RNF_COMPOSITE) {
       gfxDrawRectangle(DestBitmap, 0, 0, Self->Width, Self->Height, DestBitmap->packPixel(0, 0, 0, 0), TRUE);

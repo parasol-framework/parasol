@@ -72,7 +72,7 @@
       <access read="G">Get</access>
       <type>INT</type>
       <description>
-<p>You can read this field at any time to get an indication of the buttons that are currently being held by the user.  The flags returned by this field are JD_LMB, JD_RMB and JD_MMB indicating left, right and middle mouse buttons respectively.</p>
+<p>You can read this field at any time to get an indication of the buttons that are currently being held by the user.  The flags returned by this field are <code>JD_LMB</code>, <code>JD_RMB</code> and <code>JD_MMB</code> indicating left, right and middle mouse buttons respectively.</p>
       </description>
     </field>
 

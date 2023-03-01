@@ -277,17 +277,6 @@ typedef struct SurfaceInfoV2 {
    LONG     LineWidth;   // Line width of the bitmap, in bytes
 } SURFACEINFO;
 
-struct PrecopyRegion {
-   LONG X;             // X Coordinate
-   LONG Y;             // Y Coordinate
-   LONG Width;         // Width
-   LONG Height;        // Height
-   LONG XOffset;       // X offset
-   LONG YOffset;       // Y offset
-   WORD Dimensions;    // Dimension flags
-   WORD Flags;
-};
-
 struct SurfaceCallback {
    OBJECTPTR Object;    // Context to use for the function.
    FUNCTION  Function;  // void (*Routine)(OBJECTPTR, struct Surface *, objBitmap *);

@@ -337,7 +337,6 @@ class extSurface : public objSurface {
    APTR      UserLoginHandle;
    APTR      TaskRemovedHandle;
    APTR      Data;
-   PrecopyRegion *Precopy;
    WINHANDLE DisplayWindow;       // Reference to the platform dependent window representing the Surface object
    OBJECTID PrevModalID;          // Previous surface to have been modal
    OBJECTID BitmapOwnerID;        // The surface object that owns the root bitmap
@@ -365,7 +364,6 @@ class extSurface : public objSurface {
    UBYTE    CallbackCount;
    UBYTE    CallbackSize;         // Current size of the callback array.
    BYTE     WindowType;           // See SWIN constants
-   BYTE     PrecopyTotal;
    BYTE     Anchored;
 };
 
