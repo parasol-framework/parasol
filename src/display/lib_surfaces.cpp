@@ -1,7 +1,7 @@
 
 #include "defs.h"
 
-std::vector<SurfaceRecord> glSurfaces;
+SURFACELIST glSurfaces;
 
 //********************************************************************************************************************
 // Called when windows has an item to be dropped on our display area.
@@ -240,7 +240,7 @@ ERROR get_surface_abs(OBJECTID SurfaceID, LONG *AbsX, LONG *AbsY, LONG *Width, L
 //********************************************************************************************************************
 // Redraw everything in RegionB that does not intersect with RegionA.
 
-void redraw_nonintersect(OBJECTID SurfaceID, const std::vector<SurfaceRecord> &List, LONG Index,
+void redraw_nonintersect(OBJECTID SurfaceID, const SURFACELIST &List, LONG Index,
    ClipRectangle *Region, ClipRectangle *RegionB, LONG RedrawFlags, LONG ExposeFlags)
 {
    pf::Log log(__FUNCTION__);
@@ -259,38 +259,38 @@ void redraw_nonintersect(OBJECTID SurfaceID, const std::vector<SurfaceRecord> &L
    if (rect.right > Region->Right) { // Right
       log.trace("redraw_nonrect: Right exposure");
 
-      if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, List.size(), (rect.left > Region->Right) ? rect.left : Region->Right, rect.top, rect.right, rect.bottom, RedrawFlags);
-      if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, List.size(), (rect.left > Region->Right) ? rect.left : Region->Right, rect.top, rect.right, rect.bottom, ExposeFlags);
+      if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, (rect.left > Region->Right) ? rect.left : Region->Right, rect.top, rect.right, rect.bottom, RedrawFlags);
+      if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, (rect.left > Region->Right) ? rect.left : Region->Right, rect.top, rect.right, rect.bottom, ExposeFlags);
       rect.right = Region->Right;
       if (rect.left >= rect.right) return;
    }
 
    if (rect.bottom > Region->Bottom) { // Bottom
       log.trace("redraw_nonrect: Bottom exposure");
-      if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, List.size(), rect.left, (rect.top > Region->Bottom) ? rect.top : Region->Bottom, rect.right, rect.bottom, RedrawFlags);
-      if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, List.size(), rect.left, (rect.top > Region->Bottom) ? rect.top : Region->Bottom, rect.right, rect.bottom, ExposeFlags);
+      if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, rect.left, (rect.top > Region->Bottom) ? rect.top : Region->Bottom, rect.right, rect.bottom, RedrawFlags);
+      if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, rect.left, (rect.top > Region->Bottom) ? rect.top : Region->Bottom, rect.right, rect.bottom, ExposeFlags);
       rect.bottom = Region->Bottom;
       if (rect.top >= rect.bottom) return;
    }
 
    if (rect.top < Region->Top) { // Top
       log.trace("redraw_nonrect: Top exposure");
-      if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, List.size(), rect.left, rect.top, rect.right, (rect.bottom < Region->Top) ? rect.bottom : Region->Top, RedrawFlags);
-      if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, List.size(), rect.left, rect.top, rect.right, (rect.bottom < Region->Top) ? rect.bottom : Region->Top, ExposeFlags);
+      if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, rect.left, rect.top, rect.right, (rect.bottom < Region->Top) ? rect.bottom : Region->Top, RedrawFlags);
+      if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, rect.left, rect.top, rect.right, (rect.bottom < Region->Top) ? rect.bottom : Region->Top, ExposeFlags);
       rect.top = Region->Top;
    }
 
    if (rect.left < Region->Left) { // Left
       log.trace("redraw_nonrect: Left exposure");
-      if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, List.size(), rect.left, rect.top, (rect.right < Region->Left) ? rect.right : Region->Left, rect.bottom, RedrawFlags);
-      if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, List.size(), rect.left, rect.top, (rect.right < Region->Left) ? rect.right : Region->Left, rect.bottom, ExposeFlags);
+      if (RedrawFlags != -1) _redraw_surface(SurfaceID, List, Index, rect.left, rect.top, (rect.right < Region->Left) ? rect.right : Region->Left, rect.bottom, RedrawFlags);
+      if (ExposeFlags != -1) _expose_surface(SurfaceID, List, Index, rect.left, rect.top, (rect.right < Region->Left) ? rect.right : Region->Left, rect.bottom, ExposeFlags);
    }
 }
 
 //********************************************************************************************************************
 // Scans the surfacelist for the 'true owner' of a given bitmap.
 
-LONG find_bitmap_owner(const std::vector<SurfaceRecord> &List, LONG Index)
+LONG find_bitmap_owner(const SURFACELIST &List, LONG Index)
 {
    auto owner = Index;
    for (LONG i=Index; i >= 0; i--) {
@@ -482,7 +482,7 @@ ERROR update_surface_copy(extSurface *Self)
 
 //********************************************************************************************************************
 
-void move_layer_pos(std::vector<SurfaceRecord> &List, LONG Src, LONG Dest)
+void move_layer_pos(SURFACELIST &List, LONG Src, LONG Dest)
 {
    if (Src IS Dest) return;
 
@@ -493,7 +493,7 @@ void move_layer_pos(std::vector<SurfaceRecord> &List, LONG Src, LONG Dest)
    if ((Dest >= Src) and (Dest <= Src + children)) return;
 
    // Move the source entry into a buffer
-   auto tmp = std::vector<SurfaceRecord>(List.begin() + Src, List.begin() + Src + children);
+   auto tmp = SURFACELIST(List.begin() + Src, List.begin() + Src + children);
    List.erase(List.begin() + Src, List.begin() + Src + children);
 
    // Insert the saved content
@@ -605,8 +605,8 @@ ERROR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
       pf::Log log;
       log.traceBranch("Redrawing the resized surface.");
 
-      _redraw_surface(Self->UID, list, index, list.size(), list[index].Left, list[index].Top, list[index].Right, list[index].Bottom, 0);
-      _expose_surface(Self->UID, list, index, list.size(), 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
+      _redraw_surface(Self->UID, list, index, list[index].Left, list[index].Top, list[index].Right, list[index].Bottom, 0);
+      _expose_surface(Self->UID, list, index, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
 
       if (Self->ParentID) {
          // Update external regions on all four sides that have been exposed by the resize, for example due to a decrease in area or a coordinate shift.
@@ -644,7 +644,7 @@ ERROR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
 //********************************************************************************************************************
 // Checks if an object is visible, according to its visibility and its parents visibility.
 
-static bool check_visibility(const std::vector<SurfaceRecord> &list, LONG index)
+static bool check_visibility(const SURFACELIST &list, LONG index)
 {
    OBJECTID scan = list[index].SurfaceID;
    for (LONG i=index; i >= 0; i--) {
@@ -724,7 +724,7 @@ void process_surface_callbacks(extSurface *Self, extBitmap *Bitmap)
 // returning TRUE or FALSE accordingly.  If the region is completely obscured regardless of visibility settings, -1 is
 // returned.
 
-BYTE restrict_region_to_parents(const std::vector<SurfaceRecord> &List, LONG Index, ClipRectangle *Clip, bool MatchBitmap)
+BYTE restrict_region_to_parents(const SURFACELIST &List, LONG Index, ClipRectangle *Clip, bool MatchBitmap)
 {
    bool visible = true;
    OBJECTID id = List[Index].SurfaceID;
@@ -1007,7 +1007,7 @@ ERROR gfxExposeSurface(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Heig
       return ERR_Search;
    }
 
-   return _expose_surface(SurfaceID, list, index, list.size(), X, Y, Width, Height, Flags);
+   return _expose_surface(SurfaceID, list, index, X, Y, Width, Height, Flags);
 }
 
 /*********************************************************************************************************************
@@ -1302,12 +1302,12 @@ ERROR gfxRedrawSurface(OBJECTID SurfaceID, LONG Left, LONG Top, LONG Right, LONG
       return ERR_Search;
    }
 
-   return _redraw_surface(SurfaceID, list, index, list.size(), Left, Top, Right, Bottom, Flags);
+   return _redraw_surface(SurfaceID, list, index, Left, Top, Right, Bottom, Flags);
 }
 
 //********************************************************************************************************************
 
-ERROR _redraw_surface(OBJECTID SurfaceID, const std::vector<SurfaceRecord> &list, LONG index, LONG Limit,
+ERROR _redraw_surface(OBJECTID SurfaceID, const SURFACELIST &list, LONG index,
    LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Flags)
 {
    pf::Log log("redraw_surface");
@@ -1330,13 +1330,13 @@ ERROR _redraw_surface(OBJECTID SurfaceID, const std::vector<SurfaceRecord> &list
       Flags &= ~IRF_RELATIVE;
    }
 
-   log.traceBranch("[%d] %d/%d Size: %dx%d,%dx%d Expose: %dx%d,%dx%d", SurfaceID, index, Limit, list[index].Left, list[index].Top, list[index].Width, list[index].Height, Left, Top, Right-Left, Bottom-Top);
+   log.traceBranch("[%d] %d Size: %dx%d,%dx%d Expose: %dx%d,%dx%d", SurfaceID, index, list[index].Left, list[index].Top, list[index].Width, list[index].Height, Left, Top, Right-Left, Bottom-Top);
 
    if ((list[index].Flags & RNF_TRANSPARENT) and (!recursive)) {
       log.trace("Passing draw request to parent (I am transparent)");
       LONG parent_index;
-      if ((parent_index = find_surface_list(list[index].ParentID, Limit)) != -1) {
-         _redraw_surface(list[parent_index].SurfaceID, list, parent_index, Limit, Left, Top, Right, Bottom, Flags & (~IRF_IGNORE_CHILDREN));
+      if ((parent_index = find_surface_list(list[index].ParentID, list.size())) != -1) {
+         _redraw_surface(list[parent_index].SurfaceID, list, parent_index, Left, Top, Right, Bottom, Flags & (~IRF_IGNORE_CHILDREN));
       }
       else log.trace("Failed to find parent surface #%d", list[index].ParentID); // No big deal, this often happens when freeing a bunch of surfaces due to the parent/child relationships.
       return ERR_Okay;
@@ -1390,7 +1390,8 @@ ERROR _redraw_surface(OBJECTID SurfaceID, const std::vector<SurfaceRecord> &list
          // Check if there has been a change in the video bit depth.  If so, regenerate the bitmap with a matching depth.
 
          check_bmp_buffer_depth(surface, bitmap);
-         _redraw_surface_do(surface, list, Limit, index, Left, Top, Right, Bottom, bitmap, (Flags & IRF_FORCE_DRAW) | ((Flags & (IRF_IGNORE_CHILDREN|IRF_IGNORE_NV_CHILDREN)) ? 0 : URF_REDRAWS_CHILDREN));
+         auto clip = ClipRectangle(Left, Top, Right, Bottom);
+         _redraw_surface_do(surface, list, index, clip, bitmap, (Flags & IRF_FORCE_DRAW) | ((Flags & (IRF_IGNORE_CHILDREN|IRF_IGNORE_NV_CHILDREN)) ? 0 : URF_REDRAWS_CHILDREN));
          ReleaseObject(bitmap);
       }
       else {
@@ -1417,7 +1418,7 @@ ERROR _redraw_surface(OBJECTID SurfaceID, const std::vector<SurfaceRecord> &list
    if (!(Flags & IRF_IGNORE_CHILDREN)) {
       log.trace("Redrawing intersecting child surfaces.");
       LONG level = list[index].Level;
-      for (LONG i=index+1; i < Limit; i++) {
+      for (LONG i=index+1; i < LONG(list.size()); i++) {
          if (list[i].Level <= level) break; // End of list - exit this loop
 
          if (Flags & IRF_IGNORE_NV_CHILDREN) {
@@ -1435,7 +1436,7 @@ ERROR _redraw_surface(OBJECTID SurfaceID, const std::vector<SurfaceRecord> &list
          if ((list[i].Right > Left) and (list[i].Bottom > Top) and
              (list[i].Left < Right) and (list[i].Top < Bottom)) {
             recursive++;
-            _redraw_surface(list[i].SurfaceID, list, i, Limit, Left, Top, Right, Bottom, Flags|IRF_IGNORE_CHILDREN);
+            _redraw_surface(list[i].SurfaceID, list, i, Left, Top, Right, Bottom, Flags|IRF_IGNORE_CHILDREN);
             recursive--;
          }
       }
@@ -1447,16 +1448,16 @@ ERROR _redraw_surface(OBJECTID SurfaceID, const std::vector<SurfaceRecord> &list
 //********************************************************************************************************************
 // This function fulfils the recursive drawing requirements of _redraw_surface() and is not intended for any other use.
 
-void _redraw_surface_do(extSurface *Self, const std::vector<SurfaceRecord> &list, LONG Limit, LONG Index,
-                               LONG Left, LONG Top, LONG Right, LONG Bottom, extBitmap *DestBitmap, LONG Flags)
+void _redraw_surface_do(extSurface *Self, const SURFACELIST &list, LONG Index, ClipRectangle &Area,
+   extBitmap *DestBitmap, LONG Flags)
 {
    pf::Log log("redraw_surface");
 
    if (Self->Flags & RNF_TRANSPARENT) return;
 
-   if (Index >= Limit) log.warning("Index %d > %d", Index, Limit);
+   if (Index >= LONG(list.size())) log.warning("Index %d > %d", Index, LONG(list.size()));
 
-   ClipRectangle abs(Left, Top, Right, Bottom);
+   auto abs = Area;
 
    if (abs.Left   < list[Index].Left)   abs.Left   = list[Index].Left;
    if (abs.Top    < list[Index].Top)    abs.Top    = list[Index].Top;
@@ -1467,7 +1468,7 @@ void _redraw_surface_do(extSurface *Self, const std::vector<SurfaceRecord> &list
    if (!(Flags & IRF_FORCE_DRAW)) {
       LONG level = list[Index].Level + 1;   // The +1 is used to include children contained in the surface object
 
-      for (i=Index+1; (i < Limit) and (list[i].Level > 1); i++) {
+      for (i=Index+1; (i < LONG(list.size())) and (list[i].Level > 1); i++) {
          if (list[i].Level < level) level = list[i].Level;
 
          // If the listed object obscures our surface area, analyse the region around it
@@ -1486,7 +1487,7 @@ void _redraw_surface_do(extSurface *Self, const std::vector<SurfaceRecord> &list
             auto listright  = list[i].Right;
             auto listbottom = list[i].Bottom;
 
-            if ((listx < Right) and (listy < Bottom) and (listright > Left) and (listbottom > Top)) {
+            if ((listx < Area.Right) and (listy < Area.Bottom) and (listright > Area.Left) and (listbottom > Area.Top)) {
                if (list[i].Flags & RNF_CURSOR) {
                   // Objects like the pointer cursor are ignored completely.  They are redrawn following exposure.
 
@@ -1497,7 +1498,7 @@ void _redraw_surface_do(extSurface *Self, const std::vector<SurfaceRecord> &list
                   // it can also contain child surface objects that are solid.  For that reason,
                   // we have to 'go inside' to check for solid children and draw around them.
 
-                  _redraw_surface_do(Self, list, Limit, i, Left, Top, Right, Bottom, DestBitmap, Flags);
+                  _redraw_surface_do(Self, list, i, Area, DestBitmap, Flags);
                   return;
                }
 
@@ -1510,16 +1511,28 @@ void _redraw_surface_do(extSurface *Self, const std::vector<SurfaceRecord> &list
                   if (list[i].Width + list[i].Height <= 200) continue;
                }
 
-               if (listx <= Left) listx = Left;
-               else _redraw_surface_do(Self, list, Limit, Index, Left, Top, listx, Bottom, DestBitmap, Flags); // left
+               if (listx <= Area.Left) listx = Area.Left;
+               else {
+                  auto clip = ClipRectangle(Area.Left, Area.Top, listx, Area.Bottom);
+                  _redraw_surface_do(Self, list, Index, clip, DestBitmap, Flags); // left
+               }
 
-               if (listright >= Right) listright = Right;
-               else _redraw_surface_do(Self, list, Limit, Index, listright, Top, Right, Bottom, DestBitmap, Flags); // right
+               if (listright >= Area.Right) listright = Area.Right;
+               else {
+                  auto clip = ClipRectangle(listright, Area.Top, Area.Right, Area.Bottom);
+                  _redraw_surface_do(Self, list, Index, clip, DestBitmap, Flags); // right
+               }
 
-               if (listy <= Top) listy = Top;
-               else _redraw_surface_do(Self, list, Limit, Index, listx, Top, listright, listy, DestBitmap, Flags); // top
+               if (listy <= Area.Top) listy = Area.Top;
+               else {
+                  auto clip = ClipRectangle(listx, Area.Top, listright, listy);
+                  _redraw_surface_do(Self, list, Index, clip, DestBitmap, Flags); // top
+               }
 
-               if (listbottom < Bottom) _redraw_surface_do(Self, list, Limit, Index, listx, listbottom, listright, Bottom, DestBitmap, Flags); // bottom
+               if (listbottom < Area.Bottom) {
+                  auto clip = ClipRectangle(listx, listbottom, listright, Area.Bottom);
+                  _redraw_surface_do(Self, list, Index, clip, DestBitmap, Flags); // bottom
+               }
 
                return;
             }
@@ -1527,13 +1540,13 @@ void _redraw_surface_do(extSurface *Self, const std::vector<SurfaceRecord> &list
       }
    }
 
-   log.traceBranch("Index %d, %dx%d,%dx%d", Index, Left, Top, Right-Left, Bottom-Top);
+   log.traceBranch("Index %d, %dx%d,%dx%d", Index, Area.Left, Area.Top, Area.Right - Area.Left, Area.Bottom - Area.Top);
 
    // If we have been called recursively due to the presence of volatile/invisible regions (see above),
    // our Index field will not match with the surface that is referenced in Self.  We need to ensure
    // correctness before going any further.
 
-   if (list[Index].SurfaceID != Self->UID) Index = find_surface_list(Self, Limit);
+   if (list[Index].SurfaceID != Self->UID) Index = find_surface_list(Self, list.size());
 
    // Prepare the buffer so that it matches the exposed area
 
@@ -1549,10 +1562,10 @@ void _redraw_surface_do(extSurface *Self, const std::vector<SurfaceRecord> &list
       DestBitmap->YOffset = 0;
    }
 
-   DestBitmap->Clip.Left   = Left - list[Index].Left;
-   DestBitmap->Clip.Top    = Top - list[Index].Top;
-   DestBitmap->Clip.Right  = Right - list[Index].Left;
-   DestBitmap->Clip.Bottom = Bottom - list[Index].Top;
+   DestBitmap->Clip.Left   = Area.Left - list[Index].Left;
+   DestBitmap->Clip.Top    = Area.Top - list[Index].Top;
+   DestBitmap->Clip.Right  = Area.Right - list[Index].Left;
+   DestBitmap->Clip.Bottom = Area.Bottom - list[Index].Top;
 
    // THIS SHOULD NOT BE NEEDED - but occasionally it detects surface problems (bugs in other areas of the surface code?)
 
@@ -1635,11 +1648,11 @@ void _redraw_surface_do(extSurface *Self, const std::vector<SurfaceRecord> &list
             abs.Right  += list[Index].Left;
             abs.Bottom += list[Index].Top;
 
-            prepare_background(Self, list, Limit, Index, DestBitmap, &abs, STAGE_PRECOPY);
+            prepare_background(Self, list, Index, DestBitmap, abs, STAGE_PRECOPY);
          }
          ReleaseMemory(regions);
       }
-      else prepare_background(Self, list, Limit, Index, DestBitmap, &abs, STAGE_PRECOPY);
+      else prepare_background(Self, list, Index, DestBitmap, abs, STAGE_PRECOPY);
    }
    else if (Self->Flags & RNF_COMPOSITE) {
       gfxDrawRectangle(DestBitmap, 0, 0, Self->Width, Self->Height, DestBitmap->packPixel(0, 0, 0, 0), TRUE);
@@ -1663,17 +1676,17 @@ void _redraw_surface_do(extSurface *Self, const std::vector<SurfaceRecord> &list
          #ifdef DBG_DRAW_ROUTINES
             log.trace("After-copy graphics drawing.");
          #endif
-         prepare_background(Self, list, Limit, Index, DestBitmap, &abs, STAGE_AFTERCOPY);
+         prepare_background(Self, list, Index, DestBitmap, abs, STAGE_AFTERCOPY);
       }
       else if (Self->Type & RT_ROOT) {
          // If the surface object is part of a global background, we have to look for the root layer and check if it has the AFTERCOPY flag set.
 
-         if ((i = find_surface_list(Self->RootID, Limit)) != -1) {
+         if ((i = find_surface_list(Self->RootID)) != -1) {
             if (list[i].Flags & RNF_AFTER_COPY) {
                #ifdef DBG_DRAW_ROUTINES
                   log.trace("After-copy graphics drawing.");
                #endif
-               prepare_background(Self, list, Limit, Index, DestBitmap, &abs, STAGE_AFTERCOPY);
+               prepare_background(Self, list, Index, DestBitmap, abs, STAGE_AFTERCOPY);
             }
          }
       }

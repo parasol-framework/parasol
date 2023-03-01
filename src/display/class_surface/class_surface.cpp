@@ -135,7 +135,7 @@ static void release_video(objDisplay *Display)
 ** up to the caller to make a decision as to whether COMPOSITE's are volatile or not.
 */
 
-static bool check_volatile(const std::vector<SurfaceRecord> &List, LONG Index)
+static bool check_volatile(const SURFACELIST &List, LONG Index)
 {
    if (List[Index].Flags & RNF_VOLATILE) return true;
 
@@ -171,7 +171,7 @@ static bool check_volatile(const std::vector<SurfaceRecord> &List, LONG Index)
 
 //********************************************************************************************************************
 
-static void expose_buffer(const std::vector<SurfaceRecord> &list, LONG Limit, LONG Index, LONG ScanIndex, LONG Left, LONG Top,
+static void expose_buffer(const SURFACELIST &list, LONG Limit, LONG Index, LONG ScanIndex, LONG Left, LONG Top,
                    LONG Right, LONG Bottom, OBJECTID DisplayID, extBitmap *Bitmap)
 {
    pf::Log log(__FUNCTION__);
@@ -266,7 +266,6 @@ static void expose_buffer(const std::vector<SurfaceRecord> &list, LONG Limit, LO
    LONG sx, sy;
    if ((list[Index].Flags & RNF_COMPOSITE) and
        ((list[Index].ParentID) or (list[Index].Flags & RNF_CURSOR))) {
-      ClipRectangle clip;
       if (glComposite) {
          if (glComposite->BitsPerPixel != list[Index].BitsPerPixel) {
             acFree(glComposite);
@@ -291,11 +290,8 @@ static void expose_buffer(const std::vector<SurfaceRecord> &list, LONG Limit, LO
 
       // Build the background in our buffer
 
-      clip.Left   = Left;
-      clip.Top    = Top;
-      clip.Right  = Right;
-      clip.Bottom = Bottom;
-      prepare_background(NULL, list, Limit, Index, glComposite, &clip, STAGE_COMPOSITE);
+      ClipRectangle clip(Left, Top, Right, Bottom);
+      prepare_background(NULL, list, Index, glComposite, clip, STAGE_COMPOSITE);
 
       // Blend the surface's graphics into the composited buffer
       // NOTE: THE FOLLOWING IS NOT OPTIMISED WITH RESPECT TO CLIPPING
@@ -347,7 +343,7 @@ static void expose_buffer(const std::vector<SurfaceRecord> &list, LONG Limit, LO
 ** All coordinates are expressed in absolute format.
 */
 
-static void invalidate_overlap(extSurface *Self, const std::vector<SurfaceRecord> &list, LONG Limit, LONG OldIndex, LONG Index,
+static void invalidate_overlap(extSurface *Self, const SURFACELIST &list, LONG OldIndex, LONG Index,
    LONG Left, LONG Top, LONG Right, LONG Bottom, objBitmap *Bitmap)
 {
    pf::Log log(__FUNCTION__);
@@ -375,7 +371,7 @@ static void invalidate_overlap(extSurface *Self, const std::vector<SurfaceRecord
             // because its background has changed.  It will not have to be exposed because our
             // surface is sitting on top of it.
 
-            _redraw_surface(list[i].SurfaceID, list, i, Limit, Left, Top, Right, Bottom, NULL);
+            _redraw_surface(list[i].SurfaceID, list, i, Left, Top, Right, Bottom, NULL);
          }
          else goto skipcontent;
       }
@@ -394,7 +390,7 @@ static void invalidate_overlap(extSurface *Self, const std::vector<SurfaceRecord
          if (Bottom < listbottom) listbottom = Bottom;
          if (Right < listright)   listright  = Right;
 
-         _redraw_surface(Self->UID, list, i, Limit, listx, listy, listright, listbottom, NULL);
+         _redraw_surface(Self->UID, list, i, listx, listy, listright, listbottom, NULL);
       }
 
 skipcontent:
@@ -1213,7 +1209,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
    pf::Log log;
    objBitmap *bitmap;
 
-   BYTE require_store = FALSE;
+   bool require_store = false;
    OBJECTID parent_bitmap = 0;
    OBJECTID bitmap_owner  = 0;
 
@@ -1511,7 +1507,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
          // can be used by the host to notify of window exposures.
 
          if (Self->DisplayWindow) {
-            FUNCTION func = { .Type = CALL_STDC, .StdC = { .Context = NULL, .Routine = (APTR)&display_resized } };
+            auto func = make_function_stdc(display_resized);
             display->set(FID_ResizeFeedback, &func);
 
             auto callback = make_function_stdc(notify_draw_display);
@@ -1527,18 +1523,18 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
    // Allocate a backing store if this is a host object, or the parent is foreign, or we are the child of a host object
    // (check made earlier), or surface object is masked.
 
-   if (!Self->ParentID) require_store = TRUE;
-   else if (Self->Flags & (RNF_PRECOPY|RNF_COMPOSITE|RNF_AFTER_COPY|RNF_CURSOR)) require_store = TRUE;
+   if (!Self->ParentID) require_store = true;
+   else if (Self->Flags & (RNF_PRECOPY|RNF_COMPOSITE|RNF_AFTER_COPY|RNF_CURSOR)) require_store = true;
    else {
       if (Self->BitsPerPixel >= 8) {
          DISPLAYINFO *info;
          if (!gfxGetDisplayInfo(Self->DisplayID, &info)) {
-            if (info->BitsPerPixel != Self->BitsPerPixel) require_store = TRUE;
+            if (info->BitsPerPixel != Self->BitsPerPixel) require_store = true;
          }
       }
    }
 
-   if (Self->Flags & (RNF_TRANSPARENT)) require_store = FALSE;
+   if (Self->Flags & (RNF_TRANSPARENT)) require_store = false;
 
    if (require_store) {
       Self->BitmapOwnerID = Self->UID;
@@ -1881,10 +1877,10 @@ static ERROR SURFACE_MoveToBack(extSurface *Self, APTR Void)
 
    if (Self->Flags & RNF_VISIBLE) {
       // Redraw our background if we are volatile
-      if (check_volatile(list, index)) _redraw_surface(Self->UID, list, pos, list.size(), list[pos].Left, list[pos].Top, list[pos].Right, list[pos].Bottom, NULL);
+      if (check_volatile(list, index)) _redraw_surface(Self->UID, list, pos, list[pos].Left, list[pos].Top, list[pos].Right, list[pos].Bottom, NULL);
 
       // Expose changes to the display
-      _expose_surface(Self->ParentID, list, pos, list.size(), Self->X, Self->Y, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
+      _expose_surface(Self->ParentID, list, pos, Self->X, Self->Y, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
    }
 
    refresh_pointer(Self);
@@ -1970,7 +1966,7 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
    // Reorder the list so that this surface object is inserted at the new index.
 
    {
-      auto tmp = std::vector<SurfaceRecord>(list.begin() + currentindex, list.begin() + currentindex + total); // Copy the source entry into a buffer
+      auto tmp = SURFACELIST(list.begin() + currentindex, list.begin() + currentindex + total); // Copy the source entry into a buffer
       list.erase(list.begin() + currentindex, list.begin() + currentindex + total);
       list.insert(list.begin() + i, tmp.begin(), tmp.end());
    }
@@ -1984,12 +1980,12 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
 
       objBitmap *bitmap;
       if (!AccessObjectID(Self->BufferID, 5000, &bitmap)) {
-         invalidate_overlap(Self, cplist, cplist.size(), currentindex, i, cplist[i].Left, cplist[i].Top, cplist[i].Right, cplist[i].Bottom, bitmap);
+         invalidate_overlap(Self, cplist, currentindex, i, cplist[i].Left, cplist[i].Top, cplist[i].Right, cplist[i].Bottom, bitmap);
          ReleaseObject(bitmap);
       }
 
-      if (check_volatile(cplist, i)) _redraw_surface(Self->UID, cplist, i, cplist.size(), 0, 0, Self->Width, Self->Height, IRF_RELATIVE);
-      _expose_surface(Self->UID, cplist, i, cplist.size(), 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
+      if (check_volatile(cplist, i)) _redraw_surface(Self->UID, cplist, i, 0, 0, Self->Width, Self->Height, IRF_RELATIVE);
+      _expose_surface(Self->UID, cplist, i, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
    }
 
    if (Self->PopOverID) {
@@ -2166,8 +2162,8 @@ the surface is declared through a combination of X and XOffset settings and the 
 setting, then ResetDimensions will have to be used.
 
 It is not necessary to define a value for every parameter - only the ones that are relevant to the new dimension
-settings.  For instance if X and Width are set, XOffset is ignored and the Dimensions value must include DMF_FIXED_X
-and DMF_FIXED_WIDTH (or the relative equivalents).  Please refer to the #Dimensions field for a full list of
+settings.  For instance if X and Width are set, XOffset is ignored and the Dimensions value must include `DMF_FIXED_X`
+and `DMF_FIXED_WIDTH` (or the relative equivalents).  Please refer to the #Dimensions field for a full list of
 dimension flags that can be specified.
 
 -INPUT-
@@ -2244,8 +2240,8 @@ static ERROR SURFACE_ResetDimensions(extSurface *Self, struct drwResetDimensions
    auto &list = glSurfaces;
    LONG index;
    if ((index = find_surface_list(Self->ParentID ? Self->ParentID : Self->UID)) != -1) {
-      _redraw_surface(Self->ParentID, list, index, list.size(), nx, ny, nx2-nx, ny2-ny, IRF_RELATIVE);
-      _expose_surface(Self->ParentID, list, index, list.size(), nx, ny, nx2-nx, ny2-ny, 0);
+      _redraw_surface(Self->ParentID, list, index, nx, ny, nx2-nx, ny2-ny, IRF_RELATIVE);
+      _expose_surface(Self->ParentID, list, index, nx, ny, nx2-nx, ny2-ny, 0);
    }
 
    return ERR_Okay;

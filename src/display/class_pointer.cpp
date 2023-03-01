@@ -41,7 +41,7 @@ static TIMER glRepeatTimer = 0;
 
 static ERROR repeat_timer(extPointer *, LARGE, LARGE);
 static void set_pointer_defaults(extPointer *);
-static WORD examine_chain(extPointer *, WORD, std::vector<SurfaceRecord> &, WORD);
+static LONG examine_chain(extPointer *, LONG, SURFACELIST &, LONG);
 static bool get_over_object(extPointer *);
 static void process_ptr_button(extPointer *, struct dcDeviceInput *);
 static void process_ptr_movement(extPointer *, struct dcDeviceInput *);
@@ -127,8 +127,7 @@ static ERROR PTR_DataFeed(extPointer *Self, struct acDataFeed *Args)
    if (!Args) return log.warning(ERR_NullArgs);
 
    if (Args->DataType IS DATA_DEVICE_INPUT) {
-      auto input = (struct dcDeviceInput *)Args->Buffer;
-      if (input) {
+      if (auto input = (struct dcDeviceInput *)Args->Buffer) {
          for (LONG i=0; i < ARRAYSIZE(Self->Buttons); i++) {
             if ((Self->Buttons[i].LastClicked) and (CheckObjectExists(Self->Buttons[i].LastClicked) != ERR_Okay)) Self->Buttons[i].LastClicked = 0;
          }
@@ -573,9 +572,7 @@ static ERROR PTR_Init(extPointer *Self, APTR Void)
          Self->SurfaceID = GetOwnerID(Self->SurfaceID);
       }
 
-      if (!Self->SurfaceID) {
-         FindObject("SystemSurface", 0, 0, &Self->SurfaceID);
-      }
+      if (!Self->SurfaceID) FindObject("SystemSurface", 0, 0, &Self->SurfaceID);
    }
 
    // Allocate a custom cursor bitmap
@@ -904,7 +901,8 @@ static ERROR SET_ButtonOrder(extPointer *Self, CSTRING Value)
 ButtonState: Indicates the current button-press state.
 
 You can read this field at any time to get an indication of the buttons that are currently being held by the user.  The
-flags returned by this field are JD_LMB, JD_RMB and JD_MMB indicating left, right and middle mouse buttons respectively.
+flags returned by this field are `JD_LMB`, `JD_RMB` and `JD_MMB` indicating left, right and middle mouse buttons
+respectively.
 
 *********************************************************************************************************************/
 
@@ -1120,7 +1118,7 @@ static bool get_over_object(extPointer *Self)
    }
    else for (index=0; (index < LONG(list.size())) and (list[index].SurfaceID != Self->SurfaceID); index++);
 
-   LONG i = examine_chain(Self, index, list, list.size());
+   auto i = examine_chain(Self, index, list, list.size());
 
    OBJECTID li_objectid = list[i].SurfaceID;
    DOUBLE li_left       = list[i].Left;
@@ -1179,18 +1177,19 @@ static bool get_over_object(extPointer *Self)
 
 //********************************************************************************************************************
 
-static WORD examine_chain(extPointer *Self, WORD Index, std::vector<SurfaceRecord> &List, WORD ListEnd)
+static LONG examine_chain(extPointer *Self, LONG Index, SURFACELIST &List, LONG End)
 {
-   // NB: The reason why we traverse backwards is because we want to catch the front-most objects first.
+   // NB: Traversal is in reverse to catch the front-most objects first.
 
-   OBJECTID objectid = List[Index].SurfaceID;
-   DOUBLE x = Self->X;
-   DOUBLE y = Self->Y;
-   for (auto i=ListEnd-1; i >= 0; i--) {
+   auto objectid = List[Index].SurfaceID;
+   auto x = Self->X;
+   auto y = Self->Y;
+   for (auto i=End-1; i >= 0; i--) {
       if ((List[i].ParentID IS objectid) and (List[i].Flags & RNF_VISIBLE)) {
          if ((x >= List[i].Left) and (x < List[i].Right) and (y >= List[i].Top) and (y < List[i].Bottom)) {
-            for (ListEnd=i+1; List[ListEnd].Level > List[i].Level; ListEnd++); // Recalculate the ListEnd (optimisation)
-            return examine_chain(Self, i, List, ListEnd);
+            LONG new_end;
+            for (new_end=i+1; List[new_end].Level > List[i].Level; new_end++); // Recalculate the end (optimisation)
+            return examine_chain(Self, i, List, new_end);
          }
       }
    }
@@ -1229,16 +1228,16 @@ static ERROR repeat_timer(extPointer *Self, LARGE Elapsed, LARGE Unused)
                input.Y = Self->OverY;
             }
 
-            input.Type       = JET_BUTTON_1 + i;
-            input.Mask       = JTYPE_BUTTON|JTYPE_REPEATED;
-            input.Flags      = JTYPE_BUTTON|JTYPE_REPEATED;
-            input.Value      = 1.0; // Self->Buttons[i].LastValue
-            input.Timestamp  = time;
-            input.DeviceID   = 0;
+            input.Type        = JET_BUTTON_1 + i;
+            input.Mask        = JTYPE_BUTTON|JTYPE_REPEATED;
+            input.Flags       = JTYPE_BUTTON|JTYPE_REPEATED;
+            input.Value       = 1.0; // Self->Buttons[i].LastValue
+            input.Timestamp   = time;
+            input.DeviceID    = 0;
             input.RecipientID = Self->Buttons[i].LastClicked;
-            input.OverID     = Self->OverObjectID;
-            input.AbsX       = Self->X;
-            input.AbsY       = Self->Y;
+            input.OverID      = Self->OverObjectID;
+            input.AbsX        = Self->X;
+            input.AbsY        = Self->Y;
 
             const std::lock_guard<std::recursive_mutex> lock(glInputLock);
             glInputEvents.push_back(input);

@@ -277,31 +277,6 @@ typedef struct SurfaceInfoV2 {
    LONG     LineWidth;   // Line width of the bitmap, in bytes
 } SURFACEINFO;
 
-struct SurfaceRecord {
-   APTR     Data;        // For drwCopySurface()
-   OBJECTID ParentID;    // Object that owns the surface area
-   OBJECTID SurfaceID;   // ID of the surface area
-   OBJECTID BitmapID;    // Shared bitmap buffer, if available
-   OBJECTID DisplayID;   // Display
-   OBJECTID RootID;      // RootLayer
-   OBJECTID PopOverID;
-   LONG     Flags;       // Surface flags (RNF_VISIBLE etc)
-   LONG     X;           // Horizontal coordinate
-   LONG     Y;           // Vertical coordinate
-   LONG     Width;       // Width
-   LONG     Height;      // Height
-   LONG     Left;        // Absolute X
-   LONG     Top;         // Absolute Y
-   LONG     Right;       // Absolute right coordinate
-   LONG     Bottom;      // Absolute bottom coordinate
-   WORD     Level;       // Level number within the hierarchy
-   WORD     LineWidth;   // [applies to the bitmap owner]
-   BYTE     BytesPerPixel; // [applies to the bitmap owner]
-   BYTE     BitsPerPixel; // [applies to the bitmap owner]
-   BYTE     Cursor;      // Preferred cursor image ID
-   UBYTE    Opacity;     // Current opacity setting 0 - 255
-};
-
 struct PrecopyRegion {
    LONG X;             // X Coordinate
    LONG Y;             // Y Coordinate

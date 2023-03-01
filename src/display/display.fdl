@@ -242,33 +242,6 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     int LineWidth       # Line width of the bitmap, in bytes
   ]])
 
-  struct("SurfaceRecord", { }, [[
-    ptr Data          # For drwCopySurface()
-    oid ParentID      # Object that owns the surface area
-    oid SurfaceID     # ID of the surface area
-    oid BitmapID      # Shared bitmap buffer, if available
-    oid DisplayID     # Display
-    oid RootID        # RootLayer
-    oid PopOverID
-    int Flags         # Surface flags (RNF_VISIBLE etc)
-    int X             # Horizontal coordinate
-    int Y             # Vertical coordinate
-    int Width         # Width
-    int Height        # Height
-    # Note: The order of the following fields must match 'struct ClipRectangle'
-    int Left          # Absolute X
-    int Top           # Absolute Y
-    int Right         # Absolute right coordinate
-    int Bottom        # Absolute bottom coordinate
-    short Level       # Level number within the hierarchy
-    # For drwCopySurface()
-    short LineWidth    # [applies to the bitmap owner]
-    char BytesPerPixel # [applies to the bitmap owner]
-    char BitsPerPixel  # [applies to the bitmap owner]
-    char Cursor        # Preferred cursor image ID
-    uchar Opacity      # Current opacity setting 0 - 255
-  ]])
-
   -- Note: Floating point precision is not supported when designating precopy zones
 
   struct("PrecopyRegion", { restrict="c", comment="Internal structure managed by the PrecopyRegion field."}, [[

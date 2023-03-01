@@ -1,14 +1,12 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
-This is a dummy module for managing access to the display module.  It exists
-so that any program needing access to the display API will be diverted to the
-module binary that is relevant to the platform (X11, DirectFB, OpenGL etc).
+This is a dummy module for managing access to the display module.  It exists so that any program needing access to
+the display API will be diverted to the module binary that is relevant to the platform (X11, DirectFB, OpenGL etc).
 
 *********************************************************************************************************************/
 
@@ -33,9 +31,8 @@ module binary that is relevant to the platform (X11, DirectFB, OpenGL etc).
 struct CoreBase *CoreBase;
 static objModule *modDriver = NULL;
 
-/*********************************************************************************************************************
-** Module function list.
-*/
+//********************************************************************************************************************
+// Module function list.
 
 static LONG scrUnsupported(void)
 {
@@ -116,10 +113,6 @@ Function JumpTable[] = {
 };
 
 //********************************************************************************************************************
-
-/*********************************************************************************************************************
-** Internal: test_x11()
-*/
 
 #if defined(__linux__) && !defined(__ANDROID__)
 static LONG test_x11(STRING Path)

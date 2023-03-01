@@ -244,7 +244,7 @@ the surface area first).</li>
       </input>
       <description>
 <p>The ResetDimensions method provides a simple way of re-declaring the dimensions of a surface object.  This is sometimes necessary when a surface needs to make a significant alteration to its method of display.  For instance if the width of the surface is declared through a combination of X and XOffset settings and the width needs to change to a fixed setting, then ResetDimensions will have to be used.</p>
-<p>It is not necessary to define a value for every parameter - only the ones that are relevant to the new dimension settings.  For instance if X and Width are set, XOffset is ignored and the Dimensions value must include DMF_FIXED_X and DMF_FIXED_WIDTH (or the relative equivalents).  Please refer to the <field>Dimensions</field> field for a full list of dimension flags that can be specified.</p>
+<p>It is not necessary to define a value for every parameter - only the ones that are relevant to the new dimension settings.  For instance if X and Width are set, XOffset is ignored and the Dimensions value must include <code>DMF_FIXED_X</code> and <code>DMF_FIXED_WIDTH</code> (or the relative equivalents).  Please refer to the <field>Dimensions</field> field for a full list of dimension flags that can be specified.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>

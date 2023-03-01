@@ -111,6 +111,33 @@
 
 #define UpdateSurfaceRecord(a) update_surface_copy(a)
 
+struct SurfaceRecord {
+   APTR     Data;          // For drwCopySurface()
+   OBJECTID ParentID;      // Object that owns the surface area
+   OBJECTID SurfaceID;     // ID of the surface area
+   OBJECTID BitmapID;      // Shared bitmap buffer, if available
+   OBJECTID DisplayID;     // Display
+   OBJECTID RootID;        // RootLayer
+   OBJECTID PopOverID;
+   LONG     Flags;         // Surface flags (RNF_VISIBLE etc)
+   LONG     X;             // Horizontal coordinate
+   LONG     Y;             // Vertical coordinate
+   LONG     Width;         // Width
+   LONG     Height;        // Height
+   LONG     Left;          // Absolute X
+   LONG     Top;           // Absolute Y
+   LONG     Right;         // Absolute right coordinate
+   LONG     Bottom;        // Absolute bottom coordinate
+   WORD     Level;         // Level number within the hierarchy
+   WORD     LineWidth;     // [applies to the bitmap owner]
+   BYTE     BytesPerPixel; // [applies to the bitmap owner]
+   BYTE     BitsPerPixel;  // [applies to the bitmap owner]
+   BYTE     Cursor;        // Preferred cursor image ID
+   UBYTE    Opacity;       // Current opacity setting 0 - 255
+};
+
+typedef std::vector<SurfaceRecord> SURFACELIST;
+
 class WindowHook {
 public:
    OBJECTID SurfaceID;
@@ -429,21 +456,21 @@ extern void  permitDrawing(void);
 extern void  permitExpose(void);
 extern ERROR apply_style(OBJECTPTR, OBJECTPTR, CSTRING);
 extern ERROR load_styles(void);
-extern LONG  find_bitmap_owner(const std::vector<SurfaceRecord> &, LONG);
+extern LONG  find_bitmap_owner(const SURFACELIST &, LONG);
 extern void  move_layer(extSurface *, LONG, LONG);
-extern void  move_layer_pos(std::vector<SurfaceRecord> &, LONG, LONG);
-extern void  prepare_background(extSurface *, const std::vector<SurfaceRecord> &, LONG, LONG, extBitmap *, ClipRectangle *, BYTE);
+extern void  move_layer_pos(SURFACELIST &, LONG, LONG);
+extern void  prepare_background(extSurface *, const SURFACELIST &, LONG, extBitmap *, ClipRectangle &, BYTE);
 extern void  process_surface_callbacks(extSurface *, extBitmap *);
 extern void  refresh_pointer(extSurface *Self);
 extern ERROR track_layer(extSurface *);
 extern void  untrack_layer(OBJECTID);
-extern BYTE  restrict_region_to_parents(const std::vector<SurfaceRecord> &, LONG, ClipRectangle *, bool);
+extern BYTE  restrict_region_to_parents(const SURFACELIST &, LONG, ClipRectangle *, bool);
 extern ERROR load_style_values(void);
 extern ERROR resize_layer(extSurface *, LONG X, LONG Y, LONG, LONG, LONG, LONG, LONG BPP, DOUBLE, LONG);
-extern void  redraw_nonintersect(OBJECTID, const std::vector<SurfaceRecord> &, LONG, ClipRectangle *, ClipRectangle *, LONG, LONG);
-extern ERROR _expose_surface(OBJECTID, const std::vector<SurfaceRecord> &, LONG, LONG, LONG, LONG, LONG, LONG, LONG);
-extern ERROR _redraw_surface(OBJECTID, const std::vector<SurfaceRecord> &, LONG, LONG, LONG, LONG, LONG, LONG, LONG);
-extern void  _redraw_surface_do(extSurface *, const std::vector<SurfaceRecord> &, LONG, LONG, LONG, LONG, LONG, LONG, extBitmap *, LONG);
+extern void  redraw_nonintersect(OBJECTID, const SURFACELIST &, LONG, ClipRectangle *, ClipRectangle *, LONG, LONG);
+extern ERROR _expose_surface(OBJECTID, const SURFACELIST &, LONG, LONG, LONG, LONG, LONG, LONG);
+extern ERROR _redraw_surface(OBJECTID, const SURFACELIST &, LONG, LONG, LONG, LONG, LONG, LONG);
+extern void  _redraw_surface_do(extSurface *, const SURFACELIST &, LONG, ClipRectangle &, extBitmap *, LONG);
 extern void  check_styles(STRING Path, OBJECTPTR *Script) __attribute__((unused));
 extern ERROR update_surface_copy(extSurface *);
 
@@ -642,7 +669,7 @@ inline LONG find_surface_list(OBJECTID SurfaceID, LONG Limit = -1)
    return -1;
 }
 
-inline LONG find_parent_list(const std::vector<SurfaceRecord> &list, extSurface *Self)
+inline LONG find_parent_list(const SURFACELIST &list, extSurface *Self)
 {
    if ((Self->ListIndex < LONG(list.size())) and (list[Self->ListIndex].SurfaceID IS Self->UID)) {
       for (LONG i=Self->ListIndex-1; i >= 0; i--) {
