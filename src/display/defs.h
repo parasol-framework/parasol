@@ -109,7 +109,7 @@
 
 #define URF_REDRAWS_CHILDREN     0x00000001
 
-#define UpdateSurfaceList(a) update_surface_copy((a), 0)
+#define UpdateSurfaceRecord(a) update_surface_copy(a)
 
 class WindowHook {
 public:
@@ -237,6 +237,12 @@ namespace std {
       }
    };
 }
+
+//********************************************************************************************************************
+
+extern std::vector<SurfaceRecord> glSurfaces;
+
+//********************************************************************************************************************
 
 struct ClipHeader {
    LONG Counter;
@@ -423,25 +429,23 @@ extern void  permitDrawing(void);
 extern void  permitExpose(void);
 extern ERROR apply_style(OBJECTPTR, OBJECTPTR, CSTRING);
 extern ERROR load_styles(void);
-extern LONG  find_bitmap_owner(SurfaceList *, LONG);
+extern LONG  find_bitmap_owner(const std::vector<SurfaceRecord> &, LONG);
 extern void  move_layer(extSurface *, LONG, LONG);
-extern void  move_layer_pos(SurfaceControl *, LONG, LONG);
-extern void  prepare_background(extSurface *, SurfaceList *, LONG, LONG, extBitmap *, ClipRectangle *, BYTE);
+extern void  move_layer_pos(std::vector<SurfaceRecord> &, LONG, LONG);
+extern void  prepare_background(extSurface *, const std::vector<SurfaceRecord> &, LONG, LONG, extBitmap *, ClipRectangle *, BYTE);
 extern void  process_surface_callbacks(extSurface *, extBitmap *);
 extern void  refresh_pointer(extSurface *Self);
 extern ERROR track_layer(extSurface *);
 extern void  untrack_layer(OBJECTID);
-extern BYTE  restrict_region_to_parents(SurfaceList *, LONG, ClipRectangle *, BYTE);
+extern BYTE  restrict_region_to_parents(const std::vector<SurfaceRecord> &, LONG, ClipRectangle *, bool);
 extern ERROR load_style_values(void);
 extern ERROR resize_layer(extSurface *, LONG X, LONG Y, LONG, LONG, LONG, LONG, LONG BPP, DOUBLE, LONG);
-extern void  redraw_nonintersect(OBJECTID, SurfaceList *, LONG, LONG, ClipRectangle *, ClipRectangle *, LONG, LONG);
-extern ERROR _expose_surface(OBJECTID, SurfaceList *, LONG, LONG, LONG, LONG, LONG, LONG, LONG);
-extern ERROR _redraw_surface(OBJECTID, SurfaceList *, LONG, LONG, LONG, LONG, LONG, LONG, LONG);
-extern void  _redraw_surface_do(extSurface *, SurfaceList *, LONG, LONG, LONG, LONG, LONG, LONG, extBitmap *, LONG);
+extern void  redraw_nonintersect(OBJECTID, const std::vector<SurfaceRecord> &, LONG, ClipRectangle *, ClipRectangle *, LONG, LONG);
+extern ERROR _expose_surface(OBJECTID, const std::vector<SurfaceRecord> &, LONG, LONG, LONG, LONG, LONG, LONG, LONG);
+extern ERROR _redraw_surface(OBJECTID, const std::vector<SurfaceRecord> &, LONG, LONG, LONG, LONG, LONG, LONG, LONG);
+extern void  _redraw_surface_do(extSurface *, const std::vector<SurfaceRecord> &, LONG, LONG, LONG, LONG, LONG, LONG, extBitmap *, LONG);
 extern void  check_styles(STRING Path, OBJECTPTR *Script) __attribute__((unused));
-extern ERROR update_surface_copy(extSurface *, SurfaceList *);
-extern LONG  find_surface_list(SurfaceList *, LONG, OBJECTID);
-extern LONG  find_parent_list(SurfaceList *, LONG, extSurface *);
+extern ERROR update_surface_copy(extSurface *);
 
 extern ERROR gfxRedrawSurface(OBJECTID, LONG, LONG, LONG, LONG, LONG);
 
@@ -477,14 +481,12 @@ extern UBYTE *glDemultiply;
 extern std::vector<OBJECTID> glFocusList;
 extern std::mutex glFocusLock;
 
+extern std::recursive_mutex glSurfaceLock;
+
 // Thread-specific variables.
 
-extern THREADVAR APTR glSurfaceMutex;
 extern THREADVAR WORD tlNoDrawing, tlNoExpose, tlVolatileIndex;
-extern THREADVAR UBYTE tlListCount; // For drwAccesslist()
 extern THREADVAR OBJECTID tlFreeExpose;
-extern THREADVAR SurfaceControl *tlSurfaceList;
-extern THREADVAR LONG glRecentSurfaceIndex;
 
 struct InputType {
    LONG Flags;  // As many flags as necessary to describe the input type
@@ -493,10 +495,6 @@ struct InputType {
 
 extern const InputType glInputType[JET_END];
 extern const CSTRING glInputNames[JET_END];
-
-#define find_surface_index(a,b) find_surface_list( (SurfaceList *)((BYTE *)(a) + (a)->ArrayIndex), (a)->Total, (b))
-#define find_own_index(a,b)     find_surface_list( (SurfaceList *)((BYTE *)(a) + (a)->ArrayIndex), (a)->Total, (b)->UID)
-#define find_parent_index(a,b)  find_parent_list( (SurfaceList *)((BYTE *)(a) + (a)->ArrayIndex), (a)->Total, (b))
 
 //********************************************************************************************************************
 
@@ -589,26 +587,68 @@ extern APTR glDGAVideo;
 #include "prototypes.h"
 
 template <typename T>
-void UpdateSurfaceField(objSurface *Self, T SurfaceList::*LValue, T Value)
+void UpdateSurfaceField(objSurface *Self, T SurfaceRecord::*LValue, T Value)
 {
    if (Self->initialised()) {
-      if (auto ctl = gfxAccessList(ARF_UPDATE)) {
-         auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-         for (LONG i=0; i < ctl->Total; i++) {
-            if (list[i].SurfaceID IS Self->UID) {
-               list[i].*LValue = Value;
-               break;
-            }
+      for (auto &record : glSurfaces) {
+         if (record.SurfaceID IS Self->UID) {
+            record.*LValue = Value;
+            return;
          }
-         gfxReleaseList(ARF_UPDATE);
       }
    }
 }
 
-INLINE void clip_rectangle(ClipRectangle *rect, ClipRectangle *clip)
+inline void clip_rectangle(ClipRectangle *rect, ClipRectangle *clip)
 {
    if (rect->Left   < clip->Left)   rect->Left   = clip->Left;
    if (rect->Top    < clip->Top)    rect->Top    = clip->Top;
    if (rect->Right  > clip->Right)  rect->Right  = clip->Right;
    if (rect->Bottom > clip->Bottom) rect->Bottom = clip->Bottom;
+}
+
+//********************************************************************************************************************
+// Surface list lookup routines.
+
+inline LONG find_surface_list(extSurface *Surface, LONG Limit = -1)
+{
+   if (Limit IS -1) Limit = glSurfaces.size();
+   else if (Limit > LONG(glSurfaces.size())) {
+      pf::Log log(__FUNCTION__);
+      log.warning("Invalid Limit parameter of %d (max %d)", Limit, LONG(glSurfaces.size()));
+      Limit = glSurfaces.size();
+   }
+
+   for (LONG i=0; i < Limit; i++) {
+      if (glSurfaces[i].SurfaceID IS Surface->UID) return i;
+   }
+
+   return -1;
+}
+
+inline LONG find_surface_list(OBJECTID SurfaceID, LONG Limit = -1)
+{
+   if (Limit IS -1) Limit = glSurfaces.size();
+   else if (Limit > LONG(glSurfaces.size())) {
+      pf::Log log(__FUNCTION__);
+      log.warning("Invalid Limit parameter of %d (max %d)", Limit, LONG(glSurfaces.size()));
+      Limit = glSurfaces.size();
+   }
+
+   for (LONG i=0; i < Limit; i++) {
+      if (glSurfaces[i].SurfaceID IS SurfaceID) return i;
+   }
+
+   return -1;
+}
+
+inline LONG find_parent_list(const std::vector<SurfaceRecord> &list, extSurface *Self)
+{
+   if ((Self->ListIndex < LONG(list.size())) and (list[Self->ListIndex].SurfaceID IS Self->UID)) {
+      for (LONG i=Self->ListIndex-1; i >= 0; i--) {
+         if (list[i].SurfaceID IS Self->ParentID) return i;
+      }
+   }
+
+   return find_surface_list(Self->ParentID);
 }

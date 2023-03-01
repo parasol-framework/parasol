@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -136,33 +135,33 @@ static void release_video(objDisplay *Display)
 ** up to the caller to make a decision as to whether COMPOSITE's are volatile or not.
 */
 
-static bool check_volatile(SurfaceList *list, LONG index)
+static bool check_volatile(const std::vector<SurfaceRecord> &List, LONG Index)
 {
-   if (list[index].Flags & RNF_VOLATILE) return true;
+   if (List[Index].Flags & RNF_VOLATILE) return true;
 
    // If there are children with custom root layers or are volatile, that will force volatility
 
    LONG j;
-   for (LONG i=index+1; list[i].Level > list[index].Level; i++) {
-      if (!(list[i].Flags & RNF_VISIBLE)) {
-         j = list[i].Level;
-         while (list[i+1].Level > j) i++;
+   for (LONG i=Index+1; List[i].Level > List[Index].Level; i++) {
+      if (!(List[i].Flags & RNF_VISIBLE)) {
+         j = List[i].Level;
+         while (List[i+1].Level > j) i++;
          continue;
       }
 
-      if (list[i].Flags & RNF_VOLATILE) {
+      if (List[i].Flags & RNF_VOLATILE) {
          // If a child surface is marked as volatile and is a member of our bitmap space, then effectively all members of the bitmap are volatile.
 
-         if (list[index].BitmapID IS list[i].BitmapID) return true;
+         if (List[Index].BitmapID IS List[i].BitmapID) return true;
 
          // If this is a custom root layer, check if it refers to a surface that is going to affect our own volatility.
 
-         if (list[i].RootID != list[i].SurfaceID) {
-            for (j=i; j > index; j--) {
-               if (list[i].RootID IS list[j].SurfaceID) break;
+         if (List[i].RootID != List[i].SurfaceID) {
+            for (j=i; j > Index; j--) {
+               if (List[i].RootID IS List[j].SurfaceID) break;
             }
 
-            if (j <= index) return true; // Custom root of a child is outside of bounds - that makes us volatile
+            if (j <= Index) return true; // Custom root of a child is outside of bounds - that makes us volatile
          }
       }
    }
@@ -172,7 +171,7 @@ static bool check_volatile(SurfaceList *list, LONG index)
 
 //********************************************************************************************************************
 
-static void expose_buffer(SurfaceList *list, LONG Total, LONG Index, LONG ScanIndex, LONG Left, LONG Top,
+static void expose_buffer(const std::vector<SurfaceRecord> &list, LONG Limit, LONG Index, LONG ScanIndex, LONG Left, LONG Top,
                    LONG Right, LONG Bottom, OBJECTID DisplayID, extBitmap *Bitmap)
 {
    pf::Log log(__FUNCTION__);
@@ -180,35 +179,30 @@ static void expose_buffer(SurfaceList *list, LONG Total, LONG Index, LONG ScanIn
    // Scan for overlapping parent/sibling regions and avoid them
 
    LONG i, j;
-   for (i=ScanIndex+1; (i < Total) and (list[i].Level > 1); i++) {
+   for (i=ScanIndex+1; (i < Limit) and (list[i].Level > 1); i++) {
       if (!(list[i].Flags & RNF_VISIBLE)) { // Skip past non-visible areas and their content
          j = list[i].Level;
-         while ((i+1 < Total) and (list[i+1].Level > j)) i++;
+         while ((i+1 < Limit) and (list[i+1].Level > j)) i++;
          continue;
       }
       else if (list[i].Flags & RNF_CURSOR); // Skip the cursor
       else {
-         ClipRectangle listclip = {
-            .Left   = list[i].Left,
-            .Top    = list[i].Top,
-            .Right  = list[i].Right,
-            .Bottom = list[i].Bottom
-         };
+         ClipRectangle listclip(list[i].Left, list[i].Top, list[i].Right, list[i].Bottom);
 
          if (restrict_region_to_parents(list, i, &listclip, FALSE) IS -1); // Skip
          else if ((listclip.Left < Right) and (listclip.Top < Bottom) and (listclip.Right > Left) and (listclip.Bottom > Top)) {
             if (list[i].BitmapID IS list[Index].BitmapID) continue; // Ignore any children that overlap & form part of our bitmap space.  Children that do not overlap are skipped.
 
             if (listclip.Left <= Left) listclip.Left = Left;
-            else expose_buffer(list, Total, Index, ScanIndex, Left, Top, listclip.Left, Bottom, DisplayID, Bitmap); // left
+            else expose_buffer(list, Limit, Index, ScanIndex, Left, Top, listclip.Left, Bottom, DisplayID, Bitmap); // left
 
             if (listclip.Right >= Right) listclip.Right = Right;
-            else expose_buffer(list, Total, Index, ScanIndex, listclip.Right, Top, Right, Bottom, DisplayID, Bitmap); // right
+            else expose_buffer(list, Limit, Index, ScanIndex, listclip.Right, Top, Right, Bottom, DisplayID, Bitmap); // right
 
             if (listclip.Top <= Top) listclip.Top = Top;
-            else expose_buffer(list, Total, Index, ScanIndex, listclip.Left, Top, listclip.Right, listclip.Top, DisplayID, Bitmap); // top
+            else expose_buffer(list, Limit, Index, ScanIndex, listclip.Left, Top, listclip.Right, listclip.Top, DisplayID, Bitmap); // top
 
-            if (listclip.Bottom < Bottom) expose_buffer(list, Total, Index, ScanIndex, listclip.Left, listclip.Bottom, listclip.Right, Bottom, DisplayID, Bitmap); // bottom
+            if (listclip.Bottom < Bottom) expose_buffer(list, Limit, Index, ScanIndex, listclip.Left, listclip.Bottom, listclip.Right, Bottom, DisplayID, Bitmap); // bottom
 
             if (list[i].Flags & RNF_TRANSPARENT) {
                // In the case of invisible regions, we will have split the expose process as normal.  However,
@@ -225,7 +219,7 @@ static void expose_buffer(SurfaceList *list, LONG Total, LONG Index, LONG ScanIn
                if (Right < listclip.Right)   listclip.Right  = Right;
                if (Bottom < listclip.Bottom) listclip.Bottom = Bottom;
 
-               expose_buffer(list, Total, Index, i, listclip.Left, listclip.Top, listclip.Right, listclip.Bottom, DisplayID, Bitmap);
+               expose_buffer(list, Limit, Index, i, listclip.Left, listclip.Top, listclip.Right, listclip.Bottom, DisplayID, Bitmap);
             }
 
             return;
@@ -235,7 +229,7 @@ static void expose_buffer(SurfaceList *list, LONG Total, LONG Index, LONG ScanIn
       // Skip past any children of the non-overlapping object.  This ensures that we only look at immediate parents and siblings that are in our way.
 
       j = i + 1;
-      while ((j < Total) and (list[j].Level > list[i].Level)) j++;
+      while ((j < Limit) and (list[j].Level > list[i].Level)) j++;
       i = j - 1;
    }
 
@@ -301,7 +295,7 @@ static void expose_buffer(SurfaceList *list, LONG Total, LONG Index, LONG ScanIn
       clip.Top    = Top;
       clip.Right  = Right;
       clip.Bottom = Bottom;
-      prepare_background(NULL, list, Total, Index, glComposite, &clip, STAGE_COMPOSITE);
+      prepare_background(NULL, list, Limit, Index, glComposite, &clip, STAGE_COMPOSITE);
 
       // Blend the surface's graphics into the composited buffer
       // NOTE: THE FOLLOWING IS NOT OPTIMISED WITH RESPECT TO CLIPPING
@@ -323,13 +317,13 @@ static void expose_buffer(SurfaceList *list, LONG Total, LONG Index, LONG ScanIn
       video_bmp->XOffset = 0;
       video_bmp->YOffset = 0;
 
-      video_bmp->Clip.Left   = Left - list[iscr].Left; // Ensure that the coords are relative to the display bitmap (important for Windows, X11)
-      video_bmp->Clip.Top    = Top - list[iscr].Top;
-      video_bmp->Clip.Right  = Right - list[iscr].Left;
+      video_bmp->Clip.Left   = Left   - list[iscr].Left; // Ensure that the coords are relative to the display bitmap (important for Windows, X11)
+      video_bmp->Clip.Top    = Top    - list[iscr].Top;
+      video_bmp->Clip.Right  = Right  - list[iscr].Left;
       video_bmp->Clip.Bottom = Bottom - list[iscr].Top;
-      if (video_bmp->Clip.Left < 0) video_bmp->Clip.Left = 0;
-      if (video_bmp->Clip.Top  < 0) video_bmp->Clip.Top  = 0;
-      if (video_bmp->Clip.Right  > video_bmp->Width) video_bmp->Clip.Right   = video_bmp->Width;
+      if (video_bmp->Clip.Left   < 0) video_bmp->Clip.Left = 0;
+      if (video_bmp->Clip.Top    < 0) video_bmp->Clip.Top  = 0;
+      if (video_bmp->Clip.Right  > video_bmp->Width)  video_bmp->Clip.Right  = video_bmp->Width;
       if (video_bmp->Clip.Bottom > video_bmp->Height) video_bmp->Clip.Bottom = video_bmp->Height;
 
       gfxUpdateDisplay(display, Bitmap, sx, sy, // Src X/Y (bitmap relative)
@@ -353,7 +347,7 @@ static void expose_buffer(SurfaceList *list, LONG Total, LONG Index, LONG ScanIn
 ** All coordinates are expressed in absolute format.
 */
 
-static void invalidate_overlap(extSurface *Self, SurfaceList *list, LONG Total, LONG OldIndex, LONG Index,
+static void invalidate_overlap(extSurface *Self, const std::vector<SurfaceRecord> &list, LONG Limit, LONG OldIndex, LONG Index,
    LONG Left, LONG Top, LONG Right, LONG Bottom, objBitmap *Bitmap)
 {
    pf::Log log(__FUNCTION__);
@@ -381,7 +375,7 @@ static void invalidate_overlap(extSurface *Self, SurfaceList *list, LONG Total, 
             // because its background has changed.  It will not have to be exposed because our
             // surface is sitting on top of it.
 
-            _redraw_surface(list[i].SurfaceID, list, i, Total, Left, Top, Right, Bottom, NULL);
+            _redraw_surface(list[i].SurfaceID, list, i, Limit, Left, Top, Right, Bottom, NULL);
          }
          else goto skipcontent;
       }
@@ -400,7 +394,7 @@ static void invalidate_overlap(extSurface *Self, SurfaceList *list, LONG Total, 
          if (Bottom < listbottom) listbottom = Bottom;
          if (Right < listright)   listright  = Right;
 
-         _redraw_surface(Self->UID, list, i, Total, listx, listy, listright, listbottom, NULL);
+         _redraw_surface(Self->UID, list, i, Limit, listx, listy, listright, listbottom, NULL);
       }
 
 skipcontent:
@@ -419,23 +413,19 @@ static BYTE check_surface_list(void)
 
    log.traceBranch("Validating the surface list...");
 
-   SurfaceControl *ctl;
-   if ((ctl = gfxAccessList(ARF_WRITE))) {
-      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-      BYTE bad = FALSE;
-      for (LONG i=0; i < ctl->Total; i++) {
-         if ((CheckObjectExists(list[i].SurfaceID) != ERR_Okay)) {
-            log.trace("Surface %d, index %d is dead.", list[i].SurfaceID, i);
-            untrack_layer(list[i].SurfaceID);
-            bad = TRUE;
-            i--; // stay at the same index level
-         }
-      }
+   auto &list = glSurfaces;
 
-      gfxReleaseList(ARF_WRITE);
-      return bad;
+   bool bad = false;
+   for (LONG i=0; i < LONG(list.size()); i++) {
+      if ((CheckObjectExists(list[i].SurfaceID) != ERR_Okay)) {
+         log.trace("Surface %d, index %d is dead.", list[i].SurfaceID, i);
+         untrack_layer(list[i].SurfaceID);
+         bad = true;
+         i--; // stay at the same index level
+      }
    }
-   else return FALSE;
+
+   return bad;
 }
 
 //********************************************************************************************************************
@@ -450,7 +440,7 @@ static void display_resized(OBJECTID DisplayID, LONG X, LONG Y, LONG Width, LONG
          if ((X != surface->X) or (Y != surface->Y)) {
             surface->X = X;
             surface->Y = Y;
-            UpdateSurfaceList(surface);
+            UpdateSurfaceRecord(surface);
          }
 
          if ((surface->Width != Width) or (surface->Height != Height)) {
@@ -472,7 +462,7 @@ static void notify_free_parent(OBJECTPTR Object, ACTIONID ActionID, ERROR Result
    // that results in a clean deallocation of the surface hierarchy.
 
    Self->Flags &= ~RNF_VISIBLE;
-   UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
+   UpdateSurfaceField(Self, &SurfaceRecord::Flags, Self->Flags);
    if (Self->defined(NF::INTEGRAL)) QueueAction(AC_Free, Self->UID); // If the object is a child of something, give the parent object time to do the deallocation itself
    else acFree(Self);
 }
@@ -534,21 +524,16 @@ static void notify_redimension_parent(OBJECTPTR Object, ACTIONID ActionID, ERROR
    DOUBLE parentwidth, parentheight, width, height, x, y;
 
    if (Self->ParentID) {
-      SurfaceControl *ctl;
-      if ((ctl = gfxAccessList(ARF_READ))) {
-         auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-         LONG i;
-         for (i=0; (i < ctl->Total) and (list[i].SurfaceID != Self->ParentID); i++);
-         if (i >= ctl->Total) {
-            gfxReleaseList(ARF_READ);
-            log.warning(ERR_Search);
-            return;
-         }
-         parentwidth  = list[i].Width;
-         parentheight = list[i].Height;
-         gfxReleaseList(ARF_READ);
+      auto &list = glSurfaces;
+
+      LONG i;
+      for (i=0; (i < LONG(list.size())) and (list[i].SurfaceID != Self->ParentID); i++);
+      if (i >= LONG(list.size())) {
+         log.warning(ERR_Search);
+         return;
       }
-      else { log.warning(ERR_AccessMemory); return; }
+      parentwidth  = list[i].Width;
+      parentheight = list[i].Height;
    }
    else {
       DISPLAYINFO *display;
@@ -769,7 +754,7 @@ Disable: Disables a surface object.
 static ERROR SURFACE_Disable(extSurface *Self, APTR Void)
 {
    Self->Flags |= RNF_DISABLED;
-   UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
+   UpdateSurfaceField(Self, &SurfaceRecord::Flags, Self->Flags);
    return ERR_Okay;
 }
 
@@ -782,7 +767,7 @@ Enable: Enables a disabled surface object.
 static ERROR SURFACE_Enable(extSurface *Self, APTR Void)
 {
    Self->Flags &= ~RNF_DISABLED;
-   UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
+   UpdateSurfaceField(Self, &SurfaceRecord::Flags, Self->Flags);
    return ERR_Okay;
 }
 
@@ -935,16 +920,16 @@ static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
    LONG j;
    std::vector<OBJECTID> lostfocus;
    glFocusList.clear();
-   if (auto ctl = gfxAccessList(ARF_READ)) {
-      auto surfacelist = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+
+   {
+      auto &list = glSurfaces;
 
       LONG surface_index;
       OBJECTID surface_id = Self->UID;
-      if ((surface_index = find_own_index(ctl, Self)) IS -1) {
+      if ((surface_index = find_surface_list(Self)) IS -1) {
          // This is not a critical failure as child surfaces can be expected to disappear from the surface list
          // during the free process.
 
-         gfxReleaseList(ARF_READ);
          glLastFocusTime = PreciseTime();
          return ERR_Failed|ERF_Notified;
       }
@@ -954,26 +939,26 @@ static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
 
       // Starting from the end of the list, everything leading towards the target surface will need to lose the focus.
 
-      for (j=ctl->Total-1; j > surface_index; j--) {
-         if (surfacelist[j].Flags & RNF_HAS_FOCUS) {
-            lostfocus.push_back(surfacelist[j].SurfaceID);
-            surfacelist[j].Flags &= ~RNF_HAS_FOCUS;
+      for (j=list.size()-1; j > surface_index; j--) {
+         if (list[j].Flags & RNF_HAS_FOCUS) {
+            lostfocus.push_back(list[j].SurfaceID);
+            list[j].Flags &= ~RNF_HAS_FOCUS;
          }
       }
 
       // The target surface and all its parents will need to gain the focus
 
       for (j=surface_index; j >= 0; j--) {
-         if (surfacelist[j].SurfaceID != surface_id) {
-            if (surfacelist[j].Flags & RNF_HAS_FOCUS) {
-               lostfocus.push_back(surfacelist[j].SurfaceID);
-               surfacelist[j].Flags &= ~RNF_HAS_FOCUS;
+         if (list[j].SurfaceID != surface_id) {
+            if (list[j].Flags & RNF_HAS_FOCUS) {
+               lostfocus.push_back(list[j].SurfaceID);
+               list[j].Flags &= ~RNF_HAS_FOCUS;
             }
          }
          else {
-            surfacelist[j].Flags |= RNF_HAS_FOCUS;
+            list[j].Flags |= RNF_HAS_FOCUS;
             glFocusList.push_back(surface_id);
-            surface_id = surfacelist[j].ParentID;
+            surface_id = list[j].ParentID;
             if (!surface_id) {
                j--;
                break; // Break out of the loop when there are no more parents left
@@ -985,18 +970,12 @@ static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
       // surfaces contained by other windows also lose the focus.
 
       while (j >= 0) {
-         if (surfacelist[j].Flags & RNF_HAS_FOCUS) {
-            lostfocus.push_back(surfacelist[j].SurfaceID);
-            surfacelist[j].Flags &= ~RNF_HAS_FOCUS;
+         if (list[j].Flags & RNF_HAS_FOCUS) {
+            lostfocus.push_back(list[j].SurfaceID);
+            list[j].Flags &= ~RNF_HAS_FOCUS;
          }
          j--;
       }
-
-      gfxReleaseList(ARF_READ);
-   }
-   else {
-      glLastFocusTime = PreciseTime();
-      return log.warning(ERR_AccessMemory);
    }
 
    // Send a Focus action to all parent surface objects in our generated focus list.
@@ -1040,7 +1019,7 @@ static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
    }
    else {
       Self->Flags |= RNF_HAS_FOCUS;
-      UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
+      UpdateSurfaceField(Self, &SurfaceRecord::Flags, Self->Flags);
 
       // Focussing on the display window is important in hosted environments
 
@@ -1145,7 +1124,7 @@ static ERROR SURFACE_Hide(extSurface *Self, APTR Void)
 
    if (!Self->ParentID) {
       Self->Flags &= ~RNF_VISIBLE; // Important to switch off visibliity before Hide(), otherwise a false redraw will occur.
-      UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
+      UpdateSurfaceField(Self, &SurfaceRecord::Flags, Self->Flags);
 
       if (acHide(Self->DisplayID) != ERR_Okay) return ERR_Failed;
    }
@@ -1153,7 +1132,7 @@ static ERROR SURFACE_Hide(extSurface *Self, APTR Void)
       // Mark this surface object as invisible, then invalidate the region it was covering in order to have the background redrawn.
 
       Self->Flags &= ~RNF_VISIBLE;
-      UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
+      UpdateSurfaceField(Self, &SurfaceRecord::Flags, Self->Flags);
 
       if (Self->BitmapOwnerID != Self->UID) {
          gfxRedrawSurface(Self->ParentID, Self->X, Self->Y, Self->Width, Self->Height, IRF_RELATIVE);
@@ -1248,12 +1227,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
    if ((!Self->ParentID) and (gfxGetDisplayType() IS DT_NATIVE)) {
       if (!(Self->Flags & RNF_FULL_SCREEN)) {
          if (FindObject("desktop", ID_SURFACE, 0, &Self->ParentID) != ERR_Okay) {
-            SurfaceControl *ctl;
-            if ((ctl = gfxAccessList(ARF_READ))) {
-               auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-               Self->ParentID = list[0].SurfaceID;
-               gfxReleaseList(ARF_READ);
-            }
+            if (!glSurfaces.empty()) Self->ParentID = glSurfaces[0].SurfaceID;
          }
       }
    }
@@ -1287,11 +1261,8 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
       // If the surface object is transparent, subscribe to the Draw action of the parent object.
 
       if (Self->Flags & RNF_TRANSPARENT) {
-         FUNCTION func;
+         auto func = make_function_stdc(draw_region);
          struct drwAddCallback args = { &func };
-         func.Type = CALL_STDC;
-         func.StdC.Context = Self;
-         func.StdC.Routine = (APTR)&draw_region;
          Action(MT_DrwAddCallback, *parent, &args);
 
          // Turn off flags that should never be combined with transparent surfaces.
@@ -1447,7 +1418,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
       }
 
       if ((Self->Width < 10) or (Self->Height < 6)) {
-         Self->Width = 640;
+         Self->Width  = 640;
          Self->Height = 480;
       }
 
@@ -1643,25 +1614,20 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
       acMoveToFront(Self);
 
-      SurfaceControl *ctl;
-      if ((ctl = gfxAccessList(ARF_READ))) {
-         auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-         LONG index;
-         if ((index = find_own_index(ctl, Self)) != -1) {
-            for (LONG j=index; (j >= 0) and (list[j].SurfaceID != list[index].ParentID); j--) {
-               if (list[j].SurfaceID IS popover_id) {
-                  Self->PopOverID = popover_id;
-                  break;
-               }
+      auto &list = glSurfaces;
+      LONG index;
+      if ((index = find_surface_list(Self)) != -1) {
+         for (LONG j=index; (j >= 0) and (list[j].SurfaceID != list[index].ParentID); j--) {
+            if (list[j].SurfaceID IS popover_id) {
+               Self->PopOverID = popover_id;
+               break;
             }
          }
-
-         gfxReleaseList(ARF_READ);
       }
 
       if (!Self->PopOverID) {
          log.warning("PopOver surface #%d is not a sibling of this surface.", popover_id);
-         UpdateSurfaceField(Self, &SurfaceList::PopOverID, Self->PopOverID);
+         UpdateSurfaceField(Self, &SurfaceRecord::PopOverID, Self->PopOverID);
       }
    }
 
@@ -1669,7 +1635,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
    if (Self->Flags & RNF_STICK_TO_BACK) acMoveToBack(Self);
 
-   // Listen to the DeadTask event if we are a host surface object.  This will allow us to clean up the SurfaceList
+   // Listen to the DeadTask event if we are a host surface object.  This will allow us to clean up the SurfaceRecord
    // when a task crashes.  Listening to the UserLogin event also allows us to switch to the user's preferred display
    // format on login.
 
@@ -1709,7 +1675,7 @@ static ERROR SURFACE_LostFocus(extSurface *Self, APTR Void)
 
    if (Self->Flags & RNF_HAS_FOCUS) {
       Self->Flags &= ~RNF_HAS_FOCUS;
-      UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
+      UpdateSurfaceField(Self, &SurfaceRecord::Flags, Self->Flags);
       return ERR_Okay;
    }
    else return ERR_Okay | ERF_Notified;
@@ -1806,16 +1772,14 @@ static ERROR SURFACE_Move(extSurface *Self, struct acMove *Args)
 
    log.traceBranch("X,Y: %d,%d", xchange, ychange);
 
-   SurfaceControl *ctl;
-
    // Margin/Limit handling
 
    if (!Self->ParentID) {
       move_layer(Self, Self->X + move.DeltaX, Self->Y + move.DeltaY);
    }
-   else if ((ctl = gfxAccessList(ARF_READ))) {
-      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-      if ((i = find_parent_index(ctl, Self)) != -1) {
+   else {
+      auto &list = glSurfaces;
+      if ((i = find_parent_list(list, Self)) != -1) {
          // Horizontal limit handling
 
          if (xchange < 0) {
@@ -1849,18 +1813,14 @@ static ERROR SURFACE_Move(extSurface *Self, struct acMove *Args)
          // Second check: If there isn't any movement, return immediately
 
          if ((!move.DeltaX) and (!move.DeltaY)) {
-            gfxReleaseList(ARF_READ);
             return ERR_Failed|ERF_Notified;
          }
       }
-
-      gfxReleaseList(ARF_WRITE);
 
       // Move the graphics layer
 
       move_layer(Self, Self->X + move.DeltaX, Self->Y + move.DeltaY);
    }
-   else return log.warning(ERR_LockFailed)|ERF_Notified;
 
 /* These lines cause problems for the resizing of offset surface objects.
    if (Self->Dimensions & DMF_X_OFFSET) Self->XOffset += move.DeltaX;
@@ -1890,56 +1850,41 @@ static ERROR SURFACE_MoveToBack(extSurface *Self, APTR Void)
 
    log.branch("%s", GetName(Self));
 
-   SurfaceControl *ctl;
-   if ((ctl = gfxAccessList(ARF_WRITE))) {
-      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+   auto &list = glSurfaces;
 
-      LONG index; // Get our position within the chain
-      if ((index = find_surface_list(list, ctl->Total, Self->UID)) IS -1) {
-         gfxReleaseList(ARF_WRITE);
-         return log.warning(ERR_Search)|ERF_Notified;
-      }
+   LONG index; // Get our position within the chain
+   if ((index = find_surface_list(Self)) IS -1) return log.warning(ERR_Search)|ERF_Notified;
 
-      OBJECTID parent_bitmap;
-      LONG i;
-      if ((i = find_parent_index(ctl, Self)) != -1) parent_bitmap = list[i].BitmapID;
-      else parent_bitmap = 0;
+   OBJECTID parent_bitmap;
+   LONG i;
+   if ((i = find_parent_list(list, Self)) != -1) parent_bitmap = list[i].BitmapID;
+   else parent_bitmap = 0;
 
-      // Find the position in the list that our surface object will be moved to
+   // Find the position in the list that our surface object will be moved to
 
-      LONG pos = index;
-      LONG level = list[index].Level;
-      for (i=index-1; (i >= 0) and (list[i].Level >= level); i--) {
-         if (list[i].Level IS level) {
-            if (Self->BitmapOwnerID IS Self->UID) { // If we own an independent bitmap, we cannot move behind surfaces that are members of the parent region
-               if (list[i].BitmapID IS parent_bitmap) break;
-            }
-            if (list[i].SurfaceID IS Self->PopOverID) break; // Do not move behind surfaces that we must stay in front of
-            if (!(Self->Flags & RNF_STICK_TO_BACK) and (list[i].Flags & RNF_STICK_TO_BACK)) break;
-            pos = i;
+   LONG pos = index;
+   LONG level = list[index].Level;
+   for (i=index-1; (i >= 0) and (list[i].Level >= level); i--) {
+      if (list[i].Level IS level) {
+         if (Self->BitmapOwnerID IS Self->UID) { // If we own an independent bitmap, we cannot move behind surfaces that are members of the parent region
+            if (list[i].BitmapID IS parent_bitmap) break;
          }
+         if (list[i].SurfaceID IS Self->PopOverID) break; // Do not move behind surfaces that we must stay in front of
+         if (!(Self->Flags & RNF_STICK_TO_BACK) and (list[i].Flags & RNF_STICK_TO_BACK)) break;
+         pos = i;
       }
+   }
 
-      if (pos >= index) {  // If the position is unchanged, return immediately
-         gfxReleaseList(ARF_READ);
-         return ERR_Okay|ERF_Notified;
-      }
+   if (pos >= index) return ERR_Okay|ERF_Notified; // If the position is unchanged, return immediately
 
-      move_layer_pos(ctl, index, pos); // Reorder the list so that our surface object is inserted at the new position
+   move_layer_pos(list, index, pos); // Reorder the list so that our surface object is inserted at the new position
 
-      LONG total = ctl->Total;
-      SurfaceList cplist[total];
-      CopyMemory((BYTE *)ctl + ctl->ArrayIndex, cplist, sizeof(cplist[0]) * ctl->Total);
+   if (Self->Flags & RNF_VISIBLE) {
+      // Redraw our background if we are volatile
+      if (check_volatile(list, index)) _redraw_surface(Self->UID, list, pos, list.size(), list[pos].Left, list[pos].Top, list[pos].Right, list[pos].Bottom, NULL);
 
-      gfxReleaseList(ARF_READ);
-
-      if (Self->Flags & RNF_VISIBLE) {
-         // Redraw our background if we are volatile
-         if (check_volatile(cplist, index)) _redraw_surface(Self->UID, cplist, pos, total, cplist[pos].Left, cplist[pos].Top, cplist[pos].Right, cplist[pos].Bottom, NULL);
-
-         // Expose changes to the display
-         _expose_surface(Self->ParentID, cplist, pos, total, Self->X, Self->Y, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
-      }
+      // Expose changes to the display
+      _expose_surface(Self->ParentID, list, pos, list.size(), Self->X, Self->Y, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
    }
 
    refresh_pointer(Self);
@@ -1965,15 +1910,9 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
       return ERR_Okay|ERF_Notified;
    }
 
-   SurfaceControl *ctl;
-   if (!(ctl = gfxAccessList(ARF_WRITE))) {
-      return log.warning(ERR_AccessMemory)|ERF_Notified;
-   }
+   auto &list = glSurfaces;
 
-   auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-
-   if ((currentindex = find_own_index(ctl, Self)) IS -1) {
-      gfxReleaseList(ARF_WRITE);
+   if ((currentindex = find_surface_list(Self)) IS -1) {
       return log.warning(ERR_Search)|ERF_Notified;
    }
 
@@ -2006,7 +1945,6 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
          for (i=index-1; i > 0; i--) {
             if (list[i].Level IS level) {
                if (list[i].SurfaceID != Self->PopOverID) {
-                  gfxReleaseList(ARF_WRITE);
                   acMoveToFront(Self->PopOverID);
                   return ERR_Okay|ERF_Notified;
                }
@@ -2015,7 +1953,6 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
          }
       }
 
-      gfxReleaseList(ARF_WRITE);
       return ERR_Okay|ERF_Notified;
    }
 
@@ -2025,26 +1962,20 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
    level = list[i].Level;
    while (list[i+1].Level > level) i++;
 
-   // Count the number of children that have been assigned to our surface object.
+   // Count the number of children that have been assigned to this surface object.
 
    LONG total;
    for (total=1; list[currentindex+total].Level > list[currentindex].Level; total++) { };
 
-   // Reorder the list so that our surface object is inserted at the new index.
+   // Reorder the list so that this surface object is inserted at the new index.
 
    {
-      SurfaceList tmp[total];
-      CopyMemory(list + currentindex, &tmp, sizeof(SurfaceList) * total); // Copy the source entry into a buffer
-      CopyMemory(list + currentindex + total, list + currentindex, sizeof(SurfaceList) * (i - currentindex - total + 1)); // Shift everything in front of us to the back
-      i = i - total + 1;
-      CopyMemory(&tmp, list + i, sizeof(SurfaceList) * total); // Copy our source entry to its new index
+      auto tmp = std::vector<SurfaceRecord>(list.begin() + currentindex, list.begin() + currentindex + total); // Copy the source entry into a buffer
+      list.erase(list.begin() + currentindex, list.begin() + currentindex + total);
+      list.insert(list.begin() + i, tmp.begin(), tmp.end());
    }
 
-   total = ctl->Total;
-   SurfaceList cplist[total];
-   CopyMemory((BYTE *)ctl + ctl->ArrayIndex, cplist, sizeof(cplist[0]) * ctl->Total);
-
-   gfxReleaseList(ARF_WRITE);
+   auto cplist = list;
 
    if (Self->Flags & RNF_VISIBLE) {
       // A redraw is required for:
@@ -2053,12 +1984,12 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
 
       objBitmap *bitmap;
       if (!AccessObjectID(Self->BufferID, 5000, &bitmap)) {
-         invalidate_overlap(Self, cplist, total, currentindex, i, cplist[i].Left, cplist[i].Top, cplist[i].Right, cplist[i].Bottom, bitmap);
+         invalidate_overlap(Self, cplist, cplist.size(), currentindex, i, cplist[i].Left, cplist[i].Top, cplist[i].Right, cplist[i].Bottom, bitmap);
          ReleaseObject(bitmap);
       }
 
-      if (check_volatile(cplist, i)) _redraw_surface(Self->UID, cplist, i, total, 0, 0, Self->Width, Self->Height, IRF_RELATIVE);
-      _expose_surface(Self->UID, cplist, i, total, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
+      if (check_volatile(cplist, i)) _redraw_surface(Self->UID, cplist, i, cplist.size(), 0, 0, Self->Width, Self->Height, IRF_RELATIVE);
+      _expose_surface(Self->UID, cplist, i, cplist.size(), 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
    }
 
    if (Self->PopOverID) {
@@ -2310,19 +2241,14 @@ static ERROR SURFACE_ResetDimensions(extSurface *Self, struct drwResetDimensions
    if (cx2 > nx2) nx2 = cx2;
    if (cy2 > ny2) ny2 = cy2;
 
-   SurfaceControl *ctl;
-   if ((ctl = gfxAccessList(ARF_READ))) {
-      LONG index;
-      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-      if ((index = find_surface_index(ctl, Self->ParentID ? Self->ParentID : Self->UID)) != -1) {
-         _redraw_surface(Self->ParentID, list, index, ctl->Total, nx, ny, nx2-nx, ny2-ny, IRF_RELATIVE);
-         _expose_surface(Self->ParentID, list, index, ctl->Total, nx, ny, nx2-nx, ny2-ny, 0);
-      }
-
-      gfxReleaseList(ARF_READ);
-      return ERR_Okay;
+   auto &list = glSurfaces;
+   LONG index;
+   if ((index = find_surface_list(Self->ParentID ? Self->ParentID : Self->UID)) != -1) {
+      _redraw_surface(Self->ParentID, list, index, list.size(), nx, ny, nx2-nx, ny2-ny, IRF_RELATIVE);
+      _expose_surface(Self->ParentID, list, index, list.size(), nx, ny, nx2-nx, ny2-ny, 0);
    }
-   else return log.warning(ERR_AccessMemory);
+
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
@@ -2417,39 +2343,34 @@ static ERROR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
       if (!acInit(picture)) {
          // Scan through the surface list and copy each buffer to our picture
 
-         SurfaceControl *ctl;
-         if ((ctl = gfxAccessList(ARF_READ))) {
-            auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
+         auto &list = glSurfaces;
 
-            if ((i = find_own_index(ctl, Self)) != -1) {
-               OBJECTID bitmapid = NULL;
-               for (j=i; (j < ctl->Total) and ((j IS i) or (list[j].Level > list[i].Level)); j++) {
-                  if ((!(list[j].Flags & RNF_VISIBLE)) or (list[j].Flags & RNF_CURSOR)) {
-                     // Skip this surface area and all invisible children
-                     level = list[j].Level;
-                     while (list[j+1].Level > level) j++;
-                     continue;
-                  }
+         if ((i = find_surface_list(Self)) != -1) {
+            OBJECTID bitmapid = 0;
+            for (j=i; (j < LONG(list.size())) and ((j IS i) or (list[j].Level > list[i].Level)); j++) {
+               if ((!(list[j].Flags & RNF_VISIBLE)) or (list[j].Flags & RNF_CURSOR)) {
+                  // Skip this surface area and all invisible children
+                  level = list[j].Level;
+                  while (list[j+1].Level > level) j++;
+                  continue;
+               }
 
-                  // If the bitmaps are different, we have found something new to copy
+               // If the bitmaps are different, we have found something new to copy
 
-                  if (list[j].BitmapID != bitmapid) {
-                     bitmapid = list[j].BitmapID;
+               if (list[j].BitmapID != bitmapid) {
+                  bitmapid = list[j].BitmapID;
 
-                     extBitmap *picbmp;
-                     picture->getPtr(FID_Bitmap, &picbmp);
-                     gfxCopySurface(list[j].SurfaceID, picbmp, NULL, 0, 0, list[j].Width, list[j].Height,
-                        list[j].Left - list[i].Left, list[j].Top - list[i].Top);
-                  }
+                  extBitmap *picbmp;
+                  picture->getPtr(FID_Bitmap, &picbmp);
+                  gfxCopySurface(list[j].SurfaceID, picbmp, NULL, 0, 0, list[j].Width, list[j].Height,
+                     list[j].Left - list[i].Left, list[j].Top - list[i].Top);
                }
             }
+         }
 
-            gfxReleaseList(ARF_READ);
-
-            if (!Action(AC_SaveImage, picture, Args)) { // Save the picture to disk
-               acFree(picture);
-               return ERR_Okay;
-            }
+         if (!Action(AC_SaveImage, picture, Args)) { // Save the picture to disk
+            acFree(picture);
+            return ERR_Okay;
          }
       }
 
@@ -2484,25 +2405,20 @@ static ERROR SURFACE_Scroll(extSurface *Self, struct acScroll *Args)
 
    if (Self->Flags & RNF_SCROLL_CONTENT) {
       if ((Args->DeltaX >= 1) or (Args->DeltaX <= -1) or (Args->DeltaY >= 1) or (Args->DeltaY <= -1)) {
-         SurfaceControl *ctl;
-         if ((ctl = gfxAccessList(ARF_READ))) {
-            OBJECTID surfaces[128];
-            auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-            LONG i;
-            LONG t = 0;
-            if ((i = find_own_index(ctl, Self)) != -1) {
-               // Send a move command to each child surface
-               LONG level = list[i].Level + 1;
-               for (++i; list[i].Level >= level; i++) {
-                  if (list[i].Level IS level) surfaces[t++] = list[i].SurfaceID;
-               }
+         auto &list = glSurfaces;
+
+         std::vector<OBJECTID> surfaces;
+         LONG i;
+         if ((i = find_surface_list(Self)) != -1) {
+            // Send a move command to each child surface
+            LONG level = list[i].Level + 1;
+            for (++i; list[i].Level >= level; i++) {
+               if (list[i].Level IS level) surfaces.push_back(list[i].SurfaceID);
             }
-
-            gfxReleaseList(ARF_READ);
-
-            struct acMove move = { -Args->DeltaX, -Args->DeltaY, -Args->DeltaZ };
-            for (LONG i=0; i < t; i++) QueueAction(AC_Move, surfaces[i], &move);
          }
+
+         struct acMove move = { -Args->DeltaX, -Args->DeltaY, -Args->DeltaZ };
+         for (auto &id : surfaces) QueueAction(AC_Move, id, &move);
       }
    }
 
@@ -2520,24 +2436,18 @@ static ERROR SURFACE_ScrollToPoint(extSurface *Self, struct acScrollToPoint *Arg
    if (!Args) return ERR_NullArgs;
 
    if (Self->Flags & RNF_SCROLL_CONTENT) {
-      SurfaceControl *ctl;
-      if ((ctl = gfxAccessList(ARF_READ))) { // Find our object
-         OBJECTID surfaces[128];
-         LONG i;
-         LONG t = 0;
-         auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-         if ((i = find_own_index(ctl, Self)) != -1) {
-            LONG level = list[i].Level + 1;
-            for (++i; list[i].Level >= level; i++) {
-               if (list[i].Level IS level) surfaces[t++] = list[i].SurfaceID;
-            }
+      auto &list = glSurfaces;
+      std::vector<OBJECTID> surfaces;
+      LONG i;
+      if ((i = find_surface_list(Self)) != -1) {
+         LONG level = list[i].Level + 1;
+         for (++i; list[i].Level >= level; i++) {
+            if (list[i].Level IS level) surfaces.push_back(list[i].SurfaceID);
          }
-
-         gfxReleaseList(ARF_READ);
-
-         struct acMoveToPoint move = { -Args->X, -Args->Y, -Args->Z, Args->Flags };
-         for (i=0; i < t; i++) QueueAction(AC_MoveToPoint, surfaces[i], &move);
       }
+
+      struct acMoveToPoint move = { -Args->X, -Args->Y, -Args->Z, Args->Flags };
+      for (auto &id : surfaces) QueueAction(AC_MoveToPoint, id, &move);
    }
 
    return ERR_Okay;
@@ -2619,7 +2529,7 @@ static ERROR SURFACE_Show(extSurface *Self, APTR Void)
    if (Self->Modal) Self->PrevModalID = gfxSetModalSurface(Self->UID);
 
    if (!notified) {
-      UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags);
+      UpdateSurfaceField(Self, &SurfaceRecord::Flags, Self->Flags);
 
       gfxRedrawSurface(Self->UID, 0, 0, Self->Width, Self->Height, IRF_RELATIVE);
       gfxExposeSurface(Self->UID, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
@@ -2672,8 +2582,6 @@ static void draw_region(extSurface *Self, extSurface *Parent, extBitmap *Bitmap)
       return;
    }
 
-   // Take a copy of the current clipping and offset values
-
    ClipRectangle clip = Bitmap->Clip;
    LONG xoffset = Bitmap->XOffset;
    LONG yoffset = Bitmap->YOffset;
@@ -2692,9 +2600,9 @@ static void draw_region(extSurface *Self, extSurface *Parent, extBitmap *Bitmap)
 
    // Make sure that the clipping values do not extend outside of our area
 
-   if (Bitmap->Clip.Left < 0) Bitmap->Clip.Left = 0;
-   if (Bitmap->Clip.Top < 0)  Bitmap->Clip.Top = 0;
-   if (Bitmap->Clip.Right > Self->Width)   Bitmap->Clip.Right = Self->Width;
+   if (Bitmap->Clip.Left   < 0) Bitmap->Clip.Left = 0;
+   if (Bitmap->Clip.Top    < 0) Bitmap->Clip.Top = 0;
+   if (Bitmap->Clip.Right  > Self->Width)  Bitmap->Clip.Right = Self->Width;
    if (Bitmap->Clip.Bottom > Self->Height) Bitmap->Clip.Bottom = Self->Height;
 
    if ((Bitmap->Clip.Left < Bitmap->Clip.Right) and (Bitmap->Clip.Top < Bitmap->Clip.Bottom)) {
@@ -2726,7 +2634,6 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
       // Process events that support consolidation first.
 
       if (event->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
-         SurfaceControl *ctl;
          DOUBLE xchange, ychange;
          LONG dragindex;
 
@@ -2752,13 +2659,10 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 
                xchange = 0;
                ychange = 0;
-               if ((ctl = gfxAccessList(ARF_READ))) {
-                  auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-                  if ((dragindex = find_surface_index(ctl, Self->UID)) != -1) {
-                     xchange = absx - list[dragindex].Left;
-                     ychange = absy - list[dragindex].Top;
-                  }
-                  gfxReleaseList(ARF_READ);
+               auto &list = glSurfaces;
+               if ((dragindex = find_surface_list(Self)) != -1) {
+                  xchange = absx - list[dragindex].Left;
+                  ychange = absy - list[dragindex].Top;
                }
             }
 
@@ -2775,23 +2679,18 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 
                if (sticky) {
                   Self->Flags |= RNF_STICKY;
-                  UpdateSurfaceField(Self, &SurfaceList::Flags, Self->Flags); // (Required to put back the sticky flag)
+                  UpdateSurfaceField(Self, &SurfaceRecord::Flags, Self->Flags); // (Required to put back the sticky flag)
                }
             }
 
             // The new pointer position is based on the position of the surface that's being dragged.
 
             if (Self->DragStatus IS DRAG_ANCHOR) {
-               if ((ctl = gfxAccessList(ARF_READ))) {
-                  auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-                  if ((dragindex = find_surface_index(ctl, Self->UID)) != -1) {
-                     DOUBLE absx = list[dragindex].Left + glAnchorX;
-                     DOUBLE absy = list[dragindex].Top + glAnchorY;
-                     gfxReleaseList(ARF_READ);
-
-                     gfxSetCursorPos(absx, absy);
-                  }
-                  else gfxReleaseList(ARF_READ);
+               auto &list = glSurfaces;
+               if ((dragindex = find_surface_list(Self)) != -1) {
+                  DOUBLE absx = list[dragindex].Left + glAnchorX;
+                  DOUBLE absy = list[dragindex].Top + glAnchorY;
+                  gfxSetCursorPos(absx, absy);
                }
             }
          }

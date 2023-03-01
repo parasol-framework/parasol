@@ -41,7 +41,7 @@ static TIMER glRepeatTimer = 0;
 
 static ERROR repeat_timer(extPointer *, LARGE, LARGE);
 static void set_pointer_defaults(extPointer *);
-static WORD examine_chain(extPointer *, WORD, SurfaceControl *, WORD);
+static WORD examine_chain(extPointer *, WORD, std::vector<SurfaceRecord> &, WORD);
 static bool get_over_object(extPointer *);
 static void process_ptr_button(extPointer *, struct dcDeviceInput *);
 static void process_ptr_movement(extPointer *, struct dcDeviceInput *);
@@ -741,15 +741,11 @@ Reset: Resets the pointer settings back to the default.
 
 static ERROR PTR_Reset(extPointer *Self, APTR Void)
 {
-   pf::Log log;
-   log.branch();
-
    Self->Speed        = 150;
    Self->Acceleration = 0.50;
    Self->DoubleClick  = 0.30;
    Self->MaxSpeed     = 100;
    Self->WheelSpeed   = DEFAULT_WHEELSPEED;
-
    return ERR_Okay;
 }
 
@@ -1110,103 +1106,91 @@ static void set_pointer_defaults(extPointer *Self)
 static bool get_over_object(extPointer *Self)
 {
    pf::Log log(__FUNCTION__);
-   SurfaceControl *ctl;
 
    if ((Self->SurfaceID) and (CheckObjectExists(Self->SurfaceID) != ERR_Okay)) Self->SurfaceID = 0;
 
-   if (!glSharedControl->SurfacesMID) return FALSE;
+   bool changed = false;
+   // Find the surface that the pointer resides in (usually SystemSurface @ index 0)
 
-   ERROR error = AccessMemoryID(glSharedControl->SurfacesMID, MEM_READ, 20, &ctl);
-   //list = gfxAccessList(ARF_READ|ARF_NO_DELAY, &size);
-
-   BYTE changed = FALSE;
-   if (!error) {
-      // Find the surface that the pointer resides in (usually SystemSurface @ index 0)
-
-      LONG index;
-      auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex);
-      if (!Self->SurfaceID) {
-         Self->SurfaceID = list[0].SurfaceID;
-         index = 0;
-      }
-      else for (index=0; (index < ctl->Total) and (list[index].SurfaceID != Self->SurfaceID); index++);
-
-      LONG listend = ctl->Total;
-      LONG i = examine_chain(Self, index, ctl, listend);
-
-      OBJECTID li_objectid = list[i].SurfaceID;
-      DOUBLE li_left = list[i].Left;
-      DOUBLE li_top  = list[i].Top;
-      LONG cursor_image = list[i].Cursor; // Preferred cursor ID
-      ReleaseMemory(ctl);
-
-      if (Self->OverObjectID != li_objectid) {
-         pf::Log log(__FUNCTION__);
-
-         log.traceBranch("OverObject changing from #%d to #%d.", Self->OverObjectID, li_objectid);
-
-         changed = true;
-
-         InputEvent input = {
-            .Next        = NULL,
-            .Value       = (DOUBLE)Self->OverObjectID,
-            .Timestamp   = PreciseTime(),
-            .RecipientID = Self->OverObjectID, // Recipient is the surface we are leaving
-            .OverID      = li_objectid, // New surface (entering)
-            .AbsX        = Self->X,
-            .AbsY        = Self->Y,
-            .X           = Self->X - li_left,
-            .Y           = Self->Y - li_top,
-            .DeviceID    = Self->UID,
-            .Type        = JET_LEFT_SURFACE,
-            .Flags       = JTYPE_FEEDBACK,
-            .Mask        = JTYPE_FEEDBACK
-         };
-
-         const std::lock_guard<std::recursive_mutex> lock(glInputLock);
-         glInputEvents.push_back(input);
-
-         input.Type        = JET_ENTERED_SURFACE;
-         input.Value       = li_objectid;
-         input.RecipientID = li_objectid; // Recipient is the surface we are entering
-         glInputEvents.push_back(input);
-
-         Self->OverObjectID = li_objectid;
-      }
-
-      Self->OverX = Self->X - li_left;
-      Self->OverY = Self->Y - li_top;
-
-      //drwReleaseList(ARF_READ);
-
-      if (cursor_image) {
-         if (cursor_image != Self->CursorID) gfxSetCursor(NULL, NULL, cursor_image, NULL, NULL);
-      }
-      else if ((Self->CursorID != PTR_DEFAULT) and (!Self->CursorOwnerID)) {
-         // Restore the pointer to the default image if the cursor isn't locked
-         gfxSetCursor(NULL, NULL, PTR_DEFAULT, NULL, NULL);
-      }
+   LONG index;
+   auto &list = glSurfaces;
+   if (!Self->SurfaceID) {
+      Self->SurfaceID = list[0].SurfaceID;
+      index = 0;
    }
-   else log.trace("Process failed to access the Surface List.");
+   else for (index=0; (index < LONG(list.size())) and (list[index].SurfaceID != Self->SurfaceID); index++);
+
+   LONG i = examine_chain(Self, index, list, list.size());
+
+   OBJECTID li_objectid = list[i].SurfaceID;
+   DOUBLE li_left       = list[i].Left;
+   DOUBLE li_top        = list[i].Top;
+   LONG cursor_image    = list[i].Cursor; // Preferred cursor ID
+
+   if (Self->OverObjectID != li_objectid) {
+      pf::Log log(__FUNCTION__);
+
+      log.traceBranch("OverObject changing from #%d to #%d.", Self->OverObjectID, li_objectid);
+
+      changed = true;
+
+      InputEvent input = {
+         .Next        = NULL,
+         .Value       = (DOUBLE)Self->OverObjectID,
+         .Timestamp   = PreciseTime(),
+         .RecipientID = Self->OverObjectID, // Recipient is the surface we are leaving
+         .OverID      = li_objectid, // New surface (entering)
+         .AbsX        = Self->X,
+         .AbsY        = Self->Y,
+         .X           = Self->X - li_left,
+         .Y           = Self->Y - li_top,
+         .DeviceID    = Self->UID,
+         .Type        = JET_LEFT_SURFACE,
+         .Flags       = JTYPE_FEEDBACK,
+         .Mask        = JTYPE_FEEDBACK
+      };
+
+      const std::lock_guard<std::recursive_mutex> lock(glInputLock);
+      glInputEvents.push_back(input);
+
+      input.Type        = JET_ENTERED_SURFACE;
+      input.Value       = li_objectid;
+      input.RecipientID = li_objectid; // Recipient is the surface we are entering
+      glInputEvents.push_back(input);
+
+      Self->OverObjectID = li_objectid;
+   }
+
+   Self->OverX = Self->X - li_left;
+   Self->OverY = Self->Y - li_top;
+
+   //drwReleaseList(ARF_READ);
+
+   if (cursor_image) {
+      if (cursor_image != Self->CursorID) gfxSetCursor(NULL, NULL, cursor_image, NULL, NULL);
+   }
+   else if ((Self->CursorID != PTR_DEFAULT) and (!Self->CursorOwnerID)) {
+      // Restore the pointer to the default image if the cursor isn't locked
+      gfxSetCursor(NULL, NULL, PTR_DEFAULT, NULL, NULL);
+   }
 
    return changed;
 }
 
 //********************************************************************************************************************
 
-static WORD examine_chain(extPointer *Self, WORD Index, SurfaceControl *Ctl, WORD ListEnd)
+static WORD examine_chain(extPointer *Self, WORD Index, std::vector<SurfaceRecord> &List, WORD ListEnd)
 {
    // NB: The reason why we traverse backwards is because we want to catch the front-most objects first.
 
-   auto list = (SurfaceList *)((BYTE *)Ctl + Ctl->ArrayIndex);
-   OBJECTID objectid = list[Index].SurfaceID;
+   OBJECTID objectid = List[Index].SurfaceID;
    DOUBLE x = Self->X;
    DOUBLE y = Self->Y;
    for (auto i=ListEnd-1; i >= 0; i--) {
-      if ((list[i].ParentID IS objectid) and (list[i].Flags & RNF_VISIBLE)) {
-         if ((x >= list[i].Left) and (x < list[i].Right) and (y >= list[i].Top) and (y < list[i].Bottom)) {
-            for (ListEnd=i+1; list[ListEnd].Level > list[i].Level; ListEnd++); // Recalculate the ListEnd (optimisation)
-            return examine_chain(Self, i, Ctl, ListEnd);
+      if ((List[i].ParentID IS objectid) and (List[i].Flags & RNF_VISIBLE)) {
+         if ((x >= List[i].Left) and (x < List[i].Right) and (y >= List[i].Top) and (y < List[i].Bottom)) {
+            for (ListEnd=i+1; List[ListEnd].Level > List[i].Level; ListEnd++); // Recalculate the ListEnd (optimisation)
+            return examine_chain(Self, i, List, ListEnd);
          }
       }
    }

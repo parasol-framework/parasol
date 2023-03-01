@@ -1,18 +1,18 @@
 
-void copy_bkgd(SurfaceList *, LONG, LONG, LONG, WORD, WORD, WORD, WORD, extBitmap *, extBitmap *, WORD, BYTE);
+void copy_bkgd(const std::vector<SurfaceRecord> &, LONG, LONG, LONG, WORD, WORD, WORD, WORD, extBitmap *, extBitmap *, WORD, BYTE);
 
-ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG Total, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags)
+ERROR _expose_surface(OBJECTID SurfaceID, const std::vector<SurfaceRecord> &list, LONG index, LONG Limit, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags)
 {
    pf::Log log("expose_surface");
    extBitmap *bitmap;
    ClipRectangle abs;
    LONG i, j;
-   UBYTE skip;
+   bool skip;
    OBJECTID parent_id;
 
    if ((Width < 1) or (Height < 1)) return ERR_Okay;
    if (!SurfaceID) return log.warning(ERR_NullArgs);
-   if (index >= Total) return log.warning(ERR_OutOfRange);
+   if (index >= Limit) return log.warning(ERR_OutOfRange);
 
    if ((!(list[index].Flags & RNF_VISIBLE)) or ((list[index].Width < 1) or (list[index].Height < 1))) {
       log.trace("Surface %d invisible or too small to draw.", SurfaceID);
@@ -83,14 +83,14 @@ ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG To
 #ifndef _WIN32
    if (!(Flags & EXF_CURSOR_SPLIT)) {
       LONG cursor;
-      for (cursor=index+1; (cursor < Total) and (!(list[cursor].Flags & RNF_CURSOR)); cursor++);
-      if (cursor < Total) {
+      for (cursor=index+1; (cursor < Limit) and (!(list[cursor].Flags & RNF_CURSOR)); cursor++);
+      if (cursor < Limit) {
          if ((list[cursor].SurfaceID) and (list[cursor].Bottom < abs.Bottom) and (list[cursor].Bottom > abs.Top) and
              (list[cursor].Right > abs.Left) and (list[cursor].Left < abs.Right)) {
             pf::Log log("expose_surface");
             log.traceBranch("Splitting cursor.");
-            _expose_surface(SurfaceID, list, index, Total, abs.Left, abs.Top, abs.Right, list[cursor].Bottom, EXF_CURSOR_SPLIT|EXF_ABSOLUTE|Flags);
-            _expose_surface(SurfaceID, list, index, Total, abs.Left, list[cursor].Bottom, abs.Right, abs.Bottom, EXF_CURSOR_SPLIT|EXF_ABSOLUTE|Flags);
+            _expose_surface(SurfaceID, list, index, Limit, abs.Left, abs.Top, abs.Right, list[cursor].Bottom, EXF_CURSOR_SPLIT|EXF_ABSOLUTE|Flags);
+            _expose_surface(SurfaceID, list, index, Limit, abs.Left, list[cursor].Bottom, abs.Right, abs.Bottom, EXF_CURSOR_SPLIT|EXF_ABSOLUTE|Flags);
             return ERR_Okay;
          }
       }
@@ -103,7 +103,7 @@ ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG To
    if (Flags & EXF_CHILDREN) {
       // Change the index to the root bitmap of the exposed object
       index = find_bitmap_owner(list, index);
-      for (i=index; (i < Total-1) and (list[i+1].Level > list[index].Level); i++); // Go all the way to the end of the list
+      for (i=index; (i < Limit-1) and (list[i+1].Level > list[index].Level); i++); // Go all the way to the end of the list
    }
    else i = index;
 
@@ -115,7 +115,7 @@ ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG To
 
       // If this is not a root bitmap object, skip it (i.e. consider it like a region)
 
-      skip = FALSE;
+      skip = false;
       parent_id = list[i].ParentID;
       for (j=i-1; j >= index; j--) {
          if (list[j].SurfaceID IS parent_id) {
@@ -154,7 +154,7 @@ ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG To
 
       ERROR error;
       if (!(error = AccessObjectID(list[i].BitmapID, 2000, &bitmap))) {
-         expose_buffer(list, Total, i, i, childexpose.Left, childexpose.Top, childexpose.Right, childexpose.Bottom, list[index].DisplayID, bitmap);
+         expose_buffer(list, Limit, i, i, childexpose.Left, childexpose.Top, childexpose.Right, childexpose.Bottom, list[index].DisplayID, bitmap);
          ReleaseObject(bitmap);
       }
       else {
@@ -194,13 +194,13 @@ ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG To
       if ((Flags & EXF_REDRAW_VOLATILE_OVERLAP)) { //OR (Flags & EXF_CHILDREN)) {
          // All children in our area have already been redrawn or do not need redrawing, so skip past them.
 
-         for (i=index+1; (i < Total) and (list[i].Level > list[index].Level); i++);
+         for (i=index+1; (i < Limit) and (list[i].Level > list[index].Level); i++);
          if (list[i-1].Flags & RNF_CURSOR) i--; // Never skip past the cursor
       }
       else {
          i = index;
-         if (i < Total) i = i + 1;
-         while ((i < Total) and (list[i].BitmapID IS list[index].BitmapID)) i++;
+         if (i < Limit) i = i + 1;
+         while ((i < Limit) and (list[i].BitmapID IS list[index].BitmapID)) i++;
       }
 
       pf::Log log(__FUNCTION__);
@@ -210,12 +210,12 @@ ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG To
 
       // Redraw and expose volatile overlaps
 
-      for (; (i < Total) and (list[i].Level > 1); i++) {
+      for (; (i < Limit) and (list[i].Level > 1); i++) {
          if (list[i].Level < level) level = list[i].Level; // Drop the comparison level down so that we only observe objects in our general drawing space
 
          if (!(list[i].Flags & RNF_VISIBLE)) {
             j = list[i].Level;
-            while ((i+1 < Total) and (list[i+1].Level > j)) i++;
+            while ((i+1 < Limit) and (list[i+1].Level > j)) i++;
             continue;
          }
 
@@ -226,10 +226,10 @@ ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG To
                 (list[i].Left < abs.Right) and (list[i].Top < abs.Bottom)) {
 
                if (!(list[i].Flags & RNF_COMPOSITE)) { // Composites never require redrawing because they are not completely volatile, but we will expose them
-                  _redraw_surface(list[i].SurfaceID, list, i, Total, abs.Left, abs.Top, abs.Right, abs.Bottom, IRF_IGNORE_CHILDREN); // Redraw the volatile surface, ignore children
+                  _redraw_surface(list[i].SurfaceID, list, i, Limit, abs.Left, abs.Top, abs.Right, abs.Bottom, IRF_IGNORE_CHILDREN); // Redraw the volatile surface, ignore children
                }
 
-               _expose_surface(list[i].SurfaceID, list, i, Total, abs.Left, abs.Top, abs.Right, abs.Bottom, EXF_ABSOLUTE); // Redraw the surface, ignore children
+               _expose_surface(list[i].SurfaceID, list, i, Limit, abs.Left, abs.Top, abs.Right, abs.Bottom, EXF_ABSOLUTE); // Redraw the surface, ignore children
 
                //while (list[i].BitmapID IS list[i+1].BitmapID) i++; This only works if the surfaces being skipped are completely intersecting one another.
             }
@@ -240,7 +240,7 @@ ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG To
       // Look for a software cursor at the end of the surfacelist and redraw it.  (We have to redraw the cursor as
       // expose_buffer() ignores it for optimisation purposes.)
 
-      LONG i = Total - 1;
+      LONG i = Limit - 1;
       if ((list[i].Flags & RNF_CURSOR) and (list[i].SurfaceID != SurfaceID)) {
          if ((list[i].Right > abs.Left) and (list[i].Bottom > abs.Top) and
              (list[i].Left < abs.Right) and (list[i].Top < abs.Bottom)) {
@@ -249,10 +249,10 @@ ERROR _expose_surface(OBJECTID SurfaceID, SurfaceList *list, LONG index, LONG To
             log.traceBranch("Redrawing/Exposing cursor.");
 
             if (!(list[i].Flags & RNF_COMPOSITE)) { // Composites never require redrawing because they are not completely volatile
-               _redraw_surface(list[i].SurfaceID, list, i, Total, abs.Left, abs.Top, abs.Right, abs.Bottom, NULL);
+               _redraw_surface(list[i].SurfaceID, list, i, Limit, abs.Left, abs.Top, abs.Right, abs.Bottom, NULL);
             }
 
-            _expose_surface(list[i].SurfaceID, list, i, Total, abs.Left, abs.Top, abs.Right, abs.Bottom, EXF_ABSOLUTE);
+            _expose_surface(list[i].SurfaceID, list, i, Limit, abs.Left, abs.Top, abs.Right, abs.Bottom, EXF_ABSOLUTE);
          }
       }
    }
@@ -332,7 +332,7 @@ ERROR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
          auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
 
          if ((action->ActionID IS MT_DrwInvalidateRegion) and (action->ObjectID IS Self->UID)) {
-            if (action->SendArgs IS FALSE) {
+            if (!action->SendArgs) {
                ReleaseMemoryID(msgqueue);
                return ERR_Okay|ERF_Notified;
             }
@@ -583,7 +583,7 @@ void move_layer(extSurface *Self, LONG X, LONG Y)
          if (!acMoveToPoint(display, X - left_margin, Y - top_margin, 0, MTF_X|MTF_Y)) {
             Self->X = X;
             Self->Y = Y;
-            UpdateSurfaceList(Self);
+            UpdateSurfaceRecord(Self);
          }
       }
       else log.warning(ERR_AccessObject);
@@ -596,70 +596,52 @@ void move_layer(extSurface *Self, LONG X, LONG Y)
    if (!(Self->Flags & RNF_VISIBLE)) {
       Self->X = X;
       Self->Y = Y;
-      UpdateSurfaceList(Self);
+      UpdateSurfaceRecord(Self);
       return;
    }
-
-   SurfaceControl *ctl;
-   if (!(ctl = gfxAccessList(ARF_READ))) return;
-
-   LONG total = ctl->Total;
-   SurfaceList list[total];
-   CopyMemory((BYTE *)ctl + ctl->ArrayIndex, list, sizeof(list[0]) * ctl->Total);
 
    LONG vindex, index;
-   if ((index = find_own_index(ctl, Self)) IS -1) {
-      gfxReleaseList(ARF_READ);
-      return;
-   }
+   if ((index = find_surface_list(Self)) IS -1) return;
 
-   gfxReleaseList(ARF_READ);
-
-   ClipRectangle old;
-   old.Left   = list[index].Left;
-   old.Top    = list[index].Top;
-   old.Right  = list[index].Right;
-   old.Bottom = list[index].Bottom;
+   ClipRectangle old(glSurfaces[index].Left, glSurfaces[index].Top, glSurfaces[index].Right, glSurfaces[index].Bottom);
 
    LONG destx = old.Left + X - Self->X;
    LONG desty = old.Top  + Y - Self->Y;
 
-   LONG parent_index = find_parent_list(list, total, Self);
+   LONG parent_index = find_parent_list(glSurfaces, Self);
 
    // Since we do not own our graphics buffer, we need to shift the content in the buffer first, then send an
    // expose message to have the changes displayed on screen.
    //
    // This process is made more complex if there are siblings above and intersecting our surface.
 
-   BYTE volatilegfx = check_volatile(list, index);
-
-   UBYTE redraw;
+   auto volatilegfx = check_volatile(glSurfaces, index);
 
    log.traceBranch("MoveLayer: Using simple expose technique [%s]", (volatilegfx ? "Volatile" : "Not Volatile"));
 
    Self->X = X;
    Self->Y = Y;
-   list[index].X = X;
-   list[index].Y = Y;
-   update_surface_copy(Self, list);
 
+   update_surface_copy(Self);
+
+   bool redraw;
    if (Self->Flags & RNF_TRANSPARENT) { // Transparent surfaces are treated as volatile if they contain graphics
-      if (Self->CallbackCount > 0) redraw = TRUE;
-      else redraw = FALSE;
+      if (Self->CallbackCount > 0) redraw = true;
+      else redraw = false;
    }
-   else if ((volatilegfx) and (!(Self->Flags & RNF_COMPOSITE))) redraw = TRUE;
-   else if (list[index].BitmapID IS list[parent_index].BitmapID) redraw = TRUE;
-   else redraw = FALSE;
+   else if ((volatilegfx) and (!(Self->Flags & RNF_COMPOSITE))) redraw = true;
+   else if (glSurfaces[index].BitmapID IS glSurfaces[parent_index].BitmapID) redraw = true;
+   else redraw = false;
 
-   if (redraw) _redraw_surface(Self->UID, list, index, total, destx, desty, destx+Self->Width, desty+Self->Height, NULL);
-   _expose_surface(Self->UID, list, index, total, 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
+   if (redraw) _redraw_surface(Self->UID, glSurfaces, index, glSurfaces.size(), destx, desty, destx+Self->Width, desty+Self->Height, NULL);
+   _expose_surface(Self->UID, glSurfaces, index, glSurfaces.size(), 0, 0, Self->Width, Self->Height, EXF_CHILDREN|EXF_REDRAW_VOLATILE_OVERLAP);
 
    // Expose underlying graphics resulting from the movement
 
-   for (vindex=index+1; list[vindex].Level > list[index].Level; vindex++);
+   for (vindex=index+1; glSurfaces[vindex].Level > glSurfaces[index].Level; vindex++);
    tlVolatileIndex = vindex;
-   redraw_nonintersect(Self->ParentID, list, parent_index, total, (ClipRectangle *)(&list[index].Left), &old,
-      (list[index].BitmapID IS list[parent_index].BitmapID) ? IRF_SINGLE_BITMAP : -1,
+   redraw_nonintersect(Self->ParentID, glSurfaces, parent_index, (ClipRectangle *)(&glSurfaces[index].Left), &old,
+      (glSurfaces[index].BitmapID IS glSurfaces[parent_index].BitmapID) ? IRF_SINGLE_BITMAP : -1,
       EXF_CHILDREN|EXF_REDRAW_VOLATILE);
    tlVolatileIndex = 0;
 
@@ -676,7 +658,7 @@ void move_layer(extSurface *Self, LONG X, LONG Y)
 ** Stage:      Either STAGE_PRECOPY or STAGE_AFTERCOPY.
 */
 
-void prepare_background(extSurface *Self, SurfaceList *list, LONG Total, LONG Index, extBitmap *DestBitmap, ClipRectangle *clip, BYTE Stage)
+void prepare_background(extSurface *Self, const std::vector<SurfaceRecord> &list, LONG Limit, LONG Index, extBitmap *DestBitmap, ClipRectangle *clip, BYTE Stage)
 {
    pf::Log log("prepare_bkgd");
 
@@ -691,7 +673,7 @@ void prepare_background(extSurface *Self, SurfaceList *list, LONG Total, LONG In
 
    LONG i, j;
    if ((Self) and (list[Index].SurfaceID != Self->RootID)) {
-      for (j=0; j < Total; j++) {
+      for (j=0; j < Limit; j++) {
          if (list[j].SurfaceID IS Self->RootID) {
             // Root layers are only considered when they are volatile (otherwise we want the current surface
             // object's own opacity settings to take precedence).  This ensures that objects like translucent
@@ -699,7 +681,7 @@ void prepare_background(extSurface *Self, SurfaceList *list, LONG Total, LONG In
             //
             // If a custom root layer has been specified, then we are forced into using it as the end index.
 
-            if (Self->InheritedRoot IS FALSE) end = j; // A custom root layer has been specified by the user
+            if (!Self->InheritedRoot) end = j; // A custom root layer has been specified by the user
             else if (list[j].Flags & RNF_VOLATILE) end = j; // The root layer is volatile and must be used
             break;
          }
@@ -711,7 +693,7 @@ void prepare_background(extSurface *Self, SurfaceList *list, LONG Total, LONG In
    // Find the parent that owns this surface (we will use this as the starting point for our copy operation).
    // Everything that gets in the way between the parent and the location of our surface is what will be copied across.
 
-   if (!list[end].ParentID) { LOGRETURN(); return; }
+   if (!list[end].ParentID) return;
    LONG parentindex = end;
    while ((parentindex > 0) and (list[parentindex].SurfaceID != list[end].ParentID)) parentindex--;
 
@@ -732,12 +714,7 @@ void prepare_background(extSurface *Self, SurfaceList *list, LONG Total, LONG In
    for (i=parentindex; i < end; i++) {
       if (list[i].Flags & (RNF_TRANSPARENT|RNF_CURSOR)) continue; // Ignore regions
 
-      ClipRectangle expose = {
-         .Left   = clip->Left, // Take a copy of the expose coordinates
-         .Top    = clip->Top,
-         .Right  = clip->Right,
-         .Bottom = clip->Bottom
-      };
+      ClipRectangle expose(clip->Left, clip->Top, clip->Right, clip->Bottom);
 
       // Check the visibility of this layer and its parents
 
@@ -750,9 +727,9 @@ void prepare_background(extSurface *Self, SurfaceList *list, LONG Total, LONG In
       }
       else opaque = 255;
 
-      BYTE pervasive;
-      if ((list[Index].Flags & RNF_PERVASIVE_COPY) and (Stage IS STAGE_AFTERCOPY)) pervasive = TRUE;
-      else pervasive = FALSE;
+      bool pervasive;
+      if ((list[Index].Flags & RNF_PERVASIVE_COPY) and (Stage IS STAGE_AFTERCOPY)) pervasive = true;
+      else pervasive = false;
 
       extBitmap *bitmap;
       ERROR error;
@@ -771,7 +748,7 @@ void prepare_background(extSurface *Self, SurfaceList *list, LONG Total, LONG In
 ** Coordinates are absolute.
 */
 
-void copy_bkgd(SurfaceList *list, LONG Index, LONG End, LONG Master, WORD Left, WORD Top, WORD Right, WORD Bottom,
+void copy_bkgd(const std::vector<SurfaceRecord> &list, LONG Index, LONG End, LONG Master, WORD Left, WORD Top, WORD Right, WORD Bottom,
    extBitmap *DestBitmap, extBitmap *SrcBitmap, WORD Opacity, BYTE Pervasive)
 {
    pf::Log log(__FUNCTION__);
@@ -784,12 +761,7 @@ void copy_bkgd(SurfaceList *list, LONG Index, LONG End, LONG Master, WORD Left, 
       else if (list[i].Flags & RNF_TRANSPARENT) continue; // Invisibles may contain important regions we have to block
       else if ((Pervasive) and (list[i].Level > list[Index].Level)); // If the copy is pervasive then all children must be ignored (so that we can copy translucent graphics over them)
       else {
-         ClipRectangle listclip = {
-            .Left   = list[i].Left,
-            .Top    = list[i].Top,
-            .Right  = list[i].Right,
-            .Bottom = list[i].Bottom
-         };
+         ClipRectangle listclip(list[i].Left, list[i].Top, list[i].Right, list[i].Bottom);
 
          if ((listclip.Left < Right) and (listclip.Top < Bottom) and (listclip.Right > Left) and (listclip.Bottom > Top)) {
             if (listclip.Left <= Left) listclip.Left = Left;
@@ -818,19 +790,14 @@ void copy_bkgd(SurfaceList *list, LONG Index, LONG End, LONG Master, WORD Left, 
    // Check if the exposed dimensions are outside of our boundary and/or our parent(s) boundaries.  If so then we must
    // restrict the exposed dimensions.
 
-   ClipRectangle expose = {
-      .Left   = Left,
-      .Top    = Top,
-      .Right  = Right,
-      .Bottom = Bottom
-   };
-   if (restrict_region_to_parents(list, Index, &expose, FALSE) IS -1) return;
+   ClipRectangle expose(Left, Top, Right, Bottom);
+   if (restrict_region_to_parents(list, Index, &expose, false) IS -1) return;
 
    log.traceBranch("[%d] Pos: %dx%d,%dx%d Bitmap: %d, Index: %d/%d", list[Index].SurfaceID, expose.Left, expose.Top, expose.Right - expose.Left, Bottom - expose.Top, list[Index].BitmapID, Index, End);
 
    // The region is not obscured, so perform the redraw
 
-   LONG owner = find_bitmap_owner(list, Index);
+   auto owner = find_bitmap_owner(list, Index);
 
    SrcBitmap->XOffset = 0;
    SrcBitmap->YOffset = 0;

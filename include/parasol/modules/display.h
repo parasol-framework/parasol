@@ -65,18 +65,10 @@ class objSurface;
 #define IRF_RELATIVE 0x00000008
 #define IRF_FORCE_DRAW 0x00000010
 
-// AccessSurfaceList() flags
-
-#define ARF_READ 0x00000001
-#define ARF_WRITE 0x00000002
-#define ARF_UPDATE 0x00000004
-#define ARF_NO_DELAY 0x00000008
-
 // CopySurface() flags
 
-#define BDF_SYNC 0x00000001
-#define BDF_REDRAW 0x00000002
-#define BDF_DITHER 0x00000004
+#define BDF_REDRAW 0x00000001
+#define BDF_DITHER 0x00000002
 
 #define DSF_NO_DRAW 0x00000001
 #define DSF_NO_EXPOSE 0x00000002
@@ -265,14 +257,6 @@ class objSurface;
 #define CEF_DELETE 0x00000001
 #define CEF_EXTEND 0x00000002
 
-struct SurfaceControl {
-   LONG ListIndex;    // Byte offset of the ordered list
-   LONG ArrayIndex;   // Byte offset of the list array
-   LONG EntrySize;    // Byte size of each entry in the array
-   LONG Total;        // Total number of entries currently in the list array
-   LONG ArraySize;    // Max limit of entries in the list array
-};
-
 #define VER_SURFACEINFO 2
 
 typedef struct SurfaceInfoV2 {
@@ -293,7 +277,7 @@ typedef struct SurfaceInfoV2 {
    LONG     LineWidth;   // Line width of the bitmap, in bytes
 } SURFACEINFO;
 
-struct SurfaceList {
+struct SurfaceRecord {
    APTR     Data;        // For drwCopySurface()
    OBJECTID ParentID;    // Object that owns the surface area
    OBJECTID SurfaceID;   // ID of the surface area
@@ -1084,7 +1068,6 @@ class objSurface : public BaseClass {
 
 extern struct DisplayBase *DisplayBase;
 struct DisplayBase {
-   struct SurfaceControl * (*_AccessList)(LONG Flags);
    objPointer * (*_AccessPointer)(void);
    ERROR (*_CheckIfChild)(OBJECTID Parent, OBJECTID Child);
    ERROR (*_CopyArea)(objBitmap * Bitmap, objBitmap * Dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
@@ -1112,7 +1095,6 @@ struct DisplayBase {
    ERROR (*_LockCursor)(OBJECTID Surface);
    ULONG (*_ReadPixel)(objBitmap * Bitmap, LONG X, LONG Y);
    void (*_ReadRGBPixel)(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 ** RGB);
-   void (*_ReleaseList)(LONG Flags);
    ERROR (*_Resample)(objBitmap * Bitmap, struct ColourFormat * ColourFormat);
    ERROR (*_RestoreCursor)(LONG Cursor, OBJECTID Owner);
    DOUBLE (*_ScaleToDPI)(DOUBLE Value);
@@ -1133,7 +1115,6 @@ struct DisplayBase {
 };
 
 #ifndef PRV_DISPLAY_MODULE
-inline struct SurfaceControl * gfxAccessList(LONG Flags) { return DisplayBase->_AccessList(Flags); }
 inline objPointer * gfxAccessPointer(void) { return DisplayBase->_AccessPointer(); }
 inline ERROR gfxCheckIfChild(OBJECTID Parent, OBJECTID Child) { return DisplayBase->_CheckIfChild(Parent,Child); }
 inline ERROR gfxCopyArea(objBitmap * Bitmap, objBitmap * Dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopyArea(Bitmap,Dest,Flags,X,Y,Width,Height,XDest,YDest); }
@@ -1161,7 +1142,6 @@ inline ERROR gfxLockBitmap(OBJECTID Surface, objBitmap ** Bitmap, LONG * Info) {
 inline ERROR gfxLockCursor(OBJECTID Surface) { return DisplayBase->_LockCursor(Surface); }
 inline ULONG gfxReadPixel(objBitmap * Bitmap, LONG X, LONG Y) { return DisplayBase->_ReadPixel(Bitmap,X,Y); }
 inline void gfxReadRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 ** RGB) { return DisplayBase->_ReadRGBPixel(Bitmap,X,Y,RGB); }
-inline void gfxReleaseList(LONG Flags) { return DisplayBase->_ReleaseList(Flags); }
 inline ERROR gfxResample(objBitmap * Bitmap, struct ColourFormat * ColourFormat) { return DisplayBase->_Resample(Bitmap,ColourFormat); }
 inline ERROR gfxRestoreCursor(LONG Cursor, OBJECTID Owner) { return DisplayBase->_RestoreCursor(Cursor,Owner); }
 inline DOUBLE gfxScaleToDPI(DOUBLE Value) { return DisplayBase->_ScaleToDPI(Value); }

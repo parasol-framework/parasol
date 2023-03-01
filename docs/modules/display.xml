@@ -38,7 +38,7 @@
       <param type="OBJECTID" name="Child">The child surface to check.</param>
     </input>
     <description>
-<p>This function checks if a surface identified by the Child value is the child of the surface identified by the Parent value.  ERR_True is returned if the surface is confirmed as being a child of the parent, or if the Child and Parent values are equal.  All other return codes indicate false or failure.</p>
+<p>This function checks if a surface identified by the Child value is the child of the surface identified by the Parent value.  <code>ERR_True</code> is returned if the surface is confirmed as being a child of the parent, or if the Child and Parent values are equal.  All other return codes indicate false or failure.</p>
     </description>
     <result type="ERROR">
       <error code="True">Operation successful.</error>
@@ -119,8 +119,7 @@
       <param type="LONG" name="YDest">The vertical target coordinate.</param>
     </input>
     <description>
-<p>This function will copy the graphics data from any surface object into a <class name="Bitmap">Bitmap</class> of your choosing.  This is the fastest and most convenient way to get graphics information out of any surface.  As surfaces are buffered, it is guaranteed that the result will not be obscured by any overlapping surfaces that are on the display.</p>
-<p>In the event that the owner of the surface is drawing to the graphics buffer at the time that you call this function, the results could be out of sync.  If this could be a problem, set the BDF_SYNC option in the Flags parameter.  Keep in mind that syncing has the negative side effect of having to wait for the other task to complete its draw process, which can potentially result in time lags.</p>
+<p>This function will copy the graphics data from any surface object to a target <class name="Bitmap">Bitmap</class>.  This is the fastest and most convenient way to get graphics information out of any surface.  As surfaces are buffered, it is guaranteed that the result will not be obscured by any overlapping surfaces that are on the display.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -191,7 +190,7 @@
       <param type="LONG" name="Flags" lookup="EXF">Optional flags - EXF_CHILDREN will expose all intersecting child regions.</param>
     </input>
     <description>
-<p>This expose routine will expose all content within a defined surface area, copying it to the display.  This will include all child surfaces that intersect with the region being exposed if you set the EXF_CHILDREN flag.</p>
+<p>This expose routine will expose all content within a defined surface area, copying it to the display.  This will include all child surfaces that intersect with the region being exposed if you set the <code>EXF_CHILDREN</code> flag.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -882,13 +881,6 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="VIDEO_BLIT">Video blitting is supported for this display.</const>
     </constants>
 
-    <constants lookup="ARF" comment="AccessSurfaceList() flags">
-      <const name="NO_DELAY">Do not delay when waiting for access</const>
-      <const name="READ">Read only access required</const>
-      <const name="UPDATE">Update a single entry (limited write access)</const>
-      <const name="WRITE">Full write access required</const>
-    </constants>
-
     <constants lookup="BAF" comment="Instructions for basic graphics operations.">
       <const name="BLEND">Enable alpha blending to the destination if the source supports an alpha channel.</const>
       <const name="COPY">Special CopyArea() option that avoids blending when the destination pixel is empty.</const>
@@ -900,7 +892,6 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <constants lookup="BDF" comment="CopySurface() flags">
       <const name="DITHER">Allow the use of dithering to improve image quality at a cost of speed.</const>
       <const name="REDRAW">Redraw the surface before performing the copy operation.</const>
-      <const name="SYNC">Force synchronsiation so that changes to the source image do not occur mid-copy.</const>
     </constants>
 
     <constants lookup="BMF" comment="Bitmap flags">
@@ -1184,14 +1175,6 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <field name="AlphaPos" type="UBYTE"></field>
     </struct>
 
-    <struct name="SurfaceControl" comment="Internal structure returned by AccessList()">
-      <field name="ListIndex" type="LONG">Byte offset of the ordered list</field>
-      <field name="ArrayIndex" type="LONG">Byte offset of the list array</field>
-      <field name="EntrySize" type="LONG">Byte size of each entry in the array</field>
-      <field name="Total" type="LONG">Total number of entries currently in the list array</field>
-      <field name="ArraySize" type="LONG">Max limit of entries in the list array</field>
-    </struct>
-
     <struct name="SurfaceCoords">
       <field name="X" type="LONG">Horizontal coordinate</field>
       <field name="Y" type="LONG">Vertical coordinate</field>
@@ -1219,7 +1202,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <field name="LineWidth" type="LONG">Line width of the bitmap, in bytes</field>
     </struct>
 
-    <struct name="SurfaceList">
+    <struct name="SurfaceRecord">
       <field name="Data" type="APTR">For drwCopySurface()</field>
       <field name="ParentID" type="OBJECTID">Object that owns the surface area</field>
       <field name="SurfaceID" type="OBJECTID">ID of the surface area</field>

@@ -223,12 +223,8 @@ UBYTE *glDemultiply = NULL;
 std::vector<OBJECTID> glFocusList;
 std::mutex glFocusLock;
 
-THREADVAR APTR glSurfaceMutex = NULL;
 THREADVAR WORD tlNoDrawing = 0, tlNoExpose = 0, tlVolatileIndex = 0;
-THREADVAR UBYTE tlListCount = 0; // For drwAccesslist()
 THREADVAR OBJECTID tlFreeExpose = 0;
-THREADVAR SurfaceControl *tlSurfaceList = NULL;
-THREADVAR LONG glRecentSurfaceIndex = 0;
 
 //********************************************************************************************************************
 // Alpha blending data.
@@ -783,12 +779,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       return log.warning(ERR_Failed);
    }
 
-   // The SurfaceList mutex controls any attempt to update the glSharedControl->SurfacesMID field.
-
-   if (AllocSharedMutex("SurfaceList", &glSurfaceMutex)) {
-      return log.warning(ERR_AllocMutex);
-   }
-
    #ifdef _GLES_
       pthread_mutexattr_t attr;
       pthread_mutexattr_init(&attr);
@@ -976,32 +966,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       log.warning("Failed to create Surface class.");
       return ERR_AddClass;
    }
-
-   // Allocate the SurfaceList memory block and its associated mutex.  Note that MEM_TMP_LOCK is used as a safety
-   // measure to prevent any task from being put to sleep when it has a SurfaceControl lock (due to the potential for
-   // deadlocks).
-
-   if (!LockSharedMutex(glSurfaceMutex, 5000)) {
-      if (!glSharedControl->SurfacesMID) {
-         SurfaceControl *ctl;
-         const LONG listsize = 200;
-         if (!(error = AllocMemory(sizeof(SurfaceControl) + (listsize * sizeof(UWORD)) + (listsize * sizeof(SurfaceList)),
-               MEM_UNTRACKED|MEM_PUBLIC|MEM_NO_CLEAR|MEM_TMP_LOCK, &ctl, &glSharedControl->SurfacesMID))) {
-            ctl->ListIndex  = sizeof(SurfaceControl);
-            ctl->ArrayIndex = sizeof(SurfaceControl) + (listsize * sizeof(UWORD));
-            ctl->EntrySize  = sizeof(SurfaceList);
-            ctl->Total      = 0;
-            ctl->ArraySize  = listsize;
-            ReleaseMemory(ctl);
-         }
-         else {
-            UnlockSharedMutex(glSurfaceMutex);
-            return log.warning(ERR_AllocMemory);
-         }
-      }
-      UnlockSharedMutex(glSurfaceMutex);
-   }
-   else return log.warning(ERR_AccessMemory);
 
    // Initialise 64K alpha blending table, for cutting down on multiplications.  This memory block is shared, so one
    // table serves all processes.

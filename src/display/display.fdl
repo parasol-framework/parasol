@@ -49,14 +49,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "RELATIVE: Coordinate arguments are expressed in relative format.  Right and Bottom reflect Width and Height respectively.",
     "FORCE_DRAW: Forces redrawing to the surface buffer (overrides visibility checks).")
 
-  flags("ARF", { comment="AccessSurfaceList() flags" },
-    "READ: Read only access required",
-    "WRITE: Full write access required",
-    "UPDATE: Update a single entry (limited write access)",
-    "NO_DELAY: Do not delay when waiting for access")
-
   flags("BDF", { comment="CopySurface() flags" },
-    "SYNC: Force synchronsiation so that changes to the source image do not occur mid-copy.",
     "REDRAW: Redraw the surface before performing the copy operation.",
     "DITHER: Allow the use of dithering to improve image quality at a cost of speed.")
 
@@ -231,16 +224,6 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     'DELETE: Requests that the original file source is deleted if a successful paste operation takes place.',
     'EXTEND: Instead of replacing existing clipboard data, add the new data to the group.')
 
-  struct("SurfaceControl", { comment="Internal structure returned by AccessList()"}, [[
-    int ListIndex   # Byte offset of the ordered list
-    int ArrayIndex  # Byte offset of the list array
-    int EntrySize   # Byte size of each entry in the array
-    int Total       # Total number of entries currently in the list array
-    int ArraySize   # Max limit of entries in the list array
-    # Followed by a background-to-foreground list of indexes into the list array (UWORD)
-    # Followed by the list array itself
-  ]])
-
   struct("SurfaceInfo", { version=2, type="surfaceinfo" }, [[
     ptr Data            # Bitmap data memory ID
     oid ParentID        # Object that contains the surface area
@@ -259,7 +242,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     int LineWidth       # Line width of the bitmap, in bytes
   ]])
 
-  struct("SurfaceList", { }, [[
+  struct("SurfaceRecord", { }, [[
     ptr Data          # For drwCopySurface()
     oid ParentID      # Object that owns the surface area
     oid SurfaceID     # ID of the surface area
@@ -633,7 +616,6 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
   ]])
 
   functionNames("gfx",
-    "AccessList",
     "AccessPointer",
     "CheckIfChild",
     "CopyArea",
@@ -661,7 +643,6 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "LockCursor",
     "ReadPixel",
     "ReadRGBPixel",
-    "ReleaseList",
     "Resample",
     "RestoreCursor",
     "ScaleToDPI",
