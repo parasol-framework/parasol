@@ -134,9 +134,24 @@ struct SurfaceRecord {
    BYTE     BitsPerPixel;  // [applies to the bitmap owner]
    BYTE     Cursor;        // Preferred cursor image ID
    UBYTE    Opacity;       // Current opacity setting 0 - 255
+
+   inline void setArea(LONG pLeft, LONG pTop, LONG pRight, LONG pBottom) {
+      Left   = pLeft;
+      Top    = pTop;
+      Right  = pRight;
+      Bottom = pBottom;
+   }
+
+   inline ClipRectangle area() const {
+      return std::move(ClipRectangle(Left, Top, Right, Bottom));
+   }
+
+   inline bool hasFocus() const { return Flags & RNF_HAS_FOCUS; }
+   inline void dropFocus() { Flags &= RNF_HAS_FOCUS; }
 };
 
 typedef std::vector<SurfaceRecord> SURFACELIST;
+extern std::recursive_mutex glSurfaceLock;
 
 class WindowHook {
 public:
@@ -194,9 +209,6 @@ INLINE ERROR ptrGrabX11Pointer(OBJECTPTR Ob, OBJECTID SurfaceID) {
 #ifdef __ANDROID__
 #include <parasol/modules/android.h>
 #endif
-
-#undef NULL
-#define NULL 0
 
 struct resolution {
    WORD width;
@@ -457,15 +469,15 @@ extern ERROR load_styles(void);
 extern LONG  find_bitmap_owner(const SURFACELIST &, LONG);
 extern void  move_layer(extSurface *, LONG, LONG);
 extern void  move_layer_pos(SURFACELIST &, LONG, LONG);
-extern void  prepare_background(extSurface *, const SURFACELIST &, LONG, extBitmap *, ClipRectangle &, BYTE);
+extern void  prepare_background(extSurface *, const SURFACELIST &, LONG, extBitmap *, const ClipRectangle &, BYTE);
 extern void  process_surface_callbacks(extSurface *, extBitmap *);
 extern void  refresh_pointer(extSurface *Self);
 extern ERROR track_layer(extSurface *);
 extern void  untrack_layer(OBJECTID);
-extern BYTE  restrict_region_to_parents(const SURFACELIST &, LONG, ClipRectangle *, bool);
+extern BYTE  restrict_region_to_parents(const SURFACELIST &, LONG, ClipRectangle &, bool);
 extern ERROR load_style_values(void);
 extern ERROR resize_layer(extSurface *, LONG X, LONG Y, LONG, LONG, LONG, LONG, LONG BPP, DOUBLE, LONG);
-extern void  redraw_nonintersect(OBJECTID, const SURFACELIST &, LONG, ClipRectangle *, ClipRectangle *, LONG, LONG);
+extern void  redraw_nonintersect(OBJECTID, const SURFACELIST &, LONG, const ClipRectangle &, const ClipRectangle &, LONG, LONG);
 extern ERROR _expose_surface(OBJECTID, const SURFACELIST &, LONG, LONG, LONG, LONG, LONG, LONG);
 extern ERROR _redraw_surface(OBJECTID, const SURFACELIST &, LONG, LONG, LONG, LONG, LONG, LONG);
 extern void  _redraw_surface_do(extSurface *, const SURFACELIST &, LONG, ClipRectangle &, extBitmap *, LONG);
@@ -478,7 +490,6 @@ extern ERROR gfxRedrawSurface(OBJECTID, LONG, LONG, LONG, LONG, LONG);
 extern void print_layer_list(STRING Function, SurfaceControl *Ctl, LONG POI)
 #endif
 
-extern std::recursive_mutex glInputLock;
 extern SharedControl *glSharedControl;
 extern bool glSixBitDisplay;
 extern OBJECTPTR glModule;
@@ -500,13 +511,13 @@ extern LONG glpDisplayDepth; // If zero, the display depth will be based on the 
 extern LONG glpMaximise, glpFullScreen;
 extern LONG glpWindowType;
 extern char glpDPMS[20];
-extern std::unordered_map<WindowHook, FUNCTION> glWindowHooks;
 extern UBYTE *glDemultiply;
 
+extern std::unordered_map<WindowHook, FUNCTION> glWindowHooks;
 extern std::vector<OBJECTID> glFocusList;
 extern std::mutex glFocusLock;
-
 extern std::recursive_mutex glSurfaceLock;
+extern std::recursive_mutex glInputLock;
 
 // Thread-specific variables.
 
@@ -624,12 +635,17 @@ void UpdateSurfaceField(objSurface *Self, T SurfaceRecord::*LValue, T Value)
    }
 }
 
-inline void clip_rectangle(ClipRectangle *rect, ClipRectangle *clip)
+inline void clip_rectangle(ClipRectangle &rect, ClipRectangle &clip)
 {
-   if (rect->Left   < clip->Left)   rect->Left   = clip->Left;
-   if (rect->Top    < clip->Top)    rect->Top    = clip->Top;
-   if (rect->Right  > clip->Right)  rect->Right  = clip->Right;
-   if (rect->Bottom > clip->Bottom) rect->Bottom = clip->Bottom;
+   if (rect.Left   < clip.Left)   rect.Left   = clip.Left;
+   if (rect.Top    < clip.Top)    rect.Top    = clip.Top;
+   if (rect.Right  > clip.Right)  rect.Right  = clip.Right;
+   if (rect.Bottom > clip.Bottom) rect.Bottom = clip.Bottom;
+}
+
+inline LONG find_bitmap_owner(LONG Index)
+{
+   return find_bitmap_owner(glSurfaces, Index);
 }
 
 //********************************************************************************************************************

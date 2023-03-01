@@ -435,17 +435,6 @@ static ERROR DISPLAY_Draw(extDisplay *Self, APTR Void)
    return ERR_Okay;
 }
 
-//********************************************************************************************************************
-
-static void user_login(extDisplay *Self, APTR Info, LONG Data)
-{
-   // Regenerate the screen.xml file for the user:config/ directory.
-
-   #ifdef __snap__
-      GenerateDisplayXML();
-   #endif
-}
-
 /*********************************************************************************************************************
 -ACTION-
 Flush: Flush pending graphics operations to the display.
@@ -530,7 +519,7 @@ static ERROR DISPLAY_Free(extDisplay *Self, APTR Void)
 
    // Free the display's bitmap buffer
 
-   if (Self->BufferID) { acFree(Self->BufferID); Self->BufferID = NULL; }
+   if (Self->BufferID) { acFree(Self->BufferID); Self->BufferID = 0; }
 
    // Free the display's video bitmap
 
@@ -541,7 +530,7 @@ static ERROR DISPLAY_Free(extDisplay *Self, APTR Void)
          Self->Bitmap = NULL;
       }
       else acFree(Self->BitmapID);
-      Self->BitmapID = NULL;
+      Self->BitmapID = 0;
    }
 
    if (Self->ResolutionsMID) {
@@ -989,9 +978,6 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
    // Take a record of the pixel format for GetDisplayInfo()
 
    CopyMemory(bmp->ColourFormat, &glColourFormat, sizeof(glColourFormat));
-
-   auto call = make_function_stdc(user_login);
-   SubscribeEvent(EVID_USER_STATUS_LOGIN, &call, Self, &Self->UserLoginHandle);  // Get notifications of user login because changes may be required to the display.
 
    if (glSixBitDisplay) Self->Flags |= SCR_BIT_6;
 

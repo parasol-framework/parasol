@@ -178,7 +178,6 @@
                   <li><a href="fluid.xml">Fluid</a></li>
                   <li><a href="font.xml">Font</a></li>
                   <li><a href="network.xml">Network</a></li>
-                  <li><a href="surface.xml">Surface</a></li>
                   <li><a href="vector.xml">Vector</a></li>
                 </ul>
               </div>
