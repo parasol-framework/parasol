@@ -21,12 +21,6 @@ class objClipboard;
 class objPointer;
 class objSurface;
 
-#ifdef __xwindows__
-
-#undef NULL
-#define NULL 0
-#endif
-
 #define DRAG_NONE 0
 #define DRAG_ANCHOR 1
 #define DRAG_NORMAL 2
