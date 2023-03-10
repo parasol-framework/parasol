@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -56,6 +55,7 @@ static ERROR GET_Location(extMetaClass *, CSTRING *);
 static ERROR GET_Methods(extMetaClass *Self, const MethodArray **, LONG *);
 static ERROR GET_Module(extMetaClass *, CSTRING *);
 static ERROR GET_PrivateObjects(extMetaClass *, OBJECTID **, LONG *);
+static ERROR GET_RootModule(extMetaClass *, struct RootModule **);
 static ERROR GET_SubFields(extMetaClass *, const FieldArray **, LONG *);
 static ERROR GET_TotalMethods(extMetaClass *, LONG *);
 
@@ -111,37 +111,37 @@ static Field glMetaFieldsPreset[TOTAL_METAFIELDS+1] = {
    { 0, (ERROR (*)(APTR, APTR))GET_ClassName, (APTR)SET_ClassName, writeval_default, "Name", FID_Name,            sizeof(BaseClass), 19, FDF_STRING|FDF_SYSTEM|FDF_RI },
    { 0, (ERROR (*)(APTR, APTR))GET_Module, 0,       writeval_default,   "Module",            FID_Module,          sizeof(BaseClass), 20, FDF_STRING|FDF_R },
    { 0, (ERROR (*)(APTR, APTR))GET_PrivateObjects, 0, writeval_default, "PrivateObjects",    FID_PrivateObjects,  sizeof(BaseClass), 21, FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R },
-   { 0, (ERROR (*)(APTR, APTR))GET_IDL, 0,          writeval_default,   "IDL",               FID_IDL,             sizeof(BaseClass), 22, FDF_STRING|FDF_R },
-   { (MAXINT)"FieldArray", (ERROR (*)(APTR, APTR))GET_SubFields, 0, writeval_default, "SubFields", FID_SubFields, sizeof(BaseClass), 23, FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R },
+   { (MAXINT)"FieldArray", (ERROR (*)(APTR, APTR))GET_SubFields, 0, writeval_default, "SubFields", FID_SubFields, sizeof(BaseClass), 22, FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R },
+   { ID_ROOTMODULE, (ERROR (*)(APTR, APTR))GET_RootModule, 0, writeval_default, "RootModule", FID_RootModule,     sizeof(BaseClass), 23, FDF_OBJECT|FDF_R },
    { 0, 0, 0, NULL, "", 0, 0, 0,  0 }
 };
 
 static const FieldArray glMetaFields[] = {
-   { "ClassVersion",    FDF_DOUBLE|FDF_RI,            0, NULL, NULL },
-   { "Methods",         FDF_ARRAY|FD_STRUCT|FDF_RI,   (MAXINT)"MethodArray", (APTR)GET_Methods, (APTR)SET_Methods },
-   { "Fields",          FDF_ARRAY|FD_STRUCT|FDF_RI,   (MAXINT)"FieldArray", (APTR)GET_Fields, (APTR)SET_Fields },
-   { "ClassName",       FDF_STRING|FDF_RI,            0, NULL, NULL },
-   { "FileExtension",   FDF_STRING|FDF_RI,            0, NULL, NULL },
-   { "FileDescription", FDF_STRING|FDF_RI,            0, NULL, NULL },
-   { "FileHeader",      FDF_STRING|FDF_RI,            0, NULL, NULL },
-   { "Path",            FDF_STRING|FDF_RI,            0, NULL, NULL },
-   { "Size",            FDF_LONG|FDF_RI,              0, NULL, NULL },
-   { "Flags",           FDF_LONG|FDF_RI,              0, NULL, NULL },
-   { "SubClassID",      FDF_LONG|FDF_UNSIGNED|FDF_RI, 0, NULL, NULL },
-   { "BaseClassID",     FDF_LONG|FDF_UNSIGNED|FDF_RI, 0, NULL, NULL },
-   { "OpenCount",       FDF_LONG|FDF_R,               0, NULL, NULL },
-   { "TotalMethods",    FDF_LONG|FDF_R,               0, NULL, NULL },
-   { "TotalFields",     FDF_LONG|FDF_R,               0, NULL, NULL },
-   { "Category",        FDF_LONG|FDF_LOOKUP|FDF_RI,   (MAXINT)&CategoryTable, NULL, NULL },
+   { "ClassVersion",    FDF_DOUBLE|FDF_RI },
+   { "Methods",         FDF_ARRAY|FD_STRUCT|FDF_RI, GET_Methods, SET_Methods, "MethodArray" },
+   { "Fields",          FDF_ARRAY|FD_STRUCT|FDF_RI, GET_Fields, SET_Fields, "FieldArray" },
+   { "ClassName",       FDF_STRING|FDF_RI },
+   { "FileExtension",   FDF_STRING|FDF_RI },
+   { "FileDescription", FDF_STRING|FDF_RI },
+   { "FileHeader",      FDF_STRING|FDF_RI },
+   { "Path",            FDF_STRING|FDF_RI },
+   { "Size",            FDF_LONG|FDF_RI },
+   { "Flags",           FDF_LONG|FDF_RI },
+   { "SubClassID",      FDF_LONG|FDF_UNSIGNED|FDF_RI },
+   { "BaseClassID",     FDF_LONG|FDF_UNSIGNED|FDF_RI },
+   { "OpenCount",       FDF_LONG|FDF_R },
+   { "TotalMethods",    FDF_LONG|FDF_R },
+   { "TotalFields",     FDF_LONG|FDF_R },
+   { "Category",        FDF_LONG|FDF_LOOKUP|FDF_RI, NULL, NULL, &CategoryTable },
    // Virtual fields
-   { "Actions",         FDF_POINTER|FDF_I,            0, NULL, NULL },
-   { "ActionTable",     FDF_ARRAY|FDF_POINTER|FDF_R,  0, NULL, NULL },
-   { "Location",        FDF_STRING|FDF_R,             0, NULL, NULL },
-   { "Name",            FDF_STRING|FDF_SYSTEM|FDF_RI, 0, (APTR)GET_ClassName, (APTR)SET_ClassName },
-   { "Module",          FDF_STRING|FDF_R,             0, (APTR)GET_Module, NULL },
-   { "PrivateObjects",  FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R, 0, (APTR)GET_PrivateObjects, NULL },
-   { "IDL",             FDF_STRING|FDF_R,             0, (APTR)GET_IDL, NULL },
-   { "SubFields",       FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R, (MAXINT)"FieldArray", (APTR)GET_SubFields, NULL },
+   { "Actions",         FDF_POINTER|FDF_I },
+   { "ActionTable",     FDF_ARRAY|FDF_POINTER|FDF_R },
+   { "Location",        FDF_STRING|FDF_R },
+   { "Name",            FDF_STRING|FDF_SYSTEM|FDF_RI, GET_ClassName, SET_ClassName },
+   { "Module",          FDF_STRING|FDF_R, GET_Module },
+   { "PrivateObjects",  FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R, GET_PrivateObjects },
+   { "SubFields",       FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R, GET_SubFields, NULL, "FieldArray" },
+   { "RootModule",      FDF_OBJECT|FDF_R, GET_RootModule, NULL, ID_ROOTMODULE },
    END_FIELD
 };
 
@@ -333,8 +333,8 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
 
    auto ctx = tlContext;
    while (ctx != &glTopContext) {
-      if (ctx->object()->ClassID IS ID_MODULEMASTER) {
-         Self->Master = (ModuleMaster *)ctx->object();
+      if (ctx->object()->ClassID IS ID_ROOTMODULE) {
+         Self->Root = (RootModule *)ctx->object();
          break;
       }
       ctx = ctx->Stack;
@@ -411,14 +411,14 @@ The following example shows an action list array taken from the @Picture class:
 
 <pre>
 ActionArray clActions[] = {
-   { AC_Free,          (APTR)PIC_Free },
-   { AC_NewObject,     (APTR)PIC_NewObject },
-   { AC_Init,          (APTR)PIC_Init },
-   { AC_Query,         (APTR)PIC_Query },
-   { AC_Read,          (APTR)PIC_Read },
-   { AC_SaveToObject,  (APTR)PIC_SaveToObject },
-   { AC_Seek,          (APTR)PIC_Seek },
-   { AC_Write,         (APTR)PIC_Write },
+   { AC_Free,          PIC_Free },
+   { AC_NewObject,     PIC_NewObject },
+   { AC_Init,          PIC_Init },
+   { AC_Query,         PIC_Query },
+   { AC_Read,          PIC_Read },
+   { AC_SaveToObject,  PIC_SaveToObject },
+   { AC_Seek,          PIC_Seek },
+   { AC_Write,         PIC_Write },
    { 0, NULL }
 };
 </pre>
@@ -575,33 +575,6 @@ separated with an OR symbol | as demonstrated in this example for the JPEG heade
 Flags: Optional flag settings.
 
 -FIELD-
-IDL: Returns a compressed IDL string from the module that manages the class.
-
-If the module that created this MetaClass was compiled with an IDL string, it will be possible to read the IDL from
-this field.  This feature is typically used by languages that are capable of resolving definitions at run-time,
-e.g. Fluid.
-
-A value of NULL is returned if the module does not provide an IDL string.
-
-*********************************************************************************************************************/
-
-static ERROR GET_IDL(extMetaClass *Self, CSTRING *Value)
-{
-   if (!Self->initialised()) return ERR_NotInitialised;
-
-   if ((Self->Master) and (Self->Master->Header)) {
-      *Value = Self->Master->Header->Definitions;
-      return ERR_Okay;
-   }
-   else { // If no Header defined, the class belongs to the Core.
-      *Value = glIDL;
-      return ERR_Okay;
-   }
-}
-
-/*********************************************************************************************************************
-
--FIELD-
 Location: Returns the path from which the class binary is loaded.
 
 The path from which the class binary was loaded is readable from this field.  The path may not necessarily include the
@@ -710,8 +683,8 @@ static ERROR GET_Module(extMetaClass *Self, CSTRING *Value)
 {
    if (!Self->initialised()) return ERR_NotInitialised;
 
-   if (Self->Master) {
-      *Value = Self->Master->LibraryName;
+   if (Self->Root) {
+      *Value = Self->Root->LibraryName;
       return ERR_Okay;
    }
    else {
@@ -785,6 +758,19 @@ Path: The path to the module binary that represents the class.
 The Path field must be set on initialisation and refers to the default location of the class' module binary, for
 example `modules:display`. For reasons of platform portability, the file extension must not be specified at the
 end of the file name.
+
+-FIELD-
+RootModule: Returns a direct reference to the RootModule object that hosts the class.
+
+*********************************************************************************************************************/
+
+static ERROR GET_RootModule(extMetaClass *Self, struct RootModule **Value)
+{
+   *Value = Self->Root;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
 
 -FIELD-
 Size: The total size of the object structure represented by the MetaClass.

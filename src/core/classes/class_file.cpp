@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -82,8 +81,6 @@ in a file.
 
  #define open64   open
  #define lseek64  lseek
- #undef NULL
- #define NULL 0
 #endif // _WIN32
 
 #ifdef __APPLE__
@@ -429,7 +426,7 @@ static ERROR FILE_Delete(extFile *Self, struct flDelete *Args)
             #ifdef __unix__
                closedir((DIR *)Self->Stream);
             #endif
-            Self->Stream = NULL;
+            Self->Stream = 0;
             return ERR_Okay;
          }
          else return ERR_DeleteFile;
@@ -444,7 +441,7 @@ static ERROR FILE_Delete(extFile *Self, struct flDelete *Args)
          #ifdef __unix__
             closedir((DIR *)Self->Stream);
          #endif
-         Self->Stream = NULL;
+         Self->Stream = 0;
 
          LONG len = StrCopy(path, buffer, sizeof(buffer));
          if ((buffer[len-1] IS '/') or (buffer[len-1] IS '\\')) buffer[len-1] = 0;
@@ -526,7 +523,7 @@ static ERROR FILE_Free(extFile *Self, APTR Void)
       #ifdef __unix__
          closedir((DIR *)Self->Stream);
       #endif
-      Self->Stream = NULL;
+      Self->Stream = 0;
    }
 
 #ifdef _WIN32
@@ -2219,7 +2216,7 @@ static ERROR SET_Path(extFile *Self, CSTRING Value)
       #ifdef __unix__
          closedir((DIR *)Self->Stream);
       #endif
-      Self->Stream = NULL;
+      Self->Stream = 0;
    }
    else if (Self->Handle != -1) {
       close(Self->Handle);
@@ -2804,27 +2801,27 @@ static const FieldDef PermissionFlags[] = {
 #include "class_file_def.c"
 
 static const FieldArray FileFields[] = {
-   { "Position", FDF_LARGE|FDF_RW,     0, NULL, (APTR)SET_Position },
-   { "Flags",    FDF_LONGFLAGS|FDF_RI, (MAXINT)&clFileFlags, NULL, NULL },
-   { "Static",   FDF_LONG|FDF_RI,      0, NULL, NULL },
-   { "Target",   FDF_OBJECTID|FDF_RW,  ID_SURFACE, NULL, NULL },
-   { "Buffer",   FDF_ARRAY|FDF_BYTE|FDF_R,  0, (APTR)GET_Buffer, NULL },
+   { "Position", FDF_LARGE|FDF_RW, NULL, SET_Position },
+   { "Flags",    FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clFileFlags },
+   { "Static",   FDF_LONG|FDF_RI },
+   { "Target",   FDF_OBJECTID|FDF_RW, NULL, NULL, ID_SURFACE },
+   { "Buffer",   FDF_ARRAY|FDF_BYTE|FDF_R, GET_Buffer },
    // Virtual fields
-   { "Date",         FDF_POINTER|FDF_STRUCT|FDF_RW, (MAXINT)"DateTime", (APTR)GET_Date, (APTR)SET_Date },
-   { "Created",      FDF_POINTER|FDF_STRUCT|FDF_RW, (MAXINT)"DateTime", (APTR)GET_Created, NULL },
-   { "Handle",       FDF_LARGE|FDF_R,   0, (APTR)GET_Handle, NULL },
-   { "Icon",         FDF_STRING|FDF_R,  0, (APTR)GET_Icon, NULL },
-   { "Path",         FDF_STRING|FDF_RI, 0, (APTR)GET_Path, (APTR)SET_Path },
-   { "Permissions",  FDF_LONGFLAGS|FDF_RW, (MAXINT)&PermissionFlags, (APTR)GET_Permissions, (APTR)SET_Permissions },
-   { "ResolvedPath", FDF_STRING|FDF_R,  0, (APTR)GET_ResolvedPath, NULL },
-   { "Size",         FDF_LARGE|FDF_RW,  0, (APTR)GET_Size, (APTR)SET_Size },
-   { "TimeStamp",    FDF_LARGE|FDF_R,   0, (APTR)GET_TimeStamp, NULL },
-   { "Link",         FDF_STRING|FDF_RW, 0, (APTR)GET_Link, (APTR)SET_Link },
-   { "User",         FDF_LONG|FDF_RW,   0, (APTR)GET_User, (APTR)SET_User },
-   { "Group",        FDF_LONG|FDF_RW,   0, (APTR)GET_Group, (APTR)SET_Group },
+   { "Date",     FDF_POINTER|FDF_STRUCT|FDF_RW, GET_Date, SET_Date, "DateTime" },
+   { "Created",  FDF_POINTER|FDF_STRUCT|FDF_RW, GET_Created, NULL, "DateTime" },
+   { "Handle",   FDF_LARGE|FDF_R, GET_Handle },
+   { "Icon",     FDF_STRING|FDF_R, GET_Icon },
+   { "Path",     FDF_STRING|FDF_RI, GET_Path, SET_Path },
+   { "Permissions",  FDF_LONGFLAGS|FDF_RW, GET_Permissions, SET_Permissions, &PermissionFlags },
+   { "ResolvedPath", FDF_STRING|FDF_R, GET_ResolvedPath },
+   { "Size",      FDF_LARGE|FDF_RW, GET_Size, SET_Size },
+   { "TimeStamp", FDF_LARGE|FDF_R, GET_TimeStamp },
+   { "Link",      FDF_STRING|FDF_RW, GET_Link, SET_Link },
+   { "User",      FDF_LONG|FDF_RW, GET_User, SET_User },
+   { "Group",     FDF_LONG|FDF_RW, GET_Group, SET_Group },
    // Synonyms
-   { "Src",         FDF_STRING|FDF_SYNONYM|FDF_RI, 0, (APTR)GET_Path, (APTR)SET_Path },
-   { "Location",    FDF_STRING|FDF_SYNONYM|FDF_RI, 0, (APTR)GET_Path, (APTR)SET_Path },
+   { "Src",      FDF_STRING|FDF_SYNONYM|FDF_RI, GET_Path, SET_Path },
+   { "Location", FDF_STRING|FDF_SYNONYM|FDF_RI, GET_Path, SET_Path },
    END_FIELD
 };
 

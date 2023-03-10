@@ -1491,24 +1491,24 @@ static const FieldDef clValidCert[] = {
 #include "netsocket_def.c"
 
 static const FieldArray clSocketFields[] = {
-   { "Clients",          FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)&"NetClient", NULL, NULL },
-   { "UserData",         FDF_POINTER|FDF_RW,   0, NULL, NULL },
-   { "Address",          FDF_STRING|FDF_RI,    0, NULL, (APTR)SET_Address },
-   { "State",            FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clNetSocketState, NULL, (APTR)SET_State },
-   { "Error",            FDF_LONG|FDF_R,       0, NULL, NULL },
-   { "Port",             FDF_LONG|FDF_RI,      0, NULL, NULL },
-   { "Flags",            FDF_LONGFLAGS|FDF_RW, (MAXINT)&clNetSocketFlags, NULL, NULL },
-   { "TotalClients",     FDF_LONG|FDF_R,       0, NULL, NULL },
-   { "Backlog",          FDF_LONG|FDF_RI,      0, NULL, NULL },
-   { "ClientLimit",      FDF_LONG|FDF_RW,      0, NULL, NULL },
-   { "MsgLimit",         FDF_LONG|FDF_RI,      0, NULL, NULL },
+   { "Clients",          FDF_POINTER|FDF_STRUCT|FDF_R, NULL, NULL, "NetClient" },
+   { "UserData",         FDF_POINTER|FDF_RW },
+   { "Address",          FDF_STRING|FDF_RI, NULL, SET_Address },
+   { "State",            FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, SET_State, &clNetSocketState },
+   { "Error",            FDF_LONG|FDF_R },
+   { "Port",             FDF_LONG|FDF_RI },
+   { "Flags",            FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clNetSocketFlags },
+   { "TotalClients",     FDF_LONG|FDF_R },
+   { "Backlog",          FDF_LONG|FDF_RI },
+   { "ClientLimit",      FDF_LONG|FDF_RW },
+   { "MsgLimit",         FDF_LONG|FDF_RI },
    // Virtual fields
-   { "SocketHandle",     FDF_POINTER|FDF_RI,     0, (APTR)GET_SocketHandle, (APTR)SET_SocketHandle },
-   { "Feedback",         FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_Feedback, (APTR)SET_Feedback },
-   { "Incoming",         FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_Incoming, (APTR)SET_Incoming },
-   { "Outgoing",         FDF_FUNCTIONPTR|FDF_W,  0, (APTR)GET_Outgoing, (APTR)SET_Outgoing },
-   { "OutQueueSize",     FDF_LONG|FDF_R,         0, (APTR)GET_OutQueueSize },
-   { "ValidCert",        FDF_LONG|FDF_LOOKUP,    (MAXINT)&clValidCert, (APTR)GET_ValidCert, NULL },
+   { "SocketHandle",     FDF_POINTER|FDF_RI,     GET_SocketHandle, SET_SocketHandle },
+   { "Feedback",         FDF_FUNCTIONPTR|FDF_RW, GET_Feedback, SET_Feedback },
+   { "Incoming",         FDF_FUNCTIONPTR|FDF_RW, GET_Incoming, SET_Incoming },
+   { "Outgoing",         FDF_FUNCTIONPTR|FDF_W,  GET_Outgoing, SET_Outgoing },
+   { "OutQueueSize",     FDF_LONG|FDF_R,         GET_OutQueueSize },
+   { "ValidCert",        FDF_LONG|FDF_LOOKUP,    GET_ValidCert, NULL, &clValidCert },
    END_FIELD
 };
 

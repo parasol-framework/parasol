@@ -118,8 +118,8 @@ Y: Apply a vertical offset to the image, the origin of which is determined by th
 *********************************************************************************************************************/
 
 static const ActionArray clImageActions[] = {
-   { AC_Init,      (APTR)IMAGE_Init },
-   { AC_NewObject, (APTR)IMAGE_NewObject },
+   { AC_Init,      IMAGE_Init },
+   { AC_NewObject, IMAGE_NewObject },
    { 0, NULL }
 };
 
@@ -147,15 +147,15 @@ static const FieldDef clImageDimensions[] = {
 };
 
 static const FieldArray clImageFields[] = {
-   { "X",            FDF_DOUBLE|FDF_RW, 0, NULL, NULL },
-   { "Y",            FDF_DOUBLE|FDF_RW, 0, NULL, NULL },
-   { "Picture",      FDF_OBJECT|FDF_RW, ID_PICTURE, NULL, (APTR)IMAGE_SET_Picture },
-   { "Bitmap",       FDF_OBJECT|FDF_RW, ID_BITMAP,  NULL, (APTR)IMAGE_SET_Bitmap },
-   { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clImageUnits, NULL, NULL },
-   { "Dimensions",   FDF_LONGFLAGS|FDF_RW,       (MAXINT)&clImageDimensions, NULL, NULL },
-   { "SpreadMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clImageSpread, NULL, NULL },
-   { "AspectRatio",  FDF_LONGFLAGS|FDF_RW,       (MAXINT)&clAspectRatio, NULL, NULL },
- //{ "Src",          FDF_STRING|FDF_W, 0, NULL, (APTR)IMAGE_SET_Src },
+   { "X",            FDF_DOUBLE|FDF_RW },
+   { "Y",            FDF_DOUBLE|FDF_RW },
+   { "Picture",      FDF_OBJECT|FDF_RW, NULL, IMAGE_SET_Picture, ID_PICTURE },
+   { "Bitmap",       FDF_OBJECT|FDF_RW, NULL, IMAGE_SET_Bitmap, ID_BITMAP },
+   { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clImageUnits },
+   { "Dimensions",   FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clImageDimensions },
+   { "SpreadMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clImageSpread },
+   { "AspectRatio",  FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clAspectRatio },
+ //{ "Src",          FDF_STRING|FDF_W, NULL, IMAGE_SET_Src },
    END_FIELD
 };
 

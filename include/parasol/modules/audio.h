@@ -287,16 +287,19 @@ class objSound : public BaseClass {
       return error;
    }
    inline ERROR init() { return Action(AC_Init, this, NULL); }
-   template <class T> ERROR read(APTR Buffer, T Bytes, LONG *Result) {
+   template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) {
+      static_assert(std::is_integral<U>::value, "Result value must be an integer type");
+      static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       ERROR error;
-      const LONG bytes = (Bytes > 0x7fffffff) ? 0x7fffffff : Bytes;
+      const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
-      if (!(error = Action(AC_Read, this, &read))) *Result = read.Result;
+      if (!(error = Action(AC_Read, this, &read))) *Result = static_cast<U>(read.Result);
       else *Result = 0;
       return error;
    }
-   template <class T> ERROR read(APTR Buffer, T Bytes) {
-      const LONG bytes = (Bytes > 0x7fffffff) ? 0x7fffffff : Bytes;
+   template <class T> ERROR read(APTR Buffer, T Size) {
+      static_assert(std::is_integral<T>::value, "Size value must be an integer type");
+      const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
       return Action(AC_Read, this, &read);
    }

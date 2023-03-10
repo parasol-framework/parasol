@@ -1161,17 +1161,17 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 #include "scene_def.c"
 
 static const FieldArray clSceneFields[] = {
-   { "RenderTime",   FDF_LARGE|FDF_R,            0, (APTR)GET_RenderTime, NULL },
-   { "Gamma",        FDF_DOUBLE|FDF_RW,          0, NULL, NULL },
-   { "HostScene",    FDF_OBJECT|FDF_RI,          ID_VECTORSCENE, NULL, NULL },
-   { "Viewport",     FDF_OBJECT|FD_R,            ID_VECTORVIEWPORT, NULL, NULL },
-   { "Bitmap",       FDF_OBJECT|FDF_RW,          ID_BITMAP, NULL, (APTR)SET_Bitmap },
-   { "Defs",         FDF_STRUCT|FDF_PTR|FDF_SYSTEM|FDF_RESOURCE|FDF_R, (MAXINT)"KeyStore", NULL, NULL },
-   { "Surface",      FDF_OBJECTID|FDF_RI,        ID_SURFACE, NULL, (APTR)SET_Surface },
-   { "Flags",        FDF_LONGFLAGS|FDF_RW,       (MAXINT)&clVectorSceneFlags, NULL, NULL },
-   { "PageWidth",    FDF_LONG|FDF_RW,            0, NULL, (APTR)SET_PageWidth },
-   { "PageHeight",   FDF_LONG|FDF_RW,            0, NULL, (APTR)SET_PageHeight },
-   { "SampleMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clVectorSceneSampleMethod, NULL, NULL },
+   { "RenderTime",   FDF_LARGE|FDF_R, GET_RenderTime },
+   { "Gamma",        FDF_DOUBLE|FDF_RW },
+   { "HostScene",    FDF_OBJECT|FDF_RI, NULL, NULL, ID_VECTORSCENE },
+   { "Viewport",     FDF_OBJECT|FD_R, NULL, NULL, ID_VECTORVIEWPORT },
+   { "Bitmap",       FDF_OBJECT|FDF_RW, NULL, SET_Bitmap, ID_BITMAP },
+   { "Defs",         FDF_STRUCT|FDF_PTR|FDF_SYSTEM|FDF_RESOURCE|FDF_R, NULL, NULL, "KeyStore" },
+   { "Surface",      FDF_OBJECTID|FDF_RI, NULL, SET_Surface, ID_SURFACE },
+   { "Flags",        FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clVectorSceneFlags },
+   { "PageWidth",    FDF_LONG|FDF_RW, NULL, SET_PageWidth },
+   { "PageHeight",   FDF_LONG|FDF_RW, NULL, SET_PageHeight },
+   { "SampleMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorSceneSampleMethod },
    END_FIELD
 };
 

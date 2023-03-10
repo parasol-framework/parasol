@@ -72,12 +72,12 @@ static const struct FieldDef clFilterEffectMixType[] = {
 };
 
 static const struct ActionArray clFilterEffectActions[] = {
-   { AC_Free, (APTR)FILTEREFFECT_Free },
-   { AC_Init, (APTR)FILTEREFFECT_Init },
-   { AC_MoveToBack, (APTR)FILTEREFFECT_MoveToBack },
-   { AC_MoveToFront, (APTR)FILTEREFFECT_MoveToFront },
-   { AC_NewObject, (APTR)FILTEREFFECT_NewObject },
-   { AC_NewOwner, (APTR)FILTEREFFECT_NewOwner },
-   { 0, 0 }
+   { AC_Free, FILTEREFFECT_Free },
+   { AC_Init, FILTEREFFECT_Init },
+   { AC_MoveToBack, FILTEREFFECT_MoveToBack },
+   { AC_MoveToFront, FILTEREFFECT_MoveToFront },
+   { AC_NewObject, FILTEREFFECT_NewObject },
+   { AC_NewOwner, FILTEREFFECT_NewOwner },
+   { 0, NULL }
 };
 

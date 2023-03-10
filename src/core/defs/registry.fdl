@@ -26,7 +26,7 @@ header({ path="system/registry", copyright="Paul Manias 1996-2023" }, function()
     "POINTER",
     "MODENTRY",
     "JPEG",
-    "MODULEMASTER",
+    "ROOTMODULE",
     "BROADCAST",
     "AUDIO",
     "CLIPBOARD",

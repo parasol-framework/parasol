@@ -49,8 +49,6 @@
 <type name="//window">Return content of the first window discovered at any branch of the XML tree (double-slash enables flat scanning of the XML tree).</type>
 </types>
 <p>The <code>xpath</code>, <code>xml</code> and <code>/</code> prefixes are all identical in identifying the start of an xpath.  The <code>content</code> prefix is used to specifically extract the content of the tag that matches the xpath.  Square brackets and round brackets may be used interchangeably for lookups and filtering clauses.</p>
-<p>Direct tag lookups are also supported through variable fields (this is not normally possible using XPath).  You can retrieve an attribute or the content of any tag if you know its index number, using this format: <code>Tag(Name, Index, Attrib)</code>.</p>
-<p>The <code>Name</code> indicates the name of the tag that you will be matching to.  If omitted, all tags are included in the lookup. The <code>Index</code> is used to match to the nth tag name that you are comparing against if a Name is specified, otherwise the Index is a direct lookup into the <field>Tags</field> array.  If an <code>Attrib</code> name is specified, then the value for that attribute will be returned.  If the Attrib name is omitted, the content of the matching tag will be returned.</p>
       </description>
     </action>
 
@@ -127,37 +125,14 @@
         <param type="LONG *" name="Result">The index of the first matching tag is returned in this parameter (not valid if a Callback is defined).</param>
       </input>
       <description>
-<p>This method will return the first tag that matches the search string specified in XPath.  Optionally, if the XPath uses wildcards or would match multiple tags, a Callback function may be passed that will be called for each matching tag that  is discovered.  The prototype for the callback function is <code>ERROR Function(*XML, XMLTag *Tag, STRING Attrib)</code>.</p>
-<p>The callback routine can terminate the search early by returning ERR_Terminate.  All other error codes are ignored.</p>
-<p>The <field>RootIndex</field> value has no effect on this method.  Use <method>FindTagFromIndex</method> to make restricted searches.</p>
+<p>This method will return the first tag that matches the search string specified in XPath.  Optionally, if the XPath uses wildcards or would match multiple tags, a Callback function may be passed that will be called for each matching tag that is discovered.  The prototype for the callback function is <code>ERROR Function(*XML, XMLTag &amp;Tag, CSTRING Attrib)</code>.</p>
+<p>The Callback routine can terminate the search early by returning <code>ERR_Terminate</code>.  All other error codes are ignored.</p>
       </description>
       <result>
         <error code="Okay">A matching tag was found.</error>
         <error code="Search">A matching tag could not be found.</error>
         <error code="NoData">No data is available for use.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
-      </result>
-    </method>
-
-    <method>
-      <name>FindTagFromIndex</name>
-      <comment>Searches for a tag via XPath, starting from a specific tag index.</comment>
-      <prototype>ERROR xmlFindTagFromIndex(OBJECTPTR Object, CSTRING XPath, LONG Start, FUNCTION * Callback, LONG * Result)</prototype>
-      <input>
-        <param type="CSTRING" name="XPath">An XPath string.</param>
-        <param type="LONG" name="Start">The tag index to start searching from.</param>
-        <param type="FUNCTION *" name="Callback">Optional reference to a function that should be called for each matching tag.</param>
-        <param type="LONG *" name="Result">The index of the first matching tag is returned in this parameter (not valid if a Callback is defined).</param>
-      </input>
-      <description>
-<p>This method will return the first tag that matches the search string specified in XPath.  The search begins at the tag indicated by the Start value.  This should be set to zero if searching from the top of the XML tree.</p>
-<p>Optionally, if the XPath uses wildcards or would match multiple tags, a Callback function may be passed that will be called for each matching tag that is discovered.  The C prototype for the callback function is <code>ERROR Function(*XML, XMLTag *Tag, CSTRING Attrib)</code>.</p>
-<p>For Fluid: <code>function Callback(XML {ID}, TagIndex {Long}, Attrib {String})</code>.</p>
-<p>The callback routine can terminate the search early by returning ERR_Terminate.  All other error codes are ignored.</p>
-      </description>
-      <result>
-        <error code="Okay">Operation successful.</error>
-        <error code="OutOfRange">The Index is invalid.</error>
       </result>
     </method>
 
@@ -202,6 +177,7 @@
       </description>
       <result>
         <error code="Okay">The content string was successfully extracted.</error>
+        <error code="NotFound">The tag identified by Index was not found.</error>
         <error code="Args">Invalid arguments passed to function.</error>
         <error code="BufferOverflow">The buffer was not large enough to hold the content (the resulting string will be valid but truncated).</error>
       </result>
@@ -241,7 +217,7 @@
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
-        <error code="OutOfRange">The Index parameter is invalid.</error>
+        <error code="NotFound">The Index is not recognised.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
@@ -251,14 +227,14 @@
       <comment>Inserts XML content into the XML tree.</comment>
       <prototype>ERROR xmlInsertContent(OBJECTPTR Object, LONG Index, LONG Where, CSTRING Content, LONG * Result)</prototype>
       <input>
-        <param type="LONG" name="Index">The index to which the statement should be inserted (zero is the beginning).  If the index exceeds the <field>TagCount</field>, the value will be automatically limited to the last tag index.</param>
+        <param type="LONG" name="Index">Identifies the target XML tag.</param>
         <param type="LONG" name="Where" lookup="XMI">Use XMI_PREV or XMI_NEXT to insert behind or ahead of the target tag.  Use XMI_CHILD for a child insert.</param>
         <param type="CSTRING" name="Content">The content to insert.</param>
         <param type="LONG *" name="Result">The index of the new tag is returned here.</param>
       </input>
       <description>
-<p>The InsertContent method is used to insert content strings into any position within the XML tree.  A content string must be provided in the Content parameter and the target insertion point is specified in the Index parameter. An insertion point relative to the target index must be specified in the Where parameter.  The new tags can be inserted as a child of the target by using a Where value of <code>XMI_CHILD</code>.  To insert behind or after the target, use <code>XMI_PREV</code> or <code>XMI_NEXT</code>.</p>
-<p>To modify existing content, the <method>SetAttrib</method> method should be used.</p>
+<p>The InsertContent method will insert content strings into any position within the XML tree.  A content string must be provided in the Content parameter and the target insertion point is specified in the Index parameter. An insertion point relative to the target index must be specified in the Where parameter.  The new tags can be inserted as a child of the target by using a Where value of <code>XMI_CHILD</code>.  To insert behind or after the target, use <code>XMI_PREV</code> or <code>XMI_NEXT</code>.</p>
+<p>To modify existing content, call <method>SetAttrib</method> instead.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -279,7 +255,6 @@
       </input>
       <description>
 <p>The InsertXML method is used to translate and insert a new set of XML tags into any position within the XML tree.  A standard XML statement must be provided in the XML parameter and the target insertion point is specified in the Index parameter.  An insertion point relative to the target index must be specified in the Insert parameter.  The new tags can be inserted as a child of the target by using a Insert value of <code>XMI_CHILD</code>.  Use <code>XMI_CHILD_END</code> to insert at the end of the child list.  To insert behind or after the target, use <code>XMI_PREV</code> or <code>XMI_NEXT</code>.</p>
-<p>The <field>RootIndex</field> value has no effect on this method.</p>
       </description>
       <result>
         <error code="Okay">The statement was added successfully.</error>
@@ -317,7 +292,7 @@
       <input>
         <param type="LONG" name="Index">Index of the source tag to be moved.</param>
         <param type="LONG" name="Total">The total number of sibling tags to be moved from the source index.  Minimum value of 1.</param>
-        <param type="LONG" name="DestIndex">The destination tag index.  If the index exceeds the <field>TagCount</field>, the value will be automatically limited to the last tag index.</param>
+        <param type="LONG" name="DestIndex">The destination tag index.  If the index exceeds the total number of tags, the value will be automatically limited to the last tag index.</param>
         <param type="LONG" name="Where" lookup="XMI">Use XMI_PREV or XMI_NEXT to insert behind or ahead of the target tag.  Use XMI_CHILD for a child insert.</param>
       </input>
       <description>
@@ -326,6 +301,7 @@
       </description>
       <result>
         <error code="Okay">Tags were moved successfully.</error>
+        <error code="NotFound">A search routine in this function failed.</error>
         <error code="ReadOnly">A delete or write operation failed due to read-only status.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
@@ -355,16 +331,16 @@
     <method>
       <name>RemoveXPath</name>
       <comment>Removes tag(s) from the XML structure, using an xpath lookup.</comment>
-      <prototype>ERROR xmlRemoveXPath(OBJECTPTR Object, CSTRING XPath, LONG Total)</prototype>
+      <prototype>ERROR xmlRemoveXPath(OBJECTPTR Object, CSTRING XPath, LONG Limit)</prototype>
       <input>
         <param type="CSTRING" name="XPath">An XML path string.</param>
-        <param type="LONG" name="Total">The total number of matching tags that should be deleted.  A value of one or less will remove only the indicated tag and its children.  The total may exceed the number of tags actually available, in which case all matching tags up to the end of the tree will be affected.</param>
+        <param type="LONG" name="Limit">The maximum number of matching tags that should be deleted.  A value of one or less will remove only the indicated tag and its children.  The total may exceed the number of tags actually available, in which case all matching tags up to the end of the tree will be affected.</param>
       </input>
       <description>
 <p>The RemoveXPath method is used to remove one or more tags from an XML structure.  Child tags will automatically be discarded as a consequence of using this method, in order to maintain a valid XML structure.</p>
 <p>Individual tag attributes can also be removed if an attribute is referenced at the end of the XPath.</p>
 <p>The removal routine will be repeated so that each tag that matches the XPath will be deleted, or the Total is reached.</p>
-<p>After using this method, you must assume that all tag addresses have been changed due to the rearrangement of the XML structure.  Thus if you have obtained pointers to various parts of the XML structure then you should proceed to consider them invalid and re-establish them.</p>
+<p>The client must assume that calling this method will destabilise cached address pointers that have been acquired from the XML object.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -378,15 +354,15 @@
       <comment>Adds, updates and removes XML attributes.</comment>
       <prototype>ERROR xmlSetAttrib(OBJECTPTR Object, LONG Index, LONG Attrib, CSTRING Name, CSTRING Value)</prototype>
       <input>
-        <param type="LONG" name="Index">Index to the XML tag that is to be updated.</param>
+        <param type="LONG" name="Index">Identifies the tag that is to be updated.</param>
         <param type="LONG" name="Attrib" lookup="XMS">Either the index number of the attribute that is to be updated, or set to XMS_NEW, XMS_UPDATE or XMS_UPDATE_ONLY.</param>
-        <param type="CSTRING" name="Name">String containing the new name for the attribute.  If NULL, the name will not be changed.  If Attrib is XMS_NEW, XMS_UPDATE or XMS_UPDATE_ONLY, the Name is used to find the attribute.</param>
+        <param type="CSTRING" name="Name">String containing the new name for the attribute.  If NULL, the name will not be changed.  If Attrib is XMS_UPDATE or XMS_UPDATE_ONLY, the Name is used to find the attribute.</param>
         <param type="CSTRING" name="Value">String containing the new value for the attribute.  If NULL, the attribute is removed.</param>
       </input>
       <description>
 <p>This method is used to update and add attributes to existing XML tags, as well as adding or modifying content.  You need to supply the address of a tag index and the index number of the attribute that you are going to update.</p>
-<p>The data for the attribute is defined in the Name and Value parameters. You can set a Value of "" if no data is to be associated with the attribute.  Set the Value pointer to NULL to remove the attribute. If both Name and Value are NULL, an error will be returned.</p>
-<p>NOTE: The attribute at index 0 declares the name of the tag and should not normally be accompanied with a value declaration.  However, if the tag represents content within its parent, then the Name must be set to NULL and the Value string will determine the content.</p>
+<p>The data for the attribute is defined in the Name and Value parameters.  Use an empty string if no data is to be associated with the attribute.  Set the Value pointer to NULL to remove the attribute. If both Name and Value are NULL, an error will be returned.</p>
+<p>NOTE: The attribute at position 0 declares the name of the tag and should not normally be accompanied with a value declaration.  However, if the tag represents content within its parent, then the Name must be set to NULL and the Value string will determine the content.</p>
 <p>NOTE: The address of the modified tag will be invalidated as a result of calling this method.  Any tag pointers that have been stored by the client program will need to be refreshed from the XML tag list after calling this method, for example:</p>
 <pre>LONG index = tag-&gt;Index; // Store the index of tag.
 xmlSetAttrib(XML, tag-&gt;Index, XMS_NEW, "name", "value");
@@ -398,32 +374,8 @@ tag = XML-&gt;Tags[index]; // Refresh the pointer to tag.
         <error code="Search">The attribute, identified by Name, could not be found.</error>
         <error code="Args">Invalid arguments passed to function.</error>
         <error code="OutOfRange">The Index or Attrib value is out of range.</error>
-        <error code="AllocMemory">A call to AllocMemory() failed.</error>
         <error code="ReadOnly">The XML object is read-only.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
-      </result>
-    </method>
-
-    <method>
-      <name>SetRoot</name>
-      <comment>Defines a root-level tag for all XPath queries.</comment>
-      <prototype>ERROR xmlSetRoot(OBJECTPTR Object, CSTRING XPath)</prototype>
-      <input>
-        <param type="CSTRING" name="XPath">The new root-level tag, expressed as an XPath string.  Set to NULL to reset the root index.</param>
-      </input>
-      <description>
-<p>To optimise XPath processing in a particular area of the XML tree, a root tag can be defined that will limit all lookups to that tag and its children.  The root tag will remain in effect until either this method is called with a NULL XPath or the XML tree is modified.</p>
-<p>The following example illustrates setting the root to the 84th action tag and then extracting the content from its name tag.</p>
-<pre>xml.SetRoot("/action(84)")
-name = xml.get("content:/action/name")
-</pre>
-<p>Changing the root index affects variable field queries only.  Siblings of the targeted root tag will still be accessible for lookup following a call to this method whilst prior and parent tags are not.</p>
-<p>As an alternative, the root tag can be set by writing the <field>RootIndex</field> field with a valid tag index.</p>
-      </description>
-      <result>
-        <error code="Okay">Operation successful.</error>
-        <error code="Search">Unable to find a tag matching the provided XPath.</error>
-        <error code="OutOfRange">The Index parameter is invalid.</error>
       </result>
     </method>
 
@@ -439,7 +391,7 @@ name = xml.get("content:/action/name")
       <description>
 <p>The Sort method is used to sort a block of XML tags to your specifications.  You are required to pass an XPath that refers to the tag containing each item that you want to sort.  To sort the root level, use an XPath of NULL.  A Sort parameter is required that will specify the sorting instructions.  The format for the Sort string is <code>Tag:Attrib,Tag:Attrib,...</code>.</p>
 <p>The Tag indicates the tag name that should be identified for sorting each node (naming child tags is acceptable).  Set the Tag name to "Default" if sorting values should be retrieved from every tag at the requested XPath level.</p>
-<p>The Attrib field defines what attribute contains the sort data in each XML tag.  To sort on content, do not define an Attrib value (use the format <code>Tag:,</code>).</p>
+<p>The Attrib field names the attribute containing the sort value.  To sort on content, do not define an Attrib value (use the format <code>Tag:,</code>).</p>
       </description>
       <result>
         <error code="Okay">The XML object was successfully sorted.</error>
@@ -544,7 +496,7 @@ name = xml.get("content:/action/name")
       <description>
 <p>To parse a string through an XML object, set the Statement field with a pointer to the XML formatted data.  If this field is set after initialisation then the XML object will respond by clearing out any existing data and processing the new information that has been passed to it.</p>
 <p>Be warned that setting this field with an invalid statement will result in an empty XML object.</p>
-<p>If the Statement field is read, a string-based version of the XML object's data is returned.  By default all tags will be included in the statement unless a predefined starting position is set by the <field>CurrentTag</field> field.  The string result is an allocation that must be freed.</p>
+<p>If the Statement field is read, a string-based version of the XML object's data is returned.  By default all tags will be included in the statement unless a predefined starting position is set by the #Cursor field.  The string result is an allocation that must be freed.</p>
       </description>
     </field>
 
@@ -562,7 +514,7 @@ name = xml.get("content:/action/name")
       <type>struct XMLTag * *</type>
       <description>
 <p>After initialising data to an XML object, you can read the processed information through the Tags field.  The Tags field is a null terminated array of all the XML tags that were retrieved from the original XML data. The XML tags are represented in an XMLTag structure.</p>
-<p>Each XMLTag will also have at least one attribute set in the Attrib array (the first attribute reflects the tag name) and the exact number of attributes is indicated by the TotalAttrib field.</p>
+<p>Each XMLTag will also have at least one attribute set in the Attrib array (the first attribute reflects the tag name) and the exact number of attributes is indicated by the Attribs.size() field.</p>
 <p>There are two methods available for reading the XML tags.  The first involves looping through the array, reading each XMLTag reference until a NULL entry is reached (this gives a 'flat' view of the data).  The second is to read the first tag in the array and use the Next, Prev and Child fields to recurse through the XML tags.  Tags that have a Name setting of NULL in the first attribute are to be treated as embedded content, the data of which is defined in the Value string.</p>
 <p>The Tags field is still defined in the event that it is empty (the array will consist of a null terminated entry).</p>
       </description>
@@ -577,7 +529,6 @@ name = xml.get("content:/action/name")
       <const name="INCLUDE_SIBLINGS">Include siblings when building an XML string (GetXMLString only)</const>
       <const name="INDENT">Indent the output of XML tags to improve readability.</const>
       <const name="LOCK_REMOVE">Prevents removal of tags from the XML tree.  This specifically affects the RemoveTag and RemoveXPath methods.</const>
-      <const name="LOWER_CASE">Convert all names and attributes into lower-case characters.</const>
       <const name="NEW">Creates an empty XML object on initialisation - if the Path field has been set, the source file will not be loaded.</const>
       <const name="NO_ESCAPE">Turns off escape code conversion.</const>
       <const name="PARSE_ENTITY">Entity references in the DTD will be parsed automatically.</const>
@@ -586,7 +537,6 @@ name = xml.get("content:/action/name")
       <const name="STRIP_CDATA">Do not echo CDATA sections.  Note that this option is used as a parameter, not an object flag.</const>
       <const name="STRIP_CONTENT">Strip all content from incoming XML data.</const>
       <const name="STRIP_HEADERS">XML headers found in the source data will not be included in the parsed results.</const>
-      <const name="UPPER_CASE">Convert all names and attributes into upper-case characters.</const>
       <const name="WELL_FORMED">By default, the XML class will accept badly structured XML data.  By setting this flag, all processed XML statements must be well formed (tags must balance) or a BadData error will be returned during processing.</const>
     </constants>
 
@@ -612,15 +562,8 @@ name = xml.get("content:/action/name")
   </types>
   <structs>
     <struct name="XMLTag" typeName="XMLTAG">
-      <field name="Index" type="LONG">Position within the XML array</field>
       <field name="ID" type="LONG">Unique ID assigned to the tag on creation</field>
-      <field name="Child" type="struct XMLTag *">Reference to further child tags</field>
-      <field name="Prev" type="struct XMLTag *">Reference to the previous tag at this level in the chain</field>
-      <field name="Next" type="struct XMLTag *">Reference to the next tag at this level in the chain</field>
-      <field name="Private" type="APTR">Developer's private memory reference</field>
-      <field name="Attrib" type="struct XMLAttrib *">Attributes of the tag, starting with the name</field>
-      <field name="TotalAttrib" type="WORD">Total number of listed attributes for this tag</field>
-      <field name="Branch" type="UWORD">The branch level for this XML node</field>
+      <field name="ParentID" type="LONG">Unique ID of the parent tag</field>
       <field name="LineNo" type="LONG">Line number on which this tag was encountered</field>
     </struct>
 

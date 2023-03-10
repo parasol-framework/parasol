@@ -2,7 +2,7 @@
 
 module({
   name="Fluid",
-  copyright="Paul Manias © 2006-2022",
+  copyright="Paul Manias © 2006-2023",
   version=1.0,
   prefix="fl",
   status="beta",

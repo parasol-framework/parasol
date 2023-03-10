@@ -33,13 +33,13 @@ static const struct MethodArray clAudioMethods[] = {
 };
 
 static const struct ActionArray clAudioActions[] = {
-   { AC_Activate, (APTR)AUDIO_Activate },
-   { AC_Deactivate, (APTR)AUDIO_Deactivate },
-   { AC_Free, (APTR)AUDIO_Free },
-   { AC_Init, (APTR)AUDIO_Init },
-   { AC_NewObject, (APTR)AUDIO_NewObject },
-   { AC_SaveSettings, (APTR)AUDIO_SaveSettings },
-   { AC_SaveToObject, (APTR)AUDIO_SaveToObject },
-   { 0, 0 }
+   { AC_Activate, AUDIO_Activate },
+   { AC_Deactivate, AUDIO_Deactivate },
+   { AC_Free, AUDIO_Free },
+   { AC_Init, AUDIO_Init },
+   { AC_NewObject, AUDIO_NewObject },
+   { AC_SaveSettings, AUDIO_SaveSettings },
+   { AC_SaveToObject, AUDIO_SaveToObject },
+   { 0, NULL }
 };
 

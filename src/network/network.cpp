@@ -269,7 +269,7 @@ ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    CoreBase = argCoreBase;
 
-   argModule->getPtr(FID_Master, &glModule);
+   argModule->getPtr(FID_Root, &glModule);
 
    glHosts = VarNew(64, KSF_THREAD_SAFE);
    glAddresses = VarNew(64, KSF_THREAD_SAFE);
@@ -833,7 +833,7 @@ static BYTE check_machine_name(CSTRING HostName)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MODVERSION_NETWORK)
+PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MODVERSION_NETWORK, MOD_IDL, NULL)
 
 /*********************************************************************************************************************
                                  BACKTRACE IT

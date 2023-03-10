@@ -124,15 +124,15 @@ static const struct FieldDef clHTTPCurrentState[] = {
 };
 
 static const struct ActionArray clHTTPActions[] = {
-   { AC_Activate, (APTR)HTTP_Activate },
-   { AC_Deactivate, (APTR)HTTP_Deactivate },
-   { AC_Free, (APTR)HTTP_Free },
-   { AC_GetVar, (APTR)HTTP_GetVar },
-   { AC_Init, (APTR)HTTP_Init },
-   { AC_NewObject, (APTR)HTTP_NewObject },
-   { AC_SetVar, (APTR)HTTP_SetVar },
-   { AC_Write, (APTR)HTTP_Write },
-   { 0, 0 }
+   { AC_Activate, HTTP_Activate },
+   { AC_Deactivate, HTTP_Deactivate },
+   { AC_Free, HTTP_Free },
+   { AC_GetVar, HTTP_GetVar },
+   { AC_Init, HTTP_Init },
+   { AC_NewObject, HTTP_NewObject },
+   { AC_SetVar, HTTP_SetVar },
+   { AC_Write, HTTP_Write },
+   { 0, NULL }
 };
 
 #undef MOD_IDL

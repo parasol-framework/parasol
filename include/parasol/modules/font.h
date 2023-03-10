@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      font.h
-// Copyright: Paul Manias © 1998-2022
+// Copyright: Paul Manias © 1998-2023
 // Generator: idl-c
 
 #include <parasol/main.h>

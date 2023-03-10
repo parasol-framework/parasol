@@ -46,7 +46,7 @@ extern "C" {
 #include "hashes.h"
 #include "defs.h"
 
-#define MAX_STRUCT_DEF 2048 // Struct definitions are typically 100 - 400 bytes.
+static const LONG MAX_STRUCT_DEF = 2048; // Struct definitions are typically 100 - 400 bytes.
 
 static LONG get_fieldvalue(lua_State *, struct fstruct *, CSTRING);
 
@@ -98,11 +98,11 @@ ERROR struct_to_table(lua_State *Lua, struct references *References, struct stru
 
    if (!Address) { lua_pushnil(Lua); return ERR_Okay; }
 
-   BYTE free_ref = FALSE;
+   bool free_ref = false;
    if (!References) {
       References = alloc_references();
       if (!References) { return ERR_AllocMemory; }
-      free_ref = TRUE;
+      free_ref = true;
    }
 
    // Check if there is an existing struct table already associated with this address.  If so, return it
@@ -127,16 +127,16 @@ ERROR struct_to_table(lua_State *Lua, struct references *References, struct stru
 
    auto field = (structdef_field *)(StructDef + 1);
    for (LONG f=0; f < StructDef->Total; f++, field=(structdef_field *)((BYTE *)field + field->Length)) {
-      CSTRING field_name = (CSTRING)(field + 1);
+      auto field_name = (CSTRING)(field + 1);
       lua_pushstring(Lua, field_name);
 
       CPTR address = (BYTE *)Address + field->Offset;
-      LONG type = field->Type;
+      auto type = field->Type;
 
       if (type & FD_ARRAY) {
          if (field->ArraySize IS -1) { // Pointer to a null-terminated array.
             if (type & FD_STRUCT) {
-               CSTRING struct_name = ((CSTRING)(field + 1)) + field->StructOffset;
+               auto struct_name = ((CSTRING)(field + 1)) + field->StructOffset;
                structentry *def;
                if (!VarGet(prv->Structs, struct_name, &def, NULL)) {
                   if (((CPTR *)address)[0]) make_any_table(Lua, type, struct_name, -1, address);
@@ -156,7 +156,7 @@ ERROR struct_to_table(lua_State *Lua, struct references *References, struct stru
          }
          else { // It's an embedded array of fixed size.
             if (type & FD_STRUCT) {
-               CSTRING struct_name = ((CSTRING)(field + 1)) + field->StructOffset;
+               auto struct_name = ((CSTRING)(field + 1)) + field->StructOffset;
                structentry *def;
                if (!VarGet(prv->Structs, struct_name, &def, NULL)) {
                   make_any_table(Lua, type, struct_name, field->ArraySize, address);
@@ -175,7 +175,7 @@ ERROR struct_to_table(lua_State *Lua, struct references *References, struct stru
          }
       }
       else if (type & FD_STRUCT) {
-         CSTRING struct_name = ((CSTRING)(field + 1)) + field->StructOffset;
+         auto struct_name = ((CSTRING)(field + 1)) + field->StructOffset;
          structentry *def;
          if (!VarGet(prv->Structs, struct_name, &def, NULL)) {
             if (type & FD_PTR) {
@@ -240,8 +240,7 @@ struct fstruct * push_struct(objScript *Self, APTR Address, CSTRING StructName, 
 
 struct fstruct * push_struct_def(lua_State *Lua, APTR Address, structentry *StructDef, BYTE Deallocate)
 {
-   fstruct *fs;
-   if ((fs = (fstruct *)lua_newuserdata(Lua, sizeof(fstruct)))) {
+   if (auto fs = (fstruct *)lua_newuserdata(Lua, sizeof(fstruct))) {
       fs->Data        = Address;
       fs->Def         = StructDef;
       fs->StructSize  = StructDef->Size;
@@ -374,15 +373,15 @@ static ERROR generate_structdef(objScript *Self, CSTRING StructName, CSTRING Seq
       }
       else struct_offset = 0;
 
-      // Camel-case adjustment.  Has to handle cases like IPAddress -> ipAddress
+      // Camel-case adjustment.  Has to handle cases like IPAddress -> ipAddress; ID -> id
 
       if ((field_name[0] >= 'A') and (field_name[0] <= 'Z')) field_name[0] = field_name[0] - 'A' + 'a';
 
-      UBYTE lcase = FALSE;
+      bool lcase = false;
       for (LONG f=1; field_name[f]; f++) {
          if ((field_name[f] >= 'A') and (field_name[f] <= 'Z')) {
             if (lcase) field_name[f-1] = field_name[f-1] - 'A' + 'a';
-            lcase = TRUE;
+            lcase = true;
          }
          else break;
       }
@@ -478,9 +477,10 @@ ERROR make_struct(lua_State *Lua, CSTRING StructName, CSTRING Sequence)
 
    buf_end = ALIGN64(buf_end);
 
-   struct structentry *entry = (struct structentry *)buffer;
+   auto entry = (struct structentry *)buffer;
    entry->Total = total_fields;
-   entry->Size  = offset;
+   if (glStructSizes.contains(StructName)) entry->Size = glStructSizes[StructName];
+   else entry->Size  = offset;
    entry->NameHash = STRUCTHASH(StructName);
 
    log.trace("Struct %s has %d fields, size %d, ref %p", StructName, total_fields, offset, entry);
@@ -497,8 +497,7 @@ ERROR make_struct(lua_State *Lua, CSTRING StructName, CSTRING Sequence)
 
 static LONG find_field(struct fstruct *Struct, CSTRING FieldName, CSTRING *StructName, LONG *Offset, LONG *Type, LONG *ArraySize)
 {
-   structentry *def;
-   if ((def = Struct->Def)) {
+   if (auto def = Struct->Def) {
       auto fields = (structdef_field *)(def + 1);
       ULONG field_hash = StrHash(FieldName, FALSE);
       for (LONG i=0; i < def->Total; i++) {
@@ -562,8 +561,7 @@ static int struct_new(lua_State *Lua)
          return 0;
       }
 
-      fstruct *fs;
-      if ((fs = (fstruct *)lua_newuserdata(Lua, sizeof(fstruct) + def->Size))) {
+      if (auto fs = (fstruct *)lua_newuserdata(Lua, sizeof(fstruct) + def->Size)) {
          luaL_getmetatable(Lua, "Fluid.struct");
          lua_setmetatable(Lua, -2);
 
@@ -660,11 +658,8 @@ static int struct_len(lua_State *Lua)
 
 static int struct_get(lua_State *Lua)
 {
-   auto fs = (struct fstruct *)lua_touserdata(Lua, 1);
-
-   if (fs) {
-      CSTRING fieldname;
-      if ((fieldname = luaL_checkstring(Lua, 2))) {
+   if (auto fs = (struct fstruct *)lua_touserdata(Lua, 1)) {
+      if (auto fieldname = luaL_checkstring(Lua, 2)) {
          if (!StrCompare("structsize", fieldname, 0, STR_MATCH_CASE)) {
             lua_pushvalue(Lua, 1);
             lua_pushcclosure(Lua, &struct_structsize, 1);
@@ -765,9 +760,7 @@ static LONG get_fieldvalue(lua_State *Lua, struct fstruct *FS, CSTRING fieldname
 
 static int struct_set(lua_State *Lua)
 {
-   auto fs = (struct fstruct *)lua_touserdata(Lua, 1);
-
-   if (fs) {
+   if (auto fs = (struct fstruct *)lua_touserdata(Lua, 1)) {
       CSTRING ref;
       if ((ref = luaL_checkstring(Lua, 2))) {
          if (!fs->Data) {
@@ -806,9 +799,8 @@ static int struct_set(lua_State *Lua)
    return 0;
 }
 
-/*********************************************************************************************************************
-** Garbage collecter.
-*/
+//********************************************************************************************************************
+// Garbage collecter.
 
 static int struct_destruct(lua_State *Lua)
 {

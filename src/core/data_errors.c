@@ -15,7 +15,7 @@ CSTRING glMessages[ERR_END] = {
  "Resource is in use.",
  "General failure.",
  "File error, e.g. file not found.",
- "There is an error in the given data.",
+ "There is an error in the provided data.",
  "A search routine in this function failed.",
  "Trouble initialising/using a module.",
  "File not found.",

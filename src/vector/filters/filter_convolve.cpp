@@ -630,18 +630,18 @@ static const FieldDef clEdgeMode[] = {
 };
 
 static const FieldArray clConvolveFXFields[] = {
-   { "Bias",          FDF_VIRTUAL|FDF_DOUBLE|FDF_RI,           0, (APTR)CONVOLVEFX_GET_Bias, (APTR)CONVOLVEFX_SET_Bias },
-   { "Divisor",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RI,           0, (APTR)CONVOLVEFX_GET_Divisor, (APTR)CONVOLVEFX_SET_Divisor },
-   { "EdgeMode",      FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RI,  (MAXINT)&clEdgeMode, (APTR)CONVOLVEFX_GET_EdgeMode, (APTR)CONVOLVEFX_SET_EdgeMode },
-   { "MatrixRows",    FDF_VIRTUAL|FDF_LONG|FDF_RI,             0, (APTR)CONVOLVEFX_GET_MatrixRows, (APTR)CONVOLVEFX_SET_MatrixRows },
-   { "MatrixColumns", FDF_VIRTUAL|FDF_LONG|FDF_RI,             0, (APTR)CONVOLVEFX_GET_MatrixColumns, (APTR)CONVOLVEFX_SET_MatrixColumns },
-   { "Matrix",        FDF_VIRTUAL|FDF_DOUBLE|FDF_ARRAY|FDF_RI, 0, (APTR)CONVOLVEFX_GET_Matrix, (APTR)CONVOLVEFX_SET_Matrix },
-   { "PreserveAlpha", FDF_VIRTUAL|FDF_LONG|FDF_RW,             0, (APTR)CONVOLVEFX_GET_PreserveAlpha, (APTR)CONVOLVEFX_SET_PreserveAlpha },
-   { "TargetX",       FDF_VIRTUAL|FDF_LONG|FDF_RI,             0, (APTR)CONVOLVEFX_GET_TargetX, (APTR)CONVOLVEFX_SET_TargetX },
-   { "TargetY",       FDF_VIRTUAL|FDF_LONG|FDF_RI,             0, (APTR)CONVOLVEFX_GET_TargetY, (APTR)CONVOLVEFX_SET_TargetY },
-   { "UnitX",         FDF_VIRTUAL|FDF_DOUBLE|FDF_RI,           0, (APTR)CONVOLVEFX_GET_UnitX, (APTR)CONVOLVEFX_SET_UnitX },
-   { "UnitY",         FDF_VIRTUAL|FDF_DOUBLE|FDF_RI,           0, (APTR)CONVOLVEFX_GET_UnitY, (APTR)CONVOLVEFX_SET_UnitY },
-   { "XMLDef",        FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R,  0, (APTR)CONVOLVEFX_GET_XMLDef, NULL },
+   { "Bias",          FDF_VIRTUAL|FDF_DOUBLE|FDF_RI,           CONVOLVEFX_GET_Bias, CONVOLVEFX_SET_Bias },
+   { "Divisor",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RI,           CONVOLVEFX_GET_Divisor, CONVOLVEFX_SET_Divisor },
+   { "EdgeMode",      FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RI,  CONVOLVEFX_GET_EdgeMode, CONVOLVEFX_SET_EdgeMode, &clEdgeMode },
+   { "MatrixRows",    FDF_VIRTUAL|FDF_LONG|FDF_RI,             CONVOLVEFX_GET_MatrixRows, CONVOLVEFX_SET_MatrixRows },
+   { "MatrixColumns", FDF_VIRTUAL|FDF_LONG|FDF_RI,             CONVOLVEFX_GET_MatrixColumns, CONVOLVEFX_SET_MatrixColumns },
+   { "Matrix",        FDF_VIRTUAL|FDF_DOUBLE|FDF_ARRAY|FDF_RI, CONVOLVEFX_GET_Matrix, CONVOLVEFX_SET_Matrix },
+   { "PreserveAlpha", FDF_VIRTUAL|FDF_LONG|FDF_RW,             CONVOLVEFX_GET_PreserveAlpha, CONVOLVEFX_SET_PreserveAlpha },
+   { "TargetX",       FDF_VIRTUAL|FDF_LONG|FDF_RI,             CONVOLVEFX_GET_TargetX, CONVOLVEFX_SET_TargetX },
+   { "TargetY",       FDF_VIRTUAL|FDF_LONG|FDF_RI,             CONVOLVEFX_GET_TargetY, CONVOLVEFX_SET_TargetY },
+   { "UnitX",         FDF_VIRTUAL|FDF_DOUBLE|FDF_RI,           CONVOLVEFX_GET_UnitX, CONVOLVEFX_SET_UnitX },
+   { "UnitY",         FDF_VIRTUAL|FDF_DOUBLE|FDF_RI,           CONVOLVEFX_GET_UnitY, CONVOLVEFX_SET_UnitY },
+   { "XMLDef",        FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R,  CONVOLVEFX_GET_XMLDef },
    END_FIELD
 };
 

@@ -114,8 +114,8 @@ static ERROR MERGEFX_GET_XMLDef(extMergeFX *Self, STRING *Value)
 #include "filter_merge_def.c"
 
 static const FieldArray clMergeFXFields[] = {
-   { "SourceList", FDF_VIRTUAL|FDF_STRUCT|FDF_ARRAY|FDF_RW, (MAXINT)"MergeSource", NULL, (APTR)MERGEFX_SET_SourceList },
-   { "XMLDef",     FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, 0, (APTR)MERGEFX_GET_XMLDef, NULL },
+   { "SourceList", FDF_VIRTUAL|FDF_STRUCT|FDF_ARRAY|FDF_RW, NULL, MERGEFX_SET_SourceList, "MergeSource" },
+   { "XMLDef",     FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, MERGEFX_GET_XMLDef },
    END_FIELD
 };
 

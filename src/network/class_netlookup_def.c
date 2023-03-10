@@ -22,6 +22,6 @@ static const struct ActionArray clNetLookupActions[] = {
    { AC_Free, (APTR)NETLOOKUP_Free },
    { AC_FreeWarning, (APTR)NETLOOKUP_FreeWarning },
    { AC_NewObject, (APTR)NETLOOKUP_NewObject },
-   { 0, 0 }
+   { 0, NULL }
 };
 

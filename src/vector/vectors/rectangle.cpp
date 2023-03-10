@@ -366,22 +366,22 @@ static const FieldDef clRectDimensions[] = {
 };
 
 static const FieldArray clRectangleFields[] = {
-   { "RoundX",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, 0, (APTR)RECTANGLE_GET_RoundX, (APTR)RECTANGLE_SET_RoundX },
-   { "RoundY",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, 0, (APTR)RECTANGLE_GET_RoundY, (APTR)RECTANGLE_SET_RoundY },
-   { "X",          FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)RECTANGLE_GET_X, (APTR)RECTANGLE_SET_X },
-   { "Y",          FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)RECTANGLE_GET_Y, (APTR)RECTANGLE_SET_Y },
-   { "Width",      FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)RECTANGLE_GET_Width, (APTR)RECTANGLE_SET_Width },
-   { "Height",     FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)RECTANGLE_GET_Height, (APTR)RECTANGLE_SET_Height },
-   { "Dimensions", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, (MAXINT)&clRectDimensions, (APTR)RECTANGLE_GET_Dimensions, (APTR)RECTANGLE_SET_Dimensions },
+   { "RoundX",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, RECTANGLE_GET_RoundX, RECTANGLE_SET_RoundX },
+   { "RoundY",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, RECTANGLE_GET_RoundY, RECTANGLE_SET_RoundY },
+   { "X",          FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, RECTANGLE_GET_X, RECTANGLE_SET_X },
+   { "Y",          FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, RECTANGLE_GET_Y, RECTANGLE_SET_Y },
+   { "Width",      FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, RECTANGLE_GET_Width, RECTANGLE_SET_Width },
+   { "Height",     FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, RECTANGLE_GET_Height, RECTANGLE_SET_Height },
+   { "Dimensions", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, RECTANGLE_GET_Dimensions, RECTANGLE_SET_Dimensions, &clRectDimensions },
    END_FIELD
 };
 
 static const ActionArray clRectangleActions[] = {
-   { AC_Move,          (APTR)RECTANGLE_Move },
-   { AC_MoveToPoint,   (APTR)RECTANGLE_MoveToPoint },
-   { AC_NewObject,     (APTR)RECTANGLE_NewObject },
-   //{ AC_Redimension, (APTR)RECTANGLE_Redimension },
-   { AC_Resize,      (APTR)RECTANGLE_Resize },
+   { AC_Move,          RECTANGLE_Move },
+   { AC_MoveToPoint,   RECTANGLE_MoveToPoint },
+   { AC_NewObject,     RECTANGLE_NewObject },
+   //{ AC_Redimension, RECTANGLE_Redimension },
+   { AC_Resize,      RECTANGLE_Resize },
    { 0, NULL }
 };
 

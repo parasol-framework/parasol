@@ -186,11 +186,11 @@ static ERROR RSVG_Resize(prvPicture *Self, struct acResize *Args)
 //********************************************************************************************************************
 
 static const ActionArray clActions[] = {
-   { AC_Activate, (APTR)RSVG_Activate },
-   { AC_Free,     (APTR)RSVG_Free },
-   { AC_Init,     (APTR)RSVG_Init },
-   { AC_Query,    (APTR)RSVG_Query },
-   { AC_Resize,   (APTR)RSVG_Resize },
+   { AC_Activate, RSVG_Activate },
+   { AC_Free,     RSVG_Free },
+   { AC_Init,     RSVG_Init },
+   { AC_Query,    RSVG_Query },
+   { AC_Resize,   RSVG_Resize },
    { 0, NULL }
 };
 

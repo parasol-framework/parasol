@@ -1368,11 +1368,15 @@ extern "C" {
 #define TOSTRING(x) STRINGIFY(x)
 #endif
 
+typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
+
 #define MOD_IDL NULL
 
 #ifdef MOD_NAME
-#define PARASOL_MOD(init,close,open,expunge,version) MODULE_HEADER = { MODULE_HEADER_VERSION, MHF_DEFAULT, version, VER_CORE, MOD_IDL, init, close, open, expunge, NULL, TOSTRING(MOD_NAME), NULL };
+#define PARASOL_MOD(init,close,open,expunge,version,IDL,Structures) EXPORT ModHeader ModHeader(init, close, open, expunge, version, IDL, Structures, TOSTRING(MOD_NAME));
 #define MOD_PATH ("modules:" TOSTRING(MOD_NAME))
+#else
+#define MOD_NAME NULL
 #endif
 
 #ifdef DEBUG
@@ -1648,9 +1652,31 @@ struct ModHeader {
    void (*Close)(OBJECTPTR);                        // A function that will be called each time the module is closed.
    ERROR (*Open)(OBJECTPTR);                        // A function that will be called each time the module is opened.
    ERROR (*Expunge)(void);                          // Reference to an expunge function to terminate the module.
-   const struct Function * DefaultList;             // Pointer to default function list
    CSTRING Name;                                    // Name of the module
-   struct ModuleMaster * Master;                    // Private, must be set to zero
+   STRUCTS *StructDefs;
+   struct RootModule *Root;
+   ModHeader(ERROR (*pInit)(OBJECTPTR, struct CoreBase *),
+      void  (*pClose)(OBJECTPTR),
+      ERROR (*pOpen)(OBJECTPTR),
+      ERROR (*pExpunge)(void),
+      FLOAT pVersion,
+      CSTRING pDef,
+      STRUCTS *pStructs,
+      CSTRING pName) {
+
+      HeaderVersion = MODULE_HEADER_VERSION;
+      Flags         = MHF_DEFAULT;
+      ModVersion    = pVersion;
+      CoreVersion   = VER_CORE;
+      Definitions   = pDef;
+      StructDefs    = pStructs;
+      Init          = pInit;
+      Close         = pClose;
+      Open          = pOpen;
+      Expunge       = pExpunge;
+      Name          = pName;
+      Root        = NULL;
+   }
 };
 
 struct FieldArray {
@@ -1659,6 +1685,9 @@ struct FieldArray {
    MAXINT  Arg;     // Can be a pointer or an integer value
    APTR    GetField; // void GetField(*Object, APTR Result);
    APTR    SetField; // ERROR SetField(*Object, APTR Value);
+  template <class G = APTR, class S = APTR, class T = MAXINT> FieldArray(CSTRING pName, ULONG pFlags, G pGetField = NULL, S pSetField = NULL, T pArg = 0) :
+     Name(pName), Flags(pFlags), Arg((MAXINT)pArg), GetField((APTR)pGetField), SetField((APTR)pSetField)
+     { }
 };
 
 struct FieldDef {
@@ -1687,6 +1716,7 @@ struct Variable {
 struct ActionArray {
    LONG ActionCode;    // Action identifier
    APTR Routine;       // Pointer to the function entry point
+  template <class T> ActionArray(LONG pID, T pRoutine) : ActionCode(pID), Routine((APTR)pRoutine) { }
 };
 
 struct MethodArray {
@@ -2161,7 +2191,7 @@ inline LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size) { return C
 //********************************************************************************************************************
 
 #define PRIME_HASH 2654435761UL
-#define END_FIELD { NULL, 0, 0, NULL, NULL }
+#define END_FIELD FieldArray(NULL, 0)
 #define FDEF static const struct FunctionField
 
 #define DeregisterFD(a)   RegisterFD((a), RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL, 0, 0)
@@ -2170,7 +2200,7 @@ inline LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size) { return C
 inline OBJECTPTR GetParentContext() { return (OBJECTPTR)(MAXINT)GetResource(RES_PARENT_CONTEXT); }
 inline APTR GetResourcePtr(LONG ID) { return (APTR)(MAXINT)GetResource(ID); }
 
-inline CSTRING to_cstring(std::string &A) { return A.c_str(); }
+inline CSTRING to_cstring(const std::string &A) { return A.c_str(); }
 constexpr inline CSTRING to_cstring(CSTRING A) { return A; }
 
 template <class T, class U> inline ERROR StrMatch(T &&A, U &&B) {
@@ -2220,6 +2250,10 @@ inline ERROR QueueAction(LONG Action, OBJECTID ObjectID) {
 
 template <class T, class U> inline ERROR StrCompare(T &&A, U &&B, LONG Length, LONG Flags) {
    return StrCompare(to_cstring(A), to_cstring(B), Length, Flags);
+}
+
+inline ULONG StrHash(const std::string Value) {
+   return CoreBase->_StrHash(Value.c_str(), FALSE);
 }
 
 #endif
@@ -2561,7 +2595,7 @@ struct BaseClass { // Must be 64-bit aligned
    inline ERROR set(ULONG FieldID, const FUNCTION *Value) { return SetField(this, (FIELD)FieldID|TFUNCTION, Value); }
    inline ERROR set(ULONG FieldID, const char *Value)     { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
    inline ERROR set(ULONG FieldID, const unsigned char *Value) { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
-   inline ERROR set(ULONG FieldID, std::string &Value)    { return SetField(this, (FIELD)FieldID|TSTRING, Value.c_str()); }
+   inline ERROR set(ULONG FieldID, const std::string &Value) { return SetField(this, (FIELD)FieldID|TSTRING, Value.c_str()); }
    inline ERROR set(ULONG FieldID, const Variable *Value) { return SetField(this, (FIELD)FieldID|TVAR, Value); }
    // Works both for regular data pointers and function pointers if field is defined correctly.
    inline ERROR set(ULONG FieldID, const void *Value) { return SetField(this, (FIELD)FieldID|TPTR, Value); }
@@ -3634,7 +3668,7 @@ class objModule : public BaseClass {
    DOUBLE Version;                          // Minimum required version number.
    const struct Function * FunctionList;    // Refers to a list of public functions exported by the module.
    APTR   ModBase;                          // The Module's function base (jump table) must be read from this field.
-   struct ModuleMaster * Master;            // For internal use only.
+   struct RootModule * Root;                // For internal use only.
    struct ModHeader * Header;               // For internal usage only.
    LONG   Flags;                            // Optional flags.
    public:

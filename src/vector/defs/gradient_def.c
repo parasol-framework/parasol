@@ -57,9 +57,9 @@ static const struct FieldDef clVectorGradientColourSpace[] = {
 };
 
 static const struct ActionArray clVectorGradientActions[] = {
-   { AC_Free, (APTR)VECTORGRADIENT_Free },
-   { AC_Init, (APTR)VECTORGRADIENT_Init },
-   { AC_NewObject, (APTR)VECTORGRADIENT_NewObject },
-   { 0, 0 }
+   { AC_Free, VECTORGRADIENT_Free },
+   { AC_Init, VECTORGRADIENT_Init },
+   { AC_NewObject, VECTORGRADIENT_NewObject },
+   { 0, NULL }
 };
 

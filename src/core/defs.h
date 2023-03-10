@@ -343,7 +343,7 @@ class extMetaClass : public objMetaClass {
    class extMetaClass *Base;            // Reference to the base class if this is a sub-class
    struct Field *prvFields;             // Internal field structure
    const struct FieldArray *SubFields;  // Extra fields defined by the sub-class
-   struct ModuleMaster *Master;         // Master module that owns this class, if any.
+   struct RootModule *Root;             // Root module that owns this class, if any.
    UBYTE Children[8];                   // Child objects (field indexes), in order
    STRING Location;                     // Location of the class binary, this field exists purely for caching the location string if the user reads it
    struct ActionEntry ActionTable[AC_END];
@@ -612,7 +612,7 @@ extern bool glShowIO, glShowPrivate, glShowPublic;
 extern WORD glLogLevel, glMaxDepth;
 extern UBYTE glTaskState;
 extern LARGE glTimeLog;
-extern struct ModuleMaster   *glModuleList;    // Locked with TL_GENERIC.  Maintained as a linked-list; hashmap unsuitable.
+extern struct RootModule   *glModuleList;    // Locked with TL_GENERIC.  Maintained as a linked-list; hashmap unsuitable.
 extern struct PublicAddress  *glSharedBlocks;  // Locked with PL_PUBLICMEM
 extern struct SortedAddress  *glSortedBlocks;
 extern struct SharedControl  *glSharedControl; // Locked with PL_FORBID
@@ -659,7 +659,7 @@ extern CSTRING glIDL;
 extern struct BaseClass glDummyObject;
 
 extern CSTRING glClassBinPath;
-extern objMetaClass *glModuleMasterClass;
+extern objMetaClass *glRootModuleClass;
 extern objMetaClass *glModuleClass;
 extern objMetaClass *glTaskClass;
 extern objMetaClass *glThreadClass;
@@ -840,10 +840,10 @@ extern LONG glInotify;
 
 //********************************************************************************************************************
 
-class ModuleMaster : public BaseClass {
+class RootModule : public BaseClass {
    public:
-   class ModuleMaster *Next;   // Next module in list
-   class ModuleMaster *Prev;   // Previous module in list
+   class RootModule *Next;     // Next module in list
+   class RootModule *Prev;     // Previous module in list
    struct ModHeader  *Header;  // Pointer to module header - for memory resident modules only.
    struct CoreBase *CoreBase;  // Module's personal Core reference
    #ifdef __unix__
@@ -939,7 +939,7 @@ ERROR  find_private_object_entry(OBJECTID, LONG *);
 ERROR  find_public_mem_id(struct SharedControl *, MEMORYID, LONG *);
 void   fix_core_table(struct CoreBase *, FLOAT);
 void   free_events(void);
-void   free_module_entry(struct ModuleMaster *);
+void   free_module_entry(struct RootModule *);
 ERROR  free_ptr_args(APTR, const struct FunctionField *, WORD);
 void   free_public_resources(OBJECTID);
 void   free_wakelocks(void);

@@ -859,10 +859,10 @@ static LONG find_frame(objSound *Self, UBYTE *Buffer, LONG BufferSize)
 //********************************************************************************************************************
 
 static const struct ActionArray clActions[] = {
-   { AC_Free, (APTR)MP3_Free },
-   { AC_Init, (APTR)MP3_Init },
-   { AC_Read, (APTR)MP3_Read },
-   { AC_Seek, (APTR)MP3_Seek },
+   { AC_Free, MP3_Free },
+   { AC_Init, MP3_Init },
+   { AC_Read, MP3_Read },
+   { AC_Seek, MP3_Seek },
    { 0, NULL }
 };
 
@@ -896,4 +896,4 @@ static ERROR CMDExpunge(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, VER_MP3)
+PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, VER_MP3, NULL, NULL)

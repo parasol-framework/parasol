@@ -40,17 +40,18 @@ It is critical that the module object is permanently retained until the program 
 #include "../defs.h"
 #include <parasol/main.h>
 
-static ModuleMaster glCoreMaster;
-static ModHeader glCoreHeader;
+static RootModule glCoreRoot;
+static ModHeader glCoreHeader(NULL, NULL, NULL, NULL, VER_CORE, glIDL, NULL, "Core");
 
-static LONG cmp_mod_names(CSTRING, CSTRING);
-static ModuleMaster * check_resident(extModule *, CSTRING);
+static bool cmp_mod_names(CSTRING, CSTRING);
+static RootModule * check_resident(extModule *, CSTRING);
 static void free_module(MODHANDLE handle);
 
 //********************************************************************************************************************
 
 static ERROR GET_IDL(extModule *, CSTRING *);
 static ERROR GET_Name(extModule *, CSTRING *);
+static ERROR GET_Structs(extModule *, STRUCTS **);
 
 static ERROR SET_Header(extModule *, ModHeader *);
 static ERROR SET_Name(extModule *, CSTRING);
@@ -62,15 +63,14 @@ static const FieldDef clFlags[] = {
 };
 
 static const FieldArray glModuleFields[] = {
-   { "Version",      FDF_DOUBLE|FDF_RI,  0, NULL, NULL },
-   { "FunctionList", FDF_POINTER|FDF_RW, 0, NULL, NULL },
-   { "ModBase",      FDF_POINTER|FDF_R,  0, NULL, NULL },
-   { "Master",       FDF_POINTER|FDF_R,  0, NULL, NULL },
-   { "Header",       FDF_POINTER|FDF_RI, 0, NULL, (APTR)SET_Header },
-   { "Flags",        FDF_LONG|FDF_RI,    (MAXINT)&clFlags, NULL, NULL },
+   { "Version",      FDF_DOUBLE|FDF_RI },
+   { "FunctionList", FDF_POINTER|FDF_RW },
+   { "ModBase",      FDF_POINTER|FDF_R },
+   { "Root",         FDF_POINTER|FDF_R },
+   { "Header",       FDF_POINTER|FDF_RI, NULL, SET_Header },
+   { "Flags",        FDF_LONG|FDF_RI, NULL, NULL, &clFlags },
    // Virtual fields
-   { "Name",         FDF_STRING|FDF_RI, 0, (APTR)GET_Name, (APTR)SET_Name },
-   { "IDL",          FDF_STRING|FDF_R,  0, (APTR)GET_IDL, NULL },
+   { "Name",         FDF_STRING|FDF_RI, GET_Name, SET_Name },
    END_FIELD
 };
 
@@ -78,71 +78,16 @@ static ERROR MODULE_Init(extModule *, APTR);
 static ERROR MODULE_Free(extModule *, APTR);
 
 static const ActionArray glModuleActions[] = {
-   { AC_Free,   (APTR)MODULE_Free },
-   { AC_Init,   (APTR)MODULE_Init },
+   { AC_Free, MODULE_Free },
+   { AC_Init, MODULE_Init },
    { 0, NULL }
 };
 
 //********************************************************************************************************************
 
-static ERROR MODULE_ResolveSymbol(extModule *, struct modResolveSymbol *);
-
-static const FunctionField argsResolveSymbol[] = { { "Name", FD_STR }, { "Address", FD_PTR|FD_RESULT }, { NULL, 0 } };
-
-static const MethodArray glModuleMethods[] = {
-   { MT_ModResolveSymbol, (APTR)MODULE_ResolveSymbol, "ResolveSymbol", argsResolveSymbol, sizeof(struct modResolveSymbol) },
-   { 0, NULL, NULL, 0 }
-};
-
-//********************************************************************************************************************
-
-static const FieldArray glModuleMasterFields[] = {
-   END_FIELD
-};
-
-static ERROR MODULEMASTER_Free(ModuleMaster *, APTR);
-
-static const ActionArray glModuleMasterActions[] = {
-   { AC_Free, (APTR)MODULEMASTER_Free },
-   { 0, NULL }
-};
-
-//********************************************************************************************************************
-
-extern "C" ERROR add_module_class(void)
+ERROR ROOTMODULE_Free(RootModule *Self, APTR Void)
 {
-   if (!(glModuleClass = extMetaClass::create::global(
-      fl::BaseClassID(ID_MODULE),
-      fl::ClassVersion(VER_MODULE),
-      fl::Name("Module"),
-      fl::Category(CCF_SYSTEM),
-      fl::FileExtension("*.mod|*.so|*.dll"),
-      fl::FileDescription("System Module"),
-      fl::Actions(glModuleActions),
-      fl::Methods(glModuleMethods),
-      fl::Fields(glModuleFields),
-      fl::Size(sizeof(extModule)),
-      fl::Path("modules:core")))) return ERR_AddClass;
-
-   if (!(glModuleMasterClass = extMetaClass::create::global(
-      fl::BaseClassID(ID_MODULEMASTER),
-      fl::ClassVersion(1.0),
-      fl::Name("ModuleMaster"),
-      fl::Flags(CLF_NO_OWNERSHIP),
-      fl::Category(CCF_SYSTEM),
-      fl::Actions(glModuleMasterActions),
-      fl::Fields(glModuleMasterFields),
-      fl::Size(sizeof(ModuleMaster)),
-      fl::Path("modules:core")))) return ERR_AddClass;
-
-   return ERR_Okay;
-}
-
-//********************************************************************************************************************
-
-ERROR MODULEMASTER_Free(ModuleMaster *Self, APTR Void)
-{
-   if (Self->Table) Self->Table->Master = NULL; // Remove the DLL's reference to the master.
+   if (Self->Table) Self->Table->Root = NULL; // Remove the DLL's reference to the master.
 
    // Note that the order in which we perform the following actions is very important.
 
@@ -166,19 +111,25 @@ ERROR MODULEMASTER_Free(ModuleMaster *Self, APTR Void)
    return ERR_Okay;
 }
 
+static ERROR ROOTMODULE_GET_Header(RootModule *Self, ModHeader **Value)
+{
+   *Value = Self->Header;
+   return ERR_Okay;
+}
+
 //********************************************************************************************************************
 // This action sends a CLOSE command to the module, then frees the personally assigned module structure.  Note that the
-// module code will be left resident in memory as it belongs to the ModuleMaster, not the Module.  See Expunge()
+// module code will be left resident in memory as it belongs to the RootModule, not the Module.  See Expunge()
 // in the Core for further details.
 
 static ERROR MODULE_Free(extModule *Self, APTR Void)
 {
    // Call the Module's Close procedure
 
-   if (Self->Master) {
-      if (Self->Master->OpenCount > 0) Self->Master->OpenCount--;
-      if (Self->Master->Close)         Self->Master->Close(Self);
-      Self->Master = NULL;
+   if (Self->Root) {
+      if (Self->Root->OpenCount > 0) Self->Root->OpenCount--;
+      if (Self->Root->Close)         Self->Root->Close(Self);
+      Self->Root = NULL;
    }
 
    if (Self->prvMBMemory) { FreeResource(Self->prvMBMemory); Self->prvMBMemory = NULL; }
@@ -190,7 +141,7 @@ static ERROR MODULE_Free(extModule *Self, APTR Void)
 static ERROR MODULE_Init(extModule *Self, APTR Void)
 {
    pf::Log log;
-   #define AF_MODULEMASTER 0x0001
+   #define AF_ROOTMODULE 0x0001
    #define AF_SEGMENT      0x0002
    ERROR error = ERR_Failed;
    LONG i;
@@ -209,19 +160,19 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
 
    log.trace("Finding module %s (%s)", Self->Name, name);
 
-   ModuleMaster *master;
+   RootModule *master;
    ModHeader *table;
    if ((master = check_resident(Self, name))) {
-      Self->Master = master;
+      Self->Root = master;
    }
-   else if (!NewObject(ID_MODULEMASTER, NF::UNTRACKED, (OBJECTPTR *)&master)) {
+   else if (!NewObject(ID_ROOTMODULE, NF::UNTRACKED, (OBJECTPTR *)&master)) {
       std::string path;
 
-      master->Next = glModuleList; // Insert the ModuleMaster at the start of the chain.
+      master->Next = glModuleList; // Insert the RootModule at the start of the chain.
       if (glModuleList) glModuleList->Prev = master;
       glModuleList = master;
 
-      aflags |= AF_MODULEMASTER;
+      aflags |= AF_ROOTMODULE;
 
       context = SetContext(master);
 
@@ -378,17 +329,17 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
 
       master->OpenCount  = 0;
       master->Version    = 1;
-      Self->Master = master;
+      Self->Root = master;
 
       if (table) {
          // First, check if the module has already been loaded and is resident in a way that we haven't caught.
          // This shouldn't happen, but can occur for reasons such as the module being loaded from a path that differs
-         // to the original. We resolve it by unloading the module and reverting to ModuleMaster referenced in the
-         // Master field.
+         // to the original. We resolve it by unloading the module and reverting to RootModule referenced in the
+         // Root field.
 
          if (table->HeaderVersion >= MODULE_HEADER_V2) {
-            if (table->Master) {
-               log.debug("Module already loaded as #%d, reverting to original ModuleMaster object.", table->Master->UID);
+            if (table->Root) {
+               log.debug("Module already loaded as #%d, reverting to original RootModule object.", table->Root->UID);
 
                SetContext(context);
                context = NULL;
@@ -397,19 +348,18 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
                master->LibraryBase = NULL;
                acFree(master);
 
-               Self->Master = table->Master;
-               master = table->Master;
+               Self->Root = table->Root;
+               master = table->Root;
                goto open_module;
             }
 
-            table->Master = master;
+            table->Root = master;
          }
 
          if (!table->Init) { log.warning(ERR_ModuleMissingInit); goto exit; }
          if (!table->Name) { log.warning(ERR_ModuleMissingName); goto exit; }
 
          master->Header = table;
-         Self->FunctionList = table->DefaultList;
          Self->Version      = table->ModVersion;
          master->Table      = table;
          master->Name       = table->Name;
@@ -471,7 +421,7 @@ open_module:
    // At this stage the module is 100% resident and it is not possible to reverse the process.  Because of this, if an
    // error occurs we must not try to free any resident allocations from memory.
 
-   aflags = aflags & ~(AF_MODULEMASTER|AF_SEGMENT);
+   aflags = aflags & ~(AF_ROOTMODULE|AF_SEGMENT);
 
    // OPEN
 
@@ -485,16 +435,6 @@ open_module:
 
    if (master->Table) master->Close = master->Table->Close;
    master->OpenCount++;
-
-   // Open() should have set the Self->FunctionList for us, but if it is null we will have to grab the default
-   // function list.
-
-   if (!Self->FunctionList) {
-      if (master->Header) {
-         Self->FunctionList = master->Header->DefaultList;
-      }
-      else if (!(Self->Flags & MOF_LINK_LIBRARY)) error = log.warning(ERR_EntryMissingHeader);
-   }
 
    // Build the jump table for the program
 
@@ -521,14 +461,14 @@ exit:
       if (!(error & ERF_Notified)) log.msg("\"%s\" failed: %s", Self->Name, GetErrorMsg(error));
       error &= ~(ERF_Notified|ERF_Delay);
 
-      if (aflags & AF_MODULEMASTER) {
+      if (aflags & AF_ROOTMODULE) {
          if (master->Expunge) {
             log.msg("Expunging...");
             master->Expunge();
          }
 
          acFree(master);
-         Self->Master = NULL;
+         Self->Root = NULL;
       }
    }
 
@@ -565,23 +505,23 @@ static ERROR MODULE_ResolveSymbol(extModule *Self, struct modResolveSymbol *Args
    if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
 
 #ifdef _WIN32
-   if ((!Self->Master) or (!Self->Master->LibraryBase)) return ERR_FieldNotSet;
+   if ((!Self->Root) or (!Self->Root->LibraryBase)) return ERR_FieldNotSet;
 
-   if ((Args->Address = winGetProcAddress(Self->Master->LibraryBase, Args->Name))) {
+   if ((Args->Address = winGetProcAddress(Self->Root->LibraryBase, Args->Name))) {
       return ERR_Okay;
    }
    else {
-      log.msg("Failed to resolve '%s' in %s module.", Args->Name, Self->Master->Name);
+      log.msg("Failed to resolve '%s' in %s module.", Args->Name, Self->Root->Name);
       return ERR_NotFound;
    }
 #elif __unix__
-   if ((!Self->Master) or (!Self->Master->LibraryBase)) return ERR_FieldNotSet;
+   if ((!Self->Root) or (!Self->Root->LibraryBase)) return ERR_FieldNotSet;
 
-   if ((Args->Address = dlsym(Self->Master->LibraryBase, Args->Name))) {
+   if ((Args->Address = dlsym(Self->Root->LibraryBase, Args->Name))) {
       return ERR_Okay;
    }
    else {
-      log.msg("Failed to resolve '%s' in %s module.", Args->Name, Self->Master->Name);
+      log.msg("Failed to resolve '%s' in %s module.", Args->Name, Self->Root->Name);
       return ERR_NotFound;
    }
 #else
@@ -596,24 +536,6 @@ static ERROR MODULE_ResolveSymbol(extModule *Self, struct modResolveSymbol *Args
 Flags: Optional flags.
 Lookup: MOF
 
--FIELD-
-IDL: Returns a compressed IDL string from the module, if available.
-
-**********************************************************************************************************************/
-
-static ERROR GET_IDL(extModule *Self, CSTRING *Value)
-{
-   pf::Log log;
-
-   if ((Self->Master) and (Self->Master->Header)) {
-      *Value = Self->Master->Header->Definitions;
-      log.trace("No IDL for module %s", Self->Name);
-      return ERR_Okay;
-   }
-   else return log.warning(ERR_NotInitialised);
-}
-
-/*********************************************************************************************************************
 -FIELD-
 FunctionList: Refers to a list of public functions exported by the module.
 
@@ -647,11 +569,11 @@ static ERROR SET_Header(extModule *Self, ModHeader *Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Master: For internal use only.
+Root: For internal use only.
 Status: private
 
 A loaded module can only reside once in memory, irrespective of how many module objects are used to represent it.  The
-Master field refers to a ModuleMaster object that reflects this single instance of the module.
+Root field refers to a RootModule object that reflects this single instance of the module.
 
 -FIELD-
 ModBase: The Module's function base (jump table) must be read from this field.
@@ -677,12 +599,12 @@ The jump table is invalid once the module is destroyed.
 -FIELD-
 Name: The name of the module.
 
-This string pointer specifies the name of the Module.  This name will be used to load the module from the "modules:"
+This string pointer specifies the name of the Module.  This name will be used to load the module from the `modules:`
 folder, so this field actually reflects part of the module file name.  It is also possible to specify
 sub-directories before the module name itself - this could become more common in module loading in future.
 
-It is critical that file extensions do not appear in the Name string, e.g. "screen.dll" as not all systems
-may use a ".dll" extension.
+It is critical that file extensions do not appear in the Name string, e.g. `screen.dll` as not all systems
+may use a `.dll` extension.
 
 **********************************************************************************************************************/
 
@@ -757,7 +679,7 @@ APTR build_jump_table(LONG JumpType, const Function *FList, LONG MemFlags)
 //********************************************************************************************************************
 // Compare strings up to a '.' extension or null character.
 
-static LONG cmp_mod_names(CSTRING String1, CSTRING String2)
+static bool cmp_mod_names(CSTRING String1, CSTRING String2)
 {
    if ((String1) and (String2)) {
       // Skip past any : or / folder characters
@@ -785,31 +707,31 @@ static LONG cmp_mod_names(CSTRING String1, CSTRING String2)
       while ((*String1 != '.') and (*String1 != 0)) {
          char ch1 = *String1;
          char ch2 = *String2;
-         if ((ch2 IS '.') or (ch2 IS 0)) return FALSE;
+         if ((ch2 IS '.') or (ch2 IS 0)) return false;
          if ((ch1 >= 'a') and (ch1 <= 'z')) ch1 -= 0x20;
          if ((ch2 >= 'a') and (ch2 <= 'z')) ch2 -= 0x20;
-         if (ch1 != ch2) return FALSE;
+         if (ch1 != ch2) return false;
          String1++; String2++;
       }
 
       // If we get this far then both strings match up to the end of String1, so now we need to check if String2 has
       // also terminated at the same point.
 
-      if ((*String2 IS '.') or (*String2 IS 0)) return TRUE;
+      if ((*String2 IS '.') or (*String2 IS 0)) return true;
    }
 
-   return FALSE;
+   return false;
 }
 
 //********************************************************************************************************************
-// Searches the system for a ModuleMaster header that matches the Module details.  The module must have been
+// Searches the system for a RootModule header that matches the Module details.  The module must have been
 // loaded into memory in order for this function to return successfully.
 
-static ModuleMaster * check_resident(extModule *Self, CSTRING ModuleName)
+static RootModule * check_resident(extModule *Self, CSTRING ModuleName)
 {
    pf::Log log(__FUNCTION__);
-   ModuleMaster *master;
-   static BYTE kminit = FALSE;
+   RootModule *master;
+   static bool kminit = false;
 
    if (!ModuleName) return NULL;
 
@@ -817,26 +739,22 @@ static ModuleMaster * check_resident(extModule *Self, CSTRING ModuleName)
 
    if (!StrMatch("core", ModuleName)) {
       log.msg("Self-reference to the Core detected.");
-      if (kminit IS FALSE) {
-         kminit = TRUE;
-         ClearMemory(&glCoreMaster, sizeof(glCoreMaster));
-         ClearMemory(&glCoreHeader, sizeof(glCoreHeader));
-         glCoreMaster.Name        = "Core";
-         glCoreMaster.Version     = 1;
-         glCoreMaster.OpenCount   = 1;
-         glCoreMaster.ModVersion  = VER_CORE;
-         glCoreMaster.Table       = &glCoreHeader;
-         glCoreMaster.Header      = &glCoreHeader;
-         glCoreHeader.DefaultList = glFunctions;
-         glCoreHeader.Definitions = glIDL;
-
-         Self->FunctionList = glFunctions;
+      if (!kminit) {
+         kminit = true;
+         ClearMemory(&glCoreRoot, sizeof(glCoreRoot));
+         glCoreRoot.Name        = "Core";
+         glCoreRoot.Version     = 1;
+         glCoreRoot.OpenCount   = 1;
+         glCoreRoot.ModVersion  = VER_CORE;
+         glCoreRoot.Table       = &glCoreHeader;
+         glCoreRoot.Header      = &glCoreHeader;
       }
-      return &glCoreMaster;
+      Self->FunctionList = glFunctions;
+      return &glCoreRoot;
    }
    else if ((master = glModuleList)) {
       while (master) {
-         if (cmp_mod_names(master->Name, ModuleName) IS TRUE) {
+         if (cmp_mod_names(master->Name, ModuleName)) {
             log.trace("Entry for module \"%s\" (\"%s\") found.", ModuleName, master->Name);
             return master;
          }
@@ -869,5 +787,57 @@ static void free_module(MODHANDLE handle)
          #error You need to write machine specific code to expunge modules.
       #endif
    #endif
+}
+
+//********************************************************************************************************************
+
+static const FunctionField argsResolveSymbol[] = { { "Name", FD_STR }, { "Address", FD_PTR|FD_RESULT }, { NULL, 0 } };
+
+static const MethodArray glModuleMethods[] = {
+   { MT_ModResolveSymbol, (APTR)MODULE_ResolveSymbol, "ResolveSymbol", argsResolveSymbol, sizeof(struct modResolveSymbol) },
+   { 0, NULL, NULL, 0 }
+};
+
+//********************************************************************************************************************
+
+static const FieldArray glRootModuleFields[] = {
+   { "Header", FDF_POINTER|FDF_RI, ROOTMODULE_GET_Header },
+   END_FIELD
+};
+
+static const ActionArray glRootModuleActions[] = {
+   { AC_Free, ROOTMODULE_Free },
+   { 0, NULL }
+};
+
+//********************************************************************************************************************
+
+extern "C" ERROR add_module_class(void)
+{
+   if (!(glModuleClass = extMetaClass::create::global(
+      fl::BaseClassID(ID_MODULE),
+      fl::ClassVersion(VER_MODULE),
+      fl::Name("Module"),
+      fl::Category(CCF_SYSTEM),
+      fl::FileExtension("*.mod|*.so|*.dll"),
+      fl::FileDescription("System Module"),
+      fl::Actions(glModuleActions),
+      fl::Methods(glModuleMethods),
+      fl::Fields(glModuleFields),
+      fl::Size(sizeof(extModule)),
+      fl::Path("modules:core")))) return ERR_AddClass;
+
+   if (!(glRootModuleClass = extMetaClass::create::global(
+      fl::BaseClassID(ID_ROOTMODULE),
+      fl::ClassVersion(1.0),
+      fl::Name("RootModule"),
+      fl::Flags(CLF_NO_OWNERSHIP),
+      fl::Category(CCF_SYSTEM),
+      fl::Actions(glRootModuleActions),
+      fl::Fields(glRootModuleFields),
+      fl::Size(sizeof(RootModule)),
+      fl::Path("modules:core")))) return ERR_AddClass;
+
+   return ERR_Okay;
 }
 

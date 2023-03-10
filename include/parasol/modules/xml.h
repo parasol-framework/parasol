@@ -8,6 +8,10 @@
 
 #define MODVERSION_XML (1)
 
+#ifdef __cplusplus
+#include <functional>
+#endif
+
 class objXML;
 
 // For SetAttrib()
@@ -27,19 +31,17 @@ class objXML;
 #define XMF_WELL_FORMED 0x00000001
 #define XMF_INCLUDE_COMMENTS 0x00000002
 #define XMF_STRIP_CONTENT 0x00000004
-#define XMF_LOWER_CASE 0x00000008
-#define XMF_UPPER_CASE 0x00000010
-#define XMF_INDENT 0x00000020
-#define XMF_READABLE 0x00000020
-#define XMF_LOCK_REMOVE 0x00000040
-#define XMF_STRIP_HEADERS 0x00000080
-#define XMF_NEW 0x00000100
-#define XMF_NO_ESCAPE 0x00000200
-#define XMF_ALL_CONTENT 0x00000400
-#define XMF_PARSE_HTML 0x00000800
-#define XMF_STRIP_CDATA 0x00001000
-#define XMF_DEBUG 0x00002000
-#define XMF_PARSE_ENTITY 0x00004000
+#define XMF_INDENT 0x00000008
+#define XMF_READABLE 0x00000008
+#define XMF_LOCK_REMOVE 0x00000010
+#define XMF_STRIP_HEADERS 0x00000020
+#define XMF_NEW 0x00000040
+#define XMF_NO_ESCAPE 0x00000080
+#define XMF_ALL_CONTENT 0x00000100
+#define XMF_PARSE_HTML 0x00000200
+#define XMF_STRIP_CDATA 0x00000400
+#define XMF_DEBUG 0x00000800
+#define XMF_PARSE_ENTITY 0x00001000
 #define XMF_INCLUDE_SIBLINGS 0x80000000
 
 // Tag insertion options.
@@ -51,29 +53,37 @@ class objXML;
 #define XMI_CHILD_END 3
 #define XMI_END 4
 
-typedef struct XMLAttrib {
-   STRING Name;    // The name of the attribute.
-   STRING Value;   // The value assigned to the attribute.
-} XMLATT;
+struct XMLAttrib {
+   std::string Name;
+   std::string Value;
 
+   inline isContent() const { return Name.empty(); }
+   inline isTag() const { return !Name.empty(); }
+   XMLAttrib(std::string pName, std::string pValue) : Name(pName), Value(pValue) { };
+};
 typedef struct XMLTag {
-   LONG  Index;                  // Position within the XML array
-   LONG  ID;                     // Unique ID assigned to the tag on creation
-   struct XMLTag * Child;        // Reference to further child tags
-   struct XMLTag * Prev;         // Reference to the previous tag at this level in the chain
-   struct XMLTag * Next;         // Reference to the next tag at this level in the chain
-   APTR  Private;                // Developer's private memory reference
-   struct XMLAttrib * Attrib;    // Attributes of the tag, starting with the name
-   WORD  TotalAttrib;            // Total number of listed attributes for this tag
-   UWORD Branch;                 // The branch level for this XML node
-   LONG  LineNo;                 // Line number on which this tag was encountered
-#ifdef PRV_XML
-   LONG  AttribSize;       // The length of all attribute strings, compressed together
-   UWORD CData:1;          // CDATA content section
-   UWORD Instruction:1;    // Processing instruction, e.g. <?xml ?> or <?php ?>
-   UWORD Notation:1;       // Unparsable notations such as <!DOCTYPE ... >
-   WORD  pad01;
-#endif
+   LONG ID;          // Unique ID assigned to the tag on creation
+   LONG ParentID;    // Unique ID of the parent tag
+   LONG LineNo;      // Line number on which this tag was encountered
+   std::vector<XMLAttrib> Attribs;
+   std::vector<struct XMLTag> Children;
+   bool CData;
+   bool Instruction;
+   bool Notation;
+
+   XMLTag(LONG pID, LONG pLine = 0) :
+      ID(pID), ParentID(0), LineNo(pLine), CData(false), Instruction(false), Notation(false)
+      { }
+
+   XMLTag(LONG pID, LONG pLine, std::vector<XMLAttrib> pAttribs) :
+      ID(pID), ParentID(0), LineNo(pLine), Attribs(pAttribs), CData(false), Instruction(false), Notation(false)
+      { }
+
+   XMLTag() { XMLTag(0); }
+
+   inline CSTRING name() const { return Attribs[0].Name.c_str(); }
+   inline isContent() const { return Attribs[0].Name.empty(); }
+   inline isTag() const { return !Attribs[0].Name.empty(); }
 } XMLTAG;
 
 // XML class definition
@@ -93,11 +103,9 @@ typedef struct XMLTag {
 #define MT_XMLInsertXPath -9
 #define MT_XMLFindTag -10
 #define MT_XMLFilter -11
-#define MT_XMLSetRoot -12
 #define MT_XMLCount -13
 #define MT_XMLInsertContent -14
 #define MT_XMLRemoveXPath -15
-#define MT_XMLFindTagFromIndex -17
 #define MT_XMLGetTag -18
 
 struct xmlSetAttrib { LONG Index; LONG Attrib; CSTRING Name; CSTRING Value;  };
@@ -111,11 +119,9 @@ struct xmlGetAttrib { LONG Index; CSTRING Attrib; CSTRING Value;  };
 struct xmlInsertXPath { CSTRING XPath; LONG Where; CSTRING XML; LONG Result;  };
 struct xmlFindTag { CSTRING XPath; FUNCTION * Callback; LONG Result;  };
 struct xmlFilter { CSTRING XPath;  };
-struct xmlSetRoot { CSTRING XPath;  };
 struct xmlCount { CSTRING XPath; LONG Result;  };
 struct xmlInsertContent { LONG Index; LONG Where; CSTRING Content; LONG Result;  };
-struct xmlRemoveXPath { CSTRING XPath; LONG Total;  };
-struct xmlFindTagFromIndex { CSTRING XPath; LONG Start; FUNCTION * Callback; LONG Result;  };
+struct xmlRemoveXPath { CSTRING XPath; LONG Limit;  };
 struct xmlGetTag { LONG Index; struct XMLTag * Result;  };
 
 INLINE ERROR xmlSetAttrib(APTR Ob, LONG Index, LONG Attrib, CSTRING Name, CSTRING Value) {
@@ -183,11 +189,6 @@ INLINE ERROR xmlFilter(APTR Ob, CSTRING XPath) {
    return(Action(MT_XMLFilter, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR xmlSetRoot(APTR Ob, CSTRING XPath) {
-   struct xmlSetRoot args = { XPath };
-   return(Action(MT_XMLSetRoot, (OBJECTPTR)Ob, &args));
-}
-
 INLINE ERROR xmlCount(APTR Ob, CSTRING XPath, LONG * Result) {
    struct xmlCount args = { XPath, 0 };
    ERROR error = Action(MT_XMLCount, (OBJECTPTR)Ob, &args);
@@ -202,16 +203,9 @@ INLINE ERROR xmlInsertContent(APTR Ob, LONG Index, LONG Where, CSTRING Content, 
    return(error);
 }
 
-INLINE ERROR xmlRemoveXPath(APTR Ob, CSTRING XPath, LONG Total) {
-   struct xmlRemoveXPath args = { XPath, Total };
+INLINE ERROR xmlRemoveXPath(APTR Ob, CSTRING XPath, LONG Limit) {
+   struct xmlRemoveXPath args = { XPath, Limit };
    return(Action(MT_XMLRemoveXPath, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR xmlFindTagFromIndex(APTR Ob, CSTRING XPath, LONG Start, FUNCTION * Callback, LONG * Result) {
-   struct xmlFindTagFromIndex args = { XPath, Start, Callback, 0 };
-   ERROR error = Action(MT_XMLFindTagFromIndex, (OBJECTPTR)Ob, &args);
-   if (Result) *Result = args.Result;
-   return(error);
 }
 
 INLINE ERROR xmlGetTag(APTR Ob, LONG Index, struct XMLTag ** Result) {
@@ -229,17 +223,17 @@ class objXML : public BaseClass {
 
    using create = pf::Create<objXML>;
 
-   STRING    Path;            // Set this field if the XML document originates from a file source.
-   struct XMLTag * * Tags;    // Points to an array of tags loaded into an XML object.
-   OBJECTPTR Source;          // Set this field if the XML document is to be sourced from another object.
-   LONG      TagCount;        // Reflects the total number of tags in the XML Tags array.
-   LONG      Flags;           // Optional flags.
-   LONG      CurrentTag;      // Determines the index of the main tag to use when building XML strings.
-   LONG      PrivateDataSize; // Allocates a private data buffer for the owner's use against each XML tag.
-   LONG      RootIndex;       // Defines the root tag for queries into the XML tree.
-   LONG      Modified;        // A timestamp of when the XML data was last modified.
-   LONG      ParseError;      // Private
-   LONG      LineNo;          // Private
+   STRING    Path;      // Set this field if the XML document originates from a file source.
+   OBJECTPTR Source;    // Set this field if the XML data is to be sourced from another object.
+   LONG      Flags;     // Optional flags.
+   LONG      Start;     // This cursor can refer to a tag that will affect some XML operations.
+   LONG      Modified;  // A timestamp of when the XML data was last modified.
+   LONG      ParseError; // Private
+   LONG      LineNo;    // Private
+   public:
+   typedef std::vector<XMLTag> TAGS;
+   typedef std::vector<XMLTag>::iterator CURSOR;
+   TAGS Tags;
 
    // Action stubs
 
@@ -266,41 +260,50 @@ class objXML : public BaseClass {
    }
 };
 
-inline STRING XMLATTRIB(const XMLTag *Tag, CSTRING Attrib) {
-   for (LONG i=0; i < Tag->TotalAttrib; i++) {
-      if (!StrMatch((CSSTRING)Attrib, (CSSTRING)Tag->Attrib[i].Name)) {
-         if (!Tag->Attrib[i].Value) return (STRING)"1";
-         else return Tag->Attrib[i].Value;
+//********************************************************************************************************************
+
+template <class T> inline ERROR xmlSetAttrib(objXML *XML, LONG Tag, LONG Flags, T &&Attrib, LONG Value) {
+   auto attrib = to_cstring(Attrib);
+   auto buffer = std::to_string(Value);
+   return xmlSetAttrib(XML, Tag, Flags, attrib, buffer.c_str());
+}
+
+template <class T> inline ERROR xmlSetAttrib(objXML *XML, LONG Tag, LONG Flags, T &&Attrib, DOUBLE Value) {
+   auto attrib = to_cstring(Attrib);
+   auto buffer = std::to_string(Value);
+   return xmlSetAttrib(XML, Tag, Flags, attrib, buffer.c_str());
+}
+
+inline void xmlUpdateAttrib(XMLTag &Tag, const std::string Name, const std::string Value, bool CanCreate = false)
+{
+   for (auto a = Tag.Attribs.begin(); a != Tag.Attribs.end(); a++) {
+      if (!StrMatch(Name, a->Name)) {
+         a->Name  = Name;
+         a->Value = Value;
+         return;
       }
    }
-   return NULL;
+
+   if (CanCreate) Tag.Attribs.emplace_back(Name, Value);
 }
 
-inline bool XMLATTRIBCHECK(const XMLTag *Tag, CSTRING Attrib) {
-   for (LONG i=0; i < Tag->TotalAttrib; i++) {
-      if (!StrMatch((CSSTRING)Attrib, (CSSTRING)Tag->Attrib[i].Name)) {
-         return true;
+inline void xmlNewAttrib(XMLTag &Tag, const std::string &Name, const std::string &Value) {
+   Tag.Attribs.emplace_back(Name, Value);
+}
+
+//********************************************************************************************************************
+// Call a Function for every attribute in the XML tree.  Allows you to modify attributes quite easily, e.g. to convert
+// all attribute names to uppercase:
+//
+// std::transform(attrib.Name.begin(), attrib.Name.end(), attrib.Name.begin(),
+//   [](UBYTE c){ return std::toupper(c); });
+
+inline void xmlForEachAttrib(objXML::TAGS &Tags, std::function<void(XMLAttrib &)> &Function)
+{
+   for (auto &tag : Tags) {
+      for (auto &attrib : tag.Attribs) {
+         Function(attrib);
       }
+      if (!tag.Children.empty()) xmlForEachAttrib(tag.Children, Function);
    }
-   return false;
-}
-
-inline const XMLTag * XMLFIND(const XMLTag **List, CSTRING Name) {
-   while (*List) {
-      if (!StrMatch((CSSTRING)Name, (CSSTRING)List[0]->Attrib->Name)) return List[0];
-      List++;
-   }
-   return 0;
-}
-
-inline ERROR xmlSetAttrib(objXML *XML, LONG Tag, LONG Flags, CSTRING Attrib, LONG Value) {
-   char buffer[20];
-   snprintf(buffer, sizeof(buffer), "%d", Value);
-   return xmlSetAttrib(XML, Tag, Flags, Attrib, buffer);
-}
-
-inline ERROR xmlSetAttrib(objXML *XML, LONG Tag, LONG Flags, CSTRING Attrib, DOUBLE Value) {
-   char buffer[48];
-   snprintf(buffer, sizeof(buffer), "%g", Value);
-   return xmlSetAttrib(XML, Tag, Flags, Attrib, buffer);
 }

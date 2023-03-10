@@ -304,11 +304,11 @@ static const FieldDef clResampleMethod[] = {
 #include "filter_image_def.c"
 
 static const FieldArray clImageFXFields[] = {
-   { "Bitmap",         FDF_VIRTUAL|FDF_OBJECT|FDF_R,           ID_BITMAP, (APTR)IMAGEFX_GET_Bitmap, NULL },
-   { "Path",           FDF_VIRTUAL|FDF_STRING|FDF_RI,          0, (APTR)IMAGEFX_GET_Path, (APTR)IMAGEFX_SET_Path },
-   { "XMLDef",         FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, 0, (APTR)IMAGEFX_GET_XMLDef, NULL },
-   { "AspectRatio",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clAspectRatio, (APTR)IMAGEFX_GET_AspectRatio, (APTR)IMAGEFX_SET_AspectRatio },
-   { "ResampleMethod", FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clResampleMethod, (APTR)IMAGEFX_GET_ResampleMethod, (APTR)IMAGEFX_SET_ResampleMethod },
+   { "Bitmap",         FDF_VIRTUAL|FDF_OBJECT|FDF_R, IMAGEFX_GET_Bitmap, NULL, ID_BITMAP },
+   { "Path",           FDF_VIRTUAL|FDF_STRING|FDF_RI, IMAGEFX_GET_Path, IMAGEFX_SET_Path },
+   { "XMLDef",         FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, IMAGEFX_GET_XMLDef },
+   { "AspectRatio",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, IMAGEFX_GET_AspectRatio, IMAGEFX_SET_AspectRatio, &clAspectRatio },
+   { "ResampleMethod", FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, IMAGEFX_GET_ResampleMethod, IMAGEFX_SET_ResampleMethod, &clResampleMethod },
    END_FIELD
 };
 

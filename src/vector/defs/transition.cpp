@@ -209,16 +209,16 @@ This read-only field indicates the total number of stops that have been defined 
 *********************************************************************************************************************/
 
 static const ActionArray clTransitionActions[] = {
-   { AC_Free,      (APTR)TRANSITION_Free },
-   { AC_Init,      (APTR)TRANSITION_Init },
-   { AC_NewObject, (APTR)TRANSITION_NewObject },
+   { AC_Free,      TRANSITION_Free },
+   { AC_Init,      TRANSITION_Init },
+   { AC_NewObject, TRANSITION_NewObject },
    { 0, NULL }
 };
 
 static const FieldArray clTransitionFields[] = {
-   { "TotalStops",   FDF_LONG|FDF_R, 0, NULL, NULL },
+   { "TotalStops",   FDF_LONG|FDF_R },
    // Virtual fields
-   { "Stops",        FDF_VIRTUAL|FDF_ARRAY|FDF_STRUCT|FDF_W, (MAXINT)"Transition", NULL, (APTR)TRANSITION_SET_Stops },
+   { "Stops",        FDF_VIRTUAL|FDF_ARRAY|FDF_STRUCT|FDF_W, NULL, (APTR)TRANSITION_SET_Stops, "Transition" },
    END_FIELD
 };
 

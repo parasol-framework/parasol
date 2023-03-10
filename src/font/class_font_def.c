@@ -32,10 +32,10 @@ static const struct FieldDef clFontAlign[] = {
 };
 
 static const struct ActionArray clFontActions[] = {
-   { AC_Draw, (APTR)FONT_Draw },
-   { AC_Free, (APTR)FONT_Free },
-   { AC_Init, (APTR)FONT_Init },
-   { AC_NewObject, (APTR)FONT_NewObject },
-   { 0, 0 }
+   { AC_Draw, FONT_Draw },
+   { AC_Free, FONT_Free },
+   { AC_Init, FONT_Init },
+   { AC_NewObject, FONT_NewObject },
+   { 0, NULL }
 };
 

@@ -55,7 +55,7 @@ static void dump_global_table(objScript *Self, STRING Global)
 static ERROR GET_Procedures(objScript *, STRING **, LONG *);
 
 static const FieldArray clFields[] = {
-   { "Procedures", FDF_VIRTUAL|FDF_ARRAY|FDF_STRING|FDF_ALLOC|FDF_R, 0, (APTR)GET_Procedures, NULL },
+   { "Procedures", FDF_VIRTUAL|FDF_ARRAY|FDF_STRING|FDF_ALLOC|FDF_R, GET_Procedures },
    END_FIELD
 };
 
@@ -68,11 +68,11 @@ static ERROR FLUID_Init(objScript *, APTR);
 static ERROR FLUID_SaveToObject(objScript *, struct acSaveToObject *);
 
 static const ActionArray clActions[] = {
-   { AC_Activate,     (APTR)FLUID_Activate },
-   { AC_DataFeed,     (APTR)FLUID_DataFeed },
-   { AC_Free,         (APTR)FLUID_Free },
-   { AC_Init,         (APTR)FLUID_Init },
-   { AC_SaveToObject, (APTR)FLUID_SaveToObject },
+   { AC_Activate,     FLUID_Activate },
+   { AC_DataFeed,     FLUID_DataFeed },
+   { AC_Free,         FLUID_Free },
+   { AC_Init,         FLUID_Init },
+   { AC_SaveToObject, FLUID_SaveToObject },
    { 0, NULL }
 };
 
@@ -543,24 +543,26 @@ restart:
                if (auto xml = objXML::create::integral(fl::Statement((CSTRING)Args->Buffer))) {
                   // <file path="blah.exe"/> becomes { item='file', path='blah.exe' }
 
-                  auto tag = xml->Tags[0];
-                  LONG i = 1;
-                  if (!StrMatch("receipt", tag->Attrib->Name)) {
-                     for (auto scan=tag->Child; scan; scan=scan->Next) {
-                        lua_pushinteger(prv->Lua, i++);
-                        lua_newtable(prv->Lua);
+                  if (!xml->Tags.empty()) {
+                     auto &tag = xml->Tags[0];
+                     LONG i = 1;
+                     if (!StrMatch("receipt", tag.name())) {
+                        for (auto &scan : tag.Children) {
+                           lua_pushinteger(prv->Lua, i++);
+                           lua_newtable(prv->Lua);
 
-                        lua_pushstring(prv->Lua, "item");
-                        lua_pushstring(prv->Lua, scan->Attrib->Name);
-                        lua_settable(prv->Lua, -3);
+                           lua_pushstring(prv->Lua, "item");
+                           lua_pushstring(prv->Lua, scan.name());
+                           lua_settable(prv->Lua, -3);
 
-                        for (LONG a=1; a < scan->TotalAttrib; a++) {
-                           lua_pushstring(prv->Lua, scan->Attrib[a].Name);
-                           lua_pushstring(prv->Lua, scan->Attrib[a].Value);
+                           for (unsigned a=1; a < scan.Attribs.size(); a++) {
+                              lua_pushstring(prv->Lua, scan.Attribs[a].Name.c_str());
+                              lua_pushstring(prv->Lua, scan.Attribs[a].Value.c_str());
+                              lua_settable(prv->Lua, -3);
+                           }
+
                            lua_settable(prv->Lua, -3);
                         }
-
-                        lua_settable(prv->Lua, -3);
                      }
                   }
 

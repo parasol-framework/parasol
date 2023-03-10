@@ -1080,9 +1080,9 @@ function class(Name, Options, Blueprint, Private, Custom)
       if nz(class.sortedActions) then
          mdef = mdef .. "static const struct ActionArray cl" .. Name .. "Actions[] = {\n"
          for _, action in ipairs(class.sortedActions) do
-            mdef = mdef .. "   { AC_" .. action.name .. ", (APTR)" .. Name:upper() .. "_" .. action.name .. " },\n"
+            mdef = mdef .. "   { AC_" .. action.name .. ", " .. Name:upper() .. "_" .. action.name .. " },\n"
          end
-         mdef = mdef .. "   { 0, 0 }\n};\n\n"
+         mdef = mdef .. "   { 0, NULL }\n};\n\n"
       end
 
       local file = obj.new("file", { flags="WRITE|NEW", location=glFDLFolder .. Options.output } )
@@ -1168,6 +1168,11 @@ function processField(class, extract)
       return -- Variable fields are ignored.
    end
 
+   if not name then
+      print('Name not defined for -FIELD- definition.')
+      return
+   end
+
    local f = findClassField(class, name)
    if (f != nil) then
       if nz(comment) then f.comment = comment end
@@ -1185,7 +1190,7 @@ function processField(class, extract)
       end
       f.description = description
    elseif (class.meta != nil) then
-      print("Field '" .. class.name .. "." .. name .. "' is not defined in the FDL or compiled class blueprint.")
+      print("Field '" .. class.name .. "." .. nz(name,'NIL') .. "' is not defined in the FDL or compiled class blueprint.")
    end
 end
 

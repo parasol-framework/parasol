@@ -224,6 +224,7 @@ extern OBJECTPTR modDisplay; // Required by fluid_input.c
 extern OBJECTPTR modFluid;
 extern struct DisplayBase *DisplayBase;
 extern OBJECTPTR clFluid;
+extern std::unordered_map<std::string, ULONG> glStructSizes;
 
 OBJECTPTR access_object(struct object *);
 struct references * alloc_references(void);

@@ -746,7 +746,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    CoreBase = argCoreBase;
 
-   argModule->getPtr(FID_Master, &glModule);
+   argModule->getPtr(FID_Root, &glModule);
 
    if (GetSystemState()->Stage < 0) { // An early load indicates that classes are being probed, so just return them.
       create_pointer_class();
@@ -1387,4 +1387,4 @@ void free_egl(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_DISPLAY)
+PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_DISPLAY, MOD_IDL, NULL)

@@ -1,26 +1,25 @@
 -- Flute tests for XML
 
-//=====================================================================================================================
-// Check that the Tags array works as expected when used in Fluid
+--=====================================================================================================================
+-- Check that the Tags array works as expected when used in Fluid
 
 function testTagsArray()
+   local expected = 2
    local tags = glXML.tags
    for k, tag in pairs(tags) do
-      print(tag.index, " ", tag.totalAttrib, " ", tag.attrib.name)
+      print(tag.id) --, " ", tag.totalAttrib, " ", tag.attrib.name)
    end
 
-   if (#tags != glXML.tagCount) then
-      error("The total number of extracted tag elements (" .. #tags .. ") does not match the XML.TagCount of " .. glXML.tagCount)
-   end
+   assert(#tags == expected, "Expected a tag count of " .. expected)
 end
 
-//=====================================================================================================================
-// Test the FindTag() and GetTag() methods.
+--=====================================================================================================================
+-- Test the FindTag() and GetTag() methods.
 
 function testIndexing()
    local err, index = glXML.mtFindTag("/book/function")
    if err == ERR_Okay then
-      print("Retrieving tag " .. index .. " of " .. glXML.tagCount)
+      print("Retrieving tag " .. index)
 
       local err, tags = glXML.mtGetTag(index)
       if err == ERR_Okay then
@@ -46,8 +45,8 @@ function testIndexing()
    end
 end
 
-//=====================================================================================================================
-// Test the GetAttrib() method
+--=====================================================================================================================
+-- Test the GetAttrib() method
 
 function testGetAttrib()
    local err, index = glXML.mtFindTag("/book/function/input/param")
@@ -65,7 +64,7 @@ function testGetAttrib()
    end
 end
 
-//=====================================================================================================================
+--=====================================================================================================================
 
    return {
       tests = { 'testTagsArray', 'testIndexing', 'testGetAttrib' },

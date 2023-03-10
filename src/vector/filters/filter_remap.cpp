@@ -500,7 +500,7 @@ static ERROR REMAPFX_GET_XMLDef(extRemapFX *Self, STRING *Value)
 #include "filter_remap_def.c"
 
 static const FieldArray clRemapFXFields[] = {
-   { "XMLDef", FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, 0, (APTR)REMAPFX_GET_XMLDef, NULL },
+   { "XMLDef", FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, REMAPFX_GET_XMLDef },
    END_FIELD
 };
 

@@ -309,10 +309,10 @@ static ERROR SOURCEFX_GET_XMLDef(extSourceFX *Self, STRING *Value)
 #include "filter_source_def.c"
 
 static const FieldArray clSourceFXFields[] = {
-   { "AspectRatio", FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clAspectRatio, (APTR)SOURCEFX_GET_AspectRatio, (APTR)SOURCEFX_SET_AspectRatio },
-   { "SourceName",  FDF_VIRTUAL|FDF_STRING|FDF_I,           0, NULL, (APTR)SOURCEFX_SET_SourceName },
-   { "Source",      FDF_VIRTUAL|FDF_OBJECT|FDF_R,           ID_VECTOR, NULL, (APTR)SOURCEFX_SET_Source },
-   { "XMLDef",      FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, 0, (APTR)SOURCEFX_GET_XMLDef, NULL },
+   { "AspectRatio", FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, SOURCEFX_GET_AspectRatio, SOURCEFX_SET_AspectRatio, &clAspectRatio },
+   { "SourceName",  FDF_VIRTUAL|FDF_STRING|FDF_I, NULL, SOURCEFX_SET_SourceName },
+   { "Source",      FDF_VIRTUAL|FDF_OBJECT|FDF_R, NULL, SOURCEFX_SET_Source, ID_VECTOR },
+   { "XMLDef",      FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, SOURCEFX_GET_XMLDef },
    END_FIELD
 };
 

@@ -58,14 +58,13 @@ extern "C" {
 
 MODULE_COREBASE;
 struct DisplayBase *DisplayBase;
-//static struct SurfaceBase *SurfaceBase;
 OBJECTPTR modDisplay = NULL; // Required by fluid_input.c
 OBJECTPTR modFluid = NULL;
-//static OBJECTPTR modSurface = NULL; // Required by fluid_widget.c
 OBJECTPTR clFluid = NULL;
 struct ActionTable *glActions = NULL;
 static char glLocale[4] = "eng";
 KeyStore *glActionLookup = NULL;
+std::unordered_map<std::string, ULONG> glStructSizes;
 
 #include "defs.h"
 
@@ -290,22 +289,34 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
       log.trace("Class: %s, Module: %s", MetaClass->ClassName, module_name);
 
       LONG *current_state;
-      struct KeyStore *inc = GET_INCLUDES(Lua->Script);
+      KeyStore *inc = GET_INCLUDES(Lua->Script);
       if ((VarGet(inc, module_name, &current_state, NULL) != ERR_Okay) or (current_state[0] != 1)) {
          LONG new_state = 1;
          VarSet(inc, module_name, &new_state, sizeof(new_state)); // Mark the module as processed.
 
-         CSTRING idl;
-         if ((!(error = MetaClass->get(FID_IDL, (STRING *)&idl))) and (idl)) {
-            log.trace("Parsing IDL for module %s", module_name);
+         OBJECTPTR mod;
+         if (!(error = MetaClass->getPtr(FID_RootModule, &mod))) {
+            ModHeader *header;
 
-            while ((idl) and (*idl)) {
-               if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(Lua, idl+2, module_name);
-               else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(Lua, idl+2, module_name);
-               else idl = next_line(idl);
+            if ((!(error = mod->getPtr(FID_Header, &header))) and (header)) {
+               if (auto structs = header->StructDefs) {
+                  for (auto &s : structs[0]) {
+                     glStructSizes[s.first] = s.second;
+                  }
+               }
+
+               if (auto idl = header->Definitions) {
+                  log.trace("Parsing IDL for module %s", module_name);
+
+                  while ((idl) and (*idl)) {
+                     if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(Lua, idl+2, module_name);
+                     else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(Lua, idl+2, module_name);
+                     else idl = next_line(idl);
+                  }
+               }
+               else log.trace("No IDL defined for %s", module_name);
             }
          }
-         else log.trace("No IDL defined for %s", module_name);
       }
       else log.trace("Module %s is marked as loaded.", module_name);
    }
@@ -318,7 +329,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   argModule->getPtr(FID_Master, &modFluid);
+   argModule->getPtr(FID_Root, &modFluid);
 
    ActionList(&glActions, NULL); // Get the global action table from the Core
 
@@ -656,18 +667,25 @@ ERROR load_include(objScript *Script, CSTRING IncName)
       else { // The IDL for standard modules is retrievable from the IDL string of a loaded module object.
          objModule::create module = { fl::Name(IncName) };
          if (module.ok()) {
-            CSTRING idl;
-            if ((!(error = module->get(FID_IDL, (STRING *)&idl))) and (idl)) {
-               while ((idl) and (*idl)) {
-                  if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(prv->Lua, idl+2, IncName);
-                  else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(prv->Lua, idl+2, IncName);
-                  else idl = next_line(idl);
+            ModHeader *header;
+            if ((!(error = module->getPtr(FID_Header, &header)) and (header))) {
+               if (auto structs = header->StructDefs) {
+                  for (auto &s : structs[0]) {
+                     glStructSizes[s.first] = s.second;
+                  }
                }
 
-               LONG state = 1;
-               VarSet(inc, IncName, &state, sizeof(state)); // Mark the file as loaded.
+               if (auto idl = header->Definitions) {
+                  log.trace("Parsing IDL for module %s", IncName);
+
+                  while ((idl) and (*idl)) {
+                     if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(prv->Lua, idl+2, IncName);
+                     else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(prv->Lua, idl+2, IncName);
+                     else idl = next_line(idl);
+                  }
+               }
+               else log.trace("No IDL defined for %s", IncName);
             }
-            else log.warning("No IDL for module %s", IncName);
          }
          else error = ERR_CreateObject;
       }
@@ -859,4 +877,4 @@ static void stack_dump(lua_State *L)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, VER_FLUID)
+PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, VER_FLUID, MOD_IDL, NULL)
