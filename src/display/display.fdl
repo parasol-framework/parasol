@@ -9,10 +9,6 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
 
   platform("X11", function()
     c_include("<X11/Xlib.h>", "<X11/extensions/XShm.h>")
-    c_insert([[
-#undef NULL
-#define NULL 0
-    ]])
   end)
 
   enum("DRAG", { start=0, flags="Flags for the DragStatus field." },

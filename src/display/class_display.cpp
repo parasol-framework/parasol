@@ -484,7 +484,7 @@ static ERROR DISPLAY_Free(extDisplay *Self, APTR Void)
 #ifdef __xwindows__
    XEvent xevent;
 
-   if (Self->WindowHandle IS (APTR)glDisplayWindow) glDisplayWindow = NULL;
+   if (Self->WindowHandle IS (APTR)glDisplayWindow) glDisplayWindow = 0;
 
    // Kill all expose events associated with the X Window owned by the display
 
@@ -2086,7 +2086,7 @@ static ERROR DISPLAY_UpdateDisplay(extDisplay *Self, struct gfxUpdateDisplay *Ar
       Self->Opacity);
    return ERR_Okay;
 #else
-   return(gfxCopyArea((extBitmap *)Args->Bitmap, (extBitmap *)Self->Bitmap, NULL,
+   return(gfxCopyArea((extBitmap *)Args->Bitmap, (extBitmap *)Self->Bitmap, 0,
       Args->X, Args->Y, Args->Width, Args->Height, Args->XDest, Args->YDest));
 #endif
 }

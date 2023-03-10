@@ -42,8 +42,8 @@ struct XMLAttrib {
    std::string Name;
    std::string Value;
 
-   inline isContent() const { return Name.empty(); }
-   inline isTag() const { return !Name.empty(); }
+   inline bool isContent() const { return Name.empty(); }
+   inline bool isTag() const { return !Name.empty(); }
    XMLAttrib(std::string pName, std::string pValue) : Name(pName), Value(pValue) { };
 };
   ]])
@@ -52,10 +52,10 @@ struct XMLAttrib {
     int ID        # Unique ID assigned to the tag on creation
     int ParentID  # Unique ID of the parent tag
     int LineNo    # Line number on which this tag was encountered
+    vector(XMLAttrib) Attribs # Array of attributes for this tag
+    vector(XMLTag) Children   # Array of child tags
   ]],
   [[
-   std::vector<XMLAttrib> Attribs;
-   std::vector<struct XMLTag> Children;
    bool CData;
    bool Instruction;
    bool Notation;
@@ -71,8 +71,8 @@ struct XMLAttrib {
    XMLTag() { XMLTag(0); }
 
    inline CSTRING name() const { return Attribs[0].Name.c_str(); }
-   inline isContent() const { return Attribs[0].Name.empty(); }
-   inline isTag() const { return !Attribs[0].Name.empty(); }
+   inline bool isContent() const { return Attribs[0].Name.empty(); }
+   inline bool isTag() const { return !Attribs[0].Name.empty(); }
    ]])
 
   methods("xml", "XML", {

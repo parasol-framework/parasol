@@ -862,7 +862,7 @@ static ERROR BITMAP_Free(extBitmap *Self, APTR Void)
    #ifdef __xwindows__
       if (Self->x11.drawable) {
          if (XDisplay) XFreePixmap(XDisplay, Self->x11.drawable);
-         Self->x11.drawable = NULL;
+         Self->x11.drawable = 0;
       }
 
       if (Self->x11.readable) {
