@@ -57,8 +57,8 @@ struct XMLAttrib {
    std::string Name;
    std::string Value;
 
-   inline isContent() const { return Name.empty(); }
-   inline isTag() const { return !Name.empty(); }
+   inline bool isContent() const { return Name.empty(); }
+   inline bool isTag() const { return !Name.empty(); }
    XMLAttrib(std::string pName, std::string pValue) : Name(pName), Value(pValue) { };
 };
 typedef struct XMLTag {
@@ -82,8 +82,8 @@ typedef struct XMLTag {
    XMLTag() { XMLTag(0); }
 
    inline CSTRING name() const { return Attribs[0].Name.c_str(); }
-   inline isContent() const { return Attribs[0].Name.empty(); }
-   inline isTag() const { return !Attribs[0].Name.empty(); }
+   inline bool isContent() const { return Attribs[0].Name.empty(); }
+   inline bool isTag() const { return !Attribs[0].Name.empty(); }
 } XMLTAG;
 
 // XML class definition
