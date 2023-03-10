@@ -52,10 +52,10 @@ struct XMLAttrib {
     int ID        # Unique ID assigned to the tag on creation
     int ParentID  # Unique ID of the parent tag
     int LineNo    # Line number on which this tag was encountered
-    vector(XMLAttrib) Attribs # Array of attributes for this tag
-    vector(XMLTag) Children   # Array of child tags
   ]],
   [[
+   std::vector<XMLAttrib> Attribs;
+   std::vector<struct XMLTag> Children;
    bool CData;
    bool Instruction;
    bool Notation;
