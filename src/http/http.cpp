@@ -1533,16 +1533,13 @@ static ERROR SET_CurrentState(extHTTP *Self, LONG Value)
          error = routine(Self, Self->CurrentState);
       }
       else if (Self->StateChanged.Type IS CALL_SCRIPT) {
-         OBJECTPTR script;
-         if ((script = Self->StateChanged.Script.Script)) {
-            const ScriptArg args[] = {
-               { "HTTP", FD_OBJECTID, { .Long = Self->UID } },
-               { "State", FD_LONG, { .Long = Self->CurrentState } }
-            };
+         const ScriptArg args[] = {
+            { "HTTP", FD_OBJECTID, { .Long = Self->UID } },
+            { "State", FD_LONG, { .Long = Self->CurrentState } }
+         };
 
-            if (scCallback(script, Self->StateChanged.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
-         }
-         else error = ERR_Terminate; // Error in function configuration
+         auto script = Self->StateChanged.Script.Script;
+         if (scCallback(script, Self->StateChanged.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
       }
       else error = ERR_Okay;
 
