@@ -638,50 +638,33 @@ ERROR load_include(objScript *Script, CSTRING IncName)
 
    AdjustLogLevel(1);
 
-      if (!StrMatch("core", IncName)) { // The Core module's IDL is accessible from the RES_CORE_IDL resource.
-         if (auto idl = (CSTRING)GetResourcePtr(RES_CORE_IDL)) {
-            while ((idl) and (*idl)) {
-               if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(prv->Lua, idl+2, IncName);
-               else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(prv->Lua, idl+2, IncName);
-               else idl = next_line(idl);
-            }
+      objModule::create module = { fl::Name(IncName) };
+      if (module.ok()) {
+         LONG state = 1;
+         VarSet(inc, IncName, &state, sizeof(state)); // Mark the file as loaded.
 
-            LONG state = 1;
-            VarSet(inc, IncName, &state, sizeof(state)); // Mark the file as loaded.
-         }
-         else error = ERR_Failed;
-      }
-      else { // The IDL for standard modules is retrievable from the IDL string of a loaded module object.
-         objModule::create module = { fl::Name(IncName) };
-         if (module.ok()) {
-            LONG state = 1;
-            VarSet(inc, IncName, &state, sizeof(state)); // Mark the file as loaded.
-
-            OBJECTPTR root;
-            if (!(error = module->getPtr(FID_Root, &root))) {
-               ModHeader *header;
-               if ((!(error = root->getPtr(FID_Header, &header)) and (header))) {
-                  if (auto structs = header->StructDefs) {
-                     for (auto &s : structs[0]) {
-                        glStructSizes[s.first] = s.second;
-                     }
-                  }
-
-                  if (auto idl = header->Definitions) {
-                     log.trace("Parsing IDL for module %s", IncName);
-
-                     while ((idl) and (*idl)) {
-                        if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(prv->Lua, idl+2, IncName);
-                        else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(prv->Lua, idl+2, IncName);
-                        else idl = next_line(idl);
-                     }
-                  }
-                  else log.trace("No IDL defined for %s", IncName);
+         OBJECTPTR root;
+         if (!(error = module->getPtr(FID_Root, &root))) {
+            ModHeader *header;
+            if ((!(error = root->getPtr(FID_Header, &header)) and (header))) {
+               if (auto structs = header->StructDefs) {
+                  for (auto &s : structs[0]) glStructSizes[s.first] = s.second;
                }
+
+               if (auto idl = header->Definitions) {
+                  log.trace("Parsing IDL for module %s", IncName);
+
+                  while ((idl) and (*idl)) {
+                     if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(prv->Lua, idl+2, IncName);
+                     else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(prv->Lua, idl+2, IncName);
+                     else idl = next_line(idl);
+                  }
+               }
+               else log.trace("No IDL defined for %s", IncName);
             }
          }
-         else error = ERR_CreateObject;
       }
+      else error = ERR_CreateObject;
 
    AdjustLogLevel(-1);
    return error;
