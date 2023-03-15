@@ -45,6 +45,11 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 #include <stack>
 #include <mutex>
 
+struct DNSEntry {
+   std::string HostName;
+   std::vector<IPAddress> Addresses;    // IP address list
+};
+
 #ifdef __linux__
 typedef LONG SOCKET_HANDLE;
 #elif _WIN32
@@ -238,12 +243,24 @@ static ERROR sslLinkSocket(extNetSocket *);
 static ERROR sslSetup(extNetSocket *);
 #endif
 
+//********************************************************************************************************************
+
+struct CaseInsensitiveMap {
+   bool operator() (const std::string &lhs, const std::string &rhs) const {
+      return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
+   }
+};
+
+typedef std::map<std::string, DNSEntry, CaseInsensitiveMap> HOSTMAP;
+
+//********************************************************************************************************************
+
 static OBJECTPTR clNetLookup = NULL;
 static OBJECTPTR clProxy = NULL;
 static OBJECTPTR clNetSocket = NULL;
 static OBJECTPTR clClientSocket = NULL;
-static KeyStore *glHosts = NULL;
-static KeyStore *glAddresses = NULL;
+static HOSTMAP glHosts;
+static HOSTMAP glAddresses;
 static LONG glResolveNameMsgID = 0;
 static LONG glResolveAddrMsgID = 0;
 
@@ -269,9 +286,6 @@ ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    CoreBase = argCoreBase;
 
    argModule->getPtr(FID_Root, &glModule);
-
-   glHosts = VarNew(64, KSF_THREAD_SAFE);
-   glAddresses = VarNew(64, KSF_THREAD_SAFE);
 
    if (init_netsocket()) return ERR_AddClass;
    if (init_clientsocket()) return ERR_AddClass;
@@ -328,8 +342,6 @@ static ERROR MODExpunge(void)
 
    if (glResolveNameHandler) { FreeResource(glResolveNameHandler); glResolveNameHandler = NULL; }
    if (glResolveAddrHandler) { FreeResource(glResolveAddrHandler); glResolveAddrHandler = NULL; }
-   if (glHosts)              { FreeResource(glHosts); glHosts = NULL; }
-   if (glAddresses)          { FreeResource(glAddresses); glAddresses = NULL; }
 
 #ifdef _WIN32
    log.msg("Closing winsock.");

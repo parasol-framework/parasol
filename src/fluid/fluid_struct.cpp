@@ -412,7 +412,7 @@ static ERROR generate_structdef(objScript *Self, const std::string StructName, c
 }
 
 //********************************************************************************************************************
-// Parse a struct definition and permanently store it in the Structs keystore.
+// Parse a struct definition and permanently store it in the Structs dictionary.
 
 ERROR make_struct(lua_State *Lua, const std::string &StructName, CSTRING Sequence)
 {

@@ -1692,7 +1692,6 @@ static const FieldArray clFields[] = {
    { "PageWidth",    FDF_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, GET_PageWidth, SET_PageWidth },
    { "Src",          FDF_SYNONYM|FDF_STRING|FDF_RW, GET_Path, SET_Path },
    { "UpdateLayout", FDF_LONG|FDF_W,     NULL, SET_UpdateLayout },
-   { "Variables",    FDF_POINTER|FDF_SYSTEM|FDF_R, GET_Variables, NULL },
    { "WorkingPath",  FDF_STRING|FDF_R,     GET_WorkingPath, NULL },
    END_FIELD
 };
