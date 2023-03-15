@@ -46,8 +46,9 @@ static OBJECTPTR clXML = NULL;
 static ULONG glTagID = 1;
 
 struct ListSort {
-   XMLTag *Tag;        // Pointer to the XML tag
+   XMLTag *Tag;       // Pointer to the XML tag
    std::string Value; // Sort data
+   ListSort(XMLTag *pTag, const std::string pValue) : Tag(pTag), Value(pValue) { }
 };
 
 struct ParseState {
@@ -156,8 +157,6 @@ class extXML : public objXML {
 };
 
 static ERROR add_xml_class(void);
-//static void sift_down(ListSort **, LONG, LONG);
-//static void sift_up(ListSort **, LONG, LONG);
 static ERROR SET_Statement(extXML *, CSTRING);
 static ERROR SET_Source(extXML *, OBJECTPTR);
 
@@ -1083,9 +1082,7 @@ This method is capable of deleting multiple tags if the Total parameter is set t
 consecutive tag and its children following the targeted tag will be removed from the XML structure until the count is
 exhausted. This is useful for mass delete operations.
 
-After using this method, you must assume that all tag addresses have been changed due to the rearrangement of the XML
-structure.  Thus if you have obtained pointers to various parts of the XML structure, they are invalid and must be
-recalculated.
+This method is volatile and will destabilise any cached address pointers that have been acquired from the XML object.
 
 -INPUT-
 int Index: Reference to the tag that will be removed.
@@ -1149,8 +1146,7 @@ Individual tag attributes can also be removed if an attribute is referenced at t
 
 The removal routine will be repeated so that each tag that matches the XPath will be deleted, or the Total is reached.
 
-The client must assume that calling this method will destabilise cached address pointers that have been acquired
-from the XML object.
+This method is volatile and will destabilise any cached address pointers that have been acquired from the XML object.
 
 -INPUT-
 cstr XPath: An XML path string.
@@ -1257,8 +1253,7 @@ static ERROR XML_SaveToObject(extXML *Self, struct acSaveToObject *Args)
 -METHOD-
 SetAttrib: Adds, updates and removes XML attributes.
 
-This method is used to update and add attributes to existing XML tags, as well as adding or modifying content.  You
-need to supply the address of a tag index and the index number of the attribute that you are going to update.
+This method is used to update and add attributes to existing XML tags, as well as adding or modifying content.
 
 The data for the attribute is defined in the Name and Value parameters.  Use an empty string if no data is to be
 associated with the attribute.  Set the Value pointer to NULL to remove the attribute. If both Name and Value are NULL,
@@ -1267,16 +1262,6 @@ an error will be returned.
 NOTE: The attribute at position 0 declares the name of the tag and should not normally be accompanied with a
 value declaration.  However, if the tag represents content within its parent, then the Name must be set to NULL and the
 Value string will determine the content.
-
-NOTE: The address of the modified tag will be invalidated as a result of calling this method.  Any tag
-pointers that have been stored by the client program will need to be refreshed from the XML tag list after calling this
-method, for example:
-
-<pre>
-LONG index = tag->Index; // Store the index of tag.
-xmlSetAttrib(XML, tag->Index, XMS_NEW, "name", "value");
-tag = XML->Tags[index]; // Refresh the pointer to tag.
-</pre>
 
 -INPUT-
 int Index: Identifies the tag that is to be updated.

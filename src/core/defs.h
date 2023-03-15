@@ -22,8 +22,6 @@
  #include <sys/socket.h>
  #include <pthread.h>
  #include <semaphore.h>
- #undef NULL
- #define NULL 0
 #endif
 
 #define PRV_METACLASS 1
