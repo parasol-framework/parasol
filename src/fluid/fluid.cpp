@@ -57,16 +57,17 @@ extern "C" {
 #include "hashes.h"
 
 MODULE_COREBASE;
+
+#include "defs.h"
+
 struct DisplayBase *DisplayBase;
 OBJECTPTR modDisplay = NULL; // Required by fluid_input.c
 OBJECTPTR modFluid = NULL;
 OBJECTPTR clFluid = NULL;
 struct ActionTable *glActions = NULL;
 static char glLocale[4] = "eng";
-KeyStore *glActionLookup = NULL;
+std::map<std::string, ACTIONID, CaseInsensitiveMap> glActionLookup;
 std::unordered_map<std::string, ULONG> glStructSizes;
-
-#include "defs.h"
 
 static CSTRING load_include_struct(lua_State *, CSTRING, CSTRING);
 static CSTRING load_include_constant(lua_State *, CSTRING, CSTRING);
@@ -254,16 +255,6 @@ void release_object(struct object *Object)
 }
 
 //********************************************************************************************************************
-// Build the Includes keystore for the active Lua state.  Content is based on glIncludes (dir scan of config:defs/)
-
-INLINE struct KeyStore * GET_INCLUDES(objScript *Script)
-{
-   auto prv = (prvFluid *)Script->ChildPrivate;
-   if (!prv->Includes) prv->Includes = VarNew(64, 0);
-   return prv->Includes;
-}
-
-//********************************************************************************************************************
 // Automatically load the include file for the given metaclass, if it has not been loaded already.
 
 void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
@@ -275,11 +266,9 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
    if (!(error = MetaClass->get(FID_Module, (STRING *)&module_name))) {
       log.trace("Class: %s, Module: %s", MetaClass->ClassName, module_name);
 
-      LONG *current_state;
-      KeyStore *inc = GET_INCLUDES(Lua->Script);
-      if ((VarGet(inc, module_name, &current_state, NULL) != ERR_Okay) or (current_state[0] != 1)) {
-         LONG new_state = 1;
-         VarSet(inc, module_name, &new_state, sizeof(new_state)); // Mark the module as processed.
+      auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+      if (!prv->Includes.contains(module_name)) {
+         prv->Includes.insert(module_name); // Mark the module as processed.
 
          OBJECTPTR mod;
          if (!(error = MetaClass->getPtr(FID_RootModule, &mod))) {
@@ -322,11 +311,8 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // Create a lookup table for converting named actions to IDs.
 
-   if ((glActionLookup = VarNew(0, 0))) {
-      ACTIONID action_id;
-      for (action_id=1; glActions[action_id].Name; action_id++) {
-         VarSet(glActionLookup, glActions[action_id].Name, &action_id, sizeof(ACTIONID));
-      }
+   for (ACTIONID action_id=1; glActions[action_id].Name; action_id++) {
+      glActionLookup[glActions[action_id].Name] = action_id;
    }
 
    // Get the user's language for translation purposes
@@ -341,7 +327,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERROR CMDExpunge(void)
 {
-   if (glActionLookup) { FreeResource(glActionLookup); glActionLookup = NULL; }
    if (clFluid)        { acFree(clFluid); clFluid = NULL; }
    if (modDisplay)     { acFree(modDisplay); modDisplay = NULL; }
    return ERR_Okay;
@@ -622,16 +607,9 @@ ERROR load_include(objScript *Script, CSTRING IncName)
       return ERR_Syntax;
    }
 
-   // Check that the include file hasn't already been processed.
-
-   struct KeyStore *inc = GET_INCLUDES(Script);
-
-   {
-      LONG *state;
-      if ((!VarGet(inc, IncName, &state, NULL)) and (state[0] == 1)) {
-         log.trace("Include file '%s' has already been loaded.", IncName);
-         return ERR_Okay;
-      }
+   if (prv->Includes.contains(IncName)) {
+      log.trace("Include file '%s' has already been loaded.", IncName);
+      return ERR_Okay;
    }
 
    ERROR error = ERR_Okay;
@@ -640,8 +618,7 @@ ERROR load_include(objScript *Script, CSTRING IncName)
 
       objModule::create module = { fl::Name(IncName) };
       if (module.ok()) {
-         LONG state = 1;
-         VarSet(inc, IncName, &state, sizeof(state)); // Mark the file as loaded.
+         prv->Includes.insert(IncName); // Mark the file as loaded.
 
          OBJECTPTR root;
          if (!(error = module->getPtr(FID_Root, &root))) {

@@ -96,7 +96,6 @@ static void free_all(objScript *Self)
 
    clear_subscriptions(Self);
 
-   if (prv->Includes) { FreeResource(prv->Includes); prv->Includes = NULL; }
    if (prv->FocusEventHandle) { UnsubscribeEvent(prv->FocusEventHandle); prv->FocusEventHandle = NULL; }
 
    prv->~prvFluid();

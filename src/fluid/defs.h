@@ -4,6 +4,8 @@
 #define SIZE_READ 1024
 
 #include <list>
+#include <unordered_set>
+#include <set>
 
 //********************************************************************************************************************
 // Standard hash computation, but stops when it encounters a character outside of A-Za-z0-9 range
@@ -22,6 +24,14 @@ inline ULONG STRUCTHASH(CSTRING String)
    }
    return hash;
 }
+
+//********************************************************************************************************************
+
+struct CaseInsensitiveMap {
+   bool operator() (const std::string &lhs, const std::string &rhs) const {
+      return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
+   }
+};
 
 //********************************************************************************************************************
 
@@ -115,7 +125,7 @@ struct prvFluid {
    struct finput *InputList;         // Managed by the input interface
    struct datarequest *Requests;     // For drag and drop requests
    std::unordered_map<struct_name, struct_record, struct_hash> Structs;
-   KeyStore *Includes;               // Stores the status of loaded include files.
+   std::set<std::string, CaseInsensitiveMap> Includes; // Stores the status of loaded include files.
    APTR   FocusEventHandle;
    std::unordered_map<OBJECTID, LONG> StateMap;
    DateTime CacheDate;
@@ -274,7 +284,7 @@ struct lua_ref {
    LONG Ref;
 };
 
-extern struct KeyStore *glActionLookup;
+extern std::map<std::string, ACTIONID, CaseInsensitiveMap> glActionLookup;
 extern struct ActionTable *glActions;
 extern OBJECTPTR modDisplay; // Required by fluid_input.c
 extern OBJECTPTR modFluid;
