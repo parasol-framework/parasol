@@ -14,7 +14,7 @@
     <idstring>ID_FONT</idstring>
     <category>Graphics</category>
     <include>modules/font.h</include>
-    <copyright>Paul Manias © 1998-2022</copyright>
+    <copyright>Paul Manias © 1998-2023</copyright>
     <description>
 <p>The Font class is provided for the purpose of rendering strings to Bitmap graphics. It supports standard effects such as bold, italic and underlined text, along with extra features such as adjustable spacing, word alignment and outlining. Fixed-point bitmap fonts are supported through the Windows .fon file format and TrueType font files are supported for scaled font rendering.</p>
 <p>Fonts must be stored in the <code>fonts:</code> directory in order to be recognised and either in the "fixed" or "truetype" sub-directories as appropriate.  The process of font installation and file management is managed by functions supplied in the Font module.</p>

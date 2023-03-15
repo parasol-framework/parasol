@@ -39,7 +39,7 @@ std::string glModulePath = "" MODULE_PATH ""; // NB: This path will be updated t
 char glDisplayDriver[28] = "";
 
 CSTRING glClassBinPath = "system:config/classes.bin";
-objMetaClass *glModuleMasterClass = 0;
+objMetaClass *glRootModuleClass = 0;
 objMetaClass *glModuleClass = 0;
 objMetaClass *glTaskClass = 0;
 objMetaClass *glThreadClass = 0;
@@ -75,7 +75,7 @@ std::list<CoreTimer> glTimers;
 
 struct PublicAddress  *glSharedBlocks  = NULL;
 struct SortedAddress  *glSortedBlocks  = NULL;
-struct ModuleMaster   *glModuleList    = NULL;
+struct RootModule     *glModuleList    = NULL;
 struct SharedAccess   *SharedAccess    = NULL;
 struct SharedControl  *glSharedControl = NULL;
 struct TaskList       *shTasks         = NULL;

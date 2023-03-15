@@ -24,12 +24,12 @@ static const struct MethodArray clClipboardMethods[] = {
 };
 
 static const struct ActionArray clClipboardActions[] = {
-   { AC_Clear, (APTR)CLIPBOARD_Clear },
-   { AC_DataFeed, (APTR)CLIPBOARD_DataFeed },
-   { AC_Free, (APTR)CLIPBOARD_Free },
-   { AC_GetVar, (APTR)CLIPBOARD_GetVar },
-   { AC_Init, (APTR)CLIPBOARD_Init },
-   { AC_NewObject, (APTR)CLIPBOARD_NewObject },
-   { 0, 0 }
+   { AC_Clear, CLIPBOARD_Clear },
+   { AC_DataFeed, CLIPBOARD_DataFeed },
+   { AC_Free, CLIPBOARD_Free },
+   { AC_GetVar, CLIPBOARD_GetVar },
+   { AC_Init, CLIPBOARD_Init },
+   { AC_NewObject, CLIPBOARD_NewObject },
+   { 0, NULL }
 };
 

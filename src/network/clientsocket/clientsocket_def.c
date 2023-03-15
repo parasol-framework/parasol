@@ -14,6 +14,6 @@ static const struct ActionArray clClientSocketActions[] = {
    { AC_Init, (APTR)CLIENTSOCKET_Init },
    { AC_Read, (APTR)CLIENTSOCKET_Read },
    { AC_Write, (APTR)CLIENTSOCKET_Write },
-   { 0, 0 }
+   { 0, NULL }
 };
 

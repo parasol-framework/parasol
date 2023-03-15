@@ -161,9 +161,9 @@ static ERROR FLOODFX_GET_XMLDef(extFloodFX *Self, STRING *Value)
 #include "filter_flood_def.c"
 
 static const FieldArray clFloodFXFields[] = {
-   { "Colour",  FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FD_RW,   0, (APTR)FLOODFX_GET_Colour, (APTR)FLOODFX_SET_Colour },
-   { "Opacity", FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,          0, (APTR)FLOODFX_GET_Opacity, (APTR)FLOODFX_SET_Opacity },
-   { "XMLDef",  FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, 0, (APTR)FLOODFX_GET_XMLDef, NULL },
+   { "Colour",  FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FD_RW,   FLOODFX_GET_Colour, FLOODFX_SET_Colour },
+   { "Opacity", FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,          FLOODFX_GET_Opacity, FLOODFX_SET_Opacity },
+   { "XMLDef",  FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, FLOODFX_GET_XMLDef },
    END_FIELD
 };
 

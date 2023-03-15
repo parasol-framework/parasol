@@ -12,9 +12,9 @@ static const struct MethodArray clLightingFXMethods[] = {
 };
 
 static const struct ActionArray clLightingFXActions[] = {
-   { AC_Draw, (APTR)LIGHTINGFX_Draw },
-   { AC_Free, (APTR)LIGHTINGFX_Free },
-   { AC_NewObject, (APTR)LIGHTINGFX_NewObject },
-   { 0, 0 }
+   { AC_Draw, LIGHTINGFX_Draw },
+   { AC_Free, LIGHTINGFX_Free },
+   { AC_NewObject, LIGHTINGFX_NewObject },
+   { 0, NULL }
 };
 

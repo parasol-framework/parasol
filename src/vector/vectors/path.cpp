@@ -492,10 +492,10 @@ static ERROR VECTORPATH_SET_TotalCommands(extVectorPath *Self, LONG Value)
 //********************************************************************************************************************
 
 static const FieldArray clPathFields[] = {
-   { "Sequence",      FDF_VIRTUAL|FDF_STRING|FDF_RW, 0, (APTR)VECTOR_GET_Sequence, (APTR)VECTORPATH_SET_Sequence },
-   { "TotalCommands", FDF_VIRTUAL|FDF_LONG|FDF_RW,   0, (APTR)VECTORPATH_GET_TotalCommands, (APTR)VECTORPATH_SET_TotalCommands },
-   { "PathLength",    FDF_VIRTUAL|FDF_LONG|FDF_RW,   0, (APTR)VECTORPATH_GET_PathLength, (APTR)VECTORPATH_SET_PathLength },
-   { "Commands",      FDF_VIRTUAL|FDF_ARRAY|FDF_STRUCT|FDF_R, (MAXINT)"PathCommand", (APTR)VECTORPATH_GET_Commands, NULL },
+   { "Sequence",      FDF_VIRTUAL|FDF_STRING|FDF_RW, VECTOR_GET_Sequence, VECTORPATH_SET_Sequence },
+   { "TotalCommands", FDF_VIRTUAL|FDF_LONG|FDF_RW,   VECTORPATH_GET_TotalCommands, VECTORPATH_SET_TotalCommands },
+   { "PathLength",    FDF_VIRTUAL|FDF_LONG|FDF_RW,   VECTORPATH_GET_PathLength, VECTORPATH_SET_PathLength },
+   { "Commands",      FDF_VIRTUAL|FDF_ARRAY|FDF_STRUCT|FDF_R, VECTORPATH_GET_Commands, NULL, "PathCommand" },
    END_FIELD
 };
 

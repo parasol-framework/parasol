@@ -1,5 +1,5 @@
 
-CSTRING glMessages[ERR_END] = {
+const CSTRING glMessages[ERR_END+1] = {
  "Operation successful.",
  "The result is false.",
  "Limited success.",
@@ -15,7 +15,7 @@ CSTRING glMessages[ERR_END] = {
  "Resource is in use.",
  "General failure.",
  "File error, e.g. file not found.",
- "There is an error in the given data.",
+ "There is an error in the provided data.",
  "A search routine in this function failed.",
  "Trouble initialising/using a module.",
  "File not found.",
@@ -189,7 +189,8 @@ CSTRING glMessages[ERR_END] = {
  "Attempted to set a function field with an incompatible value.",
  "Attempted to set a pointer field with an incompatible value.",
  "Attempted to set an array field with an incompatible value.",
- "Attempted to set a lookup field with an incompatible value."
+ "Attempted to set a lookup field with an incompatible value.",
+ NULL // Needs to be null-terminated for Fluid support
 };
 
 const LONG glTotalMessages = ARRAYSIZE(glMessages);

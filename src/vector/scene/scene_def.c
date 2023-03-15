@@ -41,13 +41,13 @@ static const struct MethodArray clVectorSceneMethods[] = {
 };
 
 static const struct ActionArray clVectorSceneActions[] = {
-   { AC_Draw, (APTR)VECTORSCENE_Draw },
-   { AC_Free, (APTR)VECTORSCENE_Free },
-   { AC_Init, (APTR)VECTORSCENE_Init },
-   { AC_NewObject, (APTR)VECTORSCENE_NewObject },
-   { AC_Redimension, (APTR)VECTORSCENE_Redimension },
-   { AC_Reset, (APTR)VECTORSCENE_Reset },
-   { AC_Resize, (APTR)VECTORSCENE_Resize },
-   { 0, 0 }
+   { AC_Draw, VECTORSCENE_Draw },
+   { AC_Free, VECTORSCENE_Free },
+   { AC_Init, VECTORSCENE_Init },
+   { AC_NewObject, VECTORSCENE_NewObject },
+   { AC_Redimension, VECTORSCENE_Redimension },
+   { AC_Reset, VECTORSCENE_Reset },
+   { AC_Resize, VECTORSCENE_Resize },
+   { 0, NULL }
 };
 

@@ -234,25 +234,25 @@ Year: Year (-ve for BC, +ve for AD).
 *********************************************************************************************************************/
 
 static const FieldArray clFields[] = {
-   { "SystemTime",   FDF_LARGE|FDF_RW, 0, 0, 0 },
-   { "Year",         FDF_LONG|FDF_RW, 0, 0, 0 },
-   { "Month",        FDF_LONG|FDF_RW, 0, 0, 0 },
-   { "Day",          FDF_LONG|FDF_RW, 0, 0, 0 },
-   { "Hour",         FDF_LONG|FDF_RW, 0, 0, 0 },
-   { "Minute",       FDF_LONG|FDF_RW, 0, 0, 0 },
-   { "Second",       FDF_LONG|FDF_RW, 0, 0, 0 },
-   { "TimeZone",     FDF_LONG|FDF_RW, 0, 0, 0 },
-   { "DayOfWeek",    FDF_LONG|FDF_RW, 0, 0, 0 },
-   { "MilliSecond",  FDF_LONG|FDF_RW, 0, 0, 0 },
-   { "MicroSecond",  FDF_LONG|FDF_RW, 0, 0, 0 },
+   { "SystemTime",   FDF_LARGE|FDF_RW },
+   { "Year",         FDF_LONG|FDF_RW },
+   { "Month",        FDF_LONG|FDF_RW },
+   { "Day",          FDF_LONG|FDF_RW },
+   { "Hour",         FDF_LONG|FDF_RW },
+   { "Minute",       FDF_LONG|FDF_RW },
+   { "Second",       FDF_LONG|FDF_RW },
+   { "TimeZone",     FDF_LONG|FDF_RW },
+   { "DayOfWeek",    FDF_LONG|FDF_RW },
+   { "MilliSecond",  FDF_LONG|FDF_RW },
+   { "MicroSecond",  FDF_LONG|FDF_RW },
    // Virtual fields
-   { "TimeStamp",    FDF_LARGE|FDF_R, 0, (APTR)GET_TimeStamp, NULL },
+   { "TimeStamp",    FDF_LARGE|FDF_R, GET_TimeStamp },
    END_FIELD
 };
 
 static const ActionArray clActions[] = {
-   { AC_Query,      (APTR)TIME_Query },
-   { AC_Refresh,    (APTR)TIME_Query },
+   { AC_Query,   TIME_Query },
+   { AC_Refresh, TIME_Query },
    { 0, NULL }
 };
 

@@ -10,6 +10,7 @@
 #endif
 
 #include <parasol/system/types.h>
+#include <parasol/vector.hpp>
 #include <parasol/system/registry.h>
 #include <parasol/system/errors.h>
 #include <parasol/system/fields.h>

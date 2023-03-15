@@ -1215,8 +1215,8 @@ static void tag_xml_content(extDocument *Self, objXML *XML, XMLTag *Tag, WORD Fl
 
    if (Flags & (PXF_ARGS|PXF_TRANSLATE)) {
       LAYOUT("tag_xml","Converting args from tag %d.", Tag->Index);
-      for (i=Tag->Index; XML->Tags[Tag->Index]->Branch <= XML->Tags[i]->Branch; i++) {
-         convert_xml_args(Self, XML->Tags[i]->Attrib, XML->Tags[i]->TotalAttrib);
+      for (i=Tag->Index; XML->Tags[Tag->Index]->Branch <= XML->Tags[i].Branch; i++) {
+         convert_xml_args(Self, XML->Tags[i].Attrib, XML->Tags[i].TotalAttrib);
       }
       e_revert = Self->ArgIndex;
    }

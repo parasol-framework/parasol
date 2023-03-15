@@ -12,7 +12,7 @@ Client-Server Network Communications test.  Creates a server socket and then sta
    glPort = 8206
    glTestCompleted = false
 
-//=====================================================================================================================
+-----------------------------------------------------------------------------------------------------------------------
 
 function testClientServer()
    local proc = processing.new({ timeout = 5.0 })
@@ -70,7 +70,7 @@ function testClientServer()
    assert(glTestCompleted, 'The test did not complete the steps as expected.')
 end
 
-//=====================================================================================================================
+-----------------------------------------------------------------------------------------------------------------------
 
    return {
       tests = { 'testClientServer' }

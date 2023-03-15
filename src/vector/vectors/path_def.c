@@ -16,11 +16,11 @@ static const struct MethodArray clVectorPathMethods[] = {
 };
 
 static const struct ActionArray clVectorPathActions[] = {
-   { AC_Clear, (APTR)VECTORPATH_Clear },
-   { AC_Flush, (APTR)VECTORPATH_Flush },
-   { AC_Free, (APTR)VECTORPATH_Free },
-   { AC_Init, (APTR)VECTORPATH_Init },
-   { AC_NewObject, (APTR)VECTORPATH_NewObject },
-   { 0, 0 }
+   { AC_Clear, VECTORPATH_Clear },
+   { AC_Flush, VECTORPATH_Flush },
+   { AC_Free, VECTORPATH_Free },
+   { AC_Init, VECTORPATH_Init },
+   { AC_NewObject, VECTORPATH_NewObject },
+   { 0, NULL }
 };
 

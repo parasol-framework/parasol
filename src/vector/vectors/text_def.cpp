@@ -8,9 +8,9 @@ static const struct MethodArray clVectorTextMethods[] = {
 };
 
 static const struct ActionArray clVectorTextActions[] = {
-   { AC_Free, (APTR)VECTORTEXT_Free },
-   { AC_Init, (APTR)VECTORTEXT_Init },
-   { AC_NewObject, (APTR)VECTORTEXT_NewObject },
-   { 0, 0 }
+   { AC_Free, VECTORTEXT_Free },
+   { AC_Init, VECTORTEXT_Init },
+   { AC_NewObject, VECTORTEXT_NewObject },
+   { 0, NULL }
 };
 

@@ -5,6 +5,26 @@
 
 #include <list>
 
+//********************************************************************************************************************
+// Standard hash computation, but stops when it encounters a character outside of A-Za-z0-9 range
+// Note that struct name hashes are case sensitive.
+
+inline ULONG STRUCTHASH(CSTRING String)
+{
+   ULONG hash = 5381;
+   UBYTE c;
+   while ((c = *String++)) {
+      if ((c >= 'A') and (c <= 'Z'));
+      else if ((c >= 'a') and (c <= 'z'));
+      else if ((c >= '0') and (c <= '9'));
+      else break;
+      hash = ((hash<<5) + hash) + c;
+   }
+   return hash;
+}
+
+//********************************************************************************************************************
+
 struct code_reader_handle {
    objFile *File;
    APTR Buffer;
@@ -29,16 +49,75 @@ struct eventsub {
    APTR EventHandle;
 };
 
+//********************************************************************************************************************
+
+struct struct_field {
+   std::string Name;       // Field name
+   std::string StructRef;  // Named reference to other structure
+   UWORD Offset    = 0;    // Offset to the field value.
+   LONG  Type      = 0;    // FD flags
+   LONG  ArraySize = 0;    // Set if the field is an array
+
+   ULONG nameHash() {
+      if (!NameHash) NameHash = StrHash(Name);
+      return NameHash;
+   }
+
+   private:
+   ULONG NameHash = 0;     // Lowercase hash of the field name
+};
+
+struct struct_record {
+   std::string Name;
+   std::vector<struct_field> Fields;
+   LONG Size = 0; // Total byte size of the structure
+   struct_record(const std::string pName) : Name(pName) { }
+   struct_record() = default;
+};
+
+//********************************************************************************************************************
+// Structure names have their own handler due to the use of colons in struct references, i.e. "OfficialStruct:SomeName"
+
+struct struct_name {
+   std::string name;
+   struct_name(const std::string pName) {
+      auto colon = pName.find(':');
+
+      if (colon IS std::string::npos) name = pName;
+      else name = pName.substr(0, colon);
+   }
+
+   bool operator==(const struct_name &other) const {
+      return (name == other.name);
+   }
+};
+
+struct struct_hash {
+   std::size_t operator()(const struct_name &k) const {
+      ULONG hash = 5381;
+      for (auto c : k.name) {
+         if ((c >= 'A') and (c <= 'Z'));
+         else if ((c >= 'a') and (c <= 'z'));
+         else if ((c >= '0') and (c <= '9'));
+         else break;
+         hash = ((hash<<5) + hash) + UBYTE(c);
+      }
+      return hash;
+   }
+};
+
+//********************************************************************************************************************
+
 struct prvFluid {
    lua_State *Lua;                   // Lua instance
    struct actionmonitor *ActionList; // Action subscriptions managed by subscribe()
    struct eventsub *EventList;       // Event subscriptions managed by subscribeEvent()
    struct finput *InputList;         // Managed by the input interface
    struct datarequest *Requests;     // For drag and drop requests
-   KeyStore *Structs;
+   std::unordered_map<struct_name, struct_record, struct_hash> Structs;
    KeyStore *Includes;               // Stores the status of loaded include files.
    APTR   FocusEventHandle;
-   std::unordered_map<OBJECTID, LONG> *StateMap;
+   std::unordered_map<OBJECTID, LONG> StateMap;
    DateTime CacheDate;
    ERROR  CaughtError;               // Set to -1 to enable catching of ERROR results.
    LONG   CachePermissions;
@@ -51,7 +130,7 @@ struct prvFluid {
 };
 
 struct array {
-   struct structentry *StructDef; // Set if the array represents a known struct.
+   struct struct_record *StructDef; // Set if the array represents a known struct.
    LONG Total;        // Total number of elements
    LONG Type;         // FD_BYTE, FD_LONG etc...
    LONG TypeSize;     // Byte-size of the type, e.g. LARGE == 8 bytes
@@ -91,34 +170,14 @@ struct memory {
    ULONG    AccessCount;
 };
 
-// These structures are allocated by MAKESTRUCT
-// structentry is for structure definitions that define field types and names
-
-struct structentry {
-   LONG Total;     // Total number of fields in the structure
-   LONG Size;      // Total byte size of the structure
-   ULONG NameHash; // Name of the structure expressed as a lowercase hash.
-   // Description of structure fields then follows.
-};
-
-struct structdef_field {
-   UWORD Length;        // Length of this structdef_field entry.
-   UWORD Offset;        // Offset to the field value.
-   ULONG NameHash;      // Lowercase hash of the field name
-   LONG  StructOffset;  // Index to the structure name, if this is a struct reference.
-   LONG  Type;          // FD flags
-   LONG  ArraySize;     // Set if the field is an array
-   // Field name and optional structure name follow
-};
-
 // This structure is created & managed through the 'struct' interface
 
 struct fstruct {
    APTR Data;          // Pointer to the structure data
    LONG StructSize;    // Size of the structure
    LONG AlignedSize;   // 64-bit alignment size of the structure.
-   struct structentry *Def; // The structure definition
-   UBYTE Deallocate:1;  // Deallocate the struct when Lua collects this resource.
+   struct struct_record *Def; // The structure definition
+   bool Deallocate;    // Deallocate the struct when Lua collects this resource.
 };
 
 struct fprocessing {
@@ -210,12 +269,9 @@ struct object {
    ULONG     AccessCount;     // Controlled by access_object() and release_object()
 };
 
-struct references {
-   LONG Index;
-   struct {
-      CPTR Address;
-      LONG Ref;
-   } List[16384];
+struct lua_ref {
+   CPTR Address;
+   LONG Ref;
 };
 
 extern struct KeyStore *glActionLookup;
@@ -224,36 +280,36 @@ extern OBJECTPTR modDisplay; // Required by fluid_input.c
 extern OBJECTPTR modFluid;
 extern struct DisplayBase *DisplayBase;
 extern OBJECTPTR clFluid;
+extern std::unordered_map<std::string, ULONG> glStructSizes;
 
 OBJECTPTR access_object(struct object *);
-struct references * alloc_references(void);
-void auto_load_include(lua_State *Lua, objMetaClass *MetaClass);
+std::vector<lua_ref> * alloc_references(void);
+void auto_load_include(lua_State *, objMetaClass *);
 ERROR build_args(lua_State *, const struct FunctionField *, LONG, BYTE *, LONG *);
 void clear_subscriptions(objScript *);
 const char * code_reader(lua_State *, void *, size_t *);
 int code_writer_id(lua_State *, CPTR, size_t, void *) __attribute__((unused));
 int code_writer(lua_State *, CPTR, size_t, void *) __attribute__((unused));
 ERROR create_fluid(void);
-void free_references(lua_State *, struct references *);
 void get_line(objScript *, LONG, STRING, LONG);
 APTR get_meta(lua_State *Lua, LONG Arg, CSTRING);
 void hook_debug(lua_State *, lua_Debug *) __attribute__ ((unused));
 ERROR load_include(objScript *, CSTRING);
 int MAKESTRUCT(lua_State *);
-void make_any_table(lua_State *, LONG Type, CSTRING, LONG Elements, CPTR ) __attribute__((unused));
-void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, LONG Total, BYTE Cache);
-void make_table(lua_State *, LONG Type, LONG Elements, CPTR ) __attribute__((unused));
-int make_struct(lua_State *, CSTRING, CSTRING) __attribute__((unused));
-ERROR named_struct_to_table(lua_State *, CSTRING, CPTR);
+void make_any_table(lua_State *, LONG, CSTRING, LONG, CPTR ) __attribute__((unused));
+void make_array(lua_State *, LONG, CSTRING, APTR *, LONG, bool);
+void make_table(lua_State *, LONG, LONG, CPTR ) __attribute__((unused));
+int make_struct(lua_State *, const std::string &, CSTRING) __attribute__((unused));
+ERROR named_struct_to_table(lua_State *, const std::string, CPTR);
 void make_struct_ptr_table(lua_State *, CSTRING, LONG, CPTR *);
 void make_struct_serial_table(lua_State *, CSTRING, LONG, CPTR);
 CSTRING next_line(CSTRING String);
 void notify_action(OBJECTPTR, ACTIONID, ERROR, APTR);
-void process_error(objScript *Self, CSTRING Procedure);
+void process_error(objScript *, CSTRING);
 struct object * push_object(lua_State *, OBJECTPTR Object);
 ERROR push_object_id(lua_State *, OBJECTID ObjectID);
-struct fstruct * push_struct(objScript *, APTR, CSTRING, BYTE, BYTE);
-struct fstruct * push_struct_def(lua_State *, APTR, struct structentry *, BYTE);
+struct fstruct * push_struct(objScript *, APTR, const std::string &, bool, bool);
+struct fstruct * push_struct_def(lua_State *, APTR, struct struct_record &, bool);
 extern void register_array_class(lua_State *);
 extern void register_input_class(lua_State *);
 extern void register_object_class(lua_State *);
@@ -264,7 +320,7 @@ extern void register_struct_class(lua_State *);
 extern void register_thread_class(lua_State *);
 //static void register_widget_class(lua_State *);
 void release_object(struct object *);
-ERROR struct_to_table(lua_State *, struct references *, struct structentry *, CPTR);
+ERROR struct_to_table(lua_State *, std::vector<lua_ref> &, struct struct_record &, CPTR);
 
 int fcmd_arg(lua_State *);
 int fcmd_catch(lua_State *);
@@ -288,21 +344,3 @@ extern void x64ExecFunction(APTR, LONG, LARGE *, LONG);
 #else
 extern void x86ExecFunction(APTR, APTR, LONG);
 #endif
-
-//********************************************************************************************************************
-// Standard hash computation, but stops when it encounters a character outside of A-Za-z0-9 range
-// Note that struct name hashes are case sensitive.
-
-INLINE ULONG STRUCTHASH(CSTRING String)
-{
-   ULONG hash = 5381;
-   UBYTE c;
-   while ((c = *String++)) {
-      if ((c >= 'A') and (c <= 'Z'));
-      else if ((c >= 'a') and (c <= 'z'));
-      else if ((c >= '0') and (c <= '9'));
-      else break;
-      hash = ((hash<<5) + hash) + c;
-   }
-   return hash;
-}

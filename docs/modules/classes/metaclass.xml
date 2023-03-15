@@ -62,14 +62,14 @@
 <p>An action list is a simple array of action ID's and the routines associated with each ID.  When you set the Actions field, the list will be processed into a jump table that is used internally.  After this process, your action list will serve no further purpose.</p>
 <p>The following example shows an action list array taken from the <class name="Picture">Picture</class> class:</p>
 <pre>ActionArray clActions[] = {
-   { AC_Free,          (APTR)PIC_Free },
-   { AC_NewObject,     (APTR)PIC_NewObject },
-   { AC_Init,          (APTR)PIC_Init },
-   { AC_Query,         (APTR)PIC_Query },
-   { AC_Read,          (APTR)PIC_Read },
-   { AC_SaveToObject,  (APTR)PIC_SaveToObject },
-   { AC_Seek,          (APTR)PIC_Seek },
-   { AC_Write,         (APTR)PIC_Write },
+   { AC_Free,          PIC_Free },
+   { AC_NewObject,     PIC_NewObject },
+   { AC_Init,          PIC_Init },
+   { AC_Query,         PIC_Query },
+   { AC_Read,          PIC_Read },
+   { AC_SaveToObject,  PIC_SaveToObject },
+   { AC_Seek,          PIC_Seek },
+   { AC_Write,         PIC_Write },
    { 0, NULL }
 };
 </pre>
@@ -176,17 +176,6 @@
     </field>
 
     <field>
-      <name>IDL</name>
-      <comment>Returns a compressed IDL string from the module that manages the class.</comment>
-      <access read="G">Get</access>
-      <type>STRING</type>
-      <description>
-<p>If the module that created this MetaClass was compiled with an IDL string, it will be possible to read the IDL from this field.  This feature is typically used by languages that are capable of resolving definitions at run-time, e.g. Fluid.</p>
-<p>A value of NULL is returned if the module does not provide an IDL string.</p>
-      </description>
-    </field>
-
-    <field>
       <name>Location</name>
       <comment>Returns the path from which the class binary is loaded.</comment>
       <access read="R">Read</access>
@@ -244,6 +233,13 @@
 <p>This field will compile a list of all objects that belong to the class.  The list is sorted with the oldest object appearing first.</p>
 <p>The resulting array must be terminated with <function module="Core">FreeResource</function> after use.</p>
       </description>
+    </field>
+
+    <field>
+      <name>RootModule</name>
+      <comment>Returns a direct reference to the RootModule object that hosts the class.</comment>
+      <access read="G">Get</access>
+      <type>OBJECTPTR</type>
     </field>
 
     <field>

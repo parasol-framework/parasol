@@ -363,8 +363,8 @@ static ERROR SET_Text(objScintillaSearch *Self, CSTRING Value)
 //********************************************************************************************************************
 
 static const ActionArray clActions[] = {
-   { AC_Free, (APTR)SEARCH_Free },
-   { AC_Init, (APTR)SEARCH_Init },
+   { AC_Free, SEARCH_Free },
+   { AC_Init, SEARCH_Init },
    { 0, NULL }
 };
 
@@ -394,9 +394,9 @@ static const FieldDef clFlags[] = {
 };
 
 static const FieldArray clFields[] = {
-   { "Scintilla", FDF_OBJECT|FDF_RI, ID_SCINTILLA, NULL, NULL },
-   { "Text",      FDF_STRING|FDF_RW, 0, NULL, (APTR)SET_Text },
-   { "Flags",     FDF_LONGFLAGS|FDF_RW, (MAXINT)&clFlags, NULL, NULL },
+   { "Scintilla", FDF_OBJECT|FDF_RI, NULL, NULL, ID_SCINTILLA },
+   { "Text",      FDF_STRING|FDF_RW, NULL, SET_Text },
+   { "Flags",     FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clFlags },
    END_FIELD
 };
 

@@ -10,12 +10,12 @@ static const struct MethodArray clThreadMethods[] = {
 };
 
 static const struct ActionArray clThreadActions[] = {
-   { AC_Activate, (APTR)THREAD_Activate },
-   { AC_Deactivate, (APTR)THREAD_Deactivate },
-   { AC_Free, (APTR)THREAD_Free },
-   { AC_FreeWarning, (APTR)THREAD_FreeWarning },
-   { AC_Init, (APTR)THREAD_Init },
-   { AC_NewObject, (APTR)THREAD_NewObject },
-   { 0, 0 }
+   { AC_Activate, THREAD_Activate },
+   { AC_Deactivate, THREAD_Deactivate },
+   { AC_Free, THREAD_Free },
+   { AC_FreeWarning, THREAD_FreeWarning },
+   { AC_Init, THREAD_Init },
+   { AC_NewObject, THREAD_NewObject },
+   { 0, NULL }
 };
 

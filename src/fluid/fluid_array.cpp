@@ -56,36 +56,33 @@ static int array_copy(lua_State *);
 ** Cache      - Set to TRUE if the array should be cached (important if the List is temporary data).
 */
 
-void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, LONG Total, BYTE Cache)
+void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, LONG Total, bool Cache)
 {
    pf::Log log(__FUNCTION__);
    objScript *Self = Lua->Script;
    auto prv = (prvFluid *)Self->ChildPrivate;
 
-   FieldType &= (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_STRING|FD_STRUCT|FD_FLOAT|FD_LONG|FD_WORD|FD_BYTE);
+   FieldType &= (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_STRING|FD_STRUCT|FD_FLOAT|FD_LONG|FD_WORD|FD_BYTE|FD_CPP);
 
-   if (FieldType & FD_STRING) FieldType = FD_STRING; // Eliminate confusion when FD_STRING|FD_POINTER might be combined
+   if (FieldType & FD_STRING) FieldType &= FD_STRING|FD_CPP; // Eliminate confusion when FD_STRING|FD_POINTER might be combined
 
    log.traceBranch("Content: %p, Type: $%.8x, Struct: %s, Total: %d, Cache: %d", List, FieldType, StructName, Total, Cache);
 
    // Find the struct definition if this array references one.  Note that struct arrays can be pointer based if
    // FD_POINTER is used, otherwise it is presumed that they are sequential.
 
-   struct structentry *sdef = NULL;
+   struct_record *sdef = NULL;
    if (FieldType & FD_STRUCT) {
       if (!StructName) { lua_pushnil(Lua); return; }
 
-      {
-         char struct_name[60];
-         LONG i;
-         for (i=0; ((size_t)i < sizeof(struct_name)-1) and (StructName[i] != ':'); i++) struct_name[i] = StructName[i];
-         struct_name[i] = 0;
-
-         if (VarGet(prv->Structs, struct_name, &sdef, NULL) != ERR_Okay) {
-            log.warning("Struct '%s' is not registered.", StructName);
-            lua_pushnil(Lua);
-            return;
-         }
+      auto name = struct_name(StructName);
+      if (prv->Structs.contains(name)) {
+         sdef = &prv->Structs[name];
+      }
+      else {
+         log.warning("Struct '%s' is not registered.", StructName);
+         lua_pushnil(Lua);
+         return;
       }
    }
 
@@ -96,7 +93,11 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
    else if (FieldType & FD_FLOAT)  type_size = sizeof(FLOAT);
    else if (FieldType & FD_DOUBLE) type_size = sizeof(DOUBLE);
    else if (FieldType & FD_LARGE)  type_size = sizeof(LARGE);
-   else if (FieldType & (FD_STRING|FD_POINTER)) type_size = sizeof(APTR);
+   else if (FieldType & FD_STRING) {
+      if (FieldType & FD_CPP) type_size = sizeof(std::string);
+      else type_size = sizeof(APTR);
+   }
+   else if (FieldType & FD_POINTER) type_size = sizeof(APTR);
    else if (FieldType & FD_STRUCT) type_size = sdef->Size; // The length of sequential structs cannot be calculated.
    else {
       lua_pushnil(Lua);
@@ -112,14 +113,21 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
       else if (FieldType & FD_FLOAT)  for (Total=0; ((FLOAT *)List)[Total]; Total++);
       else if (FieldType & FD_DOUBLE) for (Total=0; ((DOUBLE *)List)[Total]; Total++);
       else if (FieldType & FD_LARGE)  for (Total=0; ((LARGE *)List)[Total]; Total++);
-      else if (FieldType & (FD_STRING|FD_POINTER)) for (Total=0; ((APTR *)List)[Total]; Total++);
+      else if (FieldType & FD_STRING) {
+         if (FieldType & FD_CPP) { // Null-terminated std::string lists aren't permitted.
+            lua_pushnil(Lua);
+            return;
+         }
+         else for (Total=0; ((CSTRING *)List)[Total]; Total++);
+      }
+      else if (FieldType & FD_POINTER) for (Total=0; ((APTR *)List)[Total]; Total++);
       else if (FieldType & FD_STRUCT) Total = -1; // The length of sequential structs cannot be calculated.
    }
 
    LONG array_size = 0;  // Size of the array in bytes, not including any cached content.
    LONG cache_size = 0;  // Size of the array in bytes, plus additional cached content.
 
-   UBYTE alloc = FALSE;
+   bool alloc = false;
    if (Total > 0) {
       cache_size = Total * type_size;
       array_size = Total * type_size;
@@ -127,8 +135,8 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
       // If no list is provided but the total elements > 0, then the list must be allocated automatically.
 
       if (!List) {
-         Cache = FALSE;
-         alloc = TRUE;
+         Cache = false;
+         alloc = true;
          if (AllocMemory(array_size, MEM_DATA, &List) != ERR_Okay) {
             lua_pushnil(Lua);
             return;
@@ -138,33 +146,42 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
 
    if ((Cache) and (List) and (Total > 0)) {
       if (FieldType & FD_STRING) {
-         for (LONG i=0; i < Total; i++) cache_size += StrLength((CSTRING)List[i]) + 1;
+         if (FieldType & FD_CPP) {
+            for (LONG i=0; i < Total; i++) cache_size += ((std::string *)List)[i].size() + 1;
+         }
+         else for (LONG i=0; i < Total; i++) cache_size += StrLength((CSTRING)List[i]) + 1;
       }
    }
 
    LONG struct_nsize = 0;
    if (StructName) struct_nsize = StrLength(StructName) + 1;
 
-   struct array *a;
-   if ((a = (struct array *)lua_newuserdata(Lua, sizeof(struct array) + cache_size + struct_nsize))) {
+   if (auto a = (struct array *)lua_newuserdata(Lua, sizeof(struct array) + cache_size + struct_nsize)) {
       a->Total       = Total;
       a->Type        = FieldType;
       a->ArraySize   = array_size;
       a->StructDef   = sdef;
       a->TypeSize    = type_size;
       a->AlignedSize = ALIGN64(type_size);
-      a->ReadOnly    = (FieldType & FD_READ) ? TRUE : FALSE;
+      a->ReadOnly    = (FieldType & FD_READ) ? true : false;
 
       if ((Cache) and (List) and (Total > 0)) {
          a->ptrPointer = (APTR *)(a + 1);
 
          if (FieldType & FD_STRING) {
-            CopyMemory(List, a->ptrPointer, Total * sizeof(APTR));
-
-            STRING str = (STRING)(a->ptrString + Total);
-            for (LONG i=0; i < Total; i++) {
-               a->ptrString[i] = str;
-               str += StrCopy((CSTRING)List[i], str) + 1;
+            if (FieldType & FD_CPP) {
+               auto str = (STRING)(a->ptrString + Total);
+               for (LONG i=0; i < Total; i++) {
+                  a->ptrString[i] = str;
+                  str += StrCopy(((std::string *)List)[i].c_str(), str) + 1;
+               }
+            }
+            else {
+               auto str = (STRING)(a->ptrString + Total);
+               for (LONG i=0; i < Total; i++) {
+                  a->ptrString[i] = str;
+                  str += StrCopy((CSTRING)List[i], str) + 1;
+               }
             }
          }
          else CopyMemory(List, a->ptrPointer, cache_size);
@@ -187,35 +204,30 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
    }
 }
 
-/*********************************************************************************************************************
-** Usage: array = array.new(InitialSize, Type)
-**
-** Creates a new array of the given size and value type.
-**
-** var = array.new(100, "integer")
-**
-** You can convert a string into a byte array to simplify string parsing as follows:
-**
-** var = array.new("mystring", "bytestring")
-*/
+//********************************************************************************************************************
+// Usage: array = array.new(InitialSize, Type)
+//
+// Creates a new array of the given size and value type.
+//
+// var = array.new(100, "integer")
+//
+// You can convert a string into a byte array to simplify string parsing as follows:
+//
+// var = array.new("mystring", "bytestring")
 
 static int array_new(lua_State *Lua)
 {
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-   CSTRING type;
-   if ((type = lua_tostring(Lua, 2))) {
+   if (auto type = lua_tostring(Lua, 2)) {
       pf::Log log(__FUNCTION__);
-      LONG total;
 
       log.trace("");
       if (!StrMatch("bytestring", type)) { // Represent a string as an array of bytes
-         CSTRING str;
          size_t len;
-         if ((str = lua_tolstring(Lua, 1, &len))) {
+         if (auto str = lua_tolstring(Lua, 1, &len)) {
             MSG("Generating byte array from string of length %d: %.30s", (int)len, str);
 
-            struct array *a;
-            if ((a = (struct array *)lua_newuserdata(Lua, sizeof(struct array) + len + 1))) {
+            if (auto a = (struct array *)lua_newuserdata(Lua, sizeof(struct array) + len + 1)) {
                a->Total   = len;
                a->Type    = FD_BYTE;
                a->ptrByte = (UBYTE *)(a + 1);
@@ -232,10 +244,10 @@ static int array_new(lua_State *Lua)
          }
          else luaL_argerror(Lua, 1, "A string must be provided if using the 'bytestring' array type.");
       }
-      else if ((total = lua_tointeger(Lua, 1))) {
+      else if (auto total = lua_tointeger(Lua, 1)) {
          LONG fieldtype;
-         CSTRING struct_name = NULL;
-         switch (StrHash(type, 0)) {
+         CSTRING s_name = NULL;
+         switch (StrHash(type)) {
             case HASH_LONG:
             case HASH_INTEGER: fieldtype = FD_LONG; break;
             case HASH_STRING:  fieldtype = FD_STRING; break;
@@ -249,10 +261,10 @@ static int array_new(lua_State *Lua)
             case HASH_POINTER: fieldtype = FD_POINTER; break;
             default:
                // Check if the type refers to a struct
-               structentry *def;
-               if ((prv->Structs) and (!VarGet(prv->Structs, type, &def, NULL))) {
-                  fieldtype   = FD_STRUCT;
-                  struct_name = type;
+               auto s = struct_name(type);
+               if (prv->Structs.contains(s)) {
+                  fieldtype = FD_STRUCT;
+                  s_name    = type;
                }
                else {
                   luaL_error(Lua, "Unrecognised type '%s' specified.", type);
@@ -260,7 +272,7 @@ static int array_new(lua_State *Lua)
                }
          }
 
-         make_array(Lua, fieldtype, struct_name, NULL, total, TRUE);
+         make_array(Lua, fieldtype, s_name, NULL, total, true);
          return 1;
       }
       else luaL_argerror(Lua, 1, "Array type required.");
@@ -270,12 +282,11 @@ static int array_new(lua_State *Lua)
    return 0;
 }
 
-/*********************************************************************************************************************
-** Usage: string = array:getstring(start, len)
-**
-** Creates a string from a byte array.  If len is nil, the entire buffer from the starting index up to the end of the
-** byte array is returned.
-*/
+//********************************************************************************************************************
+// Usage: string = array:getstring(start, len)
+//
+// Creates a string from a byte array.  If len is nil, the entire buffer from the starting index up to the end of the
+// byte array is returned.
 
 static int array_getstring(lua_State *Lua)
 {
@@ -315,16 +326,12 @@ static int array_getstring(lua_State *Lua)
    return 1;
 }
 
-/*********************************************************************************************************************
-** Internal: Array index call
-**
-** Any Read accesses to the object will pass through here.
-*/
+//********************************************************************************************************************
+// Any Read accesses to the object will pass through here.
 
 static int array_get(lua_State *Lua)
 {
-   auto a = (struct array *)luaL_checkudata(Lua, 1, "Fluid.array");
-   if (a) {
+   if (auto a = (struct array *)luaL_checkudata(Lua, 1, "Fluid.array")) {
       pf::Log log(__FUNCTION__);
       CSTRING field;
       if (lua_type(Lua, 2) IS LUA_TNUMBER) { // Array reference discovered, e.g. myarray[18]
@@ -339,12 +346,14 @@ static int array_get(lua_State *Lua)
 
          index--; // Convert Lua index to C index
          switch(a->Type & (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_STRUCT|FD_STRING|FD_LONG|FD_WORD|FD_BYTE)) {
-            case FD_STRUCT:
+            case FD_STRUCT: {
                // Arrays of structs are presumed to be in sequence, as opposed to an array of pointers to structs.
-               if (struct_to_table(Lua, NULL, a->StructDef, a->ptrByte + (index * a->AlignedSize)) != ERR_Okay) {
+               std::vector<lua_ref> ref;
+               if (struct_to_table(Lua, ref, a->StructDef[0], a->ptrByte + (index * a->AlignedSize)) != ERR_Okay) {
                   lua_pushnil(Lua);
                }
                break;
+            }
             case FD_STRING:  lua_pushstring(Lua, a->ptrString[index]); break;
             case FD_POINTER: lua_pushlightuserdata(Lua, a->ptrPointer[index]); break;
             case FD_FLOAT:   lua_pushnumber(Lua, a->ptrFloat[index]); break;
@@ -368,14 +377,11 @@ static int array_get(lua_State *Lua)
             lua_createtable(Lua, a->Total, 0); // Create a new table on the stack.
             switch(a->Type & (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_STRUCT|FD_STRING|FD_LONG|FD_WORD|FD_BYTE)) {
                case FD_STRUCT:  {
-                  struct references *ref;
-                  if ((ref = alloc_references())) {
-                     for (LONG i=0; i < a->Total; i++) {
-                        lua_pushinteger(Lua, i);
-                        if (struct_to_table(Lua, ref, a->StructDef, a->ptrPointer[i]) != ERR_Okay) lua_pushnil(Lua);
-                        lua_settable(Lua, -3);
-                     }
-                     free_references(Lua, ref);
+                  std::vector<lua_ref> ref;
+                  for (LONG i=0; i < a->Total; i++) {
+                     lua_pushinteger(Lua, i);
+                     if (struct_to_table(Lua, ref, a->StructDef[0], a->ptrPointer[i]) != ERR_Okay) lua_pushnil(Lua);
+                     lua_settable(Lua, -3);
                   }
                   break;
                }
@@ -417,8 +423,7 @@ static int array_get(lua_State *Lua)
 
 static int array_set(lua_State *Lua)
 {
-   auto a = (struct array *)luaL_checkudata(Lua, 1, "Fluid.array");
-   if (a) {
+   if (auto a = (struct array *)luaL_checkudata(Lua, 1, "Fluid.array")) {
       if (a->ReadOnly) { luaL_error(Lua, "Array is read-only."); return 0; }
 
       if (lua_type(Lua, 2) IS LUA_TNUMBER) { // Array index
@@ -493,7 +498,6 @@ static int array_copy(lua_State *Lua)
       if (req_total < 1) { luaL_argerror(Lua, 3, "Invalid total."); return 0; }
    }
 
-   struct array *src_array;
    size_t src_total;
    BYTE *src;
    LONG src_typesize;
@@ -504,7 +508,7 @@ static int array_copy(lua_State *Lua)
          return 0;
       }
    }
-   else if ((src_array = (struct array *)get_meta(Lua, 1, "Fluid.array"))) {
+   else if (auto src_array = (struct array *)get_meta(Lua, 1, "Fluid.array")) {
       src_typesize = src_array->TypeSize;
       src_total    = src_array->Total;
    }

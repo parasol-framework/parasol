@@ -15,13 +15,13 @@ static const struct MethodArray clTaskMethods[] = {
 };
 
 static const struct ActionArray clTaskActions[] = {
-   { AC_Activate, (APTR)TASK_Activate },
-   { AC_Free, (APTR)TASK_Free },
-   { AC_GetVar, (APTR)TASK_GetVar },
-   { AC_Init, (APTR)TASK_Init },
-   { AC_NewObject, (APTR)TASK_NewObject },
-   { AC_SetVar, (APTR)TASK_SetVar },
-   { AC_Write, (APTR)TASK_Write },
-   { 0, 0 }
+   { AC_Activate, TASK_Activate },
+   { AC_Free, TASK_Free },
+   { AC_GetVar, TASK_GetVar },
+   { AC_Init, TASK_Init },
+   { AC_NewObject, TASK_NewObject },
+   { AC_SetVar, TASK_SetVar },
+   { AC_Write, TASK_Write },
+   { 0, NULL }
 };
 

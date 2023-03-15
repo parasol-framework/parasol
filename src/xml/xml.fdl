@@ -1,6 +1,8 @@
 --$FLUID:Include
 
 module({ name="XML", copyright="Paul Manias © 2001-2023", version=1.0 }, function()
+  cpp_include("<functional>")
+
   const("XMS", { comment="For SetAttrib()" }, {
     NEW         = "-1: Adds a new attribute.  Note that if the attribute already exists, this will result in at least two attributes of the same name in the tag.  Use XMS_DEFINE if this is undesirable.",
     UPDATE_ONLY = "-2: SetAttrib will find the target attribute and update it.  It is not possible to rename the attribute when using this technique.  ERR_Search is returned if the attribute cannot be found.",
@@ -8,16 +10,13 @@ module({ name="XML", copyright="Paul Manias © 2001-2023", version=1.0 }, functi
   })
 
   flags("XSF", { comment="Options for the Sort method." },
-     "DESC: Sort in descending order.",
-     "REPORT_SORTING: If set, ERR_NothingDone will be returned in the event that a rearrangement of the list was not necessary.",
-     "CHECK_SORT: Tells the algorithm to check for a 'sort' attribute in each analysed tag and if found, the algorithm will use that as the sort value instead of that indicated in the Attrib field.")
+    "DESC: Sort in descending order.",
+    "CHECK_SORT: Tells the algorithm to check for a 'sort' attribute in each analysed tag and if found, the algorithm will use that as the sort value instead of that indicated in the Attrib field.")
 
   flags("XMF", { comment="Standard flags for the XML class." },
     "WELL_FORMED: By default, the XML class will accept badly structured XML data.  By setting this flag, all processed XML statements must be well formed (tags must balance) or a BadData error will be returned during processing.",
     "INCLUDE_COMMENTS: By default, comments are stripped from all XML input.  This flag ensures that they are retained.",
     "STRIP_CONTENT: Strip all content from incoming XML data.",
-    "LOWER_CASE: Convert all names and attributes into lower-case characters.",
-    "UPPER_CASE: Convert all names and attributes into upper-case characters.",
     "READABLE|INDENT: Indent the output of XML tags to improve readability.",
     "LOCK_REMOVE: Prevents removal of tags from the XML tree.  This specifically affects the RemoveTag and RemoveXPath methods.",
     "STRIP_HEADERS: XML headers found in the source data will not be included in the parsed results.",
@@ -37,32 +36,45 @@ module({ name="XML", copyright="Paul Manias © 2001-2023", version=1.0 }, functi
     "CHILD_END: Insert as the last child of the target.",
     "END: Private")
 
-  struct("XMLAttrib", { type="XMLATT" }, [[
-    str Name   # The name of the attribute.
-    str Value  # The value assigned to the attribute.
+  flags("XTF", { comment="Standard flags for XMLTag." },
+    "CDATA: Tag represents CDATA.",
+    "INSTRUCTION: Tag represents an instruction of the format <?xml?>.",
+    "NOTATION: Tag represents a notation of the format <!XML>.")
+
+  struct("XMLAttrib", { type="XMLAttrib" }, [[
+   cpp(str) Name   # Name of the attribute
+   cpp(str) Value  # Value of the attribute
+  ]],
+  [[
+   inline bool isContent() const { return Name.empty(); }
+   inline bool isTag() const { return !Name.empty(); }
+   XMLAttrib(std::string pName, std::string pValue) : Name(pName), Value(pValue) { };
+   XMLAttrib() = default;
   ]])
 
   struct("XMLTag", { type="XMLTag" }, [[
-    int    Index               # Position within the XML array
-    int    ID                  # Unique ID assigned to the tag on creation
-    struct(*XMLTag) Child      # Reference to further child tags
-    struct(*XMLTag) Prev       # Reference to the previous tag at this level in the chain
-    struct(*XMLTag) Next       # Reference to the next tag at this level in the chain
-    ptr    Private             # Developer's private memory reference
-    struct(*XMLAttrib) Attrib  # Attributes of the tag, starting with the name
-    short  TotalAttrib         # Total number of listed attributes for this tag
-    ushort Branch              # The branch level for this XML node
-    int    LineNo              # Line number on which this tag was encountered
+    int ID         # Unique ID assigned to the tag on creation
+    int ParentID   # Unique ID of the parent tag
+    int LineNo     # Line number on which this tag was encountered
+    int(XTF) Flags # Optional flags
+    cpp(array(struct(XMLAttrib))) Attribs # Array of attributes for this tag
+    cpp(array(struct(XMLTag))) Children   # Array of child tags
   ]],
   [[
-#ifdef PRV_XML
-   LONG  AttribSize;       // The length of all attribute strings, compressed together
-   UWORD CData:1;          // CDATA content section
-   UWORD Instruction:1;    // Processing instruction, e.g. <?xml ?> or <?php ?>
-   UWORD Notation:1;       // Unparsable notations such as <!DOCTYPE ... >
-   WORD  pad01;
-#endif
-  ]])
+   XMLTag(LONG pID, LONG pLine = 0) :
+      ID(pID), ParentID(0), LineNo(pLine), Flags(0)
+      { }
+
+   XMLTag(LONG pID, LONG pLine, pf::vector<XMLAttrib> pAttribs) :
+      ID(pID), ParentID(0), LineNo(pLine), Flags(0), Attribs(pAttribs)
+      { }
+
+   XMLTag() { XMLTag(0); }
+
+   inline CSTRING name() const { return Attribs[0].Name.c_str(); }
+   inline bool isContent() const { return Attribs[0].Name.empty(); }
+   inline bool isTag() const { return !Attribs[0].Name.empty(); }
+   ]])
 
   methods("xml", "XML", {
     { id=1,  name="SetAttrib" },
@@ -76,66 +88,76 @@ module({ name="XML", copyright="Paul Manias © 2001-2023", version=1.0 }, functi
     { id=9,  name="InsertXPath" },
     { id=10, name="FindTag" },
     { id=11, name="Filter" },
-    { id=12, name="SetRoot" },
     { id=13, name="Count" },
     { id=14, name="InsertContent" },
     { id=15, name="RemoveXPath" },
-    { id=17, name="FindTagFromIndex" },
     { id=18, name="GetTag" }
   })
 
   class("XML", { src="xml.cpp", output="xml_def.c" }, [[
-    str Path              # Location of the XML data file
-    ptr(struct(*XMLTag)) Tags # Array of tag pointers, in linear order.  Useful for looking up indexes.  NULL-terminated.
-    obj Source            # Alternative data source to specifying a Path
-    int TagCount          # Total number of tags loaded into the array
-    int(XMF) Flags        # Optional user flags
-    int CurrentTag        # Current Tag - used for certain operations
-    int PrivateDataSize   # Extra data can be allocated per tag, according to the number of bytes specified here
-    int RootIndex         # Root tag index
-    int Modified          # Modification timestamp
-    int ParseError        # Private
-    int LineNo            # Private
+    str Path        # Location of the XML data file
+    obj Source      # Alternative data source to specifying a Path
+    int(XMF) Flags  # Optional user flags
+    int Start       # Starting cursor position (tag index) used for certain operations
+    int Modified    # Modification timestamp
+    int ParseError  # Private
+    int LineNo      # Private
+  ]],
+  nil,
+  [[
+   typedef pf::vector<XMLTag> TAGS;
+   typedef pf::vector<XMLTag>::iterator CURSOR;
+   TAGS Tags;
   ]])
 
   c_insert([[
-inline STRING XMLATTRIB(const XMLTag *Tag, CSTRING Attrib) {
-   for (LONG i=0; i < Tag->TotalAttrib; i++) {
-      if (!StrMatch((CSSTRING)Attrib, (CSSTRING)Tag->Attrib[i].Name)) {
-         if (!Tag->Attrib[i].Value) return (STRING)"1";
-         else return Tag->Attrib[i].Value;
+//********************************************************************************************************************
+
+template <class T> inline ERROR xmlSetAttrib(objXML *XML, LONG Tag, LONG Flags, T &&Attrib, LONG Value) {
+   auto attrib = to_cstring(Attrib);
+   auto buffer = std::to_string(Value);
+   return xmlSetAttrib(XML, Tag, Flags, attrib, buffer.c_str());
+}
+
+template <class T> inline ERROR xmlSetAttrib(objXML *XML, LONG Tag, LONG Flags, T &&Attrib, DOUBLE Value) {
+   auto attrib = to_cstring(Attrib);
+   auto buffer = std::to_string(Value);
+   return xmlSetAttrib(XML, Tag, Flags, attrib, buffer.c_str());
+}
+
+inline void xmlUpdateAttrib(XMLTag &Tag, const std::string Name, const std::string Value, bool CanCreate = false)
+{
+   for (auto a = Tag.Attribs.begin(); a != Tag.Attribs.end(); a++) {
+      if (!StrMatch(Name, a->Name)) {
+         a->Name  = Name;
+         a->Value = Value;
+         return;
       }
    }
-   return NULL;
+
+   if (CanCreate) Tag.Attribs.emplace_back(Name, Value);
 }
 
-inline bool XMLATTRIBCHECK(const XMLTag *Tag, CSTRING Attrib) {
-   for (LONG i=0; i < Tag->TotalAttrib; i++) {
-      if (!StrMatch((CSSTRING)Attrib, (CSSTRING)Tag->Attrib[i].Name)) {
-         return true;
+inline void xmlNewAttrib(XMLTag &Tag, const std::string &Name, const std::string &Value) {
+   Tag.Attribs.emplace_back(Name, Value);
+}
+
+//********************************************************************************************************************
+// Call a Function for every attribute in the XML tree.  Allows you to modify attributes quite easily, e.g. to convert
+// all attribute names to uppercase:
+//
+// std::transform(attrib.Name.begin(), attrib.Name.end(), attrib.Name.begin(),
+//   [](UBYTE c){ return std::toupper(c); });
+
+inline void xmlForEachAttrib(objXML::TAGS &Tags, std::function<void(XMLAttrib &)> &Function)
+{
+   for (auto &tag : Tags) {
+      for (auto &attrib : tag.Attribs) {
+         Function(attrib);
       }
+      if (!tag.Children.empty()) xmlForEachAttrib(tag.Children, Function);
    }
-   return false;
 }
 
-inline const XMLTag * XMLFIND(const XMLTag **List, CSTRING Name) {
-   while (*List) {
-      if (!StrMatch((CSSTRING)Name, (CSSTRING)List[0]->Attrib->Name)) return List[0];
-      List++;
-   }
-   return 0;
-}
-
-inline ERROR xmlSetAttrib(objXML *XML, LONG Tag, LONG Flags, CSTRING Attrib, LONG Value) {
-   char buffer[20];
-   snprintf(buffer, sizeof(buffer), "%d", Value);
-   return xmlSetAttrib(XML, Tag, Flags, Attrib, buffer);
-}
-
-inline ERROR xmlSetAttrib(objXML *XML, LONG Tag, LONG Flags, CSTRING Attrib, DOUBLE Value) {
-   char buffer[48];
-   snprintf(buffer, sizeof(buffer), "%g", Value);
-   return xmlSetAttrib(XML, Tag, Flags, Attrib, buffer);
-}
   ]])
 end)

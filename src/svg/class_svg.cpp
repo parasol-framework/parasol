@@ -92,23 +92,6 @@ static ERROR SVG_Free(extSVG *Self, APTR Void)
    if (Self->Path)   { FreeResource(Self->Path);   Self->Path = NULL; }
    if (Self->Title)  { FreeResource(Self->Title);  Self->Title = NULL; }
 
-   auto anim = Self->Animations;
-   while (anim) {
-      auto next = anim->Next;
-      for (LONG i=0; i < anim->ValueCount; i++) { FreeResource(anim->Values[i]); anim->Values[i] = NULL; }
-      FreeResource(anim);
-      anim = next;
-   }
-   Self->Animations = NULL;
-
-   auto inherit = Self->Inherit;
-   while (inherit) {
-      auto next = inherit->Next;
-      FreeResource(inherit);
-      inherit = next;
-   }
-   Self->Inherit = NULL;
-
    return ERR_Okay;
 }
 
@@ -274,7 +257,7 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
 
       if (xml.ok()) {
          ERROR error = xmlInsertXML(*xml, 0, 0, header, NULL);
-         LONG index = xml->TagCount-1;
+         LONG index = xml->Tags.back().ID;
 
          if (!(error = xmlInsertXML(*xml, index, XMI_NEXT, "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:parasol=\"http://www.parasol.ws/xmlns/svg\"/>", &index))) {
             bool multiple_viewports = (Self->Scene->Viewport->Next) ? true : false;
@@ -534,17 +517,17 @@ static ERROR GET_Viewport(extSVG *Self, OBJECTPTR *Value)
 #include "class_svg_def.c"
 
 static const FieldArray clSVGFields[] = {
-   { "Target",    FDF_OBJECT|FDF_RI,    0, NULL, (APTR)SET_Target },
-   { "Path",      FDF_STRING|FDF_RW,    0, (APTR)GET_Path, (APTR)SET_Path },
-   { "Title",     FDF_STRING|FDF_RW,    0, NULL, (APTR)SET_Title },
-   { "Frame",     FDF_LONG|FDF_RW,      0, NULL, NULL },
-   { "Flags",     FDF_LONGFLAGS|FDF_RW, (MAXINT)&clSVGFlags, NULL, NULL },
-   { "FrameRate", FDF_LONG|FDF_RW,      0, NULL, (APTR)SET_FrameRate },
-   { "FrameCallback", FDF_FUNCTION|FDF_RW, 0, (APTR)GET_FrameCallback, (APTR)SET_FrameCallback },
+   { "Target",    FDF_OBJECT|FDF_RI, NULL, SET_Target },
+   { "Path",      FDF_STRING|FDF_RW, GET_Path, SET_Path },
+   { "Title",     FDF_STRING|FDF_RW, NULL, SET_Title },
+   { "Frame",     FDF_LONG|FDF_RW, NULL, NULL },
+   { "Flags",     FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clSVGFlags },
+   { "FrameRate", FDF_LONG|FDF_RW, NULL, SET_FrameRate },
+   { "FrameCallback", FDF_FUNCTION|FDF_RW, GET_FrameCallback, SET_FrameCallback },
    // Virtual Fields
-   { "Src",      FDF_SYNONYM|FDF_VIRTUAL|FDF_STRING|FDF_RW, 0, (APTR)GET_Path, (APTR)SET_Path },
-   { "Scene",    FDF_VIRTUAL|FDF_OBJECT|FDF_R, 0, (APTR)GET_Scene, NULL },
-   { "Viewport", FDF_VIRTUAL|FDF_OBJECT|FDF_R, 0, (APTR)GET_Viewport, NULL },
+   { "Src",      FDF_SYNONYM|FDF_VIRTUAL|FDF_STRING|FDF_RW, GET_Path, SET_Path },
+   { "Scene",    FDF_VIRTUAL|FDF_OBJECT|FDF_R, GET_Scene, NULL },
+   { "Viewport", FDF_VIRTUAL|FDF_OBJECT|FDF_R, GET_Viewport, NULL },
    END_FIELD
 };
 

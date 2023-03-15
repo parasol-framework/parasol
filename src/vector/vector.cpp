@@ -152,4 +152,4 @@ ERROR CMDExpunge(void)
 //********************************************************************************************************************
 
 extern ERROR CMDOpen(OBJECTPTR Module);
-PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_VECTOR)
+PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_VECTOR, MOD_IDL, NULL)

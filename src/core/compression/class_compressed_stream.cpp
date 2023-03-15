@@ -380,23 +380,23 @@ TotalOutput: A live counter of total bytes that have been output by the stream.
 //********************************************************************************************************************
 
 static const FieldArray clStreamFields[] = {
-   { "TotalOutput", FDF_LARGE|FDF_R,   0, NULL, NULL },
-   { "Input",       FDF_OBJECT|FDF_RI, 0, NULL, NULL },
-   { "Output",      FDF_OBJECT|FDF_RI, 0, NULL, NULL },
-   { "Format",      FDF_LONG|FDF_LOOKUP|FD_RI, (MAXINT)&clCompressedStreamFormat, NULL, NULL },
+   { "TotalOutput", FDF_LARGE|FDF_R },
+   { "Input",       FDF_OBJECT|FDF_RI },
+   { "Output",      FDF_OBJECT|FDF_RI },
+   { "Format",      FDF_LONG|FDF_LOOKUP|FD_RI, NULL, NULL, &clCompressedStreamFormat },
    // Virtual fields
-   { "Size",        FDF_LARGE|FDF_R,   0, (APTR)CSTREAM_GET_Size, NULL },
+   { "Size",        FDF_LARGE|FDF_R, CSTREAM_GET_Size },
    END_FIELD
 };
 
 static const ActionArray clStreamActions[] = {
-   { AC_Free,      (APTR)CSTREAM_Free },
-   { AC_Init,      (APTR)CSTREAM_Init },
-   { AC_NewObject, (APTR)CSTREAM_NewObject },
-   { AC_Read,      (APTR)CSTREAM_Read },
-   { AC_Reset,     (APTR)CSTREAM_Reset },
-   { AC_Seek,      (APTR)CSTREAM_Seek },
-   { AC_Write,     (APTR)CSTREAM_Write },
+   { AC_Free,      CSTREAM_Free },
+   { AC_Init,      CSTREAM_Init },
+   { AC_NewObject, CSTREAM_NewObject },
+   { AC_Read,      CSTREAM_Read },
+   { AC_Reset,     CSTREAM_Reset },
+   { AC_Seek,      CSTREAM_Seek },
+   { AC_Write,     CSTREAM_Write },
    { 0, NULL }
 };
 

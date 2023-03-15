@@ -1120,14 +1120,14 @@ static ConfigKeys * find_group_wild(extConfig *Self, CSTRING Group)
 #include "class_config_def.c"
 
 static const FieldArray clFields[] = {
-   { "Path",        FDF_STRING|FDF_RW, 0, NULL, (APTR)SET_Path },
-   { "KeyFilter",   FDF_STRING|FDF_RW, 0, (APTR)GET_KeyFilter, (APTR)SET_KeyFilter },
-   { "GroupFilter", FDF_STRING|FDF_RW, 0, (APTR)GET_GroupFilter, (APTR)SET_GroupFilter },
-   { "Flags",       FDF_LONGFLAGS|FDF_RW, (MAXINT)&clFlags, NULL, NULL },
+   { "Path",        FDF_STRING|FDF_RW, NULL, SET_Path },
+   { "KeyFilter",   FDF_STRING|FDF_RW, GET_KeyFilter, SET_KeyFilter },
+   { "GroupFilter", FDF_STRING|FDF_RW, GET_GroupFilter, SET_GroupFilter },
+   { "Flags",       FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clFlags },
    // Virtual fields
-   { "Data",        FDF_POINTER|FDF_R, 0, (APTR)GET_Data, NULL },
-   { "TotalGroups", FDF_LONG|FDF_R, 0, (APTR)GET_TotalGroups, NULL },
-   { "TotalKeys",   FDF_LONG|FDF_R, 0, (APTR)GET_TotalKeys, NULL },
+   { "Data",        FDF_POINTER|FDF_R, GET_Data },
+   { "TotalGroups", FDF_LONG|FDF_R, GET_TotalGroups },
+   { "TotalKeys",   FDF_LONG|FDF_R, GET_TotalKeys },
    END_FIELD
 };
 

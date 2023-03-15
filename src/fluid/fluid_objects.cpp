@@ -233,27 +233,19 @@ static int object_state(lua_State *Lua)
 
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
-   if (!prv->StateMap) {
-      prv->StateMap = new (std::nothrow) std::unordered_map<OBJECTID, LONG>();
-      if (!prv->StateMap) {
-         luaL_error(Lua, "Memory allocation failure.");
-         return 0;
-      }
-   }
-
    // Note: At this time no cleanup is performed on the StateMap.  Ideally this would be done with a hook into garbage
    // collection cycles.
 
    pf::Log log(__FUNCTION__);
-   auto it = prv->StateMap->find(object->ObjectID);
-   if (it != prv->StateMap->end()) {
+   auto it = prv->StateMap.find(object->ObjectID);
+   if (it != prv->StateMap.end()) {
       lua_rawgeti(Lua, LUA_REGISTRYINDEX, it->second);
       return 1;
    }
    else {
       lua_createtable(Lua, 0, 0); // Create a new table on the stack.
       auto state_ref = luaL_ref(Lua, LUA_REGISTRYINDEX);
-      (*prv->StateMap)[object->ObjectID] = state_ref;
+      prv->StateMap[object->ObjectID] = state_ref;
       lua_rawgeti(Lua, LUA_REGISTRYINDEX, state_ref);
       return 1;
    }

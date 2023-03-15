@@ -32,15 +32,15 @@ static const struct MethodArray clConfigMethods[] = {
 };
 
 static const struct ActionArray clConfigActions[] = {
-   { AC_Clear, (APTR)CONFIG_Clear },
-   { AC_DataFeed, (APTR)CONFIG_DataFeed },
-   { AC_Flush, (APTR)CONFIG_Flush },
-   { AC_Free, (APTR)CONFIG_Free },
-   { AC_Init, (APTR)CONFIG_Init },
-   { AC_NewObject, (APTR)CONFIG_NewObject },
-   { AC_SaveSettings, (APTR)CONFIG_SaveSettings },
-   { AC_SaveToObject, (APTR)CONFIG_SaveToObject },
-   { AC_Sort, (APTR)CONFIG_Sort },
-   { 0, 0 }
+   { AC_Clear, CONFIG_Clear },
+   { AC_DataFeed, CONFIG_DataFeed },
+   { AC_Flush, CONFIG_Flush },
+   { AC_Free, CONFIG_Free },
+   { AC_Init, CONFIG_Init },
+   { AC_NewObject, CONFIG_NewObject },
+   { AC_SaveSettings, CONFIG_SaveSettings },
+   { AC_SaveToObject, CONFIG_SaveToObject },
+   { AC_Sort, CONFIG_Sort },
+   { 0, NULL }
 };
 

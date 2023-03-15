@@ -484,7 +484,7 @@ static ERROR DISPLAY_Free(extDisplay *Self, APTR Void)
 #ifdef __xwindows__
    XEvent xevent;
 
-   if (Self->WindowHandle IS (APTR)glDisplayWindow) glDisplayWindow = NULL;
+   if (Self->WindowHandle IS (APTR)glDisplayWindow) glDisplayWindow = 0;
 
    // Kill all expose events associated with the X Window owned by the display
 
@@ -2086,7 +2086,7 @@ static ERROR DISPLAY_UpdateDisplay(extDisplay *Self, struct gfxUpdateDisplay *Ar
       Self->Opacity);
    return ERR_Okay;
 #else
-   return(gfxCopyArea((extBitmap *)Args->Bitmap, (extBitmap *)Self->Bitmap, NULL,
+   return(gfxCopyArea((extBitmap *)Args->Bitmap, (extBitmap *)Self->Bitmap, 0,
       Args->X, Args->Y, Args->Width, Args->Height, Args->XDest, Args->YDest));
 #endif
 }
@@ -3098,47 +3098,47 @@ void alloc_display_buffer(extDisplay *Self)
 #include "class_display_def.c"
 
 static const FieldArray DisplayFields[] = {
-   { "RefreshRate",    FDF_DOUBLE|FDF_RW,     0, NULL, (APTR)SET_RefreshRate },
-   { "Bitmap",         FDF_INTEGRAL|FDF_R,      ID_BITMAP, NULL, NULL },
-   { "Flags",          FDF_LONGFLAGS|FDF_RW, (MAXINT)&clDisplayFlags, NULL, (APTR)SET_Flags },
-   { "Width",          FDF_LONG|FDF_RW,      0, NULL, (APTR)SET_Width },
-   { "Height",         FDF_LONG|FDF_RW,      0, NULL, (APTR)SET_Height },
-   { "X",              FDF_LONG|FDF_RW,      0, NULL, (APTR)SET_X },
-   { "Y",              FDF_LONG|FDF_RW,      0, NULL, (APTR)SET_Y },
-   { "BmpX",           FDF_LONG|FDF_RW,      0, NULL, NULL },
-   { "BmpY",           FDF_LONG|FDF_RW,      0, NULL, NULL },
-   { "Buffer",         FDF_OBJECTID|FDF_R|FDF_SYSTEM, ID_BITMAP, NULL, NULL },
-   { "TotalMemory",    FDF_LONG|FDF_R,       0, NULL, NULL },
-   { "MinHScan",       FDF_LONG|FDF_R,       0, NULL, NULL },
-   { "MaxHScan",       FDF_LONG|FDF_R,       0, NULL, NULL },
-   { "MinVScan",       FDF_LONG|FDF_R,       0, NULL, NULL },
-   { "MaxVScan",       FDF_LONG|FDF_R,       0, NULL, NULL },
-   { "DisplayType",    FDF_LONG|FDF_LOOKUP|FDF_R,  (MAXINT)&clDisplayDisplayType, NULL, NULL },
-   { "DPMS",           FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clDisplayDPMS, NULL, NULL },
-   { "PopOver",        FDF_OBJECTID|FDF_W,   0, NULL, (APTR)SET_PopOver },
-   { "LeftMargin",     FDF_LONG|FDF_R,       0, NULL, NULL },
-   { "RightMargin",    FDF_LONG|FDF_R,       0, NULL, NULL },
-   { "TopMargin",      FDF_LONG|FDF_R,       0, NULL, NULL },
-   { "BottomMargin",   FDF_LONG|FDF_R,       0, NULL, NULL },
+   { "RefreshRate",    FDF_DOUBLE|FDF_RW, NULL, SET_RefreshRate },
+   { "Bitmap",         FDF_INTEGRAL|FDF_R, NULL, NULL, ID_BITMAP },
+   { "Flags",          FDF_LONGFLAGS|FDF_RW, NULL, SET_Flags, &clDisplayFlags },
+   { "Width",          FDF_LONG|FDF_RW, NULL, SET_Width },
+   { "Height",         FDF_LONG|FDF_RW, NULL, SET_Height },
+   { "X",              FDF_LONG|FDF_RW, NULL, SET_X },
+   { "Y",              FDF_LONG|FDF_RW, NULL, SET_Y },
+   { "BmpX",           FDF_LONG|FDF_RW },
+   { "BmpY",           FDF_LONG|FDF_RW },
+   { "Buffer",         FDF_OBJECTID|FDF_R|FDF_SYSTEM, NULL, NULL, ID_BITMAP },
+   { "TotalMemory",    FDF_LONG|FDF_R },
+   { "MinHScan",       FDF_LONG|FDF_R },
+   { "MaxHScan",       FDF_LONG|FDF_R },
+   { "MinVScan",       FDF_LONG|FDF_R },
+   { "MaxVScan",       FDF_LONG|FDF_R },
+   { "DisplayType",    FDF_LONG|FDF_LOOKUP|FDF_R, NULL, NULL, &clDisplayDisplayType },
+   { "DPMS",           FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clDisplayDPMS },
+   { "PopOver",        FDF_OBJECTID|FDF_W, NULL, SET_PopOver },
+   { "LeftMargin",     FDF_LONG|FDF_R },
+   { "RightMargin",    FDF_LONG|FDF_R },
+   { "TopMargin",      FDF_LONG|FDF_R },
+   { "BottomMargin",   FDF_LONG|FDF_R },
    // Virtual fields
-   { "CertificationDate",   FDF_VIRTUAL|FDF_STRING|FDF_R,    0, (APTR)GET_CertificationDate,   NULL },
-   { "Chipset",             FDF_VIRTUAL|FDF_STRING|FDF_R,    0, (APTR)GET_Chipset,             NULL },
-   { "Gamma",               FDF_VIRTUAL|FDF_DOUBLE|FDF_ARRAY|FDF_RI, 0, (APTR)GET_Gamma,       (APTR)SET_Gamma },
-   { "HDensity",            FDF_VIRTUAL|FDF_LONG|FDF_RW,     0, (APTR)GET_HDensity,            (APTR)SET_HDensity },
-   { "VDensity",            FDF_VIRTUAL|FDF_LONG|FDF_RW,     0, (APTR)GET_VDensity,            (APTR)SET_VDensity },
-   { "Display",             FDF_VIRTUAL|FDF_STRING|FDF_R,    0, (APTR)GET_Display,             NULL },
-   { "DisplayManufacturer", FDF_VIRTUAL|FDF_STRING|FDF_R,    0, (APTR)GET_DisplayManufacturer, NULL },
-   { "DriverCopyright",     FDF_VIRTUAL|FDF_STRING|FDF_R,    0, (APTR)GET_DriverCopyright,     NULL },
-   { "DriverVendor",        FDF_VIRTUAL|FDF_STRING|FDF_R,    0, (APTR)GET_DriverVendor,        NULL },
-   { "DriverVersion",       FDF_VIRTUAL|FDF_STRING|FDF_R,    0, (APTR)GET_DriverVersion,       NULL },
-   { "InsideWidth",         FDF_VIRTUAL|FDF_LONG|FDF_R,      0, (APTR)GET_InsideWidth,         NULL },
-   { "InsideHeight",        FDF_VIRTUAL|FDF_LONG|FDF_R,      0, (APTR)GET_InsideHeight,        NULL },
-   { "Manufacturer",        FDF_VIRTUAL|FDF_STRING|FDF_R,    0, (APTR)GET_Manufacturer,        NULL },
-   { "Opacity",             FDF_VIRTUAL|FDF_DOUBLE|FDF_W,    0, (APTR)GET_Opacity,             (APTR)SET_Opacity },
-   { "ResizeFeedback",      FDF_VIRTUAL|FDF_FUNCTION|FDF_RW, 0, (APTR)GET_ResizeFeedback,      (APTR)SET_ResizeFeedback },
-   { "WindowHandle",        FDF_VIRTUAL|FDF_POINTER|FDF_RW,  0, (APTR)GET_WindowHandle,        (APTR)SET_WindowHandle },
-   { "Title",               FDF_VIRTUAL|FDF_STRING|FDF_RW,   0, (APTR)GET_Title,               (APTR)SET_Title },
-   { "TotalResolutions",    FDF_VIRTUAL|FDF_LONG|FDF_R,      0, (APTR)GET_TotalResolutions,    NULL },
+   { "CertificationDate",   FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_CertificationDate },
+   { "Chipset",             FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_Chipset },
+   { "Gamma",               FDF_VIRTUAL|FDF_DOUBLE|FDF_ARRAY|FDF_RI, GET_Gamma, SET_Gamma },
+   { "HDensity",            FDF_VIRTUAL|FDF_LONG|FDF_RW,     GET_HDensity, SET_HDensity },
+   { "VDensity",            FDF_VIRTUAL|FDF_LONG|FDF_RW,     GET_VDensity, SET_VDensity },
+   { "Display",             FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_Display },
+   { "DisplayManufacturer", FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_DisplayManufacturer },
+   { "DriverCopyright",     FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_DriverCopyright },
+   { "DriverVendor",        FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_DriverVendor },
+   { "DriverVersion",       FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_DriverVersion },
+   { "InsideWidth",         FDF_VIRTUAL|FDF_LONG|FDF_R,      GET_InsideWidth },
+   { "InsideHeight",        FDF_VIRTUAL|FDF_LONG|FDF_R,      GET_InsideHeight },
+   { "Manufacturer",        FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_Manufacturer },
+   { "Opacity",             FDF_VIRTUAL|FDF_DOUBLE|FDF_W,    GET_Opacity, SET_Opacity },
+   { "ResizeFeedback",      FDF_VIRTUAL|FDF_FUNCTION|FDF_RW, GET_ResizeFeedback, SET_ResizeFeedback },
+   { "WindowHandle",        FDF_VIRTUAL|FDF_POINTER|FDF_RW,  GET_WindowHandle, SET_WindowHandle },
+   { "Title",               FDF_VIRTUAL|FDF_STRING|FDF_RW,   GET_Title, SET_Title },
+   { "TotalResolutions",    FDF_VIRTUAL|FDF_LONG|FDF_R,      GET_TotalResolutions },
    END_FIELD
 };
 

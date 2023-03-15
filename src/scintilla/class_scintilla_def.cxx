@@ -85,6 +85,6 @@ static const struct ActionArray clScintillaActions[] = {
    { AC_ScrollToPoint, (APTR)SCINTILLA_ScrollToPoint },
    { AC_Show, (APTR)SCINTILLA_Show },
    { AC_Undo, (APTR)SCINTILLA_Undo },
-   { 0, 0 }
+   { 0, NULL }
 };
 

@@ -201,7 +201,7 @@ void handle_button_press(XEvent *xevent)
       feed.Buffer   = &input;
       feed.Size     = sizeof(input);
       if (ActionMsg(AC_DataFeed, glPointerID, &feed) IS ERR_NoMatchingObject) {
-         glPointerID = NULL;
+         glPointerID = 0;
       }
    }
 
@@ -249,7 +249,7 @@ void handle_button_release(XEvent *xevent)
    }
 
    if (ActionMsg(AC_DataFeed, glPointerID, &feed) IS ERR_NoMatchingObject) {
-      glPointerID = NULL;
+      glPointerID = 0;
    }
 
    XFlush(XDisplay);

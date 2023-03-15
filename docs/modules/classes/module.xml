@@ -16,7 +16,7 @@
     <include>modules/module.h</include>
     <copyright>Paul Manias 1996-2023</copyright>
     <description>
-<p>The Module class is used to load and maintain the modules that are installed on the user's system.  A number of modules are available in the core platform as standard, which you can use in the development of your programs. Examples of existing modules can be found in both the <code>modules:</code> folder.</p>
+<p>The Module class is used to load and maintain the modules that are installed on the user's system.  A number of modules are available in the core platform as standard, which you can use in the development of your programs.  Examples of existing modules can be found in both the <code>modules:</code> folder.</p>
 <p>To load a module and interact with its API, create a module object and initialise it.  The following code segment illustrates in C++:</p>
 <pre>DisplayBase *DisplayBase;
 auto modDisplay = objModule::create::global(fl::Name("display"));
@@ -85,13 +85,6 @@ if (modDisplay) modDisplay-&gt;getPtr(FID_ModBase, &amp;DisplayBase);
     </field>
 
     <field>
-      <name>IDL</name>
-      <comment>Returns a compressed IDL string from the module, if available.</comment>
-      <access read="G">Get</access>
-      <type>STRING</type>
-    </field>
-
-    <field>
       <name>ModBase</name>
       <comment>The Module's function base (jump table) must be read from this field.</comment>
       <access read="R">Read</access>
@@ -112,8 +105,8 @@ if (modDisplay) modDisplay-&gt;getPtr(FID_ModBase, &amp;DisplayBase);
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>This string pointer specifies the name of the Module.  This name will be used to load the module from the "modules:" folder, so this field actually reflects part of the module file name.  It is also possible to specify sub-directories before the module name itself - this could become more common in module loading in future.</p>
-<p>It is critical that file extensions do not appear in the Name string, e.g. "screen.dll" as not all systems may use a ".dll" extension.</p>
+<p>This string pointer specifies the name of the Module.  This name will be used to load the module from the <code>modules:</code> folder, so this field actually reflects part of the module file name.  It is also possible to specify sub-directories before the module name itself - this could become more common in module loading in future.</p>
+<p>It is critical that file extensions do not appear in the Name string, e.g. <code>screen.dll</code> as not all systems may use a <code>.dll</code> extension.</p>
       </description>
     </field>
 
