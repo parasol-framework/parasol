@@ -1584,8 +1584,8 @@ function cleanXMLString(str, caller)
 
          if (cleanXMLString_xml != nil) then
             cleanXMLString_xml.statement = str
-            err, str = cleanXMLString_xml.mtGetString(1, bit.bor(XMF_LOWER_CASE, XMF_INCLUDE_SIBLINGS))
-            str = str:trim()
+            local err, clean_str = cleanXMLString_xml.mtGetString(0, XMF_INCLUDE_SIBLINGS)
+            if (clean_str) then str = clean_str:match('<ROOT>(.-)</ROOT>'):trim() end
          else
             error('Failed to parse XML for ' .. nz(caller, 'undefined') .. '.')
          end
@@ -1723,7 +1723,7 @@ glTypes = {
    ptr        = { fd='FD_PTR',                c_type='APTR' },
    resource   = { fd='FD_STRUCT|FD_RESOURCE', c_type='APTR' },
    short      = { fd='FD_WORD',               c_type='WORD' },
-   str        = { fd='FD_STR',                c_type='STRING' },
+   str        = { fd='FD_STR',                c_type='STRING', cpp_type='std::string' },
    struct     = { fd='FD_STRUCT',             c_type='APTR' },
    structsize = { fd='FD_LONG|FD_BUFSIZE',    c_type='LONG' },
    tags       = { fd='FD_TAGS',               c_type='...' },
@@ -1755,6 +1755,19 @@ function cType(Field, Origin)
 
    if (Field.type:match("^structsize") != nil) then
       Field.sizeof = true
+   end
+
+   -- The use of cpp() converts the encapsulated type to its C++ variant.  E.g. 'str' becomes a std::string
+
+   do
+      local cpp_type = Field.type:match("^cpp%((.+)%)$")
+      if (cpp_type != nil) then
+         Field.cpp  = true
+         Field.type = cpp_type
+         Field = cType(Field, Origin)
+         Field.fullType = { fd="FD_CPP|" .. Field.fullType.fd, c_type=Field.fullType.c_type }
+         goto finalise
+      end
    end
 
    do
@@ -2051,7 +2064,15 @@ function cType(Field, Origin)
             Field.type = array_type
             Field.arraySize = 0
             Field = cType(Field, Origin)
-            Field.type = Field.type .. " *"
+            if (Field.cpp) then
+               if Field.struct then
+                  Field.type = 'pf::vector<' .. Field.struct .. '>'
+               else
+                  Field.type = 'pf::vector<' .. Field.type .. '>'
+               end
+            else
+               Field.type = Field.type .. " *"
+            end
             Field.fullType = { fd="FD_ARRAY|" .. Field.fullType.fd, c_type=Field.fullType.c_type  }
          else
             Field.type = array_type
@@ -2069,7 +2090,15 @@ function cType(Field, Origin)
          Field.isArray = true
          Field.type = array_type
          Field = cType(Field, Origin)
-         Field.type = Field.type .. " *"
+         if (Field.cpp) then
+            if Field.struct then
+               Field.type = 'pf::vector<' .. Field.struct .. '>'
+            else
+               Field.type = 'pf::vector<' .. Field.type .. '>'
+            end
+         else
+            Field.type = Field.type .. " *"
+         end
          Field.fullType = { fd="FD_ARRAY|" .. Field.fullType.fd, c_type=Field.fullType.c_type }
          goto finalise
       end
@@ -2114,7 +2143,11 @@ function cType(Field, Origin)
    end
 
    Field.fullType = glTypes[Field.type]
-   Field.type = nz(glTypes[Field.type].c_type, Field.type)
+   if (Field.cpp) then
+      Field.type = nz(glTypes[Field.type].cpp_type, Field.type)
+   else
+      Field.type = nz(glTypes[Field.type].c_type, Field.type)
+   end
 
 ::finalise::
    Field.basicType = Field.type

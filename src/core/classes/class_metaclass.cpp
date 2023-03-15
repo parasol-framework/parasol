@@ -50,7 +50,6 @@ static Field * lookup_id_byclass(extMetaClass *, ULONG, extMetaClass **);
 
 static ERROR GET_ActionTable(extMetaClass *, ActionEntry **, LONG *);
 static ERROR GET_Fields(extMetaClass *, const FieldArray **, LONG *);
-static ERROR GET_IDL(extMetaClass *, CSTRING *);
 static ERROR GET_Location(extMetaClass *, CSTRING *);
 static ERROR GET_Methods(extMetaClass *Self, const MethodArray **, LONG *);
 static ERROR GET_Module(extMetaClass *, CSTRING *);

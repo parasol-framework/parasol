@@ -2046,7 +2046,7 @@ Write: Writes raw image data to a bitmap object.
 static ERROR BITMAP_Write(extBitmap *Self, struct acWrite *Args)
 {
    if (Self->Data) {
-      BYTE *Data = (BYTE *)Self->Data + Self->Position;
+      auto Data = (BYTE *)Self->Data + Self->Position;
       LONG amt_bytes = 0;
       while (Args->Length > 0) {
          Data[amt_bytes] = ((UBYTE *)Args->Buffer)[amt_bytes];
@@ -2276,7 +2276,7 @@ ERROR SET_Data(extBitmap *Self, UBYTE *Data)
 DataFlags: Defines the memory flags to use in allocating a bitmap's data area.
 
 This field determines the type of memory that will be allocated for the #Data field during the initialisation process.
-This field accepts the MEM_DATA, MEM_VIDEO and MEM_TEXTURE memory flags.
+This field accepts the `MEM_DATA`, `MEM_VIDEO` and `MEM_TEXTURE` memory flags.
 
 Please note that video based bitmaps may be faster than data bitmaps for certain applications, but the content is typically
 read-only.  Under normal circumstances it is not possible to use the pixel reading functions, or read from the
@@ -2378,8 +2378,8 @@ graphics.
 -FIELD-
 Palette: Points to a bitmap's colour palette.
 
-A palette is an array of containing colour values in standard RGB format ($RRGGBB).  The first value must have a
-header ID of ID_PALETTE, followed by the amount of values in the array. Following this is the actual list itself -
+A palette is an array of containing colour values in standard RGB format `$RRGGBB`.  The first value must have a
+header ID of `ID_PALETTE`, followed by the amount of values in the array. Following this is the actual list itself -
 colour 0, then colour 1 and so on. There is no termination signal at the end of the list.
 
 The following example is for a 32 colour palette:

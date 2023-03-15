@@ -545,12 +545,12 @@ static void convert_styles(objXML::TAGS &Tags)
 
          // Convert all the style values into real attributes.
 
-         auto &value = tag.Attribs[style].Value;
-         for (unsigned v = 0; v < value.size(); ) {
+         auto value = std::move(tag.Attribs[style].Value);
+         tag.Attribs.erase(tag.Attribs.begin() + style);
+         for (unsigned v=0; v < value.size(); ) {
             while ((value[v]) and (value[v] <= 0x20)) v++;
 
-            LONG n_start = v;
-
+            auto n_start = v;
             auto n_end = value.find(':', n_start);
             if (n_end != std::string::npos) {
                auto v_start = n_end + 1;
@@ -562,7 +562,6 @@ static void convert_styles(objXML::TAGS &Tags)
                tag.Attribs.emplace_back(value.substr(n_start, n_end - n_start), value.substr(v_start, v_end-v_start));
 
                v = v_end + 1;
-               value = tag.Attribs[style].Value; // In case Attribs were rebuilt
             }
             else {
                log.warning("Style string missing ':' to denote value: %s", value.c_str());
@@ -570,7 +569,6 @@ static void convert_styles(objXML::TAGS &Tags)
             }
          }
 
-         tag.Attribs.erase(tag.Attribs.begin() + style);
          break;
       }
 

@@ -18,9 +18,9 @@ object will rebuild itself.  This saves on allocating multiple XML objects for b
 
 Successfully processed data can be read back by scanning the array referenced in the #Tags field.  The array contains
 an XMLTag structure for each tag parsed from the original XML statement.  For more information on how to scan this
-information, refer to the #Tags field.  C++ developers are recommended that they interact with #Tags directly, which
-is internally represented with a type of `std::vector<XMLTag>`.  The one notable restriction is that adding new Tags
-is a volatile action that can destabilise the object (taking a complete copy of the tags may be warranted instead).
+information, refer to the #Tags field.  C++ developers are recommended to interact with #Tags directly, which
+is represented as `pf::vector<XMLTag>`.  Note that adding new Tags is a volatile action that can destabilise the
+object (taking a complete copy of the tags may be warranted instead).
 
 -END-
 
@@ -38,23 +38,16 @@ NOTATION     <!NOTATION gif SYSTEM "viewer.exe">
 
 #define PRV_XML
 #include <parasol/modules/xml.h>
-
 #include <functional>
 #include <sstream>
 
 MODULE_COREBASE;
 static OBJECTPTR clXML = NULL;
-static UWORD glTagID = 1;
-
-typedef std::vector<XMLTag> TAGS;
-typedef std::vector<XMLTag>::iterator CURSOR;
-
-// Any flag that affects interpretation of the XML source data must be defined in XMF_MODFLAGS.
-#define XMF_MODFLAGS (XMF_INCLUDE_COMMENTS|XMF_STRIP_CONTENT|XMF_STRIP_HEADERS|XMF_NO_ESCAPE|XMF_ALL_CONTENT|XMF_PARSE_HTML|XMF_PARSE_ENTITY)
+static ULONG glTagID = 1;
 
 struct ListSort {
-   XMLTag *Tag;     // Pointer to the XML tag
-   char String[80]; // Sort data
+   XMLTag *Tag;        // Pointer to the XML tag
+   std::string Value; // Sort data
 };
 
 struct ParseState {
@@ -63,6 +56,9 @@ struct ParseState {
 
    ParseState() : Pos(NULL), Balance(0) { }
 };
+
+typedef objXML::TAGS TAGS;
+typedef objXML::CURSOR CURSOR;
 
 //********************************************************************************************************************
 
@@ -73,17 +69,18 @@ class extXML : public objXML {
    bool   ReadOnly;
    bool   StaleMap;         // True if map requires a rebuild
 
-   TAGS        *CursorTags;
-   CURSOR      Cursor;     // Resulting cursor position (tag) after a successful search.
+   TAGS *CursorParent;  // Parent tag, if any
+   TAGS *CursorTags;    // Tag array to which the Cursor belongs
+   CURSOR Cursor;       // Resulting cursor position (tag) after a successful search.
    std::string Attrib;
-   FUNCTION    Callback;
+   FUNCTION Callback;
 
    extXML() : ReadOnly(false), StaleMap(true) { }
 
    std::unordered_map<LONG, XMLTag *> & getMap() {
       if (StaleMap) {
          Map.clear();
-         updateIDs(Tags);
+         updateIDs(Tags, 0);
          StaleMap = false;
       }
 
@@ -149,10 +146,11 @@ class extXML : public objXML {
    private:
    ERROR find_tag(CSTRING XPath);
 
-   void updateIDs(TAGS &List) {
+   void updateIDs(TAGS &List, LONG ParentID) {
       for (auto &tag : List) {
          Map[tag.ID] = &tag;
-         if (!tag.Children.empty()) updateIDs(tag.Children);
+         tag.ParentID = ParentID;
+         if (!tag.Children.empty()) updateIDs(tag.Children, tag.ID);
       }
    }
 };
@@ -308,8 +306,7 @@ static ERROR XML_DataFeed(extXML *Self, struct acDataFeed *Args)
       if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
 
       TAGS tags;
-      ERROR error;
-      if ((error = txt_to_xml(Self, tags, (CSTRING)Args->Buffer))) {
+      if (auto error = txt_to_xml(Self, tags, (CSTRING)Args->Buffer)) {
          return log.warning(error);
       }
 
@@ -665,7 +662,7 @@ The XML string that is built by this method will be stored in the Result paramet
 once the content is no longer required.
 
 -INPUT-
-int Index: Index to a source tag for pulling data out of the XML object.
+int Index: Index to a source tag for pulling data out of the XML object.  Zero will always refer to the first tag.
 int(XMF) Flags: Special flags that affect the construction of the XML string.
 !str Result: The resulting string is returned in this parameter.
 
@@ -688,22 +685,34 @@ static ERROR XML_GetString(extXML *Self, struct xmlGetString *Args)
 
    std::stringstream buffer;
 
-   auto tag = Self->getTag(Args->Index);
+   auto tag = Args->Index ? Self->getTag(Args->Index) : &Self->Tags[0];
    if (!tag) return log.warning(ERR_NotFound);
 
    if (Args->Flags & XMF_INCLUDE_SIBLINGS) {
-      auto parent = Self->getTag(tag->ParentID);
-      auto it = parent->Children.begin();
-      for (; it != parent->Children.end(); it++) {
-         if (it->ID IS Args->Index) break;
-      }
+      if (auto parent = Self->getTag(tag->ParentID)) {
+         auto it = parent->Children.begin();
+         for (; it != parent->Children.end(); it++) {
+            if (it->ID IS Args->Index) break;
+         }
 
-      for (; it != parent->Children.end(); it++) {
-         serialise_xml(*it, buffer, Args->Flags);
+         for (; it != parent->Children.end(); it++) {
+            serialise_xml(*it, buffer, Args->Flags);
+         }
+      }
+      else {
+         auto it = Self->Tags.begin();
+         for (; it != Self->Tags.end(); it++) {
+            if (it IS tag) break;
+         }
+
+         for (; it != Self->Tags.end(); it++) {
+            serialise_xml(*it, buffer, Args->Flags);
+         }
       }
    }
    else serialise_xml(*tag, buffer, Args->Flags);
 
+   pf::SwitchContext ctx(GetParentContext());
    if ((Args->Result = StrClone(buffer.str().c_str()))) return ERR_Okay;
    else return log.warning(ERR_AllocMemory);
 }
@@ -998,11 +1007,11 @@ static ERROR XML_MoveTags(extXML *Self, struct xmlMoveTags *Args)
    auto src_tags = Self->getInsert(Args->Index, it);
    if (!src_tags) return log.warning(ERR_NotFound);
 
-   std::vector<XMLTag> copy;
+   TAGS copy;
    unsigned s;
    for (s=0; s < src_tags->size(); s++) {
       if (src_tags[0][s].ID IS it->ID) {
-         copy = std::vector<XMLTag>(src_tags->begin() + s, src_tags->begin() + s + Args->Total);
+         copy = TAGS(src_tags->begin() + s, src_tags->begin() + s + Args->Total);
       }
    }
 
@@ -1407,15 +1416,14 @@ static ERROR XML_SetVar(extXML *Self, struct acSetVar *Args)
 -METHOD-
 Sort: Sorts XML tags to your specifications.
 
-The Sort method is used to sort a block of XML tags to your specifications.  You are required to pass an XPath that
-refers to the tag containing each item that you want to sort.  To sort the root level, use an XPath of NULL.  A Sort
-parameter is required that will specify the sorting instructions.  The format for the Sort string is `Tag:Attrib,Tag:Attrib,...`.
+The Sort method is used to sort a single branch of XML tags in ascending or descending order.  An XPath is required
+that refers to the tag containing each item that will be sorted.  To sort the root level, use an XPath of NULL.
 
-The Tag indicates the tag name that should be identified for sorting each node (naming child tags is acceptable).  Set
-the Tag name to "Default" if sorting values should be retrieved from every tag at the requested XPath level.
-
-The Attrib field names the attribute containing the sort value.  To sort on content, do not define an Attrib value
-(use the format `Tag:,`).
+The Sort parameter is used to specify a list of sorting instructions.  The format for the Sort string is
+`Tag:Attrib,Tag:Attrib,...`.  The Tag indicates the tag name that should be identified for sorting each node, and
+child tags are supported for this purpose.  Wildcard filtering is allowed and a Tag value of `*` will match every
+tag at the requested XPath level.  The optional Attrib value names the attribute containing the sort string.  To
+sort on content, do not define an Attrib value (use the format `Tag,Tag,...`).
 
 -INPUT-
 cstr XPath: Sort everything under the specified tag, or NULL to sort the entire top level.
@@ -1425,252 +1433,135 @@ int(XSF) Flags: Optional flags.
 -ERRORS-
 Okay: The XML object was successfully sorted.
 NullArgs
+Search: The provided XPath failed to locate a tag.
 ReadOnly
 AllocMemory:
-NothingDone: The XML array was already sorted to your specifications.   Dependent on XSF_REPORT_SORTING.
 -END-
 
 *********************************************************************************************************************/
 
 static ERROR XML_SortXML(extXML *Self, struct xmlSort *Args)
 {
-#if 0
    pf::Log log;
 
    if ((!Args) or (!Args->Sort)) return log.warning(ERR_NullArgs);
    if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
 
-   XMLTag *tag, *tmp;
+   CURSOR tag;
+   TAGS *branch;
    if ((!Args->XPath) or (!Args->XPath[0])) {
-      tag = Self->getTag(0];
+      branch = &Self->Tags;
+      tag = &Self->Tags[0];
       if (!tag) return ERR_Okay;
    }
    else {
       if (Self->findTag(Args->XPath)) return log.warning(ERR_Search);
+      branch = &Self->Cursor->Children;
    }
 
-   LONG insert_index = tag->ID;
+   if (branch->size() < 2) return ERR_Okay;
 
-   // Count the number of root-tags to be sorted (does not include child tags)
+   log.traceBranch("Path: %s, Tag: %s", Args->XPath, Args->Sort);
 
-   LONG root_total, i, j;
-   for (tmp=tag, root_total=0; tmp; tmp=tmp->Next, root_total++);
+   std::vector<std::pair<std::string, std::string>> filters;
+   std::string cmd(Args->Sort);
+   for (unsigned i=0; i < cmd.size(); ) {
+      std::string tag_match, attrib_match;
 
-   if (root_total < 2) return ERR_Okay;
+      // Format is a CSV list of "Tag:Attrib,..."
 
-   LONG sort_total = 0;
-   tag_count(Self->getTag(insert_index), sort_total);
+      auto end = cmd.find_first_of(":,", i);
+      if (end IS std::string::npos) end = cmd.size();
+      tag_match.assign(cmd, i, end-i);
+      i = end;
 
-   log.trace("Index: %d, Tag: %s, Root-Total: %d, Sort-Total: %d of %d",
-      insert_index, Args->Sort, root_total, sort_total, Self->Tags.size());
+      if (cmd[i] IS ':') {
+         end = cmd.find(',', ++i);
+         if (end IS std::string::npos) end = cmd.size();
+         attrib_match.assign(cmd, i, end-i);
+         i = end;
+      }
 
-   std::vector<ListSort> list; // Allocate an array to store the sort results
-   list.reserve(root_total);
+      filters.push_back(make_pair(tag_match, attrib_match));
 
-   std::vector<ListSort *> lookup; // Tag address list
-   lookup.reserve(root_total);
+      i = cmd.find(",", i); // Next filter
+      if (i < cmd.size()) i++; // Skip comma
+   }
 
-   for (i=0; i < root_total; i++) lookup[i] = list + i;
+   // Build a sorting array (extract a sort value for each tag and keep a tag reference).
 
-   // Copy the matching tags into the sorting array (we just need to extract the data string for each tag and a pointer
-   // to the tag represented by the data).
-
-   for (LONG index=0; (tag) and (index < root_total); index++) {
-      LONG pos = 0;
-      list[index].String[0] = 0;
-      list[index].Tag = 0;
-      for (i=0; (Args->Sort[i]) and ((size_t)pos < sizeof(list[0].String));) {
-         char tagname[80], attrib[80];
-
-         // Format is CSV: Tag:Attrib,...
-
-         bool found = false;
-
-         for (j=0; (Args->Sort[i]) and (Args->Sort[i] != ':') and ((size_t)j < sizeof(tagname)-1); j++) tagname[j] = Args->Sort[i++];
-         tagname[j] = 0;
-         while ((Args->Sort[i]) and (Args->Sort[i] != ':') and (Args->Sort[i] != '/') and (Args->Sort[i] != ',')) i++;
-         if (Args->Sort[i] IS ':') i++;
-
-         for (j=0; (Args->Sort[i]) and (Args->Sort[i] != '/') and (Args->Sort[i] != ',') and ((size_t)j < sizeof(attrib)-1); j++) attrib[j] = Args->Sort[i++];
-         attrib[j] = 0;
-         while ((Args->Sort[i]) and (Args->Sort[i] != '/') and (Args->Sort[i] != ',')) i++;
-         if (Args->Sort[i]) i++; // Skip separator
-
-         if (!StrMatch("Default", tagname)) {
-            tmp = tag;
-            found = true;
+   std::vector<ListSort> list;
+   for (auto &scan : branch[0]) {
+      std::string sortval;
+      for (auto &filter : filters) {
+         XMLTag *tag = NULL;
+         // Check for matching tag name, either at the current tag or in one of the child tags underneath it.
+         if (!StrCompare(filter.first, scan.Attribs[0].Name, 0, STR_WILDCARD)) {
+            tag = &scan;
          }
          else {
-            // Check for matching tag name, either at the current tag or in one of the child tags underneath it.
-
-            if (tag->Next) j = tag->Next->Index;
-            else j = Self->Tags.size();
-
-            for (tmp=tag; (tmp) and (tmp->Index < j); tmp=Self->getTag(tmp->Index+1]) {
-               if (!StrMatch(tagname, tmp->Attrib->Name)) {
-                  found = true;
+            for (auto &child : scan.Children) {
+               if (!StrCompare(filter.first, child.Attribs[0].Name, 0, STR_WILDCARD)) {
+                  tag = &child;
                   break;
                }
             }
          }
 
-         if (found) {
-            if (Args->Flags & XSF_CHECK_SORT) { // Scan for a 'sort' attribute in the XML tag
-               for (LONG j=0; j < tmp->Attribs.size(); j++) {
-                  if (!StrMatch("sort", tmp->Attrib[j].Name)) {
-                     pos += StrCopy(tmp->Attrib[j].Value, list[index].String+pos, sizeof(list[index].String)-pos);
-                     found = false; // Turning off this flag will skip normal attribute extraction
-                     break;
-                  }
+         if (!tag) break;
+
+         if (Args->Flags & XSF_CHECK_SORT) { // Give precedence for a 'sort' attribute in the XML tag
+            auto attrib = tag->Attribs.begin()+1;
+            for (; attrib != tag->Attribs.end(); attrib++) {
+               if (!StrMatch("sort", attrib->Name)) {
+                  sortval.append(attrib->Value);
+                  sortval.append("\x01");
+                  break;
                }
             }
+            if (attrib IS tag->Attribs.end()) continue;
+         }
 
-            if (found) {
-               if (!attrib[0]) { // Use content as the sort data
-                  XMLTag *child;
-                  for (child=tmp->Children; (child) and ((size_t)pos < sizeof(list[index].String)); child=child->Next) {
-                     if (!child->Attrib->Name) {
-                        pos += StrCopy(child->Attrib->Value, list[index].String+pos, sizeof(list[index].String)-pos);
-                     }
-                  }
-               }
-               else { // Extract the sort data from the specified tag attribute
-                  for (LONG j=0; j < tmp->Attribs.size(); j++) {
-                     if (!StrMatch(tmp->Attrib[j].Name, attrib)) {
-                        pos += StrCopy(tmp->Attrib[j].Value, list[index].String+pos, sizeof(list[index].String)-pos);
-                        break;
-                     }
-                  }
+         if (filter.second.empty()) { // Use content as the sort data
+            for (auto &child : tag->Children) {
+               if (child.isContent()) sortval += child.Attribs[0].Value;
+            }
+         }
+         else { // Extract the sort data from the specified tag attribute
+            for (auto attrib=tag->Attribs.begin()+1; attrib != tag->Attribs.end(); attrib++) {
+               if (!StrCompare(filter.second, attrib->Name, 0, STR_WILDCARD)) {
+                  sortval += attrib->Value;
+                  break;
                }
             }
          }
 
          // Each string in the sort list is separated with a byte value of 0x01
 
-         if ((size_t)pos < sizeof(list[0].String)-1) list[index].String[pos++] = 0x01;
+         sortval.append("\x01");
       }
 
-      if ((size_t)pos >= sizeof(list[0].String)) pos = sizeof(list[0].String) - 1;
-      list[index].String[pos] = 0;
-      list[index].Tag = tag;
-
-      tag = tag->Next;
+      list.emplace_back(&scan, sortval);
    }
-
-   bool rearranged;
-
-#ifdef SHELL_SORT
-   // Shell sort.  Similar to bubble sort but much faster because it can copy records over larger distances.
-
-   BYTE test;
-
-   LONG h = 1;
-   while (h < root_total / 9) h = 3 * h + 1;
-
-   rearranged = false;
-   if (Args->List[0].Flags & XSF_DESC) {
-      for (; h > 0; h /= 3) {
-         for (i=h; i < root_total; i++) {
-            auto temp = lookup[i];
-            for (j=i; (j >= h) and (str_sort(lookup[j - h]->String, temp->String) < 0); j -= h) {
-               lookup[j] = lookup[j - h];
-               rearranged = true;
-            }
-            lookup[j] = temp;
-         }
-      }
-   }
-   else {
-      for (; h > 0; h /= 3) {
-         for (i=h; i < root_total; i++) {
-            auto temp = lookup[i];
-            for (j=i; (j >= h) and (str_sort(lookup[j - h]->String, temp->String) > 0); j -= h) {
-               lookup[j] = lookup[j - h];
-               rearranged = true;
-            }
-            lookup[j] = temp;
-         }
-      }
-   }
-
-#else
-   // Binary heap sort.  An extremely fast sorting algorithm, but assumes that the list has been rearranged on completion.
 
    if (Args->Flags & XSF_DESC) {
-      for (i=root_total>>1; i >= 0; i--) sift_down(lookup, i, root_total);
-
-      LONG heapsize = root_total;
-      for (i=heapsize; i > 0; i--) {
-         auto temp = lookup[0];
-         lookup[0] = lookup[i-1];
-         lookup[i-1] = temp;
-         sift_down(lookup, 0, --heapsize);
-      }
+      std::sort(list.begin(), list.end(), [](const ListSort &A, const ListSort &B) -> bool {
+         return A.Value > B.Value;
+      });
    }
    else {
-      for (i=root_total>>1; i >= 0; i--) sift_up(lookup, i, root_total);
-
-      LONG heapsize = root_total;
-      for (i=heapsize; i > 0; i--) {
-         auto temp = lookup[0];
-         lookup[0] = lookup[i-1];
-         lookup[i-1] = temp;
-         sift_up(lookup, 0, --heapsize);
-      }
+      std::sort(list.begin(), list.end(), [](const ListSort &A, const ListSort &B) -> bool {
+         return A.Value < B.Value;
+      });
    }
 
-   rearranged = true;
+   // Build new tag list for this branch, then apply it.
 
-#endif
-
-   // Return if no sorting was required
-
-   if (!rearranged) {
-      if (Args->Flags & XSF_REPORT_SORTING) return ERR_NothingDone;
-      else return ERR_Okay;
-   }
-
-   // Clone the original tag array which will act as the target
-
-   XMLTag **clone_array;
-   if (AllocMemory(sizeof(APTR) * (Self->Tags.size() + 1), MEM_UNTRACKED|MEM_NO_CLEAR, &clone_array) != ERR_Okay) {
-      return log.warning(ERR_Memory);
-   }
-
-   CopyMemory(Self->Tags, clone_array, sizeof(APTR) * (Self->Tags.size() + 1));
-
-   LONG index = insert_index;
-   for (LONG i=0; i < root_total; i++) {
-      // Determine the total number of tags in the block to be copied
-      LONG tagcount = 1;
-      if (lookup[i]->Tag->Children) tag_count(lookup[i]->Tag->Child, tagcount);
-
-      CopyMemory(Self->Tags + lookup[i]->Tag->ID, clone_array + index, sizeof(APTR) * tagcount);
-
-      if (i < root_total - 1) clone_array[index]->Next = lookup[i+1]->Tag;
-      else clone_array[index]->Next = NULL; // The last tag must be null-terminated
-
-      index += tagcount;
-   }
-
-   FreeResource(Self->Tags);
-   Self->Tags = clone_array;
-
-   // Reset index numbers within the sorted range
-
-   for (LONG i=insert_index; i < insert_index + sort_total; i++) {
-      Self->getTag(i)->ID = i;
-   }
-
-   // Reset prev pointers for top-most tags in the sorted range
-
-   Self->getTag(0)->Prev = NULL;
-   for (tag=Self->getTag(insert_index]; tag; tag=tag->Next) {
-      if (tag->Next) tag->Next->Prev = tag;
-   }
+   TAGS new_branch(branch->size());
+   for (auto &rec : list) new_branch.emplace_back(rec.Tag[0]);
+   branch[0] = std::move(new_branch);
 
    Self->modified();
-#endif
    return ERR_Okay;
 }
 
@@ -1785,25 +1676,24 @@ static ERROR SET_Source(extXML *Self, OBJECTPTR Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Start: This cursor can refer to a tag that will affect some XML operations.
+Start: Set a starting cursor to affect the starting point for some XML operations.
 
 When using any XML function that creates an XML string (e.g. SaveToObject), the XML object will include the entire XML
-tree by default.  Defining the Start value will limit the section of the tree that is processed.
+tree by default.  Defining the Start value will restrict processing to a specific tag and its children.
 
 The Start field currently affects the #SaveToObject() action and the #Statement field.
 
 -FIELD-
 Statement: XML data is processed through this field.
 
-To parse a string through an XML object, set the Statement field with a pointer to the XML formatted data.  If this
-field is set after initialisation then the XML object will respond by clearing out any existing data and processing the
-new information that has been passed to it.
+Set the Statement field to parse an XML formatted data string through the object.  If this field is set after
+initialisation then the XML object will clear any existing data first.
 
-Be warned that setting this field with an invalid statement will result in an empty XML object.
+Be aware that setting this field with an invalid statement will result in an empty XML object.
 
-If the Statement field is read, a string-based version of the XML object's data is returned.  By default all tags will
-be included in the statement unless a predefined starting position is set by the #Cursor field.  The string result
-is an allocation that must be freed.
+Reading the Statement field will return a serialised string of XML data.  By default all tags will be included in the
+statement unless a predefined starting position is set by the #Start field.  The string result is an allocation that
+must be freed.
 -END-
 
 *********************************************************************************************************************/
@@ -1876,20 +1766,11 @@ Tags: Points to an array of tags loaded into an XML object.
 The successful parsing of XML data will make the information available via the Tags array.  The array is presented as
 a series of XMLTag structures.
 
-C++ developers may access all structure values directly, including the following private fields:
-
-<pre>
-std::vector<XMLAttrib> Attribs;
-std::vector<XMLTag> Children;
-bool CData;
-bool Instruction;
-bool Notation;
-</pre>
-
 Each XMLTag will also have at least one attribute set in the Attribs array.  The first attribute will either reflect
 the tag name or a content string if the Name is undefined.  The Children array provides access to all child elements.
 
-Fluid developers may access tag information via the provided XML methods.
+Developers may treat the entire tag hierarchy as readable, but writes should be accomplished with the
+available XML methods.
 
 *********************************************************************************************************************/
 

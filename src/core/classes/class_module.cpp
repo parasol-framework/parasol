@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -10,8 +9,8 @@ Please refer to it for further information on licensing.
 Module: Manages the loading of system libraries.
 
 The Module class is used to load and maintain the modules that are installed on the user's system.  A number of modules
-are available in the core platform as standard, which you can use in the development of your programs.
-Examples of existing modules can be found in both the `modules:` folder.
+are available in the core platform as standard, which you can use in the development of your programs.  Examples of
+existing modules can be found in both the `modules:` folder.
 
 To load a module and interact with its API, create a module object and initialise it.  The following code segment
 illustrates in C++:
@@ -49,9 +48,7 @@ static void free_module(MODHANDLE handle);
 
 //********************************************************************************************************************
 
-static ERROR GET_IDL(extModule *, CSTRING *);
 static ERROR GET_Name(extModule *, CSTRING *);
-static ERROR GET_Structs(extModule *, STRUCTS **);
 
 static ERROR SET_Header(extModule *, ModHeader *);
 static ERROR SET_Name(extModule *, CSTRING);
@@ -142,7 +139,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
 {
    pf::Log log;
    #define AF_ROOTMODULE 0x0001
-   #define AF_SEGMENT      0x0002
+   #define AF_SEGMENT    0x0002
    ERROR error = ERR_Failed;
    LONG i;
    WORD aflags = 0;
@@ -359,7 +356,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
          if (!table->Init) { log.warning(ERR_ModuleMissingInit); goto exit; }
          if (!table->Name) { log.warning(ERR_ModuleMissingName); goto exit; }
 
-         master->Header = table;
+         master->Header     = table;
          Self->Version      = table->ModVersion;
          master->Table      = table;
          master->Name       = table->Name;

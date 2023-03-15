@@ -181,7 +181,7 @@ ERROR extXML::find_tag(CSTRING XPath)
 
             if ((!match) and (deepscan) and (!Cursor->Children.empty())) {
                auto save_cursor = Cursor;
-               auto save_tags = CursorTags;
+               auto save_tags   = CursorTags;
 
                CursorTags = &Cursor->Children;
                Cursor     = Cursor->Children.begin();
@@ -189,7 +189,7 @@ ERROR extXML::find_tag(CSTRING XPath)
                ERROR error = find_tag(XPath);
                if ((!error) and (Callback.Type IS CALL_NONE)) return ERR_Okay;
 
-               Cursor = save_cursor;
+               Cursor     = save_cursor;
                CursorTags = save_tags;
             }
          }

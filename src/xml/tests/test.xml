@@ -62,4 +62,12 @@
     </description>
     <result type="APTR">A handle to the FreeType library will be returned.</result>
   </function>
+
+  <function>
+    <name>Z.LastFunction</name>
+  </function>
+
+  <function>
+    <name>A.FirstFunction</name>
+  </function>
 </book>

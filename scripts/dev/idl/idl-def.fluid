@@ -11,7 +11,7 @@
    glSelf = obj.find('self')
    glPath = glSelf.workingPath
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 glOutput = { }
 
@@ -19,7 +19,7 @@ function output(String)
    table.insert(glOutput, nz(String, ''))
 end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function checkOptions(Options)
    if (type(Options) != 'table') then
@@ -32,7 +32,7 @@ function checkOptions(Options)
    return Options
 end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function c_include(...) end
 function cpp_include(...) end
@@ -42,7 +42,7 @@ function methods(ClassName, Prefix, Methods) end
 function c_insert(Raw) end
 function privateNames(List) end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 -- Restricts the output of anything declared within the referenced function.
 
@@ -53,21 +53,21 @@ function restrict(Function)
    glRestrict = status
 end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function module(Options, Function)
    glModuleName = Options['name']
    Function()
 end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function header(Options, Function)
    glHeaderPath = Options['path']
    Function()
 end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function flags(Prefix, Options, ...)
    Options = checkOptions(Options)
@@ -120,7 +120,7 @@ function flags(Prefix, Options, ...)
    glConstants[Prefix] = list
 end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function enum(Prefix, Options, ...)
    Options = checkOptions(Options)
@@ -147,7 +147,7 @@ function enum(Prefix, Options, ...)
    glConstants[Prefix] = list
 end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function const(Prefix, Options, ...)
    Options = checkOptions(Options)
@@ -178,7 +178,7 @@ function const(Prefix, Options, ...)
    glConstants[Prefix] = list
 end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function hash(Prefix, Format, ...)
    for k, hash_def in ipairs({...}) do
@@ -189,7 +189,7 @@ function hash(Prefix, Format, ...)
    output()
 end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function platform(Platform, Function)
    if (Platform:lower() == 'windows') then
@@ -203,7 +203,7 @@ function platform(Platform, Function)
    end
 end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 glTypes = {
    hhandle = 'l',
@@ -236,6 +236,17 @@ glTypes = {
 function cType(Field, Origin)
    if (Field.type == nil) then
       error("Field definition incorrect, missing 'type' value for '" .. nz(Origin,"NIL") .. "'")
+   end
+
+   do
+      local cpp_type = Field.type:match("^cpp%((.+)%)$")
+      if (cpp_type != nil) then
+         Field.cpp  = true
+         Field.type = cpp_type
+         cType(Field, Origin)
+         Field.type = 'z' .. Field.type
+         return Field
+      end
    end
 
    do
@@ -364,6 +375,7 @@ function cType(Field, Origin)
       if (array_type != nil) then
          Field.type = array_type
          Field = cType(Field, Origin)
+         Field.name = Field.name .. '[]'
          return Field
       end
    end
@@ -383,7 +395,7 @@ function cType(Field, Origin)
    return Field
 end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Returns { type, name, comment }
 
 function extractFields(Def, Origin)
@@ -415,7 +427,7 @@ function extractFields(Def, Origin)
    return fields
 end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function struct(Name, Options, Def, Append)
    Options = checkOptions(Options)
@@ -432,7 +444,7 @@ function struct(Name, Options, Def, Append)
    table.insert(glOrderedStructures, struct)
 end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Convert a struct definition into a string-based field sequence.
 
 function sequenceStruct(fields)
@@ -448,7 +460,7 @@ function sequenceStruct(fields)
    return seq
 end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function saveOutput()
    local outPath = glOutputPath
@@ -560,7 +572,7 @@ function resolveSDKPath(Path)
    mSys.SetVolume('sdk', sdk_path)
 end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
    glProgram    = 'idl-def'
    glSource     = arg('src')

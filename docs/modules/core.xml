@@ -3073,6 +3073,7 @@ end
       <const name="BUFFER">FUNCDEF Overrides FD_WRITE.  Indicates a buffer that can be filled with data by the function if paired with RESULT; must be paired with BUFSIZE in second argument.</const>
       <const name="BUFSIZE">FUNCDEF Overrides FD_LOOKUP.  Pair with BUFFER to indicate the byte size of the buffer memory.</const>
       <const name="BYTE">8 bit integer.</const>
+      <const name="CPP">Use the C++ variant of the indicated type, e.g. ARRAY is a std::vector.</const>
       <const name="CUSTOM"/>
       <const name="DOUBLE">64 bit float.</const>
       <const name="DOUBLERESULT">For actions and methods</const>
@@ -4134,12 +4135,10 @@ end
     </struct>
 
     <struct name="SystemState" comment="Returned by the GetSystemState() function.">
-      <field name="ErrorMessages" type="CSTRING *">A sorted array of all error codes, translated into human readable strings.</field>
       <field name="Platform" type="CSTRING">String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.</field>
       <field name="ConsoleFD" type="HOSTHANDLE">Internal</field>
       <field name="CoreVersion" type="LONG">Reflects the Core version number.</field>
       <field name="CoreRevision" type="LONG">Reflects the Core revision number.</field>
-      <field name="TotalErrorMessages" type="LONG">The total number of error codes listed in the ErrorMessages array.</field>
       <field name="Stage" type="LONG">The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.</field>
     </struct>
 

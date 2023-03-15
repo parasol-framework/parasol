@@ -11,7 +11,6 @@ module({ name="XML", copyright="Paul Manias © 2001-2023", version=1.0 }, functi
 
   flags("XSF", { comment="Options for the Sort method." },
     "DESC: Sort in descending order.",
-    "REPORT_SORTING: If set, ERR_NothingDone will be returned in the event that a rearrangement of the list was not necessary.",
     "CHECK_SORT: Tells the algorithm to check for a 'sort' attribute in each analysed tag and if found, the algorithm will use that as the sort value instead of that indicated in the Attrib field.")
 
   flags("XMF", { comment="Standard flags for the XML class." },
@@ -37,35 +36,37 @@ module({ name="XML", copyright="Paul Manias © 2001-2023", version=1.0 }, functi
     "CHILD_END: Insert as the last child of the target.",
     "END: Private")
 
-  c_insert([[
-struct XMLAttrib {
-   std::string Name;
-   std::string Value;
+  flags("XTF", { comment="Standard flags for XMLTag." },
+    "CDATA: Tag represents CDATA.",
+    "INSTRUCTION: Tag represents an instruction of the format <?xml?>.",
+    "NOTATION: Tag represents a notation of the format <!XML>.")
 
+  struct("XMLAttrib", { type="XMLAttrib" }, [[
+   cpp(str) Name   # Name of the attribute
+   cpp(str) Value  # Value of the attribute
+  ]],
+  [[
    inline bool isContent() const { return Name.empty(); }
    inline bool isTag() const { return !Name.empty(); }
    XMLAttrib(std::string pName, std::string pValue) : Name(pName), Value(pValue) { };
-};
+   XMLAttrib() = default;
   ]])
 
   struct("XMLTag", { type="XMLTag" }, [[
-    int ID        # Unique ID assigned to the tag on creation
-    int ParentID  # Unique ID of the parent tag
-    int LineNo    # Line number on which this tag was encountered
+    int ID         # Unique ID assigned to the tag on creation
+    int ParentID   # Unique ID of the parent tag
+    int LineNo     # Line number on which this tag was encountered
+    int(XTF) Flags # Optional flags
+    cpp(array(struct(XMLAttrib))) Attribs # Array of attributes for this tag
+    cpp(array(struct(XMLTag))) Children   # Array of child tags
   ]],
   [[
-   std::vector<XMLAttrib> Attribs;
-   std::vector<struct XMLTag> Children;
-   bool CData;
-   bool Instruction;
-   bool Notation;
-
    XMLTag(LONG pID, LONG pLine = 0) :
-      ID(pID), ParentID(0), LineNo(pLine), CData(false), Instruction(false), Notation(false)
+      ID(pID), ParentID(0), LineNo(pLine), Flags(0)
       { }
 
-   XMLTag(LONG pID, LONG pLine, std::vector<XMLAttrib> pAttribs) :
-      ID(pID), ParentID(0), LineNo(pLine), Attribs(pAttribs), CData(false), Instruction(false), Notation(false)
+   XMLTag(LONG pID, LONG pLine, pf::vector<XMLAttrib> pAttribs) :
+      ID(pID), ParentID(0), LineNo(pLine), Flags(0), Attribs(pAttribs)
       { }
 
    XMLTag() { XMLTag(0); }
@@ -104,8 +105,8 @@ struct XMLAttrib {
   ]],
   nil,
   [[
-   typedef std::vector<XMLTag> TAGS;
-   typedef std::vector<XMLTag>::iterator CURSOR;
+   typedef pf::vector<XMLTag> TAGS;
+   typedef pf::vector<XMLTag>::iterator CURSOR;
    TAGS Tags;
   ]])
 

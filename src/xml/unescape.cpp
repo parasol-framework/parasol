@@ -344,7 +344,7 @@ static void unescape_all(extXML *Self, TAGS &Tags)
          unescape_all(Self, tag.Children);
       }
 
-      if (tag.CData) continue;
+      if (tag.Flags & XTF_CDATA) continue;
       for (auto &attrib : tag.Attribs) {
          if (attrib.Value.empty()) continue;
          xml_unescape(Self, attrib.Value);

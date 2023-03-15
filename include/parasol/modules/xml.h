@@ -23,8 +23,7 @@ class objXML;
 // Options for the Sort method.
 
 #define XSF_DESC 0x00000001
-#define XSF_REPORT_SORTING 0x00000002
-#define XSF_CHECK_SORT 0x00000004
+#define XSF_CHECK_SORT 0x00000002
 
 // Standard flags for the XML class.
 
@@ -53,30 +52,34 @@ class objXML;
 #define XMI_CHILD_END 3
 #define XMI_END 4
 
-struct XMLAttrib {
-   std::string Name;
-   std::string Value;
+// Standard flags for XMLTag.
 
+#define XTF_CDATA 0x00000001
+#define XTF_INSTRUCTION 0x00000002
+#define XTF_NOTATION 0x00000004
+
+typedef struct XMLAttrib {
+   std::string Name;    // Name of the attribute
+   std::string Value;   // Value of the attribute
    inline bool isContent() const { return Name.empty(); }
    inline bool isTag() const { return !Name.empty(); }
    XMLAttrib(std::string pName, std::string pValue) : Name(pName), Value(pValue) { };
-};
-typedef struct XMLTag {
-   LONG ID;          // Unique ID assigned to the tag on creation
-   LONG ParentID;    // Unique ID of the parent tag
-   LONG LineNo;      // Line number on which this tag was encountered
-   std::vector<XMLAttrib> Attribs;
-   std::vector<struct XMLTag> Children;
-   bool CData;
-   bool Instruction;
-   bool Notation;
+   XMLAttrib() = default;
+} XMLATTRIB;
 
+typedef struct XMLTag {
+   LONG ID;                          // Unique ID assigned to the tag on creation
+   LONG ParentID;                    // Unique ID of the parent tag
+   LONG LineNo;                      // Line number on which this tag was encountered
+   LONG Flags;                       // Optional flags
+   pf::vector<XMLAttrib> Attribs;    // Array of attributes for this tag
+   pf::vector<XMLTag> Children;      // Array of child tags
    XMLTag(LONG pID, LONG pLine = 0) :
-      ID(pID), ParentID(0), LineNo(pLine), CData(false), Instruction(false), Notation(false)
+      ID(pID), ParentID(0), LineNo(pLine), Flags(0)
       { }
 
-   XMLTag(LONG pID, LONG pLine, std::vector<XMLAttrib> pAttribs) :
-      ID(pID), ParentID(0), LineNo(pLine), Attribs(pAttribs), CData(false), Instruction(false), Notation(false)
+   XMLTag(LONG pID, LONG pLine, pf::vector<XMLAttrib> pAttribs) :
+      ID(pID), ParentID(0), LineNo(pLine), Flags(0), Attribs(pAttribs)
       { }
 
    XMLTag() { XMLTag(0); }
@@ -226,13 +229,13 @@ class objXML : public BaseClass {
    STRING    Path;      // Set this field if the XML document originates from a file source.
    OBJECTPTR Source;    // Set this field if the XML data is to be sourced from another object.
    LONG      Flags;     // Optional flags.
-   LONG      Start;     // This cursor can refer to a tag that will affect some XML operations.
+   LONG      Start;     // Set a starting cursor to affect the starting point for some XML operations.
    LONG      Modified;  // A timestamp of when the XML data was last modified.
    LONG      ParseError; // Private
    LONG      LineNo;    // Private
    public:
-   typedef std::vector<XMLTag> TAGS;
-   typedef std::vector<XMLTag>::iterator CURSOR;
+   typedef pf::vector<XMLTag> TAGS;
+   typedef pf::vector<XMLTag>::iterator CURSOR;
    TAGS Tags;
 
    // Action stubs

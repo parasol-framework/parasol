@@ -152,7 +152,7 @@ static ERROR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
       auto &cdata_tag = Tags.emplace_back(XMLTag(glTagID++, line_no, {
          { "", std::string(str, len) }
       }));
-      cdata_tag.CData = true;
+      cdata_tag.Flags |= XTF_CDATA;
       State.Pos = str + len + 3;
       return ERR_Okay;
    }
@@ -178,8 +178,8 @@ static ERROR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
    // Extract all attributes within the tag
 
    str = State.Pos+1;
-   if (*str IS '?') tag.Instruction = true; // Detect <?xml ?> style instruction elements.
-   else if ((*str IS '!') and (str[1] >= 'A') and (str[1] <= 'Z')) tag.Notation = true;
+   if (*str IS '?') tag.Flags |= XTF_INSTRUCTION; // Detect <?xml ?> style instruction elements.
+   else if ((*str IS '!') and (str[1] >= 'A') and (str[1] <= 'Z')) tag.Flags |= XTF_NOTATION;
 
    while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
    while ((*str) and (*str != '>')) {
@@ -355,7 +355,7 @@ void serialise_xml(XMLTag &Tag, std::stringstream &Buffer, LONG Flags)
 {
    if (Tag.Attribs[0].isContent()) {
       if (!Tag.Attribs[0].Value.empty()) {
-         if (Tag.CData) {
+         if (Tag.Flags & XTF_CDATA) {
             if (!(Flags & XMF_STRIP_CDATA)) Buffer << "<![CDATA[";
             Buffer << Tag.Attribs[0].Value;
             if (!(Flags & XMF_STRIP_CDATA)) Buffer << "]]>";
@@ -390,11 +390,11 @@ void serialise_xml(XMLTag &Tag, std::stringstream &Buffer, LONG Flags)
          insert_space = true;
       }
 
-      if (Tag.Instruction) {
+      if (Tag.Flags & XTF_INSTRUCTION) {
          Buffer << "?>";
          if (Flags & XMF_READABLE) Buffer << '\n';
       }
-      else if (Tag.Notation) {
+      else if (Tag.Flags & XTF_NOTATION) {
          Buffer << '>';
          if (Flags & XMF_READABLE) Buffer << '\n';
       }

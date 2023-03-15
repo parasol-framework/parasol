@@ -351,24 +351,25 @@ class objCompressedStream;
 #define FD_ALLOC 0x00000020
 #define FD_FLAGS 0x00000040
 #define FD_VARTAGS 0x00000040
+#define FD_BUFSIZE 0x00000080
 #define FD_LOOKUP 0x00000080
 #define FD_ARRAYSIZE 0x00000080
 #define FD_PTRSIZE 0x00000080
-#define FD_BUFSIZE 0x00000080
 #define FD_R 0x00000100
-#define FD_RESULT 0x00000100
 #define FD_READ 0x00000100
-#define FD_WRITE 0x00000200
+#define FD_RESULT 0x00000100
 #define FD_W 0x00000200
+#define FD_WRITE 0x00000200
 #define FD_BUFFER 0x00000200
 #define FD_RW 0x00000300
-#define FD_INIT 0x00000400
 #define FD_I 0x00000400
 #define FD_TAGS 0x00000400
+#define FD_INIT 0x00000400
 #define FD_RI 0x00000500
 #define FD_ERROR 0x00000800
 #define FD_ARRAY 0x00001000
 #define FD_RESOURCE 0x00002000
+#define FD_CPP 0x00004000
 #define FD_CUSTOM 0x00008000
 #define FD_SYSTEM 0x00010000
 #define FD_PRIVATE 0x00010000
@@ -384,8 +385,8 @@ class objCompressedStream;
 #define FD_FUNCTION 0x02000000
 #define FD_LARGE 0x04000000
 #define FD_LARGERESULT 0x04000100
-#define FD_POINTER 0x08000000
 #define FD_PTR 0x08000000
+#define FD_POINTER 0x08000000
 #define FD_OBJECTPTR 0x08000001
 #define FD_PTRRESULT 0x08000100
 #define FD_PTRBUFFER 0x08000200
@@ -1516,6 +1517,7 @@ struct OpenInfo {
 #define FDF_LARGE      FD_LARGE    // Field is large sized (64-bit)
 #define FDF_POINTER    FD_POINTER  // Field is an address pointer (typically 32-bit)
 #define FDF_ARRAY      FD_ARRAY    // Field is a pointer to an array
+#define FDF_CPP        FD_CPP      // Field is a C++ type variant
 #define FDF_PTR        FD_POINTER
 #define FDF_VARIABLE   FD_VARIABLE
 #define FDF_SYNONYM    FD_SYNONYM
@@ -1675,7 +1677,7 @@ struct ModHeader {
       Open          = pOpen;
       Expunge       = pExpunge;
       Name          = pName;
-      Root        = NULL;
+      Root          = NULL;
    }
 };
 
@@ -1696,13 +1698,11 @@ struct FieldDef {
 };
 
 struct SystemState {
-   CSTRING * ErrorMessages;    // A sorted array of all error codes, translated into human readable strings.
-   CSTRING   Platform;         // String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.
-   HOSTHANDLE ConsoleFD;       // Internal
-   LONG      CoreVersion;      // Reflects the Core version number.
-   LONG      CoreRevision;     // Reflects the Core revision number.
-   LONG      TotalErrorMessages; // The total number of error codes listed in the ErrorMessages array.
-   LONG      Stage;            // The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.
+   CSTRING Platform;        // String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.
+   HOSTHANDLE ConsoleFD;    // Internal
+   LONG    CoreVersion;     // Reflects the Core version number.
+   LONG    CoreRevision;    // Reflects the Core revision number.
+   LONG    Stage;           // The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.
 };
 
 struct Variable {
@@ -2611,12 +2611,12 @@ struct BaseClass { // Must be 64-bit aligned
    inline ERROR getPtr(ULONG FieldID, APTR Value) { return GetField(this, (FIELD)FieldID|TPTR, Value); }
    inline ERROR getPercentage(ULONG FieldID, DOUBLE *Value) { return GetField(this, (FIELD)FieldID|TDOUBLE|TPERCENT, Value); }
 
-   template <typename... Args> ERROR setFields(Args... pFields) {
+   template <typename... Args> ERROR setFields(Args&&... pFields) {
       pf::Log log("setFields");
 
       threadLock();
 
-      std::initializer_list<pf::FieldValue> Fields = { pFields... };
+      std::initializer_list<pf::FieldValue> Fields = { std::forward<Args>(pFields)... };
 
       for (auto &f : Fields) {
          OBJECTPTR target;
@@ -2678,8 +2678,8 @@ class Create {
 
       // Return an unscoped direct object pointer.  NB: Globals are still tracked
 
-      template <typename... Args> static T * global(Args... Fields) {
-         pf::Create<T> object = { Fields... };
+      template <typename... Args> static T * global(Args&&... Fields) {
+         pf::Create<T> object = { std::forward<Args>(Fields)... };
          if (object.ok()) {
             auto result = *object;
             object.obj = NULL;
@@ -2690,16 +2690,16 @@ class Create {
 
       // Return an unscoped integral object (suitable for class allocations only).
 
-      template <typename... Args> static T * integral(Args... Fields) {
-         pf::Create<T> object({ Fields... }, NF::INTEGRAL);
+      template <typename... Args> static T * integral(Args&&... Fields) {
+         pf::Create<T> object({ std::forward<Args>(Fields)... }, NF::INTEGRAL);
          if (object.ok()) return *object;
          else return NULL;
       }
 
       // Return an unscoped and untracked object pointer.
 
-      template <typename... Args> static T * untracked(Args... Fields) {
-         pf::Create<T> object({ Fields... }, NF::UNTRACKED);
+      template <typename... Args> static T * untracked(Args&&... Fields) {
+         pf::Create<T> object({ std::forward<Args>(Fields)... }, NF::UNTRACKED);
          if (object.ok()) return *object;
          else return NULL;
       }

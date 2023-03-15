@@ -764,6 +764,7 @@ struct OpenInfo {
 #define FDF_LARGE      FD_LARGE    // Field is large sized (64-bit)
 #define FDF_POINTER    FD_POINTER  // Field is an address pointer (typically 32-bit)
 #define FDF_ARRAY      FD_ARRAY    // Field is a pointer to an array
+#define FDF_CPP        FD_CPP      // Field is a C++ type variant
 #define FDF_PTR        FD_POINTER
 #define FDF_VARIABLE   FD_VARIABLE
 #define FDF_SYNONYM    FD_SYNONYM
@@ -930,7 +931,7 @@ struct FieldValue {
       Open          = pOpen;
       Expunge       = pExpunge;
       Name          = pName;
-      Root        = NULL;
+      Root          = NULL;
    }
   ]])
 
@@ -953,12 +954,10 @@ struct FieldValue {
   ]])
 
   struct("SystemState", { comment="Returned by the GetSystemState() function." }, [[
-    array(cstr) ErrorMessages  # A sorted array of all error codes, translated into human readable strings.
     cstr Platform              # String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.
     hhandle ConsoleFD          # Internal
     int  CoreVersion           # Reflects the Core version number.
     int  CoreRevision          # Reflects the Core revision number.
-    int  TotalErrorMessages    # The total number of error codes listed in the ErrorMessages array.
     int  Stage                 # The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.
   ]])
 
@@ -1733,12 +1732,12 @@ struct BaseClass { // Must be 64-bit aligned
    inline ERROR getPtr(ULONG FieldID, APTR Value) { return GetField(this, (FIELD)FieldID|TPTR, Value); }
    inline ERROR getPercentage(ULONG FieldID, DOUBLE *Value) { return GetField(this, (FIELD)FieldID|TDOUBLE|TPERCENT, Value); }
 
-   template <typename... Args> ERROR setFields(Args... pFields) {
+   template <typename... Args> ERROR setFields(Args&&... pFields) {
       pf::Log log("setFields");
 
       threadLock();
 
-      std::initializer_list<pf::FieldValue> Fields = { pFields... };
+      std::initializer_list<pf::FieldValue> Fields = { std::forward<Args>(pFields)... };
 
       for (auto &f : Fields) {
          OBJECTPTR target;
@@ -1800,8 +1799,8 @@ class Create {
 
       // Return an unscoped direct object pointer.  NB: Globals are still tracked
 
-      template <typename... Args> static T * global(Args... Fields) {
-         pf::Create<T> object = { Fields... };
+      template <typename... Args> static T * global(Args&&... Fields) {
+         pf::Create<T> object = { std::forward<Args>(Fields)... };
          if (object.ok()) {
             auto result = *object;
             object.obj = NULL;
@@ -1812,16 +1811,16 @@ class Create {
 
       // Return an unscoped integral object (suitable for class allocations only).
 
-      template <typename... Args> static T * integral(Args... Fields) {
-         pf::Create<T> object({ Fields... }, NF::INTEGRAL);
+      template <typename... Args> static T * integral(Args&&... Fields) {
+         pf::Create<T> object({ std::forward<Args>(Fields)... }, NF::INTEGRAL);
          if (object.ok()) return *object;
          else return NULL;
       }
 
       // Return an unscoped and untracked object pointer.
 
-      template <typename... Args> static T * untracked(Args... Fields) {
-         pf::Create<T> object({ Fields... }, NF::UNTRACKED);
+      template <typename... Args> static T * untracked(Args&&... Fields) {
+         pf::Create<T> object({ std::forward<Args>(Fields)... }, NF::UNTRACKED);
          if (object.ok()) return *object;
          else return NULL;
       }
