@@ -926,7 +926,7 @@ extern void remove_archive(class extCompression *);
 
 void print_diagnosis(LONG ProcessID, LONG Signal);
 CSTRING action_name(OBJECTPTR Object, LONG ActionID);
-APTR   build_jump_table(LONG, const struct Function *, LONG);
+APTR   build_jump_table(const struct Function *);
 ERROR  copy_args(const struct FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, WORD *, CSTRING);
 ERROR  copy_field_to_buffer(OBJECTPTR Object, struct Field *Field, LONG DestFlags, APTR Result, CSTRING Option, LONG *TotalElements);
 ERROR  create_archive_volume(void);

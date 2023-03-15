@@ -919,7 +919,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 
 #define OPF_SHOW_PUBLIC_MEM 0x00000001
 #define OPF_CORE_VERSION 0x00000002
-#define OPF_JUMPTABLE 0x00000004
+#define OPF_OPTIONS 0x00000004
 #define OPF_MAX_DEPTH 0x00000008
 #define OPF_DETAIL 0x00000010
 #define OPF_SHOW_MEMORY 0x00000020
@@ -933,7 +933,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 #define OPF_MODULE_PATH 0x00002000
 #define OPF_ROOT_PATH 0x00004000
 #define OPF_SCAN_MODULES 0x00008000
-#define OPF_OPTIONS 0x00010000
 
 #define TOI_LOCAL_CACHE 0
 #define TOI_LOCAL_STORAGE 1
@@ -1469,20 +1468,19 @@ struct OpenTag {
 };
 
 struct OpenInfo {
-   LONG    Flags;           // OPF flags need to be set for fields that have been defined in this structure.
    CSTRING Name;            // OPF_NAME
-   FLOAT   CoreVersion;     // OPF_CORE_VERSION
-   LONG    JumpTable;       // OPF_JUMPTABLE
-   LONG    MaxDepth;        // OPF_MAX_DEPTH
-   LONG    Detail;          // OPF_DETAIL
    CSTRING *Args;           // OPF_ARGS
-   LONG    ArgCount;        // OPF_ARGS
-   ERROR   Error;           // OPF_ERROR
-   FLOAT   CompiledAgainst; // OPF_COMPILED_AGAINST
    CSTRING SystemPath;      // OPF_SYSTEM_PATH
    CSTRING ModulePath;      // OPF_MODULE_PATH
    CSTRING RootPath;        // OPF_ROOT_PATH
    struct OpenTag *Options; // OPF_OPTIONS Typecast to va_list (defined in stdarg.h)
+   LONG    Flags;           // OPF flags need to be set for fields that have been defined in this structure.
+   LONG    MaxDepth;        // OPF_MAX_DEPTH
+   LONG    Detail;          // OPF_DETAIL
+   LONG    ArgCount;        // OPF_ARGS
+   ERROR   Error;           // OPF_ERROR
+   FLOAT   CompiledAgainst; // OPF_COMPILED_AGAINST
+   FLOAT   CoreVersion;     // OPF_CORE_VERSION
 };
 
 // Flags for defining fields, methods, actions and functions.  CLASSDEF's can only be used in field definitions for
@@ -3408,7 +3406,7 @@ class objScript : public BaseClass {
 
 #ifdef PRV_SCRIPT
    LARGE    ProcedureID;          // For callbacks
-   KeyStore *Vars;                // Global parameters
+   std::map<std::string, std::string> Vars; // Global parameters
    STRING   *Results;
    char     Language[4];          // 3-character language code, null-terminated
    const ScriptArg *ProcArgs;     // Procedure args - applies during Exec

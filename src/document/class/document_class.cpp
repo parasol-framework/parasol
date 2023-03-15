@@ -673,7 +673,7 @@ static ERROR DOCUMENT_Focus(extDocument *Self, APTR Args)
 static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
 {
    if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
-   if (Self->FlashTimer) { UpdateTimer(Self->FlashTimer, 0); Self->FlashTimer = 0; }
+   if (Self->FlashTimer)  { UpdateTimer(Self->FlashTimer, 0); Self->FlashTimer = 0; }
 
    if (Self->PageID)    { acFree(Self->PageID); Self->PageID = 0; }
    if (Self->ViewID)    { acFree(Self->ViewID); Self->ViewID = 0; }
@@ -716,6 +716,7 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
    if (Self->Templates)   { acFree(Self->Templates); Self->Templates = NULL; }
    if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; };
 
+   Self->~extDocument();
    return ERR_Okay;
 }
 
@@ -729,17 +730,17 @@ static ERROR DOCUMENT_GetVar(extDocument *Self, struct acGetVar *Args)
 {
    if ((!Args) or (!Args->Buffer) or (!Args->Field) or (Args->Size < 2)) return ERR_Args;
 
-   CSTRING arg = VarGetString(Self->Vars, Args->Field);
-   if (!arg) arg = VarGetString(Self->Params, Args->Field);
-
-   if (arg) {
-      StrCopy(arg, Args->Buffer, Args->Size);
+   if (Self->Vars.contains(Args->Field)) {
+      StrCopy(Self->Vars[Args->Field], Args->Buffer, Args->Size);
       return ERR_Okay;
    }
-   else {
-      Args->Buffer[0] = 0;
-      return ERR_UnsupportedField;
+   else if (Self->Params.contains(Args->Field)) {
+      StrCopy(Self->Params[Args->Field], Args->Buffer, Args->Size);
+      return ERR_Okay;
    }
+
+   Args->Buffer[0] = 0;
+   return ERR_UnsupportedField;
 }
 
 //********************************************************************************************************************
@@ -1146,6 +1147,7 @@ static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
 
 static ERROR DOCUMENT_NewObject(extDocument *Self, APTR Void)
 {
+   new (Self) extDocument;
    Self->UniqueID = 1000;
    unload_doc(Self, 0);
    return ERR_Okay;
@@ -1522,11 +1524,9 @@ static ERROR DOCUMENT_SetVar(extDocument *Self, struct acSetVar *Args)
    if ((!Args) or (!Args->Field)) return ERR_NullArgs;
    if (!Args->Field[0]) return ERR_Args;
 
-   if (!Self->Vars) {
-      if (!(Self->Vars = VarNew(0, 0))) return ERR_AllocMemory;
-   }
+   Self->Vars[Args->Field] = Args->Value;
 
-   return VarSetString(Self->Vars, Args->Field, Args->Value);
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************

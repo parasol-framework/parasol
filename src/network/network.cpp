@@ -856,5 +856,5 @@ static STRUCTS glStructures = {
 PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MODVERSION_NETWORK, MOD_IDL, &glStructures)
 
 /*********************************************************************************************************************
-                                 BACKTRACE IT
+                                                     BACKTRACE IT
 *********************************************************************************************************************/

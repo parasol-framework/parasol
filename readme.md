@@ -84,7 +84,7 @@ We recommend using the GCC compiler to build the framework on all platforms.  If
 Linux systems require a few package dependencies to be installed first if a complete build is desired.  For an Apt based system such as Debian or Ubuntu, execute the following:
 
 ```
-sudo apt-get install libasound2-dev libxrandr-dev libxxf86dga-dev
+sudo apt-get install libasound2-dev libxrandr-dev libxxf86dga-dev cmake g++
 ```
 
 To create the initial build you must run the following from the SDK's root folder with `<BUILD ENVIRONMENT>` set to the preferred build system on your platform, or if you don't know then leave the option out to get the default.  For Windows systems the correct build environment is `MinGW Makefiles`.
@@ -152,7 +152,7 @@ Full documentation for developers is available online from our [main website](ht
 
 ## 6. Source Code Licensing
 
-Excluding third party APIs and marked contributions, the Parasol Framework is the copyright of Paul Manias © 1996 - 2022.  The source code is released under the terms of the LGPL as referenced below, except where otherwise indicated.
+Excluding third party APIs and marked contributions, the Parasol Framework is the copyright of Paul Manias © 1996 - 2023.  The source code is released under the terms of the LGPL as referenced below, except where otherwise indicated.
 
 The Parasol Framework is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General Public License as published by the Free Software Foundation; either version 2.1 of the License, or (at your option) any later version.
 

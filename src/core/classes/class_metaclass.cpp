@@ -398,15 +398,12 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
 -FIELD-
 Actions: Defines the actions supported by the class.
 
-It is common practice when developing classes to support a number of actions that help to flesh-out the class
-functionality.  To define the actions that your class will support, you need to create a pre-defined action list in
-your code, and set this field with the action specifications before the class is initialised.
+It is common practice when developing classes to write code for actions that will enhance class functionality.
+Action support is defined by listing a series of action ID's paired with customised routines.  The list will be
+copied to a jump table that is used internally.  After this operation, the original action list will serve no further
+purpose.
 
-An action list is a simple array of action ID's and the routines associated with each ID.  When you set the Actions
-field, the list will be processed into a jump table that is used internally.  After this process, your action list
-will serve no further purpose.
-
-The following example shows an action list array taken from the @Picture class:
+The following example shows an action list array borrowed from the @Picture class:
 
 <pre>
 ActionArray clActions[] = {
@@ -422,8 +419,7 @@ ActionArray clActions[] = {
 };
 </pre>
 
-The action ID's used in this particular list can be found in the system/actioncodes.h include file, along with many
-others. Never define method ID's in an action list - please use the #Methods field to define your methods.
+Never define method ID's in an action list - the #Methods field is provided for this purpose.
 
 *********************************************************************************************************************/
 
