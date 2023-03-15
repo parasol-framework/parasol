@@ -617,6 +617,8 @@ static int struct_get(lua_State *Lua)
                if (((APTR *)address)[0]) {
                   if (field->Type & FD_ARRAY) { // Array of pointers to structures.
                      if (field->Type & FD_CPP) {
+                        auto vector = (pf::vector<int> *)(address);
+                        make_array(Lua, field->Type, field->StructRef.c_str(), (APTR *)vector->data(), vector->size(), false);
                      }
                      else make_array(Lua, field->Type, field->StructRef.c_str(), (APTR *)address, array_size, false);
                   }
@@ -630,11 +632,13 @@ static int struct_get(lua_State *Lua)
             else if (field->Type & FD_STRING) {
                if (field->Type & FD_ARRAY) {
                   if (field->Type & FD_CPP) {
+                     auto vector = (pf::vector<std::string> *)(address);
+                     make_array(Lua, FD_CPP|FD_STRING, NULL, (APTR *)vector->data(), vector->size(), false);
                   }
                   else make_array(Lua, FD_STRING, NULL, (APTR *)address, array_size, false);
                }
                else if (field->Type & FD_CPP) {
-
+                  lua_pushstring(Lua, ((std::string *)address)->c_str());
                }
                else lua_pushstring(Lua, ((STRING *)address)[0]);
             }

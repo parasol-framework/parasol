@@ -62,9 +62,9 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
    objScript *Self = Lua->Script;
    auto prv = (prvFluid *)Self->ChildPrivate;
 
-   FieldType &= (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_STRING|FD_STRUCT|FD_FLOAT|FD_LONG|FD_WORD|FD_BYTE);
+   FieldType &= (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_STRING|FD_STRUCT|FD_FLOAT|FD_LONG|FD_WORD|FD_BYTE|FD_CPP);
 
-   if (FieldType & FD_STRING) FieldType = FD_STRING; // Eliminate confusion when FD_STRING|FD_POINTER might be combined
+   if (FieldType & FD_STRING) FieldType &= FD_STRING|FD_CPP; // Eliminate confusion when FD_STRING|FD_POINTER might be combined
 
    log.traceBranch("Content: %p, Type: $%.8x, Struct: %s, Total: %d, Cache: %d", List, FieldType, StructName, Total, Cache);
 
@@ -93,7 +93,11 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
    else if (FieldType & FD_FLOAT)  type_size = sizeof(FLOAT);
    else if (FieldType & FD_DOUBLE) type_size = sizeof(DOUBLE);
    else if (FieldType & FD_LARGE)  type_size = sizeof(LARGE);
-   else if (FieldType & (FD_STRING|FD_POINTER)) type_size = sizeof(APTR);
+   else if (FieldType & FD_STRING) {
+      if (FieldType & FD_CPP) type_size = sizeof(std::string);
+      else type_size = sizeof(APTR);
+   }
+   else if (FieldType & FD_POINTER) type_size = sizeof(APTR);
    else if (FieldType & FD_STRUCT) type_size = sdef->Size; // The length of sequential structs cannot be calculated.
    else {
       lua_pushnil(Lua);
@@ -109,7 +113,14 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
       else if (FieldType & FD_FLOAT)  for (Total=0; ((FLOAT *)List)[Total]; Total++);
       else if (FieldType & FD_DOUBLE) for (Total=0; ((DOUBLE *)List)[Total]; Total++);
       else if (FieldType & FD_LARGE)  for (Total=0; ((LARGE *)List)[Total]; Total++);
-      else if (FieldType & (FD_STRING|FD_POINTER)) for (Total=0; ((APTR *)List)[Total]; Total++);
+      else if (FieldType & FD_STRING) {
+         if (FieldType & FD_CPP) { // Null-terminated std::string lists aren't permitted.
+            lua_pushnil(Lua);
+            return;
+         }
+         else for (Total=0; ((CSTRING *)List)[Total]; Total++);
+      }
+      else if (FieldType & FD_POINTER) for (Total=0; ((APTR *)List)[Total]; Total++);
       else if (FieldType & FD_STRUCT) Total = -1; // The length of sequential structs cannot be calculated.
    }
 
@@ -135,7 +146,10 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
 
    if ((Cache) and (List) and (Total > 0)) {
       if (FieldType & FD_STRING) {
-         for (LONG i=0; i < Total; i++) cache_size += StrLength((CSTRING)List[i]) + 1;
+         if (FieldType & FD_CPP) {
+            for (LONG i=0; i < Total; i++) cache_size += ((std::string *)List)[i].size() + 1;
+         }
+         else for (LONG i=0; i < Total; i++) cache_size += StrLength((CSTRING)List[i]) + 1;
       }
    }
 
@@ -155,12 +169,19 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
          a->ptrPointer = (APTR *)(a + 1);
 
          if (FieldType & FD_STRING) {
-            CopyMemory(List, a->ptrPointer, Total * sizeof(APTR));
-
-            auto str = (STRING)(a->ptrString + Total);
-            for (LONG i=0; i < Total; i++) {
-               a->ptrString[i] = str;
-               str += StrCopy((CSTRING)List[i], str) + 1;
+            if (FieldType & FD_CPP) {
+               auto str = (STRING)(a->ptrString + Total);
+               for (LONG i=0; i < Total; i++) {
+                  a->ptrString[i] = str;
+                  str += StrCopy(((std::string *)List)[i].c_str(), str) + 1;
+               }
+            }
+            else {
+               auto str = (STRING)(a->ptrString + Total);
+               for (LONG i=0; i < Total; i++) {
+                  a->ptrString[i] = str;
+                  str += StrCopy((CSTRING)List[i], str) + 1;
+               }
             }
          }
          else CopyMemory(List, a->ptrPointer, cache_size);
