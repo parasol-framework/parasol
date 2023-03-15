@@ -82,10 +82,10 @@ static const struct MethodArray clCompressionMethods[] = {
 };
 
 static const struct ActionArray clCompressionActions[] = {
-   { AC_Flush, (APTR)COMPRESSION_Flush },
-   { AC_Free, (APTR)COMPRESSION_Free },
-   { AC_Init, (APTR)COMPRESSION_Init },
-   { AC_NewObject, (APTR)COMPRESSION_NewObject },
-   { 0, 0 }
+   { AC_Flush, COMPRESSION_Flush },
+   { AC_Free, COMPRESSION_Free },
+   { AC_Init, COMPRESSION_Init },
+   { AC_NewObject, COMPRESSION_NewObject },
+   { 0, NULL }
 };
 

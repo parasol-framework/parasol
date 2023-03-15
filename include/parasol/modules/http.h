@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      http.h
-// Copyright: Paul Manias © 2005-2022
+// Copyright: Paul Manias © 2005-2023
 // Generator: idl-c
 
 #include <parasol/main.h>
@@ -167,9 +167,9 @@ class objHTTP : public BaseClass {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);
    }
-   inline ERROR write(CPTR Buffer, LONG Bytes, LONG *Result = NULL) {
+   inline ERROR write(CPTR Buffer, LONG Size, LONG *Result = NULL) {
       ERROR error;
-      struct acWrite write = { (BYTE *)Buffer, Bytes };
+      struct acWrite write = { (BYTE *)Buffer, Size };
       if (!(error = Action(AC_Write, this, &write))) {
          if (Result) *Result = write.Result;
       }
@@ -185,8 +185,8 @@ class objHTTP : public BaseClass {
       else if (Result) *Result = 0;
       return error;
    }
-   inline LONG writeResult(CPTR Buffer, LONG Bytes) {
-      struct acWrite write = { (BYTE *)Buffer, Bytes };
+   inline LONG writeResult(CPTR Buffer, LONG Size) {
+      struct acWrite write = { (BYTE *)Buffer, Size };
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
    }

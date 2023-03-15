@@ -359,9 +359,9 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
                   // Array structs can be set if the Lua table consists of Fluid.struct types.
 
                   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-                  struct structentry *def;
-                  if (!VarGet(prv->Structs, (CSTRING)field->Arg, &def, NULL)) {
-                     LONG aligned_size = ALIGN64(def->Size);
+                  auto def = prv->Structs.find(struct_name(std::string((CSTRING)field->Arg)));
+                  if (def != prv->Structs.end()) {
+                     LONG aligned_size = ALIGN64(def->second.Size);
                      UBYTE structbuf[total * aligned_size];
 
                      for (lua_pushnil(Lua); lua_next(Lua, t); lua_pop(Lua, 1)) {

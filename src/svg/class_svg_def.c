@@ -14,14 +14,14 @@ static const struct MethodArray clSVGMethods[] = {
 };
 
 static const struct ActionArray clSVGActions[] = {
-   { AC_Activate, (APTR)SVG_Activate },
-   { AC_DataFeed, (APTR)SVG_DataFeed },
-   { AC_Deactivate, (APTR)SVG_Deactivate },
-   { AC_Free, (APTR)SVG_Free },
-   { AC_Init, (APTR)SVG_Init },
-   { AC_NewObject, (APTR)SVG_NewObject },
-   { AC_SaveImage, (APTR)SVG_SaveImage },
-   { AC_SaveToObject, (APTR)SVG_SaveToObject },
-   { 0, 0 }
+   { AC_Activate, SVG_Activate },
+   { AC_DataFeed, SVG_DataFeed },
+   { AC_Deactivate, SVG_Deactivate },
+   { AC_Free, SVG_Free },
+   { AC_Init, SVG_Init },
+   { AC_NewObject, SVG_NewObject },
+   { AC_SaveImage, SVG_SaveImage },
+   { AC_SaveToObject, SVG_SaveToObject },
+   { 0, NULL }
 };
 

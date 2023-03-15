@@ -619,6 +619,7 @@ class objFilterEffect : public BaseClass {
 struct MergeSource {
    LONG SourceType;             // The type of the required source.
    objFilterEffect * Effect;    // Effect pointer if the SourceType is REFERENCE.
+  MergeSource(LONG pType, objFilterEffect *pEffect = NULL) : SourceType(pType), Effect(pEffect) { };
 };
 
 // ImageFX class definition

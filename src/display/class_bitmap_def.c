@@ -59,21 +59,21 @@ static const struct MethodArray clBitmapMethods[] = {
 };
 
 static const struct ActionArray clBitmapActions[] = {
-   { AC_Clear, (APTR)BITMAP_Clear },
-   { AC_CopyData, (APTR)BITMAP_CopyData },
-   { AC_Draw, (APTR)BITMAP_Draw },
-   { AC_Flush, (APTR)BITMAP_Flush },
-   { AC_Free, (APTR)BITMAP_Free },
-   { AC_Init, (APTR)BITMAP_Init },
-   { AC_Lock, (APTR)BITMAP_Lock },
-   { AC_NewObject, (APTR)BITMAP_NewObject },
-   { AC_Query, (APTR)BITMAP_Query },
-   { AC_Read, (APTR)BITMAP_Read },
-   { AC_Resize, (APTR)BITMAP_Resize },
-   { AC_SaveImage, (APTR)BITMAP_SaveImage },
-   { AC_Seek, (APTR)BITMAP_Seek },
-   { AC_Unlock, (APTR)BITMAP_Unlock },
-   { AC_Write, (APTR)BITMAP_Write },
-   { 0, 0 }
+   { AC_Clear, BITMAP_Clear },
+   { AC_CopyData, BITMAP_CopyData },
+   { AC_Draw, BITMAP_Draw },
+   { AC_Flush, BITMAP_Flush },
+   { AC_Free, BITMAP_Free },
+   { AC_Init, BITMAP_Init },
+   { AC_Lock, BITMAP_Lock },
+   { AC_NewObject, BITMAP_NewObject },
+   { AC_Query, BITMAP_Query },
+   { AC_Read, BITMAP_Read },
+   { AC_Resize, BITMAP_Resize },
+   { AC_SaveImage, BITMAP_SaveImage },
+   { AC_Seek, BITMAP_Seek },
+   { AC_Unlock, BITMAP_Unlock },
+   { AC_Write, BITMAP_Write },
+   { 0, NULL }
 };
 

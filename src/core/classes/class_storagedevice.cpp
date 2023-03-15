@@ -161,19 +161,19 @@ static const FieldDef clDeviceFlags[] = {
 };
 
 static const FieldArray clFields[] = {
-   { "DeviceFlags", FDF_LARGE|FDF_R, (MAXINT)&clDeviceFlags, NULL, NULL },
-   { "DeviceSize",  FDF_LARGE|FDF_R, 0, NULL, NULL },
-   { "BytesFree",   FDF_LARGE|FDF_R, 0, NULL, NULL },
-   { "BytesUsed",   FDF_LARGE|FDF_R, 0, NULL, NULL },
+   { "DeviceFlags", FDF_LARGE|FDF_R, NULL, NULL, &clDeviceFlags },
+   { "DeviceSize",  FDF_LARGE|FDF_R },
+   { "BytesFree",   FDF_LARGE|FDF_R },
+   { "BytesUsed",   FDF_LARGE|FDF_R },
    // Virtual fields
-   { "DeviceID",    FDF_STRING|FDF_R, 0, (APTR)GET_DeviceID, NULL },
-   { "Volume",      FDF_STRING|FDF_REQUIRED|FDF_RI, 0, (APTR)GET_Volume, (APTR)SET_Volume },
+   { "DeviceID",    FDF_STRING|FDF_R, GET_DeviceID },
+   { "Volume",      FDF_STRING|FDF_REQUIRED|FDF_RI, GET_Volume, SET_Volume },
     END_FIELD
 };
 
 static const ActionArray clActions[] = {
-   { AC_Free, (APTR)STORAGE_Free },
-   { AC_Init, (APTR)STORAGE_Init },
+   { AC_Free, STORAGE_Free },
+   { AC_Init, STORAGE_Init },
    { 0, NULL }
 };
 

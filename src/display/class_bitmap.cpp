@@ -862,7 +862,7 @@ static ERROR BITMAP_Free(extBitmap *Self, APTR Void)
    #ifdef __xwindows__
       if (Self->x11.drawable) {
          if (XDisplay) XFreePixmap(XDisplay, Self->x11.drawable);
-         Self->x11.drawable = NULL;
+         Self->x11.drawable = 0;
       }
 
       if (Self->x11.readable) {
@@ -2046,7 +2046,7 @@ Write: Writes raw image data to a bitmap object.
 static ERROR BITMAP_Write(extBitmap *Self, struct acWrite *Args)
 {
    if (Self->Data) {
-      BYTE *Data = (BYTE *)Self->Data + Self->Position;
+      auto Data = (BYTE *)Self->Data + Self->Position;
       LONG amt_bytes = 0;
       while (Args->Length > 0) {
          Data[amt_bytes] = ((UBYTE *)Args->Buffer)[amt_bytes];
@@ -2276,7 +2276,7 @@ ERROR SET_Data(extBitmap *Self, UBYTE *Data)
 DataFlags: Defines the memory flags to use in allocating a bitmap's data area.
 
 This field determines the type of memory that will be allocated for the #Data field during the initialisation process.
-This field accepts the MEM_DATA, MEM_VIDEO and MEM_TEXTURE memory flags.
+This field accepts the `MEM_DATA`, `MEM_VIDEO` and `MEM_TEXTURE` memory flags.
 
 Please note that video based bitmaps may be faster than data bitmaps for certain applications, but the content is typically
 read-only.  Under normal circumstances it is not possible to use the pixel reading functions, or read from the
@@ -2378,8 +2378,8 @@ graphics.
 -FIELD-
 Palette: Points to a bitmap's colour palette.
 
-A palette is an array of containing colour values in standard RGB format ($RRGGBB).  The first value must have a
-header ID of ID_PALETTE, followed by the amount of values in the array. Following this is the actual list itself -
+A palette is an array of containing colour values in standard RGB format `$RRGGBB`.  The first value must have a
+header ID of `ID_PALETTE`, followed by the amount of values in the array. Following this is the actual list itself -
 colour 0, then colour 1 and so on. There is no termination signal at the end of the list.
 
 The following example is for a 32 colour palette:
@@ -2717,44 +2717,44 @@ static ERROR CalculatePixelRoutines(extBitmap *Self)
 #include "class_bitmap_def.c"
 
 static const FieldArray clBitmapFields[] = {
-   { "Palette",       FDF_POINTER|FDF_RW,           0, NULL, (APTR)SET_Palette },
-   { "ColourFormat",  FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)"ColourFormat", NULL, NULL },
-   { "DrawUCPixel",   FDF_POINTER|FDF_R,            (MAXINT)&argsDrawUCPixel, NULL, NULL },
-   { "DrawUCRPixel",  FDF_POINTER|FDF_R,            (MAXINT)&argsDrawUCRPixel, NULL, NULL },
-   { "ReadUCPixel",   FDF_POINTER|FDF_R,            (MAXINT)&argsReadUCPixel, NULL, NULL },
-   { "ReadUCRPixel",  FDF_POINTER|FDF_R,            (MAXINT)&argsReadUCRPixel, NULL, NULL },
-   { "ReadUCRIndex",  FDF_POINTER|FDF_R,            (MAXINT)&argsReadUCRIndex, NULL, NULL },
-   { "DrawUCRIndex",  FDF_POINTER|FDF_R,            (MAXINT)&argsDrawUCRIndex, NULL, NULL },
-   { "Data",          FDF_POINTER|FDF_RI,           0, NULL, (APTR)SET_Data },
-   { "Width",         FDF_LONG|FDF_RI,              0, NULL, NULL },
-   { "ByteWidth",     FDF_LONG|FDF_R,               0, NULL, NULL },
-   { "Height",        FDF_LONG|FDF_RI,              0, NULL, NULL },
-   { "Type",          FDF_LONG|FDF_RI|FDF_LOOKUP,   (MAXINT)&clBitmapType, NULL, NULL },
-   { "LineMod",       FDF_LONG|FDF_R,               0, NULL, NULL },
-   { "PlaneMod",      FDF_LONG|FDF_R,               0, NULL, NULL },
-   { "ClipLeft",      FDF_LONG|FDF_RW,              0, NULL, NULL },
-   { "ClipRight",     FDF_LONG|FDF_RW,              0, NULL, NULL },
-   { "ClipBottom",    FDF_LONG|FDF_RW,              0, NULL, NULL },
-   { "ClipTop",       FDF_LONG|FDF_RW,              0, NULL, NULL },
-   { "Size",          FDF_LONG|FDF_R,               0, NULL, NULL },
-   { "DataFlags",     FDF_LONGFLAGS|FDF_RI,         (MAXINT)&clDataFlags, NULL, NULL },
-   { "AmtColours",    FDF_LONG|FDF_RI,              0, NULL, NULL },
-   { "Flags",         FDF_LONGFLAGS|FDF_RI,         (MAXINT)&clBitmapFlags, NULL, NULL },
-   { "TransIndex",    FDF_LONG|FDF_RW,              0, NULL, (APTR)SET_TransIndex },
-   { "BytesPerPixel", FDF_LONG|FDF_RI,              0, NULL, NULL },
-   { "BitsPerPixel",  FDF_LONG|FDF_RI,              0, NULL, NULL },
-   { "Position",      FDF_LONG|FDF_R,               0, NULL, NULL },
-   { "XOffset",       FDF_LONG|FDF_SYSTEM|FDF_RW,   0, NULL, NULL },
-   { "YOffset",       FDF_LONG|FDF_SYSTEM|FDF_RW,   0, NULL, NULL },
-   { "Opacity",       FDF_LONG|FDF_RW,              0, NULL, NULL },
-   { "DataID",        FDF_LONG|FDF_SYSTEM|FDF_R,    0, NULL, NULL },
-   { "TransRGB",      FDF_RGB|FDF_RW,               0, NULL, (APTR)SET_Trans },
-   { "Bkgd",          FDF_RGB|FDF_RW,               0, NULL, (APTR)SET_Bkgd },
-   { "BkgdIndex",     FDF_LONG|FDF_RW,              0, NULL, (APTR)SET_BkgdIndex },
-   { "ColourSpace",   FDF_LONGFLAGS|FDF_RW,         (MAXINT)&clBitmapColourSpace, NULL, NULL },
+   { "Palette",       FDF_POINTER|FDF_RW, NULL, SET_Palette },
+   { "ColourFormat",  FDF_POINTER|FDF_STRUCT|FDF_R, NULL, NULL, "ColourFormat" },
+   { "DrawUCPixel",   FDF_POINTER|FDF_R, NULL, NULL, &argsDrawUCPixel },
+   { "DrawUCRPixel",  FDF_POINTER|FDF_R, NULL, NULL, &argsDrawUCRPixel },
+   { "ReadUCPixel",   FDF_POINTER|FDF_R, NULL, NULL, &argsReadUCPixel },
+   { "ReadUCRPixel",  FDF_POINTER|FDF_R, NULL, NULL, &argsReadUCRPixel },
+   { "ReadUCRIndex",  FDF_POINTER|FDF_R, NULL, NULL, &argsReadUCRIndex },
+   { "DrawUCRIndex",  FDF_POINTER|FDF_R, NULL, NULL, &argsDrawUCRIndex },
+   { "Data",          FDF_POINTER|FDF_RI, NULL, SET_Data },
+   { "Width",         FDF_LONG|FDF_RI, NULL, NULL },
+   { "ByteWidth",     FDF_LONG|FDF_R, NULL, NULL },
+   { "Height",        FDF_LONG|FDF_RI, NULL, NULL },
+   { "Type",          FDF_LONG|FDF_RI|FDF_LOOKUP, NULL, NULL, &clBitmapType },
+   { "LineMod",       FDF_LONG|FDF_R },
+   { "PlaneMod",      FDF_LONG|FDF_R },
+   { "ClipLeft",      FDF_LONG|FDF_RW },
+   { "ClipRight",     FDF_LONG|FDF_RW },
+   { "ClipBottom",    FDF_LONG|FDF_RW },
+   { "ClipTop",       FDF_LONG|FDF_RW },
+   { "Size",          FDF_LONG|FDF_R },
+   { "DataFlags",     FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clDataFlags },
+   { "AmtColours",    FDF_LONG|FDF_RI },
+   { "Flags",         FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clBitmapFlags },
+   { "TransIndex",    FDF_LONG|FDF_RW, NULL, SET_TransIndex },
+   { "BytesPerPixel", FDF_LONG|FDF_RI },
+   { "BitsPerPixel",  FDF_LONG|FDF_RI },
+   { "Position",      FDF_LONG|FDF_R },
+   { "XOffset",       FDF_LONG|FDF_SYSTEM|FDF_RW },
+   { "YOffset",       FDF_LONG|FDF_SYSTEM|FDF_RW },
+   { "Opacity",       FDF_LONG|FDF_RW },
+   { "DataID",        FDF_LONG|FDF_SYSTEM|FDF_R },
+   { "TransRGB",      FDF_RGB|FDF_RW, NULL, SET_Trans },
+   { "Bkgd",          FDF_RGB|FDF_RW, NULL, SET_Bkgd },
+   { "BkgdIndex",     FDF_LONG|FDF_RW, NULL, SET_BkgdIndex },
+   { "ColourSpace",   FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clBitmapColourSpace },
    // Virtual fields
-   { "Clip",          FDF_POINTER|FDF_STRUCT|FDF_RW, 0, (APTR)GET_Clip, (APTR)SET_Clip },
-   { "Handle",        FDF_POINTER|FDF_SYSTEM|FDF_RW, 0, (APTR)GET_Handle, (APTR)SET_Handle },
+   { "Clip",          FDF_POINTER|FDF_STRUCT|FDF_RW, GET_Clip, SET_Clip },
+   { "Handle",        FDF_POINTER|FDF_SYSTEM|FDF_RW, GET_Handle, SET_Handle },
    END_FIELD
 };
 

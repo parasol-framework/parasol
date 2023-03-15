@@ -38,14 +38,12 @@ struct prvSVG { // Private variables for RSVG
    OBJECTPTR SVG;
 };
 
-typedef struct svgInherit {
-   struct svgInherit *Next;
+struct svgInherit {
    OBJECTPTR Object;
-   char ID[60];
-} svgInherit;
+   std::string ID;
+};
 
-typedef class svgID { // All elements using the 'id' attribute will be registered with one of these structures.
-   public:
+struct svgID { // All elements using the 'id' attribute will be registered with one of these structures.
    LONG TagIndex;
 
    svgID(const LONG pTagIndex) {
@@ -53,19 +51,22 @@ typedef class svgID { // All elements using the 'id' attribute will be registere
    }
 
    svgID() { TagIndex = -1; }
-} svgID;
+};
 
-typedef struct svgState {
-   CSTRING Fill;
-   CSTRING Stroke;
-   CSTRING FontSize;
-   CSTRING FontFamily;
+struct svgState {
+   std::string Fill;
+   std::string Stroke;
+   std::string FontSize;
+   std::string FontFamily;
    DOUBLE  StrokeWidth;
    DOUBLE  FillOpacity;
    DOUBLE  Opacity;
    LONG    FontWeight;
    LONG    PathQuality;
-} svgState;
+
+   svgState() : Fill("rgb(0,0,0)"), FontFamily("Open Sans"), StrokeWidth(0), FillOpacity(-1), Opacity(-1),
+      FontWeight(0), PathQuality(RQ_AUTO) { }
+};
 
 #include <parasol/modules/svg.h>
 
@@ -74,44 +75,44 @@ typedef struct svgState {
 class extSVG : public objSVG {
    public:
    FUNCTION  FrameCallback;
-   std::unordered_map<std::string, svgID> IDs;
+   std::unordered_map<std::string, XMLTag> IDs;
    std::unordered_map<std::string, objFilterEffect *> Effects; // All effects, registered by their SVG identifier.
    DOUBLE SVGVersion;
    objVectorScene *Scene;
    STRING    Folder;
    OBJECTPTR Viewport; // First viewport (the <svg> tag) to be created on parsing the SVG document.
-   struct svgAnimation *Animations;
-   svgInherit *Inherit;
+   std::vector<svgAnimation> Animations;
+   std::vector<svgInherit> Inherit;
    TIMER  AnimationTimer;
-   UBYTE  Animated:1;
-   UBYTE  PreserveWS:1; // Preserve white-space
+   bool  Animated;
+   bool  PreserveWS; // Preserve white-space
 };
 
 //********************************************************************************************************************
 
 static ERROR animation_timer(extSVG *, LARGE, LARGE);
-static void  convert_styles(objXML *);
+static void  convert_styles(objXML::TAGS &);
 static ERROR init_svg(void);
 static ERROR init_rsvg(void);
-static void  process_attrib(extSVG *, objXML *, const XMLTag *, objVector *);
-static void  process_rule(extSVG *, objXML *, KatanaRule *);
-static ERROR process_shape(extSVG *, CLASSID, objXML *, svgState *, const XMLTag *, OBJECTPTR, objVector **);
+static void  process_attrib(extSVG *, objXML *, const XMLTag &, objVector *);
+static void  process_rule(extSVG *, objXML *, objXML::TAGS &, KatanaRule *);
+static ERROR process_shape(extSVG *, CLASSID, objXML *, svgState &, const XMLTag &, OBJECTPTR, objVector **);
 static ERROR save_svg_scan(extSVG *, objXML *, objVector *, LONG);
 static ERROR save_svg_defs(extSVG *, objXML *, objVectorScene *, LONG);
 static ERROR save_svg_scan_std(extSVG *, objXML *, objVector *, LONG);
 static ERROR save_svg_transform(VectorMatrix *, char *, LONG);
-static ERROR set_property(extSVG *, objVector *, ULONG, objXML *, const XMLTag *, CSTRING);
-static ERROR xtag_animatemotion(extSVG *, objXML *, const XMLTag *, OBJECTPTR Parent);
-static ERROR xtag_animatetransform(extSVG *, objXML *, const XMLTag *, OBJECTPTR);
-static ERROR xtag_default(extSVG *, objXML *, svgState *, const XMLTag *, OBJECTPTR, objVector **);
-static ERROR xtag_defs(extSVG *, objXML *, svgState *, const XMLTag *, OBJECTPTR);
-static void  xtag_group(extSVG *, objXML *, svgState *, const XMLTag *, OBJECTPTR, objVector **);
-static ERROR xtag_image(extSVG *, objXML *, svgState *, const XMLTag *, OBJECTPTR, objVector **);
-static void  xtag_morph(extSVG *, objXML *, const XMLTag *, OBJECTPTR Parent);
-static void  xtag_svg(extSVG *, objXML *, svgState *, const XMLTag *, OBJECTPTR, objVector **);
-static void  xtag_use(extSVG *, objXML *, svgState *, const XMLTag *, OBJECTPTR);
-static ERROR xtag_style(extSVG *, objXML *, const XMLTag *);
-static void  xtag_symbol(extSVG *, objXML *, const XMLTag *);
+static ERROR set_property(extSVG *, objVector *, ULONG, objXML *, const XMLTag &, std::string);
+static ERROR xtag_animatemotion(extSVG *, objXML *, const XMLTag &, OBJECTPTR Parent);
+static ERROR xtag_animatetransform(extSVG *, objXML *, const XMLTag &, OBJECTPTR);
+static ERROR xtag_default(extSVG *, objXML *, svgState &, const XMLTag &, OBJECTPTR, objVector **);
+static ERROR xtag_defs(extSVG *, objXML *, svgState &, const XMLTag &, OBJECTPTR);
+static void  xtag_group(extSVG *, objXML *, svgState &, const XMLTag &, OBJECTPTR, objVector **);
+static ERROR xtag_image(extSVG *, objXML *, svgState &, const XMLTag &, OBJECTPTR, objVector **);
+static void  xtag_morph(extSVG *, objXML *, const XMLTag &, OBJECTPTR Parent);
+static void  xtag_svg(extSVG *, objXML *, svgState &, const XMLTag &, OBJECTPTR, objVector **);
+static void  xtag_use(extSVG *, objXML *, svgState &, const XMLTag &, OBJECTPTR);
+static ERROR xtag_style(extSVG *, objXML *, const XMLTag &);
+static void  xtag_symbol(extSVG *, objXML *, const XMLTag &);
 
 //********************************************************************************************************************
 
@@ -149,4 +150,4 @@ ERROR CMDExpunge(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, 1.0)
+PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, 1.0, MOD_IDL, NULL)

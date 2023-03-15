@@ -755,12 +755,12 @@ static void resolve_callback(extNetLookup *Self, ERROR Error, CSTRING HostName, 
 //********************************************************************************************************************
 
 static const FieldArray clNetLookupFields[] = {
-   { "UserData", FDF_LARGE|FDF_RW, 0, NULL, NULL },
-   { "Flags",    FDF_LONG|FDF_FLAGS|FDF_RW, 0, NULL, NULL },
+   { "UserData", FDF_LARGE|FDF_RW },
+   { "Flags",    FDF_LONG|FDF_FLAGS|FDF_RW },
    // Virtual fields
-   { "Callback",  FDF_FUNCTIONPTR|FDF_RW,  0, (APTR)GET_Callback, (APTR)SET_Callback },
-   { "HostName",  FDF_STRING|FDF_R,        0, (APTR)GET_HostName, NULL },
-   { "Addresses", FDF_STRUCT|FDF_ARRAY|FDF_R, (MAXINT)"IPAddress", (APTR)GET_Addresses, NULL },
+   { "Callback",  FDF_FUNCTIONPTR|FDF_RW, GET_Callback, SET_Callback },
+   { "HostName",  FDF_STRING|FDF_R, GET_HostName },
+   { "Addresses", FDF_STRUCT|FDF_ARRAY|FDF_R, GET_Addresses, NULL, "IPAddress" },
    END_FIELD
 };
 

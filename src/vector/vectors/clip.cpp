@@ -216,10 +216,10 @@ static ERROR CLIP_SET_Units(extVectorClip *Self, LONG Value)
 //********************************************************************************************************************
 
 static const ActionArray clClipActions[] = {
-   { AC_Draw,      (APTR)CLIP_Draw },
-   { AC_Free,      (APTR)CLIP_Free },
-   { AC_Init,      (APTR)CLIP_Init },
-   { AC_NewObject, (APTR)CLIP_NewObject },
+   { AC_Draw,      CLIP_Draw },
+   { AC_Free,      CLIP_Free },
+   { AC_Init,      CLIP_Init },
+   { AC_NewObject, CLIP_NewObject },
    { 0, NULL }
 };
 
@@ -230,8 +230,8 @@ static const FieldDef clClipUnits[] = {
 };
 
 static const FieldArray clClipFields[] = {
-   { "Units",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clClipUnits, (APTR)CLIP_GET_Units, (APTR)CLIP_SET_Units },
-   { "Transform", FDF_VIRTUAL|FDF_STRING|FDF_W, 0, NULL, (APTR)CLIP_SET_Transform },
+   { "Units",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, CLIP_GET_Units, CLIP_SET_Units, &clClipUnits },
+   { "Transform", FDF_VIRTUAL|FDF_STRING|FDF_W, NULL, CLIP_SET_Transform },
    END_FIELD
 };
 

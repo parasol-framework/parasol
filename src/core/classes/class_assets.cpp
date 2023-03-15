@@ -47,19 +47,19 @@ static ERROR GET_Size(objFile *, LARGE *);
 static ERROR SET_Permissions(objFile *, APTR);
 
 static const FieldArray clFields[] = {
-   { "Permissions", FDF_LONG|FDF_RW, 0, GET_Permissions, SET_Permissions },
-   { "Size",        FDF_LARGE|FDF_R, 0, GET_Size,        NULL },
+   { "Permissions", FDF_LONG|FDF_RW, GET_Permissions, SET_Permissions },
+   { "Size",        FDF_LARGE|FDF_R, GET_Size },
    END_FIELD
 };
 
 static const ActionArray clActions[] = {
-   { AC_Free,   (APTR)ASSET_Free },
-   { AC_Init,   (APTR)ASSET_Init },
-   { AC_Move,   (APTR)ASSET_Move },
-   { AC_Read,   (APTR)ASSET_Read },
-   { AC_Rename, (APTR)ASSET_Rename },
-   { AC_Seek,   (APTR)ASSET_Seek },
-   { AC_Write,  (APTR)ASSET_Write },
+   { AC_Free,   ASSET_Free },
+   { AC_Init,   ASSET_Init },
+   { AC_Move,   ASSET_Move },
+   { AC_Read,   ASSET_Read },
+   { AC_Rename, ASSET_Rename },
+   { AC_Seek,   ASSET_Seek },
+   { AC_Write,  ASSET_Write },
    { 0, NULL }
 };
 

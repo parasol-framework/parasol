@@ -14,7 +14,7 @@
     <include>modules/surface.h</include>
     <copyright>Paul Manias 2003-2023</copyright>
     <description>
-<p>The Surface class is used to manage the positioning, drawing and interaction with layered display interfaces.  It works in conjunction with the <class name="Bitmap">Bitmap</class> class for rendering graphics, and <class name="Pointer">Pointer</class> for user interaction.</p>
+<p>The Surface class is used to manage the positioning, drawing and interaction with layered display interfaces.  It works in conjunction with the <class name="Bitmap">Bitmap</class> class for rendering graphics, and the <class name="Pointer">Pointer</class> class for user interaction.</p>
 <p>On a platform such as Windows or Linux, the top-level surface will typically be hosted in an application window.  On Android or when a full screen display is required, a surface can cover the entire display and be window-less.  The top-level surface can act as a host to additional surfaces, which are referred to as children. Placing more surface objects inside of these children will create a hierarchy of many objects that requires sophisticated management that is provisioned by the Surface class.</p>
 <p>Although pure surface based UI's are possible, clients should always pursue the more simplistic approach of using surfaces to host <class name="VectorScene">VectorScene</class> objects that describe vector based interfaces.  Doing so is in keeping with our goal of proving fully scalable interfaces to users, and we optimise features with that use-case in mind.</p></description>
     <source>

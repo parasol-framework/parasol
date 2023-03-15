@@ -1,5 +1,5 @@
 
-static ERROR gradient_defaults(extSVG *Self, objVectorGradient *Gradient, ULONG Attrib, CSTRING Value)
+static ERROR gradient_defaults(extSVG *Self, objVectorGradient *Gradient, ULONG Attrib, const std::string Value)
 {
    switch (Attrib) {
       case SVF_COLOR_INTERPOLATION:
@@ -18,42 +18,42 @@ static ERROR gradient_defaults(extSVG *Self, objVectorGradient *Gradient, ULONG 
 //********************************************************************************************************************
 // Note that all offsets are percentages.
 
-static ERROR process_gradient_stops(extSVG *Self, const XMLTag *Tag, GradientStop *Stops)
+static const std::vector<GradientStop> process_gradient_stops(extSVG *Self, const XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
    log.traceBranch("");
 
-   LONG i = 0;
-   for (auto scan=Tag->Child; scan; scan=scan->Next) {
-      if (!StrMatch("stop", scan->Attrib->Name)) {
+   std::vector<GradientStop> stops;
+   for (auto &scan : Tag.Children) {
+      if (!StrMatch("stop", scan.name())) {
+         GradientStop stop;
          DOUBLE stop_opacity = 1.0;
-         Stops[i].Offset = 0;
-         Stops[i].RGB.Red   = 0;
-         Stops[i].RGB.Green = 0;
-         Stops[i].RGB.Blue  = 0;
-         Stops[i].RGB.Alpha = 0;
+         stop.Offset = 0;
+         stop.RGB.Red   = 0;
+         stop.RGB.Green = 0;
+         stop.RGB.Blue  = 0;
+         stop.RGB.Alpha = 0;
 
-         for (LONG a=1; a < scan->TotalAttrib; a++) {
-            CSTRING name = scan->Attrib[a].Name;
-            CSTRING value = scan->Attrib[a].Value;
-            if (!value) continue;
+         for (LONG a=1; a < LONG(scan.Attribs.size()); a++) {
+            auto &name  = scan.Attribs[a].Name;
+            auto &value = scan.Attribs[a].Value;
+            if (value.empty()) continue;
 
             if (!StrMatch("offset", name)) {
-               Stops[i].Offset = StrToFloat(value);
-               LONG j;
-               for (j=0; value[j]; j++) {
+               stop.Offset = StrToFloat(value);
+               for (LONG j=0; value[j]; j++) {
                   if (value[j] IS '%') {
-                     Stops[i].Offset = Stops[i].Offset * 0.01; // Must be in the range of 0 - 1.0
+                     stop.Offset = stop.Offset * 0.01; // Must be in the range of 0 - 1.0
                      break;
                   }
                }
 
-               if (Stops[i].Offset < 0.0) Stops[i].Offset = 0;
-               else if (Stops[i].Offset > 1.0) Stops[i].Offset = 1.0;
+               if (stop.Offset < 0.0) stop.Offset = 0;
+               else if (stop.Offset > 1.0) stop.Offset = 1.0;
             }
             else if (!StrMatch("stop-color", name)) {
-               vecReadPainter(Self->Scene, value, &Stops[i].RGB, NULL, NULL, NULL);
+               vecReadPainter(Self->Scene, value.c_str(), &stop.RGB, NULL, NULL, NULL);
             }
             else if (!StrMatch("stop-opacity", name)) {
                stop_opacity = StrToFloat(value);
@@ -61,27 +61,27 @@ static ERROR process_gradient_stops(extSVG *Self, const XMLTag *Tag, GradientSto
             else if (!StrMatch("id", name)) {
                log.trace("Use of id attribute in <stop/> ignored.");
             }
-            else log.warning("Unable to process stop attribute '%s'", name);
+            else log.warning("Unable to process stop attribute '%s'", name.c_str());
          }
 
-         Stops[i].RGB.Alpha = ((DOUBLE)Stops[i].RGB.Alpha) * stop_opacity;
+         stop.RGB.Alpha = ((DOUBLE)stop.RGB.Alpha) * stop_opacity;
 
-         i++;
+         stops.emplace_back(stop);
       }
-      else log.warning("Unknown element in gradient, '%s'", scan->Attrib->Name);
+      else log.warning("Unknown element in gradient, '%s'", scan.name());
    }
 
-   return ERR_Okay;
+   return stops;
 }
 
 //********************************************************************************************************************
 
-static ERROR xtag_lineargradient(extSVG *Self, const XMLTag *Tag)
+static ERROR xtag_lineargradient(extSVG *Self, const XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
 
-   CSTRING id = NULL;
+   std::string id;
 
    if (!NewObject(ID_VECTORGRADIENT, &gradient)) {
       SetOwner(gradient, Self->Scene);
@@ -96,18 +96,18 @@ static ERROR xtag_lineargradient(extSVG *Self, const XMLTag *Tag)
       // Determine the user coordinate system first.
 
       gradient->Units = VUNIT_BOUNDING_BOX;
-      for (LONG a=1; a < Tag->TotalAttrib; a++) {
-         if (!StrMatch("gradientUnits", Tag->Attrib[a].Name)) {
-            if (!StrMatch("userSpaceOnUse", Tag->Attrib[a].Value)) gradient->Units = VUNIT_USERSPACE;
+      for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
+         if (!StrMatch("gradientUnits", Tag.Attribs[a].Name)) {
+            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT_USERSPACE;
             break;
          }
       }
 
-      for (LONG a=1; a < Tag->TotalAttrib; a++) {
-         CSTRING val;
-         if (!(val = Tag->Attrib[a].Value)) continue;
+      for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
+         auto &val = Tag.Attribs[a].Value;
+         if (val.empty()) continue;
 
-         auto attrib = StrHash(Tag->Attrib[a].Name, FALSE);
+         auto attrib = StrHash(Tag.Attribs[a].Name);
          switch(attrib) {
             case SVF_GRADIENTUNITS: break; // Already checked gradientUnits earlier
             case SVF_GRADIENTTRANSFORM: gradient->set(FID_Transform, val); break;
@@ -133,26 +133,20 @@ static ERROR xtag_lineargradient(extSVG *Self, const XMLTag *Tag)
 
             default: {
                if (gradient_defaults(Self, gradient, attrib, val)) {
-                  LONG j;
-                  for (j=0; Tag->Attrib[a].Name[j] and (Tag->Attrib[a].Name[j] != ':'); j++);
-                  if (Tag->Attrib[a].Name[j] IS ':') break;
-                  log.warning("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
+                  if (Tag.Attribs[a].Name.find(':') != std::string::npos) break;
+                  log.warning("%s attribute '%s' unrecognised @ line %d", Tag.name(), Tag.Attribs[a].Name.c_str(), Tag.LineNo);
                }
                break;
             }
          }
       }
 
-      LONG stopcount = count_stops(Self, Tag);
-      if (stopcount >= 2) {
-         GradientStop stops[stopcount];
-         process_gradient_stops(Self, Tag, stops);
-         SetArray(gradient, FID_Stops, stops, stopcount);
-      }
+      auto stops = process_gradient_stops(Self, Tag);
+      if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops.data(), stops.size());
 
       if (!acInit(gradient)) {
-         if (id) SetName(gradient, id);
-         return scAddDef(Self->Scene, id, gradient);
+         if (!id.empty()) SetName(gradient, id.c_str());
+         return scAddDef(Self->Scene, id.c_str(), gradient);
       }
       else return ERR_Init;
    }
@@ -161,11 +155,11 @@ static ERROR xtag_lineargradient(extSVG *Self, const XMLTag *Tag)
 
 //********************************************************************************************************************
 
-static ERROR xtag_radialgradient(extSVG *Self, const XMLTag *Tag)
+static ERROR xtag_radialgradient(extSVG *Self, const XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
-   CSTRING id = NULL;
+   std::string id;
 
    if (!NewObject(ID_VECTORGRADIENT, &gradient)) {
       SetOwner(gradient, Self->Scene);
@@ -176,19 +170,19 @@ static ERROR xtag_radialgradient(extSVG *Self, const XMLTag *Tag)
       // Determine the user coordinate system first.
 
       gradient->Units = VUNIT_BOUNDING_BOX;
-      for (LONG a=1; a < Tag->TotalAttrib; a++) {
-         if (!StrMatch("gradientUnits", Tag->Attrib[a].Name)) {
-            if (!StrMatch("userSpaceOnUse", Tag->Attrib[a].Value)) gradient->Units = VUNIT_USERSPACE;
+      for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
+         if (!StrMatch("gradientUnits", Tag.Attribs[a].Name)) {
+            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT_USERSPACE;
             break;
          }
       }
 
-      for (LONG a=1; a < Tag->TotalAttrib; a++) {
-         CSTRING val = Tag->Attrib[a].Value;
-         if (!val) continue;
-         log.trace("Processing radial gradient attribute %s = %s", Tag->Attrib[a].Name, val);
+      for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
+         auto &val = Tag.Attribs[a].Value;
+         if (val.empty()) continue;
+         log.trace("Processing radial gradient attribute %s = %s", Tag.Attribs[a].Name, val);
 
-         auto attrib = StrHash(Tag->Attrib[a].Name, FALSE);
+         auto attrib = StrHash(Tag.Attribs[a].Name);
          switch(attrib) {
             case SVF_CX: set_double_units(gradient, FID_CenterX, val, gradient->Units); break;
             case SVF_CY: set_double_units(gradient, FID_CenterY, val, gradient->Units); break;
@@ -206,25 +200,19 @@ static ERROR xtag_radialgradient(extSVG *Self, const XMLTag *Tag)
 
             default: {
                if (gradient_defaults(Self, gradient, attrib, val)) {
-                  LONG j;
-                  for (j=0; Tag->Attrib[a].Name[j] and (Tag->Attrib[a].Name[j] != ':'); j++);
-                  if (Tag->Attrib[a].Name[j] IS ':') break;
-                  log.warning("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
+                  if (Tag.Attribs[a].Name.find(':') != std::string::npos) break;
+                  log.warning("%s attribute '%s' unrecognised @ line %d", Tag.name(), Tag.Attribs[a].Name.c_str(), Tag.LineNo);
                }
             }
          }
       }
 
-      LONG stopcount = count_stops(Self, Tag);
-      if (stopcount >= 2) {
-         GradientStop stops[stopcount];
-         process_gradient_stops(Self, Tag, stops);
-         SetArray(gradient, FID_Stops, stops, stopcount);
-      }
+      auto stops = process_gradient_stops(Self, Tag);
+      if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops.data(), stops.size());
 
       if (!acInit(gradient)) {
-         if (id) SetName(gradient, id);
-         return scAddDef(Self->Scene, id, gradient);
+         if (!id.empty()) SetName(gradient, id.c_str());
+         return scAddDef(Self->Scene, id.c_str(), gradient);
       }
       else return ERR_Init;
    }
@@ -233,11 +221,11 @@ static ERROR xtag_radialgradient(extSVG *Self, const XMLTag *Tag)
 
 //********************************************************************************************************************
 
-static ERROR xtag_diamondgradient(extSVG *Self, const XMLTag *Tag)
+static ERROR xtag_diamondgradient(extSVG *Self, const XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
-   CSTRING id = NULL;
+   std::string id;
 
    if (!NewObject(ID_VECTORGRADIENT, &gradient)) {
       SetOwner(gradient, Self->Scene);
@@ -248,20 +236,20 @@ static ERROR xtag_diamondgradient(extSVG *Self, const XMLTag *Tag)
       // Determine the user coordinate system first.
 
       gradient->Units = VUNIT_BOUNDING_BOX;
-      for (LONG a=1; a < Tag->TotalAttrib; a++) {
-         if (!StrMatch("gradientUnits", Tag->Attrib[a].Name)) {
-            if (!StrMatch("userSpaceOnUse", Tag->Attrib[a].Value)) gradient->Units = VUNIT_USERSPACE;
+      for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
+         if (!StrMatch("gradientUnits", Tag.Attribs[a].Name)) {
+            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT_USERSPACE;
             break;
          }
       }
 
-      for (LONG a=1; a < Tag->TotalAttrib; a++) {
-         CSTRING val;
-         if (!(val = Tag->Attrib[a].Value)) continue;
+      for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
+         auto &val = Tag.Attribs[a].Value;
+         if (val.empty()) continue;
 
-         log.trace("Processing diamond gradient attribute %s =  %s", Tag->Attrib[a].Name, val);
+         log.trace("Processing diamond gradient attribute %s =  %s", Tag.Attribs[a].Name, val);
 
-         auto attrib = StrHash(Tag->Attrib[a].Name, FALSE);
+         auto attrib = StrHash(Tag.Attribs[a].Name);
          switch(attrib) {
             case SVF_GRADIENTUNITS: break; // Already processed
             case SVF_GRADIENTTRANSFORM: gradient->set(FID_Transform, val); break;
@@ -277,25 +265,19 @@ static ERROR xtag_diamondgradient(extSVG *Self, const XMLTag *Tag)
             case SVF_ID: id = val; break;
             default: {
                if (gradient_defaults(Self, gradient, attrib, val)) {
-                  LONG j;
-                  for (j=0; Tag->Attrib[a].Name[j] and (Tag->Attrib[a].Name[j] != ':'); j++);
-                  if (Tag->Attrib[a].Name[j] IS ':') break;
-                  log.warning("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
+                  if (Tag.Attribs[a].Name.find(':') != std::string::npos) break;
+                  log.warning("%s attribute '%s' unrecognised @ line %d", Tag.name(), Tag.Attribs[a].Name.c_str(), Tag.LineNo);
                }
             }
          }
       }
 
-      LONG stopcount = count_stops(Self, Tag);
-      if (stopcount >= 2) {
-         GradientStop stops[stopcount];
-         process_gradient_stops(Self, Tag, stops);
-         SetArray(gradient, FID_Stops, stops, stopcount);
-      }
+      auto stops = process_gradient_stops(Self, Tag);
+      if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops.data(), stops.size());
 
       if (!acInit(gradient)) {
-         if (id) SetName(gradient, id);
-         return scAddDef(Self->Scene, id, gradient);
+         if (!id.empty()) SetName(gradient, id.c_str());
+         return scAddDef(Self->Scene, id.c_str(), gradient);
       }
       else return ERR_Init;
    }
@@ -305,11 +287,11 @@ static ERROR xtag_diamondgradient(extSVG *Self, const XMLTag *Tag)
 //********************************************************************************************************************
 // NB: Contour gradients are not part of the SVG standard.
 
-static ERROR xtag_contourgradient(extSVG *Self, const XMLTag *Tag)
+static ERROR xtag_contourgradient(extSVG *Self, const XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
-   CSTRING id = NULL;
+   std::string id;
 
    if (!NewObject(ID_VECTORGRADIENT, &gradient)) {
       SetOwner(gradient, Self->Scene);
@@ -318,20 +300,20 @@ static ERROR xtag_contourgradient(extSVG *Self, const XMLTag *Tag)
       // Determine the user coordinate system first.
 
       gradient->Units = VUNIT_BOUNDING_BOX;
-      for (LONG a=1; a < Tag->TotalAttrib; a++) {
-         if (!StrMatch("gradientUnits", Tag->Attrib[a].Name)) {
-            if (!StrMatch("userSpaceOnUse", Tag->Attrib[a].Value)) gradient->Units = VUNIT_USERSPACE;
+      for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
+         if (!StrMatch("gradientUnits", Tag.Attribs[a].Name)) {
+            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT_USERSPACE;
             break;
          }
       }
 
-      for (LONG a=1; a < Tag->TotalAttrib; a++) {
-         CSTRING val;
-         if (!(val = Tag->Attrib[a].Value)) continue;
+      for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
+         auto &val = Tag.Attribs[a].Value;
+         if (val.empty()) continue;
 
-         log.trace("Processing contour gradient attribute %s =  %s", Tag->Attrib[a].Name, val);
+         log.trace("Processing contour gradient attribute %s =  %s", Tag.Attribs[a].Name, val);
 
-         auto attrib = StrHash(Tag->Attrib[a].Name, FALSE);
+         auto attrib = StrHash(Tag.Attribs[a].Name);
          switch(attrib) {
             case SVF_GRADIENTUNITS: break; // Already processed
             case SVF_GRADIENTTRANSFORM: gradient->set(FID_Transform, val); break;
@@ -346,25 +328,19 @@ static ERROR xtag_contourgradient(extSVG *Self, const XMLTag *Tag)
             case SVF_ID: id = val; break;
             default: {
                if (gradient_defaults(Self, gradient, attrib, val)) {
-                  LONG j;
-                  for (j=0; Tag->Attrib[a].Name[j] and (Tag->Attrib[a].Name[j] != ':'); j++);
-                  if (Tag->Attrib[a].Name[j] IS ':') break;
-                  log.warning("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
+                  if (Tag.Attribs[a].Name.find(':') != std::string::npos) break;
+                  log.warning("%s attribute '%s' unrecognised @ line %d", Tag.name(), Tag.Attribs[a].Name.c_str(), Tag.LineNo);
                }
             }
          }
       }
 
-      LONG stopcount = count_stops(Self, Tag);
-      if (stopcount >= 2) {
-         GradientStop stops[stopcount];
-         process_gradient_stops(Self, Tag, stops);
-         SetArray(gradient, FID_Stops, stops, stopcount);
-      }
+      auto stops = process_gradient_stops(Self, Tag);
+      if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops.data(), stops.size());
 
       if (!acInit(gradient)) {
-         if (id) SetName(gradient, id);
-         return scAddDef(Self->Scene, id, gradient);
+         if (!id.empty()) SetName(gradient, id.c_str());
+         return scAddDef(Self->Scene, id.c_str(), gradient);
       }
       else return ERR_Init;
    }
@@ -373,7 +349,7 @@ static ERROR xtag_contourgradient(extSVG *Self, const XMLTag *Tag)
 
 //********************************************************************************************************************
 
-static ERROR xtag_conicgradient(extSVG *Self, const XMLTag *Tag)
+static ERROR xtag_conicgradient(extSVG *Self, const XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -384,25 +360,25 @@ static ERROR xtag_conicgradient(extSVG *Self, const XMLTag *Tag)
       gradient->setFields(fl::Name("SVGConicGrad"), fl::Type(VGT_CONIC),
          fl::CenterX(PERCENT(50.0)), fl::CenterY(PERCENT(50.0)), fl::Radius(PERCENT(50.0)));
 
-      CSTRING id = NULL;
+      std::string id;
 
       // Determine the user coordinate system first.
 
       gradient->Units = VUNIT_BOUNDING_BOX;
-      for (LONG a=1; a < Tag->TotalAttrib; a++) {
-         if (!StrMatch("gradientUnits", Tag->Attrib[a].Name)) {
-            if (!StrMatch("userSpaceOnUse", Tag->Attrib[a].Value)) gradient->Units = VUNIT_USERSPACE;
+      for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
+         if (!StrMatch("gradientUnits", Tag.Attribs[a].Name)) {
+            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT_USERSPACE;
             break;
          }
       }
 
-      for (LONG a=1; a < Tag->TotalAttrib; a++) {
-         CSTRING val;
-         if (!(val = Tag->Attrib[a].Value)) continue;
+      for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
+         auto &val = Tag.Attribs[a].Value;
+         if (val.empty()) continue;
 
-         log.trace("Processing diamond gradient attribute %s =  %s", Tag->Attrib[a].Name, val);
+         log.trace("Processing diamond gradient attribute %s =  %s", Tag.Attribs[a].Name, val);
 
-         auto attrib = StrHash(Tag->Attrib[a].Name, FALSE);
+         auto attrib = StrHash(Tag.Attribs[a].Name);
          switch(attrib) {
             case SVF_GRADIENTUNITS:
                if (!StrMatch("userSpaceOnUse", val)) gradient->set(FID_Units, VUNIT_USERSPACE);
@@ -421,25 +397,19 @@ static ERROR xtag_conicgradient(extSVG *Self, const XMLTag *Tag)
             case SVF_ID: id = val; break;
             default: {
                if (gradient_defaults(Self, gradient, attrib, val)) {
-                  LONG j;
-                  for (j=0; Tag->Attrib[a].Name[j] and (Tag->Attrib[a].Name[j] != ':'); j++);
-                  if (Tag->Attrib[a].Name[j] IS ':') break;
-                  log.warning("%s attribute '%s' unrecognised @ line %d", Tag->Attrib->Name, Tag->Attrib[a].Name, Tag->LineNo);
+                  if (Tag.Attribs[a].Name.find(':') != std::string::npos) break;
+                  log.warning("%s attribute '%s' unrecognised @ line %d", Tag.name(), Tag.Attribs[a].Name.c_str(), Tag.LineNo);
                }
             }
          }
       }
 
-      LONG stopcount = count_stops(Self, Tag);
-      if (stopcount >= 2) {
-         GradientStop stops[stopcount];
-         process_gradient_stops(Self, Tag, stops);
-         SetArray(gradient, FID_Stops, stops, stopcount);
-      }
+      auto stops = process_gradient_stops(Self, Tag);
+      if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops.data(), stops.size());
 
       if (!acInit(gradient)) {
-         if (id) SetName(gradient, id);
-         return scAddDef(Self->Scene, id, gradient);
+         if (!id.empty()) SetName(gradient, id.c_str());
+         return scAddDef(Self->Scene, id.c_str(), gradient);
       }
       else return ERR_Init;
    }

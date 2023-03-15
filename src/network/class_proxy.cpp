@@ -872,16 +872,16 @@ static const FieldDef clPorts[] = {
 };
 
 static const FieldArray clProxyFields[] = {
-   { "NetworkFilter", FDF_STRING|FDF_RW, 0, NULL, (APTR)SET_NetworkFilter },
-   { "GatewayFilter", FDF_STRING|FDF_RW, 0, NULL, (APTR)SET_GatewayFilter },
-   { "Username",      FDF_STRING|FDF_RW, 0, NULL, (APTR)SET_Username },
-   { "Password",      FDF_STRING|FDF_RW, 0, NULL, (APTR)SET_Password },
-   { "ProxyName",     FDF_STRING|FDF_RW, 0, NULL, (APTR)SET_ProxyName },
-   { "Server",        FDF_STRING|FDF_RW, 0, NULL, (APTR)SET_Server },
-   { "Port",          FDF_LONG|FDF_LOOKUP|FDF_RW,   (MAXINT)&clPorts, NULL, (APTR)SET_Port },
-   { "ServerPort",    FDF_LONG|FDF_RW,   0, NULL, (APTR)SET_ServerPort },
-   { "Enabled",       FDF_LONG|FDF_RW,   0, NULL, (APTR)SET_Enabled },
-   { "Record",        FDF_LONG|FDF_RW,   0, NULL, (APTR)SET_Record },
+   { "NetworkFilter", FDF_STRING|FDF_RW, NULL, SET_NetworkFilter },
+   { "GatewayFilter", FDF_STRING|FDF_RW, NULL, SET_GatewayFilter },
+   { "Username",      FDF_STRING|FDF_RW, NULL, SET_Username },
+   { "Password",      FDF_STRING|FDF_RW, NULL, SET_Password },
+   { "ProxyName",     FDF_STRING|FDF_RW, NULL, SET_ProxyName },
+   { "Server",        FDF_STRING|FDF_RW, NULL, SET_Server },
+   { "Port",          FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, SET_Port, &clPorts },
+   { "ServerPort",    FDF_LONG|FDF_RW, NULL, SET_ServerPort },
+   { "Enabled",       FDF_LONG|FDF_RW, NULL, SET_Enabled },
+   { "Record",        FDF_LONG|FDF_RW, NULL, SET_Record },
    END_FIELD
 };
 

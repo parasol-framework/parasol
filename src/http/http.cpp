@@ -1649,42 +1649,42 @@ static ERROR SET_Username(extHTTP *Self, CSTRING Value)
 #include "http_functions.cpp"
 
 static const FieldArray clFields[] = {
-   { "DataTimeout",    FDF_DOUBLE|FDF_RW,          0, NULL, NULL },
-   { "ConnectTimeout", FDF_DOUBLE|FDF_RW,          0, NULL, NULL },
-   { "Index",          FDF_LARGE|FDF_RW,           0, NULL, NULL }, // Writeable only because we update it using SetField()
-   { "ContentLength",  FDF_LARGE|FDF_RW,           0, NULL, NULL },
-   { "Size",           FDF_LARGE|FDF_RW,           0, NULL, NULL },
-   { "Host",           FDF_STRING|FDF_RI,          0, NULL, (APTR)SET_Host },
-   { "Realm",          FDF_STRING|FDF_RW,          0, NULL, (APTR)SET_Realm },
-   { "Path",           FDF_STRING|FDF_RW,          0, NULL, (APTR)SET_Path },
-   { "OutputFile",     FDF_STRING|FDF_RW,          0, NULL, (APTR)SET_OutputFile },
-   { "InputFile",      FDF_STRING|FDF_RW,          0, NULL, (APTR)SET_InputFile },
-   { "UserAgent",      FDF_STRING|FDF_RW,          0, NULL, (APTR)SET_UserAgent },
-   { "UserData",       FDF_POINTER|FDF_RW,         0, NULL, NULL },
-   { "InputObject",    FDF_OBJECTID|FDF_RW,        0, NULL, NULL },
-   { "OutputObject",   FDF_OBJECTID|FDF_RW,        0, NULL, NULL },
-   { "Method",         FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clHTTPMethod, NULL, (APTR)SET_Method },
-   { "Port",           FDF_LONG|FDF_RW,            0, NULL, NULL },
-   { "ObjectMode",     FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clHTTPObjectMode, NULL, NULL },
-   { "Flags",          FDF_LONGFLAGS|FDF_RW,       (MAXINT)&clHTTPFlags, NULL, NULL },
-   { "Status",         FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clStatus, NULL, NULL },
-   { "Error",          FDF_LONG|FDF_RW,            0, NULL, NULL },
-   { "Datatype",       FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clHTTPDatatype, NULL, NULL },
-   { "CurrentState",   FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clHTTPCurrentState, NULL, (APTR)SET_CurrentState },
-   { "ProxyServer",    FDF_STRING|FDF_RW,          0, NULL, (APTR)SET_ProxyServer },
-   { "ProxyPort",      FDF_LONG|FDF_RW,            0, NULL, NULL },
-   { "BufferSize",     FDF_LONG|FDF_RW,            0, NULL, (APTR)SET_BufferSize },
+   { "DataTimeout",    FDF_DOUBLE|FDF_RW },
+   { "ConnectTimeout", FDF_DOUBLE|FDF_RW },
+   { "Index",          FDF_LARGE|FDF_RW }, // Writeable only because we update it using SetField()
+   { "ContentLength",  FDF_LARGE|FDF_RW },
+   { "Size",           FDF_LARGE|FDF_RW },
+   { "Host",           FDF_STRING|FDF_RI, NULL, SET_Host },
+   { "Realm",          FDF_STRING|FDF_RW, NULL, SET_Realm },
+   { "Path",           FDF_STRING|FDF_RW, NULL, SET_Path },
+   { "OutputFile",     FDF_STRING|FDF_RW, NULL, SET_OutputFile },
+   { "InputFile",      FDF_STRING|FDF_RW, NULL, SET_InputFile },
+   { "UserAgent",      FDF_STRING|FDF_RW, NULL, SET_UserAgent },
+   { "UserData",       FDF_POINTER|FDF_RW },
+   { "InputObject",    FDF_OBJECTID|FDF_RW },
+   { "OutputObject",   FDF_OBJECTID|FDF_RW },
+   { "Method",         FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, SET_Method, &clHTTPMethod },
+   { "Port",           FDF_LONG|FDF_RW },
+   { "ObjectMode",     FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clHTTPObjectMode },
+   { "Flags",          FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clHTTPFlags },
+   { "Status",         FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clStatus },
+   { "Error",          FDF_LONG|FDF_RW },
+   { "Datatype",       FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clHTTPDatatype },
+   { "CurrentState",   FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, SET_CurrentState, &clHTTPCurrentState },
+   { "ProxyServer",    FDF_STRING|FDF_RW, NULL, SET_ProxyServer },
+   { "ProxyPort",      FDF_LONG|FDF_RW },
+   { "BufferSize",     FDF_LONG|FDF_RW, NULL, SET_BufferSize },
    // Virtual fields
-   { "AuthCallback",   FDF_FUNCTIONPTR|FDF_RW,   0, (APTR)GET_AuthCallback, (APTR)SET_AuthCallback },
-   { "ContentType",    FDF_STRING|FDF_RW,        0, (APTR)GET_ContentType, (APTR)SET_ContentType },
-   { "Incoming",       FDF_FUNCTIONPTR|FDF_RW,   0, (APTR)GET_Incoming, (APTR)SET_Incoming },
-   { "Location",       FDF_STRING|FDF_RW,        0, (APTR)GET_Location, (APTR)SET_Location },
-   { "Outgoing",       FDF_FUNCTIONPTR|FDF_RW,   0, (APTR)GET_Outgoing, (APTR)SET_Outgoing },
-   { "RecvBuffer",     FDF_ARRAY|FDF_BYTE|FDF_R, 0, (APTR)GET_RecvBuffer, NULL },
-   { "Src",            FDF_STRING|FDF_SYNONYM|FDF_RW, 0, (APTR)GET_Location, (APTR)SET_Location },
-   { "StateChanged",   FDF_FUNCTIONPTR|FDF_RW,   0, (APTR)GET_StateChanged, (APTR)SET_StateChanged },
-   { "Username",       FDF_STRING|FDF_W,         0, NULL, (APTR)SET_Username },
-   { "Password",       FDF_STRING|FDF_W,         0, NULL, (APTR)SET_Password },
+   { "AuthCallback",   FDF_FUNCTIONPTR|FDF_RW,   GET_AuthCallback, SET_AuthCallback },
+   { "ContentType",    FDF_STRING|FDF_RW,        GET_ContentType, SET_ContentType },
+   { "Incoming",       FDF_FUNCTIONPTR|FDF_RW,   GET_Incoming, SET_Incoming },
+   { "Location",       FDF_STRING|FDF_RW,        GET_Location, SET_Location },
+   { "Outgoing",       FDF_FUNCTIONPTR|FDF_RW,   GET_Outgoing, SET_Outgoing },
+   { "RecvBuffer",     FDF_ARRAY|FDF_BYTE|FDF_R, GET_RecvBuffer },
+   { "Src",            FDF_STRING|FDF_SYNONYM|FDF_RW, GET_Location, SET_Location },
+   { "StateChanged",   FDF_FUNCTIONPTR|FDF_RW,   GET_StateChanged, SET_StateChanged },
+   { "Username",       FDF_STRING|FDF_W,         NULL, SET_Username },
+   { "Password",       FDF_STRING|FDF_W,         NULL, SET_Password },
    END_FIELD
 };
 
@@ -1707,4 +1707,4 @@ static ERROR create_http_class(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, MODVERSION_HTTP)
+PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, MODVERSION_HTTP, MOD_IDL, NULL)

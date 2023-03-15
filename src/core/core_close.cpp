@@ -253,7 +253,7 @@ EXPORT void CloseCore(void)
       if (glTimeClass)         { acFree(glTimeClass);         glTimeClass         = 0; }
       if (glModuleClass)       { acFree(glModuleClass);       glModuleClass       = 0; }
       if (glThreadClass)       { acFree(glThreadClass);       glThreadClass       = 0; }
-      if (glModuleMasterClass) { acFree(glModuleMasterClass); glModuleMasterClass = 0; }
+      if (glRootModuleClass)   { acFree(glRootModuleClass); glRootModuleClass = 0; }
 
       #ifdef __unix__
          if (glSocket != -1) RegisterFD(glSocket, RFD_REMOVE, NULL, NULL);
@@ -418,7 +418,7 @@ EXPORT void Expunge(WORD Force)
                   if (!mod_master->Expunge()) {
                      ccount++;
                      if (acFree(mod_master)) {
-                        log.warning("ModuleMaster data is corrupt");
+                        log.warning("RootModule data is corrupt");
                         mod_count = ccount; // Break the loop because the chain links are broken.
                         break;
                      }
@@ -428,7 +428,7 @@ EXPORT void Expunge(WORD Force)
                else {
                   ccount++;
                   if (acFree(mod_master)) {
-                     log.warning("ModuleMaster data is corrupt");
+                     log.warning("RootModule data is corrupt");
                      mod_count = ccount; // Break the loop because the chain links are broken.
                      break;
                   }

@@ -666,13 +666,13 @@ static ERROR test_path(STRING Path, LONG Flags, LONG *Type)
 //********************************************************************************************************************
 
 static const ActionArray clArchiveActions[] = {
-   { AC_Activate, (APTR)ARCHIVE_Activate },
-   { AC_Free,     (APTR)ARCHIVE_Free },
-   { AC_Init,     (APTR)ARCHIVE_Init },
-   { AC_Query,    (APTR)ARCHIVE_Query },
-   { AC_Read,     (APTR)ARCHIVE_Read },
-   { AC_Seek,     (APTR)ARCHIVE_Seek },
-   { AC_Write,    (APTR)ARCHIVE_Write },
+   { AC_Activate, ARCHIVE_Activate },
+   { AC_Free,     ARCHIVE_Free },
+   { AC_Init,     ARCHIVE_Init },
+   { AC_Query,    ARCHIVE_Query },
+   { AC_Read,     ARCHIVE_Read },
+   { AC_Seek,     ARCHIVE_Seek },
+   { AC_Write,    ARCHIVE_Write },
    { 0, NULL }
 };
 
@@ -681,7 +681,7 @@ static const MethodArray clArchiveMethods[] = {
 };
 
 static const struct FieldArray clArchiveFields[] = {
-   { "Size", FDF_LARGE|FDF_R, 0, (APTR)ARCHIVE_GET_Size, NULL },
+   { "Size", FDF_LARGE|FDF_R, ARCHIVE_GET_Size },
     END_FIELD
 };
 

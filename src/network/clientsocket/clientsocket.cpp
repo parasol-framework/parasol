@@ -507,16 +507,16 @@ static ERROR CLIENTSOCKET_WriteClientMsg(extClientSocket *Self, struct csWriteCl
 #include "clientsocket_def.c"
 
 static const FieldArray clClientSocketFields[] = {
-   { "ConnectTime", FDF_LARGE|FDF_R,    0, NULL, NULL },
-   { "Prev",        FDF_OBJECT|FDF_R,   ID_CLIENTSOCKET, NULL, NULL },
-   { "Next",        FDF_OBJECT|FDF_R,   ID_CLIENTSOCKET, NULL, NULL },
-   { "Client",      FDF_POINTER|FDF_STRUCT|FDF_R, (MAXINT)"NetClient", NULL, NULL },
-   { "UserData",    FDF_POINTER|FDF_R,  0, NULL, NULL },
-   { "Outgoing",    FDF_FUNCTION|FDF_R, 0, NULL, NULL },
-   { "Incoming",    FDF_FUNCTION|FDF_R, 0, NULL, NULL },
-   { "MsgLen",      FDF_LONG|FDF_R,     0, NULL, NULL },
+   { "ConnectTime", FDF_LARGE|FDF_R },
+   { "Prev",        FDF_OBJECT|FDF_R, NULL, NULL, ID_CLIENTSOCKET },
+   { "Next",        FDF_OBJECT|FDF_R, NULL, NULL, ID_CLIENTSOCKET },
+   { "Client",      FDF_POINTER|FDF_STRUCT|FDF_R, NULL, NULL, "NetClient" },
+   { "UserData",    FDF_POINTER|FDF_R },
+   { "Outgoing",    FDF_FUNCTION|FDF_R },
+   { "Incoming",    FDF_FUNCTION|FDF_R },
+   { "MsgLen",      FDF_LONG|FDF_R },
    // Virtual fields
-//   { "Handle",      FDF_LONG|FDF_R|FDF_VIRTUAL,     0, (APTR)GET_ClientHandle, (APTR)SET_ClientHandle },
+//   { "Handle", FDF_LONG|FDF_R|FDF_VIRTUAL, GET_ClientHandle, SET_ClientHandle },
    END_FIELD
 };
 

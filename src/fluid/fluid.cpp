@@ -58,14 +58,13 @@ extern "C" {
 
 MODULE_COREBASE;
 struct DisplayBase *DisplayBase;
-//static struct SurfaceBase *SurfaceBase;
 OBJECTPTR modDisplay = NULL; // Required by fluid_input.c
 OBJECTPTR modFluid = NULL;
-//static OBJECTPTR modSurface = NULL; // Required by fluid_widget.c
 OBJECTPTR clFluid = NULL;
 struct ActionTable *glActions = NULL;
 static char glLocale[4] = "eng";
 KeyStore *glActionLookup = NULL;
+std::unordered_map<std::string, ULONG> glStructSizes;
 
 #include "defs.h"
 
@@ -115,68 +114,55 @@ static const struct Function JumpTableV1[] = {
 
 static void flTestCall1(void)
 {
-   LogF("TestCall1","No parameters.");
+   pf::Log log(__FUNCTION__);
+   log.msg("No parameters.");
 }
 
 static LONG flTestCall2(void)
 {
-   LogF("TestCall2","Returning 0xdedbeef / %d", 0xdedbeef);
+   pf::Log log(__FUNCTION__);
+   log.msg("Returning 0xdedbeef / %d", 0xdedbeef);
    return 0xdedbeef;
 }
 
 static STRING flTestCall3(void)
 {
-   LogF("TestCall3","Returning 'hello world'");
+   pf::Log log(__FUNCTION__);
+   log.msg("Returning 'hello world'");
    return "hello world";
 }
 
 static void flTestCall4(LONG Long, LARGE Large)
 {
-   LogF("TestCall4","Received long %d / $%.8x", Long, Long);
-   LogF("TestCall4","Received large %" PF64 " / $%.8x%.8x", Large, (ULONG)Large, (ULONG)(Large>>32));
+   pf::Log log(__FUNCTION__);
+   log.msg("Received long %d / $%.8x", Long, Long);
+   log.msg("Received large %" PF64 " / $%.8x%.8x", Large, (ULONG)Large, (ULONG)(Large>>32));
 }
 
 static LONG flTestCall5(LONG LongA, LONG LongB, LONG LongC, LONG LongD, LONG LongE, LARGE LongF)
 {
-   LogF("TestCall5","Received ints: %d, %d, %d, %d, %d, %" PF64, LongA, LongB, LongC, LongD, LongE, LongF);
-   LogF("TestCall5","Received ints: $%.8x, $%.8x, $%.8x, $%.8x, $%.8x, $%.8x", LongA, LongB, LongC, LongD, LongE, (LONG)LongF);
+   pf::Log log(__FUNCTION__);
+   log.msg("Received ints: %d, %d, %d, %d, %d, %" PF64, LongA, LongB, LongC, LongD, LongE, LongF);
+   log.msg("Received ints: $%.8x, $%.8x, $%.8x, $%.8x, $%.8x, $%.8x", LongA, LongB, LongC, LongD, LongE, (LONG)LongF);
    return LongF;
 }
 
 static LARGE flTestCall6(LONG long1, LARGE large1, LARGE large2, LONG long2, LARGE large3, DOUBLE float1)
 {
-   LogF("TestCall6","Received %d, %" PF64 ", %d, %d, %d", long1, large1, (LONG)large2, (LONG)long2, (LONG)large3);
-   LogF("TestCall6","Received double %f", float1);
-   LogF("TestCall6","Returning %" PF64, large2);
+   pf::Log log(__FUNCTION__);
+   log.msg("Received %d, %" PF64 ", %d, %d, %d", long1, large1, (LONG)large2, (LONG)long2, (LONG)large3);
+   log.msg("Received double %f", float1);
+   log.msg("Returning %" PF64, large2);
    return large2;
 }
 
 static void flTestCall7(STRING a, STRING b, STRING c)
 {
-   LogF("TestCall7","Received string pointers %p, %p, %p", a, b, c);
-   LogF("TestCall7","As '%s', '%s', '%s'", a, b, c);
+   pf::Log log(__FUNCTION__);
+   log.msg("Received string pointers %p, %p, %p", a, b, c);
+   log.msg("As '%s', '%s', '%s'", a, b, c);
 }
 #endif
-
-//********************************************************************************************************************
-
-struct references * alloc_references(void)
-{
-   struct references *list;
-   if (!AllocMemory(sizeof(struct references), MEM_DATA|MEM_NO_CLEAR, &list)) {
-      list->Index = 0;
-      return list;
-   }
-   else return NULL;
-}
-
-void free_references(lua_State *Lua, struct references *Ref)
-{
-   for (LONG i=0; i < Ref->Index; i++) {
-      luaL_unref(Lua, LUA_REGISTRYINDEX, Ref->List[i].Ref);
-   }
-   FreeResource(Ref);
-}
 
 //********************************************************************************************************************
 
@@ -290,22 +276,34 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
       log.trace("Class: %s, Module: %s", MetaClass->ClassName, module_name);
 
       LONG *current_state;
-      struct KeyStore *inc = GET_INCLUDES(Lua->Script);
+      KeyStore *inc = GET_INCLUDES(Lua->Script);
       if ((VarGet(inc, module_name, &current_state, NULL) != ERR_Okay) or (current_state[0] != 1)) {
          LONG new_state = 1;
          VarSet(inc, module_name, &new_state, sizeof(new_state)); // Mark the module as processed.
 
-         CSTRING idl;
-         if ((!(error = MetaClass->get(FID_IDL, (STRING *)&idl))) and (idl)) {
-            log.trace("Parsing IDL for module %s", module_name);
+         OBJECTPTR mod;
+         if (!(error = MetaClass->getPtr(FID_RootModule, &mod))) {
+            ModHeader *header;
 
-            while ((idl) and (*idl)) {
-               if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(Lua, idl+2, module_name);
-               else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(Lua, idl+2, module_name);
-               else idl = next_line(idl);
+            if ((!(error = mod->getPtr(FID_Header, &header))) and (header)) {
+               if (auto structs = header->StructDefs) {
+                  for (auto &s : structs[0]) {
+                     glStructSizes[s.first] = s.second;
+                  }
+               }
+
+               if (auto idl = header->Definitions) {
+                  log.trace("Parsing IDL for module %s", module_name);
+
+                  while ((idl) and (*idl)) {
+                     if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(Lua, idl+2, module_name);
+                     else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(Lua, idl+2, module_name);
+                     else idl = next_line(idl);
+                  }
+               }
+               else log.trace("No IDL defined for %s", module_name);
             }
          }
-         else log.trace("No IDL defined for %s", module_name);
       }
       else log.trace("Module %s is marked as loaded.", module_name);
    }
@@ -318,7 +316,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   argModule->getPtr(FID_Master, &modFluid);
+   argModule->getPtr(FID_Root, &modFluid);
 
    ActionList(&glActions, NULL); // Get the global action table from the Core
 
@@ -459,6 +457,10 @@ void make_table(lua_State *Lua, LONG Type, LONG Elements, CPTR Data)
             case FD_LONG:    for (i=0; ((LONG *)Data)[i]; i++); break;
             case FD_WORD:    for (i=0; ((WORD *)Data)[i]; i++); break;
             case FD_BYTE:    for (i=0; ((BYTE *)Data)[i]; i++); break;
+            default:
+               log.warning("Unsupported type $%.8x", Type);
+               lua_pushnil(Lua);
+               return;
          }
 
          Elements = i;
@@ -500,17 +502,14 @@ void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, LONG Elements, CP
    if (!Values) return;
 
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-   structentry *def;
 
-   if (!KeyGet(prv->Structs, STRUCTHASH(StructName), &def, NULL)) {
-      references *ref;
-      if ((ref = alloc_references())) {
-         for (LONG i=0; i < Elements; i++) {
-            lua_pushinteger(Lua, i+1);
-            if (struct_to_table(Lua, ref, def, Values[i]) != ERR_Okay) lua_pushnil(Lua);
-            lua_settable(Lua, -3);
-         }
-         free_references(Lua, ref);
+   auto s_name = struct_name(StructName);
+   if (prv->Structs.contains(s_name)) {
+      std::vector<lua_ref> ref;
+      for (LONG i=0; i < Elements; i++) {
+         lua_pushinteger(Lua, i+1);
+         if (struct_to_table(Lua, ref, prv->Structs[s_name], Values[i]) != ERR_Okay) lua_pushnil(Lua);
+         lua_settable(Lua, -3);
       }
    }
    else log.warning("Failed to find struct '%s'", StructName);
@@ -529,9 +528,10 @@ void make_struct_serial_table(lua_State *Lua, CSTRING StructName, LONG Elements,
    if (!Data) return;
 
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-   structentry *def;
+   auto s_name = struct_name(StructName);
+   if (prv->Structs.contains(s_name)) {
+      auto def = &prv->Structs[s_name];
 
-   if (!KeyGet(prv->Structs, STRUCTHASH(StructName), &def, NULL)) {
       // 64-bit compilers don't always align structures to 64-bit, and it's difficult to compute alignment with
       // certainty.  It is essential that structures that are intended to be serialised into arrays are manually
       // padded to 64-bit so that the potential for mishap is eliminated.
@@ -547,15 +547,13 @@ void make_struct_serial_table(lua_State *Lua, CSTRING StructName, LONG Elements,
          log.msg("%s, Elements: %d, Values: %p, StructSize: %d, Aligned: %c", StructName, Elements, Data, def_size, aligned);
       }
 
-      references *ref;
-      if ((ref = alloc_references())) {
-         for (LONG i=0; i < Elements; i++) {
-            lua_pushinteger(Lua, i+1);
-            if (struct_to_table(Lua, ref, def, Data) != ERR_Okay) lua_pushnil(Lua);
-            Data = (BYTE *)Data + def_size;
-            lua_settable(Lua, -3);
-         }
-         free_references(Lua, ref);
+      std::vector<lua_ref> ref;
+
+      for (LONG i=0; i < Elements; i++) {
+         lua_pushinteger(Lua, i+1);
+         if (struct_to_table(Lua, ref, *def, Data) != ERR_Okay) lua_pushnil(Lua);
+         Data = (BYTE *)Data + def_size;
+         lua_settable(Lua, -3);
       }
    }
    else log.warning("Failed to find struct '%s'", StructName);
@@ -656,18 +654,31 @@ ERROR load_include(objScript *Script, CSTRING IncName)
       else { // The IDL for standard modules is retrievable from the IDL string of a loaded module object.
          objModule::create module = { fl::Name(IncName) };
          if (module.ok()) {
-            CSTRING idl;
-            if ((!(error = module->get(FID_IDL, (STRING *)&idl))) and (idl)) {
-               while ((idl) and (*idl)) {
-                  if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(prv->Lua, idl+2, IncName);
-                  else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(prv->Lua, idl+2, IncName);
-                  else idl = next_line(idl);
-               }
+            LONG state = 1;
+            VarSet(inc, IncName, &state, sizeof(state)); // Mark the file as loaded.
 
-               LONG state = 1;
-               VarSet(inc, IncName, &state, sizeof(state)); // Mark the file as loaded.
+            OBJECTPTR root;
+            if (!(error = module->getPtr(FID_Root, &root))) {
+               ModHeader *header;
+               if ((!(error = root->getPtr(FID_Header, &header)) and (header))) {
+                  if (auto structs = header->StructDefs) {
+                     for (auto &s : structs[0]) {
+                        glStructSizes[s.first] = s.second;
+                     }
+                  }
+
+                  if (auto idl = header->Definitions) {
+                     log.trace("Parsing IDL for module %s", IncName);
+
+                     while ((idl) and (*idl)) {
+                        if ((idl[0] IS 's') and (idl[1] IS '.')) idl = load_include_struct(prv->Lua, idl+2, IncName);
+                        else if ((idl[0] IS 'c') and (idl[1] IS '.')) idl = load_include_constant(prv->Lua, idl+2, IncName);
+                        else idl = next_line(idl);
+                     }
+                  }
+                  else log.trace("No IDL defined for %s", IncName);
+               }
             }
-            else log.warning("No IDL for module %s", IncName);
          }
          else error = ERR_CreateObject;
       }
@@ -859,4 +870,4 @@ static void stack_dump(lua_State *L)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, VER_FLUID)
+PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, VER_FLUID, MOD_IDL, NULL)

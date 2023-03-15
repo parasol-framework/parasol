@@ -44,7 +44,7 @@ significant differences between the source and destination bitmap types.
 #include "picture.h"
 
 MODULE_COREBASE;
-static ModuleMaster *modPicture = NULL;
+static RootModule *modPicture = NULL;
 static OBJECTPTR clPicture = NULL;
 static OBJECTPTR modDisplay = NULL;
 struct DisplayBase *DisplayBase = NULL;
@@ -87,7 +87,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   if (argModule->getPtr(FID_Master, &modPicture) != ERR_Okay) return ERR_GetField;
+   if (argModule->getPtr(FID_Root, &modPicture) != ERR_Okay) return ERR_GetField;
    if (objModule::load("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
 
    return(create_picture_class());
@@ -1401,39 +1401,39 @@ static const FieldDef clFlags[] = {
 };
 
 static const FieldArray clFields[] = {
-   { "Bitmap",        FDF_INTEGRAL|FDF_R,     ID_BITMAP,        NULL, NULL },
-   { "Mask",          FDF_INTEGRAL|FDF_R,     ID_BITMAP,        NULL, NULL },
-   { "Flags",         FDF_LONGFLAGS|FDF_RW,   (MAXINT)&clFlags, NULL, NULL },
-   { "DisplayHeight", FDF_LONG|FDF_RW,        0,                NULL, NULL },
-   { "DisplayWidth",  FDF_LONG|FDF_RW,        0,                NULL, NULL },
-   { "Quality",       FDF_LONG|FDF_RW,        0,                NULL, NULL },
-   { "FrameRate",     FDF_SYSTEM|FDF_LONG|FDF_R, 0,             NULL, NULL },
+   { "Bitmap",        FDF_INTEGRAL|FDF_R, NULL, NULL, ID_BITMAP },
+   { "Mask",          FDF_INTEGRAL|FDF_R, NULL, NULL, ID_BITMAP },
+   { "Flags",         FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clFlags },
+   { "DisplayHeight", FDF_LONG|FDF_RW },
+   { "DisplayWidth",  FDF_LONG|FDF_RW },
+   { "Quality",       FDF_LONG|FDF_RW },
+   { "FrameRate",     FDF_SYSTEM|FDF_LONG|FDF_R },
    // Virtual fields
-   { "Author",        FDF_STRING|FDF_RW,  0, (APTR)GET_Author,      (APTR)SET_Author },
-   { "Copyright",     FDF_STRING|FDF_RW,  0, (APTR)GET_Copyright,   (APTR)SET_Copyright },
-   { "Description",   FDF_STRING|FDF_RW,  0, (APTR)GET_Description, (APTR)SET_Description },
-   { "Disclaimer",    FDF_STRING|FDF_RW,  0, (APTR)GET_Disclaimer,  (APTR)SET_Disclaimer },
-   { "Header",        FDF_POINTER|FDF_RI, 0, (APTR)GET_Header,      NULL },
-   { "Path",          FDF_STRING|FDF_RI,  0, (APTR)GET_Path,        (APTR)SET_Path },
-   { "Location",      FDF_SYNONYM|FDF_STRING|FDF_RI, 0, (APTR)GET_Path, (APTR)SET_Path },
-   { "Src",           FDF_SYNONYM|FDF_STRING|FDF_RI, 0, (APTR)GET_Path, (APTR)SET_Path },
-   { "Software",      FDF_STRING|FDF_RW,  0, (APTR)GET_Software,    (APTR)SET_Software },
-   { "Title",         FDF_STRING|FDF_RW,  0, (APTR)GET_Title,       (APTR)SET_Title },
+   { "Author",        FDF_STRING|FDF_RW,  GET_Author, SET_Author },
+   { "Copyright",     FDF_STRING|FDF_RW,  GET_Copyright, SET_Copyright },
+   { "Description",   FDF_STRING|FDF_RW,  GET_Description, SET_Description },
+   { "Disclaimer",    FDF_STRING|FDF_RW,  GET_Disclaimer, SET_Disclaimer },
+   { "Header",        FDF_POINTER|FDF_RI, GET_Header },
+   { "Path",          FDF_STRING|FDF_RI,  GET_Path, SET_Path },
+   { "Location",      FDF_SYNONYM|FDF_STRING|FDF_RI, GET_Path, SET_Path },
+   { "Src",           FDF_SYNONYM|FDF_STRING|FDF_RI, GET_Path, SET_Path },
+   { "Software",      FDF_STRING|FDF_RW,  GET_Software, SET_Software },
+   { "Title",         FDF_STRING|FDF_RW,  GET_Title, SET_Title },
    END_FIELD
 };
 
 static const ActionArray clActions[] = {
-   { AC_Activate,      (APTR)PIC_Activate },
-   { AC_Free,          (APTR)PIC_Free },
-   { AC_NewObject,     (APTR)PIC_NewObject },
-   { AC_Init,          (APTR)PIC_Init },
-   { AC_Query,         (APTR)PIC_Query },
-   { AC_Read,          (APTR)PIC_Read },
-   { AC_Refresh,       (APTR)PIC_Refresh },
-   { AC_SaveImage,     (APTR)PIC_SaveImage },
-   { AC_SaveToObject,  (APTR)PIC_SaveToObject },
-   { AC_Seek,          (APTR)PIC_Seek },
-   { AC_Write,         (APTR)PIC_Write },
+   { AC_Activate,      PIC_Activate },
+   { AC_Free,          PIC_Free },
+   { AC_NewObject,     PIC_NewObject },
+   { AC_Init,          PIC_Init },
+   { AC_Query,         PIC_Query },
+   { AC_Read,          PIC_Read },
+   { AC_Refresh,       PIC_Refresh },
+   { AC_SaveImage,     PIC_SaveImage },
+   { AC_SaveToObject,  PIC_SaveToObject },
+   { AC_Seek,          PIC_Seek },
+   { AC_Write,         PIC_Write },
    { 0, NULL }
 };
 
@@ -1457,4 +1457,4 @@ static ERROR create_picture_class(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, 1.0)
+PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, 1.0, MOD_IDL, NULL)

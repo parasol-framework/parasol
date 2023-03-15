@@ -1199,9 +1199,9 @@ extern "C" void report_windows_clip_utf16(UWORD *String)
 #include "class_clipboard_def.c"
 
 static const FieldArray clFields[] = {
-   { "Flags",            FDF_LONGFLAGS|FDF_RI,       (MAXINT)&clClipboardFlags, NULL, NULL },
-   { "Cluster",          FDF_LONG|FDF_RW,            0, NULL, NULL },
-   { "RequestHandler",   FDF_FUNCTIONPTR|FDF_RW,     0, (APTR)GET_RequestHandler, (APTR)SET_RequestHandler },
+   { "Flags",          FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clClipboardFlags },
+   { "Cluster",        FDF_LONG|FDF_RW },
+   { "RequestHandler", FDF_FUNCTIONPTR|FDF_RW, GET_RequestHandler, SET_RequestHandler },
    END_FIELD
 };
 

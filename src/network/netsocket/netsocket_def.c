@@ -43,6 +43,6 @@ static const struct ActionArray clNetSocketActions[] = {
    { AC_NewObject, (APTR)NETSOCKET_NewObject },
    { AC_Read, (APTR)NETSOCKET_Read },
    { AC_Write, (APTR)NETSOCKET_Write },
-   { 0, 0 }
+   { 0, NULL }
 };
 

@@ -629,14 +629,14 @@ static const FieldDef clThreadFlags[] = {
 };
 
 static const FieldArray clFields[] = {
-   { "Data",      FDF_ARRAY|FDF_BYTE|FDF_R, 0, (APTR)GET_Data, NULL },
-   { "DataSize",  FD_LONG|FDF_R,       0, NULL, NULL },
-   { "StackSize", FDF_LONG|FDF_RW,     0, NULL, NULL },
-   { "Error",     FDF_LONG|FDF_R,      0, NULL, NULL },
-   { "Flags",     FDF_LONG|FDF_RI,     (MAXINT)&clThreadFlags, NULL, NULL },
+   { "Data",      FDF_ARRAY|FDF_BYTE|FDF_R, GET_Data },
+   { "DataSize",  FD_LONG|FDF_R },
+   { "StackSize", FDF_LONG|FDF_RW },
+   { "Error",     FDF_LONG|FDF_R },
+   { "Flags",     FDF_LONG|FDF_RI, NULL, NULL, &clThreadFlags },
    // Virtual fields
-   { "Callback",  FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_Callback, (APTR)SET_Callback },
-   { "Routine",   FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_Routine, (APTR)SET_Routine },
+   { "Callback",  FDF_FUNCTIONPTR|FDF_RW, GET_Callback, SET_Callback },
+   { "Routine",   FDF_FUNCTIONPTR|FDF_RW, GET_Routine, SET_Routine },
    END_FIELD
 };
 

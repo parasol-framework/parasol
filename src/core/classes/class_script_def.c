@@ -20,14 +20,14 @@ static const struct MethodArray clScriptMethods[] = {
 };
 
 static const struct ActionArray clScriptActions[] = {
-   { AC_Activate, (APTR)SCRIPT_Activate },
-   { AC_DataFeed, (APTR)SCRIPT_DataFeed },
-   { AC_Free, (APTR)SCRIPT_Free },
-   { AC_GetVar, (APTR)SCRIPT_GetVar },
-   { AC_Init, (APTR)SCRIPT_Init },
-   { AC_NewObject, (APTR)SCRIPT_NewObject },
-   { AC_Reset, (APTR)SCRIPT_Reset },
-   { AC_SetVar, (APTR)SCRIPT_SetVar },
-   { 0, 0 }
+   { AC_Activate, SCRIPT_Activate },
+   { AC_DataFeed, SCRIPT_DataFeed },
+   { AC_Free, SCRIPT_Free },
+   { AC_GetVar, SCRIPT_GetVar },
+   { AC_Init, SCRIPT_Init },
+   { AC_NewObject, SCRIPT_NewObject },
+   { AC_Reset, SCRIPT_Reset },
+   { AC_SetVar, SCRIPT_SetVar },
+   { 0, NULL }
 };
 

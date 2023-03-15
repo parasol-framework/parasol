@@ -73,8 +73,6 @@ typedef int HANDLE;
 
  #define open64   open
  #define lseek64  lseek
- #undef NULL
- #define NULL 0
 #endif // _WIN32
 
 #ifdef __APPLE__

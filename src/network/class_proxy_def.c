@@ -16,6 +16,6 @@ static const struct ActionArray clProxyActions[] = {
    { AC_Init, (APTR)PROXY_Init },
    { AC_NewObject, (APTR)PROXY_NewObject },
    { AC_SaveSettings, (APTR)PROXY_SaveSettings },
-   { 0, 0 }
+   { 0, NULL }
 };
 

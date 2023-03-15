@@ -912,8 +912,6 @@ const SystemState * GetSystemState(void)
       state.ConsoleFD     = glConsoleFD;
       state.CoreVersion   = VER_CORE;
       state.CoreRevision  = REV_CORE;
-      state.ErrorMessages = glMessages;
-      state.TotalErrorMessages = ARRAYSIZE(glMessages);
       #ifdef __unix__
          state.Platform = "Linux";
       #elif _WIN32
@@ -1126,10 +1124,7 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
       return ERR_Okay;
    }
 
-   if (Object IS Owner) {
-      log.warning("Illegal attempt to set an object owner to loop back to itself (%p).", Object);
-      return ERR_Args;
-   }
+   if (Object IS Owner) return log.warning(ERR_Recursion);
 
    //log.msg("Object: %d, New Owner: %d, Current Owner: %d", Object->UID, Owner->UID, Object->OwnerID);
 

@@ -55,7 +55,7 @@ static void dump_global_table(objScript *Self, STRING Global)
 static ERROR GET_Procedures(objScript *, STRING **, LONG *);
 
 static const FieldArray clFields[] = {
-   { "Procedures", FDF_VIRTUAL|FDF_ARRAY|FDF_STRING|FDF_ALLOC|FDF_R, 0, (APTR)GET_Procedures, NULL },
+   { "Procedures", FDF_VIRTUAL|FDF_ARRAY|FDF_STRING|FDF_ALLOC|FDF_R, GET_Procedures },
    END_FIELD
 };
 
@@ -68,11 +68,11 @@ static ERROR FLUID_Init(objScript *, APTR);
 static ERROR FLUID_SaveToObject(objScript *, struct acSaveToObject *);
 
 static const ActionArray clActions[] = {
-   { AC_Activate,     (APTR)FLUID_Activate },
-   { AC_DataFeed,     (APTR)FLUID_DataFeed },
-   { AC_Free,         (APTR)FLUID_Free },
-   { AC_Init,         (APTR)FLUID_Init },
-   { AC_SaveToObject, (APTR)FLUID_SaveToObject },
+   { AC_Activate,     FLUID_Activate },
+   { AC_DataFeed,     FLUID_DataFeed },
+   { AC_Free,         FLUID_Free },
+   { AC_Init,         FLUID_Init },
+   { AC_SaveToObject, FLUID_SaveToObject },
    { 0, NULL }
 };
 
@@ -96,10 +96,10 @@ static void free_all(objScript *Self)
 
    clear_subscriptions(Self);
 
-   if (prv->StateMap) { delete prv->StateMap; prv->StateMap = NULL; }
-   if (prv->Structs) { FreeResource(prv->Structs); prv->Structs = NULL; }
    if (prv->Includes) { FreeResource(prv->Includes); prv->Includes = NULL; }
    if (prv->FocusEventHandle) { UnsubscribeEvent(prv->FocusEventHandle); prv->FocusEventHandle = NULL; }
+
+   prv->~prvFluid();
 
    lua_close(prv->Lua);
    prv->Lua = NULL;
@@ -312,8 +312,8 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
    OBJECTID owner_id = Self->ownerID();
    SetOwner(Self, CurrentTask());
 
-   BYTE reload = FALSE;
-   if (!Self->ActivationCount) reload = TRUE;
+   bool reload = false;
+   if (!Self->ActivationCount) reload = true;
 
    LONG i, j;
    if ((Self->ActivationCount) and (!Self->Procedure) and (!Self->ProcedureID)) {
@@ -326,14 +326,14 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
          goto failure;
       }
 
-      reload = TRUE;
+      reload = true;
    }
 
    if (reload) {
       log.trace("The Lua script will be initialised from scratch.");
 
       prv->Lua->Script = Self;
-      prv->Lua->ProtectedGlobals = FALSE;
+      prv->Lua->ProtectedGlobals = false;
 
       // Change the __newindex and __index methods of the global table so that all access passes
       // through a proxy table that we control.
@@ -391,7 +391,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
          goto failure;
       }
 
-      prv->Lua->ProtectedGlobals = TRUE;
+      prv->Lua->ProtectedGlobals = true;
 
       LONG result;
       if (!StrCompare(LUA_COMPILED, Self->String, 0, 0)) { // The source is compiled
@@ -405,8 +405,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
       }
 
       if (result) { // Error reported from parser
-         CSTRING errorstr;
-         if ((errorstr = lua_tostring(prv->Lua,-1))) {
+         if (auto errorstr = lua_tostring(prv->Lua,-1)) {
             // Format: [string "..."]:Line:Error
             if ((i = StrSearchCase("\"]:", errorstr)) != -1) {
                char buffer[240];
@@ -448,7 +447,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
       if (prv->SaveCompiled) { // Compile the script and save the result to the cache file
          log.msg("Compiling the source into the cache file.");
 
-         prv->SaveCompiled = FALSE;
+         prv->SaveCompiled = false;
 
          objFile::create cachefile = {
             fl::Path(Self->CacheFile), fl::Flags(FL_NEW|FL_WRITE), fl::Permissions(prv->CachePermissions)
@@ -543,24 +542,26 @@ restart:
                if (auto xml = objXML::create::integral(fl::Statement((CSTRING)Args->Buffer))) {
                   // <file path="blah.exe"/> becomes { item='file', path='blah.exe' }
 
-                  auto tag = xml->Tags[0];
-                  LONG i = 1;
-                  if (!StrMatch("receipt", tag->Attrib->Name)) {
-                     for (auto scan=tag->Child; scan; scan=scan->Next) {
-                        lua_pushinteger(prv->Lua, i++);
-                        lua_newtable(prv->Lua);
+                  if (!xml->Tags.empty()) {
+                     auto &tag = xml->Tags[0];
+                     LONG i = 1;
+                     if (!StrMatch("receipt", tag.name())) {
+                        for (auto &scan : tag.Children) {
+                           lua_pushinteger(prv->Lua, i++);
+                           lua_newtable(prv->Lua);
 
-                        lua_pushstring(prv->Lua, "item");
-                        lua_pushstring(prv->Lua, scan->Attrib->Name);
-                        lua_settable(prv->Lua, -3);
+                           lua_pushstring(prv->Lua, "item");
+                           lua_pushstring(prv->Lua, scan.name());
+                           lua_settable(prv->Lua, -3);
 
-                        for (LONG a=1; a < scan->TotalAttrib; a++) {
-                           lua_pushstring(prv->Lua, scan->Attrib[a].Name);
-                           lua_pushstring(prv->Lua, scan->Attrib[a].Value);
+                           for (unsigned a=1; a < scan.Attribs.size(); a++) {
+                              lua_pushstring(prv->Lua, scan.Attribs[a].Name.c_str());
+                              lua_pushstring(prv->Lua, scan.Attribs[a].Value.c_str());
+                              lua_settable(prv->Lua, -3);
+                           }
+
                            lua_settable(prv->Lua, -3);
                         }
-
-                        lua_settable(prv->Lua, -3);
                      }
                   }
 
@@ -746,6 +747,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
    if (!error) {
       if (!AllocMemory(sizeof(prvFluid), MEM_DATA, &Self->ChildPrivate)) {
          prv = (prvFluid *)Self->ChildPrivate;
+         new (prv) prvFluid;
          if ((prv->SaveCompiled = compile)) {
             DateTime *dt;
             if (!src_file.obj->getPtr(FID_Date, &dt)) prv->CacheDate = *dt;
@@ -757,8 +759,6 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
    }
 
    if (error) return log.warning(error);
-
-   //if (!(prv->ObjectList = VarNew(0, 0))) return log.warning(ERR_AllocMemory);
 
    log.trace("Opening a Lua instance.");
 
@@ -928,7 +928,7 @@ static ERROR run_script(objScript *Self)
    struct object * release_list[8];
    LONG r = 0;
    LONG top;
-   LONG pcall_failed = FALSE;
+   LONG pcall_failed = false;
    if ((Self->Procedure) or (Self->ProcedureID)) {
       if (Self->Procedure) lua_getglobal(prv->Lua, Self->Procedure);
       else lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, Self->ProcedureID);
@@ -986,8 +986,8 @@ static ERROR run_script(objScript *Self)
                   if ((type & FD_BUFFER) and (i+1 < Self->TotalArgs) and (args[1].Type & FD_BUFSIZE)) {
                      // Buffers are considered to be directly writable regions of memory, so the array interface is
                      // used to represent them.
-                     if (args[1].Type & FD_LONG) make_array(prv->Lua, FD_BYTE|FD_WRITE, NULL, (APTR *)args->Address, args[1].Long, FALSE);
-                     else if (args[1].Type & FD_LARGE) make_array(prv->Lua, FD_BYTE|FD_WRITE, NULL, (APTR *)args->Address, args[1].Large, FALSE);
+                     if (args[1].Type & FD_LONG) make_array(prv->Lua, FD_BYTE|FD_WRITE, NULL, (APTR *)args->Address, args[1].Long, false);
+                     else if (args[1].Type & FD_LARGE) make_array(prv->Lua, FD_BYTE|FD_WRITE, NULL, (APTR *)args->Address, args[1].Large, false);
                      else lua_pushnil(prv->Lua);
                      i++; args++; // Because we took the buffer-size parameter into account
                   }
@@ -1024,7 +1024,7 @@ static ERROR run_script(objScript *Self)
          LONG step = GetResource(RES_LOG_DEPTH);
 
          if (lua_pcall(prv->Lua, count, LUA_MULTRET, 0)) {
-            pcall_failed = TRUE;
+            pcall_failed = true;
          }
 
          SetResource(RES_LOG_DEPTH, step);
@@ -1056,7 +1056,7 @@ static ERROR run_script(objScript *Self)
 
          top = lua_gettop(prv->Lua);
          if (lua_pcall(prv->Lua, 0, LUA_MULTRET, 0)) {
-            pcall_failed = TRUE;
+            pcall_failed = true;
          }
 
       SetResource(RES_LOG_DEPTH, depth);

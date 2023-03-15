@@ -522,7 +522,7 @@ unpackAlpha(Colour)
       <access read="R" write="I">Read/Init</access>
       <type>INT</type>
       <description>
-<p>This field determines the type of memory that will be allocated for the <field>Data</field> field during the initialisation process. This field accepts the MEM_DATA, MEM_VIDEO and MEM_TEXTURE memory flags.</p>
+<p>This field determines the type of memory that will be allocated for the <field>Data</field> field during the initialisation process. This field accepts the <code>MEM_DATA</code>, <code>MEM_VIDEO</code> and <code>MEM_TEXTURE</code> memory flags.</p>
 <p>Please note that video based bitmaps may be faster than data bitmaps for certain applications, but the content is typically read-only.  Under normal circumstances it is not possible to use the pixel reading functions, or read from the bitmap <field>Data</field> field directly with these bitmap types.  To circumvent this problem please use the <action>Lock</action> action to enable read access when you require it.</p>
       </description>
     </field>
@@ -612,7 +612,7 @@ unpackAlpha(Colour)
       <access read="R" write="S">Read/Set</access>
       <type>struct RGBPalette *</type>
       <description>
-<p>A palette is an array of containing colour values in standard RGB format ($RRGGBB).  The first value must have a header ID of ID_PALETTE, followed by the amount of values in the array. Following this is the actual list itself - colour 0, then colour 1 and so on. There is no termination signal at the end of the list.</p>
+<p>A palette is an array of containing colour values in standard RGB format <code>$RRGGBB</code>.  The first value must have a header ID of <code>ID_PALETTE</code>, followed by the amount of values in the array. Following this is the actual list itself - colour 0, then colour 1 and so on. There is no termination signal at the end of the list.</p>
 <p>The following example is for a 32 colour palette:</p>
 <pre>RGBPalette Palette = {
   ID_PALETTE, VER_PALETTE, 32,

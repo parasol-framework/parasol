@@ -471,44 +471,42 @@ static ERROR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
 
       objXML::create xml = { fl::Statement((CSTRING)Args->Buffer) };
       if (xml.ok()) {
-         for (LONG i=0; i < xml->TagCount; i++) {
-            auto tag = xml->Tags[i];
-            if (!StrMatch("file", tag->Attrib->Name)) {
+         for (auto &tag : xml->Tags) {
+            if (!StrMatch("file", tag.name())) {
                // If the file is being dragged within the same device, it will be moved instead of copied.
 
-               if (auto path = XMLATTRIB(tag, "path")) {
-                  if (Self->FileDrop.Type) {
+               for (auto &a : tag.Attribs) {
+                  if (!StrMatch("path", a.Name)) {
                      if (Self->FileDrop.Type IS CALL_STDC) {
                         pf::SwitchContext ctx(Self->FileDrop.StdC.Context);
-                        auto routine = (void (*)(extScintilla *, STRING))Self->FileDrop.StdC.Routine;
-                        routine(Self, path);
+                        auto routine = (void (*)(extScintilla *, CSTRING))Self->FileDrop.StdC.Routine;
+                        routine(Self, a.Value.c_str());
                      }
                      else if (Self->FileDrop.Type IS CALL_SCRIPT) {
-                        struct scCallback exec;
-                        OBJECTPTR script;
                         ScriptArg args[] = {
                            { "Scintilla", FD_OBJECTPTR },
                            { "Path",      FD_STR }
                         };
 
                         args[0].Address = Self;
-                        args[1].Address = path;
+                        args[1].Address = APTR(a.Value.c_str());
 
+                        struct scCallback exec;
                         exec.ProcedureID = Self->FileDrop.Script.ProcedureID;
                         exec.Args      = args;
                         exec.TotalArgs = ARRAYSIZE(args);
-                        if ((script = Self->FileDrop.Script.Script)) {
-                           Action(MT_ScCallback, script, &exec);
-                        }
+                        auto script = Self->FileDrop.Script.Script;
+                        Action(MT_ScCallback, script, &exec);
                      }
+                     break;
                   }
                }
             }
-            else if (!StrMatch("text", tag->Attrib->Name)) {
+            else if (!StrMatch("text", tag.name())) {
                struct sciInsertText insert;
 
-               if ((tag->Child) and (!tag->Child->Attrib->Name)) {
-                  insert.String = tag->Child->Attrib->Value;
+               if ((!tag.Children.empty()) and (tag.Children[0].isContent())) {
+                  insert.String = tag.Children[0].Attribs[0].Value.c_str();
                   insert.Pos    = -1;
                   Action(MT_SciInsertText, Self, &insert);
                }
@@ -2504,40 +2502,40 @@ static ERROR idle_timer(extScintilla *Self, LARGE Elapsed, LARGE CurrentTime)
 #include "class_scintilla_def.cxx"
 
 static const FieldArray clFields[] = {
-   { "EventFlags",     FDF_LARGE|FDF_FLAGS|FDF_RW, (MAXINT)&clScintillaEventFlags, NULL, NULL },
-   { "Font",           FDF_INTEGRAL|FDF_R,   ID_FONT,    NULL, NULL },
-   { "Path",           FDF_STRING|FDF_RW,    0,          NULL, (APTR)SET_Path },
-   { "Surface",        FDF_OBJECTID|FDF_RI,  ID_SURFACE, NULL, NULL },
-   { "Flags",          FDF_LONGFLAGS|FDF_RI, (MAXINT)&clScintillaFlags, NULL, NULL },
-   { "Focus",          FDF_OBJECTID|FDF_RI,  0,          NULL, NULL },
-   { "Visible",        FDF_LONG|FDF_RI,      0,          NULL, NULL },
-   { "LeftMargin",     FDF_LONG|FDF_RW,      0,          NULL, (APTR)SET_LeftMargin },
-   { "RightMargin",    FDF_LONG|FDF_RW,      0,          NULL, (APTR)SET_RightMargin },
-   { "LineHighlight",  FDF_RGB|FDF_RW,       0,          NULL, (APTR)SET_LineHighlight },
-   { "SelectFore",     FDF_RGB|FDF_RI,       0,          NULL, (APTR)SET_SelectFore },
-   { "SelectBkgd",     FDF_RGB|FDF_RI,       0,          NULL, (APTR)SET_SelectBkgd },
-   { "BkgdColour",     FDF_RGB|FDF_RW,       0,          NULL, (APTR)SET_BkgdColour },
-   { "CursorColour",   FDF_RGB|FDF_RW,       0,          NULL, (APTR)SET_CursorColour },
-   { "TextColour",     FDF_RGB|FDF_RW,       0,          NULL, (APTR)SET_TextColour },
-   { "CursorRow",      FDF_LONG|FDF_RW,      0,          NULL, NULL },
-   { "CursorCol",      FDF_LONG|FDF_RW,      0,          NULL, NULL },
-   { "Lexer",          FDF_LONG|FDF_LOOKUP|FDF_RI, (MAXINT)&clScintillaLexer, NULL, (APTR)SET_Lexer },
-   { "Modified",       FDF_LONG|FDF_RW,      0,          NULL, (APTR)SET_Modified },
+   { "EventFlags",     FDF_LARGE|FDF_FLAGS|FDF_RW, NULL, NULL, &clScintillaEventFlags },
+   { "Font",           FDF_INTEGRAL|FDF_R, NULL, NULL, ID_FONT },
+   { "Path",           FDF_STRING|FDF_RW, NULL, SET_Path },
+   { "Surface",        FDF_OBJECTID|FDF_RI, NULL, NULL, ID_SURFACE },
+   { "Flags",          FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clScintillaFlags },
+   { "Focus",          FDF_OBJECTID|FDF_RI },
+   { "Visible",        FDF_LONG|FDF_RI },
+   { "LeftMargin",     FDF_LONG|FDF_RW, NULL, SET_LeftMargin },
+   { "RightMargin",    FDF_LONG|FDF_RW, NULL, SET_RightMargin },
+   { "LineHighlight",  FDF_RGB|FDF_RW, NULL, SET_LineHighlight },
+   { "SelectFore",     FDF_RGB|FDF_RI, NULL, SET_SelectFore },
+   { "SelectBkgd",     FDF_RGB|FDF_RI, NULL, SET_SelectBkgd },
+   { "BkgdColour",     FDF_RGB|FDF_RW, NULL, SET_BkgdColour },
+   { "CursorColour",   FDF_RGB|FDF_RW, NULL, SET_CursorColour },
+   { "TextColour",     FDF_RGB|FDF_RW, NULL, SET_TextColour },
+   { "CursorRow",      FDF_LONG|FDF_RW },
+   { "CursorCol",      FDF_LONG|FDF_RW },
+   { "Lexer",          FDF_LONG|FDF_LOOKUP|FDF_RI, NULL, SET_Lexer, &clScintillaLexer },
+   { "Modified",       FDF_LONG|FDF_RW, NULL, SET_Modified },
 
    // Virtual fields
-   { "AllowTabs",      FDF_LONG|FDF_RW,    0, (APTR)GET_AllowTabs,      (APTR)SET_AllowTabs },
-   { "AutoIndent",     FDF_LONG|FDF_RW,    0, (APTR)GET_AutoIndent,     (APTR)SET_AutoIndent },
-   { "FileDrop",       FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_FileDrop,   (APTR)SET_FileDrop },
-   { "FoldingMarkers", FDF_LONG|FDF_RW,    0, (APTR)GET_FoldingMarkers, (APTR)SET_FoldingMarkers },
-   { "LineCount",      FDF_LONG|FDF_R,     0, (APTR)GET_LineCount,      NULL },
-   { "LineNumbers",    FDF_LONG|FDF_RW,    0, (APTR)GET_LineNumbers,    (APTR)SET_LineNumbers },
-   { "Origin",         FDF_STRING|FDF_RW,  0, (APTR)GET_Path,           (APTR)SET_Origin },
-   { "ShowWhitespace", FDF_LONG|FDF_RW,    0, (APTR)GET_ShowWhitespace, (APTR)SET_ShowWhitespace },
-   { "EventCallback",  FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_EventCallback, (APTR)SET_EventCallback },
-   { "String",         FDF_STRING|FDF_RW,  0, (APTR)GET_String,         (APTR)SET_String },
-   { "Symbols",        FDF_LONG|FDF_RW,    0, (APTR)GET_Symbols,        (APTR)SET_Symbols },
-   { "TabWidth",       FDF_LONG|FDF_RW,    0, (APTR)GET_TabWidth,       (APTR)SET_TabWidth },
-   { "Wordwrap",       FDF_LONG|FDF_RW,    0, (APTR)GET_Wordwrap,       (APTR)SET_Wordwrap },
+   { "AllowTabs",      FDF_LONG|FDF_RW,   GET_AllowTabs, SET_AllowTabs },
+   { "AutoIndent",     FDF_LONG|FDF_RW,   GET_AutoIndent, SET_AutoIndent },
+   { "FileDrop",       FDF_FUNCTIONPTR|FDF_RW, GET_FileDrop, SET_FileDrop },
+   { "FoldingMarkers", FDF_LONG|FDF_RW,   GET_FoldingMarkers, SET_FoldingMarkers },
+   { "LineCount",      FDF_LONG|FDF_R,    GET_LineCount },
+   { "LineNumbers",    FDF_LONG|FDF_RW,   GET_LineNumbers, SET_LineNumbers },
+   { "Origin",         FDF_STRING|FDF_RW, GET_Path, SET_Origin },
+   { "ShowWhitespace", FDF_LONG|FDF_RW,   GET_ShowWhitespace, SET_ShowWhitespace },
+   { "EventCallback",  FDF_FUNCTIONPTR|FDF_RW, GET_EventCallback, SET_EventCallback },
+   { "String",         FDF_STRING|FDF_RW, GET_String, SET_String },
+   { "Symbols",        FDF_LONG|FDF_RW,   GET_Symbols, SET_Symbols },
+   { "TabWidth",       FDF_LONG|FDF_RW,   GET_TabWidth, SET_TabWidth },
+   { "Wordwrap",       FDF_LONG|FDF_RW,   GET_Wordwrap, SET_Wordwrap },
    END_FIELD
 };
 
@@ -2561,4 +2559,4 @@ static ERROR create_scintilla(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, 1.0)
+PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, 1.0, MOD_IDL, NULL)

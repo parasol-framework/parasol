@@ -43,17 +43,17 @@ static const struct MethodArray clFileMethods[] = {
 };
 
 static const struct ActionArray clFileActions[] = {
-   { AC_Activate, (APTR)FILE_Activate },
-   { AC_DataFeed, (APTR)FILE_DataFeed },
-   { AC_Free, (APTR)FILE_Free },
-   { AC_Init, (APTR)FILE_Init },
-   { AC_NewObject, (APTR)FILE_NewObject },
-   { AC_Query, (APTR)FILE_Query },
-   { AC_Read, (APTR)FILE_Read },
-   { AC_Rename, (APTR)FILE_Rename },
-   { AC_Reset, (APTR)FILE_Reset },
-   { AC_Seek, (APTR)FILE_Seek },
-   { AC_Write, (APTR)FILE_Write },
-   { 0, 0 }
+   { AC_Activate, FILE_Activate },
+   { AC_DataFeed, FILE_DataFeed },
+   { AC_Free, FILE_Free },
+   { AC_Init, FILE_Init },
+   { AC_NewObject, FILE_NewObject },
+   { AC_Query, FILE_Query },
+   { AC_Read, FILE_Read },
+   { AC_Rename, FILE_Rename },
+   { AC_Reset, FILE_Reset },
+   { AC_Seek, FILE_Seek },
+   { AC_Write, FILE_Write },
+   { 0, NULL }
 };
 

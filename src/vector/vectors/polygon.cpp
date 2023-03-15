@@ -533,25 +533,25 @@ static ERROR POLY_SET_Y2(extVectorPoly *Self, Variable *Value)
 //********************************************************************************************************************
 
 static const ActionArray clPolygonActions[] = {
-   { AC_Free,        (APTR)POLYGON_Free },
-   { AC_NewObject,   (APTR)POLYGON_NewObject },
-   { AC_Move,        (APTR)POLYGON_Move },
-   { AC_MoveToPoint, (APTR)POLYGON_MoveToPoint },
-   //{ AC_Redimension, (APTR)POLYGON_Redimension },
-   { AC_Resize,      (APTR)POLYGON_Resize },
+   { AC_Free,        POLYGON_Free },
+   { AC_NewObject,   POLYGON_NewObject },
+   { AC_Move,        POLYGON_Move },
+   { AC_MoveToPoint, POLYGON_MoveToPoint },
+   //{ AC_Redimension, POLYGON_Redimension },
+   { AC_Resize,      POLYGON_Resize },
    { 0, NULL }
 };
 
 static const FieldArray clPolygonFields[] = {
-   { "Closed",      FDF_VIRTUAL|FDF_LONG|FD_RW,                 0, (APTR)POLY_GET_Closed, (APTR)POLY_SET_Closed },
-   { "PathLength",  FDF_VIRTUAL|FDF_LONG|FDF_RW,                0, (APTR)POLY_GET_PathLength, (APTR)POLY_SET_PathLength },
-   { "PointsArray", FDF_VIRTUAL|FDF_ARRAY|FDF_POINTER|FDF_RW,   0, (APTR)POLY_GET_PointsArray, (APTR)POLY_SET_PointsArray },
-   { "Points",      FDF_VIRTUAL|FDF_STRING|FDF_W,               0, NULL, (APTR)POLY_SET_Points },
-   { "TotalPoints", FDF_VIRTUAL|FDF_LONG|FDF_R,                 0, (APTR)POLY_GET_TotalPoints, NULL },
-   { "X1",          FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_RW, 0, (APTR)POLY_GET_X1, (APTR)POLY_SET_X1 },
-   { "Y1",          FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_RW, 0, (APTR)POLY_GET_Y1, (APTR)POLY_SET_Y1 },
-   { "X2",          FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_RW, 0, (APTR)POLY_GET_X2, (APTR)POLY_SET_X2 },
-   { "Y2",          FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_RW, 0, (APTR)POLY_GET_Y2, (APTR)POLY_SET_Y2 },
+   { "Closed",      FDF_VIRTUAL|FDF_LONG|FD_RW,                 POLY_GET_Closed, POLY_SET_Closed },
+   { "PathLength",  FDF_VIRTUAL|FDF_LONG|FDF_RW,                POLY_GET_PathLength, POLY_SET_PathLength },
+   { "PointsArray", FDF_VIRTUAL|FDF_ARRAY|FDF_POINTER|FDF_RW,   POLY_GET_PointsArray, POLY_SET_PointsArray },
+   { "Points",      FDF_VIRTUAL|FDF_STRING|FDF_W,               NULL, POLY_SET_Points },
+   { "TotalPoints", FDF_VIRTUAL|FDF_LONG|FDF_R,                 POLY_GET_TotalPoints },
+   { "X1",          FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_RW, POLY_GET_X1, POLY_SET_X1 },
+   { "Y1",          FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_RW, POLY_GET_Y1, POLY_SET_Y1 },
+   { "X2",          FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_RW, POLY_GET_X2, POLY_SET_X2 },
+   { "Y2",          FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_RW, POLY_GET_Y2, POLY_SET_Y2 },
    END_FIELD
 };
 

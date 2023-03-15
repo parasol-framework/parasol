@@ -441,10 +441,10 @@ static ERROR PATTERN_SET_Y(extVectorPattern *Self, Variable *Value)
 /****************************************************************************/
 
 static const ActionArray clPatternActions[] = {
-   { AC_Draw,      (APTR)PATTERN_Draw },
-   { AC_Free,      (APTR)PATTERN_Free },
-   { AC_Init,      (APTR)PATTERN_Init },
-   { AC_NewObject, (APTR)PATTERN_NewObject },
+   { AC_Draw,      PATTERN_Draw },
+   { AC_Free,      PATTERN_Free },
+   { AC_Init,      PATTERN_Init },
+   { AC_NewObject, PATTERN_NewObject },
    { 0, NULL }
 };
 
@@ -476,22 +476,22 @@ static const FieldDef clPatternSpread[] = {
 };
 
 static const FieldArray clPatternFields[] = {
-   { "X",            FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)PATTERN_GET_X, (APTR)PATTERN_SET_X },
-   { "Y",            FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)PATTERN_GET_Y, (APTR)PATTERN_SET_Y },
-   { "Width",        FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)PATTERN_GET_Width, (APTR)PATTERN_SET_Width },
-   { "Height",       FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)PATTERN_GET_Height, (APTR)PATTERN_SET_Height },
-   { "Opacity",      FDF_DOUBLE|FDF_RW,          0, NULL, (APTR)PATTERN_SET_Opacity },
-   { "Scene",        FDF_INTEGRAL|FDF_R,         0, NULL, NULL },
-   { "Inherit",      FDF_OBJECT|FDF_RW,          0, NULL, (APTR)PATTERN_SET_Inherit },
-   { "SpreadMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clPatternSpread, NULL, NULL },
-   { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clPatternUnits, NULL, NULL },
-   { "ContentUnits", FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clPatternUnits, NULL, NULL },
-   { "Dimensions",   FDF_LONGFLAGS|FDF_R,        (MAXINT)&clPatternDimensions, NULL, NULL },
-   //{ "AspectRatio", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, (MAXINT)&clAspectRatio, (APTR)PATTERN_GET_AspectRatio, (APTR)PATTERN_SET_AspectRatio },
+   { "X",            FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, PATTERN_GET_X, PATTERN_SET_X },
+   { "Y",            FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, PATTERN_GET_Y, PATTERN_SET_Y },
+   { "Width",        FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, PATTERN_GET_Width, PATTERN_SET_Width },
+   { "Height",       FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, PATTERN_GET_Height, PATTERN_SET_Height },
+   { "Opacity",      FDF_DOUBLE|FDF_RW, NULL, PATTERN_SET_Opacity },
+   { "Scene",        FDF_INTEGRAL|FDF_R },
+   { "Inherit",      FDF_OBJECT|FDF_RW, NULL, PATTERN_SET_Inherit },
+   { "SpreadMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clPatternSpread },
+   { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clPatternUnits },
+   { "ContentUnits", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clPatternUnits },
+   { "Dimensions",   FDF_LONGFLAGS|FDF_R, NULL, NULL, &clPatternDimensions },
+   //{ "AspectRatio", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, PATTERN_GET_AspectRatio, PATTERN_SET_AspectRatio, &clAspectRatio },
    // Virtual fields
-   { "Matrices",     FDF_VIRTUAL|FDF_POINTER|FDF_STRUCT|FDF_RW, (MAXINT)"VectorMatrix", (APTR)VECTORPATTERN_GET_Matrices, (APTR)VECTORPATTERN_SET_Matrices },
-   { "Transform",    FDF_VIRTUAL|FDF_STRING|FDF_W, 0, NULL, (APTR)PATTERN_SET_Transform },
-   { "Viewport",     FDF_VIRTUAL|FDF_OBJECT|FDF_R, ID_VECTORVIEWPORT, (APTR)PATTERN_GET_Viewport, NULL },
+   { "Matrices",     FDF_VIRTUAL|FDF_POINTER|FDF_STRUCT|FDF_RW, VECTORPATTERN_GET_Matrices, VECTORPATTERN_SET_Matrices, "VectorMatrix" },
+   { "Transform",    FDF_VIRTUAL|FDF_STRING|FDF_W, NULL, PATTERN_SET_Transform },
+   { "Viewport",     FDF_VIRTUAL|FDF_OBJECT|FDF_R, PATTERN_GET_Viewport, NULL, ID_VECTORVIEWPORT },
    END_FIELD
 };
 

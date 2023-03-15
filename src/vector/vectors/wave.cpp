@@ -581,27 +581,27 @@ static const FieldDef clWaveDimensions[] = {
 };
 
 static const FieldArray clWaveFields[] = {
-   { "Amplitude",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Amplitude, (APTR)WAVE_SET_Amplitude },
-   { "Close",      FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clWaveClose, (APTR)WAVE_GET_Close, (APTR)WAVE_SET_Close },
-   { "Decay",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Decay, (APTR)WAVE_SET_Decay },
-   { "Degree",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Degree, (APTR)WAVE_SET_Degree },
-   { "Dimensions", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, (MAXINT)&clWaveDimensions, (APTR)WAVE_GET_Dimensions, (APTR)WAVE_SET_Dimensions },
-   { "Frequency",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Frequency, (APTR)WAVE_SET_Frequency },
-   { "Height",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)WAVE_GET_Height, (APTR)WAVE_SET_Height },
-   { "Style",      FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clWaveStyle, (APTR)WAVE_GET_Style, (APTR)WAVE_SET_Style },
-   { "Thickness",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,    0, (APTR)WAVE_GET_Thickness, (APTR)WAVE_SET_Thickness },
-   { "X",          FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)WAVE_GET_X, (APTR)WAVE_SET_X },
-   { "Y",          FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)WAVE_GET_Y, (APTR)WAVE_SET_Y },
-   { "Width",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, 0, (APTR)WAVE_GET_Width, (APTR)WAVE_SET_Width },
+   { "Amplitude",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, WAVE_GET_Amplitude, WAVE_SET_Amplitude },
+   { "Close",      FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, WAVE_GET_Close, WAVE_SET_Close, &clWaveClose },
+   { "Decay",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, WAVE_GET_Decay, WAVE_SET_Decay },
+   { "Degree",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, WAVE_GET_Degree, WAVE_SET_Degree },
+   { "Dimensions", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, WAVE_GET_Dimensions, WAVE_SET_Dimensions, &clWaveDimensions },
+   { "Frequency",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, WAVE_GET_Frequency, WAVE_SET_Frequency },
+   { "Height",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, WAVE_GET_Height, WAVE_SET_Height },
+   { "Style",      FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, WAVE_GET_Style, WAVE_SET_Style, &clWaveStyle },
+   { "Thickness",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, WAVE_GET_Thickness, WAVE_SET_Thickness },
+   { "X",          FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, WAVE_GET_X, WAVE_SET_X },
+   { "Y",          FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, WAVE_GET_Y, WAVE_SET_Y },
+   { "Width",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, WAVE_GET_Width, WAVE_SET_Width },
    END_FIELD
 };
 
 static const ActionArray clWaveActions[] = {
-   { AC_NewObject,     (APTR)WAVE_NewObject },
-   { AC_Move,          (APTR)WAVE_Move },
-   { AC_MoveToPoint,   (APTR)WAVE_MoveToPoint },
-   //{ AC_Redimension, (APTR)WAVE_Redimension },
-   { AC_Resize,      (APTR)WAVE_Resize },
+   { AC_NewObject,     WAVE_NewObject },
+   { AC_Move,          WAVE_Move },
+   { AC_MoveToPoint,   WAVE_MoveToPoint },
+   //{ AC_Redimension, WAVE_Redimension },
+   { AC_Resize,      WAVE_Resize },
    { 0, NULL }
 };
 

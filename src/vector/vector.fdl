@@ -427,6 +427,9 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
   struct("MergeSource", { comment="Input source declaration for MergeFX" }, [[
    int(VSF) SourceType        # The type of the required source.
    obj(FilterEffect) Effect   # Effect pointer if the SourceType is REFERENCE.
+  ]],
+  [[
+  MergeSource(LONG pType, objFilterEffect *pEffect = NULL) : SourceType(pType), Effect(pEffect) { };
   ]])
 
   methods("RemapFX", "RF", {

@@ -66,18 +66,18 @@ static ERROR current_colour(extSVG *Self, objVector *Vector, FRGB &RGB)
 
 //********************************************************************************************************************
 
-static void parse_result(extSVG *Self, objFilterEffect *Effect, CSTRING Value)
+static void parse_result(extSVG *Self, objFilterEffect *Effect, std::string Value)
 {
-   if (!Self->Effects.contains(std::string(Value))) {
-      Self->Effects.emplace(std::string(Value), Effect);
+   if (!Self->Effects.contains(Value)) {
+      Self->Effects.emplace(Value, Effect);
    }
 }
 
 //********************************************************************************************************************
 
-static void parse_input(extSVG *Self, OBJECTPTR Effect, CSTRING Input, FIELD SourceField, FIELD RefField)
+static void parse_input(extSVG *Self, OBJECTPTR Effect, const std::string Input, FIELD SourceField, FIELD RefField)
 {
-   switch (StrHash(Input, FALSE)) {
+   switch (StrHash(Input)) {
       case SVF_SOURCEGRAPHIC:   Effect->set(SourceField, VSF_GRAPHIC); break;
       case SVF_SOURCEALPHA:     Effect->set(SourceField, VSF_ALPHA); break;
       case SVF_BACKGROUNDIMAGE: Effect->set(SourceField, VSF_BKGD); break;
@@ -90,7 +90,7 @@ static void parse_input(extSVG *Self, OBJECTPTR Effect, CSTRING Input, FIELD Sou
          }
          else {
             pf::Log log;
-            log.warning("Unrecognised input '%s'", Input);
+            log.warning("Unrecognised input '%s'", Input.c_str());
          }
          break;
       }
@@ -98,76 +98,62 @@ static void parse_input(extSVG *Self, OBJECTPTR Effect, CSTRING Input, FIELD Sou
 }
 
 //********************************************************************************************************************
-
-static LONG count_stops(extSVG *Self, const XMLTag *Tag)
-{
-   LONG stopcount = 0;
-   for (auto scan=Tag->Child; scan; scan=scan->Next) {
-      if (!StrMatch("stop", scan->Attrib->Name)) stopcount++;
-   }
-
-   return stopcount;
-}
-
-//********************************************************************************************************************
 // Note that all offsets are percentages.
 
-static ERROR process_transition_stops(extSVG *Self, const XMLTag *Tag, Transition *Stops)
+static std::vector<Transition> process_transition_stops(extSVG *Self, const objXML::TAGS &Tags)
 {
    pf::Log log("process_stops");
 
    log.traceBranch("");
 
-   LONG i = 0;
-   for (auto scan=Tag->Child; scan; scan=scan->Next) {
-      if (!StrMatch("stop", scan->Attrib->Name)) {
-         Stops[i].Offset = 0;
-         Stops[i].Transform = NULL;
-         for (LONG a=1; a < scan->TotalAttrib; a++) {
-            CSTRING name = scan->Attrib[a].Name;
-            CSTRING value = scan->Attrib[a].Value;
-            if (!value) continue;
+   std::vector<Transition> stops;
+   for (auto &scan : Tags) {
+      if (!StrMatch("stop", scan.name())) {
+         Transition stop;
+         stop.Offset = 0;
+         stop.Transform = NULL;
+         for (unsigned a=1; a < scan.Attribs.size(); a++) {
+            auto &name = scan.Attribs[a].Name;
+            auto &value = scan.Attribs[a].Value;
+            if (value.empty()) continue;
 
             if (!StrMatch("offset", name)) {
-               Stops[i].Offset = StrToFloat(value);
-               for (LONG j=0; value[j]; j++) {
-                  if (value[j] IS '%') {
-                     Stops[i].Offset = Stops[i].Offset * 0.01; // Must be in the range of 0 - 1.0
-                     break;
-                  }
+               stop.Offset = StrToFloat(value.c_str());
+               if (value.find('%') != std::string::npos) {
+                  stop.Offset = stop.Offset * 0.01; // Must be in the range of 0 - 1.0
                }
 
-               if (Stops[i].Offset < 0.0) Stops[i].Offset = 0;
-               else if (Stops[i].Offset > 1.0) Stops[i].Offset = 1.0;
+               if (stop.Offset < 0.0) stop.Offset = 0;
+               else if (stop.Offset > 1.0) stop.Offset = 1.0;
             }
             else if (!StrMatch("transform", name)) {
-               Stops[i].Transform = value;
+               stop.Transform = value.c_str();
             }
-            else log.warning("Unable to process stop attribute '%s'", name);
+            else log.warning("Unable to process stop attribute '%s'", name.c_str());
          }
-
-         i++;
+         stops.emplace_back(stop);
       }
-      else log.warning("Unknown element in transition, '%s'", scan->Attrib->Name);
+      else log.warning("Unknown element in transition, '%s'", scan.name());
    }
 
-   return ERR_Okay;
+   return stops;
 }
 
 //********************************************************************************************************************
-// Save an id reference for an SVG element.  The element can be then be found at any time with find_href().
+// Save an id reference for an SVG element.  The element can be then be found at any time with find_href().  We store
+// a copy of the tag data as pointer references are too high a risk.
 
-INLINE bool add_id(extSVG *Self, const XMLTag *Tag, CSTRING Name)
+INLINE bool add_id(extSVG *Self, const XMLTag &Tag, CSTRING Name)
 {
    if (Self->IDs.contains(std::string(Name))) return false;
-   Self->IDs.emplace(std::string(Name), Tag->Index);
+   Self->IDs.emplace(std::string(Name), Tag);
    return true;
 }
 
-INLINE bool add_id(extSVG *Self, const XMLTag *Tag, const std::string Name)
+INLINE bool add_id(extSVG *Self, const XMLTag &Tag, const std::string Name)
 {
    if (Self->IDs.contains(Name)) return false;
-   Self->IDs.emplace(Name, Tag->Index);
+   Self->IDs.emplace(Name, Tag);
    return true;
 }
 
@@ -199,34 +185,34 @@ static CSTRING folder(extSVG *Self)
 
 //********************************************************************************************************************
 
-static const std::string uri_name(CSTRING Ref)
+static const std::string uri_name(const std::string Ref)
 {
-   while ((*Ref) and (*Ref <= 0x20)) Ref++;
+   LONG skip = 0;
+   while ((Ref[skip]) and (Ref[skip] <= 0x20)) skip++;
 
-   if (*Ref IS '#') {
-      return std::string(Ref+1);
+   if (Ref[skip] IS '#') {
+      return Ref.substr(skip+1);
    }
-   else if (!StrCompare("url(#", Ref, 5, 0)) {
-      WORD i;
-      Ref += 5;
-      for (i=0; (Ref[i] != ')') and (Ref[i]); i++);
-      return std::string(Ref, i);
+   else if (!StrCompare("url(#", Ref.c_str() + skip, 5, 0)) {
+      LONG i;
+      skip += 5;
+      for (i=0; (Ref[skip+i] != ')') and (skip+i < LONG(Ref.size())); i++);
+      return Ref.substr(skip, i);
    }
-   else return std::string(Ref);
+   else return Ref.substr(skip);
 
    return std::string("");
 }
 
 //********************************************************************************************************************
 
-static LONG find_href_tag(extSVG *Self, CSTRING Ref)
+static XMLTag * find_href_tag(extSVG *Self, std::string Ref)
 {
-   while ((*Ref) and (*Ref <= 0x20)) Ref++;
    auto ref = uri_name(Ref);
    if ((!ref.empty()) and (Self->IDs.contains(ref))) {
-      return Self->IDs[ref].TagIndex;
+      return &Self->IDs[ref];
    }
-   return -1;
+   return NULL;
 }
 
 /*********************************************************************************************************************
@@ -242,35 +228,36 @@ static LONG find_href_tag(extSVG *Self, CSTRING Ref)
 **  12.467  = 12
 */
 
-static DOUBLE read_time(CSTRING Value)
+static DOUBLE read_time(const std::string Value)
 {
    DOUBLE units[3];
 
-   while ((*Value) and (*Value <= 0x20)) Value++;
-   if ((*Value >= '0') and (*Value <= '9')) {
-      units[0] = StrToFloat(Value);
-      while ((*Value >= '0') and (*Value <= '9')) Value++;
-      if (*Value IS '.') {
-         Value++;
-         while ((*Value >= '0') and (*Value <= '9')) Value++;
+   auto v = Value.c_str();
+   while ((*v) and (*v <= 0x20)) v++;
+   if ((*v >= '0') and (*v <= '9')) {
+      units[0] = StrToFloat(v);
+      while ((*v >= '0') and (*v <= '9')) v++;
+      if (*v IS '.') {
+         v++;
+         while ((*v >= '0') and (*v <= '9')) v++;
       }
 
-      if (*Value IS ':') {
-         Value++;
-         units[1] = StrToFloat(Value);
-         while ((*Value >= '0') and (*Value <= '9')) Value++;
-         if (*Value IS '.') {
-            Value++;
-            while ((*Value >= '0') and (*Value <= '9')) Value++;
+      if (*v IS ':') {
+         v++;
+         units[1] = StrToFloat(v);
+         while ((*v >= '0') and (*v <= '9')) v++;
+         if (*v IS '.') {
+            v++;
+            while ((*v >= '0') and (*v <= '9')) v++;
          }
 
-         if (*Value IS ':') {
-            Value++;
-            units[2] = StrToFloat(Value);
-            while ((*Value >= '0') and (*Value <= '9')) Value++;
-            if (*Value IS '.') {
-               Value++;
-               while ((*Value >= '0') and (*Value <= '9')) Value++;
+         if (*v IS ':') {
+            v++;
+            units[2] = StrToFloat(v);
+            while ((*v >= '0') and (*v <= '9')) v++;
+            if (*v IS '.') {
+               v++;
+               while ((*v >= '0') and (*v <= '9')) v++;
             }
 
             // hh:nn:ss
@@ -280,19 +267,19 @@ static DOUBLE read_time(CSTRING Value)
             return (units[0] * 60 * 60) + (units[1] * 60);
          }
       }
-      else if ((Value[0] IS 'h') and (Value[1] <= 0x20)) {
+      else if ((v[0] IS 'h') and (v[1] <= 0x20)) {
          return units[0] * 60 * 60;
       }
-      else if ((Value[0] IS 's') and (Value[1] <= 0x20)) {
+      else if ((v[0] IS 's') and (v[1] <= 0x20)) {
          return units[0];
       }
-      else if ((Value[0] IS 'm') and (Value[1] IS 'i') and (Value[2] IS 'n') and (Value[3] IS 0)) {
+      else if ((v[0] IS 'm') and (v[1] IS 'i') and (v[2] IS 'n') and (v[3] IS 0)) {
          return units[0] * 60;
       }
-      else if ((Value[0] IS 'm') and (Value[1] IS 's') and (Value[2] <= 0x20)) {
+      else if ((v[0] IS 'm') and (v[1] IS 's') and (v[2] <= 0x20)) {
          return units[0] / 1000.0;
       }
-      else if (Value[0] <= 0x20) return units[0];
+      else if (v[0] <= 0x20) return units[0];
       else return 0;
    }
    else return 0;
@@ -301,15 +288,16 @@ static DOUBLE read_time(CSTRING Value)
 //********************************************************************************************************************
 // Designed for reading unit values such as '50%' and '6px'.  The returned value is scaled to pixels.
 
-static DOUBLE read_unit(CSTRING Value, LARGE *FieldID)
+static DOUBLE read_unit(const std::string Value, LARGE *FieldID)
 {
-   BYTE isnumber = TRUE;
+   bool isnumber = true;
 
    *FieldID |= TDOUBLE;
 
-   while ((*Value) and (*Value <= 0x20)) Value++;
+   auto v = Value.c_str();
+   while ((*v) and (*v <= 0x20)) v++;
 
-   CSTRING str = Value;
+   CSTRING str = v;
    if ((*str IS '-') or (*str IS '+')) str++;
 
    if (((*str >= '0') and (*str <= '9')) or (*str IS '.')) {
@@ -320,7 +308,7 @@ static DOUBLE read_unit(CSTRING Value, LARGE *FieldID)
          if ((*str >= '0') and (*str <= '9')) {
             while ((*str >= '0') and (*str <= '9')) str++;
          }
-         else isnumber = FALSE;
+         else isnumber = false;
       }
 
       DOUBLE multiplier = 1.0;
@@ -339,24 +327,24 @@ static DOUBLE read_unit(CSTRING Value, LARGE *FieldID)
       else if ((str[0] IS 'p') and (str[1] IS 't')) multiplier = (4.0 / 3.0); // Points.  A point is 4/3 of a pixel
       else if ((str[0] IS 'p') and (str[1] IS 'c')) multiplier = (4.0 / 3.0) * 12.0; // Pica.  1 Pica is equal to 12 Points
 
-      return StrToFloat(Value) * multiplier;
+      return StrToFloat(v) * multiplier;
    }
    else return 0;
 }
 
 //********************************************************************************************************************
 
-template <class T> static inline void set_double(T Object, FIELD FieldID, CSTRING Value)
+template <class T> static inline void set_double(T Object, FIELD FieldID, const std::string Value)
 {
    LARGE field = FieldID;
    DOUBLE num = read_unit(Value, &field);
    SetField(Object, field, num);
 }
 
-//***************************************************************************
+//********************************************************************************************************************
 // This version forces all coordinates to be interpreted as relative when in BOUNDINGBOX mode.
 
-INLINE void set_double_units(OBJECTPTR Object, FIELD FieldID, CSTRING Value, LONG Units)
+INLINE void set_double_units(OBJECTPTR Object, FIELD FieldID, const std::string Value, LONG Units)
 {
    LARGE field = FieldID;
    DOUBLE num = read_unit(Value, &field);
@@ -373,63 +361,69 @@ INLINE void set_double_units(OBJECTPTR Object, FIELD FieldID, CSTRING Value, LON
 // The parser will break once the string value terminates, or an invalid character is encountered.  Parsed characters
 // include: 0 - 9 , ( ) - + SPACE
 
-static CSTRING read_numseq(CSTRING Value, ...)
+static void read_numseq(const std::string Value, ...)
 {
    va_list list;
    DOUBLE *result;
 
-   if ((!Value) or (!Value[0])) return Value;
+   if (Value.empty()) return;
 
    va_start(list, Value);
 
+   auto v = Value.c_str();
    while ((result = va_arg(list, DOUBLE *))) {
-      while ((*Value) and ((*Value <= 0x20) or (*Value IS ',') or (*Value IS '(') or (*Value IS ')'))) Value++;
-      if (!Value[0]) break;
+      while ((*v) and ((*v <= 0x20) or (*v IS ',') or (*v IS '(') or (*v IS ')'))) v++;
+      if (!v[0]) break;
 
       STRING next = NULL;
-      DOUBLE num = strtod(Value, &next);
-      if ((!num) and ((!next) or (Value IS next))) {  // Invalid character or end-of-stream check.
-         Value = next;
+      DOUBLE num = strtod(v, &next);
+      if ((!num) and ((!next) or (v IS next))) {  // Invalid character or end-of-stream check.
+         v = next;
          break;
       }
 
       *result = num;
-      Value = next;
+      v = next;
    }
 
    va_end(list);
-   return Value;
+}
+
+//********************************************************************************************************************
+
+template<class T = DOUBLE> std::vector<T> read_array(const std::string Value, LONG Limit = 0x7fffffff)
+{
+   std::vector<T> result;
+
+   CSTRING v = Value.c_str();
+   while ((*v) and (LONG(result.size()) < Limit)) {
+      while ((*v) and ((*v <= 0x20) or (*v IS ',') or (*v IS '(') or (*v IS ')'))) v++;
+      if (!*v) return result;
+
+      STRING next = NULL;
+      DOUBLE num = strtod(v, &next);
+      if ((!num) and (!next)) return result;
+      result.push_back(num);
+      v = next;
+   }
+
+   return result;
 }
 
 //********************************************************************************************************************
 // Currently used by gradient functions.
 
-static void add_inherit(extSVG *Self, OBJECTPTR Object, CSTRING ID)
+static void add_inherit(extSVG *Self, OBJECTPTR Object, const std::string ID)
 {
    pf::Log log(__FUNCTION__);
-   svgInherit *inherit;
-   log.trace("Object: %d, ID: %s", Object->UID, ID);
-   if (!AllocMemory(sizeof(svgInherit), MEM_DATA|MEM_NO_CLEAR, &inherit)) {
-      inherit->Object = Object;
-      inherit->Next = Self->Inherit;
-      while ((*ID) and (*ID IS '#')) ID++;
-      StrCopy(ID, inherit->ID, sizeof(inherit->ID));
-      Self->Inherit = inherit;
-   }
-}
+   log.trace("Object: %d, ID: %s", Object->UID, ID.c_str());
 
-//********************************************************************************************************************
+   auto &inherit = Self->Inherit.emplace_back();
+   inherit.Object = Object;
 
-static void reset_state(svgState *State)
-{
-   static const char *fill = "rgb(0,0,0)";
-   static const char *family = "Open Sans";
-   ClearMemory(State, sizeof(*State));
-   State->Fill = fill;
-   State->FillOpacity = -1;
-   State->Opacity = -1;
-   State->FontFamily = family;
-   State->PathQuality = RQ_AUTO;
+   auto hash = ID.find('#');
+   if (hash IS std::string::npos) inherit.ID = ID;
+   else inherit.ID = ID.substr(hash);
 }
 
 //********************************************************************************************************************
@@ -491,28 +485,25 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
       if (!acInit(xml)) {
          Self->SVGVersion = 1.0;
 
-         convert_styles(xml);
+         convert_styles(xml->Tags);
 
          objVector *sibling = NULL;
-         for (auto tag=xml->Tags[0]; (tag); tag=tag->Next) {
-            if (!StrMatch("svg", tag->Attrib->Name)) {
+         for (auto &scan : xml->Tags) {
+            if (!StrMatch("svg", scan.name())) {
                svgState state;
-               reset_state(&state);
-               if (Self->Target) xtag_svg(Self, xml, &state, tag, Self->Target, &sibling);
-               else xtag_svg(Self, xml, &state, tag, Self->Scene, &sibling);
+               if (Self->Target) xtag_svg(Self, xml, state, scan, Self->Target, &sibling);
+               else xtag_svg(Self, xml, state, scan, Self->Scene, &sibling);
             }
          }
 
          // Support for inheritance
 
-         svgInherit *inherit = Self->Inherit;
-         while (inherit) {
+         for (auto &inherit : Self->Inherit) {
             OBJECTPTR ref;
-            if (!scFindDef(Self->Scene, inherit->ID, &ref)) {
-               inherit->Object->set(FID_Inherit, ref);
+            if (!scFindDef(Self->Scene, inherit.ID.c_str(), &ref)) {
+               inherit.Object->set(FID_Inherit, ref);
             }
-            else log.warning("Failed to resolve ID %s for inheritance.", inherit->ID);
-            inherit = inherit->Next;
+            else log.warning("Failed to resolve ID %s for inheritance.", inherit.ID.c_str());
          }
 
          if (Self->Flags & SVF_AUTOSCALE) {
@@ -542,42 +533,45 @@ end:
 }
 
 //********************************************************************************************************************
+// Example style string: "fill:rgb(255,0,0);stroke:none;"
 
-static void convert_styles(objXML *XML)
+static void convert_styles(objXML::TAGS &Tags)
 {
    pf::Log log(__FUNCTION__);
 
-   for (LONG t=0; t < XML->TagCount; t++) {
-      char value[1024];
-      XMLTag *tag = XML->Tags[t];
-      for (LONG a=1; a < tag->TotalAttrib; a++) {
-         if (!StrMatch("style", tag->Attrib[a].Name)) {
-            // Convert all the style values into real attributes.
+   for (auto &tag : Tags) {
+      for (unsigned style=1; style < tag.Attribs.size(); style++) {
+         if (StrMatch("style", tag.Attribs[style].Name)) continue;
 
-            LONG tagindex = tag->Index;
-            StrCopy(tag->Attrib[a].Value, value, sizeof(value));
-            LONG v = 0;
-            while (value[v]) {
-               while ((value[v]) and (value[v] <= 0x20)) v++;
+         // Convert all the style values into real attributes.
 
-               LONG ni = v;
-               char c;
-               while ((c = value[v]) and (c != ':')) v++;
+         auto value = std::move(tag.Attribs[style].Value);
+         tag.Attribs.erase(tag.Attribs.begin() + style);
+         for (unsigned v=0; v < value.size(); ) {
+            while ((value[v]) and (value[v] <= 0x20)) v++;
 
-               if (c IS ':') {
-                  value[v++] = 0;
-                  while ((value[v]) and (value[v] <= 0x20)) v++;
-                  LONG vi = v;
-                  while ((value[v]) and (value[v] != ';')) v++;
-                  if (value[v] IS ';') value[v++] = 0;
-                  if (v > vi) xmlSetAttrib(XML, tagindex, XMS_NEW, value+ni, value+vi);
-               }
-               else log.warning("Style string missing ':' to denote value: %s", value);
+            auto n_start = v;
+            auto n_end = value.find(':', n_start);
+            if (n_end != std::string::npos) {
+               auto v_start = n_end + 1;
+               while ((value[v_start]) and (value[v_start] <= 0x20)) v_start++;
+
+               auto v_end = value.find(';', v_start);
+               if (v_end IS std::string::npos) v_end = value.size();
+
+               tag.Attribs.emplace_back(value.substr(n_start, n_end - n_start), value.substr(v_start, v_end-v_start));
+
+               v = v_end + 1;
             }
-
-            xmlSetAttrib(XML, tagindex, XMS_UPDATE, "style", (CSTRING)NULL); // Remove the style attribute.
-            break;
+            else {
+               log.warning("Style string missing ':' to denote value: %s", value.c_str());
+               break;
+            }
          }
+
+         break;
       }
+
+      if (!tag.Children.empty()) convert_styles(tag.Children);
    }
 }

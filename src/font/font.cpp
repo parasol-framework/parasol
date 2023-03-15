@@ -263,7 +263,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    CoreBase = argCoreBase;
 
-   argModule->getPtr(FID_Master, &modFont);
+   argModule->getPtr(FID_Root, &modFont);
 
    if (objModule::load("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
 
@@ -1516,6 +1516,7 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING
 
             font_count  = 0;
             font_offset = 0;
+            size_shift = 0;
             flReadLE(*file, &size_shift);
 
             for (flReadLE(*file, &type_id); type_id; flReadLE(*file, &type_id)) {
@@ -1544,7 +1545,7 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING
                // Get the offset and size of each font entry
 
                for (LONG i=0; i < font_count; i++) {
-                  UWORD offset, size;
+                  UWORD offset = 0, size = 0;
                   flReadLE(*file, &offset);
                   flReadLE(*file, &size);
                   fonts[i].Offset = offset<<size_shift;
@@ -1608,4 +1609,4 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_FONT)
+PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_FONT, MOD_IDL, NULL)

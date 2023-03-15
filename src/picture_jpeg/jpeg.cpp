@@ -319,10 +319,10 @@ static ERROR JPEG_SaveImage(prvPicture *Self, struct acSaveImage *Args)
 //********************************************************************************************************************
 
 static ActionArray clActions[] = {
-   { AC_Activate,  (APTR)JPEG_Activate },
-   { AC_Init,      (APTR)JPEG_Init },
-   { AC_Query,     (APTR)JPEG_Query },
-   { AC_SaveImage, (APTR)JPEG_SaveImage },
+   { AC_Activate,  JPEG_Activate },
+   { AC_Init,      JPEG_Init },
+   { AC_Query,     JPEG_Query },
+   { AC_SaveImage, JPEG_SaveImage },
    { 0, NULL }
 };
 
@@ -361,4 +361,4 @@ static ERROR CMDExpunge(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, 1.0)
+PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, 1.0, MOD_IDL, NULL)

@@ -5308,9 +5308,9 @@ static ERROR process_page(extDocument *Self, objXML *xml)
          Self->HeaderTag = NULL;
          Self->FooterTag = NULL;
          for (LONG i=0; xml->Tags[i]; i++) {
-            if (!xml->Tags[i]->Attrib->Name) continue; // Ignore content
+            if (!xml->Tags[i].Attrib->Name) continue; // Ignore content
 
-            ULONG tag_hash = StrHash(xml->Tags[i]->Attrib->Name, 0);
+            ULONG tag_hash = StrHash(xml->Tags[i].Attrib->Name, 0);
 
             if (tag_hash IS HASH_page) {
                break;
@@ -5319,51 +5319,51 @@ static ERROR process_page(extDocument *Self, objXML *xml)
                // If a <body> tag contains any children, it is treated as a template and must contain an <inject/> tag so
                // that the XML insertion point is known.
 
-               Self->BodyTag = xml->Tags[i]->Child;
+               Self->BodyTag = xml->Tags[i].Child;
                insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
-               i = xml->Tags[i]->Next->Index - 1;
+               i = xml->Tags[i].Next->Index - 1;
             }
             else if (tag_hash IS HASH_background) {
                insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
-               i = xml->Tags[i]->Next->Index - 1;
+               i = xml->Tags[i].Next->Index - 1;
             }
             else if (tag_hash IS HASH_editdef) {
                insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
-               i = xml->Tags[i]->Next->Index - 1;
+               i = xml->Tags[i].Next->Index - 1;
             }
             else if (tag_hash IS HASH_template) {
                insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
-               i = xml->Tags[i]->Next->Index - 1;
+               i = xml->Tags[i].Next->Index - 1;
             }
             else if (tag_hash IS HASH_head) {
                insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
-               i = xml->Tags[i]->Next->Index - 1;
+               i = xml->Tags[i].Next->Index - 1;
             }
             else if (tag_hash IS HASH_info) {
                insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
-               i = xml->Tags[i]->Next->Index - 1;
+               i = xml->Tags[i].Next->Index - 1;
             }
             else if (tag_hash IS HASH_include) {
                insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
-               i = xml->Tags[i]->Next->Index - 1;
+               i = xml->Tags[i].Next->Index - 1;
             }
             else if (tag_hash IS HASH_parse) {
                insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
-               i = xml->Tags[i]->Next->Index - 1;
+               i = xml->Tags[i].Next->Index - 1;
             }
             else if (tag_hash IS HASH_script) {
                insert_xml(Self, xml, xml->Tags[i], Self->StreamLen, 0);
-               i = xml->Tags[i]->Next->Index - 1;
+               i = xml->Tags[i].Next->Index - 1;
             }
             else if (tag_hash IS HASH_header) {
-               Self->HeaderTag = xml->Tags[i]->Child;
-               i = xml->Tags[i]->Next->Index - 1;
+               Self->HeaderTag = xml->Tags[i].Child;
+               i = xml->Tags[i].Next->Index - 1;
             }
             else if (tag_hash IS HASH_footer) {
-               Self->FooterTag = xml->Tags[i]->Child;
-               i = xml->Tags[i]->Next->Index - 1;
+               Self->FooterTag = xml->Tags[i].Child;
+               i = xml->Tags[i].Next->Index - 1;
             }
-            else log.warning("Tag '%s' Not supported at the root level.", xml->Tags[i]->Attrib->Name);
+            else log.warning("Tag '%s' Not supported at the root level.", xml->Tags[i].Attrib->Name);
          }
       }
 

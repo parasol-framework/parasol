@@ -55,10 +55,9 @@ end
 -- will hit the local DNS cache and return immediately.
 
 function testDuplication()
-   local proc = processing.new({ timeout = 5.0 })
    local resolved = 0
 
-   local domains = { 'yahoo.com', 'reddit.com' }
+   local domains = { 'google.com', 'reddit.com' }
    function duplicate_resolved(NetLookup, Error)
       assert(Error == ERR_Okay, 'Failed to resolve ' .. NetLookup.HostName .. ', error ' ..mSys.GetErrorMsg(Error))
 
@@ -72,15 +71,21 @@ function testDuplication()
    end
 
    for k,v in pairs(domains) do
-      local nl = obj.new('NetLookup', { callback = duplicate_resolved, flags=NLF_NO_CACHE })
-      local err = nl.mtResolveName(v)
-      err = proc.sleep()
-      assert(err == ERR_Okay, 'Name resolution failed: ' .. mSys.GetErrorMsg(err))
+      local nlA = obj.new('NetLookup', { callback = duplicate_resolved, flags=NLF_NO_CACHE })
+      local nlB = obj.new('NetLookup', { callback = duplicate_resolved })
 
-      nl = obj.new('NetLookup', { callback = duplicate_resolved })
-      err = nl.mtResolveName(v)
+      local err = nlA.mtResolveName(v)
       err = proc.sleep()
       assert(err == ERR_Okay, 'Name resolution failed: ' .. mSys.GetErrorMsg(err))
+      print('First lookup processed successfully.')
+
+      local save = resolved
+      err = nlB.mtResolveName(v)
+      if (save == resolved) then
+         err = proc.sleep()
+         assert(err == ERR_Okay, 'Name resolution failed: ' .. mSys.GetErrorMsg(err))
+      end
+      print('Second lookup processed successfully.')
    end
 end
 

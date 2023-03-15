@@ -2086,23 +2086,23 @@ static const FieldDef clPermissionFlags[] = {
 #include "class_compression_def.c"
 
 static const FieldArray clFields[] = {
-   { "TotalOutput",      FDF_LARGE|FDF_R,            0, NULL, NULL },
-   { "Output",           FDF_OBJECTID|FDF_RI,        0, NULL, NULL },
-   { "CompressionLevel", FDF_LONG|FDF_RW,            0, NULL, (APTR)SET_CompressionLevel },
-   { "Flags",            FDF_LONGFLAGS|FDF_RW,       (MAXINT)&clCompressionFlags, NULL, NULL },
-   { "SegmentSize",      FDF_LONG|FDF_SYSTEM|FDF_RW, 0, NULL, NULL },
-   { "Permissions",      FDF_LONG|FDF_LOOKUP|FDF_RW, (MAXINT)&clPermissionFlags, NULL, NULL },
-   { "MinOutputSize",    FDF_LONG|FDF_R,             0, NULL, NULL },
-   { "WindowBits",       FDF_LONG|FDF_RW,            0, NULL, (APTR)SET_WindowBits },
+   { "TotalOutput",      FDF_LARGE|FDF_R },
+   { "Output",           FDF_OBJECTID|FDF_RI },
+   { "CompressionLevel", FDF_LONG|FDF_RW, NULL, SET_CompressionLevel },
+   { "Flags",            FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clCompressionFlags },
+   { "SegmentSize",      FDF_LONG|FDF_SYSTEM|FDF_RW },
+   { "Permissions",      FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clPermissionFlags },
+   { "MinOutputSize",    FDF_LONG|FDF_R },
+   { "WindowBits",       FDF_LONG|FDF_RW, NULL, SET_WindowBits },
    // Virtual fields
-   { "ArchiveName",      FDF_STRING|FDF_W,       0, NULL, (APTR)SET_ArchiveName },
-   { "Path",             FDF_STRING|FDF_RW,      0, (APTR)GET_Path, (APTR)SET_Path },
-   { "Feedback",         FDF_FUNCTIONPTR|FDF_RW, 0, (APTR)GET_Feedback, (APTR)SET_Feedback },
-   { "Header",           FDF_POINTER|FDF_R,      0, (APTR)GET_Header,   NULL },
-   { "Password",         FDF_STRING|FDF_RW,      0, (APTR)GET_Password, (APTR)SET_Password },
-   { "Size",             FDF_LARGE|FDF_R,        0, (APTR)GET_Size, NULL },
-   { "Src",              FDF_SYNONYM|FDF_STRING|FDF_RW, 0, (APTR)GET_Path, (APTR)SET_Path },
-   { "UncompressedSize", FDF_LARGE|FDF_R,        0, (APTR)GET_UncompressedSize, NULL },
+   { "ArchiveName",      FDF_STRING|FDF_W,       NULL, SET_ArchiveName },
+   { "Path",             FDF_STRING|FDF_RW,      GET_Path, SET_Path },
+   { "Feedback",         FDF_FUNCTIONPTR|FDF_RW, GET_Feedback, SET_Feedback },
+   { "Header",           FDF_POINTER|FDF_R,      GET_Header },
+   { "Password",         FDF_STRING|FDF_RW,      GET_Password, SET_Password },
+   { "Size",             FDF_LARGE|FDF_R,        GET_Size },
+   { "Src",              FDF_SYNONYM|FDF_STRING|FDF_RW, GET_Path, SET_Path },
+   { "UncompressedSize", FDF_LARGE|FDF_R,        GET_UncompressedSize },
    END_FIELD
 };
 

@@ -42,10 +42,10 @@ static const ActionArray clColourActions[] = {
 };
 
 static const FieldArray clColourFields[] = {
-   { "Red",   FDF_DOUBLE|FDF_RW, 0, NULL, NULL },
-   { "Green", FDF_DOUBLE|FDF_RW, 0, NULL, NULL },
-   { "Blue",  FDF_DOUBLE|FDF_RW, 0, NULL, NULL },
-   { "Alpha", FDF_DOUBLE|FDF_RW, 0, NULL, NULL },
+   { "Red",   FDF_DOUBLE|FDF_RW },
+   { "Green", FDF_DOUBLE|FDF_RW },
+   { "Blue",  FDF_DOUBLE|FDF_RW },
+   { "Alpha", FDF_DOUBLE|FDF_RW },
    END_FIELD
 };
 
