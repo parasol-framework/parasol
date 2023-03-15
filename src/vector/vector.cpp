@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 *********************************************************************************************************************/
 
@@ -152,4 +151,15 @@ ERROR CMDExpunge(void)
 //********************************************************************************************************************
 
 extern ERROR CMDOpen(OBJECTPTR Module);
-PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_VECTOR, MOD_IDL, NULL)
+
+static STRUCTS glStructures = {
+   { "GradientStop", sizeof(GradientStop) },
+   { "MergeSource",  sizeof(MergeSource) },
+   { "PathCommand",  sizeof(PathCommand) },
+   { "Transition",   sizeof(Transition) },
+   { "VectorDef",    sizeof(VectorDef) },
+   { "VectorMatrix", sizeof(VectorMatrix) },
+   { "VectorPoint",  sizeof(VectorPoint) }
+};
+
+PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_VECTOR, MOD_IDL, &glStructures)

@@ -44,7 +44,7 @@
     <field>
       <name>ActionTable</name>
       <comment>This field can be read to retrieve a MetaClass object's internal action table.</comment>
-      <access read="R">Read</access>
+      <access read="G">Get</access>
       <type>APTR []</type>
       <description>
 <p>This field retrieves the internal action table of a class. The action table is arranged into a jump table of action routines, with each routine pointing directly to the object support functions.  The size of the jump table is defined by the global constant <code>AC_END</code>.  The table is sorted by action ID.</p>

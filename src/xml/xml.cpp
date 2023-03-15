@@ -19,7 +19,7 @@ object will rebuild itself.  This saves on allocating multiple XML objects for b
 Successfully processed data can be read back by scanning the array referenced in the #Tags field.  The array contains
 an XMLTag structure for each tag parsed from the original XML statement.  For more information on how to scan this
 information, refer to the #Tags field.  C++ developers are recommended to interact with #Tags directly, which
-is represented as `pf::vector<XMLTag>`.  Note that adding new Tags is a volatile action that can destabilise the
+is represented as `pf::vector&lt;XMLTag&gt;`.  Note that adding new Tags is a volatile action that can destabilise the
 object (taking a complete copy of the tags may be warranted instead).
 
 -END-
@@ -30,12 +30,6 @@ NOTATION     <!NOTATION gif SYSTEM "viewer.exe">
 
 *********************************************************************************************************************/
 
-#undef DEBUG
-//#define DEBUG // Enables extensive debugging of the XML tree
-//#define DEBUG_TREE_REMOVE // Print out the tree structure whenever RemoveTag is used
-//#define DEBUG_TREE_INSERT // Print out the tree structure whenever InsertXML is used
-//#define DEBUG_TREE_MOVE   // Print out the tree structure whenever MoveTags is used
-
 #define PRV_XML
 #include <parasol/modules/xml.h>
 #include <functional>
@@ -44,12 +38,6 @@ NOTATION     <!NOTATION gif SYSTEM "viewer.exe">
 MODULE_COREBASE;
 static OBJECTPTR clXML = NULL;
 static ULONG glTagID = 1;
-
-struct ListSort {
-   XMLTag *Tag;       // Pointer to the XML tag
-   std::string Value; // Sort data
-   ListSort(XMLTag *pTag, const std::string pValue) : Tag(pTag), Value(pValue) { }
-};
 
 struct ParseState {
    CSTRING Pos;
@@ -242,8 +230,8 @@ static ERROR XML_Clear(extXML *Self, APTR Void)
 
    Self->Tags.clear();
    Self->LineNo = 1;
+   Self->Start  = 0;
    Self->ParseError = ERR_Okay;
-   Self->Start = 0;
    Self->modified();
    return ERR_Okay;
 }
@@ -1474,6 +1462,12 @@ static ERROR XML_SortXML(extXML *Self, struct xmlSort *Args)
    }
 
    // Build a sorting array (extract a sort value for each tag and keep a tag reference).
+
+   struct ListSort {
+      XMLTag *Tag;
+      std::string Value;
+      ListSort(XMLTag *pTag, const std::string pValue) : Tag(pTag), Value(pValue) { }
+   };
 
    std::vector<ListSort> list;
    for (auto &scan : branch[0]) {

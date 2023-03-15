@@ -134,7 +134,7 @@ static const FieldArray glMetaFields[] = {
    { "Category",        FDF_LONG|FDF_LOOKUP|FDF_RI, NULL, NULL, &CategoryTable },
    // Virtual fields
    { "Actions",         FDF_POINTER|FDF_I },
-   { "ActionTable",     FDF_ARRAY|FDF_POINTER|FDF_R },
+   { "ActionTable",     FDF_ARRAY|FDF_POINTER|FDF_R, GET_ActionTable },
    { "Location",        FDF_STRING|FDF_R },
    { "Name",            FDF_STRING|FDF_SYSTEM|FDF_RI, GET_ClassName, SET_ClassName },
    { "Module",          FDF_STRING|FDF_R, GET_Module },

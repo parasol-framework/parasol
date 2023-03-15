@@ -39,8 +39,57 @@ It is critical that the module object is permanently retained until the program 
 #include "../defs.h"
 #include <parasol/main.h>
 
+static STRUCTS glStructures = {
+   { "ActionArray",         sizeof(ActionArray) },
+   { "ActionEntry",         sizeof(ActionEntry) },
+   //{ "ActionTable",         sizeof(ActionTable) },
+   { "CacheFile",           sizeof(CacheFile) },
+   { "ChildEntry",          sizeof(ChildEntry) },
+   { "ClipRectangle",       sizeof(ClipRectangle) },
+   { "ColourFormat",        sizeof(ColourFormat) },
+   { "CompressedItem",      sizeof(CompressedItem) },
+   { "CompressionFeedback", sizeof(CompressionFeedback) },
+   { "DateTime",            sizeof(DateTime) },
+   { "DebugMessage",        sizeof(DebugMessage) },
+   { "DirInfo",             sizeof(DirInfo) },
+   { "Edges",               sizeof(Edges) },
+   { "ExposeMessage",       sizeof(ExposeMessage) },
+   { "FRGB",                sizeof(FRGB) },
+   { "Field",               sizeof(Field) },
+   { "FieldArray",          sizeof(FieldArray) },
+   { "FieldDef",            sizeof(FieldDef) },
+   { "FileFeedback",        sizeof(FileFeedback) },
+   { "FileInfo",            sizeof(FileInfo) },
+   { "Function",            sizeof(Function) },
+   { "FunctionField",       sizeof(FunctionField) },
+   { "HSV",                 sizeof(HSV) },
+   { "InputEvent",          sizeof(InputEvent) },
+   { "KeyStore",            sizeof(KeyStore) },
+   { "MemInfo",             sizeof(MemInfo) },
+   { "Message",             sizeof(Message) },
+   { "MethodArray",         sizeof(MethodArray) },
+   { "ModHeader",           sizeof(ModHeader) },
+   { "MsgHandler",          sizeof(MsgHandler) },
+   { "ObjectSignal",        sizeof(ObjectSignal) },
+   { "RGB16",               sizeof(RGB16) },
+   { "RGB32",               sizeof(RGB32) },
+   { "RGB8",                sizeof(RGB8) },
+   { "RGBPalette",          sizeof(RGBPalette) },
+   { "ResourceManager",     sizeof(ResourceManager) },
+   { "SystemState",         sizeof(SystemState) },
+   { "ThreadActionMessage", sizeof(ThreadActionMessage) },
+   { "ThreadMessage",       sizeof(ThreadMessage) },
+   { "Variable",            sizeof(Variable) },
+   { "dcAudio",             sizeof(dcAudio) },
+   { "dcDeviceInput",       sizeof(dcDeviceInput) },
+   { "dcKeyEntry",          sizeof(dcKeyEntry) },
+   { "dcRequest",           sizeof(dcRequest) },
+   { "rkBase64Decode",      sizeof(rkBase64Decode) },
+   { "rkBase64Encode",      sizeof(rkBase64Encode) }
+};
+
 static RootModule glCoreRoot;
-static ModHeader glCoreHeader(NULL, NULL, NULL, NULL, VER_CORE, glIDL, NULL, "Core");
+static ModHeader glCoreHeader(NULL, NULL, NULL, NULL, VER_CORE, glIDL, &glStructures, "Core");
 
 static bool cmp_mod_names(CSTRING, CSTRING);
 static RootModule * check_resident(extModule *, CSTRING);
@@ -383,8 +432,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
 
       if (master->Init) {
          // Build a Core base for the module to use
-         struct CoreBase *modkb;
-         if ((modkb = (struct CoreBase *)build_jump_table(master->Table->Flags, glFunctions, 0))) {
+         if (auto modkb = (struct CoreBase *)build_jump_table(master->Table->Flags, glFunctions, 0)) {
             master->CoreBase = modkb;
             fix_core_table(modkb, table->CoreVersion);
 
@@ -739,6 +787,8 @@ static RootModule * check_resident(extModule *Self, CSTRING ModuleName)
       if (!kminit) {
          kminit = true;
          ClearMemory(&glCoreRoot, sizeof(glCoreRoot));
+         glCoreRoot.Class       = glRootModuleClass;
+         glCoreRoot.ClassID     = ID_ROOTMODULE;
          glCoreRoot.Name        = "Core";
          glCoreRoot.Version     = 1;
          glCoreRoot.OpenCount   = 1;

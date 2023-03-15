@@ -334,26 +334,24 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
 
             if (total < 1024) {
                if (field->Flags & FD_LONG) {
-                  LONG values[total];
-                  ClearMemory(values, sizeof(LONG) * total);
+                  pf::vector<LONG> values((size_t)total);
                   for (lua_pushnil(Lua); lua_next(Lua, t); lua_pop(Lua, 1)) {
                      LONG index = lua_tointeger(Lua, -2) - 1;
                      if ((index >= 0) and (index < total)) {
                         values[index] = lua_tointeger(Lua, -1);
                      }
                   }
-                  return SetArray(target, field->FieldID|TLONG, values, total);
+                  return SetArray(target, field->FieldID|TLONG, values);
                }
                else if (field->Flags & FD_STRING) {
-                  CSTRING values[total];
-                  ClearMemory(values, sizeof(CSTRING) * total);
+                  pf::vector<CSTRING> values((size_t)total);
                   for (lua_pushnil(Lua); lua_next(Lua, t); lua_pop(Lua, 1)) {
                      LONG index = lua_tointeger(Lua, -2) - 1;
                      if ((index >= 0) and (index < total)) {
                         values[index] = lua_tostring(Lua, -1);
                      }
                   }
-                  return SetArray(target, field->FieldID|TSTR, values, total);
+                  return SetArray(target, field->FieldID|TSTR, values);
                }
                else if (field->Flags & FD_STRUCT) {
                   // Array structs can be set if the Lua table consists of Fluid.struct types.
@@ -374,8 +372,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
                               return ERR_SetValueNotArray;
                            }
                            else if (type IS LUA_TUSERDATA) {
-                              struct fstruct *fstruct;
-                              if ((fstruct = (struct fstruct *)get_meta(Lua, ValueIndex, "Fluid.struct"))) {
+                              if (auto fstruct = (struct fstruct *)get_meta(Lua, ValueIndex, "Fluid.struct")) {
                                  CopyMemory(fstruct->Data, sti, fstruct->StructSize);
                               }
                            }
@@ -413,12 +410,8 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
          else return ERR_SetValueNotFunction;
       }
       else if (field->Flags & FD_POINTER) {
-         struct memory *memory;
-         struct fstruct *fstruct;
-
          if (field->Flags & (FD_OBJECT|FD_INTEGRAL)) { // Writing to an integral is permitted if marked as writeable.
-            struct object *object;
-            if ((object = (struct object *)get_meta(Lua, ValueIndex, "Fluid.obj"))) {
+            if (auto object = (struct object *)get_meta(Lua, ValueIndex, "Fluid.obj")) {
                OBJECTPTR ptr_obj;
                if (object->prvObject) {
                   return target->set(field->FieldID, object->prvObject);
@@ -445,10 +438,10 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
             }
             else return ERR_SetValueNotPointer;
          }
-         else if ((memory = (struct memory *)get_meta(Lua, ValueIndex, "Fluid.mem"))) {
+         else if (auto memory = (struct memory *)get_meta(Lua, ValueIndex, "Fluid.mem")) {
             return obj->set(field->FieldID, memory->Memory);
          }
-         else if ((fstruct = (struct fstruct *)get_meta(Lua, ValueIndex, "Fluid.struct"))) {
+         else if (auto fstruct = (struct fstruct *)get_meta(Lua, ValueIndex, "Fluid.struct")) {
             return obj->set(field->FieldID, fstruct->Data);
          }
          else if (type IS LUA_TNIL) {

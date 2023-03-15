@@ -1,8 +1,7 @@
-/***************************************************************************
+/*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -261,7 +260,7 @@ static ERROR init_netlookup(void);
 static MsgHandler *glResolveNameHandler = NULL;
 static MsgHandler *glResolveAddrHandler = NULL;
 
-//***************************************************************************
+//********************************************************************************************************************
 
 ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
@@ -307,7 +306,7 @@ ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    return ERR_Okay;
 }
 
-//***************************************************************************
+//********************************************************************************************************************
 
 ERROR MODOpen(OBJECTPTR Module)
 {
@@ -814,7 +813,7 @@ static ERROR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *L
 #endif
 }
 
-//***************************************************************************
+//********************************************************************************************************************
 
 static BYTE check_machine_name(CSTRING HostName)
 {
@@ -833,7 +832,16 @@ static BYTE check_machine_name(CSTRING HostName)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MODVERSION_NETWORK, MOD_IDL, NULL)
+static STRUCTS glStructures = {
+   { "DNSEntry",  sizeof(DNSEntry) },
+   { "IPAddress", sizeof(IPAddress) },
+   { "NetClient", sizeof(NetClient) },
+   { "NetMsg",    sizeof(NetMsg) },
+   { "NetMsgEnd", sizeof(NetMsgEnd) },
+   { "NetQueue",  sizeof(NetQueue) }
+};
+
+PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MODVERSION_NETWORK, MOD_IDL, &glStructures)
 
 /*********************************************************************************************************************
                                  BACKTRACE IT
