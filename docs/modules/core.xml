@@ -3589,7 +3589,6 @@ end
       <const name="CORE_VERSION"/>
       <const name="DETAIL"/>
       <const name="ERROR"/>
-      <const name="JUMPTABLE"/>
       <const name="MAX_DEPTH"/>
       <const name="MODULE_PATH"/>
       <const name="OPTIONS"/>

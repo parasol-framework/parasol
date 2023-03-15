@@ -766,9 +766,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    // Generate the Core table for our new task
 
-   if (!(Info->Flags & OPF_JUMPTABLE)) Info->JumpTable = MHF_STRUCTURE;
-
-   LocalCoreBase = (struct CoreBase *)build_jump_table(Info->JumpTable, glFunctions, MEM_UNTRACKED);
+   LocalCoreBase = (struct CoreBase *)build_jump_table(glFunctions);
    if (Info->Flags & OPF_COMPILED_AGAINST) fix_core_table(LocalCoreBase, Info->CompiledAgainst);
 
    // Broadcast the creation of the new task

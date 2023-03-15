@@ -432,7 +432,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
 
       if (master->Init) {
          // Build a Core base for the module to use
-         if (auto modkb = (struct CoreBase *)build_jump_table(master->Table->Flags, glFunctions, 0)) {
+         if (auto modkb = (struct CoreBase *)build_jump_table(glFunctions)) {
             master->CoreBase = modkb;
             fix_core_table(modkb, table->CoreVersion);
 
@@ -484,7 +484,7 @@ open_module:
    // Build the jump table for the program
 
    if (Self->FunctionList) {
-      if ((Self->ModBase = build_jump_table(MHF_STRUCTURE, Self->FunctionList, 0)) IS NULL) {
+      if (!(Self->ModBase = build_jump_table(Self->FunctionList))) {
          goto exit;
       }
       Self->prvMBMemory = Self->ModBase;
@@ -695,28 +695,24 @@ After initialisation, the Version field will be updated to reflect the actual ve
 //********************************************************************************************************************
 // Builds jump tables that link programs to modules.
 
-APTR build_jump_table(LONG JumpType, const Function *FList, LONG MemFlags)
+APTR build_jump_table(const Function *FList)
 {
+   if (!FList) return NULL;
+
    pf::Log log(__FUNCTION__);
 
-   if ((!JumpType) or (!FList)) log.warning("JumpTable() Invalid arguments.");
+   LONG size;
+   for (size=0; FList[size].Address; size++);
 
-   if (JumpType & MHF_STRUCTURE) {
-      LONG size = 0;
-      LONG i;
-      for (i=0; FList[i].Address; i++) size += sizeof(APTR);
+   log.trace("%d functions have been detected in the function list.", size);
 
-      log.trace("%d functions have been detected in the function list.", i);
-
-      void **functions;
-      if (!AllocMemory(size + sizeof(APTR), MEM_NO_CLEAR|MemFlags, (APTR *)&functions, NULL)) {
-         LONG i;
-         for (i=0; FList[i].Address; i++) functions[i] = FList[i].Address;
-         functions[i] = NULL;
-         return functions;
-      }
-      else log.warning(ERR_AllocMemory);
+   void **functions;
+   if (!AllocMemory((size+1) * sizeof(APTR), MEM_NO_CLEAR|MEM_UNTRACKED, (APTR *)&functions, NULL)) {
+      for (LONG i=0; i < size; i++) functions[i] = FList[i].Address;
+      functions[size] = NULL;
+      return functions;
    }
+   else log.warning(ERR_AllocMemory);
 
    return NULL;
 }

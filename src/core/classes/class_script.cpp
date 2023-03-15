@@ -252,7 +252,6 @@ static ERROR SCRIPT_Exec(objScript *Self, struct scExec *Args)
 
 static ERROR SCRIPT_Free(objScript *Self, APTR Void)
 {
-   if (Self->Vars)        { FreeResource(Self->Vars);        Self->Vars = NULL; }
    if (Self->CacheFile)   { FreeResource(Self->CacheFile);   Self->CacheFile = NULL; }
    if (Self->Path)        { FreeResource(Self->Path);        Self->Path = NULL; }
    if (Self->String)      { FreeResource(Self->String);      Self->String = NULL; }
@@ -260,6 +259,7 @@ static ERROR SCRIPT_Free(objScript *Self, APTR Void)
    if (Self->Procedure)   { FreeResource(Self->Procedure);   Self->Procedure = NULL; }
    if (Self->ErrorString) { FreeResource(Self->ErrorString); Self->ErrorString = NULL; }
    if (Self->Results)     { FreeResource(Self->Results);     Self->Results = NULL; }
+   Self->~objScript();
    return ERR_Okay;
 }
 
@@ -313,10 +313,9 @@ static ERROR SCRIPT_GetVar(objScript *Self, struct acGetVar *Args)
    if ((!Args) or (!Args->Buffer) or (!Args->Field)) return ERR_NullArgs;
    if (Args->Size < 2) return log.warning(ERR_Args);
 
-   CSTRING arg = VarGetString(Self->Vars, Args->Field);
-
-   if (arg) {
-      StrCopy(arg, Args->Buffer, Args->Size);
+   auto it = Self->Vars.find(Args->Field);
+   if (it != Self->Vars.end()) {
+      StrCopy(it->second, Args->Buffer, Args->Size);
       return ERR_Okay;
    }
    else {
@@ -345,6 +344,8 @@ static ERROR SCRIPT_Init(objScript *Self, APTR Void)
 
 static ERROR SCRIPT_NewObject(objScript *Self, APTR Void)
 {
+   new (Self) objScript;
+
    Self->CurrentLine = -1;
 
    // Assume that the script is in English
@@ -364,7 +365,7 @@ static ERROR SCRIPT_NewObject(objScript *Self, APTR Void)
 
 static ERROR SCRIPT_Reset(objScript *Self, APTR Void)
 {
-   if (Self->Vars) { FreeResource(Self->Vars); Self->Vars = NULL; }
+   Self->Vars.clear();
    return ERR_Okay;
 }
 
@@ -385,12 +386,10 @@ static ERROR SCRIPT_SetVar(objScript *Self, struct acSetVar *Args)
 
    log.trace("%s = %s", Args->Field, Args->Value);
 
-   if (!Self->Vars) {
-      if (!(Self->Vars = VarNew(0, 0))) return ERR_AllocMemory;
-   }
-
-   return VarSetString(Self->Vars, Args->Field, Args->Value);
+   Self->Vars[Args->Field] = Args->Value;
+   return ERR_Okay;
 }
+
 /*********************************************************************************************************************
 
 -FIELD-
@@ -773,7 +772,7 @@ in the value of this field.  If you have not set any arguments then the field va
 
 static ERROR GET_TotalArgs(objScript *Self, LONG *Value)
 {
-   *Value = Self->Vars->Total;
+   *Value = Self->Vars.size();
    return ERR_Okay;
 }
 
@@ -781,15 +780,9 @@ static ERROR GET_TotalArgs(objScript *Self, LONG *Value)
 PRIVATE: Variables
 *********************************************************************************************************************/
 
-static ERROR GET_Variables(objScript *Self, KeyStore **Value)
+static ERROR GET_Variables(objScript *Self, std::map<std::string, std::string> **Value)
 {
-   if (!Self->Vars) {
-      pf::SwitchContext ctx(Self);
-      Self->Vars = VarNew(0, 0);
-      if (!Self->Vars) return ERR_AllocMemory;
-   }
-
-   *Value = Self->Vars;
+   *Value = &Self->Vars;
    return ERR_Okay;
 }
 
