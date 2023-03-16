@@ -363,12 +363,11 @@ EXPORT void CloseCore(void)
    fflush(stderr);
 }
 
-/*********************************************************************************************************************
-** Calls all loaded modules with an Expunge notification.
-**
-** NOTE: If forced expunging occurs, it usually means that two modules have loaded each other.  This means that they
-** will always have an open count of at least 1 each.
-*/
+//********************************************************************************************************************
+// Calls all loaded modules with an Expunge notification.
+//
+// NOTE: If forced expunging occurs, it usually means that two modules have loaded each other.  This means that they
+// will always have an open count of at least 1 each.
 
 #warning TODO: Expunging cannot occur while other threads are active.  In that case, the expunge should be delayed until no additional threads are running.
 
@@ -497,7 +496,7 @@ EXPORT void Expunge(WORD Force)
    }
 }
 
-//**********************************************************************
+//********************************************************************************************************************
 
 static void free_private_memory(void)
 {
@@ -539,9 +538,8 @@ static void free_private_memory(void)
 }
 
 
-/*********************************************************************************************************************
-** Frees public objects and memory blocks.  Please note that this routine is also used by validate_process().
-*/
+//********************************************************************************************************************
+// Frees public objects and memory blocks.  Please note that this routine is also used by validate_process().
 
 void free_public_resources(OBJECTID TaskID)
 {
@@ -564,10 +562,9 @@ void free_public_resources(OBJECTID TaskID)
    }
 }
 
-/*********************************************************************************************************************
-** This function does not release locks on public objects (special handling for objects can be found elsewhere in the
-** shutdown program flow).  NOTE:  This function is also used by validate_process() to clear zombie resource locks.
-*/
+//********************************************************************************************************************
+// This function does not release locks on public objects (special handling for objects can be found elsewhere in the
+// shutdown program flow).  NOTE:  This function is also used by validate_process() to clear zombie resource locks.
 
 void remove_public_locks(LONG ProcessID)
 {
@@ -621,7 +618,7 @@ void remove_public_locks(LONG ProcessID)
    }
 }
 
-//**********************************************************************
+//********************************************************************************************************************
 
 static void remove_private_locks(void)
 {
