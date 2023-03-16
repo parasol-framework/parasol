@@ -142,7 +142,7 @@ static ERROR xtag_lineargradient(extSVG *Self, const XMLTag &Tag)
       }
 
       auto stops = process_gradient_stops(Self, Tag);
-      if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops.data(), stops.size());
+      if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
 
       if (!acInit(gradient)) {
          if (!id.empty()) SetName(gradient, id.c_str());
@@ -208,7 +208,7 @@ static ERROR xtag_radialgradient(extSVG *Self, const XMLTag &Tag)
       }
 
       auto stops = process_gradient_stops(Self, Tag);
-      if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops.data(), stops.size());
+      if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
 
       if (!acInit(gradient)) {
          if (!id.empty()) SetName(gradient, id.c_str());
@@ -273,7 +273,7 @@ static ERROR xtag_diamondgradient(extSVG *Self, const XMLTag &Tag)
       }
 
       auto stops = process_gradient_stops(Self, Tag);
-      if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops.data(), stops.size());
+      if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
 
       if (!acInit(gradient)) {
          if (!id.empty()) SetName(gradient, id.c_str());
@@ -336,7 +336,7 @@ static ERROR xtag_contourgradient(extSVG *Self, const XMLTag &Tag)
       }
 
       auto stops = process_gradient_stops(Self, Tag);
-      if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops.data(), stops.size());
+      if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
 
       if (!acInit(gradient)) {
          if (!id.empty()) SetName(gradient, id.c_str());
@@ -405,7 +405,7 @@ static ERROR xtag_conicgradient(extSVG *Self, const XMLTag &Tag)
       }
 
       auto stops = process_gradient_stops(Self, Tag);
-      if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops.data(), stops.size());
+      if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
 
       if (!acInit(gradient)) {
          if (!id.empty()) SetName(gradient, id.c_str());

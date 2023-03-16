@@ -24,7 +24,6 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
             log.warning("No support for retrieving IPV6 address and client handle yet.");
 
             clientfd = NOHANDLE;
-
          }
          else {
             struct sockaddr_in6 addr;
@@ -154,10 +153,8 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
          { "State",        FD_LONG,      { .Long = NTC_CONNECTED } }
       };
 
-      OBJECTPTR script;
-      if ((script = Self->Feedback.Script.Script)) {
-         scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-      }
+      auto script = Self->Feedback.Script.Script;
+      scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
    }
 
    log.trace("Total clients: %d", Self->TotalClients);
@@ -231,10 +228,8 @@ static void free_client_socket(extNetSocket *Socket, extClientSocket *ClientSock
             { "State",        FD_LONG,      { .Long = NTC_DISCONNECTED } }
          };
 
-         OBJECTPTR script;
-         if ((script = Socket->Feedback.Script.Script)) {
-            scCallback(script, Socket->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-         }
+         auto script = Socket->Feedback.Script.Script;
+         scCallback(script, Socket->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
       }
    }
 

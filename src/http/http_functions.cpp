@@ -1026,16 +1026,14 @@ static ERROR process_data(extHTTP *Self, APTR Buffer, LONG Length)
 
          log.trace("Calling script procedure %" PF64, Self->Incoming.Script.ProcedureID);
 
-         OBJECTPTR script;
-         if ((script = Self->Incoming.Script.Script)) {
-            const ScriptArg args[] = {
-               { "HTTP",       FD_OBJECTPTR, { .Address = Self } },
-               { "Buffer",     FD_PTRBUFFER, { .Address = Buffer } },
-               { "BufferSize", FD_LONG|FD_BUFSIZE, { .Long = Length } }
-            };
-            if (scCallback(script, Self->Incoming.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
-         }
-         else error = ERR_Terminate;
+         const ScriptArg args[] = {
+            { "HTTP",       FD_OBJECTPTR, { .Address = Self } },
+            { "Buffer",     FD_PTRBUFFER, { .Address = Buffer } },
+            { "BufferSize", FD_LONG|FD_BUFSIZE, { .Long = Length } }
+         };
+
+         auto script = Self->Incoming.Script.Script;
+         if (scCallback(script, Self->Incoming.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
       }
       else error = ERR_InvalidValue;
 

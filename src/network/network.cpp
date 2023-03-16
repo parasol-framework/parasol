@@ -1,8 +1,7 @@
-/***************************************************************************
+/*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -45,6 +44,11 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 #include <unordered_set>
 #include <stack>
 #include <mutex>
+
+struct DNSEntry {
+   std::string HostName;
+   std::vector<IPAddress> Addresses;    // IP address list
+};
 
 #ifdef __linux__
 typedef LONG SOCKET_HANDLE;
@@ -239,12 +243,24 @@ static ERROR sslLinkSocket(extNetSocket *);
 static ERROR sslSetup(extNetSocket *);
 #endif
 
+//********************************************************************************************************************
+
+struct CaseInsensitiveMap {
+   bool operator() (const std::string &lhs, const std::string &rhs) const {
+      return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
+   }
+};
+
+typedef std::map<std::string, DNSEntry, CaseInsensitiveMap> HOSTMAP;
+
+//********************************************************************************************************************
+
 static OBJECTPTR clNetLookup = NULL;
 static OBJECTPTR clProxy = NULL;
 static OBJECTPTR clNetSocket = NULL;
 static OBJECTPTR clClientSocket = NULL;
-static KeyStore *glHosts = NULL;
-static KeyStore *glAddresses = NULL;
+static HOSTMAP glHosts;
+static HOSTMAP glAddresses;
 static LONG glResolveNameMsgID = 0;
 static LONG glResolveAddrMsgID = 0;
 
@@ -261,7 +277,7 @@ static ERROR init_netlookup(void);
 static MsgHandler *glResolveNameHandler = NULL;
 static MsgHandler *glResolveAddrHandler = NULL;
 
-//***************************************************************************
+//********************************************************************************************************************
 
 ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
@@ -270,9 +286,6 @@ ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    CoreBase = argCoreBase;
 
    argModule->getPtr(FID_Root, &glModule);
-
-   glHosts = VarNew(64, KSF_THREAD_SAFE);
-   glAddresses = VarNew(64, KSF_THREAD_SAFE);
 
    if (init_netsocket()) return ERR_AddClass;
    if (init_clientsocket()) return ERR_AddClass;
@@ -307,7 +320,7 @@ ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    return ERR_Okay;
 }
 
-//***************************************************************************
+//********************************************************************************************************************
 
 ERROR MODOpen(OBJECTPTR Module)
 {
@@ -329,8 +342,6 @@ static ERROR MODExpunge(void)
 
    if (glResolveNameHandler) { FreeResource(glResolveNameHandler); glResolveNameHandler = NULL; }
    if (glResolveAddrHandler) { FreeResource(glResolveAddrHandler); glResolveAddrHandler = NULL; }
-   if (glHosts)              { FreeResource(glHosts); glHosts = NULL; }
-   if (glAddresses)          { FreeResource(glAddresses); glAddresses = NULL; }
 
 #ifdef _WIN32
    log.msg("Closing winsock.");
@@ -814,7 +825,7 @@ static ERROR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *L
 #endif
 }
 
-//***************************************************************************
+//********************************************************************************************************************
 
 static BYTE check_machine_name(CSTRING HostName)
 {
@@ -833,8 +844,17 @@ static BYTE check_machine_name(CSTRING HostName)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MODVERSION_NETWORK, MOD_IDL, NULL)
+static STRUCTS glStructures = {
+   { "DNSEntry",  sizeof(DNSEntry) },
+   { "IPAddress", sizeof(IPAddress) },
+   { "NetClient", sizeof(NetClient) },
+   { "NetMsg",    sizeof(NetMsg) },
+   { "NetMsgEnd", sizeof(NetMsgEnd) },
+   { "NetQueue",  sizeof(NetQueue) }
+};
+
+PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MODVERSION_NETWORK, MOD_IDL, &glStructures)
 
 /*********************************************************************************************************************
-                                 BACKTRACE IT
+                                                     BACKTRACE IT
 *********************************************************************************************************************/

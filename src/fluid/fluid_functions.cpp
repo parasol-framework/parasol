@@ -827,12 +827,12 @@ int fcmd_arg(lua_State *Lua)
    objScript *Self = Lua->Script;
 
    LONG args = lua_gettop(Lua);
-   CSTRING str;
-   if ((str = VarGetString(Self->Vars, lua_tostring(Lua, 1)))) {
-      if ((str) and (str[0])) {
-         lua_pushstring(Lua, str);
-         return 1;
-      }
+
+   auto key = lua_tostring(Lua, 1);
+   auto it = Self->Vars.find(key);
+   if (it != Self->Vars.end()) {
+      lua_pushstring(Lua, it->second.c_str());
+      return 1;
    }
 
    if (args IS 2) return 1; // Return value 2 (top of the stack)

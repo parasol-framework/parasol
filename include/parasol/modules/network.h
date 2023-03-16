@@ -44,12 +44,6 @@ struct IPAddress {
    LONG  Pad;        // Unused padding for 64-bit alignment
 };
 
-struct DNSEntry {
-   CSTRING HostName;
-   struct IPAddress * Addresses;    // IP address list
-   LONG    TotalAddresses;          // Total number of IP addresses
-};
-
 #define NSF_SERVER 0x00000001
 #define NSF_SSL 0x00000002
 #define NSF_MULTI_CONNECT 0x00000004

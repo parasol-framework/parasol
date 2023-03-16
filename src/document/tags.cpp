@@ -1758,10 +1758,10 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
       if (!(error = acInit(script))) {
          // Pass document arguments to the script
 
-         KeyStore *vs;
+         std::unordered_map<std::string, std::string> *vs;
          if (!script->getPtr(FID_Variables, &vs)) {
-            VarCopy(Self->Vars, vs);
-            VarCopy(Self->Params, vs);
+            Self->Vars   = *vs;
+            Self->Params = *vs;
          }
 
          if (!(error = acActivate(script))) { // Persistent scripts survive refreshes.

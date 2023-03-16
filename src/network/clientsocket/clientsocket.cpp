@@ -42,10 +42,8 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
             { "ClientSocket", FD_OBJECTPTR, { .Address = ClientSocket } }
          };
 
-         OBJECTPTR script;
-         if ((script = Socket->Incoming.Script.Script)) {
-            if (scCallback(script, Socket->Incoming.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
-         }
+         auto script = Socket->Incoming.Script.Script;
+         if (scCallback(script, Socket->Incoming.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
       }
       else error = ERR_InvalidValue;
 

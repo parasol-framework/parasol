@@ -224,11 +224,10 @@ struct fstruct * push_struct_def(lua_State *Lua, APTR Address, struct_record &St
    return NULL;
 }
 
-/*********************************************************************************************************************
-** Lua Usage: structdef = MAKESTRUCT(Name, Sequence)
-**
-** This function makes a structure definition which can be passed to struct.new()
-*/
+//********************************************************************************************************************
+// Lua Usage: structdef = MAKESTRUCT(Name, Sequence)
+//
+// This function makes a structure definition which can be passed to struct.new()
 
 int MAKESTRUCT(lua_State *Lua)
 {
@@ -413,7 +412,7 @@ static ERROR generate_structdef(objScript *Self, const std::string StructName, c
 }
 
 //********************************************************************************************************************
-// Parse a struct definition and permanently store it in the Structs keystore.
+// Parse a struct definition and permanently store it in the Structs dictionary.
 
 ERROR make_struct(lua_State *Lua, const std::string &StructName, CSTRING Sequence)
 {
@@ -463,11 +462,10 @@ static struct_field * find_field(struct fstruct *Struct, CSTRING FieldName)
    return NULL;
 }
 
-/*********************************************************************************************************************
-** Usage: struct = struct.size(Name)
-**
-** Returns the size of a named structure definition
-*/
+//********************************************************************************************************************
+// Usage: struct = struct.size(Name)
+//
+// Returns the size of a named structure definition
 
 static int struct_size(lua_State *Lua)
 {

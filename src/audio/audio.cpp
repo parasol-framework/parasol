@@ -157,4 +157,8 @@ static ERROR CMDExpunge(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_AUDIO, MOD_IDL, NULL)
+static STRUCTS glStructures = {
+   { "AudioLoop", sizeof(AudioLoop) }
+};
+
+PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_AUDIO, MOD_IDL, &glStructures)

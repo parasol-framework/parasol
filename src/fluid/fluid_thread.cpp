@@ -129,13 +129,9 @@ static int thread_action(lua_State *Lua)
       return 0;
    }
 
-   // Convert the action name to its equivalent ID.
-
-   ACTIONID *ptr;
    LONG action_id;
-   if (!VarGet(glActionLookup, action, &ptr, NULL)) {
-      action_id = ptr[0];
-   }
+   auto it = glActionLookup.find(action);
+   if (it != glActionLookup.end()) action_id = it->second;
    else {
       luaL_argerror(Lua, 2, "Action name is not recognised (is it a method?)");
       return 0;
