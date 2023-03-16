@@ -11,7 +11,6 @@ set (FUNCTIONS  # Full paths are required for add_custom_command() dependencies 
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_fields_write.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_filesystem.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_functions.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/lib_keystore.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_locking.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_log.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_messages.cpp"
@@ -88,7 +87,6 @@ target_sources (core PRIVATE
    "internal.cpp"
    "lib_actions.cpp"
    "lib_events.cpp"
-   "lib_keystore.cpp"
    "lib_log.cpp"
    "lib_fields_read.cpp"
    "lib_fields_write.cpp"
@@ -150,7 +148,6 @@ else ()
 endif ()
 
 flute_test (core_filesystem "tests/filesystem.fluid")
-flute_test (core_keypairs "tests/keypairs.fluid")
 flute_test (core_misc "tests/misc.fluid")
 flute_test (core_compression "tests/compression.fluid")
 flute_test (core_config "tests/config.fluid")

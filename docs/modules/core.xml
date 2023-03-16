@@ -231,7 +231,6 @@ struct FunctionField argsResize[] = {
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
-      <error code="CreateResource">Failed to create a new resource.</error>
     </result>
   </function>
 

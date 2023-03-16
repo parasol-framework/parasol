@@ -299,7 +299,6 @@ cstr Value: The value to associate with the tag name.  If NULL, any existing tag
 -ERRORS-
 Okay:
 NullArgs:
-CreateResource: Failed to create a new keystore.
 
 *********************************************************************************************************************/
 
@@ -1066,7 +1065,7 @@ ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback)
    return fs_copy(Source, Dest, Callback, TRUE);
 }
 
-/******************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ReadFileToBuffer: Reads a file into a buffer.
@@ -1093,7 +1092,7 @@ Read
 File
 -END-
 
-******************************************************************************/
+*********************************************************************************************************************/
 
 ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRead)
 {

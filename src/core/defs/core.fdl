@@ -8,7 +8,7 @@ module({ name="Core", copyright="Paul Manias 1996-2023" }, function()
      enum("NETMSG", {}, "START", "END")
   end)
 
-  privateNames({ "ScriptArg", "CoreBase", "RootModule", "KeyPair" })
+  privateNames({ "ScriptArg", "CoreBase", "RootModule" })
 
   loadFile(glPath .. 'common.fdl')
   loadFile(glPath .. 'common-graphics.fdl')
