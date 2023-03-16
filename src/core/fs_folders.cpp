@@ -182,7 +182,7 @@ ERROR ScanDir(DirInfo *Dir)
    file->UserID  = 0;
    file->GroupID = 0;
 
-   if (file->Tags) { FreeResource(file->Tags); file->Tags = NULL; }
+   if (file->Tags) { delete file->Tags; file->Tags = NULL; }
 
    // Support for scanning of volume names
 

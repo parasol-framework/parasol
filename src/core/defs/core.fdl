@@ -1047,14 +1047,6 @@ struct FieldValue {
     int MsgType                   # Type of message being filtered
   ]])
 
-  struct("KeyStore", { comment="Key-pair storage created by VarNew()" }, [[
-    ptr Mutex                   # Internal mutex for managing thread-safety.
-    ptr(struct(*KeyPair)) Data  # Key-pairs are stored here.
-    int TableSize               # The size of the available storage area.
-    int Total                   # Total number of currently stored key-pairs, including dead keys.
-    int(KSF) Flags              # Optional flags used for VarNew()
-  ]])
-
   struct("CacheFile", { restrict="c", comment="Internal structure for managing files cached by LoadFile()." }, [[
     large TimeStamp   # The file's last-modified timestamp.
     large Size        # Byte size of the cached data.
@@ -1099,13 +1091,15 @@ struct FieldValue {
     large TimeStamp            # 64-bit time stamp - usable only for comparison (e.g. sorting).
     struct(*FileInfo) Next     # Next structure in the list, or NULL.
     str Name                   # The name of the file.  This string remains valid until the next call to GetFileInfo().
-    struct(*KeyStore) Tags     # A store of special tag strings that are file-specific.
     int(FL) Flags              # Additional flags to describe the file.
     int(PERMIT) Permissions    # Standard permission flags.
     int UserID                 # User  ID (Unix systems only).
     int GroupID                # Group ID (Unix systems only).
     struct(DateTime) Created   # The date/time of the file's creation.
     struct(DateTime) Modified  # The date/time of the last file modification.
+  ]],
+  [[
+    std::unordered_map<std::string, std::string> *Tags;
   ]]) -- NB: Private fields can follow this structure.
 
   struct("DirInfo", { comment="Used by OpenDir() only" }, [[
@@ -1172,12 +1166,10 @@ extern struct CoreBase *CoreBase;
     "Action",
     "ActionList",
     "ActionMsg",
-    "KeyGet",
     "ResolveClassID",
     "AllocateID",
     "AllocMemory",
     "AccessObjectID",
-    "VarCopy",
     "CheckAction",
     "CheckMemoryExists",
     "CheckObjectExists",
@@ -1214,7 +1206,6 @@ extern struct CoreBase *CoreBase;
     "GetMessage",
     "ReleaseMemory",
     "ResolveClassName",
-    "KeySet",
     "SendMessage",
     "SetOwner",
     "SetContext",
@@ -1225,12 +1216,10 @@ extern struct CoreBase *CoreBase;
     "LogReturn",
     "StrCompare",
     "SubscribeAction",
-    "VarGet",
     "SubscribeEvent",
     "SubscribeTimer",
     "UpdateTimer",
     "UnsubscribeAction",
-    "VarSet",
     "UnsubscribeEvent",
     "BroadcastEvent",
     "WaitTime",
@@ -1253,7 +1242,6 @@ extern struct CoreBase *CoreBase;
     "OpenDir",
     "GetObjectPtr",
     "FindField",
-    "VarIterate",
     "GetErrorMsg",
     "GetActionMsg",
     "FuncError",
@@ -1266,23 +1254,16 @@ extern struct CoreBase *CoreBase;
     "LockMutex",
     "UnlockMutex",
     "ActionThread",
-    "VarNew",
     "AllocSharedMutex",
     "FreeSharedMutex",
     "LockSharedMutex",
     "UnlockSharedMutex",
     "VLogF",
     "Base64Encode",
-    "VarSetSized",
-    "VarLock",
     "WakeProcess",
     "SetResourcePath",
     "CurrentTask",
-    "KeyIterate",
     "ResolveGroupID",
-    "VarSetString",
-    "VarGetString",
-    "VarUnlock",
     "ResolveUserID",
     "CreateLink",
     "StrBuildArray",
