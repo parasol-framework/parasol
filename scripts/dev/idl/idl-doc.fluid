@@ -2,7 +2,7 @@
 
    require 'common'
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function ignoreAction(actionID)
    if (actionID == nil) then return nil end
@@ -71,7 +71,7 @@ glActionComments[AC_Undo]           = 'Reverses the last operation.'
 glActionComments[AC_Unlock]         = 'Remove a lock from an object.'
 glActionComments[AC_Write]          = 'Writes data to objects that provide storage or output services.'
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function saveDocuments()
    -- Save module functions, if any
@@ -127,7 +127,7 @@ function saveDocuments()
    end
 end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Used for extracting descriptions, notes etc.  NB: <pre> should be used for multi-line preformatting, while <code>
 -- should be used for in-place code formatting.
 
@@ -244,7 +244,7 @@ function extractParagraph(Input, Caller, References)
    end
 end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Use # to refer to class actions, fields, methods.
 -- Use ~ for external function and module references.
 -- Use @ to refer to external classes and items.
@@ -363,7 +363,7 @@ function substituteReferences(String, Class)
    return String
 end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Generate a header suitable for class documents.
 
 function docClass(Class)
@@ -574,7 +574,7 @@ function docClass(Class)
    return out
 end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Generate a header suitable for a module that exports at least one function.
 
 function docModuleHeader()
@@ -789,7 +789,7 @@ function docStructures(References)
          local comment = ''
          local typeName = ''
          if (struct.comment) then comment = " comment=\"" .. struct.comment:escXML() .. '"' end
-         if (struct.type) then typeName = " typeName=\"" .. struct.type .. '"' end
+         if (struct.type) then typeName = " typeName=\"" .. struct.type:escXML() .. '"' end
 
          out = out .. "    <struct name=\"" .. struct.name .. '"' .. comment .. typeName .. '>\n'
          for i, f in ipairs(struct.fields) do
@@ -803,10 +803,10 @@ function docStructures(References)
             local prototype = ''
             if (f.isFunctionPtr) then
                type = 'FUNCTION *'
-               prototype = ' prototype="' .. f.type .. '"'
+               prototype = ' prototype="' .. f.type:escXML() .. '"'
             end
 
-            out = out .. "      <field name=\"" .. f.name .. "\" type=\"" .. type .. '"' .. prototype .. ref .. arraySize .. ">"
+            out = out .. "      <field name=\"" .. f.name .. "\" type=\"" .. type:escXML() .. '"' .. prototype .. ref .. arraySize .. ">"
             if nz(f.comment) then out = out .. f.comment:escXML() end
             out = out .. '</field>\n'
          end
