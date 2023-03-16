@@ -1822,7 +1822,6 @@ struct CompressedItem {
    LARGE   CompressedSize;          // Compressed size of the file
    struct CompressedItem * Next;    // Used only if this is a linked-list.
    CSTRING Path;                    // Path to the file (includes folder prefixes).  Archived folders will include the trailing slash.
-   struct KeyStore * Tags;          // Any archive specific information is expressed here as key value pairs.
    LONG    Permissions;             // Original permissions - see PERMIT flags.
    LONG    UserID;                  // Original user ID
    LONG    GroupID;                 // Original group ID
@@ -1830,6 +1829,7 @@ struct CompressedItem {
    LONG    Flags;                   // FL flags
    struct DateTime Created;         // Date and time of the file's creation.
    struct DateTime Modified;        // Date and time last modified.
+    std::unordered_map<std::string, std::string> *Tags;
 };
 
 struct FileInfo {
@@ -1895,8 +1895,6 @@ struct ScriptArg { // For use with scExec
       DOUBLE Double;
    };
 };
-
-extern struct CoreBase *CoreBase;
 
 extern struct CoreBase *CoreBase;
 struct CoreBase {

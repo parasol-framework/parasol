@@ -153,7 +153,6 @@ static int thread_action(lua_State *Lua)
 
    LONG argsize = 0;
    const FunctionField *args = NULL;
-   OBJECTPTR obj;
    ERROR error = ERR_Okay;
 
    if ((glActions[action_id].Args) and (glActions[action_id].Size)) {
@@ -173,7 +172,7 @@ static int thread_action(lua_State *Lua)
          }
          else {
             if (!resultcount) {
-               if ((obj = access_object(object))) {
+               if (auto obj = access_object(object)) {
                   error = ActionThread(action_id, obj, argbuffer, &callback, key);
                   release_object(object);
                }
@@ -192,7 +191,7 @@ static int thread_action(lua_State *Lua)
       if (object->prvObject) {
          error = ActionThread(action_id, object->prvObject, NULL, &callback, key);
       }
-      else if ((obj = access_object(object))) {
+      else if (auto obj = access_object(object)) {
          error = ActionThread(action_id, obj, NULL, &callback, key);
          release_object(object);
       }
@@ -210,13 +209,11 @@ static int thread_action(lua_State *Lua)
 static int thread_method(lua_State *Lua)
 {
    pf::Log log(__FUNCTION__);
-   struct object *object;
-   CSTRING method;
 
    // Args: Object (1), Action (2), Callback (3), Key (4), Parameters...
 
-   if ((object = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) {
-      if ((method = luaL_checkstring(Lua, 2))) {
+   if (auto object = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
+      if (auto method = luaL_checkstring(Lua, 2)) {
          objMetaClass *mc;
          MethodArray *table;
          LONG total_methods, i;
