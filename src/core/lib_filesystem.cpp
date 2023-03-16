@@ -299,17 +299,18 @@ cstr Value: The value to associate with the tag name.  If NULL, any existing tag
 -ERRORS-
 Okay:
 NullArgs:
-CreateResource: Failed to create a new keystore.
 
 *********************************************************************************************************************/
 
 ERROR AddInfoTag(FileInfo *Info, CSTRING Name, CSTRING Value)
 {
    if (!Info->Tags) {
-      if (!(Info->Tags = VarNew(0, 0))) return ERR_CreateResource;
+      Info->Tags = new (std::nothrow) std::unordered_map<std::string, std::string>();
+      if (!Info->Tags) return ERR_CreateResource;
    }
 
-   return VarSetString(Info->Tags, Name, Value);
+   Info->Tags[0][Name] = std::string(Value);
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
@@ -1064,7 +1065,7 @@ ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback)
    return fs_copy(Source, Dest, Callback, TRUE);
 }
 
-/******************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 ReadFileToBuffer: Reads a file into a buffer.
@@ -1091,7 +1092,7 @@ Read
 File
 -END-
 
-******************************************************************************/
+*********************************************************************************************************************/
 
 ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRead)
 {
@@ -2497,13 +2498,13 @@ ERROR fs_closedir(DirInfo *Dir)
       if (Dir->prvFlags & RDF_OPENDIR) {
          // OpenDir() allocates Dir->Info as part of the Dir structure, so no need for a FreeResource(Dir->Info) here.
 
-         if (Dir->Info->Tags) { FreeResource(Dir->Info->Tags); Dir->Info->Tags = NULL; }
+         if (Dir->Info->Tags) { delete Dir->Info->Tags; Dir->Info->Tags = NULL; }
       }
       else {
          FileInfo *list = Dir->Info;
          while (list) {
             FileInfo *next = list->Next;
-            if (list->Tags) { FreeResource(list->Tags); list->Tags = NULL; }
+            if (list->Tags) { delete list->Tags; list->Tags = NULL; }
             FreeResource(list);
             list = next;
          }

@@ -64,7 +64,6 @@ static STRUCTS glStructures = {
    { "FunctionField",       sizeof(FunctionField) },
    { "HSV",                 sizeof(HSV) },
    { "InputEvent",          sizeof(InputEvent) },
-   { "KeyStore",            sizeof(KeyStore) },
    { "MemInfo",             sizeof(MemInfo) },
    { "Message",             sizeof(Message) },
    { "MethodArray",         sizeof(MethodArray) },

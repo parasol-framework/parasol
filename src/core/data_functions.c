@@ -56,9 +56,6 @@ FDEF argsGetOwnerID[] = { { "Result", FD_OBJECTID }, { "Object", FD_OBJECTID }, 
 FDEF argsGetResource[] = { { "Result", FD_LARGE }, { "Resource", FD_LONG }, { 0, 0 } };
 FDEF argsGetSystemState[] = { { "SystemState", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsIdentifyFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Class", FD_LONG|FD_UNSIGNED|FD_RESULT }, { "SubClass", FD_LONG|FD_UNSIGNED|FD_RESULT }, { 0, 0 } };
-FDEF argsKeyGet[] = { { "Error", FD_LONG|FD_ERROR }, { "KeyStore:Store", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "Key", FD_LONG|FD_UNSIGNED }, { "Data", FD_PTR|FD_RESULT }, { "Size", FD_LONG|FD_BUFSIZE|FD_RESULT }, { 0, 0 } };
-FDEF argsKeyIterate[] = { { "Error", FD_LONG|FD_ERROR }, { "KeyStore:Store", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "Index", FD_LONG|FD_UNSIGNED }, { "Key", FD_LONG|FD_UNSIGNED|FD_RESULT }, { "Data", FD_PTR|FD_RESULT }, { "Size", FD_LONG|FD_BUFSIZE|FD_RESULT }, { 0, 0 } };
-FDEF argsKeySet[] = { { "Error", FD_LONG|FD_ERROR }, { "KeyStore:Store", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "Key", FD_LONG|FD_UNSIGNED }, { "Data", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsListChildren[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTID }, { "ChildEntry:List", FD_BUFFER|FD_ARRAY|FD_STRUCT|FD_RESOURCE }, { "Count", FD_LONG|FD_ARRAYSIZE|FD_RESULT }, { 0, 0 } };
 FDEF argsLoadFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Flags", FD_LONG }, { "CacheFile:Cache", FD_PTR|FD_STRUCT|FD_RESOURCE|FD_RESULT }, { 0, 0 } };
 FDEF argsLockMutex[] = { { "Error", FD_LONG|FD_ERROR }, { "Mutex", FD_PTR }, { "MilliSeconds", FD_LONG }, { 0, 0 } };
@@ -126,16 +123,6 @@ FDEF argsUnsubscribeEvent[] = { { "Void", FD_VOID }, { "Event", FD_PTR }, { 0, 0
 FDEF argsUpdateMessage[] = { { "Error", FD_LONG|FD_ERROR }, { "Queue", FD_PTR }, { "Message", FD_LONG }, { "Type", FD_LONG }, { "Data", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsUpdateTimer[] = { { "Error", FD_LONG|FD_ERROR }, { "Subscription", FD_PTR }, { "Interval", FD_DOUBLE }, { 0, 0 } };
 FDEF argsVLogF[] = { { "Void", FD_VOID }, { "Flags", FD_LONG }, { "Header", FD_STR }, { "Message", FD_STR }, { "Args", FD_PTR }, { 0, 0 } };
-FDEF argsVarCopy[] = { { "Error", FD_LONG|FD_ERROR }, { "KeyStore:Source", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "KeyStore:Dest", FD_PTR|FD_STRUCT|FD_RESOURCE }, { 0, 0 } };
-FDEF argsVarGet[] = { { "Error", FD_LONG|FD_ERROR }, { "KeyStore:Store", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "Name", FD_STR }, { "Data", FD_PTR|FD_RESULT }, { "Size", FD_LONG|FD_BUFSIZE|FD_RESULT }, { 0, 0 } };
-FDEF argsVarGetString[] = { { "Result", FD_STR }, { "KeyStore:Store", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "Key", FD_STR }, { 0, 0 } };
-FDEF argsVarIterate[] = { { "Error", FD_LONG|FD_ERROR }, { "KeyStore:Store", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "Index", FD_STR }, { "Key", FD_STR|FD_RESULT }, { "Data", FD_PTR|FD_RESULT }, { "Size", FD_LONG|FD_BUFSIZE|FD_RESULT }, { 0, 0 } };
-FDEF argsVarLock[] = { { "Error", FD_LONG|FD_ERROR }, { "KeyStore:Store", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "Timeout", FD_LONG }, { 0, 0 } };
-FDEF argsVarNew[] = { { "KeyStore", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "InitialSize", FD_LONG }, { "Flags", FD_LONG }, { 0, 0 } };
-FDEF argsVarSet[] = { { "Result", FD_PTR }, { "KeyStore:Store", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "Key", FD_STR }, { "Data", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
-FDEF argsVarSetSized[] = { { "Error", FD_LONG|FD_ERROR }, { "KeyStore:Store", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "Key", FD_STR }, { "Size", FD_LONG }, { "Data", FD_PTR|FD_RESULT }, { "DataSize", FD_LONG|FD_BUFSIZE|FD_RESULT }, { 0, 0 } };
-FDEF argsVarSetString[] = { { "Error", FD_LONG|FD_ERROR }, { "KeyStore:Store", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "Key", FD_STR }, { "Value", FD_STR }, { 0, 0 } };
-FDEF argsVarUnlock[] = { { "Void", FD_VOID }, { "KeyStore:Store", FD_PTR|FD_STRUCT|FD_RESOURCE }, { 0, 0 } };
 FDEF argsVirtualVolume[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "Tags", FD_TAGS }, { 0, 0 } };
 FDEF argsWaitForObjects[] = { { "Error", FD_LONG|FD_ERROR }, { "Flags", FD_LONG }, { "TimeOut", FD_LONG }, { "ObjectSignal:ObjectSignals", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsWaitTime[] = { { "Void", FD_VOID }, { "Seconds", FD_LONG }, { "MicroSeconds", FD_LONG }, { 0, 0 } };
@@ -146,12 +133,10 @@ const struct Function glFunctions[] = {
    { (APTR)Action, "Action", argsAction },
    { (APTR)ActionList, "ActionList", argsActionList },
    { (APTR)ActionMsg, "ActionMsg", argsActionMsg },
-   { (APTR)KeyGet, "KeyGet", argsKeyGet },
    { (APTR)ResolveClassID, "ResolveClassID", argsResolveClassID },
    { (APTR)AllocateID, "AllocateID", argsAllocateID },
    { (APTR)AllocMemory, "AllocMemory", argsAllocMemory },
    { (APTR)AccessObjectID, "AccessObjectID", argsAccessObjectID },
-   { (APTR)VarCopy, "VarCopy", argsVarCopy },
    { (APTR)CheckAction, "CheckAction", argsCheckAction },
    { (APTR)CheckMemoryExists, "CheckMemoryExists", argsCheckMemoryExists },
    { (APTR)CheckObjectExists, "CheckObjectExists", argsCheckObjectExists },
@@ -188,7 +173,6 @@ const struct Function glFunctions[] = {
    { (APTR)GetMessage, "GetMessage", argsGetMessage },
    { (APTR)ReleaseMemory, "ReleaseMemory", argsReleaseMemory },
    { (APTR)ResolveClassName, "ResolveClassName", argsResolveClassName },
-   { (APTR)KeySet, "KeySet", argsKeySet },
    { (APTR)SendMessage, "SendMessage", argsSendMessage },
    { (APTR)SetOwner, "SetOwner", argsSetOwner },
    { (APTR)SetContext, "SetContext", argsSetContext },
@@ -199,12 +183,10 @@ const struct Function glFunctions[] = {
    { (APTR)LogReturn, "LogReturn", argsLogReturn },
    { (APTR)StrCompare, "StrCompare", argsStrCompare },
    { (APTR)SubscribeAction, "SubscribeAction", argsSubscribeAction },
-   { (APTR)VarGet, "VarGet", argsVarGet },
    { (APTR)SubscribeEvent, "SubscribeEvent", argsSubscribeEvent },
    { (APTR)SubscribeTimer, "SubscribeTimer", argsSubscribeTimer },
    { (APTR)UpdateTimer, "UpdateTimer", argsUpdateTimer },
    { (APTR)UnsubscribeAction, "UnsubscribeAction", argsUnsubscribeAction },
-   { (APTR)VarSet, "VarSet", argsVarSet },
    { (APTR)UnsubscribeEvent, "UnsubscribeEvent", argsUnsubscribeEvent },
    { (APTR)BroadcastEvent, "BroadcastEvent", argsBroadcastEvent },
    { (APTR)WaitTime, "WaitTime", argsWaitTime },
@@ -227,7 +209,6 @@ const struct Function glFunctions[] = {
    { (APTR)OpenDir, "OpenDir", argsOpenDir },
    { (APTR)GetObjectPtr, "GetObjectPtr", argsGetObjectPtr },
    { (APTR)FindField, "FindField", argsFindField },
-   { (APTR)VarIterate, "VarIterate", argsVarIterate },
    { (APTR)GetErrorMsg, "GetErrorMsg", argsGetErrorMsg },
    { (APTR)GetActionMsg, "GetActionMsg", argsGetActionMsg },
    { (APTR)FuncError, "FuncError", argsFuncError },
@@ -240,23 +221,16 @@ const struct Function glFunctions[] = {
    { (APTR)LockMutex, "LockMutex", argsLockMutex },
    { (APTR)UnlockMutex, "UnlockMutex", argsUnlockMutex },
    { (APTR)ActionThread, "ActionThread", argsActionThread },
-   { (APTR)VarNew, "VarNew", argsVarNew },
    { (APTR)AllocSharedMutex, "AllocSharedMutex", argsAllocSharedMutex },
    { (APTR)FreeSharedMutex, "FreeSharedMutex", argsFreeSharedMutex },
    { (APTR)LockSharedMutex, "LockSharedMutex", argsLockSharedMutex },
    { (APTR)UnlockSharedMutex, "UnlockSharedMutex", argsUnlockSharedMutex },
    { (APTR)VLogF, "VLogF", argsVLogF },
    { (APTR)Base64Encode, "Base64Encode", argsBase64Encode },
-   { (APTR)VarSetSized, "VarSetSized", argsVarSetSized },
-   { (APTR)VarLock, "VarLock", argsVarLock },
    { (APTR)WakeProcess, "WakeProcess", argsWakeProcess },
    { (APTR)SetResourcePath, "SetResourcePath", argsSetResourcePath },
    { (APTR)CurrentTask, "CurrentTask", argsCurrentTask },
-   { (APTR)KeyIterate, "KeyIterate", argsKeyIterate },
    { (APTR)ResolveGroupID, "ResolveGroupID", argsResolveGroupID },
-   { (APTR)VarSetString, "VarSetString", argsVarSetString },
-   { (APTR)VarGetString, "VarGetString", argsVarGetString },
-   { (APTR)VarUnlock, "VarUnlock", argsVarUnlock },
    { (APTR)ResolveUserID, "ResolveUserID", argsResolveUserID },
    { (APTR)CreateLink, "CreateLink", argsCreateLink },
    { (APTR)StrBuildArray, "StrBuildArray", argsStrBuildArray },

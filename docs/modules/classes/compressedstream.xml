@@ -169,13 +169,6 @@
       <const name="MESSAGE">Message ID's are allocated for the purpose of sending uniquely identifiable messages between tasks.</const>
     </constants>
 
-    <constants lookup="KSF" comment="Flags for VarNew()">
-      <const name="AUTO_REMOVE">Automatically call FreeResource() on remaining key values when FreeResource() is called for the key-store.</const>
-      <const name="CASE">Enable case-sensitive keys.</const>
-      <const name="THREAD_SAFE">Enable thread safety for a small performance penalty.</const>
-      <const name="UNTRACKED">Do not track the key-store to the object with the current context.</const>
-    </constants>
-
     <constants lookup="LDF" comment="Flags for LoadFile()">
       <const name="CHECK_EXISTS">Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, ERR_Search is returned.</const>
     </constants>
@@ -425,21 +418,12 @@
       <field name="TimeStamp" type="LARGE">64-bit time stamp - usable only for comparison (e.g. sorting).</field>
       <field name="Next" type="struct FileInfo *">Next structure in the list, or NULL.</field>
       <field name="Name" type="STRING">The name of the file.  This string remains valid until the next call to GetFileInfo().</field>
-      <field name="Tags" type="struct KeyStore *">A store of special tag strings that are file-specific.</field>
       <field name="Flags" type="LONG" lookup="FL">Additional flags to describe the file.</field>
       <field name="Permissions" type="LONG" lookup="PERMIT">Standard permission flags.</field>
       <field name="UserID" type="LONG">User  ID (Unix systems only).</field>
       <field name="GroupID" type="LONG">Group ID (Unix systems only).</field>
       <field name="Created" type="struct DateTime">The date/time of the file's creation.</field>
       <field name="Modified" type="struct DateTime">The date/time of the last file modification.</field>
-    </struct>
-
-    <struct name="KeyStore" comment="Key-pair storage created by VarNew()">
-      <field name="Mutex" type="APTR">Internal mutex for managing thread-safety.</field>
-      <field name="Data" type="struct KeyPair * *">Key-pairs are stored here.</field>
-      <field name="TableSize" type="LONG">The size of the available storage area.</field>
-      <field name="Total" type="LONG">Total number of currently stored key-pairs, including dead keys.</field>
-      <field name="Flags" type="LONG" lookup="KSF">Optional flags used for VarNew()</field>
     </struct>
 
     <struct name="MemInfo" typeName="MEMINFO">
