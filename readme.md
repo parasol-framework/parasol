@@ -87,7 +87,7 @@ Linux systems require a few package dependencies to be installed first if a comp
 sudo apt-get install libasound2-dev libxrandr-dev libxxf86dga-dev cmake g++
 ```
 
-To create the initial build you must run the following from the SDK's root folder with `<BUILD ENVIRONMENT>` set to the preferred build system on your platform, or if you don't know then leave the option out to get the default.  For Windows systems the correct build environment is `MinGW Makefiles`.
+To create the initial build you must run the following from the SDK's root folder with `<BUILD ENVIRONMENT>` set to the preferred build system on your platform, or if you don't know this then omit the option to get the default.  For Windows systems the correct build environment is `MinGW Makefiles`.
 
 ```
 cmake -S . -B release -DCMAKE_BUILD_TYPE=Release -G"<BUILD ENVIRONMENT>"

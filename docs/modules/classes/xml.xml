@@ -530,8 +530,8 @@
       <field name="ParentID" type="LONG">Unique ID of the parent tag</field>
       <field name="LineNo" type="LONG">Line number on which this tag was encountered</field>
       <field name="Flags" type="LONG" lookup="XTF">Optional flags</field>
-      <field name="Attribs" type="pf::vector<XMLAttrib>">Array of attributes for this tag</field>
-      <field name="Children" type="pf::vector<XMLTag>">Array of child tags</field>
+      <field name="Attribs" type="pf::vector&lt;XMLAttrib&gt;">Array of attributes for this tag</field>
+      <field name="Children" type="pf::vector&lt;XMLTag&gt;">Array of child tags</field>
     </struct>
 
   </structs>
