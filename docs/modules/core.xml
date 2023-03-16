@@ -3646,7 +3646,6 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <field name="CompressedSize" type="LARGE">Compressed size of the file</field>
       <field name="Next" type="struct CompressedItem *">Used only if this is a linked-list.</field>
       <field name="Path" type="CSTRING">Path to the file (includes folder prefixes).  Archived folders will include the trailing slash.</field>
-      <field name="Tags" type="struct KeyStore *">Any archive specific information is expressed here as key value pairs.</field>
       <field name="Permissions" type="LONG" lookup="PERMIT">Original permissions - see PERMIT flags.</field>
       <field name="UserID" type="LONG">Original user ID</field>
       <field name="GroupID" type="LONG">Original group ID</field>
