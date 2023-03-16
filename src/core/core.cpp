@@ -367,12 +367,11 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    std::forward_list<CSTRING> volumes;
 
-   CSTRING newargs[Info->ArgCount];
-   LONG na = 0;
+   std::vector<CSTRING> newargs;
    if (Info->Flags & OPF_ARGS) {
       for (i=1; i < Info->ArgCount; i++) {
          auto arg = Info->Args[i];
-         if ((arg[0] != '-') or (arg[1] != '-')) { newargs[na++] = arg; continue; }
+         if ((arg[0] != '-') or (arg[1] != '-')) { newargs.push_back(arg); continue; }
          arg += 2; // Skip '--' as this prepends all Core arguments
 
          if (!StrMatch(arg, "log-memory")) {
@@ -405,7 +404,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          else if (!StrMatch(arg, "holdpriority")) hold_priority = true;
          #endif
          else if (!StrCompare("home=", arg, 7, 0)) glHomeFolderName.assign(arg + 7);
-         else newargs[na++] = arg;
+         else newargs.push_back(arg);
       }
 
       if (glLogLevel > 2) {
@@ -750,7 +749,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       else glScanClasses = true; // If no file, a database rebuild is required.
    }
 
-   if (na > 0) SetArray(glCurrentTask, FID_Parameters, newargs, na);
+   if (!newargs.empty()) SetArray(glCurrentTask, FID_Parameters, newargs.data(), newargs.size());
 
    // In Windows, set the PATH environment variable so that DLL's installed under modules:lib can be found.
 
@@ -767,9 +766,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    // Generate the Core table for our new task
 
-   if (!(Info->Flags & OPF_JUMPTABLE)) Info->JumpTable = MHF_STRUCTURE;
-
-   LocalCoreBase = (struct CoreBase *)build_jump_table(Info->JumpTable, glFunctions, MEM_UNTRACKED);
+   LocalCoreBase = (struct CoreBase *)build_jump_table(glFunctions);
    if (Info->Flags & OPF_COMPILED_AGAINST) fix_core_table(LocalCoreBase, Info->CompiledAgainst);
 
    // Broadcast the creation of the new task

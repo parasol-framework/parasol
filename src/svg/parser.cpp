@@ -153,7 +153,7 @@ static void xtag_pathtransition(extSVG *Self, objXML *XML, const XMLTag &Tag)
       if (!id.empty()) {
          auto stops = process_transition_stops(Self, Tag.Children);
          if (stops.size() >= 2) {
-            SetArray(trans, FID_Stops, stops.data(), stops.size());
+            SetArray(trans, FID_Stops, stops);
 
             if (!acInit(trans)) {
                scAddDef(Self->Scene, id.c_str(), trans);
@@ -343,7 +343,7 @@ static ERROR parse_fe_merge(extSVG *Self, objVectorFilter *Filter, const XMLTag 
    }
 
    if (!list.empty()) {
-      if (SetArray(fx, FID_SourceList, list.data(), list.size())) {
+      if (SetArray(fx, FID_SourceList, list)) {
          acFree(fx);
          return log.warning(ERR_SetField);
       }
@@ -420,7 +420,7 @@ static ERROR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, const
 
          case SVF_VALUES: {
             auto m = read_array<DOUBLE>(val, CM_SIZE);
-            SetArray(fx, FID_Values|TDOUBLE, m.data(), m.size());
+            SetArray(fx, FID_Values|TDOUBLE, m);
             break;
          }
 
@@ -472,7 +472,7 @@ static ERROR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, con
          case SVF_KERNELMATRIX: {
             #define MAX_DIM 9
             auto matrix = read_array<DOUBLE>(val, MAX_DIM * MAX_DIM);
-            SetArray(fx, FID_Matrix|TDOUBLE, matrix.data(), matrix.size());
+            SetArray(fx, FID_Matrix|TDOUBLE, matrix);
             break;
          }
 

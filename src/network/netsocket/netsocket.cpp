@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -104,9 +103,9 @@ This method is non-blocking.  It will return immediately and the connection will
 to the connection request or an error occurs.  Client code should subscribe to the #State field to respond to changes to
 the connection state.
 
-Pre-Condition: Must be in a connection state of NTC_DISCONNECTED
+Pre-Condition: Must be in a connection state of `NTC_DISCONNECTED`
 
-Post-Condition: If this method returns ERR_Okay, will be in state NTC_CONNECTING.
+Post-Condition: If this method returns `ERR_Okay`, will be in state `NTC_CONNECTING`.
 
 -INPUT-
 cstr Address: String containing either a domain name (e.g. "www.google.com") or an IP address (e.g. "123.123.123.123")
@@ -122,8 +121,8 @@ Failed: The connect failed for some other reason.
 
 *********************************************************************************************************************/
 
-static void connect_name_resolved_nl(objNetLookup *, ERROR, CSTRING, IPAddress *, LONG);
-static void connect_name_resolved(extNetSocket *, ERROR, CSTRING, IPAddress *, LONG);
+static void connect_name_resolved_nl(objNetLookup *, ERROR, const std::string &, const std::vector<IPAddress> &);
+static void connect_name_resolved(extNetSocket *, ERROR, const std::string &, const std::vector<IPAddress> &);
 
 static ERROR NETSOCKET_Connect(extNetSocket *Self, struct nsConnect *Args)
 {
@@ -150,7 +149,9 @@ static ERROR NETSOCKET_Connect(extNetSocket *Self, struct nsConnect *Args)
 
    IPAddress server_ip;
    if (!netStrToAddress(Self->Address, &server_ip)) { // The address is an IP string, no resolution is necessary
-      connect_name_resolved(Self, ERR_Okay, NULL, &server_ip, 1);
+      std::vector<IPAddress> list;
+      list.emplace_back(server_ip);
+      connect_name_resolved(Self, ERR_Okay, "", list);
    }
    else { // Assume address is a domain name, perform name resolution
       log.msg("Attempting to resolve domain name '%s'...", Self->Address);
@@ -173,12 +174,12 @@ static ERROR NETSOCKET_Connect(extNetSocket *Self, struct nsConnect *Args)
 //********************************************************************************************************************
 // This function is called on completion of nlResolveName().
 
-static void connect_name_resolved_nl(objNetLookup *NetLookup, ERROR Error, CSTRING HostName, IPAddress *IPs, LONG TotalIPs)
+static void connect_name_resolved_nl(objNetLookup *NetLookup, ERROR Error, const std::string &HostName, const std::vector<IPAddress> &IPs)
 {
-   connect_name_resolved((extNetSocket *)CurrentContext(), Error, HostName, IPs, TotalIPs);
+   connect_name_resolved((extNetSocket *)CurrentContext(), Error, HostName, IPs);
 }
 
-static void connect_name_resolved(extNetSocket *Socket, ERROR Error, CSTRING HostName, IPAddress *IPs, LONG TotalIPs)
+static void connect_name_resolved(extNetSocket *Socket, ERROR Error, const std::string &HostName, const std::vector<IPAddress> &IPs)
 {
    pf::Log log(__FUNCTION__);
    struct sockaddr_in server_address;
@@ -195,7 +196,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERROR Error, CSTRING Hos
    ClearMemory(&server_address, sizeof(struct sockaddr_in));
    server_address.sin_family = AF_INET;
    server_address.sin_port = netHostToShort((UWORD)Socket->Port);
-   server_address.sin_addr.s_addr = netHostToLong(IPs->Data[0]);
+   server_address.sin_addr.s_addr = netHostToLong(IPs[0].Data[0]);
 
 #ifdef __linux__
    LONG result = connect(Socket->SocketHandle, (struct sockaddr *)&server_address, sizeof(server_address));

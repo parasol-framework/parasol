@@ -183,7 +183,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
   flags("OPF", { },
     "SHOW_PUBLIC_MEM",
     "CORE_VERSION",
-    "JUMPTABLE",
+    "OPTIONS",
     "MAX_DEPTH",
     "DETAIL",
     "SHOW_MEMORY",
@@ -196,8 +196,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "SYSTEM_PATH",
     "MODULE_PATH",
     "ROOT_PATH",
-    "SCAN_MODULES",
-    "OPTIONS")
+    "SCAN_MODULES")
 
   enum("TOI", { },
     "LOCAL_CACHE",        -- For Android.  Defines the path of the local cache for assignment to localcache:
@@ -716,20 +715,19 @@ struct OpenTag {
 };
 
 struct OpenInfo {
-   LONG    Flags;           // OPF flags need to be set for fields that have been defined in this structure.
    CSTRING Name;            // OPF_NAME
-   FLOAT   CoreVersion;     // OPF_CORE_VERSION
-   LONG    JumpTable;       // OPF_JUMPTABLE
-   LONG    MaxDepth;        // OPF_MAX_DEPTH
-   LONG    Detail;          // OPF_DETAIL
    CSTRING *Args;           // OPF_ARGS
-   LONG    ArgCount;        // OPF_ARGS
-   ERROR   Error;           // OPF_ERROR
-   FLOAT   CompiledAgainst; // OPF_COMPILED_AGAINST
    CSTRING SystemPath;      // OPF_SYSTEM_PATH
    CSTRING ModulePath;      // OPF_MODULE_PATH
    CSTRING RootPath;        // OPF_ROOT_PATH
    struct OpenTag *Options; // OPF_OPTIONS Typecast to va_list (defined in stdarg.h)
+   LONG    Flags;           // OPF flags need to be set for fields that have been defined in this structure.
+   LONG    MaxDepth;        // OPF_MAX_DEPTH
+   LONG    Detail;          // OPF_DETAIL
+   LONG    ArgCount;        // OPF_ARGS
+   ERROR   Error;           // OPF_ERROR
+   FLOAT   CompiledAgainst; // OPF_COMPILED_AGAINST
+   FLOAT   CoreVersion;     // OPF_CORE_VERSION
 };
 
 // Flags for defining fields, methods, actions and functions.  CLASSDEF's can only be used in field definitions for
@@ -1377,6 +1375,15 @@ inline ULONG StrHash(const std::string Value) {
    return CoreBase->_StrHash(Value.c_str(), FALSE);
 }
 
+template <class T> inline ERROR SetArray(OBJECTPTR Object, FIELD FieldID, pf::vector<T> Array)
+{
+   return SetArray(Object, FieldID, Array.data(), Array.size());
+}
+
+template <class T> inline ERROR SetArray(OBJECTPTR Object, FIELD FieldID, std::vector<T> Array)
+{
+   return SetArray(Object, FieldID, Array.data(), Array.size());
+}
 #endif
 
 typedef std::map<std::string, std::string> ConfigKeys;
@@ -2268,7 +2275,7 @@ inline ERROR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
   ]],
   [[
    LARGE    ProcedureID;          // For callbacks
-   KeyStore *Vars;                // Global parameters
+   std::map<std::string, std::string> Vars; // Global parameters
    STRING   *Results;
    char     Language[4];          // 3-character language code, null-terminated
    const ScriptArg *ProcArgs;     // Procedure args - applies during Exec

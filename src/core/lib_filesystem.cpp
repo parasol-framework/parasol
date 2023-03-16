@@ -2686,7 +2686,7 @@ ERROR fs_getinfo(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
       }
    }
 
-   Info->Permissions = NULL;
+   Info->Permissions = 0;
    Info->UserID      = 0;
    Info->GroupID     = 0;
    Info->Tags        = NULL;

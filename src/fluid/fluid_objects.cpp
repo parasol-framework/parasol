@@ -56,49 +56,41 @@ INLINE void SET_CONTEXT(lua_State *Lua, APTR Function)
 
 //********************************************************************************************************************
 
-static LONG get_action_info(lua_State *Lua, LONG ClassID, CSTRING action, const FunctionField **Args)
+static ACTIONID get_action_info(lua_State *Lua, CLASSID ClassID, CSTRING action, const FunctionField **Args)
 {
    pf::Log log;
 
-   *Args = NULL;
-
-   ACTIONID action_id;
-   if ((action[0] IS 'm') and (action[1] IS 't')) {
-      action += 2; // User is explicitly referring to a method
-      action_id = 0;
+   if ((action[0] IS 'm') and (action[1] IS 't')) { // User is explicitly referring to a method
+      action += 2;
    }
    else {
-      ACTIONID *ptr;
-      if (!VarGet(glActionLookup, action, &ptr, NULL)) {
-         action_id = ptr[0];
-         *Args = glActions[action_id].Args;
+      auto it = glActionLookup.find(action);
+      if (it != glActionLookup.end()) {
+         *Args = glActions[it->second].Args;
+         return it->second;
       }
-      else action_id = 0;
    }
 
-   if (!action_id) { // Search methods
-      objMetaClass *mc;
-      if (!(mc = FindClass(ClassID))) {
-         luaL_error(Lua, GetErrorMsg(ERR_Search));
-         return 0;
-      }
-
+   *Args = NULL;
+   if (auto mc = FindClass(ClassID)) {
       MethodArray *table;
       LONG total_methods;
+      ACTIONID action_id;
       if ((!GetFieldArray(mc, FID_Methods, &table, &total_methods)) and (table)) {
          for (LONG i=1; i < total_methods+1; i++) {
             if ((table[i].Name) and (!StrMatch(action, table[i].Name))) {
                action_id = table[i].MethodID;
                *Args = table[i].Args;
                i = 0x7ffffff0;
-               break;
+               return action_id;
             }
          }
       }
       else log.warning("No methods declared for class %s, cannot call %s()", mc->ClassName, action);
    }
+   else luaL_error(Lua, GetErrorMsg(ERR_Search));
 
-   return action_id;
+   return 0;
 }
 
 /*********************************************************************************************************************
@@ -890,10 +882,10 @@ static int object_index(lua_State *Lua)
          log.trace("obj.index(#%d, %s)", def->ObjectID, code);
 
          if ((code[0] IS 'a') and (code[1] IS 'c') and (code[2] >= 'A') and (code[2] <= 'Z')) {
-            ACTIONID *ptr;
-            if (!VarGet(glActionLookup, code + 2, &ptr, NULL)) {
+            auto it = glActionLookup.find(code + 2);
+            if (it != glActionLookup.end()) {
                lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
-               lua_pushinteger(Lua, ptr[0]); // Arg2: Action ID
+               lua_pushinteger(Lua, it->second); // Arg2: Action ID
                lua_pushcclosure(Lua, object_call, 2);
                return 1;
             }

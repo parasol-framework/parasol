@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 *********************************************************************************************************************/
 
@@ -1387,4 +1386,13 @@ void free_egl(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_DISPLAY, MOD_IDL, NULL)
+static STRUCTS glStructures = {
+   { "BitmapSurface", sizeof(BitmapSurfaceV2) },
+   { "CursorInfo",    sizeof(CursorInfo) },
+   { "DisplayInfo",   sizeof(DisplayInfoV3) },
+   { "PixelFormat",   sizeof(PixelFormat) },
+   { "SurfaceCoords", sizeof(SurfaceCoords) },
+   { "SurfaceInfo",   sizeof(SurfaceInfoV2) }
+};
+
+PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_DISPLAY, MOD_IDL, &glStructures)

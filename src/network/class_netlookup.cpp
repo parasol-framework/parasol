@@ -27,13 +27,16 @@ struct resolve_buffer {
 
 static ERROR resolve_address(CSTRING, const IPAddress *, DNSEntry **);
 static ERROR resolve_name(CSTRING, DNSEntry **);
-static void resolve_callback(extNetLookup *, ERROR, CSTRING, IPAddress *, LONG);
 #ifdef _WIN32
-static ERROR cache_host(KeyStore *, CSTRING, struct hostent *, DNSEntry **);
+static ERROR cache_host(HOSTMAP &, CSTRING, struct hostent *, DNSEntry **);
 #else
-static ERROR cache_host(KeyStore *, CSTRING, struct hostent *, DNSEntry **);
-static ERROR cache_host(KeyStore *, CSTRING, struct addrinfo *, DNSEntry **);
+static ERROR cache_host(HOSTMAP &, CSTRING, struct hostent *, DNSEntry **);
+static ERROR cache_host(HOSTMAP &, CSTRING, struct addrinfo *, DNSEntry **);
 #endif
+
+static std::vector<IPAddress> glNoAddresses;
+
+static void resolve_callback(extNetLookup *, ERROR, const std::string & = "", std::vector<IPAddress> & = glNoAddresses);
 
 //********************************************************************************************************************
 // Used for receiving asynchronous execution results (sent as a message).
@@ -54,12 +57,12 @@ static ERROR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR M
          nl->Threads->erase(r->ThreadID);
       }
 
-      DNSEntry *info;
-      if (!VarGet(glHosts, (CSTRING)(r + 1), &info, NULL)) {
-         nl->Info = *info;
-         resolve_callback(nl, ERR_Okay, nl->Info.HostName, nl->Info.Addresses, nl->Info.TotalAddresses);
+      auto it = glHosts.find((CSTRING)(r + 1));
+      if (it != glHosts.end()) {
+         nl->Info = it->second;
+         resolve_callback(nl, ERR_Okay, nl->Info.HostName, nl->Info.Addresses);
       }
-      else resolve_callback(nl, ERR_Failed, NULL, NULL, 0);
+      else resolve_callback(nl, ERR_Failed);
 
       ReleaseObject(nl);
    }
@@ -83,12 +86,12 @@ static ERROR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR M
          nl->Threads->erase(r->ThreadID);
       }
 
-      DNSEntry *info;
-      if (!VarGet(glAddresses, (CSTRING)(r + 1), &info, NULL)) {
-         nl->Info = *info;
-         resolve_callback(nl, ERR_Okay, nl->Info.HostName, nl->Info.Addresses, nl->Info.TotalAddresses);
+      auto it = glAddresses.find((CSTRING)(r + 1));
+      if (it != glAddresses.end()) {
+         nl->Info = it->second;
+         resolve_callback(nl, ERR_Okay, nl->Info.HostName, nl->Info.Addresses);
       }
-      else resolve_callback(nl, ERR_Failed, NULL, NULL, 0);
+      else resolve_callback(nl, ERR_Failed);
 
       ReleaseObject(nl);
    }
@@ -174,11 +177,11 @@ static ERROR NETLOOKUP_BlockingResolveAddress(extNetLookup *Self, struct nlBlock
       DNSEntry *info;
       if (!(error = resolve_address(Args->Address, &ip, &info))) {
          Self->Info = *info;
-         resolve_callback(Self, ERR_Okay, Self->Info.HostName, Self->Info.Addresses, Self->Info.TotalAddresses);
+         resolve_callback(Self, ERR_Okay, Self->Info.HostName, Self->Info.Addresses);
          return ERR_Okay;
       }
       else {
-         resolve_callback(Self, error, NULL, &ip, 1);
+         resolve_callback(Self, error);
          return error;
       }
    }
@@ -219,11 +222,11 @@ static ERROR NETLOOKUP_BlockingResolveName(extNetLookup *Self, struct nlResolveN
    DNSEntry *info;
    if (!(error = resolve_name(Args->HostName, &info))) {
       Self->Info = *info;
-      resolve_callback(Self, ERR_Okay, Self->Info.HostName, Self->Info.Addresses, Self->Info.TotalAddresses);
+      resolve_callback(Self, ERR_Okay, Self->Info.HostName, Self->Info.Addresses);
       return ERR_Okay;
    }
    else {
-      resolve_callback(Self, error, Args->HostName, NULL, 0);
+      resolve_callback(Self, error, Args->HostName);
       return error;
    }
 }
@@ -313,11 +316,11 @@ static ERROR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nlResolveAddres
    log.branch("Address: %s", Args->Address);
 
    if (!(Self->Flags & NLF_NO_CACHE)) { // Use the cache if available.
-      DNSEntry *info;
-      if (!VarGet(glAddresses, Args->Address, &info, NULL)) {
-         Self->Info = *info;
+      auto it = glAddresses.find(Args->Address);
+      if (it != glAddresses.end()) {
+         Self->Info = it->second;
          log.trace("Cache hit for address %s", Args->Address);
-         resolve_callback(Self, ERR_Okay, Self->Info.HostName, Self->Info.Addresses, Self->Info.TotalAddresses);
+         resolve_callback(Self, ERR_Okay, Self->Info.HostName, Self->Info.Addresses);
          return ERR_Okay;
       }
    }
@@ -379,11 +382,11 @@ static ERROR NETLOOKUP_ResolveName(extNetLookup *Self, struct nlResolveName *Arg
    log.branch("Host: %s", Args->HostName);
 
    if (!(Self->Flags & NLF_NO_CACHE)) { // Use the cache if available.
-      DNSEntry *info;
-      if (!VarGet(glHosts, Args->HostName, &info, NULL)) {
-         Self->Info = *info;
+      auto it = glHosts.find(Args->HostName);
+      if (it != glHosts.end()) {
+         Self->Info = it->second;
          log.trace("Cache hit for host %s", Self->Info.HostName);
-         resolve_callback(Self, ERR_Okay, Self->Info.HostName, Self->Info.Addresses, Self->Info.TotalAddresses);
+         resolve_callback(Self, ERR_Okay, Self->Info.HostName, Self->Info.Addresses);
          return ERR_Okay;
       }
    }
@@ -423,9 +426,9 @@ A list of the most recently resolved IP addresses can be read from this field.
 
 static ERROR GET_Addresses(extNetLookup *Self, BYTE **Value, LONG *Elements)
 {
-   if (Self->Info.Addresses) {
-      *Value = (BYTE *)Self->Info.Addresses;
-      *Elements = Self->Info.TotalAddresses;
+   if (!Self->Info.Addresses.empty()) {
+      *Value = (BYTE *)Self->Info.Addresses.data();
+      *Elements = Self->Info.Addresses.size();
       return ERR_Okay;
    }
    else return ERR_FieldNotSet;
@@ -437,7 +440,7 @@ static ERROR GET_Addresses(extNetLookup *Self, BYTE **Value, LONG *Elements)
 Callback: This function will be called on the completion of any name or address resolution.
 
 The function referenced here will receive the results of the most recently resolved name or address.  The C/C++ prototype
-is `Function(*NetLookup, ERROR Error, CSTRING HostName, IPAddress *Addresses, LONG TotalAddresses)`.
+is `Function(*NetLookup, ERROR Error, const std::string &HostName, const std::vector<IPAddress> &Addresses)`.
 
 The Fluid prototype is as follows, with results readable from the #HostName and #Addresses fields:
 `function(NetLookup, Error)`.
@@ -479,8 +482,8 @@ The name of the most recently resolved host is readable from this field.
 
 static ERROR GET_HostName(extNetLookup *Self, CSTRING *Value)
 {
-   if (Self->Info.HostName) {
-      *Value = Self->Info.HostName;
+   if (!Self->Info.HostName.empty()) {
+      *Value = Self->Info.HostName.c_str();
       return ERR_Okay;
    }
    else return ERR_FieldNotSet;
@@ -488,7 +491,7 @@ static ERROR GET_HostName(extNetLookup *Self, CSTRING *Value)
 
 //********************************************************************************************************************
 
-static ERROR cache_host(KeyStore *Store, CSTRING Key, struct hostent *Host, DNSEntry **Cache)
+static ERROR cache_host(HOSTMAP &Store, CSTRING Key, struct hostent *Host, DNSEntry **Cache)
 {
    if ((!Host) or (!Cache)) return ERR_NullArgs;
 
@@ -500,140 +503,71 @@ static ERROR cache_host(KeyStore *Store, CSTRING Key, struct hostent *Host, DNSE
 
    log.debug("Key: %s, Addresses: %p (IPV6: %d)", Key, Host->h_addr_list, (Host->h_addrtype == AF_INET6));
 
-   CSTRING real_name = Host->h_name;
-   if (!real_name) real_name = Key;
-
    *Cache = NULL;
-   if ((Host->h_addrtype != AF_INET) and (Host->h_addrtype != AF_INET6)) {
-      return ERR_Args;
-   }
+   if ((Host->h_addrtype != AF_INET) and (Host->h_addrtype != AF_INET6)) return ERR_Args;
 
-   // Calculate the size of the data structure.
+   DNSEntry cache;
+   if (!Host->h_name) cache.HostName = Key;
+   else cache.HostName = Host->h_name;
 
-   LONG size = sizeof(DNSEntry) + ALIGN64(StrLength(real_name) + 1);
-   LONG address_count = 0;
-   if (Host->h_addr_list) {
-      for (address_count=0; (address_count < MAX_ADDRESSES) and (Host->h_addr_list[address_count]); address_count++);
-   }
-
-   size += address_count * sizeof(IPAddress);
-
-   // Allocate an empty key-pair and fill it.
-
-   DNSEntry *cache;
-   if (VarSetSized(Store, Key, size, &cache, NULL) != ERR_Okay) return ERR_Failed;
-
-   char *buffer = (char *)cache;
-   LONG offset = sizeof(DNSEntry);
-
-   if (address_count > 0) {
-      cache->Addresses = (IPAddress *)(buffer + offset);
-      offset += address_count * sizeof(IPAddress);
-
-      if (Host->h_addrtype IS AF_INET) {
-         for (LONG i=0; i < address_count; i++) {
-            ULONG addr = *((ULONG *)Host->h_addr_list[i]);
-            cache->Addresses[i].Data[0] = ntohl(addr);
-            cache->Addresses[i].Data[1] = 0;
-            cache->Addresses[i].Data[2] = 0;
-            cache->Addresses[i].Data[3] = 0;
-            cache->Addresses[i].Type = IPADDR_V4;
-         }
-      }
-      else if (Host->h_addrtype IS AF_INET6) {
-         for (LONG i=0; i < address_count; i++) {
-            struct in6_addr * addr = ((struct in6_addr **)Host->h_addr_list)[i];
-            cache->Addresses[i].Data[0] = ((ULONG *)addr)[0];
-            cache->Addresses[i].Data[1] = ((ULONG *)addr)[1];
-            cache->Addresses[i].Data[2] = ((ULONG *)addr)[2];
-            cache->Addresses[i].Data[3] = ((ULONG *)addr)[3];
-            cache->Addresses[i].Type = IPADDR_V6;
-         }
+   if (Host->h_addrtype IS AF_INET) {
+      for (unsigned i=0; Host->h_addr_list[i]; i++) {
+         auto addr = *((ULONG *)Host->h_addr_list[i]);
+         cache.Addresses.push_back({ ntohl(addr), 0, 0, 0, IPADDR_V4 });
       }
    }
-   else cache->Addresses = NULL;
+   else if (Host->h_addrtype IS AF_INET6) {
+      for (unsigned i=0; Host->h_addr_list[i]; i++) {
+         auto addr = ((struct in6_addr **)Host->h_addr_list)[i];
+         cache.Addresses.push_back({
+            ((ULONG *)addr)[0], ((ULONG *)addr)[1], ((ULONG *)addr)[2], ((ULONG *)addr)[3], IPADDR_V6
+         });
+      }
+   }
 
-   cache->HostName = (STRING)(buffer + offset);
-   StrCopy(real_name, (STRING)cache->HostName);
-   cache->TotalAddresses = address_count;
-
-   *Cache = cache;
+   Store[Key] = std::move(cache);
+   *Cache = &Store[Key];
    return ERR_Okay;
 }
 
 #ifdef __linux__
 
-static ERROR cache_host(KeyStore *Store, CSTRING Key, struct addrinfo *Host, DNSEntry **Cache)
+static ERROR cache_host(HOSTMAP &Store, CSTRING Key, struct addrinfo *Host, DNSEntry **Cache)
 {
    if ((!Host) or (!Cache)) return ERR_NullArgs;
+
+   *Cache = NULL;
 
    if (!Key) {
       if (!(Key = Host->ai_canonname)) return ERR_Args;
    }
 
    pf::Log log(__FUNCTION__);
-
    log.debug("Key: %s, Addresses: %p (IPV6: %d)", Key, Host->ai_addr, (Host->ai_family == AF_INET6));
 
-   CSTRING real_name = Host->ai_canonname;
-   if (!real_name) real_name = Key;
+   DNSEntry cache;
+   if (!Host->ai_canonname) cache.HostName = Key;
+   else cache.HostName = Host->ai_canonname;
 
-   *Cache = NULL;
    if ((Host->ai_family != AF_INET) and (Host->ai_family != AF_INET6)) return ERR_Args;
 
-   // Calculate the size of the data structure.
-
-   LONG size = sizeof(DNSEntry) + ALIGN64(StrLength(real_name) + 1);
-
-   LONG address_count = 0;
    for (auto scan=Host; scan; scan=scan->ai_next) {
-      if (scan->ai_addr) address_count++;
-   }
+      if (!scan->ai_addr) continue;
 
-   size += address_count * sizeof(IPAddress);
-
-   // Allocate an empty key-pair and fill it.
-
-   DNSEntry *cache;
-   if (VarSetSized(Store, Key, size, &cache, NULL) != ERR_Okay) return ERR_Failed;
-
-   char *buffer = (char *)cache;
-   LONG offset = sizeof(DNSEntry);
-
-   if (address_count > 0) {
-      cache->Addresses = (IPAddress *)(buffer + offset);
-      offset += address_count * sizeof(IPAddress);
-
-      LONG i = 0;
-      for (auto scan=Host; scan; scan=scan->ai_next) {
-         if (!scan->ai_addr) continue;
-
-         if (scan->ai_family IS AF_INET) {
-            auto addr = ((struct sockaddr_in *)scan->ai_addr)->sin_addr.s_addr;
-            cache->Addresses[i].Data[0] = ntohl(addr);
-            cache->Addresses[i].Data[1] = 0;
-            cache->Addresses[i].Data[2] = 0;
-            cache->Addresses[i].Data[3] = 0;
-            cache->Addresses[i].Type = IPADDR_V4;
-            i++;
-         }
-         else if  (scan->ai_family IS AF_INET6) {
-            auto addr = (struct sockaddr_in6 *)scan->ai_addr;
-            cache->Addresses[i].Data[0] = ((ULONG *)addr)[0];
-            cache->Addresses[i].Data[1] = ((ULONG *)addr)[1];
-            cache->Addresses[i].Data[2] = ((ULONG *)addr)[2];
-            cache->Addresses[i].Data[3] = ((ULONG *)addr)[3];
-            cache->Addresses[i].Type = IPADDR_V6;
-            i++;
-         }
+      if (scan->ai_family IS AF_INET) {
+         auto addr = ((struct sockaddr_in *)scan->ai_addr)->sin_addr.s_addr;
+         cache.Addresses.push_back({ ntohl(addr), 0, 0, 0, IPADDR_V4 });
+      }
+      else if (scan->ai_family IS AF_INET6) {
+         auto addr = (struct sockaddr_in6 *)scan->ai_addr;
+         cache.Addresses.push_back({
+            ((ULONG *)addr)[0], ((ULONG *)addr)[1], ((ULONG *)addr)[2], ((ULONG *)addr)[3], IPADDR_V6
+         });
       }
    }
-   else cache->Addresses = NULL;
 
-   cache->HostName = (STRING)(buffer + offset);
-   StrCopy(real_name, (STRING)cache->HostName);
-   cache->TotalAddresses = address_count;
-   *Cache = cache;
+   Store[Key] = std::move(cache);
+   *Cache = &Store[Key];
    return ERR_Okay;
 }
 
@@ -696,7 +630,11 @@ static ERROR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry **In
 static ERROR resolve_name(CSTRING HostName, DNSEntry **Info)
 {
    // Use the cache if available.
-   if (!VarGet(glHosts, HostName, Info, NULL)) return ERR_Okay;
+   auto it = glHosts.find(HostName);
+   if (it != glHosts.end()) {
+      *Info = &it->second;
+      return ERR_Okay;
+   }
 
 #ifdef __linux__
    struct addrinfo hints, *servinfo;
@@ -730,25 +668,23 @@ static ERROR resolve_name(CSTRING HostName, DNSEntry **Info)
 
 //********************************************************************************************************************
 
-static void resolve_callback(extNetLookup *Self, ERROR Error, CSTRING HostName, IPAddress *Addresses, LONG TotalAddresses)
+static void resolve_callback(extNetLookup *Self, ERROR Error, const std::string &HostName, std::vector<IPAddress> &Addresses)
 {
    pf::Log log(__FUNCTION__);
-   log.traceBranch("Host: %s", HostName);
+   log.traceBranch("Host: %s", HostName.c_str());
 
    if (Self->Callback.Type IS CALL_STDC) {
       pf::SwitchContext context(Self->Callback.StdC.Context);
-      auto routine = (ERROR (*)(extNetLookup *, ERROR, CSTRING, IPAddress *, LONG))(Self->Callback.StdC.Routine);
-      routine(Self, Error, HostName, Addresses, TotalAddresses);
+      auto routine = (ERROR (*)(extNetLookup *, ERROR, const std::string &, std::vector<IPAddress> &))(Self->Callback.StdC.Routine);
+      routine(Self, Error, HostName, Addresses);
    }
    else if (Self->Callback.Type IS CALL_SCRIPT) {
-      OBJECTPTR script;
-      if ((script = Self->Callback.Script.Script)) {
-         const ScriptArg args[] = {
-            { "NetLookup", FDF_OBJECT, { .Address = Self } },
-            { "Error",     FD_LONG,    { .Long    = Error } }
-         };
-         scCallback(script, Self->Callback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-      }
+      const ScriptArg args[] = {
+         { "NetLookup", FDF_OBJECT, { .Address = Self } },
+         { "Error",     FD_LONG,    { .Long    = Error } }
+      };
+      auto script = Self->Callback.Script.Script;
+      scCallback(script, Self->Callback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
    }
 }
 

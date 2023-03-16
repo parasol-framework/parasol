@@ -594,53 +594,94 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
    // Write the data to the result area using some basic conversion code
 
    if (srcflags & FD_ARRAY) {
-      if (array_size IS -1) {
-         log.warning("Array sizing not supported for field %s", Field->Name);
-         return ERR_Failed;
+      if (srcflags & FD_CPP) {
+         if (Option) { // If an option is specified, treat it as an array index.
+            auto vec = (pf::vector<int> *)data;
+            if (TotalElements) *TotalElements = vec->size();
+            unsigned index = StrToInt(Option);
+            if ((index >= 0) and (index < vec->size())) {
+               if (srcflags & FD_LONG) data = &((pf::vector<LONG> *)data)[0][index];
+               else if (srcflags & (FD_LARGE|FD_DOUBLE))   data = &((pf::vector<DOUBLE> *)data)[0][index];
+               else if (srcflags & (FD_POINTER|FD_STRING)) data = &((pf::vector<APTR> *)data)[0][index];
+               else goto mismatch;
+               // Drop through to field value conversion
+            }
+            else return ERR_OutOfRange;
+         }
+         else if (DestFlags & FD_STRING) {
+            // Special feature: If a string is requested, the array values are converted to CSV format.
+            std::stringstream buffer;
+            if (srcflags & FD_LONG) {
+               auto vec = (pf::vector<LONG> *)data;
+               if (TotalElements) *TotalElements = vec->size();
+               for (auto &val : vec[0]) buffer << val << ',';
+            }
+            else if (srcflags & FD_BYTE) {
+               auto vec = (pf::vector<UBYTE> *)data;
+               if (TotalElements) *TotalElements = vec->size();
+               for (auto &val : vec[0]) buffer << val << ',';
+            }
+            else if (srcflags & FD_DOUBLE) {
+               auto vec = (pf::vector<DOUBLE> *)data;
+               if (TotalElements) *TotalElements = vec->size();
+               for (auto &val : vec[0]) buffer << val << ',';
+            }
+            auto i = StrCopy(buffer.str().c_str(), strGetField, sizeof(strGetField));
+            if (i > 0) strGetField[i-1] = 0; // Eliminate trailing comma
+            *((STRING *)Result) = strGetField;
+         }
+         else if (DestFlags & FD_POINTER) *((APTR *)Result) = *((APTR *)data);
+         else goto mismatch;
       }
+      else {
+         if (array_size IS -1) {
+            log.warning("Array sizing not supported for field %s", Field->Name);
+            return ERR_Failed;
+         }
 
-      if (TotalElements) *TotalElements = array_size;
+         if (TotalElements) *TotalElements = array_size;
 
-      if (Option) { // If an option is specified, treat it as an array index.
-         LONG index = StrToInt(Option);
-         if ((index >= 0) and (index < array_size)) {
-            if (srcflags & FD_LONG) data = (BYTE *)data + (sizeof(LONG) * index);
-            else if (srcflags & (FD_LARGE|FD_DOUBLE))   data = (BYTE *)data + (sizeof(DOUBLE) * index);
-            else if (srcflags & (FD_POINTER|FD_STRING)) data = (BYTE *)data + (sizeof(APTR) * index);
-            else goto mismatch;
-            // Drop through to field value conversion
+         if (Option) { // If an option is specified, treat it as an array index.
+            LONG index = StrToInt(Option);
+            if ((index >= 0) and (index < array_size)) {
+               if (srcflags & FD_LONG) data = (BYTE *)data + (sizeof(LONG) * index);
+               else if (srcflags & (FD_LARGE|FD_DOUBLE))   data = (BYTE *)data + (sizeof(DOUBLE) * index);
+               else if (srcflags & (FD_POINTER|FD_STRING)) data = (BYTE *)data + (sizeof(APTR) * index);
+               else goto mismatch;
+               // Drop through to field value conversion
+            }
+            else return ERR_OutOfRange;
          }
-         else return ERR_OutOfRange;
+         else if (DestFlags & FD_STRING) {
+            // Special feature: If a string is requested, the array values are converted to CSV format.
+            LONG pos = 0;
+            if (srcflags & FD_LONG) {
+               LONG *array = (LONG *)data;
+               for (LONG i=0; i < array_size; i++) {
+                  pos += IntToStr(*array++, strGetField+pos, sizeof(strGetField)-pos);
+                  if (((size_t)pos < sizeof(strGetField)-2) and (i+1 < array_size)) strGetField[pos++] = ',';
+               }
+            }
+            else if (srcflags & FD_BYTE) {
+               UBYTE *array = (UBYTE *)data;
+               for (LONG i=0; i < array_size; i++) {
+                  pos += IntToStr(*array++, strGetField+pos, sizeof(strGetField)-pos);
+                  if (((size_t)pos < sizeof(strGetField)-2) and (i+1 < array_size)) strGetField[pos++] = ',';
+               }
+            }
+            else if (srcflags & FD_DOUBLE) {
+               DOUBLE *array = (DOUBLE *)data;
+               for (LONG i=0; i < array_size; i++) {
+                  pos += snprintf(strGetField+pos, sizeof(strGetField)-pos, "%f", *array++);
+                  if (((size_t)pos < sizeof(strGetField)-2) and (i+1 < array_size)) strGetField[pos++] = ',';
+               }
+               }
+            strGetField[pos] = 0;
+            *((STRING *)Result) = strGetField;
+         }
+         else if (DestFlags & FD_POINTER) *((APTR *)Result) = *((APTR *)data);
+         else goto mismatch;
       }
-      else if (DestFlags & FD_STRING) {
-         // Special feature: If a string is requested, the array values are converted to CSV format.
-         LONG pos = 0;
-         if (srcflags & FD_LONG) {
-            LONG *array = (LONG *)data;
-            for (LONG i=0; i < array_size; i++) {
-               pos += IntToStr(*array++, strGetField+pos, sizeof(strGetField)-pos);
-               if (((size_t)pos < sizeof(strGetField)-2) and (i+1 < array_size)) strGetField[pos++] = ',';
-            }
-         }
-         else if (srcflags & FD_BYTE) {
-            UBYTE *array = (UBYTE *)data;
-            for (LONG i=0; i < array_size; i++) {
-               pos += IntToStr(*array++, strGetField+pos, sizeof(strGetField)-pos);
-               if (((size_t)pos < sizeof(strGetField)-2) and (i+1 < array_size)) strGetField[pos++] = ',';
-            }
-         }
-         else if (srcflags & FD_DOUBLE) {
-            DOUBLE *array = (DOUBLE *)data;
-            for (LONG i=0; i < array_size; i++) {
-               pos += snprintf(strGetField+pos, sizeof(strGetField)-pos, "%f", *array++);
-               if (((size_t)pos < sizeof(strGetField)-2) and (i+1 < array_size)) strGetField[pos++] = ',';
-            }
-         }
-         strGetField[pos] = 0;
-         *((STRING *)Result) = strGetField;
-      }
-      else if (DestFlags & FD_POINTER) *((APTR *)Result) = *((APTR *)data);
-      else goto mismatch;
       return ERR_Okay;
    }
 

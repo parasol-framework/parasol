@@ -39,8 +39,57 @@ It is critical that the module object is permanently retained until the program 
 #include "../defs.h"
 #include <parasol/main.h>
 
+static STRUCTS glStructures = {
+   { "ActionArray",         sizeof(ActionArray) },
+   { "ActionEntry",         sizeof(ActionEntry) },
+   //{ "ActionTable",         sizeof(ActionTable) },
+   { "CacheFile",           sizeof(CacheFile) },
+   { "ChildEntry",          sizeof(ChildEntry) },
+   { "ClipRectangle",       sizeof(ClipRectangle) },
+   { "ColourFormat",        sizeof(ColourFormat) },
+   { "CompressedItem",      sizeof(CompressedItem) },
+   { "CompressionFeedback", sizeof(CompressionFeedback) },
+   { "DateTime",            sizeof(DateTime) },
+   { "DebugMessage",        sizeof(DebugMessage) },
+   { "DirInfo",             sizeof(DirInfo) },
+   { "Edges",               sizeof(Edges) },
+   { "ExposeMessage",       sizeof(ExposeMessage) },
+   { "FRGB",                sizeof(FRGB) },
+   { "Field",               sizeof(Field) },
+   { "FieldArray",          sizeof(FieldArray) },
+   { "FieldDef",            sizeof(FieldDef) },
+   { "FileFeedback",        sizeof(FileFeedback) },
+   { "FileInfo",            sizeof(FileInfo) },
+   { "Function",            sizeof(Function) },
+   { "FunctionField",       sizeof(FunctionField) },
+   { "HSV",                 sizeof(HSV) },
+   { "InputEvent",          sizeof(InputEvent) },
+   { "KeyStore",            sizeof(KeyStore) },
+   { "MemInfo",             sizeof(MemInfo) },
+   { "Message",             sizeof(Message) },
+   { "MethodArray",         sizeof(MethodArray) },
+   { "ModHeader",           sizeof(ModHeader) },
+   { "MsgHandler",          sizeof(MsgHandler) },
+   { "ObjectSignal",        sizeof(ObjectSignal) },
+   { "RGB16",               sizeof(RGB16) },
+   { "RGB32",               sizeof(RGB32) },
+   { "RGB8",                sizeof(RGB8) },
+   { "RGBPalette",          sizeof(RGBPalette) },
+   { "ResourceManager",     sizeof(ResourceManager) },
+   { "SystemState",         sizeof(SystemState) },
+   { "ThreadActionMessage", sizeof(ThreadActionMessage) },
+   { "ThreadMessage",       sizeof(ThreadMessage) },
+   { "Variable",            sizeof(Variable) },
+   { "dcAudio",             sizeof(dcAudio) },
+   { "dcDeviceInput",       sizeof(dcDeviceInput) },
+   { "dcKeyEntry",          sizeof(dcKeyEntry) },
+   { "dcRequest",           sizeof(dcRequest) },
+   { "rkBase64Decode",      sizeof(rkBase64Decode) },
+   { "rkBase64Encode",      sizeof(rkBase64Encode) }
+};
+
 static RootModule glCoreRoot;
-static ModHeader glCoreHeader(NULL, NULL, NULL, NULL, VER_CORE, glIDL, NULL, "Core");
+static ModHeader glCoreHeader(NULL, NULL, NULL, NULL, VER_CORE, glIDL, &glStructures, "Core");
 
 static bool cmp_mod_names(CSTRING, CSTRING);
 static RootModule * check_resident(extModule *, CSTRING);
@@ -383,8 +432,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
 
       if (master->Init) {
          // Build a Core base for the module to use
-         struct CoreBase *modkb;
-         if ((modkb = (struct CoreBase *)build_jump_table(master->Table->Flags, glFunctions, 0))) {
+         if (auto modkb = (struct CoreBase *)build_jump_table(glFunctions)) {
             master->CoreBase = modkb;
             fix_core_table(modkb, table->CoreVersion);
 
@@ -436,7 +484,7 @@ open_module:
    // Build the jump table for the program
 
    if (Self->FunctionList) {
-      if ((Self->ModBase = build_jump_table(MHF_STRUCTURE, Self->FunctionList, 0)) IS NULL) {
+      if (!(Self->ModBase = build_jump_table(Self->FunctionList))) {
          goto exit;
       }
       Self->prvMBMemory = Self->ModBase;
@@ -647,28 +695,24 @@ After initialisation, the Version field will be updated to reflect the actual ve
 //********************************************************************************************************************
 // Builds jump tables that link programs to modules.
 
-APTR build_jump_table(LONG JumpType, const Function *FList, LONG MemFlags)
+APTR build_jump_table(const Function *FList)
 {
+   if (!FList) return NULL;
+
    pf::Log log(__FUNCTION__);
 
-   if ((!JumpType) or (!FList)) log.warning("JumpTable() Invalid arguments.");
+   LONG size;
+   for (size=0; FList[size].Address; size++);
 
-   if (JumpType & MHF_STRUCTURE) {
-      LONG size = 0;
-      LONG i;
-      for (i=0; FList[i].Address; i++) size += sizeof(APTR);
+   log.trace("%d functions have been detected in the function list.", size);
 
-      log.trace("%d functions have been detected in the function list.", i);
-
-      void **functions;
-      if (!AllocMemory(size + sizeof(APTR), MEM_NO_CLEAR|MemFlags, (APTR *)&functions, NULL)) {
-         LONG i;
-         for (i=0; FList[i].Address; i++) functions[i] = FList[i].Address;
-         functions[i] = NULL;
-         return functions;
-      }
-      else log.warning(ERR_AllocMemory);
+   void **functions;
+   if (!AllocMemory((size+1) * sizeof(APTR), MEM_NO_CLEAR|MEM_UNTRACKED, (APTR *)&functions, NULL)) {
+      for (LONG i=0; i < size; i++) functions[i] = FList[i].Address;
+      functions[size] = NULL;
+      return functions;
    }
+   else log.warning(ERR_AllocMemory);
 
    return NULL;
 }
@@ -739,6 +783,8 @@ static RootModule * check_resident(extModule *Self, CSTRING ModuleName)
       if (!kminit) {
          kminit = true;
          ClearMemory(&glCoreRoot, sizeof(glCoreRoot));
+         glCoreRoot.Class       = glRootModuleClass;
+         glCoreRoot.ClassID     = ID_ROOTMODULE;
          glCoreRoot.Name        = "Core";
          glCoreRoot.Version     = 1;
          glCoreRoot.OpenCount   = 1;

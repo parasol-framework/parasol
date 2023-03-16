@@ -1609,4 +1609,8 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_FONT, MOD_IDL, NULL)
+static STRUCTS glStructures = {
+   { "FontList", sizeof(FontList) }
+};
+
+PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_FONT, MOD_IDL, &glStructures)

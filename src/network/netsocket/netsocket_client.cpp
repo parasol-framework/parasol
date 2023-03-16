@@ -7,7 +7,7 @@
 static void client_connect(SOCKET_HANDLE Void, APTR Data)
 {
    pf::Log log(__FUNCTION__);
-   extNetSocket *Self = (extNetSocket *)Data;
+   auto Self = (extNetSocket *)Data;
 
    log.trace("Connection from server received.");
 
@@ -114,18 +114,13 @@ restart:
    if (Self->Incoming.Type) {
       if (Self->Incoming.Type IS CALL_STDC) {
          auto routine = (ERROR (*)(extNetSocket *))Self->Incoming.StdC.Routine;
-         if (routine) {
-            pf::SwitchContext context(Self->Incoming.StdC.Context);
-            error = routine(Self);
-         }
+         pf::SwitchContext context(Self->Incoming.StdC.Context);
+         error = routine(Self);
       }
       else if (Self->Incoming.Type IS CALL_SCRIPT) {
-         OBJECTPTR script;
          const ScriptArg args[] = { { "NetSocket", FD_OBJECTPTR, { .Address = Self } } };
-
-         if ((script = Self->Incoming.Script.Script)) {
-            if (scCallback(script, Self->Incoming.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
-         }
+         auto script = Self->Incoming.Script.Script;
+         if (scCallback(script, Self->Incoming.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
       }
 
       if (error IS ERR_Terminate) log.trace("Termination of socket requested by channel subscriber.");
@@ -237,17 +232,13 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
       if (Self->Outgoing.Type) {
          if (Self->Outgoing.Type IS CALL_STDC) {
             auto routine = (ERROR (*)(extNetSocket *))Self->Outgoing.StdC.Routine;
-            if (routine) {
-               pf::SwitchContext context(Self->Outgoing.StdC.Context);
-               error = routine(Self);
-            }
+            pf::SwitchContext context(Self->Outgoing.StdC.Context);
+            error = routine(Self);
          }
          else if (Self->Outgoing.Type IS CALL_SCRIPT) {
-            OBJECTPTR script;
             const ScriptArg args[] = { { "NetSocket", FD_OBJECTPTR, { .Address = Self } } };
-            if ((script = Self->Outgoing.Script.Script)) {
-               if (scCallback(script, Self->Outgoing.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
-            }
+            auto script = Self->Outgoing.Script.Script;
+            if (scCallback(script, Self->Outgoing.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
          }
 
          if (error) Self->Outgoing.Type = CALL_NONE;
