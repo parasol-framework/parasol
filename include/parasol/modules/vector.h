@@ -362,10 +362,6 @@ class objVectorViewport;
 #define FM_CHILD_HAS_FOCUS 0x00000004
 #define FM_LOST_FOCUS 0x00000008
 
-struct VectorDef {
-   OBJECTPTR Object;    // Reference to the definition object.
-};
-
 struct GradientStop {
    DOUBLE Offset;    // An offset in the range of 0 - 1.0
    struct FRGB RGB;  // A floating point RGB value.
@@ -477,7 +473,6 @@ class objVectorScene : public BaseClass {
    objVectorScene * HostScene;    // Refers to a top-level VectorScene object, if applicable.
    objVectorViewport * Viewport;  // References the first object in the scene, which must be a VectorViewport object.
    objBitmap * Bitmap;            // Target bitmap for drawing vectors.
-   struct KeyStore * Defs;        // Stores references to gradients, images, patterns etc
    OBJECTID SurfaceID;            // May refer to a Surface object for enabling automatic rendering.
    LONG     Flags;                // Optional flags.
    LONG     PageWidth;            // The width of the page that contains the vector.

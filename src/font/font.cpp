@@ -1497,7 +1497,7 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING
    winmz_header_fields mz_header;
    winne_header_fields ne_header;
    LONG i, res_offset, font_offset;
-   UWORD size_shift, font_count, type_id, count;
+   UWORD size_shift, font_count, count;
    char face[50];
 
    if ((!Path) or (!Header) or (!FaceName)) return ERR_NullArgs;
@@ -1516,9 +1516,10 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING
 
             font_count  = 0;
             font_offset = 0;
-            size_shift = 0;
+            size_shift  = 0;
             flReadLE(*file, &size_shift);
 
+            UWORD type_id = 0;
             for (flReadLE(*file, &type_id); type_id; flReadLE(*file, &type_id)) {
                if (!flReadLE(*file, &count)) {
                   if (type_id IS 0x8008) {

@@ -18,6 +18,7 @@ https://www.w3.org/Graphics/SVG/Test/Overview.html
 #define PRV_SVG
 #include <unordered_map>
 #include <string>
+#include <sstream>
 #include <algorithm>
 #include <parasol/main.h>
 #include <parasol/modules/picture.h>
@@ -100,7 +101,7 @@ static ERROR process_shape(extSVG *, CLASSID, objXML *, svgState &, const XMLTag
 static ERROR save_svg_scan(extSVG *, objXML *, objVector *, LONG);
 static ERROR save_svg_defs(extSVG *, objXML *, objVectorScene *, LONG);
 static ERROR save_svg_scan_std(extSVG *, objXML *, objVector *, LONG);
-static ERROR save_svg_transform(VectorMatrix *, char *, LONG);
+static ERROR save_svg_transform(VectorMatrix *, std::stringstream &);
 static ERROR set_property(extSVG *, objVector *, ULONG, objXML *, const XMLTag &, std::string);
 static ERROR xtag_animatemotion(extSVG *, objXML *, const XMLTag &, OBJECTPTR Parent);
 static ERROR xtag_animatetransform(extSVG *, objXML *, const XMLTag &, OBJECTPTR);

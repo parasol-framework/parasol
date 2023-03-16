@@ -1333,23 +1333,22 @@ static ERROR VECTOR_SET_Filter(extVector *Self, CSTRING Value)
       return ERR_Okay;
    }
 
-   VectorDef *def = NULL;
+   OBJECTPTR def = NULL;
    if (!StrCompare("url(#", Value, 5, 0)) {
-      CSTRING str = Value + 5;
-      char name[80];
       LONG i;
-      for (i=0; (str[i] != ')') and (str[i]) and ((size_t)i < sizeof(name)-1); i++) name[i] = str[i];
-      name[i] = 0;
-      VarGet(Self->Scene->Defs, name, &def, NULL);
+      for (i=5; (Value[i] != ')') and Value[i]; i++);
+      std::string name;
+      name.assign(Value, 5, i-5);
+      if (((extVectorScene *)Self->Scene)->Defs.contains(name)) def = ((extVectorScene *)Self->Scene)->Defs[name];
    }
-   else VarGet(Self->Scene->Defs, Value, &def, NULL);
+   else if (((extVectorScene *)Self->Scene)->Defs.contains(Value)) def = ((extVectorScene *)Self->Scene)->Defs[Value];
 
    if (!def) return log.warning(ERR_Search);
 
-   if (def->Object->ClassID IS ID_VECTORFILTER) {
+   if (def->ClassID IS ID_VECTORFILTER) {
       if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
       Self->FilterString = StrClone(Value);
-      Self->Filter = (extVectorFilter *)def->Object;
+      Self->Filter = (extVectorFilter *)def;
       return ERR_Okay;
    }
    else return log.warning(ERR_InvalidValue);
