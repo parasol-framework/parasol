@@ -72,7 +72,7 @@ Here's an example of a simple client application written in Fluid.  It loads an 
 Source code should be checked out from the `release` branch of our GitHub repository if you are a newcomer:
 
 ```
-git clone -b release https://github.com/team-parasol/parasol.git parasol
+git clone -b release https://github.com/parasol-framework/parasol.git parasol
 ```
 
 The `master` branch is generally stable and updated more frequently, but be aware that minor build issues can occasionally surface.  Anything under `test` is under active development and unlikely to compile.

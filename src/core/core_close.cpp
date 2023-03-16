@@ -361,6 +361,10 @@ EXPORT void CloseCore(void)
 
    fflush(stdout);
    fflush(stderr);
+
+   // NOTE: LeakSanitizer can sometimes report segfault errors on closure.  These can go away on their own and may
+   // not be easily duplicated.  One possible explanation is tom-foolery from LuaJIT resulting in false positives that
+   // are hard to replicate.  Another is C++ destructors.  Module expunging can also result in false positives.
 }
 
 //********************************************************************************************************************
