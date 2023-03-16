@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -394,7 +393,7 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
          UWORD *utf16;
 
          ERROR error = ERR_Okay;
-         LONG chars = UTF8Length((CSTRING)Args->Buffer);
+         LONG chars  = UTF8Length((CSTRING)Args->Buffer);
          CSTRING str = (STRING)Args->Buffer;
 
          LONG bytes = 0;
@@ -452,18 +451,15 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
             error = routine(Self, Args->ObjectID, request->Item, request->Preference);
          }
          else if (Self->RequestHandler.Type IS CALL_SCRIPT) {
-            OBJECTPTR script;
-            if ((script = Self->RequestHandler.Script.Script)) {
-               const ScriptArg args[] = {
-                  { "Clipboard", FD_OBJECTPTR,     { .Address = Self } },
-                  { "Requester", FD_OBJECTID,      { .Long = Args->ObjectID } },
-                  { "Item",      FD_LONG,          { .Long = request->Item } },
-                  { "Datatypes", FD_ARRAY|FD_BYTE, { .Address = request->Preference } },
-                  { "Size",      FD_LONG|FD_ARRAYSIZE, { .Long = ARRAYSIZE(request->Preference) } }
-               };
-               if (scCallback(script, Self->RequestHandler.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
-            }
-            else error = ERR_Terminate;
+            const ScriptArg args[] = {
+               { "Clipboard", FD_OBJECTPTR,     { .Address = Self } },
+               { "Requester", FD_OBJECTID,      { .Long = Args->ObjectID } },
+               { "Item",      FD_LONG,          { .Long = request->Item } },
+               { "Datatypes", FD_ARRAY|FD_BYTE, { .Address = request->Preference } },
+               { "Size",      FD_LONG|FD_ARRAYSIZE, { .Long = ARRAYSIZE(request->Preference) } }
+            };
+            auto script = Self->RequestHandler.Script.Script;
+            if (scCallback(script, Self->RequestHandler.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
          }
          else error = log.warning(ERR_FieldNotSet);
 
@@ -508,7 +504,7 @@ a readable clipboard entry - how the client reads it depends on the resulting Da
 IdentifyFile() function could be used to find a class that supports the data.  The resulting Files array is a memory
 allocation that must be freed with a call to ~Core.FreeResource().
 
-If this method returns the CEF_DELETE flag in the Flags parameter, the client must delete the source files after
+If this method returns the `CEF_DELETE` flag in the Flags parameter, the client must delete the source files after
 successfully copying the data.  When cutting and pasting files within the file system, using ~Core.MoveFile() is
 recommended as the most efficient method.
 
@@ -896,16 +892,16 @@ Flags: Optional flags.
 -FIELD-
 RequestHandler: Provides a hook for responding to drag and drop requests.
 
-Applications can request data from a clipboard if it is in drag-and-drop mode by sending a DATA_REQUEST to the
+Applications can request data from a clipboard if it is in drag-and-drop mode by sending a `DATA_REQUEST` to the
 Clipboard's DataFeed action.  Doing so will result in a callback to the function that is referenced in the
 RequestHandler, which must be defined by the source application.  The RequestHandler function must follow this
 template:
 
 `ERROR RequestHandler(*Clipboard, OBJECTID Requester, LONG Item, BYTE Datatypes[4])`
 
-The function will be expected to send a DATA_RECEIPT to the object referenced in the Requester paramter.  The
+The function will be expected to send a `DATA_RECEIPT` to the object referenced in the Requester paramter.  The
 receipt must provide coverage for the referenced Item and use one of the indicated Datatypes as the data format.
-If this cannot be achieved then ERR_NoSupport should be returned by the function.
+If this cannot be achieved then `ERR_NoSupport` should be returned by the function.
 
 *********************************************************************************************************************/
 

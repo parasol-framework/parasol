@@ -2022,7 +2022,7 @@ static ERROR GET_Icon(extFile *Self, CSTRING *Value)
       if (info.Flags & RDF_LINK) link = true;
 
       if (info.Flags & RDF_VIRTUAL) { // Virtual drives can specify custom icons, even for folders
-         *Value = Self->prvIcon = VarGetString(info.Tags, "Icon");
+         *Value = Self->prvIcon = info.Tags[0]["Icon"].c_str();
          if (*Value) return ERR_Okay;
       }
 

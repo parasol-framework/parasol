@@ -93,7 +93,6 @@ struct ObjectInfo;
 struct MemInfo;
 struct ListTasks;
 struct DateTime;
-struct KeyStore;
 struct RGB8;
 struct rkBase64Decode;
 struct FileInfo;

@@ -23,7 +23,6 @@
       <category>Events</category>
       <category>Fields</category>
       <category>Files</category>
-      <category>KeyStore</category>
       <category>Locks</category>
       <category>Memory</category>
       <category>Messages</category>
@@ -232,7 +231,6 @@ struct FunctionField argsResize[] = {
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
-      <error code="CreateResource">Failed to create a new resource.</error>
     </result>
   </function>
 
@@ -1135,91 +1133,6 @@ GetField(Object, FID_Y|TLONG, &amp;y);
       <error code="FileNotFound">File not found.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="Read">Error reading data from file.</error>
-    </result>
-  </function>
-
-  <function>
-    <name>KeyGet</name>
-    <category>KeyStore</category>
-    <comment>Retrieve a raw data value from a KeyStore.</comment>
-    <prototype>ERROR KeyGet(struct KeyStore * Store, ULONG Key, APTR * Data, LONG * Size)</prototype>
-    <input>
-      <param type="struct KeyStore *" name="Store">Must refer to a KeyStore resource.</param>
-      <param type="ULONG" name="Key">A unique identifier to access.</param>
-      <param type="APTR *" name="Data">A pointer to the data associated with Key is returned in this parameter, or set to NULL if testing that a key exists.</param>
-      <param type="LONG *" name="Size">Optional.  The size of the Data area is returned in this parameter.</param>
-    </input>
-    <description>
-<p>Key values that have been set with <function module="Core">KeySet</function> can be retrieved with this function.  If the requested Key is found, a direct pointer to its data is returned.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="DoesNotExist">Resource does not exist.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
-    <name>KeyIterate</name>
-    <category>KeyStore</category>
-    <comment>Iteratively scan the key-store for all key values.</comment>
-    <prototype>ERROR KeyIterate(struct KeyStore * Store, ULONG Index, ULONG * Key, APTR * Data, LONG * Size)</prototype>
-    <input>
-      <param type="struct KeyStore *" name="Store">Must refer to a variable storage structure.</param>
-      <param type="ULONG" name="Index">Set to zero to initiate a scan.</param>
-      <param type="ULONG *" name="Key">The next discovered key value is returned in this parameter.</param>
-      <param type="APTR *" name="Data">Optional.  A pointer to the data associated with Key is returned in this parameter.</param>
-      <param type="LONG *" name="Size">Optional.  The size of the Data area is returned in this parameter.</param>
-    </input>
-    <description>
-<p>Use the KeyIterate() function to scan all keys and values in a key-store resource.  A new scan is initiated by setting the Index parameter to zero.  Thereafter, the Index should be set to the previously returned Key value and the function called repetitively until ERR_Finished is returned to indicate that all keys have been processed.  The following loop illustrates.  Notice how a single variable is used for both Index and Key to create an optimal loop:</p>
-<pre>
-ULONG key = 0, value;
-LONG value_len;
-while (!KeyIterate(keystore, key, &amp;key, &amp;value, &amp;value_len)) {
-   printf("$%.8x = %s\n", key, value);
-}
-</pre>
-<p>The following equivalent can be used in Fluid:</p>
-<pre>
-local err, key, value = mSys.KeyIterate(glVars, key)
-while (err == ERR_Okay) do
-   print(key, " = ", value)
-   err, key, value = mSys.KeyIterate(glVars, key)
-end
-</pre>
-<p>It is critical that the key-store is not modified during the scan.  Doing so may result in the keys being reshuffled and consequently some of the previously returned keys would reappear during the iteration.</p>
-<p>Retrieval of the value associated with a key is optional, so if not required please set Data and Size to NULL.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="NotFound">A search routine in this function failed.</error>
-      <error code="Finished">Operation finished.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
-    <name>KeySet</name>
-    <category>KeyStore</category>
-    <comment>Set a key-value pair with raw data.</comment>
-    <prototype>ERROR KeySet(struct KeyStore * Store, ULONG Key, const void * Data, LONG Size)</prototype>
-    <input>
-      <param type="struct KeyStore *" name="Store">The targeted variable store.</param>
-      <param type="ULONG" name="Key">A unique identifier for the data value.</param>
-      <param type="const void *" name="Data">A pointer to raw data to associate with the given Key.  If NULL, a remove operation is performed and ERR_Okay is returned immediately.</param>
-      <param type="LONG" name="Size">The byte-size of the Data buffer.</param>
-    </input>
-    <description>
-<p>The KeySet() function will store a raw key-value pair in a KeyStore resource, using a unique integer base identifier of your choosing.  It is strongly recommended that the identifier is a hash and not part of a numerical sequence, as this would result in keys that are poorly distributed in the internal hashmap.</p>
-<p>The key value will be retrievable from <function module="Core">KeyGet</function> only.  Raw key-pairs are not compatible with functions that use hashed key names such as <function module="Core">VarGetString</function>.</p>
-<p>If the Data pointer is NULL, any existing key that matches will be removed and this function will return immediately.</p>
-<p>Note that the contents of Data will be copied to the KeyStore.  If the data is stored elsewhere in a permanent area that will outlast the KeyStore, consider storing a pointer or index instead as this will prevent unnecessary duplication of the data.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -2557,214 +2470,6 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
   </function>
 
   <function>
-    <name>VarCopy</name>
-    <category>KeyStore</category>
-    <comment>Copies all keys in a KeyStore source to a destination KeyStore.</comment>
-    <prototype>ERROR VarCopy(struct KeyStore * Source, struct KeyStore * Dest)</prototype>
-    <input>
-      <param type="struct KeyStore *" name="Source">The source variable store.</param>
-      <param type="struct KeyStore *" name="Dest">The destination variable store.</param>
-    </input>
-    <description>
-<p>This function will copy all variables in Source to Dest.  Any key-values that already exist in Dest will be overwritten by this operation.  If an error occurs during the process, the operation will abort and the destination KeyStore will contain an unknown number of variables from the source.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
-    <name>VarGet</name>
-    <category>KeyStore</category>
-    <comment>Retrieve the value of a key, by name.</comment>
-    <prototype>ERROR VarGet(struct KeyStore * Store, CSTRING Name, APTR * Data, LONG * Size)</prototype>
-    <input>
-      <param type="struct KeyStore *" name="Store">Must refer to a variable storage structure.</param>
-      <param type="CSTRING" name="Name">The name of the variable to lookup.</param>
-      <param type="APTR *" name="Data">A pointer to the data associated with Name is returned in this parameter.</param>
-      <param type="LONG *" name="Size">Optional.  The size of the Data area is returned in this parameter.</param>
-    </input>
-    <description>
-<p>Named variables can be retrieved from variable stores by calling VarGet().  If a matching Name is discovered, a direct pointer to its associated data is returned.</p>
-<p>In addition to values set with <function module="Core">VarSet</function>, this function also works with those set by <function module="Core">VarSet</function>.</p>
-<p>This function is the fastest means of testing for the existence of a named key if Data and Size are set to NULL.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="DoesNotExist">Resource does not exist.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
-    <name>VarGetString</name>
-    <category>KeyStore</category>
-    <comment>Retrieve a key value from a key store.</comment>
-    <prototype>CSTRING VarGetString(struct KeyStore * Store, CSTRING Key)</prototype>
-    <input>
-      <param type="struct KeyStore *" name="Store">Must refer to a variable storage structure.</param>
-      <param type="CSTRING" name="Key">The name of the key-pair to lookup.</param>
-    </input>
-    <description>
-<p>Key values that have been stored as strings can be retrieved with VarGetString().  If a matching Key is discovered, the relevant string value is returned.  If an error occurs or the variable does not exist, NULL is returned.</p>
-    </description>
-    <result type="CSTRING">The value for the given key is returned.  If no match is possible then a NULL pointer is returned.</result>
-  </function>
-
-  <function>
-    <name>VarIterate</name>
-    <category>KeyStore</category>
-    <comment>Iteratively scan the key-store for all key values.</comment>
-    <prototype>ERROR VarIterate(struct KeyStore * Store, CSTRING Index, CSTRING * Key, APTR * Data, LONG * Size)</prototype>
-    <input>
-      <param type="struct KeyStore *" name="Store">Must refer to a variable storage structure.</param>
-      <param type="CSTRING" name="Index">Set to NULL to initiate a scan.</param>
-      <param type="CSTRING *" name="Key">The next discovered key name is returned in this parameter.</param>
-      <param type="APTR *" name="Data">Optional.  A pointer to the data associated with Key is returned in this parameter.</param>
-      <param type="LONG *" name="Size">Optional.  The size of the Data area is returned in this parameter.</param>
-    </input>
-    <description>
-<p>Use the VarIterate() function to scan all named keys and values in a key-store resource.  A new scan is initiated by setting the Index parameter to NULL.  Thereafter, the Index should be set to the previously returned Key string and the function called repetitively until ERR_Finished is returned to indicate that all keys have been processed.  The following loop illustrates.  Notice how a single variable is used for both Index and Key to create an optimal loop:</p>
-<pre>CSTRING key = NULL, value;
-LONG value_len;
-while (!VarIterate(keystore, key, &amp;key, &amp;value, &amp;value_len)) {
-   printf("%s = %s\n", key, value);
-}
-</pre>
-<p>The following equivalent can be used in Fluid:</p>
-<pre>local err, key, value = mSys.VarIterate(glVars, nil)
-while (err == ERR_Okay) do
-   print(key, " = ", value)
-   err, key, value = mSys.VarIterate(glVars, key)
-end
-</pre>
-<p>It is critical that the key-store is not modified during the scan.  Doing so may result in the keys being reshuffled and consequently some of the previously returned keys would reappear during the iteration.</p>
-<p>Retrieval of the value associated with a key is optional, so if not required please set Data and Size to NULL.  If the key-store includes pre-hashed keys from <function module="Core">KeySet</function>, use <function module="Core">KeyIterate</function> instead of this function as it works with named keys only.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="NotFound">A search routine in this function failed.</error>
-      <error code="Finished">Operation finished.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
-    <name>VarLock</name>
-    <category>KeyStore</category>
-    <comment>Acquire a lock on a key store.</comment>
-    <prototype>ERROR VarLock(struct KeyStore * Store, LONG Timeout)</prototype>
-    <input>
-      <param type="struct KeyStore *" name="Store">The key store to lock.</param>
-      <param type="LONG" name="Timeout">Timeout measured in milliseconds.</param>
-    </input>
-    <description>
-<p>Call VarLock() to acquire a key store's internal lock, preventing other threads from utilising key store functions on the resource until the lock is released.  Calls to VarLock() will nest, and each will need to be matched with a call to <function module="Core">VarUnlock</function>.</p>
-<p>The KeyStore must have been allocated with the THREAD_SAFE flag in the call to <function module="Core">VarNew</function> in order to enable locking functionality.  If not done so, an error of ERR_InvalidState is returned.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="TimeOut">Function timed-out before successful completion.</error>
-      <error code="InvalidState">Object was in an incorrect state for the operation.</error>
-    </result>
-  </function>
-
-  <function>
-    <name>VarNew</name>
-    <category>KeyStore</category>
-    <comment>Creates a new resource for storing key values.</comment>
-    <prototype>struct KeyStore * VarNew(LONG InitialSize, LONG Flags)</prototype>
-    <input>
-      <param type="LONG" name="InitialSize">A sizing hint that indicates the minimum number of expected key values for storage.  Set to zero for the default.</param>
-      <param type="LONG" name="Flags" lookup="KSF">Optional flags.</param>
-    </input>
-    <description>
-<p>Call VarNew() to create a resource for storing key values.  Key pairs are managed using hashmap routines that have been optimised for the storage of key-value strings and arbitrary data buffers.</p>
-<p>Key names are case-insensitive by default, but specifying KSF_CASE in the Flags parameter will enable case sensitivity.</p>
-<p>The key store must be removed with <function module="Core">FreeResource</function> once it is no longer required.</p>
-    </description>
-    <result type="struct KeyStore *">The allocated resource is returned or NULL if a memory allocation error occurred.</result>
-  </function>
-
-  <function>
-    <name>VarSet</name>
-    <category>KeyStore</category>
-    <comment>Set a key-value pair with raw data.</comment>
-    <prototype>APTR VarSet(struct KeyStore * Store, CSTRING Key, APTR Data, LONG Size)</prototype>
-    <input>
-      <param type="struct KeyStore *" name="Store">The targeted variable store.</param>
-      <param type="CSTRING" name="Key">The name of a new or existing key.</param>
-      <param type="APTR" name="Data">A pointer to raw data to associate with the given Key.  If NULL, a remove operation is performed and ERR_Okay is returned immediately.</param>
-      <param type="LONG" name="Size">The byte-size of the Data buffer.</param>
-    </input>
-    <description>
-<p>The VarSet() function will copy a key-value pair to a KeyStore resource.  The stored data will be retrievable from <function module="Core">VarGet</function> if it completes successfully.  Raw key-pairs stored with this function are not compatible with the <function module="Core">VarGetString</function> function.</p>
-<p>If the Data pointer is NULL, any existing key with a matching name will be removed and this function will return immediately.  Removing a key in this way maintains the existing state of the key store, which means that keys can be removed in a loop without concern for the key data pointers being rearranged.</p>
-<p>Note that the contents of Data will be copied to the KeyStore.  If the data is stored elsewhere in a permanent area that will outlast the KeyStore, consider storing a pointer or index instead as this will prevent unnecessary duplication of the data.  Some design patterns may be able to take advantage of <function module="Core">VarSetSized</function> as a means of bypassing the copy operation.</p>
-    </description>
-    <result type="APTR">A pointer to the cached version of the data is returned, or NULL if failure.</result>
-  </function>
-
-  <function>
-    <name>VarSetSized</name>
-    <category>KeyStore</category>
-    <comment>Create a key-value pair with an empty pre-sized data buffer.</comment>
-    <prototype>ERROR VarSetSized(struct KeyStore * Store, CSTRING Key, LONG Size, APTR * Data, LONG * DataSize)</prototype>
-    <input>
-      <param type="struct KeyStore *" name="Store">The targeted variable store.</param>
-      <param type="CSTRING" name="Key">The name of a new or existing key.</param>
-      <param type="LONG" name="Size">The byte-size of the new data buffer.</param>
-      <param type="APTR *" name="Data">A pointer to the allocated data buffer will be returned here.</param>
-      <param type="LONG *" name="DataSize">Optional.  The size of Data is returned here (identical to Size, this is present for typesafe languages).</param>
-    </input>
-    <description>
-<p>This function follows the same pattern as <function module="Core">VarSet</function> but eliminates the process of taking a copy of existing data. This can lead to efficiency gains for certain design patterns that would be disadvantaged by preparing key-value data in advance of a copy operation.  It is assumed that the client will manually write to the data buffer after calling this function.</p>
-<p>It is important to note that thread safety is not provisioned in the scenarios facilitated by this function. The client will need a locking mechanism in place to manage the read-write conflicts of a threaded environment.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
-    <name>VarSetString</name>
-    <category>KeyStore</category>
-    <comment>Set a key-value string pair in a key store.</comment>
-    <prototype>ERROR VarSetString(struct KeyStore * Store, CSTRING Key, CSTRING Value)</prototype>
-    <input>
-      <param type="struct KeyStore *" name="Store">The targeted variable store.</param>
-      <param type="CSTRING" name="Key">The name of a new or existing key.</param>
-      <param type="CSTRING" name="Value">A value to associate with the given Key.  If NULL, a remove operation is performed and ERR_Okay is returned immediately.</param>
-    </input>
-    <description>
-<p>The VarSetString() function will store a provided key-value pair in a KeyStore resource.  The variable will be retrievable from <function module="Core">VarGetString</function> if it completes successfully.</p>
-<p>A Key name and accompanying Value must be supplied.  If the Value is NULL, any existing key with a matching name will be removed and this function will return immediately.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
-    <name>VarUnlock</name>
-    <category>KeyStore</category>
-    <comment>Release a lock acquired against a key store.</comment>
-    <prototype>void VarUnlock(struct KeyStore * Store)</prototype>
-    <input>
-      <param type="struct KeyStore *" name="Store">The key store to lock.</param>
-    </input>
-    <description>
-<p>Call VarUnlock() to release a lock previously acquired with VarLock().</p>
-    </description>
-  </function>
-
-  <function>
     <name>WaitForObjects</name>
     <category>Messages</category>
     <comment>Process incoming messages while waiting on objects to complete their activities.</comment>
@@ -4034,7 +3739,6 @@ end
       <field name="TimeStamp" type="LARGE">64-bit time stamp - usable only for comparison (e.g. sorting).</field>
       <field name="Next" type="struct FileInfo *">Next structure in the list, or NULL.</field>
       <field name="Name" type="STRING">The name of the file.  This string remains valid until the next call to GetFileInfo().</field>
-      <field name="Tags" type="struct KeyStore *">A store of special tag strings that are file-specific.</field>
       <field name="Flags" type="LONG" lookup="FL">Additional flags to describe the file.</field>
       <field name="Permissions" type="LONG" lookup="PERMIT">Standard permission flags.</field>
       <field name="UserID" type="LONG">User  ID (Unix systems only).</field>
@@ -4074,14 +3778,6 @@ end
       <field name="Type" type="UWORD">JET constant</field>
       <field name="Flags" type="UWORD">Broad descriptors for the given Type (see JTYPE flags).  Automatically set by the system when sent to the pointer object</field>
       <field name="Mask" type="UWORD">Mask to use for checking against subscribers</field>
-    </struct>
-
-    <struct name="KeyStore" comment="Key-pair storage created by VarNew()">
-      <field name="Mutex" type="APTR">Internal mutex for managing thread-safety.</field>
-      <field name="Data" type="struct KeyPair * *">Key-pairs are stored here.</field>
-      <field name="TableSize" type="LONG">The size of the available storage area.</field>
-      <field name="Total" type="LONG">Total number of currently stored key-pairs, including dead keys.</field>
-      <field name="Flags" type="LONG" lookup="KSF">Optional flags used for VarNew()</field>
     </struct>
 
     <struct name="MemInfo" typeName="MEMINFO">

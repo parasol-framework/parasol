@@ -1793,14 +1793,6 @@ struct MsgHandler {
    LONG     MsgType;            // Type of message being filtered
 };
 
-struct KeyStore {
-   APTR Mutex;                 // Internal mutex for managing thread-safety.
-   struct KeyPair * * Data;    // Key-pairs are stored here.
-   LONG TableSize;             // The size of the available storage area.
-   LONG Total;                 // Total number of currently stored key-pairs, including dead keys.
-   LONG Flags;                 // Optional flags used for VarNew()
-};
-
 struct CacheFile {
    LARGE   TimeStamp;  // The file's last-modified timestamp.
    LARGE   Size;       // Byte size of the cached data.
@@ -1845,13 +1837,13 @@ struct FileInfo {
    LARGE  TimeStamp;          // 64-bit time stamp - usable only for comparison (e.g. sorting).
    struct FileInfo * Next;    // Next structure in the list, or NULL.
    STRING Name;               // The name of the file.  This string remains valid until the next call to GetFileInfo().
-   struct KeyStore * Tags;    // A store of special tag strings that are file-specific.
    LONG   Flags;              // Additional flags to describe the file.
    LONG   Permissions;        // Standard permission flags.
    LONG   UserID;             // User  ID (Unix systems only).
    LONG   GroupID;            // Group ID (Unix systems only).
    struct DateTime Created;   // The date/time of the file's creation.
    struct DateTime Modified;  // The date/time of the last file modification.
+    std::unordered_map<std::string, std::string> *Tags;
 };
 
 struct DirInfo {
@@ -1912,12 +1904,10 @@ struct CoreBase {
    ERROR (*_Action)(LONG Action, OBJECTPTR Object, APTR Parameters);
    void (*_ActionList)(struct ActionTable ** Actions, LONG * Size);
    ERROR (*_ActionMsg)(LONG Action, OBJECTID Object, APTR Args);
-   ERROR (*_KeyGet)(struct KeyStore * Store, ULONG Key, APTR Data, LONG * Size);
    CSTRING (*_ResolveClassID)(CLASSID ID);
    LONG (*_AllocateID)(LONG Type);
    ERROR (*_AllocMemory)(LONG Size, LONG Flags, APTR Address, MEMORYID * ID);
    ERROR (*_AccessObjectID)(OBJECTID Object, LONG MilliSeconds, APTR Result);
-   ERROR (*_VarCopy)(struct KeyStore * Source, struct KeyStore * Dest);
    ERROR (*_CheckAction)(OBJECTPTR Object, LONG Action);
    ERROR (*_CheckMemoryExists)(MEMORYID ID);
    ERROR (*_CheckObjectExists)(OBJECTID Object);
@@ -1954,7 +1944,6 @@ struct CoreBase {
    ERROR (*_GetMessage)(MEMORYID Queue, LONG Type, LONG Flags, APTR Buffer, LONG Size);
    MEMORYID (*_ReleaseMemory)(APTR Address);
    CLASSID (*_ResolveClassName)(CSTRING Name);
-   ERROR (*_KeySet)(struct KeyStore * Store, ULONG Key, const void * Data, LONG Size);
    ERROR (*_SendMessage)(MEMORYID Queue, LONG Type, LONG Flags, APTR Data, LONG Size);
    ERROR (*_SetOwner)(OBJECTPTR Object, OBJECTPTR Owner);
    OBJECTPTR (*_SetContext)(OBJECTPTR Object);
@@ -1965,12 +1954,10 @@ struct CoreBase {
    void (*_LogReturn)(void);
    ERROR (*_StrCompare)(CSTRING String1, CSTRING String2, LONG Length, LONG Flags);
    ERROR (*_SubscribeAction)(OBJECTPTR Object, LONG Action, FUNCTION * Callback);
-   ERROR (*_VarGet)(struct KeyStore * Store, CSTRING Name, APTR Data, LONG * Size);
    ERROR (*_SubscribeEvent)(LARGE Event, FUNCTION * Callback, APTR Custom, APTR Handle);
    ERROR (*_SubscribeTimer)(DOUBLE Interval, FUNCTION * Callback, APTR Subscription);
    ERROR (*_UpdateTimer)(APTR Subscription, DOUBLE Interval);
    ERROR (*_UnsubscribeAction)(OBJECTPTR Object, LONG Action);
-   APTR (*_VarSet)(struct KeyStore * Store, CSTRING Key, APTR Data, LONG Size);
    void (*_UnsubscribeEvent)(APTR Event);
    ERROR (*_BroadcastEvent)(APTR Event, LONG EventSize);
    void (*_WaitTime)(LONG Seconds, LONG MicroSeconds);
@@ -1993,7 +1980,6 @@ struct CoreBase {
    ERROR (*_OpenDir)(CSTRING Path, LONG Flags, struct DirInfo ** Info);
    OBJECTPTR (*_GetObjectPtr)(OBJECTID Object);
    struct Field * (*_FindField)(OBJECTPTR Object, ULONG FieldID, APTR Target);
-   ERROR (*_VarIterate)(struct KeyStore * Store, CSTRING Index, CSTRING * Key, APTR Data, LONG * Size);
    CSTRING (*_GetErrorMsg)(ERROR Error);
    struct Message * (*_GetActionMsg)(void);
    ERROR (*_FuncError)(CSTRING Header, ERROR Error);
@@ -2006,23 +1992,16 @@ struct CoreBase {
    ERROR (*_LockMutex)(APTR Mutex, LONG MilliSeconds);
    void (*_UnlockMutex)(APTR Mutex);
    ERROR (*_ActionThread)(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key);
-   struct KeyStore * (*_VarNew)(LONG InitialSize, LONG Flags);
    ERROR (*_AllocSharedMutex)(CSTRING Name, APTR Mutex);
    void (*_FreeSharedMutex)(APTR Mutex);
    ERROR (*_LockSharedMutex)(APTR Mutex, LONG MilliSeconds);
    void (*_UnlockSharedMutex)(APTR Mutex);
    void (*_VLogF)(int Flags, const char *Header, const char *Message, va_list Args);
    LONG (*_Base64Encode)(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
-   ERROR (*_VarSetSized)(struct KeyStore * Store, CSTRING Key, LONG Size, APTR Data, LONG * DataSize);
-   ERROR (*_VarLock)(struct KeyStore * Store, LONG Timeout);
    ERROR (*_WakeProcess)(LONG ProcessID);
    ERROR (*_SetResourcePath)(LONG PathType, CSTRING Path);
    OBJECTPTR (*_CurrentTask)(void);
-   ERROR (*_KeyIterate)(struct KeyStore * Store, ULONG Index, ULONG * Key, APTR Data, LONG * Size);
    CSTRING (*_ResolveGroupID)(LONG Group);
-   ERROR (*_VarSetString)(struct KeyStore * Store, CSTRING Key, CSTRING Value);
-   CSTRING (*_VarGetString)(struct KeyStore * Store, CSTRING Key);
-   void (*_VarUnlock)(struct KeyStore * Store);
    CSTRING (*_ResolveUserID)(LONG User);
    ERROR (*_CreateLink)(CSTRING From, CSTRING To);
    STRING * (*_StrBuildArray)(STRING List, LONG Size, LONG Total, LONG Flags);
@@ -2051,12 +2030,10 @@ inline ERROR AccessMemoryID(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR
 inline ERROR Action(LONG Action, OBJECTPTR Object, APTR Parameters) { return CoreBase->_Action(Action,Object,Parameters); }
 inline void ActionList(struct ActionTable ** Actions, LONG * Size) { return CoreBase->_ActionList(Actions,Size); }
 inline ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args) { return CoreBase->_ActionMsg(Action,Object,Args); }
-inline ERROR KeyGet(struct KeyStore * Store, ULONG Key, APTR Data, LONG * Size) { return CoreBase->_KeyGet(Store,Key,Data,Size); }
 inline CSTRING ResolveClassID(CLASSID ID) { return CoreBase->_ResolveClassID(ID); }
 inline LONG AllocateID(LONG Type) { return CoreBase->_AllocateID(Type); }
 inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address, MEMORYID * ID) { return CoreBase->_AllocMemory(Size,Flags,Address,ID); }
 inline ERROR AccessObjectID(OBJECTID Object, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessObjectID(Object,MilliSeconds,Result); }
-inline ERROR VarCopy(struct KeyStore * Source, struct KeyStore * Dest) { return CoreBase->_VarCopy(Source,Dest); }
 inline ERROR CheckAction(OBJECTPTR Object, LONG Action) { return CoreBase->_CheckAction(Object,Action); }
 inline ERROR CheckMemoryExists(MEMORYID ID) { return CoreBase->_CheckMemoryExists(ID); }
 inline ERROR CheckObjectExists(OBJECTID Object) { return CoreBase->_CheckObjectExists(Object); }
@@ -2093,7 +2070,6 @@ inline ERROR ReallocMemory(APTR Memory, LONG Size, APTR Address, MEMORYID * ID) 
 inline ERROR GetMessage(MEMORYID Queue, LONG Type, LONG Flags, APTR Buffer, LONG Size) { return CoreBase->_GetMessage(Queue,Type,Flags,Buffer,Size); }
 inline MEMORYID ReleaseMemory(APTR Address) { return CoreBase->_ReleaseMemory(Address); }
 inline CLASSID ResolveClassName(CSTRING Name) { return CoreBase->_ResolveClassName(Name); }
-inline ERROR KeySet(struct KeyStore * Store, ULONG Key, const void * Data, LONG Size) { return CoreBase->_KeySet(Store,Key,Data,Size); }
 inline ERROR SendMessage(MEMORYID Queue, LONG Type, LONG Flags, APTR Data, LONG Size) { return CoreBase->_SendMessage(Queue,Type,Flags,Data,Size); }
 inline ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner) { return CoreBase->_SetOwner(Object,Owner); }
 inline OBJECTPTR SetContext(OBJECTPTR Object) { return CoreBase->_SetContext(Object); }
@@ -2104,12 +2080,10 @@ inline ERROR SetName(OBJECTPTR Object, CSTRING Name) { return CoreBase->_SetName
 inline void LogReturn(void) { return CoreBase->_LogReturn(); }
 inline ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags) { return CoreBase->_StrCompare(String1,String2,Length,Flags); }
 inline ERROR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION * Callback) { return CoreBase->_SubscribeAction(Object,Action,Callback); }
-inline ERROR VarGet(struct KeyStore * Store, CSTRING Name, APTR Data, LONG * Size) { return CoreBase->_VarGet(Store,Name,Data,Size); }
 inline ERROR SubscribeEvent(LARGE Event, FUNCTION * Callback, APTR Custom, APTR Handle) { return CoreBase->_SubscribeEvent(Event,Callback,Custom,Handle); }
 inline ERROR SubscribeTimer(DOUBLE Interval, FUNCTION * Callback, APTR Subscription) { return CoreBase->_SubscribeTimer(Interval,Callback,Subscription); }
 inline ERROR UpdateTimer(APTR Subscription, DOUBLE Interval) { return CoreBase->_UpdateTimer(Subscription,Interval); }
 inline ERROR UnsubscribeAction(OBJECTPTR Object, LONG Action) { return CoreBase->_UnsubscribeAction(Object,Action); }
-inline APTR VarSet(struct KeyStore * Store, CSTRING Key, APTR Data, LONG Size) { return CoreBase->_VarSet(Store,Key,Data,Size); }
 inline void UnsubscribeEvent(APTR Event) { return CoreBase->_UnsubscribeEvent(Event); }
 inline ERROR BroadcastEvent(APTR Event, LONG EventSize) { return CoreBase->_BroadcastEvent(Event,EventSize); }
 inline void WaitTime(LONG Seconds, LONG MicroSeconds) { return CoreBase->_WaitTime(Seconds,MicroSeconds); }
@@ -2132,7 +2106,6 @@ inline LARGE PreciseTime(void) { return CoreBase->_PreciseTime(); }
 inline ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo ** Info) { return CoreBase->_OpenDir(Path,Flags,Info); }
 inline OBJECTPTR GetObjectPtr(OBJECTID Object) { return CoreBase->_GetObjectPtr(Object); }
 inline struct Field * FindField(OBJECTPTR Object, ULONG FieldID, APTR Target) { return CoreBase->_FindField(Object,FieldID,Target); }
-inline ERROR VarIterate(struct KeyStore * Store, CSTRING Index, CSTRING * Key, APTR Data, LONG * Size) { return CoreBase->_VarIterate(Store,Index,Key,Data,Size); }
 inline CSTRING GetErrorMsg(ERROR Error) { return CoreBase->_GetErrorMsg(Error); }
 inline struct Message * GetActionMsg(void) { return CoreBase->_GetActionMsg(); }
 inline ERROR FuncError(CSTRING Header, ERROR Error) { return CoreBase->_FuncError(Header,Error); }
@@ -2145,23 +2118,16 @@ inline void FreeMutex(APTR Mutex) { return CoreBase->_FreeMutex(Mutex); }
 inline ERROR LockMutex(APTR Mutex, LONG MilliSeconds) { return CoreBase->_LockMutex(Mutex,MilliSeconds); }
 inline void UnlockMutex(APTR Mutex) { return CoreBase->_UnlockMutex(Mutex); }
 inline ERROR ActionThread(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key) { return CoreBase->_ActionThread(Action,Object,Args,Callback,Key); }
-inline struct KeyStore * VarNew(LONG InitialSize, LONG Flags) { return CoreBase->_VarNew(InitialSize,Flags); }
 inline ERROR AllocSharedMutex(CSTRING Name, APTR Mutex) { return CoreBase->_AllocSharedMutex(Name,Mutex); }
 inline void FreeSharedMutex(APTR Mutex) { return CoreBase->_FreeSharedMutex(Mutex); }
 inline ERROR LockSharedMutex(APTR Mutex, LONG MilliSeconds) { return CoreBase->_LockSharedMutex(Mutex,MilliSeconds); }
 inline void UnlockSharedMutex(APTR Mutex) { return CoreBase->_UnlockSharedMutex(Mutex); }
 inline void VLogF(int Flags, const char *Header, const char *Message, va_list Args) { return CoreBase->_VLogF(Flags,Header,Message,Args); }
 inline LONG Base64Encode(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize) { return CoreBase->_Base64Encode(State,Input,InputSize,Output,OutputSize); }
-inline ERROR VarSetSized(struct KeyStore * Store, CSTRING Key, LONG Size, APTR Data, LONG * DataSize) { return CoreBase->_VarSetSized(Store,Key,Size,Data,DataSize); }
-inline ERROR VarLock(struct KeyStore * Store, LONG Timeout) { return CoreBase->_VarLock(Store,Timeout); }
 inline ERROR WakeProcess(LONG ProcessID) { return CoreBase->_WakeProcess(ProcessID); }
 inline ERROR SetResourcePath(LONG PathType, CSTRING Path) { return CoreBase->_SetResourcePath(PathType,Path); }
 inline OBJECTPTR CurrentTask(void) { return CoreBase->_CurrentTask(); }
-inline ERROR KeyIterate(struct KeyStore * Store, ULONG Index, ULONG * Key, APTR Data, LONG * Size) { return CoreBase->_KeyIterate(Store,Index,Key,Data,Size); }
 inline CSTRING ResolveGroupID(LONG Group) { return CoreBase->_ResolveGroupID(Group); }
-inline ERROR VarSetString(struct KeyStore * Store, CSTRING Key, CSTRING Value) { return CoreBase->_VarSetString(Store,Key,Value); }
-inline CSTRING VarGetString(struct KeyStore * Store, CSTRING Key) { return CoreBase->_VarGetString(Store,Key); }
-inline void VarUnlock(struct KeyStore * Store) { return CoreBase->_VarUnlock(Store); }
 inline CSTRING ResolveUserID(LONG User) { return CoreBase->_ResolveUserID(User); }
 inline ERROR CreateLink(CSTRING From, CSTRING To) { return CoreBase->_CreateLink(From,To); }
 inline STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags) { return CoreBase->_StrBuildArray(List,Size,Total,Flags); }
