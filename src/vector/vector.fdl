@@ -286,10 +286,6 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
      "CHILD_HAS_FOCUS: A child of the vector has gained the user focus.",
      "LOST_FOCUS: The vector has lost the user focus.")
 
-  struct("VectorDef", { comment="Describes a definition for the VectorScene AddDef() method.", restrict="c" }, [[
-    obj Object   # Reference to the definition object.
-  ]])
-
   struct("GradientStop", { comment="Describes a colour stop for the VectorGradient Stops field." }, [[
    double Offset     # An offset in the range of 0 - 1.0
    struct(FRGB) RGB  # A floating point RGB value.
@@ -357,7 +353,6 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
    obj(VectorScene)    HostScene # Reference to a controlling VectorScene at the top of the hierarchy, if applicable.
    obj(VectorViewport) Viewport  # Reference to the VectorViewport that contains the VectorScene.
    obj(Bitmap)         Bitmap    # Target bitmap.
-   struct(*KeyStore)   Defs      # Stores references to gradients, images, patterns etc
    oid      Surface              # Target surface for automated rendering
    int(VPF) Flags                # Optional flags.
    int      PageWidth            # Fixed page width - vector viewport width will be sized to fit this if resizing is enabled.

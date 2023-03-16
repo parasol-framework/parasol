@@ -290,8 +290,23 @@ inline void xmlUpdateAttrib(XMLTag &Tag, const std::string Name, const std::stri
    if (CanCreate) Tag.Attribs.emplace_back(Name, Value);
 }
 
-inline void xmlNewAttrib(XMLTag &Tag, const std::string &Name, const std::string &Value) {
+inline void xmlNewAttrib(XMLTag &Tag, const std::string Name, const std::string Value) {
    Tag.Attribs.emplace_back(Name, Value);
+}
+
+inline void xmlNewAttrib(XMLTag *Tag, const std::string Name, const std::string Value) {
+   Tag->Attribs.emplace_back(Name, Value);
+}
+
+template <class T> inline ERROR xmlInsertXML(APTR Ob, LONG Index, LONG Where, T Statement, XMLTag **Result) {
+   struct xmlInsertXML insert = { Index, Where, to_cstring(Statement) };
+   auto error = Action(MT_XMLInsertXML, (OBJECTPTR)Ob, &insert);
+   if (!error) {
+      struct xmlGetTag get = { insert.Result };
+      error = Action(MT_XMLGetTag, (OBJECTPTR)Ob, &get);
+      *Result = get.Result;
+   }
+   return(error);
 }
 
 //********************************************************************************************************************

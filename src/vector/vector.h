@@ -336,6 +336,7 @@ class extVectorScene : public objVectorScene {
    class VMAdaptor *Adaptor; // Drawing adaptor, targeted to bitmap pixel type
    agg::rendering_buffer *Buffer; // AGG representation of the target bitmap
    APTR KeyHandle; // Keyboard subscription
+   std::unordered_map<std::string, OBJECTPTR> Defs;
    std::unordered_set<extVectorViewport *> PendingResizeMsgs;
    std::unordered_map<extVector *, LONG> InputSubscriptions;
    std::set<extVector *, TabOrderedVector> KeyboardSubscriptions;

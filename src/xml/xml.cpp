@@ -153,57 +153,6 @@ static ERROR SET_Source(extXML *, OBJECTPTR);
 #include "xml_search.cpp"
 
 //********************************************************************************************************************
-#if 0
-static LONG str_sort(CSTRING Name1, CSTRING Name2)
-{
-   if ((!Name1) or (!Name2)) return 0;
-
-   while ((*Name1) and (*Name2)) {
-      UBYTE char1 = *Name1;
-      UBYTE char2 = *Name2;
-
-      if ((char1 >= '0') and (char1 <= '9') and (char2 >= '0') and (char2 <= '9')) {
-         // This integer comparison is for human readable sorting
-         ULONG val1 = 0;
-         while (*Name1 IS '0') Name1++;
-         while ((*Name1) and (*Name1 >= '0') and (*Name1 <= '9')) {
-            val1 = (val1 * 10) + (*Name1 - '0');
-            Name1++;
-         }
-
-         ULONG val2 = 0;
-         while (*Name2 IS '0') Name2++;
-         while ((*Name2) and (*Name2 >= '0') and (*Name2 <= '9')) {
-            val2 = (val2 * 10) + (*Name2 - '0');
-            Name2++;
-         }
-
-         if (val1 > val2) return 1; // Name1 is greater
-         else if (val1 < val2) return -1; // Name1 is lesser
-         else {
-            while ((*Name1 >= '0') and (*Name1 <= '9')) Name1++;
-            while ((*Name2 >= '0') and (*Name2 <= '9')) Name2++;
-            continue;
-         }
-      }
-
-      if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
-      if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
-
-      if (char1 > char2) return 1; // Name1 is greater
-      else if (char1 < char2) return -1; // Name1 is lesser
-
-      Name1++;
-      Name2++;
-   }
-
-   if ((!*Name1) and (!*Name2)) return 0;
-   else if (!*Name1) return -1;
-   else return 1;
-}
-#endif
-
-//********************************************************************************************************************
 
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {

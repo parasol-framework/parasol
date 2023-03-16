@@ -163,20 +163,12 @@ static ERROR VECTORSCENE_AddDef(extVectorScene *Self, struct scAddDef *Args)
 
    log.extmsg("Adding definition '%s' referencing %s #%d", Args->Name, def->Class->ClassName, def->UID);
 
-   APTR data;
-   if (!Self->Defs) {
-      if (!(Self->Defs = VarNew(64, KSF_CASE))) {
-         return log.warning(ERR_AllocMemory);
-      }
-   }
-   else if (!VarGet(Self->Defs, Args->Name, &data, NULL)) { // Check that the definition name is unique.
+   if (Self->Defs.contains(Args->Name)) { // Check that the definition name is unique.
       log.extmsg("The vector definition name '%s' is already in use.", Args->Name);
       return ERR_ResourceExists;
    }
 
-   VectorDef vd;
-   vd.Object = def;
-   VarSet(Self->Defs, Args->Name, &vd, sizeof(vd));
+   Self->Defs[Args->Name] = def;
    return ERR_Okay;
 }
 
@@ -309,23 +301,22 @@ static ERROR VECTORSCENE_FindDef(extVectorScene *Self, struct scFindDef *Args)
 
    if (*name IS '#') name = name + 1;
    else if (!StrCompare("url(#", name, 5, 0)) {
-      char newname[80];
-      UWORD i;
-      name += 5;
-      for (i=0; (name[i] != ')') and (name[i]) and (i < sizeof(newname)-1); i++) newname[i] = name[i];
-      newname[i] = 0;
+      LONG i;
+      for (i=5; (name[i] != ')') and name[i]; i++);
+      std::string lookup;
+      lookup.assign(name, 5, i-5);
 
-      VectorDef *vd;
-      if (!VarGet(Self->Defs, newname, &vd, NULL)) {
-         Args->Def = vd->Object;
+      auto def = Self->Defs.find(lookup);
+      if (def != Self->Defs.end()) {
+         Args->Def = def->second;
          return ERR_Okay;
       }
       else return ERR_Search;
    }
 
-   VectorDef *vd;
-   if (!VarGet(Self->Defs, name, &vd, NULL)) {
-      Args->Def = vd->Object;
+   auto def = Self->Defs.find(name);
+   if (def != Self->Defs.end()) {
+      Args->Def = def->second;
       return ERR_Okay;
    }
    else return ERR_Search;
@@ -340,7 +331,6 @@ static ERROR VECTORSCENE_Free(extVectorScene *Self, APTR Args)
    if (Self->Viewport) Self->Viewport->Parent = NULL;
    if (Self->Adaptor)  { delete Self->Adaptor; Self->Adaptor = NULL; }
    if (Self->Buffer)   { delete Self->Buffer; Self->Buffer = NULL; }
-   if (Self->Defs)     { FreeResource(Self->Defs); Self->Defs = NULL; }
    if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
 
    if (Self->SurfaceID) {
@@ -443,8 +433,7 @@ static ERROR VECTORSCENE_Reset(extVectorScene *Self, APTR Void)
 {
    if (Self->Adaptor) { delete Self->Adaptor; Self->Adaptor = NULL; }
    if (Self->Buffer)  { delete Self->Buffer; Self->Buffer = NULL; }
-   if (Self->Defs)    { FreeResource(Self->Defs); Self->Defs = NULL; }
-
+   Self->Defs.clear();
    Self->Gamma = 1.0;
    return ERR_Okay;
 }
@@ -523,7 +512,7 @@ cont:
 Bitmap: Target bitmap for drawing vectors.
 
 The target bitmap to use when drawing the vectors must be specified here.
-
+-END-
 *********************************************************************************************************************/
 
 static ERROR SET_Bitmap(extVectorScene *Self, objBitmap *Value)
@@ -550,6 +539,16 @@ static ERROR SET_Bitmap(extVectorScene *Self, objBitmap *Value)
 
 /*********************************************************************************************************************
 
+*********************************************************************************************************************/
+
+static ERROR GET_Defs(extVectorScene *Self, std::unordered_map<std::string, OBJECTPTR> **Value)
+{
+   *Value = &Self->Defs;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
 -FIELD-
 Flags: Optional flags.
 
@@ -571,7 +570,7 @@ PageHeight: The height of the page that contains the vector.
 This value defines the pixel height of the page that contains the vector scene graph.  If the `RESIZE` #Flags
 option is used then the viewport will be scaled to fit within the page.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_PageHeight(extVectorScene *Self, LONG Value)
 {
@@ -584,7 +583,7 @@ static ERROR SET_PageHeight(extVectorScene *Self, LONG Value)
    return ERR_Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 PageWidth: The width of the page that contains the vector.
@@ -592,7 +591,7 @@ PageWidth: The width of the page that contains the vector.
 This value defines the pixel width of the page that contains the vector scene graph.  If the `RESIZE` #Flags
 option is used then the viewport will be scaled to fit within the page.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR SET_PageWidth(extVectorScene *Self, LONG Value)
 {
@@ -605,7 +604,7 @@ static ERROR SET_PageWidth(extVectorScene *Self, LONG Value)
    return ERR_Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 RenderTime: Returns the rendering time of the last scene.
@@ -616,7 +615,7 @@ be used to compute frames-per-second with `1000000 / RenderTime`.
 The `RENDER_TIME` flag should also be set before fetching this value, as it is required to enable the timing feature.  If
 `RENDER_TIME` is not set, it will be set automatically so that subsequent calls succeed correctly.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR GET_RenderTime(extVectorScene *Self, LARGE *Value)
 {
@@ -625,7 +624,7 @@ static ERROR GET_RenderTime(extVectorScene *Self, LARGE *Value)
    return ERR_Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 SampleMethod: The sampling method to use when interpolating images and patterns.
@@ -650,7 +649,7 @@ static ERROR SET_Surface(extVectorScene *Self, OBJECTID Value)
    return ERR_Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Viewport: References the first object in the scene, which must be a VectorViewport object.
@@ -1166,12 +1165,13 @@ static const FieldArray clSceneFields[] = {
    { "HostScene",    FDF_OBJECT|FDF_RI, NULL, NULL, ID_VECTORSCENE },
    { "Viewport",     FDF_OBJECT|FD_R, NULL, NULL, ID_VECTORVIEWPORT },
    { "Bitmap",       FDF_OBJECT|FDF_RW, NULL, SET_Bitmap, ID_BITMAP },
-   { "Defs",         FDF_STRUCT|FDF_PTR|FDF_SYSTEM|FDF_RESOURCE|FDF_R, NULL, NULL, "KeyStore" },
    { "Surface",      FDF_OBJECTID|FDF_RI, NULL, SET_Surface, ID_SURFACE },
    { "Flags",        FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clVectorSceneFlags },
    { "PageWidth",    FDF_LONG|FDF_RW, NULL, SET_PageWidth },
    { "PageHeight",   FDF_LONG|FDF_RW, NULL, SET_PageHeight },
    { "SampleMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorSceneSampleMethod },
+   // Virtual fields
+   { "Defs",         FDF_PTR|FDF_SYSTEM|FDF_R, GET_Defs, NULL },
    END_FIELD
 };
 
