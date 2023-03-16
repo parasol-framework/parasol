@@ -301,6 +301,7 @@ static void xml_unescape(extXML *Self, std::string &String)
          if (String[len] IS ';') { // The correct terminator must be present
             char unichar[6];
             auto ulen = UTF8WriteValue(unicode, unichar, sizeof(unichar));
+            len++;
             String.replace(c, len - c, unichar, ulen);
             c += ulen;
          }
