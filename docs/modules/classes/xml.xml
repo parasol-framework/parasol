@@ -18,8 +18,7 @@
     <description>
 <p>The XML class provides functionality to create and maintain XML data files.  It is capable of parsing and validating XML files with or without correct structure, and can perform optional parsing behaviours such as stripping comments during processing.</p>
 <p>Data can be loaded into an XML object either by specifying a file <field>Path</field> or by giving it an XML <field>Statement</field>.  If multiple XML statements need to be processed then reset the Path or Statement field after initialisation and the XML object will rebuild itself.  This saves on allocating multiple XML objects for batch processing.</p>
-<p>Successfully processed data can be read back by scanning the array referenced in the <field>Tags</field> field.  The array contains an XMLTag structure for each tag parsed from the original XML statement.  For more information on how to scan this information, refer to the <field>Tags</field> field.  C++ developers are recommended to interact with <field>Tags</field> directly, which is represented as <code>pf::vector<XMLTag/>.  Note that adding new Tags is a volatile action that can destabilise the object (taking a complete copy of the tags may be warranted instead).</code>
-</p></description>
+<p>Successfully processed data can be read back by scanning the array referenced in the <field>Tags</field> field.  The array contains an XMLTag structure for each tag parsed from the original XML statement.  For more information on how to scan this information, refer to the <field>Tags</field> field.  C++ developers are recommended to interact with <field>Tags</field> directly, which is represented as <code>pf::vector&lt;XMLTag&gt;</code>.  Note that adding new Tags is a volatile action that can destabilise the object (taking a complete copy of the tags may be warranted instead).</p></description>
     <source>
       <file>xml.cpp</file>
     </source>
@@ -318,7 +317,7 @@
       <description>
 <p>The RemoveTag method is used to remove one or more tags from an XML structure.  Child tags will automatically be discarded as a consequence of using this method, in order to maintain a valid XML structure.</p>
 <p>This method is capable of deleting multiple tags if the Total parameter is set to a value greater than 1.  Each consecutive tag and its children following the targeted tag will be removed from the XML structure until the count is exhausted. This is useful for mass delete operations.</p>
-<p>After using this method, you must assume that all tag addresses have been changed due to the rearrangement of the XML structure.  Thus if you have obtained pointers to various parts of the XML structure, they are invalid and must be recalculated.</p>
+<p>This method is volatile and will destabilise any cached address pointers that have been acquired from the XML object.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -340,7 +339,7 @@
 <p>The RemoveXPath method is used to remove one or more tags from an XML structure.  Child tags will automatically be discarded as a consequence of using this method, in order to maintain a valid XML structure.</p>
 <p>Individual tag attributes can also be removed if an attribute is referenced at the end of the XPath.</p>
 <p>The removal routine will be repeated so that each tag that matches the XPath will be deleted, or the Total is reached.</p>
-<p>The client must assume that calling this method will destabilise cached address pointers that have been acquired from the XML object.</p>
+<p>This method is volatile and will destabilise any cached address pointers that have been acquired from the XML object.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -360,14 +359,9 @@
         <param type="CSTRING" name="Value">String containing the new value for the attribute.  If NULL, the attribute is removed.</param>
       </input>
       <description>
-<p>This method is used to update and add attributes to existing XML tags, as well as adding or modifying content.  You need to supply the address of a tag index and the index number of the attribute that you are going to update.</p>
+<p>This method is used to update and add attributes to existing XML tags, as well as adding or modifying content.</p>
 <p>The data for the attribute is defined in the Name and Value parameters.  Use an empty string if no data is to be associated with the attribute.  Set the Value pointer to NULL to remove the attribute. If both Name and Value are NULL, an error will be returned.</p>
 <p>NOTE: The attribute at position 0 declares the name of the tag and should not normally be accompanied with a value declaration.  However, if the tag represents content within its parent, then the Name must be set to NULL and the Value string will determine the content.</p>
-<p>NOTE: The address of the modified tag will be invalidated as a result of calling this method.  Any tag pointers that have been stored by the client program will need to be refreshed from the XML tag list after calling this method, for example:</p>
-<pre>LONG index = tag-&gt;Index; // Store the index of tag.
-xmlSetAttrib(XML, tag-&gt;Index, XMS_NEW, "name", "value");
-tag = XML-&gt;Tags[index]; // Refresh the pointer to tag.
-</pre>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>

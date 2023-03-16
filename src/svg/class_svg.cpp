@@ -12,8 +12,6 @@ elements.  Unfortunately we do not support all SVG capabilities at this time, bu
 
 *********************************************************************************************************************/
 
-//********************************************************************************************************************
-
 static void notify_free_frame_callback(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
    ((extSVG *)CurrentContext())->FrameCallback.Type = CALL_NONE;
@@ -259,7 +257,8 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
          ERROR error = xmlInsertXML(*xml, 0, 0, header, NULL);
          LONG index = xml->Tags.back().ID;
 
-         if (!(error = xmlInsertXML(*xml, index, XMI_NEXT, "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:parasol=\"http://www.parasol.ws/xmlns/svg\"/>", &index))) {
+         XMLTag *tag;
+         if (!(error = xmlInsertXML(*xml, index, XMI_NEXT, "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:parasol=\"http://www.parasol.ws/xmlns/svg\"/>", &tag))) {
             bool multiple_viewports = (Self->Scene->Viewport->Next) ? true : false;
             if (multiple_viewports) {
                if (!(error = save_svg_defs(Self, *xml, Self->Scene, index))) {
@@ -282,22 +281,22 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
                if (!error) {
                   char buffer[80];
                   snprintf(buffer, sizeof(buffer), "%g %g %g %g", x, y, width, height);
-                  xmlSetAttrib(*xml, index, XMS_NEW, "viewBox", buffer);
+                  xmlNewAttrib(tag, "viewBox", buffer);
                }
 
                LONG dim;
                if ((!error) and (!(error = Self->Viewport->get(FID_Dimensions, &dim)))) {
                   if ((dim & (DMF_RELATIVE_X|DMF_FIXED_X)) and (!Self->Viewport->get(FID_X, &x)))
-                     set_dimension(*xml, index, "x", x, dim & DMF_RELATIVE_X);
+                     set_dimension(tag, "x", x, dim & DMF_RELATIVE_X);
 
                   if ((dim & (DMF_RELATIVE_Y|DMF_FIXED_Y)) and (!Self->Viewport->get(FID_Y, &y)))
-                     set_dimension(*xml, index, "y", y, dim & DMF_RELATIVE_Y);
+                     set_dimension(tag, "y", y, dim & DMF_RELATIVE_Y);
 
                   if ((dim & (DMF_RELATIVE_WIDTH|DMF_FIXED_WIDTH)) and (!Self->Viewport->get(FID_Width, &width)))
-                     set_dimension(*xml, index, "width", width, dim & DMF_RELATIVE_WIDTH);
+                     set_dimension(tag, "width", width, dim & DMF_RELATIVE_WIDTH);
 
                   if ((dim & (DMF_RELATIVE_HEIGHT|DMF_FIXED_HEIGHT)) and (!Self->Viewport->get(FID_Height, &height)))
-                     set_dimension(*xml, index, "height", height, dim & DMF_RELATIVE_HEIGHT);
+                     set_dimension(tag, "height", height, dim & DMF_RELATIVE_HEIGHT);
                }
 
                if (!error) {

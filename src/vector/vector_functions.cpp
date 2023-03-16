@@ -790,27 +790,25 @@ next:
 
       if (Scene->HostScene) Scene = Scene->HostScene;
 
-      IRI += 4;
-      if (*IRI IS '#') {
+      if (IRI[4] IS '#') {
          // Compute the hash identifier
 
-         IRI++;
-         char name[80];
-         for (i=0; (IRI[i] != ')') and (IRI[i]) and (i < sizeof(name)-1); i++) name[i] = IRI[i];
-         name[i] = 0;
+         for (i=5; (IRI[i] != ')') and IRI[i]; i++);
+         std::string lookup;
+         lookup.assign(IRI, 5, i-5);
 
-         VectorDef *def;
-         if (!VarGet(Scene->Defs, name, &def, NULL)) {
-            if (def->Object->ClassID IS ID_VECTORGRADIENT) {
-               if (Gradient) *Gradient = (objVectorGradient *)def->Object;
+         if (((extVectorScene *)Scene)->Defs.contains(lookup)) {
+            auto def = ((extVectorScene *)Scene)->Defs[lookup];
+            if (def->ClassID IS ID_VECTORGRADIENT) {
+               if (Gradient) *Gradient = (objVectorGradient *)def;
             }
-            else if (def->Object->ClassID IS ID_VECTORIMAGE) {
-               if (Image) *Image = (objVectorImage *)def->Object;
+            else if (def->ClassID IS ID_VECTORIMAGE) {
+               if (Image) *Image = (objVectorImage *)def;
             }
-            else if (def->Object->ClassID IS ID_VECTORPATTERN) {
-               if (Pattern) *Pattern = (objVectorPattern *)def->Object;
+            else if (def->ClassID IS ID_VECTORPATTERN) {
+               if (Pattern) *Pattern = (objVectorPattern *)def;
             }
-            else log.warning("Vector definition '%s' (class $%.8x) not supported.", name, def->Object->ClassID);
+            else log.warning("Vector definition '%s' (class $%.8x) not supported.", lookup.c_str(), def->ClassID);
 
             // Check for combinations
             if (IRI[i++] IS ')') {
@@ -824,7 +822,7 @@ next:
             return ERR_Okay;
          }
 
-         log.warning("Failed to lookup IRI '%s' in scene #%d", name, Scene->UID);
+         log.warning("Failed to lookup IRI '%s' in scene #%d", IRI, Scene->UID);
       }
       else log.warning("Invalid IRI: %s", IRI);
 

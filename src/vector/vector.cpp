@@ -157,7 +157,6 @@ static STRUCTS glStructures = {
    { "MergeSource",  sizeof(MergeSource) },
    { "PathCommand",  sizeof(PathCommand) },
    { "Transition",   sizeof(Transition) },
-   { "VectorDef",    sizeof(VectorDef) },
    { "VectorMatrix", sizeof(VectorMatrix) },
    { "VectorPoint",  sizeof(VectorPoint) }
 };
