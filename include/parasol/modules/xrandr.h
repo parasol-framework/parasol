@@ -1,30 +1,28 @@
-#ifndef MODULES_XRANDR
-#define MODULES_XRANDR 1
+#pragma once
 
 // Name:      xrandr.h
 // Copyright: Paul Manias © 2014-2017
 // Generator: idl-c
 
-#ifndef MAIN_H
 #include <parasol/main.h>
-#endif
 
 #define MODVERSION_XRANDR (1)
 
+extern struct XRandRBase *XRandRBase;
 struct XRandRBase {
-   ERROR (*_SetDisplayMode)(LONG *, LONG *);
-   LONG (*_Notify)(APTR);
-   void (*_SelectInput)(LONG);
+   ERROR (*_SetDisplayMode)(LONG * Width, LONG * Height);
+   LONG (*_Notify)(APTR XEvent);
+   void (*_SelectInput)(LONG Window);
    LONG (*_GetDisplayTotal)(void);
-   APTR (*_GetDisplayMode)(LONG);
+   APTR (*_GetDisplayMode)(LONG Index);
 };
 
 #ifndef PRV_XRANDR_MODULE
-#define xrSetDisplayMode(...) (XRandRBase->_SetDisplayMode)(__VA_ARGS__)
-#define xrNotify(...) (XRandRBase->_Notify)(__VA_ARGS__)
-#define xrSelectInput(...) (XRandRBase->_SelectInput)(__VA_ARGS__)
-#define xrGetDisplayTotal(...) (XRandRBase->_GetDisplayTotal)(__VA_ARGS__)
-#define xrGetDisplayMode(...) (XRandRBase->_GetDisplayMode)(__VA_ARGS__)
+inline ERROR xrSetDisplayMode(LONG * Width, LONG * Height) { return XRandRBase->_SetDisplayMode(Width,Height); }
+inline LONG xrNotify(APTR XEvent) { return XRandRBase->_Notify(XEvent); }
+inline void xrSelectInput(LONG Window) { return XRandRBase->_SelectInput(Window); }
+inline LONG xrGetDisplayTotal(void) { return XRandRBase->_GetDisplayTotal(); }
+inline APTR xrGetDisplayMode(LONG Index) { return XRandRBase->_GetDisplayMode(Index); }
 #endif
 
 struct xrMode {
@@ -33,4 +31,3 @@ struct xrMode {
    LONG Depth;    // bit depth
 };
 
-#endif

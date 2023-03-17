@@ -146,7 +146,7 @@
 <p>This method returns a list of items that are on the clipboard.  The caller must declare the types of data that it supports (or zero if all datatypes are recognised).</p>
 <p>The most recently clipped datatype is always returned.  To scan for all available clip items, set the Datatype parameter to zero and repeatedly call this method with incremented Index numbers until the error code ERR_OutOfRange is returned.</p>
 <p>On success this method will return a list of files (terminated with a NULL entry) in the Files parameter.  Each file is a readable clipboard entry - how the client reads it depends on the resulting Datatype.  Additionally, the IdentifyFile() function could be used to find a class that supports the data.  The resulting Files array is a memory allocation that must be freed with a call to <function module="Core">FreeResource</function>.</p>
-<p>If this method returns the CEF_DELETE flag in the Flags parameter, the client must delete the source files after successfully copying the data.  When cutting and pasting files within the file system, using <function module="Core">MoveFile</function> is recommended as the most efficient method.</p>
+<p>If this method returns the <code>CEF_DELETE</code> flag in the Flags parameter, the client must delete the source files after successfully copying the data.  When cutting and pasting files within the file system, using <function module="Core">MoveFile</function> is recommended as the most efficient method.</p>
       </description>
       <result>
         <error code="Okay">A matching clip was found and returned.</error>
@@ -203,10 +203,10 @@
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>Applications can request data from a clipboard if it is in drag-and-drop mode by sending a DATA_REQUEST to the Clipboard's DataFeed action.  Doing so will result in a callback to the function that is referenced in the RequestHandler, which must be defined by the source application.  The RequestHandler function must follow this template:</p>
+<p>Applications can request data from a clipboard if it is in drag-and-drop mode by sending a <code>DATA_REQUEST</code> to the Clipboard's DataFeed action.  Doing so will result in a callback to the function that is referenced in the RequestHandler, which must be defined by the source application.  The RequestHandler function must follow this template:</p>
 <p>
 <code>ERROR RequestHandler(*Clipboard, OBJECTID Requester, LONG Item, BYTE Datatypes[4])</code></p>
-<p>The function will be expected to send a DATA_RECEIPT to the object referenced in the Requester paramter.  The receipt must provide coverage for the referenced Item and use one of the indicated Datatypes as the data format. If this cannot be achieved then ERR_NoSupport should be returned by the function.</p>
+<p>The function will be expected to send a <code>DATA_RECEIPT</code> to the object referenced in the Requester paramter.  The receipt must provide coverage for the referenced Item and use one of the indicated Datatypes as the data format. If this cannot be achieved then <code>ERR_NoSupport</code> should be returned by the function.</p>
       </description>
     </field>
 
