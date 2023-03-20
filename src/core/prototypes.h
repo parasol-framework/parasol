@@ -33,7 +33,7 @@ ERROR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size
 LONG TotalChildren(OBJECTID Object);
 CSTRING GetName(OBJECTPTR Object);
 ERROR ListChildren(OBJECTID Object, struct ChildEntry * List, LONG * Count);
-ERROR Base64Decode(struct rkBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
+ERROR Base64Decode(struct pfBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
 ERROR RegisterFD(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
 ERROR ResolvePath(CSTRING Path, LONG Flags, STRING * Result);
 ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size);
@@ -101,7 +101,7 @@ void FreeSharedMutex(APTR Mutex);
 ERROR LockSharedMutex(APTR Mutex, LONG MilliSeconds);
 void UnlockSharedMutex(APTR Mutex);
 void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args);
-LONG Base64Encode(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
+LONG Base64Encode(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
 ERROR WakeProcess(LONG ProcessID);
 ERROR SetResourcePath(LONG PathType, CSTRING Path);
 OBJECTPTR CurrentTask();

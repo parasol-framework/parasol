@@ -14,8 +14,8 @@ static const char decoding[] = {62,-1,-1,-1,63,52,53,54,55,56,57,58,59,60,61,-1,
 
 const LONG CHARS_PER_LINE = 72;
 
-static int base64_decode_block(CSTRING, LONG, char *, rkBase64Decode *);
-static int base64_encode_block(CSTRING, LONG, char *, rkBase64Encode *);
+static int base64_decode_block(CSTRING, LONG, char *, pfBase64Decode *);
+static int base64_encode_block(CSTRING, LONG, char *, pfBase64Encode *);
 
 inline LONG base64_decode_value(LONG value_in)
 {
@@ -44,7 +44,7 @@ It is required that the Output is sized to at least `(4 / 3) + 1` of InputSize w
 the size must be at least 6 bytes.
 
 -INPUT-
-resource(rkBase64Encode) State: Pointer to an rkBase64Decode structure, initialised to zero.
+resource(pfBase64Encode) State: Pointer to an pfBase64Decode structure, initialised to zero.
 buf(cptr) Input:    The binary data to encode.
 bufsize InputSize:  The amount of data to encode.  Set to zero to finalise the output.
 buf(str) Output:    Destination buffer for the encoded output.
@@ -55,7 +55,7 @@ int: The total number of bytes output is returned.
 
 **********************************************************************************************************************/
 
-LONG Base64Encode(rkBase64Encode *State, const void *Input, LONG InputSize, STRING Output, LONG OutputSize)
+LONG Base64Encode(pfBase64Encode *State, const void *Input, LONG InputSize, STRING Output, LONG OutputSize)
 {
    if ((!State) or (!Input) or (!Output) or (OutputSize < 1)) return 0;
 
@@ -88,7 +88,7 @@ LONG Base64Encode(rkBase64Encode *State, const void *Input, LONG InputSize, STRI
    }
 }
 
-static int base64_encode_block(CSTRING plaintext_in, LONG length_in, char *code_out, rkBase64Encode *State)
+static int base64_encode_block(CSTRING plaintext_in, LONG length_in, char *code_out, pfBase64Encode *State)
 {
    const char *plainchar = plaintext_in;
    const char *const plaintextend = plaintext_in + length_in;
@@ -155,7 +155,7 @@ Input and gracefully handles buffer over-runs by forwarding data to the next cal
 To use this function effectively, call it repeatedly in a loop until all of the input is exhausted.
 
 -INPUT-
-resource(rkBase64Decode) State: Pointer to an rkBase64Decode structure, initialised to zero.
+resource(pfBase64Decode) State: Pointer to an pfBase64Decode structure, initialised to zero.
 cstr Input: A base 64 input string.  The pointer will be updated when the function returns.
 bufsize InputSize: The size of the input string.
 buf(ptr) Output:  The output buffer.  The size of the buffer must be greater or equal to the size of Input.
@@ -169,7 +169,7 @@ Args
 
 **********************************************************************************************************************/
 
-ERROR Base64Decode(rkBase64Decode *State, CSTRING Input, LONG InputSize, APTR Output, LONG *Written)
+ERROR Base64Decode(pfBase64Decode *State, CSTRING Input, LONG InputSize, APTR Output, LONG *Written)
 {
    if ((!State) or (!Input) or (!Output) or (!Written)) return ERR_NullArgs;
    if (InputSize < 4) return ERR_Args;
@@ -184,7 +184,7 @@ ERROR Base64Decode(rkBase64Decode *State, CSTRING Input, LONG InputSize, APTR Ou
    return ERR_Okay;
 }
 
-static LONG base64_decode_block(CSTRING code_in, LONG length_in, char * plaintext_out, rkBase64Decode *State)
+static LONG base64_decode_block(CSTRING code_in, LONG length_in, char * plaintext_out, pfBase64Decode *State)
 {
    const char* codechar = code_in;
    char* plainchar = plaintext_out;

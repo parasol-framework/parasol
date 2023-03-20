@@ -1591,7 +1591,7 @@ static ERROR load_pic(extSVG *Self, std::string Path, objPicture **Picture)
             while ((*val) and (*val != ',')) val++;
             if (*val IS ',') val++;
 
-            rkBase64Decode state;
+            pfBase64Decode state;
             ClearMemory(&state, sizeof(state));
 
             UBYTE *output;

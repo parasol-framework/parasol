@@ -67,14 +67,12 @@ LONG AllocateID(LONG Type)
    pf::Log log(__FUNCTION__);
 
    if (Type IS IDTYPE_MESSAGE) {
-      if (glSharedControl->MessageIDCount < 10000) glSharedControl->MessageIDCount = 10000;
-      LONG id = __sync_add_and_fetch(&glSharedControl->MessageIDCount, 1);
-
+      LONG id = __sync_add_and_fetch(&glMessageIDCount, 1);
       log.function("MessageID: %d", id);
       return id;
    }
    else if (Type IS IDTYPE_GLOBAL) {
-      LONG id = __sync_add_and_fetch(&glSharedControl->GlobalIDCount, 1);
+      LONG id = __sync_add_and_fetch(&glGlobalIDCount, 1);
       return id;
    }
    else if (Type IS IDTYPE_FUNCTION) {

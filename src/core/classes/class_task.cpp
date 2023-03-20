@@ -497,7 +497,7 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
                   obj->Flags = obj->Flags & (~NF::MESSAGE);
                   ReleaseObject(obj);
 
-                  free_ptr_args(action+1, fields, FALSE);
+                  local_free_args(action+1, fields);
                }
                else {
                   log.warning("Failed to resolve arguments for action %s.", action_id_name(action->ActionID));
@@ -515,48 +515,6 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
    }
    else log.warning("Action message %s specifies an object ID of #%d.", action_id_name(action->ActionID), action->ObjectID);
 
-   return ERR_Okay;
-}
-
-//********************************************************************************************************************
-// Internal debug message found.  Internal debug messages are used for diagnosing things that are in local memory to
-// the task (programs like Inspector cannot access such areas).
-
-static ERROR msg_debug(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
-{
-   pf::Log log("Debug");
-   DebugMessage *debug;
-   LONG j;
-
-   if (!(debug = (DebugMessage *)Message)) return ERR_Okay;
-
-   if (debug->DebugID IS 1) {
-      log.error("Index   Address   MemoryID    Locks");
-      ThreadLock lock(TL_MEMORY_PAGES, 4000);
-      if (lock.granted()) {
-         for (LONG i=0; i < glTotalPages; i++) {
-            if ((glMemoryPages[i].Address) or (glMemoryPages[i].MemoryID)) {
-               for (j=0; j < glTotalPages; j++) {
-                  if ((j != i) and (glMemoryPages[j].Address IS glMemoryPages[i].Address)) break;
-               }
-               if (j < glTotalPages) log.error("%.3d:   %p     %8d%10d [DUPLICATE WITH %d]", i, glMemoryPages[i].Address, glMemoryPages[i].MemoryID, glMemoryPages[i].AccessCount, j);
-               else log.error("%.3d:   %p     %8d%10d", i, glMemoryPages[i].Address, glMemoryPages[i].MemoryID, glMemoryPages[i].AccessCount);
-            }
-         }
-      }
-   }
-
-   return ERR_Okay;
-}
-
-//********************************************************************************************************************
-
-static ERROR msg_validate_process(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
-{
-   ValidateMessage *data;
-
-   if (!(data = (ValidateMessage *)Message)) return ERR_Okay;
-   validate_process(data->ProcessID);
    return ERR_Okay;
 }
 
@@ -1760,12 +1718,6 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
       call.Type = CALL_STDC;
       call.StdC.Routine = (APTR)msg_action;
       AddMsgHandler(NULL, MSGID_ACTION, &call, &Self->MsgAction);
-
-      call.StdC.Routine = (APTR)msg_debug;
-      AddMsgHandler(NULL, MSGID_DEBUG, &call, &Self->MsgDebug);
-
-      call.StdC.Routine = (APTR)msg_validate_process;
-      AddMsgHandler(NULL, MSGID_VALIDATE_PROCESS, &call, &Self->MsgValidateProcess);
 
       call.StdC.Routine = (APTR)msg_quit;
       AddMsgHandler(NULL, MSGID_QUIT, &call, &Self->MsgQuit);

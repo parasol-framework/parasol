@@ -470,7 +470,7 @@ retry:
 
       ThreadLock lock(TL_PRIVATE_MEM, 4000);
       if (lock.granted()) { // For keeping threads synchronised, it is essential that this lock is made early on.
-         MEMORYID unique_id = __sync_fetch_and_add(&glSharedControl->PrivateIDCounter, 1);
+         MEMORYID unique_id = __sync_fetch_and_add(&glPrivateIDCounter, 1);
 
          // Configure the memory header and place boundary cookies at the start and end of the memory block.
 
