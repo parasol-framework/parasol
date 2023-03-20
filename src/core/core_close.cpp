@@ -253,7 +253,7 @@ EXPORT void CloseCore(void)
       if (glTimeClass)         { acFree(glTimeClass);         glTimeClass         = 0; }
       if (glModuleClass)       { acFree(glModuleClass);       glModuleClass       = 0; }
       if (glThreadClass)       { acFree(glThreadClass);       glThreadClass       = 0; }
-      if (glRootModuleClass)   { acFree(glRootModuleClass); glRootModuleClass = 0; }
+      if (glRootModuleClass)   { acFree(glRootModuleClass);   glRootModuleClass   = 0; }
 
       #ifdef __unix__
          if (glSocket != -1) RegisterFD(glSocket, RFD_REMOVE, NULL, NULL);

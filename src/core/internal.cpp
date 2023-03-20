@@ -138,157 +138,6 @@ public|untracked and private memory flags as necessary.  Example:
 *********************************************************************************************************************/
 
 ERROR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffer, BYTE *Buffer, LONG BufferSize,
-                    LONG *NewSize, WORD *WaitResult, CSTRING ActionName)
-{
-   pf::Log log("CopyArguments");
-   BYTE *src, *data;
-   MEMORYID memoryid;
-   LONG memsize, i, j, len, pos, offset;
-   ERROR error;
-   STRING str;
-
-   if ((!Args) or (!ArgsBuffer) or (!Buffer)) return log.warning(ERR_NullArgs);
-
-   *WaitResult = FALSE;
-
-   for (i=0; (i < ArgsSize); i++) { // Copy the arguments to the buffer
-      if (i >= BufferSize) return log.warning(ERR_BufferOverflow);
-      Buffer[i] = ArgsBuffer[i];
-   }
-
-   pos = 0;
-   offset = ArgsSize;
-   for (i=0; Args[i].Name; i++) {
-      // If the current byte position in the argument structure exceeds the size of that structure, break immediately.
-
-      if (pos >= ArgsSize) {
-         log.error("Invalid action definition for \"%s\".  Amount of arguments exceeds limit of %d bytes.", ActionName, ArgsSize);
-         break;
-      }
-
-      // Process the argument depending on its type
-
-      if (Args[i].Type & FD_STR) { // Copy the string and make sure that there is enough space for it to fit inside the buffer.
-         j = offset;
-         if ((str = ((STRING *)(ArgsBuffer + pos))[0])) {
-            for (len=0; (str[len]) and (offset < BufferSize); len++) {
-               Buffer[offset++] = str[len];
-            }
-            if (offset < BufferSize) {
-               Buffer[offset++] = 0;
-               ((LONG *)(Buffer + pos))[0] = j; // Replace the pointer with a translatable offset
-            }
-            else { error = ERR_BufferOverflow; goto looperror; }
-         }
-         else ((LONG *)(Buffer + pos))[0] = 0;
-
-         pos += sizeof(STRING);
-      }
-      else if (Args[i].Type & FD_PTR) {
-         if (Args[i].Type & (FD_LONG|FD_PTRSIZE)) { // Pointer to long.
-            if ((size_t)offset < (BufferSize - sizeof(LONG))) {
-               ((LONG *)Buffer)[offset] = ((LONG *)(ArgsBuffer + pos))[0];
-               ((LONG *)(Buffer + pos))[0] = offset;
-               offset += sizeof(LONG);
-            }
-            else { error = ERR_BufferOverflow; goto looperror; }
-         }
-         else if (Args[i].Type & (FD_DOUBLE|FD_LARGE)) { // Pointer to large/double
-            if ((size_t)offset < (BufferSize - sizeof(LARGE))) {
-               ((LARGE *)Buffer)[offset] = ((LARGE *)(ArgsBuffer + pos))[0];
-               ((LONG *)(Buffer + pos))[0] = offset;
-               offset += sizeof(LARGE);
-            }
-            else { error = ERR_BufferOverflow; goto looperror; }
-         }
-         else {
-            // There are two types of pointer references:
-
-            // 1. Receive Pointers
-            //    If FD_RESULT is used, this indicates that there is a result to be stored in a buffer setup by the
-            //    caller.  The size of this is determined by a following FD_PTRSIZE.
-
-            // 2. Send Pointers
-            //    Standard FD_PTR types must be followed by an FD_PTRSIZE that indicates the amount of data that needs
-            //    to be passed to the other task.  A public memory block is allocated and filled with data for this
-            //    particular type.
-
-            if (!(Args[i+1].Type & FD_PTRSIZE)) {
-               // If no PTRSIZE is specified, send a warning
-               log.warning("Warning: Argument \"%s\" is not followed up with a PTRSIZE definition.", Args[i].Name);
-               ((APTR *)(Buffer + pos))[0] = NULL;
-            }
-            else {
-               memsize = ((LONG *)(ArgsBuffer + pos + sizeof(APTR)))[0];
-               if (memsize > 0) {
-                  if (Args[i].Type & FD_RESULT) {
-                     // "Receive" pointer type: Prepare a public buffer so that we can accept a result
-
-                     if (!AllocMemory(memsize, MEM_PUBLIC|MEM_NO_CLEAR, NULL, &memoryid)) {
-                        ((LONG *)(Buffer + pos))[0] = memoryid;
-                     }
-                     else { error = ERR_AllocMemory; goto looperror; }
-                  }
-                  else {
-                     // "Send" pointer type: Prepare the argument structure for sending data to the other task
-
-                     if ((src = ((BYTE **)(ArgsBuffer + pos))[0])) { // Get the data source pointer
-                        if (memsize > MSG_MAXARGSIZE) {
-                           // For large data areas, we need to allocate them as public memory blocks
-
-                           if (!AllocMemory(memsize, MEM_PUBLIC|MEM_NO_CLEAR, (void **)&data, &memoryid)) {
-                              ((LONG *)(Buffer + pos))[0] = memoryid;
-                              CopyMemory(src, data, memsize);
-                              ReleaseMemoryID(memoryid);
-                           }
-                           else { error = ERR_AllocMemory; goto looperror; }
-                        }
-                        else {
-                           ((LONG *)(Buffer + pos))[0] = offset; // Record the offset at which we are going to write the data
-                           for (len=0; (len < memsize); len++) {
-                              if (offset >= BufferSize) {
-                                 error = ERR_BufferOverflow;
-                                 goto looperror;
-                              }
-                              else Buffer[offset++] = src[len];
-                           }
-                        }
-                     }
-                     else ((LONG *)(Buffer + pos))[0] = 0;
-                  }
-               }
-               else ((LONG *)(Buffer + pos))[0] = 0;
-            }
-         }
-         pos += sizeof(APTR);
-      }
-      else if (Args[i].Type & (FD_LONG|FD_PTRSIZE)) pos += sizeof(LONG);
-      else if (Args[i].Type & (FD_DOUBLE|FD_LARGE)) pos += sizeof(LARGE);
-      else log.warning("Bad type definition for argument \"%s\".", Args[i].Name);
-
-      if (Args[i].Type & FD_RESULT) {
-         // No extra action is taken when FD_RESULT is used in conjunction with data types (e.g. FD_RESULT|FD_LONG).
-         // These types can only be fixed up when the message returns.
-
-         *WaitResult = TRUE;
-      }
-   }
-
-   *NewSize = offset;
-   return ERR_Okay;
-
-looperror:
-   // When an error occurs inside the loop, we back-track through the position at where the error occurred and free any
-   // memory allocations that have been made.
-
-   return log.warning(error);
-}
-
-/*********************************************************************************************************************
-** This version of copy_args() is for thread-based execution.  Used by ActionThread() in lib_actions.c
-*/
-
-ERROR local_copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffer, BYTE *Buffer, LONG BufferSize,
                     LONG *NewSize, CSTRING ActionName)
 {
    pf::Log log("CopyArguments");
@@ -504,34 +353,6 @@ looperror:
    return error;
 }
 
-/*********************************************************************************************************************
-** Frees any allocations made in an argument structure.  This function is designed to work with pointer addresses, that
-** have been exclusively accessed - not offsets.
-*/
-
-ERROR free_ptr_args(APTR Parameters, const struct FunctionField *Args, WORD ReleaseOnly)
-{
-   BYTE *Buffer = (BYTE *)Parameters;
-   LONG pos = 0;
-   for (LONG i=0; Args[i].Name; i++) {
-      if ((Args[i].Type & FD_PTR) and (Args[i+1].Type & FD_PTRSIZE)) {
-         LONG size = ((LONG *)(Buffer + pos + sizeof(APTR)))[0];
-         if ((Args[i].Type & FD_RESULT) or (size > MSG_MAXARGSIZE)) {
-            APTR ptr;
-            if ((ptr = ((APTR *)(Buffer + pos))[0])) {
-               ((APTR *)(Buffer + pos))[0] = 0;
-               MEMORYID mid = ReleaseMemory(ptr);
-               if (ReleaseOnly != TRUE) FreeResourceID(mid);
-            }
-         }
-         pos += sizeof(APTR);
-      }
-      else if (Args[i].Type & (FD_DOUBLE|FD_LARGE)) pos += sizeof(LARGE);
-      else pos += sizeof(LONG);
-   }
-   return ERR_Okay;
-}
-
 //********************************************************************************************************************
 
 void fix_core_table(struct CoreBase *CoreBase, FLOAT Version)
@@ -607,10 +428,11 @@ ERROR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
 // Returns a unique ID for the active thread.  The ID has no relationship with the host operating system.
 
 static THREADVAR LONG tlUniqueThreadID = 0;
+static LONG glThreadIDCount = 1;
 
 LONG get_thread_id(void)
 {
    if (tlUniqueThreadID) return tlUniqueThreadID;
-   tlUniqueThreadID = __sync_add_and_fetch(&glSharedControl->ThreadIDCount, 1);
+   tlUniqueThreadID = __sync_add_and_fetch(&glThreadIDCount, 1);
    return tlUniqueThreadID;
 }

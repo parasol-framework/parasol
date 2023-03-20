@@ -510,7 +510,7 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
          if (ActionID > 0) {
             args = ActionTable[ActionID].Args;
             if ((argssize = ActionTable[ActionID].Size) > 0) {
-               if (!(error = local_copy_args(args, argssize, (BYTE *)Parameters, call_data + sizeof(thread_data), SIZE_ACTIONBUFFER, &argssize, ActionTable[ActionID].Name))) {
+               if (!(error = copy_args(args, argssize, (BYTE *)Parameters, call_data + sizeof(thread_data), SIZE_ACTIONBUFFER, &argssize, ActionTable[ActionID].Name))) {
                   free_args = TRUE;
                }
 
@@ -522,7 +522,7 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
             if ((-ActionID) < cl->TotalMethods) {
                args = cl->Methods[-ActionID].Args;
                if ((argssize = cl->Methods[-ActionID].Size) > 0) {
-                  if (!(error = local_copy_args(args, argssize, (BYTE *)Parameters, call_data + sizeof(thread_data), SIZE_ACTIONBUFFER, &argssize, cl->Methods[-ActionID].Name))) {
+                  if (!(error = copy_args(args, argssize, (BYTE *)Parameters, call_data + sizeof(thread_data), SIZE_ACTIONBUFFER, &argssize, cl->Methods[-ActionID].Name))) {
                      free_args = TRUE;
                   }
                }
@@ -755,8 +755,7 @@ ERROR QueueAction(LONG ActionID, OBJECTID ObjectID, APTR Args)
          if (ActionTable[ActionID].Size) {
             fields   = ActionTable[ActionID].Args;
             argssize = ActionTable[ActionID].Size;
-            WORD waitresult;
-            if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, &waitresult, ActionTable[ActionID].Name) != ERR_Okay) {
+            if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, ActionTable[ActionID].Name) != ERR_Okay) {
                log.warning("Failed to buffer arguments for action \"%s\".", ActionTable[ActionID].Name);
                return ERR_Failed;
             }
@@ -769,8 +768,7 @@ ERROR QueueAction(LONG ActionID, OBJECTID ObjectID, APTR Args)
             if ((-ActionID) < cl->TotalMethods) {
                fields   = cl->Methods[-ActionID].Args;
                argssize = cl->Methods[-ActionID].Size;
-               WORD waitresult;
-               if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, &waitresult, cl->Methods[-ActionID].Name) != ERR_Okay) {
+               if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, cl->Methods[-ActionID].Name) != ERR_Okay) {
                   log.warning("Failed to buffer arguments for method \"%s\".", cl->Methods[-ActionID].Name);
                   return ERR_Failed;
                }

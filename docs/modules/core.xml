@@ -396,9 +396,9 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <name>Base64Decode</name>
     <category>Strings</category>
     <comment>Decodes a base 64 string to its binary form.</comment>
-    <prototype>ERROR Base64Decode(struct rkBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written)</prototype>
+    <prototype>ERROR Base64Decode(struct pfBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written)</prototype>
     <input>
-      <param type="struct rkBase64Decode *" name="State">Pointer to an rkBase64Decode structure, initialised to zero.</param>
+      <param type="struct pfBase64Decode *" name="State">Pointer to an pfBase64Decode structure, initialised to zero.</param>
       <param type="CSTRING" name="Input">A base 64 input string.  The pointer will be updated when the function returns.</param>
       <param type="LONG" name="InputSize">The size of the input string.</param>
       <param type="APTR" name="Output">The output buffer.  The size of the buffer must be greater or equal to the size of Input.</param>
@@ -419,9 +419,9 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <name>Base64Encode</name>
     <category>Strings</category>
     <comment>Encodes a binary source into a base 64 string.</comment>
-    <prototype>LONG Base64Encode(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize)</prototype>
+    <prototype>LONG Base64Encode(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize)</prototype>
     <input>
-      <param type="struct rkBase64Encode *" name="State">Pointer to an rkBase64Decode structure, initialised to zero.</param>
+      <param type="struct pfBase64Encode *" name="State">Pointer to an pfBase64Decode structure, initialised to zero.</param>
       <param type="const void *" name="Input">The binary data to encode.</param>
       <param type="LONG" name="InputSize">The amount of data to encode.  Set to zero to finalise the output.</param>
       <param type="STRING" name="Output">Destination buffer for the encoded output.</param>
@@ -3251,7 +3251,6 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="CORE_END"/>
       <const name="DEBUG"/>
       <const name="EVENT"/>
-      <const name="EXPOSE"/>
       <const name="QUIT"/>
       <const name="THREAD_ACTION"/>
       <const name="THREAD_CALLBACK"/>
@@ -3870,13 +3869,13 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <field name="Preference" type="char" size="4">Data preferences for the returned item(s)</field>
     </struct>
 
-    <struct name="rkBase64Decode" comment="Private structure for the Base64Decode() function." typeName="BASE64DECODE">
+    <struct name="pfBase64Decode" comment="Private structure for the Base64Decode() function." typeName="BASE64DECODE">
       <field name="Step" type="UBYTE">Internal</field>
       <field name="PlainChar" type="UBYTE">Internal</field>
       <field name="Initialised" type="UBYTE">Internal</field>
     </struct>
 
-    <struct name="rkBase64Encode" comment="Private structure for the Base64Encode() function." typeName="BASE64ENCODE">
+    <struct name="pfBase64Encode" comment="Private structure for the Base64Encode() function." typeName="BASE64ENCODE">
       <field name="Step" type="UBYTE">Internal</field>
       <field name="Result" type="UBYTE">Internal</field>
       <field name="StepCount" type="LONG">Internal</field>

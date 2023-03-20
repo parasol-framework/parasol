@@ -86,7 +86,7 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
 
    if (mc->Flags & CLF_NO_OWNERSHIP) Flags |= NF::UNTRACKED;
 
-   if ((Flags & NF::SUPPRESS_LOG) IS NF::NIL) log.branch("%s #%d, Flags: $%x", mc->ClassName, glSharedControl->PrivateIDCounter, LONG(Flags));
+   if ((Flags & NF::SUPPRESS_LOG) IS NF::NIL) log.branch("%s #%d, Flags: $%x", mc->ClassName, glPrivateIDCounter, LONG(Flags));
 
    OBJECTPTR head = NULL;
    MEMORYID head_id;
