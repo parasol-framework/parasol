@@ -1107,10 +1107,9 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 #define MSGID_EVENT 94
 #define MSGID_DEBUG 95
 #define MSGID_ACTION 99
+#define MSGID_BREAK 100
 #define MSGID_CORE_END 100
-#define MSGID_EXPOSE 100
 #define MSGID_COMMAND 101
-#define MSGID_BREAK 102
 #define MSGID_QUIT 1000
 
 // Types for AllocateID()
@@ -1617,18 +1616,18 @@ struct ResourceManager {
    void (*Free)(APTR);     // A function that will remove the resource's content when terminated.
 };
 
-typedef struct rkBase64Decode {
+typedef struct pfBase64Decode {
    UBYTE Step;             // Internal
    UBYTE PlainChar;        // Internal
    UBYTE Initialised:1;    // Internal
-  rkBase64Decode() : Step(0), PlainChar(0), Initialised(0) { };
+  pfBase64Decode() : Step(0), PlainChar(0), Initialised(0) { };
 } BASE64DECODE;
 
-typedef struct rkBase64Encode {
+typedef struct pfBase64Encode {
    UBYTE Step;        // Internal
    UBYTE Result;      // Internal
    LONG  StepCount;   // Internal
-  rkBase64Encode() : Step(0), Result(0), StepCount(0) { };
+  pfBase64Encode() : Step(0), Result(0), StepCount(0) { };
 } BASE64ENCODE;
 
 struct FunctionField {
@@ -1742,19 +1741,6 @@ struct Message {
    LONG  UniqueID;   // A unique identifier automatically created by SendMessage().
    LONG  Type;       // A message type identifier as defined by the client.
    LONG  Size;       // The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.</>
-};
-
-struct ExposeMessage {
-   OBJECTID ObjectID;    // Target surface
-   LONG     X;           // Horizontal starting coordinate
-   LONG     Y;           // Vertical starting coordinate
-   LONG     Width;       // Width of exposed area
-   LONG     Height;      // Height of exposed area
-   LONG     Flags;       // Optional flags
-};
-
-struct DebugMessage {
-   LONG DebugID;    // Internal
 };
 
 struct ThreadMessage {
@@ -1927,7 +1913,7 @@ struct CoreBase {
    LONG (*_TotalChildren)(OBJECTID Object);
    CSTRING (*_GetName)(OBJECTPTR Object);
    ERROR (*_ListChildren)(OBJECTID Object, struct ChildEntry * List, LONG * Count);
-   ERROR (*_Base64Decode)(struct rkBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
+   ERROR (*_Base64Decode)(struct pfBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
    ERROR (*_RegisterFD)(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
    ERROR (*_ResolvePath)(CSTRING Path, LONG Flags, STRING * Result);
    ERROR (*_MemoryIDInfo)(MEMORYID ID, struct MemInfo * MemInfo, LONG Size);
@@ -1995,7 +1981,7 @@ struct CoreBase {
    ERROR (*_LockSharedMutex)(APTR Mutex, LONG MilliSeconds);
    void (*_UnlockSharedMutex)(APTR Mutex);
    void (*_VLogF)(int Flags, const char *Header, const char *Message, va_list Args);
-   LONG (*_Base64Encode)(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
+   LONG (*_Base64Encode)(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
    ERROR (*_WakeProcess)(LONG ProcessID);
    ERROR (*_SetResourcePath)(LONG PathType, CSTRING Path);
    OBJECTPTR (*_CurrentTask)(void);
@@ -2053,7 +2039,7 @@ inline ERROR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, LO
 inline LONG TotalChildren(OBJECTID Object) { return CoreBase->_TotalChildren(Object); }
 inline CSTRING GetName(OBJECTPTR Object) { return CoreBase->_GetName(Object); }
 inline ERROR ListChildren(OBJECTID Object, struct ChildEntry * List, LONG * Count) { return CoreBase->_ListChildren(Object,List,Count); }
-inline ERROR Base64Decode(struct rkBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written) { return CoreBase->_Base64Decode(State,Input,InputSize,Output,Written); }
+inline ERROR Base64Decode(struct pfBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written) { return CoreBase->_Base64Decode(State,Input,InputSize,Output,Written); }
 inline ERROR RegisterFD(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data) { return CoreBase->_RegisterFD(FD,Flags,Routine,Data); }
 inline ERROR ResolvePath(CSTRING Path, LONG Flags, STRING * Result) { return CoreBase->_ResolvePath(Path,Flags,Result); }
 inline ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size) { return CoreBase->_MemoryIDInfo(ID,MemInfo,Size); }
@@ -2121,7 +2107,7 @@ inline void FreeSharedMutex(APTR Mutex) { return CoreBase->_FreeSharedMutex(Mute
 inline ERROR LockSharedMutex(APTR Mutex, LONG MilliSeconds) { return CoreBase->_LockSharedMutex(Mutex,MilliSeconds); }
 inline void UnlockSharedMutex(APTR Mutex) { return CoreBase->_UnlockSharedMutex(Mutex); }
 inline void VLogF(int Flags, const char *Header, const char *Message, va_list Args) { return CoreBase->_VLogF(Flags,Header,Message,Args); }
-inline LONG Base64Encode(struct rkBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize) { return CoreBase->_Base64Encode(State,Input,InputSize,Output,OutputSize); }
+inline LONG Base64Encode(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize) { return CoreBase->_Base64Encode(State,Input,InputSize,Output,OutputSize); }
 inline ERROR WakeProcess(LONG ProcessID) { return CoreBase->_WakeProcess(ProcessID); }
 inline ERROR SetResourcePath(LONG PathType, CSTRING Path) { return CoreBase->_SetResourcePath(PathType,Path); }
 inline OBJECTPTR CurrentTask(void) { return CoreBase->_CurrentTask(); }
@@ -4023,11 +4009,7 @@ struct SharedControl {
    volatile LONG BlocksUsed;        // Total amount of shared memory blocks currently allocated
    LONG MaxBlocks;                  // Maximum amount of available blocks
    volatile LONG NextBlock;         // Next empty position in the blocks table
-   volatile LONG IDCounter;         // ID counter
-   volatile LONG PrivateIDCounter;  // ID counter for private memory blocks
-   volatile LONG MessageIDCount;    // Counter of message ID's
-   volatile LONG GlobalIDCount;     // Counter for general ID's
-   volatile LONG ThreadIDCount;
+   volatile LONG IDCounter;         // ID counter for public access
    volatile LONG ValidateProcess;
    WORD SystemState;
    volatile WORD WLIndex;           // Current insertion point for the wait-lock array.

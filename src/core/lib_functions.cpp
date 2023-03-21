@@ -67,14 +67,12 @@ LONG AllocateID(LONG Type)
    pf::Log log(__FUNCTION__);
 
    if (Type IS IDTYPE_MESSAGE) {
-      if (glSharedControl->MessageIDCount < 10000) glSharedControl->MessageIDCount = 10000;
-      LONG id = __sync_add_and_fetch(&glSharedControl->MessageIDCount, 1);
-
+      LONG id = __sync_add_and_fetch(&glMessageIDCount, 1);
       log.function("MessageID: %d", id);
       return id;
    }
    else if (Type IS IDTYPE_GLOBAL) {
-      LONG id = __sync_add_and_fetch(&glSharedControl->GlobalIDCount, 1);
+      LONG id = __sync_add_and_fetch(&glGlobalIDCount, 1);
       return id;
    }
    else if (Type IS IDTYPE_FUNCTION) {
@@ -189,47 +187,38 @@ obj(MetaClass): Returns a pointer to the MetaClass structure that has been found
 
 objMetaClass * FindClass(CLASSID ClassID)
 {
+   auto it = glClassMap.find(ClassID);
+   if (it != glClassMap.end()) return it->second;
+
+   if (glProgramStage IS STAGE_SHUTDOWN) return NULL; // No new module loading during shutdown
+
+   // Class is not loaded.  Try and find a master in the dictionary.  If we find one, we can
+   // initialise the module and then find the new Class.
+   //
+   // Note: Children of the class are not automatically loaded into memory if they are unavailable at the time.  Doing so
+   // would result in lost CPU and memory resources due to loading code that may not be needed.
+
    pf::Log log(__FUNCTION__);
+   if (glClassDB.contains(ClassID)) {
+      auto &path = glClassDB[ClassID].Path;
 
-   if (ClassID IS ID_METACLASS) { // Return the internal pointer to the MetaClass.
-      return (objMetaClass *)&glMetaClass;
-   }
-   else if (!ClassID) {
-      return NULL;
-   }
-   else {
-      if (glClassMap.contains(ClassID)) return glClassMap[ClassID];
+      if (!path.empty()) {
+         // Load the module from the associated location and then find the class that it contains.  If the module fails,
+         // we keep on looking for other installed modules that may handle the class.
 
-      if (glProgramStage IS STAGE_SHUTDOWN) return NULL; // No new module loading during shutdown
+         log.branch("Attempting to load module \"%s\" for class $%.8x.", path.c_str(), ClassID);
 
-      // Class is not loaded.  Try and find a master in the dictionary.  If we find one, we can
-      // initialise the module and then find the new Class.
-      //
-      // Note: Children of the class are not automatically loaded into memory if they are unavailable at the time.  Doing so
-      // would result in lost CPU and memory resources due to loading code that may not be needed.
-
-      if (glClassDB.contains(ClassID)) {
-         auto &path = glClassDB[ClassID].Path;
-
-         if (!path.empty()) {
-            // Load the module from the associated location and then find the class that it contains.  If the module fails,
-            // we keep on looking for other installed modules that may handle the class.
-
-            log.branch("Attempting to load module \"%s\" for class $%.8x.", path.c_str(), ClassID);
-
-            objModule::create mod = { fl::Name(path) };
-            if (mod.ok()) {
-               if (glClassMap.contains(ClassID)) {
-                  return glClassMap[ClassID];
-               }
-               else log.warning("Module \"%s\" did not configure class \"%s\"", path.c_str(), glClassDB[ClassID].Name.c_str());
-            }
-            else log.warning("Failed to load module \"%s\"", path.c_str());
+         objModule::create mod = { fl::Name(path) };
+         if (mod.ok()) {
+            it = glClassMap.find(ClassID);
+            if (it != glClassMap.end()) return it->second;
+            else log.warning("Module \"%s\" did not configure class \"%s\"", path.c_str(), glClassDB[ClassID].Name.c_str());
          }
-         else log.warning("No module path defined for class \%s\"", glClassDB[ClassID].Name.c_str());
+         else log.warning("Failed to load module \"%s\"", path.c_str());
       }
-      else log.warning("Could not find class $%.8x in memory or in dictionary.", ClassID);
+      else log.warning("No module path defined for class \%s\"", glClassDB[ClassID].Name.c_str());
    }
+   else log.warning("Could not find class $%.8x in memory or in dictionary.", ClassID);
 
    return NULL;
 }
@@ -991,6 +980,35 @@ ERROR ListChildren(OBJECTID ObjectID, ChildEntry *List, LONG *Count)
 /*********************************************************************************************************************
 
 -FUNCTION-
+PreciseTime: Returns the current system time, in microseconds.
+
+This function returns the current 'system time' in microseconds (1 millionth of a second).  The value is monotonic
+if the host platform allows it (typically expressed as the amount of time that has elapsed since the system was
+switched on).  The benefit of monotonic time is that it is unaffected by changes to the system clock, such as daylight
+savings adjustments or manual changes by the user.
+
+-RESULT-
+large: Returns the system time in microseconds.  An error is extremely unlikely, but zero is returned in the event of one.
+
+*********************************************************************************************************************/
+
+LARGE PreciseTime(void)
+{
+#ifdef __unix__
+   struct timespec time;
+
+   if (!clock_gettime(CLOCK_MONOTONIC, &time)) {
+      return ((LARGE)time.tv_sec * 1000000LL) + ((LARGE)time.tv_nsec / 1000LL);
+   }
+   else return 0;
+#else
+   return winGetTickCount(); // NB: This timer does start from the boot time, but can be adjusted - therefore is not 100% on monotonic status
+#endif
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
 RegisterFD: Registers a file descriptor for monitoring when the task is asleep.
 
 This function will register a file descriptor that will be monitored for activity when the task is sleeping.  If
@@ -1239,8 +1257,8 @@ SetName: Sets the name of an object.
 Category: Objects
 
 This function sets the name of an object.  This enhances log messages and allows the object to be found in searches.
-Please note that the length of the Name will be limited to the value indicated in the `main.h` include file, under
-the `MAX_NAME_LEN` definition.  If the Name is longer than the allowed length, it will be trimmed to fit.
+Please note that the length of the Name will be limited to the value indicated in the core header file, under
+the `MAX_NAME_LEN` definition.  Names exceeding the allowed length are trimmed to fit.
 
 Object names are limited to alpha-numeric characters and the underscore symbol.  Invalid characters are replaced with
 an underscore.
@@ -1557,35 +1575,6 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
 /*********************************************************************************************************************
 
 -FUNCTION-
-PreciseTime: Returns the current system time, in microseconds.
-
-This function returns the current 'system time' in microseconds (1 millionth of a second).  The value is monotonic
-if the host platform allows it (typically expressed as the amount of time that has elapsed since the system was
-switched on).  The benefit of monotonic time is that it is unaffected by changes to the system clock, such as daylight
-savings adjustments or manual changes by the user.
-
--RESULT-
-large: Returns the system time in microseconds.  An error is extremely unlikely, but zero is returned in the event of one.
-
-*********************************************************************************************************************/
-
-LARGE PreciseTime(void)
-{
-#ifdef __unix__
-   struct timespec time;
-
-   if (!clock_gettime(CLOCK_MONOTONIC, &time)) {
-      return ((LARGE)time.tv_sec * 1000000LL) + ((LARGE)time.tv_nsec / 1000LL);
-   }
-   else return 0;
-#else
-   return winGetTickCount(); // NB: This timer does start from the boot time, but can be adjusted - therefore is not 100% on monotonic status
-#endif
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
 TotalChildren: Returns the total number of children owned by an object.
 
 This function returns the total number of children that are owned by an object.  It is normally called as a precursor
@@ -1699,18 +1688,18 @@ int MicroSeconds: The number of microseconds to wait for.  Please note that a mi
 
 void WaitTime(LONG Seconds, LONG MicroSeconds)
 {
-   bool processmsg;
+   bool process_msg;
 
    if (!tlMainThread) {
-      processmsg = false; // Child threads never process messages.
+      process_msg = false; // Child threads never process messages.
       if (Seconds < 0) Seconds = -Seconds;
       if (MicroSeconds < 0) MicroSeconds = -MicroSeconds;
     }
    else {
       // If the Seconds or MicroSeconds arguments are negative, turn off the ProcessMessages() support.
-      processmsg = true;
-      if (Seconds < 0) { Seconds = -Seconds; processmsg = false; }
-      if (MicroSeconds < 0) { MicroSeconds = -MicroSeconds; processmsg = false; }
+      process_msg = true;
+      if (Seconds < 0) { Seconds = -Seconds; process_msg = false; }
+      if (MicroSeconds < 0) { MicroSeconds = -MicroSeconds; process_msg = false; }
    }
 
    while (MicroSeconds >= 1000000) {
@@ -1718,7 +1707,7 @@ void WaitTime(LONG Seconds, LONG MicroSeconds)
       Seconds++;
    }
 
-   if (processmsg) {
+   if (process_msg) {
       LARGE current = PreciseTime() / 1000LL;
       LARGE end = current + (Seconds * 1000) + (MicroSeconds / 1000);
       do {

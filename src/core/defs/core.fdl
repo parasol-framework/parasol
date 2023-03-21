@@ -341,11 +341,10 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
   const("MAX", nil, { NAME_LEN = 32 })
 
   const("MSGID", { comment="Reserved message ID's that are handled internally." }, {
-     QUIT             = 1000,     -- Note that IDs >= 100 may be handled by non-Core code (external modules and applications)
-     BREAK            = 102,
+     QUIT             = 1000,   -- Note that IDs >= 100 may be handled by non-Core code (external modules and applications)
      COMMAND          = 101,
-     EXPOSE           = 100,
-     CORE_END         = 100,  -- End marker for Core generated messages
+     BREAK            = 100,
+     CORE_END         = 100,    -- End marker for Core generated messages
      ACTION           = 99,     -- Start from 99 descending (lower risk of accidental ID matches)
      DEBUG            = 95,
      EVENT            = 94,
@@ -865,22 +864,22 @@ struct FieldValue {
      fptr(void ptr) Free  # A function that will remove the resource's content when terminated.
   ]])
 
-  struct("rkBase64Decode", { type="base64decode", comment="Private structure for the Base64Decode() function." }, [[
+  struct("pfBase64Decode", { type="base64decode", comment="Private structure for the Base64Decode() function." }, [[
     uchar Step                # Internal
     uchar PlainChar           # Internal
     bit(uchar) Initialised    # Internal
   ]],
   [[
-  rkBase64Decode() : Step(0), PlainChar(0), Initialised(0) { };
+  pfBase64Decode() : Step(0), PlainChar(0), Initialised(0) { };
   ]])
 
-  struct("rkBase64Encode", { type="base64encode", comment="Private structure for the Base64Encode() function." }, [[
+  struct("pfBase64Encode", { type="base64encode", comment="Private structure for the Base64Encode() function." }, [[
     uchar Step             # Internal
     uchar Result           # Internal
     int StepCount          # Internal
   ]],
   [[
-  rkBase64Encode() : Step(0), Result(0), StepCount(0) { };
+  pfBase64Encode() : Step(0), Result(0), StepCount(0) { };
   ]])
 
   struct("FunctionField", { comment="Used by ActionTable and Function structures to declare lists of parameters." }, [[
@@ -952,11 +951,11 @@ struct FieldValue {
   ]])
 
   struct("SystemState", { comment="Returned by the GetSystemState() function." }, [[
-    cstr Platform              # String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.
-    hhandle ConsoleFD          # Internal
-    int  CoreVersion           # Reflects the Core version number.
-    int  CoreRevision          # Reflects the Core revision number.
-    int  Stage                 # The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.
+    cstr Platform      # String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.
+    hhandle ConsoleFD  # Internal
+    int  CoreVersion   # Reflects the Core version number.
+    int  CoreRevision  # Reflects the Core revision number.
+    int  Stage         # The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.
   ]])
 
   struct("Variable", { }, [[
@@ -1003,17 +1002,6 @@ struct FieldValue {
      int Type      # A message type identifier as defined by the client.
      int Size      # The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.</>
   ]])
-
-  struct("ExposeMessage", { comment="Internal Core message structures.", restrict="c" }, [[
-     oid ObjectID # Target surface
-     int X        # Horizontal starting coordinate
-     int Y        # Vertical starting coordinate
-     int Width    # Width of exposed area
-     int Height   # Height of exposed area
-     int Flags    # Optional flags
-  ]])
-
-  struct("DebugMessage", { restrict="c" }, [[ int DebugID # Internal ]])
 
   struct("ThreadMessage", { restrict="c" }, [[ oid ThreadID # Internal ]])
 
@@ -2616,11 +2604,7 @@ struct SharedControl {
    volatile LONG BlocksUsed;        // Total amount of shared memory blocks currently allocated
    LONG MaxBlocks;                  // Maximum amount of available blocks
    volatile LONG NextBlock;         // Next empty position in the blocks table
-   volatile LONG IDCounter;         // ID counter
-   volatile LONG PrivateIDCounter;  // ID counter for private memory blocks
-   volatile LONG MessageIDCount;    // Counter of message ID's
-   volatile LONG GlobalIDCount;     // Counter for general ID's
-   volatile LONG ThreadIDCount;
+   volatile LONG IDCounter;         // ID counter for public access
    volatile LONG ValidateProcess;
    WORD SystemState;
    volatile WORD WLIndex;           // Current insertion point for the wait-lock array.

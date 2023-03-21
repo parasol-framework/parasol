@@ -1026,12 +1026,8 @@ static ERROR init_shared_control(void)
    glSharedControl->PoolSize         = INITIAL_PUBLIC_SIZE;
    glSharedControl->BlocksUsed       = 0;
    glSharedControl->IDCounter        = -10000;
-   glSharedControl->PrivateIDCounter = 500;
    glSharedControl->MagicKey         = MAGICKEY;
    glSharedControl->MaxBlocks        = MAX_BLOCKS;
-   glSharedControl->MessageIDCount   = 1;
-   glSharedControl->GlobalIDCount    = 1;
-   glSharedControl->ThreadIDCount    = 1;
 
    LONG offset = sizeof(SharedControl);
 

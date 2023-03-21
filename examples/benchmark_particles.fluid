@@ -168,6 +168,7 @@ function createWindow()
       insideHeight = 800,
       events = {
          close = function(Window)
+            mSys.UpdateTimer(glTimerHandle, 0)
             glWindow = nil
             mSys.SendMessage(0, MSGID_QUIT)
          end
@@ -252,7 +253,7 @@ end
    end
 
    -- Run at a high frequency to ensure that the CPU performance is not scaled back
-   mSys.SubscribeTimer(0.001, timer)
+   err, glTimerHandle = mSys.SubscribeTimer(0.001, timer)
 
    glWindow:show()
    processing.sleep()
