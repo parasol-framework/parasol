@@ -10,8 +10,6 @@ Name: Objects
 extern "C" ERROR CLASS_Free(extMetaClass *, APTR);
 extern "C" ERROR CLASS_Init(extMetaClass *, APTR);
 
-static bool master_sorted = false;
-
 /*********************************************************************************************************************
 
 -FUNCTION-
@@ -50,22 +48,11 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
 {
    pf::Log log(__FUNCTION__);
 
-   ULONG class_id = (ULONG)(ClassID & 0xffffffff);
+   auto class_id = ULONG(ClassID & 0xffffffff);
    if ((!class_id) or (!Object)) return log.warning(ERR_NullArgs);
 
-   extMetaClass *mc;
-   if (class_id IS ID_METACLASS) {
-      mc = &glMetaClass;
-      glMetaClass.ActionTable[AC_Free].PerformAction = (ERROR (*)(OBJECTPTR, APTR))CLASS_Free;
-      glMetaClass.ActionTable[AC_Init].PerformAction = (ERROR (*)(OBJECTPTR, APTR))CLASS_Init;
-      // Initialise the glMetaClass fields if this has not already been done.
-
-      if (!master_sorted) {
-         sort_class_fields(&glMetaClass, glMetaClass.prvFields);
-         master_sorted = true;
-      }
-   }
-   else if (!(mc = (extMetaClass *)FindClass(class_id))) {
+   auto mc = (extMetaClass *)FindClass(class_id);
+   if (!mc) {
       if (glClassMap.contains(class_id)) {
          log.function("Class %s was not found in the system.", glClassMap[class_id]->ClassName);
       }
@@ -102,11 +89,11 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
 
       // Tracking for our new object is configured here.
 
-      if (mc->Flags & CLF_NO_OWNERSHIP) { }
+      if (mc->Flags & CLF_NO_OWNERSHIP) { } // Used by classes like RootModule to avoid tracking back to the task.
       else if ((Flags & NF::UNTRACKED) != NF::NIL) {
          if (class_id IS ID_MODULE); // Untracked modules have no owner, due to the expunge process.
          else {
-            // If the object is private and untracked, set its owner to the current task.  This will ensure that the object
+            // Untracked objects are owned by the current task.  This ensures that the object
             // is deallocated correctly when the Core is closed.
 
             if (glCurrentTask) {
@@ -153,7 +140,6 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
       }
 
       FreeResource(head);
-
       return error;
    }
    else return ERR_AllocMemory;
