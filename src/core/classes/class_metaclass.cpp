@@ -182,6 +182,13 @@ void init_metaclass(void)
    glMetaClass.Category           = CCF_SYSTEM;
    glMetaClass.prvFields          = glMetaFieldsPreset;
    glMetaClass.OriginalFieldTotal = ARRAYSIZE(glMetaFields)-1;
+
+   glMetaClass.ActionTable[AC_Free].PerformAction = (ERROR (*)(OBJECTPTR, APTR))CLASS_Free;
+   glMetaClass.ActionTable[AC_Init].PerformAction = (ERROR (*)(OBJECTPTR, APTR))CLASS_Init;
+
+   sort_class_fields(&glMetaClass, glMetaClass.prvFields);
+
+   glClassMap[ID_METACLASS] = &glMetaClass;
 }
 
 /*********************************************************************************************************************
