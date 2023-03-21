@@ -100,6 +100,9 @@ LONG glTaskMessageMID = 0;
 LONG glValidateProcessID = 0;
 LONG glProcessID  = 0;
 LONG glEUID = -1, glEGID = -1, glGID = -1, glUID = -1;
+LONG glPrivateIDCounter = 500;
+LONG glMessageIDCount = 10000;
+LONG glGlobalIDCount = 1;
 UBYTE glTimerCycle = 1;
 CSTRING glIDL = MOD_IDL;
 

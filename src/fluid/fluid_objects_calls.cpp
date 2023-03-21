@@ -18,7 +18,7 @@ static int object_call(lua_State *Lua)
 
    ERROR error = ERR_Okay;
    LONG results = 0;
-   BYTE release = FALSE;
+   bool release = false;
    CSTRING action_name = NULL;
    if (action_id >= 0) {
       action_name = glActions[action_id].Name;
@@ -38,10 +38,9 @@ static int object_call(lua_State *Lua)
                // pointers).  Otherwise, we can execute via messaging.
 
                if (resultcount > 0) {
-                  OBJECTPTR obj;
-                  if ((obj = access_object(object))) {
+                  if (auto obj = access_object(object)) {
                      error = Action(action_id, obj, argbuffer);
-                     release = TRUE;
+                     release = true;
                   }
                }
                else error = ActionMsg(action_id, object->ObjectID, argbuffer);
@@ -60,13 +59,13 @@ static int object_call(lua_State *Lua)
          // quite common when returning ERR_Terminate).
 
          if (!object->DelayCall) results += get_results(Lua, glActions[action_id].Args, argbuffer);
-         else object->DelayCall = FALSE;
+         else object->DelayCall = false;
 
          if (release) release_object(object);
       }
       else {
          if (object->DelayCall) {
-            object->DelayCall = FALSE;
+            object->DelayCall = false;
             error = QueueAction(action_id, object->ObjectID);
          }
          else if (object->prvObject) error = Action(action_id, object->prvObject, NULL);
@@ -99,10 +98,9 @@ static int object_call(lua_State *Lua)
                // pointers).  Otherwise, we can execute via messaging.
 
                if (resultcount > 0) {
-                  OBJECTPTR obj;
-                  if ((obj = access_object(object))) {
+                  if (auto obj = access_object(object)) {
                      error = Action(action_id, obj, argbuffer);
-                     release = TRUE;
+                     release = true;
                   }
                }
                else error = ActionMsg(action_id, object->ObjectID, argbuffer);
@@ -117,13 +115,13 @@ static int object_call(lua_State *Lua)
          results = 1;
 
          if (!object->DelayCall) results += get_results(Lua, methods->Args, (const BYTE *)argbuffer);
-         else object->DelayCall = FALSE;
+         else object->DelayCall = false;
 
          if (release) release_object(object);
       }
       else {
          if (object->DelayCall) {
-            object->DelayCall = FALSE;
+            object->DelayCall = false;
             error = QueueAction(action_id, object->ObjectID);
          }
          else if (object->prvObject) error = Action(action_id, object->prvObject, NULL);
@@ -436,7 +434,7 @@ static LONG get_results(lua_State *Lua, const FunctionField *args, const BYTE *A
             RMSG("Result-Arg: %s, Struct: %p", args[i].Name, ptr_struct);
             if (ptr_struct) {
                if (type & FD_RESOURCE) {
-                  push_struct(Lua->Script, ptr_struct, args[i].Name, (type & FD_ALLOC) ? TRUE : FALSE, FALSE);
+                  push_struct(Lua->Script, ptr_struct, args[i].Name, (type & FD_ALLOC) ? true : false, false);
                }
                else {
                   if (named_struct_to_table(Lua, args[i].Name, ptr_struct) != ERR_Okay) {
@@ -468,13 +466,13 @@ static LONG get_results(lua_State *Lua, const FunctionField *args, const BYTE *A
                RMSG("Result-Arg: %s, Value: %p (Object)", args[i].Name, obj);
 
                if (obj) {
-                  struct object *new_obj = push_object(Lua, obj);
-                  new_obj->Detached = (type & FD_ALLOC) ? FALSE : TRUE;
+                  auto new_obj = push_object(Lua, obj);
+                  new_obj->Detached = (type & FD_ALLOC) ? false : true;
                }
                else lua_pushnil(Lua);
             }
             else if (type & FD_RGB) {
-               RGB8 *rgb = (RGB8 *)((APTR *)(ArgBuf+of))[0];
+               auto rgb = (RGB8 *)((APTR *)(ArgBuf+of))[0];
 
                if (rgb) { // This return type is untested
                   lua_newtable(Lua);

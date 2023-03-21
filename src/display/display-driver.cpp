@@ -338,19 +338,6 @@ void unlock_graphics(void)
 #endif
 
 //********************************************************************************************************************
-// Handles incoming interface messages.
-
-static ERROR msg_handler(APTR Custom, LONG UniqueID, LONG Type, APTR Data, LONG Size)
-{
-   if ((Data) and ((size_t)Size >= sizeof(ExposeMessage))) {
-      auto expose = (ExposeMessage *)Data;
-      gfxExposeSurface(expose->ObjectID, expose->X, expose->Y, expose->Width, expose->Height, expose->Flags);
-   }
-
-   return ERR_Okay;
-}
-
-//********************************************************************************************************************
 
 #ifdef __xwindows__
 
@@ -771,13 +758,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    // Register a fake FD as input_event_loop() so that we can process input events on every ProcessMessages() cycle.
 
    RegisterFD((HOSTHANDLE)-2, RFD_ALWAYS_CALL, input_event_loop, NULL);
-
-   // Add a message handler to the system for responding to interface messages
-
-   auto call = make_function_stdc(msg_handler);
-   if (AddMsgHandler(NULL, MSGID_EXPOSE, &call, &glExposeHandler) != ERR_Okay) {
-      return log.warning(ERR_Failed);
-   }
 
    #ifdef _GLES_
       pthread_mutexattr_t attr;

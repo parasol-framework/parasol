@@ -600,7 +600,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
             buffer.append(Self->Password);
             char output[buffer.length() * 2];
 
-            rkBase64Encode state;
+            pfBase64Encode state;
 
             cmd << "Authorization: Basic ";
             auto len = Base64Encode(&state, buffer.c_str(), buffer.length(), output, buffer.length() * 2);

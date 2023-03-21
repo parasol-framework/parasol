@@ -94,7 +94,7 @@ struct MemInfo;
 struct ListTasks;
 struct DateTime;
 struct RGB8;
-struct rkBase64Decode;
+struct pfBase64Decode;
 struct FileInfo;
 struct DirInfo;
 class objFile;
@@ -638,7 +638,10 @@ extern LONG glProcessID;   // Read only
 extern HOSTHANDLE glConsoleFD;
 extern LONG glStdErrFlags; // Read only
 extern LONG glValidateProcessID; // Not a threading concern
+extern LONG glMessageIDCount;
+extern LONG glGlobalIDCount;
 extern LONG glMutexLockSize; // Read only constant
+extern LONG glPrivateIDCounter;
 extern WORD glCrashStatus, glCodeIndex, glLastCodeIndex;
 extern UWORD glFunctionID;
 extern BYTE glProgramStage;
@@ -926,7 +929,7 @@ extern void remove_archive(class extCompression *);
 void print_diagnosis(LONG ProcessID, LONG Signal);
 CSTRING action_name(OBJECTPTR Object, LONG ActionID);
 APTR   build_jump_table(const struct Function *);
-ERROR  copy_args(const struct FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, WORD *, CSTRING);
+ERROR  copy_args(const struct FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, CSTRING);
 ERROR  copy_field_to_buffer(OBJECTPTR Object, struct Field *Field, LONG DestFlags, APTR Result, CSTRING Option, LONG *TotalElements);
 ERROR  create_archive_volume(void);
 ERROR  delete_tree(STRING, LONG, FUNCTION *, struct FileFeedback *);
@@ -937,13 +940,11 @@ ERROR  find_public_mem_id(struct SharedControl *, MEMORYID, LONG *);
 void   fix_core_table(struct CoreBase *, FLOAT);
 void   free_events(void);
 void   free_module_entry(struct RootModule *);
-ERROR  free_ptr_args(APTR, const struct FunctionField *, WORD);
 void   free_public_resources(OBJECTID);
 void   free_wakelocks(void);
 LONG   get_thread_id(void);
 void   init_metaclass(void);
 ERROR  init_sleep(LONG OtherProcessID, LONG GlobalThreadID, LONG ResourceID, LONG ResourceType, WORD *);
-ERROR  local_copy_args(const struct FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, CSTRING);
 void   local_free_args(APTR, const struct FunctionField *);
 struct Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Result);
 ERROR  msg_event(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize);

@@ -50,10 +50,8 @@ static STRUCTS glStructures = {
    { "CompressedItem",      sizeof(CompressedItem) },
    { "CompressionFeedback", sizeof(CompressionFeedback) },
    { "DateTime",            sizeof(DateTime) },
-   { "DebugMessage",        sizeof(DebugMessage) },
    { "DirInfo",             sizeof(DirInfo) },
    { "Edges",               sizeof(Edges) },
-   { "ExposeMessage",       sizeof(ExposeMessage) },
    { "FRGB",                sizeof(FRGB) },
    { "Field",               sizeof(Field) },
    { "FieldArray",          sizeof(FieldArray) },
@@ -83,8 +81,8 @@ static STRUCTS glStructures = {
    { "dcDeviceInput",       sizeof(dcDeviceInput) },
    { "dcKeyEntry",          sizeof(dcKeyEntry) },
    { "dcRequest",           sizeof(dcRequest) },
-   { "rkBase64Decode",      sizeof(rkBase64Decode) },
-   { "rkBase64Encode",      sizeof(rkBase64Encode) }
+   { "pfBase64Decode",      sizeof(pfBase64Decode) },
+   { "pfBase64Encode",      sizeof(pfBase64Encode) }
 };
 
 static RootModule glCoreRoot;

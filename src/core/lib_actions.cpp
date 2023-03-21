@@ -143,7 +143,7 @@ static void free_children(OBJECTPTR Object)
 
    ThreadLock lock(TL_PRIVATE_MEM, 4000);
    if (lock.granted()) {
-      {
+      if (!glObjectChildren[Object->UID].empty()) {
          const auto children = glObjectChildren[Object->UID]; // Take an immutable copy of the resource list
 
          for (const auto id : children) {
@@ -167,7 +167,7 @@ static void free_children(OBJECTPTR Object)
          }
       }
 
-      {
+      if (!glObjectMemory[Object->UID].empty()) {
          const auto list = glObjectMemory[Object->UID]; // Take an immutable copy of the resource list
 
          for (const auto id : list) {
@@ -191,9 +191,7 @@ static void free_children(OBJECTPTR Object)
                   }
                   else if (mem.Flags & MEM_MANAGED) {
                      auto res = (ResourceManager **)((char *)mem.Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
-                     if (res[0]) {
-                        log.warning("Unfreed %s resource at %p.", res[0]->Name, mem.Address);
-                     }
+                     if (res[0]) log.warning("Unfreed %s resource at %p.", res[0]->Name, mem.Address);
                      else log.warning("Unfreed resource at %p.", mem.Address);
                   }
                   else log.warning("Unfreed memory block %p, Size %d", mem.Address, mem.Size);
@@ -261,47 +259,38 @@ ObjectCorrupt:   The object that was received is badly corrupted in a critical a
 
 **********************************************************************************************************************/
 
-ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
+ERROR Action(LONG ActionID, OBJECTPTR Object, APTR Parameters)
 {
-   pf::Log log(__FUNCTION__);
+   if (!Object) return ERR_NullArgs;
 
-   if (!argObject) return log.warning(ERR_NullArgs);
-
-   auto obj = argObject;
-   const OBJECTID object_id = obj->UID;
-
-   obj->threadLock();
-
-   ObjectContext new_context(obj, ActionID);
-
-   obj->ActionDepth++;
-
-   auto cl = obj->ExtClass;
+   Object->threadLock();
+   ObjectContext new_context(Object, ActionID);
+   Object->ActionDepth++;
+   auto cl = Object->ExtClass;
 
 #ifdef DEBUG
    auto log_depth = tlDepth;
 #endif
 
    ERROR error;
-   if (ActionID > 0) {
+   if (ActionID >= 0) {
       // Action precedence is as follows:
       //
       // 1. Managed actions.
       // 2. If applicable, the object's sub-class (e.g. Picture:JPEG).
       // 3. The base-class.
 
-      if (ActionID >= AC_END) error = log.warning(ERR_IllegalActionID);
-      else if (ManagedActions[ActionID]) error = ManagedActions[ActionID](obj, Parameters);
+      if (ManagedActions[ActionID]) error = ManagedActions[ActionID](Object, Parameters);
       else if (cl->ActionTable[ActionID].PerformAction) { // Can be base or sub-class
-         error = cl->ActionTable[ActionID].PerformAction(obj, Parameters);
+         error = cl->ActionTable[ActionID].PerformAction(Object, Parameters);
          if (error IS ERR_NoAction) {
             if ((cl->Base) and (cl->Base->ActionTable[ActionID].PerformAction)) { // Base is set only if this is a sub-class
-               error = cl->Base->ActionTable[ActionID].PerformAction(obj, Parameters);
+               error = cl->Base->ActionTable[ActionID].PerformAction(Object, Parameters);
             }
          }
       }
       else if ((cl->Base) and (cl->Base->ActionTable[ActionID].PerformAction)) { // Base is set only if this is a sub-class
-         error = cl->Base->ActionTable[ActionID].PerformAction(obj, Parameters);
+         error = cl->Base->ActionTable[ActionID].PerformAction(Object, Parameters);
       }
       else error = ERR_NoAction;
    }
@@ -309,14 +298,14 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
       if ((cl->Methods) and (cl->Methods[-ActionID].Routine)) {
          // Note that sub-classes may return ERR_NoAction if propagation to the base class is desirable.
          auto routine = (ERROR (*)(OBJECTPTR, APTR))cl->Methods[-ActionID].Routine;
-         error = routine(obj, Parameters);
+         error = routine(Object, Parameters);
       }
       else error = ERR_NoAction;
 
       if ((error IS ERR_NoAction) and (cl->Base)) {  // If this is a child, check the base class
          if ((cl->Base->Methods) and (cl->Base->Methods[-ActionID].Routine)) {
             auto routine = (ERROR (*)(OBJECTPTR, APTR))cl->Base->Methods[-ActionID].Routine;
-            error = routine(obj, Parameters);
+            error = routine(Object, Parameters);
          }
       }
    }
@@ -326,31 +315,32 @@ ERROR Action(LONG ActionID, OBJECTPTR argObject, APTR Parameters)
    if (error & ERF_Notified) {
       error &= ~ERF_Notified;
    }
-   else if ((ActionID > 0) and (obj->NotifyFlags[ActionID>>5] & (1<<(ActionID & 31)))) {
+   else if ((ActionID > 0) and (Object->NotifyFlags[ActionID>>5] & (1<<(ActionID & 31)))) {
       std::lock_guard<std::recursive_mutex> lock(glSubLock);
 
       glSubReadOnly++;
 
-      if ((glSubscriptions.contains(object_id)) and (glSubscriptions[object_id].contains(ActionID))) {
-         for (auto &list : glSubscriptions[object_id][ActionID]) {
+      if ((glSubscriptions.contains(Object->UID)) and (glSubscriptions[Object->UID].contains(ActionID))) {
+         for (auto &list : glSubscriptions[Object->UID][ActionID]) {
             pf::SwitchContext ctx(list.Context);
-            list.Callback(obj, ActionID, (error IS ERR_NoAction) ? ERR_Okay : error, Parameters);
+            list.Callback(Object, ActionID, (error IS ERR_NoAction) ? ERR_Okay : error, Parameters);
          }
       }
 
       glSubReadOnly--;
    }
 
-   if (ActionID != AC_Free) obj->ActionDepth--;
+   if (ActionID != AC_Free) Object->ActionDepth--;
 
-   obj->threadRelease();
+   Object->threadRelease();
 
 #ifdef DEBUG
    if (log_depth != tlDepth) {
+      pf::Log log(__FUNCTION__);
       if (ActionID >= 0) {
-         log.warning("Call to #%d.%s() failed to debranch the log correctly (%d <> %d).", object_id, ActionTable[ActionID].Name, log_depth, tlDepth);
+         log.warning("Call to #%d.%s() failed to debranch the log correctly (%d <> %d).", Object->UID, ActionTable[ActionID].Name, log_depth, tlDepth);
       }
-      else log.warning("Call to #%d.%s() failed to debranch the log correctly (%d <> %d).", object_id, cl->Base->Methods[-ActionID].Name, log_depth, tlDepth);
+      else log.warning("Call to #%d.%s() failed to debranch the log correctly (%d <> %d).", Object->UID, cl->Base->Methods[-ActionID].Name, log_depth, tlDepth);
    }
 #endif
 
@@ -432,18 +422,16 @@ Failed: Failed to build buffered arguments.
 
 ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args)
 {
-   pf::Log log(__FUNCTION__);
-
-   if ((!ActionID) or (!ObjectID)) log.warning(ERR_NullArgs);
-   if (ActionID >= AC_END) return log.warning(ERR_OutOfRange);
-
    OBJECTPTR object;
-   if (!AccessObjectID(ObjectID, 3000, &object)) {
-      ERROR error = Action(ActionID, object, Args);
+   if (auto error = AccessObjectID(ObjectID, 3000, &object); !error) {
+      error = Action(ActionID, object, Args);
       ReleaseObject(object);
       return error;
    }
-   else return log.warning(ERR_AccessObject);
+   else {
+      pf::Log log(__FUNCTION__);
+      return log.warning(error);
+   }
 }
 
 /*********************************************************************************************************************
@@ -510,7 +498,7 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
          if (ActionID > 0) {
             args = ActionTable[ActionID].Args;
             if ((argssize = ActionTable[ActionID].Size) > 0) {
-               if (!(error = local_copy_args(args, argssize, (BYTE *)Parameters, call_data + sizeof(thread_data), SIZE_ACTIONBUFFER, &argssize, ActionTable[ActionID].Name))) {
+               if (!(error = copy_args(args, argssize, (BYTE *)Parameters, call_data + sizeof(thread_data), SIZE_ACTIONBUFFER, &argssize, ActionTable[ActionID].Name))) {
                   free_args = TRUE;
                }
 
@@ -522,7 +510,7 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
             if ((-ActionID) < cl->TotalMethods) {
                args = cl->Methods[-ActionID].Args;
                if ((argssize = cl->Methods[-ActionID].Size) > 0) {
-                  if (!(error = local_copy_args(args, argssize, (BYTE *)Parameters, call_data + sizeof(thread_data), SIZE_ACTIONBUFFER, &argssize, cl->Methods[-ActionID].Name))) {
+                  if (!(error = copy_args(args, argssize, (BYTE *)Parameters, call_data + sizeof(thread_data), SIZE_ACTIONBUFFER, &argssize, cl->Methods[-ActionID].Name))) {
                      free_args = TRUE;
                   }
                }
@@ -755,8 +743,7 @@ ERROR QueueAction(LONG ActionID, OBJECTID ObjectID, APTR Args)
          if (ActionTable[ActionID].Size) {
             fields   = ActionTable[ActionID].Args;
             argssize = ActionTable[ActionID].Size;
-            WORD waitresult;
-            if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, &waitresult, ActionTable[ActionID].Name) != ERR_Okay) {
+            if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, ActionTable[ActionID].Name) != ERR_Okay) {
                log.warning("Failed to buffer arguments for action \"%s\".", ActionTable[ActionID].Name);
                return ERR_Failed;
             }
@@ -769,8 +756,7 @@ ERROR QueueAction(LONG ActionID, OBJECTID ObjectID, APTR Args)
             if ((-ActionID) < cl->TotalMethods) {
                fields   = cl->Methods[-ActionID].Args;
                argssize = cl->Methods[-ActionID].Size;
-               WORD waitresult;
-               if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, &waitresult, cl->Methods[-ActionID].Name) != ERR_Okay) {
+               if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, cl->Methods[-ActionID].Name) != ERR_Okay) {
                   log.warning("Failed to buffer arguments for method \"%s\".", cl->Methods[-ActionID].Name);
                   return ERR_Failed;
                }
