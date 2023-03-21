@@ -980,6 +980,35 @@ ERROR ListChildren(OBJECTID ObjectID, ChildEntry *List, LONG *Count)
 /*********************************************************************************************************************
 
 -FUNCTION-
+PreciseTime: Returns the current system time, in microseconds.
+
+This function returns the current 'system time' in microseconds (1 millionth of a second).  The value is monotonic
+if the host platform allows it (typically expressed as the amount of time that has elapsed since the system was
+switched on).  The benefit of monotonic time is that it is unaffected by changes to the system clock, such as daylight
+savings adjustments or manual changes by the user.
+
+-RESULT-
+large: Returns the system time in microseconds.  An error is extremely unlikely, but zero is returned in the event of one.
+
+*********************************************************************************************************************/
+
+LARGE PreciseTime(void)
+{
+#ifdef __unix__
+   struct timespec time;
+
+   if (!clock_gettime(CLOCK_MONOTONIC, &time)) {
+      return ((LARGE)time.tv_sec * 1000000LL) + ((LARGE)time.tv_nsec / 1000LL);
+   }
+   else return 0;
+#else
+   return winGetTickCount(); // NB: This timer does start from the boot time, but can be adjusted - therefore is not 100% on monotonic status
+#endif
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
 RegisterFD: Registers a file descriptor for monitoring when the task is asleep.
 
 This function will register a file descriptor that will be monitored for activity when the task is sleeping.  If
@@ -1228,8 +1257,8 @@ SetName: Sets the name of an object.
 Category: Objects
 
 This function sets the name of an object.  This enhances log messages and allows the object to be found in searches.
-Please note that the length of the Name will be limited to the value indicated in the `main.h` include file, under
-the `MAX_NAME_LEN` definition.  If the Name is longer than the allowed length, it will be trimmed to fit.
+Please note that the length of the Name will be limited to the value indicated in the core header file, under
+the `MAX_NAME_LEN` definition.  Names exceeding the allowed length are trimmed to fit.
 
 Object names are limited to alpha-numeric characters and the underscore symbol.  Invalid characters are replaced with
 an underscore.
@@ -1546,35 +1575,6 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
 /*********************************************************************************************************************
 
 -FUNCTION-
-PreciseTime: Returns the current system time, in microseconds.
-
-This function returns the current 'system time' in microseconds (1 millionth of a second).  The value is monotonic
-if the host platform allows it (typically expressed as the amount of time that has elapsed since the system was
-switched on).  The benefit of monotonic time is that it is unaffected by changes to the system clock, such as daylight
-savings adjustments or manual changes by the user.
-
--RESULT-
-large: Returns the system time in microseconds.  An error is extremely unlikely, but zero is returned in the event of one.
-
-*********************************************************************************************************************/
-
-LARGE PreciseTime(void)
-{
-#ifdef __unix__
-   struct timespec time;
-
-   if (!clock_gettime(CLOCK_MONOTONIC, &time)) {
-      return ((LARGE)time.tv_sec * 1000000LL) + ((LARGE)time.tv_nsec / 1000LL);
-   }
-   else return 0;
-#else
-   return winGetTickCount(); // NB: This timer does start from the boot time, but can be adjusted - therefore is not 100% on monotonic status
-#endif
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
 TotalChildren: Returns the total number of children owned by an object.
 
 This function returns the total number of children that are owned by an object.  It is normally called as a precursor
@@ -1688,18 +1688,18 @@ int MicroSeconds: The number of microseconds to wait for.  Please note that a mi
 
 void WaitTime(LONG Seconds, LONG MicroSeconds)
 {
-   bool processmsg;
+   bool process_msg;
 
    if (!tlMainThread) {
-      processmsg = false; // Child threads never process messages.
+      process_msg = false; // Child threads never process messages.
       if (Seconds < 0) Seconds = -Seconds;
       if (MicroSeconds < 0) MicroSeconds = -MicroSeconds;
     }
    else {
       // If the Seconds or MicroSeconds arguments are negative, turn off the ProcessMessages() support.
-      processmsg = true;
-      if (Seconds < 0) { Seconds = -Seconds; processmsg = false; }
-      if (MicroSeconds < 0) { MicroSeconds = -MicroSeconds; processmsg = false; }
+      process_msg = true;
+      if (Seconds < 0) { Seconds = -Seconds; process_msg = false; }
+      if (MicroSeconds < 0) { MicroSeconds = -MicroSeconds; process_msg = false; }
    }
 
    while (MicroSeconds >= 1000000) {
@@ -1707,7 +1707,7 @@ void WaitTime(LONG Seconds, LONG MicroSeconds)
       Seconds++;
    }
 
-   if (processmsg) {
+   if (process_msg) {
       LARGE current = PreciseTime() / 1000LL;
       LARGE end = current + (Seconds * 1000) + (MicroSeconds / 1000);
       do {
