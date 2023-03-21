@@ -2,8 +2,8 @@
 
 Some notes about object ownership and the safe handling of them:
 
-The core's technical design means that any object that is not directly owned by the Lua Script object is to be
-treated as external to the script.  External objects must be locked appropriately whenever they are used.  Locking
+The core's technical design means that any object that is *not directly owned by the Lua Script* must be treated as
+external to that script.  External objects must be locked appropriately whenever they are used.  Locking
 ensures that threads can interact with the object safely and that the object cannot be prematurely terminated.
 
 Only objects created through the standard obj.new() interface are permanently locked.  Those referenced through
@@ -204,7 +204,7 @@ static int object_new(lua_State *Lua)
    }
    else {
       prv->CaughtError = ERR_NewObject;
-      luaL_error(Lua, "NewObject() failed for class '%s', error: %s", class_name, GetErrorMsg(ERR_NewObject));
+      luaL_error(Lua, "NewObject() failed for class '%s', error: %s", class_name, GetErrorMsg(error));
       return 0;
    }
 }
