@@ -141,6 +141,8 @@ struct rkWatchPath {
 #define STAT_FOLDER 0x0001
 
 enum class NF : ULONG;
+
+#include <parasol/vector.hpp>
 #include "prototypes.h"
 
 #include <parasol/main.h>

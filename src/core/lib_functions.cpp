@@ -718,7 +718,6 @@ oid: Returns the ID of the object's owner.  If the object does not have a owner 
 
 OBJECTID GetOwnerID(OBJECTID ObjectID)
 {
-   OBJECTID ownerid = 0;
    ThreadLock lock(TL_PRIVATE_MEM, 4000);
    if (lock.granted()) {
       auto mem = glPrivateMemory.find(ObjectID);
@@ -726,7 +725,7 @@ OBJECTID GetOwnerID(OBJECTID ObjectID)
          if (mem->second.Object) return mem->second.Object->OwnerID;
       }
    }
-   return ownerid;
+   return 0;
 }
 
 /*********************************************************************************************************************
@@ -922,19 +921,15 @@ const SystemState * GetSystemState(void)
 ListChildren: Returns a list of all children belonging to an object.
 Category: Objects
 
-The ListChildren() function returns a list of an object's children in a single function call.
+The ListChildren() function returns a list of all children belonging to an object.  The client must provide an empty
+vector of ChildEntry structures to host the results, which include unique object ID's and their class identifiers.
 
-The client must provide an empty array of ChildEntry structures for the function to write its results.  The Count
-argument must point to a `LONG` value that indicates the size of the supplied List.  Before returning, the
-ListChildren() function will update the Count variable so that it reflects the total number of children that were
-written to the array.
-
-Objects marked with the `INTEGRAL` flag are not returned as they are private members of the targeted object.
+Note that any child objects marked with the `INTEGRAL` flag will be excluded because they are private members of the
+targeted object.
 
 -INPUT-
 oid Object: The ID of the object that you wish to examine.
-buf(array(resource(ChildEntry))) List: Must refer to an array of ChildEntry structures.
-&arraysize Count:  Set to the maximum number of elements in ChildEntry.  Before returning, this parameter will be updated with the total number of entries listed in the array.
+ptr(cpp(array(resource(ChildEntry)))) List: Must refer to an array of ChildEntry structures.
 
 -ERRORS-
 Okay: Zero or more children were found and listed.
@@ -943,38 +938,29 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERROR ListChildren(OBJECTID ObjectID, ChildEntry *List, LONG *Count)
+ERROR ListChildren(OBJECTID ObjectID, pf::vector<ChildEntry> *List)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!ObjectID) or (!List) or (!Count)) return log.warning(ERR_NullArgs);
-   if ((*Count < 0) or (*Count > 3000)) return log.warning(ERR_Args);
+   if ((!ObjectID) or (!List)) return log.warning(ERR_NullArgs);
 
-   log.trace("#%d, List: %p, Array Size: %d", ObjectID, List, *Count);
+   log.trace("#%d, List: %p", ObjectID, List);
 
-   ERROR error = ERR_Okay;
-   LONG i = 0;
+   ThreadLock lock(TL_PRIVATE_MEM, 4000);
+   if (lock.granted()) {
+      for (const auto id : glObjectChildren[ObjectID]) {
+         auto mem = glPrivateMemory.find(id);
+         if (mem IS glPrivateMemory.end()) continue;
 
-   if (i < *Count) {
-      ThreadLock lock(TL_PRIVATE_MEM, 4000);
-      if (lock.granted()) {
-         for (const auto id : glObjectChildren[ObjectID]) {
-            auto mem = glPrivateMemory.find(id);
-            if (mem IS glPrivateMemory.end()) continue;
-
-            if (auto child = mem->second.Object) {
-               if (!child->defined(NF::INTEGRAL)) {
-                  List[i].ObjectID = child->UID;
-                  List[i].ClassID  = child->ClassID;
-                  if (++i >= *Count) break;
-               }
+         if (auto child = mem->second.Object) {
+            if (!child->defined(NF::INTEGRAL)) {
+               List->emplace_back(child->UID, child->ClassID);
             }
          }
       }
+      return ERR_Okay;
    }
-
-   *Count = i;
-   return error;
+   else return ERR_LockFailed;
 }
 
 /*********************************************************************************************************************

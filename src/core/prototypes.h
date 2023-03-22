@@ -32,7 +32,7 @@ ERROR GetField(OBJECTPTR Object, FIELD Field, APTR Result);
 ERROR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size);
 LONG TotalChildren(OBJECTID Object);
 CSTRING GetName(OBJECTPTR Object);
-ERROR ListChildren(OBJECTID Object, struct ChildEntry * List, LONG * Count);
+ERROR ListChildren(OBJECTID Object, pf::vector<ChildEntry> * List);
 ERROR Base64Decode(struct pfBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
 ERROR RegisterFD(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
 ERROR ResolvePath(CSTRING Path, LONG Flags, STRING * Result);

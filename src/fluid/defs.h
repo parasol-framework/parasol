@@ -146,8 +146,8 @@ struct array {
    LONG TypeSize;     // Byte-size of the type, e.g. LARGE == 8 bytes
    LONG ArraySize;    // Size of the array *in bytes*
    LONG AlignedSize;  // For struct alignment
-   UBYTE Allocated:1;
-   UBYTE ReadOnly:1;
+   bool Allocated;
+   bool ReadOnly;
    union {
       DOUBLE *ptrDouble;
       LARGE  *ptrLarge;
