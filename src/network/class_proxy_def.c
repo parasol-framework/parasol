@@ -10,12 +10,12 @@ static const struct MethodArray clProxyMethods[] = {
 };
 
 static const struct ActionArray clProxyActions[] = {
-   { AC_Disable, (APTR)PROXY_Disable },
-   { AC_Enable, (APTR)PROXY_Enable },
-   { AC_Free, (APTR)PROXY_Free },
-   { AC_Init, (APTR)PROXY_Init },
-   { AC_NewObject, (APTR)PROXY_NewObject },
-   { AC_SaveSettings, (APTR)PROXY_SaveSettings },
+   { AC_Disable, PROXY_Disable },
+   { AC_Enable, PROXY_Enable },
+   { AC_Free, PROXY_Free },
+   { AC_Init, PROXY_Init },
+   { AC_NewObject, PROXY_NewObject },
+   { AC_SaveSettings, PROXY_SaveSettings },
    { 0, NULL }
 };
 
