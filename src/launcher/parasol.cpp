@@ -1,13 +1,11 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
-This version of the Parasol launcher is intended for use from the command-line
-only.
+This version of the Parasol launcher is intended for use from the command-line only.
 
 *********************************************************************************************************************/
 
@@ -27,11 +25,11 @@ extern struct CoreBase *CoreBase;
 static objSurface *glTarget = NULL;
 static CSTRING *glArgs = NULL;
 static STRING glAllow = NULL;
-static BYTE glSandbox = FALSE;
-static BYTE glRelaunched = FALSE;
+static bool glSandbox = false;
+static bool glRelaunched = false;
 static OBJECTPTR glTask = NULL;
 static OBJECTPTR glScript = NULL;
-static BYTE glTime = FALSE;
+static bool glTime = false;
 static LONG glWinHandle = 0;
 static STRING glProcedure = NULL;
 static STRING glTargetFile = NULL;
@@ -84,8 +82,7 @@ static ERROR process_args(void)
             // Special internal function that checks that the installation is valid, returning 1 if checks pass.
 
             static CSTRING modules[] = { // These modules must be present for an installation to be valid.
-               "display", "document", "fluid", "font", "http", "jpeg", "json", "network", "parc",
-               "picture", "surface", "svg", "vector", "widget", "window", "xml"
+               "audio", "display", "fluid", "font", "http", "json", "network", "picture", "svg", "vector", "xml"
             };
 
             struct DirInfo *dir;
