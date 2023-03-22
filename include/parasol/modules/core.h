@@ -1912,7 +1912,7 @@ struct CoreBase {
    ERROR (*_GetFieldVariable)(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size);
    LONG (*_TotalChildren)(OBJECTID Object);
    CSTRING (*_GetName)(OBJECTPTR Object);
-   ERROR (*_ListChildren)(OBJECTID Object, struct ChildEntry * List, LONG * Count);
+   ERROR (*_ListChildren)(OBJECTID Object, pf::vector<ChildEntry> * List);
    ERROR (*_Base64Decode)(struct pfBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
    ERROR (*_RegisterFD)(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
    ERROR (*_ResolvePath)(CSTRING Path, LONG Flags, STRING * Result);
@@ -2007,6 +2007,7 @@ struct CoreBase {
    ULONG (*_StrHash)(CSTRING String, LONG CaseSensitive);
    ERROR (*_AddInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING Value);
    LONG (*_UTF8Copy)(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
+   ERROR (*_ReadInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING * Value);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2038,7 +2039,7 @@ inline ERROR GetField(OBJECTPTR Object, FIELD Field, APTR Result) { return CoreB
 inline ERROR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size) { return CoreBase->_GetFieldVariable(Object,Field,Buffer,Size); }
 inline LONG TotalChildren(OBJECTID Object) { return CoreBase->_TotalChildren(Object); }
 inline CSTRING GetName(OBJECTPTR Object) { return CoreBase->_GetName(Object); }
-inline ERROR ListChildren(OBJECTID Object, struct ChildEntry * List, LONG * Count) { return CoreBase->_ListChildren(Object,List,Count); }
+inline ERROR ListChildren(OBJECTID Object, pf::vector<ChildEntry> * List) { return CoreBase->_ListChildren(Object,List); }
 inline ERROR Base64Decode(struct pfBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written) { return CoreBase->_Base64Decode(State,Input,InputSize,Output,Written); }
 inline ERROR RegisterFD(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data) { return CoreBase->_RegisterFD(FD,Flags,Routine,Data); }
 inline ERROR ResolvePath(CSTRING Path, LONG Flags, STRING * Result) { return CoreBase->_ResolvePath(Path,Flags,Result); }
@@ -2133,6 +2134,7 @@ inline const struct SystemState * GetSystemState(void) { return CoreBase->_GetSy
 inline ULONG StrHash(CSTRING String, LONG CaseSensitive) { return CoreBase->_StrHash(String,CaseSensitive); }
 inline ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
 inline LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size) { return CoreBase->_UTF8Copy(Src,Dest,Chars,Size); }
+inline ERROR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value) { return CoreBase->_ReadInfoTag(Info,Name,Value); }
 #endif
 
 

@@ -111,7 +111,7 @@ extern "C" EXPORT void CloseCore(void);
 extern "C" EXPORT struct CoreBase * OpenCore(OpenInfo *);
 static ERROR open_shared_control(void);
 static ERROR init_shared_control(void);
-static ERROR init_volumes(std::forward_list<CSTRING> &);
+static ERROR init_volumes(const std::forward_list<std::string> &);
 
 #ifdef _WIN32
 static WINHANDLE glSharedControlID = 0; // Shared memory ID.
@@ -365,7 +365,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    }
 #endif
 
-   std::forward_list<CSTRING> volumes;
+   std::forward_list<std::string> volumes;
 
    std::vector<CSTRING> newargs;
    if (Info->Flags & OPF_ARGS) {
@@ -934,7 +934,7 @@ static ERROR open_shared_control(void)
    #elif USE_SHM
       // NOTE: Do not ever use shmctl(IPC_STAT) for any reason, as the resulting structure is not compatible between all Linux versions.
 
-      BYTE init = FALSE;
+      bool init = false;
       if ((glSharedControlID = shmget(memkey, 0, SHM_R|SHM_W)) IS -1) {
          KMSG("No existing memory block exists for the given key (will create a new one).  Error: %s\n", strerror(errno));
 
@@ -952,9 +952,7 @@ static ERROR open_shared_control(void)
                return ERR_Failed;
             }
          }
-         else {
-            init = TRUE;
-         }
+         else init = true;
       }
       else KMSG("Shared memory block already exists - will attach to it.\n");
 
@@ -1643,7 +1641,7 @@ static void win32_enum_folders(CSTRING Volume, CSTRING Label, CSTRING Path, CSTR
 
 //********************************************************************************************************************
 
-static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
+static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
 {
    pf::Log log("Core");
 
@@ -1683,6 +1681,8 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
       }
 
       SetVolume("drive1", "/", "devices/storage", "Linux", "hd", VOLUME_REPLACE|VOLUME_SYSTEM);
+      SetVolume("etc", "/etc", "tools/cog", NULL, NULL, VOLUME_REPLACE|VOLUME_SYSTEM);
+      SetVolume("usr", "/usr", NULL, NULL, NULL, VOLUME_REPLACE|VOLUME_SYSTEM);
    #endif
 
    // Configure some standard volumes.
@@ -1735,6 +1735,9 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
       if ((homedir = getenv("HOME")) and (homedir[0]) and (StrMatch("/", homedir) != ERR_Okay)) {
          buffer = homedir;
          if (buffer.back() IS '/') buffer.pop_back();
+
+         SetVolume("home", buffer.c_str(), "users/user", NULL, NULL, VOLUME_REPLACE);
+
          buffer += "/." + glHomeFolderName + std::to_string(F2T(VER_CORE)) + "/";
       }
       else if ((logname = getenv("LOGNAME")) and (logname[0])) {
@@ -1770,7 +1773,7 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
       buffer += "|config:users/default/";
    }
 
-   SetVolume("user:", buffer.c_str(), "users/user", NULL, NULL, VOLUME_REPLACE|VOLUME_SYSTEM);
+   SetVolume("user", buffer.c_str(), "users/user", NULL, NULL, VOLUME_REPLACE|VOLUME_SYSTEM);
 
    // Make sure that certain default directories exist
 
@@ -1778,11 +1781,11 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
    CreateFolder("user:temp/", PERMIT_READ|PERMIT_EXEC|PERMIT_WRITE);
 
    if (AnalysePath("temp:", NULL) != ERR_Okay) {
-      SetVolume("temp:", "user:temp/", "items/trash", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+      SetVolume("temp", "user:temp/", "items/trash", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
    }
 
    if (AnalysePath("clipboard:", NULL) != ERR_Okay) {
-      SetVolume("clipboard:", "temp:clipboard/", "items/clipboard", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+      SetVolume("clipboard", "temp:clipboard/", "items/clipboard", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
    }
 
    // Look for the following drive types:
@@ -1901,7 +1904,7 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
 
    const CSTRING cdroms[] = {
       "/mnt/cdrom", "/mnt/cdrom0", "/mnt/cdrom1", "/mnt/cdrom2", "/mnt/cdrom3", "/mnt/cdrom4", "/mnt/cdrom5", "/mnt/cdrom6", // RedHat
-      "/cdrom0", "/cdrom1", "/cdrom2", "/cdrom3" // Debian
+      "/cdrom", "/cdrom0", "/cdrom1", "/cdrom2", "/cdrom3" // Debian
    };
    char cdname[] = "cd1";
 
@@ -1917,15 +1920,16 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
 
    create_archive_volume();
 
+   // Custom volumes and overrides specified from the command-line
+
    for (auto vol : Volumes) {
-      char name[120], path[MAX_FILENAME];
-      size_t n, p, v;
-      for (n=0, v=0; vol[v] and (vol[v] != '=') and (n < sizeof(name)-1); v++) name[n++] = vol[v];
-      name[n] = 0;
-      if (vol[v++] IS '=') {
-         for (p=0; vol[v] and (p < sizeof(path)-1); v++) path[p++] = vol[v];
-         path[p] = 0;
-         SetVolume(name, path, NULL, NULL, NULL, VOLUME_PRIORITY);
+      if (auto v = vol.find('='); v != std::string::npos) {
+         std::string name(vol, v);
+         std::string path(vol, v + 1, vol.size() - (v + 1));
+
+         LONG flags = glVolumes.contains(name) ? 0 : VOLUME_HIDDEN;
+
+         SetVolume(name.c_str(), path.c_str(), NULL, NULL, NULL, VOLUME_PRIORITY|flags);
       }
    }
 
