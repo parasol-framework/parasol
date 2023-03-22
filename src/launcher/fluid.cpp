@@ -166,8 +166,7 @@ static ERROR process_args(void)
             // Special internal function that checks that the installation is valid, returning 1 if checks pass.
 
             static CSTRING modules[] = { // These modules must be present for an installation to be valid.
-               "display", "document", "fluid", "font", "http", "jpeg", "json", "network", "parc",
-               "picture", "surface", "svg", "vector", "widget", "window", "xml"
+               "audio", "display", "fluid", "font", "http", "json", "network", "picture", "svg", "vector", "xml"
             };
 
             struct DirInfo *dir;

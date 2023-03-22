@@ -124,21 +124,19 @@ int main() {
 find_program (XXD_CMD "xxd")
 if (WIN32)
    find_program (PARASOL_CMD "parasol" NO_DEFAULT_PATH PATHS "${CMAKE_INSTALL_PREFIX}")
-   find_program (FLUID_CMD "fluid" NO_DEFAULT_PATH PATHS "${CMAKE_INSTALL_PREFIX}")
 else ()
    find_program (PARASOL_CMD "parasol" NO_DEFAULT_PATH PATHS "${CMAKE_INSTALL_PREFIX}/bin")
-   find_program (FLUID_CMD "fluid" NO_DEFAULT_PATH PATHS "${CMAKE_INSTALL_PREFIX}/bin")
 endif ()
 find_file (IDL_C_SCRIPT "idl-c.fluid" PATHS "${PROJECT_SOURCE_DIR}/scripts/dev/idl")
 find_file (IDL_DEF_SCRIPT "idl-def.fluid" PATHS "${PROJECT_SOURCE_DIR}/scripts/dev/idl")
 find_file (FLUTE_SCRIPT "flute.fluid" PATHS "${PROJECT_SOURCE_DIR}/scripts/dev")
 
-if (FLUID_CMD STREQUAL "FLUID_CMD-NOTFOUND")
+if (PARASOL_CMD STREQUAL "PARASOL_CMD-NOTFOUND")
    message (STATUS "Definitions will not be built and tests are disabled.")
    set (BUILD_DEFS OFF)
 else ()
    if (BUILD_DEFS)
-      message (STATUS "Definitions will be built with the Fluid program installed @ ${FLUID_CMD}.")
+      message (STATUS "Definitions will be built with the Parasol exe installed @ ${PARASOL_CMD}.")
    endif ()
 endif ()
 
@@ -168,9 +166,9 @@ add_custom_target(build_headers ALL COMMENT "Generate headers and definition fil
 function (flute_test name path)
    if (BUILD_TESTS)
       if (RUN_ANYWHERE)
-         set (FLUTE_EXE "${CMAKE_INSTALL_PREFIX}/fluid")
+         set (FLUTE_EXE "${CMAKE_INSTALL_PREFIX}/parasol")
       else ()
-         set (FLUTE_EXE "${CMAKE_INSTALL_PREFIX}/bin/fluid")
+         set (FLUTE_EXE "${CMAKE_INSTALL_PREFIX}/bin/parasol")
       endif ()
       get_filename_component(FLUTE_FULL_PATH "${path}" ABSOLUTE)
       add_test (NAME ${name}
@@ -196,11 +194,11 @@ function (idl_all)
          list (APPEND IDLC_ARGS "--files={" ${IDLC_FILES} "}")
       endif ()
 
-      list (APPEND COMMAND_LIST COMMAND ${FLUID_CMD} ${IDL_C_SCRIPT} "--log-warning" "--src=${ARGV0}"
+      list (APPEND COMMAND_LIST COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "--src=${ARGV0}"
          "--output=${IDLC_OUTPUT}" "--sdk=${PROJECT_SOURCE_DIR}" ${IDLC_ARGS})
 
       if (DEFINED IDLC_APPEND_IDL)
-         list (APPEND COMMAND_LIST COMMAND ${FLUID_CMD} ${IDL_DEF_SCRIPT} "--log-warning" "--src=${ARGV0}"
+         list (APPEND COMMAND_LIST COMMAND ${PARASOL_CMD} ${IDL_DEF_SCRIPT} "--log-warning" "--src=${ARGV0}"
             "--output=${IDLC_APPEND_IDL}" "--sdk=${PROJECT_SOURCE_DIR}" "--format=c" "--append")
       endif ()
 
@@ -241,7 +239,7 @@ function (idl_c)
 
       add_custom_command (OUTPUT ${IDLC_OUTPUT}
          PRE_BUILD
-         COMMAND ${FLUID_CMD} ${IDL_C_SCRIPT} "--log-warning" "--src=${ARGV0}" "--output=${IDLC_OUTPUT}" "--sdk=${PROJECT_SOURCE_DIR}" ${IDLC_ARGS}
+         COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "--src=${ARGV0}" "--output=${IDLC_OUTPUT}" "--sdk=${PROJECT_SOURCE_DIR}" ${IDLC_ARGS}
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
          DEPENDS ${ARGV0}
          COMMENT "Producing C header file ${IDLC_OUTPUT} from ${ARGV0}"
@@ -275,7 +273,7 @@ function (idl_def)
 
       add_custom_command (OUTPUT ${IDLC_OUTPUT}
          PRE_BUILD
-         COMMAND ${FLUID_CMD} ${IDL_DEF_SCRIPT} "--log-warning" "--src=${ARGV0}" "--output=${IDLC_OUTPUT}" "--sdk=${PROJECT_SOURCE_DIR}" "--format=c" ${IDLC_ARGS}
+         COMMAND ${PARASOL_CMD} ${IDL_DEF_SCRIPT} "--log-warning" "--src=${ARGV0}" "--output=${IDLC_OUTPUT}" "--sdk=${PROJECT_SOURCE_DIR}" "--format=c" ${IDLC_ARGS}
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
          DEPENDS ${ARGV0}
          COMMENT "Producing definition file ${IDLC_OUTPUT} from ${ARGV0}"
@@ -418,7 +416,7 @@ if (WIN32)
 endif ()
 
 # ----------------------------------------------------------------------------
-# Parasol and Fluid executables
+# Parasol executable
 
 if (RUN_ANYWHERE)
    set (CMAKE_INSTALL_RPATH "$ORIGIN/lib/lib")
@@ -430,33 +428,24 @@ if (WIN32)
    # Specifying the WIN32 option will generate a Windows GUI application
    add_executable (parasol WIN32 "src/launcher/parasol.cpp" "src/launcher/sandbox-win.cpp" "src/link/resource.rc")
    target_link_libraries (parasol PRIVATE init-win)
-
-   add_executable (fluid_cmd WIN32 "src/launcher/fluid.cpp" "src/launcher/sandbox-win.cpp" "src/link/resource.rc")
-   target_link_libraries (fluid_cmd PRIVATE init-win)
 else ()
    add_executable (parasol "src/launcher/parasol.cpp")
    target_link_libraries (parasol PRIVATE init-unix)
-
-   add_executable (fluid_cmd "src/launcher/fluid.cpp")
-   target_link_libraries (fluid_cmd PRIVATE init-unix)
 endif ()
 
 target_include_directories (parasol PRIVATE "${PROJECT_SOURCE_DIR}/src/link")
-target_include_directories (fluid_cmd PRIVATE "${PROJECT_SOURCE_DIR}/src/link")
 
 if (CMAKE_BUILD_TYPE MATCHES "Release")
    message (STATUS "Symbols will be stripped from this build (no debugging).")
-   set_target_properties (parasol fluid_cmd PROPERTIES CXX_STANDARD 20 LINK_FLAGS_RELEASE "-s" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
+   set_target_properties (parasol PROPERTIES CXX_STANDARD 20 LINK_FLAGS_RELEASE "-s" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
 else ()
    message (STATUS "Symbols will be left intact in this build (debug enabled).")
-   set_target_properties (parasol fluid_cmd PROPERTIES CXX_STANDARD 20 RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
+   set_target_properties (parasol PROPERTIES CXX_STANDARD 20 RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
 endif ()
 
-set_target_properties (fluid_cmd PROPERTIES OUTPUT_NAME "fluid")
+# Attach headers to the Parasol binary so that we can ensure that all headers are built
 
-# Attach headers to the Fluid binary so that we can ensure that all headers are built
-
-add_dependencies (fluid_cmd build_headers)
+add_dependencies (parasol build_headers)
 
 # ----------------------------------------------------------------------------
 # Generate the platform configuration header
@@ -488,11 +477,9 @@ if (PARASOL_INSTALL)
 
    if (RUN_ANYWHERE)
       install (TARGETS parasol DESTINATION .)
-      install (TARGETS fluid_cmd DESTINATION .)
       set (PARASOL_CMD_TARGET "${CMAKE_INSTALL_PREFIX}/parasol")
    else ()
       install (TARGETS parasol DESTINATION "bin")
-      install (TARGETS fluid_cmd DESTINATION "bin")
       set (PARASOL_CMD_TARGET "${CMAKE_INSTALL_PREFIX}/bin/parasol")
    endif ()
 
@@ -542,7 +529,7 @@ endif ()
    install (CODE "execute_process(COMMAND \"${PARASOL_CMD_TARGET}\" --log-warning --gfx-driver=headless \"${PARASOL_ROOT}/scripts/dev/verify-modules.fluid\" WORKING_DIRECTORY \"${CMAKE_INSTALL_PREFIX}\")")
 
 if (RUN_ANYWHERE)
-   install (CODE "MESSAGE(STATUS \"\nParasol has been installed to '${CMAKE_INSTALL_PREFIX}'.  You may need to add this folder to your PATH variable in order to run parasol.exe and fluid.exe from the command-line.\")")
+   install (CODE "MESSAGE(STATUS \"\nParasol has been installed to '${CMAKE_INSTALL_PREFIX}'.  You may need to add this folder to your PATH variable in order to run parasol.exe from the command-line.\")")
 else ()
    install (CODE "MESSAGE(STATUS \"\nParasol has been installed to '${CMAKE_INSTALL_PREFIX}' and shared files are in '${PARASOL_ROOT}'.\")")
 endif ()
