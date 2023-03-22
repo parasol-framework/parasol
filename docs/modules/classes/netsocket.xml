@@ -87,8 +87,8 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <description>
 <p>This method initiates the connection process with a target IP address.  The address to connect to can be specified either as a domain name, in which case the domain name is first resolved to an IP address, or the address can be specified in standard IP notation.</p>
 <p>This method is non-blocking.  It will return immediately and the connection will be resolved once the server responds to the connection request or an error occurs.  Client code should subscribe to the <field>State</field> field to respond to changes to the connection state.</p>
-<p>Pre-Condition: Must be in a connection state of NTC_DISCONNECTED</p>
-<p>Post-Condition: If this method returns ERR_Okay, will be in state NTC_CONNECTING.</p>
+<p>Pre-Condition: Must be in a connection state of <code>NTC_DISCONNECTED</code></p>
+<p>Post-Condition: If this method returns <code>ERR_Okay</code>, will be in state <code>NTC_CONNECTING</code>.</p>
       </description>
       <result>
         <error code="Okay">The NetSocket connecting process was successfully started.</error>
@@ -392,7 +392,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
   <structs>
     <struct name="IPAddress">
       <field name="Data" type="ULONG" size="4">128-bit array for supporting both V4 and V6 IP addresses.</field>
-      <field name="Type" type="LONG" lookup="IPADDR"></field>
+      <field name="Type" type="LONG" lookup="IPADDR">Identifies the address Data value as a V4 or V6 address type.</field>
       <field name="Pad" type="LONG">Unused padding for 64-bit alignment</field>
     </struct>
 

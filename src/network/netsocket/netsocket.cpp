@@ -927,12 +927,6 @@ ClientLimit: The maximum number of clients that can be connected to a server soc
 Clients: For server sockets, lists all clients connected to the server.
 
 -FIELD-
-CurrentClient: Relevant for server sockets, indicates the target client socket for communications.
-
-For server sockets, the CurrentClient field must refer to a target ClientSocket in order to perform operations such as
-#Read() and #Write().
-
--FIELD-
 Error: Information about the last error that occurred during a NetSocket operation
 
 This field describes the last error that occurred during a NetSocket operation:
