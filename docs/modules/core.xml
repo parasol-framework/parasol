@@ -1146,9 +1146,8 @@ GetField(Object, FID_Y|TLONG, &amp;y);
       <param type="pf::vector<ChildEntry> *" name="List">Must refer to an array of ChildEntry structures.</param>
     </input>
     <description>
-<p>The ListChildren() function returns a list of an object's children in a single function call.</p>
-<p>The client must provide an empty array of ChildEntry structures for the function to write its results.  The Count argument must point to a <code>LONG</code> value that indicates the size of the supplied List.  Before returning, the ListChildren() function will update the Count variable so that it reflects the total number of children that were written to the array.</p>
-<p>Objects marked with the <code>INTEGRAL</code> flag are not returned as they are private members of the targeted object.</p>
+<p>The ListChildren() function returns a list of all children belonging to an object.  The client must provide an empty vector of ChildEntry structures to host the results, which include unique object ID's and their class identifiers.</p>
+<p>Note that any child objects marked with the <code>INTEGRAL</code> flag will be excluded because they are private members of the targeted object.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -1479,6 +1478,26 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <error code="Read">Error reading data from file.</error>
       <error code="InvalidPath">Invalid file or folder path detected.</error>
       <error code="OpenFile">The file could not be opened.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>ReadInfoTag</name>
+    <category>Files</category>
+    <comment>Read a named tag from a FileInfo structure.</comment>
+    <prototype>ERROR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value)</prototype>
+    <input>
+      <param type="struct FileInfo *" name="Info">Pointer to a valid FileInfo structure.</param>
+      <param type="CSTRING" name="Name">The name of the tag.</param>
+      <param type="CSTRING *" name="Value">The discovered string value is returned here if found.</param>
+    </input>
+    <description>
+<p>Call ReadInfoTag() to retrieve the string value associated with a named tag in a FileInfo structure.  The tag must have been added with AddInfoTag() or <code>ERR_NotFound</code> will be returned.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NotFound">A search routine in this function failed.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>

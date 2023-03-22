@@ -2007,6 +2007,7 @@ struct CoreBase {
    ULONG (*_StrHash)(CSTRING String, LONG CaseSensitive);
    ERROR (*_AddInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING Value);
    LONG (*_UTF8Copy)(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
+   ERROR (*_ReadInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING * Value);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2133,6 +2134,7 @@ inline const struct SystemState * GetSystemState(void) { return CoreBase->_GetSy
 inline ULONG StrHash(CSTRING String, LONG CaseSensitive) { return CoreBase->_StrHash(String,CaseSensitive); }
 inline ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
 inline LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size) { return CoreBase->_UTF8Copy(Src,Dest,Chars,Size); }
+inline ERROR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value) { return CoreBase->_ReadInfoTag(Info,Name,Value); }
 #endif
 
 

@@ -416,12 +416,9 @@ local function createFileItem(self, Info)
       end
 
       local display_name = Info.name
-      local label
-      if Info.tags then
-         label = mSys.VarGetString(Info.tags, 'label')
-         if label then
-            display_name = display_name .. ' (' .. label .. ')'
-         end
+      local err, label = mSys.ReadInfoTag(Info, 'label')
+      if err == ERR_Okay then
+         display_name = display_name .. ' (' .. label .. ')'
       end
 
       return {
@@ -1099,7 +1096,7 @@ gui.fileview = function(View, Options)
    -- Read an entire folder and add the items to the target view
 
    local function loadFileList()
-      msg('loadFileList() ', self.path, ' [Limited Logging]')
+      msg('loadFileList() ' .. nz(self.path,'ROOT') .. ' [Limited Logging]')
 
       local msg_time  = mSys.PreciseTime()
       local orig_path = self.path

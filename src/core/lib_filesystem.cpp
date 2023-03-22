@@ -1177,6 +1177,42 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRe
 }
 
 /*********************************************************************************************************************
+
+-FUNCTION-
+ReadInfoTag: Read a named tag from a FileInfo structure.
+
+Call ReadInfoTag() to retrieve the string value associated with a named tag in a FileInfo structure.  The tag must
+have been added with AddInfoTag() or `ERR_NotFound` will be returned.
+
+-INPUT-
+struct(FileInfo) Info: Pointer to a valid FileInfo structure.
+cstr Name: The name of the tag.
+&cstr Value: The discovered string value is returned here if found.
+
+-ERRORS-
+Okay:
+NullArgs:
+NotFound:
+
+*********************************************************************************************************************/
+
+ERROR ReadInfoTag(FileInfo *Info, CSTRING Name, CSTRING *Value)
+{
+   if ((!Info) or (!Name) or (!Value)) {
+      pf::Log log(__FUNCTION__);
+      return ERR_NullArgs;
+   }
+
+   if ((Info->Tags) and (Info->Tags->contains(Name))) {
+      *Value = Info->Tags[0][Name].c_str();
+      return ERR_Okay;
+   }
+   else *Value = NULL;
+
+   return ERR_NotFound;
+}
+
+/*********************************************************************************************************************
 ** The Path passed to this function must be a completely resolved path.  Note that the Path argument needs to be a
 ** large buffer as this function will modify it.
 */
@@ -1495,7 +1531,7 @@ LONG convert_fs_permissions(LONG Permissions)
    return flags;
 }
 
-//*****************************************************************************
+//********************************************************************************************************************
 // Strips the filename and calls CreateFolder() to create all paths leading up to the filename.
 
 ERROR check_paths(CSTRING Path, LONG Permissions)
