@@ -87,10 +87,10 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
 
    // Check if the Path argument contains a volume character.  If it does not, make a clone of the string and return it.
 
-   bool resolved = FALSE;
+   bool resolved = false;
 #ifdef _WIN32
    if ((std::tolower(Path[0]) >= 'a') and (std::tolower(Path[0]) <= 'z') and (Path[1] IS ':')) {
-      resolved = TRUE; // Windows drive letter reference discovered
+      resolved = true; // Windows drive letter reference discovered
       if ((Path[2] != '/') and (Path[2] != '\\')) {
          // Ensure that the path is correctly formed in order to pass test_path()
          src[0] = Path[0];
@@ -100,11 +100,11 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
          Path = src;
       }
    }
-   else if ((Path[0] IS '/') and (Path[1] IS '/')) resolved = TRUE; // UNC path discovered
-   else if ((Path[0] IS '\\') and (Path[1] IS '\\')) resolved = TRUE; // UNC path discovered
+   else if ((Path[0] IS '/') and (Path[1] IS '/')) resolved = true; // UNC path discovered
+   else if ((Path[0] IS '\\') and (Path[1] IS '\\')) resolved = true; // UNC path discovered
 
 #elif __unix__
-   if ((Path[0] IS '/') or (Path[0] IS '\\')) resolved = TRUE;
+   if ((Path[0] IS '/') or (Path[0] IS '\\')) resolved = true;
 #endif
 
    // Use the PATH environment variable to resolve the filename.  This can only be done if the path is relative
@@ -116,7 +116,7 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
 
    if (!resolved) {
       for (i=0; (Path[i]) and (Path[i] != ':') and (Path[i] != '/') and (Path[i] != '\\'); i++);
-      if (Path[i] != ':') resolved = TRUE;
+      if (Path[i] != ':') resolved = true;
    }
 
    if (resolved) {
@@ -142,73 +142,69 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
    // Keep looping until the volume is resolved
 
    dest[0] = 0;
-   ThreadLock lock(TL_VOLUMES, 4000); // resolve() will be using glVolumes
-   if (lock.granted()) {
-      ERROR error = ERR_Failed;
-      for (loop=10; loop > 0; loop--) {
-         error = resolve(src, dest, Flags);
+   ERROR error = ERR_Failed;
+   for (loop=10; loop > 0; loop--) {
+      error = resolve(src, dest, Flags);
 
-         if (error IS ERR_VirtualVolume) {
-            log.trace("Detected virtual volume '%s'", dest);
+      if (error IS ERR_VirtualVolume) {
+         log.trace("Detected virtual volume '%s'", dest);
 
-            // If RSF_CHECK_VIRTUAL is set, return ERR_VirtualVolume for reserved volume names.
+         // If RSF_CHECK_VIRTUAL is set, return ERR_VirtualVolume for reserved volume names.
 
-            if (!(Flags & RSF_CHECK_VIRTUAL)) error = ERR_Okay;
+         if (!(Flags & RSF_CHECK_VIRTUAL)) error = ERR_Okay;
 
-            if (Result) {
-               if (Flags & RSF_APPROXIMATE) { // Ensure that the resolved path is accurate
-                  if (test_path(dest, RSF_APPROXIMATE)) error = ERR_FileNotFound;
-               }
-
-               if (!(*Result = StrClone(dest))) error = ERR_AllocMemory;
+         if (Result) {
+            if (Flags & RSF_APPROXIMATE) { // Ensure that the resolved path is accurate
+               if (test_path(dest, RSF_APPROXIMATE)) error = ERR_FileNotFound;
             }
 
-            break;
+            if (!(*Result = StrClone(dest))) error = ERR_AllocMemory;
          }
-         else if (error) break;
-         else {
-            #ifdef _WIN32 // UNC network path check
-               if (((dest[0] IS '\\') and (dest[1] IS '\\')) or ((dest[0] IS '/') and (dest[1] IS '/'))) {
-                  goto resolved_path;
-               }
-            #endif
 
-            // Check if the path has been resolved by looking for a ':' character
-
-            for (i=0; (dest[i]) and (dest[i] != ':') and (dest[i] != '/') and (dest[i] != '\\'); i++);
-
-            #ifdef _WIN32
-            if ((dest[i] IS ':') and (i > 1)) {
-            #else
-            if (dest[i] IS ':') {
-            #endif
-               // Copy the destination to the source buffer and repeat the resolution process.
-
-               if (Flags & RSF_NO_DEEP_SCAN) return ERR_Failed;
-               StrCopy(dest, src, sizeof(src));
-               continue; // Keep resolving
+         break;
+      }
+      else if (error) break;
+      else {
+         #ifdef _WIN32 // UNC network path check
+            if (((dest[0] IS '\\') and (dest[1] IS '\\')) or ((dest[0] IS '/') and (dest[1] IS '/'))) {
+               goto resolved_path;
             }
+         #endif
+
+         // Check if the path has been resolved by looking for a ':' character
+
+         for (i=0; (dest[i]) and (dest[i] != ':') and (dest[i] != '/') and (dest[i] != '\\'); i++);
+
+         #ifdef _WIN32
+         if ((dest[i] IS ':') and (i > 1)) {
+         #else
+         if (dest[i] IS ':') {
+         #endif
+            // Copy the destination to the source buffer and repeat the resolution process.
+
+            if (Flags & RSF_NO_DEEP_SCAN) return ERR_Failed;
+            StrCopy(dest, src, sizeof(src));
+            continue; // Keep resolving
          }
+      }
 
 #ifdef _WIN32
 resolved_path:
 #endif
-         if (Result) {
-            if (!(*Result = cleaned_path(dest))) {
-               if (!(*Result = StrClone(dest))) error = ERR_AllocMemory;
-            }
+      if (Result) {
+         if (!(*Result = cleaned_path(dest))) {
+            if (!(*Result = StrClone(dest))) error = ERR_AllocMemory;
          }
-
-         break;
-      } // for()
-
-      if (loop > 0) { // Note that loop starts at 10 and decrements to zero
-         if ((!error) and (!dest[0])) error = ERR_Failed;
-         return error;
       }
-      else return ERR_Loop;
+
+      break;
+   } // for()
+
+   if (loop > 0) { // Note that loop starts at 10 and decrements to zero
+      if ((!error) and (!dest[0])) error = ERR_Failed;
+      return error;
    }
-   else return log.warning(ERR_LockFailed);
+   else return ERR_Loop;
 }
 
 //********************************************************************************************************************
@@ -323,10 +319,16 @@ static ERROR resolve(STRING Source, STRING Dest, LONG Flags)
 
    Source[pos-1] = 0; // Remove the volume symbol for the string comparison
 
-   if (glVolumes.contains(Source)) {
-      StrCopy(glVolumes[Source]["Path"], fullpath, sizeof(fullpath));
+   {
+      ThreadLock lock(TL_VOLUMES, 2000);
+      if (lock.granted()) {
+         if (glVolumes.contains(Source)) {
+            StrCopy(glVolumes[Source]["Path"], fullpath, sizeof(fullpath));
+         }
+         else fullpath[0] = 0;
+      }
+      else return log.warning(ERR_LockFailed);
    }
-   else fullpath[0] = 0;
 
    if (!fullpath[0]) {
       log.msg("No matching volume for \"%s\".", Source);

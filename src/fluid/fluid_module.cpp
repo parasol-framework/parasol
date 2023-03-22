@@ -189,6 +189,11 @@ static int module_call(lua_State *Lua)
             // The client must supply an argument that will store a buffer result.  This is a different case to the
             // storage of type values.  Buffers can be combined with FD_ARRAY to store more than one element.
 
+            if (argtype & FD_CPP) {
+               luaL_error(Lua, "No support for calls utilising C++ arrays.");
+               return 0;
+            }
+
             array *mem;
             if ((mem = (array *)get_meta(Lua, i, "Fluid.array"))) {
                ((APTR *)(buffer + j))[0] = mem->ptrVoid;
@@ -403,8 +408,12 @@ static int module_call(lua_State *Lua)
          j += sizeof(STRING);
       }
       else if (argtype & FD_ARRAY) {
-         array *mem;
-         if ((mem = (array *)get_meta(Lua, i, "Fluid.array"))) {
+         if (argtype & FD_CPP) {
+            luaL_error(Lua, "No support for calls utilising C++ arrays.");
+            return 0;
+         }
+
+         if (auto mem = (array *)get_meta(Lua, i, "Fluid.array")) {
             arg_values[in] = &mem->ptrVoid;
             arg_types[in++] = &ffi_type_pointer;
             j += sizeof(APTR); // Dummy increment
@@ -466,10 +475,6 @@ static int module_call(lua_State *Lua)
          }
       }
       else if (argtype & FD_PTR) {
-         memory *memory;
-         fstruct *fstruct;
-         struct object *obj;
-
          type = lua_type(Lua, i);
          if (type IS LUA_TSTRING) {
             // Lua strings need to be converted to C strings
@@ -496,7 +501,7 @@ static int module_call(lua_State *Lua)
                }
             }
          }
-         else if ((memory = (struct memory *)get_meta(Lua, i, "Fluid.mem"))) {
+         else if (auto memory = (struct memory *)get_meta(Lua, i, "Fluid.mem")) {
             ((APTR *)(buffer + j))[0] = memory->Address;
             arg_values[in] = buffer + j;
             arg_types[in++] = &ffi_type_pointer;
@@ -519,7 +524,7 @@ static int module_call(lua_State *Lua)
                }
             }
          }
-         else if ((fstruct = (struct fstruct *)get_meta(Lua, i, "Fluid.struct"))) {
+         else if (auto fstruct = (struct fstruct *)get_meta(Lua, i, "Fluid.struct")) {
             ((APTR *)(buffer + j))[0] = fstruct->Data;
             arg_values[in] = buffer + j;
             arg_types[in++] = &ffi_type_pointer;
@@ -543,13 +548,11 @@ static int module_call(lua_State *Lua)
                }
             }
          }
-         else if ((obj = (object *)get_meta(Lua, i, "Fluid.obj"))) {
-            OBJECTPTR ptr_obj;
-
+         else if (auto obj = (object *)get_meta(Lua, i, "Fluid.obj")) {
             if (obj->prvObject) {
                ((OBJECTPTR *)(buffer + j))[0] = obj->prvObject;
             }
-            else if ((ptr_obj = (OBJECTPTR)access_object(obj))) {
+            else if (auto ptr_obj = (OBJECTPTR)access_object(obj)) {
                ((OBJECTPTR *)(buffer + j))[0] = ptr_obj;
                release_object(obj);
             }
@@ -571,8 +574,7 @@ static int module_call(lua_State *Lua)
       }
       else if (argtype & FD_LONG) {
          if (argtype & FD_OBJECT) {
-            object *obj;
-            if ((obj = (object *)get_meta(Lua, i, "Fluid.obj"))) {
+            if (auto obj = (object *)get_meta(Lua, i, "Fluid.obj")) {
                ((LONG *)(buffer + j))[0] = obj->ObjectID;
             }
             else ((LONG *)(buffer + j))[0] = F2I(lua_tonumber(Lua, i));
@@ -635,8 +637,7 @@ static int module_call(lua_State *Lua)
       if (restype & FD_STRUCT) {
          if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_pointer, arg_types) IS FFI_OK) {
             ffi_call(&cif, (void (*)())function, &rc, arg_values);
-            APTR structptr = (APTR)rc;
-            if (structptr) {
+            if (auto structptr = (APTR)rc) {
                ERROR error;
                // A structure marked as a resource will be returned as an accessible struct pointer.  This is typically
                // needed when a struct's use is beyond informational and can be passed to other functions.

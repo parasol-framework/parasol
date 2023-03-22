@@ -142,10 +142,9 @@ static ERROR DOCUMENT_Activate(extDocument *Self, APTR Void)
    pf::Log log;
    log.branch();
 
-   ChildEntry list[16];
-   LONG count = ARRAYSIZE(list);
-   if (!ListChildren(Self->UID, list, &count)) {
-      for (LONG i=0; i < count; i++) acActivate(list[i].ObjectID);
+   pf::vector<ChildEntry> list;
+   if (!ListChildren(Self->UID, &list)) {
+      for (unsigned i=0; i < list.size(); i++) acActivate(list[i].ObjectID);
    }
 
    return ERR_Okay;

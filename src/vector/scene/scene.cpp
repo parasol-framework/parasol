@@ -188,18 +188,15 @@ static ERROR VECTORSCENE_Debug(extVectorScene *Self, APTR Void)
 {
    pf::Log log("debug_tree");
 
-   ChildEntry list[128];
-   LONG count = ARRAYSIZE(list);
-   do {
-      if (!ListChildren(Self->UID, list, &count)) {
-         for (LONG i=0; i < count; i++) {
-            auto obj = GetObjectPtr(list[i].ObjectID);
-            if (obj IS Self->Viewport) continue;
-            log.msg("#%d %s %s", list[i].ObjectID, obj->Class->ClassName, GetName(obj) ? GetName(obj) : "");
-         }
-
+   pf::vector<ChildEntry> list;
+   if (!ListChildren(Self->UID, &list)) {
+      for (auto &rec : list) {
+         auto obj = GetObjectPtr(rec.ObjectID);
+         if (obj IS Self->Viewport) continue;
+         log.msg("#%d %s %s", rec.ObjectID, obj->Class->ClassName, GetName(obj) ? GetName(obj) : "");
       }
-   } while (count IS ARRAYSIZE(list));
+
+   }
 
    LONG level = 0;
    debug_tree((extVector *)Self->Viewport, level);

@@ -59,7 +59,7 @@ static int array_copy(lua_State *);
 void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, LONG Total, bool Cache)
 {
    pf::Log log(__FUNCTION__);
-   objScript *Self = Lua->Script;
+   auto Self = Lua->Script;
    auto prv = (prvFluid *)Self->ChildPrivate;
 
    FieldType &= (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_STRING|FD_STRUCT|FD_FLOAT|FD_LONG|FD_WORD|FD_BYTE|FD_CPP);

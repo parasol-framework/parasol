@@ -491,7 +491,7 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
 
       LONG argssize;
       BYTE call_data[sizeof(thread_data) + SIZE_ACTIONBUFFER];
-      BYTE free_args = FALSE;
+      bool free_args = false;
       const FunctionField *args = NULL;
 
       if (Parameters) {
@@ -533,7 +533,7 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
          call->Object   = Object;
          call->ActionID = ActionID;
          call->Key      = Key;
-         call->Parameters = Parameters ? TRUE : FALSE;
+         call->Parameters = Parameters ? true : false;
          if (Callback) call->Callback = *Callback;
          else call->Callback.Type = 0;
 
@@ -790,13 +790,13 @@ ERROR QueueAction(LONG ActionID, OBJECTID ObjectID, APTR Args)
 -FUNCTION-
 SubscribeAction: Monitor action calls made against an object.
 
-The SubscribeAction() function provides a means for receiving an immediate notification after an action is called on
-an object.  We refer to this as "action monitoring".  Action monitoring is especially useful for responding to
+The SubscribeAction() function allows a client to receive a callback each time that an action is executed on
+an object.  This technique is referred to as "action monitoring" and is especially useful for responding to
 events in the UI and the termination of objects.
 
-Subscriptions are context sensitive and thus owned by the caller.
+Subscriptions are context sensitive, so the Callback will execute in the space attributed to to the caller.
 
-The following example illustrates how to listen to a Surface object's Redimension action to be alerted to resize
+The following example illustrates how to listen to a Surface object's Redimension action and respond to resize
 events:
 
 <pre>
@@ -1101,7 +1101,7 @@ ERROR MGR_Init(OBJECTPTR Object, APTR Void)
    if (Object->Name[0]) log.branch("Name: %s, Owner: %d", Object->Name, Object->OwnerID);
    else log.branch("Owner: %d", Object->OwnerID);
 
-   BYTE use_subclass = FALSE;
+   bool use_subclass = false;
    ERROR error = ERR_Okay;
    if (Object->SubID) {
       // For sub-classes, the base-class gets called first.  It should check the SubID in the header to determine that

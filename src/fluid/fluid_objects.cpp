@@ -544,17 +544,15 @@ static int object_children(lua_State *Lua)
    }
    else class_id = 0;
 
-   struct ChildEntry list[512];
-   LONG id[512];
-   LONG count = ARRAYSIZE(list);
-
-   if (!ListChildren(object->ObjectID, list, &count)) {
+   pf::vector<ChildEntry> list;
+   if (!ListChildren(object->ObjectID, &list)) {
       LONG index = 0;
-      for (LONG i=0; i < count; i++) {
+      LONG id[list.size()];
+      for (auto &rec : list) {
          if (class_id) {
-            if (list[i].ClassID IS class_id) id[index++] = list[i].ObjectID;
+            if (rec.ClassID IS class_id) id[index++] = rec.ObjectID;
          }
-         else id[index++] = list[i].ObjectID;
+         else id[index++] = rec.ObjectID;
       }
 
       make_table(Lua, FD_LONG, index, &id);
