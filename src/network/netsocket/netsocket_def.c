@@ -35,14 +35,14 @@ static const struct MethodArray clNetSocketMethods[] = {
 };
 
 static const struct ActionArray clNetSocketActions[] = {
-   { AC_DataFeed, (APTR)NETSOCKET_DataFeed },
-   { AC_Disable, (APTR)NETSOCKET_Disable },
-   { AC_Free, (APTR)NETSOCKET_Free },
-   { AC_FreeWarning, (APTR)NETSOCKET_FreeWarning },
-   { AC_Init, (APTR)NETSOCKET_Init },
-   { AC_NewObject, (APTR)NETSOCKET_NewObject },
-   { AC_Read, (APTR)NETSOCKET_Read },
-   { AC_Write, (APTR)NETSOCKET_Write },
+   { AC_DataFeed, NETSOCKET_DataFeed },
+   { AC_Disable, NETSOCKET_Disable },
+   { AC_Free, NETSOCKET_Free },
+   { AC_FreeWarning, NETSOCKET_FreeWarning },
+   { AC_Init, NETSOCKET_Init },
+   { AC_NewObject, NETSOCKET_NewObject },
+   { AC_Read, NETSOCKET_Read },
+   { AC_Write, NETSOCKET_Write },
    { 0, NULL }
 };
 

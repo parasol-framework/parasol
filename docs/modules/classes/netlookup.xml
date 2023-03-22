@@ -79,7 +79,7 @@
       </input>
       <description>
 <p>ResolveAddress() performs a IP address resolution, converting an address to an official host name and list of IP addresses.  The resolution process involves contacting a DNS server.  To prevent delays, asynchronous communication is used so that the function can return immediately.  The <field>Callback</field> function will be called on completion of the process.</p>
-<p>If synchronous (blocking) operation is desired then use the @BlockingResolveAddress() method.</p>
+<p>If synchronous (blocking) operation is desired then use the <method>BlockingResolveAddress</method> method.</p>
       </description>
       <result>
         <error code="Okay">The IP address was resolved successfully.</error>
@@ -98,7 +98,7 @@
       </input>
       <description>
 <p>ResolveName() performs a domain name resolution, converting a domain name to an official host name and IP addresses. The resolution process involves contacting a DNS server.  To prevent delays, asynchronous communication is used so that the function can return immediately.  The <field>Callback</field> function will be called on completion of the process.</p>
-<p>If synchronous (blocking) operation is desired then use the @BlockingResolveName() method.</p>
+<p>If synchronous (blocking) operation is desired then use the <method>BlockingResolveName</method> method.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -127,7 +127,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>The function referenced here will receive the results of the most recently resolved name or address.  The C/C++ prototype is <code>Function(*NetLookup, ERROR Error, CSTRING HostName, IPAddress *Addresses, LONG TotalAddresses)</code>.</p>
+<p>The function referenced here will receive the results of the most recently resolved name or address.  The C/C++ prototype is <code>Function(*NetLookup, ERROR Error, const std::string &amp;HostName, const std::vector&lt;IPAddress&gt; &amp;Addresses)</code>.</p>
 <p>The Fluid prototype is as follows, with results readable from the <field>HostName</field> and <field>Addresses</field> fields: <code>function(NetLookup, Error)</code>.</p>
       </description>
     </field>

@@ -138,10 +138,10 @@ Please note that the default MSYS2 release of gcc is not supported.  The MinGW t
 
 After running `cmake --install <FOLDER>` the target installation folder will be printed to the console.  You may need to add this folder to your PATH variable permanently.
 
-A successful install will allow you to run the `fluid` and `parasol` executable programs from the installation folder.  Run with `--help` to see the available options and confirm that the install worked correctly.  Example scripts are provided in the `examples` folder of this distribution.  We recommend starting with the widget example as follows:
+A successful install will allow you to run the `parasol` executable from the installation folder.  Run with `--help` to see the available options and confirm that the install worked correctly.  Example scripts are provided in the `examples` folder of this distribution.  We recommend starting with the widget example as follows:
 
 ```
-fluid --log-error examples/widgets.fluid
+parasol --log-error examples/widgets.fluid
 ```
 
 Try running a second time with `--log-debug` to observe run-time log output while toying with the example.  Try a few of the other examples to get a feel for what you can achieve, and load them into a text editor to see how they were created.

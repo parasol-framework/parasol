@@ -14,7 +14,7 @@ Parameters:
 
    glBestFPS = 0
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Render vector paths directly, bypassing the scene graph.
 
 function drawDirectVector(Surface, Bitmap)
@@ -28,7 +28,7 @@ function drawDirectVector(Surface, Bitmap)
    updateTime(mSys.PreciseTime() - start)
 end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Render plain rectangles
 
 function drawPrimitive(Surface, Bitmap)
@@ -44,7 +44,7 @@ function drawPrimitive(Surface, Bitmap)
    updateTime(mSys.PreciseTime() - start)
 end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function updateTime(elapsed)
    table.insert(glTimes, elapsed)
@@ -63,7 +63,7 @@ function updateTime(elapsed)
    end
 end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function newParticle()
    local particle = {
@@ -93,7 +93,7 @@ function newParticle()
    return particle
 end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function timer(Subscriber, Elapsed, Current)
    local moveflag = bit.bor(MTF_X, MTF_Y)
@@ -159,7 +159,7 @@ function timer(Subscriber, Elapsed, Current)
    updateTime(glScene.renderTime)
 end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function createWindow()
    glWindow = gui.window({
@@ -186,7 +186,7 @@ function createWindow()
    glWinHeight = glViewport.height
 end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- There are three versions of this benchmark:
 
 MODE_PRIMITIVE    = 1 -- Tests the speed of drawing primitive rectangles (this will be much faster than drawVector() but is useful for comparative purposes)
@@ -205,7 +205,7 @@ function setBenchmarkMode()
    end
 end
 
-------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
    createWindow()
 

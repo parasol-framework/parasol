@@ -40,7 +40,7 @@ typedef LONG SOCKET_HANDLE;
 
 struct IPAddress {
    ULONG Data[4];    // 128-bit array for supporting both V4 and V6 IP addresses.
-   LONG  Type;
+   LONG  Type;       // Identifies the address Data value as a V4 or V6 address type.
    LONG  Pad;        // Unused padding for 64-bit alignment
 };
 

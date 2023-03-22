@@ -293,7 +293,7 @@ ResolveAddress() performs a IP address resolution, converting an address to an o
 IP addresses.  The resolution process involves contacting a DNS server.  To prevent delays, asynchronous communication
 is used so that the function can return immediately.  The #Callback function will be called on completion of the process.
 
-If synchronous (blocking) operation is desired then use the @BlockingResolveAddress() method.
+If synchronous (blocking) operation is desired then use the #BlockingResolveAddress() method.
 
 -INPUT-
 cstr Address: IP address to be resolved, e.g. "123.111.94.82".
@@ -360,7 +360,7 @@ ResolveName() performs a domain name resolution, converting a domain name to an 
 The resolution process involves contacting a DNS server.  To prevent delays, asynchronous communication is used so
 that the function can return immediately.  The #Callback function will be called on completion of the process.
 
-If synchronous (blocking) operation is desired then use the @BlockingResolveName() method.
+If synchronous (blocking) operation is desired then use the #BlockingResolveName() method.
 
 -INPUT-
 cstr HostName: The host name to be resolved.
@@ -440,7 +440,7 @@ static ERROR GET_Addresses(extNetLookup *Self, BYTE **Value, LONG *Elements)
 Callback: This function will be called on the completion of any name or address resolution.
 
 The function referenced here will receive the results of the most recently resolved name or address.  The C/C++ prototype
-is `Function(*NetLookup, ERROR Error, const std::string &HostName, const std::vector<IPAddress> &Addresses)`.
+is `Function(*NetLookup, ERROR Error, const std::string &amp;HostName, const std::vector&lt;IPAddress&gt; &amp;Addresses)`.
 
 The Fluid prototype is as follows, with results readable from the #HostName and #Addresses fields:
 `function(NetLookup, Error)`.
@@ -675,7 +675,7 @@ static void resolve_callback(extNetLookup *Self, ERROR Error, const std::string 
 
    if (Self->Callback.Type IS CALL_STDC) {
       pf::SwitchContext context(Self->Callback.StdC.Context);
-      auto routine = (ERROR (*)(extNetLookup *, ERROR, const std::string &, std::vector<IPAddress> &))(Self->Callback.StdC.Routine);
+      auto routine = (ERROR (*)(extNetLookup *, ERROR, const std::string &, const std::vector<IPAddress> &))(Self->Callback.StdC.Routine);
       routine(Self, Error, HostName, Addresses);
    }
    else if (Self->Callback.Type IS CALL_SCRIPT) {
