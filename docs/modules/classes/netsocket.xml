@@ -87,8 +87,8 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <description>
 <p>This method initiates the connection process with a target IP address.  The address to connect to can be specified either as a domain name, in which case the domain name is first resolved to an IP address, or the address can be specified in standard IP notation.</p>
 <p>This method is non-blocking.  It will return immediately and the connection will be resolved once the server responds to the connection request or an error occurs.  Client code should subscribe to the <field>State</field> field to respond to changes to the connection state.</p>
-<p>Pre-Condition: Must be in a connection state of NTC_DISCONNECTED</p>
-<p>Post-Condition: If this method returns ERR_Okay, will be in state NTC_CONNECTING.</p>
+<p>Pre-Condition: Must be in a connection state of <code>NTC_DISCONNECTED</code></p>
+<p>Post-Condition: If this method returns <code>ERR_Okay</code>, will be in state <code>NTC_CONNECTING</code>.</p>
       </description>
       <result>
         <error code="Okay">The NetSocket connecting process was successfully started.</error>
@@ -107,7 +107,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
         <param type="struct NetClient *" name="Client">The client to be disconnected.</param>
       </input>
       <description>
-<p>For server sockets with client IP connections, this method will terminate all socket connections made to a specific client IP and free the resources allocated to it.  If <field>Feedback</field> is defined, a DISCONNECTED state message will also be issued for each socket connection.</p>
+<p>For server sockets with client IP connections, this method will terminate all socket connections made to a specific client IP and free the resources allocated to it.  If <field>Feedback</field> is defined, a <code>DISCONNECTED</code> state message will also be issued for each socket connection.</p>
 <p>If only one socket connection needs to be disconnected, please use <method>DisconnectSocket</method>.</p>
       </description>
       <result>
@@ -124,7 +124,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
         <param type="objClientSocket *" name="Socket">The client socket to be disconnected.</param>
       </input>
       <description>
-<p>This method will disconnect a socket connection for a given client.  If <field>Feedback</field> is defined, a DISCONNECTED state message will also be issued.</p>
+<p>This method will disconnect a socket connection for a given client.  If <field>Feedback</field> is defined, a <code>DISCONNECTED</code> state message will also be issued.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -237,7 +237,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <type>ERROR</type>
       <description>
 <p>This field describes the last error that occurred during a NetSocket operation:</p>
-<p>In the case where a NetSocket object enters the NTC_DISCONNECTED state from the NTC_CONNECTED state, this field can be used to determine how a TCP connection was closed.</p>
+<p>In the case where a NetSocket object enters the <code>NTC_DISCONNECTED</code> state from the <code>NTC_CONNECTED</code> state, this field can be used to determine how a TCP connection was closed.</p>
 <types type="Error">
 <type name="ERR_Okay">The connection was closed gracefully.  All data sent by the peer has been received.</type>
 <type name="ERR_Disconnected">The connection was broken in a non-graceful fashion. Data may be lost.</type>
@@ -367,7 +367,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <type>INT</type>
       <description>
 <p>After an encrypted connection has been made to a server, the ValidCert field can be used to determine the validity of the server's certificate.</p>
-<p>If encrypted communication is not supported, ERR_NoSupport is returned.  If the certificate is valid or the connection is not encrypted, a value of zero is returned to indicate that the connection is valid.</p>
+<p>If encrypted communication is not supported, <code>ERR_NoSupport</code> is returned.  If the certificate is valid or the connection is not encrypted, a value of zero is returned to indicate that the connection is valid.</p>
       </description>
     </field>
 
@@ -392,7 +392,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
   <structs>
     <struct name="IPAddress">
       <field name="Data" type="ULONG" size="4">128-bit array for supporting both V4 and V6 IP addresses.</field>
-      <field name="Type" type="LONG" lookup="IPADDR"></field>
+      <field name="Type" type="LONG" lookup="IPADDR">Identifies the address Data value as a V4 or V6 address type.</field>
       <field name="Pad" type="LONG">Unused padding for 64-bit alignment</field>
     </struct>
 

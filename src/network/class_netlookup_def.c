@@ -19,9 +19,9 @@ static const struct MethodArray clNetLookupMethods[] = {
 };
 
 static const struct ActionArray clNetLookupActions[] = {
-   { AC_Free, (APTR)NETLOOKUP_Free },
-   { AC_FreeWarning, (APTR)NETLOOKUP_FreeWarning },
-   { AC_NewObject, (APTR)NETLOOKUP_NewObject },
+   { AC_Free, NETLOOKUP_Free },
+   { AC_FreeWarning, NETLOOKUP_FreeWarning },
+   { AC_NewObject, NETLOOKUP_NewObject },
    { 0, NULL }
 };
 

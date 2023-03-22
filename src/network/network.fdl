@@ -28,14 +28,8 @@ typedef LONG SOCKET_HANDLE;
 
   struct("IPAddress", { }, [[
     uint(4) Data        # 128-bit array for supporting both V4 and V6 IP addresses.
-    int(IPADDR) Type
+    int(IPADDR) Type    # Identifies the address Data value as a V4 or V6 address type.
     int Pad             # Unused padding for 64-bit alignment
-  ]])
-
-  struct("DNSEntry", { }, [[
-    cstr HostName
-    ptr(struct(IPAddress)) Addresses # IP address list
-    int  TotalAddresses              # Total number of IP addresses
   ]])
 
   flags("NSF", { },

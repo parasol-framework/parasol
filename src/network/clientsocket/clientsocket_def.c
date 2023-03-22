@@ -10,10 +10,10 @@ static const struct MethodArray clClientSocketMethods[] = {
 };
 
 static const struct ActionArray clClientSocketActions[] = {
-   { AC_Free, (APTR)CLIENTSOCKET_Free },
-   { AC_Init, (APTR)CLIENTSOCKET_Init },
-   { AC_Read, (APTR)CLIENTSOCKET_Read },
-   { AC_Write, (APTR)CLIENTSOCKET_Write },
+   { AC_Free, CLIENTSOCKET_Free },
+   { AC_Init, CLIENTSOCKET_Init },
+   { AC_Read, CLIENTSOCKET_Read },
+   { AC_Write, CLIENTSOCKET_Write },
    { 0, NULL }
 };
 

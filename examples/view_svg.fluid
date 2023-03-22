@@ -1,7 +1,7 @@
 --[[
 A simple SVG image viewer
 
-Example: fluid view_svg.fluid --file [Path]
+Example: parasol view_svg.fluid --file [Path]
 --]]
 
    require 'gui'

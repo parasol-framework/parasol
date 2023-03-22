@@ -290,7 +290,7 @@ static ERROR NETSOCKET_Disable(extNetSocket *Self, APTR Void)
 DisconnectClient: Disconnects all sockets connected to a specific client IP.
 
 For server sockets with client IP connections, this method will terminate all socket connections made to a specific
-client IP and free the resources allocated to it.  If #Feedback is defined, a DISCONNECTED state message will also
+client IP and free the resources allocated to it.  If #Feedback is defined, a `DISCONNECTED` state message will also
 be issued for each socket connection.
 
 If only one socket connection needs to be disconnected, please use #DisconnectSocket().
@@ -317,7 +317,7 @@ static ERROR NETSOCKET_DisconnectClient(extNetSocket *Self, struct nsDisconnectC
 -METHOD-
 DisconnectSocket: Disconnects a single socket that is connected to a client IP address.
 
-This method will disconnect a socket connection for a given client.  If #Feedback is defined, a DISCONNECTED
+This method will disconnect a socket connection for a given client.  If #Feedback is defined, a `DISCONNECTED`
 state message will also be issued.
 
 -INPUT-
@@ -927,18 +927,12 @@ ClientLimit: The maximum number of clients that can be connected to a server soc
 Clients: For server sockets, lists all clients connected to the server.
 
 -FIELD-
-CurrentClient: Relevant for server sockets, indicates the target client socket for communications.
-
-For server sockets, the CurrentClient field must refer to a target ClientSocket in order to perform operations such as
-#Read() and #Write().
-
--FIELD-
 Error: Information about the last error that occurred during a NetSocket operation
 
 This field describes the last error that occurred during a NetSocket operation:
 
-In the case where a NetSocket object enters the NTC_DISCONNECTED state from the NTC_CONNECTED state, this field can be
-used to determine how a TCP connection was closed.
+In the case where a NetSocket object enters the `NTC_DISCONNECTED` state from the `NTC_CONNECTED` state, this field
+can be used to determine how a TCP connection was closed.
 
 <types type="Error">
 <type name="ERR_Okay">The connection was closed gracefully.  All data sent by the peer has been received.</>
@@ -1174,8 +1168,7 @@ static ERROR SET_State(extNetSocket *Self, LONG Value)
             if (routine) routine(Self, NULL, Self->State);
          }
          else if (Self->Feedback.Type IS CALL_SCRIPT) {
-            OBJECTPTR script;
-            if ((script = Self->Feedback.Script.Script)) {
+            if (auto script = Self->Feedback.Script.Script) {
                const ScriptArg args[] = {
                   { "NetSocket",    FD_OBJECTPTR, { .Address = Self } },
                   { "ClientSocket", FD_OBJECTPTR, { .Address = NULL } },
@@ -1223,8 +1216,8 @@ ValidCert: Indicates certificate validity if the socket is encrypted with a cert
 After an encrypted connection has been made to a server, the ValidCert field can be used to determine the validity of
 the server's certificate.
 
-If encrypted communication is not supported, ERR_NoSupport is returned.  If the certificate is valid or the connection
-is not encrypted, a value of zero is returned to indicate that the connection is valid.
+If encrypted communication is not supported, `ERR_NoSupport` is returned.  If the certificate is valid or the
+connection is not encrypted, a value of zero is returned to indicate that the connection is valid.
 -END-
 
 *********************************************************************************************************************/

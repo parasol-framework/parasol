@@ -1,7 +1,7 @@
 -- This program produces C++ headers, auto-generated values and documentation from Parasol FDL files.
 --
--- Usage: fluid sdk:scripts/dev/idl/idl-c.fluid src=source.fdl
--- Example: fluid sdk:scripts/dev/idl/idl-c.fluid src=sdk:core/modules/core/core.fdl
+-- Usage: parasol sdk:scripts/dev/idl/idl-c.fluid src=source.fdl
+-- Example: parasol sdk:scripts/dev/idl/idl-c.fluid src=sdk:core/modules/core/core.fdl
 
    include 'core'
    include 'xml'
