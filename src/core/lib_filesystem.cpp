@@ -597,8 +597,8 @@ The Callback parameter can be set with a function that matches this prototype:
 
 For each file that is processed during the copy operation, a &FileFeedback structure is passed that describes the
 source file and its target.  The callback must return a constant value that can potentially affect file processing.
-Valid values are FFR_Okay (copy the file), FFR_Skip (do not copy the file) and FFR_Abort (abort the process completely
-and return ERR_Cancelled as an error code).
+Valid values are `FFR_Okay` (copy the file), `FFR_Skip` (do not copy the file) and `FFR_Abort` (abort the process
+completely and return `ERR_Cancelled` as an error code).
 
 -INPUT-
 cstr Source: The source location.
@@ -1017,8 +1017,8 @@ This function is used to move files and folders to new locations.  It can also b
 able to move data from one type of media to another.  When moving folders, any contents within the folder will
 also be moved across to the new location.
 
-It is important that you are aware that different types of string formatting can give different results.  The following
-examples illustrate:
+It is important that you are aware that different types of string formatting can give different results.  The
+following examples illustrate:
 
 <pre>
 <b>Source               Destination          Result</b>
@@ -1040,8 +1040,8 @@ The Callback parameter can be set with a function that matches this prototype:
 
 For each file that is processed during the move operation, a &FileFeedback structure is passed that describes the
 source file and its target.  The callback must return a constant value that can potentially affect file processing.
-Valid values are `FFR_Okay` (move the file), `FFR_Skip` (do not move the file) and FFR_Abort (abort the process completely
-and return `ERR_Cancelled` as an error code).
+Valid values are `FFR_Okay` (move the file), `FFR_Skip` (do not move the file) and `FFR_Abort` (abort the process
+completely and return `ERR_Cancelled` as an error code).
 
 -INPUT-
 cstr Source: The source path.
@@ -2745,57 +2745,59 @@ ERROR fs_getdeviceinfo(CSTRING Path, objStorageDevice *Info)
    // Device information is stored in the SystemVolumes object
 
    {
-      ThreadLock lock(TL_VOLUMES, 8000);
-      if (lock.granted()) {
-         ULONG pathend;
-         STRING resolve = NULL;
-         location = NULL;
+      ULONG pathend;
+      STRING resolve = NULL;
+      location = NULL;
 
 restart:
-         for (pathend=0; (Path[pathend]) and (Path[pathend] != ':'); pathend++);
-         std::string vol(Path, pathend);
+      for (pathend=0; (Path[pathend]) and (Path[pathend] != ':'); pathend++);
+      std::string vol(Path, pathend);
 
-         if (glVolumes.contains(vol)) {
-            if (!glVolumes[vol]["Path"].compare(0, 6, "EXT:")) Info->DeviceFlags |= DEVICE_SOFTWARE; // Virtual device
+      {
+         ThreadLock lock(TL_VOLUMES, 2000); // We keep this lock localised so that it doesn't impact ResolvePath()
+         if (lock.granted()) {
+            if (glVolumes.contains(vol)) {
+               if (!glVolumes[vol]["Path"].compare(0, 6, "EXT:")) Info->DeviceFlags |= DEVICE_SOFTWARE; // Virtual device
 
-            if (glVolumes[vol].contains("Device")) {
-               auto &device = glVolumes[vol]["Device"];
-               if (!device.compare("disk"))     Info->DeviceFlags |= DEVICE_FLOPPY_DISK|DEVICE_REMOVABLE|DEVICE_READ|DEVICE_WRITE;
-               else if (!device.compare("hd"))  Info->DeviceFlags |= DEVICE_HARD_DISK|DEVICE_READ|DEVICE_WRITE;
-               else if (!device.compare("cd"))  Info->DeviceFlags |= DEVICE_COMPACT_DISC|DEVICE_REMOVABLE|DEVICE_READ;
-               else if (!device.compare("usb")) Info->DeviceFlags |= DEVICE_USB|DEVICE_REMOVABLE;
-               else log.warning("Device '%s' unrecognised.", device.c_str());
-            }
-         }
-
-         if (!Info->DeviceFlags) {
-            // Unable to find a device reference for the volume, so try to resolve the path and try again.
-
-            if (resolve) {
-               // We've done what we can - drop through
-
-               #ifdef _WIN32
-                // On win32 we can get the drive information from the drive letter
-                #warning TODO: Write Win32 code to discover the drive type in GetDeviceInfo().
-               #endif
-
-               location = resolve;
-               resolve = NULL;
-            }
-            else {
-               if (ResolvePath(Path, RSF_NO_FILE_CHECK, &resolve) != ERR_Okay) {
-                  if (resolve) FreeResource(resolve);
-                  return ERR_ResolvePath;
+               if (glVolumes[vol].contains("Device")) {
+                  auto &device = glVolumes[vol]["Device"];
+                  if (!device.compare("disk"))     Info->DeviceFlags |= DEVICE_FLOPPY_DISK|DEVICE_REMOVABLE|DEVICE_READ|DEVICE_WRITE;
+                  else if (!device.compare("hd"))  Info->DeviceFlags |= DEVICE_HARD_DISK|DEVICE_READ|DEVICE_WRITE;
+                  else if (!device.compare("cd"))  Info->DeviceFlags |= DEVICE_COMPACT_DISC|DEVICE_REMOVABLE|DEVICE_READ;
+                  else if (!device.compare("usb")) Info->DeviceFlags |= DEVICE_USB|DEVICE_REMOVABLE;
+                  else log.warning("Device '%s' unrecognised.", device.c_str());
                }
-
-               Path = resolve;
-               goto restart;
             }
          }
-
-         if (resolve) FreeResource(resolve);
+         else return log.warning(ERR_LockFailed);
       }
-      else return log.warning(ERR_LockFailed);
+
+      if (!Info->DeviceFlags) {
+         // Unable to find a device reference for the volume, so try to resolve the path and try again.
+
+         if (resolve) {
+            // We've done what we can - drop through
+
+            #ifdef _WIN32
+             // On win32 we can get the drive information from the drive letter
+             #warning TODO: Write Win32 code to discover the drive type in GetDeviceInfo().
+            #endif
+
+            location = resolve;
+            resolve = NULL;
+         }
+         else {
+            if (ResolvePath(Path, RSF_NO_FILE_CHECK, &resolve) != ERR_Okay) {
+               if (resolve) FreeResource(resolve);
+               return ERR_ResolvePath;
+            }
+
+            Path = resolve;
+            goto restart;
+         }
+      }
+
+      if (resolve) FreeResource(resolve);
    }
 
    // Assume that the device is read/write if the device type cannot be assessed

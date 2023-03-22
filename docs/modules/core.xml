@@ -563,7 +563,7 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
 <p>The Callback parameter can be set with a function that matches this prototype:</p>
 <p>
 <code>LONG Callback(struct FileFeedback *)</code></p>
-<p>For each file that is processed during the copy operation, a <struct>FileFeedback</struct> structure is passed that describes the source file and its target.  The callback must return a constant value that can potentially affect file processing. Valid values are FFR_Okay (copy the file), FFR_Skip (do not copy the file) and FFR_Abort (abort the process completely and return ERR_Cancelled as an error code).</p>
+<p>For each file that is processed during the copy operation, a <struct>FileFeedback</struct> structure is passed that describes the source file and its target.  The callback must return a constant value that can potentially affect file processing. Valid values are <code>FFR_Okay</code> (copy the file), <code>FFR_Skip</code> (do not copy the file) and <code>FFR_Abort</code> (abort the process completely and return <code>ERR_Cancelled</code> as an error code).</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -1324,7 +1324,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>The Callback parameter can be set with a function that matches this prototype:</p>
 <p>
 <code>LONG Callback(struct FileFeedback *)</code></p>
-<p>For each file that is processed during the move operation, a <struct>FileFeedback</struct> structure is passed that describes the source file and its target.  The callback must return a constant value that can potentially affect file processing. Valid values are <code>FFR_Okay</code> (move the file), <code>FFR_Skip</code> (do not move the file) and FFR_Abort (abort the process completely and return <code>ERR_Cancelled</code> as an error code).</p>
+<p>For each file that is processed during the move operation, a <struct>FileFeedback</struct> structure is passed that describes the source file and its target.  The callback must return a constant value that can potentially affect file processing. Valid values are <code>FFR_Okay</code> (move the file), <code>FFR_Skip</code> (do not move the file) and <code>FFR_Abort</code> (abort the process completely and return <code>ERR_Cancelled</code> as an error code).</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
