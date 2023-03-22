@@ -1681,6 +1681,8 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
       }
 
       SetVolume("drive1", "/", "devices/storage", "Linux", "hd", VOLUME_REPLACE|VOLUME_SYSTEM);
+      SetVolume("etc", "/etc", "tools/cog", NULL, NULL, VOLUME_REPLACE|VOLUME_SYSTEM);
+      SetVolume("usr", "/usr", NULL, NULL, NULL, VOLUME_REPLACE|VOLUME_SYSTEM);
    #endif
 
    // Configure some standard volumes.
@@ -1733,6 +1735,9 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
       if ((homedir = getenv("HOME")) and (homedir[0]) and (StrMatch("/", homedir) != ERR_Okay)) {
          buffer = homedir;
          if (buffer.back() IS '/') buffer.pop_back();
+
+         SetVolume("home", buffer.c_str(), "users/user", NULL, NULL, VOLUME_REPLACE);
+
          buffer += "/." + glHomeFolderName + std::to_string(F2T(VER_CORE)) + "/";
       }
       else if ((logname = getenv("LOGNAME")) and (logname[0])) {
@@ -1768,7 +1773,7 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
       buffer += "|config:users/default/";
    }
 
-   SetVolume("user:", buffer.c_str(), "users/user", NULL, NULL, VOLUME_REPLACE|VOLUME_SYSTEM);
+   SetVolume("user", buffer.c_str(), "users/user", NULL, NULL, VOLUME_REPLACE|VOLUME_SYSTEM);
 
    // Make sure that certain default directories exist
 
@@ -1776,11 +1781,11 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
    CreateFolder("user:temp/", PERMIT_READ|PERMIT_EXEC|PERMIT_WRITE);
 
    if (AnalysePath("temp:", NULL) != ERR_Okay) {
-      SetVolume("temp:", "user:temp/", "items/trash", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+      SetVolume("temp", "user:temp/", "items/trash", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
    }
 
    if (AnalysePath("clipboard:", NULL) != ERR_Okay) {
-      SetVolume("clipboard:", "temp:clipboard/", "items/clipboard", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+      SetVolume("clipboard", "temp:clipboard/", "items/clipboard", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
    }
 
    // Look for the following drive types:
@@ -1899,7 +1904,7 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
 
    const CSTRING cdroms[] = {
       "/mnt/cdrom", "/mnt/cdrom0", "/mnt/cdrom1", "/mnt/cdrom2", "/mnt/cdrom3", "/mnt/cdrom4", "/mnt/cdrom5", "/mnt/cdrom6", // RedHat
-      "/cdrom0", "/cdrom1", "/cdrom2", "/cdrom3" // Debian
+      "/cdrom", "/cdrom0", "/cdrom1", "/cdrom2", "/cdrom3" // Debian
    };
    char cdname[] = "cd1";
 
