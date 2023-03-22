@@ -2,7 +2,7 @@
 #
 # Release Config:  cmake -S . -B release -DCMAKE_BUILD_TYPE=Release
 # Debug Config:    cmake -S . -B debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
-# Git Release:     cmake -S . -B release-git -DCMAKE_BUILD_TYPE=Release -DINSTALL_EXAMPLES=TRUE -DDISABLE_SSL=TRUE -DCMAKE_INSTALL_PREFIX=parasol-$(date +'%Y%m%d') -DRUN_ANYWHERE=TRUE
+# Git Release:     cmake -S . -B release-git -DCMAKE_BUILD_TYPE=Release -DINSTALL_EXAMPLES=TRUE -DINSTALL_INCLUDES=FALSE -DDISABLE_SSL=TRUE -DCMAKE_INSTALL_PREFIX=parasol-$(date +'%Y%m%d') -DRUN_ANYWHERE=TRUE
 #
 # For Windows builds -G"MinGW Makefiles" must be added to the above commands.
 # A build can target a local folder by adding -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
@@ -48,6 +48,7 @@ option (BUILD_DEFS       "Generate IDL files, C/C++ headers and documentation" O
 option (DISABLE_SSL      "Disable built-in SSL support even if available on this system" OFF)
 option (DISABLE_X11      "Disable X11 even if available on this system" OFF)
 option (INSTALL_EXAMPLES "Install the example scripts, typically for compiling a distribution" OFF)
+option (INSTALL_INCLUDES "Install the header files.  Turn this off for client releases." ON)
 option (ENABLE_ANALYSIS  "Enable run-time program analysis (with performance penalties) if available.  May negatively affect gdb." OFF)
 
 set (CMAKE_CXX_STANDARD 20)
@@ -472,8 +473,10 @@ add_custom_target (icon_package ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/icons/D
 # Installation steps
 
 if (PARASOL_INSTALL)
-   install (DIRECTORY "${INCLUDE_OUTPUT}" DESTINATION "include")
-   install (FILES "${CMAKE_BINARY_DIR}/parasol/config.h" DESTINATION "include/parasol/")
+   if (INSTALL_INCLUDES)
+      install (DIRECTORY "${INCLUDE_OUTPUT}" DESTINATION "include")
+      install (FILES "${CMAKE_BINARY_DIR}/parasol/config.h" DESTINATION "include/parasol/")
+   endif ()
 
    if (RUN_ANYWHERE)
       install (TARGETS parasol DESTINATION .)

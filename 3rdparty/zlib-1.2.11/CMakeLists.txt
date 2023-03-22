@@ -210,5 +210,6 @@ install(TARGETS zlib
     LIBRARY DESTINATION "${LIB_TARGET}/lib" # Linux
 )
 
-install(FILES ${ZLIB_PUBLIC_HDRS} DESTINATION "include/parasol/3rdparty")
-
+if (INSTALL_INCLUDES)
+   install(FILES ${ZLIB_PUBLIC_HDRS} DESTINATION "include/parasol/3rdparty")
+endif ()
