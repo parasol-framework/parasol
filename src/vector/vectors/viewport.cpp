@@ -96,13 +96,10 @@ Clear: Free all child objects contained by the viewport.
 
 static ERROR VECTORVIEWPORT_Clear(extVectorViewport *Self, APTR Void)
 {
-   ChildEntry list[512];
-   LONG count = ARRAYSIZE(list);
-   do {
-      if (!ListChildren(Self->UID, list, &count)) {
-         for (LONG i=0; i < count; i++) acFree(list[i].ObjectID);
-      }
-   } while (count IS ARRAYSIZE(list));
+   pf::vector<ChildEntry> list;
+   if (!ListChildren(Self->UID, &list)) {
+      for (unsigned i=0; i < list.size(); i++) acFree(list[i].ObjectID);
+   }
 
    return ERR_Okay;
 }

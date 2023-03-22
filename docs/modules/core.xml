@@ -1140,11 +1140,10 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <name>ListChildren</name>
     <category>Objects</category>
     <comment>Returns a list of all children belonging to an object.</comment>
-    <prototype>ERROR ListChildren(OBJECTID Object, struct ChildEntry * List, LONG * Count)</prototype>
+    <prototype>ERROR ListChildren(OBJECTID Object, pf::vector&lt;ChildEntry&gt; * List)</prototype>
     <input>
       <param type="OBJECTID" name="Object">The ID of the object that you wish to examine.</param>
-      <param type="struct ChildEntry *" name="List">Must refer to an array of ChildEntry structures.</param>
-      <param type="LONG *" name="Count">Set to the maximum number of elements in ChildEntry.  Before returning, this parameter will be updated with the total number of entries listed in the array.</param>
+      <param type="pf::vector<ChildEntry> *" name="List">Must refer to an array of ChildEntry structures.</param>
     </input>
     <description>
 <p>The ListChildren() function returns a list of an object's children in a single function call.</p>
@@ -2101,9 +2100,9 @@ SetField(Object, FID_Statement|TSTR, "string");
       <param type="FUNCTION *" name="Callback">A C/C++ function to callback when the action is triggered.</param>
     </input>
     <description>
-<p>The SubscribeAction() function provides a means for receiving an immediate notification after an action is called on an object.  We refer to this as "action monitoring".  Action monitoring is especially useful for responding to events in the UI and the termination of objects.</p>
-<p>Subscriptions are context sensitive and thus owned by the caller.</p>
-<p>The following example illustrates how to listen to a Surface object's Redimension action to be alerted to resize events:</p>
+<p>The SubscribeAction() function allows a client to receive a callback each time that an action is executed on an object.  This technique is referred to as "action monitoring" and is especially useful for responding to events in the UI and the termination of objects.</p>
+<p>Subscriptions are context sensitive, so the Callback will execute in the space attributed to to the caller.</p>
+<p>The following example illustrates how to listen to a Surface object's Redimension action and respond to resize events:</p>
 <pre>auto callback = make_function_stdc(notify_resize);
 SubscribeAction(surface, AC_Redimension, &amp;callback);
 </pre>
