@@ -127,6 +127,7 @@ const struct SystemState * GetSystemState();
 ULONG StrHash(CSTRING String, LONG CaseSensitive);
 ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
 LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
+ERROR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value);
 
 #ifdef  __cplusplus
 }

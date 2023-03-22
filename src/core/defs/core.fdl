@@ -1270,7 +1270,8 @@ struct ScriptArg { // For use with scExec
     "GetSystemState",
     "StrHash",
     "AddInfoTag",
-    "UTF8Copy")
+    "UTF8Copy",
+    "ReadInfoTag")
 
   c_insert([[
 
