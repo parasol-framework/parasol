@@ -111,7 +111,7 @@ extern "C" EXPORT void CloseCore(void);
 extern "C" EXPORT struct CoreBase * OpenCore(OpenInfo *);
 static ERROR open_shared_control(void);
 static ERROR init_shared_control(void);
-static ERROR init_volumes(std::forward_list<CSTRING> &);
+static ERROR init_volumes(const std::forward_list<std::string> &);
 
 #ifdef _WIN32
 static WINHANDLE glSharedControlID = 0; // Shared memory ID.
@@ -365,7 +365,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    }
 #endif
 
-   std::forward_list<CSTRING> volumes;
+   std::forward_list<std::string> volumes;
 
    std::vector<CSTRING> newargs;
    if (Info->Flags & OPF_ARGS) {
@@ -934,7 +934,7 @@ static ERROR open_shared_control(void)
    #elif USE_SHM
       // NOTE: Do not ever use shmctl(IPC_STAT) for any reason, as the resulting structure is not compatible between all Linux versions.
 
-      BYTE init = FALSE;
+      bool init = false;
       if ((glSharedControlID = shmget(memkey, 0, SHM_R|SHM_W)) IS -1) {
          KMSG("No existing memory block exists for the given key (will create a new one).  Error: %s\n", strerror(errno));
 
@@ -952,9 +952,7 @@ static ERROR open_shared_control(void)
                return ERR_Failed;
             }
          }
-         else {
-            init = TRUE;
-         }
+         else init = true;
       }
       else KMSG("Shared memory block already exists - will attach to it.\n");
 
@@ -1643,7 +1641,7 @@ static void win32_enum_folders(CSTRING Volume, CSTRING Label, CSTRING Path, CSTR
 
 //********************************************************************************************************************
 
-static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
+static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
 {
    pf::Log log("Core");
 
@@ -1917,15 +1915,16 @@ static ERROR init_volumes(std::forward_list<CSTRING> &Volumes)
 
    create_archive_volume();
 
+   // Custom volumes and overrides specified from the command-line
+
    for (auto vol : Volumes) {
-      char name[120], path[MAX_FILENAME];
-      size_t n, p, v;
-      for (n=0, v=0; vol[v] and (vol[v] != '=') and (n < sizeof(name)-1); v++) name[n++] = vol[v];
-      name[n] = 0;
-      if (vol[v++] IS '=') {
-         for (p=0; vol[v] and (p < sizeof(path)-1); v++) path[p++] = vol[v];
-         path[p] = 0;
-         SetVolume(name, path, NULL, NULL, NULL, VOLUME_PRIORITY);
+      if (auto v = vol.find('='); v != std::string::npos) {
+         std::string name(vol, v);
+         std::string path(vol, v + 1, vol.size() - (v + 1));
+
+         LONG flags = glVolumes.contains(name) ? 0 : VOLUME_HIDDEN;
+
+         SetVolume(name.c_str(), path.c_str(), NULL, NULL, NULL, VOLUME_PRIORITY|flags);
       }
    }
 
