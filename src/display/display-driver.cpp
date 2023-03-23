@@ -13,6 +13,7 @@ ERROR GET_VDensity(extDisplay *Self, LONG *Value);
 //********************************************************************************************************************
 
 rgb_to_linear glLinearRGB;
+std::array<UBYTE, 256 * 256> glAlphaLookup;
 
 #ifdef __xwindows__
 
@@ -228,8 +229,6 @@ THREADVAR OBJECTID tlFreeExpose = 0;
 
 //********************************************************************************************************************
 // Alpha blending data.
-
-UBYTE *glAlphaLookup = NULL;
 
 INLINE UBYTE clipByte(LONG value)
 {
@@ -928,27 +927,15 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (create_clipboard_class() != ERR_Okay) return log.warning(ERR_AddClass);
    if (create_surface_class() != ERR_Okay) return log.warning(ERR_AddClass);
 
-   // Initialise 64K alpha blending table, for cutting down on multiplications.  This memory block is shared, so one
-   // table serves all processes.
+   // Initialise 64K alpha blending table, for cutting down on multiplications.
 
-   MEMORYID memoryid = RPM_AlphaBlend;
-   if (!(error = AllocMemory(256 * 256, MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, &glAlphaLookup, &memoryid))) {
-      LONG i = 0;
-      for (WORD iAlpha=0; iAlpha < 256; iAlpha++) {
-         DOUBLE fAlpha = (DOUBLE)iAlpha * (1.0 / 255.0);
-         for (WORD iValue=0; iValue < 256; iValue++) {
-            glAlphaLookup[i++] = clipByte(F2I((DOUBLE)iValue * fAlpha));
-         }
+   LONG i = 0;
+   for (WORD iAlpha=0; iAlpha < 256; iAlpha++) {
+      DOUBLE fAlpha = (DOUBLE)iAlpha * (1.0 / 255.0);
+      for (WORD iValue=0; iValue < 256; iValue++) {
+         glAlphaLookup[i++] = clipByte(F2I((DOUBLE)iValue * fAlpha));
       }
    }
-   else if (error IS ERR_ResourceExists) {
-      if (!glAlphaLookup) {
-         if (AccessMemoryID(RPM_AlphaBlend, MEM_READ_WRITE|MEM_NO_BLOCKING, 500, &glAlphaLookup) != ERR_Okay) {
-            return ERR_AccessMemory;
-         }
-      }
-   }
-   else return ERR_AllocMemory;
 
    glDisplayType = gfxGetDisplayType();
 
@@ -1055,7 +1042,6 @@ static ERROR CMDExpunge(void)
    pf::Log log(__FUNCTION__);
    ERROR error = ERR_Okay;
 
-   if (glAlphaLookup)         { ReleaseMemory(glAlphaLookup); glAlphaLookup = NULL; }
    if (glDither)              { FreeResource(glDither); glDither = NULL; }
    if (glExposeHandler)       { FreeResource(glExposeHandler); glExposeHandler = NULL; }
    if (glRefreshPointerTimer) { UpdateTimer(glRefreshPointerTimer, 0); glRefreshPointerTimer = 0; }
