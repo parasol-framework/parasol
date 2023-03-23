@@ -439,7 +439,7 @@ struct dcDeviceInput {
    OBJECTID DeviceID;  // The hardware device that this event originated from (note: This ID can be to a private/inaccessible object, the point is that the ID is unique)
    LONG     Flags;     // Broad descriptors for the given Type (see JTYPE flags).  Automatically set by the system when sent to the pointer object
    UWORD    Type;      // JET constant
-   UWORD    Unused;
+   UWORD    Unused;    // Unused value for 32-bit padding
 };
 
 struct DateTime {

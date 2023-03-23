@@ -3872,7 +3872,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <field name="DeviceID" type="OBJECTID">The hardware device that this event originated from (note: This ID can be to a private/inaccessible object, the point is that the ID is unique)</field>
       <field name="Flags" type="LONG">Broad descriptors for the given Type (see JTYPE flags).  Automatically set by the system when sent to the pointer object</field>
       <field name="Type" type="UWORD">JET constant</field>
-      <field name="Unused" type="UWORD"></field>
+      <field name="Unused" type="UWORD">Unused value for 32-bit padding</field>
     </struct>
 
     <struct name="dcKeyEntry" comment="Data feed structure for Keypress">
