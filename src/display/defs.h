@@ -586,6 +586,14 @@ extern WinCursor winCursors[24];
 
 #ifdef __xwindows__
 
+struct X11Globals {
+   bool DGAInitialised;
+   bool RRInitialised;
+   bool Manager;
+   LONG PixelsPerLine; // Definfed by DGA
+   LONG BankSize; // Definfed by DGA
+};
+
 extern void X11ManagerLoop(HOSTHANDLE, APTR);
 extern void handle_button_press(XEvent *);
 extern void handle_button_release(XEvent *);
@@ -596,13 +604,12 @@ extern void handle_key_press(XEvent *);
 extern void handle_key_release(XEvent *);
 extern void handle_motion_notify(XMotionEvent *);
 extern void handle_stack_change(XCirculateEvent *);
-extern LONG x11WindowManager(void);
 extern void init_xcursors(void);
 extern void free_xcursors(void);
 
 extern WORD glDGAAvailable;
 extern APTR glDGAMemory;
-extern X11Globals *glX11;
+extern X11Globals glX11;
 extern _XDisplay *XDisplay;
 extern struct XRandRBase *XRandRBase;
 extern UBYTE glX11ShmImage;

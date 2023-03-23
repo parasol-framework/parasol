@@ -31,7 +31,6 @@ void handle_key_release(XEvent *);
 void handle_motion_notify(XMotionEvent *);
 void handle_stack_change(XCirculateEvent *);
 
-X11Globals *glX11 = 0;
 _XDisplay *XDisplay = 0;
 struct XRandRBase *XRandRBase = 0;
 UBYTE glX11ShmImage = FALSE;
@@ -350,13 +349,8 @@ LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankSize)
    pf::Log log(__FUNCTION__);
    STRING displayname;
 
-   glX11->DGACount++;
+   static LONG checked = true;
    *VideoAddress = NULL;
-
-   if ((glX11->Manager IS FALSE) and (glX11->DGAInitialised IS FALSE)) {
-      //if (glX11->DGACount <= 1) printf("Fast video access is not enabled (must be in full screen mode)\n");
-      return FALSE;
-   }
 
    if (glDGAAvailable IS -1) {
       // Check for the DGA driver.  This will only work if the extension is version 2.0+ and we have permissions
@@ -381,33 +375,31 @@ LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankSize)
 
                   // Get RAM address, pixels-per-line, bank-size and total amount of video memory
 
-                  XF86DGAGetVideo(XDisplay, DefaultScreen(XDisplay), (char **)&glDGAMemory, &glX11->PixelsPerLine, &glX11->BankSize, &ram);
+                  XF86DGAGetVideo(XDisplay, DefaultScreen(XDisplay), (char **)&glDGAMemory, &glX11.PixelsPerLine, &glX11.BankSize, &ram);
 
                   XDGACloseFramebuffer(XDisplay, screen);
                   glDGAAvailable = TRUE;
-                  glX11->DGAInitialised = TRUE;
+                  glX11.DGAInitialised = true;
                }
-               else if (glX11->DGACount <= 1) printf("\033[1mFast video access is not available (driver needs root access)\033[0m\n");
+               else if (checked <= 1) printf("\033[1mFast video access is not available (driver needs root access)\033[0m\n");
 
                SetResource(RES_PRIVILEGED_USER, FALSE);
 
                // Now we permanently drop root capabilities.  The exception to the rule is the desktop executable,
                // which always runs with privileges (indicated via RES_PRIVILEGED).
 
-               if (GetResource(RES_PRIVILEGED) IS FALSE) {
-                  setuid(getuid());
-               }
+               if (GetResource(RES_PRIVILEGED) IS FALSE) setuid(getuid());
             }
-            else if (glX11->DGACount <= 1) printf("\033[1mFast video access is not available (driver needs root access)\033[0m\n");
+            else if (checked <= 1) printf("\033[1mFast video access is not available (driver needs root access)\033[0m\n");
          }
-         else if (glX11->DGACount <= 1) printf("Fast video access is not available (DGA extension failure).\n");
+         else if (checked <= 1) printf("Fast video access is not available (DGA extension failure).\n");
       }
       else log.warning("DGA is not available (display %s).", displayname);
    }
 
    if (VideoAddress)  *VideoAddress = glDGAMemory;
-   if (PixelsPerLine) *PixelsPerLine = glX11->PixelsPerLine;
-   if (BankSize)      *BankSize = glX11->BankSize;
+   if (PixelsPerLine) *PixelsPerLine = glX11.PixelsPerLine;
+   if (BankSize)      *BankSize = glX11.BankSize;
    return glDGAAvailable;
 }
 #else
@@ -418,14 +410,14 @@ LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankSize)
 }
 #endif
 
-//**********************************************************************
+//********************************************************************************************************************
 // This routine is called if there is another window manager running.
 
 XErrorHandler CatchRedirectError(Display *XDisplay, XErrorEvent *event)
 {
    pf::Log log("X11");
    log.msg("A window manager has been detected on this X11 server.");
-   glX11->Manager = FALSE;
+   glX11.Manager = false;
    return 0;
 }
 
@@ -471,16 +463,6 @@ int CatchXIOError(Display *XDisplay)
    pf::Log log("X11");
    log.error("A fatal XIO error occurred in relation to display \"%s\".", XDisplayName(NULL));
    return 0;
-}
-
-/*********************************************************************************************************************
-** Returns TRUE if we are the window manager for the display.
-*/
-
-LONG x11WindowManager(void)
-{
-   if (glX11) return glX11->Manager;
-   else return FALSE;
 }
 
 #endif
@@ -723,7 +705,7 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
 static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    pf::Log log(__FUNCTION__);
-   ERROR error;
+
    #ifdef __xwindows__
       XGCValues gcv;
       LONG shmmajor, shmminor, pixmaps;
@@ -786,21 +768,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 #ifdef __xwindows__
    if (!glHeadless) {
-      log.trace("Allocating global memory structure.");
-
-      MEMORYID memoryid = RPM_X11;
-      if (!(error = AllocMemory(sizeof(X11Globals), MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, (APTR)&glX11, &memoryid))) {
-         glX11->Manager = TRUE; // Assume that we are the window manager
-      }
-      else if (error IS ERR_ResourceExists) {
-         if (!glX11) {
-            if (AccessMemoryID(RPM_X11, MEM_READ_WRITE, 1000, &glX11) != ERR_Okay) {
-               return log.warning(ERR_AccessMemory);
-            }
-         }
-      }
-      else return log.warning(ERR_AllocMemory);
-
       // Attempt to open X11.  Use PARASOL_XDISPLAY if set, otherwise use the DISPLAY variable.
 
       log.msg("Attempting to open X11...");
@@ -812,25 +779,21 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
          // Select the X messages that we want to receive from the root window.  This will also tell us if an X11 manager
          // is currently running or not (refer to the CatchRedirectError() exception routine).
 
-         if (glX11->InitCount < 1) {
-            XSetErrorHandler((XErrorHandler)CatchRedirectError);
+         XSetErrorHandler((XErrorHandler)CatchRedirectError);
 
-            XSelectInput(XDisplay, RootWindow(XDisplay, DefaultScreen(XDisplay)),
-               LeaveWindowMask|EnterWindowMask|PointerMotionMask|
-               PropertyChangeMask|SubstructureRedirectMask| // SubstructureNotifyMask |
-               KeyPressMask|ButtonPressMask|ButtonReleaseMask);
+         XSelectInput(XDisplay, RootWindow(XDisplay, DefaultScreen(XDisplay)),
+            LeaveWindowMask|EnterWindowMask|PointerMotionMask|
+            PropertyChangeMask|SubstructureRedirectMask| // SubstructureNotifyMask |
+            KeyPressMask|ButtonPressMask|ButtonReleaseMask);
 
-            if (!getenv("PARASOL_XDISPLAY")) setenv("PARASOL_XDISPLAY", strdisplay, FALSE);
+         if (!getenv("PARASOL_XDISPLAY")) setenv("PARASOL_XDISPLAY", strdisplay, FALSE);
 
-            XSync(XDisplay, False);
-         }
+         XSync(XDisplay, False);
 
          XSetErrorHandler((XErrorHandler)CatchXError);
          XSetIOErrorHandler(CatchXIOError);
       }
       else return ERR_Failed;
-
-      glX11->InitCount++;
 
       // Try to load XRandR, but it's okay if it's not available
 
@@ -876,7 +839,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
          }
       #endif
 
-      if (x11WindowManager() IS FALSE) { // We are a client of X11
+      if (!glX11.Manager) { // We are a client of X11
 //         XSelectInput(XDisplay, RootWindow(XDisplay, DefaultScreen(XDisplay)), NULL);
       }
 
@@ -897,9 +860,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
       // Set the DISPLAY variable for clients to :10, which is the default X11 display for the rootless X Server.
 
-      if (x11WindowManager() IS TRUE) {
-         setenv("DISPLAY", ":10", TRUE);
-      }
+      if (glX11.Manager) setenv("DISPLAY", ":10", TRUE);
    }
 #elif _WIN32
 
@@ -1075,17 +1036,11 @@ static ERROR CMDExpunge(void)
          */
       }
 
-      if (glX11) {
-         // Note: In full-screen mode, expunging of the X11 module causes segfaults right at the end of program
-         // termination.  In order to resolve this problem, we return DoNotExpunge to prevent the removal of X11 module
-         // code.  The reason why this problem occurs is because something at program termination relies on our module
-         // code being present in the system.
+      // Note: In full-screen mode, expunging of the display module causes segfaults right at the end of program
+      // termination.  In order to resolve this problem we return DoNotExpunge to prevent the removal of X11
+      // dependent code.
 
-         if (glX11->Manager) error = ERR_DoNotExpunge;
-
-         ReleaseMemory(glX11);
-         glX11 = NULL;
-      }
+      error = ERR_DoNotExpunge;
    }
 
 #elif __ANDROID__
