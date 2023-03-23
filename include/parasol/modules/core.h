@@ -1084,7 +1084,6 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 
 #define RPM_Clipboard -1002
 #define RPM_X11 -1003
-#define RPM_AlphaBlend -1004
 #define RPM_XWindowLookup -1005
 
 #define MAX_FILENAME 256
