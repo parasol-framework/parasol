@@ -795,9 +795,9 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       }
       else return ERR_Failed;
 
-      // Try to load XRandR, but it's okay if it's not available
+      // Try to load XRandR if we are the display manager, but it's okay if not available
 
-      if (!NewObject(ID_MODULE, &modXRR)) {
+      if ((glX11.Manager) and (!NewObject(ID_MODULE, &modXRR))) {
          char buffer[32];
          IntToStr((MAXINT)XDisplay, buffer, sizeof(buffer));
          acSetVar(modXRR, "XDisplay", buffer);
