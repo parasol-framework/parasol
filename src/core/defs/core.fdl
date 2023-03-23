@@ -325,7 +325,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
   const("RPM", { comment="Reserved Public Memory identifiers.", restrict="c" }, {
     Clipboard      = "-1002: Clipboard array.",
     X11            = "-1003: X11 global variables.",
-    AlphaBlend     = "-1004: Alpha blending lookup table (Bitmap module).",
     XWindowLookup  = "-1005: X Window to Surface lookup table (Display/Surface modules)."
   })
 

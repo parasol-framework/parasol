@@ -677,7 +677,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y
             UBYTE red, green, blue, *dest_lookup;
             UWORD alpha;
 
-            dest_lookup = glAlphaLookup + (255<<8);
+            dest_lookup = glAlphaLookup.data() + (255<<8);
 
             if (dest->BitsPerPixel IS 32) { // Both bitmaps are 32 bit
                const UBYTE sA = Bitmap->ColourFormat->AlphaPos>>3;
@@ -841,7 +841,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y
                   for (i=0; i < Width; i++) {
                      colour = sdata[i];
                      alpha = ((UBYTE)(colour >> Bitmap->prvColourFormat.AlphaPos));
-                     alpha = (glAlphaLookup + (alpha<<8))[Bitmap->Opacity]<<8; // Multiply the source pixel by overall translucency level
+                     alpha = (glAlphaLookup.data() + (alpha<<8))[Bitmap->Opacity]<<8; // Multiply the source pixel by overall translucency level
 
                      if (alpha >= BLEND_MAX_THRESHOLD<<8) {
                         ddata[i] = dest->packPixel((UBYTE)(colour >> Bitmap->prvColourFormat.RedPos),
@@ -852,7 +852,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y
                         red   = colour >> Bitmap->prvColourFormat.RedPos;
                         green = colour >> Bitmap->prvColourFormat.GreenPos;
                         blue  = colour >> Bitmap->prvColourFormat.BluePos;
-                        srctable  = glAlphaLookup + (alpha);
+                        srctable  = glAlphaLookup.data() + (alpha);
                         desttable = dest_lookup - (alpha);
                         ddata[i] = dest->packPixel((UBYTE)(srctable[red]   + desttable[dest->unpackRed(ddata[i])]),
                                                    (UBYTE)(srctable[green] + desttable[dest->unpackGreen(ddata[i])]),
@@ -870,7 +870,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y
                   for (i=0; i < Width; i++) {
                      colour = sdata[i];
                      alpha = ((UBYTE)(colour >> Bitmap->prvColourFormat.AlphaPos));
-                     alpha = (glAlphaLookup + (alpha<<8))[Bitmap->Opacity]; // Multiply the source pixel by overall translucency level
+                     alpha = (glAlphaLookup.data() + (alpha<<8))[Bitmap->Opacity]; // Multiply the source pixel by overall translucency level
 
                      if (alpha >= BLEND_MAX_THRESHOLD) {
                         pixel.Red   = colour >> Bitmap->prvColourFormat.RedPos;
@@ -883,8 +883,8 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y
                         green = colour >> Bitmap->prvColourFormat.GreenPos;
                         blue  = colour >> Bitmap->prvColourFormat.BluePos;
 
-                        srctable  = glAlphaLookup + (alpha<<8);
-                        desttable = glAlphaLookup + ((255-alpha)<<8);
+                        srctable  = glAlphaLookup.data() + (alpha<<8);
+                        desttable = glAlphaLookup.data() + ((255-alpha)<<8);
 
                         dest->ReadUCRPixel(dest, DestX + i, DestY, &pixel);
                         pixel.Red   = srctable[red]   + desttable[pixel.Red];
@@ -912,8 +912,8 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y
       if (!lock_surface(Bitmap, SURFACE_READ)) {
          if (!lock_surface(dest, SURFACE_WRITE)) {
             if (Bitmap->Opacity < 255) { // Transparent mask with translucent pixels (consistent blend level)
-               srctable  = glAlphaLookup + (Bitmap->Opacity<<8);
-               desttable = glAlphaLookup + ((255-Bitmap->Opacity)<<8);
+               srctable  = glAlphaLookup.data() + (Bitmap->Opacity<<8);
+               desttable = glAlphaLookup.data() + ((255-Bitmap->Opacity)<<8);
                while (Height > 0) {
                   for (i=0; i < Width; i++) {
                      colour = Bitmap->ReadUCPixel(Bitmap, X + i, Y);
@@ -1003,8 +1003,8 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y
       if (!lock_surface(Bitmap, SURFACE_READ)) {
          if (!lock_surface(dest, SURFACE_WRITE)) {
             if (Bitmap->Opacity < 255) { // Translucent draw
-               srctable  = glAlphaLookup + (Bitmap->Opacity<<8);
-               desttable = glAlphaLookup + ((255-Bitmap->Opacity)<<8);
+               srctable  = glAlphaLookup.data() + (Bitmap->Opacity<<8);
+               desttable = glAlphaLookup.data() + ((255-Bitmap->Opacity)<<8);
 
                if ((Bitmap->BytesPerPixel IS 4) and (dest->BytesPerPixel IS 4)) {
                   ULONG *ddata, *sdata;
@@ -1344,7 +1344,7 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
                   colour = sdata[i];
 
                   UBYTE alpha = ((UBYTE)(colour >> Surface->Format.AlphaPos));
-                  alpha = (glAlphaLookup + (alpha<<8))[Surface->Opacity]; // Multiply the source pixel by overall translucency level
+                  alpha = (glAlphaLookup.data() + (alpha<<8))[Surface->Opacity]; // Multiply the source pixel by overall translucency level
 
                   if (alpha >= BLEND_MAX_THRESHOLD) ddata[i] = colour;
                   else if (alpha >= BLEND_MIN_THRESHOLD) {
@@ -1358,8 +1358,8 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
                      UBYTE destgreen = colour >> Bitmap->prvColourFormat.GreenPos;
                      UBYTE destblue  = colour >> Bitmap->prvColourFormat.BluePos;
 
-                     srctable  = glAlphaLookup + (alpha<<8);
-                     desttable = glAlphaLookup + ((255-alpha)<<8);
+                     srctable  = glAlphaLookup.data() + (alpha<<8);
+                     desttable = glAlphaLookup.data() + ((255-alpha)<<8);
                      ddata[i] = Bitmap->packPixelWB(srctable[red] + desttable[destred],
                                                   srctable[green] + desttable[destgreen],
                                                   srctable[blue] + desttable[destblue]);
@@ -1374,7 +1374,7 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
             for (LONG i=0; i < Width; i++) {
                colour = sdata[i];
                UBYTE alpha = ((UBYTE)(colour >> Surface->Format.AlphaPos));
-               alpha = (glAlphaLookup + (alpha<<8))[Surface->Opacity]; // Multiply the source pixel by overall translucency level
+               alpha = (glAlphaLookup.data() + (alpha<<8))[Surface->Opacity]; // Multiply the source pixel by overall translucency level
 
                if (alpha >= BLEND_MAX_THRESHOLD) {
                   pixel.Red   = colour >> Surface->Format.RedPos;
@@ -1387,8 +1387,8 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
                   UBYTE green = colour >> Surface->Format.GreenPos;
                   UBYTE blue  = colour >> Surface->Format.BluePos;
 
-                  srctable  = glAlphaLookup + (alpha<<8);
-                  desttable = glAlphaLookup + ((255-alpha)<<8);
+                  srctable  = glAlphaLookup.data() + (alpha<<8);
+                  desttable = glAlphaLookup.data() + ((255-alpha)<<8);
 
                   Bitmap->ReadUCRPixel(Bitmap, XDest + i, YDest, &pixel);
                   pixel.Red   = srctable[red]   + desttable[pixel.Red];
@@ -1408,8 +1408,8 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
          if ((Flags & CSRF_TRANSLUCENT) and (Surface->Opacity < 255)) {
             // Transparent mask with translucent pixels
 
-            srctable  = glAlphaLookup + (Surface->Opacity<<8);
-            desttable = glAlphaLookup + ((255-Surface->Opacity)<<8);
+            srctable  = glAlphaLookup.data() + (Surface->Opacity<<8);
+            desttable = glAlphaLookup.data() + ((255-Surface->Opacity)<<8);
 
             while (Height > 0) {
                for (LONG i=0; i < Width; i++) {
@@ -1482,8 +1482,8 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
       }
       else { // Straight copy operation
          if ((Flags & CSRF_TRANSLUCENT) and (Surface->Opacity < 255)) { // Straight translucent blit
-            srctable  = glAlphaLookup + (Surface->Opacity<<8);
-            desttable = glAlphaLookup + ((255-Surface->Opacity)<<8);
+            srctable  = glAlphaLookup.data() + (Surface->Opacity<<8);
+            desttable = glAlphaLookup.data() + ((255-Surface->Opacity)<<8);
 
             if ((Surface->BytesPerPixel IS 4) and (Bitmap->BytesPerPixel IS 4)) {
                ULONG *ddata, *sdata;
