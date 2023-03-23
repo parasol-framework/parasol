@@ -587,10 +587,8 @@ extern WinCursor winCursors[24];
 #ifdef __xwindows__
 
 struct X11Globals {
-   bool DGAInitialised;
-   bool RRInitialised;
    bool Manager;
-   LONG PixelsPerLine; // Definfed by DGA
+   LONG PixelsPerLine; // Defined by DGA
    LONG BankSize; // Definfed by DGA
 };
 
@@ -612,7 +610,7 @@ extern APTR glDGAMemory;
 extern X11Globals glX11;
 extern _XDisplay *XDisplay;
 extern struct XRandRBase *XRandRBase;
-extern UBYTE glX11ShmImage;
+extern bool glX11ShmImage;
 extern UBYTE KeyHeld[K_LIST_END];
 extern UBYTE glTrayIcon, glTaskBar, glStickToFront;
 extern LONG glKeyFlags, glXFD, glDGAPixelsPerLine, glDGABankSize;

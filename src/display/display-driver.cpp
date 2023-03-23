@@ -31,9 +31,10 @@ void handle_key_release(XEvent *);
 void handle_motion_notify(XMotionEvent *);
 void handle_stack_change(XCirculateEvent *);
 
+X11Globals glX11;
 _XDisplay *XDisplay = 0;
 struct XRandRBase *XRandRBase = 0;
-UBYTE glX11ShmImage = FALSE;
+bool glX11ShmImage = false;
 UBYTE KeyHeld[K_LIST_END];
 UBYTE glTrayIcon = 0, glTaskBar = 1, glStickToFront = 0;
 LONG glKeyFlags = 0, glXFD = -1, glDGAPixelsPerLine = 0, glDGABankSize = 0;
@@ -379,7 +380,6 @@ LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankSize)
 
                   XDGACloseFramebuffer(XDisplay, screen);
                   glDGAAvailable = TRUE;
-                  glX11.DGAInitialised = true;
                }
                else if (checked <= 1) printf("\033[1mFast video access is not available (driver needs root access)\033[0m\n");
 
@@ -835,7 +835,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       #ifdef USE_XIMAGE
          if (XShmQueryVersion(XDisplay, &shmmajor, &shmminor, &pixmaps)) {
             log.msg("X11 shared image extension is active.");
-            glX11ShmImage = TRUE;
+            glX11ShmImage = true;
          }
       #endif
 
