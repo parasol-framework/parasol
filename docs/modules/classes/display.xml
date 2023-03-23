@@ -439,7 +439,7 @@
       <access read="R" write="S">Read/Set</access>
       <type lookup="SCR">INT</type>
       <description>
-<p>Optional display flags can be defined here.  Post-initialisation, the only flags that can be set are AUTO_SAVE and BORDERLESS.</p>
+<p>Optional display flags can be defined here.  Post-initialisation, the only flags that can be set are <code>AUTO_SAVE</code> and <code>BORDERLESS</code>.</p>
 <types lookup="SCR"/>
       </description>
     </field>
