@@ -1143,7 +1143,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <prototype>ERROR ListChildren(OBJECTID Object, pf::vector&lt;ChildEntry&gt; * List)</prototype>
     <input>
       <param type="OBJECTID" name="Object">The ID of the object that you wish to examine.</param>
-      <param type="pf::vector<ChildEntry> *" name="List">Must refer to an array of ChildEntry structures.</param>
+      <param type="pf::vector&lt;ChildEntry&gt; *" name="List">Must refer to an array of ChildEntry structures.</param>
     </input>
     <description>
 <p>The ListChildren() function returns a list of all children belonging to an object.  The client must provide an empty vector of ChildEntry structures to host the results, which include unique object ID's and their class identifiers.</p>
