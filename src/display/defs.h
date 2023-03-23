@@ -502,7 +502,6 @@ extern struct CoreBase *CoreBase;
 extern ColourFormat glColourFormat;
 extern bool glHeadless;
 extern FieldDef CursorLookup[];
-extern UBYTE *glAlphaLookup;
 extern TIMER glRefreshPointerTimer;
 extern extBitmap *glComposite;
 extern DOUBLE glpRefreshRate, glpGammaRed, glpGammaGreen, glpGammaBlue;
@@ -512,6 +511,7 @@ extern LONG glpMaximise, glpFullScreen;
 extern LONG glpWindowType;
 extern char glpDPMS[20];
 extern UBYTE *glDemultiply;
+extern std::array<UBYTE, 256 * 256> glAlphaLookup;
 
 extern std::unordered_map<WindowHook, FUNCTION> glWindowHooks;
 extern std::vector<OBJECTID> glFocusList;

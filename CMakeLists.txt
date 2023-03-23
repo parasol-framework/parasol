@@ -64,11 +64,15 @@ if (RUN_ANYWHERE)
    set (PARASOL_ROOT "${CMAKE_INSTALL_PREFIX}")
    set (SHARE_TARGET .)
    set (LIB_TARGET "lib")
+   set (PARASOL_CMD_PATH "${CMAKE_INSTALL_PREFIX}")
 else ()
    set (PARASOL_ROOT "${CMAKE_INSTALL_PREFIX}/share/parasol")
    set (SHARE_TARGET "share/parasol")
    set (LIB_TARGET "lib/parasol")
+   set (PARASOL_CMD_PATH "${CMAKE_INSTALL_PREFIX}/bin")
 endif ()
+
+set (PARASOL_CMD_TARGET "${PARASOL_CMD_PATH}/parasol")
 
 test_big_endian (SYSTEM_ENDIAN_STYLE)
 if (SYSTEM_ENDIAN_STYLE EQUAL 0) # Little endian (Intel)
@@ -123,11 +127,7 @@ int main() {
    FAIL_REGEX "warning")
 
 find_program (XXD_CMD "xxd")
-if (WIN32)
-   find_program (PARASOL_CMD "parasol" NO_DEFAULT_PATH PATHS "${CMAKE_INSTALL_PREFIX}")
-else ()
-   find_program (PARASOL_CMD "parasol" NO_DEFAULT_PATH PATHS "${CMAKE_INSTALL_PREFIX}/bin")
-endif ()
+find_program (PARASOL_CMD "parasol" NO_DEFAULT_PATH PATHS "${PARASOL_CMD_PATH}")
 find_file (IDL_C_SCRIPT "idl-c.fluid" PATHS "${PROJECT_SOURCE_DIR}/scripts/dev/idl")
 find_file (IDL_DEF_SCRIPT "idl-def.fluid" PATHS "${PROJECT_SOURCE_DIR}/scripts/dev/idl")
 find_file (FLUTE_SCRIPT "flute.fluid" PATHS "${PROJECT_SOURCE_DIR}/scripts/dev")
@@ -160,7 +160,7 @@ endif ()
 
 add_custom_target(build_headers ALL COMMENT "Generate headers and definition files on the fly")
 
-# ----------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
 # Use Flute to write tests against your code.  All Flute tests are integration tests, i.e. run them post-install
 # against the target installation folder.
 
@@ -178,7 +178,7 @@ function (flute_test name path)
    endif ()
 endfunction ()
 
-# ----------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
 # idl_all() is used to generate both C/C++ headers and IDL strings from FDL files.
 
 function (idl_all)
@@ -219,7 +219,7 @@ function (idl_all)
    endif ()
 endfunction ()
 
-# ----------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
 # idl_c() is used to generate C/C++ headers from FDL files.
 # Always provide a full path for OUTPUT
 # Use FILES to reference additional source files not in the .def file.
@@ -240,7 +240,7 @@ function (idl_c)
 
       add_custom_command (OUTPUT ${IDLC_OUTPUT}
          PRE_BUILD
-         COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "--src=${ARGV0}" "--output=${IDLC_OUTPUT}" "--sdk=${PROJECT_SOURCE_DIR}" ${IDLC_ARGS}
+         COMMAND "${PARASOL_CMD}" "${IDL_C_SCRIPT}" "--log-warning" "--src=${ARGV0}" "--output=${IDLC_OUTPUT}" "--sdk=${PROJECT_SOURCE_DIR}" ${IDLC_ARGS}
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
          DEPENDS ${ARGV0}
          COMMENT "Producing C header file ${IDLC_OUTPUT} from ${ARGV0}"
@@ -254,7 +254,7 @@ function (idl_c)
    endif ()
 endfunction ()
 
-# ----------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
 # idl_def() is used to generate C/C++ data definition files for functions, structural declarations etc
 # Always provide a full path for OUTPUT
 
@@ -274,7 +274,7 @@ function (idl_def)
 
       add_custom_command (OUTPUT ${IDLC_OUTPUT}
          PRE_BUILD
-         COMMAND ${PARASOL_CMD} ${IDL_DEF_SCRIPT} "--log-warning" "--src=${ARGV0}" "--output=${IDLC_OUTPUT}" "--sdk=${PROJECT_SOURCE_DIR}" "--format=c" ${IDLC_ARGS}
+         COMMAND "${PARASOL_CMD}" "${IDL_DEF_SCRIPT}" "--log-warning" "--src=${ARGV0}" "--output=${IDLC_OUTPUT}" "--sdk=${PROJECT_SOURCE_DIR}" "--format=c" ${IDLC_ARGS}
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
          DEPENDS ${ARGV0}
          COMMENT "Producing definition file ${IDLC_OUTPUT} from ${ARGV0}"
@@ -288,7 +288,7 @@ function (idl_def)
    endif ()
 endfunction ()
 
-# ----------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
 # This is a convenience function that configures the default settings needed for Parasol modules
 
 function (set_module_defaults ARG_TARGET)
@@ -321,7 +321,7 @@ function (set_module_defaults ARG_TARGET)
    endif ()
 endfunction ()
 
-# ----------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
 # 64-bit checks
 
 if (CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -416,7 +416,7 @@ if (WIN32)
    set(CMAKE_EXE_LINKER_FLAGS "-static") #-static-libgcc -static-libstdc++
 endif ()
 
-# ----------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
 # Parasol executable
 
 if (RUN_ANYWHERE)
@@ -427,33 +427,35 @@ endif ()
 
 if (WIN32)
    # Specifying the WIN32 option will generate a Windows GUI application
-   add_executable (parasol WIN32 "src/launcher/parasol.cpp" "src/launcher/sandbox-win.cpp" "src/link/resource.rc")
-   target_link_libraries (parasol PRIVATE init-win)
+   add_executable (parasol_cmd WIN32 "src/launcher/parasol.cpp" "src/launcher/sandbox-win.cpp" "src/link/resource.rc")
+   target_link_libraries (parasol_cmd PRIVATE init-win)
 else ()
-   add_executable (parasol "src/launcher/parasol.cpp")
-   target_link_libraries (parasol PRIVATE init-unix)
+   add_executable (parasol_cmd "src/launcher/parasol.cpp")
+   target_link_libraries (parasol_cmd PRIVATE init-unix)
 endif ()
 
-target_include_directories (parasol PRIVATE "${PROJECT_SOURCE_DIR}/src/link")
+target_include_directories (parasol_cmd PRIVATE "${PROJECT_SOURCE_DIR}/src/link")
 
 if (CMAKE_BUILD_TYPE MATCHES "Release")
    message (STATUS "Symbols will be stripped from this build (no debugging).")
-   set_target_properties (parasol PROPERTIES CXX_STANDARD 20 LINK_FLAGS_RELEASE "-s" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
+   set_target_properties (parasol_cmd PROPERTIES CXX_STANDARD 20 LINK_FLAGS_RELEASE "-s" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
 else ()
    message (STATUS "Symbols will be left intact in this build (debug enabled).")
-   set_target_properties (parasol PROPERTIES CXX_STANDARD 20 RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
+   set_target_properties (parasol_cmd PROPERTIES CXX_STANDARD 20 RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
 endif ()
+
+set_target_properties (parasol_cmd PROPERTIES OUTPUT_NAME "parasol")
 
 # Attach headers to the Parasol binary so that we can ensure that all headers are built
 
-add_dependencies (parasol build_headers)
+add_dependencies (parasol_cmd build_headers)
 
-# ----------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
 # Generate the platform configuration header
 
 configure_file ("src/config.h.in" "parasol/config.h" NEWLINE_STYLE UNIX)
 
-# ----------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
 # Icons are installed as a zip file
 
 file(GLOB_RECURSE icon_files "data/icons/*.svg")
@@ -469,7 +471,7 @@ add_custom_command (
 
 add_custom_target (icon_package ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/icons/Default.zip")
 
-# ----------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
 # Installation steps
 
 if (PARASOL_INSTALL)
@@ -479,11 +481,9 @@ if (PARASOL_INSTALL)
    endif ()
 
    if (RUN_ANYWHERE)
-      install (TARGETS parasol DESTINATION .)
-      set (PARASOL_CMD_TARGET "${CMAKE_INSTALL_PREFIX}/parasol")
+      install (TARGETS parasol_cmd DESTINATION .)
    else ()
-      install (TARGETS parasol DESTINATION "bin")
-      set (PARASOL_CMD_TARGET "${CMAKE_INSTALL_PREFIX}/bin/parasol")
+      install (TARGETS parasol_cmd DESTINATION "bin")
    endif ()
 
 if (WIN32)
