@@ -14,7 +14,6 @@ static LONG xrGetDisplayTotal(void);
 static struct xrMode * xrGetDisplayMode(LONG);
 
 MODULE_COREBASE;
-static struct X11Globals *glX11 = 0;
 static struct _XDisplay *XDisplay;
 static XRRScreenSize glCustomSizes[] = { { 640,480,0,0 }, { 800,600,0,0 }, { 1024,768,0,0 }, { 1280,1024,0,0 } };
 static XRRScreenSize *glSizes = glCustomSizes;
@@ -52,105 +51,89 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    }
    else return log.warning(ERR_FieldNotSet);
 
-   // Access the global x11 variables
-
-   if (AccessMemoryID(RPM_X11, MEM_READ_WRITE, 1000, &glX11) != ERR_Okay) {
-      return log.warning(ERR_AccessMemory);
-   }
-
-   glX11->RRInitialised++;
-
    LONG screen = DefaultScreen(XDisplay);
 
-   BYTE avail = FALSE;
-   if (glX11->Manager) {
-      LONG events;
-      if (XRRQueryExtension(XDisplay, &events, &errors)) {
-         avail = TRUE;
-      }
-      else log.msg("XRRQueryExtension() failed.");
+   bool avail = false;
+   LONG events;
+   if (XRRQueryExtension(XDisplay, &events, &errors)) avail = true;
+   else log.msg("XRRQueryExtension() failed.");
+
+   if (!avail) return ERR_ServiceUnavailable|ERF_Notified;
+
+   if ((sizes = XRRSizes(XDisplay, screen, &count)) and (count)) {
+      glSizes = sizes;
+      glSizeCount = count;
    }
-   else log.msg("X11 display ownership is not enabled.");
+   else log.msg("XRRSizes() failed.");
 
-   if (avail) {
-      if ((sizes = XRRSizes(XDisplay, screen, &count)) and (count)) {
-         glSizes = sizes;
-         glSizeCount = count;
-      }
-      else log.msg("XRRSizes() failed.");
-   }
+   // Build the screen.xml file if this is the first task to initialise the RandR extension.
 
-   if ((avail) and (glX11->RRInitialised <= 1)) {
-      // Build the screen.xml file if this is the first task to initialise the RandR extension.
+   objFile::create file = { fl::Path("user:config/screen.xml"), fl::Flags(FL_NEW|FL_WRITE) };
 
-      objFile::create file = { fl::Path("user:config/screen.xml"), fl::Flags(FL_NEW|FL_WRITE) };
+   if (file.ok()) {
+      write_string(*file, "<?xml version=\"1.0\"?>\n\n");
+      write_string(*file, "<displayinfo>\n");
+      write_string(*file, "  <manufacturer value=\"XFree86\"/>\n");
+      write_string(*file, "  <chipset value=\"X11\"/>\n");
+      write_string(*file, "  <dac value=\"N/A\"/>\n");
+      write_string(*file, "  <clock value=\"N/A\"/>\n");
+      write_string(*file, "  <version value=\"1.00\"/>\n");
+      write_string(*file, "  <certified value=\"February 2023\"/>\n");
+      write_string(*file, "  <monitor_mfr value=\"Unknown\"/>\n");
+      write_string(*file, "  <monitor_model value=\"Unknown\"/>\n");
+      write_string(*file, "  <scanrates minhscan=\"0\" maxhscan=\"0\" minvscan=\"0\" maxvscan=\"0\"/>\n");
+      write_string(*file, "  <gfx_output unknown/>\n");
+      write_string(*file, "</displayinfo>\n\n");
 
-      if (file.ok()) {
-         write_string(*file, "<?xml version=\"1.0\"?>\n\n");
-         write_string(*file, "<displayinfo>\n");
-         write_string(*file, "  <manufacturer value=\"XFree86\"/>\n");
-         write_string(*file, "  <chipset value=\"X11\"/>\n");
-         write_string(*file, "  <dac value=\"N/A\"/>\n");
-         write_string(*file, "  <clock value=\"N/A\"/>\n");
-         write_string(*file, "  <version value=\"1.00\"/>\n");
-         write_string(*file, "  <certified value=\"February 2007\"/>\n");
-         write_string(*file, "  <monitor_mfr value=\"Unknown\"/>\n");
-         write_string(*file, "  <monitor_model value=\"Unknown\"/>\n");
-         write_string(*file, "  <scanrates minhscan=\"0\" maxhscan=\"0\" minvscan=\"0\" maxvscan=\"0\"/>\n");
-         write_string(*file, "  <gfx_output unknown/>\n");
-         write_string(*file, "</displayinfo>\n\n");
+      WORD xbpp = DefaultDepth(XDisplay, screen);
 
-         WORD xbpp = DefaultDepth(XDisplay, screen);
+      WORD xbytes;
+      if (xbpp <= 8) xbytes = 1;
+      else if (xbpp <= 16) xbytes = 2;
+      else if (xbpp <= 24) xbytes = 3;
+      else xbytes = 4;
 
-         WORD xbytes;
-         if (xbpp <= 8) xbytes = 1;
-         else if (xbpp <= 16) xbytes = 2;
-         else if (xbpp <= 24) xbytes = 3;
-         else xbytes = 4;
-
-         if ((list = XListPixmapFormats(XDisplay, &count))) {
-            for (i=0; i < count; i++) {
-               if (list[i].depth IS xbpp) {
-                  xbytes = list[i].bits_per_pixel;
-                  if (list[i].bits_per_pixel <= 8) xbytes = 1;
-                  else if (list[i].bits_per_pixel <= 16) xbytes = 2;
-                  else if (list[i].bits_per_pixel <= 24) xbytes = 3;
-                  else xbytes = 4;
-               }
-            }
-         }
-
-         if (xbytes IS 4) xbpp = 32;
-
-         LONG xcolours;
-         switch(xbpp) {
-            case 1:  xcolours = 2; break;
-            case 8:  xcolours = 256; break;
-            case 15: xcolours = 32768; break;
-            case 16: xcolours = 65536; break;
-            default: xcolours = 16777216; break;
-         }
-
-         for (i=0; i < glSizeCount; i++) {
-            if ((glSizes[i].width >= 640) and (glSizes[i].height >= 480)) {
-               snprintf(buffer, sizeof(buffer), "<screen name=\"%dx%d\" width=\"%d\" height=\"%d\" depth=\"%d\" colours=\"%d\"\n",
-                  glSizes[i].width, glSizes[i].height, glSizes[i].width, glSizes[i].height, xbpp, xcolours);
-               write_string(*file, buffer);
-
-               snprintf(buffer, sizeof(buffer), "  bytes=\"%d\" defaultrefresh=\"0\" minrefresh=\"0\" maxrefresh=\"0\">\n", xbytes);
-               write_string(*file, buffer);
-
-               write_string(*file, "</screen>\n\n");
+      if ((list = XListPixmapFormats(XDisplay, &count))) {
+         for (i=0; i < count; i++) {
+            if (list[i].depth IS xbpp) {
+               xbytes = list[i].bits_per_pixel;
+               if (list[i].bits_per_pixel <= 8) xbytes = 1;
+               else if (list[i].bits_per_pixel <= 16) xbytes = 2;
+               else if (list[i].bits_per_pixel <= 24) xbytes = 3;
+               else xbytes = 4;
             }
          }
       }
+
+      if (xbytes IS 4) xbpp = 32;
+
+      LONG xcolours;
+      switch(xbpp) {
+         case 1:  xcolours = 2; break;
+         case 8:  xcolours = 256; break;
+         case 15: xcolours = 32768; break;
+         case 16: xcolours = 65536; break;
+         default: xcolours = 16777216; break;
+      }
+
+      for (i=0; i < glSizeCount; i++) {
+         if ((glSizes[i].width >= 640) and (glSizes[i].height >= 480)) {
+            snprintf(buffer, sizeof(buffer), "<screen name=\"%dx%d\" width=\"%d\" height=\"%d\" depth=\"%d\" colours=\"%d\"\n",
+               glSizes[i].width, glSizes[i].height, glSizes[i].width, glSizes[i].height, xbpp, xcolours);
+            write_string(*file, buffer);
+
+            snprintf(buffer, sizeof(buffer), "  bytes=\"%d\" defaultrefresh=\"0\" minrefresh=\"0\" maxrefresh=\"0\">\n", xbytes);
+            write_string(*file, buffer);
+
+            write_string(*file, "</screen>\n\n");
+         }
+      }
    }
 
-   if (avail) return ERR_Okay;
-   else return ERR_ServiceUnavailable|ERF_Notified;
+   return ERR_Okay;
 }
 
-/******************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SetDisplayMode: Change the width and height of the display.
@@ -164,7 +147,7 @@ This function changes the width and height of the display to that indicated by t
 -ERRORS-
 Okay
 
-******************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR xrSetDisplayMode(LONG *Width, LONG *Height)
 {
@@ -219,7 +202,7 @@ static ERROR xrSetDisplayMode(LONG *Width, LONG *Height)
    }
 }
 
-/******************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 Notify: Private
@@ -232,7 +215,7 @@ ptr XEvent: Pointer to an XEvent structure to be processed.
 -RESULT-
 int: Returns 0 or 1.
 
-******************************************************************************/
+*********************************************************************************************************************/
 
 static LONG xrNotify(XEvent *XEvent)
 {
@@ -240,7 +223,7 @@ static LONG xrNotify(XEvent *XEvent)
    return 0;
 }
 
-/******************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 SelectInput: Private
@@ -250,14 +233,14 @@ This is an internal function for the Display module.
 -INPUT-
 int Window: The X11 window to target.
 
-******************************************************************************/
+*********************************************************************************************************************/
 
 static void xrSelectInput(Window Window)
 {
    XRRSelectInput(XDisplay, DefaultRootWindow(XDisplay), RRScreenChangeNotifyMask);
 }
 
-/******************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetDisplayTotal: Returns the total number of display modes.
@@ -267,7 +250,7 @@ This function returns the total number of known display modes.
 -RESULT-
 int: Returns the total number of known display modes.
 
-******************************************************************************/
+*********************************************************************************************************************/
 
 static LONG xrGetDisplayTotal(void)
 {
@@ -285,7 +268,7 @@ static LONG xrGetDisplayTotal(void)
    return glActualCount;
 }
 
-/******************************************************************************
+/*********************************************************************************************************************
 
 -FUNCTION-
 GetDisplayMode: Retrieve information of a display mode.
@@ -298,7 +281,7 @@ int Index: Index of the display mode to retrieve.
 -RESULT-
 ptr: An xrMode structure is returned or NULL on failure.
 
-******************************************************************************/
+*********************************************************************************************************************/
 
 static struct xrMode * xrGetDisplayMode(LONG Index)
 {
@@ -335,22 +318,15 @@ static struct xrMode * xrGetDisplayMode(LONG Index)
 
 #include "module_def.c"
 
-//********************************************************************************************************************
-
 ERROR CMDOpen(OBJECTPTR Module)
 {
    Module->set(FID_FunctionList, glFunctions);
    return ERR_Okay;
 }
 
-//********************************************************************************************************************
-
 static ERROR CMDExpunge(void)
 {
-   if (glX11) { ReleaseMemory(glX11); glX11 = NULL; }
    return ERR_Okay;
 }
-
-//********************************************************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_XRANDR, MOD_IDL, NULL)

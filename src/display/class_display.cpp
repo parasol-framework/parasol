@@ -738,7 +738,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
    #ifdef __xwindows__
       // If the display object will act as window manager, the dimensions must match that of the root window.
 
-      if ((x11WindowManager() IS TRUE) or (Self->Flags & SCR_MAXIMISE)) {
+      if ((glX11.Manager) or (Self->Flags & SCR_MAXIMISE)) {
          Self->Width  = glRootWindow.width;
          Self->Height = glRootWindow.height;
       }
@@ -791,7 +791,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
       swa.event_mask  = ExposureMask|EnterWindowMask|LeaveWindowMask|PointerMotionMask|StructureNotifyMask
                         |KeyPressMask|KeyReleaseMask|ButtonPressMask|ButtonReleaseMask|FocusChangeMask;
 
-      if (x11WindowManager() IS FALSE) {
+      if (!glX11.Manager) {
          Atom protocols[2];
          LONG cwflags;
 
@@ -1560,7 +1560,7 @@ static ERROR DISPLAY_SetDisplay(extDisplay *Self, struct gfxSetDisplay *Args)
    LONG width = Args->Width;
    LONG height = Args->Height;
 
-   if (x11WindowManager() IS TRUE) { // The video mode can only be changed with the XRandR extension
+   if (glX11.Manager) { // The video mode can only be changed with the XRandR extension
       if ((XRandRBase) and (xrSetDisplayMode(&width, &height) IS ERR_Okay)) {
          Self->RefreshRate = 0;
          Self->Width  = width;
@@ -2447,8 +2447,8 @@ static ERROR GET_DriverVendor(extDisplay *Self, CSTRING *Value)
 -FIELD-
 Flags: Optional flag settings.
 
-Optional display flags can be defined here.  Post-initialisation, the only flags that can be set are AUTO_SAVE and
-BORDERLESS.
+Optional display flags can be defined here.  Post-initialisation, the only flags that can be set are `AUTO_SAVE` and
+`BORDERLESS`.
 
 *********************************************************************************************************************/
 
@@ -2506,7 +2506,7 @@ static ERROR SET_Flags(extDisplay *Self, LONG Value)
 
       #elif __xwindows__
 
-         if (x11WindowManager()) return ERR_NoSupport;
+         if (glX11.Manager) return ERR_NoSupport;
 
          Atom protocols[2];
          XSizeHints hints;

@@ -4033,19 +4033,6 @@ struct SharedControl {
    #endif
 };
 
-// X11 Variables
-
-struct X11Globals {
-   UBYTE DGAInitialised;
-   UBYTE InitCount;
-   UBYTE DGACount;
-   UBYTE RRInitialised;
-   UBYTE Manager;
-   UBYTE FailMsg;
-   LONG PixelsPerLine;
-   LONG BankSize;
-};
-
 // Event support
 
 struct rkEvent {
