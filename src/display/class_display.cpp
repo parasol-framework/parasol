@@ -2447,8 +2447,8 @@ static ERROR GET_DriverVendor(extDisplay *Self, CSTRING *Value)
 -FIELD-
 Flags: Optional flag settings.
 
-Optional display flags can be defined here.  Post-initialisation, the only flags that can be set are AUTO_SAVE and
-BORDERLESS.
+Optional display flags can be defined here.  Post-initialisation, the only flags that can be set are `AUTO_SAVE` and
+`BORDERLESS`.
 
 *********************************************************************************************************************/
 
@@ -2506,7 +2506,7 @@ static ERROR SET_Flags(extDisplay *Self, LONG Value)
 
       #elif __xwindows__
 
-         if (x11WindowManager()) return ERR_NoSupport;
+         if (glX11.Manager) return ERR_NoSupport;
 
          Atom protocols[2];
          XSizeHints hints;
