@@ -284,7 +284,7 @@ static int check_xing(objSound *Self, const UBYTE *Frame)
    // Compute byte length with adjustment for padding at the end, but not the start.
 
    LARGE len = prv->TotalFrames * prv->SamplesPerFrame * prv->info.channels * sizeof(WORD);
-   len -= prv->PaddingEnd * prv->info.channels * sizeof(WORD);
+   len -= LARGE(prv->PaddingEnd * prv->info.channels) * sizeof(WORD);
    Self->set(FID_Length, len);
 
    log.msg("Info header detected.  Total Frames: %d, Samples: %d, Track Time: %.2fs, Byte Length: %" PF64 ", Padding: %d/%d", prv->TotalFrames, prv->TotalSamples, seconds_len, len, prv->PaddingStart, prv->PaddingEnd);
@@ -596,8 +596,8 @@ static ERROR MP3_Seek(objSound *Self, struct acSeek *Args)
 
             log.extmsg("Seeking to byte offset %d, frame %d of %d", offset, frame, prv->TotalFrames);
 
-            prv->WriteOffset = frame * prv->SamplesPerFrame * prv->info.channels * sizeof(WORD);
-            prv->ReadOffset = prv->WriteOffset;
+            prv->WriteOffset     = LARGE(frame * prv->SamplesPerFrame * prv->info.channels) * sizeof(WORD);
+            prv->ReadOffset      = prv->WriteOffset;
             prv->FramesProcessed = frame;
             Self->Position = prv->WriteOffset;
          }
@@ -613,7 +613,7 @@ static ERROR MP3_Seek(objSound *Self, struct acSeek *Args)
                prv->StreamSize = size - prv->SeekOffset;
             }
 
-            LONG frame = F2T(prv->TotalFrames * pct);
+            LONG frame  = F2T(prv->TotalFrames * pct);
             LONG offset = F2T(prv->StreamSize * pct);
             if (frame < 0) frame = 0;
             if (offset < 0) offset = 0;
@@ -621,8 +621,8 @@ static ERROR MP3_Seek(objSound *Self, struct acSeek *Args)
 
             log.extmsg("Seeking to byte offset %d, frame %d of %d", offset, frame, prv->TotalFrames);
 
-            prv->WriteOffset = frame * prv->SamplesPerFrame * prv->info.channels * sizeof(WORD);
-            prv->ReadOffset = prv->WriteOffset;
+            prv->WriteOffset     = LARGE(frame * prv->SamplesPerFrame * prv->info.channels) * sizeof(WORD);
+            prv->ReadOffset      = prv->WriteOffset;
             prv->FramesProcessed = frame;
             Self->Position = prv->WriteOffset;
          }
@@ -781,7 +781,7 @@ static LARGE calc_length(objSound *Self, LONG ReduceEnd)
    if (filesize > buffer_size) {
       if (prv->VBR) {
          prv->TotalFrames = F2T((filesize - prv->SeekOffset - frame_start - ReduceEnd) / avg_frame_len);
-         return prv->TotalFrames * frame_samples * channels * sizeof(WORD);
+         return LARGE(prv->TotalFrames * frame_samples * channels) * sizeof(WORD);
       }
       else {
          // For CBR we guess the total frames from the file size.
