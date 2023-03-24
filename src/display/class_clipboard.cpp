@@ -56,7 +56,7 @@ ClipEntry::~ClipEntry() {
    if (Datatype != CLIPTYPE_FILE) {
       auto datatype = GetDatatype(Datatype);
 
-      log.branch("Deleting %" PF64 " clip files for datatype %s / %d.", Items.size(), datatype.c_str(), Datatype);
+      log.branch("Deleting %d clip files for datatype %s / %d.", LONG(Items.size()), datatype.c_str(), Datatype);
 
       // Delete cached clipboard files
 
@@ -739,7 +739,7 @@ static ERROR add_clip(LONG Datatype, const std::vector<ClipItem> &Items, LONG Fl
 {
    pf::Log log(__FUNCTION__);
 
-   log.branch("Datatype: $%x, Flags: $%x, Total Items: %" PF64, Datatype, Flags, Items.size());
+   log.branch("Datatype: $%x, Flags: $%x, Total Items: %d", Datatype, Flags, LONG(Items.size()));
 
    if (Items.empty()) return ERR_Args;
 
