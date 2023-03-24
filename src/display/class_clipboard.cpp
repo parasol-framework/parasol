@@ -26,6 +26,8 @@ number of clips that can be stored in the history cache.
 
 #include "defs.h"
 
+#define MAX_CLIPS 10 // Maximum number of clips stored in the historical buffer
+
 static const FieldDef glDatatypes[] = {
    { "data",   CLIPTYPE_DATA },
    { "audio",  CLIPTYPE_AUDIO },
@@ -36,16 +38,39 @@ static const FieldDef glDatatypes[] = {
    { NULL, 0 }
 };
 
-static ERROR add_clip(MEMORYID, LONG, CSTRING, LONG, CLASSID, LONG, LONG *);
-static void free_clip(ClipEntry *);
+static LONG glCounter = 1;
+std::vector<ClipEntry> glClips;
+
+static std::string GetDatatype(LONG Datatype);
+
+//********************************************************************************************************************
+
+static ERROR add_clip(LONG, const std::vector<ClipItem> &, LONG = 0);
 static ERROR CLIPBOARD_AddObjects(objClipboard *, struct clipAddObjects *);
 
 //********************************************************************************************************************
 
-static CSTRING GetDatatype(LONG Datatype)
+ClipEntry::~ClipEntry() {
+   pf::Log log(__FUNCTION__);
+
+   if (Datatype != CLIPTYPE_FILE) {
+      auto datatype = GetDatatype(Datatype);
+
+      log.branch("Deleting %" PF64 " clip files for datatype %s / %d.", Items.size(), datatype.c_str(), Datatype);
+
+      // Delete cached clipboard files
+
+      for (auto &item : Items) DeleteFile(item.Path.c_str(), NULL);
+   }
+   else log.branch("Datatype: File");
+}
+
+//********************************************************************************************************************
+
+static std::string GetDatatype(LONG Datatype)
 {
-   for (WORD i=0; glDatatypes[i].Name; i++) {
-      if (Datatype IS glDatatypes[i].Value) return (CSTRING)glDatatypes[i].Name;
+   for (unsigned i=0; glDatatypes[i].Name; i++) {
+      if (Datatype IS glDatatypes[i].Value) return std::string(glDatatypes[i].Name);
    }
 
    return "unknown";
@@ -98,42 +123,29 @@ static ERROR CLIPBOARD_AddFile(objClipboard *Self, struct clipAddFile *Args)
    if (!Args) return log.warning(ERR_NullArgs);
    if ((!Args->Path) or (!Args->Path[0])) return log.warning(ERR_MissingPath);
 
-   log.branch("Cluster: %d, Path: %s", Self->ClusterID, Args->Path);
+   log.branch("Path: %s", Args->Path);
 
-   ERROR error = add_clip(Self->ClusterID, Args->Datatype, Args->Path, Args->Flags & (CEF_DELETE|CEF_EXTEND), 0, 1, 0);
+   std::vector<ClipItem> items = { std::string(Args->Path) };
+   ERROR error = add_clip(Args->Datatype, items, Args->Flags & (CEF_DELETE|CEF_EXTEND));
 
 #ifdef _WIN32
    // Add the file to the host clipboard
    if ((!(Self->Flags & CLF_DRAG_DROP)) and (!error)) {
-      pf::ScopedAccessMemory<ClipHeader> header(Self->ClusterID, MEM_READ_WRITE, 3000);
-      if (header.granted()) {
-         auto clips = (ClipEntry *)(header.ptr + 1);
-         pf::ScopedAccessMemory<char> str(clips->Files, MEM_READ_WRITE, 3000);
-         if (str.granted()) {
-            // Build a list of resolved path names in a new buffer that is suitable for passing to Windows.
+      // Build a list of resolved path names in a new buffer that is suitable for passing to Windows.
 
-            STRING win;
-            if (!AllocMemory(512 * clips->TotalItems, MEM_DATA|MEM_NO_CLEAR, &win)) {
-               LONG j = 0, winpos = 0;
-               for (LONG i=0; i < clips->TotalItems; i++) {
-                  STRING path;
-                  if (!ResolvePath(str.ptr+j, 0, &path)) {
-                     winpos += StrCopy(path, win+winpos, 511) + 1;
-                     FreeResource(path);
-                  }
-
-                  while (str.ptr[j]) j++;
-                  j++;
-               }
-               win[winpos++] = 0; // An extra null byte is required to terminate the list for Windows HDROP
-
-               if (winAddClip(CLIPTYPE_FILE, win, winpos, (Args->Flags & CEF_DELETE) ? TRUE : FALSE)) {
-                  error = ERR_LimitedSuccess;
-               }
-
-               FreeResource(win);
-            }
+      std::stringstream win;
+      for (auto &item : glClips[0].Items) {
+         STRING path;
+         if (!ResolvePath(item.Path.c_str(), 0, &path)) {
+            win << path << '\0';
+            FreeResource(path);
          }
+      }
+      win << '\0'; // An extra null byte is required to terminate the list for Windows HDROP
+
+      auto str = win.str();
+      if (winAddClip(CLIPTYPE_FILE, str.c_str(), str.size(), (Args->Flags & CEF_DELETE) ? TRUE : FALSE)) {
+         error = ERR_LimitedSuccess;
       }
    }
 #endif
@@ -144,58 +156,27 @@ static ERROR CLIPBOARD_AddFile(objClipboard *Self, struct clipAddFile *Args)
 /*********************************************************************************************************************
 
 -METHOD-
-AddObject: Extract data from an object and add it to the clipboard.
-
-This method is a simple implementation of the #AddObjects() method and is intended primarily for script usage.
-Please see the #AddObjects() method for details on adding objects to the clipboard.
-
--INPUT-
-int(CLIPTYPE) Datatype: The type of data that you want the object data to be recognised as, or NULL for automatic recognition.
-oid Object: The object containing the data to add.
-int(CEF) Flags: Optional flags.
-
--ERRORS-
-Okay: The object was added to the clipboard.
-NullArgs
-
-*********************************************************************************************************************/
-
-static ERROR CLIPBOARD_AddObject(objClipboard *Self, struct clipAddObject *Args)
-{
-   if (!Args) return ERR_NullArgs;
-
-   OBJECTID objects[2] = { Args->ObjectID, 0 };
-   struct clipAddObjects add = { .Objects = objects, .Flags = Args->Flags };
-   return CLIPBOARD_AddObjects(Self, &add);
-}
-
-/*********************************************************************************************************************
-
--METHOD-
 AddObjects: Extract data from objects and add it all to the clipboard.
 
 Data can be saved to the clipboard directly from an object if the object's class supports the SaveToObject action.  The
-clipboard will ask that the object save its data directly to a cache file, completely removing the need for you to save
-the object data to an interim file for the clipboard.
+clipboard will ask that the object save its data directly to a cache file, completely removing the need for the
+client to save the object data to an interim file for the clipboard.
 
 Certain classes are recognised by the clipboard system and will be added to the correct datatype automatically (for
 instance, Picture objects will be put into the `CLIPTYPE_IMAGE` data category).  If an object's class is not recognised by
 the clipboard system then the data will be stored in the `CLIPTYPE_OBJECT` category to signify that there is a class in the
-system that recognises the data.  If you want to over-ride any aspect of this behaviour, you need to force the Datatype
+system that recognises the data.  If you want to over-ride any aspect of this behaviour, force the Datatype
 parameter with one of the available `CLIPTYPE*` types.
 
-This method supports groups of objects in a single clip, thus requires you to pass an array of object ID's, terminated
-with a NULL entry.
+This method supports groups of objects in a single clip, thus requires an array of object ID's terminated
+with a zero entry.
 
 Optional flags that may be passed to this method are the same as those specified in the #AddFile() method.  The
 `CEF_DELETE` flag has no effect on objects.
 
-This method should always be called directly and not messaged to the clipboard, unless you are able to guarantee that
-the source objects are shared.
-
 -INPUT-
-int(CLIPTYPE) Datatype: The type of data that you want the object data to be recognised as, or NULL for automatic recognition.
-ptr(oid) Objects: Array of shared object ID's to add to the clipboard.
+int(CLIPTYPE) Datatype: The type of data representing the objects, or NULL for automatic recognition.
+ptr(oid) Objects: Array of object ID's to add to the clipboard.
 int(CEF) Flags: Optional flags.
 
 -ERRORS-
@@ -213,57 +194,39 @@ static ERROR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Arg
 
    log.branch();
 
-   // Use the SaveToObject action to save each object's data to the clipboard storage area.  The class ID for each
-   // object is also recorded.
-
-   OBJECTID *list = Args->Objects;
-   WORD total;
-   for (total=0; list[total]; total++);
-
-   LONG counter;
+   LONG counter = glCounter++;
    CLASSID classid = 0;
-   LONG datatype = 0;
-   if (!add_clip(Self->ClusterID, datatype, 0, Args->Flags & CEF_EXTEND, 0, total, &counter)) {
-      for (LONG i=0; list[i]; i++) {
-         pf::ScopedObjectLock<BaseClass> object(list[i], 5000);
-         if (object.granted()) {
-            if (!classid) classid = object.obj->ClassID;
+   LONG datatype = Args->Datatype;
 
-            if (classid IS object.obj->ClassID) {
-               char path[100];
+   std::vector<ClipItem> items;
+   for (unsigned i=0; Args->Objects[i]; i++) {
+      pf::ScopedObjectLock<BaseClass> object(Args->Objects[i], 5000);
+      if (object.granted()) {
+         if (!classid) classid = object.obj->ClassID;
 
-               datatype = Args->Datatype;
-               if (!datatype) {
-                  if (object.obj->ClassID IS ID_PICTURE) {
-                     snprintf(path, sizeof(path), "clipboard:image%d.%.3d", counter, i);
-                     datatype = CLIPTYPE_IMAGE;
-                  }
-                  else if (object.obj->ClassID IS ID_SOUND) {
-                     snprintf(path, sizeof(path), "clipboard:audio%d.%.3d", counter, i);
-                     datatype = CLIPTYPE_AUDIO;
-                  }
-                  else {
-                     snprintf(path, sizeof(path), "clipboard:object%d.%.3d", counter, i);
-                     datatype = CLIPTYPE_OBJECT;
-                  }
-               }
-               else { // Use the specified datatype
-                  snprintf(path, sizeof(path), "clipboard:%s%d.%.3d", GetDatatype(datatype), counter, i);
-               }
-
-               objFile::create file = { fl::Path(path), fl::Flags(FL_WRITE|FL_NEW) };
-               if (file.ok()) {
-                  acSaveToObject(object.obj, file->UID, 0);
-               }
-               else return ERR_CreateFile;
+         if (classid IS object.obj->ClassID) { // The client may not mix and match classes.
+            if (!datatype) {
+               if (object.obj->ClassID IS ID_PICTURE) datatype = CLIPTYPE_IMAGE;
+               else if (object.obj->ClassID IS ID_SOUND) datatype = CLIPTYPE_AUDIO;
+               else datatype = CLIPTYPE_OBJECT;
             }
+
+            char idx[5];
+            snprintf(idx, sizeof(idx), ".%.3d", i);
+            auto path = std::string("clipboard:") + GetDatatype(datatype) + std::to_string(counter) + idx;
+
+            objFile::create file = { fl::Path(path), fl::Flags(FL_WRITE|FL_NEW) };
+            if (file.ok()) acSaveToObject(object.obj, file->UID, 0);
+            else return ERR_CreateFile;
          }
-         else return ERR_Lock;
       }
+      else return ERR_Lock;
+   }
+
+   if (!add_clip(datatype, items, Args->Flags & CEF_EXTEND)) {
+      return ERR_Okay;
    }
    else return ERR_Failed;
-
-   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
@@ -271,17 +234,15 @@ static ERROR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Arg
 -METHOD-
 AddText: Adds a block of text to the clipboard.
 
-Text can be added to the clipboard using the AddText method.  This is the simplest way of passing text to the clipboard,
-although passing text through the data feed system may also be convenient in certain circumstances. Text is passed
-to the clipboard via the String parameter and it must be terminated with a null byte.
+Plain UTF-8 text can be added to the clipboard using the AddText method.
 
 -INPUT-
 cstr String: The text to add to the clipboard.
 
 -ERRORS-
 Okay
-Args
-File
+NullArgs
+CreateFile
 -END-
 
 *********************************************************************************************************************/
@@ -298,21 +259,17 @@ static ERROR CLIPBOARD_AddText(objClipboard *Self, struct clipAddText *Args)
       // Copy text to the windows clipboard.  This requires that we convert from UTF-8 to UTF-16.  For consistency
       // and interoperability purposes, we interact with both the Windows and internal clipboards.
 
-      UWORD *utf16;
-      ERROR error = ERR_Okay;
-      LONG chars = UTF8Length(Args->String);
-      if (!AllocMemory((chars+1) * sizeof(WORD), MEM_DATA|MEM_NO_CLEAR, &utf16)) {
-         CSTRING str = Args->String;
-         LONG i = 0;
-         while (*str) {
-            utf16[i++] = UTF8ReadValue(str, NULL);
-            str += UTF8CharLength(str);
-         }
-         utf16[i] = 0;
-         error = winAddClip(CLIPTYPE_TEXT, utf16, (chars+1) * sizeof(WORD), FALSE);
-         FreeResource(utf16);
+      std::vector<UWORD> utf16(size_t(UTF8Length(Args->String) + 1) * sizeof(WORD));
+
+      auto str = Args->String;
+      auto buf = utf16.data();
+      while (*str) {
+         *buf++ = UTF8ReadValue(str, NULL);
+         str += UTF8CharLength(str);
       }
-      else error = ERR_AllocMemory;
+      *buf++ = 0;
+
+      auto error = winAddClip(CLIPTYPE_TEXT, utf16.data(), utf16.size(), FALSE);
 
       if (error) return log.warning(error);
    }
@@ -320,13 +277,9 @@ static ERROR CLIPBOARD_AddText(objClipboard *Self, struct clipAddText *Args)
 
    log.branch();
 
-   ERROR error;
-   LONG counter;
-   if (!(error = add_clip(Self->ClusterID, CLIPTYPE_TEXT, 0, 0, 0, 1, &counter))) {
-      char buffer[200];
-      snprintf(buffer, sizeof(buffer), "clipboard:text%d.000", counter);
-
-      pf::Create<objFile> file = { fl::Path(buffer), fl::Flags(FL_WRITE|FL_NEW), fl::Permissions(PERMIT_READ|PERMIT_WRITE) };
+   std::vector<ClipItem> items = { std::string("clipboard:text") + std::to_string(glCounter++) + ".000" };
+   if (auto error = add_clip(CLIPTYPE_TEXT, items); !error) {
+      pf::Create<objFile> file = { fl::Path(items[0].Path), fl::Flags(FL_WRITE|FL_NEW), fl::Permissions(PERMIT_READ|PERMIT_WRITE) };
       if (file.ok()) {
          file->write(Args->String, StrLength(Args->String), 0);
          return ERR_Okay;
@@ -344,8 +297,6 @@ Clear: Destroys all cached data that is stored in the clipboard.
 
 static ERROR CLIPBOARD_Clear(objClipboard *Self, APTR Void)
 {
-   // Delete the clipboard directory and all content
-
    STRING path;
    if (!ResolvePath("clipboard:", RSF_NO_FILE_CHECK, &path)) {
       DeleteFile(path, NULL);
@@ -353,15 +304,8 @@ static ERROR CLIPBOARD_Clear(objClipboard *Self, APTR Void)
       FreeResource(path);
    }
 
-   // Annihilate all historical clip information
-
-   pf::ScopedAccessMemory<ClipHeader> clips(Self->ClusterID, MEM_READ_WRITE, 3000);
-   if (clips.granted()) {
-      auto history = (ClipEntry *)(clips.ptr + 1);
-      ClearMemory(history, MAX_CLIPS * sizeof(ClipEntry));
-      return ERR_Okay;
-   }
-   else return ERR_AccessMemory;
+   glClips.clear();
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
@@ -378,7 +322,6 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
 {
    pf::Log log;
    char buffer[200];
-   LONG counter;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -419,9 +362,8 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
       }
       #endif
 
-      if (!add_clip(Self->ClusterID, CLIPTYPE_TEXT, 0, 0, 0, 1, &counter)) {
-         snprintf(buffer, sizeof(buffer), "clipboard:text%d.000", counter);
-
+      std::vector<ClipItem> items = { std::string("clipboard:text") + std::to_string(glCounter++) + std::string(".000") };
+      if (!add_clip(CLIPTYPE_TEXT, items)) {
          objFile::create file = {
             fl::Path(buffer),
             fl::Flags(FL_NEW|FL_WRITE),
@@ -440,34 +382,31 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
       else return log.warning(ERR_Failed);
    }
    else if ((Args->DataType IS DATA_REQUEST) and (Self->Flags & CLF_DRAG_DROP))  {
-      if (Self->RequestHandler.Type) {
-         auto request = (struct dcRequest *)Args->Buffer;
-         log.branch("Data request from #%d received for item %d, datatype %d", Args->ObjectID, request->Item, request->Preference[0]);
+      auto request = (struct dcRequest *)Args->Buffer;
+      log.branch("Data request from #%d received for item %d, datatype %d", Args->ObjectID, request->Item, request->Preference[0]);
 
-         ERROR error;
-         if (Self->RequestHandler.Type IS CALL_STDC) {
-            auto routine = (ERROR (*)(objClipboard *, OBJECTID, LONG, char *))Self->RequestHandler.StdC.Routine;
-            pf::SwitchContext ctx(Self->RequestHandler.StdC.Context);
-            error = routine(Self, Args->ObjectID, request->Item, request->Preference);
-         }
-         else if (Self->RequestHandler.Type IS CALL_SCRIPT) {
-            const ScriptArg args[] = {
-               { "Clipboard", FD_OBJECTPTR,     { .Address = Self } },
-               { "Requester", FD_OBJECTID,      { .Long = Args->ObjectID } },
-               { "Item",      FD_LONG,          { .Long = request->Item } },
-               { "Datatypes", FD_ARRAY|FD_BYTE, { .Address = request->Preference } },
-               { "Size",      FD_LONG|FD_ARRAYSIZE, { .Long = ARRAYSIZE(request->Preference) } }
-            };
-            auto script = Self->RequestHandler.Script.Script;
-            if (scCallback(script, Self->RequestHandler.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
-         }
-         else error = log.warning(ERR_FieldNotSet);
-
-         if (error IS ERR_Terminate) Self->RequestHandler.Type = 0;
-
-         return ERR_Okay;
+      ERROR error = ERR_Okay;
+      if (Self->RequestHandler.Type IS CALL_STDC) {
+         auto routine = (ERROR (*)(objClipboard *, OBJECTID, LONG, char *))Self->RequestHandler.StdC.Routine;
+         pf::SwitchContext ctx(Self->RequestHandler.StdC.Context);
+         error = routine(Self, Args->ObjectID, request->Item, request->Preference);
       }
-      else return ERR_NoSupport;
+      else if (Self->RequestHandler.Type IS CALL_SCRIPT) {
+         const ScriptArg args[] = {
+            { "Clipboard", FD_OBJECTPTR,     { .Address = Self } },
+            { "Requester", FD_OBJECTID,      { .Long = Args->ObjectID } },
+            { "Item",      FD_LONG,          { .Long = request->Item } },
+            { "Datatypes", FD_ARRAY|FD_BYTE, { .Address = request->Preference } },
+            { "Size",      FD_LONG|FD_ARRAYSIZE, { .Long = ARRAYSIZE(request->Preference) } }
+         };
+         auto script = Self->RequestHandler.Script.Script;
+         if (scCallback(script, Self->RequestHandler.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
+      }
+      else error = log.warning(ERR_FieldNotSet);
+
+      if (error IS ERR_Terminate) Self->RequestHandler.Type = 0;
+
+      return ERR_Okay;
    }
    else log.warning("Unrecognised data type %d.", Args->DataType);
 
@@ -483,7 +422,6 @@ static ERROR CLIPBOARD_Free(objClipboard *Self, APTR Void)
       Self->RequestHandler.Type = CALL_NONE;
    }
 
-   if (Self->ClusterAllocated) { FreeResourceID(Self->ClusterID); Self->ClusterID = 0; }
    return ERR_Okay;
 }
 
@@ -501,8 +439,8 @@ is returned.
 
 On success this method will return a list of files (terminated with a NULL entry) in the Files parameter.  Each file is
 a readable clipboard entry - how the client reads it depends on the resulting Datatype.  Additionally, the
-IdentifyFile() function could be used to find a class that supports the data.  The resulting Files array is a memory
-allocation that must be freed with a call to ~Core.FreeResource().
+~Core.IdentifyFile() function could be used to find a class that supports the data.  The resulting Files array is a
+memory allocation that must be freed with a call to ~Core.FreeResource().
 
 If this method returns the `CEF_DELETE` flag in the Flags parameter, the client must delete the source files after
 successfully copying the data.  When cutting and pasting files within the file system, using ~Core.MoveFile() is
@@ -529,119 +467,56 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   log.branch("Cluster: %d, Datatype: $%.8x", Self->ClusterID, Args->Datatype);
+   log.branch("Datatype: $%.8x", Args->Datatype);
 
    Args->Files = NULL;
 
    // Find the first clipboard entry to match what has been requested
 
-   ClipHeader *header;
-   if (!AccessMemoryID(Self->ClusterID, MEM_READ_WRITE, 3000, &header)) {
-      auto clips = (ClipEntry *)(header + 1);
+   LONG index;
 
-      WORD index, i;
-
-      if (!Args->Datatype) { // Retrieve the most recent clip item, or the one indicated in the Index parameter.
-         if ((Args->Index < 0) or (Args->Index >= MAX_CLIPS)) {
-            ReleaseMemory(header);
-            return ERR_OutOfRange;
-         }
-
-         index = Args->Index;
-      }
-      else {
-         for (index=0; index < MAX_CLIPS; index++) {
-            if (Args->Datatype & clips[index].Datatype) break;
-         }
+   if (!Args->Datatype) { // Retrieve the most recent clip item, or the one indicated in the Index parameter.
+      if ((Args->Index < 0) or (Args->Index >= LONG(glClips.size()))) return ERR_OutOfRange;
+      index = Args->Index;
+   }
+   else {
+      for (index=0; index < LONG(glClips.size()); index++) {
+         if (Args->Datatype & glClips[index].Datatype) break;
       }
 
-      if (index >= MAX_CLIPS) {
+      if (index >= LONG(glClips.size())) {
          log.warning("No clips available for datatype $%x", Args->Datatype);
-         ReleaseMemory(header);
          return ERR_NoData;
       }
-      else if (clips[index].TotalItems < 1) {
-         log.warning("No items are allocated to datatype $%x at clip index %d", clips[index].Datatype, index);
-         ReleaseMemory(header);
-         return ERR_NoData;
+   }
+
+   auto &clip = glClips[index];
+
+   if (clip.Items.empty()) {
+      log.warning("No items are allocated to datatype $%x at clip index %d", clip.Datatype, index);
+      return ERR_NoData;
+   }
+
+   Args->Flags    = clip.Flags;
+   Args->Datatype = clip.Datatype;
+
+   CSTRING *list = NULL;
+   LONG str_len = 0;
+   for (auto &item : clip.Items) str_len += item.Path.size() + 1;
+   if (!AllocMemory(((clip.Items.size()+1) * sizeof(STRING)) + str_len, MEM_DATA|MEM_CALLER, &list)) {
+      Args->Files = list;
+
+      auto dest = (char *)list + ((clip.Items.size() + 1) * sizeof(STRING));
+      for (auto &item : clip.Items) {
+         *list++ = dest;
+         CopyMemory(item.Path.c_str(), dest, item.Path.size() + 1);
+         dest += item.Path.size() + 1;
       }
+      *list = NULL;
 
-      ERROR error;
-      STRING files;
-      CSTRING *list = NULL;
-      if (clips[index].Files) {
-         if (!(error = AccessMemoryID(clips[index].Files, MEM_READ, 3000, &files))) {
-            MEMINFO info;
-            if (!MemoryIDInfo(clips[index].Files, &info)) {
-               if (!AllocMemory(((clips[index].TotalItems+1) * sizeof(STRING)) + info.Size, MEM_DATA|MEM_CALLER, &list)) {
-                  CopyMemory(files, list + clips[index].TotalItems + 1, info.Size);
-               }
-               else {
-                  ReleaseMemory(files);
-                  ReleaseMemory(header);
-                  return ERR_AllocMemory;
-               }
-            }
-            ReleaseMemory(files);
-         }
-         else {
-            log.warning("Failed to access file string #%d, error %d.", clips[index].Files, error);
-            if (error IS ERR_MemoryDoesNotExist) clips[index].Files = 0;
-            ReleaseMemory(header);
-            return ERR_AccessMemory;
-         }
-      }
-      else {
-         if (clips[index].Datatype IS CLIPTYPE_FILE) {
-            log.warning("File datatype detected, but no file list has been set.");
-            ReleaseMemory(header);
-            return ERR_Failed;
-         }
-
-         // Calculate the length of the file strings
-
-         char buffer[100];
-         LONG len = snprintf(buffer, sizeof(buffer), "clipboard:%s%d.000", GetDatatype(clips[index].Datatype), clips[index].ID);
-         len = ((len + 1) * clips[index].TotalItems) + 1;
-
-         // Allocate the list array with some room for the strings at the end and then fill it with data.
-
-         if (!AllocMemory(((clips[index].TotalItems+1) * sizeof(STRING)) + len, MEM_DATA|MEM_CALLER, &list)) {
-            STRING str = (STRING)(list + clips[index].TotalItems + 1);
-            for (i=0; i < clips[index].TotalItems; i++) {
-               if (i > 0) *str++ = '\0'; // Each file is separated with a NULL character
-               snprintf(str, len, "clipboard:%s%d.%.3d", GetDatatype(clips[index].Datatype), clips[index].ID, i);
-               while (*str) str++;
-            }
-            *str = 0;
-         }
-         else {
-            ReleaseMemory(header);
-            return ERR_AllocMemory;
-         }
-      }
-
-      // Setup the pointers in the string list
-
-      CSTRING str = (CSTRING)(list + clips[index].TotalItems + 1);
-      LONG j = 0;
-      for (i=0; i < clips[index].TotalItems; i++) {
-         list[i] = str + j;
-         while (str[j]) j++;  // Go to the end of the string to get to the next entry
-         j++;
-      }
-      list[i] = NULL;
-
-      // Results
-
-      Args->Datatype = clips[index].Datatype;
-      Args->Files    = list;
-      Args->Flags    = clips[index].Flags;
-
-      ReleaseMemory(header);
       return ERR_Okay;
    }
-   else return ERR_AccessMemory;
+   else return ERR_AllocMemory;
 }
 
 /*********************************************************************************************************************
@@ -669,27 +544,21 @@ static ERROR CLIPBOARD_Remove(objClipboard *Self, struct clipRemove *Args)
 
    if ((!Args) or (!Args->Datatype)) return log.warning(ERR_NullArgs);
 
-   log.branch("Cluster: %d, Datatype: $%x", Self->ClusterID, Args->Datatype);
+   log.branch("Datatype: $%x", Args->Datatype);
 
-   ClipHeader *header;
-
-   if (!AccessMemoryID(Self->ClusterID, MEM_READ_WRITE, 3000, &header)) {
-      auto clips = (ClipEntry *)(header + 1);
-      for (WORD i=0; i < MAX_CLIPS; i++) {
-         if (clips[i].Datatype & Args->Datatype) {
-            if (i IS 0) {
-               #ifdef _WIN32
-               winClearClipboard();
-               #endif
-            }
-            free_clip(&clips[i]);
+   for (auto it=glClips.begin(); it != glClips.end();) {
+      if (it->Datatype & Args->Datatype) {
+         if (it IS glClips.begin()) {
+            #ifdef _WIN32
+            winClearClipboard();
+            #endif
          }
+         it = glClips.erase(it);
       }
-
-      ReleaseMemory(header);
-      return ERR_Okay;
+      else it++;
    }
-   else return log.warning(ERR_AccessMemory);
+
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
@@ -716,9 +585,7 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if ((!Args->Field) or (!Args->Buffer) or (Args->Size < 1)) {
-      return log.warning(ERR_Args);
-   }
+   if ((!Args->Field) or (!Args->Buffer) or (Args->Size < 1)) return log.warning(ERR_Args);
 
    if (!Self->initialised()) return log.warning(ERR_Failed);
 
@@ -746,54 +613,19 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
       for (j=0; (Args->Field[i]) and (Args->Field[i] != ')'); i++) index[j++] = Args->Field[i];
       index[j] = 0;
 
-      ClipHeader *header;
-      if (!AccessMemoryID(Self->ClusterID, MEM_READ_WRITE, 3000, &header)) {
-         // Find the clip for the requested datatype
+      // Find the clip for the requested datatype
 
-         auto clips = (ClipEntry *)(header + 1);
-
-         ClipEntry *clip = NULL;
-         for (i=0; i < MAX_CLIPS; i++) {
-            if (clips[i].Datatype IS value) {
-               clip = &clips[i];
-               break;
+      for (auto &clip : glClips) {
+         if (clip.Datatype IS value) {
+            LONG item = StrToInt(index);
+            if ((item >= 0) and (item < LONG(clip.Items.size()))) {
+               StrCopy(clip.Items[item].Path.c_str(), Args->Buffer, Args->Size);
             }
+            return ERR_Okay;
          }
-
-         if (clip) {
-            LONG i = StrToInt(index);
-            if ((i >= 0) and (i < clip->TotalItems)) {
-               if (clip->Files) {
-                  STRING files;
-                  if (!AccessMemoryID(clip->Files, MEM_READ, 3000, &files)) {
-                     // Find the file path that we're looking for
-
-                     LONG j = 0;
-                     while ((i) and (j < clip->FilesLen)) {
-                        for (; files[j]; j++);
-                        if (j < clip->FilesLen) j++; // Skip null byte separator
-                        i--;
-                     }
-
-                     // Copy the discovered path into the result buffer
-
-                     StrCopy(files+j, Args->Buffer, Args->Size);
-
-                     ReleaseMemory(files);
-                  }
-                  else {
-                     ReleaseMemory(header);
-                     return log.warning(ERR_AccessMemory);
-                  }
-               }
-               else snprintf(Args->Buffer, Args->Size, "clipboard:%s%d.%.3d", datatype, clip->ID, i);
-            }
-         }
-
-         ReleaseMemory(header);
-         return ERR_Okay;
       }
-      else return log.warning(ERR_AccessMemory);
+
+      return ERR_Okay;
    }
    else if (!StrCompare("Items(", Args->Field, 0, 0)) {
       // Extract the datatype
@@ -814,14 +646,10 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
 
       LONG total = 0;
       if (value) {
-         pf::ScopedAccessMemory<ClipHeader> header(Self->ClusterID, MEM_READ, 3000);
-         if (header.granted()) {
-            auto clips = (ClipEntry *)(header.ptr + 1);
-            for (WORD i=0; i < MAX_CLIPS; i++) {
-               if (clips[i].Datatype IS value) {
-                  total = clips[i].TotalItems;
-                  break;
-               }
+         for (unsigned i=0; i < glClips.size(); i++) {
+            if (glClips[i].Datatype IS value) {
+               total = glClips[i].Items.size();
+               break;
             }
          }
       }
@@ -837,16 +665,6 @@ static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
 static ERROR CLIPBOARD_Init(objClipboard *Self, APTR Void)
 {
    pf::Log log;
-
-   if ((!Self->ClusterID) or (Self->Flags & CLF_DRAG_DROP)) {
-      // Create a new grouping for this clipboard.  It will be possible for any other clipboard to attach
-      // itself to this memory block if the ID is known.
-
-      if (!AllocMemory(sizeof(ClipHeader) + (MAX_CLIPS * sizeof(ClipEntry)), MEM_PUBLIC|MEM_NO_BLOCKING, NULL, &Self->ClusterID)) {
-         Self->ClusterAllocated = TRUE;
-      }
-      else return log.warning(ERR_AllocMemory);
-   }
 
    // Create a directory under temp: to store clipboard data
 
@@ -868,23 +686,10 @@ static ERROR CLIPBOARD_Init(objClipboard *Self, APTR Void)
 
 static ERROR CLIPBOARD_NewObject(objClipboard *Self, APTR Void)
 {
-   Self->ClusterID = RPM_Clipboard;
    return ERR_Okay;
 }
 
 /*********************************************************************************************************************
-
--FIELD-
-Cluster: Identifies a unique cluster of items targeted by a clipboard object.
-
-By default, all clipboard objects will operate on a global cluster of clipboard entries.  This global cluster is used
-by all applications, so a cut operation in application 1 would transfer selected items during a paste operation to
-application 2.
-
-If the Cluster field is set to zero prior to initialisation, a unique cluster will be assigned to that clipboard object.
-The ID of that cluster can be read from the Cluster field at any time and used in the creation of new clipboard objects.
-By sharing the ID with other applications, a private clipboard can be created that does not impact on the user's cut
-and paste operations.
 
 -FIELD-
 Flags: Optional flags.
@@ -930,149 +735,48 @@ static ERROR SET_RequestHandler(objClipboard *Self, FUNCTION *Value)
 
 //********************************************************************************************************************
 
-static void free_clip(ClipEntry *Clip)
+static ERROR add_clip(LONG Datatype, const std::vector<ClipItem> &Items, LONG Flags)
 {
    pf::Log log(__FUNCTION__);
 
-   if (Clip->TotalItems > 16384) Clip->TotalItems = 16384;
+   log.branch("Datatype: $%x, Flags: $%x, Total Items: %" PF64, Datatype, Flags, Items.size());
 
-   if (Clip->Datatype != CLIPTYPE_FILE) {
-      CSTRING datatype = GetDatatype(Clip->Datatype);
+   if (Items.empty()) return ERR_Args;
 
-      log.branch("Deleting %d clip files for datatype %s / %d.", Clip->TotalItems, datatype, Clip->Datatype);
+   if (Flags & CEF_EXTEND) {
+      // Search for an existing clip that matches the requested datatype
+      for (auto it = glClips.begin(); it != glClips.end(); it++) {
+         if (it->Datatype IS Datatype) {
+            log.msg("Extending existing clip record for datatype $%x.", Datatype);
 
-      // Delete cached clipboard files
+            auto clip = *it;
+            clip.Items.insert(clip.Items.end(), Items.begin(), Items.end());
 
-      for (WORD i=0; i < Clip->TotalItems; i++) {
-         char buffer[200];
-         snprintf(buffer, sizeof(buffer), "clipboard:%s%d.%.3d", datatype, Clip->ID, i);
-         DeleteFile(buffer, NULL);
-      }
-   }
-   else log.branch("Datatype: File");
+            // Move clip to the front of the queue.
 
-   if (Clip->Files) { FreeResourceID(Clip->Files); Clip->Files = 0; }
-
-   ClearMemory(Clip, sizeof(ClipEntry));
-}
-
-//********************************************************************************************************************
-
-static ERROR add_clip(MEMORYID ClusterID, LONG Datatype, CSTRING File, LONG Flags,
-   CLASSID ClassID, LONG TotalItems, LONG *Counter)
-{
-   pf::Log log(__FUNCTION__);
-
-   log.branch("Datatype: $%x, File: %s, Flags: $%x, Class: %d, Total Items: %d", Datatype, File, Flags, ClassID, TotalItems);
-
-   ClipEntry clip, tmp;
-   ClearMemory(&clip, sizeof(clip));
-
-   if (!TotalItems) {
-      log.msg("TotalItems parameter not specified.");
-      return ERR_NullArgs;
-   }
-
-   ClipHeader *header;
-   if (!AccessMemoryID(ClusterID, MEM_READ_WRITE, 3000, &header)) {
-      auto clips = (ClipEntry *)(header + 1);
-
-      if (Flags & CEF_EXTEND) {
-         // Search for an existing clip that matches the requested datatype
-         for (WORD i=0; i < MAX_CLIPS; i++) {
-            if (clips[i].Datatype IS Datatype) {
-               log.msg("Extending existing clip record for datatype $%x.", Datatype);
-
-               ERROR error = ERR_Okay;
-
-               // We have found a matching datatype.  Start by moving the clip to the front of the queue.
-
-               CopyMemory(clips+i, &tmp, sizeof(ClipEntry)); // TODO We need to shift the list down, not swap entries
-               CopyMemory(clips, clips+i, sizeof(ClipEntry));
-               CopyMemory(&tmp, clips, sizeof(ClipEntry));
-
-               // Extend the existing clip with the new items/file
-
-               if (File) {
-                  if (clips->Files) {
-                     STRING str;
-                     if (!AccessMemoryID(clips->Files, MEM_READ_WRITE, 3000, &str)) {
-                        MEMINFO meminfo;
-                        if (!MemoryIDInfo(clips->Files, &meminfo)) {
-                           if (!ReallocMemory(str, meminfo.Size + StrLength(File) + 1, &str, &clips->Files)) {
-                              StrCopy(File, str + meminfo.Size);
-                              clips->TotalItems += TotalItems;
-                           }
-                           else error = ERR_ReallocMemory;
-                        }
-                        else error = ERR_MemoryInfo;
-
-                        ReleaseMemory(str);
-                     }
-                     else error = ERR_AccessMemory;
-                  }
-               }
-               else {
-                  if (Datatype IS DATA_FILE) {
-                     log.warning("DATA_FILE datatype used, but a specific file path was not provided.");
-                     error = ERR_Failed;
-                  }
-                  else clips->TotalItems += TotalItems; // Virtual file name
-               }
-
-               if (Counter) *Counter = clips->ID;
-
-               ReleaseMemory(header);
-               return error;
-            }
+            glClips.erase(it);
+            glClips.insert(glClips.begin(), clip);
+            return ERR_Okay;
          }
       }
-
-      // If a file string was specified, copy it to the clip entry
-
-      if (File) {
-         STRING str;
-         LONG len = StrLength(File) + 1;
-         if (!AllocMemory(len, MEM_STRING|MEM_NO_CLEAR|MEM_PUBLIC|MEM_UNTRACKED, &str, &clip.Files)) {
-            CopyMemory(File, str, len);
-            ReleaseMemory(str);
-         }
-         else {
-            ReleaseMemory(header);
-            return ERR_AllocMemory;
-         }
-      }
-
-      // Set the clip details
-
-      clip.Datatype   = Datatype;
-      clip.Flags      = Flags & CEF_DELETE;
-      clip.ClassID    = ClassID;
-      clip.TotalItems = TotalItems;
-      clip.ID         = ++header->Counter;
-      if (Counter) *Counter = clip.ID;
-
-      // Remove any existing clips that match this datatype
-
-      for (WORD i=0; i < MAX_CLIPS; i++) {
-         if (clips[i].Datatype IS Datatype) free_clip(&clips[i]);
-      }
-
-      // Remove the oldest clip if the history buffer is full.
-
-      if (clips[MAX_CLIPS-1].Datatype) {
-         free_clip(&clips[MAX_CLIPS-1]);
-      }
-
-      // Insert the new clip entry at start of the history buffer
-
-      CopyMemory(clips, clips+1, MAX_CLIPS-1);
-      CopyMemory(&clip, clips, sizeof(clip));
-
-      ReleaseMemory(header);
-      return ERR_Okay;
    }
-   else return ERR_AccessMemory;
+
+   ClipEntry clip;
+
+   clip.Datatype = Datatype;
+   clip.Flags    = Flags & CEF_DELETE;
+   clip.Items    = Items;
+
+   // Remove any existing clips that match this datatype
+
+   for (auto it = glClips.begin(); it != glClips.end(); ) {
+      if (it->Datatype IS Datatype) it = glClips.erase(it);
+      else it++;
+   }
+
+   if (glClips.size() >= MAX_CLIPS) glClips.pop_back(); // Remove oldest clip if history buffer is full.
+   glClips.insert(glClips.begin(), clip); // Insert the new clip entry at start of the history buffer
+   return ERR_Okay;
 }
 
 //********************************************************************************************************************
@@ -1107,14 +811,12 @@ extern "C" void report_windows_files(APTR Data, LONG CutOperation)
 
    log.branch("Application has detected files on the clipboard.  Cut: %d", CutOperation);
 
-   APTR lock;
-   if (!AccessMemoryID(RPM_Clipboard, MEM_READ_WRITE, 3000, &lock)) {
-      char path[256];
-      for (LONG i=0; winExtractFile(Data, i, path, sizeof(path)); i++) {
-         add_clip(RPM_Clipboard, CLIPTYPE_FILE, path, (i ? CEF_EXTEND : 0) | (CutOperation ? CEF_DELETE : 0), 0, 1, 0);
-      }
-      ReleaseMemory(lock);
+   std::vector<ClipItem> items;
+   char buffer[256];
+   for (LONG i=0; winExtractFile(Data, i, buffer, sizeof(buffer)); i++) {
+      items.push_back(std::string(buffer));
    }
+   add_clip(CLIPTYPE_FILE, items, CutOperation ? CEF_DELETE : 0);
 }
 #endif
 
@@ -1127,15 +829,14 @@ extern "C" void report_windows_hdrop(STRING Data, LONG CutOperation)
 
    log.branch("Application has detected files on the clipboard.  Cut: %d", CutOperation);
 
-   APTR lock;
-   if (!AccessMemoryID(RPM_Clipboard, MEM_READ_WRITE, 3000, &lock)) {
-      for (LONG i=0; *Data; i++) {
-         add_clip(RPM_Clipboard, CLIPTYPE_FILE, Data, (i ? CEF_EXTEND : 0) | (CutOperation ? CEF_DELETE : 0), 0, 1, 0);
-         while (*Data) Data++; // Go to next file path
-         Data++; // Skip null byte
-      }
-      ReleaseMemory(lock);
+   std::vector<ClipItem> items;
+   for (LONG i=0; *Data; i++) {
+      items.push_back(std::string(Data));
+      while (*Data) Data++; // Next file path
+      Data++; // Skip null byte
    }
+
+   add_clip(CLIPTYPE_FILE, items, CutOperation ? CEF_DELETE : 0);
 }
 #endif
 
@@ -1150,43 +851,27 @@ extern "C" void report_windows_clip_utf16(UWORD *String)
    log.branch("Application has detected unicode text on the clipboard.");
 
    objClipboard::create clipboard = { fl::Flags(CLF_HOST) };
-
    if (clipboard.ok()) {
-      LONG u8len = 0;
-      for (LONG chars=0; String[chars]; chars++) {
-         if (String[chars] < 128) u8len++;
-         else if (String[chars] < 0x800) u8len += 2;
-         else u8len += 3;
-      }
+      std::stringstream buffer;
 
-      STRING u8str;
-      if (!AllocMemory(u8len+1, MEM_STRING|MEM_NO_CLEAR, &u8str)) {
-         LONG i = 0;
-         for (LONG chars=0; String[chars]; chars++) {
-            auto value = String[chars];
-            if (value < 128) {
-               u8str[i++] = (UBYTE)value;
-            }
-            else if (value < 0x800) {
-               u8str[i+1] = (value & 0x3f) | 0x80;
-               value  = value>>6;
-               u8str[i] = value | 0xc0;
-               i += 2;
-            }
-            else {
-               u8str[i+2] = (value & 0x3f)|0x80;
-               value  = value>>6;
-               u8str[i+1] = (value & 0x3f)|0x80;
-               value  = value>>6;
-               u8str[i] = value | 0xe0;
-               i += 3;
-            }
+      for (unsigned chars=0; String[chars]; chars++) {
+         auto value = String[chars];
+         if (value < 128) buffer << (UBYTE)value;
+         else if (value < 0x800) {
+            UBYTE b = (value & 0x3f) | 0x80;
+            value = value>>6;
+            buffer << (value | 0xc0) << b;
          }
-         u8str[i] = 0;
-
-         clipAddText(*clipboard, u8str);
-         FreeResource(u8str);
+         else {
+            UBYTE c = (value & 0x3f)|0x80;
+            value = value>>6;
+            UBYTE b = (value & 0x3f)|0x80;
+            value = value>>6;
+            buffer << (value | 0xe0) << b << c;
+         }
       }
+
+      clipAddText(*clipboard, buffer.str().c_str());
    }
    else log.warning(ERR_CreateObject);
 }
@@ -1196,7 +881,6 @@ extern "C" void report_windows_clip_utf16(UWORD *String)
 
 static const FieldArray clFields[] = {
    { "Flags",          FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clClipboardFlags },
-   { "Cluster",        FDF_LONG|FDF_RW },
    { "RequestHandler", FDF_FUNCTIONPTR|FDF_RW, GET_RequestHandler, SET_RequestHandler },
    END_FIELD
 };

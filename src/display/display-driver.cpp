@@ -873,9 +873,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       winDisableBatching();
 
       winInitCursors(winCursors, ARRAYSIZE(winCursors));
-
-      MEMORYID memoryid = RPM_Clipboard;
-      AllocMemory(sizeof(ClipHeader) + (MAX_CLIPS * sizeof(ClipEntry)), MEM_UNTRACKED|MEM_PUBLIC|MEM_RESERVED|MEM_NO_BLOCKING, NULL, &memoryid);
    }
 
 #endif
@@ -970,18 +967,9 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 #ifdef _WIN32 // Get any existing Windows clipboard content
 
-   ClipHeader *clipboard;
-   if (!AccessMemoryID(RPM_Clipboard, MEM_READ_WRITE, 3000, &clipboard)) {
-      if (!clipboard->Init) {
-         log.branch("Populating clipboard for the first time from the Windows host.");
-         winCopyClipboard();
-         clipboard->Init = TRUE;
-         log.debranch();
-      }
-      else log.msg("Clipboard already initialised by other process.");
-      ReleaseMemory(clipboard);
-   }
-   else log.warning(ERR_AccessMemory);
+   log.branch("Populating clipboard for the first time from the Windows host.");
+   winCopyClipboard();
+   log.debranch();
 
 #endif
 
@@ -1003,6 +991,7 @@ static ERROR CMDExpunge(void)
    pf::Log log(__FUNCTION__);
    ERROR error = ERR_Okay;
 
+   glClips.clear();
    if (glDither)              { FreeResource(glDither); glDither = NULL; }
    if (glExposeHandler)       { FreeResource(glExposeHandler); glExposeHandler = NULL; }
    if (glRefreshPointerTimer) { UpdateTimer(glRefreshPointerTimer, 0); glRefreshPointerTimer = 0; }

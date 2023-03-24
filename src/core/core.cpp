@@ -1924,7 +1924,7 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
 
    for (auto vol : Volumes) {
       if (auto v = vol.find('='); v != std::string::npos) {
-         std::string name(vol, v);
+         std::string name(vol, 0, v);
          std::string path(vol, v + 1, vol.size() - (v + 1));
 
          LONG flags = glVolumes.contains(name) ? 0 : VOLUME_HIDDEN;

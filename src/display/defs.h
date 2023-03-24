@@ -20,6 +20,7 @@
 #include <unordered_set>
 #include <mutex>
 #include <queue>
+#include <sstream>
 #include <math.h>
 
 #ifdef __linux__
@@ -100,8 +101,6 @@
 #define SURFACE_READ      (0x0001)   // Read access
 #define SURFACE_WRITE     (0x0002)   // Write access
 #define SURFACE_READWRITE (SURFACE_READ|SURFACE_WRITE)
-
-#define MAX_CLIPS 10     // Maximum number of clips stored in the historical buffer
 
 #include <parasol/modules/display.h>
 #include <parasol/modules/xml.h>
@@ -279,27 +278,27 @@ namespace std {
 
 //********************************************************************************************************************
 
-extern std::vector<SurfaceRecord> glSurfaces;
+struct ClipItem {
+   std::string Path; // Path to a file containing the data.
+   std::vector<char> Data; // Vector containing raw data.
 
-//********************************************************************************************************************
-
-struct ClipHeader {
-   LONG Counter;
-#ifdef _WIN32
-   LONG LastID;
-   UBYTE Init:1;
-#endif
+   ClipItem(std::string pPath) : Path(pPath) { }
 };
 
 struct ClipEntry {
-   LONG     Datatype;    // The type of data clipped
-   LONG     Flags;       // CEF_DELETE may be set for the 'cut' operation
-   CLASSID  ClassID;     // Class ID that is capable of managing the clip data, if it originated from an object
-   MEMORYID Files;       // List of file locations, separated with semi-colons, referencing all the data in this clip entry
-   LONG     FilesLen;    // Complete byte-length of the Files string
-   UWORD    ID;          // Unique identifier for the clipboard entry
-   WORD     TotalItems;  // Total number of items in the clip-set
+   std::vector<ClipItem> Items;  // List of file locations referencing all the data in this clip entry
+   LONG  Datatype;    // The type of data clipped
+   LONG  Flags;       // CEF_DELETE may be set for the 'cut' operation
+   UWORD ID;          // Unique identifier for the clipboard entry
+
+   ~ClipEntry();
 };
+
+//********************************************************************************************************************
+
+extern std::vector<SurfaceRecord> glSurfaces;
+
+//********************************************************************************************************************
 
 class extPointer : public objPointer {
    public:
@@ -512,6 +511,7 @@ extern LONG glpWindowType;
 extern char glpDPMS[20];
 extern UBYTE *glDemultiply;
 extern std::array<UBYTE, 256 * 256> glAlphaLookup;
+extern std::vector<ClipEntry> glClips;
 
 extern std::unordered_map<WindowHook, FUNCTION> glWindowHooks;
 extern std::vector<OBJECTID> glFocusList;
@@ -553,10 +553,10 @@ DLLCALL LONG WINAPI SetPixelV(APTR, LONG, LONG, LONG);
 DLLCALL LONG WINAPI SetPixel(APTR, LONG, LONG, LONG);
 DLLCALL LONG WINAPI GetPixel(APTR, LONG, LONG);
 
-int winAddClip(int Datatype, void * Data, int Size, int Cut);
+int winAddClip(int Datatype, const void *, int, int);
 void winClearClipboard(void);
 void winCopyClipboard(void);
-int winExtractFile(void *pida, int Index, char *Result, int Size);
+int winExtractFile(void *, int, char *, int);
 void winGetClip(int Datatype);
 void winTerminate(void);
 APTR winGetDC(APTR);

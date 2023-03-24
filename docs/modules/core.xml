@@ -310,7 +310,6 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
       <error code="SystemCorrupt">The operating system has been badly corrupted.</error>
       <error code="ArrayFull">Array has reached capacity and cannot be expanded.</error>
       <error code="AccessMemory">Access to a shared memory block was denied.</error>
-      <error code="ResourceExists">A new resource could not be created because a matching resource exists.</error>
     </result>
   </function>
 
@@ -507,17 +506,15 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <comment>Checks if a particular object is still available in the system.</comment>
     <prototype>ERROR CheckObjectExists(OBJECTID Object)</prototype>
     <input>
-      <param type="OBJECTID" name="Object">The object ID that you want to look for.</param>
+      <param type="OBJECTID" name="Object">The object identity to verify.</param>
     </input>
     <description>
-<p>The CheckObjectExists() function checks for the presence of any object created by NewObect().  Support for shared objects that exist outside the current process space is included.</p>
+<p>The CheckObjectExists() function verifies the presence of any object created by <function module="Core">NewObject</function>.</p>
     </description>
     <result type="ERROR">
       <error code="True">Operation successful.</error>
       <error code="False">The result is false.</error>
       <error code="LockFailed">Failed to lock a required resource.</error>
-      <error code="SystemLocked">Part of the system is unreachable due to a persistent lock.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -1032,10 +1029,10 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <comment>Retrieves object names.</comment>
     <prototype>CSTRING GetName(OBJECTPTR Object)</prototype>
     <input>
-      <param type="OBJECTPTR" name="Object">Pointer to the object that you want to get the name of.</param>
+      <param type="OBJECTPTR" name="Object">An object to query.</param>
     </input>
     <description>
-<p>This function will return the name of the object referenced by the Object pointer. If the target object has not been assigned a name, then you will receive a null-string.</p>
+<p>This function will return the name of the object referenced by the Object pointer. If the target object has not been assigned a name then a null-string is returned.</p>
     </description>
     <result type="CSTRING">A string containing the object name is returned.  If the object has no name or the parameter is invalid, a null-terminated string is returned.</result>
   </function>
@@ -1060,13 +1057,13 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <comment>Returns the unique ID of an object's owner.</comment>
     <prototype>OBJECTID GetOwnerID(OBJECTID Object)</prototype>
     <input>
-      <param type="OBJECTID" name="Object">The ID of the object that you want to examine.</param>
+      <param type="OBJECTID" name="Object">The ID of an object to query.</param>
     </input>
     <description>
 <p>This function returns an identifier for the owner of any valid object.  This is the fastest way to retrieve the owner of an object if only the ID is known.</p>
 <p>If the object address is already known then the fastest means of retrieval is via the ownerID() C++ class method.</p>
     </description>
-    <result type="OBJECTID">Returns the ID of the object's owner.  If the object does not have a owner (i.e. if it is untracked) or if the ID that you provided is invalid, this function will return NULL.</result>
+    <result type="OBJECTID">Returns the ID of the object's owner.  If the object does not have a owner (i.e. if it is untracked) or if the provided ID is invalid, this function will return NULL.</result>
   </function>
 
   <function>
@@ -1078,25 +1075,8 @@ GetField(Object, FID_Y|TLONG, &amp;y);
       <param type="LONG" name="Resource" lookup="RES">The ID of the resource that you want to obtain.</param>
     </input>
     <description>
-<p>The GetResource() function is used to retrieve miscellaneous resource ID's that are either global or local to your task. To retrieve a resource you need to make a reference to it with the Resource parameter.  Currently the following resource ID's are available:</p>
-<types lookup="RES" type="Resource">
-<type name="CURRENT_MSG">Returns a Message structure if the program is currently processing a message - otherwise returns NULL.  This resource type is meaningful only during a <function module="Core">ProcessMessages</function> call.</type>
-<type name="KEY_STATE">The state of keyboard qualifiers such as caps-lock and the shift keys are reflected here.  The relevant KQ flags are found in the Keyboard module.</type>
-<type name="LOG_LEVEL">The current level of log detail (larger numbers indicate more detail).</type>
-<type name="LOG_DEPTH">The current depth of log messages.</type>
-<type name="GLOBAL_INSTANCE">If a global instance is active, this resource holds the instance ID.  Otherwise the value is 0.</type>
-<type name="MAX_PROCESSES">The maximum number of processes that can be supported at any moment in time.</type>
-<type name="MESSAGE_QUEUE">Use this resource to retrieve the message queue ID of the current task.</type>
-<type name="OPEN_INFO">Undocumented.</type>
-<type name="PARENT_CONTEXT">Returns a pointer to the parent object of the current context.</type>
-<type name="PRIVILEGED">This is set to TRUE if the process has elevated privileges (such as superuser or administrative rights).</type>
-<type name="TOTAL_SHARED_MEMORY">The total amount of shared memory in use.</type>
-<type name="TASK_CONTROL">Undocumented.</type>
-<type name="TASK_LIST">Undocumented.</type>
-<type name="TOTAL_MEMORY">The total amount of installed RAM in bytes.</type>
-<type name="TOTAL_SWAP">The total amount of available swap space.</type>
-<type name="USER_ID">Undocumented.</type>
-</types>
+<p>The GetResource() function is used to retrieve miscellaneous resource information from the system core.  Refer to the Resource identifier for the full list of available resource codes and their meaning.</p>
+<p>C++ developers should use the GetResourcePtr() macro if a resource identifier is known to return a pointer.</p>
     </description>
     <result type="LARGE">Returns the value of the resource that you have requested.  If the resource ID is not known by the Core, NULL is returned.</result>
   </function>
@@ -1142,7 +1122,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <comment>Returns a list of all children belonging to an object.</comment>
     <prototype>ERROR ListChildren(OBJECTID Object, pf::vector&lt;ChildEntry&gt; * List)</prototype>
     <input>
-      <param type="OBJECTID" name="Object">The ID of the object that you wish to examine.</param>
+      <param type="OBJECTID" name="Object">An object to query.</param>
       <param type="pf::vector&lt;ChildEntry&gt; *" name="List">Must refer to an array of ChildEntry structures.</param>
     </input>
     <description>
@@ -1540,7 +1520,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     </input>
     <description>
 <p>This function will register a file descriptor that will be monitored for activity when the task is sleeping.  If activity occurs on the descriptor then the function specified in the Routine parameter will be called.  The routine must read all of information from the descriptor, as the running process will not be able to sleep until all the data is cleared.</p>
-<p>The file descriptor should be configured as non-blocking before registration.  Blocking descriptors may cause your program to hang if not handled carefully.</p>
+<p>The file descriptor should be configured as non-blocking before registration.  Blocking descriptors may cause the program to hang if not handled carefully.</p>
 <p>File descriptors support read and write states simultaneously and a callback routine can be applied to either state. Set the <code>RFD_READ</code> flag to apply the Routine to the read callback and <code>RFD_WRITE</code> for the write callback.  If neither flag is specified, <code>RFD_READ</code> is assumed.  A file descriptor may have up to 1 subscription per flag, for example a read callback can be registered, followed by a write callback in a second call. Individual callbacks can be removed by combining the read/write flags with <code>RFD_REMOVE</code>.</p>
 <p>The capabilities of this function and FD handling in general is developed to suit the host platform. On POSIX compliant systems, standard file descriptors are used.  In Microsoft Windows, object handles are used and blocking restrictions do not apply, except to sockets.</p>
 <p>Call the DeregisterFD() macro to simplify unsubscribing once the file descriptor is no longer needed or is destroyed.</p>
@@ -1945,7 +1925,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <param type="LARGE" name="Value">The new value to set for the resource.</param>
     </input>
     <description>
-<p>The SetResource() function is used to set miscellaneous resource ID's that are either global or local to your process. To set a resource you need to make a reference to it with the Resource parameter and provide a new setting in the Value parameter.  Currently the following resource ID's are available:</p>
+<p>The SetResource() function is used to manipulate miscellaneous system resources.  Currently the following resources are supported:</p>
 <types prefix="RES" type="Resource">
 <type name="ALLOC_MEM_LIMIT">Adjusts the memory limit imposed on AllocMemory().  The Value specifies the memory limit in bytes.</type>
 <type name="LOG_LEVEL">Adjusts the current debug level.  The Value must be between 0 and 9, where 1 is the lowest level of debug output (errors only) and 0 is off.</type>
@@ -3205,7 +3185,6 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="PUBLIC">Public memory can be allocated by specifying this flag.  Public memory blocks are accessible by all tasks, but access can only be gained by knowing the unique memory ID and utilising the AccessMemoryID() function.</const>
       <const name="READ">The memory is explicitly marked as readable.</const>
       <const name="READ_WRITE">Synonym for READ | WRITE</const>
-      <const name="RESERVED">This special flag is used to allocate shared memory blocks that require reserved ID numbers.  When using the MEM_RESERVED flag, you are required to set the longword pointed to by the ID argument to the ID that you wish to reserve.  If that memory ID is already taken, the AllocMemory() call will fail.</const>
       <const name="SHARED">Public memory can be allocated by specifying this flag.  Public memory blocks are accessible by all tasks, but access can only be gained by knowing the unique memory ID and utilising the AccessMemoryID() function.</const>
       <const name="STRING">Identifies the memory content as a null terminated string. Useful for debugging and run-time type identification in scripts.</const>
       <const name="TEXTURE">The memory space is reserved by a video driver for hosting texture graphics.</const>
