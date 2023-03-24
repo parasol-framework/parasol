@@ -12,7 +12,11 @@ typedef void * HCURSOR;
 #endif
 
 struct WinCursor {
+   #ifdef _WIN32
+   HCURSOR WinCursor;
+   #else
    void * WinCursor;
+   #endif
    int CursorID;
 };
 
@@ -45,7 +49,7 @@ void Win32ManagerLoop(void);
 void winGetDPI(LONG *, LONG *);
 int winLookupSurfaceID(HWND);
 HWND winCreateChild(HWND, int, int, int, int);
-HWND winCreateScreen(HWND, int *, int *, int *, int *, char, char, char *, char, unsigned char, char);
+HWND winCreateScreen(HWND, int *, int *, int *, int *, char, char, const char *, char, unsigned char, char);
 int winCreateScreenClass(void);
 void winDisableBatching(void);
 void winRemoveWindowClass(const char *);

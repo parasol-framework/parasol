@@ -748,14 +748,12 @@ class objDisplay : public BaseClass {
 // Clipboard methods
 
 #define MT_ClipAddFile -1
-#define MT_ClipAddObject -2
-#define MT_ClipAddObjects -3
-#define MT_ClipGetFiles -4
-#define MT_ClipAddText -5
-#define MT_ClipRemove -6
+#define MT_ClipAddObjects -2
+#define MT_ClipGetFiles -3
+#define MT_ClipAddText -4
+#define MT_ClipRemove -5
 
 struct clipAddFile { LONG Datatype; CSTRING Path; LONG Flags;  };
-struct clipAddObject { LONG Datatype; OBJECTID ObjectID; LONG Flags;  };
 struct clipAddObjects { LONG Datatype; OBJECTID * Objects; LONG Flags;  };
 struct clipGetFiles { LONG Datatype; LONG Index; CSTRING * Files; LONG Flags;  };
 struct clipAddText { CSTRING String;  };
@@ -764,11 +762,6 @@ struct clipRemove { LONG Datatype;  };
 INLINE ERROR clipAddFile(APTR Ob, LONG Datatype, CSTRING Path, LONG Flags) {
    struct clipAddFile args = { Datatype, Path, Flags };
    return(Action(MT_ClipAddFile, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR clipAddObject(APTR Ob, LONG Datatype, OBJECTID ObjectID, LONG Flags) {
-   struct clipAddObject args = { Datatype, ObjectID, Flags };
-   return(Action(MT_ClipAddObject, (OBJECTPTR)Ob, &args));
 }
 
 INLINE ERROR clipAddObjects(APTR Ob, LONG Datatype, OBJECTID * Objects, LONG Flags) {
@@ -803,12 +796,10 @@ class objClipboard : public BaseClass {
 
    using create = pf::Create<objClipboard>;
 
-   LONG     Flags;      // Optional flags.
-   MEMORYID ClusterID;  // Identifies a unique cluster of items targeted by a clipboard object.
+   LONG Flags;    // Optional flags.
 
 #ifdef PRV_CLIPBOARD
    FUNCTION RequestHandler;
-   BYTE     ClusterAllocated:1;
 #endif
 
    // Action stubs

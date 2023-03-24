@@ -7,7 +7,6 @@ static const struct FieldDef clClipboardFlags[] = {
 };
 
 FDEF maAddFile[] = { { "Datatype", FD_LONG }, { "Path", FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
-FDEF maAddObject[] = { { "Datatype", FD_LONG }, { "Object", FD_OBJECTID }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF maAddObjects[] = { { "Datatype", FD_LONG }, { "Objects", FD_PTR }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF maGetFiles[] = { { "Datatype", FD_LONG|FD_RESULT }, { "Index", FD_LONG }, { "Files", FD_ARRAY|FD_STR|FD_ALLOC|FD_RESULT }, { "Flags", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF maAddText[] = { { "String", FD_STR }, { 0, 0 } };
@@ -15,11 +14,10 @@ FDEF maRemove[] = { { "Datatype", FD_LONG }, { 0, 0 } };
 
 static const struct MethodArray clClipboardMethods[] = {
    { -1, (APTR)CLIPBOARD_AddFile, "AddFile", maAddFile, sizeof(struct clipAddFile) },
-   { -2, (APTR)CLIPBOARD_AddObject, "AddObject", maAddObject, sizeof(struct clipAddObject) },
-   { -3, (APTR)CLIPBOARD_AddObjects, "AddObjects", maAddObjects, sizeof(struct clipAddObjects) },
-   { -4, (APTR)CLIPBOARD_GetFiles, "GetFiles", maGetFiles, sizeof(struct clipGetFiles) },
-   { -5, (APTR)CLIPBOARD_AddText, "AddText", maAddText, sizeof(struct clipAddText) },
-   { -6, (APTR)CLIPBOARD_Remove, "Remove", maRemove, sizeof(struct clipRemove) },
+   { -2, (APTR)CLIPBOARD_AddObjects, "AddObjects", maAddObjects, sizeof(struct clipAddObjects) },
+   { -3, (APTR)CLIPBOARD_GetFiles, "GetFiles", maGetFiles, sizeof(struct clipGetFiles) },
+   { -4, (APTR)CLIPBOARD_AddText, "AddText", maAddText, sizeof(struct clipAddText) },
+   { -5, (APTR)CLIPBOARD_Remove, "Remove", maRemove, sizeof(struct clipRemove) },
    { 0, 0, 0, 0, 0 }
 };
 

@@ -89,25 +89,20 @@ LONG AllocateID(LONG Type)
 CheckObjectExists: Checks if a particular object is still available in the system.
 Category: Objects
 
-The CheckObjectExists() function checks for the presence of any object created by NewObect().  Support for shared
-objects that exist outside the current process space is included.
+The CheckObjectExists() function verifies the presence of any object created by ~NewObject().
 
 -INPUT-
-oid Object: The object ID that you want to look for.
+oid Object: The object identity to verify.
 
 -ERRORS-
 True:  The object exists.
 False: The object ID does not exist.
-NullArgs:
-SystemLocked:
 LockFailed:
 
 *********************************************************************************************************************/
 
 ERROR CheckObjectExists(OBJECTID ObjectID)
 {
-   pf::Log log(__FUNCTION__);
-
    ThreadLock lock(TL_PRIVATE_MEM, 4000);
    if (lock.granted()) {
       LONG result = ERR_False;
@@ -118,7 +113,10 @@ ERROR CheckObjectExists(OBJECTID ObjectID)
       }
       return result;
    }
-   else return log.warning(ERR_LockFailed);
+   else {
+      pf::Log log(__FUNCTION__);
+      return log.warning(ERR_LockFailed);
+   }
 }
 
 /*********************************************************************************************************************
@@ -647,10 +645,10 @@ GetName: Retrieves object names.
 Category: Objects
 
 This function will return the name of the object referenced by the Object pointer. If the target object has not been
-assigned a name, then you will receive a null-string.
+assigned a name then a null-string is returned.
 
 -INPUT-
-obj Object: Pointer to the object that you want to get the name of.
+obj Object: An object to query.
 
 -RESULT-
 cstr: A string containing the object name is returned.  If the object has no name or the parameter is invalid, a null-terminated string is returned.
@@ -709,10 +707,10 @@ owner of an object if only the ID is known.
 If the object address is already known then the fastest means of retrieval is via the ownerID() C++ class method.
 
 -INPUT-
-oid Object: The ID of the object that you want to examine.
+oid Object: The ID of an object to query.
 
 -RESULT-
-oid: Returns the ID of the object's owner.  If the object does not have a owner (i.e. if it is untracked) or if the ID that you provided is invalid, this function will return NULL.
+oid: Returns the ID of the object's owner.  If the object does not have a owner (i.e. if it is untracked) or if the provided ID is invalid, this function will return NULL.
 
 *********************************************************************************************************************/
 
@@ -733,28 +731,10 @@ OBJECTID GetOwnerID(OBJECTID ObjectID)
 -FUNCTION-
 GetResource: Retrieves miscellaneous resource identifiers.
 
-The GetResource() function is used to retrieve miscellaneous resource ID's that are either global or local to your task.
-To retrieve a resource you need to make a reference to it with the Resource parameter.  Currently the following resource
-ID's are available:
+The GetResource() function is used to retrieve miscellaneous resource information from the system core.  Refer to the
+Resource identifier for the full list of available resource codes and their meaning.
 
-<types lookup="RES" type="Resource">
-<type name="CURRENT_MSG">Returns a Message structure if the program is currently processing a message - otherwise returns NULL.  This resource type is meaningful only during a ~ProcessMessages() call.</>
-<type name="KEY_STATE">The state of keyboard qualifiers such as caps-lock and the shift keys are reflected here.  The relevant KQ flags are found in the Keyboard module.</>
-<type name="LOG_LEVEL">The current level of log detail (larger numbers indicate more detail).</>
-<type name="LOG_DEPTH">The current depth of log messages.</>
-<type name="GLOBAL_INSTANCE">If a global instance is active, this resource holds the instance ID.  Otherwise the value is 0.</>
-<type name="MAX_PROCESSES">The maximum number of processes that can be supported at any moment in time.</>
-<type name="MESSAGE_QUEUE">Use this resource to retrieve the message queue ID of the current task.</>
-<type name="OPEN_INFO">Undocumented.</>
-<type name="PARENT_CONTEXT">Returns a pointer to the parent object of the current context.</>
-<type name="PRIVILEGED">This is set to TRUE if the process has elevated privileges (such as superuser or administrative rights).</>
-<type name="TOTAL_SHARED_MEMORY">The total amount of shared memory in use.</>
-<type name="TASK_CONTROL">Undocumented.</>
-<type name="TASK_LIST">Undocumented.</>
-<type name="TOTAL_MEMORY">The total amount of installed RAM in bytes.</>
-<type name="TOTAL_SWAP">The total amount of available swap space.</>
-<type name="USER_ID">Undocumented.</>
-</types>
+C++ developers should use the GetResourcePtr() macro if a resource identifier is known to return a pointer.
 
 -INPUT-
 int(RES) Resource: The ID of the resource that you want to obtain.
@@ -928,7 +908,7 @@ Note that any child objects marked with the `INTEGRAL` flag will be excluded bec
 targeted object.
 
 -INPUT-
-oid Object: The ID of the object that you wish to examine.
+oid Object: An object to query.
 ptr(cpp(array(resource(ChildEntry)))) List: Must refer to an array of ChildEntry structures.
 
 -ERRORS-
@@ -1002,7 +982,7 @@ activity occurs on the descriptor then the function specified in the Routine par
 must read all of information from the descriptor, as the running process will not be able to sleep until all the
 data is cleared.
 
-The file descriptor should be configured as non-blocking before registration.  Blocking descriptors may cause your
+The file descriptor should be configured as non-blocking before registration.  Blocking descriptors may cause the
 program to hang if not handled carefully.
 
 File descriptors support read and write states simultaneously and a callback routine can be applied to either state.
@@ -1376,9 +1356,8 @@ ERROR SetResourcePath(LONG PathType, CSTRING Path)
 -FUNCTION-
 SetResource: Sets miscellaneous resource identifiers.
 
-The SetResource() function is used to set miscellaneous resource ID's that are either global or local to your process.
-To set a resource you need to make a reference to it with the Resource parameter and provide a new setting in the
-Value parameter.  Currently the following resource ID's are available:
+The SetResource() function is used to manipulate miscellaneous system resources.  Currently the following resources
+are supported:
 
 <types prefix="RES" type="Resource">
 <type name="ALLOC_MEM_LIMIT">Adjusts the memory limit imposed on AllocMemory().  The Value specifies the memory limit in bytes.</>

@@ -127,7 +127,6 @@ ArrayFull:      Although memory space for the block was available, all available
 LockFailed:     The function failed to gain access to the public memory controller.
 SystemCorrupt:  The internal tables that manage memory allocations are corrupt.
 AccessMemory:   The block was allocated but access to it was not granted, causing failure.
-ResourceExists: This error is returned if MEM_RESERVED was used and the memory block ID was found to already exist.
 -END-
 
 *********************************************************************************************************************/
@@ -146,17 +145,7 @@ ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
       return ERR_Args;
    }
 
-   LONG reserved_id;
-   if (MemoryID) {
-      reserved_id = *MemoryID;
-      *MemoryID = 0;
-      if (Flags & MEM_RESERVED) {
-         if (reserved_id > 0) reserved_id = -reserved_id;
-         if (!reserved_id) return log.warning(ERR_Args);
-      }
-   }
-   else reserved_id = 0;
-
+   if (MemoryID) *MemoryID = 0;
    if (Address) *Address = NULL;
 
    // Determine the object that will own the memory block.  The preferred default is for it to belong to the current context.
@@ -189,20 +178,10 @@ ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
          }
       }
 
-      // If the memory block is reserved, check if the ID already exists
-
-      if (Flags & MEM_RESERVED) {
-         if (find_public_mem_id(glSharedControl, reserved_id, NULL) IS ERR_Okay) {
-            UNLOCK_PUBLIC_MEMORY();
-            return ERR_ResourceExists;
-         }
-      }
-
 #ifdef USE_SHM
 retry:
 #endif
-      if (Flags & MEM_RESERVED) memid = reserved_id;
-      else memid = __sync_fetch_and_sub(&glSharedControl->IDCounter, 1);
+      memid = __sync_fetch_and_sub(&glSharedControl->IDCounter, 1);
 
       LONG blk;
 
@@ -297,22 +276,12 @@ retry:
                   // IPC_RMID usually fails due to permission errors (e.g. the user ran our program as root and is now running it as a normal user).
 
                   log.warning("shm key $%.8x / %d exists from previous run, shmctl(IPC_RMID) reports: %s", memkey, memid, strerror(errno));
-
-                  if (Flags & MEM_RESERVED) {
-                     UNLOCK_PUBLIC_MEMORY();
-                     return ERR_AllocMemory;
-                  }
-                  else goto retry;
+                  goto retry;
                }
             }
             else {
                log.warning("shmget(Key $%.8x, ID %d) %s", memkey, memid, strerror(errno));
-
-               if (Flags & MEM_RESERVED) {
-                  UNLOCK_PUBLIC_MEMORY();
-                  return ERR_AllocMemory;
-               }
-               else goto retry;
+               goto retry;
             }
          }
          else log.warning("shmget(Key $%.8x, ID %d) %s", memkey, memid, strerror(errno));
@@ -1077,8 +1046,8 @@ If the memory block is public, the original address will be automatically releas
 original memory block will also be preserved in the new block when reallocating public memory.
 
 -INPUT-
-ptr Memory:  Pointer to a memory block obtained from AllocMemory().
-int Size:    The size of the new memory block.
+ptr Memory:   Pointer to a memory block obtained from AllocMemory().
+int Size:     The size of the new memory block.
 !ptr Address: Point to an APTR variable to store the resulting pointer to the new memory block.
 &mem ID:      Point to a MEMORYID variable to store the resulting memory block's unique ID.
 

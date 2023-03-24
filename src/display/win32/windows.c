@@ -1231,7 +1231,7 @@ int winCreateScreenClass(void)
 ** WS_VISIBLE: Creates a window that is initially visible. This style can be turned on and off by using ShowWindow or SetWindowPos.
 */
 
-HWND winCreateScreen(HWND PopOver, int *X, int *Y, int *Width, int *Height, char Maximise, char Borderless, char *Name,
+HWND winCreateScreen(HWND PopOver, int *X, int *Y, int *Width, int *Height, char Maximise, char Borderless, const char *Name,
    char Composite, unsigned char Opacity, char Desktop)
 {
    if (!Name) Name = "Parasol";
@@ -2427,7 +2427,7 @@ void winClearClipboard(void)
 //*****************************************************************************
 // Called from clipAddFile(), clipAddText() etc
 
-int winAddClip(int Datatype, void *Data, int Size, int Cut)
+int winAddClip(int Datatype, const void *Data, int Size, int Cut)
 {
    UINT format;
    HGLOBAL hdata;
