@@ -238,7 +238,6 @@ class objCompressedStream;
 #define MEM_WRITE 0x00020000
 #define MEM_READ_WRITE 0x00030000
 #define MEM_NO_CLEAR 0x00040000
-#define MEM_RESERVED 0x00080000
 #define MEM_HIDDEN 0x00100000
 #define MEM_CALLER 0x00800000
 
@@ -1079,12 +1078,6 @@ enum class NF : ULONG {
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(NF)
-
-// Reserved Public Memory identifiers.
-
-#define RPM_Clipboard -1002
-#define RPM_X11 -1003
-#define RPM_XWindowLookup -1005
 
 #define MAX_FILENAME 256
 

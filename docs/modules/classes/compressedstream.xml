@@ -195,7 +195,6 @@
       <const name="PUBLIC">Public memory can be allocated by specifying this flag.  Public memory blocks are accessible by all tasks, but access can only be gained by knowing the unique memory ID and utilising the AccessMemoryID() function.</const>
       <const name="READ">The memory is explicitly marked as readable.</const>
       <const name="READ_WRITE">Synonym for READ | WRITE</const>
-      <const name="RESERVED">This special flag is used to allocate shared memory blocks that require reserved ID numbers.  When using the MEM_RESERVED flag, you are required to set the longword pointed to by the ID argument to the ID that you wish to reserve.  If that memory ID is already taken, the AllocMemory() call will fail.</const>
       <const name="SHARED">Public memory can be allocated by specifying this flag.  Public memory blocks are accessible by all tasks, but access can only be gained by knowing the unique memory ID and utilising the AccessMemoryID() function.</const>
       <const name="STRING">Identifies the memory content as a null terminated string. Useful for debugging and run-time type identification in scripts.</const>
       <const name="TEXTURE">The memory space is reserved by a video driver for hosting texture graphics.</const>

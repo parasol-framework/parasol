@@ -147,7 +147,6 @@ flags("MEM", { comment="Memory types used by AllocMemory().  The lower 16 bits a
     { READ          = "0x00010000: The memory is explicitly marked as readable." },
     { WRITE         = "0x00020000: The memory is explicitly marked as writeable." },
     { NO_CLEAR      = "0x00040000: Do not clear the memory on allocation (saves time)." },
-    { RESERVED      = "0x00080000: This special flag is used to allocate shared memory blocks that require reserved ID numbers.  When using the MEM_RESERVED flag, you are required to set the longword pointed to by the ID argument to the ID that you wish to reserve.  If that memory ID is already taken, the AllocMemory() call will fail." },
     { HIDDEN        = "0x00100000: Hidden blocks are not recorded and are excluded from resource tracking." },
     { CALLER        = "0x00800000: This flag is usable only in routines that are supporting a class method.  It forces the memory allocation to be tracked to the object that made the method call.  This is particularly important in methods that return memory blocks that do not form a part of the object itself." },
     { READ_WRITE    = "READ|WRITE" })

@@ -467,20 +467,17 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
 
   methods('clipboard', 'Clip', {
     { id=1, name='AddFile' },
-    { id=2, name='AddObject' },
-    { id=3, name='AddObjects' },
-    { id=4, name='GetFiles' },
-    { id=5, name='AddText' },
-    { id=6, name='Remove' }
+    { id=2, name='AddObjects' },
+    { id=3, name='GetFiles' },
+    { id=4, name='AddText' },
+    { id=5, name='Remove' }
   })
 
   class('Clipboard', { src='class_clipboard.cpp', output='class_clipboard_def.c' }, [[
     int(CLF) Flags      # Optional flags
-    mem Cluster         # Identifies the data cluster (item grouping) that the clipboard will work with
   ]],
   [[
    FUNCTION RequestHandler;
-   BYTE     ClusterAllocated:1;
   ]])
 
   class("Pointer", { version=1.0, src="class_pointer.cpp", output="class_pointer_def.c" }, [[
