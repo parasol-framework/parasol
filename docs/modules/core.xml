@@ -36,25 +36,23 @@
   <function>
     <name>AccessMemoryID</name>
     <category>Memory</category>
-    <comment>Grants access to public memory blocks.</comment>
+    <comment>Grants access to memory blocks by identifier.</comment>
     <prototype>ERROR AccessMemoryID(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR * Result)</prototype>
     <input>
       <param type="MEMORYID" name="Memory">The ID of the memory block that you want to access.</param>
-      <param type="LONG" name="Flags" lookup="MEM">Set to MEM_READ, MEM_WRITE or MEM_READ_WRITE according to your requirements.</param>
-      <param type="LONG" name="MilliSeconds">The millisecond interval that you are prepared to wait before a timeout occurs.  Do not set below 40ms for consistent operation.</param>
+      <param type="LONG" name="Flags" lookup="MEM">Set to MEM_READ, MEM_WRITE or MEM_READ_WRITE according to requirements.</param>
+      <param type="LONG" name="MilliSeconds">The millisecond interval to wait before a timeout occurs.  Do not set below 40ms for consistent operation.</param>
       <param type="APTR *" name="Result">Must point to an APTR variable that will store the resolved address.</param>
     </input>
     <description>
-<p>The AccessMemoryID() function is used to page public memory blocks into the caller's memory space.  If the target block is available, a valid address pointer will be returned that can be used for direct read/write operations.  For convenience, this function may also be used to resolve the memory addresses of private memory block IDs.</p>
-<p>Public memory blocks should never be locked for extended periods of time.  Ensure that all locks are matched with a call to <function module="Core">ReleaseMemory</function> within the same code block.</p>
-<p>The resulting address is specific to the caller's process and is not transferable to other running processes.</p>
+<p>Call AccessMemoryID() to resolve a memory ID to its address and acquire a lock so that it is inaccessible to other threads.</p>
+<p>Memory blocks should never be locked for extended periods of time.  Ensure that all locks are matched with a call to <function module="Core">ReleaseMemory</function> within the same code block.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="LockFailed">Failed to lock a required resource.</error>
       <error code="TimeOut">Function timed-out before successful completion.</error>
-      <error code="SystemCorrupt">The operating system has been badly corrupted.</error>
       <error code="MarkedForDeletion">A resource cannot be accessed as it is marked for deletion.</error>
       <error code="MemoryDoesNotExist">Memory block does not exist.</error>
       <error code="DeadLock">Dead-lock detected - procedure aborted.</error>
@@ -285,7 +283,7 @@ struct FunctionField argsResize[] = {
       <param type="LONG" name="Size">The size of the memory block.</param>
       <param type="LONG" name="Flags" lookup="MEM">Optional flags.</param>
       <param type="APTR *" name="Address">Set this argument to refer to an APTR type to store an address reference to the allocated memory block.</param>
-      <param type="MEMORYID *" name="ID">Set this argument to refer to a MEMORYID type to store a unique ID reference to the allocated memory block.  This is compulsory when allocating public memory blocks.</param>
+      <param type="MEMORYID *" name="ID">Set this argument to refer to a MEMORYID type to store a unique ID reference to the allocated memory block.</param>
     </input>
     <description>
 <p>The AllocMemory() function will allocate a new block of memory on the program's heap.  The client will need to define the minimum byte Size, optional Flags and a variable to store the resulting Address and/or ID of the memory block. Here is an example:</p>
@@ -298,15 +296,14 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
 </pre>
 <p>A number of flag definitions are available that affect the memory allocation process.  They are:</p>
 <types lookup="MEM"/>
-<p>Notice that memory allocation can be returned as an address pointer and/or as a unique memory ID.  Typically a private address with no ID reference is sufficient.  However when allocating public memory, the ID is essential and optionally the Address pointer to gain immediate access to the block.</p>
-<p>If the block is allocated as private and the caller retrieves both the ID and Address pointer, or if the allocation is public and the Address pointer is requested, an internal call will be made to <function module="Core">AccessMemoryID</function> to lock the memory block and resolve its address.  This means that before freeing the memory block the caller must call <function module="Core">ReleaseMemory</function> to unlock it.  Blocks that are persistently locked will remain in memory until the process is terminated.</p>
+<p>Notice that memory allocation can be returned as an address pointer and/or as a unique memory ID.  Typically a private address with no ID reference is sufficient.</p>
+<p>If the client retrieves both the ID and Address pointer, an internal call will be made to <function module="Core">AccessMemoryID</function> to lock the memory block.  This means that before freeing the memory block the client must call <function module="Core">ReleaseMemory</function> to unlock it. Blocks that are persistently locked will remain in memory until the process is terminated.</p>
 <p>Memory that is allocated through AllocMemory() is automatically cleared with zero-byte values.  When allocating large blocks it may be wise to turn off this feature, achieved by setting the <code>MEM_NO_CLEAR</code> flag.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="Failed">General failure.</error>
       <error code="Args">Invalid arguments passed to function.</error>
-      <error code="LockFailed">Failed to lock a required resource.</error>
       <error code="SystemCorrupt">The operating system has been badly corrupted.</error>
       <error code="ArrayFull">Array has reached capacity and cannot be expanded.</error>
       <error code="AccessMemory">Access to a shared memory block was denied.</error>
@@ -792,7 +789,6 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
 <p>This function will free a memory block originating from <function module="Core">AllocMemory</function>.</p>
 <p>The process of freeing the block will not necessarily take place immediately.  If the block is locked then it will be marked for deletion and not removed until the lock count reaches zero.</p>
 <p>Crash protection measures are built-in.  If the memory header or tail is missing from the block, it is assumed that a routine has has over-written the memory boundaries, or the caller is attempting to free a non-existent allocation. Double-freeing can be caught but is not guaranteed.  Freeing memory blocks that are out of scope will result in a warning.  All caught errors are reported to the application log and warrant priority attention.</p>
-<p>This function is for private memory blocks only.  To free a public memory block, use <function module="Core">FreeResourceID</function>.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -810,12 +806,11 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
       <param type="MEMORYID" name="ID">The unique ID of the memory block.</param>
     </input>
     <description>
-<p>This function will free a memory block with the ID as the identifier.  It is a requirement that public memory blocks are terminated with this function.</p>
+<p>This function will free a memory block with the ID as the identifier.</p>
 <p>The process of freeing the block will not necessarily take place immediately.  If the block is locked then it will be marked for deletion and not removed until the lock count reaches zero.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
-      <error code="LockFailed">Failed to lock a required resource.</error>
       <error code="MemoryDoesNotExist">Memory block does not exist.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -1235,13 +1230,13 @@ GetField(Object, FID_Y|TLONG, &amp;y);
       <param type="LONG" name="Size">Size of the MemInfo structure.</param>
     </input>
     <description>
-<p>This function can be used to get special details on the attributes of a memory block.  It will return information on the start address, parent object, memory ID, size and flags of the memory block that you are querying.  The following code segment illustrates correct use of this function:</p>
+<p>This function returns the attributes of a memory block, including the start address, parent object, memory ID, size and flags.  The following code segment illustrates correct use of this function:</p>
 <pre>MemInfo info;
 if (!MemoryIDInfo(memid, &amp;info)) {
    log.msg("Memory block #%d is %d bytes large.", info.MemoryID, info.Size);
 }
 </pre>
-<p>If the call to MemoryIDInfo() fails, the MemInfo structure's fields will be driven to NULL and an error code will be returned.</p>
+<p>If the call fails, the MemInfo structure's fields will be driven to NULL and an error code is returned.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -1496,7 +1491,6 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <description>
 <p>This function is used to reallocate memory blocks to new lengths. You can shrink or expand a memory block as you wish. The data of your original memory block will be copied over to the new block.  If the new block is of a larger size, the left-over bytes will be filled with zero-byte values. If the new block is smaller, you will lose some of the original data.</p>
 <p>The original block will be destroyed as a result of calling this function unless the reallocation process fails, in which case your existing memory block will remain valid.</p>
-<p>If the memory block is public, the original address will be automatically released and freed on success.  The ID of the original memory block will also be preserved in the new block when reallocating public memory.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -1885,7 +1879,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
+      <error code="LockFailed">Failed to lock a required resource.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -3174,18 +3168,15 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="CALLER">This flag is usable only in routines that are supporting a class method.  It forces the memory allocation to be tracked to the object that made the method call.  This is particularly important in methods that return memory blocks that do not form a part of the object itself.</const>
       <const name="CODE">Set if the memory will contain executable program code.</const>
       <const name="DATA">The default type, MEM_DATA, is used to indicate a standard memory allocation from system RAM.</const>
-      <const name="FIXED">This flag can be applied to public memory blocks that need to be mapped to a fixed address that is common to all tasks.  For instance, if the system locks the memory block to address 0x56084000 for your task, then all other tasks that map the memory block will also see it at that address.  This flag is typically used for supporting absolute code execution.</const>
       <const name="HIDDEN">Hidden blocks are not recorded and are excluded from resource tracking.</const>
       <const name="MANAGED">Enables custom resource management for the memory block.  The start of the block will need to be reserved with a pointer to a ResourceManager structure, which is included as part of the block's declared Size.  The Free() callback will be called when the block is removed.</const>
-      <const name="NO_BLOCK">If this flag is set against a public memory block then the access blocking mechanism will be permanently turned off for all accesses to that particular memory block.  This means that multiple tasks can have full read/write access to the memory block at once regardless of the flags passed to AccessMemoryID().</const>
-      <const name="NO_BLOCKING">If this flag is set against a public memory block then the access blocking mechanism will be permanently turned off for all accesses to that particular memory block.  This means that multiple tasks can have full read/write access to the memory block at once regardless of the flags passed to AccessMemoryID().</const>
+      <const name="NO_BLOCK">Permanently turn off all accesses to this memory block.  This means that multiple threads can have full read/write access to the memory block at once regardless of other acces flags.</const>
+      <const name="NO_BLOCKING">Permanently turn off all accesses to this memory block.  This means that multiple threads can have full read/write access to the memory block at once regardless of other acces flags.</const>
       <const name="NO_CLEAR">Do not clear the memory on allocation (saves time).</const>
       <const name="NO_LOCK">For AllocMemory() only, indicates that the (private) memory block should not be locked on return.</const>
       <const name="NO_POOL">Gives a hint to the allocator to allocate the block outside of the memory pool.</const>
-      <const name="PUBLIC">Public memory can be allocated by specifying this flag.  Public memory blocks are accessible by all tasks, but access can only be gained by knowing the unique memory ID and utilising the AccessMemoryID() function.</const>
       <const name="READ">The memory is explicitly marked as readable.</const>
       <const name="READ_WRITE">Synonym for READ | WRITE</const>
-      <const name="SHARED">Public memory can be allocated by specifying this flag.  Public memory blocks are accessible by all tasks, but access can only be gained by knowing the unique memory ID and utilising the AccessMemoryID() function.</const>
       <const name="STRING">Identifies the memory content as a null terminated string. Useful for debugging and run-time type identification in scripts.</const>
       <const name="TEXTURE">The memory space is reserved by a video driver for hosting texture graphics.</const>
       <const name="TMP_LOCK">Enables temporary locking restrictions.  Prevents processes from sleeping while holding a lock on the memory block.</const>
@@ -3281,13 +3272,14 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="TIMER_SUB">The object is subscribed to a timer interval.</const>
       <const name="UNIQUE">Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating shared objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.</const>
       <const name="UNLOCK_FREE">Read-only indicator for when the object is marked for deletion.</const>
-      <const name="UNTRACKED">An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.</const>
+      <const name="UNTRACKED">An object created with this flag will not be tracked back to the object that created it.</const>
     </constants>
 
     <constants lookup="OPF">
       <const name="ARGS"/>
       <const name="COMPILED_AGAINST"/>
       <const name="CORE_VERSION"/>
+      <const name="DEPRECATED"/>
       <const name="DETAIL"/>
       <const name="ERROR"/>
       <const name="MAX_DEPTH"/>
@@ -3299,7 +3291,6 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="SHOW_ERRORS"/>
       <const name="SHOW_IO"/>
       <const name="SHOW_MEMORY"/>
-      <const name="SHOW_PUBLIC_MEM"/>
       <const name="SYSTEM_PATH"/>
     </constants>
 
@@ -3415,7 +3406,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="PROCESS_STATE">Life-cycle stage of the running process</const>
       <const name="THREAD_ID">Return the ID of the current thread.</const>
       <const name="TOTAL_MEMORY">The total amount of installed memory.</const>
-      <const name="TOTAL_SHARED_MEMORY">The total amount of shared memory in use.</const>
+      <const name="TOTAL_SHARED_MEMORY">The total amount of shared memory in use (system wide).</const>
       <const name="TOTAL_SWAP">The total amount of available swap space.</const>
     </constants>
 
@@ -3782,9 +3773,6 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <field name="AccessCount" type="WORD">Total number of active locks on this block.</field>
       <field name="Flags" type="WORD">The type of memory.</field>
       <field name="MemoryID" type="MEMORYID">The unique ID for this block.</field>
-      <field name="LockID" type="OBJECTID">Reference to the task that currently has a lock on the block.</field>
-      <field name="TaskID" type="OBJECTID">The Task that owns the memory block</field>
-      <field name="Handle" type="LONG">Native system handle (e.g. the shmid in Linux)</field>
     </struct>
 
     <struct name="Message" comment="Messaging structures.  Note: This structure is utilised by NextMsg">

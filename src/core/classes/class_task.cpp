@@ -1636,7 +1636,7 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
 
       // Allocate the message block for this Task
 
-      if (!AllocMemory(sizeof(MessageHeader), MEM_PUBLIC, (void **)&msgblock, &glTaskMessageMID)) {
+      if (!AllocMemory(sizeof(MessageHeader), MEM_DATA, (void **)&msgblock, &glTaskMessageMID)) {
          Self->MessageMID = glTaskMessageMID;
          msgblock->TaskIndex = glTaskEntry->Index;
          ReleaseMemoryID(glTaskMessageMID);

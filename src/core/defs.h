@@ -31,15 +31,12 @@
 
 // See the makefile for optional defines
 
-#define RoundPageSize(size) ((size) + glPageSize - ((size) % glPageSize))
-
 //#define USE_GLOBAL_EVENTS 1 // Use a global locking system for resources in Windows (equivalent to Linux)
 
 #define MAX_TASKS    50  // Maximum number of tasks allowed to run at once
 #define MAX_SEMLOCKS 40  // Maximum number of semaphore allocations per task
 
-#define MSG_MAXARGSIZE   512   // The maximum allowable size of data based arguments before they have to be allocated as public memory blocks when messaging
-#define MAX_BLOCKS       2048  // The maximum number of public memory blocks (system-wide) that the Core can handle at once
+#define MSG_MAXARGSIZE   512   // The maximum allowable size of data based arguments before they have to be allocated as memory blocks when messaging
 #define SIZE_SYSTEM_PATH 100  // Max characters for the Parasol system path
 
 #define MAX_SEMAPHORES    40  // Maximum number of semaphores that can be allocated in the system
@@ -150,7 +147,6 @@ enum class NF : ULONG;
 enum {
    TL_GENERIC=0,
    TL_TIMER,
-   TL_MEMORY_PAGES,
    TL_OBJECT_LOOKUP,
    TL_PRIVATE_MEM,
    TL_PRINT,
@@ -211,9 +207,7 @@ extern std::unordered_map<ULONG, virtual_drive> glVirtual;
 //********************************************************************************************************************
 // Resource definitions.
 
-#define PUBLIC_TABLE_CHUNK   1000  // Maximum number of public objects (system-wide)
-#define PAGE_TABLE_CHUNK     32
-#define MEMHEADER            12    // 8 bytes at start for MEMH and MemoryID, 4 at end for MEMT
+#define MEMHEADER 12    // 8 bytes at start for MEMH and MemoryID, 4 at end for MEMT
 
 // Turning off USE_SHM means that the shared memory pool is available to all processes by default.
 
@@ -222,9 +216,7 @@ extern std::unordered_map<ULONG, virtual_drive> glVirtual;
   #define SHMKEY 0x0009f830 // Keep the key value low as we will be incrementing it
 
   #ifdef USE_SHM
-    #define INITIAL_PUBLIC_SIZE  0
   #else
-    #define INITIAL_PUBLIC_SIZE  1024768
     extern LONG glMemoryFD;
   #endif
 #elif __unix__
@@ -233,7 +225,6 @@ extern std::unordered_map<ULONG, virtual_drive> glVirtual;
 
   #ifdef USE_SHM
     #define MEMORYFILE           "/tmp/parasol.mem"
-    #define INITIAL_PUBLIC_SIZE  0
   #else
     // To mount a 32MB RAMFS filesystem for this method:
     //
@@ -241,13 +232,9 @@ extern std::unordered_map<ULONG, virtual_drive> glVirtual;
     //    mount -t ramfs none /tmp/ramfs -o maxsize=32000
 
     #define MEMORYFILE           "/tmp/ramfs/parasol.mem"
-    #define INITIAL_PUBLIC_SIZE  1024768
 
     extern LONG glMemoryFD;
   #endif
-#elif _WIN32
-  #define INITIAL_PUBLIC_SIZE (2 * 1048576)
-  #define STATIC_MEMORY_POOL TRUE // The entire memory-pool is pre-paged.  No paging of individual memory blocks is performed.
 #endif
 
 #ifdef _WIN32
@@ -264,20 +251,7 @@ extern struct public_lock glPublicLocks[PL_END];
 
 #endif
 
-#define MPF_LOCAL 0x0001       // The page is owned by the task
-
-struct MemoryPage {
-   APTR     Address;           // Map address
-   MEMORYID MemoryID;          // Represented memory ID
-   WORD     AccessCount;       // Access count
-   WORD     Flags;             // Special flags
-   #ifdef __unix__
-      LARGE    Size;
-   #endif
-};
-
 enum {
-   RT_MEMORY=1,
    RT_SEMAPHORE,
    RT_OBJECT
 };
@@ -324,14 +298,11 @@ enum {
    CP_PRINT_CONTEXT,
    CP_PRINT_ACTION,
    CP_REMOVE_PRIVATE_LOCKS,
-   CP_REMOVE_PUBLIC_LOCKS,
-   CP_FREE_PUBLIC_MEMORY,
    CP_BROADCAST,
    CP_REMOVE_TASK,
    CP_REMOVE_TABLES,
    CP_FREE_ACTION_MANAGEMENT,
    CP_FREE_COREBASE,
-   CP_FREE_MEMORY_PAGES,
    CP_FREE_PRIVATE_MEMORY,
    CP_FINISHED
 };
@@ -607,17 +578,14 @@ extern std::string glSystemPath;
 extern std::string glModulePath;
 extern std::string glRootPath;
 extern char glDisplayDriver[28];
-extern bool glShowIO, glShowPrivate, glShowPublic;
+extern bool glShowIO, glShowPrivate;
 extern WORD glLogLevel, glMaxDepth;
 extern UBYTE glTaskState;
 extern LARGE glTimeLog;
-extern struct RootModule   *glModuleList;    // Locked with TL_GENERIC.  Maintained as a linked-list; hashmap unsuitable.
-extern struct PublicAddress  *glSharedBlocks;  // Locked with PL_PUBLICMEM
-extern struct SortedAddress  *glSortedBlocks;
+extern struct RootModule     *glModuleList;    // Locked with TL_GENERIC.  Maintained as a linked-list; hashmap unsuitable.
 extern struct SharedControl  *glSharedControl; // Locked with PL_FORBID
 extern struct TaskList       *shTasks, *glTaskEntry; // Locked with PL_PROCESSES
 extern struct SemaphoreEntry *shSemaphores;    // Locked with PL_SEMAPHORES
-extern struct MemoryPage     *glMemoryPages;   // Locked with TL_MEMORY_PAGES
 extern struct OpenInfo       *glOpenInfo;      // Read-only.  The OpenInfo structure initially passed to OpenCore()
 extern objTask *glCurrentTask;
 extern const struct ActionTable ActionTable[];
@@ -634,7 +602,6 @@ extern std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
 extern std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes; // VolumeName = { Key, Value }
 extern const CSTRING glMessages[ERR_END+1];       // Read-only table of error messages.
 extern const LONG glTotalMessages;
-extern LONG glTotalPages; // Read-only
 extern MEMORYID glTaskMessageMID;        // Read-only
 extern LONG glProcessID;   // Read only
 extern HOSTHANDLE glConsoleFD;
@@ -648,7 +615,6 @@ extern WORD glCrashStatus, glCodeIndex, glLastCodeIndex;
 extern UWORD glFunctionID;
 extern BYTE glProgramStage;
 extern bool glPrivileged, glSync;
-extern LONG glPageSize; // Read only
 extern TIMER glCacheTimer;
 extern APTR glJNIEnv;
 extern class ObjectContext glTopContext; // Read-only, not a threading concern.
@@ -928,7 +894,7 @@ EXPORT void Expunge(WORD);
 extern void add_archive(class extCompression *);
 extern void remove_archive(class extCompression *);
 
-void print_diagnosis(LONG ProcessID, LONG Signal);
+void   print_diagnosis(LONG ProcessID, LONG Signal);
 CSTRING action_name(OBJECTPTR Object, LONG ActionID);
 APTR   build_jump_table(const struct Function *);
 ERROR  copy_args(const struct FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, CSTRING);
@@ -936,13 +902,10 @@ ERROR  copy_field_to_buffer(OBJECTPTR Object, struct Field *Field, LONG DestFlag
 ERROR  create_archive_volume(void);
 ERROR  delete_tree(STRING, LONG, FUNCTION *, struct FileFeedback *);
 struct ClassItem * find_class(CLASSID);
-LONG   find_public_address(struct SharedControl *, APTR);
 ERROR  find_private_object_entry(OBJECTID, LONG *);
-ERROR  find_public_mem_id(struct SharedControl *, MEMORYID, LONG *);
 void   fix_core_table(struct CoreBase *, FLOAT);
 void   free_events(void);
 void   free_module_entry(struct RootModule *);
-void   free_public_resources(OBJECTID);
 void   free_wakelocks(void);
 LONG   get_thread_id(void);
 void   init_metaclass(void);
@@ -953,31 +916,24 @@ ERROR  msg_event(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSi
 ERROR  msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize);
 ERROR  msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize);
 void   optimise_write_field(struct Field *Field);
-ERROR  page_memory(struct PublicAddress *, APTR *);
 void   PrepareSleep(void);
 ERROR  process_janitor(OBJECTID, LONG, LONG);
-ERROR  remove_memlock(void);
 void   remove_process_waitlocks(void);
-void   remove_public_locks(LONG);
 void   remove_semaphores(void);
 ERROR  resolve_args(APTR, const struct FunctionField *);
-APTR   resolve_public_address(struct PublicAddress *);
 void   scan_classes(void);
 ERROR  sort_class_fields(extMetaClass *, struct Field *);
 void   remove_threadpool(void);
 ERROR  threadpool_get(extThread **);
 void   threadpool_release(extThread *);
-ERROR  unpage_memory(APTR);
-ERROR  unpage_memory_id(MEMORYID MemoryID);
 void   wake_sleepers(LONG ResourceID, LONG ResourceType);
 ERROR  writeval_default(OBJECTPTR, struct Field *, LONG, const void *, LONG);
 ERROR  validate_process(LONG);
 void   free_iconv(void);
+ERROR  check_paths(CSTRING, LONG);
+void   merge_groups(ConfigGroups &Dest, ConfigGroups &Source);
 
 #define REF_WAKELOCK           get_threadlock()
-
-#define LOCK_PUBLIC_MEMORY(t)  SysLock(PL_PUBLICMEM,(t))
-#define UNLOCK_PUBLIC_MEMORY() SysUnlock(PL_PUBLICMEM)
 
 #define LOCK_PROCESS_TABLE(t)  SysLock(PL_PROCESSES,(t))
 #define UNLOCK_PROCESS_TABLE() SysUnlock(PL_PROCESSES)
@@ -1028,15 +984,9 @@ void  plFreePrivateSemaphore(APTR);
 ERROR plLockSemaphore(APTR, LONG TimeOut);
 void  plUnlockSemaphore(APTR);
 
-ERROR check_paths(CSTRING, LONG);
-
-ERROR convert_errno(LONG Error, ERROR Default);
-void merge_groups(ConfigGroups &Dest, ConfigGroups &Source);
-
 #ifdef _WIN32
 void activate_console(BYTE);
 void free_threadlock(void);
-WINHANDLE winAllocPublic(LONG);
 LONG winCheckProcessExists(LONG);
 LONG winCloseHandle(WINHANDLE);
 LONG winCreatePipe(WINHANDLE *Read, WINHANDLE *Write);
@@ -1056,7 +1006,6 @@ WINHANDLE winGetCurrentProcess(void);
 LONG winGetCurrentProcessId(void);
 LONG winGetExitCodeProcess(WINHANDLE, LONG *Code);
 long long winGetFileSize(STRING);
-LONG winGetPageSize(void);
 APTR winGetProcAddress(WINHANDLE, CSTRING);
 WINHANDLE winGetStdInput(void);
 LARGE winGetTickCount(void);
@@ -1068,7 +1017,6 @@ LONG winLaunchProcess(APTR, STRING, STRING, BYTE Group, BYTE Redirect, APTR *Pro
 void winLeaveCriticalSection(APTR);
 WINHANDLE winLoadLibrary(CSTRING);
 void winLowerPriority(void);
-ERROR winMapMemory(WINHANDLE, LONG, APTR *);
 WINHANDLE winOpenSemaphore(unsigned char *Name);
 void winProcessMessages(void);
 LONG winReadStd(APTR, LONG, APTR Buffer, LONG *Size);

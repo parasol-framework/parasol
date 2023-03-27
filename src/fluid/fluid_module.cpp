@@ -715,7 +715,7 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
                   }
                   else {
                      MemInfo meminfo;
-                     if (!MemoryPtrInfo(((APTR *)var)[0], &meminfo)) size = meminfo.Size;
+                     if (!MemoryIDInfo(GetMemoryID(((APTR *)var)[0]), &meminfo)) size = meminfo.Size;
                   }
 
                   if (size > 0) lua_pushlstring(prv->Lua, ((CSTRING *)var)[0], size);

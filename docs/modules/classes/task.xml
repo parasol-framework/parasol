@@ -59,7 +59,7 @@
       <name>Write</name>
       <comment>Send raw data to a launched process' stdin descriptor.</comment>
       <description>
-<p>If a process is successfully launched with the PIPE set in <field>Flags</field>, data can be sent to its stdin pipe by calling the Write action.  Setting the Buffer parameter to NULL will result in the pipe being closed (this will signal to the process that no more data is incoming).</p>
+<p>If a process is successfully launched with the <code>PIPE</code> set in <field>Flags</field>, data can be sent to its stdin pipe by calling the Write action.  Setting the Buffer parameter to NULL will result in the pipe being closed (this will signal to the process that no more data is incoming).</p>
       </description>
     </action>
 
@@ -140,7 +140,7 @@
       <comment>Sends a quit message to a task.</comment>
       <prototype>ERROR taskQuit(OBJECTPTR Object)</prototype>
       <description>
-<p>The Quit method can be used as a convenient way of sending a task a quit message.  This will normally result in the destruction of the task, so long as it is still functioning correctly and has been coded to respond to the MSGID_QUIT message type.  It is legal for a task to ignore a quit request if it is programmed to stay alive.  A task can be killed outright with the Free action.</p>
+<p>The Quit method can be used as a convenient way of sending a task a quit message.  This will normally result in the destruction of the task, so long as it is still functioning correctly and has been coded to respond to the <code>MSGID_QUIT</code> message type.  It is legal for a task to ignore a quit request if it is programmed to stay alive.  A task can be killed outright with the Free action.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>

@@ -216,8 +216,7 @@ class objCompressedStream;
 // Memory types used by AllocMemory().  The lower 16 bits are stored with allocated blocks, the upper 16 bits are function-relative only.
 
 #define MEM_DATA 0x00000000
-#define MEM_SHARED 0x00000001
-#define MEM_PUBLIC 0x00000001
+#define MEM_MANAGED 0x00000001
 #define MEM_VIDEO 0x00000002
 #define MEM_TEXTURE 0x00000004
 #define MEM_AUDIO 0x00000008
@@ -232,8 +231,6 @@ class objCompressedStream;
 #define MEM_DELETE 0x00001000
 #define MEM_NO_BLOCKING 0x00002000
 #define MEM_NO_BLOCK 0x00002000
-#define MEM_FIXED 0x00004000
-#define MEM_MANAGED 0x00008000
 #define MEM_READ 0x00010000
 #define MEM_WRITE 0x00020000
 #define MEM_READ_WRITE 0x00030000
@@ -916,7 +913,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 #define STT_HEX 3
 #define STT_STRING 4
 
-#define OPF_SHOW_PUBLIC_MEM 0x00000001
+#define OPF_DEPRECATED 0x00000001
 #define OPF_CORE_VERSION 0x00000002
 #define OPF_OPTIONS 0x00000004
 #define OPF_MAX_DEPTH 0x00000008
@@ -1153,10 +1150,9 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 #define RES_TOTAL_MEMORY 23
 #define RES_TOTAL_SWAP 24
 #define RES_CPU_SPEED 25
-#define RES_SHARED_BLOCKS 26
-#define RES_FREE_MEMORY 27
-#define RES_FREE_SWAP 28
-#define RES_KEY_STATE 29
+#define RES_FREE_MEMORY 26
+#define RES_FREE_SWAP 27
+#define RES_KEY_STATE 28
 
 // Path types for SetResourcePath()
 
@@ -1754,9 +1750,6 @@ typedef struct MemInfo {
    WORD     AccessCount; // Total number of active locks on this block.
    WORD     Flags;       // The type of memory.
    MEMORYID MemoryID;    // The unique ID for this block.
-   OBJECTID LockID;      // Reference to the task that currently has a lock on the block.
-   OBJECTID TaskID;      // The Task that owns the memory block
-   LONG     Handle;      // Native system handle (e.g. the shmid in Linux)
 } MEMINFO;
 
 struct ActionEntry {
@@ -2136,8 +2129,12 @@ inline ERROR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value) 
 #define END_FIELD FieldArray(NULL, 0)
 #define FDEF static const struct FunctionField
 
-#define DeregisterFD(a)   RegisterFD((a), RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL, 0, 0)
-#define DeleteMsg(a,b)    UpdateMessage(a,b,(APTR)-1,0,0)
+template <class T> inline MEMORYID GetMemoryID(T &&A) {
+   return ((MEMORYID *)A)[-2];
+}
+
+#define DeregisterFD(a) RegisterFD((a), RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL, 0, 0)
+#define DeleteMsg(a,b)  UpdateMessage(a,b,(APTR)-1,0,0)
 
 inline OBJECTPTR GetParentContext() { return (OBJECTPTR)(MAXINT)GetResource(RES_PARENT_CONTEXT); }
 inline APTR GetResourcePtr(LONG ID) { return (APTR)(MAXINT)GetResource(ID); }
@@ -3569,8 +3566,6 @@ class objThread : public BaseClass {
 
 // Private task list control structure.
 
-#define MAX_MEMLOCKS 64  // Maximum number of non-blocking memory locks allowed per task
-
 struct TaskList {
    LARGE    CreationTime;  // Time at which the task slot was created
    LONG     ProcessID;     // Core process ID
@@ -3586,10 +3581,6 @@ struct TaskList {
    #ifdef _WIN32
       WINHANDLE Lock;      // The semaphore to signal when a message is sent to the task
    #endif
-   struct   {
-      MEMORYID MemoryID;
-      WORD     AccessCount;
-   } NoBlockLocks[MAX_MEMLOCKS+1]; // Allow for a NULL entry at the end of the array
 };
 // Module class definition
 
@@ -3920,37 +3911,6 @@ inline FIELD ResolveField(CSTRING Field) {
 
 #ifdef __system__
 
-// Public memory management structures.
-
-struct PublicAddress {
-   LARGE    AccessTime;        // The time at which the block was accessed
-   MEMORYID MemoryID;          // Unique memory ID
-   LONG     Size;              // Size of the memory block
-   LONG     Offset;            // Offset of the memory block within the page file
-   OBJECTID ObjectID;          // Object that the address belongs to
-   OBJECTID TaskID;            // The task that the block is tracked back to
-   OBJECTID ContextID;         // Context that locked the memory block (for debugging purposes only)
-   WORD     ActionID;          // Action that locked the memory block (for debugging purposes only)
-   WORD     Flags;             // Special MEM_ address flags
-   volatile UBYTE AccessCount;  // Count of locks on this address
-   volatile UBYTE ExternalLock; // Incremented when a third party requires access during a lock
-   #ifdef __unix__
-      volatile LONG ThreadLockID;      // Globally unique ID from get_thread_id()
-      volatile LONG ProcessLockID;     // If locked, this field refers to the ID of the semaphore that locked the block
-   #endif
-   #ifdef _WIN32
-      LONG      OwnerProcess;   // The process ID of the task that created the block as referred to by Offset
-      WINHANDLE Handle;         // Memory handle, if block does not belong to the core memory pool
-      volatile OBJECTID ProcessLockID;  // If locked, refers to the ID of the process that locked it
-      volatile LONG     ThreadLockID;   // If locked, the global thread ID of the locker.
-   #endif
-};
-
-struct SortedAddress {
-   MEMORYID MemoryID;
-   LONG Index;
-};
-
 // Semaphore management structure.
 
 #define MAX_SEMAPHORES  40  // Maximum number of semaphores that can be allocated in the system
@@ -3987,32 +3947,22 @@ struct ActionMessage {
 
 enum { // For SysLock()
    PL_WAITLOCKS=1,
-   PL_PUBLICMEM,
    PL_FORBID,
    PL_PROCESSES,
    PL_SEMAPHORES,
    #ifdef _WIN32
-      CN_PUBLICMEM,
       CN_SEMAPHORES,
    #endif
    PL_END
 };
 
 struct SharedControl {
-   LONG PoolSize;                   // Amount of allocated page space (starts at zero and expands)
-   volatile LONG BlocksUsed;        // Total amount of shared memory blocks currently allocated
-   LONG MaxBlocks;                  // Maximum amount of available blocks
-   volatile LONG NextBlock;         // Next empty position in the blocks table
-   volatile LONG IDCounter;         // ID counter for public access
    volatile LONG ValidateProcess;
    WORD SystemState;
    volatile WORD WLIndex;           // Current insertion point for the wait-lock array.
    LONG MagicKey;                   // This magic key is set to the semaphore key (used only as an indicator for initialisation)
-   LONG BlocksOffset;               // Array of available shared memory pages
-   LONG SortedBlocksOffset;         // Array of shared memory blocks sorted by MemoryID
    LONG SemaphoreOffset;            // Offset to the semaphore control array
    LONG TaskOffset;                 // Offset to the task control array
-   LONG MemoryOffset;               // Offset to the shared memory allocations
    LONG WLOffset;                   // Offset to the wait-lock array
    #ifdef __unix__
       struct {
@@ -4021,8 +3971,6 @@ struct SharedControl {
          LONG PID;               // Resource tracking: Process that has the current lock.
          WORD Count;             // Resource tracking: Count of all locks (nesting)
       } PublicLocks[PL_END];
-   #elif _WIN32
-      // In windows, the shared memory controls are controlled by mutexes that have local handles.
    #endif
 };
 

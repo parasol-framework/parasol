@@ -86,17 +86,9 @@ ERROR validate_process(LONG ProcessID)
 
    glValidating = ProcessID;
 
-   remove_public_locks(ProcessID);
-   free_public_resources(task_id);
-
    // Wake up foreign tasks that are waiting on the crashed process.  Very straight-forward as we can do a broadcast.
 
    #ifdef __unix__
-      if (!LOCK_PUBLIC_MEMORY(1000)) {
-         pthread_cond_broadcast(&glSharedControl->PublicLocks[PL_PUBLICMEM].Cond);
-         UNLOCK_PUBLIC_MEMORY();
-      }
-
       if (!LOCK_SEMAPHORES(1000)) {
          pthread_cond_broadcast(&glSharedControl->PublicLocks[PL_SEMAPHORES].Cond);
          UNLOCK_SEMAPHORES();

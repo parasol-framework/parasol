@@ -186,7 +186,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    if (alloc_private_lock(TL_GENERIC, 0)) return NULL; // A misc. internal mutex, strictly not recursive.
    if (alloc_private_lock(TL_TIMER, 0)) return NULL; // For timer subscriptions.
    if (alloc_private_lock(TL_MSGHANDLER, ALF_RECURSIVE)) return NULL;
-   if (alloc_private_lock(TL_MEMORY_PAGES, 0)) return NULL; // For controlling access to glMemoryPages
    if (alloc_private_lock(TL_PRINT, 0)) return NULL; // For message logging only.
    if (alloc_private_lock(TL_THREADPOOL, 0)) return NULL;
    if (alloc_private_lock(TL_OBJECT_LOOKUP, ALF_RECURSIVE)) return NULL;
@@ -340,8 +339,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    if (Info->Flags & OPF_DETAIL)  glLogLevel = (WORD)Info->Detail;
    if (Info->Flags & OPF_MAX_DEPTH) glMaxDepth = (WORD)Info->MaxDepth;
-
-   if (Info->Flags & (OPF_SHOW_PUBLIC_MEM|OPF_SHOW_MEMORY)) glShowPublic = TRUE;
    if (Info->Flags & OPF_SHOW_MEMORY) glShowPrivate = TRUE;
 
    // Android sets an important JNI pointer on initialisation.
@@ -376,11 +373,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
          if (!StrMatch(arg, "log-memory")) {
             glShowPrivate = TRUE;
-            glShowPublic  = TRUE;
             glDebugMemory = TRUE;
-         }
-         else if (!StrMatch(arg, "log-shared-memory")) {
-            glShowPublic = TRUE;
          }
          else if (!StrCompare(arg, "gfx-driver=", 11, 0)) {
             StrCopy(arg+11, glDisplayDriver, sizeof(glDisplayDriver));
@@ -527,10 +520,8 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    // Determine shared addresses
 
-   glSharedBlocks = (PublicAddress *)ResolveAddress(glSharedControl, glSharedControl->BlocksOffset);
-   glSortedBlocks = (SortedAddress *)ResolveAddress(glSharedControl, glSharedControl->SortedBlocksOffset);
-   shSemaphores   = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
-   shTasks        = (TaskList *)ResolveAddress(glSharedControl, glSharedControl->TaskOffset);
+   shSemaphores = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
+   shTasks      = (TaskList *)ResolveAddress(glSharedControl, glSharedControl->TaskOffset);
 
    // Sockets are used on Unix systems to tell our processes when new messages are available for them to read.
 
@@ -659,22 +650,12 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    // Print task information
 
    log.msg("Version: %.1f : Process: %d, MemPool Address: %p", VER_CORE, glProcessID, glSharedControl);
-   log.msg("Blocks Used: %d, MaxBlocks: %d, Sync: %s, Root: %s", glSharedControl->BlocksUsed, glSharedControl->MaxBlocks, (glSync) ? "Y" : "N", glRootPath.c_str());
+   log.msg("Sync: %s, Root: %s", (glSync) ? "Y" : "N", glRootPath.c_str());
 #ifdef __unix__
    log.msg("UID: %d (%d), EUID: %d (%d); GID: %d (%d), EGID: %d (%d)", getuid(), glUID, geteuid(), glEUID, getgid(), glGID, getegid(), glEGID);
 #endif
 
    init_metaclass();
-
-   // Allocate the page management table for public memory blocks.
-
-   glTotalPages = PAGE_TABLE_CHUNK;
-   if (!(glMemoryPages = (MemoryPage *)calloc(glTotalPages, sizeof(MemoryPage)))) {
-      log.warning("Failed to allocate the memory page management table.");
-      CloseCore();
-      if (Info->Flags & OPF_ERROR) Info->Error = ERR_AllocMemory;
-      return NULL;
-   }
 
    ManagedActions[AC_Init] = (LONG (*)(OBJECTPTR, APTR))MGR_Init;
    ManagedActions[AC_Free] = (LONG (*)(OBJECTPTR, APTR))MGR_Free;
@@ -809,12 +790,10 @@ EXPORT void CleanSystem(LONG Flags)
 
 #define MAGICKEY 0x58392712
 
-static LONG glMemorySize = sizeof(SharedControl) +
-                           (sizeof(PublicAddress) * MAX_BLOCKS) +
-                           (sizeof(SortedAddress) * MAX_BLOCKS) +
-                           (sizeof(SemaphoreEntry) * MAX_SEMAPHORES) +
-                           (sizeof(WaitLock) * MAX_WAITLOCKS) +
-                           (sizeof(TaskList) * MAX_TASKS);
+static const LONG glMemorySize = sizeof(SharedControl) +
+                                 (sizeof(SemaphoreEntry) * MAX_SEMAPHORES) +
+                                 (sizeof(WaitLock) * MAX_WAITLOCKS) +
+                                 (sizeof(TaskList) * MAX_TASKS);
 
 #ifdef _WIN32
 static ERROR open_shared_control(void)
@@ -838,29 +817,18 @@ static ERROR open_shared_control(void)
       }
    }
 
-   // Allocate the public memory pool
-
-   if (LOCK_PUBLIC_MEMORY(4000) != ERR_Okay) {
-      KERR("Failure in call to LOCK_PUBLIC_MEMORY().\n");
-      return ERR_LockFailed;
-   }
-
-   glPageSize = 64; // byte size of the page alignment.  In Windows, public memory is in a pool, so we can set whatever alignment we want
-
    LONG init;
    char sharename[12];
    CopyMemory(glPublicLocks[PL_FORBID].Name, sharename, 12);
    sharename[2] = 'z';
-   if ((init = winCreateSharedMemory(sharename, glMemorySize, glMemorySize + INITIAL_PUBLIC_SIZE, &glSharedControlID, (APTR *)&glSharedControl)) < 0) {
+   if ((init = winCreateSharedMemory(sharename, glMemorySize, glMemorySize, &glSharedControlID, (APTR *)&glSharedControl)) < 0) {
       KERR("Failed to create the shared memory pool in call to winCreateSharedMemory(), code %d.\n", init);
-      UNLOCK_PUBLIC_MEMORY();
       return ERR_Failed;
    }
 
    if (init) error = init_shared_control();
    else error = ERR_Okay;
 
-   UNLOCK_PUBLIC_MEMORY();
    return error;
 }
 
@@ -885,8 +853,6 @@ static ERROR open_shared_control(void)
 
    KMSG("open_shared_control() Key: $%.8x.\n", memkey);
 
-   // Allocate the public memory pool
-
    #ifdef __ANDROID__
       // Helpful ashmem article: http://notjustburritos.tumblr.com/post/21442138796/an-introduction-to-android-shared-memory
 
@@ -909,16 +875,16 @@ static ERROR open_shared_control(void)
          return ERR_Failed;
       }
 
-      ret = ioctl(glMemoryFD, ASHMEM_SET_SIZE, glMemorySize + INITIAL_PUBLIC_SIZE);
+      ret = ioctl(glMemoryFD, ASHMEM_SET_SIZE, glMemorySize);
       if (ret < 0) {
-         LOGE("Failed to set size of the ashmem region to %d.", glMemorySize + INITIAL_PUBLIC_SIZE);
+         LOGE("Failed to set size of the ashmem region to %d.", glMemorySize);
          close(glMemoryFD);
          glMemoryFD = -1;
          return ERR_Failed;
       }
 
       // Map the first portion of the file into our process (i.e. the system stuff that needs to be permanently mapped).
-      // Mapping of blocks in the global pool will only be done on request in AccessMemoryID() and page_memory().
+      // Mapping of blocks in the global pool will only be done on request in AccessMemoryID().
 
       if ((glSharedControl = mmap(0, glMemorySize, PROT_READ|PROT_WRITE, MAP_SHARED, glMemoryFD, 0)) != (APTR)-1) {
          // Call init_shared_control() if this is the first time that the block has been created.
@@ -986,8 +952,8 @@ static ERROR open_shared_control(void)
 
       if (!fstat(glMemoryFD, &info)) {
          if (info.st_size < glMemorySize) {
-            if (ftruncate(glMemoryFD, glMemorySize + INITIAL_PUBLIC_SIZE) IS -1) {
-               KERR("Failed to increase the filesize of \"%s\" to %d bytes.\n", MEMORYFILE, glMemorySize + INITIAL_PUBLIC_SIZE);
+            if (ftruncate(glMemoryFD, glMemorySize) IS -1) {
+               KERR("Failed to increase the filesize of \"%s\" to %d bytes.\n", MEMORYFILE, glMemorySize);
                return ERR_Failed;
             }
          }
@@ -1017,23 +983,11 @@ static ERROR init_shared_control(void)
 {
    KMSG("init_shared_control()\n");
 
-   // Clear the entire shared control structure
-
    ClearMemory(glSharedControl, glMemorySize);
 
-   glSharedControl->PoolSize         = INITIAL_PUBLIC_SIZE;
-   glSharedControl->BlocksUsed       = 0;
-   glSharedControl->IDCounter        = -10000;
-   glSharedControl->MagicKey         = MAGICKEY;
-   glSharedControl->MaxBlocks        = MAX_BLOCKS;
+   glSharedControl->MagicKey   = MAGICKEY;
 
    LONG offset = sizeof(SharedControl);
-
-   glSharedControl->BlocksOffset = offset;
-   offset += sizeof(PublicAddress) * glSharedControl->MaxBlocks;
-
-   glSharedControl->SortedBlocksOffset = offset;
-   offset += sizeof(SortedAddress) * glSharedControl->MaxBlocks;
 
    glSharedControl->SemaphoreOffset = offset;
    offset += sizeof(SemaphoreEntry) * MAX_SEMAPHORES;
@@ -1043,8 +997,6 @@ static ERROR init_shared_control(void)
 
    glSharedControl->TaskOffset = offset;
    offset += sizeof(TaskList) * MAX_TASKS;
-
-   glSharedControl->MemoryOffset = RoundPageSize(glMemorySize);
 
    // Allocate public locks (for sharing between processes)
 
@@ -1166,34 +1118,6 @@ void print_diagnosis(LONG ProcessID, LONG Signal)
 
    #ifdef DBG_DIAGNOSTICS
    if (glLogLevel > 2) {
-      if (ProcessID IS glProcessID) LOGE("  Total Pages:    %d", glTotalPages);
-
-      if (!LOCK_PUBLIC_MEMORY(4000)) {
-         // Print memory locking information
-
-         auto memblocks = (PublicAddress *)ResolveAddress(glSharedControl, glSharedControl->BlocksOffset);
-
-         for (LONG index=0; index < glSharedControl->MaxBlocks; index++) {
-            if (!memblocks[index].MemoryID) continue;
-
-            if (memblocks[index].ProcessLockID IS ProcessID) {
-               char msg[80];
-               LONG m;
-               m = snprintf(msg, sizeof(msg), "  MemLock[%.4d]:  %d", index, memblocks[index].MemoryID);
-
-               #ifdef DEBUG
-               if (memblocks[index].AccessTime)  m += snprintf(msg+m, sizeof(msg)-m, ", MSec: %dms", (LONG)((PreciseTime()/1000LL) - memblocks[index].AccessTime));
-               #endif
-               if (memblocks[index].AccessCount) m += snprintf(msg+m, sizeof(msg)-m, ", Locks: %d", memblocks[index].AccessCount);
-               if (memblocks[index].ContextID)   m += snprintf(msg+m, sizeof(msg)-m, ", Context: %d", memblocks[index].ContextID);
-               if (memblocks[index].ActionID > 0) m += snprintf(msg+m, sizeof(msg)-m, ", Action: %s", ActionTable[memblocks[index].ActionID].Name);
-               else if (memblocks[index].ActionID < 0) m += snprintf(msg+m, sizeof(msg)-m, ", Method: %d", memblocks[index].ActionID);
-               LOGE(msg);
-            }
-         }
-         UNLOCK_PUBLIC_MEMORY();
-      }
-
       if (!LOCK_SEMAPHORES(4000)) {
          // Print semaphore locking information
 
@@ -1293,33 +1217,6 @@ void print_diagnosis(LONG ProcessID, LONG Signal)
 
    #ifdef DBG_DIAGNOSTICS
    if (glLogLevel > 2) {
-      if (ProcessID IS glProcessID) fprintf(fd, "  Total Pages:    %d\n", glTotalPages);
-
-      if (!LOCK_PUBLIC_MEMORY(4000)) {
-         // Print memory locking information
-
-         auto memblocks = (PublicAddress *)ResolveAddress(glSharedControl, glSharedControl->BlocksOffset);
-
-         for (LONG index=0; index < glSharedControl->MaxBlocks; index++) {
-            if (!memblocks[index].MemoryID) continue;
-
-            if (memblocks[index].ProcessLockID IS ProcessID) {
-               fprintf(fd, "  MemLock[%.4d]:  %d", index, memblocks[index].MemoryID);
-
-               #ifdef DEBUG
-               if (memblocks[index].AccessTime) fprintf(fd, ", MSec: %dms", (LONG)((PreciseTime()/1000LL) - memblocks[index].AccessTime));
-               #endif
-               if (memblocks[index].AccessCount) fprintf(fd, ", Locks: %d", memblocks[index].AccessCount);
-               if (memblocks[index].ContextID) fprintf(fd, ", Context: %d", memblocks[index].ContextID);
-
-               if (memblocks[index].ActionID > 0) fprintf(fd, ", Action: %s\n", ActionTable[memblocks[index].ActionID].Name);
-               else if (memblocks[index].ActionID < 0) fprintf(fd, ", Method: %d\n", memblocks[index].ActionID);
-               else fprintf(fd, "\n");
-            }
-         }
-         UNLOCK_PUBLIC_MEMORY();
-      }
-
       if (!LOCK_SEMAPHORES(4000)) {
          // Print semaphore locking information
 

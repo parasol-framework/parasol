@@ -73,15 +73,11 @@ std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes;
 std::list<FDRecord> glFDTable;
 std::list<CoreTimer> glTimers;
 
-struct PublicAddress  *glSharedBlocks  = NULL;
-struct SortedAddress  *glSortedBlocks  = NULL;
 struct RootModule     *glModuleList    = NULL;
-struct SharedAccess   *SharedAccess    = NULL;
 struct SharedControl  *glSharedControl = NULL;
 struct TaskList       *shTasks         = NULL;
 struct TaskList       *glTaskEntry     = NULL;
 struct SemaphoreEntry *shSemaphores    = NULL;
-struct MemoryPage     *glMemoryPages   = NULL;
 struct OpenInfo       *glOpenInfo      = NULL;
 struct MsgHandler     *glMsgHandlers   = NULL, *glLastMsgHandler = 0;
 
@@ -91,8 +87,6 @@ objConfig *glDatatypes = NULL;
 
 APTR glJNIEnv = 0;
 UWORD glFunctionID = 3333; // IDTYPE_FUNCTION
-LONG glPageSize = 4096; // Default page size is 4k
-LONG glTotalPages = 0;
 LONG glStdErrFlags = 0;
 TIMER glCacheTimer = 0;
 LONG glMemoryFD = -1;
@@ -114,11 +108,9 @@ CSTRING glIDL = MOD_IDL;
   struct public_lock glPublicLocks[PL_END] = {
      { "", 0, 0, 0, FALSE }, // 0
      { "rka", 0, 0, 0, FALSE }, // PL_WAITLOCKS
-     { "rkb", 0, 0, 0, FALSE }, // PL_PUBLICMEM
      { "rkc", 0, 0, 0, FALSE }, // PL_FORBID
      { "rkd", 0, 0, 0, FALSE }, // PL_PROCESSES
      { "rke", 0, 0, 0, FALSE }, // PL_SEMAPHORES
-     { "rkf", 0, 0, 0, TRUE },  // CN_PUBLICMEM
      { "rkg", 0, 0, 0, TRUE }   // CN_SEMAPHORES
   };
 #endif
@@ -138,10 +130,8 @@ WORD glFunctionIndex = 0;
 WORD glMaxDepth     = 20; // Thread global
 bool glShowIO       = false;
 bool glShowPrivate  = false;
-bool glShowPublic   = false;
 bool glPrivileged   = false;
 bool glSync         = false;
-BYTE *SharedMemory  = 0;
 BYTE glProgramStage = STAGE_STARTUP;
 UBYTE glTaskState   = TSTATE_RUNNING;
 LONG glInotify = -1;
