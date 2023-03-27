@@ -1005,8 +1005,8 @@ the surface area first).</li>
       <field name="Data" type="APTR">Bitmap data memory ID</field>
       <field name="ParentID" type="OBJECTID">Object that contains the surface area</field>
       <field name="BitmapID" type="OBJECTID">Surface bitmap buffer</field>
-      <field name="DisplayID" type="OBJECTID">If the surface object is root, its display is reflected here</field>
-      <field name="Flags" type="LONG">Surface flags (RNF_VISIBLE etc)</field>
+      <field name="DisplayID" type="OBJECTID">Refers to the display if this object is at root level</field>
+      <field name="Flags" type="LONG" lookup="RNF">Surface flags</field>
       <field name="X" type="LONG">Horizontal coordinate</field>
       <field name="Y" type="LONG">Vertical coordinate</field>
       <field name="Width" type="LONG">Width of the surface area</field>

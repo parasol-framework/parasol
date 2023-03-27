@@ -246,6 +246,7 @@ class objSurface;
 
 #define CLF_DRAG_DROP 0x00000001
 #define CLF_HOST 0x00000002
+#define CLF_HISTORY_BUFFER 0x00000004
 
 #define CEF_DELETE 0x00000001
 #define CEF_EXTEND 0x00000002
@@ -256,8 +257,8 @@ typedef struct SurfaceInfoV2 {
    APTR     Data;        // Bitmap data memory ID
    OBJECTID ParentID;    // Object that contains the surface area
    OBJECTID BitmapID;    // Surface bitmap buffer
-   OBJECTID DisplayID;   // If the surface object is root, its display is reflected here
-   LONG     Flags;       // Surface flags (RNF_VISIBLE etc)
+   OBJECTID DisplayID;   // Refers to the display if this object is at root level
+   LONG     Flags;       // Surface flags
    LONG     X;           // Horizontal coordinate
    LONG     Y;           // Vertical coordinate
    LONG     Width;       // Width of the surface area
@@ -286,17 +287,17 @@ struct SurfaceCoords {
 
 typedef struct PixelFormat {
    UBYTE RedShift;    // Right shift value
-   UBYTE GreenShift;
-   UBYTE BlueShift;
-   UBYTE AlphaShift;
-   UBYTE RedMask;     // The unshifted mask value (ranges from 0x00 to 0xff)
-   UBYTE GreenMask;
-   UBYTE BlueMask;
-   UBYTE AlphaMask;
-   UBYTE RedPos;      // Left shift/positional value
-   UBYTE GreenPos;
-   UBYTE BluePos;
-   UBYTE AlphaPos;
+   UBYTE GreenShift;  // Green shift value
+   UBYTE BlueShift;   // Blue shift value
+   UBYTE AlphaShift;  // Alpha shift value
+   UBYTE RedMask;     // The unshifted red mask value (ranges from 0x00 to 0xff)
+   UBYTE GreenMask;   // The unshifted green mask value (ranges from 0x00 to 0xff)
+   UBYTE BlueMask;    // The unshifted blue mask value (ranges from 0x00 to 0xff)
+   UBYTE AlphaMask;   // The unshifted alpha mask value (ranges from 0x00 to 0xff)
+   UBYTE RedPos;      // Left shift/positional value for red
+   UBYTE GreenPos;    // Left shift/positional value for green
+   UBYTE BluePos;     // Left shift/positional value for blue
+   UBYTE AlphaPos;    // Left shift/positional value for alpha
 } PIXELFORMAT;
 
 #define VER_DISPLAYINFO 3
@@ -808,12 +809,6 @@ class objClipboard : public BaseClass {
    inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
       struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
-   }
-   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
-      struct acGetVar args = { FieldName, Buffer, Size };
-      ERROR error = Action(AC_GetVar, this, &args);
-      if ((error) and (Buffer)) Buffer[0] = 0;
-      return error;
    }
    inline ERROR init() { return Action(AC_Init, this, NULL); }
 };

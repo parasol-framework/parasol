@@ -132,8 +132,7 @@ static int module_call(lua_State *Lua)
    pf::Log log(__FUNCTION__);
    objScript *Self = Lua->Script;
    UBYTE buffer[256]; // +8 for overflow protection
-   FUNCTION func;
-   LONG i, type;
+   LONG i;
 
    auto prv = (prvFluid *)Self->ChildPrivate;
    if (!prv) {
@@ -141,17 +140,15 @@ static int module_call(lua_State *Lua)
       return 0;
    }
 
-   struct module *mod;
-   if (!(mod = (struct module *)get_meta(Lua, lua_upvalueindex(1), "Fluid.mod"))) {
-      luaL_error(Lua, "object_call() expected object in upvalue.");
+   auto mod = (struct module *)get_meta(Lua, lua_upvalueindex(1), "Fluid.mod");
+   if (!mod) {
+      luaL_error(Lua, "module_call() expected module in upvalue.");
       return 0;
    }
 
-   UWORD index = lua_tointeger(Lua, lua_upvalueindex(2));
-
-   if (!mod) { luaL_argerror(Lua, 1, "Expected module from module_index()."); return 0; }
    if (!mod->Functions) return 0;
 
+   UWORD index = lua_tointeger(Lua, lua_upvalueindex(2));
    LONG nargs = lua_gettop(Lua);
    if (nargs > MAX_MODULE_ARGS-1) nargs = MAX_MODULE_ARGS-1;
 
@@ -194,8 +191,7 @@ static int module_call(lua_State *Lua)
                return 0;
             }
 
-            array *mem;
-            if ((mem = (array *)get_meta(Lua, i, "Fluid.array"))) {
+            if (auto mem = (array *)get_meta(Lua, i, "Fluid.array")) {
                ((APTR *)(buffer + j))[0] = mem->ptrVoid;
                arg_values[in] = buffer + j;
                arg_types[in++] = &ffi_type_pointer;
@@ -204,14 +200,14 @@ static int module_call(lua_State *Lua)
                if (args[i+1].Type & (FD_BUFSIZE|FD_ARRAYSIZE)) {
                   if (args[i+1].Type & FD_LONG) {
                      ((LONG *)(buffer + j))[0] = mem->ArraySize;
-                     arg_values[in] = buffer + j;
+                     arg_values[in]  = buffer + j;
                      arg_types[in++] = &ffi_type_sint32;
                      i++;
                      j += sizeof(LONG);
                   }
                   else if (args[i+1].Type & FD_LARGE) {
                      ((LARGE *)(buffer + j))[0] = mem->ArraySize;
-                     arg_values[in] = buffer + j;
+                     arg_values[in]  = buffer + j;
                      arg_types[in++] = &ffi_type_sint64;
                      i++;
                      j += sizeof(LARGE);
@@ -232,7 +228,7 @@ static int module_call(lua_State *Lua)
             end -= sizeof(APTR);
             ((APTR *)(buffer + j))[0] = end;
             ((APTR *)end)[0] = NULL;
-            arg_values[in] = buffer + j;
+            arg_values[in]  = buffer + j;
             arg_types[in++] = &ffi_type_pointer;
             j += sizeof(APTR);
          }
@@ -240,7 +236,7 @@ static int module_call(lua_State *Lua)
             end -= sizeof(LONG);
             ((APTR *)(buffer + j))[0] = end;
             ((LONG *)end)[0] = 0;
-            arg_values[in] = buffer + j;
+            arg_values[in]  = buffer + j;
             arg_types[in++] = &ffi_type_pointer;
             j += sizeof(APTR);
          }
@@ -248,7 +244,7 @@ static int module_call(lua_State *Lua)
             end -= sizeof(LARGE);
             ((APTR *)(buffer + j))[0] = end;
             ((LARGE *)end)[0] = 0;
-            arg_values[in] = buffer + j;
+            arg_values[in]  = buffer + j;
             arg_types[in++] = &ffi_type_pointer;
             j += sizeof(APTR);
          }
@@ -257,136 +253,42 @@ static int module_call(lua_State *Lua)
             return 0;
          }
       }
-      else if (argtype & FD_VARTAGS) { // Variable tags expect the use of TDOUBLE, TLONG etc to specify the value type
-         if (argtype & FD_PTR) { // Pointer to a taglist
-            luaL_error(Lua, "Pointers to tag-lists are unsupported.");
-            return 0;
-         }
-         else {
-            LONG fixed_args = i-1;
-            while ((i <= nargs) and ((size_t)j < sizeof(buffer)-20)) {
-               if (lua_type(Lua, i) IS LUA_TNUMBER) { // Tags have to be expressed as numbers.
-                  LARGE tag = lua_tonumber(Lua, i++);
-                  if (tag IS TAGEND) break;
-
-                  LONG value_type = lua_type(Lua, i);
-                  if (value_type IS LUA_TNUMBER) tag |= TDOUBLE;
-                  else if (value_type IS LUA_TBOOLEAN) tag |= TLONG;
-                  else if (value_type IS LUA_TSTRING) tag |= TSTR;
-                  else if (value_type IS LUA_TLIGHTUSERDATA) tag |= TPTR;
-                  else if (value_type IS LUA_TUSERDATA) tag |= TPTR;
-                  else luaL_error(Lua, "Unsupported type '%s' at arg %d", lua_typename(Lua, value_type), i);
-
-                  ((LARGE *)(buffer + j))[0] = tag;
-                  arg_values[in] = buffer + j;
-                  arg_types[in++] = &ffi_type_uint64;
-                  j += sizeof(LARGE);
-
-                  if (tag & TDOUBLE) {
-                     ((DOUBLE *)(buffer + j))[0] = lua_tonumber(Lua, i++);
-                     arg_values[in] = buffer + j;
-                     arg_types[in++] = &ffi_type_double;
-                     j += sizeof(DOUBLE);
-                  }
-                  else if (tag & TLARGE) {
-                     ((LARGE *)(buffer + j))[0] = F2I(lua_tonumber(Lua, i++));
-                     arg_values[in] = buffer + j;
-                     arg_types[in++] = &ffi_type_sint64;
-                     j += sizeof(LARGE);
-                  }
-                  else if (tag & TLONG) {
-                     ((LONG *)(buffer + j))[0] = lua_tointeger(Lua, i++);
-                     arg_values[in] = buffer + j;
-                     arg_types[in++] = &ffi_type_sint32;
-                     j += sizeof(LONG);
-                  }
-                  else if (tag & TSTR) {
-                     ((CSTRING *)(buffer + j))[0] = lua_tostring(Lua, i++);
-                     arg_values[in] = buffer + j;
-                     arg_types[in++] = &ffi_type_pointer;
-                     j += sizeof(CSTRING);
-                  }
-                  else if (tag & TPTR) {
-                     ((APTR *)(buffer + j))[0] = lua_touserdata(Lua, i++); //lua_topointer?
-                     arg_values[in] = buffer + j;
-                     arg_types[in++] = &ffi_type_pointer;
-                     j += sizeof(APTR);
-                  }
-                  else {
-                     log.warning("Unrecognised tag type $%.8x00000000 at arg %d", (ULONG)(tag>>32), i);
-                     luaL_error(Lua, "Invalid tag type detected.");
-                     return 0;
-                  }
-               }
-               else luaL_error(Lua, "Expected number for tag definition, got %s", lua_typename(Lua, lua_type(Lua, i)));
-            }
-
-            // TAGEND comes last.
-            ((LARGE *)(buffer + j))[0] = TAGEND;
-            arg_values[in] = buffer + j;
-            arg_types[in++] = &ffi_type_uint64;
-
-            LONG result = 1;
-            if (args->Type & FD_LONG) {
-               if (ffi_prep_cif_var(&cif, FFI_DEFAULT_ABI, fixed_args, in, &ffi_type_sint32, arg_types) IS FFI_OK) {
-                  ffi_call(&cif, (void (*)())function, &rc, arg_values);
-                  lua_pushinteger(Lua, (LONG)rc);
-                  return process_results(prv, buffer, args, result);
-               }
-            }
-            else if (ffi_prep_cif_var(&cif, FFI_DEFAULT_ABI, fixed_args, in, &ffi_type_void, arg_types) IS FFI_OK) {
-               ffi_call(&cif, (void (*)())function, &rc, arg_values);
-               return process_results(prv, buffer, args, 0);
-            }
-
-            luaL_error(Lua, "Failed to make variadic function call to module.");
-            return 0;
-         }
-      }
-      else if (argtype & FD_TAGS) {
-         // An in-line tag implementation in Lua isn't feasible due to unordered tables and all numbers being
-         // doubles.  Instead we'd need a build_taglist() function that accepts a series of variadic parameters.
-         // This would construct a "Fluid.taglist" object that a subroutine here could then handle.
-         //
-         // A workaround for numeric types could be to have a num class, e.g.
-         //   num.float(n), num.int(n), num.double(n)
-         //   build_taglist(FID_Delay, num.float(1.3), FID_Label, "Hello")
-
-         luaL_error(Lua, "Tag-lists are not supported at this time.");
-
-         // Add TAGEND just in case it's needed the developer forgot it
-         //((LARGE *)(buffer + j))[0] = TAGEND;
-         //j += sizeof(LARGE);
-
-         break; // Tags must always be the last entry of a function, so break to enforce this
+      else if (argtype & (FD_TAGS|FD_VARTAGS)) {
+         luaL_error(Lua, "Functions using tags are not supported.");
+         return 0;
       }
       else if (argtype & FD_FUNCTION) {
-         type = lua_type(Lua, i);
+         switch(lua_type(Lua, i)) {
+            case LUA_TSTRING: { // Name of function to call
+               lua_getglobal(Lua, lua_tostring(Lua, i));
+               auto func = make_function_script(Self, luaL_ref(Lua, LUA_REGISTRYINDEX));
+               ((FUNCTION **)(buffer + j))[0] = &func;
+               break;
+            }
 
-         if (type IS LUA_TSTRING) { // Name of function to call
-            lua_getglobal(Lua, lua_tostring(Lua, i));
-            func = make_function_script(Self, luaL_ref(Lua, LUA_REGISTRYINDEX));
-            ((FUNCTION **)(buffer + j))[0] = &func;
-         }
-         else if (type IS LUA_TFUNCTION) { // Direct function reference
-            lua_pushvalue(Lua, i);
-            func = make_function_script(Self, luaL_ref(Lua, LUA_REGISTRYINDEX));
-            ((FUNCTION **)(buffer + j))[0] = &func;
-         }
-         else if ((type IS LUA_TNIL) or (type IS LUA_TNONE)) {
-            ((FUNCTION **)(buffer + j))[0] = NULL;
-         }
-         else {
-            luaL_error(Lua, "Type mismatch, arg #%d (%s) expected function, got %s '%s'.", i, args[i].Name, lua_typename(Lua, lua_type(Lua, i)), lua_tostring(Lua, i));
-            return 0;
+            case LUA_TFUNCTION: { // Direct function reference
+               lua_pushvalue(Lua, i);
+               auto func = make_function_script(Self, luaL_ref(Lua, LUA_REGISTRYINDEX));
+               ((FUNCTION **)(buffer + j))[0] = &func;
+               break;
+            }
+
+            case LUA_TNIL:
+            case LUA_TNONE:
+               ((FUNCTION **)(buffer + j))[0] = NULL;
+               break;
+
+            default:
+               luaL_error(Lua, "Type mismatch, arg #%d (%s) expected function, got %s '%s'.", i, args[i].Name, lua_typename(Lua, lua_type(Lua, i)), lua_tostring(Lua, i));
+               return 0;
          }
 
-         arg_values[in] = buffer + j;
+         arg_values[in]  = buffer + j;
          arg_types[in++] = &ffi_type_pointer;
          j += sizeof(FUNCTION *);
       }
       else if (argtype & FD_STR) {
-         type = lua_type(Lua, i);
+         auto type = lua_type(Lua, i);
 
          if ((type IS LUA_TSTRING) or (type IS LUA_TNUMBER) or (type IS LUA_TBOOLEAN)) {
             ((CSTRING *)(buffer + j))[0] = lua_tostring(Lua, i);
@@ -475,8 +377,7 @@ static int module_call(lua_State *Lua)
          }
       }
       else if (argtype & FD_PTR) {
-         type = lua_type(Lua, i);
-         if (type IS LUA_TSTRING) {
+         if (lua_type(Lua, i) IS LUA_TSTRING) {
             // Lua strings need to be converted to C strings
             size_t strlen;
             ((CSTRING *)(buffer + j))[0] = lua_tolstring(Lua, i, &strlen);
@@ -870,10 +771,6 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
             result++;
          }
          else scan += sizeof(LARGE);
-      }
-      else if (argtype & (FD_VARTAGS|FD_TAGS)) {
-         // Tags come last and have no result
-         break;
       }
       else {
          log.warning("Unsupported arg '%s', flags $%x, aborting now.", argname, argtype);

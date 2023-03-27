@@ -6,20 +6,24 @@ that is distributed with this package.  Please refer to it for further informati
 **********************************************************************************************************************
 
 -CLASS-
-Clipboard: The Clipboard class manages cut, copy and paste operations.
+Clipboard: The Clipboard class manages cut, copy and paste between applications.
 
-The Clipboard class manages data transfer between applications on behalf of the user.  It holds a data cache of clipped
-items that originate from source applications, and these can be retrieved and 'pasted' into target applications.  The
-Clipboard class is provided for the primary purpose of allowing applications to implement the traditional 'cut', 'copy'
-and 'paste' actions.
+The Clipboard class manages data transfer between applications on behalf of the user.  Depending on the host system,
+behaviour between platforms can vary.
 
-Multiple clipboard objects can be created, but they all control the same group of clipped data for the logged-in user.
-All items that are passed to the clipboard object are stored in the 'clipboard:' assignment, which defaults to
-`temp:clipboard/`.
+On Windows the clipboard is tightly integrated by default, allowing it to support native Windows applications.  This
+reduces the default feature set, but ensures that the clipboard behaves in a way that the user would expect it to.
+If historical buffering is enabled with the `CLF_HISTORY_BUFFER` option then the clipboard API will actively monitor
+the clipboard and store copied data in the local `clipboard:` file cache.  This results in additional overhead to
+clipboard management.
 
-There is a limit on the amount of clipped items that can be stored in the clipboard.  Only 1 group of each datatype is
-permitted (for example, only one group of image clips may exist at any time) and there is a preset limit on the total
-number of clips that can be stored in the history cache.
+On Linux the clipboard is localised and data is shared between Parasol applications only.
+
+Multiple clipboard objects can be created, but they will share the same group of clipped data for the logged-in user.
+
+There is a limit on the number of clipped items that can be stored in the clipboard.  Only 1 grouping of each
+datatype is permitted (for example, only one group of image clips may exist at any time).  In historical buffer mode
+there is a fixed limit to the clip count and the oldest members are automatically removed.
 -END-
 
 *********************************************************************************************************************/
@@ -38,28 +42,26 @@ static const FieldDef glDatatypes[] = {
    { NULL, 0 }
 };
 
+std::list<ClipRecord> glClips;
 static LONG glCounter = 1;
-std::vector<ClipEntry> glClips;
-
-static std::string GetDatatype(LONG Datatype);
+static LONG glHistoryLimit = 1;
+static LONG glLastClipID = -1;
+static std::string glProcessID;
 
 //********************************************************************************************************************
 
+static std::string get_datatype(LONG);
 static ERROR add_clip(LONG, const std::vector<ClipItem> &, LONG = 0);
+static ERROR add_clip(CSTRING);
 static ERROR CLIPBOARD_AddObjects(objClipboard *, struct clipAddObjects *);
 
 //********************************************************************************************************************
 
-ClipEntry::~ClipEntry() {
+ClipRecord::~ClipRecord() {
    pf::Log log(__FUNCTION__);
 
    if (Datatype != CLIPTYPE_FILE) {
-      auto datatype = GetDatatype(Datatype);
-
-      log.branch("Deleting %d clip files for datatype %s / %d.", LONG(Items.size()), datatype.c_str(), Datatype);
-
-      // Delete cached clipboard files
-
+      log.branch("Deleting clip files for %s datatype.", get_datatype(Datatype).c_str());
       for (auto &item : Items) DeleteFile(item.Path.c_str(), NULL);
    }
    else log.branch("Datatype: File");
@@ -67,7 +69,7 @@ ClipEntry::~ClipEntry() {
 
 //********************************************************************************************************************
 
-static std::string GetDatatype(LONG Datatype)
+static std::string get_datatype(LONG Datatype)
 {
    for (unsigned i=0; glDatatypes[i].Name; i++) {
       if (Datatype IS glDatatypes[i].Value) return std::string(glDatatypes[i].Name);
@@ -82,6 +84,71 @@ static void notify_script_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result
 {
    auto Self = (objClipboard *)CurrentContext();
    Self->RequestHandler.Type = CALL_NONE;
+}
+
+//********************************************************************************************************************
+
+static ERROR add_file_to_host(objClipboard *Self, const std::vector<ClipItem> &Items, bool Cut)
+{
+   pf::Log log;
+
+   if (Self->Flags & CLF_DRAG_DROP) return ERR_NoSupport;
+
+#ifdef _WIN32
+   // Build a list of resolved path names in a new buffer that is suitable for passing to Windows.
+
+   std::stringstream list;
+   for (auto &item : Items) {
+      STRING path;
+      if (!ResolvePath(item.Path.c_str(), 0, &path)) {
+         list << path << '\0';
+         FreeResource(path);
+      }
+   }
+   list << '\0'; // An extra null byte is required to terminate the list for Windows HDROP
+
+   auto str = list.str();
+   winAddClip(CLIPTYPE_FILE, str.c_str(), str.size(), Cut);
+   return ERR_Okay;
+#else
+   return ERR_NoSupport;
+#endif
+}
+
+//********************************************************************************************************************
+
+static ERROR add_text_to_host(objClipboard *Self, CSTRING String, LONG Length = 0x7fffffff)
+{
+   pf::Log log(__FUNCTION__);
+
+   if (Self->Flags & CLF_DRAG_DROP) return ERR_NoSupport;
+
+#ifdef _WIN32
+   // Copy text to the windows clipboard.  This requires a conversion from UTF-8 to UTF-16.
+
+   auto str = String;
+   LONG chars, bytes = 0;
+   for (chars=0; (str[bytes]) and (bytes < Length); chars++) {
+      for (++bytes; (bytes < Length) and ((str[bytes] & 0xc0) IS 0x80); bytes++);
+   }
+
+   std::vector<UWORD> utf16(size_t(chars + 1) * sizeof(UWORD));
+
+   LONG i = 0;
+   while (i < bytes) {
+      LONG len = UTF8CharLength(str);
+      if (i + len >= bytes) break; // Avoid corrupt UTF-8 sequences resulting in minor buffer overflow
+      utf16[i++] = UTF8ReadValue(str, NULL);
+      str += len;
+   }
+   utf16[i] = 0;
+
+   auto error = winAddClip(CLIPTYPE_TEXT, utf16.data(), utf16.size() * sizeof(UWORD), false);
+   if (error) log.warning(error);
+   return error;
+#else
+   return ERR_NoSupport;
+#endif
 }
 
 /*********************************************************************************************************************
@@ -109,9 +176,8 @@ int(CEF) Flags: Optional flags.
 
 -ERRORS-
 Okay: The files were added to the clipboard.
-Args
-MissingLocation: The Files argument was not correctly specified.
-LimitedSuccess: The file item was successfully added to the internal clipboard, but could not be added to the host.
+NullArgs
+MissingPath: The Files argument was not correctly specified.
 -END-
 
 *********************************************************************************************************************/
@@ -126,31 +192,11 @@ static ERROR CLIPBOARD_AddFile(objClipboard *Self, struct clipAddFile *Args)
    log.branch("Path: %s", Args->Path);
 
    std::vector<ClipItem> items = { std::string(Args->Path) };
-   ERROR error = add_clip(Args->Datatype, items, Args->Flags & (CEF_DELETE|CEF_EXTEND));
-
-#ifdef _WIN32
-   // Add the file to the host clipboard
-   if ((!(Self->Flags & CLF_DRAG_DROP)) and (!error)) {
-      // Build a list of resolved path names in a new buffer that is suitable for passing to Windows.
-
-      std::stringstream win;
-      for (auto &item : glClips[0].Items) {
-         STRING path;
-         if (!ResolvePath(item.Path.c_str(), 0, &path)) {
-            win << path << '\0';
-            FreeResource(path);
-         }
-      }
-      win << '\0'; // An extra null byte is required to terminate the list for Windows HDROP
-
-      auto str = win.str();
-      if (winAddClip(CLIPTYPE_FILE, str.c_str(), str.size(), (Args->Flags & CEF_DELETE) ? TRUE : FALSE)) {
-         error = ERR_LimitedSuccess;
-      }
+   if (!add_file_to_host(Self, items, (Args->Flags & CEF_DELETE) ? TRUE : FALSE)) {
+      if (glHistoryLimit <= 1) return ERR_Okay;
    }
-#endif
 
-   return error;
+   return add_clip(Args->Datatype, items, Args->Flags & (CEF_DELETE|CEF_EXTEND));
 }
 
 /*********************************************************************************************************************
@@ -213,7 +259,7 @@ static ERROR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Arg
 
             char idx[5];
             snprintf(idx, sizeof(idx), ".%.3d", i);
-            auto path = std::string("clipboard:") + GetDatatype(datatype) + std::to_string(counter) + idx;
+            auto path = std::string("clipboard:") + glProcessID + "_" + get_datatype(datatype) + std::to_string(counter) + idx;
 
             objFile::create file = { fl::Path(path), fl::Flags(FL_WRITE|FL_NEW) };
             if (file.ok()) acSaveToObject(object.obj, file->UID, 0);
@@ -223,10 +269,11 @@ static ERROR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Arg
       else return ERR_Lock;
    }
 
-   if (!add_clip(datatype, items, Args->Flags & CEF_EXTEND)) {
-      return ERR_Okay;
+   if (!add_file_to_host(Self, items, (Args->Flags & CEF_DELETE) ? TRUE : FALSE)) {
+      if (glHistoryLimit <= 1) return ERR_Okay;
    }
-   else return ERR_Failed;
+
+   return add_clip(datatype, items, Args->Flags & CEF_EXTEND);
 }
 
 /*********************************************************************************************************************
@@ -254,39 +301,11 @@ static ERROR CLIPBOARD_AddText(objClipboard *Self, struct clipAddText *Args)
    if ((!Args) or (!Args->String)) return log.warning(ERR_NullArgs);
    if (!Args->String[0]) return ERR_Okay;
 
-#ifdef _WIN32
-   if (!(Self->Flags & CLF_DRAG_DROP)) {
-      // Copy text to the windows clipboard.  This requires that we convert from UTF-8 to UTF-16.  For consistency
-      // and interoperability purposes, we interact with both the Windows and internal clipboards.
-
-      std::vector<UWORD> utf16(size_t(UTF8Length(Args->String) + 1) * sizeof(WORD));
-
-      auto str = Args->String;
-      auto buf = utf16.data();
-      while (*str) {
-         *buf++ = UTF8ReadValue(str, NULL);
-         str += UTF8CharLength(str);
-      }
-      *buf++ = 0;
-
-      auto error = winAddClip(CLIPTYPE_TEXT, utf16.data(), utf16.size(), FALSE);
-
-      if (error) return log.warning(error);
+   if (!add_text_to_host(Self, Args->String)) {
+      if (glHistoryLimit <= 1) return ERR_Okay;
    }
-#endif
 
-   log.branch();
-
-   std::vector<ClipItem> items = { std::string("clipboard:text") + std::to_string(glCounter++) + ".000" };
-   if (auto error = add_clip(CLIPTYPE_TEXT, items); !error) {
-      pf::Create<objFile> file = { fl::Path(items[0].Path), fl::Flags(FL_WRITE|FL_NEW), fl::Permissions(PERMIT_READ|PERMIT_WRITE) };
-      if (file.ok()) {
-         file->write(Args->String, StrLength(Args->String), 0);
-         return ERR_Okay;
-      }
-      else return log.warning(ERR_CreateFile);
-   }
-   else return log.warning(error);
+   return add_clip(Args->String);
 }
 
 /*********************************************************************************************************************
@@ -321,65 +340,24 @@ given data type.
 static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
 {
    pf::Log log;
-   char buffer[200];
 
    if (!Args) return log.warning(ERR_NullArgs);
 
    if (Args->DataType IS DATA_TEXT) {
       log.msg("Copying text to the clipboard.");
 
-      #ifdef _WIN32
-      if (!(Self->Flags & CLF_DRAG_DROP)) {
-         // Copy text to the windows clipboard.  This requires a conversion from UTF-8 to UTF-16.  For consistency
-         // and interoperability purposes, we interact with both the Windows and internal clipboards.
+      add_text_to_host(Self, (CSTRING)Args->Buffer, Args->Size);
 
-         UWORD *utf16;
-
-         ERROR error = ERR_Okay;
-         LONG chars  = UTF8Length((CSTRING)Args->Buffer);
-         CSTRING str = (STRING)Args->Buffer;
-
-         LONG bytes = 0;
-         for (chars=0; (str[bytes]) and (bytes < Args->Size); chars++) {
-            for (++bytes; (bytes < Args->Size) and ((str[bytes] & 0xc0) IS 0x80); bytes++);
-         }
-
-        if (!AllocMemory((chars+1) * sizeof(WORD), MEM_DATA|MEM_NO_CLEAR, &utf16)) {
-            LONG i = 0;
-            while (i < bytes) {
-               LONG len = UTF8CharLength(str);
-               if (i + len >= bytes) break; // Avoid corrupt UTF-8 sequences resulting in minor buffer overflow
-               utf16[i++] = UTF8ReadValue(str, NULL);
-               str += len;
-            }
-            utf16[i] = 0;
-            error = winAddClip(CLIPTYPE_TEXT, utf16, (chars+1) * sizeof(WORD), FALSE);
-            FreeResource(utf16);
-         }
-         else error = ERR_AllocMemory;
-
-         if (error) return log.warning(error);
-      }
-      #endif
-
-      std::vector<ClipItem> items = { std::string("clipboard:text") + std::to_string(glCounter++) + std::string(".000") };
-      if (!add_clip(CLIPTYPE_TEXT, items)) {
-         objFile::create file = {
-            fl::Path(buffer),
-            fl::Flags(FL_NEW|FL_WRITE),
-            fl::Permissions(PERMIT_READ|PERMIT_WRITE)
-         };
-
+      std::vector<ClipItem> items = { std::string("clipboard:") + glProcessID + "_text" + std::to_string(glCounter++) + std::string(".000") };
+      if (auto error = add_clip(CLIPTYPE_TEXT, items); !error) {
+         objFile::create file = { fl::Path(items[0].Path), fl::Flags(FL_NEW|FL_WRITE), fl::Permissions(PERMIT_READ|PERMIT_WRITE) };
          if (file.ok()) {
-            if (file->write(Args->Buffer, Args->Size, 0) != ERR_Okay) {
-               return log.warning(ERR_Write);
-            }
-
+            if (file->write(Args->Buffer, Args->Size, 0)) return log.warning(ERR_Write);
             return ERR_Okay;
          }
          else return log.warning(ERR_CreateObject);
       }
-      else return log.warning(ERR_Failed);
+      else return log.warning(error);
    }
    else if ((Args->DataType IS DATA_REQUEST) and (Self->Flags & CLF_DRAG_DROP))  {
       auto request = (struct dcRequest *)Args->Buffer;
@@ -447,7 +425,7 @@ successfully copying the data.  When cutting and pasting files within the file s
 recommended as the most efficient method.
 
 -INPUT-
-&int(CLIPTYPE) Datatype: Specify accepted data types here as OR'd flags.  This parameter will be updated to reflect the retrieved data type when the method returns.
+&int(CLIPTYPE) Datatype: Filter down to the specified data types.  This parameter will be updated to reflect the retrieved data type when the method returns.  Set to zero to disable.
 int Index: If the Datatype parameter is zero, this parameter may be set to the index of the desired clip item.
 !array(cstr) Files: The resulting location(s) of the requested clip data are returned in this parameter; terminated with a NULL entry.  You are required to free the returned array with FreeResource().
 &int(CEF) Flags: Result flags are returned in this parameter.  If CEF_DELETE is set, you need to delete the files after use in order to support the 'cut' operation.
@@ -471,43 +449,57 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
 
    Args->Files = NULL;
 
-   // Find the first clipboard entry to match what has been requested
+   ClipRecord *clip = NULL;
 
-   LONG index;
+#ifdef _WIN32
+   // If the history buffer is disabled then we need to actively retrieve whatever Windows has on the clipboard.
+
+   if (!(Self->Flags & CLF_HISTORY_BUFFER)) {
+      if (winCurrentClipboardID() != glLastClipID) winCopyClipboard();
+   }
+
+   clip = &glClips.front();
+
+#else
+   // Find the first clipboard entry to match what has been requested
 
    if (!Args->Datatype) { // Retrieve the most recent clip item, or the one indicated in the Index parameter.
       if ((Args->Index < 0) or (Args->Index >= LONG(glClips.size()))) return ERR_OutOfRange;
-      index = Args->Index;
+      std::advance(clip, Args->Index);
    }
    else {
-      for (index=0; index < LONG(glClips.size()); index++) {
-         if (Args->Datatype & glClips[index].Datatype) break;
+      bool found = false;
+      for (auto &scan : glClips) {
+         if (Args->Datatype & scan.Datatype) {
+            found = true;
+            clip = scan;
+            break;
+         }
       }
 
-      if (index >= LONG(glClips.size())) {
+      if (!found) {
          log.warning("No clips available for datatype $%x", Args->Datatype);
          return ERR_NoData;
       }
    }
+#endif
 
-   auto &clip = glClips[index];
-
-   if (clip.Items.empty()) {
-      log.warning("No items are allocated to datatype $%x at clip index %d", clip.Datatype, index);
+   if (clip->Items.empty()) {
+      log.warning("No items are allocated to datatype $%x at clip index %d", clip->Datatype, Args->Index);
       return ERR_NoData;
    }
 
-   Args->Flags    = clip.Flags;
-   Args->Datatype = clip.Datatype;
+   Args->Flags    = clip->Flags;
+   Args->Datatype = clip->Datatype;
 
    CSTRING *list = NULL;
    LONG str_len = 0;
-   for (auto &item : clip.Items) str_len += item.Path.size() + 1;
-   if (!AllocMemory(((clip.Items.size()+1) * sizeof(STRING)) + str_len, MEM_DATA|MEM_CALLER, &list)) {
+   for (auto &item : clip->Items) str_len += item.Path.size() + 1;
+   if (!AllocMemory(((clip->Items.size()+1) * sizeof(STRING)) + str_len, MEM_NO_CLEAR|MEM_CALLER, &list)) {
       Args->Files = list;
 
-      auto dest = (char *)list + ((clip.Items.size() + 1) * sizeof(STRING));
-      for (auto &item : clip.Items) {
+      auto dest = (char *)list + ((clip->Items.size() + 1) * sizeof(STRING));
+      for (auto &item : clip->Items) {
          *list++ = dest;
          CopyMemory(item.Path.c_str(), dest, item.Path.size() + 1);
          dest += item.Path.size() + 1;
@@ -517,6 +509,26 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
       return ERR_Okay;
    }
    else return ERR_AllocMemory;
+}
+
+//********************************************************************************************************************
+
+static ERROR CLIPBOARD_Init(objClipboard *Self, APTR Void)
+{
+   if (Self->Flags & CLF_HISTORY_BUFFER) glHistoryLimit = MAX_CLIPS;
+
+   // Create a directory under temp: to store clipboard data
+
+   CreateFolder("clipboard:", PERMIT_READ|PERMIT_WRITE);
+
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+
+static ERROR CLIPBOARD_NewObject(objClipboard *Self, APTR Void)
+{
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
@@ -558,134 +570,6 @@ static ERROR CLIPBOARD_Remove(objClipboard *Self, struct clipRemove *Args)
       else it++;
    }
 
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--ACTION-
-GetVar: Special field types are supported as variables.
-
-The following variable field types are supported by the Clipboard class:
-
-<fields>
-<fld type="STRING" name="File(Datatype,Index)">Where Datatype is a recognised data format (e.g. TEXT) and Index is between 0 and the Items() field.  If you don't support multiple clipped items, use an index of zero.  On success, this field will return a file location that points to the clipped data.</>
-<fld type="NUMBER" name="Items(Datatype)">Returns the total number of items available for the specified data type.</>
-</fields>
-
--END-
-
-*********************************************************************************************************************/
-
-static ERROR CLIPBOARD_GetVar(objClipboard *Self, struct acGetVar *Args)
-{
-   pf::Log log;
-   char datatype[20], index[20];
-   WORD i, j;
-
-   if (!Args) return log.warning(ERR_NullArgs);
-
-   if ((!Args->Field) or (!Args->Buffer) or (Args->Size < 1)) return log.warning(ERR_Args);
-
-   if (!Self->initialised()) return log.warning(ERR_Failed);
-
-   Args->Buffer[0] = 0;
-
-   if (!StrCompare("File(", Args->Field, 0, 0)) {
-      // Extract the datatype
-
-      for (j=0, i=6; (Args->Field[i]) and (Args->Field[i] != ',') and (Args->Field[i] != ')'); i++) datatype[j++] = Args->Field[i];
-      datatype[j] = 0;
-
-      // Convert the datatype string into its equivalent value
-
-      LONG value = 0;
-      for (i=0; glDatatypes[i].Name; i++) {
-         if (!StrMatch(datatype, glDatatypes[i].Name)) {
-            value = glDatatypes[i].Value;
-            break;
-         }
-      }
-
-      if (Args->Field[i] IS ',') i++;
-      while ((Args->Field[i]) and (Args->Field[i] <= 0x20)) i++;
-
-      for (j=0; (Args->Field[i]) and (Args->Field[i] != ')'); i++) index[j++] = Args->Field[i];
-      index[j] = 0;
-
-      // Find the clip for the requested datatype
-
-      for (auto &clip : glClips) {
-         if (clip.Datatype IS value) {
-            LONG item = StrToInt(index);
-            if ((item >= 0) and (item < LONG(clip.Items.size()))) {
-               StrCopy(clip.Items[item].Path.c_str(), Args->Buffer, Args->Size);
-            }
-            return ERR_Okay;
-         }
-      }
-
-      return ERR_Okay;
-   }
-   else if (!StrCompare("Items(", Args->Field, 0, 0)) {
-      // Extract the datatype
-      for (j=0, i=6; (Args->Field[i]) and (Args->Field[i] != ')'); i++) datatype[j++] = Args->Field[i];
-      datatype[j] = 0;
-
-      // Convert the datatype string into its equivalent value
-
-      LONG value = 0;
-      for (LONG i=0; glDatatypes[i].Name; i++) {
-         if (!StrMatch(datatype, glDatatypes[i].Name)) {
-            value = glDatatypes[i].Value;
-            break;
-         }
-      }
-
-      // Calculate the total number of items available for this datatype
-
-      LONG total = 0;
-      if (value) {
-         for (unsigned i=0; i < glClips.size(); i++) {
-            if (glClips[i].Datatype IS value) {
-               total = glClips[i].Items.size();
-               break;
-            }
-         }
-      }
-
-      IntToStr(total, Args->Buffer, Args->Size);
-      return ERR_Okay;
-   }
-   else return ERR_NoSupport;
-}
-
-//********************************************************************************************************************
-
-static ERROR CLIPBOARD_Init(objClipboard *Self, APTR Void)
-{
-   pf::Log log;
-
-   // Create a directory under temp: to store clipboard data
-
-   CreateFolder("clipboard:", PERMIT_READ|PERMIT_WRITE);
-
-   // Scan the clipboard: directory for existing clips.  If they exist, add them to our clipboard object.
-   // This allows the user to continue using clipboard data from the last time that the machine was powered on.
-
-/*
-   DirInfo *dir = NULL;
-   if (!OpenDir("clipboard:", 0, &dir)) {
-
-   }
-*/
-   return ERR_Okay;
-}
-
-//********************************************************************************************************************
-
-static ERROR CLIPBOARD_NewObject(objClipboard *Self, APTR Void)
-{
    return ERR_Okay;
 }
 
@@ -761,12 +645,6 @@ static ERROR add_clip(LONG Datatype, const std::vector<ClipItem> &Items, LONG Fl
       }
    }
 
-   ClipEntry clip;
-
-   clip.Datatype = Datatype;
-   clip.Flags    = Flags & CEF_DELETE;
-   clip.Items    = Items;
-
    // Remove any existing clips that match this datatype
 
    for (auto it = glClips.begin(); it != glClips.end(); ) {
@@ -774,41 +652,50 @@ static ERROR add_clip(LONG Datatype, const std::vector<ClipItem> &Items, LONG Fl
       else it++;
    }
 
-   if (glClips.size() >= MAX_CLIPS) glClips.pop_back(); // Remove oldest clip if history buffer is full.
-   glClips.insert(glClips.begin(), clip); // Insert the new clip entry at start of the history buffer
+   if (LONG(glClips.size()) > glHistoryLimit) glClips.pop_back(); // Remove oldest clip if history buffer is full.
+
+   glClips.emplace_front(Datatype, Flags & CEF_DELETE, Items);
    return ERR_Okay;
 }
 
 //********************************************************************************************************************
-// Called when the windows clipboard holds new text.  We respond by copying this into our internal clipboard system.
+
+static ERROR add_clip(CSTRING String)
+{
+   pf::Log log(__FUNCTION__);
+   log.branch();
+
+   std::vector<ClipItem> items = { std::string("clipboard:") + glProcessID + "_text" + std::to_string(glCounter++) + ".000" };
+   if (auto error = add_clip(CLIPTYPE_TEXT, items); !error) {
+      pf::Create<objFile> file = { fl::Path(items[0].Path), fl::Flags(FL_WRITE|FL_NEW), fl::Permissions(PERMIT_READ|PERMIT_WRITE) };
+      if (file.ok()) {
+         file->write(String, StrLength(String), 0);
+         return ERR_Okay;
+      }
+      else return log.warning(ERR_CreateFile);
+   }
+   else return log.warning(error);
+}
+
+//********************************************************************************************************************
+// Called when the Windows clipboard holds new text.  We respond by copying this into our internal clipboard system.
 
 #ifdef _WIN32
-#ifdef  __cplusplus
 extern "C" void report_windows_clip_text(CSTRING String)
-#else
-void report_windows_clip_text(CSTRING String)
-#endif
 {
    pf::Log log("Clipboard");
    log.branch("Application has detected text on the clipboard.");
 
-   objClipboard::create clipboard = { fl::Flags(CLF_HOST) };
-
-   if (clipboard.ok()) {
-      clipAddText(*clipboard, String);
-   }
-   else log.warning(ERR_CreateObject);
+   add_clip(String);
+   glLastClipID = winCurrentClipboardID();
 }
-#endif
 
 //********************************************************************************************************************
-// Called when the windows clipboard holds new file references.
+// Called when the Windows clipboard holds new file references.  We store a direct reference to the file path.
 
-#ifdef _WIN32
 extern "C" void report_windows_files(APTR Data, LONG CutOperation)
 {
    pf::Log log("Clipboard");
-
    log.branch("Application has detected files on the clipboard.  Cut: %d", CutOperation);
 
    std::vector<ClipItem> items;
@@ -817,16 +704,14 @@ extern "C" void report_windows_files(APTR Data, LONG CutOperation)
       items.push_back(std::string(buffer));
    }
    add_clip(CLIPTYPE_FILE, items, CutOperation ? CEF_DELETE : 0);
+   glLastClipID = winCurrentClipboardID();
 }
-#endif
 
 //********************************************************************************************************************
 
-#ifdef _WIN32
 extern "C" void report_windows_hdrop(STRING Data, LONG CutOperation)
 {
    pf::Log log("Clipboard");
-
    log.branch("Application has detected files on the clipboard.  Cut: %d", CutOperation);
 
    std::vector<ClipItem> items;
@@ -837,43 +722,50 @@ extern "C" void report_windows_hdrop(STRING Data, LONG CutOperation)
    }
 
    add_clip(CLIPTYPE_FILE, items, CutOperation ? CEF_DELETE : 0);
+   glLastClipID = winCurrentClipboardID();
 }
-#endif
 
 //********************************************************************************************************************
-// Called when the windows clipboard holds new text in UTF-16 format.
+// Called when the Windows clipboard holds new text in UTF-16 format.
 
-#ifdef _WIN32
 extern "C" void report_windows_clip_utf16(UWORD *String)
 {
    pf::Log log("Clipboard");
-
    log.branch("Application has detected unicode text on the clipboard.");
 
-   objClipboard::create clipboard = { fl::Flags(CLF_HOST) };
-   if (clipboard.ok()) {
-      std::stringstream buffer;
+   std::stringstream buffer;
 
-      for (unsigned chars=0; String[chars]; chars++) {
-         auto value = String[chars];
-         if (value < 128) buffer << (UBYTE)value;
-         else if (value < 0x800) {
-            UBYTE b = (value & 0x3f) | 0x80;
-            value = value>>6;
-            buffer << (value | 0xc0) << b;
-         }
-         else {
-            UBYTE c = (value & 0x3f)|0x80;
-            value = value>>6;
-            UBYTE b = (value & 0x3f)|0x80;
-            value = value>>6;
-            buffer << (value | 0xe0) << b << c;
-         }
+   for (unsigned chars=0; String[chars]; chars++) {
+      auto value = String[chars];
+      if (value < 128) buffer << (UBYTE)value;
+      else if (value < 0x800) {
+         UBYTE b = (value & 0x3f) | 0x80;
+         value = value>>6;
+         buffer << (value | 0xc0) << b;
       }
-
-      clipAddText(*clipboard, buffer.str().c_str());
+      else {
+         UBYTE c = (value & 0x3f)|0x80;
+         value = value>>6;
+         UBYTE b = (value & 0x3f)|0x80;
+         value = value>>6;
+         buffer << (value | 0xe0) << b << c;
+      }
    }
-   else log.warning(ERR_CreateObject);
+
+   add_clip(buffer.str().c_str());
+   glLastClipID = winCurrentClipboardID();
+}
+
+//********************************************************************************************************************
+// Intercept changes to the Windows clipboard.  If the history buffer is enabled then we need to pro-actively copy
+// content from the clipboard.
+
+extern "C" void win_clipboard_updated()
+{
+   pf::Log log(__FUNCTION__);
+   log.branch();
+   if (glHistoryLimit <= 1) return;
+   winCopyClipboard();
 }
 #endif
 
@@ -899,6 +791,9 @@ ERROR create_clipboard_class(void)
       fl::Fields(clFields),
       fl::Size(sizeof(objClipboard)),
       fl::Path(MOD_PATH));
+
+   LONG pid;
+   if (!CurrentTask()->get(FID_ProcessID, &pid)) glProcessID = std::to_string(pid);
 
    return clClipboard ? ERR_Okay : ERR_AddClass;
 }
