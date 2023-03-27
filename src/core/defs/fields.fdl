@@ -405,7 +405,6 @@ header({ path="system/fields", copyright="Paul Manias © 1996-2023" }, function(
     "ZAngle",
     "ZCoord",
     "ZSpeed",
-    "PublicObjects",
     "Viewport",
     "ParentViewport",
     "Option3",

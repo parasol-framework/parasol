@@ -6,8 +6,7 @@ Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
-This program tests the locking of private and public memory between threads.
-Use parameter '-public' to test public memory locking.
+This program tests the locking of memory between threads.
 
 *********************************************************************************************************************/
 
@@ -24,7 +23,7 @@ static LONG glTotalThreads = 2;
 static LONG glLockAttempts = 20;
 static BYTE glTerminateMemory = FALSE;
 static LONG glAccessGap = 2000;
-static BYTE glPublic = FALSE, glTestAllocation = FALSE;
+static BYTE glTestAllocation = FALSE;
 
 struct thread_info{
    pthread_t thread;
@@ -134,13 +133,11 @@ void program(void)
             else break;
          }
          else if (!StrMatch(args[i], "-terminate")) glTerminateMemory = TRUE;
-         else if (!StrMatch(args[i], "-public")) glPublic = TRUE;
          else if (!StrMatch(args[i], "-alloc")) glTestAllocation = TRUE;
       }
    }
 
-   if (glPublic) AllocMemory(10000, MEM_DATA|MEM_PUBLIC, NULL, (MEMORYID *)&glMemoryID);
-   else AllocMemory(10000, MEM_DATA, NULL, (MEMORYID *)&glMemoryID);
+   AllocMemory(10000, MEM_DATA, NULL, (MEMORYID *)&glMemoryID);
 
    print("Spawning %d threads...\n", glTotalThreads);
 

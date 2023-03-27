@@ -1202,15 +1202,6 @@ LONG winCloseHandle(HANDLE Handle)
 }
 
 //********************************************************************************************************************
-
-LONG winGetPageSize(void)
-{
-   SYSTEM_INFO sysinfo;
-   GetSystemInfo(&sysinfo);
-   return sysinfo.dwAllocationGranularity;
-}
-
-//********************************************************************************************************************
 // Returns zero on failure.
 
 LONG winUnmapViewOfFile(void *Address)
@@ -1252,50 +1243,6 @@ LONG winCreateSharedMemory(char *Name, LONG mapsize, LONG initial_size, HANDLE *
       else return -2;
    }
    else return -1;
-}
-
-//********************************************************************************************************************
-// Creates a brand new file mapping, independent of shared memory pools.
-
-HANDLE winAllocPublic(LONG allocsize)
-{
-   HANDLE memhandle;
-   if ((memhandle = CreateFileMapping((HANDLE)-1, NULL, PAGE_READWRITE, 0, allocsize, 0))) {
-      return memhandle;
-   }
-   return 0;
-}
-
-//********************************************************************************************************************
-
-LONG winMapMemory(HANDLE MemHandle, LONG Process, APTR *address)
-{
-   HANDLE newhandle, foreignprocess;
-   LONG error;
-
-   if ((!Process) || (Process IS glProcessID)) {
-      *address = MapViewOfFile(MemHandle, FILE_MAP_WRITE, 0, 0, 0);
-      return ERR_Okay;
-   }
-
-   *address = NULL;
-   error = ERR_Failed;
-   if ((foreignprocess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, Process))) {
-      if ((DuplicateHandle(foreignprocess, MemHandle, glProcessHandle, &newhandle, 0, FALSE, DUPLICATE_SAME_ACCESS))) {
-         if ((*address = MapViewOfFile(newhandle, FILE_MAP_WRITE, 0, 0, 0))) {
-            CloseHandle(newhandle);
-            CloseHandle(foreignprocess);
-            return ERR_Okay;
-         }
-         CloseHandle(newhandle);
-      }
-      else error = ERR_MemoryDoesNotExist;
-
-      CloseHandle(foreignprocess);
-   }
-   else error = ERR_MemoryDoesNotExist; // If process is dead, the memory no longer exists.
-
-   return error;
 }
 
 //********************************************************************************************************************

@@ -10,7 +10,7 @@ static void free_shared_control(void);
 EXPORT void CloseCore(void)
 {
    pf::Log log("Shutdown");
-   LONG i, j, count;
+   LONG j;
 
    if (glCodeIndex IS CP_FINISHED) return;
 
@@ -121,7 +121,7 @@ EXPORT void CloseCore(void)
 
    if ((glCurrentTask) or (glProcessID)) remove_process_waitlocks();
 
-   // Remove locks from private and public memory blocks
+   // Remove locks from memory blocks
 
    if (glCrashStatus) {
       log.msg("Forcibly removing all resource locks.");
@@ -130,36 +130,8 @@ EXPORT void CloseCore(void)
          glCodeIndex = CP_REMOVE_PRIVATE_LOCKS;
          remove_private_locks();
       }
-
-      if (glCodeIndex < CP_REMOVE_PUBLIC_LOCKS) {
-         glCodeIndex = CP_REMOVE_PUBLIC_LOCKS;
-         remove_public_locks(glProcessID);
-      }
    }
    else { // This code is only safe to execute if the process hasn't crashed.
-      // Remove locks on public objects that we have not unlocked yet.  We do this by setting the lock-count to zero so
-      // that others can then gain access to the public object.
-
-      if ((glSharedControl) and (glSharedBlocks)) {
-         log.trace("Removing locks on public objects.");
-
-         if (!LOCK_PUBLIC_MEMORY(4000)) {
-            for (i=glSharedControl->NextBlock-1; i >= 0; i--) {
-               if ((glSharedBlocks[i].ProcessLockID IS glProcessID) and (glSharedBlocks[i].AccessCount > 0)) {
-                  if (glSharedBlocks[i].Flags & MEM_OBJECT) {
-                     if (auto header = (OBJECTPTR)resolve_public_address(glSharedBlocks + i)) {
-                        log.warning("Removing %d exclusive locks on object #%d (memory %d).", glSharedBlocks[i].AccessCount, header->UID, glSharedBlocks[i].MemoryID);
-                        for (count=glSharedBlocks[i].AccessCount; count > 0; count--) {
-                           ReleaseObject(header);
-                        }
-                     }
-                  }
-               }
-            }
-            UNLOCK_PUBLIC_MEMORY();
-         }
-      }
-
       if (glLocale) { acFree(glLocale); glLocale = NULL; } // Allocated by StrReadLocale()
       if (glTime) { acFree(glTime); glTime = NULL; }
 
@@ -206,7 +178,7 @@ EXPORT void CloseCore(void)
          if ((mem.Flags & MEM_OBJECT) and (mem.AccessCount > 0)) {
             if (auto obj = mem.Object) {
                log.warning("Removing locks on object #%d, Owner: %d, Locks: %d", obj->UID, obj->OwnerID, mem.AccessCount);
-               for (count=mem.AccessCount; count > 0; count--) ReleaseObject(obj);
+               for (auto count=mem.AccessCount; count > 0; count--) ReleaseObject(obj);
             }
          }
       }
@@ -267,11 +239,9 @@ EXPORT void CloseCore(void)
          }
       }
 
-      log.trace("Removing private and public memory locks.");
+      log.trace("Removing memory locks.");
 
       remove_private_locks();
-
-      remove_public_locks(glProcessID);
    }
 
    // Remove our process from the global list completely.  From this point onwards
@@ -295,11 +265,6 @@ EXPORT void CloseCore(void)
    if (glCodeIndex < CP_FREE_COREBASE) {
       glCodeIndex = CP_FREE_COREBASE;
       if (LocalCoreBase) { FreeResource(LocalCoreBase); LocalCoreBase = NULL; }
-   }
-
-   if (glCodeIndex < CP_FREE_MEMORY_PAGES) {
-      glCodeIndex = CP_FREE_MEMORY_PAGES;
-      if (glMemoryPages) { free(glMemoryPages); glMemoryPages = NULL; }
    }
 
    if (glCodeIndex < CP_FREE_PRIVATE_MEMORY) {
@@ -326,7 +291,7 @@ EXPORT void CloseCore(void)
 
       // Remove semaphore controls
 
-      for (i=1; i < PL_END; i++) {
+      for (LONG i=1; i < PL_END; i++) {
          if (glPublicLocks[i].Event) free_public_waitlock(glPublicLocks[i].Lock);
          else free_public_lock(glPublicLocks[i].Lock);
       }
@@ -342,7 +307,6 @@ EXPORT void CloseCore(void)
    free_private_lock(TL_GENERIC);
    free_private_lock(TL_TIMER);
    free_private_lock(TL_MSGHANDLER);
-   free_private_lock(TL_MEMORY_PAGES);
    free_private_lock(TL_OBJECT_LOOKUP);
    free_private_lock(TL_THREADPOOL);
    free_private_lock(TL_PRIVATE_MEM);
@@ -541,87 +505,6 @@ static void free_private_memory(void)
    if ((glCrashStatus) and (count > 0)) log.msg("%d memory blocks were freed.", count);
 }
 
-
-//********************************************************************************************************************
-// Frees public objects and memory blocks.  Please note that this routine is also used by validate_process().
-
-void free_public_resources(OBJECTID TaskID)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (!TaskID) return;
-
-   log.msg("Freeing all public memory for task %d", TaskID);
-
-   pf::ScopedSysLock lock(PL_PUBLICMEM, 4000);
-   if (lock.granted()) {
-      for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
-         if ((glSharedBlocks[i].TaskID IS TaskID) or (glSharedBlocks[i].ObjectID IS TaskID)) {
-            if (glSharedBlocks[i].MemoryID) {
-               log.msg("Freeing public memory block #%d.", glSharedBlocks[i].MemoryID);
-               FreeResourceID(glSharedBlocks[i].MemoryID);
-            }
-         }
-      }
-   }
-}
-
-//********************************************************************************************************************
-// This function does not release locks on public objects (special handling for objects can be found elsewhere in the
-// shutdown program flow).  NOTE:  This function is also used by validate_process() to clear zombie resource locks.
-
-void remove_public_locks(LONG ProcessID)
-{
-   pf::Log log(__FUNCTION__);
-
-   if ((!glSharedControl) or (!glSharedBlocks)) return;
-
-   log.branch("Process: %d", ProcessID);
-
-   pf::ScopedSysLock lock(PL_PUBLICMEM, 4000);
-   if (lock.granted()) {
-      // Release owned public blocks
-
-      for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
-         if ((glSharedBlocks[i].ProcessLockID IS ProcessID) and (glSharedBlocks[i].AccessCount > 0)) {
-            log.msg("Removing %d locks on shared memory block #%d.", glSharedBlocks[i].AccessCount, glSharedBlocks[i].MemoryID);
-
-            APTR address;
-            if ((address = resolve_public_address(glSharedBlocks + i))) {
-               for (LONG j=glSharedBlocks[i].AccessCount; j > 0; j--) ReleaseMemory(address);
-            }
-
-            if (glSharedBlocks[i].AccessCount > 0) { // Forcibly remove locks if ReleaseMemory() couldn't
-               ClearMemory(glSharedBlocks+i, sizeof(glSharedBlocks[0]));
-            }
-         }
-      }
-
-      // Release any *non-blocking* locks.  These are usually attributed to the RPM's (Reserved Public Memory ID's).
-
-      if (shTasks) {
-         LONG task;
-         for (task=0; (task < MAX_TASKS) and (shTasks[task].ProcessID != ProcessID); task++);
-
-         if (task < MAX_TASKS) {
-            for (LONG i=MAX_NB_LOCKS-1; i >= 0; i--) {
-               if (!shTasks[task].NoBlockLocks[i].MemoryID) continue;
-
-               log.warning("Removing %d non-blocking locks on memory block #%d.", shTasks[task].NoBlockLocks[i].AccessCount, shTasks[task].NoBlockLocks[i].MemoryID);
-
-               LONG block;
-               if (!find_public_mem_id(glSharedControl, shTasks[task].NoBlockLocks[i].MemoryID, &block)) {
-                  APTR address;
-                  if ((address = resolve_public_address(glSharedBlocks + block))) {
-                     for (LONG j=shTasks[task].NoBlockLocks[i].AccessCount; j > 0; j--) ReleaseMemory(address);
-                  }
-               }
-            }
-         }
-      }
-   }
-}
-
 //********************************************************************************************************************
 
 static void remove_private_locks(void)
@@ -647,60 +530,34 @@ static void free_shared_control(void)
 
    glTaskEntry = NULL;
 
-   if (!SysLock(PL_FORBID, 4000)) {
-      for (LONG i=1; i < PL_END; i++) free_public_lock(i);
+   #ifdef USE_SHM
+      shmdt(glSharedControl);
+      glSharedControl = NULL;
 
-      #ifdef USE_SHM
-         // Mark all shared memory blocks for deletion.
-         //
-         // You can check the success of this routine by running "ipcs", which lists allocated shm blocks.
+      KMSG("This is the last process - now marking the shared mempool for deletion.\n");
 
-         for (LONG i=glSharedControl->NextBlock-1; i >= 0; i--) {
-            if (glSharedBlocks[i].MemoryID) {
-               LONG id;
-               if ((id = shmget(SHMKEY + glSharedBlocks[i].MemoryID, glSharedBlocks[i].Size, S_IRWXO|S_IRWXG|S_IRWXU)) != -1) {
-                  shmctl(id, IPC_RMID, NULL);
-               }
-            }
+      if (glSharedControlID != -1) {
+         if (shmctl(glSharedControlID, IPC_RMID, NULL) IS -1) {
+            KERR("shmctl() failed to kill the public memory pool: %s\n", strerror(errno));
          }
+         glSharedControlID = -1;
+      }
+   #else
+      if (glMemoryFD != -1) {
+         close(glMemoryFD);
+         glMemoryFD = -1;
+      }
 
-         SysUnlock(PL_FORBID);
+      // Delete the memory mapped file if this is the last process to use it
 
-         shmdt(glSharedControl);
-         glSharedControl = NULL;
-
-         KMSG("This is the last process - now marking the shared mempool for deletion.\n");
-
-         if (glSharedControlID != -1) {
-            if (shmctl(glSharedControlID, IPC_RMID, NULL) IS -1) {
-               KERR("shmctl() failed to kill the public memory pool: %s\n", strerror(errno));
-            }
-            glSharedControlID = -1;
+      #ifndef __ANDROID__
+         if (glDebugMemory IS FALSE) {
+            log.msg("I am the last task - now closing the memory mapping.");
+            unlink(MEMORYFILE);
          }
-      #else
-
-         SysUnlock(PL_FORBID);
-
-         munmap(glSharedControl, glSharedControl->MemoryOffset);
-         glSharedControl = NULL;
-
-         if (glMemoryFD != -1) {
-            close(glMemoryFD);
-            glMemoryFD = -1;
-         }
-
-         // Delete the memory mapped file if this is the last process to use it
-
-         #ifndef __ANDROID__
-            if (glDebugMemory IS FALSE) {
-               log.msg("I am the last task - now closing the memory mapping.");
-               unlink(MEMORYFILE);
-            }
-         #endif
-
       #endif
-   }
-   else log.msg("Unable to SysLock() for closing the public control structure.");
+
+   #endif
 
    if (glSocket != -1) {
       close(glSocket);

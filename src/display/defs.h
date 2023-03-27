@@ -436,7 +436,7 @@ class extBitmap : public objBitmap {
          Drawable drawable;
          XImage   *readable;
          XShmSegmentInfo ShmInfo;
-         BYTE XShmImage;
+         bool XShmImage;
       } x11;
    #elif _WIN32
       struct {

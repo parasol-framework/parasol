@@ -756,7 +756,6 @@ LARGE GetResource(LONG Resource)
       case RES_SHARED_CONTROL:  return (MAXINT)glSharedControl;
       case RES_PRIVILEGED:      return glPrivileged;
       case RES_LOG_LEVEL:       return glLogLevel;
-      case RES_SHARED_BLOCKS:   return (MAXINT)glSharedBlocks;
       case RES_TASK_CONTROL:    return (MAXINT)glTaskEntry;
       case RES_TASK_LIST:       return (MAXINT)shTasks;
       case RES_PROCESS_STATE:   return (MAXINT)glTaskState;
@@ -1237,7 +1236,7 @@ cstr Name: The new name for the object.
 Okay:
 NullArgs:
 Search:       The Object is not recognised by the system - the address may be invalid.
-AccessMemory: The function could not gain access to the shared objects table (internal error).
+LockFailed:
 
 *********************************************************************************************************************/
 
