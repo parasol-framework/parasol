@@ -213,7 +213,8 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
 
   flags('CLF', { comment='Clipboard flags' },
     'DRAG_DROP: Enables drag and drop mode.  The clipboard content will be private and not share data with the host system in this mode.',
-    'HOST: This indicator is automatically set when a clipboard was created due to incoming content from the host system.')
+    'HOST: This indicator is automatically set when a clipboard was created due to incoming content from the host system.',
+    'HISTORY_BUFFER: Enables the history buffer.  Note that this results in active clipboard monitoring and the program will make copies of all potential clipboard content - whether it is used or not.')
 
   flags('CEF', { },
     'DELETE: Requests that the original file source is deleted if a successful paste operation takes place.',
@@ -223,8 +224,8 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     ptr Data            # Bitmap data memory ID
     oid ParentID        # Object that contains the surface area
     oid BitmapID        # Surface bitmap buffer
-    oid DisplayID       # If the surface object is root, its display is reflected here
-    int Flags           # Surface flags (RNF_VISIBLE etc)
+    oid DisplayID       # Refers to the display if this object is at root level
+    int(RNF) Flags      # Surface flags
     int X               # Horizontal coordinate
     int Y               # Vertical coordinate
     int Width           # Width of the surface area
@@ -255,17 +256,17 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
 
   struct("PixelFormat", { type="pixelformat", comment="Carries instructions to pack or unpack RGBA colours." }, [[
     uchar  RedShift    # Right shift value
-    uchar  GreenShift
-    uchar  BlueShift
-    uchar  AlphaShift
-    uchar  RedMask     # The unshifted mask value (ranges from 0x00 to 0xff)
-    uchar  GreenMask
-    uchar  BlueMask
-    uchar  AlphaMask
-    uchar  RedPos      # Left shift/positional value
-    uchar  GreenPos
-    uchar  BluePos
-    uchar  AlphaPos
+    uchar  GreenShift  # Green shift value
+    uchar  BlueShift   # Blue shift value
+    uchar  AlphaShift  # Alpha shift value
+    uchar  RedMask     # The unshifted red mask value (ranges from 0x00 to 0xff)
+    uchar  GreenMask   # The unshifted green mask value (ranges from 0x00 to 0xff)
+    uchar  BlueMask    # The unshifted blue mask value (ranges from 0x00 to 0xff)
+    uchar  AlphaMask   # The unshifted alpha mask value (ranges from 0x00 to 0xff)
+    uchar  RedPos      # Left shift/positional value for red
+    uchar  GreenPos    # Left shift/positional value for green
+    uchar  BluePos     # Left shift/positional value for blue
+    uchar  AlphaPos    # Left shift/positional value for alpha
   ]])
 
   struct("DisplayInfo", { type="displayinfo", version=3 }, [[

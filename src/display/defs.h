@@ -285,13 +285,14 @@ struct ClipItem {
    ClipItem(std::string pPath) : Path(pPath) { }
 };
 
-struct ClipEntry {
-   std::vector<ClipItem> Items;  // List of file locations referencing all the data in this clip entry
+struct ClipRecord {
    LONG  Datatype;    // The type of data clipped
    LONG  Flags;       // CEF_DELETE may be set for the 'cut' operation
-   UWORD ID;          // Unique identifier for the clipboard entry
+   std::vector<ClipItem> Items;  // List of file locations referencing all the data in this clip entry
 
-   ~ClipEntry();
+   ~ClipRecord();
+   ClipRecord(LONG pDatatype, LONG pFlags, const std::vector<ClipItem> pItems) :
+      Datatype(pDatatype), Flags(pFlags), Items(pItems) { }
 };
 
 //********************************************************************************************************************
@@ -344,7 +345,7 @@ class extSurface : public objSurface {
 
    LARGE    LastRedimension;      // Timestamp of the last redimension call
    objBitmap *Bitmap;
-   struct SurfaceCallback *Callback;
+   SurfaceCallback *Callback;
    APTR      UserLoginHandle;
    APTR      TaskRemovedHandle;
    APTR      Data;
@@ -359,7 +360,7 @@ class extSurface : public objSurface {
    LONG     InputHandle;          // Input handler for dragging of surfaces
    TIMER    RedrawTimer;          // For ScheduleRedraw()
    TIMER    ScrollTimer;
-   struct SurfaceCallback CallbackCache[4];
+   SurfaceCallback CallbackCache[4];
    WORD     ScrollProgress;
    WORD     Opacity;
    UWORD    InheritedRoot:1;      // TRUE if the user set the RootLayer manually
@@ -425,7 +426,7 @@ class extBitmap : public objBitmap {
 
    ULONG  *Gradients;
    APTR   ResolutionChangeHandle;
-   struct RGBPalette prvPaletteArray;
+   RGBPalette prvPaletteArray;
    struct ColourFormat prvColourFormat;
    UBYTE *prvCompress;
    LONG   prvAFlags;                  // Private allocation flags
@@ -511,7 +512,7 @@ extern LONG glpWindowType;
 extern char glpDPMS[20];
 extern UBYTE *glDemultiply;
 extern std::array<UBYTE, 256 * 256> glAlphaLookup;
-extern std::vector<ClipEntry> glClips;
+extern std::list<ClipRecord> glClips;
 
 extern std::unordered_map<WindowHook, FUNCTION> glWindowHooks;
 extern std::vector<OBJECTID> glFocusList;

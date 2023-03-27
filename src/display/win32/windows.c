@@ -139,6 +139,7 @@ void report_windows_clip_text(void *);
 void report_windows_clip_utf16(void *);
 void report_windows_files(LPIDA, int);
 void report_windows_hdrop(LPIDA, int);
+void win_clipboard_updated(void);
 
 void winCopyClipboard(void);
 
@@ -156,6 +157,7 @@ static UINT fmtPasteSucceeded = 0;
 static UINT fmtPerformedDropEffect = 0;
 static UINT fmtPreferredDropEffect = 0;
 static UINT fmtParasolClip = 0;
+static int glClipboardUpdates = 0;
 
 #ifdef DBGMSG
 static struct {
@@ -821,11 +823,10 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
 
          // TODO: A better methodology would be to use a 1 second timer delay to process the clipboard
 
-         if (GetTickCount() - glIgnoreClip < 2000) {
-            return 1;
-         }
+         glClipboardUpdates++;
+         if (GetTickCount() - glIgnoreClip < 2000) return 1;
          else {
-            winCopyClipboard();
+            win_clipboard_updated();
             return 0;
          }
 
@@ -1794,18 +1795,14 @@ void winSetDIBitsToDevice(HDC hdc, LONG xdest, LONG ydest, LONG width, LONG heig
    SetDIBitsToDevice(hdc, xdest, ydest, width, height, xstart, ystart, 0, scanheight, data, (BITMAPINFO *)&info, DIB_RGB_COLORS);
 }
 
-/*********************************************************************************************************************
-** Function: winDeleteDC()
-*/
+//********************************************************************************************************************
 
 void winDeleteDC(HDC hdc)
 {
    DeleteDC(hdc);
 }
 
-/*********************************************************************************************************************
-** Function: winGetPixel()
-*/
+//********************************************************************************************************************
 
 void winGetPixel(HDC hdc, LONG x, LONG y, UBYTE *rgb)
 {
@@ -1816,21 +1813,16 @@ void winGetPixel(HDC hdc, LONG x, LONG y, UBYTE *rgb)
    rgb[2] = GetBValue(col);
 }
 
-/*********************************************************************************************************************
-** Function: winCreateBitmap()
-*/
+//********************************************************************************************************************
 
 HBITMAP winCreateBitmap(LONG width, LONG height, LONG bpp)
 {
    return CreateBitmap(width, height, 1, bpp, NULL);
 }
 
-/*********************************************************************************************************************
-** Function: winDrawTransparentBitmap()
-**
-** This masking technique works so long as the source graphic uses a clear
-** background after determining its original mask shape.
-*/
+//********************************************************************************************************************
+// This masking technique works so long as the source graphic uses a clear background after determining its original
+// mask shape.
 
 void winDrawTransparentBitmap(HDC hdcDest, HDC hdcSrc, HBITMAP hBitmap,
         LONG x, LONG y, LONG xsrc, LONG ysrc, LONG width, LONG height,
@@ -1842,9 +1834,8 @@ void winDrawTransparentBitmap(HDC hdcDest, HDC hdcSrc, HBITMAP hBitmap,
    BitBlt(hdcDest, x, y, width, height, hdcSrc, xsrc, ysrc, SRCPAINT);    // XOR the bitmap with the background on the destination DC.
 }
 
-/*********************************************************************************************************************
-** Get a pointer to our interface
-*/
+//********************************************************************************************************************
+// Get a pointer to our interface
 
 static HRESULT STDMETHODCALLTYPE RKDT_QueryInterface(struct rkDropTarget *Self, REFIID iid, void ** ppvObject)
 {
@@ -1893,9 +1884,8 @@ static ULONG STDMETHODCALLTYPE RKDT_Release(struct rkDropTarget *Self)
 	return nCount;
 }
 
-/*********************************************************************************************************************
-** The drag action continues
-*/
+//********************************************************************************************************************
+// The drag action continues
 
 static HRESULT STDMETHODCALLTYPE RKDT_DragOver(struct rkDropTarget *Self, DWORD grfKeyState, POINTL pt, DWORD * pdwEffect)
 {
@@ -1904,9 +1894,8 @@ static HRESULT STDMETHODCALLTYPE RKDT_DragOver(struct rkDropTarget *Self, DWORD 
 	return S_OK;
 }
 
-/*********************************************************************************************************************
-** The drag action leaves your window - no dropping
-*/
+//********************************************************************************************************************
+// The drag action leaves your window - no dropping
 
 static HRESULT STDMETHODCALLTYPE RKDT_DragLeave()
 {
@@ -1914,9 +1903,8 @@ static HRESULT STDMETHODCALLTYPE RKDT_DragLeave()
 	return S_OK;
 }
 
-/*********************************************************************************************************************
-** The drag action enters your window - get the item
-*/
+//********************************************************************************************************************
+// The drag action enters your window - get the item
 
 static HRESULT STDMETHODCALLTYPE RKDT_DragEnter(struct rkDropTarget *Self, IDataObject *Data, DWORD grfKeyState, POINTL pt, DWORD *pdwEffect)
 {
@@ -1930,9 +1918,8 @@ static HRESULT STDMETHODCALLTYPE RKDT_DragEnter(struct rkDropTarget *Self, IData
 	return S_OK;
 }
 
-/*********************************************************************************************************************
-** Convert the windows datatypes to Parasol datatypes.
-*/
+//********************************************************************************************************************
+// Convert the windows datatypes to Parasol datatypes.
 
 static int STDMETHODCALLTYPE RKDT_AssessDatatype(struct rkDropTarget *Self, IDataObject *Data, char *Result, int Length)
 {
@@ -1986,9 +1973,8 @@ static int STDMETHODCALLTYPE RKDT_AssessDatatype(struct rkDropTarget *Self, IDat
    return i;
 }
 
-/*********************************************************************************************************************
-** The data have been dropped here, so process it
-*/
+//********************************************************************************************************************
+// The data have been dropped here, so process it
 
 static HRESULT STDMETHODCALLTYPE RKDT_Drop(struct rkDropTarget *Self, IDataObject *Data, DWORD grfKeyState, POINT pt, DWORD * pdwEffect)
 {
@@ -2027,9 +2013,7 @@ static HRESULT STDMETHODCALLTYPE RKDT_Drop(struct rkDropTarget *Self, IDataObjec
    return S_OK;
 }
 
-/*********************************************************************************************************************
-**
-*/
+//********************************************************************************************************************
 
 static int get_data(struct rkDropTarget *Self, char *Preference, struct WinDT **OutData, int *OutTotal)
 {
@@ -2365,9 +2349,7 @@ static int get_data(struct rkDropTarget *Self, char *Preference, struct WinDT **
    return ERR_Failed;
 }
 
-/*********************************************************************************************************************
-** Internal: winInitDragDrop()
-*/
+//********************************************************************************************************************
 
 static RK_IDROPTARGET *glDropTarget = NULL;
 
@@ -2403,9 +2385,7 @@ static LONG winInitDragDrop(HWND Window)
    return ERR_Okay;
 }
 
-/*********************************************************************************************************************
-** Internal: winGetData()
-*/
+//********************************************************************************************************************
 
 int winGetData(char *Preference, struct WinDT **OutData, int *OutTotal)
 {
@@ -2414,7 +2394,7 @@ int winGetData(char *Preference, struct WinDT **OutData, int *OutTotal)
    return get_data(glDropTarget, Preference, OutData, OutTotal);
 }
 
-//*****************************************************************************
+//********************************************************************************************************************
 
 void winClearClipboard(void)
 {
@@ -2424,7 +2404,7 @@ void winClearClipboard(void)
    }
 }
 
-//*****************************************************************************
+//********************************************************************************************************************
 // Called from clipAddFile(), clipAddText() etc
 
 int winAddClip(int Datatype, const void *Data, int Size, int Cut)
@@ -2473,7 +2453,7 @@ int winAddClip(int Datatype, const void *Data, int Size, int Cut)
    return ERR_NoSupport;
 }
 
-//*****************************************************************************
+//********************************************************************************************************************
 
 void winGetClip(int Datatype)
 {
@@ -2493,8 +2473,15 @@ void winGetClip(int Datatype)
    GetClipboardData(CF_UNICODETEXT);
 }
 
-//*****************************************************************************
-// Data is incoming from the clipboard, either from other apps or our own.
+//********************************************************************************************************************
+// The clipboard ID increments every time that a new item appears on the Windows clipboard.
+
+int winCurrentClipboardID(void)
+{
+   return glClipboardUpdates;
+}
+
+//********************************************************************************************************************
 
 void winCopyClipboard(void)
 {
@@ -2609,7 +2596,7 @@ void winCopyClipboard(void)
    else MSG("OleGetClipboard() failed.\n");
 }
 
-//*****************************************************************************
+//********************************************************************************************************************
 
 int winExtractFile(LPIDA pida, int Index, char *Result, int Size)
 {
@@ -2617,11 +2604,11 @@ int winExtractFile(LPIDA pida, int Index, char *Result, int Size)
 
    if (Index >= (int)pida->cidl) return 0;
 
-   LPCITEMIDLIST list;
-   list = HIDA_GetPIDLFolder(pida);
+   LPCITEMIDLIST list = HIDA_GetPIDLFolder(pida);
    if (SHGetPathFromIDList(list, path)) {
       int pos, j;
       for (pos=0; (path[pos]) AND (pos < Size-1); pos++) Result[pos] = path[pos];
+      if ((Result[pos-1] != '\\') AND (pos < Size-1)) Result[pos++] = '\\';
 
       list = HIDA_GetPIDLItem(pida, Index);
       if (SHGetPathFromIDList(list, path)) {
@@ -2638,7 +2625,7 @@ int winExtractFile(LPIDA pida, int Index, char *Result, int Size)
    else return 0;
 }
 
-//*****************************************************************************
+//********************************************************************************************************************
 
 void winTerminate(void)
 {

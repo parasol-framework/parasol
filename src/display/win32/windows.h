@@ -51,6 +51,7 @@ int winLookupSurfaceID(HWND);
 HWND winCreateChild(HWND, int, int, int, int);
 HWND winCreateScreen(HWND, int *, int *, int *, int *, char, char, const char *, char, unsigned char, char);
 int winCreateScreenClass(void);
+int winCurrentClipboardID(void);
 void winDisableBatching(void);
 void winRemoveWindowClass(const char *);
 int winProcessMessage(void *);
@@ -60,15 +61,15 @@ void winFindClose(HANDLE);
 HANDLE winFindWindow(char *, char *);
 void winFocus(HWND);
 void winFreeDragDrop(void);
-void winGetCoords(HWND Window, int *WinX, int *WinY, int *WinWidth, int *WinHeight, int *ClientX, int *ClientY, int *ClientWidth, int *ClientHeight);
+void winGetCoords(HWND, int *, int *, int *, int *, int *, int *, int *, int *);
 int winGetDesktopSize(int *, int *);
 int winGetDisplaySettings(int *, int *, int *);
-void winGetMargins(HWND, int *Left, int *Top, int *Right, int *Bottom);
+void winGetMargins(HWND, int *, int *, int *, int *);
 HINSTANCE winGetModuleHandle(void);
 int winGetWindowInfo(HWND, int *, int *, int *, int *, int *);
 void winGetWindowTitle(HWND, char *, int);
 int winHideWindow(HWND);
-void winInitCursors(struct WinCursor *Cursor, int);
+void winInitCursors(struct WinCursor *, int);
 void winMinimiseWindow(HWND);
 int winMoveWindow(HWND, int, int);
 void winMoveToBack(HWND);
@@ -86,8 +87,8 @@ void winUpdateWindow(HWND);
 void winTerminate(void);
 HDC winGetDC(HWND);
 void winReleaseDC(HWND, HDC);
-void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes);
-int winGetData(char *Preference, struct WinDT **OutData, int *OutTotal);
+void winDragDropFromHost_Drop(int, char *);
+int winGetData(char *, struct WinDT **, int *);
 
 #ifdef __cplusplus
 }

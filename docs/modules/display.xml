@@ -975,6 +975,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
     <constants lookup="CLF" comment="Clipboard flags">
       <const name="DRAG_DROP">Enables drag and drop mode.  The clipboard content will be private and not share data with the host system in this mode.</const>
+      <const name="HISTORY_BUFFER">Enables the history buffer.  Note that this results in active clipboard monitoring and the program will make copies of all potential clipboard content - whether it is used or not.</const>
       <const name="HOST">This indicator is automatically set when a clipboard was created due to incoming content from the host system.</const>
     </constants>
 
@@ -1211,17 +1212,17 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
     <struct name="PixelFormat" comment="Carries instructions to pack or unpack RGBA colours." typeName="PIXELFORMAT">
       <field name="RedShift" type="UBYTE">Right shift value</field>
-      <field name="GreenShift" type="UBYTE"></field>
-      <field name="BlueShift" type="UBYTE"></field>
-      <field name="AlphaShift" type="UBYTE"></field>
-      <field name="RedMask" type="UBYTE">The unshifted mask value (ranges from 0x00 to 0xff)</field>
-      <field name="GreenMask" type="UBYTE"></field>
-      <field name="BlueMask" type="UBYTE"></field>
-      <field name="AlphaMask" type="UBYTE"></field>
-      <field name="RedPos" type="UBYTE">Left shift/positional value</field>
-      <field name="GreenPos" type="UBYTE"></field>
-      <field name="BluePos" type="UBYTE"></field>
-      <field name="AlphaPos" type="UBYTE"></field>
+      <field name="GreenShift" type="UBYTE">Green shift value</field>
+      <field name="BlueShift" type="UBYTE">Blue shift value</field>
+      <field name="AlphaShift" type="UBYTE">Alpha shift value</field>
+      <field name="RedMask" type="UBYTE">The unshifted red mask value (ranges from 0x00 to 0xff)</field>
+      <field name="GreenMask" type="UBYTE">The unshifted green mask value (ranges from 0x00 to 0xff)</field>
+      <field name="BlueMask" type="UBYTE">The unshifted blue mask value (ranges from 0x00 to 0xff)</field>
+      <field name="AlphaMask" type="UBYTE">The unshifted alpha mask value (ranges from 0x00 to 0xff)</field>
+      <field name="RedPos" type="UBYTE">Left shift/positional value for red</field>
+      <field name="GreenPos" type="UBYTE">Left shift/positional value for green</field>
+      <field name="BluePos" type="UBYTE">Left shift/positional value for blue</field>
+      <field name="AlphaPos" type="UBYTE">Left shift/positional value for alpha</field>
     </struct>
 
     <struct name="SurfaceCoords">
@@ -1237,8 +1238,8 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <field name="Data" type="APTR">Bitmap data memory ID</field>
       <field name="ParentID" type="OBJECTID">Object that contains the surface area</field>
       <field name="BitmapID" type="OBJECTID">Surface bitmap buffer</field>
-      <field name="DisplayID" type="OBJECTID">If the surface object is root, its display is reflected here</field>
-      <field name="Flags" type="LONG">Surface flags (RNF_VISIBLE etc)</field>
+      <field name="DisplayID" type="OBJECTID">Refers to the display if this object is at root level</field>
+      <field name="Flags" type="LONG" lookup="RNF">Surface flags</field>
       <field name="X" type="LONG">Horizontal coordinate</field>
       <field name="Y" type="LONG">Vertical coordinate</field>
       <field name="Width" type="LONG">Width of the surface area</field>
