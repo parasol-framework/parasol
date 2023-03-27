@@ -166,6 +166,38 @@ FDEF argsDrawUCRIndex[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { 
 FDEF argsReadUCRIndex[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "Data", FD_PTR }, { "Colour", FD_PTR|FD_RGB|FD_RESULT }, { NULL, 0 } };
 
 //********************************************************************************************************************
+
+#ifdef __xwindows__
+static ERROR alloc_shm(LONG Size, UBYTE **Data, LONG *ID)
+{
+   pf::Log log(__FUNCTION__);
+
+   auto id = shmget(IPC_PRIVATE, Size, IPC_CREAT|IPC_EXCL|S_IRWXO|S_IRWXG|S_IRWXU);
+   if (id IS -1) {
+      log.warning("shmget() returned: %s", strerror(errno));
+      return ERR_Memory;
+   }
+
+   auto addr = shmat(id, NULL, 0);
+   if ((addr != (APTR)-1) and (addr != NULL)) {
+      *Data = (UBYTE *)addr;
+      *ID = id;
+      return ERR_Okay;
+   }
+   else {
+      log.warning("shmat() returned: %s", strerror(errno));
+      return ERR_LockFailed;
+   }
+}
+
+static void free_shm(APTR Address, LONG ID)
+{
+   shmdt(Address);
+   shmctl(ID, IPC_RMID, NULL);
+}
+#endif
+
+//********************************************************************************************************************
 // Score = Abs(BB1 - BB2) + Abs(GG1 - GG2) + Abs(RR1 - RR2)
 // The closer the score is to zero, the better the colour match.
 
@@ -838,10 +870,12 @@ static ERROR BITMAP_Flush(extBitmap *Self, APTR Void)
 static ERROR BITMAP_Free(extBitmap *Self, APTR Void)
 {
    #ifdef __xwindows__
-      if (Self->x11.XShmImage IS TRUE) {
+      if (Self->x11.XShmImage) {
          // Tell the X11 server to detach from the memory block
          XShmDetach(XDisplay, &Self->x11.ShmInfo);
-         Self->x11.XShmImage = FALSE;
+         Self->x11.XShmImage = false;
+         free_shm(Self->Data, Self->x11.ShmInfo.shmid);
+         Self->Data = NULL;
       }
    #endif
 
@@ -994,9 +1028,9 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
          //}
          //else {
 
-            if (Self->x11.XShmImage IS FALSE) {
+            if (!Self->x11.XShmImage) {
                log.extmsg("Allocating a memory based XImage.");
-               if (!AllocMemory(Self->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Self->DataFlags, &Self->Data)) {
+               if (!alloc_shm(Self->Size, &Self->Data, &Self->x11.ShmInfo.shmid)) {
                   Self->prvAFlags |= BF_DATA;
 
                   if (Self->LineWidth & 0x0001) alignment = 8;
@@ -1029,21 +1063,16 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
                      // having it messaged.
 
                      if (glX11ShmImage) {
-                        struct MemInfo meminfo;
+                        Self->x11.ShmInfo.readOnly = False;
+                        Self->x11.ShmInfo.shmaddr  = (char *)Self->Data;
 
-                        if ((!MemoryPtrInfo(Self->Data, &meminfo)) and (meminfo.Handle)) {
-                           Self->x11.ShmInfo.shmid    = meminfo.Handle;
-                           Self->x11.ShmInfo.readOnly = False;
-                           Self->x11.ShmInfo.shmaddr  = (char *)Self->Data;
+                        // Attach the memory block to the X11 server
 
-                           // Attach the memory block to the X11 server
-
-                           if (XShmAttach(XDisplay, &Self->x11.ShmInfo)) {
-                              Self->x11.XShmImage = TRUE;
-                              XSync(XDisplay, TRUE);
-                           }
-                           else log.warning("XShmAttach() failed.");
+                        if (XShmAttach(XDisplay, &Self->x11.ShmInfo)) {
+                           Self->x11.XShmImage = true;
+                           XSync(XDisplay, TRUE);
                         }
+                        else log.warning("XShmAttach() failed.");
                      }
                   }
                }
@@ -1689,9 +1718,12 @@ static ERROR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
    if (Self->prvAFlags & BF_WINVIDEO) return ERR_NoSupport;
 #endif
 
-   UBYTE *data;
    if (Self->Flags & BMF_NO_DATA);
+   #ifdef __xwindows__
+   else if (Self->x11.XShmImage);
+   #endif
    else if ((Self->Data) and (Self->prvAFlags & BF_DATA)) {
+      UBYTE *data;
       if ((size <= Self->Size) and (size / Self->Size > 0.5)) { // Do nothing when shrinking unless able to save considerable resources
          size = Self->Size;
       }
@@ -1721,38 +1753,38 @@ setfields:
 #ifdef __xwindows__
    WORD alignment;
    if (Self->x11.XShmImage) {
-      Self->x11.XShmImage = FALSE; // Set to FALSE in case we fail (will drop through to standard XImage support)
+      Self->x11.XShmImage = false; // Set to FALSE in case we fail (will drop through to standard XImage support)
       XShmDetach(XDisplay, &Self->x11.ShmInfo);  // Remove the previous attachment
       XSync(XDisplay, False);
 
-      MemInfo meminfo;
-      if ((!MemoryPtrInfo(Self->Data, &meminfo)) and (meminfo.Handle)) {
-         ClearMemory(&Self->x11.ShmInfo, sizeof(Self->x11.ShmInfo));
-         Self->x11.ShmInfo.shmid    = meminfo.Handle;
-         Self->x11.ShmInfo.readOnly = False;
-         Self->x11.ShmInfo.shmaddr  = (char *)data;
-         if (XShmAttach(XDisplay, &Self->x11.ShmInfo)) {
-            if (Self->LineWidth & 0x0001) alignment = 8;
-            else if (Self->LineWidth & 0x0002) alignment = 16;
-            else alignment = 32;
+      free_shm(Self->Data, Self->x11.ShmInfo.shmid);
+      Self->Data = NULL;
 
-            ClearMemory(&Self->x11.ximage, sizeof(Self->x11.ximage));
+      alloc_shm(size, &Self->Data, &Self->x11.ShmInfo.shmid);
 
-            Self->x11.ximage.width            = Self->Width;  // Image width
-            Self->x11.ximage.height           = Self->Height; // Image height
-            Self->x11.ximage.format           = ZPixmap;      // XYBitmap, XYPixmap, ZPixmap
-            Self->x11.ximage.data             = (char *)Self->Data; // Pointer to image data
-            Self->x11.ximage.obdata           = (char *)&Self->x11.ShmInfo;
-            Self->x11.ximage.bitmap_unit      = alignment;    // Quant. of scanline - 8, 16, 32
-            Self->x11.ximage.bitmap_pad       = alignment;    // 8, 16, 32, either XY or Zpixmap
-            if (Self->BitsPerPixel IS 32) Self->x11.ximage.depth = 24;
-            else Self->x11.ximage.depth = Self->BitsPerPixel;            // Actual bits per pixel
-            Self->x11.ximage.bytes_per_line   = Self->LineWidth;         // Accelerator to next line
-            Self->x11.ximage.bits_per_pixel   = Self->BytesPerPixel * 8; // Bits per pixel-group
+      Self->x11.ShmInfo.readOnly = False;
+      Self->x11.ShmInfo.shmaddr  = (char *)Self->Data;
+      if (XShmAttach(XDisplay, &Self->x11.ShmInfo)) {
+         if (Self->LineWidth & 0x0001) alignment = 8;
+         else if (Self->LineWidth & 0x0002) alignment = 16;
+         else alignment = 32;
 
-            XInitImage(&Self->x11.ximage);
-            Self->x11.XShmImage = TRUE;
-         }
+         ClearMemory(&Self->x11.ximage, sizeof(Self->x11.ximage));
+
+         Self->x11.ximage.width       = Self->Width;  // Image width
+         Self->x11.ximage.height      = Self->Height; // Image height
+         Self->x11.ximage.format      = ZPixmap;      // XYBitmap, XYPixmap, ZPixmap
+         Self->x11.ximage.data        = (char *)Self->Data; // Pointer to image data
+         Self->x11.ximage.obdata      = (char *)&Self->x11.ShmInfo;
+         Self->x11.ximage.bitmap_unit = alignment;    // Quant. of scanline - 8, 16, 32
+         Self->x11.ximage.bitmap_pad  = alignment;    // 8, 16, 32, either XY or Zpixmap
+         if (Self->BitsPerPixel IS 32) Self->x11.ximage.depth = 24;
+         else Self->x11.ximage.depth = Self->BitsPerPixel;          // Actual bits per pixel
+         Self->x11.ximage.bytes_per_line = Self->LineWidth;         // Accelerator to next line
+         Self->x11.ximage.bits_per_pixel = Self->BytesPerPixel * 8; // Bits per pixel-group
+
+         XInitImage(&Self->x11.ximage);
+         Self->x11.XShmImage = TRUE;
       }
    }
 
@@ -1763,16 +1795,16 @@ setfields:
 
       ClearMemory(&Self->x11.ximage, sizeof(XImage));
 
-      Self->x11.ximage.width            = Self->Width;  // Image width
-      Self->x11.ximage.height           = Self->Height; // Image height
-      Self->x11.ximage.format           = ZPixmap;      // XYBitmap, XYPixmap, ZPixmap
-      Self->x11.ximage.data             = (char *)Self->Data; // Pointer to image data
-      Self->x11.ximage.bitmap_unit      = alignment;    // Quant. of scanline - 8, 16, 32
-      Self->x11.ximage.bitmap_pad       = alignment;    // 8, 16, 32, either XY or Zpixmap
+      Self->x11.ximage.width       = Self->Width;  // Image width
+      Self->x11.ximage.height      = Self->Height; // Image height
+      Self->x11.ximage.format      = ZPixmap;      // XYBitmap, XYPixmap, ZPixmap
+      Self->x11.ximage.data        = (char *)Self->Data; // Pointer to image data
+      Self->x11.ximage.bitmap_unit = alignment;    // Quant. of scanline - 8, 16, 32
+      Self->x11.ximage.bitmap_pad  = alignment;    // 8, 16, 32, either XY or Zpixmap
       if (Self->BitsPerPixel IS 32) Self->x11.ximage.depth = 24;
       else Self->x11.ximage.depth = Self->BitsPerPixel;      // Actual bits per pixel
-      Self->x11.ximage.bytes_per_line   = Self->LineWidth;         // Accelerator to next line
-      Self->x11.ximage.bits_per_pixel   = Self->BytesPerPixel * 8; // Bits per pixel-group
+      Self->x11.ximage.bytes_per_line = Self->LineWidth;         // Accelerator to next line
+      Self->x11.ximage.bits_per_pixel = Self->BytesPerPixel * 8; // Bits per pixel-group
 
       XInitImage(&Self->x11.ximage);
    }
@@ -2244,19 +2276,23 @@ initialisation process to allocate the correct amount of memory for you by not i
 
 *********************************************************************************************************************/
 
-ERROR SET_Data(extBitmap *Self, UBYTE *Data)
+ERROR SET_Data(extBitmap *Self, UBYTE *Value)
 {
-   // This code allows us to calculate the correct memory flags and also set the pixel drawing functions accordingly
+#ifdef __xwindows__
+   if (Self->x11.XShmImage) return ERR_NotPossible;
+#endif
+
+   // This code gets the correct memory flags to define the pixel drawing functions
    // (i.e. functions to draw to video memory are different to drawing to normal memory).
 
-   if (Self->Data != Data) {
-      Self->Data = Data;
+   if (Self->Data != Value) {
+      Self->Data = Value;
 
       if (!Self->DataFlags) {
          MemInfo info;
-         if (MemoryPtrInfo(Data, &info) != ERR_Okay) {
+         if (MemoryPtrInfo(Value, &info) != ERR_Okay) {
             pf::Log log;
-            log.warning("Could not obtain flags from address %p.", Data);
+            log.warning("Could not obtain flags from address %p.", Value);
          }
          else if (Self->DataFlags != info.Flags) {
             Self->DataFlags = info.Flags;
