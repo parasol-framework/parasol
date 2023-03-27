@@ -2604,8 +2604,7 @@ int winExtractFile(LPIDA pida, int Index, char *Result, int Size)
 
    if (Index >= (int)pida->cidl) return 0;
 
-   LPCITEMIDLIST list;
-   list = HIDA_GetPIDLFolder(pida);
+   LPCITEMIDLIST list = HIDA_GetPIDLFolder(pida);
    if (SHGetPathFromIDList(list, path)) {
       int pos, j;
       for (pos=0; (path[pos]) AND (pos < Size-1); pos++) Result[pos] = path[pos];
