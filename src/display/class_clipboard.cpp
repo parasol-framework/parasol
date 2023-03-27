@@ -45,8 +45,10 @@ static const FieldDef glDatatypes[] = {
 std::list<ClipRecord> glClips;
 static LONG glCounter = 1;
 static LONG glHistoryLimit = 1;
-static LONG glLastClipID = -1;
 static std::string glProcessID;
+#ifdef _WIN32
+static LONG glLastClipID = -1;
+#endif
 
 //********************************************************************************************************************
 
@@ -449,54 +451,51 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
 
    Args->Files = NULL;
 
-   ClipRecord *clip = NULL;
-
-#ifdef _WIN32
-   // If the history buffer is disabled then we need to actively retrieve whatever Windows has on the clipboard.
-
    if (!(Self->Flags & CLF_HISTORY_BUFFER)) {
+#ifdef _WIN32
+      // If the history buffer is disabled then we need to actively retrieve whatever Windows has on the clipboard.
       if (winCurrentClipboardID() != glLastClipID) winCopyClipboard();
+#endif
    }
 
-   clip = &glClips.front();
+   if (glClips.empty()) return ERR_NoData;
 
-#else
+   ClipRecord *clip = &glClips.front();
+
    // Find the first clipboard entry to match what has been requested
 
-   if (!Args->Datatype) { // Retrieve the most recent clip item, or the one indicated in the Index parameter.
-      if ((Args->Index < 0) or (Args->Index >= LONG(glClips.size()))) return ERR_OutOfRange;
-      std::advance(clip, Args->Index);
-   }
-   else {
-      bool found = false;
-      for (auto &scan : glClips) {
-         if (Args->Datatype & scan.Datatype) {
-            found = true;
-            clip = scan;
-            break;
+   if (Self->Flags & CLF_HISTORY_BUFFER) {
+      if (!Args->Datatype) { // Retrieve the most recent clip item, or the one indicated in the Index parameter.
+         if ((Args->Index < 0) or (Args->Index >= LONG(glClips.size()))) return log.warning(ERR_OutOfRange);
+         std::advance(clip, Args->Index);
+      }
+      else {
+         bool found = false;
+         for (auto &scan : glClips) {
+            if (Args->Datatype & scan.Datatype) {
+               found = true;
+               clip = &scan;
+               break;
+            }
+         }
+
+         if (!found) {
+            log.warning("No clips available for datatype $%x", Args->Datatype);
+            return ERR_NoData;
          }
       }
-
-      if (!found) {
-         log.warning("No clips available for datatype $%x", Args->Datatype);
-         return ERR_NoData;
-      }
    }
-#endif
-
-   if (clip->Items.empty()) {
-      log.warning("No items are allocated to datatype $%x at clip index %d", clip->Datatype, Args->Index);
-      return ERR_NoData;
+   else if (Args->Datatype) {
+      if (!(clip->Datatype & Args->Datatype)) return ERR_NoData;
    }
-
-   Args->Flags    = clip->Flags;
-   Args->Datatype = clip->Datatype;
 
    CSTRING *list = NULL;
    LONG str_len = 0;
    for (auto &item : clip->Items) str_len += item.Path.size() + 1;
    if (!AllocMemory(((clip->Items.size()+1) * sizeof(STRING)) + str_len, MEM_NO_CLEAR|MEM_CALLER, &list)) {
-      Args->Files = list;
+      Args->Files    = list;
+      Args->Flags    = clip->Flags;
+      Args->Datatype = clip->Datatype;
 
       auto dest = (char *)list + ((clip->Items.size() + 1) * sizeof(STRING));
       for (auto &item : clip->Items) {

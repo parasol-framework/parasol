@@ -2609,6 +2609,7 @@ int winExtractFile(LPIDA pida, int Index, char *Result, int Size)
    if (SHGetPathFromIDList(list, path)) {
       int pos, j;
       for (pos=0; (path[pos]) AND (pos < Size-1); pos++) Result[pos] = path[pos];
+      if ((Result[pos-1] != '\\') AND (pos < Size-1)) Result[pos++] = '\\';
 
       list = HIDA_GetPIDLItem(pida, Index);
       if (SHGetPathFromIDList(list, path)) {
