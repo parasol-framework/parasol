@@ -154,9 +154,7 @@ static ERROR SET_Handle(extBitmap *, APTR);
 static ERROR SET_Palette(extBitmap *, RGBPalette *);
 
 static const FieldDef clDataFlags[] = {
-   { "Public",  MEM_PUBLIC  }, { "Video",   MEM_VIDEO   },
-   { "Blit",    MEM_TEXTURE }, { "NoClear", MEM_NO_CLEAR },
-   { "Data",    0           },
+   { "Video", MEM_VIDEO }, { "Blit", MEM_TEXTURE }, { "NoClear", MEM_NO_CLEAR }, { "Data", 0 },
    { NULL, 0 }
 };
 

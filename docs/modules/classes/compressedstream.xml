@@ -184,18 +184,15 @@
       <const name="CALLER">This flag is usable only in routines that are supporting a class method.  It forces the memory allocation to be tracked to the object that made the method call.  This is particularly important in methods that return memory blocks that do not form a part of the object itself.</const>
       <const name="CODE">Set if the memory will contain executable program code.</const>
       <const name="DATA">The default type, MEM_DATA, is used to indicate a standard memory allocation from system RAM.</const>
-      <const name="FIXED">This flag can be applied to public memory blocks that need to be mapped to a fixed address that is common to all tasks.  For instance, if the system locks the memory block to address 0x56084000 for your task, then all other tasks that map the memory block will also see it at that address.  This flag is typically used for supporting absolute code execution.</const>
       <const name="HIDDEN">Hidden blocks are not recorded and are excluded from resource tracking.</const>
       <const name="MANAGED">Enables custom resource management for the memory block.  The start of the block will need to be reserved with a pointer to a ResourceManager structure, which is included as part of the block's declared Size.  The Free() callback will be called when the block is removed.</const>
-      <const name="NO_BLOCK">If this flag is set against a public memory block then the access blocking mechanism will be permanently turned off for all accesses to that particular memory block.  This means that multiple tasks can have full read/write access to the memory block at once regardless of the flags passed to AccessMemoryID().</const>
-      <const name="NO_BLOCKING">If this flag is set against a public memory block then the access blocking mechanism will be permanently turned off for all accesses to that particular memory block.  This means that multiple tasks can have full read/write access to the memory block at once regardless of the flags passed to AccessMemoryID().</const>
+      <const name="NO_BLOCK">Permanently turn off all accesses to this memory block.  This means that multiple threads can have full read/write access to the memory block at once regardless of other acces flags.</const>
+      <const name="NO_BLOCKING">Permanently turn off all accesses to this memory block.  This means that multiple threads can have full read/write access to the memory block at once regardless of other acces flags.</const>
       <const name="NO_CLEAR">Do not clear the memory on allocation (saves time).</const>
       <const name="NO_LOCK">For AllocMemory() only, indicates that the (private) memory block should not be locked on return.</const>
       <const name="NO_POOL">Gives a hint to the allocator to allocate the block outside of the memory pool.</const>
-      <const name="PUBLIC">Public memory can be allocated by specifying this flag.  Public memory blocks are accessible by all tasks, but access can only be gained by knowing the unique memory ID and utilising the AccessMemoryID() function.</const>
       <const name="READ">The memory is explicitly marked as readable.</const>
       <const name="READ_WRITE">Synonym for READ | WRITE</const>
-      <const name="SHARED">Public memory can be allocated by specifying this flag.  Public memory blocks are accessible by all tasks, but access can only be gained by knowing the unique memory ID and utilising the AccessMemoryID() function.</const>
       <const name="STRING">Identifies the memory content as a null terminated string. Useful for debugging and run-time type identification in scripts.</const>
       <const name="TEXTURE">The memory space is reserved by a video driver for hosting texture graphics.</const>
       <const name="TMP_LOCK">Enables temporary locking restrictions.  Prevents processes from sleeping while holding a lock on the memory block.</const>
@@ -225,7 +222,7 @@
       <const name="TIMER_SUB">The object is subscribed to a timer interval.</const>
       <const name="UNIQUE">Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating shared objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.</const>
       <const name="UNLOCK_FREE">Read-only indicator for when the object is marked for deletion.</const>
-      <const name="UNTRACKED">An object created with this flag will not be tracked back to the object that created it.  If combined with the NF_PUBLIC flag, the object can also remain in memory when the object's related task is terminated.</const>
+      <const name="UNTRACKED">An object created with this flag will not be tracked back to the object that created it.</const>
     </constants>
 
     <constants lookup="PERMIT" comment="Permission flags">
@@ -311,7 +308,7 @@
       <const name="PROCESS_STATE">Life-cycle stage of the running process</const>
       <const name="THREAD_ID">Return the ID of the current thread.</const>
       <const name="TOTAL_MEMORY">The total amount of installed memory.</const>
-      <const name="TOTAL_SHARED_MEMORY">The total amount of shared memory in use.</const>
+      <const name="TOTAL_SHARED_MEMORY">The total amount of shared memory in use (system wide).</const>
       <const name="TOTAL_SWAP">The total amount of available swap space.</const>
     </constants>
 

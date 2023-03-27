@@ -171,34 +171,25 @@ static void free_children(OBJECTPTR Object)
          const auto list = glObjectMemory[Object->UID]; // Take an immutable copy of the resource list
 
          for (const auto id : list) {
-            if (id < 0) {
-               ScopedSysLock lock(PL_PUBLICMEM, 5000);
-               if (lock.granted()) {
-                  log.warning("Unfreed public memory #%d.", id);
-                  FreeResourceID(id);
+            auto it = glPrivateMemory.find(id);
+            if ((it IS glPrivateMemory.end()) or (!it->second.Address)) continue;
+            auto &mem = it->second;
+
+            if ((mem.Flags & MEM_DELETE) or (!mem.Address)) continue;
+
+            if (glLogLevel >= 3) {
+               if (mem.Flags & MEM_STRING) {
+                  log.warning("Unfreed string \"%.40s\" (%p, #%d)", (CSTRING)mem.Address, mem.Address, mem.MemoryID);
                }
-            }
-            else {
-               auto it = glPrivateMemory.find(id);
-               if ((it IS glPrivateMemory.end()) or (!it->second.Address)) continue;
-               auto &mem = it->second;
-
-               if ((mem.Flags & MEM_DELETE) or (!mem.Address)) continue;
-
-               if (glLogLevel >= 3) {
-                  if (mem.Flags & MEM_STRING) {
-                     log.warning("Unfreed string \"%.40s\" (%p, #%d)", (CSTRING)mem.Address, mem.Address, mem.MemoryID);
-                  }
-                  else if (mem.Flags & MEM_MANAGED) {
-                     auto res = (ResourceManager **)((char *)mem.Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
-                     if (res[0]) log.warning("Unfreed %s resource at %p.", res[0]->Name, mem.Address);
-                     else log.warning("Unfreed resource at %p.", mem.Address);
-                  }
-                  else log.warning("Unfreed memory block %p, Size %d", mem.Address, mem.Size);
+               else if (mem.Flags & MEM_MANAGED) {
+                  auto res = (ResourceManager **)((char *)mem.Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
+                  if (res[0]) log.warning("Unfreed %s resource at %p.", res[0]->Name, mem.Address);
+                  else log.warning("Unfreed resource at %p.", mem.Address);
                }
-
-               if (FreeResource(mem.Address) != ERR_Okay) log.warning("Error freeing tracked address %p", mem.Address);
+               else log.warning("Unfreed memory block %p, Size %d", mem.Address, mem.Size);
             }
+
+            if (FreeResource(mem.Address) != ERR_Okay) log.warning("Error freeing tracked address %p", mem.Address);
          }
       }
 
