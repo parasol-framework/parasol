@@ -3,6 +3,7 @@
 static const struct FieldDef clClipboardFlags[] = {
    { "DragDrop", 0x00000001 },
    { "Host", 0x00000002 },
+   { "HistoryBuffer", 0x00000004 },
    { NULL, 0 }
 };
 
@@ -25,7 +26,6 @@ static const struct ActionArray clClipboardActions[] = {
    { AC_Clear, CLIPBOARD_Clear },
    { AC_DataFeed, CLIPBOARD_DataFeed },
    { AC_Free, CLIPBOARD_Free },
-   { AC_GetVar, CLIPBOARD_GetVar },
    { AC_Init, CLIPBOARD_Init },
    { AC_NewObject, CLIPBOARD_NewObject },
    { 0, NULL }

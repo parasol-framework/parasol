@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -1776,7 +1775,7 @@ Quit: Sends a quit message to a task.
 
 The Quit method can be used as a convenient way of sending a task a quit message.  This will normally result in the
 destruction of the task, so long as it is still functioning correctly and has been coded to respond to the
-MSGID_QUIT message type.  It is legal for a task to ignore a quit request if it is programmed to stay alive.  A task
+`MSGID_QUIT` message type.  It is legal for a task to ignore a quit request if it is programmed to stay alive.  A task
 can be killed outright with the Free action.
 
 -ERRORS-
@@ -1853,7 +1852,7 @@ static ERROR TASK_SetVar(extTask *Self, struct acSetVar *Args)
 -ACTION-
 Write: Send raw data to a launched process' stdin descriptor.
 
-If a process is successfully launched with the PIPE set in #Flags, data can be sent to its stdin pipe by calling the
+If a process is successfully launched with the `PIPE` set in #Flags, data can be sent to its stdin pipe by calling the
 Write action.  Setting the Buffer parameter to NULL will result in the pipe being closed (this will signal to the
 process that no more data is incoming).
 
