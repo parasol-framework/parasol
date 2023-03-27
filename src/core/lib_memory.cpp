@@ -12,11 +12,6 @@ Name: Memory
 #include <stdlib.h> // Contains free(), malloc() etc
 
 #ifdef __unix__
-#include <sys/ipc.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <string.h>
-#include <unistd.h>
 #include <errno.h>
 #endif
 

@@ -894,7 +894,7 @@ EXPORT void Expunge(WORD);
 extern void add_archive(class extCompression *);
 extern void remove_archive(class extCompression *);
 
-void print_diagnosis(LONG ProcessID, LONG Signal);
+void   print_diagnosis(LONG ProcessID, LONG Signal);
 CSTRING action_name(OBJECTPTR Object, LONG ActionID);
 APTR   build_jump_table(const struct Function *);
 ERROR  copy_args(const struct FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, CSTRING);
@@ -930,6 +930,8 @@ void   wake_sleepers(LONG ResourceID, LONG ResourceType);
 ERROR  writeval_default(OBJECTPTR, struct Field *, LONG, const void *, LONG);
 ERROR  validate_process(LONG);
 void   free_iconv(void);
+ERROR  check_paths(CSTRING, LONG);
+void   merge_groups(ConfigGroups &Dest, ConfigGroups &Source);
 
 #define REF_WAKELOCK           get_threadlock()
 
@@ -981,11 +983,6 @@ ERROR plAllocPrivateSemaphore(APTR, LONG InitialValue);
 void  plFreePrivateSemaphore(APTR);
 ERROR plLockSemaphore(APTR, LONG TimeOut);
 void  plUnlockSemaphore(APTR);
-
-ERROR check_paths(CSTRING, LONG);
-
-ERROR convert_errno(LONG Error, ERROR Default);
-void merge_groups(ConfigGroups &Dest, ConfigGroups &Source);
 
 #ifdef _WIN32
 void activate_console(BYTE);

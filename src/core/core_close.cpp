@@ -10,7 +10,7 @@ static void free_shared_control(void);
 EXPORT void CloseCore(void)
 {
    pf::Log log("Shutdown");
-   LONG i, j, count;
+   LONG j;
 
    if (glCodeIndex IS CP_FINISHED) return;
 
@@ -178,7 +178,7 @@ EXPORT void CloseCore(void)
          if ((mem.Flags & MEM_OBJECT) and (mem.AccessCount > 0)) {
             if (auto obj = mem.Object) {
                log.warning("Removing locks on object #%d, Owner: %d, Locks: %d", obj->UID, obj->OwnerID, mem.AccessCount);
-               for (count=mem.AccessCount; count > 0; count--) ReleaseObject(obj);
+               for (auto count=mem.AccessCount; count > 0; count--) ReleaseObject(obj);
             }
          }
       }
@@ -291,7 +291,7 @@ EXPORT void CloseCore(void)
 
       // Remove semaphore controls
 
-      for (i=1; i < PL_END; i++) {
+      for (LONG i=1; i < PL_END; i++) {
          if (glPublicLocks[i].Event) free_public_waitlock(glPublicLocks[i].Lock);
          else free_public_lock(glPublicLocks[i].Lock);
       }
