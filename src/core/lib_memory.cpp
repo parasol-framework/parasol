@@ -13,11 +13,7 @@ Name: Memory
 
 #ifdef __unix__
 #include <sys/ipc.h>
-#ifndef __ANDROID__
-#include <sys/shm.h>
-#endif
 #include <sys/stat.h>
-
 #include <sys/mman.h>
 #include <string.h>
 #include <unistd.h>
@@ -39,10 +35,6 @@ using namespace pf;
 static void randomise_memory(UBYTE *, ULONG Size);
 #else
 #define randomise_memory(a,b)
-#endif
-
-#ifdef __unix__
-extern LONG glMemoryFD;
 #endif
 
 //********************************************************************************************************************
@@ -134,7 +126,6 @@ ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
    else if (tlContext != &glTopContext) object_id = tlContext->resource()->UID;
    else if (glCurrentTask) object_id = glCurrentTask->UID;
 
-   //LONG aligned_size = ALIGN32(Size);
    LONG full_size = Size + MEMHEADER;
    if (Flags & MEM_MANAGED) full_size += sizeof(ResourceManager *);
 
@@ -437,9 +428,8 @@ ERROR FreeResourceID(MEMORYID MemoryID)
 -FUNCTION-
 MemoryIDInfo: Returns information on memory ID's.
 
-This function can be used to get special details on the attributes of a memory block.  It will return information on
-the start address, parent object, memory ID, size and flags of the memory block that you are querying.  The following
-code segment illustrates correct use of this function:
+This function returns the attributes of a memory block, including the start address, parent object, memory ID, size
+and flags.  The following code segment illustrates correct use of this function:
 
 <pre>
 MemInfo info;
@@ -448,8 +438,7 @@ if (!MemoryIDInfo(memid, &info)) {
 }
 </pre>
 
-If the call to MemoryIDInfo() fails, the MemInfo structure's fields will be driven to NULL and an error code will be
-returned.
+If the call fails, the MemInfo structure's fields will be driven to NULL and an error code is returned.
 
 -INPUT-
 mem ID: Pointer to a valid memory ID.
@@ -485,8 +474,6 @@ ERROR MemoryIDInfo(MEMORYID MemoryID, MemInfo *MemInfo, LONG Size)
          MemInfo->AccessCount = mem->second.AccessCount;
          MemInfo->Flags       = mem->second.Flags;
          MemInfo->MemoryID    = mem->second.MemoryID;
-         MemInfo->TaskID      = 0;
-         MemInfo->Handle      = 0;
          return ERR_Okay;
       }
       else return ERR_MemoryDoesNotExist;
@@ -551,7 +538,6 @@ ERROR MemoryPtrInfo(APTR Memory, MemInfo *MemInfo, LONG Size)
             MemInfo->AccessCount = mem.AccessCount;
             MemInfo->Flags       = mem.Flags;
             MemInfo->MemoryID    = mem.MemoryID;
-            MemInfo->TaskID      = glCurrentTask->UID;
             return ERR_Okay;
          }
       }
@@ -610,7 +596,7 @@ ERROR ReallocMemory(APTR Address, LONG NewSize, APTR *Memory, MEMORYID *MemoryID
 
    // Check the validity of what we have been sent
 
-   if (MemoryPtrInfo(Address, &meminfo, sizeof(meminfo)) != ERR_Okay) {
+   if (MemoryIDInfo(GetMemoryID(Address), &meminfo, sizeof(meminfo)) != ERR_Okay) {
       log.warning("MemoryPtrInfo() failed for address %p.", Address);
       return ERR_Memory;
    }

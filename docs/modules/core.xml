@@ -1230,13 +1230,13 @@ GetField(Object, FID_Y|TLONG, &amp;y);
       <param type="LONG" name="Size">Size of the MemInfo structure.</param>
     </input>
     <description>
-<p>This function can be used to get special details on the attributes of a memory block.  It will return information on the start address, parent object, memory ID, size and flags of the memory block that you are querying.  The following code segment illustrates correct use of this function:</p>
+<p>This function returns the attributes of a memory block, including the start address, parent object, memory ID, size and flags.  The following code segment illustrates correct use of this function:</p>
 <pre>MemInfo info;
 if (!MemoryIDInfo(memid, &amp;info)) {
    log.msg("Memory block #%d is %d bytes large.", info.MemoryID, info.Size);
 }
 </pre>
-<p>If the call to MemoryIDInfo() fails, the MemInfo structure's fields will be driven to NULL and an error code will be returned.</p>
+<p>If the call fails, the MemInfo structure's fields will be driven to NULL and an error code is returned.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -3773,9 +3773,6 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <field name="AccessCount" type="WORD">Total number of active locks on this block.</field>
       <field name="Flags" type="WORD">The type of memory.</field>
       <field name="MemoryID" type="MEMORYID">The unique ID for this block.</field>
-      <field name="LockID" type="OBJECTID">Reference to the task that currently has a lock on the block.</field>
-      <field name="TaskID" type="OBJECTID">The Task that owns the memory block</field>
-      <field name="Handle" type="LONG">Native system handle (e.g. the shmid in Linux)</field>
     </struct>
 
     <struct name="Message" comment="Messaging structures.  Note: This structure is utilised by NextMsg">

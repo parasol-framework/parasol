@@ -429,9 +429,6 @@
       <field name="AccessCount" type="WORD">Total number of active locks on this block.</field>
       <field name="Flags" type="WORD">The type of memory.</field>
       <field name="MemoryID" type="MEMORYID">The unique ID for this block.</field>
-      <field name="LockID" type="OBJECTID">Reference to the task that currently has a lock on the block.</field>
-      <field name="TaskID" type="OBJECTID">The Task that owns the memory block</field>
-      <field name="Handle" type="LONG">Native system handle (e.g. the shmid in Linux)</field>
     </struct>
 
     <struct name="Message" comment="Messaging structures.  Note: This structure is utilised by NextMsg">
