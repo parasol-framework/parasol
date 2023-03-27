@@ -373,11 +373,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
          if (!StrMatch(arg, "log-memory")) {
             glShowPrivate = TRUE;
-            glShowPublic  = TRUE;
             glDebugMemory = TRUE;
-         }
-         else if (!StrMatch(arg, "log-shared-memory")) {
-            glShowPublic = TRUE;
          }
          else if (!StrCompare(arg, "gfx-driver=", 11, 0)) {
             StrCopy(arg+11, glDisplayDriver, sizeof(glDisplayDriver));
@@ -794,10 +790,10 @@ EXPORT void CleanSystem(LONG Flags)
 
 #define MAGICKEY 0x58392712
 
-static LONG glMemorySize = sizeof(SharedControl) +
-                           (sizeof(SemaphoreEntry) * MAX_SEMAPHORES) +
-                           (sizeof(WaitLock) * MAX_WAITLOCKS) +
-                           (sizeof(TaskList) * MAX_TASKS);
+static const LONG glMemorySize = sizeof(SharedControl) +
+                                 (sizeof(SemaphoreEntry) * MAX_SEMAPHORES) +
+                                 (sizeof(WaitLock) * MAX_WAITLOCKS) +
+                                 (sizeof(TaskList) * MAX_TASKS);
 
 #ifdef _WIN32
 static ERROR open_shared_control(void)
@@ -820,8 +816,6 @@ static ERROR open_shared_control(void)
          return error;
       }
    }
-
-   // Allocate the public memory pool
 
    LONG init;
    char sharename[12];
@@ -858,8 +852,6 @@ static ERROR open_shared_control(void)
    }
 
    KMSG("open_shared_control() Key: $%.8x.\n", memkey);
-
-   // Allocate the public memory pool
 
    #ifdef __ANDROID__
       // Helpful ashmem article: http://notjustburritos.tumblr.com/post/21442138796/an-introduction-to-android-shared-memory
@@ -993,7 +985,6 @@ static ERROR init_shared_control(void)
 
    ClearMemory(glSharedControl, glMemorySize);
 
-   glSharedControl->IDCounter  = -10000;
    glSharedControl->MagicKey   = MAGICKEY;
 
    LONG offset = sizeof(SharedControl);

@@ -402,7 +402,6 @@
 #define FID_ZAngle 0x2b8dc086LL
 #define FID_ZCoord 0x2bb2a0b6LL
 #define FID_ZSpeed 0x2cd488f0LL
-#define FID_PublicObjects 0xb90c95aeLL
 #define FID_Viewport 0xe8f01225LL
 #define FID_ParentViewport 0x679f3aafLL
 #define FID_Option3 0x71f05051LL

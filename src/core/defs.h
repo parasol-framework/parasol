@@ -36,7 +36,7 @@
 #define MAX_TASKS    50  // Maximum number of tasks allowed to run at once
 #define MAX_SEMLOCKS 40  // Maximum number of semaphore allocations per task
 
-#define MSG_MAXARGSIZE   512   // The maximum allowable size of data based arguments before they have to be allocated as public memory blocks when messaging
+#define MSG_MAXARGSIZE   512   // The maximum allowable size of data based arguments before they have to be allocated as memory blocks when messaging
 #define SIZE_SYSTEM_PATH 100  // Max characters for the Parasol system path
 
 #define MAX_SEMAPHORES    40  // Maximum number of semaphores that can be allocated in the system
@@ -578,7 +578,7 @@ extern std::string glSystemPath;
 extern std::string glModulePath;
 extern std::string glRootPath;
 extern char glDisplayDriver[28];
-extern bool glShowIO, glShowPrivate, glShowPublic;
+extern bool glShowIO, glShowPrivate;
 extern WORD glLogLevel, glMaxDepth;
 extern UBYTE glTaskState;
 extern LARGE glTimeLog;

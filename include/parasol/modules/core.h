@@ -3962,7 +3962,6 @@ enum { // For SysLock()
 };
 
 struct SharedControl {
-   volatile LONG IDCounter;         // ID counter for public access
    volatile LONG ValidateProcess;
    WORD SystemState;
    volatile WORD WLIndex;           // Current insertion point for the wait-lock array.

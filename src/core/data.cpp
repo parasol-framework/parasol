@@ -130,7 +130,6 @@ WORD glFunctionIndex = 0;
 WORD glMaxDepth     = 20; // Thread global
 bool glShowIO       = false;
 bool glShowPrivate  = false;
-bool glShowPublic   = false;
 bool glPrivileged   = false;
 bool glSync         = false;
 BYTE glProgramStage = STAGE_STARTUP;

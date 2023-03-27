@@ -617,7 +617,7 @@ ERROR ReallocMemory(APTR Address, LONG NewSize, APTR *Memory, MEMORYID *MemoryID
 
    if (meminfo.Size IS NewSize) return ERR_Okay;
 
-   if ((glShowPrivate) or (glShowPublic)) log.branch("Address: %p, NewSize: %d", Address, NewSize);
+   if (glShowPrivate) log.branch("Address: %p, NewSize: %d", Address, NewSize);
 
    // Allocate the new memory block and copy the data across
 

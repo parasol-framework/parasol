@@ -121,7 +121,7 @@ EXPORT void CloseCore(void)
 
    if ((glCurrentTask) or (glProcessID)) remove_process_waitlocks();
 
-   // Remove locks from private and public memory blocks
+   // Remove locks from memory blocks
 
    if (glCrashStatus) {
       log.msg("Forcibly removing all resource locks.");
@@ -239,7 +239,7 @@ EXPORT void CloseCore(void)
          }
       }
 
-      log.trace("Removing private and public memory locks.");
+      log.trace("Removing memory locks.");
 
       remove_private_locks();
    }
