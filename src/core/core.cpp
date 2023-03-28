@@ -1096,7 +1096,7 @@ void print_diagnosis(LONG Signal)
 
          // Copy process status to the output file
 
-         snprintf(filename, sizeof(filename), "/proc/%d/status", ProcessID);
+         snprintf(filename, sizeof(filename), "/proc/%d/status", glCurrentTask->ProcessID);
          if (auto pf = fopen(filename, "r")) {
             if ((len = fread(buffer, 1, sizeof(buffer)-1, pf)) > 0) {
                buffer[len] = 0;
