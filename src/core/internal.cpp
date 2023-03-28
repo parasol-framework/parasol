@@ -25,15 +25,11 @@ Functions that are internal to the Core.
 using namespace pf;
 
 //********************************************************************************************************************
-// If a function has reason to believe that a process has crashed or is failing to unlock memory blocks, it can call
-// the validate_process() function to help clean up the system.
+// Determine whether or not a process is alive
 
 ERROR validate_process(LONG ProcessID)
 {
    pf::Log log(__FUNCTION__);
-   OBJECTID task_id;
-   LONG i;
-   BYTE broadcastpid;
    static LONG glValidating = 0;
 
    log.function("PID: %d", ProcessID);
@@ -41,8 +37,6 @@ ERROR validate_process(LONG ProcessID)
    if (glValidating) return ERR_Okay;
    if (glValidateProcessID IS ProcessID) glValidateProcessID = 0;
    if ((ProcessID IS glProcessID) or (!ProcessID)) return ERR_Okay;
-
-   // Determine whether or not the process is alive
 
    #ifdef _WIN32
       // On Windows we don't check if the process is alive because validation can often occur during the final shutdown
@@ -55,49 +49,87 @@ ERROR validate_process(LONG ProcessID)
       return ERR_Okay;
    #endif
 
-   task_id = 0;
-   broadcastpid = FALSE;
-   if (!LOCK_PROCESS_TABLE(4000)) {
-      for (i=0; i < MAX_TASKS; i++) {
-         if (shTasks[i].ProcessID IS ProcessID) {
-            task_id = shTasks[i].TaskID;
-            ClearMemory(shTasks+i, sizeof(struct TaskList));
-            broadcastpid = TRUE;
-            break;
-         }
+   OBJECTID task_id = 0;
+   for (auto it = glTasks.begin(); it != glTasks.end(); it++) {
+      if (it->ProcessID IS ProcessID) {
+         task_id = it->TaskID;
+         glTasks.erase(it);
+         break;
       }
-
-      UNLOCK_PROCESS_TABLE();
    }
 
-    if (broadcastpid) {
-      // Broadcast a system.task.removed signal.  Foreign processes are broadcast if we were responsible for launching them (i.e. the process is referenced in the task list).
+   if (!task_id) return ERR_False;
 
-      evTaskRemoved task_removed = { GetEventID(EVG_SYSTEM, "task", "removed"), task_id, ProcessID };
-      BroadcastEvent(&task_removed, sizeof(task_removed));
-   }
+   evTaskRemoved task_removed = { GetEventID(EVG_SYSTEM, "task", "removed"), task_id, ProcessID };
+   BroadcastEvent(&task_removed, sizeof(task_removed));
 
-   if (!task_id) {
-      log.msg("No task slot for process %d - handled by someone else?", ProcessID);
-      return ERR_False;
-   }
-
-   log.branch("Process %d / task #%d no longer exists, validating...", ProcessID, task_id);
-
-   glValidating = ProcessID;
-
-   // Wake up foreign tasks that are waiting on the crashed process.  Very straight-forward as we can do a broadcast.
-
-   #ifdef __unix__
-      if (!LOCK_SEMAPHORES(1000)) {
-         pthread_cond_broadcast(&glSharedControl->PublicLocks[PL_SEMAPHORES].Cond);
-         UNLOCK_SEMAPHORES();
-      }
-   #endif
-
-   log.msg("Validation complete.");
    glValidating = 0;
    return ERR_False; // Return ERR_False to indicate that the task was not healthy
+}
+
+//********************************************************************************************************************
+
+TaskRecord * find_process(LONG ProcessID)
+{
+   for (auto &task : glTasks) {
+      if (ProcessID IS task.ProcessID) return &task;
+   }
+   return NULL;
+}
+
+//********************************************************************************************************************
+
+ERROR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
+{
+#ifdef __unix__
+   pf::Log log(__FUNCTION__);
+
+   // Call waitpid() to check for zombie processes first.  This covers all processes within our own context, so our child processes, children of those children etc.
+
+   // However, it can be 'blocked' from certain processes, e.g. those started from ZTerm.  Such processes are discovered in the second search routine.
+
+   LONG childprocess, status;
+   while ((childprocess = waitpid(-1, &status, WNOHANG)) > 0) {
+      log.warning("Zombie process #%d discovered.", childprocess);
+
+      if (auto task = find_process(childprocess)) {
+         task->ReturnCode = WEXITSTATUS(status);
+         task->Returned = TRUE;
+         validate_process(childprocess);
+      }
+   }
+
+   // Check all registered processes to see which ones are alive.  This routine can manage all processes, although exhibits
+   // some problems with zombies, hence the earlier waitpid() routine to clean up such processes.
+
+   for (auto &task : glTasks) {
+      if ((kill(task.ProcessID, 0) IS -1) and (errno IS ESRCH)) {
+         validate_process(task.ProcessID);
+      }
+   }
+
+#elif _WIN32
+   for (auto &task : glTasks) {
+      if (!winCheckProcessExists(task.ProcessID)) {
+         validate_process(task.ProcessID);
+      }
+   }
+#endif
+
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+// Returns a unique ID for the active thread.  The ID has no relationship with the host operating system.
+
+static THREADVAR LONG tlUniqueThreadID = 0;
+static LONG glThreadIDCount = 1;
+
+LONG get_thread_id(void)
+{
+   if (tlUniqueThreadID) return tlUniqueThreadID;
+   tlUniqueThreadID = __sync_add_and_fetch(&glThreadIDCount, 1);
+   return tlUniqueThreadID;
 }
 
 /*********************************************************************************************************************
@@ -343,88 +375,4 @@ looperror:
    // On failure we must back-track through the array looking for pointers that we have already gained access to, and release them before returning.
 
    return error;
-}
-
-//********************************************************************************************************************
-
-void fix_core_table(struct CoreBase *CoreBase, FLOAT Version)
-{
-   LONG version, revision;
-   version = (LONG)Version;
-   revision = ((DOUBLE)Version - (DOUBLE)version + 0.000001) * 10.0;
-/*
-   if ((version < 5) or ((version IS 5) and (revision < 4))) {
-      CoreBase->_SubscribeTimer = (APTR)SubscribeTimer_P54;
-   }
-*/
-}
-
-//********************************************************************************************************************
-
-TaskList * find_process(LONG ProcessID)
-{
-   for (LONG i=0; i < MAX_TASKS; i++) {
-      if (ProcessID IS shTasks[i].ProcessID) return shTasks+i;
-   }
-   return NULL;
-}
-
-//********************************************************************************************************************
-
-ERROR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
-{
-#ifdef __unix__
-   pf::Log log(__FUNCTION__);
-
-   // Call waitpid() to check for zombie processes first.  This covers all processes within our own context, so our child processes, children of those children etc.
-
-   // However, it can be 'blocked' from certain processes, e.g. those started from ZTerm.  Such processes are discovered in the second search routine.
-
-   LONG childprocess, status;
-   while ((childprocess = waitpid(-1, &status, WNOHANG)) > 0) {
-      log.warning("Zombie process #%d discovered.", childprocess);
-
-      TaskList *task;
-      if ((task = find_process(childprocess))) {
-         task->ReturnCode = WEXITSTATUS(status);
-         task->Returned = TRUE;
-         validate_process(childprocess);
-      }
-   }
-
-   // Check all registered processes to see which ones are alive.  This routine can manage all processes, although exhibits
-   // some problems with zombies, hence the earlier waitpid() routine to clean up such processes.
-
-   for (LONG i=0; i < MAX_TASKS; i++) {
-      if (shTasks[i].ProcessID) {
-         if ((kill(shTasks[i].ProcessID, 0) IS -1) and (errno IS ESRCH)) {
-            validate_process(shTasks[i].ProcessID);
-         }
-      }
-   }
-
-#elif _WIN32
-   for (LONG i=0; i < MAX_TASKS; i++) {
-      if ((shTasks[i].ProcessID) and (shTasks[i].ProcessID != glProcessID)) {
-         if (!winCheckProcessExists(shTasks[i].ProcessID)) {
-            validate_process(shTasks[i].ProcessID);
-         }
-      }
-   }
-#endif
-
-   return ERR_Okay;
-}
-
-//**********************************************************************
-// Returns a unique ID for the active thread.  The ID has no relationship with the host operating system.
-
-static THREADVAR LONG tlUniqueThreadID = 0;
-static LONG glThreadIDCount = 1;
-
-LONG get_thread_id(void)
-{
-   if (tlUniqueThreadID) return tlUniqueThreadID;
-   tlUniqueThreadID = __sync_add_and_fetch(&glThreadIDCount, 1);
-   return tlUniqueThreadID;
 }

@@ -10,7 +10,6 @@ static void free_shared_control(void);
 EXPORT void CloseCore(void)
 {
    pf::Log log("Shutdown");
-   LONG j;
 
    if (glCodeIndex IS CP_FINISHED) return;
 
@@ -46,20 +45,18 @@ EXPORT void CloseCore(void)
          // Kill all processes that have been created by this process and its children
          killpg(0, SIGHUP);
       #else
-         for (LONG i=0; i < MAX_TASKS; i++) {
-            if ((shTasks[i].ProcessID) and (shTasks[i].ProcessID != glProcessID)) {
-               log.msg("Removing sub-process #%d (pid %d).", shTasks[i].TaskID, shTasks[i].ProcessID);
+         for (auto &task : glTasks) {
+            log.msg("Removing sub-process #%d (pid %d).", task.TaskID, task.ProcessID);
 
-               #ifdef __unix__
-                  // SIGHUP will convert to MSGID_QUIT in the signal handlers.  The main reason for us to use it is
-                  // to stop foreign processes that we've launched.
-                  kill(shTasks[i].ProcessID, SIGHUP);
-               #else
-                  if (shTasks[i].MessageID) SendMessage(shTasks[i].MessageID, MSGID_QUIT, 0, NULL, 0);
-               #endif
+            #ifdef __unix__
+               // SIGHUP will convert to MSGID_QUIT in the signal handlers.  The main reason for us to use it is
+               // to stop foreign processes that we've launched.
+               kill(task.ProcessID, SIGHUP);
+            #else
+               SendMessage(task.TaskID, MSGID_QUIT, 0, NULL, 0);
+            #endif
 
-               WaitTime(0, -100000);
-            }
+            WaitTime(0, -100000);
          }
       #endif
    }
@@ -71,25 +68,25 @@ EXPORT void CloseCore(void)
    #define TIMETODIE 6 // Seconds to wait before a task has to die
    LONG cycle;
    for (cycle=0; cycle < (TIMETODIE * 10); cycle++) {
-      for (j=0; j < MAX_TASKS; j++) { // Break if any other process is found in the task array.
-         if ((shTasks[j].ProcessID) and (shTasks[j].ProcessID != glProcessID)) {
-            log.msg("Process %d is still live.", shTasks[j].ProcessID);
+      if (glTasks.empty()) break;
+      for (auto &task : glTasks) {
+         if ((task.ProcessID) and (task.ProcessID != glProcessID)) {
+            log.msg("Process %d is still live.", task.ProcessID);
             break;
          }
       }
 
-      if (j >= MAX_TASKS) break;
       WaitTime(0, -100000);
    }
 
    // If the time-to-die has elapsed and sub-tasks are still in the system, send kill messages to force them out.
 
    #ifdef __unix__
-      if (cycle >= TIMETODIE) {
-         for (LONG j=0; j < MAX_TASKS; j++) {
-            log.warning("Sending a kill signal to sub-task #%d (process %d).", shTasks[j].TaskID, shTasks[j].ProcessID);
-            if ((shTasks[j].ProcessID) and (shTasks[j].ProcessID != glProcessID)) {
-               kill(shTasks[j].ProcessID, SIGTERM);
+      if (!glTasks.empty()) {
+         for (auto &task : glTasks) {
+            log.warning("Sending a kill signal to sub-task #%d (process %d).", task.TaskID, task.ProcessID);
+            if ((task.ProcessID) and (task.ProcessID != glProcessID)) {
+               kill(task.ProcessID, SIGTERM);
             }
          }
          WaitTime(0, -200000);
@@ -242,18 +239,6 @@ EXPORT void CloseCore(void)
       log.trace("Removing memory locks.");
 
       remove_private_locks();
-   }
-
-   // Remove our process from the global list completely.  From this point onwards
-   // we will not be able to interact with any other processes, so all types of
-   // sharing/locking is disallowed henceforth.
-
-   if (glTaskEntry) {
-      if (LOCK_PROCESS_TABLE(4000) IS ERR_Okay) {
-         ClearMemory(glTaskEntry, sizeof(TaskList));
-         glTaskEntry = NULL;
-         UNLOCK_PROCESS_TABLE();
-      }
    }
 
    // Unless we have crashed, free the Task class
@@ -527,8 +512,6 @@ static void free_shared_control(void)
    pf::Log log("Shutdown");
 
    KMSG("free_shared_control()\n");
-
-   glTaskEntry = NULL;
 
    #ifdef USE_SHM
       shmdt(glSharedControl);

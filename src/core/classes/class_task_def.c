@@ -10,7 +10,6 @@ static const struct MethodArray clTaskMethods[] = {
    { -3, (APTR)TASK_Quit, "Quit", 0, 0 },
    { -4, (APTR)TASK_GetEnv, "GetEnv", maGetEnv, sizeof(struct taskGetEnv) },
    { -5, (APTR)TASK_SetEnv, "SetEnv", maSetEnv, sizeof(struct taskSetEnv) },
-   { -6, (APTR)TASK_CloseInstance, "CloseInstance", 0, 0 },
    { 0, 0, 0, 0, 0 }
 };
 

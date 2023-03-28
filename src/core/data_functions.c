@@ -86,7 +86,7 @@ FDEF argsResolvePath[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { 
 FDEF argsResolveUserID[] = { { "Result", FD_STR }, { "User", FD_LONG }, { 0, 0 } };
 FDEF argsScanDir[] = { { "Error", FD_LONG|FD_ERROR }, { "DirInfo:Info", FD_PTR|FD_STRUCT|FD_RESOURCE }, { 0, 0 } };
 FDEF argsScanMessages[] = { { "Error", FD_LONG|FD_ERROR }, { "Queue", FD_PTR }, { "Index", FD_LONG|FD_RESULT }, { "Type", FD_LONG }, { "Buffer", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
-FDEF argsSendMessage[] = { { "Error", FD_LONG|FD_ERROR }, { "Queue", FD_LONG }, { "Type", FD_LONG }, { "Flags", FD_LONG }, { "Data", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
+FDEF argsSendMessage[] = { { "Error", FD_LONG|FD_ERROR }, { "Task", FD_OBJECTID }, { "Type", FD_LONG }, { "Flags", FD_LONG }, { "Data", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsSetArray[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_LARGE }, { "Array", FD_PTR }, { "Elements", FD_LONG }, { 0, 0 } };
 FDEF argsSetContext[] = { { "Object", FD_OBJECTPTR }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsSetDefaultPermissions[] = { { "Void", FD_VOID }, { "User", FD_LONG }, { "Group", FD_LONG }, { "Permissions", FD_LONG }, { 0, 0 } };
@@ -127,7 +127,6 @@ FDEF argsVLogF[] = { { "Void", FD_VOID }, { "Flags", FD_LONG }, { "Header", FD_S
 FDEF argsVirtualVolume[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "Tags", FD_TAGS }, { 0, 0 } };
 FDEF argsWaitForObjects[] = { { "Error", FD_LONG|FD_ERROR }, { "Flags", FD_LONG }, { "TimeOut", FD_LONG }, { "ObjectSignal:ObjectSignals", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsWaitTime[] = { { "Void", FD_VOID }, { "Seconds", FD_LONG }, { "MicroSeconds", FD_LONG }, { 0, 0 } };
-FDEF argsWakeProcess[] = { { "Error", FD_LONG|FD_ERROR }, { "ProcessID", FD_LONG }, { 0, 0 } };
 
 const struct Function glFunctions[] = {
    { (APTR)AccessMemoryID, "AccessMemoryID", argsAccessMemoryID },
@@ -228,7 +227,7 @@ const struct Function glFunctions[] = {
    { (APTR)UnlockSharedMutex, "UnlockSharedMutex", argsUnlockSharedMutex },
    { (APTR)VLogF, "VLogF", argsVLogF },
    { (APTR)Base64Encode, "Base64Encode", argsBase64Encode },
-   { (APTR)WakeProcess, "WakeProcess", argsWakeProcess },
+   { (APTR)ReadInfoTag, "ReadInfoTag", argsReadInfoTag },
    { (APTR)SetResourcePath, "SetResourcePath", argsSetResourcePath },
    { (APTR)CurrentTask, "CurrentTask", argsCurrentTask },
    { (APTR)ResolveGroupID, "ResolveGroupID", argsResolveGroupID },
@@ -253,7 +252,6 @@ const struct Function glFunctions[] = {
    { (APTR)StrHash, "StrHash", argsStrHash },
    { (APTR)AddInfoTag, "AddInfoTag", argsAddInfoTag },
    { (APTR)UTF8Copy, "UTF8Copy", argsUTF8Copy },
-   { (APTR)ReadInfoTag, "ReadInfoTag", argsReadInfoTag },
    { NULL, NULL, NULL }
 };
 

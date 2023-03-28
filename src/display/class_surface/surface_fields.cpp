@@ -155,21 +155,17 @@ with normally.
 
 *********************************************************************************************************************/
 
-static ERROR SET_Modal(extSurface *Self, LONG Modal)
+static ERROR SET_Modal(extSurface *Self, LONG Value)
 {
-   if ((!Modal) and (Self->Modal)) {
-      TaskList *task;
+   if ((!Value) and (Self->Modal)) {
       if (Self->PrevModalID) {
          gfxSetModalSurface(Self->PrevModalID);
          Self->PrevModalID = 0;
       }
-      else if ((task = (TaskList *)GetResourcePtr(RES_TASK_CONTROL))) {
-         if (task->ModalID IS Self->UID) task->ModalID = 0;
-      }
+      else if (gfxGetModalSurface() IS Self->UID) gfxSetModalSurface(0);
    }
 
-   Self->Modal = Modal;
-
+   Self->Modal = Value;
    return ERR_Okay;
 }
 

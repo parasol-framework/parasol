@@ -86,15 +86,11 @@ ERROR BroadcastEvent(APTR Event, LONG EventSize)
 
    LONG groupmask = 1<<((((rkEvent *)Event)->EventID>>56) & 0xff);
 
-   for (LONG i=0; i < MAX_TASKS; i++) {
-      if (shTasks[i].ProcessID) {
-         if (shTasks[i].EventMask & groupmask) {
-            log.trace("Broadcasting event $%.8x%.8x to task #%d.",
-               (LONG)(((rkEvent *)Event)->EventID>>32 & 0xffffffff),
-               (LONG)(((rkEvent *)Event)->EventID>>32 & 0xffffffff), shTasks[i].TaskID);
-            SendMessage(shTasks[i].MessageID, MSGID_EVENT, 0, Event, EventSize);
-         }
-      }
+   if (glEventMask & groupmask) {
+      log.trace("Broadcasting event $%.8x%.8x",
+         (LONG)(((rkEvent *)Event)->EventID>>32 & 0xffffffff),
+         (LONG)(((rkEvent *)Event)->EventID>>32 & 0xffffffff));
+      SendMessage(0, MSGID_EVENT, 0, Event, EventSize);
    }
 
    return ERR_Okay;
@@ -197,9 +193,9 @@ ERROR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR Custom, APTR *Handl
       if (glEventList) glEventList->Prev = event;
       glEventList = event;
 
-      glTaskEntry->EventMask |= 1<<event->Group;
+      glEventMask |= 1<<event->Group;
 
-      log.function("Custom: %p, Callback: %p, Mask: $%.8x, Event: %p", Custom, Callback, glTaskEntry->EventMask, event);
+      log.function("Custom: %p, Callback: %p, Mask: $%.8x, Event: %p", Custom, Callback, glEventMask, event);
 
       *Handle = event;
 
@@ -231,7 +227,7 @@ void UnsubscribeEvent(APTR Event)
 
    log.function("Event: %p", Event);
 
-   struct eventsub *event = (eventsub *)Event;
+   auto event = (eventsub *)Event;
    if (event->Prev) event->Prev->Next = event->Next;
    if (event->Next) event->Next->Prev = event->Prev;
    if (event IS glEventList) glEventList = event->Next;
@@ -239,12 +235,12 @@ void UnsubscribeEvent(APTR Event)
    // All events belong to a group.  Check if this is the last event that belongs to this group, in which case we need
    // to turn off the event group bit.
 
-   struct eventsub *scan = glEventList;
+   auto scan = glEventList;
    while (scan) {
       if (scan->Group IS event->Group) break;
       scan = scan->Next;
    }
-   if (!scan) glTaskEntry->EventMask = glTaskEntry->EventMask & (~(1<<event->Group));
+   if (!scan) glEventMask = glEventMask & (~(1<<event->Group));
 
    free(event);
 

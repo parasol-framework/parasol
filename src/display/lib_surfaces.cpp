@@ -9,6 +9,7 @@ Name: Surfaces
 #include "defs.h"
 
 SURFACELIST glSurfaces;
+static OBJECTID glModalID = 0;
 
 //********************************************************************************************************************
 // Called when windows has an item to be dropped on our display area.
@@ -361,8 +362,8 @@ ERROR track_layer(extSurface *Self)
 
       // Find the insertion point
 
-      auto i = parent + 1;
-      while ((i < LONG(glSurfaces.size())) and (glSurfaces[i].Level >= record.Level)) {
+      unsigned i = parent + 1;
+      while ((i < glSurfaces.size()) and (glSurfaces[i].Level >= record.Level)) {
          if (Self->Flags & RNF_STICK_TO_FRONT) {
             if (glSurfaces[i].Flags & RNF_POINTER) break;
          }
@@ -370,7 +371,7 @@ ERROR track_layer(extSurface *Self)
          i++;
       }
 
-      if (i < LONG(glSurfaces.size())) glSurfaces.insert(glSurfaces.begin() + i, record);
+      if (i < glSurfaces.size()) glSurfaces.insert(glSurfaces.begin() + i, record);
       else glSurfaces.push_back(record);
    }
 
@@ -383,8 +384,7 @@ void untrack_layer(OBJECTID ObjectID)
 {
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
-   LONG i, end;
-   if ((i = find_surface_list(ObjectID)) != -1) {
+   if (auto i = find_surface_list(ObjectID); i != -1) {
       #ifdef DBG_LAYERS
          pf::Log log(__FUNCTION__);
          log.msg("%d, Index: %d/%d", ObjectID, i, LONG(glSurfaces.size()));
@@ -393,6 +393,7 @@ void untrack_layer(OBJECTID ObjectID)
 
       // Mark all subsequent child layers as invisible
 
+      LONG end;
       for (end=i+1; (end < LONG(glSurfaces.size())) and (glSurfaces[end].Level > glSurfaces[i].Level); end++) {
          glSurfaces[end].Flags &= ~RNF_VISIBLE;
       }
@@ -849,9 +850,8 @@ ERROR gfxCheckIfChild(OBJECTID ParentID, OBJECTID ChildID)
 
    // Find the parent surface, then examine its children to find a match for child ID.
 
-   LONG i;
-   if ((i = find_surface_list(ParentID)) != -1) {
-      LONG level = glSurfaces[i].Level;
+   if (auto i = find_surface_list(ParentID); i != -1) {
+      auto level = glSurfaces[i].Level;
       for (++i; (i < LONG(glSurfaces.size())) and (glSurfaces[i].Level > level); i++) {
          if (glSurfaces[i].SurfaceID IS ChildID) {
             log.trace("Child confirmed.");
@@ -903,7 +903,7 @@ ERROR gfxCopySurface(OBJECTID SurfaceID, extBitmap *Bitmap, LONG Flags,
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
    BITMAPSURFACE surface;
-   for (LONG i=0; i < LONG(glSurfaces.size()); i++) {
+   for (unsigned i=0; i < glSurfaces.size(); i++) {
       if (glSurfaces[i].SurfaceID IS SurfaceID) {
          if (X < 0) { XDest -= X; Width  += X; X = 0; }
          if (Y < 0) { YDest -= Y; Height += Y; Y = 0; }
@@ -916,7 +916,6 @@ ERROR gfxCopySurface(OBJECTID SurfaceID, extBitmap *Bitmap, LONG Flags,
 
          SurfaceRecord list_i = glSurfaces[i];
          SurfaceRecord list_root = glSurfaces[root];
-         //gfxReleaseList(ARF_READ);
 
          if (Flags & BDF_REDRAW) {
             BYTE state = tlNoDrawing;
@@ -1029,30 +1028,12 @@ oid: The UID of the modal surface, or zero.
 
 OBJECTID gfxGetModalSurface(void)
 {
-   pf::ScopedSysLock proc(PL_PROCESSES, 3000);
-
-   if (proc.granted()) {
-      LONG maxtasks = GetResource(RES_MAX_PROCESSES);
-      if (auto tasks = (TaskList *)GetResourcePtr(RES_TASK_LIST)) {
-         LONG i;
-         auto tid = CurrentTaskID();
-         for (i=0; i < maxtasks; i++) {
-            if (tasks[i].TaskID IS tid) break;
-         }
-
-         if (i < maxtasks) {
-            auto result = tasks[i].ModalID;
-
-            // Safety check: Confirm that the object still exists
-            if ((result) and (CheckObjectExists(result) != ERR_True)) {
-               tasks[i].ModalID = 0;
-               return result;
-            }
-         }
-      }
+   // Safety check: Confirm that the object still exists
+   if ((glModalID) and (CheckObjectExists(glModalID) != ERR_True)) {
+      glModalID = 0;
    }
 
-   return 0;
+   return glModalID;
 }
 
 /*********************************************************************************************************************
@@ -1463,7 +1444,7 @@ ERROR _redraw_surface(OBJECTID SurfaceID, const SURFACELIST &list, LONG index,
    if (!(Flags & IRF_IGNORE_CHILDREN)) {
       log.trace("Redrawing intersecting child surfaces.");
       LONG level = list[index].Level;
-      for (LONG i=index+1; i < LONG(list.size()); i++) {
+      for (unsigned i=index+1; i < list.size(); i++) {
          if (list[i].Level <= level) break; // End of list - exit this loop
 
          if (Flags & IRF_IGNORE_NV_CHILDREN) {
@@ -1697,8 +1678,6 @@ OBJECTID gfxSetModalSurface(OBJECTID SurfaceID)
 
    log.branch("#%d, CurrentFocus: %d", SurfaceID, gfxGetUserFocus());
 
-   OBJECTID old_modal = 0;
-
    // Check if the surface is invisible, in which case the mode has to be diverted to the modal that was previously
    // targetted or turned off altogether if there was no previously modal surface.
 
@@ -1715,45 +1694,25 @@ OBJECTID gfxSetModalSurface(OBJECTID SurfaceID)
       if (divert) return gfxSetModalSurface(divert);
    }
 
-   if (!SysLock(PL_PROCESSES, 3000)) {
-      LONG maxtasks = GetResource(RES_MAX_PROCESSES);
-      OBJECTID focus = 0;
-      TaskList *tasks;
-      if ((tasks = (TaskList *)GetResourcePtr(RES_TASK_LIST))) {
-         LONG i;
-         for (i=0; i < maxtasks; i++) {
-            if (tasks[i].TaskID IS CurrentTaskID()) break;
-         }
-
-         if (i < maxtasks) {
-            old_modal = tasks[i].ModalID;
-            if (SurfaceID IS -1) { // Return the current modal surface, don't do anything else
-            }
-            else if (!SurfaceID) { // Turn off modal surface mode for the current task
-               tasks[i].ModalID = 0;
-            }
-            else { // We are the new modal surface
-               tasks[i].ModalID = SurfaceID;
-               focus = SurfaceID;
-            }
-         }
-      }
-
-      SysUnlock(PL_PROCESSES);
-
-      if (focus) {
-         acMoveToFront(SurfaceID);
-
-         // Do not change the primary focus if the targetted surface already has it (this ensures that if any children have the focus, they will keep it).
-
-         LONG flags;
-         if ((!gfxGetSurfaceFlags(SurfaceID, &flags)) and (!(flags & RNF_HAS_FOCUS))) {
-            acFocus(SurfaceID);
-         }
-      }
+   if (SurfaceID IS -1) return glModalID; // Return the current modal surface, don't do anything else
+   else if (!SurfaceID) { // Turn off modal surface mode for the current task
+      auto old_modal = glModalID;
+      glModalID = 0;
+      return old_modal;
    }
+   else { // We are the new modal surface
+      auto old_modal = glModalID;
+      glModalID = SurfaceID;
+      acMoveToFront(SurfaceID);
 
-   return old_modal;
+      // Do not change the primary focus if the targetted surface already has it (this ensures that if any children have the focus, they will keep it).
+
+      LONG flags;
+      if ((!gfxGetSurfaceFlags(SurfaceID, &flags)) and (!(flags & RNF_HAS_FOCUS))) {
+         acFocus(SurfaceID);
+      }
+      return old_modal;
+   }
 }
 
 /*********************************************************************************************************************

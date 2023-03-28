@@ -112,7 +112,6 @@ static ERROR TASK_SetVar(extTask *, struct acSetVar *);
 static ERROR TASK_Write(extTask *, struct acWrite *);
 
 static ERROR TASK_AddArgument(extTask *, struct taskAddArgument *);
-static ERROR TASK_CloseInstance(extTask *, APTR);
 static ERROR TASK_Expunge(extTask *, APTR);
 static ERROR TASK_Quit(extTask *, APTR);
 
@@ -682,6 +681,9 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
    if (!Self->Location) return log.warning(ERR_MissingPath);
 
+   auto call = make_function_stdc(process_janitor);
+   SubscribeTimer(60, &call, &glProcessJanitor);
+
 #ifdef _WIN32
    // Determine the launch folder
 
@@ -1010,19 +1012,9 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
    privileged = (Self->Flags & TSF_PRIVILEGED) ? 1 : 0;
    shell = (Self->Flags & TSF_SHELL) ? 1 : 0;
 
-   if (LOCK_PROCESS_TABLE(4000) != ERR_Okay) {
-      if (input_fd != -1)  close(input_fd);
-      if (out_fd != -1)    close(out_fd);
-      if (out_errfd != -1) close(out_errfd);
-      if (in_fd != -1)     close(in_fd);
-      if (in_errfd != -1)  close(in_errfd);
-      return log.warning(ERR_SystemLocked);
-   }
-
    pid = fork();
 
    if (pid IS -1) {
-      UNLOCK_PROCESS_TABLE();
       if (input_fd != -1)  close(input_fd);
       if (out_fd != -1)    close(out_fd);
       if (out_errfd != -1) close(out_errfd);
@@ -1049,8 +1041,6 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
          shTasks[i].ParentID     = glCurrentTask->UID;
          shTasks[i].CreationTime = PreciseTime() / 1000LL;
       }
-
-      UNLOCK_PROCESS_TABLE();
 
       if (in_fd != -1) {
          RegisterFD(in_fd, RFD_READ, &task_stdout, Self);
@@ -1235,27 +1225,6 @@ static ERROR TASK_AddArgument(extTask *Self, struct taskAddArgument *Args)
 /*********************************************************************************************************************
 
 -METHOD-
-CloseInstance: Sends a quit message to all tasks running in the current instance.
-
-This method will close all tasks that are running in the current instance by sending them a quit message.  This
-includes the process that is making the method call.
-
--ERRORS-
-Okay
-
-*********************************************************************************************************************/
-
-static ERROR TASK_CloseInstance(extTask *Self, APTR Void)
-{
-   for (LONG i=0; i < MAX_TASKS; i++) {
-      if (shTasks[i].TaskID) SendMessage(shTasks[i].MessageID, MSGID_QUIT, 0, NULL, 0);
-   }
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--METHOD-
 Expunge: Forces a Task to expunge unused code.
 
 The Expunge method releases all loaded libraries that are no longer in use by the active process.
@@ -1301,8 +1270,6 @@ static ERROR TASK_Free(extTask *Self, APTR Void)
    if (Self->InputCallback.Type) RegisterFD(winGetStdInput(), RFD_READ|RFD_REMOVE, &task_stdinput_callback, Self);
 #endif
 
-   for (LONG i=0; Self->Fields[i]; i++) { FreeResource(Self->Fields[i]); Self->Fields[i] = NULL; }
-
    // Free allocations
 
    if (Self->LaunchPath)  { FreeResource(Self->LaunchPath);  Self->LaunchPath  = NULL; }
@@ -1321,6 +1288,7 @@ static ERROR TASK_Free(extTask *Self, APTR Void)
    if (Self->MsgThreadCallback)  { FreeResource(Self->MsgThreadCallback);  Self->MsgThreadCallback  = NULL; }
    if (Self->MsgThreadAction)    { FreeResource(Self->MsgThreadAction);    Self->MsgThreadAction    = NULL; }
 
+   Self->~extTask();
    return ERR_Okay;
 }
 
@@ -1465,6 +1433,197 @@ static ERROR TASK_GetEnv(extTask *Self, struct taskGetEnv *Args)
 }
 
 /*********************************************************************************************************************
+-ACTION-
+GetVar: Retrieves variable field values.
+-END-
+*********************************************************************************************************************/
+
+static ERROR TASK_GetVar(extTask *Self, struct acGetVar *Args)
+{
+   pf::Log log;
+   LONG j;
+
+   if ((!Args) or (!Args->Buffer) or (Args->Size <= 0)) return log.warning(ERR_NullArgs);
+
+   auto it = Self->Fields.find(Args->Field);
+   if (it != Self->Fields.end()) {
+      for (j=0; (it->second[j]) and (j < Args->Size-1); j++) Args->Buffer[j] = it->second[j];
+      Args->Buffer[j++] = 0;
+
+      if (j >= Args->Size) return ERR_BufferOverflow;
+      else return ERR_Okay;
+   }
+
+   log.warning("The variable \"%s\" does not exist.", Args->Field);
+
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+
+static ERROR TASK_Init(extTask *Self, APTR Void)
+{
+   pf::Log log;
+   MessageHeader *msgblock;
+   LONG len;
+
+   if (!fs_initialised) {
+      // Perform the following if this is a Task representing the current process
+
+      Self->ProcessID = glProcessID;
+
+      // Allocate the message block for this Task
+
+      if (!AllocMemory(sizeof(MessageHeader), MEM_DATA, (void **)&msgblock, &glTaskMessageMID)) {
+         Self->MessageMID = glTaskMessageMID;
+         ReleaseMemoryID(glTaskMessageMID);
+      }
+      else return ERR_AllocMemory;
+
+#ifdef _WIN32
+      LONG i;
+      char buffer[300];
+      if (winGetExeDirectory(sizeof(buffer), buffer)) {
+         LONG len = StrLength(buffer);
+         while ((len > 1) and (buffer[len-1] != '/') and (buffer[len-1] != '\\') and (buffer[len-1] != ':')) len--;
+         if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->ProcessPath, NULL)) {
+            for (i=0; i < len; i++) Self->ProcessPath[i] = buffer[i];
+            Self->ProcessPath[i] = 0;
+         }
+      }
+
+      if ((len = winGetCurrentDirectory(sizeof(buffer), buffer))) {
+         if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+         if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->Path, NULL)) {
+            for (i=0; i < len; i++) Self->Path[i] = buffer[i];
+            if (Self->Path[i-1] != '\\') Self->Path[i++] = '\\';
+            Self->Path[i] = 0;
+         }
+      }
+
+#elif __unix__
+
+         char buffer[256], procfile[50];
+
+         // This method of path retrieval only works on Linux (most types of Unix don't provide any support for this).
+
+         snprintf(procfile, sizeof(procfile), "/proc/%d/exe", glProcessID);
+
+         buffer[0] = 0;
+         if ((i = readlink(procfile, buffer, sizeof(buffer)-1)) > 0) {
+            buffer[i] = 0;
+            while (i > 0) { // Strip the process name
+               if (buffer[i] IS '/') {
+                  buffer[i+1] = 0;
+                  break;
+               }
+               i--;
+            }
+
+            for (len=0; buffer[len]; len++);
+            while ((len > 1) and (buffer[len-1] != '/') and (buffer[len-1] != '\\') and (buffer[len-1] != ':')) len--;
+            if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->ProcessPath, NULL)) {
+               for (i=0; i < len; i++) Self->ProcessPath[i] = buffer[i];
+               Self->ProcessPath[i] = 0;
+            }
+         }
+
+         if (!Self->Path) { // Set the working folder
+            if (getcwd(buffer, sizeof(buffer))) {
+               if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+               for (len=0; buffer[len]; len++);
+               if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->Path, NULL)) {
+                  for (i=0; buffer[i]; i++) Self->Path[i] = buffer[i];
+                  Self->Path[i++] = '/';
+                  Self->Path[i] = 0;
+               }
+            }
+         }
+#endif
+
+      // Initialise message handlers so that the task can process messages.
+
+      FUNCTION call;
+      call.Type = CALL_STDC;
+      call.StdC.Routine = (APTR)msg_action;
+      AddMsgHandler(NULL, MSGID_ACTION, &call, &Self->MsgAction);
+
+      call.StdC.Routine = (APTR)msg_quit;
+      AddMsgHandler(NULL, MSGID_QUIT, &call, &Self->MsgQuit);
+
+      call.StdC.Routine = (APTR)msg_waitforobjects;
+      AddMsgHandler(NULL, MSGID_WAIT_FOR_OBJECTS, &call, &Self->MsgWaitForObjects);
+
+      call.StdC.Routine = (APTR)msg_event; // lib_events.c
+      AddMsgHandler(NULL, MSGID_EVENT, &call, &Self->MsgEvent);
+
+      call.StdC.Routine = (APTR)msg_threadcallback; // class_thread.c
+      AddMsgHandler(NULL, MSGID_THREAD_CALLBACK, &call, &Self->MsgThreadCallback);
+
+      call.StdC.Routine = (APTR)msg_threadaction; // class_thread.c
+      AddMsgHandler(NULL, MSGID_THREAD_ACTION, &call, &Self->MsgThreadAction);
+
+      log.msg("Process Path: %s", Self->ProcessPath);
+      log.msg("Working Path: %s", Self->Path);
+   }
+   else if (Self->ProcessID) Self->Flags |= TSF_FOREIGN;
+
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+
+static ERROR TASK_NewObject(extTask *Self, APTR Void)
+{
+   new (Self) extTask;
+#ifdef __unix__
+   Self->InFD = -1;
+   Self->ErrFD = -1;
+#endif
+   Self->TimeOut = 60 * 60 * 24;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+Quit: Sends a quit message to a task.
+
+The Quit method can be used as a convenient way of sending a task a quit message.  This will normally result in the
+destruction of the task, so long as it is still functioning correctly and has been coded to respond to the
+`MSGID_QUIT` message type.  It is legal for a task to ignore a quit request if it is programmed to stay alive.  A task
+can be killed outright with the Free action.
+
+-ERRORS-
+Okay
+-END-
+
+*********************************************************************************************************************/
+
+static ERROR TASK_Quit(extTask *Self, APTR Void)
+{
+   pf::Log log;
+
+   if ((Self->ProcessID) and (Self->ProcessID != glProcessID)) {
+      log.msg("Terminating foreign process %d", Self->ProcessID);
+
+      #ifdef __unix__
+         kill(Self->ProcessID, SIGHUP); // Safe kill signal - this actually results in that process generating an internal MSGID_QUIT message
+      #elif _WIN32
+         winTerminateApp(Self->ProcessID, 1000);
+      #else
+         #warning Add code to kill foreign processes.
+      #endif
+   }
+   else {
+      log.branch("Sending QUIT message to self.");
+      SendMessage(Self->UID, MSGID_QUIT, 0, NULL, 0);
+   }
+
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
 
 -METHOD-
 SetEnv: Sets environment variables for the active process.
@@ -1591,260 +1750,16 @@ static ERROR TASK_SetEnv(extTask *Self, struct taskSetEnv *Args)
 
 /*********************************************************************************************************************
 -ACTION-
-GetVar: Retrieves variable field values.
--END-
-*********************************************************************************************************************/
-
-static ERROR TASK_GetVar(extTask *Self, struct acGetVar *Args)
-{
-   pf::Log log;
-   LONG j;
-
-   if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
-
-   for (LONG i=0; Self->Fields[i]; i++) {
-      if (!StrCompare(Args->Field, Self->Fields[i], 0, STR_MATCH_LEN)) {
-         CSTRING fieldvalue;
-         for (fieldvalue=Self->Fields[i]; *fieldvalue; fieldvalue++);
-         fieldvalue++;
-
-         for (j=0; (fieldvalue[j]) and (j < Args->Size-1); j++) Args->Buffer[j] = fieldvalue[j];
-         Args->Buffer[j++] = 0;
-
-         if (j >= Args->Size) return ERR_BufferOverflow;
-         else return ERR_Okay;
-      }
-   }
-
-   log.warning("The variable \"%s\" does not exist.", Args->Field);
-
-   return ERR_Okay;
-}
-
-//********************************************************************************************************************
-
-static ERROR TASK_Init(extTask *Self, APTR Void)
-{
-   pf::Log log;
-   MessageHeader *msgblock;
-   LONG i, len;
-
-   if (!fs_initialised) {
-      // Perform the following if this is a Task representing the current process
-
-      Self->ProcessID = glProcessID;
-
-      // Allocate the message block for this Task
-
-      if (!AllocMemory(sizeof(MessageHeader), MEM_DATA, (void **)&msgblock, &glTaskMessageMID)) {
-         Self->MessageMID = glTaskMessageMID;
-         msgblock->TaskIndex = glTaskEntry->Index;
-         ReleaseMemoryID(glTaskMessageMID);
-      }
-      else return ERR_AllocMemory;
-
-      // Refer to the task object ID in the system list
-
-      if (!LOCK_PROCESS_TABLE(4000)) {
-         glTaskEntry->TaskID = Self->UID;
-         glTaskEntry->MessageID = glTaskMessageMID;
-         UNLOCK_PROCESS_TABLE();
-      }
-
-#ifdef _WIN32
-      char buffer[300];
-      if (winGetExeDirectory(sizeof(buffer), buffer)) {
-         LONG len = StrLength(buffer);
-         while ((len > 1) and (buffer[len-1] != '/') and (buffer[len-1] != '\\') and (buffer[len-1] != ':')) len--;
-         if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->ProcessPath, NULL)) {
-            for (i=0; i < len; i++) Self->ProcessPath[i] = buffer[i];
-            Self->ProcessPath[i] = 0;
-         }
-      }
-
-      if ((len = winGetCurrentDirectory(sizeof(buffer), buffer))) {
-         if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
-         if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->Path, NULL)) {
-            for (i=0; i < len; i++) Self->Path[i] = buffer[i];
-            if (Self->Path[i-1] != '\\') Self->Path[i++] = '\\';
-            Self->Path[i] = 0;
-         }
-      }
-
-#elif __unix__
-
-         char buffer[256], procfile[50];
-
-         // This method of path retrieval only works on Linux (most types of Unix don't provide any support for this).
-
-         snprintf(procfile, sizeof(procfile), "/proc/%d/exe", glProcessID);
-
-         buffer[0] = 0;
-         if ((i = readlink(procfile, buffer, sizeof(buffer)-1)) > 0) {
-            buffer[i] = 0;
-            while (i > 0) { // Strip the process name
-               if (buffer[i] IS '/') {
-                  buffer[i+1] = 0;
-                  break;
-               }
-               i--;
-            }
-
-            for (len=0; buffer[len]; len++);
-            while ((len > 1) and (buffer[len-1] != '/') and (buffer[len-1] != '\\') and (buffer[len-1] != ':')) len--;
-            if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->ProcessPath, NULL)) {
-               for (i=0; i < len; i++) Self->ProcessPath[i] = buffer[i];
-               Self->ProcessPath[i] = 0;
-            }
-         }
-
-         if (!Self->Path) { // Set the working folder
-            if (getcwd(buffer, sizeof(buffer))) {
-               if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
-               for (len=0; buffer[len]; len++);
-               if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->Path, NULL)) {
-                  for (i=0; buffer[i]; i++) Self->Path[i] = buffer[i];
-                  Self->Path[i++] = '/';
-                  Self->Path[i] = 0;
-               }
-            }
-         }
-#endif
-
-      // Initialise message handlers so that the task can process messages.
-
-      FUNCTION call;
-      call.Type = CALL_STDC;
-      call.StdC.Routine = (APTR)msg_action;
-      AddMsgHandler(NULL, MSGID_ACTION, &call, &Self->MsgAction);
-
-      call.StdC.Routine = (APTR)msg_quit;
-      AddMsgHandler(NULL, MSGID_QUIT, &call, &Self->MsgQuit);
-
-      call.StdC.Routine = (APTR)msg_waitforobjects;
-      AddMsgHandler(NULL, MSGID_WAIT_FOR_OBJECTS, &call, &Self->MsgWaitForObjects);
-
-      call.StdC.Routine = (APTR)msg_event; // lib_events.c
-      AddMsgHandler(NULL, MSGID_EVENT, &call, &Self->MsgEvent);
-
-      call.StdC.Routine = (APTR)msg_threadcallback; // class_thread.c
-      AddMsgHandler(NULL, MSGID_THREAD_CALLBACK, &call, &Self->MsgThreadCallback);
-
-      call.StdC.Routine = (APTR)msg_threadaction; // class_thread.c
-      AddMsgHandler(NULL, MSGID_THREAD_ACTION, &call, &Self->MsgThreadAction);
-
-      log.msg("Process Path: %s", Self->ProcessPath);
-      log.msg("Working Path: %s", Self->Path);
-   }
-   else if (Self->ProcessID) {
-      // The process ID has been preset - this means that the task could represent a link to an existing Parasol
-      // process, or to a foreign process.
-
-      for (i=0; i < MAX_TASKS; i++) {
-         if ((shTasks[i].TaskID) and (shTasks[i].ProcessID IS Self->ProcessID)) {
-            log.msg("Connected process %d to task %d, message port %d.", Self->ProcessID, shTasks[i].TaskID, shTasks[i].MessageID);
-            Self->MessageMID = shTasks[i].MessageID;
-            break;
-         }
-      }
-
-      if (i >= MAX_TASKS) Self->Flags |= TSF_FOREIGN;
-   }
-
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-** Task: NewObject
-*/
-
-static ERROR TASK_NewObject(extTask *Self, APTR Void)
-{
-#ifdef __unix__
-   Self->InFD = -1;
-   Self->ErrFD = -1;
-#endif
-   Self->TimeOut = 60 * 60 * 24;
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--METHOD-
-Quit: Sends a quit message to a task.
-
-The Quit method can be used as a convenient way of sending a task a quit message.  This will normally result in the
-destruction of the task, so long as it is still functioning correctly and has been coded to respond to the
-`MSGID_QUIT` message type.  It is legal for a task to ignore a quit request if it is programmed to stay alive.  A task
-can be killed outright with the Free action.
-
--ERRORS-
-Okay
--END-
-
-*********************************************************************************************************************/
-
-static ERROR TASK_Quit(extTask *Self, APTR Void)
-{
-   pf::Log log;
-
-   if ((Self->ProcessID) and (Self->ProcessID != glProcessID)) {
-      log.msg("Terminating foreign process %d", Self->ProcessID);
-
-      #ifdef __unix__
-         kill(Self->ProcessID, SIGHUP); // Safe kill signal - this actually results in that process generating an internal MSGID_QUIT message
-      #elif _WIN32
-         winTerminateApp(Self->ProcessID, 1000);
-      #else
-         #warning Add code to kill foreign processes.
-      #endif
-   }
-   else if (Self->MessageMID) {
-      log.branch("Sending quit message to queue %d.", Self->MessageMID);
-      if (!SendMessage(Self->MessageMID, MSGID_QUIT, 0, NULL, 0)) {
-         return ERR_Okay;
-      }
-   }
-   else log.warning("Task is not linked to a message queue or process.");
-
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
--ACTION-
 SetVar: Variable fields are supported for the general storage of program variables.
 -END-
 *********************************************************************************************************************/
 
 static ERROR TASK_SetVar(extTask *Self, struct acSetVar *Args)
 {
-   pf::Log log;
-
    if ((!Args) or (!Args->Field) or (!Args->Value)) return ERR_NullArgs;
 
-   // Find the insertion point
-
-   LONG i;
-   for (i=0; Self->Fields[i]; i++) {
-      if (!StrMatch(Args->Field, Self->Fields[i])) break;
-   }
-
-   if (i < ARRAYSIZE(Self->Fields) - 1) {
-      STRING field;
-      if (!AllocMemory(StrLength(Args->Field) + StrLength(Args->Value) + 2,
-            MEM_STRING|MEM_NO_CLEAR, (void **)&field, NULL)) {
-
-         LONG pos = StrCopy(Args->Field, field) + 1;
-         StrCopy(Args->Value, field + pos);
-
-         if (Self->Fields[i]) FreeResource(Self->Fields[i]);
-         Self->Fields[i] = field;
-
-         return ERR_Okay;
-      }
-      else return log.warning(ERR_AllocMemory);
-   }
-   else return log.warning(ERR_ArrayFull);
+   Self->Fields[Args->Field] = Args->Value;
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************

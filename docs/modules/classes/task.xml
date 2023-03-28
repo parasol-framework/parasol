@@ -85,18 +85,6 @@
     </method>
 
     <method>
-      <name>CloseInstance</name>
-      <comment>Sends a quit message to all tasks running in the current instance.</comment>
-      <prototype>ERROR taskCloseInstance(OBJECTPTR Object)</prototype>
-      <description>
-<p>This method will close all tasks that are running in the current instance by sending them a quit message.  This includes the process that is making the method call.</p>
-      </description>
-      <result>
-        <error code="Okay">Operation successful.</error>
-      </result>
-    </method>
-
-    <method>
       <name>Expunge</name>
       <comment>Forces a Task to expunge unused code.</comment>
       <prototype>ERROR taskExpunge(OBJECTPTR Object)</prototype>

@@ -72,11 +72,10 @@ std::unordered_map<ULONG, std::string> glFields;
 std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes;
 std::list<FDRecord> glFDTable;
 std::list<CoreTimer> glTimers;
+std::vector<TaskRecord> glTasks;
 
 struct RootModule     *glModuleList    = NULL;
 struct SharedControl  *glSharedControl = NULL;
-struct TaskList       *shTasks         = NULL;
-struct TaskList       *glTaskEntry     = NULL;
 struct SemaphoreEntry *shSemaphores    = NULL;
 struct OpenInfo       *glOpenInfo      = NULL;
 struct MsgHandler     *glMsgHandlers   = NULL, *glLastMsgHandler = 0;
@@ -97,6 +96,8 @@ LONG glEUID = -1, glEGID = -1, glGID = -1, glUID = -1;
 LONG glPrivateIDCounter = 500;
 LONG glMessageIDCount = 10000;
 LONG glGlobalIDCount = 1;
+LONG glEventMask = 0;
+TIMER glProcessJanitor = 0;
 UBYTE glTimerCycle = 1;
 CSTRING glIDL = MOD_IDL;
 
@@ -109,7 +110,6 @@ CSTRING glIDL = MOD_IDL;
      { "", 0, 0, 0, FALSE }, // 0
      { "rka", 0, 0, 0, FALSE }, // PL_WAITLOCKS
      { "rkc", 0, 0, 0, FALSE }, // PL_FORBID
-     { "rkd", 0, 0, 0, FALSE }, // PL_PROCESSES
      { "rke", 0, 0, 0, FALSE }, // PL_SEMAPHORES
      { "rkg", 0, 0, 0, TRUE }   // CN_SEMAPHORES
   };

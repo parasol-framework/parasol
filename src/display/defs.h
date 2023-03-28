@@ -314,7 +314,6 @@ class extPointer : public objPointer {
    LARGE    AnchorTime;
    DOUBLE   LastClickX, LastClickY;
    DOUBLE   LastReleaseX, LastReleaseY;
-   APTR     UserLoginHandle;
    OBJECTID LastSurfaceID;      // Last object that the pointer was positioned over
    OBJECTID CursorReleaseID;
    OBJECTID DragSurface;        // Draggable surface anchored to the pointer position
@@ -346,8 +345,6 @@ class extSurface : public objSurface {
    LARGE    LastRedimension;      // Timestamp of the last redimension call
    objBitmap *Bitmap;
    SurfaceCallback *Callback;
-   APTR      UserLoginHandle;
-   APTR      TaskRemovedHandle;
    APTR      Data;
    WINHANDLE DisplayWindow;       // Reference to the platform dependent window representing the Surface object
    OBJECTID PrevModalID;          // Previous surface to have been modal
@@ -401,7 +398,6 @@ class extDisplay : public objDisplay {
    #else
       APTR   WindowHandle;
    #endif
-   APTR  UserLoginHandle;
    WORD  Opacity;
    LONG  VDensity;          // Cached DPI value, if calculable.
    LONG  HDensity;

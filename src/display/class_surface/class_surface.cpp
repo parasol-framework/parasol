@@ -916,11 +916,6 @@ static ERROR SURFACE_Free(extSurface *Self, APTR Void)
    if (Self->ScrollTimer) { UpdateTimer(Self->ScrollTimer, 0); Self->ScrollTimer = 0; }
    if (Self->RedrawTimer) { UpdateTimer(Self->RedrawTimer, 0); Self->RedrawTimer = 0; }
 
-   if (!Self->ParentID) {
-      if (Self->TaskRemovedHandle) { UnsubscribeEvent(Self->TaskRemovedHandle); Self->TaskRemovedHandle = NULL; }
-      if (Self->UserLoginHandle) { UnsubscribeEvent(Self->UserLoginHandle); Self->UserLoginHandle = NULL; }
-   }
-
    if ((Self->Callback) and (Self->Callback != Self->CallbackCache)) {
       FreeResource(Self->Callback);
       Self->Callback = NULL;
@@ -1016,16 +1011,13 @@ static ERROR SURFACE_Hide(extSurface *Self, APTR Void)
 
    // Check if the surface is modal, if so, switch it off
 
-   TaskList *task;
    if (Self->PrevModalID) {
       gfxSetModalSurface(Self->PrevModalID);
       Self->PrevModalID = 0;
    }
-   else if ((task = (TaskList *)GetResourcePtr(RES_TASK_CONTROL))) {
-      if (task->ModalID IS Self->UID) {
-         log.msg("Surface is modal, switching off modal mode.");
-         task->ModalID = 0;
-      }
+   else if (gfxGetModalSurface() IS Self->UID) {
+      log.msg("Surface is modal, switching off modal mode.");
+      gfxSetModalSurface(0);
    }
 
    refresh_pointer(Self);
