@@ -76,7 +76,6 @@ std::vector<TaskRecord> glTasks;
 
 struct RootModule     *glModuleList    = NULL;
 struct SharedControl  *glSharedControl = NULL;
-struct SemaphoreEntry *shSemaphores    = NULL;
 struct OpenInfo       *glOpenInfo      = NULL;
 struct MsgHandler     *glMsgHandlers   = NULL, *glLastMsgHandler = 0;
 

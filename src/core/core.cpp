@@ -171,9 +171,9 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    if (!Info) return NULL;
    if (Info->Flags & OPF_ERROR) Info->Error = ERR_Failed;
-   glOpenInfo = Info;
+   glOpenInfo   = Info;
    tlMainThread = TRUE;
-   glCodeIndex = 0; // Reset the code index so that CloseCore() will work.
+   glCodeIndex  = 0; // Reset the code index so that CloseCore() will work.
 
    if (glProcessID) {
       fprintf(stderr, "Core module has already been initialised (OpenCore() called more than once.)\n");
@@ -214,7 +214,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 #endif
 
 #if !defined(__ANDROID__) && defined(__unix__)
-
    hold_priority = false;
 
    // If the executable has suid-root rights, we can use direct video access.  The first thing that we're going to
@@ -261,7 +260,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       }
       glPublicLocks[p].Name[i] = 0;
    }
-
 #endif
 
    // Randomise the internal random variables
@@ -306,8 +304,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          char procfile[50];
          snprintf(procfile, sizeof(procfile), "/proc/%d/exe", getpid());
 
-         LONG len;
-         if ((len = readlink(procfile, buffer, sizeof(buffer)-1)) > 0) {
+         if (auto len = readlink(procfile, buffer, sizeof(buffer)-1); len > 0) {
             glRootPath.assign(buffer, len);
             // Strip process name
             auto i = glRootPath.find_last_of("/");
@@ -474,7 +471,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    pf::Log log("Core");
 
 #ifdef _WIN32
-
    activate_console(glLogLevel > 0); // This works for the MinGW runtime libraries but not MSYS2
 
    // An exception handler deals with crashes unless the program is being debugged.
@@ -506,18 +502,13 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          id += 17; // Alter the id with a prime number
       }
    }
-
 #endif
-
-   // Shared memory set-up
 
    if (open_shared_control() != ERR_Okay) {
       CloseCore();
       if (Info->Flags & OPF_ERROR) Info->Error = ERR_Failed;
       return NULL;
    }
-
-   shSemaphores = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
 
    // Sockets are used on Unix systems to tell our processes when new messages are available for them to read.
 
@@ -574,14 +565,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    ManagedActions[AC_Free] = (LONG (*)(OBJECTPTR, APTR))MGR_Free;
    ManagedActions[AC_Signal] = (LONG (*)(OBJECTPTR, APTR))MGR_Signal;
 
-   if (add_task_class() != ERR_Okay) {
-      fprintf(stderr, "Failed call to add_task_class().\n");
-      CloseCore();
-      return NULL;
-   }
-
-   // Register Core classes
-
+   if (add_task_class() != ERR_Okay)    { CloseCore(); return NULL; }
    if (add_thread_class() != ERR_Okay)  { CloseCore(); return NULL; }
    if (add_module_class() != ERR_Okay)  { CloseCore(); return NULL; }
    if (add_time_class() != ERR_Okay)    { CloseCore(); return NULL; }
@@ -592,7 +576,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    if (add_archive_class() != ERR_Okay) { CloseCore(); return NULL; }
    if (add_compressed_stream_class() != ERR_Okay) { CloseCore(); return NULL; }
    if (add_compression_class() != ERR_Okay) { CloseCore(); return NULL; }
-
    #ifdef __ANDROID__
    if (add_asset_class() != ERR_Okay) { CloseCore(); return NULL; }
    #endif

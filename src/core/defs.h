@@ -607,7 +607,6 @@ extern UBYTE glTaskState;
 extern LARGE glTimeLog;
 extern struct RootModule     *glModuleList;    // Locked with TL_GENERIC.  Maintained as a linked-list; hashmap unsuitable.
 extern struct SharedControl  *glSharedControl; // Locked with PL_FORBID
-extern struct SemaphoreEntry *shSemaphores;    // Locked with PL_SEMAPHORES
 extern struct OpenInfo       *glOpenInfo;      // Read-only.  The OpenInfo structure initially passed to OpenCore()
 extern objTask *glCurrentTask;
 extern const struct ActionTable ActionTable[];
