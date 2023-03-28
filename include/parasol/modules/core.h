@@ -1136,23 +1136,21 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 #define RES_PARENT_CONTEXT 9
 #define RES_LOG_LEVEL 10
 #define RES_TOTAL_SHARED_MEMORY 11
-#define RES_TASK_CONTROL 12
-#define RES_TASK_LIST 13
-#define RES_MAX_PROCESSES 14
-#define RES_LOG_DEPTH 15
-#define RES_JNI_ENV 16
-#define RES_THREAD_ID 17
-#define RES_CURRENT_MSG 18
-#define RES_OPEN_INFO 19
-#define RES_EXCEPTION_HANDLER 20
-#define RES_NET_PROCESSING 21
-#define RES_PROCESS_STATE 22
-#define RES_TOTAL_MEMORY 23
-#define RES_TOTAL_SWAP 24
-#define RES_CPU_SPEED 25
-#define RES_FREE_MEMORY 26
-#define RES_FREE_SWAP 27
-#define RES_KEY_STATE 28
+#define RES_MAX_PROCESSES 12
+#define RES_LOG_DEPTH 13
+#define RES_JNI_ENV 14
+#define RES_THREAD_ID 15
+#define RES_CURRENT_MSG 16
+#define RES_OPEN_INFO 17
+#define RES_EXCEPTION_HANDLER 18
+#define RES_NET_PROCESSING 19
+#define RES_PROCESS_STATE 20
+#define RES_TOTAL_MEMORY 21
+#define RES_TOTAL_SWAP 22
+#define RES_CPU_SPEED 23
+#define RES_FREE_MEMORY 24
+#define RES_FREE_SWAP 25
+#define RES_KEY_STATE 26
 
 // Path types for SetResourcePath()
 
@@ -1913,7 +1911,7 @@ struct CoreBase {
    ERROR (*_GetMessage)(MEMORYID Queue, LONG Type, LONG Flags, APTR Buffer, LONG Size);
    MEMORYID (*_ReleaseMemory)(APTR Address);
    CLASSID (*_ResolveClassName)(CSTRING Name);
-   ERROR (*_SendMessage)(MEMORYID Queue, LONG Type, LONG Flags, APTR Data, LONG Size);
+   ERROR (*_SendMessage)(OBJECTID Task, LONG Type, LONG Flags, APTR Data, LONG Size);
    ERROR (*_SetOwner)(OBJECTPTR Object, OBJECTPTR Owner);
    OBJECTPTR (*_SetContext)(OBJECTPTR Object);
    ERROR (*_SetField)(OBJECTPTR Object, FIELD Field, ...);
@@ -1967,7 +1965,7 @@ struct CoreBase {
    void (*_UnlockSharedMutex)(APTR Mutex);
    void (*_VLogF)(int Flags, const char *Header, const char *Message, va_list Args);
    LONG (*_Base64Encode)(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
-   ERROR (*_WakeProcess)(LONG ProcessID);
+   ERROR (*_ReadInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING * Value);
    ERROR (*_SetResourcePath)(LONG PathType, CSTRING Path);
    OBJECTPTR (*_CurrentTask)(void);
    CSTRING (*_ResolveGroupID)(LONG Group);
@@ -1992,7 +1990,6 @@ struct CoreBase {
    ULONG (*_StrHash)(CSTRING String, LONG CaseSensitive);
    ERROR (*_AddInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING Value);
    LONG (*_UTF8Copy)(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
-   ERROR (*_ReadInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING * Value);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2040,7 +2037,7 @@ inline ERROR ReallocMemory(APTR Memory, LONG Size, APTR Address, MEMORYID * ID) 
 inline ERROR GetMessage(MEMORYID Queue, LONG Type, LONG Flags, APTR Buffer, LONG Size) { return CoreBase->_GetMessage(Queue,Type,Flags,Buffer,Size); }
 inline MEMORYID ReleaseMemory(APTR Address) { return CoreBase->_ReleaseMemory(Address); }
 inline CLASSID ResolveClassName(CSTRING Name) { return CoreBase->_ResolveClassName(Name); }
-inline ERROR SendMessage(MEMORYID Queue, LONG Type, LONG Flags, APTR Data, LONG Size) { return CoreBase->_SendMessage(Queue,Type,Flags,Data,Size); }
+inline ERROR SendMessage(OBJECTID Task, LONG Type, LONG Flags, APTR Data, LONG Size) { return CoreBase->_SendMessage(Task,Type,Flags,Data,Size); }
 inline ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner) { return CoreBase->_SetOwner(Object,Owner); }
 inline OBJECTPTR SetContext(OBJECTPTR Object) { return CoreBase->_SetContext(Object); }
 template<class... Args> ERROR SetField(OBJECTPTR Object, FIELD Field, Args... Tags) { return CoreBase->_SetField(Object,Field,Tags...); }
@@ -2094,7 +2091,7 @@ inline ERROR LockSharedMutex(APTR Mutex, LONG MilliSeconds) { return CoreBase->_
 inline void UnlockSharedMutex(APTR Mutex) { return CoreBase->_UnlockSharedMutex(Mutex); }
 inline void VLogF(int Flags, const char *Header, const char *Message, va_list Args) { return CoreBase->_VLogF(Flags,Header,Message,Args); }
 inline LONG Base64Encode(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize) { return CoreBase->_Base64Encode(State,Input,InputSize,Output,OutputSize); }
-inline ERROR WakeProcess(LONG ProcessID) { return CoreBase->_WakeProcess(ProcessID); }
+inline ERROR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value) { return CoreBase->_ReadInfoTag(Info,Name,Value); }
 inline ERROR SetResourcePath(LONG PathType, CSTRING Path) { return CoreBase->_SetResourcePath(PathType,Path); }
 inline OBJECTPTR CurrentTask(void) { return CoreBase->_CurrentTask(); }
 inline CSTRING ResolveGroupID(LONG Group) { return CoreBase->_ResolveGroupID(Group); }
@@ -2119,7 +2116,6 @@ inline const struct SystemState * GetSystemState(void) { return CoreBase->_GetSy
 inline ULONG StrHash(CSTRING String, LONG CaseSensitive) { return CoreBase->_StrHash(String,CaseSensitive); }
 inline ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
 inline LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size) { return CoreBase->_UTF8Copy(Src,Dest,Chars,Size); }
-inline ERROR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value) { return CoreBase->_ReadInfoTag(Info,Name,Value); }
 #endif
 
 
@@ -3440,7 +3436,6 @@ class objMetaClass : public BaseClass {
 #define MT_TaskQuit -3
 #define MT_TaskGetEnv -4
 #define MT_TaskSetEnv -5
-#define MT_TaskCloseInstance -6
 
 struct taskAddArgument { CSTRING Argument;  };
 struct taskGetEnv { CSTRING Name; CSTRING Value;  };
@@ -3466,8 +3461,6 @@ INLINE ERROR taskSetEnv(APTR Ob, CSTRING Name, CSTRING Value) {
    struct taskSetEnv args = { Name, Value };
    return(Action(MT_TaskSetEnv, (OBJECTPTR)Ob, &args));
 }
-
-#define taskCloseInstance(obj) Action(MT_TaskCloseInstance,(obj),0)
 
 
 class objTask : public BaseClass {
@@ -3564,24 +3557,6 @@ class objThread : public BaseClass {
    inline ERROR init() { return Action(AC_Init, this, NULL); }
 };
 
-// Private task list control structure.
-
-struct TaskList {
-   LARGE    CreationTime;  // Time at which the task slot was created
-   LONG     ProcessID;     // Core process ID
-   OBJECTID TaskID;        // Task ID for this array entry.  Also see the ParentID field
-   MEMORYID MessageID;     // Message queue ID
-   OBJECTID OutputID;      // The object that the task should output information to
-   LONG     ReturnCode;    // Return code
-   OBJECTID ParentID;      // The task responsible for creating this task slot
-   OBJECTID ModalID;       // Set if a modal surface is to have the user's attention
-   LONG     EventMask;     // The events that this task is listening to
-   WORD     Returned:1;    // Process has finished (the ReturnCode is set)
-   WORD     Index;         // Index in the shTasks array
-   #ifdef _WIN32
-      WINHANDLE Lock;      // The semaphore to signal when a message is sent to the task
-   #endif
-};
 // Module class definition
 
 #define VER_MODULE (1.000000)
@@ -3948,7 +3923,6 @@ struct ActionMessage {
 enum { // For SysLock()
    PL_WAITLOCKS=1,
    PL_FORBID,
-   PL_PROCESSES,
    PL_SEMAPHORES,
    #ifdef _WIN32
       CN_SEMAPHORES,
@@ -3988,10 +3962,6 @@ struct rkEvent {
 #define EVID_FILESYSTEM_VOLUME_CREATED  GetEventID(EVG_FILESYSTEM, "volume", "created")
 #define EVID_FILESYSTEM_VOLUME_DELETED  GetEventID(EVG_FILESYSTEM, "volume", "deleted")
 
-#define EVID_USER_STATUS_LOGIN          GetEventID(EVG_USER, "status", "login")
-#define EVID_USER_STATUS_LOGOUT         GetEventID(EVG_USER, "status", "logout")
-#define EVID_USER_STATUS_LOGGEDOUT      GetEventID(EVG_USER, "status", "loggedout")
-
 #define EVID_SYSTEM_TASK_CREATED        GetEventID(EVG_SYSTEM, "task", "created")
 #define EVID_SYSTEM_TASK_REMOVED        GetEventID(EVG_SYSTEM, "task", "removed")
 
@@ -4004,10 +3974,6 @@ struct rkEvent {
 #define EVID_POWER_CPUTEMP_CRITICAL     GetEventID(EVG_POWER, "cputemp", "critical")
 #define EVID_POWER_SCREENSAVER_ON       GetEventID(EVG_POWER, "screensaver", "on")
 #define EVID_POWER_SCREENSAVER_OFF      GetEventID(EVG_POWER, "screensaver", "off")
-
-#define EVID_HARDWARE_DRIVERS_STARTING  GetEventID(EVG_HARDWARE, "drivers", "starting")
-#define EVID_HARDWARE_DRIVERS_STARTED   GetEventID(EVG_HARDWARE, "drivers", "started")
-#define EVID_HARDWARE_DRIVERS_CLOSING   GetEventID(EVG_HARDWARE, "drivers", "closing")
 
 #define EVID_IO_KEYMAP_CHANGE           GetEventID(EVG_IO, "keymap", "change")
 #define EVID_IO_KEYBOARD_KEYPRESS       GetEventID(EVG_IO, "keyboard", "keypress")

@@ -504,10 +504,6 @@ static ERROR PTR_Free(extPointer *Self, APTR Void)
 
    if (Self->BitmapID) { acFree(Self->BitmapID); Self->BitmapID = 0; }
 
-   if (Self->UserLoginHandle) {
-      UnsubscribeEvent(Self->UserLoginHandle);
-      Self->UserLoginHandle = NULL;
-   }
 /*
    OBJECTPTR object;
    if ((Self->SurfaceID) and (!AccessObjectID(Self->SurfaceID, 5000, &object))) {

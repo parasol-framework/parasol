@@ -271,7 +271,7 @@ ERROR FreeResource(const void *Address)
          if (head IS CODE_MEMH) log.warning("Second attempt at freeing address %p detected.", Address);
          else log.warning("Address %p is not a known private memory block.", Address);
          #ifdef DEBUG
-         print_diagnosis(0, 0);
+         print_diagnosis(0);
          #endif
          return ERR_Memory;
       }

@@ -48,7 +48,7 @@ ERROR ReallocMemory(APTR Memory, LONG Size, APTR * Address, MEMORYID * ID);
 ERROR GetMessage(MEMORYID Queue, LONG Type, LONG Flags, APTR Buffer, LONG Size);
 MEMORYID ReleaseMemory(APTR Address);
 CLASSID ResolveClassName(CSTRING Name);
-ERROR SendMessage(MEMORYID Queue, LONG Type, LONG Flags, APTR Data, LONG Size);
+ERROR SendMessage(OBJECTID Task, LONG Type, LONG Flags, APTR Data, LONG Size);
 ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner);
 OBJECTPTR SetContext(OBJECTPTR Object);
 ERROR SetField(OBJECTPTR Object, FIELD Field, ...);
@@ -102,7 +102,7 @@ ERROR LockSharedMutex(APTR Mutex, LONG MilliSeconds);
 void UnlockSharedMutex(APTR Mutex);
 void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args);
 LONG Base64Encode(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
-ERROR WakeProcess(LONG ProcessID);
+ERROR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value);
 ERROR SetResourcePath(LONG PathType, CSTRING Path);
 OBJECTPTR CurrentTask();
 CSTRING ResolveGroupID(LONG Group);
@@ -127,7 +127,6 @@ const struct SystemState * GetSystemState();
 ULONG StrHash(CSTRING String, LONG CaseSensitive);
 ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
 LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
-ERROR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value);
 
 #ifdef  __cplusplus
 }

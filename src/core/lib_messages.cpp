@@ -32,7 +32,7 @@ Name: Messages
 
 #include "defs.h"
 
-static ERROR wake_task(LONG Index, CSTRING);
+static ERROR wake_task(OBJECTID);
 #ifdef _WIN32
 static ERROR sleep_task(LONG, BYTE);
 #else
@@ -755,18 +755,18 @@ ERROR ScanMessages(APTR MessageQueue, LONG *Index, LONG Type, APTR Buffer, LONG 
 -FUNCTION-
 SendMessage: Send messages to message queues.
 
-The SendMessage() function is used to write messages to message queues. To write a message to a queue, you must know
-the memory ID of that queue and be able to provide this function with a message type ID that the queue's handler
-will understand.  If necessary, you can also attach data to the message if it has relevance to the message type.
+The SendMessage() function is used to send messages to message queues.  Messages must be associated with a Type
+identifier and this can help the receiver process any accompanying Data.  Some common message types are pre-defined,
+such as `MSGID_QUIT`.  Custom messages should use a unique type ID obtained from ~AllocateID().
 
-If the message queue is found to be full, or if the size of your message is larger than the total size of the queue,
+If the target message queue is full, or if the size of the message is larger than the total size of the queue,
 this function will immediately return with an `ERR_ArrayFull` error code.  If you are prepared to wait for the queue
 handler to process the waiting messages, specify `WAIT` in the Flags parameter.  There is a maximum time-out period
 of 10 seconds in case the task responsible for handling the queue is failing to process its messages.
 
 -INPUT-
-mem Queue: The memory ID of the destination message queue.  If zero, the local message queue is targeted.
-int Type:  The message Type/ID being sent.  Unique type ID's can be obtained from ~AllocateID().
+oid Task: ID of a task to target.  If zero, the local message queue is targeted.
+int(MSGID) Type:  The message Type/ID being sent.  Unique type ID's can be obtained from ~AllocateID().
 int(MSF) Flags: Optional flags.
 buf(ptr) Data:  Pointer to the data that will be written to the queue.  Set to NULL if there is no data to write.
 bufsize Size:   The byte-size of the data being written to the message queue.
@@ -807,20 +807,15 @@ static void view_messages(MessageHeader *Header)
    }
 }
 
-ERROR SendMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Data, LONG Size)
+ERROR SendMessage(OBJECTID TaskID, LONG Type, LONG Flags, APTR Data, LONG Size)
 {
    pf::Log log(__FUNCTION__);
 
-   if (glLogLevel >= 9) log.function("MessageMID: %d, Type: %d, Data: %p, Size: %d", MessageMID, Type, Data, Size);
+   if (glLogLevel >= 9) log.function("Type: %d, Data: %p, Size: %d", Type, Data, Size);
 
-   if (Type IS MSGID_QUIT) log.function("A quit message is being posted to queue #%d, context #%d.", MessageMID, tlContext->object()->UID);
+   if (Type IS MSGID_QUIT) log.function("A quit message is being posted to queue #%d", TaskID);
 
    if ((!Type) or (Size < 0)) return log.warning(ERR_Args);
-
-   if (!MessageMID) {
-      MessageMID = glTaskMessageMID;
-      if (!MessageMID) return ERR_NullArgs;
-   }
 
    if (!Data) { // If no data has been provided, drive the Size to 0
       if (Size) log.warning("Message size indicated but no data provided.");
@@ -833,7 +828,7 @@ ERROR SendMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Data, LONG Si
    ERROR error;
    TaskMessage *msg, *prevmsg;
    MessageHeader *header;
-   if (!(error = AccessMemoryID(MessageMID, MEM_READ_WRITE, 2000, (void **)&header))) {
+   if (!(error = AccessMemoryID(glTaskMessageMID, MEM_READ_WRITE, 2000, (void **)&header))) {
       if (Flags & (MSF_NO_DUPLICATE|MSF_UPDATE)) {
          msg = (TaskMessage *)header->Buffer;
          prevmsg = NULL;
@@ -841,7 +836,7 @@ ERROR SendMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Data, LONG Si
          while (i < header->Count) {
             if (msg->Type IS Type) {
                if (Flags & MSF_NO_DUPLICATE) {
-                  ReleaseMemoryID(MessageMID);
+                  ReleaseMemoryID(glTaskMessageMID);
                   return ERR_Okay;
                }
                else {
@@ -875,8 +870,8 @@ ERROR SendMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Data, LONG Si
 
          if (header->CompressReset) {
             // Do nothing if we've already tried compression and no messages have been pulled off the queue since that time.
-            log.warning("Message buffer %d is at capacity.", MessageMID);
-            ReleaseMemoryID(MessageMID);
+            log.warning("Message buffer %d is at capacity.", glTaskMessageMID);
+            ReleaseMemoryID(glTaskMessageMID);
             return ERR_ArrayFull;
          }
 
@@ -884,7 +879,7 @@ ERROR SendMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Data, LONG Si
          // Suspect that this compression routine corrupts the message queue.
 
 //         LONG j, nextentry, nextoffset;
-//         log.msg("Compressing message buffer #%d.", MessageMID);
+//         log.msg("Compressing message buffer #%d.", glTaskMessageMID);
 //
 //         msg = (TaskMessage *)header->Buffer;
 //         nextentry = 0; // Set the next entry point to position zero to start the compression
@@ -908,7 +903,6 @@ ERROR SendMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Data, LONG Si
             // Compress the message buffer to a temporary data store
 
             buffer->NextEntry = 0;
-            buffer->TaskIndex = header->TaskIndex;
             /*
             #ifdef _WIN32
                buffer->MsgProcess = header->MsgProcess;
@@ -940,12 +934,12 @@ ERROR SendMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Data, LONG Si
          // Check if space is now available
 
          if ((header->NextEntry + sizeof(TaskMessage) + msgsize) >= SIZE_MSGBUFFER) {
-            log.warning("Message buffer %d is at capacity and I cannot compress the queue.", MessageMID);
+            log.warning("Message buffer %d is at capacity and I cannot compress the queue.", glTaskMessageMID);
 
             //view_messages(header);
 
             header->CompressReset = 1;
-            ReleaseMemoryID(MessageMID);
+            ReleaseMemoryID(glTaskMessageMID);
             return ERR_ArrayFull;
          }
       }
@@ -967,11 +961,11 @@ ERROR SendMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Data, LONG Si
       header->Count++;
       header->CompressReset = 0;
 
-      // Alert the foreign process to indicate that there are messages available.
+      ReleaseMemoryID(glTaskMessageMID);
 
-      WORD taskindex = header->TaskIndex;
-      ReleaseMemoryID(MessageMID);
-      wake_task(taskindex, __func__);
+      // Alert the process to indicate that there are messages available.
+
+      wake_task(TaskID);
 
       #ifdef _WIN32
          tlMsgSent = TRUE;
@@ -980,7 +974,7 @@ ERROR SendMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Data, LONG Si
       return ERR_Okay;
    }
    else {
-      log.warning("Could not gain access to message port #%d: %s", MessageMID, glMessages[error]);
+      log.warning("Could not gain access to message port #%d: %s", glTaskMessageMID, glMessages[error]);
       return error; // Important that the original AccessMemoryID() error is returned (some code depends on this for detailed clarification)
    }
 }
@@ -1187,8 +1181,8 @@ ERROR write_nonblock(LONG Handle, APTR Data, LONG Size, LARGE EndTime)
 UpdateMessage: Updates the data of any message that is queued.
 
 The UpdateMessage() function provides a facility for updating the content of existing messages on a queue.  You are
-required to know the ID of the message that you are going to update and will need to provide the new message Type
-and/or Data that is to be set against the message.
+required to know the ID of the message that will be updated and need to provide the new message Type and/or Data
+to set against the message.
 
 Messages can be deleted from the queue by setting the Type to -1.  There is no need to provide buffer information
 when deleting a message.
@@ -1206,7 +1200,7 @@ bufsize Size: The byte-size of the buffer that has been supplied.  It must not e
 -ERRORS-
 Okay:   The message was successfully updated.
 NullArgs:
-Search: The ID that you supplied does not refer to a message in the queue.
+Search: The supplied ID does not refer to a message in the queue.
 -END-
 
 *********************************************************************************************************************/
@@ -1242,41 +1236,6 @@ ERROR UpdateMessage(APTR Queue, LONG MessageID, LONG Type, APTR Buffer, LONG Buf
       if (msg->Type) j++;
       prevmsg = msg;
       msg = (TaskMessage *)ResolveAddress(msg, msg->NextMsg);
-   }
-
-   return log.warning(ERR_Search);
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-WakeProcess: Wake a sleeping process to check for queued activities.  For internal use only.
-
-Intended for internal use only.  Forcibly waking a process is necessary for the processing of activities that do not
-follow typical IPC methodologies.
-
--INPUT-
-int ProcessID: Reference to a process identifier for the host platform.
-
--ERRORS-
-Okay
-NullArgs
-Search: The referenced process was not found.
-
--END-
-
-*********************************************************************************************************************/
-
-ERROR WakeProcess(LONG ProcessID)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (!ProcessID) return log.warning(ERR_NullArgs);
-
-   for (LONG i=0; i < MAX_TASKS; i++) {
-      if (shTasks[i].ProcessID IS ProcessID) {
-         return wake_task(i, __func__);
-      }
    }
 
    return log.warning(ERR_Search);
@@ -1592,15 +1551,14 @@ static void thread_socket_free(void *Socket) { close(PTR_TO_HOST(Socket)); }
 static void thread_socket_init(void) { pthread_key_create(&keySocket, thread_socket_free); }
 #endif
 
-ERROR wake_task(LONG TaskIndex, CSTRING Caller)
+static ERROR wake_task(OBJECTID TaskID)
 {
    pf::Log log(__FUNCTION__);
 
-   if (TaskIndex < 0) return ERR_Args;
-   if (!shTasks[TaskIndex].ProcessID) return ERR_Args;
+   if ((!glCurrentTask) or (TaskID IS glCurrentTask->UID) or (!TaskID)) return ERR_Okay;
 
    if (tlPublicLockCount > 0) {
-      if (glProgramStage != STAGE_SHUTDOWN) log.warning("[Process %d] Illegal call from %s() while holding %d global locks.", glProcessID, Caller, tlPublicLockCount);
+      if (glProgramStage != STAGE_SHUTDOWN) log.warning("Illegal call while holding %d global locks.", tlPublicLockCount);
    }
 
 #ifdef __unix__
@@ -1635,17 +1593,19 @@ ERROR wake_task(LONG TaskIndex, CSTRING Caller)
    // Place a single character in the destination task's socket to indicate that there are messages to be processed.
 
    socklen_t socklen;
-   struct sockaddr_un *sockpath = get_socket_path(shTasks[TaskIndex].ProcessID, &socklen);
+   struct sockaddr_un *sockpath = get_socket_path(glTasks[TaskID].ProcessID, &socklen);
    if (sendto(tlSendSocket, &msg, sizeof(msg), MSG_DONTWAIT, (struct sockaddr *)sockpath, socklen) IS -1) {
       if (errno != EAGAIN) {
-         log.warning("sendto(%d) from %d failed: %s", shTasks[TaskIndex].ProcessID, glProcessID, strerror(errno));
-         glValidateProcessID = shTasks[TaskIndex].ProcessID;
+         log.warning("sendto(%d) from %d failed: %s", glTasks[TaskID].ProcessID, glProcessID, strerror(errno));
+         glValidateProcessID = glTasks[TaskID].ProcessID;
       }
    }
 
 #elif _WIN32
 
-   wake_waitlock(shTasks[TaskIndex].Lock, shTasks[TaskIndex].ProcessID, 1);
+   for (auto &task : glTasks) {
+      if (TaskID IS task.TaskID) wake_waitlock(task.Lock, task.ProcessID, 1);
+   }
 
 #endif
 

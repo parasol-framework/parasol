@@ -348,15 +348,8 @@ cid: Returns the base class ID of the object or NULL if failure.
 
 CLASSID GetClassID(OBJECTID ObjectID)
 {
-   pf::Log log(__FUNCTION__);
-
-   if (!ObjectID) return 0;
-
-   OBJECTPTR object;
-   if ((object = GetObjectPtr(ObjectID))) return object->ClassID;
-   else log.function("Failed to access object #%d, no longer exists or ID invalid.", ObjectID);
-
-   return 0;
+   if (auto object = GetObjectPtr(ObjectID)) return object->ClassID;
+   else return 0;
 }
 
 /*********************************************************************************************************************
@@ -756,8 +749,6 @@ LARGE GetResource(LONG Resource)
       case RES_SHARED_CONTROL:  return (MAXINT)glSharedControl;
       case RES_PRIVILEGED:      return glPrivileged;
       case RES_LOG_LEVEL:       return glLogLevel;
-      case RES_TASK_CONTROL:    return (MAXINT)glTaskEntry;
-      case RES_TASK_LIST:       return (MAXINT)shTasks;
       case RES_PROCESS_STATE:   return (MAXINT)glTaskState;
       case RES_MAX_PROCESSES:   return MAX_TASKS;
       case RES_LOG_DEPTH:       return tlDepth;
@@ -1116,10 +1107,9 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
    ScopedObjectAccess objlock(Object);
 
    if (!CheckAction(Owner, AC_NewChild)) {
-      ERROR error;
       struct acNewChild newchild = { .Object = Object };
-      if ((error = Action(AC_NewChild, Owner, &newchild)) != ERR_NoSupport) {
-         if (error != ERR_Okay) { // If the owner has passed the object through to another owner, return ERR_Okay, otherwise error.
+      if (auto error = Action(AC_NewChild, Owner, &newchild); error != ERR_NoSupport) {
+         if (error) { // If the owner has passed the object through to another owner, return ERR_Okay, otherwise error.
             if (error IS ERR_OwnerPassThrough) return ERR_Okay;
             else return error;
          }
@@ -1639,8 +1629,8 @@ This function waits for a period of time as specified by the Seconds and MicroSe
 task will continue to process incoming messages in order to prevent the process' message queue from developing a
 back-log.
 
-WaitTime() can return earlier than the indicated timeout if a message handler returns ERR_Terminate, or if a `MSGID_QUIT`
-message is sent to the task's message queue.
+WaitTime() can return earlier than the indicated timeout if a message handler returns `ERR_Terminate`, or if a
+`MSGID_QUIT` message is sent to the task's message queue.
 
 -INPUT-
 int Seconds:      The number of seconds to wait for.

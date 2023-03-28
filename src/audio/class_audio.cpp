@@ -453,34 +453,12 @@ static ERROR AUDIO_Deactivate(extAudio *Self, APTR Void)
 }
 
 //********************************************************************************************************************
-// Reload the user's audio configuration details.
-
-static void user_login(APTR Reference, APTR Info, LONG InfoSize)
-{
-   pf::Log log("Audio");
-   extAudio *Self;
-
-   if (!AccessObjectID((OBJECTID)(MAXINT)Reference, 3000, &Self)) {
-      if (!Self->Initialising) {
-         log.branch("User login detected - reloading audio configuration.");
-         acDeactivate(Self);
-         load_config(Self);
-         acActivate(Self);
-      }
-      ReleaseObject(Self);
-   }
-}
-
-//********************************************************************************************************************
 
 static ERROR AUDIO_Free(extAudio *Self, APTR Void)
 {
    if (Self->Flags & ADF_AUTO_SAVE) Self->saveSettings();
 
    if (Self->Timer) { UpdateTimer(Self->Timer, 0); Self->Timer = NULL; }
-
-   if (Self->TaskRemovedHandle) { UnsubscribeEvent(Self->TaskRemovedHandle); Self->TaskRemovedHandle = NULL; }
-   if (Self->UserLoginHandle)   { UnsubscribeEvent(Self->UserLoginHandle);   Self->UserLoginHandle = NULL; }
 
    acDeactivate(Self);
 
@@ -510,11 +488,6 @@ static ERROR AUDIO_Init(extAudio *Self, APTR Void)
 #ifdef _WIN32
    Self->OutputRate = 44100; // Mix rate is forced for direct sound
 #endif
-
-   log.msg("Subscribing to events.");
-
-   auto call = make_function_stdc(user_login);
-   SubscribeEvent(EVID_USER_STATUS_LOGIN, &call, (APTR)(MAXINT)Self->UID, (APTR)&Self->UserLoginHandle);
 
    return ERR_Okay;
 }

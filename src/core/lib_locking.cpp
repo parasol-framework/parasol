@@ -1142,7 +1142,7 @@ MEMORYID ReleaseMemory(APTR Address)
       if ((mem IS glPrivateMemory.end()) or (!mem->second.Address)) {
          if (tlContext->object()->Class) log.warning("Unable to find a record for memory address %p, ID %d [Context %d, Class %s].", Address, ((LONG *)Address)[-2], tlContext->object()->UID, tlContext->object()->className());
          else log.warning("Unable to find a record for memory address %p.", Address);
-         if (glLogLevel > 1) print_diagnosis(glProcessID, 0);
+         if (glLogLevel > 1) print_diagnosis(0);
          return 0;
       }
 
@@ -1217,7 +1217,7 @@ ERROR ReleaseMemoryID(MEMORYID MemoryID)
       if ((mem IS glPrivateMemory.end()) or (!mem->second.Address)) {
          if (tlContext->object()->Class) log.warning("Unable to find a record for memory address #%d [Context %d, Class %s].", MemoryID, tlContext->object()->UID, tlContext->object()->className());
          else log.warning("Unable to find a record for memory #%d.", MemoryID);
-         if (glLogLevel > 1) print_diagnosis(glProcessID, 0);
+         if (glLogLevel > 1) print_diagnosis(0);
          return ERR_Search;
       }
 

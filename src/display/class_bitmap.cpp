@@ -1111,15 +1111,6 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
       }
    }
 
-#elif __snap__
-
-   // Bitmaps that are placed in video buffers need to beware of resolution changes.  If a resolution switch is about
-   // to occur, the bitmap needs to be pushed to system RAM because the video memory will be cleared.
-
-   if (Self->DataFlags & MEM_TEXTURE) {
-      SubscribeEvent(EVID_DISPLAY_RESOLUTION_CHANGE, &resolution_change, Self, &Self->ResolutionChangeHandle);
-   }
-
 #elif _GLES_
    // MEM_VIDEO + BMF_NO_DATA: The bitmap represents the OpenGL display.  No data area will be allocated as direct access to the OpenGL video frame buffer is not possible.
    // MEM_VIDEO: Not currently used as a means of allocating a particular type of OpenGL buffer.

@@ -131,7 +131,6 @@ DLLCALL LONG WINAPI RegQueryValueExA(APTR,STRING,LONG *,LONG *,BYTE *,LONG *);
 DLLCALL void WINAPI CloseHandle(APTR);
 #endif
 
-static TIMER glProcessJanitor = 0;
 static std::string glHomeFolderName;
 
 static void print_class_list(void) __attribute__ ((unused));
@@ -518,10 +517,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       return NULL;
    }
 
-   // Determine shared addresses
-
    shSemaphores = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
-   shTasks      = (TaskList *)ResolveAddress(glSharedControl, glSharedControl->TaskOffset);
 
    // Sockets are used on Unix systems to tell our processes when new messages are available for them to read.
 
@@ -563,89 +559,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
       RegisterFD(glSocket, RFD_READ, NULL, NULL);
    #endif
-
-   if (!SysLock(PL_FORBID, 4000)) {
-      // Register our process in the task control array.  First, check if a slot has been pre-allocated for our
-      // task by the parent that launched us.  Otherwise, allocate a new slot.
-
-      for (i=0; i < MAX_TASKS; i++) {
-         if (shTasks[i].ProcessID IS glProcessID) {
-            // A slot has been pre-allocated by a parent process that launched us
-            break;
-         }
-      }
-
-      if (i IS MAX_TASKS) {
-         for (i=0; (i < MAX_TASKS) and (shTasks[i].ProcessID); i++); // Find an empty slot
-
-         // If all slots are in use, check if there are any dead slots (pre-allocated slots that haven't been assigned
-         // to a process due to execution errors or whatever).
-
-         if (i IS MAX_TASKS) {
-            for (i=0; i < MAX_TASKS; i++) {
-               if ((shTasks[i].ProcessID)) { // and ((PreciseTime()/1000LL) - shTasks[i].CreationTime > 1000)) {
-                  if ((!shTasks[i].TaskID))  {
-                     ClearMemory(shTasks + i, sizeof(shTasks[0]));
-                     break;
-                  }
-                  else {
-                     #ifdef _WIN32
-                        // For some reason this doesn't work as expected?  We use CheckMemory() as backup...
-
-                        if (winCheckProcessExists(shTasks[i].ProcessID) IS FALSE) {
-                           KMSG("Core: Found dead process slot (index %d, process %d)\n", i, shTasks[i].ProcessID);
-                           ClearMemory(shTasks + i, sizeof(shTasks[0]));
-                           break;
-                        }
-                        else if (CheckMemoryExists(shTasks[i].MessageID) != ERR_Okay) {
-                           KMSG("Core: Found dead message queue (index %d, process %d)\n", i, shTasks[i].ProcessID);
-                           ClearMemory(shTasks + i, sizeof(shTasks[0]));
-                           break;
-                        }
-                     #else
-                        if ((kill(shTasks[i].ProcessID, 0) IS -1) and (errno IS ESRCH)) {
-                           ClearMemory(shTasks + i, sizeof(shTasks[0]));
-                           break;
-                        }
-                     #endif
-                  }
-               }
-            }
-         }
-      }
-
-      if (i < MAX_TASKS) {
-         shTasks[i].ProcessID    = glProcessID;
-         #ifdef _WIN32
-            shTasks[i].Lock = get_threadlock(); // The main semaphore (for waking the message queue)
-         #endif
-         shTasks[i].Index        = i;
-         shTasks[i].CreationTime = (PreciseTime()/1000LL);
-         glTaskEntry = shTasks + i;
-      }
-      else {
-         KMSG("Core: The system has reached its limit of %d processes.\n", MAX_TASKS);
-/*
-         for (i=0; i < MAX_TASKS; i++) {
-            KMSG("Core: %d: Process: %d, Created: %d", i, shTasks[i].ProcessID, (LONG)shTasks[i].CreationTime);
-         }
-*/
-         if (Info->Flags & OPF_ERROR) Info->Error = ERR_ArrayFull;
-         SysUnlock(PL_FORBID);
-         CloseCore();
-         return NULL;
-      }
-
-      auto call = make_function_stdc(process_janitor);
-      SubscribeTimer(60, &call, &glProcessJanitor);
-
-      SysUnlock(PL_FORBID);
-   }
-   else {
-      if (Info->Flags & OPF_ERROR) Info->Error = ERR_LockFailed;
-      CloseCore();
-      return NULL;
-   }
 
    // Print task information
 
@@ -748,7 +661,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    // Generate the Core table for our new task
 
    LocalCoreBase = (struct CoreBase *)build_jump_table(glFunctions);
-   if (Info->Flags & OPF_COMPILED_AGAINST) fix_core_table(LocalCoreBase, Info->CompiledAgainst);
 
    // Broadcast the creation of the new task
 
@@ -792,8 +704,7 @@ EXPORT void CleanSystem(LONG Flags)
 
 static const LONG glMemorySize = sizeof(SharedControl) +
                                  (sizeof(SemaphoreEntry) * MAX_SEMAPHORES) +
-                                 (sizeof(WaitLock) * MAX_WAITLOCKS) +
-                                 (sizeof(TaskList) * MAX_TASKS);
+                                 (sizeof(WaitLock) * MAX_WAITLOCKS);
 
 #ifdef _WIN32
 static ERROR open_shared_control(void)
@@ -995,9 +906,6 @@ static ERROR init_shared_control(void)
    glSharedControl->WLOffset = offset;
    offset += sizeof(WaitLock) * MAX_WAITLOCKS;
 
-   glSharedControl->TaskOffset = offset;
-   offset += sizeof(TaskList) * MAX_TASKS;
-
    // Allocate public locks (for sharing between processes)
 
    #ifdef __unix__
@@ -1053,26 +961,9 @@ static const CSTRING signals[] = {
 };
 
 #ifdef __ANDROID__
-void print_diagnosis(LONG ProcessID, LONG Signal)
+void print_diagnosis(LONG Signal)
 {
-   if (!ProcessID) ProcessID = glProcessID;
-
-   LOGE("Application diagnosis, process %d, signal %d.", ProcessID, Signal);
-
-   if (!shTasks) return;
-
-   TaskList *task = NULL;
-   for (LONG j=0; j < MAX_TASKS; j++) {
-      if (shTasks[j].ProcessID IS ProcessID) {
-         task = &shTasks[j];
-         break;
-      }
-   }
-
-   if (!task) {
-      LOGE("Process %d is not listed in the task management array.", ProcessID);
-      return;
-   }
+   LOGE("Application diagnosis, signal %d.", Signal);
 
    auto ctx = tlContext;
 
@@ -1086,13 +977,11 @@ void print_diagnosis(LONG ProcessID, LONG Signal)
       glCodeIndex = CP_PRINT_CONTEXT;
 
       if ((ProcessID IS glProcessID) and (ctx != &glTopContext)) {
-         LONG class_id;
-         STRING classname;
-         if ((class_id = ctx->object()->ClassID)) {
-            classname = ResolveClassID(ctx->object()->ClassID);
-         }
-         else classname = "None";
-         LOGE("  Object Context: #%d / %p [Class: %s / $%.8x]", ctx->object()->UID, ctx->object(), classname, ctx->object()->ClassID);
+         CLASSID class_id;
+         STRING class_name;
+         if ((class_id = ctx->object()->ClassID)) class_name = ResolveClassID(ctx->object()->ClassID);
+         else class_name = "None";
+         LOGE("  Object Context: #%d / %p [Class: %s / $%.8x]", ctx->object()->UID, ctx->object(), class_name, class_id);
       }
 
       glPageFault = 0;
@@ -1100,45 +989,24 @@ void print_diagnosis(LONG ProcessID, LONG Signal)
 
    // Print the last action to be executed at the time of the crash.  If this code fails, it indicates a corrupt action table.
 
-   if (ProcessID IS glProcessID) {
-      if (glCodeIndex != CP_PRINT_ACTION) {
-         glCodeIndex = CP_PRINT_ACTION;
-         if (ctx->Action > 0) {
-            if (ctx->Field) {
-               LOGE("  Last Action:    Set.%s", ctx->Field->Name);
-            }
-            else LOGE("  Last Action:    %s", ActionTable[ctx->Action].Name);
+   if (glCodeIndex != CP_PRINT_ACTION) {
+      glCodeIndex = CP_PRINT_ACTION;
+      if (ctx->Action > 0) {
+         if (ctx->Field) {
+            LOGE("  Last Action:    Set.%s", ctx->Field->Name);
          }
-         else if (ctx->Action < 0) {
-            LOGE("  Last Method:    %d", ctx->Action);
-         }
+         else LOGE("  Last Action:    %s", ActionTable[ctx->Action].Name);
       }
-      else LOGE("  The action table is corrupt.");
-   }
-
-   #ifdef DBG_DIAGNOSTICS
-   if (glLogLevel > 2) {
-      if (!LOCK_SEMAPHORES(4000)) {
-         // Print semaphore locking information
-
-         SemaphoreEntry *semlist = ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
-         for (LONG index=1; index < MAX_SEMAPHORES; index++) {
-            for (j=0; j < ARRAYSIZE(semlist[index].Processes); j++) {
-               if (semlist[index].Processes[j].ProcessID IS ProcessID) {
-                  LOGE("  Semaphore[%.4d]:  Access: %d,  Blocking: %d", index, semlist[index].Processes[j].AccessCount, semlist[index].Processes[j].BlockCount);
-                  break;
-               }
-            }
-         }
-         UNLOCK_SEMAPHORES();
+      else if (ctx->Action < 0) {
+         LOGE("  Last Method:    %d", ctx->Action);
       }
    }
-   #endif
+   else LOGE("  The action table is corrupt.");
 }
 
 #else
 
-void print_diagnosis(LONG ProcessID, LONG Signal)
+void print_diagnosis(LONG Signal)
 {
    FILE *fd;
 #ifndef _WIN32
@@ -1147,18 +1015,10 @@ void print_diagnosis(LONG ProcessID, LONG Signal)
 
    //if (glLogLevel <= 1) return;
 
-   if (!ProcessID) ProcessID = glProcessID;
-
    fd = stderr;
    fprintf(fd, "Diagnostic Information:\n\n");
 
    // Print details of the object context at the time of the crash.  If this code fails, it indicates that the object context is corrupt.
-
-   TaskList *task;
-   if (!(task = glTaskEntry)) {
-      fprintf(fd, "This process has no registered task entry.\n");
-      return;
-   }
 
    auto ctx = tlContext;
 
@@ -1166,10 +1026,8 @@ void print_diagnosis(LONG ProcessID, LONG Signal)
       #ifdef __unix__
          fprintf(fd, "  Page Fault:     %p\n", glPageFault);
       #endif
-      fprintf(fd, "  Task ID:        %d\n", task->TaskID);
-      if (task->ProcessID != glProcessID) fprintf(fd, "  Process ID:     %d (Foreign)\n", task->ProcessID);
-      else fprintf(fd, "  Process ID:     %d (Self)\n", task->ProcessID);
-      fprintf(fd, "  Message Queue:  %d\n", task->MessageID);
+      fprintf(fd, "  Task ID:        %d\n", glCurrentTask->UID);
+      fprintf(fd, "  Process ID:     %d\n", glCurrentTask->ProcessID);
       if (Signal) {
          if ((Signal > 0) and (Signal < ARRAYSIZE(signals))) {
             fprintf(fd, "  Signal ID:      %s\n", signals[Signal]);
@@ -1178,20 +1036,16 @@ void print_diagnosis(LONG ProcessID, LONG Signal)
       }
       glCodeIndex = CP_PRINT_CONTEXT;
 
-      if ((ProcessID IS glProcessID) and (ctx->object())) {
-         LONG class_id;
-         CSTRING classname;
+      if (ctx->object()) {
+         CLASSID class_id = 0;
+         CSTRING class_name;
          if (ctx != &glTopContext) {
-            if ((class_id = ctx->object()->ClassID)) {
-               classname = ResolveClassID(ctx->object()->ClassID);
-            }
-            else classname = "None";
+            if ((class_id = ctx->object()->ClassID)) class_name = ResolveClassID(class_id);
+            else class_name = "None";
          }
-         else {
-            classname = "None";
-            class_id = 0;
-         }
-         fprintf(fd, "  Object Context: #%d / %p [Class: %s / $%.8x]\n", ctx->object()->UID, ctx->object(), classname, ctx->object()->ClassID);
+         else class_name = "None";
+
+         fprintf(fd, "  Object Context: #%d / %p [Class: %s / $%.8x]\n", ctx->object()->UID, ctx->object(), class_name, class_id);
       }
 
       glPageFault = 0;
@@ -1199,42 +1053,15 @@ void print_diagnosis(LONG ProcessID, LONG Signal)
 
    // Print the last action to be executed at the time of the crash.  If this code fails, it indicates a corrupt action table.
 
-   if (ProcessID IS glProcessID) {
-      if (glCodeIndex != CP_PRINT_ACTION) {
-         glCodeIndex = CP_PRINT_ACTION;
-         if (ctx->Action > 0) {
-            if (ctx->Field) {
-               fprintf(fd, "  Last Action:    Set.%s\n", ctx->Field->Name);
-            }
-            else fprintf(fd, "  Last Action:    %s\n", ActionTable[ctx->Action].Name);
-         }
-         else if (ctx->Action < 0) {
-            fprintf(fd, "  Last Method:    %d\n", ctx->Action);
-         }
+   if (glCodeIndex != CP_PRINT_ACTION) {
+      glCodeIndex = CP_PRINT_ACTION;
+      if (ctx->Action > 0) {
+         if (ctx->Field) fprintf(fd, "  Last Action:    Set.%s\n", ctx->Field->Name);
+         else fprintf(fd, "  Last Action:    %s\n", ActionTable[ctx->Action].Name);
       }
-      else fprintf(fd, "  The action table is corrupt.\n");
+      else if (ctx->Action < 0) fprintf(fd, "  Last Method:    %d\n", ctx->Action);
    }
-
-   #ifdef DBG_DIAGNOSTICS
-   if (glLogLevel > 2) {
-      if (!LOCK_SEMAPHORES(4000)) {
-         // Print semaphore locking information
-
-         auto semlist = (SemaphoreEntry *)ResolveAddress(glSharedControl, glSharedControl->SemaphoreOffset);
-
-         for (LONG index=1; index < MAX_SEMAPHORES; index++) {
-            for (LONG j=0; j < ARRAYSIZE(semlist[index].Processes); j++) {
-               if (semlist[index].Processes[j].ProcessID IS ProcessID) {
-                  fprintf(fd, "  Semaphore[%.4d]:  Access: %d,  Blocking: %d\n", index, semlist[index].Processes[j].AccessCount, semlist[index].Processes[j].BlockCount);
-                  break;
-               }
-            }
-         }
-
-         UNLOCK_SEMAPHORES();
-      }
-   }
-   #endif
+   else fprintf(fd, "  The action table is corrupt.\n");
 
    fprintf(fd, "\n");
 
@@ -1259,21 +1086,18 @@ void print_diagnosis(LONG ProcessID, LONG Signal)
 
    if (fd != stderr) {
       char buffer[4096];
-      LONG len;
 
       rewind(fd);
-      if ((len = fread(buffer, 1, sizeof(buffer)-1, fd)) > 0) {
+      if (auto len = fread(buffer, 1, sizeof(buffer)-1, fd); len > 0) {
          buffer[len] = 0;
          fflush(NULL);
          fsync(STDERR_FILENO);
-
          fprintf(stderr, "%s", buffer);
 
          // Copy process status to the output file
 
-         FILE *pf;
-         snprintf(filename, sizeof(filename), "/proc/%d/status", ProcessID);
-         if ((pf = fopen(filename, "r"))) {
+         snprintf(filename, sizeof(filename), "/proc/%d/status", glCurrentTask->ProcessID);
+         if (auto pf = fopen(filename, "r")) {
             if ((len = fread(buffer, 1, sizeof(buffer)-1, pf)) > 0) {
                buffer[len] = 0;
                fprintf(fd, "\n%s\n", buffer);
@@ -1293,7 +1117,7 @@ void print_diagnosis(LONG ProcessID, LONG Signal)
 static void DiagnosisHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
 {
    if (glLogLevel < 2) return;
-   print_diagnosis(glProcessID, 0);
+   print_diagnosis(0);
    fflush(NULL);
 }
 #endif
@@ -1321,7 +1145,7 @@ static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
    if (glCrashStatus IS 0) {
       if (((SignalNumber IS SIGQUIT) or (SignalNumber IS SIGHUP)))  {
          log.msg("Termination request - SIGQUIT or SIGHUP.");
-         SendMessage(glTaskMessageMID, MSGID_QUIT, 0, NULL, 0);
+         SendMessage(0, MSGID_QUIT, 0, NULL, 0);
          glCrashStatus = 1;
          return;
       }
@@ -1348,7 +1172,7 @@ static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
 
    glCrashStatus = 2;
 
-   print_diagnosis(glProcessID, SignalNumber);
+   print_diagnosis(SignalNumber);
 
    CloseCore();
    exit(255);
@@ -1469,7 +1293,7 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
 
    glCrashStatus = 2;
 
-   print_diagnosis(0,0);
+   print_diagnosis(0);
    fflush(NULL);
 
    CloseCore();
@@ -1520,7 +1344,7 @@ static void BreakHandler(void)
 
    glCrashStatus = 1;
 
-   print_diagnosis(0,0);
+   print_diagnosis(0);
    fflush(NULL);
 
    CloseCore();

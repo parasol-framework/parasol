@@ -1724,17 +1724,17 @@ if (!OpenDir(path, RDF_FILE|RDF_FOLDER, &amp;info)) {
     <name>SendMessage</name>
     <category>Messages</category>
     <comment>Send messages to message queues.</comment>
-    <prototype>ERROR SendMessage(MEMORYID Queue, LONG Type, LONG Flags, APTR Data, LONG Size)</prototype>
+    <prototype>ERROR SendMessage(OBJECTID Task, LONG Type, LONG Flags, APTR Data, LONG Size)</prototype>
     <input>
-      <param type="MEMORYID" name="Queue">The memory ID of the destination message queue.  If zero, the local message queue is targeted.</param>
-      <param type="LONG" name="Type">The message Type/ID being sent.  Unique type ID's can be obtained from <function module="Core">AllocateID</function>.</param>
+      <param type="OBJECTID" name="Task">ID of a task to target.  If zero, the local message queue is targeted.</param>
+      <param type="LONG" name="Type" lookup="MSGID">The message Type/ID being sent.  Unique type ID's can be obtained from <function module="Core">AllocateID</function>.</param>
       <param type="LONG" name="Flags" lookup="MSF">Optional flags.</param>
       <param type="APTR" name="Data">Pointer to the data that will be written to the queue.  Set to NULL if there is no data to write.</param>
       <param type="LONG" name="Size">The byte-size of the data being written to the message queue.</param>
     </input>
     <description>
-<p>The SendMessage() function is used to write messages to message queues. To write a message to a queue, you must know the memory ID of that queue and be able to provide this function with a message type ID that the queue's handler will understand.  If necessary, you can also attach data to the message if it has relevance to the message type.</p>
-<p>If the message queue is found to be full, or if the size of your message is larger than the total size of the queue, this function will immediately return with an <code>ERR_ArrayFull</code> error code.  If you are prepared to wait for the queue handler to process the waiting messages, specify <code>WAIT</code> in the Flags parameter.  There is a maximum time-out period of 10 seconds in case the task responsible for handling the queue is failing to process its messages.</p>
+<p>The SendMessage() function is used to send messages to message queues.  Messages must be associated with a Type identifier and this can help the receiver process any accompanying Data.  Some common message types are pre-defined, such as <code>MSGID_QUIT</code>.  Custom messages should use a unique type ID obtained from <function module="Core">AllocateID</function>.</p>
+<p>If the target message queue is full, or if the size of the message is larger than the total size of the queue, this function will immediately return with an <code>ERR_ArrayFull</code> error code.  If you are prepared to wait for the queue handler to process the waiting messages, specify <code>WAIT</code> in the Flags parameter.  There is a maximum time-out period of 10 seconds in case the task responsible for handling the queue is failing to process its messages.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -2430,7 +2430,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <param type="LONG" name="Size">The byte-size of the buffer that has been supplied.  It must not exceed the size of the message that is being updated.</param>
     </input>
     <description>
-<p>The UpdateMessage() function provides a facility for updating the content of existing messages on a queue.  You are required to know the ID of the message that you are going to update and will need to provide the new message Type and/or Data that is to be set against the message.</p>
+<p>The UpdateMessage() function provides a facility for updating the content of existing messages on a queue.  You are required to know the ID of the message that will be updated and need to provide the new message Type and/or Data to set against the message.</p>
 <p>Messages can be deleted from the queue by setting the Type to -1.  There is no need to provide buffer information when deleting a message.</p>
 <p>If you supply a data buffer, then its size should equal that of the data already set against the message.  The size will be trimmed if it exceeds that of the existing message, as this function cannot expand the size of the queue.</p>
     </description>
@@ -2495,26 +2495,8 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
     </input>
     <description>
 <p>This function waits for a period of time as specified by the Seconds and MicroSeconds arguments.  While waiting, your task will continue to process incoming messages in order to prevent the process' message queue from developing a back-log.</p>
-<p>WaitTime() can return earlier than the indicated timeout if a message handler returns ERR_Terminate, or if a <code>MSGID_QUIT</code> message is sent to the task's message queue.</p>
+<p>WaitTime() can return earlier than the indicated timeout if a message handler returns <code>ERR_Terminate</code>, or if a <code>MSGID_QUIT</code> message is sent to the task's message queue.</p>
     </description>
-  </function>
-
-  <function>
-    <name>WakeProcess</name>
-    <category>Messages</category>
-    <comment>Wake a sleeping process to check for queued activities.  For internal use only.</comment>
-    <prototype>ERROR WakeProcess(LONG ProcessID)</prototype>
-    <input>
-      <param type="LONG" name="ProcessID">Reference to a process identifier for the host platform.</param>
-    </input>
-    <description>
-<p>Intended for internal use only.  Forcibly waking a process is necessary for the processing of activities that do not follow typical IPC methodologies.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Search">A search routine in this function failed.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
   </function>
 
   <types>

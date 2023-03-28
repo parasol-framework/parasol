@@ -256,7 +256,7 @@ ERROR AccessSemaphore(LONG SemaphoreID, LONG Timeout, LONG Flags)
          if ((PreciseTime() / 1000LL) >= end_time) {
             lock.release();
             log.warning("Timeout occurred in attempting to access semaphore #%d.", SemaphoreID);
-            if (glLogLevel > 2) print_diagnosis(glProcessID, 0);
+            if (glLogLevel > 2) print_diagnosis(0);
             DeadSemaphoreProcesses(semaphore); // Check for dead processes
             return ERR_TimeOut;
          }

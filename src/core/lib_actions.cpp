@@ -762,7 +762,7 @@ ERROR QueueAction(LONG ActionID, OBJECTID ObjectID, APTR Args)
       }
    }
 
-   ERROR error = SendMessage(glTaskMessageMID, MSGID_ACTION, 0, &msg.Action, msgsize + sizeof(ActionMessage));
+   ERROR error = SendMessage(0, MSGID_ACTION, 0, &msg.Action, msgsize + sizeof(ActionMessage));
 
    if (error) {
       if (ActionID > 0) {

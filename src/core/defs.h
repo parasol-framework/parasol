@@ -167,6 +167,14 @@ enum {
 
 //********************************************************************************************************************
 
+struct CaseInsensitiveMap {
+   bool operator() (const std::string &lhs, const std::string &rhs) const {
+      return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
+   }
+};
+
+//********************************************************************************************************************
+
 struct ActionSubscription {
    OBJECTPTR Context;
    void (*Callback)(OBJECTPTR, ACTIONID, ERROR, APTR);
@@ -379,6 +387,7 @@ class extThread : public objThread {
 class extTask : public objTask {
    public:
    using create = pf::Create<extTask>;
+   std::map<std::string, std::string, CaseInsensitiveMap> Fields; // Variable field storage
    MEMORYID MessageMID;
    STRING   LaunchPath;
    STRING   Path;
@@ -387,7 +396,6 @@ class extTask : public objTask {
    CSTRING  *Parameters;      // Arguments (string array)
    char     Name[32];         // Name of the task, if specified (string)
    LONG     ParametersSize;   // Byte size of the arguments structure
-   STRING   Fields[100];      // Variable field storage
    BYTE     ReturnCodeSet;    // TRUE if the ReturnCode has been set
    FUNCTION ErrorCallback;
    FUNCTION OutputCallback;
@@ -412,6 +420,29 @@ class extTask : public objTask {
    #endif
    struct ActionEntry Actions[AC_END]; // Action routines to be intercepted by the program
 };
+
+//********************************************************************************************************************
+
+struct TaskRecord {
+   LARGE    CreationTime;  // Time at which the task slot was created
+   LONG     ProcessID;     // Core process ID
+   OBJECTID TaskID;        // Representative task object.
+   LONG     ReturnCode;    // Return code
+   bool     Returned;      // Process has finished (the ReturnCode is set)
+   #ifdef _WIN32
+      WINHANDLE Lock;      // The semaphore to signal when a message is sent to the task
+   #endif
+
+   TaskRecord(extTask *Task) {
+      ProcessID    = Task->ProcessID;
+      CreationTime = PreciseTime() / 1000LL;
+      TaskID       = Task->UID;
+      ReturnCode   = 0;
+      Returned     = false;
+   }
+};
+
+//********************************************************************************************************************
 
 class extModule : public objModule {
    public:
@@ -562,14 +593,6 @@ struct MemoryMessage {
 };
 
 //********************************************************************************************************************
-
-struct CaseInsensitiveMap {
-   bool operator() (const std::string &lhs, const std::string &rhs) const {
-      return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
-   }
-};
-
-//********************************************************************************************************************
 // Global data variables.
 
 extern extMetaClass glMetaClass;
@@ -584,7 +607,6 @@ extern UBYTE glTaskState;
 extern LARGE glTimeLog;
 extern struct RootModule     *glModuleList;    // Locked with TL_GENERIC.  Maintained as a linked-list; hashmap unsuitable.
 extern struct SharedControl  *glSharedControl; // Locked with PL_FORBID
-extern struct TaskList       *shTasks, *glTaskEntry; // Locked with PL_PROCESSES
 extern struct SemaphoreEntry *shSemaphores;    // Locked with PL_SEMAPHORES
 extern struct OpenInfo       *glOpenInfo;      // Read-only.  The OpenInfo structure initially passed to OpenCore()
 extern objTask *glCurrentTask;
@@ -600,6 +622,7 @@ extern std::unordered_map<CLASSID, extMetaClass *> glClassMap;
 extern std::unordered_map<ULONG, std::string> glFields; // Reverse lookup for converting field hashes back to their respective names.
 extern std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
 extern std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes; // VolumeName = { Key, Value }
+extern std::vector<TaskRecord> glTasks;
 extern const CSTRING glMessages[ERR_END+1];       // Read-only table of error messages.
 extern const LONG glTotalMessages;
 extern MEMORYID glTaskMessageMID;        // Read-only
@@ -625,6 +648,8 @@ extern objConfig *glDatatypes;
 extern objFile *glClassFile;
 extern CSTRING glIDL;
 extern struct BaseClass glDummyObject;
+extern TIMER glProcessJanitor;
+extern LONG glEventMask;
 
 extern CSTRING glClassBinPath;
 extern objMetaClass *glRootModuleClass;
@@ -713,7 +738,6 @@ struct TaskMessage {
 struct MessageHeader {
    LONG NextEntry;     // Byte offset for the next message to be stored
    WORD Count;         // Count of messages stored in the buffer
-   WORD TaskIndex;     // Process that owns this message queue (refers to an index in the Task array)
    LONG CompressReset; // Manages message queue compression
    BYTE Buffer[SIZE_MSGBUFFER + sizeof(struct TaskMessage)];
 };
@@ -894,28 +918,27 @@ EXPORT void Expunge(WORD);
 extern void add_archive(class extCompression *);
 extern void remove_archive(class extCompression *);
 
-void   print_diagnosis(LONG ProcessID, LONG Signal);
+void   print_diagnosis(LONG);
 CSTRING action_name(OBJECTPTR Object, LONG ActionID);
 APTR   build_jump_table(const struct Function *);
 ERROR  copy_args(const struct FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, CSTRING);
-ERROR  copy_field_to_buffer(OBJECTPTR Object, struct Field *Field, LONG DestFlags, APTR Result, CSTRING Option, LONG *TotalElements);
+ERROR  copy_field_to_buffer(OBJECTPTR, struct Field *, LONG, APTR, CSTRING, LONG *);
 ERROR  create_archive_volume(void);
 ERROR  delete_tree(STRING, LONG, FUNCTION *, struct FileFeedback *);
 struct ClassItem * find_class(CLASSID);
 ERROR  find_private_object_entry(OBJECTID, LONG *);
-void   fix_core_table(struct CoreBase *, FLOAT);
 void   free_events(void);
 void   free_module_entry(struct RootModule *);
 void   free_wakelocks(void);
 LONG   get_thread_id(void);
 void   init_metaclass(void);
-ERROR  init_sleep(LONG OtherProcessID, LONG GlobalThreadID, LONG ResourceID, LONG ResourceType, WORD *);
+ERROR  init_sleep(LONG, LONG, LONG, LONG, WORD *);
 void   local_free_args(APTR, const struct FunctionField *);
-struct Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Result);
-ERROR  msg_event(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize);
-ERROR  msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize);
-ERROR  msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize);
-void   optimise_write_field(struct Field *Field);
+struct Field * lookup_id(OBJECTPTR, ULONG, OBJECTPTR *);
+ERROR  msg_event(APTR, LONG, LONG, APTR, LONG);
+ERROR  msg_threadcallback(APTR, LONG, LONG, APTR, LONG);
+ERROR  msg_threadaction(APTR, LONG, LONG, APTR, LONG);
+void   optimise_write_field(struct Field *);
 void   PrepareSleep(void);
 ERROR  process_janitor(OBJECTID, LONG, LONG);
 void   remove_process_waitlocks(void);
@@ -926,17 +949,14 @@ ERROR  sort_class_fields(extMetaClass *, struct Field *);
 void   remove_threadpool(void);
 ERROR  threadpool_get(extThread **);
 void   threadpool_release(extThread *);
-void   wake_sleepers(LONG ResourceID, LONG ResourceType);
+void   wake_sleepers(LONG, LONG);
 ERROR  writeval_default(OBJECTPTR, struct Field *, LONG, const void *, LONG);
 ERROR  validate_process(LONG);
 void   free_iconv(void);
 ERROR  check_paths(CSTRING, LONG);
-void   merge_groups(ConfigGroups &Dest, ConfigGroups &Source);
+void   merge_groups(ConfigGroups &, ConfigGroups &);
 
 #define REF_WAKELOCK           get_threadlock()
-
-#define LOCK_PROCESS_TABLE(t)  SysLock(PL_PROCESSES,(t))
-#define UNLOCK_PROCESS_TABLE() SysUnlock(PL_PROCESSES)
 
 #define LOCK_SEMAPHORES(t)  SysLock(PL_SEMAPHORES,(t))
 #define UNLOCK_SEMAPHORES() SysUnlock(PL_SEMAPHORES)

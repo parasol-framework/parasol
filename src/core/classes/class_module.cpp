@@ -431,7 +431,6 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
          // Build a Core base for the module to use
          if (auto modkb = (struct CoreBase *)build_jump_table(glFunctions)) {
             master->CoreBase = modkb;
-            fix_core_table(modkb, table->CoreVersion);
 
             log.traceBranch("Initialising the module.");
             error = master->Init(Self, modkb);

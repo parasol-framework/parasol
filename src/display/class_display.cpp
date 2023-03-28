@@ -513,8 +513,6 @@ static ERROR DISPLAY_Free(extDisplay *Self, APTR Void)
    glActiveDisplayID = 0;
 #endif
 
-   UnsubscribeEvent(Self->UserLoginHandle);
-
    acHide(Self);  // Hide the display.  In OpenGL this will remove the display resources.
 
    // Free the display's bitmap buffer
