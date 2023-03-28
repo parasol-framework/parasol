@@ -1495,6 +1495,7 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
 #elif __unix__
 
          char buffer[256], procfile[50];
+         LONG i;
 
          // This method of path retrieval only works on Linux (most types of Unix don't provide any support for this).
 
