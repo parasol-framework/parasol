@@ -1031,16 +1031,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
       Self->ProcessID = pid; // Record the native process ID
 
-      // Preallocate a task slot for the newly running task.  This allows us to communicate a few things to the new
-      // task, such as who the parent is and where data should be output to.
-
-      for (i=0; (i < MAX_TASKS) and (shTasks[i].ProcessID); i++);
-
-      if (i < MAX_TASKS) {
-         shTasks[i].ProcessID    = pid;
-         shTasks[i].ParentID     = glCurrentTask->UID;
-         shTasks[i].CreationTime = PreciseTime() / 1000LL;
-      }
+      glTasks.emplace_back(Self);
 
       if (in_fd != -1) {
          RegisterFD(in_fd, RFD_READ, &task_stdout, Self);

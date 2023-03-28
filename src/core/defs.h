@@ -213,19 +213,6 @@ extern const virtual_drive glFSDefault;
 extern std::unordered_map<ULONG, virtual_drive> glVirtual;
 
 //********************************************************************************************************************
-
-struct TaskRecord {
-   LARGE    CreationTime;  // Time at which the task slot was created
-   LONG     ProcessID;     // Core process ID
-   OBJECTID TaskID;        // Task ID for this array entry.
-   LONG     ReturnCode;    // Return code
-   bool     Returned;      // Process has finished (the ReturnCode is set)
-   #ifdef _WIN32
-      WINHANDLE Lock;      // The semaphore to signal when a message is sent to the task
-   #endif
-};
-
-//********************************************************************************************************************
 // Resource definitions.
 
 #define MEMHEADER 12    // 8 bytes at start for MEMH and MemoryID, 4 at end for MEMT
@@ -433,6 +420,29 @@ class extTask : public objTask {
    #endif
    struct ActionEntry Actions[AC_END]; // Action routines to be intercepted by the program
 };
+
+//********************************************************************************************************************
+
+struct TaskRecord {
+   LARGE    CreationTime;  // Time at which the task slot was created
+   LONG     ProcessID;     // Core process ID
+   OBJECTID TaskID;        // Representative task object.
+   LONG     ReturnCode;    // Return code
+   bool     Returned;      // Process has finished (the ReturnCode is set)
+   #ifdef _WIN32
+      WINHANDLE Lock;      // The semaphore to signal when a message is sent to the task
+   #endif
+
+   TaskRecord(extTask *Task) {
+      ProcessID    = Task->ProcessID;
+      CreationTime = PreciseTime() / 1000LL;
+      TaskID       = Task->UID;
+      ReturnCode   = 0;
+      Returned     = false;
+   }
+};
+
+//********************************************************************************************************************
 
 class extModule : public objModule {
    public:
