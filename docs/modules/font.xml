@@ -1,0 +1,231 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="module.xsl"?>
+
+<book>
+  <info>
+    <name>Font</name>
+    <type>module</type>
+    <version>1</version>
+    <copyright>Paul Manias © 1998-2020</copyright>
+    <classes>
+      <class>Font</class>
+    </classes>
+  </info>
+
+  <function>
+    <name>CharWidth</name>
+    <comment>Returns the width of a character.</comment>
+    <prototype>LONG fntCharWidth(struct rkFont * Font, ULONG Char, ULONG KChar, LONG * Kerning)</prototype>
+    <input>
+      <param type="struct rkFont *" name="Font">The font to use for calculating the character width.</param>
+      <param type="ULONG" name="Char">A unicode character.</param>
+      <param type="ULONG" name="KChar">A unicode character to use for calculating the font kerning (optional).</param>
+      <param type="LONG *" name="Kerning">The resulting kerning value (optional).</param>
+    </input>
+    <description>
+<p>This function will return the pixel width of a font character.  The character is specified as a unicode value in the Char parameter. Kerning values can also be returned, which affect the position of the character along the horizontal. The previous character in the word is set in KChar and the kerning value will be returned in the Kerning parameter.  If kerning information is not required, set the KChar and Kerning parameters to zero.</p>
+    </description>
+    <result type="LONG">The pixel width of the character will be returned.</result>
+  </function>
+
+  <function>
+    <name>ConvertCoords</name>
+    <comment>Converts pixel coordinates into equivalent column and row positions in font strings.</comment>
+    <prototype>ERROR fntConvertCoords(struct rkFont * Font, CSTRING String, LONG X, LONG Y, LONG * Column, LONG * Row, LONG * ByteColumn, LONG * BytePos, LONG * CharX)</prototype>
+    <input>
+      <param type="struct rkFont *" name="Font">An initialised font object.</param>
+      <param type="CSTRING" name="String">Must point to the string that you will be inspecting, or NULL if you want to inspect the string currently in the font's String field.</param>
+      <param type="LONG" name="X">The horizontal coordinate that you want to translate into a column position.</param>
+      <param type="LONG" name="Y">The vertical coordinate that you want to translate into a row position.</param>
+      <param type="LONG *" name="Column">This result parameter will be updated to reflect the calculated character position, with consideration to the UTF-8 standard.  May be NULL if not required.</param>
+      <param type="LONG *" name="Row">This result parameter will be updated to reflect the calculated row position.  May be NULL if not required.</param>
+      <param type="LONG *" name="ByteColumn">This result parameter will be updated to reflect the absolute column byte position within the given row.  May be NULL if not required.</param>
+      <param type="LONG *" name="BytePos">This result parameter will be updated to reflect the absolute byte position with the font String.  May be NULL if not required.</param>
+      <param type="LONG *" name="CharX">This result parameter will be reflect the X coordinate of the character to which the (X, Y) coordinates are resolved.  May be NULL if not required.</param>
+    </input>
+    <description>
+<p>This function is used to convert pixel coordinates within a font String into the equivalent Row and Column character positions.  If the coordinate values that you supply are in excess of the String dimensions, the Column and Row results will be automatically restricted to their maximum value.  For instance, if the Y argument is set to 280 and the String consists of 15 rows amounting to 150 pixels in height, the Row value will be returned as 15.</p>
+<p>Negative coordinate values are not permitted.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="FieldNotSet">A vital field has not been set in this object.</error>
+      <error code="Args">Invalid arguments passed to function.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>FreetypeHandle</name>
+    <comment>Returns a handle to the FreeType library.</comment>
+    <prototype>APTR fntFreetypeHandle()</prototype>
+    <description>
+<p>This function returns a direct handle to the internal FreeType library.  It is intended that this handle should only be used by existing projects that are based on FreeType and need access to its functionality.  References to FreeType functions can be obtained by loading the Font module and then calling the ResolveSymbol method to retrieve function names, e.g. "FT_Open_Face".</p>
+    </description>
+    <result type="APTR">A handle to the FreeType library will be returned.</result>
+  </function>
+
+  <function>
+    <name>GetList</name>
+    <comment>Returns a list of all available system fonts.</comment>
+    <prototype>ERROR fntGetList(struct FontList ** Result)</prototype>
+    <input>
+      <param type="struct FontList **" name="Result">The font list is returned here.</param>
+    </input>
+    <description>
+<p>This function returns a linked list of all available system fonts.</p>
+    </description>
+    <result type="ERROR">
+      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>InstallFont</name>
+    <comment>Installs a new font.</comment>
+    <prototype>ERROR fntInstallFont(CSTRING Files)</prototype>
+    <input>
+      <param type="CSTRING" name="Files">A list of the font files that are to be installed must be specified here.  If there is more than one data file, separate each file name with a semi-colon.</param>
+    </input>
+    <description>
+<p>The InstallFont() function is used to install new fonts on a system running Parasol.  While it is possible for users to download new font files and install them by hand, this is a process that is too difficult for novices and is open to mistakes on the part of the user.  By using a program that uses the InstallFont() function, the installation process can take place automatically.</p>
+<p>To install a new font, you only need to know the location of the font file(s).  The rest of the information about the font will be derived after an analysis of the data.</p>
+<p>Once this function is called, the data files will be copied into the correct sub-directory and the font registration files will be updated to reflect the presence of the new font.  The font will be available immediately thereafter, so there is no need to reset the system to acknowledge the presence of the font.</p>
+    </description>
+    <result type="ERROR">
+      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="NoSupport">This request is not supported.</error>
+      <error code="ExclusiveDenied">An attempt to gain exclusive access to a shared object failed.</error>
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>RemoveFont</name>
+    <comment>Removes an installed font from the system.</comment>
+    <prototype>ERROR fntRemoveFont(CSTRING Name)</prototype>
+    <input>
+      <param type="CSTRING" name="Name">The name of the font face (family name) that is to be removed.</param>
+    </input>
+    <description>
+<p>RemoveFont() will remove any font that is installed in the system.  Once a font has been removed, the data is permanently destroyed and it cannot be recovered.  To remove a font, you are required to specify its family name only. All associated styles for that font will be deleted.</p>
+<p>This function may fail if attempting to remove a font that is currently in use.</p>
+    </description>
+    <result type="ERROR">
+      <error code="DeleteFile">Deletion of a folder or file failed (e.g. permissions, read-only media).</error>
+      <error code="Okay">Operation successful.</error>
+      <error code="Args">Invalid arguments passed to function.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>SelectFont</name>
+    <comment>Searches for a 'best fitting' font file based on select criteria.</comment>
+    <prototype>ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, CSTRING * Path)</prototype>
+    <input>
+      <param type="CSTRING" name="Name">The name of a font face, or multiple faces in CSV format.  Using camel-case for each word is compulsory.</param>
+      <param type="CSTRING" name="Style">The required style, e.g. Bold or Italic.  Using camel-case for each word is compulsory.</param>
+      <param type="LONG" name="Point">Preferred point size.</param>
+      <param type="LONG" name="Flags" lookup="FTF">Optional flags.</param>
+      <param type="CSTRING *" name="Path">The location of the best-matching font file is returned in this parameter.</param>
+    </input>
+    <description>
+<p>This function searches for the closest matching font based on the details provided by the client.  The details that can be searched for include the name, point size and style of the desired font.</p>
+<p>It is possible to list multiple faces in order of their preference in the Name parameter.  For instance "Sans Serif,Source Sans,*" will give preference to 'Sans Serif' and will look for 'Source Sans' if the first choice font is unavailable.  The use of the '*' wildcard indicates that the default system font should be used in the event that neither of the other choices are available.  Note that omitting this wildcard will raise the likelihood of ERR_Search being returned in the event that neither of the preferred choices are available.</p>
+<p>Flags that alter the search behaviour are FTF_PREFER_SCALED, FTF_PREFER_FIXED and FTF_ALLOW_SCALE.</p>
+    </description>
+    <result type="ERROR">
+      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="Search">A search routine in this function failed.</error>
+      <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>SetDefaultSize</name>
+    <comment>Sets the default font size for the application.</comment>
+    <prototype>DOUBLE fntSetDefaultSize(DOUBLE Size)</prototype>
+    <input>
+      <param type="DOUBLE" name="Size">The new default point size.</param>
+    </input>
+    <description>
+<p>This function is used to set the default font size for the application.  This will affect fonts that you create with proportional sizes (e.g. a point size of 150% and a default point of 10 would result in a 15 point font).  Also, Font objects with no preset size will be set to the default size.</p>
+<p>Please note that the default size is defined by the global style value on the xpath "/interface/@fontsize".  This can also be overridden by the user's style preference.  For this reason, we recommend against your application using SetDefaultSize() unless your interface design makes it a necessity (e.g. the user may have poor eyesight, so restricting the font size may have usability implications).</p>
+    </description>
+    <result type="DOUBLE">The previous font size is returned.</result>
+  </function>
+
+  <function>
+    <name>StringSize</name>
+    <comment>Calculates the exact dimensions of a font string, giving respect to word wrapping.</comment>
+    <prototype>void fntStringSize(struct rkFont * Font, CSTRING String, LONG Chars, LONG Wrap, LONG * Width, LONG * Rows)</prototype>
+    <input>
+      <param type="struct rkFont *" name="Font">An initialised font object.</param>
+      <param type="CSTRING" name="String">The string to be analysed.</param>
+      <param type="LONG" name="Chars" lookup="FSS">The number of characters (not bytes, so consider UTF-8 formatting) to be used in calculating the string length.  FSS constants can also be used here.</param>
+      <param type="LONG" name="Wrap">The pixel position at which word wrapping occurs.  If zero or less, wordwrap is disabled.</param>
+      <param type="LONG *" name="Width">The width of the longest line will be returned in this parameter.</param>
+      <param type="LONG *" name="Rows">The number of calculated rows will be returned in this parameter.</param>
+    </input>
+    <description>
+<p>This function calculates the width and height of a String (in pixels and rows respectively).  It takes into account the font object's current settings and accepts a boundary in the Wrap argument for calculating word wrapping.  The routine takes into account any line feeds that may already exist in the String.</p>
+<p>A character limit can be specified in the Chars argument.  If this argument is set to FSS_ALL, all characters in String will be used in the calculation.  If set to FSS_LINE, the routine will terminate when the first line feed or word-wrap is encountered and the Rows value will reflect the byte position of the word at which the wrapping boundary was encountered.</p>
+    </description>
+  </function>
+
+  <function>
+    <name>StringWidth</name>
+    <comment>Returns the pixel width of any given string in relation to a font's settings.</comment>
+    <prototype>LONG fntStringWidth(struct rkFont * Font, CSTRING String, LONG Chars)</prototype>
+    <input>
+      <param type="struct rkFont *" name="Font">An initialised font object.</param>
+      <param type="CSTRING" name="String">The string to be calculated.</param>
+      <param type="LONG" name="Chars">The number of characters (not bytes, so consider UTF-8 formatting) to be used in calculating the string length, or -1 if you want the entire string to be used.</param>
+    </input>
+    <description>
+<p>This function calculates the pixel width of any string in relation to a font's object definition.  The routine takes into account any line feeds that might be specified in the String, so if the String contains 8 lines, then the width of the longest line will be returned.</p>
+<p>Word wrapping will not be taken into account, even if it has been enabled in the font object.</p>
+    </description>
+    <result type="LONG">The pixel width of the string is returned - this will be zero if there was an error or the string is empty.</result>
+  </function>
+
+  <types>
+    <constants lookup="FTF" comment="Font flags">
+      <const name="SCALABLE">This is set if the font is scalable, otherwise assume fixed.</const>
+      <const name="BOLD">Font is described as having a bold weight (read only).</const>
+      <const name="ANTIALIAS">Smooth the edges of scalable fonts.</const>
+      <const name="ITALIC">Font is described as using italics (read only).</const>
+      <const name="ALLOW_SCALE">Allows switching to a suitable scalable font if a fixed point size is unavailable.  Equivalent to ending a font face with the '*' wildcard.</const>
+      <const name="KERNING">The loaded font is embedded with kerning information (read only).</const>
+      <const name="BASE_LINE">The Font's Y coordinate is the base line.</const>
+      <const name="CHAR_CLIP">Clip words by adding dots to the end of the string.</const>
+      <const name="HEAVY_LINE">Underline the font with a double-sized line, using the colour defined in UnderlineRGB.</const>
+      <const name="QUICK_ALIAS">Quick anti-aliasing is useful for games and can be enabled if the background is black.</const>
+      <const name="SMOOTH">Smooth the edges of scalable fonts.</const>
+      <const name="REQUIRE_FIXED">A fixed size font is required and not a scalable font.</const>
+      <const name="PREFER_FIXED">A fixed size font (monochrome, no transforms) is preferred to the equivalent scalable font.</const>
+      <const name="PREFER_SCALED">A scaled font is preferred over the equivalent fixed size font.</const>
+      <const name="REQUIRE_SCALED">A scaled font is required and not a fixed size font.</const>
+    </constants>
+
+    <constants lookup="FSS" comment="Options for the StringSize() function.">
+      <const name="LINE">Terminate operation at the first line feed or word-wrap.</const>
+      <const name="ALL">Process all characters.</const>
+    </constants>
+
+  </types>
+  <structs>
+    <struct name="FontList" comment="For GetList(), describes a system font.">
+      <field name="Next" type="struct FontList *">Pointer to the next entry in the list.</field>
+      <field name="Name" type="STRING">The name of the font face.</field>
+      <field name="Points" type="UBYTE *" size="0">Pointer to an array of fixed point sizes supported by the font.</field>
+      <field name="Styles" type="STRING">Supported styles are listed here in CSV format.</field>
+      <field name="Scalable" type="BYTE">TRUE if the font is scalable.</field>
+      <field name="Reserved1" type="BYTE">Do not use.</field>
+      <field name="Reserved2" type="WORD">Do not use.</field>
+    </struct>
+
+  </structs>
+</book>

@@ -1,0 +1,502 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>Input</name>
+    <type>class</type>
+    <module>Widget</module>
+    <comment>The Input class manages the display and interactivity of user input boxes.</comment>
+    <version>1</version>
+    <id>0fa94ab5</id>
+    <idstring>ID_INPUT</idstring>
+    <category>GUI</category>
+    <include>modules/input.h</include>
+    <copyright>Paul Manias 2003-2020</copyright>
+    <description>
+<p>The Input class simplifies the creation and management of input boxes as part of the user interface.  New input areas can be created by specifying as little as the graphical dimensions for the box area.  The Input class allows for the specifics of the graphics to be altered, such as the colours and the font used.</p>
+<p>It is likely that when when the user clicks or tabs away from the input box, you will need it to perform an action. Set the <field>Feedback</field> field in order to receive this notification and respond with your own custom functionality.</p></description>
+    <source>
+      <file>class_input.cpp</file>
+    </source>
+  </info>
+
+  <actions>
+    <action>
+      <name>Disable</name>
+      <comment>Turns the input box off.</comment>
+    </action>
+
+    <action>
+      <name>Enable</name>
+      <comment>Turns the input box back on if it has previously been disabled.</comment>
+    </action>
+
+    <action>
+      <name>Focus</name>
+      <comment>Sets the focus on the input box.</comment>
+    </action>
+
+    <action>
+      <name>Hide</name>
+      <comment>Removes the input box from the display.</comment>
+    </action>
+
+    <action>
+      <name>MoveToBack</name>
+      <comment>Moves the input box to the back of the display area.</comment>
+    </action>
+
+    <action>
+      <name>MoveToFront</name>
+      <comment>Moves the input box to the front of the display area.</comment>
+    </action>
+
+    <action>
+      <name>Redimension</name>
+      <comment>Changes the size and position of the input box.</comment>
+    </action>
+
+    <action>
+      <name>Resize</name>
+      <comment>Alters the size of the input box.</comment>
+    </action>
+
+    <action>
+      <name>Show</name>
+      <comment>Puts the input box on display.</comment>
+    </action>
+
+  </actions>
+
+  <fields>
+    <field>
+      <name>Bottom</name>
+      <comment>The bottom coordinate of the input box (Y + Height).</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>Disable</name>
+      <comment>If TRUE, the input box is disabled.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>The Disable field can be used to disable the input box in advance of being initialised, by setting the field value to TRUE.  It can also be read at any time to determine the current interactive state of the input box.</p>
+<p>Post-initialisation, it is recommended that only the <action>Disable</action> and <action>Enable</action> actions are used to change the interactive state of the input box.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Feedback</name>
+      <comment>Provides instant feedback when a user interacts with the object.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>FUNCTION</type>
+      <description>
+<p>Set the Feedback field with a callback function that will receive instant feedback when user interaction occurs.  The function prototype is <code>Function(*Input, STRING Value, LONG Activated)</code></p>
+<p>The Activated parameter is a boolean value that will be set to TRUE if the user has affirmed the input by pressing the enter key or its equivalent.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Flags</name>
+      <comment>Optional flags can be defined here.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="INF">INT</type>
+      <description>
+<types lookup="INF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Height</name>
+      <comment>Defines the height of an input box.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>An input box can be given a fixed or relative height by setting this field to the desired value.  To set a relative height, use the FD_PERCENT flag when setting the field.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>InputWidth</name>
+      <comment>The width of the input area.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+      <description>
+<p>A fixed width for the input area can be defined in this field (note that this does not include the width of the label, which is handled separately by <field>LabelWidth</field>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Label</name>
+      <comment>The label is a string displayed to the left of the input area.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>A label can be drawn next to the input area by setting the Label field.  The label should be a short, descriptive string of one or two words.  It is common practice for the label to be followed with a colon character.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>LabelWidth</name>
+      <comment>The width of the input label.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>If a label has been set for an input box, its width may be read and adjusted at any time via the LabelWidth field.  The input area will be arranged so that it immediately follows the width defined for the text label.  If you define a width that is too short for the text that is to be printed in the label, the text will be trimmed to fit the defined area.</p>
+<p>If you specify a label without setting the label width, the correct width will be automatically calculated for you on initialisation.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>PostLabel</name>
+      <comment>The post-label is a string displayed to the right of the input area.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>A label can be drawn after the input area by setting the PostLabel field.  The PostLabel is commonly linked with the Label field for constructing sentences around the input box, for example "Disable account after X days." where X represents the input box, we would set a PostLabel string of "days.".</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Region</name>
+      <comment>The surface that represents the input box is referenced through this field.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>OBJECTID</type>
+      <description>
+<p>The surface area that represents the input display can be accessed through this field.  For further information, refer to the <class name="Surface">Surface</class> class.  Note that interfacing with the surface directly can have adverse effects on the input control system.  Where possible, all communication should be limited to the input object itself.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Right</name>
+      <comment>The right-most coordinate of the input box (X + Width).</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>String</name>
+      <comment>The string that is to be printed inside the input box is declared here.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>The string that you would like to be displayed in the input box is specified in this field.  The string must be in UTF-8 format and may not contain line feeds.  The client can read this field at any time to determine what the user has entered in the input box.</p>
+<p>If the string is changed after initialisation, the input box will be redrawn to show the updated text.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Surface</name>
+      <comment>The surface that will contain the input graphic.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>OBJECTID</type>
+      <description>
+<p>The surface that will contain the input graphic is set here.  If this field is not set prior to initialisation, the input will attempt to scan for the correct surface by analysing its parents until it finds a suitable candidate.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>TabFocus</name>
+      <comment>Setting this field to a valid TabFocus object will cause the input to add itself to the tab list.</comment>
+      <access write="S">Set</access>
+      <type>OBJECTID</type>
+      <description>
+<p>The TabFocus field provides a convenient way of adding the input to a TabFocus object, so that it can be focussed on via the tab key.  Simply set this field to the ID of the TabFocus object that is managing the tab-list for the application window.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>TextInput</name>
+      <comment>Refers to a Text object that handles the text inside the input area.</comment>
+      <access read="R">Read</access>
+      <type class="Text">*Text</type>
+      <description>
+<p>This field refers to a <class name="Text">Text</class> object that handles the text inside the input area.  Please exercise caution if interacting with this object directly, as doing so may interfere with the expected behaviour of the input class.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Width</name>
+      <comment>Defines the width of an input box.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>An input box can be given a fixed or relative width by setting this field to the desired value.  To set a relative width, use the FD_PERCENT flag when setting the field.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>X</name>
+      <comment>The horizontal position of an input box.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The horizontal position of an input box can be set to an absolute or relative coordinate by writing a value to the X field.  To set a relative/percentage based value, you must use the FD_PERCENT flag or the value will be interpreted as fixed.  Negative values are permitted.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>XOffset</name>
+      <comment>The horizontal offset of an input box.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The XOffset has a dual purpose depending on whether or not it is set in conjunction with an X coordinate or a Width based field.</p>
+<p>If set in conjunction with an X coordinate then the input will be drawn from that X coordinate up to the width of the container, minus the value given in the XOffset.  This means that the width of the widget is dynamically calculated in relation to the width of the container.</p>
+<p>If the XOffset field is set in conjunction with a fixed or relative width then the input will be drawn at an X coordinate calculated from the formula <code>X = ContainerWidth - InputWidth - XOffset</code>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Y</name>
+      <comment>The vertical position of an input box.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The vertical position of an input box can be set to an absolute or relative coordinate by writing a value to the Y field.  To set a relative/percentage based value, you must use the FD_PERCENT flag or the value will be interpreted as fixed.  Negative values are permitted.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>YOffset</name>
+      <comment>The vertical offset of an input box.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The YOffset has a dual purpose depending on whether or not it is set in conjunction with a Y coordinate or a Height based field.</p>
+<p>If set in conjunction with a Y coordinate then the input will be drawn from that Y coordinate up to the height of the container, minus the value given in the YOffset.  This means that the height of the widget is dynamically calculated in relation to the height of the container.</p>
+<p>If the YOffset field is set in conjunction with a fixed or relative height then the input will be drawn at a Y coordinate calculated from the formula <code>Y = ContainerHeight - InputHeight - YOffset</code>.</p>
+      </description>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="VWF" comment="View flags.">
+      <const name="WIDTH_RESET">Always reset column widths when the Columns field is set.</const>
+      <const name="NO_SORTING">No user sorting, e.g. in column mode.</const>
+      <const name="SENSITIVE">Sensitive mode will activate child objects when the user single-clicks with the mouse (by default, child activation only occurs with double-clicks).</const>
+      <const name="NO_ICONS">Do not load or show any icons.</const>
+      <const name="NOTIFY_ON_CLEAR">If the view should activate itself when cleared, set this flag. By default, activation normally only occurs when an item is double-clicked or when sensitive mode is enabled.</const>
+      <const name="DRAG_DROP">Enables drag and drop for items in the view. In this mode, multi-select is only possible if the shift or ctrl keys are held while using the mouse.</const>
+      <const name="NO_SELECT">Stop the user from selecting items.</const>
+      <const name="NO_SELECT_JMP">When a new item is selected, the view will jump to that item if it is not completely visible to the user. Setting this flag will turn off this behaviour.</const>
+      <const name="USER_DRAG">Enable drag and drop only if the user prefers it.</const>
+      <const name="AUTO_DESELECT">Deselects a highlighted item when it is activated by mouse click or enter key.</const>
+      <const name="MULTI_SELECT">Allow multiple item selections without having to hold the shift key.</const>
+    </constants>
+
+    <constants lookup="MIF" comment="Flags for MenuItems.">
+      <const name="SELECTED">The menu item has been selected (checked).</const>
+      <const name="EXTENSION">Menu item is an extension.</const>
+      <const name="NO_KEY_RESPONSE">Display the key, but do not respond to its equivalent key press.</const>
+      <const name="SORT">Sort all content under the menuitem (applies only to extensions).</const>
+      <const name="TOGGLE">Enables toggled menu items (checking state of on and off).</const>
+      <const name="OPTION">Item is a clickable option (clicking the item's icon will turn the option on/off).</const>
+      <const name="DISABLED">Set if the menu item is disabled (ghosted).</const>
+      <const name="CATEGORISE">Categorise the attached config file.</const>
+      <const name="BREAK">Menu item is acting as a break.</const>
+      <const name="KEY_REPEAT">Respond to repeated key presses.</const>
+    </constants>
+
+    <constants lookup="INF" comment="Flags for the Input class.">
+      <const name="SECRET">Used for secret user entry (passwords).</const>
+      <const name="SELECT_TEXT">Select all text when the input box is shown for the first time.</const>
+      <const name="DISABLED">Disable on creation.</const>
+      <const name="HIDE">Hide on creation, or input is currently hidden.</const>
+      <const name="ENTER_TAB">Press enter results in a virtual tab-keypress being sent.</const>
+      <const name="COMMANDLINE">Function as a command-line.  Typically used when the input box needs to remain persistent and is linked to an output system, such as a shell.</const>
+    </constants>
+
+    <constants lookup="BTF" comment="Button flags.">
+      <const name="DISABLED">Disable on creation, or button is currently disabled.  Read-only.</const>
+      <const name="HIDE">Hide on creation, or button is currently hidden.</const>
+      <const name="PULSE">Send repeated clicks when the mouse button is held down.</const>
+      <const name="NO_GFX">Turns off the button's foreground graphics (text and images).</const>
+    </constants>
+
+    <constants lookup="CBF" comment="CheckBox flags.">
+      <const name="DISABLED">Disable on creation, or object is currently disabled.</const>
+      <const name="HIDE">Hide on creation, or object is currently hidden.</const>
+    </constants>
+
+    <constants lookup="IMF" comment="Image flags">
+      <const name="NO_DRAW">Stops automatic drawing of the target surface if the image is being animated or a special effect is active.</const>
+      <const name="FIXED">Synonym for FIXED_SIZE</const>
+      <const name="ENLARGE">If the dimensions of the original picture are smaller than the destination surface, the image will be stretched to fit.  Enlargement is dynamic, so if the surface changes in size then the size of the picture will be recalculated to fit.</const>
+      <const name="NO_FAIL">If the source image file does not exist or an error occurs during loading, the image object will still pass the initialisation process successfully.  When the image object is drawn, it will clear the target surface to the colour specified in the Background field.</const>
+      <const name="SHRINK">If the dimensions of the original picture are larger than the destination surface, the image will be stretched to fit.  Shrinking is dynamic, so if the surface changes in size then the size of the picture will be recalculated to fit.</const>
+      <const name="SOLID_BLEND">Synonym for NO_BLEND</const>
+      <const name="FIT">This flag applies to image resizing.  When set, the calculated width and height will be limited so that the image cannot be stretched beyond the edges of the target surface.  This flag is commonly set in conjunction with the 11RATIO flag.</const>
+      <const name="NO_BLEND">Turns off alpha-blending if the target surface has the COMPOSITE flag set and the source image has an alpha channel.</const>
+      <const name="FIXED_SIZE">Image data will normally be stored at its original size and resized on the fly when the STRETCH flag is used.  Setting the FIXED_SIZE flag will pre-scale the image and permanently store it at that size.</const>
+      <const name="STRETCH">This flag conveniently combines the ENLARGE and SHRINK flags to ensure that the image always covers the dimensions of the destination surface.</const>
+      <const name="SCALABLE">The image source is scalable (e.g. vector graphic).</const>
+      <const name="STICKY">All calls to Move and MoveToPoint are ignored if this flag is set.</const>
+      <const name="11_RATIO">When resizing the image, the calculated width and height will always be in correct proportion relative to the source image's original width and height.</const>
+    </constants>
+
+    <constants lookup="CMF" comment="ComboBox flags.">
+      <const name="AUTO_COMPLETE">When in edit mode, this option helps the user by auto-completing text.</const>
+      <const name="EDIT">Enable edit mode, which allows the user to write free-text in the combobox.</const>
+      <const name="SHOW_ICONS">Show icons in the dropdown list.</const>
+      <const name="DISABLED">Disable on creation; or combobox is currently disabled.</const>
+      <const name="HIDE">Hide on creation, or combobox is currently hidden.</const>
+      <const name="LIMIT_TO_LIST">When in edit mode, limit-to-list prevents the user from entering text that isn't in the combobox list.</const>
+      <const name="NO_TRANSLATION">Do not translate combobox strings or the drop-down menu to the user's native language.</const>
+    </constants>
+
+    <constants lookup="CLIPTYPE" comment="Clipboard types">
+      <const name="DATA">Raw information that is uncategorised can be defined as a data clip.</const>
+      <const name="FILE">Pure file references are stored as file clips.  This type is typically used by file managers for moving and copying files.</const>
+      <const name="TEXT">Plain text files such as ASCII and UTF-8 must be identified through this clip type.</const>
+      <const name="AUDIO">An audio clip that is recognised by the Sound class (such as wav's and mp3's).</const>
+      <const name="IMAGE">Images that are recognised by the Picture class may be stored as this type (such as jpeg's and png files).</const>
+      <const name="OBJECT">An object that has been deserialised into binary form.</const>
+    </constants>
+
+    <constants lookup="SD" comment="Scroll directions.">
+      <const name="NEGATIVE"/>
+      <const name="POSITIVE"/>
+    </constants>
+
+    <constants lookup="TXF" comment="Flags for the Text class.">
+      <const name="SECRET">Hide the string characters for secret text entry (e.g. passwords).</const>
+      <const name="PRESERVE_BKGD">Preserve-background disables fast scrolling for background preservation.</const>
+      <const name="AREA_SELECTED">This read-only flag is set automatically when the user has selected an area of text.</const>
+      <const name="GLOBAL_EDITING">Keeps the text object in edit mode regardless of user focus.</const>
+      <const name="SINGLE_SELECT">Enables text selection (with or without edit mode).  If in line mode, a single click will allow the user to highlight any line.</const>
+      <const name="DISABLED">This read-only flag is set if the object has been disabled through the Disable action.</const>
+      <const name="OVERWRITE">Turns on overwrite mode (if off, insert mode is enabled).</const>
+      <const name="SELECT">Synonym for MULTI_SELECT | SINGLE_SELECT</const>
+      <const name="ENTER_TAB">Convert enter-key presses to the tab-key.</const>
+      <const name="FORCE_CAPS">This flag forces the capitalisation of all text that is entered into the object.</const>
+      <const name="AUTO_CLEAR">Clears the text string when the enter key is pressed.</const>
+      <const name="EDIT">This flag must be enabled if the user is permitted to change the text string with the keyboard.</const>
+      <const name="STRETCH">If the font is scalable, the text string will be resized to fit inside the surface that contains it (i.e. no characters will be clipped).  This is acheived by recalculating the font's point size.</const>
+      <const name="WORDWRAP">Enables word wrapping.</const>
+      <const name="AUTO_SELECT">Automatically select all text if the text object receives the focus.</const>
+      <const name="TAB_KEY">If the tab key is pressed, print the tab character.</const>
+      <const name="PASSWORD">Hide the string characters for secret text entry (e.g. passwords).</const>
+      <const name="MULTI_SELECT">Allow the user to select/highlight multiple lines by holding the Ctrl key.</const>
+      <const name="VARIABLE">This flag forces a text object to recalculate any variable references in its string data whenever a redraw occurs.  Such references are indicated through square brackets, e.g. [desktop.width].  Refer to the StrEvaluate() function in the Strings module for more information.</const>
+      <const name="STR_TRANSLATE">Translate strings to the user's native language.</const>
+      <const name="HISTORY">Enables historical browsing when the up/down cursor keys are used.  The number of historical lines stored can be set in the HistorySize field.</const>
+      <const name="NO_SYS_KEYS">This flag is set by default to enable system key support.  System-keys provide support for common key combinations such as Ctrl-C, Ctrl-X etc.</const>
+      <const name="BACKGROUND">Enables a colour background behind the text.</const>
+      <const name="TAB_ENTRY">Pressing the tab key is treated the same as pressing enter.</const>
+      <const name="COMMANDLINE">Synonym for AUTO_CLEAR | EDIT | HISTORY</const>
+    </constants>
+
+    <constants lookup="SBF" comment="Scrollbar flags.">
+      <const name="CONSTANT">Ensures that the scrollbar is always on display.</const>
+      <const name="RELATIVE">Enables relative scrolling (movement is reported relative to the current slider position rather than in absolute coordinates).</const>
+      <const name="HIDE">Hide on creation, or scrollbar is currently hidden.</const>
+      <const name="SLIDER">If set, the scrollbar behaves as a slider.  In this mode, the size of the draggable slider has a fixed size (by default the slider is proportional).</const>
+      <const name="NO_INTERSECT">Do not attempt to intersect with adjacent scrollbars.</const>
+    </constants>
+
+    <constants lookup="AXIS" comment="Axis options.  This determines the axis that is signalled when the slider is moved (note that it is feasible for a horizontal scrollbar to signal the Y axis, if this is desired by the client)">
+      <const name="X"/>
+      <const name="Y"/>
+      <const name="Z"/>
+    </constants>
+
+    <constants lookup="VGF" comment="Graphics options (normally defined by the template)">
+      <const name="OUTLINE_TITLE">Draw black outline around title text.</const>
+      <const name="NO_BORDER">Do not draw a border around column headers when in table mode.</const>
+      <const name="DRAW_TABLE">Draw the view as a table (the basic format is the same, graphics are different).</const>
+      <const name="GROUP_SHADOW">Draw a shadow underneath the group graphics headers.</const>
+      <const name="STRIPES">Draw stripes in group titles.</const>
+      <const name="HAIRLINES">Draw a hairline between each column.</const>
+      <const name="BRANCHES">Draw grey tree branches.</const>
+      <const name="ALT_GROUP">Alternate the group header graphics.</const>
+      <const name="LINE_BREAKS">Draw a line break between each view item.</const>
+    </constants>
+
+    <constants lookup="TF" comment="Flags for the TabFocus class.">
+      <const name="LOCAL_FOCUS">In this mode, the user's point of focus must match the monitored Surface for the tabfocus to function.</const>
+      <const name="CHILD_FOCUS">In this mode, the user's point of focus must match the monitored Surface or one of its immediate children for the tabfocus to function.</const>
+      <const name="LIMIT_TO_LIST">In limit-to-list mode, the tabfocus only functions if the user's point of focus is on the monitored Surface or one of objects in the tab list.</const>
+    </constants>
+
+    <constants lookup="BHS">
+      <const name="OUTSIDE">The cursor is outside of the button's area</const>
+      <const name="ENTERED">The cursor has just entered the button's area</const>
+      <const name="INSIDE">The cursor is inside the button's area</const>
+    </constants>
+
+    <constants lookup="SLF" comment="Flags for SelectCallback">
+      <const name="ACTIVE">The most recently active tag has changed.</const>
+      <const name="MANUAL">Item was manually selected (by the program, not the user).</const>
+      <const name="SELECTED">A tag has been selected and is now highlighted.</const>
+      <const name="INVERTED">Change is due to an inverted selection.</const>
+      <const name="KEYPRESS">Item was selected by a keypress.</const>
+      <const name="CLICK">Item was clicked - see ClickX and ClickY for coordinates.</const>
+      <const name="MULTIPLE">Multiple items were selected.</const>
+      <const name="MOVED">Change is due to the item being moved.</const>
+    </constants>
+
+    <constants lookup="CLF" comment="Clipboard flags">
+      <const name="DRAG_DROP">Enables drag and drop mode.  The clipboard content will be private and not share data with the host system in this mode.</const>
+      <const name="HOST">This indicator is automatically set when a clipboard was created due to incoming content from the host system.</const>
+    </constants>
+
+    <constants lookup="VIEW" comment="List options">
+      <const name="LIST">Standard list view with small icons, arranged from top to bottom.</const>
+      <const name="ICON">Similar to list-view but with large icons, arranged from left to right.</const>
+      <const name="TREE">Tree mode can be used if the items are arranged in a hierarchy, where items can be embedded within items.  The tree view provides small buttons that the user can click to expand the tree and view hidden items.</const>
+      <const name="COLUMN">Long list with detail columns.</const>
+      <const name="LONG_LIST">This type is the same as the LIST view but the items will not wrap back to the top of the view when the bottom edge of the surface is encountered.</const>
+      <const name="GROUP_TREE">Similar to tree view, but root level nodes are drawn as a headline.</const>
+      <const name="DOCUMENT">Document mode allows view data to be passed to a document object for display.  You are required to provide a document object that is pre-loaded with a template capable of processing input from the view object.  Refer to the Document field for more information.</const>
+      <const name="COLUMN_TREE">This mode combines the column and tree modes.  The view displays the layout and style of normal column mode, but the first column is used to display and manage a tree hierarchy.  The tree can be expanded and collapsed just as in the standard tree mode.</const>
+    </constants>
+
+    <constants lookup="SO" comment="Direction options">
+      <const name="HORIZONTAL"/>
+      <const name="VERTICAL"/>
+    </constants>
+
+    <constants lookup="CEF">
+      <const name="DELETE">Requests that the original file source is deleted if a successful paste operation takes place.</const>
+      <const name="EXTEND">Instead of replacing existing clipboard data, add the new data to the group.</const>
+    </constants>
+
+    <constants lookup="MNF" comment="Flags for the Menu class.">
+      <const name="SHOW_KEYS">Print key controls on the right.</const>
+      <const name="POINTER_XY">Synonym for POINTER_PLACEMENT</const>
+      <const name="SHOW_ICONS">Synonym for SHOW_IMAGES</const>
+      <const name="SHOW_IMAGES">Allow for an image column on the left.</const>
+      <const name="POINTER_PLACEMENT">Menu is placed at the position of the mouse pointer when shown.</const>
+      <const name="REVERSE_Y">Menu's open in reverse vertical order.</const>
+      <const name="CACHE">Cache menu surface once created.</const>
+      <const name="IGNORE_FOCUS">Do not hide the menu if it loses the focus.</const>
+      <const name="SORT">Sort all items by name.</const>
+      <const name="EXT_COLUMN">Allow for an extension indicator column on the right.</const>
+      <const name="PRESERVE_BKGD">Preserve background when scrolling.</const>
+      <const name="REVERSE_X">Menu's open in reverse horizontal order.</const>
+      <const name="NO_HIDE">Activate() is prevented from hiding the menu.</const>
+      <const name="POPUP">Locks the position of the menu to the mouse pointer.</const>
+      <const name="NO_TRANSLATION">Do not translate menu text to the user's native language.</const>
+    </constants>
+
+    <constants lookup="SCF" comment="Scroll flags.">
+      <const name="FIXED">Fixes the scroll slider to a specific size (non-proportional mode of operation).</const>
+      <const name="REVERSE">When reporting the position of the slider, the value will always be reversed - so positive values will be negative and vice versa.  Reporting for relative position changes are also affected.</const>
+      <const name="VERTICAL">The scrollbar is oriented vertically.</const>
+      <const name="RELATIVE">Forces relative scrolling through the Scroll action rather than the default ScrollToPoint.</const>
+      <const name="AUTO_ACTIVATE">The scroll object automatically activates itself whenever the position of the slider is changed.</const>
+      <const name="AUTO_HIDE">Automatically hide the scrollbar when possible.</const>
+      <const name="INVISIBLE">Keep scrollbar invisible.</const>
+      <const name="HORIZONTAL">The scrollbar is oriented horizontally.</const>
+      <const name="SLIDER">Changes the mode of operation so that the slider is non-proportional.  The size of the view is also set to a fixed value and resizing of the parent surface no longer affects the scroll values.</const>
+      <const name="MESSAGE">Use used delay messages for activation of children.</const>
+    </constants>
+
+  </types>
+  <structs>
+  </structs>
+</book>

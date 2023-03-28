@@ -1,0 +1,218 @@
+<?xml version="1.0"?>
+
+<book>
+  <info>
+    <title>Parasol Framework</title>
+    <author>Paul Manias</author>
+    <published>March 2017</published>
+    <version>March 2017</version>
+    <keywords>manual, sdk, development, kit, software, api, library, tutorial, help</keywords>
+    <description>A complete software development guide for the Parasol Framework.</description>
+    <copyright>Paul Manias © 1996 - 2017</copyright>
+  </info>
+
+  <chapterlist>
+    <chapter title="Getting Started" src="general/index.rpl">
+      <chapter title="Introduction" src="general/introduction.rpl"/>
+      <chapter title="Installation Procedure" src="general/installation_procedure.rpl"/>
+      <chapter title="Modular Object Orientation" src="general/moo_explained.rpl"/>
+
+      <chapter title="Programming" src="general/program_types.rpl">
+        <chapter title="Your First Program" src="general/hello_world.rpl"/>
+        <chapter title="Object Management in Depth" src="general/moo_in_depth.rpl"/>
+        <chapter title="Module Interfaces" src="general/module_interfaces.rpl"/>
+        <chapter title="Distribution and Installation" src="general/distribution.rpl"/>
+      </chapter>
+
+      <chapter title="Development Guides">
+        <chapter title="System Event Reference" src="general/events.rpl"/>
+        <chapter title="Action Support Guide" src="general/action_support_guide.rpl"/>
+        <chapter title="Writing Documentation" src="general/documentation_guide.rpl"/>
+        <chapter title="Module Development Guide" src="general/module_development_guide.rpl"/>
+        <chapter title="Class Development Guide" src="general/class_development_guide.rpl"/>
+        <chapter title="Field Reference Guide" src="general/field_reference_guide.rpl"/>
+      </chapter>
+    </chapter>
+
+    <chapter title="Languages">
+      <chapter title="Fluid Reference Manual" src="fluid/index.rpl">
+        <chapter title="Introduction" src="fluid/index.rpl#Intro"/>
+        <chapter title="Usage" src="fluid/index.rpl#Usage"/>
+        <chapter title="Language Extensions" src="fluid/index.rpl#Language"/>
+        <chapter title="Module Interface" src="fluid/index.rpl#Module"/>
+        <chapter title="Object Interface" src="fluid/index.rpl#Object"/>
+        <chapter title="Memory Interface" src="fluid/index.rpl#Memory"/>
+        <chapter title="Structure Interface" src="fluid/index.rpl#Structure"/>
+        <chapter title="Array Interface" src="fluid/index.rpl#Array"/>
+        <chapter title="Frequently Asked Questions" src="fluid/index.rpl#FAQ"/>
+        <chapter title="Credits" src="fluid/index.rpl#Credits"/>
+      </chapter>
+
+      <chapter title="Dynamic Markup Language" src="dml/index.rpl">
+        <chapter title="Introduction" src="dml/index.rpl#Intro"/>
+        <chapter title="Technical Details" src="dml/index.rpl#Technical"/>
+        <chapter title="Graphics and the User Interface" src="dml/index.rpl#GUI"/>
+        <chapter title="Decision Statements" src="dml/index.rpl#Decision"/>
+        <chapter title="Advanced Development Options" src="dml/index.rpl#Advanced"/>
+        <chapter title="Further Information" src="dml/index.rpl#Final"/>
+      </chapter>
+
+      <chapter title="RIPPLE Reference Manual" src="ripple/index.rpl">
+        <chapter title="Introduction" src="ripple/index.rpl#Intro"/>
+        <chapter title="Features" src="ripple/index.rpl#Features"/>
+        <chapter title="Getting Started" src="ripple/index.rpl#GettingStarted"/>
+        <chapter title="Datatypes" src="ripple/index.rpl#Datatypes"/>
+        <chapter title="Element Reference Guide" src="ripple/index.rpl#Elements">
+          <chapter title="Typeface Elements" src="ripple/index.rpl?markup=Typeface#ElementDetail"/>
+          <chapter title="Layout Elements" src="ripple/index.rpl?markup=Layout#ElementDetail"/>
+          <chapter title="Conditional Elements" src="ripple/index.rpl?markup=Conditional#ElementDetail"/>
+          <chapter title="Programming Elements" src="ripple/index.rpl?markup=Programming#ElementDetail"/>
+          <chapter title="Table Elements" src="ripple/index.rpl?markup=Table#ElementDetail"/>
+          <chapter title="Data Elements" src="ripple/index.rpl?markup=Data#ElementDetail"/>
+        </chapter>
+        <chapter title="Embedded Script Programming" src="ripple/index.rpl#Scripts"/>
+        <chapter title="Object Reference Guide" src="ripple/index.rpl#Objects"/>
+        <chapter title="Security Model" src="ripple/index.rpl#Security"/>
+        <chapter title="Examples" src="ripple/index.rpl#Examples"/>
+        <chapter title="Frequently Asked Questions" src="ripple/index.rpl#FAQ"/>
+      </chapter>
+    </chapter>
+
+    <chapter title="API Manuals">
+      <chapter title="Action List" src="general/action_list.rpl"/>
+
+      <chapter title="Object Kernel" src="modules/viewmodule.rpl?xml=kernel.xml"/>
+
+      <chapter title="Class Manuals" src="classes/index.rpl">
+        <chapter title="Audio" src="classes/index.rpl?category=Audio">
+          <chapter title="Audio Class" src="classes/viewclass.rpl?xml=audio.xml"/>
+          <chapter title="Sound Class" src="classes/viewclass.rpl?xml=sound.xml"/>
+        </chapter>
+
+        <chapter title="Data" src="classes/index.rpl?category=Data">
+          <chapter title="CompressedStream Class" src="classes/viewclass.rpl?xml=compressedstream.xml"/>
+          <chapter title="Compression Class" src="classes/viewclass.rpl?xml=compression.xml"/>
+          <chapter title="Config Class" src="classes/viewclass.rpl?xml=config.xml"/>
+          <chapter title="Crypt Class" src="classes/viewclass.rpl?xml=crypt.xml"/>
+          <chapter title="Database Class" src="classes/viewclass.rpl?xml=database.xml"/>
+          <chapter title="Fluid Class" src="classes/viewclass.rpl?xml=fluid.xml"/>
+          <chapter title="KeyValue Class" src="classes/viewclass.rpl?xml=keyvalue.xml"/>
+          <chapter title="Recordset Class" src="classes/viewclass.rpl?xml=recordset.xml"/>
+          <chapter title="Script Class" src="classes/viewclass.rpl?xml=script.xml"/>
+          <chapter title="ScriptState Class" src="classes/viewclass.rpl?xml=scriptstate.xml"/>
+          <chapter title="XML Class" src="classes/viewclass.rpl?xml=xml.xml"/>
+        </chapter>
+
+        <chapter title="File System" src="classes/index.rpl?category=File System">
+          <chapter title="Directory Class" src="classes/viewclass.rpl?xml=directory.xml"/>
+          <chapter title="File Class" src="classes/viewclass.rpl?xml=file.xml"/>
+        </chapter>
+
+        <chapter title="Graphics" src="classes/index.rpl?category=Graphics">
+          <chapter title="Bitmap Class" src="classes/viewclass.rpl?xml=bitmap.xml"/>
+          <chapter title="Display Class" src="classes/viewclass.rpl?xml=display.xml"/>
+          <chapter title="Font Class" src="classes/viewclass.rpl?xml=font.xml"/>
+          <chapter title="Picture Class" src="classes/viewclass.rpl?xml=picture.xml"/>
+          <chapter title="Pointer Class" src="classes/viewclass.rpl?xml=pointer.xml"/>
+          <chapter title="Vector Class" src="classes/viewclass.rpl?xml=vector.xml"/>
+          <chapter title="VectorClip Class" src="classes/viewclass.rpl?xml=vectorclip.xml"/>
+          <chapter title="VectorColour Class" src="classes/viewclass.rpl?xml=vectorcolour.xml"/>
+          <chapter title="VectorEllipse Class" src="classes/viewclass.rpl?xml=vectorellipse.xml"/>
+          <chapter title="VectorFilter Class" src="classes/viewclass.rpl?xml=vectorfilter.xml"/>
+          <chapter title="VectorGradient Class" src="classes/viewclass.rpl?xml=vectorgradient.xml"/>
+          <chapter title="VectorGroup Class" src="classes/viewclass.rpl?xml=vectorgroup.xml"/>
+          <chapter title="VectorImage Class" src="classes/viewclass.rpl?xml=vectorimage.xml"/>
+          <chapter title="VectorPath Class" src="classes/viewclass.rpl?xml=vectorpath.xml"/>
+          <chapter title="VectorPattern Class" src="classes/viewclass.rpl?xml=vectorpattern.xml"/>
+          <chapter title="VectorPolygon Class" src="classes/viewclass.rpl?xml=vectorpolygon.xml"/>
+          <chapter title="VectorRectangle Class" src="classes/viewclass.rpl?xml=vectorrectangle.xml"/>
+          <chapter title="VectorScene Class" src="classes/viewclass.rpl?xml=vectorscene.xml"/>
+          <chapter title="VectorShape Class" src="classes/viewclass.rpl?xml=vectorshape.xml"/>
+          <chapter title="VectorSpiral Class" src="classes/viewclass.rpl?xml=vectorspiral.xml"/>
+          <chapter title="VectorText Class" src="classes/viewclass.rpl?xml=vectortext.xml"/>
+          <chapter title="VectorTransition Class" src="classes/viewclass.rpl?xml=vectortransition.xml"/>
+          <chapter title="VectorViewport Class" src="classes/viewclass.rpl?xml=vectorviewport.xml"/>
+          <chapter title="VectorWave Class" src="classes/viewclass.rpl?xml=vectorwave.xml"/>
+        </chapter>
+
+        <chapter title="GUI" src="classes/index.rpl?category=GUI">
+          <chapter title="Button Class" src="classes/viewclass.rpl?xml=button.xml"/>
+          <chapter title="CheckBox Class" src="classes/viewclass.rpl?xml=checkbox.xml"/>
+          <chapter title="ComboBox Class" src="classes/viewclass.rpl?xml=combobox.xml"/>
+          <chapter title="Divider Class" src="classes/viewclass.rpl?xml=divider.xml"/>
+          <chapter title="Document Class" src="classes/viewclass.rpl?xml=document.xml"/>
+          <chapter title="Image Class" src="classes/viewclass.rpl?xml=image.xml"/>
+          <chapter title="Input Class" src="classes/viewclass.rpl?xml=input.xml"/>
+          <chapter title="Layout Class" src="classes/viewclass.rpl?xml=layout.xml"/>
+          <chapter title="Menu Class" src="classes/viewclass.rpl?xml=menu.xml"/>
+          <chapter title="Resize Class" src="classes/viewclass.rpl?xml=resize.xml"/>
+          <chapter title="Scroll Class" src="classes/viewclass.rpl?xml=scroll.xml"/>
+          <chapter title="Scrollbar Class" src="classes/viewclass.rpl?xml=scrollbar.xml"/>
+          <chapter title="Surface Class" src="classes/viewclass.rpl?xml=surface.xml"/>
+          <chapter title="SVG Class" src="classes/viewclass.rpl?xml=svg.xml"/>
+          <chapter title="TabFocus Class" src="classes/viewclass.rpl?xml=tabfocus.xml"/>
+          <chapter title="Table Class" src="classes/viewclass.rpl?xml=table.xml"/>
+          <chapter title="Text Class" src="classes/viewclass.rpl?xml=text.xml"/>
+          <chapter title="View Class" src="classes/viewclass.rpl?xml=view.xml"/>
+          <chapter title="Window Class" src="classes/viewclass.rpl?xml=window.xml"/>
+        </chapter>
+
+        <chapter title="I/O" src="classes/index.rpl?category=IO">
+          <chapter title="Clipboard Class" src="classes/viewclass.rpl?xml=clipboard.xml"/>
+          <chapter title="Keyboard Class" src="classes/viewclass.rpl?xml=keyboard.xml"/>
+          <chapter title="Keypress Class" src="classes/viewclass.rpl?xml=keypress.xml"/>
+        </chapter>
+
+        <chapter title="Network" src="classes/index.rpl?category=Network">
+          <chapter title="HTTP Class" src="classes/viewclass.rpl?xml=http.xml"/>
+          <chapter title="NetSocket Class" src="classes/viewclass.rpl?xml=netsocket.xml"/>
+          <chapter title="RSS Class" src="classes/viewclass.rpl?xml=rss.xml"/>
+        </chapter>
+
+        <chapter title="System" src="classes/index.rpl?category=System">
+          <chapter title="Meta Class" src="classes/viewclass.rpl?xml=metaclass.xml"/>
+          <chapter title="Class Info Class" src="classes/viewclass.rpl?xml=classinfo.xml"/>
+          <chapter title="Icon Server Class" src="classes/viewclass.rpl?xml=iconserver.xml"/>
+          <chapter title="Module Class" src="classes/viewclass.rpl?xml=module.xml"/>
+          <chapter title="Task Class" src="classes/viewclass.rpl?xml=task.xml"/>
+          <chapter title="Time Class" src="classes/viewclass.rpl?xml=time.xml"/>
+          <chapter title="Timer Class" src="classes/viewclass.rpl?xml=timer.xml"/>
+          <chapter title="USBDevice Class" src="classes/viewclass.rpl?xml=usbdevice.xml"/>
+        </chapter>
+
+        <chapter title="Tools" src="classes/index.rpl?category=Tool">
+          <chapter title="Scintilla Class" src="classes/viewclass.rpl?xml=scintilla.xml"/>
+          <chapter title="ScintillaSearch Class" src="classes/viewclass.rpl?xml=scintillasearch.xml"/>
+        </chapter>
+      </chapter>
+
+      <chapter title="Module Manuals" src="modules/index.rpl">
+        <chapter title="Audio Module" src="modules/viewmodule.rpl?xml=audio.xml"/>
+        <chapter title="Crypt Module" src="modules/viewmodule.rpl?xml=crypt.xml"/>
+        <chapter title="Display Module" src="modules/viewmodule.rpl?xml=display.xml"/>
+        <chapter title="File System Module" src="modules/viewmodule.rpl?xml=filesystem.xml"/>
+        <chapter title="Fluid Module" src="modules/viewmodule.rpl?xml=fluid.xml"/>
+        <chapter title="Font Module" src="modules/viewmodule.rpl?xml=font.xml"/>
+        <chapter title="Keyboard Module" src="modules/viewmodule.rpl?xml=keyboard.xml"/>
+        <chapter title="Network Module" src="modules/viewmodule.rpl?xml=network.xml"/>
+        <chapter title="Object Kernel" src="modules/viewmodule.rpl?xml=kernel.xml"/>
+        <!--<chapter title="Serial Module" src="modules/viewmodule.rpl?xml=serial.xml"/>-->
+        <!--<chapter title="Smartcard Module" src="modules/viewmodule.rpl?xml=smartcard.xml"/>-->
+        <chapter title="Strings Module" src="modules/viewmodule.rpl?xml=strings.xml"/>
+        <chapter title="Surface Module" src="modules/viewmodule.rpl?xml=surface.xml"/>
+        <chapter title="USB Module" src="modules/viewmodule.rpl?xml=usb.xml"/>
+        <chapter title="Vector Module" src="modules/viewmodule.rpl?xml=vector.xml"/>
+      </chapter>
+    </chapter>
+
+    <chapter title="Appendix">
+      <chapter title="Glossary" src="general/glossary.rpl"/>
+      <chapter title="Error Codes" src="general/error_codes.rpl"/>
+    </chapter>
+  </chapterlist>
+
+  <indexlist>
+    <index name="Surface" src="classes/surface.rpl"/>
+    <index name="Bitmap" src="classes/bitmap.rpl"/>
+  </indexlist>
+</book>

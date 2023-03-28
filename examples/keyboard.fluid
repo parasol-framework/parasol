@@ -1,0 +1,26 @@
+--[[
+A basic demonstration of receiving keyboard input.
+--]]
+
+   win = obj.new('window', { title='Example Window', insideWidth=400, insideHeight=200,
+      maxWidth=600, maxHeight=300, minWidth=400, minHeight=200 })
+
+   text = win.new('text', { string='Press a key', face='Open Sans:30', align='center' })
+
+   // Create a keyboard subscription to the window surface.  The applied function will be called every time
+   // that the user presses a key when the window has the focus.
+
+   input.keyboard(win.surface, function(Input, Surface, Flags, Value, Unicode)
+      if (Unicode > 0) then
+         glChars = nz(glChars,'') .. string.char(Unicode)
+         glChars = glChars:sub(-15)
+      end
+
+      text.string = 'Flags: ' .. string.format('0x%x', Flags) .. '\nCode: ' .. Value .. '\n' .. glChars
+   end)
+
+   text.acShow()
+   win.acShow()
+
+   processing.sleep()
+

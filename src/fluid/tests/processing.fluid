@@ -1,0 +1,30 @@
+-- Flute tests for the processing interface
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Create two dummy objects and use them to confirm that the signalling of multiple objects works.
+
+function testMultipleSignals()
+   local signal_a = obj.new('xml', { flags='NEW' })
+   local signal_b = obj.new('xml', { flags='NEW' })
+
+   -- Because the thread code is parsed as a string it won't see variables outside of its scope
+
+   thread.script([[
+      msg('Thread is now in session.')
+   ]],
+   function()
+      msg('Thread has been executed.')
+      signal_a.acSignal()
+      signal_b.acSignal()
+   end)
+
+   local proc = processing.new({ timeout=2.0, signals = { signal_a, signal_b } })
+   local err = proc.sleep()
+   assert(err == ERR_Okay, "Unexpected error: " .. mSys.GetErrorMsg(err))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+   return {
+      tests = { 'testMultipleSignals' }
+   }

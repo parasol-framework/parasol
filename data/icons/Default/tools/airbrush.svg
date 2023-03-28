@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 11.378 60.914 51.382" preserveAspectRatio="xMidyMid meet">
+<path fill="#231F20" d="M0,23.071c0,5.68,0,18.242,0,27.998c13.56-6.605,13.56-6.605,13.56-13.56
+	C13.56,30.555,13.56,30.555,0,23.071z"/>
+<path fill="#231F20" d="M26.483,48.205c0-4.518,0-14.509,0-22.27C15.697,31.19,15.697,31.19,15.697,36.719
+	C15.697,42.252,15.697,42.252,26.483,48.205z"/>
+<line fill="none" stroke="#231F20" stroke-width="7" stroke-linecap="round" stroke-dasharray="9,9,9,9" x1="40.449" y1="38" x2="60.914" y2="38"/>
+<line fill="none" stroke="#231F20" stroke-width="7" stroke-linecap="round" stroke-dasharray="9,9,9,9" x1="33.171" y1="25.935" x2="47.727" y2="11.378"/>
+<line fill="none" stroke="#231F20" stroke-width="7" stroke-linecap="round" stroke-dasharray="9,9,9,9" x1="33.17" y1="48.205" x2="47.729" y2="62.76"/>
+</svg>

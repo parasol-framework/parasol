@@ -1,0 +1,65 @@
+<?xml version="1.0"?>
+
+<book>
+  <info>
+    <name>Font</name>
+    <type>module</type>
+    <version>1</version>
+    <copyright>Paul Manias 1998-2016</copyright>
+    <classes>
+      <class>Font</class>
+    </classes>
+  </info>
+
+  <function>
+    <name>CharWidth</name>
+    <comment>Returns the width of a character.</comment>
+    <prototype>LONG fntCharWidth(struct rkFont * Font, ULONG Char, ULONG KChar, LONG * Kerning)</prototype>
+    <input>
+      <param type="struct rkFont *" name="Font">The font to use for calculating the character width.</param>
+      <param type="ULONG" name="Char">A unicode character.</param>
+      <param type="ULONG" name="KChar">A unicode character to use for calculating the font kerning (optional).</param>
+      <param type="LONG *" name="Kerning">The resulting kerning value (optional).</param>
+    </input>
+    <description>
+<p>This function will return the pixel width of a font character.  The character is specified as a unicode value in the Char parameter. Kerning values can also be returned, which affect the position of the character along the horizontal. The previous character in the word is set in KChar and the kerning value will be returned in the Kerning parameter.  If kerning information is not required, set the KChar and Kerning parameters to zero.</p>
+    </description>
+    <result type="LONG">The pixel width of the character will be returned.</result>
+  </function>
+
+  <function>
+    <name>ConvertCoords</name>
+    <comment>Converts pixel coordinates into equivalent column and row positions in font strings.</comment>
+    <prototype>ERROR fntConvertCoords(struct rkFont * Font, CSTRING String, LONG X, LONG Y, LONG * Column, LONG * Row, LONG * ByteColumn, LONG * BytePos, LONG * CharX)</prototype>
+    <input>
+      <param type="struct rkFont *" name="Font">An initialised font object.</param>
+      <param type="CSTRING" name="String">Must point to the string that you will be inspecting, or NULL if you want to inspect the string currently in the font's String field.</param>
+      <param type="LONG" name="X">The horizontal coordinate that you want to translate into a column position.</param>
+      <param type="LONG" name="Y">The vertical coordinate that you want to translate into a row position.</param>
+      <param type="LONG *" name="Column">This result parameter will be updated to reflect the calculated character position, with consideration to the UTF-8 standard.  May be NULL if not required.</param>
+      <param type="LONG *" name="Row">This result parameter will be updated to reflect the calculated row position.  May be NULL if not required.</param>
+      <param type="LONG *" name="ByteColumn">This result parameter will be updated to reflect the absolute column byte position within the given row.  May be NULL if not required.</param>
+      <param type="LONG *" name="BytePos">This result parameter will be updated to reflect the absolute byte position with the font String.  May be NULL if not required.</param>
+      <param type="LONG *" name="CharX">This result parameter will be reflect the X coordinate of the character to which the (X, Y) coordinates are resolved.  May be NULL if not required.</param>
+    </input>
+    <description>
+<p>This function is used to convert pixel coordinates within a font String into the equivalent Row and Column character positions.  If the coordinate values that you supply are in excess of the String dimensions, the Column and Row results will be automatically restricted to their maximum value.  For instance, if the Y argument is set to 280 and the String consists of 15 rows amounting to 150 pixels in height, the Row value will be returned as 15.</p>
+<p>Negative coordinate values are not permitted.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="FieldNotSet">A vital field has not been set in this object.</error>
+      <error code="Args">Invalid arguments passed to function.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>FreetypeHandle</name>
+    <comment>Returns a handle to the FreeType library.</comment>
+    <prototype>APTR fntFreetypeHandle()</prototype>
+    <description>
+<p>This function returns a direct handle to the internal FreeType library.  It is intended that this handle should only be used by existing projects that are based on FreeType and need access to its functionality.  References to FreeType functions can be obtained by loading the Font module and then calling the ResolveSymbol method to retrieve function names, e.g. "FT_Open_Face".</p>
+    </description>
+    <result type="APTR">A handle to the FreeType library will be returned.</result>
+  </function>
+</book>

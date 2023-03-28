@@ -1,0 +1,485 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>Scroll</name>
+    <type>class</type>
+    <module>Widget</module>
+    <comment>This class aids the creation of scrollbars and sliders.</comment>
+    <version>1</version>
+    <id>1b6028b4</id>
+    <idstring>ID_SCROLL</idstring>
+    <category>GUI</category>
+    <include>modules/scroll.h</include>
+    <copyright>Paul Manias 2003-2020</copyright>
+    <description>
+<p>The Scroll class provides a facility for creating scrollbars that allow the user to move surface objects within their containers.  It can also be used to scroll contents or 'pages' of information (useful for Text Editors for instance). In either case, it is most useful in situations  where the available graphics space is not sufficient for the amount of information that needs to be shown.  The Scroll class in itself is only designed to provide scrolling functionality, i.e. it does not create any gadgetry or graphics for the scrollbar.  For that reason, complete scrollbars are usually created using scripts or helper classes, such as the <class name="ScrollBar">ScrollBar</class> class.</p>
+<p>The Scroll class is designed to provide scrolling in 3 different directions - along the X, Y, or Z axis.  You can combine the different axis, so a diagonal scrolling gadget could be created for example.  It is also possible to create buttons that are attached to the scroll object.  Refer to the Left, Right, Up, Down, In and Out fields for more information.</p>
+<p>You can use the Scroll class to create fixed or proportional scrollbars depending on what the situation dictates. Where possible you should use proportional scrolling as it is the easier of the two to set up.  All you need to do is specify the page size (which represents the width or height of the graphical content) and the view size (the 'window' into the information).  To create a fixed scrollbar, set the <field>SliderSize</field> manually.</p>
+<p>Some objects are supportive of scrolling - for example, the <class name="Text">Text</class> class supports horizontal and vertical scrolling through its HScroll and VScroll fields.  Objects that support scrollbars expect to be connected directly to an appropriate scroll object.  Once that connection is established, they will take over the scroll object so that the page size and positioning is always managed correctly.  In such cases it is not necessary for you to pre-calculate the scale or page and view sizes.</p></description>
+    <source>
+      <file>class_scroll.cpp</file>
+    </source>
+  </info>
+
+  <actions>
+    <action>
+      <name>Activate</name>
+      <comment>Calls the Activate action on all children of the scroll object.</comment>
+    </action>
+
+    <action>
+      <name>Hide</name>
+      <comment>Hides the scrollbar.</comment>
+    </action>
+
+    <action>
+      <name>Show</name>
+      <comment>Makes an object visible to the user.</comment>
+    </action>
+
+  </actions>
+
+  <methods>
+    <method>
+      <name>AddScrollButton</name>
+      <comment>Registers a new button with the scroll object.</comment>
+      <prototype>ERROR scAddScrollButton(OBJECTPTR Object, OBJECTID Surface, LONG Direction)</prototype>
+      <input>
+        <param type="OBJECTID" name="Surface">Must refer to a <class name="Surface">Surface</class> object.</param>
+        <param type="LONG" name="Direction" lookup="SD">The direction that the button represents - SD_NEGATIVE or SD_POSITIVE.</param>
+      </input>
+      <description>
+<p>The AddScrollButton method is used to aid in the creation of scrollbars that feature buttons.</p>
+<p>Buttons are normally created from the <class name="Button">Button</class> or <class name="Surface">Surface</class> classes, but it is possible to use any class that allocates a suitable surface for passing to this method.  The button must have a nominated direction when activated, which can be expressed with either the SD_NEGATIVE or SD_POSITIVE values.</p>
+      </description>
+      <result>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>UpdateScroll</name>
+      <comment>Updates the dimensions of a scroll object's slider.</comment>
+      <prototype>ERROR scUpdateScroll(OBJECTPTR Object, LONG PageSize, LONG ViewSize, LONG Position, LONG Unit)</prototype>
+      <input>
+        <param type="LONG" name="PageSize">The size of the page.  Set to zero for no change.</param>
+        <param type="LONG" name="ViewSize">The size of the view of the page.  Set to zero for no change.</param>
+        <param type="LONG" name="Position">The current position within the page.</param>
+        <param type="LONG" name="Unit">The unit size to use for micro-scrolling.  Set to zero for no change, or -1 to enable jump scrolling.</param>
+      </input>
+      <description>
+<p>Post-initialisation, the correct way to make changes to the <field>PageSize</field>, <field>Position</field> or <field>ViewSize</field> is to use the UpdateScroll() method.  It validates and updates the size and position information so that the slider is in the correct state.</p>
+      </description>
+      <result>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+  </methods>
+
+  <fields>
+    <field>
+      <name>Axis</name>
+      <comment>The axis that the scroll object represents can be defined here.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type lookup="AXIS">INT</type>
+      <description>
+<p>When a scroll slider is moved, scroll messages are sent for one axis only - either X, Y, or Z.  You need to define the axis here using one of the constants AXIS_X, AXIS_Y or AXIS_Z.  The axis does not necessarily have to match the orientation of the scrollbar.  For instance, a horizontal scrollbar can send vertical scroll messages if you use AXIS_Y.</p>
+<types lookup="AXIS"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Feedback</name>
+      <comment>Provides instant feedback for the user's scrolling.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>FUNCTION</type>
+      <description>
+<p>Set the Feedback field with a callback function in order to receive instant feedback when scrolling occurs.  The function prototype is <code>routine(*Scroll, DOUBLE X, DOUBLE Y, DOUBLE Z)</code></p>
+<p>If the RELATIVE flag is set in the <field>Flags</field> field, then the X, Y and Z values will be expressed in terms of the distance travelled to complete the scroll operation.  Otherwise, the values are expressed in absolute coordinates. Any parameter that is set to -1 indicates that the axis is ignored.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Field</name>
+      <comment>Reference to an object field that should be updated with the scroll value.</comment>
+      <access write="S">Set</access>
+      <type>STRING</type>
+      <description>
+<p>If you would like to write the position of a scroll object to a field belonging to another object (refer to the Object field), you can make reference to the field name here.  By doing this, whenever the scroll object updates its internal position value, it will also write that value to the referenced field name.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Flags</name>
+      <comment>Optional scroll flags.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="SCF">INT</type>
+      <description>
+<types lookup="SCF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Intersect</name>
+      <comment>This field is used for managing intersecting scrollbars.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>OBJECTID</type>
+      <description>
+<p>When two scroll objects are used to create opposing scrollbars (e.g. horizontal and vertical bars) then you should set the Intersect field if there is an overlap between the two.  The purpose of this is to keep the scrollbars neatly arranged if one of them disappears (which will occur if the viewable area is larger than the size of the scrollable page).</p>
+<p>The Intersect field must be set to a valid scroll object that represents the opposing scrollbar.  The opposing scroll object does not need to have its Intersect field set.</p>
+<p>If you use the ScrollBar class, intersections are managed automatically.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Monitor</name>
+      <comment>Objects can be monitored for scroll requests by setting this field.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>OBJECTID</type>
+      <description>
+<p>To monitor an object for scroll requests, set this field to a valid object ID.  This feature is often used to support the wheel mouse, for instances where the mouse is positioned over a surface area and the wheel is used.  The use of the wheel will cause Scroll messages to be sent from the mouse to the underlying surface.  By setting this field to the surface area that is being scrolled, the scrollbar can receive and respond to the scroll messages.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Object</name>
+      <comment>Refers to the object that will be targeted with the scroll action.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>OBJECTID</type>
+      <description>
+<p>The Object field must refer to a foreign object that will receive Scroll notification calls whenever the scroll object is moved.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Page</name>
+      <comment>Refers to a surface that acts as a scrollable page (optional).</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>OBJECTID</type>
+      <description>
+<p>The Page field can be set prior to initialisation to refer to a surface that acts as a scrollable page.  Doing so will have the following effects:</p>
+<ol>
+<li>The <field>Object</field> and <field>View</field> fields will be forcibly set to the parent surface of the page object.</li>
+<li>The <field>PageSize</field> field will be set to the width or height of the page, depending on orientation settings.</li>
+</ol>
+<p>Following initialisation the Page field will serve no further purpose.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>PageSize</name>
+      <comment>Defines the size of the page that is to be scrolled.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>The page size of the area that is being scrolled is declared through this field.  The page size should almost always be larger than the view size, because the page lies 'under' the view.  If the page is smaller than the view, the scroll object will serve no purpose until the circumstances are changed.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Position</name>
+      <comment>Reflects the current position of the page within the view.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The Position indicates the offset of the page within its view.  Prior to initialisation, it may be necessary to predefine the Position value if the page is already offset within the view.  Otherwise, leave this field at the default position of 0.</p>
+<p>When a page moves within its view, the Position field will be updated to reflect the current offset.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Slider</name>
+      <comment>Refers to the surface that represents the slider widget.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>OBJECTID</type>
+      <description>
+<p>The Slider is a compulsory field value that refers to the surface that acts as the slider widget.  If it is not set prior to initialisation, the scroll object will attempt to find the closest viable surface by following its ownership chain and sets the Slider field automatically.</p>
+<p>To work effectively, the slider must be placed within another surface that is suitable for acting as the scrollbar region.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>SliderSize</name>
+      <comment>The size of the slider, measured in pixels.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>The SliderSize field indicates the size of the slider that represents the scroll object.  This field can be set prior to initialisation if a fixed-size slider is required (note that this results in a non-proportional scrollbar).</p>
+      </description>
+    </field>
+
+    <field>
+      <name>StartMargin</name>
+      <comment>Prevents the slider from moving beyond the bounds of its parent surface.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>The StartMargin and EndMargin fields are used to prevent the slider from moving beyond the bounds of its parent surface.  This feature is typically used to prevent the slider from entering the space allocated to buttons at either end of the scrollbar.</p>
+<p>For instance, if buttons with a size of 16x16 are placed in the scrollbar then the StartMargin and EndMargin would both be set to 16.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Unit</name>
+      <comment>Defines the amount of movement used when a scroll button is pressed.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>If buttons are linked to a scroll object through the In, Out, Left, Right, Up or Down fields then consider specifying the amount of units to use when a related button is pressed.  Example:  If the unit is set to 15 and the scroll position is currently set to 60, pressing a negative button would change the position to 45.</p>
+<p>The Unit value should normally be positive, but if set to 0 or less then the Unit will be dynamically calculated to match the size of the slider.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>View</name>
+      <comment>Refers to a surface that contains a scrollable page (optional).</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>OBJECTID</type>
+      <description>
+<p>For page-based scroll handling, set the View field to the surface object that is acting as the view for the page. Doing so enables pro-active monitoring of the view surface for events such as resizing.  The scroll object will automatically respond by checking the new dimensions of the view and recalculating the page coordinates.  Any changes will be reflected in the scroll object's field values and reported via the <field>Feedback</field> mechanism.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ViewSize</name>
+      <comment>Defines the size of the view that contains the page.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>The ViewSize defines the width or height of the area that contains the page, depending on the orientation of the slider (if horizontal, then ViewSize would reflect the width).</p>
+      </description>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="VWF" comment="View flags.">
+      <const name="WIDTH_RESET">Always reset column widths when the Columns field is set.</const>
+      <const name="NO_SORTING">No user sorting, e.g. in column mode.</const>
+      <const name="SENSITIVE">Sensitive mode will activate child objects when the user single-clicks with the mouse (by default, child activation only occurs with double-clicks).</const>
+      <const name="NO_ICONS">Do not load or show any icons.</const>
+      <const name="NOTIFY_ON_CLEAR">If the view should activate itself when cleared, set this flag. By default, activation normally only occurs when an item is double-clicked or when sensitive mode is enabled.</const>
+      <const name="DRAG_DROP">Enables drag and drop for items in the view. In this mode, multi-select is only possible if the shift or ctrl keys are held while using the mouse.</const>
+      <const name="NO_SELECT">Stop the user from selecting items.</const>
+      <const name="NO_SELECT_JMP">When a new item is selected, the view will jump to that item if it is not completely visible to the user. Setting this flag will turn off this behaviour.</const>
+      <const name="USER_DRAG">Enable drag and drop only if the user prefers it.</const>
+      <const name="AUTO_DESELECT">Deselects a highlighted item when it is activated by mouse click or enter key.</const>
+      <const name="MULTI_SELECT">Allow multiple item selections without having to hold the shift key.</const>
+    </constants>
+
+    <constants lookup="MIF" comment="Flags for MenuItems.">
+      <const name="SELECTED">The menu item has been selected (checked).</const>
+      <const name="EXTENSION">Menu item is an extension.</const>
+      <const name="NO_KEY_RESPONSE">Display the key, but do not respond to its equivalent key press.</const>
+      <const name="SORT">Sort all content under the menuitem (applies only to extensions).</const>
+      <const name="TOGGLE">Enables toggled menu items (checking state of on and off).</const>
+      <const name="OPTION">Item is a clickable option (clicking the item's icon will turn the option on/off).</const>
+      <const name="DISABLED">Set if the menu item is disabled (ghosted).</const>
+      <const name="CATEGORISE">Categorise the attached config file.</const>
+      <const name="BREAK">Menu item is acting as a break.</const>
+      <const name="KEY_REPEAT">Respond to repeated key presses.</const>
+    </constants>
+
+    <constants lookup="INF" comment="Flags for the Input class.">
+      <const name="SECRET">Used for secret user entry (passwords).</const>
+      <const name="SELECT_TEXT">Select all text when the input box is shown for the first time.</const>
+      <const name="DISABLED">Disable on creation.</const>
+      <const name="HIDE">Hide on creation, or input is currently hidden.</const>
+      <const name="ENTER_TAB">Press enter results in a virtual tab-keypress being sent.</const>
+      <const name="COMMANDLINE">Function as a command-line.  Typically used when the input box needs to remain persistent and is linked to an output system, such as a shell.</const>
+    </constants>
+
+    <constants lookup="BTF" comment="Button flags.">
+      <const name="DISABLED">Disable on creation, or button is currently disabled.  Read-only.</const>
+      <const name="HIDE">Hide on creation, or button is currently hidden.</const>
+      <const name="PULSE">Send repeated clicks when the mouse button is held down.</const>
+      <const name="NO_GFX">Turns off the button's foreground graphics (text and images).</const>
+    </constants>
+
+    <constants lookup="CBF" comment="CheckBox flags.">
+      <const name="DISABLED">Disable on creation, or object is currently disabled.</const>
+      <const name="HIDE">Hide on creation, or object is currently hidden.</const>
+    </constants>
+
+    <constants lookup="IMF" comment="Image flags">
+      <const name="NO_DRAW">Stops automatic drawing of the target surface if the image is being animated or a special effect is active.</const>
+      <const name="FIXED">Synonym for FIXED_SIZE</const>
+      <const name="ENLARGE">If the dimensions of the original picture are smaller than the destination surface, the image will be stretched to fit.  Enlargement is dynamic, so if the surface changes in size then the size of the picture will be recalculated to fit.</const>
+      <const name="NO_FAIL">If the source image file does not exist or an error occurs during loading, the image object will still pass the initialisation process successfully.  When the image object is drawn, it will clear the target surface to the colour specified in the Background field.</const>
+      <const name="SHRINK">If the dimensions of the original picture are larger than the destination surface, the image will be stretched to fit.  Shrinking is dynamic, so if the surface changes in size then the size of the picture will be recalculated to fit.</const>
+      <const name="SOLID_BLEND">Synonym for NO_BLEND</const>
+      <const name="FIT">This flag applies to image resizing.  When set, the calculated width and height will be limited so that the image cannot be stretched beyond the edges of the target surface.  This flag is commonly set in conjunction with the 11RATIO flag.</const>
+      <const name="NO_BLEND">Turns off alpha-blending if the target surface has the COMPOSITE flag set and the source image has an alpha channel.</const>
+      <const name="FIXED_SIZE">Image data will normally be stored at its original size and resized on the fly when the STRETCH flag is used.  Setting the FIXED_SIZE flag will pre-scale the image and permanently store it at that size.</const>
+      <const name="STRETCH">This flag conveniently combines the ENLARGE and SHRINK flags to ensure that the image always covers the dimensions of the destination surface.</const>
+      <const name="SCALABLE">The image source is scalable (e.g. vector graphic).</const>
+      <const name="STICKY">All calls to Move and MoveToPoint are ignored if this flag is set.</const>
+      <const name="11_RATIO">When resizing the image, the calculated width and height will always be in correct proportion relative to the source image's original width and height.</const>
+    </constants>
+
+    <constants lookup="CMF" comment="ComboBox flags.">
+      <const name="AUTO_COMPLETE">When in edit mode, this option helps the user by auto-completing text.</const>
+      <const name="EDIT">Enable edit mode, which allows the user to write free-text in the combobox.</const>
+      <const name="SHOW_ICONS">Show icons in the dropdown list.</const>
+      <const name="DISABLED">Disable on creation; or combobox is currently disabled.</const>
+      <const name="HIDE">Hide on creation, or combobox is currently hidden.</const>
+      <const name="LIMIT_TO_LIST">When in edit mode, limit-to-list prevents the user from entering text that isn't in the combobox list.</const>
+      <const name="NO_TRANSLATION">Do not translate combobox strings or the drop-down menu to the user's native language.</const>
+    </constants>
+
+    <constants lookup="CLIPTYPE" comment="Clipboard types">
+      <const name="DATA">Raw information that is uncategorised can be defined as a data clip.</const>
+      <const name="FILE">Pure file references are stored as file clips.  This type is typically used by file managers for moving and copying files.</const>
+      <const name="TEXT">Plain text files such as ASCII and UTF-8 must be identified through this clip type.</const>
+      <const name="AUDIO">An audio clip that is recognised by the Sound class (such as wav's and mp3's).</const>
+      <const name="IMAGE">Images that are recognised by the Picture class may be stored as this type (such as jpeg's and png files).</const>
+      <const name="OBJECT">An object that has been deserialised into binary form.</const>
+    </constants>
+
+    <constants lookup="SD" comment="Scroll directions.">
+      <const name="NEGATIVE"/>
+      <const name="POSITIVE"/>
+    </constants>
+
+    <constants lookup="TXF" comment="Flags for the Text class.">
+      <const name="SECRET">Hide the string characters for secret text entry (e.g. passwords).</const>
+      <const name="PRESERVE_BKGD">Preserve-background disables fast scrolling for background preservation.</const>
+      <const name="AREA_SELECTED">This read-only flag is set automatically when the user has selected an area of text.</const>
+      <const name="GLOBAL_EDITING">Keeps the text object in edit mode regardless of user focus.</const>
+      <const name="SINGLE_SELECT">Enables text selection (with or without edit mode).  If in line mode, a single click will allow the user to highlight any line.</const>
+      <const name="DISABLED">This read-only flag is set if the object has been disabled through the Disable action.</const>
+      <const name="OVERWRITE">Turns on overwrite mode (if off, insert mode is enabled).</const>
+      <const name="SELECT">Synonym for MULTI_SELECT | SINGLE_SELECT</const>
+      <const name="ENTER_TAB">Convert enter-key presses to the tab-key.</const>
+      <const name="FORCE_CAPS">This flag forces the capitalisation of all text that is entered into the object.</const>
+      <const name="AUTO_CLEAR">Clears the text string when the enter key is pressed.</const>
+      <const name="EDIT">This flag must be enabled if the user is permitted to change the text string with the keyboard.</const>
+      <const name="STRETCH">If the font is scalable, the text string will be resized to fit inside the surface that contains it (i.e. no characters will be clipped).  This is acheived by recalculating the font's point size.</const>
+      <const name="WORDWRAP">Enables word wrapping.</const>
+      <const name="AUTO_SELECT">Automatically select all text if the text object receives the focus.</const>
+      <const name="TAB_KEY">If the tab key is pressed, print the tab character.</const>
+      <const name="PASSWORD">Hide the string characters for secret text entry (e.g. passwords).</const>
+      <const name="MULTI_SELECT">Allow the user to select/highlight multiple lines by holding the Ctrl key.</const>
+      <const name="VARIABLE">This flag forces a text object to recalculate any variable references in its string data whenever a redraw occurs.  Such references are indicated through square brackets, e.g. [desktop.width].  Refer to the StrEvaluate() function in the Strings module for more information.</const>
+      <const name="STR_TRANSLATE">Translate strings to the user's native language.</const>
+      <const name="HISTORY">Enables historical browsing when the up/down cursor keys are used.  The number of historical lines stored can be set in the HistorySize field.</const>
+      <const name="NO_SYS_KEYS">This flag is set by default to enable system key support.  System-keys provide support for common key combinations such as Ctrl-C, Ctrl-X etc.</const>
+      <const name="BACKGROUND">Enables a colour background behind the text.</const>
+      <const name="TAB_ENTRY">Pressing the tab key is treated the same as pressing enter.</const>
+      <const name="COMMANDLINE">Synonym for AUTO_CLEAR | EDIT | HISTORY</const>
+    </constants>
+
+    <constants lookup="SBF" comment="Scrollbar flags.">
+      <const name="CONSTANT">Ensures that the scrollbar is always on display.</const>
+      <const name="RELATIVE">Enables relative scrolling (movement is reported relative to the current slider position rather than in absolute coordinates).</const>
+      <const name="HIDE">Hide on creation, or scrollbar is currently hidden.</const>
+      <const name="SLIDER">If set, the scrollbar behaves as a slider.  In this mode, the size of the draggable slider has a fixed size (by default the slider is proportional).</const>
+      <const name="NO_INTERSECT">Do not attempt to intersect with adjacent scrollbars.</const>
+    </constants>
+
+    <constants lookup="AXIS" comment="Axis options.  This determines the axis that is signalled when the slider is moved (note that it is feasible for a horizontal scrollbar to signal the Y axis, if this is desired by the client)">
+      <const name="X"/>
+      <const name="Y"/>
+      <const name="Z"/>
+    </constants>
+
+    <constants lookup="VGF" comment="Graphics options (normally defined by the template)">
+      <const name="OUTLINE_TITLE">Draw black outline around title text.</const>
+      <const name="NO_BORDER">Do not draw a border around column headers when in table mode.</const>
+      <const name="DRAW_TABLE">Draw the view as a table (the basic format is the same, graphics are different).</const>
+      <const name="GROUP_SHADOW">Draw a shadow underneath the group graphics headers.</const>
+      <const name="STRIPES">Draw stripes in group titles.</const>
+      <const name="HAIRLINES">Draw a hairline between each column.</const>
+      <const name="BRANCHES">Draw grey tree branches.</const>
+      <const name="ALT_GROUP">Alternate the group header graphics.</const>
+      <const name="LINE_BREAKS">Draw a line break between each view item.</const>
+    </constants>
+
+    <constants lookup="TF" comment="Flags for the TabFocus class.">
+      <const name="LOCAL_FOCUS">In this mode, the user's point of focus must match the monitored Surface for the tabfocus to function.</const>
+      <const name="CHILD_FOCUS">In this mode, the user's point of focus must match the monitored Surface or one of its immediate children for the tabfocus to function.</const>
+      <const name="LIMIT_TO_LIST">In limit-to-list mode, the tabfocus only functions if the user's point of focus is on the monitored Surface or one of objects in the tab list.</const>
+    </constants>
+
+    <constants lookup="BHS">
+      <const name="OUTSIDE">The cursor is outside of the button's area</const>
+      <const name="ENTERED">The cursor has just entered the button's area</const>
+      <const name="INSIDE">The cursor is inside the button's area</const>
+    </constants>
+
+    <constants lookup="SLF" comment="Flags for SelectCallback">
+      <const name="ACTIVE">The most recently active tag has changed.</const>
+      <const name="MANUAL">Item was manually selected (by the program, not the user).</const>
+      <const name="SELECTED">A tag has been selected and is now highlighted.</const>
+      <const name="INVERTED">Change is due to an inverted selection.</const>
+      <const name="KEYPRESS">Item was selected by a keypress.</const>
+      <const name="CLICK">Item was clicked - see ClickX and ClickY for coordinates.</const>
+      <const name="MULTIPLE">Multiple items were selected.</const>
+      <const name="MOVED">Change is due to the item being moved.</const>
+    </constants>
+
+    <constants lookup="CLF" comment="Clipboard flags">
+      <const name="DRAG_DROP">Enables drag and drop mode.  The clipboard content will be private and not share data with the host system in this mode.</const>
+      <const name="HOST">This indicator is automatically set when a clipboard was created due to incoming content from the host system.</const>
+    </constants>
+
+    <constants lookup="VIEW" comment="List options">
+      <const name="LIST">Standard list view with small icons, arranged from top to bottom.</const>
+      <const name="ICON">Similar to list-view but with large icons, arranged from left to right.</const>
+      <const name="TREE">Tree mode can be used if the items are arranged in a hierarchy, where items can be embedded within items.  The tree view provides small buttons that the user can click to expand the tree and view hidden items.</const>
+      <const name="COLUMN">Long list with detail columns.</const>
+      <const name="LONG_LIST">This type is the same as the LIST view but the items will not wrap back to the top of the view when the bottom edge of the surface is encountered.</const>
+      <const name="GROUP_TREE">Similar to tree view, but root level nodes are drawn as a headline.</const>
+      <const name="DOCUMENT">Document mode allows view data to be passed to a document object for display.  You are required to provide a document object that is pre-loaded with a template capable of processing input from the view object.  Refer to the Document field for more information.</const>
+      <const name="COLUMN_TREE">This mode combines the column and tree modes.  The view displays the layout and style of normal column mode, but the first column is used to display and manage a tree hierarchy.  The tree can be expanded and collapsed just as in the standard tree mode.</const>
+    </constants>
+
+    <constants lookup="SO" comment="Direction options">
+      <const name="HORIZONTAL"/>
+      <const name="VERTICAL"/>
+    </constants>
+
+    <constants lookup="CEF">
+      <const name="DELETE">Requests that the original file source is deleted if a successful paste operation takes place.</const>
+      <const name="EXTEND">Instead of replacing existing clipboard data, add the new data to the group.</const>
+    </constants>
+
+    <constants lookup="MNF" comment="Flags for the Menu class.">
+      <const name="SHOW_KEYS">Print key controls on the right.</const>
+      <const name="POINTER_XY">Synonym for POINTER_PLACEMENT</const>
+      <const name="SHOW_ICONS">Synonym for SHOW_IMAGES</const>
+      <const name="SHOW_IMAGES">Allow for an image column on the left.</const>
+      <const name="POINTER_PLACEMENT">Menu is placed at the position of the mouse pointer when shown.</const>
+      <const name="REVERSE_Y">Menu's open in reverse vertical order.</const>
+      <const name="CACHE">Cache menu surface once created.</const>
+      <const name="IGNORE_FOCUS">Do not hide the menu if it loses the focus.</const>
+      <const name="SORT">Sort all items by name.</const>
+      <const name="EXT_COLUMN">Allow for an extension indicator column on the right.</const>
+      <const name="PRESERVE_BKGD">Preserve background when scrolling.</const>
+      <const name="REVERSE_X">Menu's open in reverse horizontal order.</const>
+      <const name="NO_HIDE">Activate() is prevented from hiding the menu.</const>
+      <const name="POPUP">Locks the position of the menu to the mouse pointer.</const>
+      <const name="NO_TRANSLATION">Do not translate menu text to the user's native language.</const>
+    </constants>
+
+    <constants lookup="SCF" comment="Scroll flags.">
+      <const name="FIXED">Fixes the scroll slider to a specific size (non-proportional mode of operation).</const>
+      <const name="REVERSE">When reporting the position of the slider, the value will always be reversed - so positive values will be negative and vice versa.  Reporting for relative position changes are also affected.</const>
+      <const name="VERTICAL">The scrollbar is oriented vertically.</const>
+      <const name="RELATIVE">Forces relative scrolling through the Scroll action rather than the default ScrollToPoint.</const>
+      <const name="AUTO_ACTIVATE">The scroll object automatically activates itself whenever the position of the slider is changed.</const>
+      <const name="AUTO_HIDE">Automatically hide the scrollbar when possible.</const>
+      <const name="INVISIBLE">Keep scrollbar invisible.</const>
+      <const name="HORIZONTAL">The scrollbar is oriented horizontally.</const>
+      <const name="SLIDER">Changes the mode of operation so that the slider is non-proportional.  The size of the view is also set to a fixed value and resizing of the parent surface no longer affects the scroll values.</const>
+      <const name="MESSAGE">Use used delay messages for activation of children.</const>
+    </constants>
+
+  </types>
+  <structs>
+  </structs>
+</book>

@@ -1,0 +1,443 @@
+--[[
+To create a dialog box:
+
+   gui.dialog.font({ Options... })
+
+If the dialog box is modal, the call will not return until the user has responded to the dialog.
+
+To receive feedback from the dialog box, set the feedback option with a function that follows this prototype:
+
+   function feedback(Dialog, Font)
+
+Whereby Dialog refers to the dialog object and Font refers to font meta data.  In the event that the dialog is
+cancelled, the Font is set to nil.
+
+Note that the dialog box should be managed as a dynamic resource, i.e. created as necessary and deallocated once the
+user has responded (i.e. set all references to nil).  Retaining dialog boxes in memory will provide no descernible
+speed improvement to the user.
+
+Valid options to use when creating the dialog are as follows:
+
+   popover:    Place the dialog window over the referenced surface.
+   target:     Open the dialog window within the referenced surface.
+   modal:      Set to true if the dialog box needs to be modal (prevents interaction with other windows).
+   okText:     Text to display in the OK button.
+   cancelText: Text to display in the Cancel button.
+   path:       The initial selection path.
+   feedback:   Refers to a Fluid function that will receive the user's response to the dialog.
+   style:      Preset the font's style, e.g. 'Bold Italic'.  The default is 'Regular'.
+   size:       Preset the font's point size, must be between 4 and 256.  The default is 12.
+   face:       Preset the font's face.  Defaults to 'Open Sans'.
+   example:    Overrides the example text normally printed in the dialog.
+   colour:     Change the default font colour to something other than black.
+
+TODO: Underline checkbox
+      Colour selection
+      Combobox to filter on Proportional; Fixed; Proportional and Fixed
+
+--]]
+
+   require 'common'
+   include 'display'
+
+   if (gui == nil) then gui = { } end
+   if (gui.dialog == nil) then gui.dialog = { } end
+
+gui.dialog.font = function(Options)
+   local mFont = mod.load('font')
+
+   local self = { // Public variables
+      windowID = nil,
+      face = 'Open Sans',
+      size = 12,
+      style = 'Regular',
+      compactFace = nil,
+      colour = { r=0, g=0, b=0, a=255 }
+   }
+
+   local lLongText = [[
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas varius dignissim sapien eu pellentesque. Etiam libero velit, vehicula nec ante non, sodales ultricies metus. Phasellus commodo dolor turpis. Aliquam sed pellentesque magna, non luctus sapien. Etiam molestie dui nibh, nec finibus velit molestie non. Ut feugiat maximus elit nec mattis. Suspendisse porta vestibulum faucibus. Sed iaculis placerat justo id lobortis. Interdum et malesuada fames ac ante ipsum primis in faucibus.
+
+Morbi tincidunt varius ante sit amet pulvinar. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Nulla ante orci, faucibus non odio viverra, tempus rutrum ex. Mauris sit amet hendrerit quam. Vestibulum tincidunt magna suscipit ultrices congue. Aliquam et blandit tellus, ut porta libero. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Cras vulputate congue eros sed placerat. Nunc eleifend nec felis sit amet fermentum. Cras suscipit ullamcorper eros, id consectetur quam blandit ac.
+
+Suspendisse sed diam ut sem euismod accumsan commodo vehicula sapien. Nullam nisl augue, suscipit vitae posuere sit amet, porttitor et ex. Duis at elit pellentesque, placerat risus in, placerat mauris. Nam in metus sed dui iaculis aliquam sed ut sem. In varius euismod quam, sed lobortis sem. Aliquam nec dui magna. Suspendisse lobortis enim vitae vestibulum accumsan. Pellentesque ac tincidunt est. Ut porta, arcu eu ornare placerat, urna urna venenatis est, at imperdiet lectus justo vel neque. Sed congue dolor eget erat dignissim sollicitudin. Aliquam mollis massa in est gravida faucibus.
+
+Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas non nisi vehicula, aliquam turpis in, mattis lectus. Donec magna metus, tempor fringilla metus ac, ultricies efficitur ante. Quisque at semper elit. Ut in purus in est venenatis interdum. Curabitur a dui mauris. Suspendisse potenti. Suspendisse tempus dictum ipsum, id condimentum nulla fermentum sed. Etiam mattis ligula lacus, a tempor felis sodales fermentum. Donec in risus vulputate, tempor neque vel, volutpat mauris. Integer placerat a nunc a aliquet. Phasellus quis porta leo. Etiam et arcu ex. Nunc dictum at ipsum eu dapibus.
+
+Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla eget ornare ante, ac efficitur turpis. Proin venenatis eget sapien vitae volutpat. In interdum id ante in aliquet. Quisque convallis lacus in gravida fringilla. Nam porta pellentesque turpis, ut efficitur neque suscipit vel. Morbi vitae consequat nisl. Donec turpis lorem, dapibus eget scelerisque quis, porttitor bibendum leo.
+   ]]
+
+   local lShortText = 'The Quick Brown Fox Jumped Over The Lazy Dog'
+
+   local lOptions = Options
+   local lWindow, lFont, lFonts, vwSize, vwStyle, vwFace, lTab, rgnExample
+
+   local lSizes = { 6, 8, 10, 12, 14, 18, 24, 30, 36, 42, 50, 70, 90, 100, 120 }
+   local lWidgetGap = 3
+
+   local function sendFeedback(Accepted)
+      local colour = self.colour.r .. ',' .. self.colour.g .. ',' .. self.colour.b .. ',' .. self.colour.a
+      self.compactFace = self.face .. ':' .. self.size .. ':' .. self.style .. ':' .. colour
+
+      if (lOptions.feedback != nil) then
+         lOptions.feedback(self, Accepted)
+      end
+
+      lWindow = nil
+      return true
+   end
+
+   local function drawExample(Surface, Bitmap)
+      // Background
+
+      local err, bkgd = Bitmap.mtGetColour(255, 255, 255, 255)
+      local err, border = Bitmap.mtGetColour(128, 128, 128, 255)
+      Bitmap.mtDrawRectangle(0, 0, Surface.width, Surface.height, bkgd, BAF_FILL)
+      Bitmap.mtDrawRectangle(0, 0, Surface.width, Surface.height, border, 0)
+
+      local clip = { left=Bitmap.ClipLeft, right=Bitmap.ClipRight, top=Bitmap.ClipTop, bottom=Bitmap.ClipBottom }
+
+      if (Bitmap.ClipLeft   < 1) then Bitmap.ClipLeft = 1 end
+      if (Bitmap.ClipTop    < 1) then Bitmap.ClipTop = 1 end
+      if (Bitmap.ClipRight  > Surface.Width - 1) then Bitmap.ClipRight = Surface.width - 1 end
+      if (Bitmap.ClipBottom > Surface.Height - 1) then Bitmap.ClipBottom = Surface.height - 1 end
+
+      if (not lFont) and (self.face) then
+         lFont = obj.new('font', {
+            x           = 12,
+            y           = 10,
+            align       = 'top',
+            alignHeight = Surface.height,
+            face        = nz(self.face, 'Open Sans'),
+            point       = nz(self.size, 12),
+            style       = nz(self.style, 'Regular'),
+            string      = nz(lOptions.example, lLongText)
+         })
+      end
+
+      if (lFont) then
+         // Text guidelines
+
+         local err, guide = Bitmap.mtGetColour(240, 240, 255, 255)
+         local lines = Surface.height / lFont.height
+         local y = lFont.y + lFont.height
+         while (y < Surface.height) do
+            Bitmap.mtDrawRectangle(1, y, Surface.width-2, 1, guide, BAF_FILL)
+            y = y + lFont.lineSpacing
+         end
+
+         // Example text
+
+         lFont.bitmap = Bitmap
+         lFont.wrapEdge = Surface.width - lFont.x
+         lFont.alignHeight = Surface.height
+         lFont.acDraw()
+      end
+
+      Bitmap.ClipLeft   = clip.left
+      Bitmap.ClipRight  = clip.right
+      Bitmap.ClipTop    = clip.top
+      Bitmap.ClipBottom = clip.bottom
+   end
+
+   // Retrieve the system list of known installed fonts and convert it to a Lua table.
+
+   local function getFonts()
+      local err, list = mFont.GetList()
+      if (list == nil) then error('Failed to retrieve list of fonts, error: ' .. mSys.GetErrorMsg(err)) end
+
+      lFonts = { }
+      lFontsSorted = { }
+      local font = list
+      local index = 0
+      while (font) do
+         lFonts[font.name] = { }
+         lFonts[font.name].order  = index
+         lFonts[font.name].name   = font.name
+         lFonts[font.name].styles = string.split(font.styles, ',')
+         lFonts[font.name].sizes  = font.points
+         if nz(font.scalable) then
+            lFonts[font.name].scalable = true
+         end
+         table.insert(lFontsSorted, lFonts[font.name])
+         index = index + 1
+         font = font.next
+      end
+   end
+
+   local function showFontSizes(List)
+      local xml = ''
+      for k,v in ipairs(List) do
+         xml = xml .. '<item>' .. v .. '</item>\n'
+      end
+      vwSize.xml.acClear()
+      vwSize.xml.acDataFeed(0, DATA_XML, xml)
+      vwSize.acRefresh()
+   end
+
+   // Refresh the style list for the selected face
+
+   local function showStyles(Face)
+      vwStyle.xml.acClear()
+
+      local style = nz(lFonts[Face].styles, { 'Regular' })
+      local xml = ''
+      for k, v in ipairs(style) do
+         xml = xml .. '<item>' .. v .. '</item>'
+      end
+      vwStyle.xml.acDataFeed(0, DATA_XML, xml)
+      vwStyle.acRefresh()
+   end
+
+   catch(function()
+      getFonts()
+
+      // Disassemble any compact font face definition.
+
+      if (lOptions.face) then
+         local s = string.split(face, ':') // FaceName, Size, Style, Colour
+         if (s[1]) then lOptions.face = s[1] end
+         if (s[2]) then lOptions.size = s[2] end
+         if (s[3]) then lOptions.style = s[3] end
+         if (s[4]) then lOptions.colour = s[4] end
+      end
+
+      lWindow = obj.new('window', {
+         insideWidth  = 700,
+         insideHeight = 600,
+         minWidth     = 500,
+         minHeight    = 400,
+         maxWidth     = 1024,
+         maxHeight    = 800,
+         quit         = false,
+         center       = true,
+         popover      = lOptions.popover,
+         parent       = lOptions.target,
+         icon         = 'items/font',
+         title        = nz(lOptions.title, 'Select a font'),
+         modal        = nz(lOptions.modal, false)
+      })
+
+      lWindow.subscribe('close', function(WindowID, Args, Reference)
+         if (lOptions.feedback != nil) then
+            lOptions.feedback(self, nil)
+         end
+         lWindow = nil
+      end)
+
+      self.windowID = lWindow.id
+
+      lTab = lWindow.new('tabfocus', { })
+
+      // Okay and cancel buttons
+
+      local footer = lWindow.bottomMargin
+
+      lCancelButton = lWindow.new('button', {
+         text    = nz(lOptions.cancelText, 'Cancel'),
+         xOffset = lWidgetGap,
+         yOffset = footer,
+         icon    = 'items/cancel'
+      })
+
+      lOkayButton = lWindow.new('button', {
+         text    = nz(lOptions.okText, 'OK'),
+         xOffset = lWindow.insidewidth - lCancelButton.x + lWidgetGap,
+         yOffset = footer,
+         icon    = 'items/checkmark'
+      })
+
+      lOkayButton.subscribe('activate', function() sendFeedback(true) end)
+      lCancelButton.subscribe('activate', function() sendFeedback(false) end)
+
+      footer = footer + lOkayButton.height + lWidgetGap
+
+      // Font demonstration area
+
+      rgnExample = lWindow.new('surface', {
+         x       = 200,
+         y       = lWindow.topMargin,
+         xOffset = lWindow.rightMargin,
+         yOffset = footer
+      })
+      rgnExample.acShow()
+
+      rgnExample.mtAddCallback(drawExample)
+
+      // Font size selection
+
+      local rgnSize = lWindow.new('surface', {
+         x       = rgnExample.x - lWidgetGap - 60,
+         yOffset = footer,
+         height  = 140,
+         width   = 60
+      })
+      rgnSize.acShow()
+
+      vwSize = rgnSize.new('view', {
+         flags = '!NoIcons|Sensitive',
+         style = 'longlist',
+         selectCallback = function(View, Flags, Tag)
+            local selection = View.selection
+            if (selection) then
+               self.size = tonumber(selection)
+               if (self.size < 4) then
+                  self.size = 4
+               elseif (self.size > 400) then
+                  self.size = 400
+               end
+            end
+            lFont = nil // A new font object will be needed.
+            rgnExample.acDraw()
+         end
+      })
+
+      showFontSizes(lSizes)
+
+      // Font style selection
+
+      local rgnStyle = lWindow.new('surface', {
+         x       = lWindow.leftMargin,
+         yOffset = footer,
+         height  = 140,
+         width   = rgnSize.x - lWidgetGap - lWindow.leftMargin
+      })
+      rgnStyle.acShow()
+
+      vwStyle = rgnStyle.new('view', {
+         name  = 'ViewFontStyle',
+         style = 'LongList',
+         flags = '!NoIcons|Sensitive',
+         selectCallback = function(View, Flags, Tag)
+            local selection = View.selection
+            if (selection) then self.style = selection end
+            lFont = nil // A new font object will be needed.
+            rgnExample.acDraw()
+         end
+      })
+
+      footer = footer + rgnStyle.height + (lWidgetGap*2)
+
+      // Available font faces
+
+      local rgnFace = lWindow.new('surface', {
+         x = lWindow.leftMargin,
+         y = lWindow.topMargin,
+         width = rgnExample.x - lWidgetGap - lWindow.leftMargin,
+         yOffset = footer
+      })
+      rgnFace.acShow()
+
+      vwFace = rgnFace.new('view', {
+         style = 'LongList',
+         flags = '!Sensitive',
+         selectCallback = function(View, Flags, Tag)
+            local face = View.selection
+            if (lFonts[face] == nil) then
+               error('Font ' .. nz(self.face,'NIL') .. ' not in list.')
+            end
+
+            self.face = face
+
+            showStyles(face)
+
+            // Highlight the correct style, trying to keep the current setting if possible.
+
+            catch(function()
+               vwStyle.selection = self.style
+            end,
+            function(Exception)
+               catch(function()
+                  vwStyle.selection = 'Regular'
+               end,
+               function(Exception)
+                  vwStyle.selectionIndex = 0
+               end)
+            end)
+
+            local sizes = lFonts[face].sizes
+            if (lFonts[face].scalable) or (sizes == nil) or (#sizes == 0) then
+               sizes = lSizes
+            end
+
+            showFontSizes(sizes)
+
+            local closestSize = self.size
+            if (sizes[1] > closestSize) then closestSize = sizes[1] end
+            for _, size in ipairs(sizes) do
+               if (size <= self.size) then
+                  closestSize = size
+               else
+                  break
+               end
+            end
+
+            vwSize.selection = closestSize
+
+            lFont = nil // A new font object will be needed.
+            rgnExample.acDraw()
+         end
+      })
+
+      local xml = ''
+      for _, font in ipairs(lFontsSorted) do
+         if (font.scalable) then
+            xml = xml .. '<item icon="items/font">' .. font.name .. '</item>'
+         else
+            xml = xml .. '<item icon="layout/text_size">' .. font.name .. '</item>'
+         end
+      end
+      vwFace.xml.acDataFeed(0, DATA_XML, xml)
+      vwFace.acRefresh()
+
+      lTab.mtAddObject(rgnFace)
+      lTab.mtAddObject(rgnStyle)
+      lTab.mtAddObject(rgnSize)
+      lTab.mtAddObject(lOkayButton)
+      lTab.mtAddObject(lCancelButton)
+
+      // Preselect list items based on the preferences supplied by the client.
+
+      vwFace.selection = nz(lOptions.face, 'Open Sans')
+      vwStyle.selection = nz(lOptions.style, 'Regular')
+
+      if (lOptions.size) then
+         local selectSize = lOptions.size
+         for k,v in ipairs(lSizes) do
+            if (v < lOptions.size) then
+               selectSize = v
+            else
+               break
+            end
+         end
+         vwSize.selection = selectSize
+      end
+
+      lWindow.acMoveToFront()
+      lWindow.acShow()
+      rgnFace.acFocus()
+   end,
+   function(Exception)
+      error('Failed to initialise font dialog: ' .. Exception.message)
+   end)
+
+   return self
+end
+
+   // This sub-routine is provided for languages other than Fluid to utilise the module.
+
+   do
+      local state = getExecutionState()
+      if (state.inRequire != true) then
+         local dlg = font.dialog({
+            popover    = arg('popover'),
+            target     = arg('target'),
+            modal      = arg('modal'),
+            okText     = arg('okText'),
+            cancelText = arg('cancelText'),
+            icon       = arg('icon')
+         })
+
+         return dlg.windowID
+      end
+   end

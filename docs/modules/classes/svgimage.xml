@@ -1,0 +1,80 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>SVGImage</name>
+    <type>class</type>
+    <module>SVG</module>
+    <comment>Renders SVG files to the UI.</comment>
+    <version>1</version>
+    <id>108ac158</id>
+    <idstring>ID_SVGIMAGE</idstring>
+    <category>GUI</category>
+    <include>modules/svgimage.h</include>
+    <copyright>Paul Manias © 2010-2020</copyright>
+    <description>
+<p>The SVGImage class provides support for drawing vectors to the user's display.  Most of the underlying functionality is provided by the <class name="SVG">SVG</class> and <class name="Vector">Vector</class> classes, with SVGImage only managing the rendering to a target surface.</p>
+<p>The following example illustrates how to create a simple vector scene using an embedded SVG definition:</p>
+<pre>local svgimage = obj.new("svgimage", { x=0, y=0, xOffset=0, yOffset=0 })
+
+   svgimage.acDataFeed(0, DATA_XML, [[
+&lt;svg viewBox="0 0 800 800" width="800" height="800"&gt;
+  &lt;defs&gt;
+    &lt;linearGradient id="LinearGradient"&gt;
+      &lt;stop offset="5%" stop-color="#000000"/&gt;
+      &lt;stop offset="95%" stop-color="#F0F060"/&gt;
+    &lt;/&gt;
+
+    &lt;radialGradient id="RadialGradient" cx="50%" cy="50%" r="80%"&gt;
+      &lt;stop offset="30%" stop-color="#000000"/&gt;
+      &lt;stop offset="60%" stop-color="#ffffff"/&gt;
+    &lt;/&gt;
+  &lt;/&gt;
+
+  &lt;ellipse cx="50%" cy="50%" rx="5%" ry="5%" stroke-width="3" stroke="blue" fill="url(#LinearGradient)"/&gt;
+&lt;/svg&gt;
+]])
+</pre>
+<p>Please refer to the W3C documentation on SVG for a complete reference to the attributes that can be applied to SVG elements.  Unfortunately we do not support all SVG capabilities at this time, but support will improve in future.</p>
+<p>Please refer to the <class name="Layout">Layout</class> class for information on how to set the coordinates for a SVG object.  In cases where no coordinates or dimensions have been specified, the vector will take up the entire graphical area of its related surface.</p></description>
+    <source>
+      <file>class_svgimage.cpp</file>
+    </source>
+  </info>
+
+  <actions>
+    <action>
+      <name>Activate</name>
+      <comment>Initiates playback of SVG animations.</comment>
+    </action>
+
+    <action>
+      <name>Deactivate</name>
+      <comment>Stops all playback of SVG animations.</comment>
+    </action>
+
+    <action>
+      <name>Hide</name>
+      <comment>Hides a visible object from the view of the user.</comment>
+    </action>
+
+    <action>
+      <name>Show</name>
+      <comment>Makes an object visible to the user.</comment>
+    </action>
+
+  </actions>
+
+  <fields>
+  </fields>
+  <types>
+    <constants lookup="SVF" comment="SVG flags.">
+      <const name="ALPHA">Generate an alpha channel in the rendered image.</const>
+      <const name="AUTOSCALE">In auto-resize mode, vector dimensions are scaled to the width and height of the vector page.  PageWidth and PageHeight must be set in Vector for this.</const>
+    </constants>
+
+  </types>
+  <structs>
+  </structs>
+</book>

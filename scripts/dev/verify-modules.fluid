@@ -1,0 +1,39 @@
+-- $FLUID:Batch
+-- This script is used to generate the classes.bin and modules.bin for new builds in system:config/kernel
+
+   include "core"
+
+------------------------------------------------------------------------------
+
+function ignoreFile(Name)
+   local k, v
+   for k,v in pairs(glIgnore) do
+      if (Name:find("^" .. v .. "%..*") != nil) then return true end
+   end
+end
+
+------------------------------------------------------------------------------
+
+   print("Verify Modules\n")
+
+   glIgnore = { "core" }
+
+   local folder = obj.new("file", { path="modules:" } )
+   if nz(folder) then
+      local err, file = folder.mtNext()
+      while (err == ERR_Okay) do
+         if (bit.band(file.flags, FL_FILE) != 0) then
+            if (not ignoreFile(file.path)) then
+               print("Loading " .. file.path .. ", " .. string.format("%.0f", (file.size/1024)) .. "K")
+               catch(function()
+                  mod.load(file.path)
+               end)
+            else
+               print("Ignoring " .. file.path)
+            end
+         end
+         err, file = folder.mtNext()
+      end
+   else
+      print("Failed to read the modules: folder.")
+   end

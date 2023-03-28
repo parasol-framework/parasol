@@ -1,0 +1,60 @@
+--[[
+Demonstrates the functionality provided by the divider interface.
+--]]
+
+   require 'gui/divider'
+
+   local win = obj.new('window', { title='Divider Example', insideWidth=400, insideHeight=200 })
+
+   // Create left and right surfaces with a vertical divider to split them through the middle.
+
+   leftSurface = win.new('surface', {
+      x       = win.leftMargin,
+      y       = win.topMargin,
+      yoffset = win.bottomMargin,
+      width   = win.insideWidth/2,
+      colour  = '128,0,0'
+   })
+
+   rightSurface = win.new('surface', { // This surface is transparent because it contains rightA and rightB
+      width   = win.width - leftSurface.right,
+      y       = win.topMargin,
+      xoffset = win.rightMargin,
+      yoffset = win.bottomMargin,
+      flags   = "!transparent"
+   })
+
+   leftSurface.acShow()
+   rightSurface.acShow()
+
+   gui.divider({
+      left    = { leftSurface },
+      right   = { rightSurface },
+      min     = { left=50, right=50 },
+      background = '0,0,0,128'
+   })
+
+   // For the right-side surface, create two child surfaces with a horizontal divider to split them.
+
+   rightA = rightSurface.new('surface', {
+      x=0, y=0, xoffset=0, height=(rightSurface.height/2)-3, colour='128,0,128'
+   })
+
+   rightB = rightSurface.new('surface', {
+      x=0, yOffset=0, xOffset=0, y=(rightSurface.height/2)+3, colour='0,128,0'
+   })
+
+   rightA.acShow()
+   rightB.acShow()
+
+   gui.divider({
+      top     = { rightA },
+      bottom  = { rightB },
+      min     = { top=10, bottom=10 },
+      background = '255,255,255,128'
+   })
+
+   // Now show the window and enter the main loop.
+
+   win.acShow()
+   processing.sleep()

@@ -1,0 +1,221 @@
+--[[
+A demonstration of standard widgets
+--]]
+
+   require 'gui/toolbar'
+   require 'gui/menubar'
+   require 'gui/colourdialog'
+   require 'gui/fontdialog'
+   require 'gui/dialog'
+   require 'gui/filedialog'
+
+   local win  = obj.new('window', { title='Widget Examples', insideWidth=600, insideHeight=400 })
+
+   local y = win.topMargin
+
+function itemCallback(ID, Name)
+   print('Callback: ' .. ID .. ', ' .. Name)
+end
+
+// This callback is activated whenever a menu is activated by the user.
+
+function menuCallback(ID, Name)
+   print('Callback: ' .. ID .. ', ' .. Name)
+end
+
+function itemClicked(Menu, Item)
+
+end
+
+// This is a universal callback for any menu item that is activated by the user.
+
+function popupClicked(Menu, Item)
+   print(Item.item)
+end
+
+   menubar = gui.menubar(win.surface, {
+      createItems = function(Bar)
+         Bar.addItem(1, 'File', 'devices/harddisk', menuCallback, {
+            { item='New File', icon='items/file_new', qualifier='CTRL', key='N', feedback=itemClicked },
+            { item='Open File', icon='office/documents', qualifier='CTRL', key='O', feedback=itemClicked },
+            { item='Reload Document', icon='items/reload', key='F5', feedback=itemClicked },
+            { item='Save File', icon='items/file_save', qualifier='CTRL', key='S', feedback=itemClicked }
+         })
+         Bar.addItem(2, 'Edit', 'tools/edit', menuCallback, {
+            { item='Undo', icon='items/undo', qualifier='CTRL', key='Z', feedback=itemClicked },
+            { item='Redo', icon='items/redo', qualifier='CTRL', key='Y', feedback=itemClicked },
+            { menu={ text='Clipboard', icon='items/clipboard',
+                items={
+                  { item='Cut', icon='tools/cut', qualifier='CTRL', key='X', feedback=itemClicked },
+                  { item='Copy', icon='tools/copy', qualifier='CTRL', key='C', feedback=itemClicked },
+                  { item='Paste', icon='tools/paste', qualifier='CTRL', key='V', feedback=itemClicked }
+                }
+              }
+            }
+         })
+         Bar.addItem(3, 'Search', 'tools/magnifier', menuCallback, {})
+         Bar.addItem(4, 'View', 'page/page', menuCallback, {})
+         Bar.addItem(5, 'Tools', 'tools/wizard', menuCallback, {})
+         Bar.addItem(6, 'Help', 'items/help', menuCallback, {})
+      end
+   })
+
+   y = menubar.surface.height
+
+   lToolbar = gui.toolbar(win.surface, {
+      xOffset = 0,
+      hoverColour  = '#00000030',
+      iconSize = 22,
+      y = y,
+      createItems = function(Bar)
+         Bar.addGroup(1, 'Navigation', 2)
+         Bar.addItem(2, 'Root', 'Root Directory', 'devices/harddisk', itemCallback)
+         Bar.addItem(3, 'Parent', 'Parent Folder', 'arrows/arrow_nw', itemCallback)
+         Bar.addGroup(4, 'Clipboard', 3)
+         Bar.addItem(5, 'Cut', 'Cut', 'tools/cffut', itemCallback)
+         Bar.addItem(6, 'Copy', 'Copy', 'tools/copy', itemCallback)
+         Bar.addItem(7, 'Paste', 'Paste', 'tools/paste', itemCallback)
+         Bar.addGroup(8, 'Actions', 3)
+         Bar.addItem(9, 'Create Dir', 'Create Directory', 'folders/folder_new', itemCallback)
+         Bar.addBreak()
+         Bar.addItem(10, 'Rename', 'Rename', 'layout/interface_textbox', itemCallback)
+         Bar.addItem(11, 'Delete', 'Delete', 'tools/eraser', itemCallback)
+         Bar.addGroup(12, 'View', 2)
+         Bar.addItem(13, 'Column View', 'Column View', 'layout/column_three', itemCallback)
+         Bar.addItem(14, 'List View', 'List View', 'layout/list', itemCallback)
+      end
+   })
+
+   y = y + lToolbar.surface.height + 8
+
+   local popupMenu = gui.menu({
+      x = 30,
+      y = 50,
+      popup = true,
+      config = {
+         { group='Files' },
+         { item='New File', icon='items/file_new', qualifier='CTRL', key='N', feedback=popupClicked },
+         { item='Open File', icon='office/documents', qualifier='CTRL', key='O', feedback=popupClicked },
+         { item='Reload Document', icon='items/reload', key='F5', feedback=popupClicked },
+         { item='Save File', icon='items/file_save', qualifier='CTRL', key='S', feedback=popupClicked },
+         { group='Print' },
+         { item='Print', icon='devices/printer', qualifier='CTRL', key='P', feedback=popupClicked },
+         { group='Quit' },
+         { item='Quit', icon='items/quit', qualifier='CTRL', key='Q', feedback=popupClicked }
+      }
+   })
+
+   input.subscribe(JTYPE_BUTTON, win.surface, 0, function(Surface, Msg)
+      if (Msg.type == JET_BUTTON_2) then
+         if (Msg.value == 0) then
+            popupMenu.show()
+         end
+      end
+   end)
+
+   local text = win.new('text', { x=win.leftMargin, y=y, string='Text Widget', face='Open Sans:20' })
+   y = y + text.textHeight + 8
+
+   local msgButton = win.new('button', { text='Message Box', x=win.leftMargin, y=y, icon='items/question',
+      feedback = function()
+         gui.dialog.message({
+            modal = true,
+            image = 'icons:items/warning',
+            title = 'Hamlet has a question',
+            message = 'To be or not to be?',
+            userInput = 'That is the question',
+            checkboxLabel = '\'Tis nobler to suffer',
+            options = {
+               { id=1, text='To be', icon='items/checkmark' },
+               { id=2, text='Not to be', icon='items/cancel' }
+            },
+            feedback = function(Dialog, Response, State)
+               if Response then
+                  print('User selected option ' .. Response.id)
+               end
+               if State then
+                  if State.input then
+                     print('User entered string: ' .. State.input)
+                  end
+                  if State.checkbox then
+                     print('User activated the checkbox')
+                  end
+               end
+            end
+         })
+      end
+   })
+
+   local colourButton = win.new('button', { text='Select Colour', x=msgButton.right + 4, y=y, icon='tools/palette',
+      feedback = function()
+         gui.dialog.colour({
+            modal = true,
+            colour = '255,0,0',
+            feedback = function(Colour)
+               if (not Colour) then
+                  print('Dialog was cancelled.')
+                  return
+               end
+
+               print('The user selected colour is ' .. Colour)
+            end
+         })
+      end
+   })
+
+   local fontButton = win.new('button', { text='Select Font', x=colourButton.right + 4, y=y, icon='items/font',
+      feedback = function()
+         gui.dialog.font({
+            okText     = 'Select Font',
+            cancelText = 'Exit',
+            modal      = true,
+            feedback = function(Dialog, Accepted)
+               if (not Accepted) then
+                  print('Dialog was cancelled.')
+               else
+                  print("The user selected '" .. Dialog.face .. "', size " .. Dialog.size .. ", style '" .. Dialog.style .. "'")
+                  print("This can be compacted to '" .. Dialog.compactFace .. "'")
+               end
+            end
+         })
+      end
+   })
+
+   local fileButton = win.new('button', { text='Select File', x=fontButton.right + 4, y=y, icon='folders/folder',
+      feedback = function()
+         gui.dialog.file({
+            filterList = 'All Files;*;MP3 Audio Files;*.mp3;Text Files;*.txt',
+            okText     = 'Select File',
+            cancelText = 'Exit',
+            modal      = true,
+            warnExists = true,
+            multiSelect = true,
+            feedback = function(Dialog, Path, Files)
+               if (Files == nil) then
+                  print('Dialog was cancelled.')
+                  return
+               end
+
+               for k, v in ipairs(Files) do
+                   print(k, ' = ', nz(Path,'') .. v)
+               end
+            end
+         })
+      end
+   })
+
+   y = y + msgButton.height + 8
+
+   local checkbox = win.new('checkbox', { label='Checkbox', x=win.leftMargin, y=y })
+   y = y + checkbox.height + 8
+
+   local combobox = win.new('combobox', { label='Combobox', x=win.leftMargin, y=y, string='Your text here' })
+   y = y + combobox.height + 8
+
+   local input = win.new('input', { label='Inputbox', x=win.leftMargin, y=y, labelWidth=combobox.labelWidth, string='Your text here' })
+   y = y + input.height + 8
+
+   win.acShow()
+
+   processing.sleep() // Will sleep until the window close widget sends MSGID_QUIT
+

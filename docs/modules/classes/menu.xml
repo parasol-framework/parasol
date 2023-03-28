@@ -1,0 +1,787 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>Menu</name>
+    <type>class</type>
+    <module>Widget</module>
+    <comment>Creates and manages program menus.</comment>
+    <version>1</version>
+    <id>7c9a911a</id>
+    <idstring>ID_MENU</idstring>
+    <category>GUI</category>
+    <include>modules/menu.h</include>
+    <copyright>Paul Manias 2003-2020</copyright>
+    <description>
+<p>The Menu class provides a means to create and maintain menus in the graphical user interface.</p>
+<p>This class is still in development.</p></description>
+    <source>
+      <file path="class_menu/">menu.cpp</file>
+    </source>
+  </info>
+
+  <actions>
+    <action>
+      <name>Activate</name>
+      <comment>Switches the visibility state of the menu.</comment>
+    </action>
+
+    <action>
+      <name>Clear</name>
+      <comment>Clears an object's data.</comment>
+    </action>
+
+    <action>
+      <name>GetVar</name>
+      <comment>Simplifies the reading of menu item information.</comment>
+      <description>
+<p>The GetVar method simplifies the retrieval of menu item information when using scripting languages.  Menu items are referenced in the format 'item(id).field', where 'id' is a valid menu item ID and 'field' is a supported field name found in the MenuItem structure.  It is also possible to substitute the ID for index lookups from 0 to the total number of menu items available.  To do this, use a # prior to the index number.</p>
+<p>This example reads the menu item text identified with ID 35: <code>item(35).text</code>.</p>
+<p>This example reads the ID of the first available menu item: <code>item(0).id</code>.</p>
+<p>Supported menu item fields include: GfxScript, Path, ActionScript, Name, Text, Flags, Key, Qualifiers, Colour, Background, Index, Group, ID.</p>
+      </description>
+    </action>
+
+    <action>
+      <name>Hide</name>
+      <comment>Hides the menu and open sub-menus.</comment>
+    </action>
+
+    <action>
+      <name>MoveToPoint</name>
+      <comment>Move the menu to a new display position.</comment>
+    </action>
+
+    <action>
+      <name>Refresh</name>
+      <comment>Refreshes a menu from its source file.</comment>
+    </action>
+
+    <action>
+      <name>ScrollToPoint</name>
+      <comment>Scrolls the graphics of the targetted object to a specific point inside the parent view.</comment>
+    </action>
+
+    <action>
+      <name>SetVar</name>
+      <comment>Parameters to be passed on to item scripts are stored as variables.</comment>
+    </action>
+
+    <action>
+      <name>Show</name>
+      <comment>Shows the menu.</comment>
+    </action>
+
+  </actions>
+
+  <methods>
+    <method>
+      <name>GetItem</name>
+      <comment>Retrieves the MenuItem for a given ID.</comment>
+      <prototype>ERROR mnGetItem(OBJECTPTR Object, LONG ID, struct rkMenuItem ** Item)</prototype>
+      <input>
+        <param type="LONG" name="ID">The ID of the menu item to retrieve.</param>
+        <param type="struct rkMenuItem **" name="Item">The discovered menu item is returned in this field.</param>
+      </input>
+      <description>
+<p>This method will search for a MenuItem by ID and return it if discovered.  Failure to find the item will result in an ERR_DoesNotExist error code.</p>
+      </description>
+      <result>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="DoesNotExist">Resource does not exist.</error>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>SelectItem</name>
+      <comment>Toggle selectable menu items.</comment>
+      <prototype>ERROR mnSelectItem(OBJECTPTR Object, LONG ID, LONG State)</prototype>
+      <input>
+        <param type="LONG" name="ID">The ID of the item to be executed (an ID must have been attributed to the item on creation).</param>
+        <param type="LONG" name="State">A state value of 0 (off), 1 (on) or -1 (toggle).</param>
+      </input>
+      <description>
+<p>The state of selectable menu items can be modified with the SelectItem method.  The ID of the menu item to be toggled is required, and the new State value must be indicated.  The State values are as follows:</p>
+<types type="State">
+<type name="0">Turn the selection indicator off.</type>
+<type name="1">Turn the selection indicator on.</type>
+<type name="-1">Toggle the selection state.</type>
+</types>
+      </description>
+      <result>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="DoesNotExist">The ID does not refer to a known menu item.</error>
+        <error code="Args">Invalid arguments passed to function.</error>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>Switch</name>
+      <comment>Switches the visible state of the menu.</comment>
+      <prototype>ERROR mnSwitch(OBJECTPTR Object, LONG TimeLapse)</prototype>
+      <input>
+        <param type="LONG" name="TimeLapse">The amount of time that must elapse</param>
+      </input>
+      <description>
+<p>The Switch method alternates the the visible state of the menu - for example, if the menu is hidden, calling Switch will show the menu.  A time-lapse feature is supported so that a rapid changes to menu visibility can be avoided.  For example, if the TimeLapse option is set to 10 milliseconds, the menu state will not change unless the specified amount of time has elapsed since the last Show or Hide action.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+  </methods>
+
+  <fields>
+    <field>
+      <name>AutoExpand</name>
+      <comment>The number of seconds to wait before automatically expanding sub-menus.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>DOUBLE</type>
+      <description>
+<p>When the user's pointer hovers over an expandable menu item, the AutoExpand value will define the number of seconds that must pass before the sub-menu can be automatically expanded.  This value defaults to the user's preference settings, so it is strongly recommended that it is not modified unless there is good reason to do so.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>BorderSize</name>
+      <comment>The size of the border at the menu edge, measured in pixels.  Defaults to 1.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>BottomMargin</name>
+      <comment>Total pixel white-space at the bottom edge of the menu.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>BreakHeight</name>
+      <comment>The height of menu-break items, in pixels.</comment>
+      <access read="R">Read</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>Checkmark</name>
+      <comment>An image to use for item checkmarks may be defined here.</comment>
+      <access write="S">Set</access>
+      <type>STRING</type>
+      <description>
+<p>This field allows an image to be used when drawing checkmarks in the menu items.  It must refer to the path of an image that is in a recognised picture format (PNG is strongly recommended).</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Config</name>
+      <comment>The menu configuration, expressed as a string.</comment>
+      <access write="S">Set</access>
+      <type>STRING</type>
+      <description>
+<p>The menu configuration can be parsed from an XML string by setting this field.  This must be done prior to initialisation.  Alternatively, set the <field>Path</field> field to load the configuration from an <class name="XML">XML</class> file.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ExtensionGap</name>
+      <comment>Adds additional space for accommodating sub-menu indicators.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+      <description>
+<p>If a menu contains sub-menus, extra space will be needed to accommodate the graphics indicators that identify the items that are sub-menus.  By default this value is set to 20 pixels.</p>
+<p>If the menu contains no sub-menus in the item configuration, the ExtensionGap value is ignored.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>FadeDelay</name>
+      <comment>Maximum number of seconds that a fade-in or fade-out effect must be completed.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The FadeDelay defines the window of time, in seconds, that a fade-in or fade-out effect must be completed.  If zero, menu fading will be disabled.</p>
+<p>The default value for the FadeDelay originates from the user preferences, so it is strongly recommended that this field is not configured manually.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>FixedWidth</name>
+      <comment>Predetermined fixed-width, often used for things like combo-boxes</comment>
+      <access>-/-</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>Flags</name>
+      <comment>Optional flags.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="MNF">INT</type>
+      <description>
+<p>The following flags are supported.  The majority of these options are technical and normally specified in the menu template.</p>
+<types lookup="MNF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Font</name>
+      <comment>Refers to the <class name="Font">Font</class> object that will be used for rendering text in the menu.</comment>
+      <access read="R">Read</access>
+      <type class="Font">*Font</type>
+      <description>
+<p>This field refers to the <class name="Font">Font</class> object that will be used for rendering text in the menu.  Prior to initialisation, the font can be configured if it is desirable to override the default font style.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>FontColour</name>
+      <comment>The default font colour for menu items.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>RGB8</type>
+    </field>
+
+    <field>
+      <name>FontHighlight</name>
+      <comment>The default font colour for highlighted menu items.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>RGB8</type>
+    </field>
+
+    <field>
+      <name>Highlight</name>
+      <comment>Renders a background rectangle when an item is highlighted.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>RGB8</type>
+      <description>
+<p>If the Highlight colour is set with an alpha component other than zero, item backgrounds will be rendered with this colour when highlighted.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>HighlightBorder</name>
+      <comment>Renders a border around highlighted items.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>RGB8</type>
+      <description>
+<p>If the HighlightBorder colour is set with an alpha component other than zero, item borders will be rendered with this colour when highlighted.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>HighlightLM</name>
+      <comment>Overrides the <field>LeftMargin</field> for highlighted items.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>This field overrides the <field>LeftMargin</field> value when an item is highlighted.  By default HighlightLM is set to a value of -1, which disables this feature.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>HighlightRM</name>
+      <comment>Overrides the <field>RightMargin</field> for highlighted items.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>This field overrides the <field>RightMargin</field> value when an item is highlighted.  By default HighlightRM is set to a value of -1, which disables this feature.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>HoverDelay</name>
+      <comment>The number of seconds that must elapse before a hover event occurs in relation to the <field>Monitor</field> surface.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>DOUBLE</type>
+      <description>
+<p>Used in conjunction with <field>Monitor</field>, this field defines the minimum number of seconds that must elapse before a hover event is promoted to a 'click' and the menu is displayed.  This feature is disabled by default (set to zero).</p>
+<p>Sub-second timing is supported, so values such as 0.25 for a quarter second are valid.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>IconFilter</name>
+      <comment>Sets the preferred icon filter.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>Setting the IconFilter will change the default graphics filter used for loading all future icons.  Existing loaded icons are not affected by the change.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ImageGap</name>
+      <comment>Defines the minimum amount of whitespace between images and text in menu items.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+      <description>
+<p>This field defines the minimum amount of whitespace between images and text in menu items.  The value is measured in pixels and a minimum setting of 8 is recommended.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ImageSize</name>
+      <comment>The maximum width and height of image icons used in menu items.  The default value is 16.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>ItemFeedback</name>
+      <comment>Provides instant feedback when a user interacts with a menu item.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>FUNCTION</type>
+      <description>
+<p>Set the ItemFeedback field with a callback function in order to receive instant feedback when user interaction occurs with a menu item.  The function prototype is <code>Function(*Menu, *MenuItem)</code>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ItemHeight</name>
+      <comment>The minimum allowable height of items, in pixels.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>All menu items, with the exception of line-breaks, must have a height that is greater or equal to the value specified here.  This field is set to zero by default, allowing items to be of any height.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Items</name>
+      <comment>A linked-list of <class name="MenuItem">MenuItem</class> objects.</comment>
+      <access read="R">Read</access>
+      <type class="MenuItem">*MenuItem</type>
+      <description>
+<p>Parsing the menu configuration data will result in the generation of this linked-list of <class name="MenuItem">MenuItem</class> objects. The list can be traversed manually, however if only one item needs to be found then it is recommended that the <method>GetItem</method> method is used.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>KeyGap</name>
+      <comment>The minimum amount of white-space between menu item text and key hints (e.g. 'CTRL-C').</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>KeyMonitor</name>
+      <comment>Monitor a target surface for keypresses.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>OBJECTID</type>
+      <description>
+<p>This field is normally set to the window surface that relates to the menu.  By doing so, the menu will monitor that surface for keypresses and match them to keyboard shortcuts defined for the menu items.  A match will result in the item behaviour being executed immediately.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>KeyWidth</name>
+      <comment>Width of the widest key string</comment>
+      <access>-/-</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>LeftMargin</name>
+      <comment>Total pixel white-space on the left side of the menu.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>LineLimit</name>
+      <comment>Limits the total number of items that can be displayed before resorting to scrollbars.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+      <description>
+<p>The LineLimit restricts the total number of items that can be displayed in the menu.  If there are more items than there is space available, a vertical scrollbar will be displayed that scrolls the menu content.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>MenuSurface</name>
+      <comment>The surface used to render the menu.</comment>
+      <access read="R">Read</access>
+      <type>OBJECTID</type>
+      <description>
+<p>This pre-allocated <class name="Surface">Surface</class> will host the menu's rendered graphics.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Monitor</name>
+      <comment>Respond to user clicks on this referenced surface by showing the menu.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>OBJECTID</type>
+      <description>
+<p>This field can be set to a foreign surface prior to initialisation.  The surface will be monitored for user clicks, which will cause the menu to be shown when an interaction occurs.  In addition, if <field>HoverDelay</field> is defined, hovering over the monitored surface for a set length of time will also cause the menu to be displayed.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Node</name>
+      <comment>The name of the menu node that will be used to configure the menu.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>To configure a menu from a source that contains multiple menu elements, it may be desirable to specify which menu should be used as the source material.  To do so, specify the name of the menu element here, and ensure that there is a menu element with a matching 'name' attribute in the XML source.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Parent</name>
+      <comment>If this is a sub-menu, this field refers to the parent.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>OBJECTID</type>
+      <description>
+<p>This field will refer to the parent menu if the object was generated as a sub-menu.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Path</name>
+      <comment>Identifies the location of a menu configuration file to load.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>To load a menu configuration file on initialisation, a menu path must be specified in this field.  Alternatively, set the <field>Config</field> field if the configuration is already in memory.</p>
+<p>The validity of the path string will not be checked until the menu object is initialised.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Relative</name>
+      <comment>The primary surface to which the menu relates.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>OBJECTID</type>
+      <description>
+<p>The Relative field should refer to a foreign surface to which the menu relates.  It is normally used to refer to an application window so that the menu can be correctly offset at all times, as well as ensuring that the user focus between the menu and the application is handled efficiently.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>RightMargin</name>
+      <comment>Total pixel white-space on the right side of the menu.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>Selection</name>
+      <comment>Returns the MenuItem structure for the most recently selected item.</comment>
+      <access read="G">Get</access>
+      <type>APTR</type>
+      <description>
+<p>This field returns the MenuItem structure for the most recently selected item.  It will return NULL if no item has been selected, or if deselection of an item has occurred.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>SelectionIndex</name>
+      <comment>The index of the item that was most recently selected.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>Style</name>
+      <comment>Use a style definition other than the default.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
+      <description>
+<p>The style definition used by a menu can be changed by setting the Style field.  The string must refer to the name of a menu style in one of the system-wide style scripts.</p>
+<p>Setting the Style does nothing if the style name is not recognised (an appropriate error code will be returned).</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Target</name>
+      <comment>Refers to the surface that will host the menu.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>OBJECTID</type>
+      <description>
+<p>The surface in which the menu will be hosted is defined here.  Most commonly, it refers to the desktop surface, and this will be the default if the Target is not set manually.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>TextWidth</name>
+      <comment>Width of the widest text string</comment>
+      <access>-/-</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>TopMargin</name>
+      <comment>Total pixel white-space at the top edge of the menu.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>VSpacing</name>
+      <comment>The amount of vertical white-space between menu items.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>Width</name>
+      <comment>A fixed menu width can be applied by setting this field.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>To set a pre-calculated width against a menu, set this field. By default this field is normally set to zero, which results in the Menu class calculating the menu width automatically.  Because an automatic calculation is usually desirable, the Width should only be set manually if circumstances require it.  The ComboBox class is one such example where the drop-down menu needs to match the width of the widget.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>X</name>
+      <comment>The horizontal position of the menu.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>The X and Y fields define the position of the menu within its target surface.  If <field>Relative</field> is defined, the coordinates will be offset from the position of the <field>Relative</field> surface.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Y</name>
+      <comment>The vertical position of the menu.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>The X and Y fields define the position of the menu within its target surface.  If <field>Relative</field> is defined, the coordinates will be offset from the position of the <field>Relative</field> surface.</p>
+      </description>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="VWF" comment="View flags.">
+      <const name="WIDTH_RESET">Always reset column widths when the Columns field is set.</const>
+      <const name="NO_SORTING">No user sorting, e.g. in column mode.</const>
+      <const name="SENSITIVE">Sensitive mode will activate child objects when the user single-clicks with the mouse (by default, child activation only occurs with double-clicks).</const>
+      <const name="NO_ICONS">Do not load or show any icons.</const>
+      <const name="NOTIFY_ON_CLEAR">If the view should activate itself when cleared, set this flag. By default, activation normally only occurs when an item is double-clicked or when sensitive mode is enabled.</const>
+      <const name="DRAG_DROP">Enables drag and drop for items in the view. In this mode, multi-select is only possible if the shift or ctrl keys are held while using the mouse.</const>
+      <const name="NO_SELECT">Stop the user from selecting items.</const>
+      <const name="NO_SELECT_JMP">When a new item is selected, the view will jump to that item if it is not completely visible to the user. Setting this flag will turn off this behaviour.</const>
+      <const name="USER_DRAG">Enable drag and drop only if the user prefers it.</const>
+      <const name="AUTO_DESELECT">Deselects a highlighted item when it is activated by mouse click or enter key.</const>
+      <const name="MULTI_SELECT">Allow multiple item selections without having to hold the shift key.</const>
+    </constants>
+
+    <constants lookup="MIF" comment="Flags for MenuItems.">
+      <const name="SELECTED">The menu item has been selected (checked).</const>
+      <const name="EXTENSION">Menu item is an extension.</const>
+      <const name="NO_KEY_RESPONSE">Display the key, but do not respond to its equivalent key press.</const>
+      <const name="SORT">Sort all content under the menuitem (applies only to extensions).</const>
+      <const name="TOGGLE">Enables toggled menu items (checking state of on and off).</const>
+      <const name="OPTION">Item is a clickable option (clicking the item's icon will turn the option on/off).</const>
+      <const name="DISABLED">Set if the menu item is disabled (ghosted).</const>
+      <const name="CATEGORISE">Categorise the attached config file.</const>
+      <const name="BREAK">Menu item is acting as a break.</const>
+      <const name="KEY_REPEAT">Respond to repeated key presses.</const>
+    </constants>
+
+    <constants lookup="INF" comment="Flags for the Input class.">
+      <const name="SECRET">Used for secret user entry (passwords).</const>
+      <const name="SELECT_TEXT">Select all text when the input box is shown for the first time.</const>
+      <const name="DISABLED">Disable on creation.</const>
+      <const name="HIDE">Hide on creation, or input is currently hidden.</const>
+      <const name="ENTER_TAB">Press enter results in a virtual tab-keypress being sent.</const>
+      <const name="COMMANDLINE">Function as a command-line.  Typically used when the input box needs to remain persistent and is linked to an output system, such as a shell.</const>
+    </constants>
+
+    <constants lookup="BTF" comment="Button flags.">
+      <const name="DISABLED">Disable on creation, or button is currently disabled.  Read-only.</const>
+      <const name="HIDE">Hide on creation, or button is currently hidden.</const>
+      <const name="PULSE">Send repeated clicks when the mouse button is held down.</const>
+      <const name="NO_GFX">Turns off the button's foreground graphics (text and images).</const>
+    </constants>
+
+    <constants lookup="CBF" comment="CheckBox flags.">
+      <const name="DISABLED">Disable on creation, or object is currently disabled.</const>
+      <const name="HIDE">Hide on creation, or object is currently hidden.</const>
+    </constants>
+
+    <constants lookup="IMF" comment="Image flags">
+      <const name="NO_DRAW">Stops automatic drawing of the target surface if the image is being animated or a special effect is active.</const>
+      <const name="FIXED">Synonym for FIXED_SIZE</const>
+      <const name="ENLARGE">If the dimensions of the original picture are smaller than the destination surface, the image will be stretched to fit.  Enlargement is dynamic, so if the surface changes in size then the size of the picture will be recalculated to fit.</const>
+      <const name="NO_FAIL">If the source image file does not exist or an error occurs during loading, the image object will still pass the initialisation process successfully.  When the image object is drawn, it will clear the target surface to the colour specified in the Background field.</const>
+      <const name="SHRINK">If the dimensions of the original picture are larger than the destination surface, the image will be stretched to fit.  Shrinking is dynamic, so if the surface changes in size then the size of the picture will be recalculated to fit.</const>
+      <const name="SOLID_BLEND">Synonym for NO_BLEND</const>
+      <const name="FIT">This flag applies to image resizing.  When set, the calculated width and height will be limited so that the image cannot be stretched beyond the edges of the target surface.  This flag is commonly set in conjunction with the 11RATIO flag.</const>
+      <const name="NO_BLEND">Turns off alpha-blending if the target surface has the COMPOSITE flag set and the source image has an alpha channel.</const>
+      <const name="FIXED_SIZE">Image data will normally be stored at its original size and resized on the fly when the STRETCH flag is used.  Setting the FIXED_SIZE flag will pre-scale the image and permanently store it at that size.</const>
+      <const name="STRETCH">This flag conveniently combines the ENLARGE and SHRINK flags to ensure that the image always covers the dimensions of the destination surface.</const>
+      <const name="SCALABLE">The image source is scalable (e.g. vector graphic).</const>
+      <const name="STICKY">All calls to Move and MoveToPoint are ignored if this flag is set.</const>
+      <const name="11_RATIO">When resizing the image, the calculated width and height will always be in correct proportion relative to the source image's original width and height.</const>
+    </constants>
+
+    <constants lookup="CMF" comment="ComboBox flags.">
+      <const name="AUTO_COMPLETE">When in edit mode, this option helps the user by auto-completing text.</const>
+      <const name="EDIT">Enable edit mode, which allows the user to write free-text in the combobox.</const>
+      <const name="SHOW_ICONS">Show icons in the dropdown list.</const>
+      <const name="DISABLED">Disable on creation; or combobox is currently disabled.</const>
+      <const name="HIDE">Hide on creation, or combobox is currently hidden.</const>
+      <const name="LIMIT_TO_LIST">When in edit mode, limit-to-list prevents the user from entering text that isn't in the combobox list.</const>
+      <const name="NO_TRANSLATION">Do not translate combobox strings or the drop-down menu to the user's native language.</const>
+    </constants>
+
+    <constants lookup="CLIPTYPE" comment="Clipboard types">
+      <const name="DATA">Raw information that is uncategorised can be defined as a data clip.</const>
+      <const name="FILE">Pure file references are stored as file clips.  This type is typically used by file managers for moving and copying files.</const>
+      <const name="TEXT">Plain text files such as ASCII and UTF-8 must be identified through this clip type.</const>
+      <const name="AUDIO">An audio clip that is recognised by the Sound class (such as wav's and mp3's).</const>
+      <const name="IMAGE">Images that are recognised by the Picture class may be stored as this type (such as jpeg's and png files).</const>
+      <const name="OBJECT">An object that has been deserialised into binary form.</const>
+    </constants>
+
+    <constants lookup="SD" comment="Scroll directions.">
+      <const name="NEGATIVE"/>
+      <const name="POSITIVE"/>
+    </constants>
+
+    <constants lookup="TXF" comment="Flags for the Text class.">
+      <const name="SECRET">Hide the string characters for secret text entry (e.g. passwords).</const>
+      <const name="PRESERVE_BKGD">Preserve-background disables fast scrolling for background preservation.</const>
+      <const name="AREA_SELECTED">This read-only flag is set automatically when the user has selected an area of text.</const>
+      <const name="GLOBAL_EDITING">Keeps the text object in edit mode regardless of user focus.</const>
+      <const name="SINGLE_SELECT">Enables text selection (with or without edit mode).  If in line mode, a single click will allow the user to highlight any line.</const>
+      <const name="DISABLED">This read-only flag is set if the object has been disabled through the Disable action.</const>
+      <const name="OVERWRITE">Turns on overwrite mode (if off, insert mode is enabled).</const>
+      <const name="SELECT">Synonym for MULTI_SELECT | SINGLE_SELECT</const>
+      <const name="ENTER_TAB">Convert enter-key presses to the tab-key.</const>
+      <const name="FORCE_CAPS">This flag forces the capitalisation of all text that is entered into the object.</const>
+      <const name="AUTO_CLEAR">Clears the text string when the enter key is pressed.</const>
+      <const name="EDIT">This flag must be enabled if the user is permitted to change the text string with the keyboard.</const>
+      <const name="STRETCH">If the font is scalable, the text string will be resized to fit inside the surface that contains it (i.e. no characters will be clipped).  This is acheived by recalculating the font's point size.</const>
+      <const name="WORDWRAP">Enables word wrapping.</const>
+      <const name="AUTO_SELECT">Automatically select all text if the text object receives the focus.</const>
+      <const name="TAB_KEY">If the tab key is pressed, print the tab character.</const>
+      <const name="PASSWORD">Hide the string characters for secret text entry (e.g. passwords).</const>
+      <const name="MULTI_SELECT">Allow the user to select/highlight multiple lines by holding the Ctrl key.</const>
+      <const name="VARIABLE">This flag forces a text object to recalculate any variable references in its string data whenever a redraw occurs.  Such references are indicated through square brackets, e.g. [desktop.width].  Refer to the StrEvaluate() function in the Strings module for more information.</const>
+      <const name="STR_TRANSLATE">Translate strings to the user's native language.</const>
+      <const name="HISTORY">Enables historical browsing when the up/down cursor keys are used.  The number of historical lines stored can be set in the HistorySize field.</const>
+      <const name="NO_SYS_KEYS">This flag is set by default to enable system key support.  System-keys provide support for common key combinations such as Ctrl-C, Ctrl-X etc.</const>
+      <const name="BACKGROUND">Enables a colour background behind the text.</const>
+      <const name="TAB_ENTRY">Pressing the tab key is treated the same as pressing enter.</const>
+      <const name="COMMANDLINE">Synonym for AUTO_CLEAR | EDIT | HISTORY</const>
+    </constants>
+
+    <constants lookup="SBF" comment="Scrollbar flags.">
+      <const name="CONSTANT">Ensures that the scrollbar is always on display.</const>
+      <const name="RELATIVE">Enables relative scrolling (movement is reported relative to the current slider position rather than in absolute coordinates).</const>
+      <const name="HIDE">Hide on creation, or scrollbar is currently hidden.</const>
+      <const name="SLIDER">If set, the scrollbar behaves as a slider.  In this mode, the size of the draggable slider has a fixed size (by default the slider is proportional).</const>
+      <const name="NO_INTERSECT">Do not attempt to intersect with adjacent scrollbars.</const>
+    </constants>
+
+    <constants lookup="AXIS" comment="Axis options.  This determines the axis that is signalled when the slider is moved (note that it is feasible for a horizontal scrollbar to signal the Y axis, if this is desired by the client)">
+      <const name="X"/>
+      <const name="Y"/>
+      <const name="Z"/>
+    </constants>
+
+    <constants lookup="VGF" comment="Graphics options (normally defined by the template)">
+      <const name="OUTLINE_TITLE">Draw black outline around title text.</const>
+      <const name="NO_BORDER">Do not draw a border around column headers when in table mode.</const>
+      <const name="DRAW_TABLE">Draw the view as a table (the basic format is the same, graphics are different).</const>
+      <const name="GROUP_SHADOW">Draw a shadow underneath the group graphics headers.</const>
+      <const name="STRIPES">Draw stripes in group titles.</const>
+      <const name="HAIRLINES">Draw a hairline between each column.</const>
+      <const name="BRANCHES">Draw grey tree branches.</const>
+      <const name="ALT_GROUP">Alternate the group header graphics.</const>
+      <const name="LINE_BREAKS">Draw a line break between each view item.</const>
+    </constants>
+
+    <constants lookup="TF" comment="Flags for the TabFocus class.">
+      <const name="LOCAL_FOCUS">In this mode, the user's point of focus must match the monitored Surface for the tabfocus to function.</const>
+      <const name="CHILD_FOCUS">In this mode, the user's point of focus must match the monitored Surface or one of its immediate children for the tabfocus to function.</const>
+      <const name="LIMIT_TO_LIST">In limit-to-list mode, the tabfocus only functions if the user's point of focus is on the monitored Surface or one of objects in the tab list.</const>
+    </constants>
+
+    <constants lookup="BHS">
+      <const name="OUTSIDE">The cursor is outside of the button's area</const>
+      <const name="ENTERED">The cursor has just entered the button's area</const>
+      <const name="INSIDE">The cursor is inside the button's area</const>
+    </constants>
+
+    <constants lookup="SLF" comment="Flags for SelectCallback">
+      <const name="ACTIVE">The most recently active tag has changed.</const>
+      <const name="MANUAL">Item was manually selected (by the program, not the user).</const>
+      <const name="SELECTED">A tag has been selected and is now highlighted.</const>
+      <const name="INVERTED">Change is due to an inverted selection.</const>
+      <const name="KEYPRESS">Item was selected by a keypress.</const>
+      <const name="CLICK">Item was clicked - see ClickX and ClickY for coordinates.</const>
+      <const name="MULTIPLE">Multiple items were selected.</const>
+      <const name="MOVED">Change is due to the item being moved.</const>
+    </constants>
+
+    <constants lookup="CLF" comment="Clipboard flags">
+      <const name="DRAG_DROP">Enables drag and drop mode.  The clipboard content will be private and not share data with the host system in this mode.</const>
+      <const name="HOST">This indicator is automatically set when a clipboard was created due to incoming content from the host system.</const>
+    </constants>
+
+    <constants lookup="VIEW" comment="List options">
+      <const name="LIST">Standard list view with small icons, arranged from top to bottom.</const>
+      <const name="ICON">Similar to list-view but with large icons, arranged from left to right.</const>
+      <const name="TREE">Tree mode can be used if the items are arranged in a hierarchy, where items can be embedded within items.  The tree view provides small buttons that the user can click to expand the tree and view hidden items.</const>
+      <const name="COLUMN">Long list with detail columns.</const>
+      <const name="LONG_LIST">This type is the same as the LIST view but the items will not wrap back to the top of the view when the bottom edge of the surface is encountered.</const>
+      <const name="GROUP_TREE">Similar to tree view, but root level nodes are drawn as a headline.</const>
+      <const name="DOCUMENT">Document mode allows view data to be passed to a document object for display.  You are required to provide a document object that is pre-loaded with a template capable of processing input from the view object.  Refer to the Document field for more information.</const>
+      <const name="COLUMN_TREE">This mode combines the column and tree modes.  The view displays the layout and style of normal column mode, but the first column is used to display and manage a tree hierarchy.  The tree can be expanded and collapsed just as in the standard tree mode.</const>
+    </constants>
+
+    <constants lookup="SO" comment="Direction options">
+      <const name="HORIZONTAL"/>
+      <const name="VERTICAL"/>
+    </constants>
+
+    <constants lookup="CEF">
+      <const name="DELETE">Requests that the original file source is deleted if a successful paste operation takes place.</const>
+      <const name="EXTEND">Instead of replacing existing clipboard data, add the new data to the group.</const>
+    </constants>
+
+    <constants lookup="MNF" comment="Flags for the Menu class.">
+      <const name="SHOW_KEYS">Print key controls on the right.</const>
+      <const name="POINTER_XY">Synonym for POINTER_PLACEMENT</const>
+      <const name="SHOW_ICONS">Synonym for SHOW_IMAGES</const>
+      <const name="SHOW_IMAGES">Allow for an image column on the left.</const>
+      <const name="POINTER_PLACEMENT">Menu is placed at the position of the mouse pointer when shown.</const>
+      <const name="REVERSE_Y">Menu's open in reverse vertical order.</const>
+      <const name="CACHE">Cache menu surface once created.</const>
+      <const name="IGNORE_FOCUS">Do not hide the menu if it loses the focus.</const>
+      <const name="SORT">Sort all items by name.</const>
+      <const name="EXT_COLUMN">Allow for an extension indicator column on the right.</const>
+      <const name="PRESERVE_BKGD">Preserve background when scrolling.</const>
+      <const name="REVERSE_X">Menu's open in reverse horizontal order.</const>
+      <const name="NO_HIDE">Activate() is prevented from hiding the menu.</const>
+      <const name="POPUP">Locks the position of the menu to the mouse pointer.</const>
+      <const name="NO_TRANSLATION">Do not translate menu text to the user's native language.</const>
+    </constants>
+
+    <constants lookup="SCF" comment="Scroll flags.">
+      <const name="FIXED">Fixes the scroll slider to a specific size (non-proportional mode of operation).</const>
+      <const name="REVERSE">When reporting the position of the slider, the value will always be reversed - so positive values will be negative and vice versa.  Reporting for relative position changes are also affected.</const>
+      <const name="VERTICAL">The scrollbar is oriented vertically.</const>
+      <const name="RELATIVE">Forces relative scrolling through the Scroll action rather than the default ScrollToPoint.</const>
+      <const name="AUTO_ACTIVATE">The scroll object automatically activates itself whenever the position of the slider is changed.</const>
+      <const name="AUTO_HIDE">Automatically hide the scrollbar when possible.</const>
+      <const name="INVISIBLE">Keep scrollbar invisible.</const>
+      <const name="HORIZONTAL">The scrollbar is oriented horizontally.</const>
+      <const name="SLIDER">Changes the mode of operation so that the slider is non-proportional.  The size of the view is also set to a fixed value and resizing of the parent surface no longer affects the scroll values.</const>
+      <const name="MESSAGE">Use used delay messages for activation of children.</const>
+    </constants>
+
+  </types>
+  <structs>
+  </structs>
+</book>

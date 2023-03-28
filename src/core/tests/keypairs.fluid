@@ -1,0 +1,129 @@
+--[[
+Tests for key-pair functionality.
+--]]
+
+MAX_KEYS = 50000
+
+//=====================================================================================================================
+// Check that deleting a key really does delete that key.
+
+function testDeletedKey()
+   mSys.VarSetString(glVars, "delete", "this")
+   local check = mSys.VarGetString(glVars, "delete")
+   if (check == "this") then
+      mSys.VarSetString(glVars, "delete", nil) // This should delete the key
+      check = mSys.VarGetString(glVars, "delete")
+      if (check != nil) then
+         error("Key was not deleted as expected.")
+      end
+   else
+      error("Failed to add key.")
+   end
+end
+
+//=====================================================================================================================
+// Check that overwriting an existing key works.
+
+function testOverwrite()
+   mSys.VarSetString(glVars, "overwrite", "one")
+   mSys.VarSetString(glVars, "overwrite", "two")
+   local check = mSys.VarGetString(glVars, "overwrite")
+   if (check != "two") then
+      error("Overwriting variables doesn't work as expected.")
+   end
+end
+
+//=====================================================================================================================
+// Check that expanding the hashmap does not break it.
+
+function testExpansion()
+   // Add a large batch of numbered keys.
+
+   for i=1,MAX_KEYS do
+      mSys.VarSetString(glVars, tostring(i), tostring(i))
+   end
+
+   // Check that the keys are all there.
+
+   for i=1,MAX_KEYS do
+      local val = mSys.VarGetString(glVars, tostring(i))
+      if (val != tostring(i)) then
+         error("Key " .. i .. " was lost.")
+      end
+   end
+end
+
+//=====================================================================================================================
+// Attempt a clean-copy of glVars
+
+function testCopy()
+   local clone = mSys.VarNew()
+
+   mSys.VarCopy(glVars, clone)
+
+   // Check that all the keys from testExpansion exist in the clone.
+
+   for i=1,MAX_KEYS do
+      local val = mSys.VarGetString(glVars, tostring(i))
+      if (val != tostring(i)) then
+         error("Key " .. i .. " was lost.")
+      end
+   end
+
+   mSys.FreeResource(clone)
+end
+
+//=====================================================================================================================
+// Test the VarIterate() functionality.
+
+function testIteration()
+   local vars = { one=false, two=false, three=false, four=false, five=false }
+
+   for k, v in pairs(vars) do
+      mSys.VarSetString(glVars, k, k)
+   end
+
+   local err, key, value, len = mSys.VarIterate(glVars, nil)
+   while (err == ERR_Okay) do
+      vars[key] = true
+      err, key, value, len = mSys.VarIterate(glVars, key)
+   end
+
+   for k, v in pairs(vars) do
+      if (v != true) then
+         error("Key '" .. k .. "' was not iterated.")
+      end
+   end
+end
+
+//=====================================================================================================================
+// Check that pre-hashed numeric keys work.
+
+function testIntKeys()
+   local rawKeys = mSys.VarNew()
+   for i=1,MAX_KEYS do
+      mSys.KeySet(rawKeys, i, tostring(i))
+   end
+
+   local concat = ""
+   for i=1,MAX_KEYS do
+      local err, data = mSys.KeyGet(rawKeys, i)
+      if (err != ERR_Okay) then
+         error("Key " .. i .. " was lost.")
+      end
+   end
+   mSys.FreeResource(rawKeys)
+end
+
+//=====================================================================================================================
+
+   return {
+      tests = { 'testIteration', 'testExpansion', 'testDeletedKey', 'testOverwrite', 'testCopy', 'testIntKeys' },
+      init = function()
+         glVars = mSys.VarNew()
+      end,
+      cleanup = function()
+         mSys.FreeResource(glVars)
+         glVars = nil
+      end
+   }

@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+
+<info>
+ <title>Installation Procedure</title>
+ <author>Rocklyte Systems</author>
+ <keywords>rocklyte, sdk, installation, install, overview, file, directory, archive</keywords>
+ <description>Installation overview of the Rocklyte SDK.</description>
+</info>
+
+<include src="inc_style.rpl"/>
+
+<page>
+
+<startpage title="Installation Procedure"/>
+
+<p>After installing the SDK from the official distribution package, the available source code and include files will be found in the folder you chose for installation.  We suggest compiling one of the example programs in the source/ folder to test the installation.  If using Linux, open a terminal and type 'make' in a source directory containing a makefile.  If using Windows, open MSYS and type 'make' in a source directory containing a makefile.  The SDK is designed to be fool-proof - if compilation doesn't work, check the version numbers of GCC and Make, upgrading if necessary.</p>
+
+<p>This example demonstrates the successful compilation of the Run class:</p>
+
+<indent><code>
+&gt; cd /c/sdk/modules/commands/run
+&gt; make
+  gcc  -Wall -O2 -march=i586 -fno-strict-aliasing -I../../../include
+  -s -shared -o "/c/athene/system/modules/commands/run.dll" run.c
+&gt;</code></indent>
+
+<h2>Overview of Installed Directories and Files</h2>
+
+<p>The root directory structure following installation contains these standard directories:</p>
+
+<indent>
+  <list type="custom">
+    <li value="include/">The include directory contains the C/C++ header files that are necessary for compiling programs.  The include files are documented and easily readable if you would like to further your understanding of the system internals.</li>
+    <li value="modules/">Source code to the binary modules used in the core platform are available here.  Most of the source code to the entire system can be compiled from the available sub-folders.</li>
+    <li value="source/">Example projects are stored here.</li>
+    <li value="templates/">The templates directory contains source code for creating new classes and modules from scratch.</li>
+  </list>
+</indent>
+
+<h2>System Directory Structure</h2>
+
+<p>The following is an analysis of a complete Parasol framework installation.  The two most important folders are system/ and programs/, which can also be browsed as the system: and programs: volumes from the Rocklyte File Manager.  The programs: volume contains a pre-defined set of folders that exist to help organise the user's installed software base.  It also stores the desktop environment, themes, templates, commands and boot scripts.  The system: volume is more interesting to the developer and is described here:</p>
+
+<indent>
+  <list type="custom">
+    <li value="audio/">A library of audio files is stored here.  These can be used to add stock audio samples to any program that requires sound effects.</li>
+    <li value="config/">The assignments.cfg file (a global list of system volumes) and languages.cfg file (a database of language names and associated abbreviations) are stored here.</li>
+    <li value="config/fluid/">Contains system include files for the Fluid language.</>
+    <li value="config/hardware/">Global hardware information and device configuration details are stored here.</>
+    <li value="config/kernel/">Contains the system error files, as well as class and module databases, which are used to link class names to the files in which they reside.</>
+    <li value="config/keymaps/">System keymaps are stored here - these will only be used if the host system does not have a keymap engine.</>
+    <li value="config/software/">User software is stored here in a database, as well as file associations for linking files to programs.</>
+    <li value="config/ssl/">This folder contains SSL configuration files.</>
+    <li value="config/translations/">Translation dictionaries for simple words and phrases are stored here.</>
+    <li value="config/uninstall/">Any software that is manually installed by the user will have an accompanying uninstall file which is stored in this folder.</>
+    <li value="fonts/">All truetype and bitmap fonts that are available to the user are stored in this location.</li>
+    <li value="icons/">A system-wide icon library is stored here.  Each icon is stored as an individual picture file in an icon category folder.  If your program requires custom icon images, they must be stored in this location if you are to take advantage of the system's icon engine.</li>
+    <li value="modules/">Module binaries are stored here.  If you write a new module API it must be installed in this folder or one of the sub-folders.</li>
+    <li value="users/">User folders may be stored here in hosted system environments that do not support home directories.</li>
+  </list>
+</indent>
+
+</page>

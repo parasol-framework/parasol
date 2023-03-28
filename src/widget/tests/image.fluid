@@ -1,0 +1,17 @@
+
+   local win = obj.new('window', {
+      insideWidth  = 400,
+      insideHeight = 200,
+      minWidth     = 300,
+      minHeight    = 80,
+      quit         = true,
+      title        = "Image Test"
+   })
+
+   local img = win.new('image', {
+      src = 'icons:items/checkmark(64)',
+      width=64, height=64, x=win.leftMargin, y=win.topMargin
+   })
+
+   win.acShow()
+   processMessages(-1)

@@ -1,0 +1,6 @@
+{
+  "files.associations":{
+    "*.fdl": "lua",
+    "*.fluid": "lua"
+  }
+}

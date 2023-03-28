@@ -1,0 +1,519 @@
+--[[
+The MenuBar interface creates and manages the use of items and groups of items in the UI, typically using icons, text
+or both for item representation.  Each item performs a specific application function that is activated via a callback
+mechanism.
+
+The following example illustrates basic usage:
+
+   gui.menubar(surface, {
+      x=0, y=0, xOffset=0,
+      createItems = function(Bar)
+         Bar.addItem(10, 'Rename', 'layout/interface_textbox', function()
+            print('rename')
+         end)
+         Bar.addItem(11, 'Delete', 'tools/eraser', function()
+            print('delete')
+         end)
+      end
+   })
+
+The first parameter is the target surface for the MenuBar graphic.  Valid options to use when creating the menubar are
+as follows:
+
+  createItems: Required.  A function that will define the items to display in the menubar.
+  x, y:        The x and y coordinates of the menubar.
+  xOffset:     Optional x offset (defaults to 0).
+  tabFocus:    Optional reference to a TabFocus object for the MenuBar to connect to.
+  theme:       Set to 'light' or 'dark' to affect the colour of the icons.
+--]]
+
+   require 'common'
+   require 'gui'
+   require 'gui/menu'
+   include 'vector'
+
+gui.menubar = function(Target, Options)
+   local mFont = mod.load('font')
+
+   local self = { // Public variables
+      surface  = nil
+   }
+
+   local lItemLookup = { }
+   local lIcons = { }
+   local lFirstItem, lLastItem, lClicked, lScene, lViewport, lVectorGroup, lVectorHighlightIcon
+   local lSurfaceWidth, lSurfaceHeight
+   local lVMargin  = 6
+   local lHGap     = 26
+   local lIconSize = 12
+   local lFontSize = 16
+   local lDisabled = false // If true, the entire menubar is disabled.
+   local lArranged = false
+   local lThemeColour
+   local lPreviousItem
+   local lLastMenu
+   local count = 0
+   local defaultTextFill = 'rgb(255,255,255)'
+   local defaultTextHighlight = 'rgb(160,160,220)'
+
+   local function counter()
+      count = count + 1
+      return count
+   end
+
+   local function activateItem() // Activate the current menu item.
+      if not lCurrentItem then return end
+
+      if (lCurrentItem.callback) then
+         lCurrentItem.callback(lCurrentItem.id, lCurrentItem.name)
+      end
+
+      local menu = lCurrentItem.menu
+      if not menu then
+         menu = gui.menu({
+            relative     = self.surface,
+            x            = lCurrentItem.x,
+            y            = self.surface.height - 2,
+            keyMonitor   = self.surface,
+            config       = lCurrentItem.menuConfig
+         })
+         lCurrentItem.menu = menu
+      end
+
+      menu.x = lCurrentItem.x
+
+      if menu.switch() == 1 then
+         if lLastMenu and lLastMenu != menu then
+            lLastMenu.hide()
+         end
+         lLastMenu = menu
+      end
+   end
+
+   local function drawItem(Item)
+      if (Item) then
+         self.surface.acDraw(Item.x, 0, Item.width, lSurfaceHeight)
+      end
+   end
+
+   local function firstItem() // Return the first item
+      return lFirstItem
+   end
+
+   local function lastItem() // Return the last item
+      return lLastItem
+   end
+
+   local function newItem(Name, ID) // Append an item to the menu bar
+      if (ID) and (lItemLookup[ID]) then error('An item with identifier ' .. ID .. ' already exists.') end
+
+      local item = { id=ID, name=Name }
+      if nz(Name) then
+         item.displayName = mSys.StrTranslateText(Name)
+      end
+
+      if (lLastItem) then lLastItem.next = item end
+      item.prev = lLastItem
+      item.next = nil
+      lLastItem = item
+      if (not lFirstItem) then lFirstItem = item end
+
+      if (ID) then lItemLookup[ID] = item end
+      return item
+   end
+
+   local function getCursorItem(X, Y)
+      local item = lFirstItem
+      while (item) do
+         if (X >= item.x) and (X <  item.x + item.width) and (Y >= item.y) and (Y <  item.y + item.height) then
+            return item
+         end
+         item = item.next
+      end
+   end
+
+   // Highlight selected item (for keyboard item selection)
+
+   local function highlightItem(Item)
+      lCurrentItem = Item
+      lVectorHighlightIcon.x = Item.x + 1
+      lVectorHighlightIcon.y = 1
+      lVectorHighlightIcon.width  = Item.width - 2
+      lVectorHighlightIcon.height = lSurfaceHeight - 2
+      lVectorHighlightIcon.visibility = 'visible'
+
+      self.surface.acDraw()
+   end
+
+   local function keyFeedback(Input, Surface, Flags, Code, Unicode)
+      if (bit.band(Flags, KQ_PRESSED) != 0) then
+         if (Code == K_ENTER) or (Code == K_NP_ENTER) or (Code == K_SPACE) then
+            activateItem()
+         elseif (Code == K_UP) or (Code == K_LEFT) then
+            if (lCurrentItem) then
+               local scan = lCurrentItem.prev
+               if (not scan) then scan = lastItem() end
+               highlightItem(scan)
+            else
+               highlightItem(firstItem())
+            end
+         elseif (Code == K_DOWN) or (Code == K_RIGHT) or (Code == K_TAB) then
+            if (lCurrentItem) then
+               local scan = lCurrentItem.next
+               if (not scan) then scan = firstItem() end
+               highlightItem(scan)
+            else
+               highlightItem(firstItem())
+            end
+         end
+      end
+   end
+
+   // Generate a simple gradient fill for vectors.
+
+   local function verticalGradient(Name, First, Last, X1, Y1, X2, Y2, Units)
+      local stops = { }
+      local first = struct.new('GradientStop')
+      first.offset    = 0
+      first.rgb.red   = First.r / 255
+      first.rgb.green = First.g / 255
+      first.rgb.blue  = First.b / 255
+      first.rgb.alpha = nz(First.a,255) / 255
+      table.insert(stops, first)
+
+      local last = struct.new('GradientStop')
+      last.offset    = 1.0
+      last.rgb.red   = Last.r / 255
+      last.rgb.green = Last.g / 255
+      last.rgb.blue  = Last.b / 255
+      last.rgb.alpha = nz(Last.a,255) / 255
+      table.insert(stops, last)
+
+      local gradient = lScene.new('VectorGradient', {
+         type='linear', stops=stops, x1=X1, y1=Y1, x2=X2, y2=Y2, units=nz(Units,'boundingbox')
+      })
+      lScene.mtAddDef(Name, gradient)
+      return gradient
+   end
+
+   local function arrangeItems()
+      if not nz(lSurfaceWidth) or not nz(lSurfaceHeight) then return end
+
+      if (lVectorGroup) then lVectorGroup.acFree() end
+
+      lVectorGroup = lViewport.new('VectorGroup', { name='ItemGroup' })
+
+      local item = lFirstItem
+      local x = 0
+      local y = 0
+      local spanCount = 0
+      while (item) do
+         item.x = x
+         item.y = y
+         item.width = lIconSize + (lVMargin * 2)
+         item.height = lIconSize + (lVMargin * 2)
+         item.gfxWidth = item.width
+
+         local iconWidth = 0
+         if (item.svg) then
+            iconWidth = lIconSize + lVMargin
+            item.svgGroup.x = x + lVMargin
+            item.svgGroup.y = y + lVMargin
+            if (lDisabled) or (item.disabled) then
+               item.vectorIcon.opacity = 0.5
+            end
+         end
+
+         if nz(item.displayName) then
+            item.vectorText = lVectorGroup.new('VectorText', {
+               x        = x + iconWidth + lVMargin,
+               face     = 'Source Sans Pro',
+               fontSize = lFontSize,
+               fill     = defaultTextFill,
+               string   = item.displayName
+            })
+
+            item.gfxWidth = iconWidth + mFont.StringWidth(item.vectorText.font, item.displayName, -1) + (lVMargin * 2)
+            item.width = item.gfxWidth + lHGap
+            item.vectorText.y = ((lSurfaceHeight)/2) + (item.vectorText.font.height/2)
+
+            if (lDisabled) or (item.disabled) then
+               item.vectorText.opacity = 0.5
+            end
+         end
+
+         x = x + item.width
+         spanCount = spanCount + 1
+
+         item = item.next
+      end
+
+      lArranged = true
+   end
+
+   local function applyFill(Vector, Fill)
+      while (Vector != nil) do
+         if (Vector.fill != 'none') then
+            Vector.fill = Fill
+         end
+         if (Vector.stroke != nil) then Vector.stroke = Fill end
+         local child = Vector.child
+         if (child != nil) then applyFill(child, Fill) end
+         Vector = Vector.next
+      end
+   end
+
+   // Add a clickable item to the menubar.  The Name acts as the item text that is displayed in the menubar if no
+   // icon can be displayed.  The icon string must be in the standard format of 'category/icon'.
+
+   self.addItem = function(ID, Name, Icon, Function, Menu)
+      local item = newItem(Name, ID)
+      item.callback = Function
+      item.menuConfig = Menu
+
+      if (Icon) then
+         catch(function()
+            local gname = 'bkgd' .. counter()
+            item.svgGroup = lViewport.new('VectorViewport', { x=0, y=0, width=lIconSize, height=lIconSize })
+            item.svgGradient = verticalGradient(gname, lThemeColour.first, lThemeColour.last, 0, 0, 0, 1)
+            item.svg = obj.new('svg', { target=item.svgGroup, path='icons:' .. Icon .. '.svg' })
+            applyFill(item.svgGroup, 'url(#' .. gname .. ')')
+
+            local viewport = item.svgGroup.child
+            if (viewport != nil) then
+               while (child != nil) do
+                  if (child.class.id == ID_VECTORVIEWPORT) then
+                     viewport = child
+                     break
+                  end
+               end
+
+               if (viewport.viewHeight < viewport.viewWidth) then
+                  item.svgGradient.y1 = viewport.viewY - ((viewport.viewWidth - viewport.viewHeight) * 0.5)
+                  item.svgGradient.y2 = item.svgGradient.y1 + viewport.viewWidth
+               else
+                  item.svgGradient.y1 = viewport.viewY
+                  item.svgGradient.y2 = viewport.viewY + viewport.viewHeight
+               end
+            end
+         end)
+      end
+
+      lArranged = false
+   end
+
+   // Individual menubar items can be disabled with this method.  Reverse this action with enableItem().
+
+   self.disableItem = function(ID)
+      local item = lItemLookup[ID]
+      if (item) and (not item.disabled) then
+         item.disabled = true
+         drawItem(item)
+      end
+   end
+
+   // Items that have been disabled can be re-enabled by calling this method.
+
+   self.enableItem = function(ID)
+      local item = lItemLookup[ID]
+      if (item) and (item.disabled) then
+         item.disabled = false
+         drawItem(item)
+      end
+   end
+
+   // Remove an item from the menubar.
+
+   self.removeItem = function(ID)
+      local item = lItemLookup[ID]
+      lItemLookup[ID] = nil
+      if (item.prev) then item.prev.next = item.next end
+      if (item.next) then item.next.prev = item.prev end
+      if (item == lFirstItem) then lFirstItem = item.next end
+      if (item == lLastItem) then lLastItem = item.prev end
+      if (item == lCurrentItem) then lCurrentItem = nil end
+   end
+
+   local function hoverUpdate(Item, StateChanged) // Highlight items that the user hovers over.
+      if (lCurrentItem == Item) and (StateChanged != true) then return end
+
+      lVectorHighlightIcon.visibility = 'hidden' // Turn off keyboard highlighting
+      lCurrentItem = Item
+
+      if lPreviousItem and lPreviousItem != lCurrentItem then
+         lPreviousItem.vectorText.fill = defaultTextFill
+      end
+
+      if (lCurrentItem) and (not lCurrentItem.disabled) and (not lDisabled) then
+         lCurrentItem.vectorText.fill = defaultTextHighlight
+         lPreviousItem = lCurrentItem
+      end
+
+      self.surface.acDraw()
+   end
+
+   local function inputFeedback(Surface, Msg) // Internal input handler
+      if (Msg.type == JET_ENTERED_SURFACE) then
+
+      elseif (Msg.type == JET_LEFT_SURFACE) then
+         if (lCurrentItem) then
+            hoverUpdate(nil)
+         end
+      elseif (bit.band(Msg.flags, JTYPE_MOVEMENT) != 0) then
+         if (lClicked) then return end
+
+         local item
+         if (Msg.overID == self.surface.id) then // Determine what item we are positioned over
+            item = getCursorItem(Msg.x, Msg.y)
+         end
+
+         hoverUpdate(item)
+      elseif (bit.band(Msg.flags, JTYPE_BUTTON) != 0) then
+         if (Msg.value > 0) then
+            if (lDisabled) then return end
+
+            if (lCurrentItem) then
+               if (lCurrentItem.disabled) then return end
+
+               if (Msg.type == JET_BUTTON_1) then
+                  lClicked = lCurrentItem
+                  lClickX  = Msg.x
+                  lClickY  = Msg.y
+                  hoverUpdate(lCurrentItem, true)
+                  activateItem()
+               end
+            end
+         elseif (Msg.type == JET_BUTTON_1) then
+            if (lClicked) then
+               lClicked = nil
+
+               hoverUpdate(lCurrentItem, true)
+            end
+         end
+      end
+   end
+
+   local function drawMenubar(Surface, Bitmap)
+      lScene.bitmap = Bitmap
+      lScene.pageWidth = lSurfaceWidth
+      lScene.pageHeight = lSurfaceHeight
+      lScene.acDraw()
+   end
+
+   // Main entry point
+
+   catch(function()
+      if (not Target) then error('A target surface is required.') end
+
+      lThemeColour = { first={ r=250,g=249,b=248 }, last={ r=190,g=191,b=192 } }
+
+      self.surface = Target.new('surface')
+      self.surface.region = true
+      self.surface.flags  = '!StickToBack'
+      self.surface.x      = nz(Options.x, 0)
+      self.surface.y      = nz(Options.y, 0)
+      self.surface.height = 1
+      self.surface.xOffset = nz(Options.xOffset, 0)
+
+      if (self.surface.acInit() != ERR_Okay) then error('Failed to initialise surface.') end
+
+      self.surface.subscribe('free', function(Surface, Args)
+         self.surface = nil
+         lFirstItem   = nil
+         lLastItem    = nil
+         lCurrentItem = nil
+      end)
+
+      self.surface.subscribe('redimension', function(Surface, Args)
+         lSurfaceWidth  = Surface.width
+         lSurfaceHeight = Surface.height
+      //   arrangeItems()
+      end)
+
+      self.surface.subscribe('focus', function(Surface, Args)
+         self.surface.acDraw()
+      end)
+
+      self.surface.subscribe('lostfocus', function(Surface, Args)
+         if (lCurrentItem) then
+            lVectorHighlightIcon.visibility = 'hidden' // Turn off keyboard highlighting
+            self.surface.acDraw()
+         end
+      end)
+
+      self.surface.subscribe('enable', function(Surface, Args)
+         lDisabled = false
+         self.surface.acDraw()
+      end)
+
+      self.surface.subscribe('disable', function(Surface, Args)
+         lDisabled = true
+         self.surface.acDraw()
+      end)
+
+      self.surface.mtAddCallback(drawMenubar)
+
+      input.subscribe(bit.bor(JTYPE_BUTTON, JTYPE_MOVEMENT, JTYPE_FEEDBACK), self.surface, 0, inputFeedback)
+      input.keyboard(self.surface, keyFeedback)
+
+      lScene = obj.new('VectorScene', { })
+      lViewport = lScene.new('VectorViewport', { })
+
+      lBackground = lViewport.new('VectorGroup', { name='ItemBackground' })
+
+      local hiFill = 'rgb(0,0,0,128)'
+      if (Options.theme != 'light') then
+         hiFill = 'rgb(255,255,255,200)'
+      end
+
+      lVectorHighlightIcon = lViewport.new('VectorRectangle', { // Keyboard-based selection
+         stroke    = hiFill,
+         dashArray = '1, 1',
+         roundX    = 3,
+         roundY    = 3,
+         x         = 0,
+         y         = 0,
+         width     = 16,
+         height    = 16,
+         visibility = 'hidden'
+      })
+
+      Options.createItems(self)
+
+      local barHeight = lIconSize + (lVMargin * 2)
+      self.surface.height = barHeight
+      lSurfaceWidth  = self.surface.width
+      lSurfaceHeight = self.surface.height
+
+      lBackground.new('VectorRectangle', { // Main background
+         fill   = 'rgb(0,0,0,200)',
+         x      = 0,
+         width  = '100%',
+         height = lSurfaceHeight - 1,
+         y      = 0
+      })
+
+      lBackground.new('VectorRectangle', { // Bottom stroke
+         fill        = 'rgb(0,0,0,64)',
+         stroke      = 'rgb(255,255,255,64)',
+         strokeWidth = 1,
+         x      = 0,
+         width  = '100%',
+         height = 1,
+         y      = lSurfaceHeight - 1
+      })
+
+      arrangeItems()
+
+      if (Options.tabFocus) then
+         Options.tabFocus.mtAddObject(self.surface)
+      end
+
+      self.surface.acShow()
+   end,
+   function(Exception)
+      error('Failed to initialise Menubar: ' .. Exception.message)
+   end)
+
+   return self
+end

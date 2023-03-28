@@ -1,0 +1,155 @@
+<?xml version="1.0"?>
+
+<info>
+ <title>Documentation Guide</title>
+ <author>Rocklyte Systems</author>
+ <keywords>documentation, standards, manual, layout, document, html</keywords>
+ <description>The definitive guide to Rocklyte's documentation standards.</description>
+</info>
+
+<include src="inc_style.rpl"/>
+
+<page>
+
+<startpage title="Documentation Guide"/>
+
+<p>This guide provides you with the necessary information on how to write class and module documentation that is compatible with Rocklyte's internal standards. This applies to developer related materials only - there is no official standard for documenting technical information.</p>
+
+<p>Although our technical manuals are distributed in XML format, all code written by Rocklyte is self-documented in a format that is referred to as "Section Based Formatting", or SBF.  It is from these files that the XML is produced.  The code that performs the necessary processing is found in the DocCompiler class. You can see real-world examples of SBF source files by viewing almost any of the existing source files in the Rocklyte SDK. To see how it works, try processing one of these files through the DocCompiler and observe the output.</p>
+
+<p>Writing self-documenting source code as opposed to writing raw document files is helpful for a number of reasons, including:</p>
+
+<list type="bullet">
+ <li>The documentation is easier to update when you make changes to the code.</li>
+ <li>The code will be easier to understand because it is self-documenting.</li>
+ <li>The time required to write the documentation is considerably shorter.</li>
+ <li>Using system-wide standards increases levels of understanding amongst all Rocklyte developers.</li>
+</ul>
+
+<p>Before you start writing documentation for your source code, it is recommended that you read the rest of this manual to ascertain the specifics of writing self-documenting source files.</p>
+
+<h2>General Guidelines</h2>
+
+<p>When documenting areas that require formatting, you should limit the number of tags that you use.  Under no circumstances should you attempt to embed code or custom styling in your documentation - in other words, keep it pure.  For style, we reommend that you only use the <b>i</b>, <b>b</b> and <b>pre</b> tags.  Custom links are not recommended as we provide helper tags for linking to functions, classes and methods for example.</p>
+
+<p>Embedded pictures and diagrams are not currently supported in our technical manuals.</p>
+
+<p>When writing developer documentation you should treat it as a technical whitepaper, meaning it must be presented in a professional manner that is easy to read. Flashy presentation, changes in fonts and pretty pictures only serve as a distraction rather than an aid, so keep it simple and consistent.</p>
+
+<h2>Writing Self-Documented Code</h2>
+
+<p>It is recommended that you write documentation for your code once your progress is 50% towards completion. Do not document your code from the beginning as you may need to re-write much of it at the end of your development cycle.</p>
+
+<p>A benefit of Section Based Formatting is that it allows you to spread your documentation throughout the entire source file, rather than writing it as a long stream of text. If your source code is split across multiple source files then that's no problem either, as the compiler can read them all from the one directory if need be. Make sure that you take full advantage of this as it will make your life easier when making future updates to your code.</p>
+
+<p>There are two different types of SBF source files - one style for modules and another style for classes.  The type of documentation that you are writing is determined by the first 'mark', which must be either a Module or Class mark.  This is followed by a set of definitions, all of which are optional but generally you will want to set the Name, Version, Date and Copyright information as a bare minimum.  After that you can enter a description with the Description mark and add any important notes through the Note mark.  In most cases you will then want to end the section with an End mark before documenting the functions and/or fields of the source code.</p>
+
+<p>Let's look at this in more detail, starting with the header for a class document.  In this example we have used all possible attributes for the class header and entered a description of the type of information you should enter for each attribute:</p>
+
+<indent><code>###CLASS###
+Name:      The name of the class.
+Version:   The version number of the class.
+ID:        If the class has an ID then type it in here, otherwise enter 'Dynamic'.
+Category:  The class should belong to a standard category - e.g. Command, GUI,
+           Tool, IO or Effect.  Available categories are listed in your
+           system:modules/ directory.
+Include:   If applicable, the include file for the class should be referred
+           to here.
+Date:      The month and year that this code was last updated must be entered
+           here, e.g. 'February 2001'.
+Author:    You or your company name should be entered here.
+Copyright: The copyright owner and the year of copyright must be specified here.
+Keywords:  A comma-separated list of keywords can be listed in this attribute.
+Short:     A short (80 character) description of what the class does can be
+           entered here.</code></indent>
+
+<p>You should immediately follow-up the class header with a description of the class.  The compiler will analyse the description for paragraphs - a paragraph will be assumed when two line-breaks are discovered following each other.  Your description may contain tags, which should be organised into paragraphs. If necessary you can add any extra notes through a Note header, after which you should end the class header with an End mark. Example:</p>
+
+<indent><code>###DESCRIPTION###
+The description of my class is entered here.
+
+###NOTES###
+If I need to alert the reader through any notes, I can do so through this
+mark.
+
+###END###</code></indent>
+
+<p>If you are writing documentation for a module then the premise is much the same as that used for classes, but you will use a Module marker and slightly different attribute settings. This next example illustrates all of the available attributes for a module header:</p>
+
+<indent><code>###MODULE###
+Name:      The name of the module.
+Version:   The version number of the module.
+Date:      The month and year that this code was last updated must be entered
+           here, e.g. 'February 2001'.
+Author:    You or your company name should be entered here.
+Copyright: The copyright owner and the year of copyright must be specified here.
+Classes:   If the module includes one or more classes, enter a comma-separated
+           list of all class names here.
+Keywords:  A comma-separated list of keywords can be listed in this attribute.
+Short:     A short (80 character) description of what the module does can be
+           entered here.</code></indent>
+
+<p>Following the module detail you should enter more information using the Description mark and follow with an End mark, in the same way as we did for the class header.</p>
+
+<h2>Documenting Functions</h2>
+
+<p>If you are developing a standard module interface then you may wish to export one or more public functions. The definition for a standard function header is as follows:</p>
+
+<indent><code>###FUNCTION###
+Name:     The name of the function.
+Short:    A short description of the function's purpose.
+Synopsis: A C/C++ compatible synopsis for the function must be specified
+          here, e.g. LONG RandomNumber(LONG Number).</code></indent>
+
+<p>The compiler can usually generate an accurate synopsis from the function definition in the module, so if you are using a standard synopsis then you will not need to declare it in the header.</p>
+
+<p>After entering a description you will need to document the input parameters (if the function takes arguments) and the results of the function call.  If the function was to take arguments named XCoord and YCoord for example, then the Input section would be as follows:</p>
+
+<indent><code>###INPUT###
+XCoord: Description for the XCoord argument.
+YCoord: Description for the YCoord argument.</code></indent>
+
+<p>You have two options for documenting the results section depending on whether or not the function returns an error-code.  If the function is not returning an error-code then you can describe the results in the same format as a description section.  If error-codes are returned then each individual error-code used by the function should be documented using a definition list.  Example:</p>
+
+<indent><code>###RESULT###
+ERR_Okay:             Description for this code.
+ERR_AllocMemory:      Description for this code.
+ERR_InvalidDimension: Description for this code.</code></indent>
+
+<p>The function must be terminated with an ###END### mark.</p>
+
+<h2>Documenting Fields</h2>
+
+<p>If you are writing a class document then each field that forms part of the class structure must be documented.  Fields are documented individually, starting with a Field header, then a Description, See Also mark and an End termination.  Here is a descriptive analysis of the field header:</p>
+
+<indent><code>###FIELD###
+Name:   The name of the field.
+Short:  A short (80 character) description of the field's purpose.
+Prefix: If the field represents a lookup table or set of flags,
+        there should be a prefix prior to each flag or lookup
+        definition.  Example: The prefix for FILE_READ is FILE.
+Type:   If this is a custom field type, declare the type here.</code></indent>
+
+<p>After following up the field header with a description, you have the option of adding a See Also mark.  This mark is helpful for providing the reader with references to other documented areas that may be of relevance to the topic.  Here is an example that refers to the XCoord and YCoord fields of the current class:</p>
+
+<indent><code>###SEE ALSO###
+Fields: XCoord, YCoord</code></indent>
+
+<p>Other valid See Also references are Function, Method and Action.  If you need to refer to the documentation of another class or module, specify the name of the class or module, followed by a dot and then the reference.  E.g. "Function: FileSystem.MoveFile".</p>
+
+<h2>Documenting Methods and Actions</h2>
+
+<p>If you are writing a class that implements one or more methods, they must be documented so that the developer knows how to use them correctly.  If necessary, you may also document any actions supported by the class if you need to add clarification as to how they are supported.  The Action and Method marks both use Name and Short definitions, while methods also allow for a C synopsis if one exists as a macro.  Example:</p>
+
+<indent><code>###METHOD###
+Name:      The name of the method.
+Short:     A short description of the method's purpose.
+Synopsis:  Optional - define if a C macro has been created for the method.</code></indent>
+
+<p>The header must be followed with a Description, then Input, Result and See Also marks.  For clarification on how to write Input and Result information, refer to the Documenting Functions section of this document.</p>
+
+<h2>Summary</h2>
+
+<p>This is all the information that you need in order to write a valid self-documenting source file. If you need to know the specifics of how the <class>DocCompiler</> class works, check its class manual.</p>
+
+</page>

@@ -1,0 +1,630 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>Audio</name>
+    <type>class</type>
+    <module>Audio</module>
+    <comment>Supports a machine's audio hardware and provides a client-server audio management service.</comment>
+    <version>1</version>
+    <id>0f1c28b7</id>
+    <idstring>ID_AUDIO</idstring>
+    <category>Audio</category>
+    <include>modules/audio.h</include>
+    <copyright>Paul Manias © 2002-2020</copyright>
+    <description>
+<p>The Audio class provides a common audio service that works across multiple platforms and follows a client-server design model.</p>
+<p>Supported features include 8-bit and 16-bit output in stereo or mono, oversampling, streaming, multiple audio channels, sample sharing and command sequencing.  The Audio class functionality is simplified via the <class name="Sound">Sound</class> class interface, which we recommend in most cases where simplified audio playback is satisfactory.</p>
+<p>In some cases the audio server may be managed in a separate process space and allocated with a name of 'SystemAudio'. In this circumstance all communication with the SystemAudio object will typically be achieved by messaging protocols, but field values may be read in the normal manner.</p>
+<p>Support for audio recording is not currently available.</p></description>
+    <source>
+      <file>class_audio.cpp</file>
+    </source>
+  </info>
+
+  <actions>
+    <action>
+      <name>Activate</name>
+      <comment>Enables access to the audio hardware and initialises the mixer.</comment>
+      <description>
+<p>An audio object will not play or record until it has been activated.  Activating the object will result in an attempt to lock the device hardware, which on some platforms may lead to failure if another process has permanently locked the device.  The resources and any device locks obtained by this action can be released with a call to <action>Deactivate</action>.</p>
+<p>An inactive audio object can operate in a limited fashion but will not otherwise interact directly with the audio hardware.</p>
+      </description>
+    </action>
+
+    <action>
+      <name>Clear</name>
+      <comment>Clears the audio buffers.</comment>
+      <description>
+<p>Call this action at any time to clear the internal audio buffers.  This will have the side-effect of temporarily stopping all output until the next audio update occurs.</p>
+      </description>
+    </action>
+
+    <action>
+      <name>Deactivate</name>
+      <comment>Disables the audio mixer and returns device resources to the system.</comment>
+      <description>
+<p>Deactivating an audio object will switch off the mixer, clear the output buffer and return any allocated device resources back to the host system.  The audio object will remain in a suspended state until it is reactivated.</p>
+      </description>
+    </action>
+
+    <action>
+      <name>Reset</name>
+      <comment>Resets the audio settings to default values.</comment>
+    </action>
+
+    <action>
+      <name>SaveSettings</name>
+      <comment>Saves the current audio settings.</comment>
+    </action>
+
+    <action>
+      <name>SaveToObject</name>
+      <comment>Saves the current audio settings to another object.</comment>
+    </action>
+
+  </actions>
+
+  <methods>
+    <method>
+      <name>AddSample</name>
+      <comment>Adds a new sample to an audio object for channel-based playback.</comment>
+      <prototype>ERROR sndAddSample(OBJECTPTR Object, LONG SampleFormat, APTR Data, LONG DataSize, struct AudioLoop * Loop, LONG LoopSize, LONG * Result)</prototype>
+      <input>
+        <param type="LONG" name="SampleFormat" lookup="SFM">Indicates the format of the sample data that you are adding.</param>
+        <param type="APTR" name="Data">Points to the address of the sample data.</param>
+        <param type="LONG" name="DataSize">Size of the sample data, in bytes.</param>
+        <param type="struct AudioLoop *" name="Loop">Points to the sample information that you want to add.</param>
+        <param type="LONG" name="LoopSize">Must be set to sizeof(AudioLoop).</param>
+        <param type="LONG *" name="Result">The resulting sample handle will be returned in this parameter.</param>
+      </input>
+      <description>
+<p>Audio samples can be loaded into an Audio object for playback via the AddSample or <method>AddStream</method> method.  For small samples under 512k we recommend AddSample, while anything larger should be supported through AddStream.</p>
+<p>When adding a sample, is is essential to select the correct bit format for the sample data.  While it is important to differentiate between simple attributes such as 8 or 16 bit data, mono or stereo format, you should also be aware of whether or not the data is little or big endian, and if the sample data consists of signed or unsigned values.  Because of the possible variations there are a number of sample formats, as illustrated in the following table:</p>
+<types lookup="SFM"/>
+<p>By default, all samples are assumed to be in little endian format, as supported by Intel CPU's.  If the data is in big endian format, or the SampleFormat value with SFM_BIG_ENDIAN.</p>
+<p>It is also possible to supply loop information with the sample data.  The Audio class supports a number of different looping formats, allowing you to go beyond simple loops that repeat from the beginning of the sample.  The <struct>AudioLoop</struct> structure illustrates your options:</p>
+<struct lookup="AudioLoop"/>
+<p>The types of that can be specified in the LoopMode field are:</p>
+<types lookup="LOOP"/>
+<p>The Loop1Type and Loop2Type fields alter the style of the loop.  These can be set to the following:</p>
+<types lookup="LTYPE"/>
+<p>The AddSample method may not be called directly because the audio object is often managed within a separate process. If you attempt to grab the audio object and call this method, it returns ERR_IllegalActionAttempt. The only safe means for calling this method is through the WaitMsg() function.</p>
+      </description>
+      <result>
+        <error code="IllegalActionAttempt">You attempted to call this method directly using the Action() function.  Use ActionMsg() instead.</error>
+        <error code="Args">Invalid arguments passed to function.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="AllocMemory">Failed to allocate enough memory to hold the sample data.</error>
+        <error code="ReallocMemory">The existing sample handle array could not be expanded.</error>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>AddStream</name>
+      <comment>Adds a new sample-stream to an Audio object for channel-based playback.</comment>
+      <prototype>ERROR sndAddStream(OBJECTPTR Object, CSTRING Path, OBJECTID ObjectID, LONG SeekStart, LONG SampleFormat, LONG SampleLength, LONG BufferLength, struct AudioLoop * Loop, LONG LoopSize, LONG * Result)</prototype>
+      <input>
+        <param type="CSTRING" name="Path">Refers to the file that contains the sample data, or NULL if you will supply an ObjectID.</param>
+        <param type="OBJECTID" name="ObjectID">Refers to the public object that contains the sample data (if no Path has been specified).  The object must support the Read and Seek actions or it will not be possible to stream data from it.</param>
+        <param type="LONG" name="SeekStart">Offset to use when seeking to the start of sample data.</param>
+        <param type="LONG" name="SampleFormat" lookup="SFM">Indicates the format of the sample data that you are adding.</param>
+        <param type="LONG" name="SampleLength">Total byte-length of the sample data that is being streamed.  May be set to zero if the length is infinite or unknown.</param>
+        <param type="LONG" name="BufferLength">Total byte-length of the audio stream buffer that you would like to be allocated internally (large buffers affect timing).</param>
+        <param type="struct AudioLoop *" name="Loop">Refers to sample loop information, or NULL if no loop is required.</param>
+        <param type="LONG" name="LoopSize">Must be set to sizeof(AudioLoop).</param>
+        <param type="LONG *" name="Result">The resulting sample handle will be returned in this parameter.</param>
+      </input>
+      <description>
+<p>For an audio object to play sound samples, it must have audio samples loaded against it so that it can store them in its own local audio memory.  In order to load samples into an audio object you can call either the AddSample or AddStream methods.  For small samples under 512k you should use AddSample, while anything over that should be supported through AddStream.</p>
+<p>The data source used for a stream can be located either at an accessible file path (through the Path parameter), or you can supply a reference to a public object that has stored the data (through the Object parameter). You also need to set the SeekStart parameter, which refers to the byte position at which the audio data starts within the stream source.  The SampleLength parameter must also refer to the byte-length of the entire audio stream.</p>
+<p>When creating a new stream, you need to pay attention to the audio format that is being used for the sample data. While it is important to differentiate between simple things such as 8-bit, 16-bit, mono and stereo, you should also be aware of whether or not the data is little or big endian, and if the sample data consists of signed or unsigned values. Because of the possible variations there are a number of sample formats, as illustrated in the following table:</p>
+<types lookup="SFM"/>
+<p>By default, all samples are assumed to be in little endian format, as supported by Intel CPU's.  If the data is in big endian format, you should or the SampleFormat value with the flag SFM_BIG_ENDIAN.</p>
+<p>It is also possible to supply loop information with the stream.  The Audio class supports a number of different looping formats, rather than just the 'repeat from the beginning once you reach the end' style of looping that you might normally find in audio systems.  The <struct>AudioLoop</struct> structure illustrates your options:</p>
+<struct lookup="AudioLoop"/>
+<p>There are three types of loop modes that you can specify in the LoopMode field:</p>
+<types lookup="LOOP"/>
+<p>The Loop1Type and Loop2Type fields normally determine the style of the loop, however only unidirectional looping is currently supported for streams.  For that reason, set the type variables to either NULL or LTYPE_UNIDIRECTIONAL.</p>
+<p>This method may not be called directly if the audio object in question is located in a foreign task.  If you try to grab the audio object and call this method, it will detect the illegal usage and return ERR_IllegalActionAttempt. Thus the only safe way to call this method is to use the <function module="Core">ActionMsg</function> function.</p>
+      </description>
+      <result>
+        <error code="IllegalActionAttempt">You attempted to call this method directly using the Action() function.  Use ActionMsg() instead.</error>
+        <error code="CreateObject">Failed to create a file object based on the supplied Path.</error>
+        <error code="Args">Invalid arguments passed to function.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="AllocMemory">Failed to allocate the stream buffer.</error>
+        <error code="ReallocMemory">The existing sample handle array could not be expanded.</error>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>Beep</name>
+      <comment>Beeps the PC audio speaker.</comment>
+      <prototype>ERROR sndBeep(OBJECTPTR Object, LONG Pitch, LONG Duration, LONG Volume)</prototype>
+      <input>
+        <param type="LONG" name="Pitch">The pitch of the beep in HZ.</param>
+        <param type="LONG" name="Duration">The duration of the beep in milliseconds.</param>
+        <param type="LONG" name="Volume">The volume of the beep, from 0 to 100.</param>
+      </input>
+      <description>
+<p>This method will beep the PC audio speaker, if available.  It is possible to request the specific Pitch, Duration and Volume for the sound although not all platforms may support the parameters.  In some cases the beep may be converted to a standard warning sound by the host.</p>
+      </description>
+      <result>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="NoSupport">PC speaker support is not available.</error>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>BufferCommand</name>
+      <comment>Sends instructions to the audio mixer.</comment>
+      <prototype>ERROR sndBufferCommand(OBJECTPTR Object, LONG Command, LONG Handle, LONG Data)</prototype>
+      <input>
+        <param type="LONG" name="Command" lookup="CMD">The ID of the command that you want to execute.</param>
+        <param type="LONG" name="Handle">Refers to the channel that the command is to be executed against (see the OpenChannels method for information).</param>
+        <param type="LONG" name="Data">Special data value relevant to the command being executed.</param>
+      </input>
+      <description>
+<p>The BufferCommand method is provided so that you can send commands to an audio object, where they can either be executed immediately or stored in a sequencing buffer for progressive execution.  The method that you use depends on the style of playback that you need for your program.  If you are simply playing an audio sample, immediate execution is appropriate.  If you are writing a music player or need to execute audio commands at very precise intervals during playback, you need to use command sequencing.</p>
+<p>Immediate execution is enabled by default.  This involves calling the BufferCommand method whenever you please and the commands will be immediately executed for you.  You need to supply the ID of the command that you wish to execute, indicate the channel that the command is to be executed against, and provide a special data parameter according to the type of command being executed.  The following commands are available:</p>
+<types lookup="CMD"/>
+<p>Command sequencing is enabled only when you open a channel set with a large number of command buffers (refer to OpenChannel for details). You also need to organise your code so that it sends commands to the audio object in batches rather than drip-feeding commands.  Each batch of commands will be executed at a predetermined rate, as defined by you (e.g. every 125 milliseconds). This allows the audio object to process the command sets at regular intervals. This has the effect of clearing the command buffers, so you will need to keep feeding it information to make sure that there are no pauses in the audio playback.</p>
+<p>To send command batches, you need to call the BufferCommand method with CMD_START_SEQUENCE, then send the instructions before terminating with CMD_END_SEQUENCE.  You can do this as many times as you like until the command buffers are full. The following code illustrates how you might do this:</p>
+<pre>if (!AccessObject(AudioID, 4, &amp;audio)) {
+   LONG cycles = 0;
+   while ((!sndBufferCommand(audio, CMD_START_SEQUENCE, Self-&gt;Channels, NULL)) and
+      (cycles &lt; MAX_CYCLES)) {
+
+       // Add buffered commands in this area.
+       // ...
+
+      sndBufferCommand(audio, CMD_END_SEQUENCE, Self-&gt;Channels, NULL);
+      cycles++;
+   }
+   ReleaseObject(audio);
+}
+</pre>
+<p>To set the command sequencing rate, you need to send the CMD_SET_RATE instruction.  The amount of milliseconds that you specify in the Data parameter will determine the rate at which the command sets are executed.  For instance, if you set a rate of 200ms then a new sequence will be executed five times every second.</p>
+      </description>
+      <result>
+        <error code="NoSupport">The Command is not supported.</error>
+        <error code="BufferOverflow">The command buffer is full.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Args">Invalid arguments passed to function.</error>
+        <error code="Okay">The command was successfully buffered or executed.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>CloseChannels</name>
+      <comment>Frees audio channels that have been allocated for sample playback.</comment>
+      <prototype>ERROR sndCloseChannels(OBJECTPTR Object, LONG Handle)</prototype>
+      <input>
+        <param type="LONG" name="Handle">Must refer to a channel handle returned from the <method>OpenChannels</method> method.</param>
+      </input>
+      <description>
+<p>Use the CloseChannels method when you want to destroy a group of channels that you have previously allocated through the <method>OpenChannels</method> method.  Any audio commands buffered against the channels will be cleared instantly.  Any audio data that has already been mixed into the output buffer will remain until it plays out during the next 1 - 2 seconds, so do not assume that stoppage will be instant.</p>
+      </description>
+      <result>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Args">Invalid arguments passed to function.</error>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>OpenChannels</name>
+      <comment>Allocates audio channels that can be used for sample playback.</comment>
+      <prototype>ERROR sndOpenChannels(OBJECTPTR Object, LONG Total, LONG Key, LONG Commands, LONG * Result)</prototype>
+      <input>
+        <param type="LONG" name="Total">Total of channels to allocate.</param>
+        <param type="LONG" name="Key">Special key to associate with the channel allocation (optional).</param>
+        <param type="LONG" name="Commands">The total number of command buffers to allocate for real-time processing.</param>
+        <param type="LONG *" name="Result">The resulting channel handle is returned in this parameter.</param>
+      </input>
+      <description>
+<p>Use the OpenChannels method when you need to open audio channels for sample playback.  Channels are allocated in sets that can lie between a range of 1 and 64.  There are global limits as to how many channel sets can be open at any one time, so it is recommended that you never call this function more than once for your task.</p>
+<p>When opening a new channel set, you can provide your own special key if your code is written in such a way that being able to reopen channel sets at later stages is of benefit to you.  To do this, provide a randomised number in the Key parameter.  The next time you call OpenChannels with the same key and number of channels, it will return the same allocation handle rather than creating a new set of channels.  An internal open counter will also be incremented, so multiple calls to <method>CloseChannels</method> will be required in order to destroy the channel allocation.</p>
+<p>You may also indicate to this method how many command sequencing buffers you would like to allocate for your channels. This is particularly useful if you are writing a digital music sequencer, or if you want to process a number of real-time channel adjustments with precision timing.  You can allocate a maximum of 1024 command buffers at a cost of approximately eight bytes each.</p>
+<p>The resulting handle returned from this method is an integer consisting of two parts.  The upper word uniquely identifies the channel set that has been provided to you, while the lower word is used to refer to specific channel numbers.  With this in mind, if you need to refer to specific channels when using certain functions, you can do so with the formula <code>Channel = (Handle &amp; 0xffff0000) | ChannelNo</code>.</p>
+<p>To destroy an allocated channel set, use the <method>CloseChannels</method> method.</p>
+      </description>
+      <result>
+        <error code="AllocMemory">Memory for the audio channels could not be allocated.</error>
+        <error code="ArrayFull">The maximum number of available channel sets is currently exhausted.</error>
+        <error code="OutOfRange">The amount of requested channels or commands is outside of acceptable range.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>RemoveSample</name>
+      <comment>Removes a sample from the global sample list and deallocates its memory usage.</comment>
+      <prototype>ERROR sndRemoveSample(OBJECTPTR Object, LONG Handle)</prototype>
+      <input>
+        <param type="LONG" name="Handle">The handle of the sample that requires removal.</param>
+      </input>
+      <description>
+<p>You can remove an allocated sample at any time by calling the RemoveSample method.  Once a sample is removed it is permanently deleted from the audio server and it is not possible to reallocate the sample against the same handle number.</p>
+<p>This method may not be called directly if the audio object in question is located in a foreign task.  If you try to grab the audio object and call this method, it will detect the illegal usage and return ERR_IllegalActionAttempt.  Thus the only safe way to call this method is to use the <function module="Core">ActionMsg</function> function.</p>
+<p>Over time, the continued allocation of audio samples will mean that freed handle numbers will become available again through the <method>AddSample</method> and <method>AddStream</method> methods.  For this reason, you should clear all references to the sample handle after removing it.</p>
+      </description>
+      <result>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="IllegalActionAttempt">You attempted to call this method directly using the Action() function.  Use ActionMsg() instead.</error>
+        <error code="OutOfRange">The provided sample handle is not within the valid range.</error>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>SetVolume</name>
+      <comment>Sets the volume for input and output mixers.</comment>
+      <prototype>ERROR sndSetVolume(OBJECTPTR Object, LONG Index, CSTRING Name, LONG Flags, DOUBLE Volume)</prototype>
+      <input>
+        <param type="LONG" name="Index">The index of the mixer that you want to set.</param>
+        <param type="CSTRING" name="Name">If the correct index number is unknown, the name of the mixer may be set here.</param>
+        <param type="LONG" name="Flags" lookup="SVF">Optional flags.</param>
+        <param type="DOUBLE" name="Volume">The volume to set for the mixer.  Ranges between 0 - 100%.  Set to -1 if you do not want to adjust the current volume.</param>
+      </input>
+      <description>
+<p>To change volume and mixer levels, use the SetVolume method.  You can make adjustments to any of the available mixers and for different channels per mixer - for instance you may set different volumes for left and right speakers.  Support is also provided for special options, such as muting.</p>
+<p>To set the volume for a mixer, you need to know its index (by scanning the <field>VolumeCtl</field> field) or you can set its name (to change the Master volume, use a name of "Master").  A channel needs to be specified, or you can use CHN_ALL to synchronise the volume for all channels.  The new mixer value is set in the Volume field.  Optional flags may be set as follows:</p>
+<types lookup="SVF"/>
+      </description>
+      <result>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Okay">The new volume was applied successfully.</error>
+        <error code="OutOfRange">The Volume or Index is out of the acceptable range.</error>
+        <error code="Args">Invalid arguments passed to function.</error>
+      </result>
+    </method>
+
+  </methods>
+
+  <fields>
+    <field>
+      <name>Bass</name>
+      <comment>Sets the amount of bass to use for audio playback.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The Bass field controls the amount of bass that is applied when audio is played back over the user's speakers.  Not all platforms support bass adjustment.</p>
+<p>The bass value ranges between 0 and 100, with 50 being the default setting.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>BitDepth</name>
+      <comment>The bit depth affects the overall quality of audio input and output.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>This field manages the bit depth for audio mixing and output.  Valid bit depths are 8, 16 and 24, with 16 being the recommended value for CD quality playback.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Device</name>
+      <comment>The name of the audio device used by this audio object.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>A computer system may have multiple audio devices installed, but a given audio object can represent only one device at a time.  A new audio object will always represent the default device initially.  You can switch to a different device by setting the Device field to the name of the device that you would like to use.</p>
+<p>The default device can always be referenced with a name of "Default".</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Flags</name>
+      <comment>Special audio flags can be set here.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type lookup="ADF">INT</type>
+      <description>
+<p>The audio class supports a number of special flags that affect internal behaviour.  The following table illustrates the publicly available flags:</p>
+<types lookup="ADF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>InputRate</name>
+      <comment>Determines the frequency to use when recording audio data.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+      <description>
+<p>The InputRate determines the frequency to use when recording audio data from a Line-In connection or microphone.  In most cases, this value should be set to 44100 for CD quality audio.</p>
+<p>The InputRate can only be set prior to initialisation, further attempts to set the field will be ignored.  On some platforms, it may not be possible to set an InputRate that is different to the <field>OutputRate</field>.  In such a case, the value of the InputRate shall be ignored.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>MasterVolume</name>
+      <comment>The master volume to use for audio playback.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The MasterVolume field controls the amount of volume applied to all of the audio channels.  Volume is expressed as a percentage, with 0% being no volume and 100% being maximum volume.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Mute</name>
+      <comment>Mutes all audio output.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>Audio output can be muted at any time by setting this value to TRUE.  To restart audio output after muting, set the field to FALSE.  Muting does not disable the audio system, which is achieved by calling <action>Deactivate</action>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>OutputRate</name>
+      <comment>Determines the frequency to use for the output of audio data.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>The OutputRate determines the frequency of the audio data that will be output to the audio speakers.  In most cases, this value should be set to 44100 for CD quality audio.</p>
+<p>The OutputRate can only be set prior to initialisation, further attempts to set the field will be ignored.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>PeriodSize</name>
+      <comment>Defines the byte size of each period allocated to the internal audio buffer.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>Refer to the <field>Periods</field> field for further information.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Periods</name>
+      <comment>Defines the number of periods that make up the internal audio buffer.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>The internal audio buffer is split into periods with each period being a certain byte size.  The minimum period is 2 and the maximum is 16.  This field is supplemented with the <field>PeriodSize</field>, which indicates the byte size of each period.  The total size of the audio buffer is calculated as the number of Periods multiplied by the PeriodSize value.</p>
+<p>The minimum period size is 1K and maximum 16K.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Quality</name>
+      <comment>Determines the quality of the audio mixing.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>Alter the quality of internal audio mixing by adjusting the Quality field.  The value range is from 0 (low quality) and 100 (high quality).  A setting between 70 and 80 is recommended.  Setting the Quality field results in the following flags being automatically adjusted in the audio object: ADF_FILTER_LOW, ADF_FILTER_HIGH and ADF_OVER_SAMPLING.</p>
+<p>In general, low quality mixing should only be used when the audio output needs to be raw, or if the audio speaker is of low quality.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Stereo</name>
+      <comment>Set to TRUE for stereo output and FALSE for mono output.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>TotalChannels</name>
+      <comment>The total number of audio channels allocated by all processes.</comment>
+      <access read="R">Read</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>Treble</name>
+      <comment>Sets the amount of treble to use for audio playback.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The Treble field controls the amount of treble that is applied when audio is played back over the user's speakers.  Not all platforms support treble adjustment.</p>
+<p>The normal setting for treble is a value of 50, minimum treble is 0 and maximum treble is 100.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>VolumeCtl</name>
+      <comment>An array of information for all known audio mixers in the system.</comment>
+      <access read="G">Get</access>
+      <type>APTR</type>
+      <description>
+<p>The VolumeCtl provides an array of all available mixer controls for the audio hardware.  The information is read-only and each entry is structured as follows:</p>
+<struct lookup="VolumeCtl"/>
+<p>Attribute flags include:</p>
+<types lookup="VCF"/>
+<p>To scan through the list of controls, search until an entry that uses a Name consisting of a single NULL byte is found.</p>
+      </description>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="VCF" comment="Volume control flags">
+      <const name="SYNC">The mixer is synchronised.</const>
+      <const name="JOINED">The mixer channels are joined (e.g. left and right speakers cannot be adjusted separately).</const>
+      <const name="PLAYBACK">The mixer supports audio output.</const>
+      <const name="MUTE">The mixer is muted.</const>
+      <const name="CAPTURE">The mixer supports audio input.</const>
+      <const name="MONO">The mixer is restricted to mono input/output.</const>
+    </constants>
+
+    <constants lookup="SVF" comment="Flags for the SetVolume() method.">
+      <const name="SYNC">Synchronise volume settings between channels.</const>
+      <const name="CAPTURE">Set input, not output.</const>
+      <const name="MUTE">Mute the audio for this channel.</const>
+      <const name="UNMUTE">Unmute the audio for this channel.</const>
+      <const name="UNSYNC">Allow un-synchronised volume settings.</const>
+    </constants>
+
+    <constants lookup="ADF" comment="Optional flags for the Audio object.">
+      <const name="STEREO">Enable stereo output (set by default if the platform supports stereo).  If not set, output is in mono.</const>
+      <const name="OVER_SAMPLING">Enables oversampling for higher quality audio at the cost of slower mixing.</const>
+      <const name="SERVICE_MODE">Service mode gives the audio object complete control of the task.</const>
+      <const name="SYSTEM_WIDE">Mixer changes should be applied system-wide.</const>
+      <const name="FILTER_LOW">Enable a low level of output filtering to minimise distortion.</const>
+      <const name="FILTER_HIGH">Enable a high level of output filtering to minimise distortion.</const>
+      <const name="VOL_RAMPING">Enable volume ramping for softer playback when a sample is played multiple times (enabled by default).</const>
+      <const name="AUTO_SAVE">Save configuration information on exit.</const>
+    </constants>
+
+    <constants lookup="SDF" comment="Sound flags">
+      <const name="STEREO">Indicates that the sound has multiple audio channels.</const>
+      <const name="NEW">Create the sample from scratch (e.g. for audio recording purposes).</const>
+      <const name="STREAM">Read-Only. Indicates that streaming is enabled.</const>
+      <const name="RESTRICT_PLAY">Restricts playback so that the sound can never play on more than one channel at any given time.</const>
+      <const name="TERMINATE">Self-terminate when the sound sample has finished playback.</const>
+      <const name="QUERY">Query the meta data of the sample source; do not load sample data.</const>
+      <const name="LOOP">Enables sample looping. The LoopStart and LoopEnd fields determine where the looping area lies within the sample data.</const>
+    </constants>
+
+    <constants lookup="CHS" comment="Channel status types for the AudioChannel structure.">
+      <const name="STOPPED">Playing is stopped.</const>
+      <const name="FINISHED">Playing has ended (not force stopped).</const>
+      <const name="PLAYING">Sample playing and not released.</const>
+      <const name="RELEASED">Sample playing and note has been released.</const>
+      <const name="FADE_OUT">Playback is fading out.</const>
+    </constants>
+
+    <constants lookup="STREAM" comment="Streaming options">
+      <const name="NEVER">No streaming - load all data into memory.</const>
+      <const name="SMART">Smart streaming is the default.  If the sample appears to be relatively small with respect to available system RAM, it will be loaded into memory.  Otherwise it will be streamed.</const>
+      <const name="ALWAYS">Stream if the sample length exceeds 64k.</const>
+    </constants>
+
+    <constants lookup="NOTE" comment="Definitions for the Note field.  An 'S' indicates a sharp note.">
+      <const name="C"/>
+      <const name="CS"/>
+      <const name="D"/>
+      <const name="DS"/>
+      <const name="E"/>
+      <const name="F"/>
+      <const name="FS"/>
+      <const name="G"/>
+      <const name="GS"/>
+      <const name="A"/>
+      <const name="AS"/>
+      <const name="B"/>
+      <const name="OCTAVE"/>
+    </constants>
+
+    <constants lookup="LTYPE" comment="Loop types for the AudioLoop structure.">
+      <const name="UNIDIRECTIONAL">The sample playback position returns to the byte position specified in the Loop1Start field.</const>
+      <const name="BIDIRECTIONAL">The sample will play in reverse whenever it hits the end marker, then forwards when it hits the start marker.</const>
+    </constants>
+
+    <constants lookup="SFM" comment="These audio bit formats are supported by AddSample and AddStream.">
+      <const name="S16_BIT_MONO">16-bit mono signed sample.</const>
+      <const name="U8_BIT_STEREO">8-bit stereo unsigned sample.</const>
+      <const name="U8_BIT_MONO">8-bit mono unsigned sample.</const>
+      <const name="BIG_ENDIAN">Combine this flag with any audio format to declare it as big endian.</const>
+      <const name="S16_BIT_STEREO">16-bit stereo signed sample.</const>
+    </constants>
+
+    <constants lookup="CHF" comment="Optional flags for the AudioChannel structure.">
+      <const name="BACKWARD">Play channel backwards.</const>
+      <const name="CHANGED">Sample change</const>
+      <const name="VOL_RAMP">Volume ramping is enabled.</const>
+      <const name="MUTE">Channel is muted.</const>
+    </constants>
+
+    <constants lookup="CMD" comment="Audio channel commands">
+      <const name="START_SEQUENCE">Required to start a new sequence of commands.</const>
+      <const name="END_SEQUENCE">Terminates the current command sequence.</const>
+      <const name="SET_SAMPLE">Sets a new sample against a channel.  You are required to supply the sample handle (as obtained from AddSample or AddStream) in the Data parameter.  The sample will not play until you use the Play command.</const>
+      <const name="SET_VOLUME">Sets a new channel volume.  The Data parameter indicates the new volume and must be in the range of 0 - 500% (100% is normal volume, 0% is silence).</const>
+      <const name="SET_PAN">Sets a channel's panning position.  The Data parameter indicates the new pan and must be in the range of -100 to +100.  A setting of zero plays the sound at an equal level between both speakers.  If output is in mono, panning has no effect.</const>
+      <const name="SET_FREQUENCY">Sets the current playback frequency of a channel.</const>
+      <const name="SET_RATE">Defines the interval between the processing of each command, measured in milliseconds.</const>
+      <const name="STOP">Immediately stops a channel from playing any audio until the next Play command.</const>
+      <const name="STOP_LOOPING">Tells the channel to stop performing any more audio loops related to the currently playing sample.  This command does nothing if the current sample has no associated loop information.</const>
+      <const name="SET_POSITION">Sets the playback position within a channel's currently associated sample (measured in bytes).  Useful for starting playback from a preset position.</const>
+      <const name="PLAY">Plays the sample associated with the channel.  You are required to set the playback frequency in the Data parameter.  This command does nothing if the channel does not have a sample loaded against it.</const>
+      <const name="FADE_IN">Fades a channel in from zero to the current volume (as previously determined by the SetVolume command).</const>
+      <const name="FADE_OUT">Fade out a channel.</const>
+      <const name="MUTE">Mutes the channel so that no further audio will play until you unmute it.  The Data parameter needs to be set to either TRUE or FALSE to indicate the required mute status.</const>
+      <const name="SET_LENGTH">Sets the byte length of the sample playing in the channel.</const>
+      <const name="CONTINUE">Continue a sound sample that has been stopped.</const>
+    </constants>
+
+    <constants lookup="LOOP" comment="Loop modes for the AudioLoop structure.">
+      <const name="SINGLE">Single loop: Releasing will end the note.</const>
+      <const name="SINGLE_RELEASE">Single loop: Sample data after the loop will be played when the note is released.</const>
+      <const name="DOUBLE">Double loop: When the note is released, playing shifts to the second loop.</const>
+      <const name="AMIGA_NONE">Amiga loop: Do nothing.</const>
+      <const name="AMIGA">Single loop: Amiga style.</const>
+    </constants>
+
+  </types>
+  <structs>
+    <struct name="VolumeCtl">
+      <field name="Size" type="WORD">The size of the Channels array.</field>
+      <field name="Name" type="char" size="32">Name of the mixer</field>
+      <field name="Flags" type="LONG" lookup="VCF">Special flags identifying the mixer's attributes.</field>
+      <field name="Channels" type="FLOAT" size="1">A variable length array of channel volumes.</field>
+    </struct>
+
+    <struct name="AudioChannel" comment="Audio channel structure">
+      <field name="Sample" type="struct AudioSample">Sample structure</field>
+      <field name="SoundID" type="OBJECTID">ID of the sound object set on this channel</field>
+      <field name="SampleHandle" type="LONG">Internal handle reference</field>
+      <field name="Flags" type="LONG" lookup="CHF">Special flags</field>
+      <field name="Position" type="ULONG">Current playing/mixing position</field>
+      <field name="Frequency" type="ULONG">Playback frequency</field>
+      <field name="PositionLow" type="UWORD">Playing position, lower bits</field>
+      <field name="LVolume" type="WORD">Current left speaker volume (0 - 100)</field>
+      <field name="RVolume" type="WORD">Current right speaker volume (0 - 100)</field>
+      <field name="LVolumeTarget" type="WORD">Volume target when fading or ramping</field>
+      <field name="RVolumeTarget" type="WORD">Volume target when fading or ramping</field>
+      <field name="Volume" type="WORD">Playing volume (0-100)</field>
+      <field name="Priority" type="BYTE">Priority of the sound that has been assigned to this channel</field>
+      <field name="State" type="BYTE" lookup="CHS">Channel state</field>
+      <field name="LoopIndex" type="BYTE">The current active loop (either 0, 1 or 2)</field>
+      <field name="Pan" type="BYTE">Pan value (-100 to +100)</field>
+    </struct>
+
+    <struct name="AudioLoop" comment="Loop settings for the AddSample() method.">
+      <field name="LoopMode" type="WORD" lookup="LOOP">Loop mode (single, double)</field>
+      <field name="Loop1Type" type="BYTE" lookup="LTYPE">First loop type (unidirectional, bidirectional)</field>
+      <field name="Loop2Type" type="BYTE" lookup="LTYPE">Second loop type (unidirectional, bidirectional)</field>
+      <field name="Loop1Start" type="LONG">Start of the first loop</field>
+      <field name="Loop1End" type="LONG">End of the first loop</field>
+      <field name="Loop2Start" type="LONG">Start of the second loop</field>
+      <field name="Loop2End" type="LONG">End of the second loop</field>
+    </struct>
+
+    <struct name="AudioCommand" comment="Audio command structure.">
+      <field name="CommandID" type="LONG">Command ID</field>
+      <field name="Handle" type="LONG">Channel handle</field>
+      <field name="Data" type="LONG">Special data related to the command ID</field>
+    </struct>
+
+    <struct name="AudioSample" comment="Audio sample structure">
+      <field name="Data" type="UBYTE *">Private.  Pointer to the sample data.</field>
+      <field name="StreamID" type="OBJECTID">Reference to an object to use for streaming</field>
+      <field name="SampleLength" type="LONG">Length of the sample data, in bytes</field>
+      <field name="Loop1Start" type="LONG">Start of the first loop</field>
+      <field name="Loop1End" type="LONG">End of the first loop</field>
+      <field name="Loop2Start" type="LONG">Start of the second loop</field>
+      <field name="Loop2End" type="LONG">End of the second loop</field>
+      <field name="SeekStart" type="LONG"></field>
+      <field name="StreamLength" type="LONG"></field>
+      <field name="BufferLength" type="LONG"></field>
+      <field name="StreamPos" type="LONG">Current read position within the audio stream</field>
+      <field name="SampleType" type="UBYTE">Type of sample (bit format)</field>
+      <field name="LoopMode" type="BYTE">Loop mode (single, double)</field>
+      <field name="Loop1Type" type="BYTE">First loop type (unidirectional, bidirectional)</field>
+      <field name="Loop2Type" type="BYTE">Second loop type (unidirectional, bidirectional)</field>
+      <field name="Used" type="BYTE"></field>
+      <field name="Free" type="BYTE"></field>
+    </struct>
+
+  </structs>
+</book>

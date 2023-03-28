@@ -1,0 +1,591 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>Window</name>
+    <type>class</type>
+    <module>Window</module>
+    <comment>Creates user controllable windows on the desktop.</comment>
+    <version>1</version>
+    <id>251efe5d</id>
+    <idstring>ID_WINDOW</idstring>
+    <category>GUI</category>
+    <include>modules/window.h</include>
+    <copyright>Paul Manias © 2003-2020</copyright>
+    <description>
+<p>The Window class provides a simple API for the creation and management of application windows within the host's UI. Windows are designed to act as containers that are physically represented by a <class name="Surface">Surface</class>.  The characteristics of the Surface class are inherited by the window, thereby allowing the client to read and manipulate surface fields (such as x, y, width and height) through the window object.</p></description>
+    <source>
+      <file>window.cpp</file>
+    </source>
+  </info>
+
+  <actions>
+    <action>
+      <name>Activate</name>
+      <comment>Shows the window.</comment>
+    </action>
+
+    <action>
+      <name>Disable</name>
+      <comment>Disables the user's ability to interact with the window.</comment>
+    </action>
+
+    <action>
+      <name>Enable</name>
+      <comment>Enables user interactivity after prior disablement.</comment>
+    </action>
+
+    <action>
+      <name>Focus</name>
+      <comment>Sets the user focus to the window's surface.</comment>
+    </action>
+
+    <action>
+      <name>Hide</name>
+      <comment>Removes the window from the display.</comment>
+    </action>
+
+    <action>
+      <name>Move</name>
+      <comment>Moves the physical representation of an object to a new location.</comment>
+    </action>
+
+    <action>
+      <name>MoveToBack</name>
+      <comment>Moves the window to the back of the display area.</comment>
+    </action>
+
+    <action>
+      <name>MoveToFront</name>
+      <comment>Moves the window to the front of the display area.</comment>
+    </action>
+
+    <action>
+      <name>MoveToPoint</name>
+      <comment>Moves the window to preset coordinates.</comment>
+    </action>
+
+    <action>
+      <name>Redimension</name>
+      <comment>Changes the size and position of the window.</comment>
+    </action>
+
+    <action>
+      <name>Resize</name>
+      <comment>Changes the size and position of the window.</comment>
+    </action>
+
+    <action>
+      <name>Show</name>
+      <comment>Puts the window on display.</comment>
+    </action>
+
+  </actions>
+
+  <methods>
+    <method>
+      <name>Close</name>
+      <comment>Closes the window according to application requirements.</comment>
+      <prototype>ERROR winClose(OBJECTPTR Object)</prototype>
+      <description>
+<p>This method will initiate a window's close process.  This is preferred to a forced removal that would occur with the <action>Free</action> action.  By using the Close method, the application will have the opportunity to respond in a way that is appropriate for that window.</p>
+<p>A client can receive a close notification by placing a feedback function in <field>CloseFeedback</field>.  Alternatively the <field>Quit</field> field can be set to TRUE, in which case a QUIT message is sent to the task's message queue and application closure will commence when that message is processed.</p>
+<p>The close process can be completely disabled if the <field>Close</field> field is set to FALSE.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>Maximise</name>
+      <comment>Maximises the window to its available display area.</comment>
+      <prototype>ERROR winMaximise(OBJECTPTR Object, LONG Toggle)</prototype>
+      <input>
+        <param type="LONG" name="Toggle">Set to TRUE to toggle the window back to its original dimensions if the window is already maximised.</param>
+      </input>
+      <description>
+<p>Executing the Maximise method will run the maximise procedure for the window. The specifics of the maximisation process may be environment specific, but typically maximisation will result in the window being expanded to the maximum dimensions allowed by its container.  The process will take into account the hints provided by the margin settings of the parent surface (so if the margins are all set to 10, the window will be maximised to the size of the container minus 10 pixels from its edge).</p>
+<p>An optional Toggle argument allows restoration of the window to its original position if the method routine discovers that the window is already maximised.</p>
+      </description>
+      <result>
+        <error code="AccessObject">Failed to access the window's parent surface.</error>
+        <error code="Okay">The window was maximised successfully.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>Minimise</name>
+      <comment>Minimises the size of the window, or hides it from the display.</comment>
+      <prototype>ERROR winMinimise(OBJECTPTR Object)</prototype>
+      <description>
+<p>Executing the Minimise method will run the minimise procedure for the window. The specifics of the minimisation process are defined by the window style of the current environment.  It is typical for the window to iconify itself to the desktop in some way, so that it is removed from the sight of the user.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+  </methods>
+
+  <fields>
+    <field>
+      <name>Canvas</name>
+      <comment>Allocates a surface canvas inside the window when read.</comment>
+      <access read="G">Get</access>
+      <type>OBJECTID</type>
+      <description>
+<p>To automatically allocate a surface inside a window after it has been initialised, read the Canvas field.  A basic surface that matches the internal dimensions of the window will be created and its object ID will be returned as the field value.</p>
+<p>Adjustments to the canvas surface are permitted, however if modifications are extensive then it is recommended that a suitable canvas is created manually.</p>
+<p>The Canvas field can only be used following initialisation.  Once the window has been shown on the display, the Canvas field will cease to operate in order to prevent other tasks from accidentally creating canvasses when this field is read.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Center</name>
+      <comment>Displays the window in the center of the display if TRUE on initialisation.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>ClientBottom</name>
+      <comment>The bottom coordinate of the client window (the zone that includes the window border).</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>ClientLeft</name>
+      <comment>The left-side coordinate of the client window (the zone that includes the window border).</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>ClientRight</name>
+      <comment>The right-side coordinate of the client window (the zone that includes the window border).</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>ClientTop</name>
+      <comment>The top coordinate of the client window (the zone that includes the window border).</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>Close</name>
+      <comment>The surface that represents the close gadget</comment>
+      <access>-/-</access>
+      <type>OBJECTID</type>
+    </field>
+
+    <field>
+      <name>Close</name>
+      <comment>Control switch for the window's close gadget.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>The Close field controls the close widget and any activity that proceeds when the widget is activated.  The default value for this field is TRUE.  If changed to FALSE, it will not be possible for the user to close the window unless it is forcibly removed with the <action>Free</action> action.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>CloseFeedback</name>
+      <comment>A callback for receiving notification of a dialog's user response.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>FUNCTION</type>
+      <description>
+<p>The callback function set in this field will be called if the user attempts to close the window.  The prototype for the function is <code>ERROR Function(*Window)</code></p>
+      </description>
+    </field>
+
+    <field>
+      <name>CloseObject</name>
+      <comment>The surface that controls the Close gadget.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>OBJECTID</type>
+      <description>
+<p>The surface that represents the window's close gadget may be referenced through this field.  If no close gadget is available then this field will be empty.</p>
+<p>Theme Developers: The window style must set this field with the ID of the surface that has been created for the close gadget.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Flags</name>
+      <comment>Optional flags may be defined here.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="WNF">INT</type>
+      <description>
+<types lookup="WNF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Focus</name>
+      <comment>May be set to FALSE if the window should open without automatically receiving the focus.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+      <description>
+<p>By default the window will be given the focus whenever it is shown on the display via the <action>Show</action> action. If Focus is FALSE then this behaviour is disabled and the focus can be handled manually.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Height</name>
+      <comment>The full height of the window, including the top and bottom borders and titlebar.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>Icon</name>
+      <comment>A graphical icon to be applied to the window.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>A suitable icon that will apply to the window may be specified here.  The window theme will choose how the icon is used and displayed to the user.  It is common for windows to use the referenced icon in the window title bar and when iconifying the window.</p>
+<p>It is preferred that icon is chosen from the existing icon database (if a customised icon is required, install it to the icon database on installation).  The window system will automatically scale the icon graphic to the required dimensions when it is loaded.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>InsideBorder</name>
+      <comment>Enables a custom graphics border that surrounds the internal window.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+      <description>
+<p>Set the InsideBorder field to TRUE to create a simple graphics border around the edges of the surface window area.  The benefit of using this field to create a graphics border instead of a customised border is that it maintains consistency with the other window graphics for the loaded environment.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>InsideHeight</name>
+      <comment>Defines the amount of vertical space in the window's drawable area.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>The InsideHeight defines the amount of vertical space, in pixels, of the drawable area inside the window.  That means the entire window height, minus the size of any border decorations and title bar.</p>
+<p>Please note that window margins have no effect on the calculated value.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>InsideWidth</name>
+      <comment>The amount of horizontal space in the window's drawable area.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>The InsideWidth defines the amount of horizontal space, in pixels, of the window's drawable area.  That means the entire window width, minus the size of any border decorations.</p>
+<p>Please note that window margins have no effect on the calculated value.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Maximise</name>
+      <comment>The surface that represents the maximise gadget</comment>
+      <access>-/-</access>
+      <type>OBJECTID</type>
+    </field>
+
+    <field>
+      <name>Maximise</name>
+      <comment>Operator for the window's maximise gadget.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>The Maximise field controls the activity of the maximise gadget, which is typically found in the window title bar. The default value for the gadget is TRUE (environment dependent) and may be switched off at any time by setting this field to FALSE.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>MaximiseObject</name>
+      <comment>The surface that controls the maximise gadget.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>OBJECTID</type>
+      <description>
+<p>The surface that represents the window's maximise gadget may be referenced through this field.  If no maximise gadget is available then this field will be empty.</p>
+<p>Theme Developers: The window style must set this field with the ID of the surface that has been created for the maximise gadget.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Menu</name>
+      <comment>References the location of an XML menu file to be applied to the window.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>To display a menu bar in the window, set this field with the location of a menu file.  The file must be in XML format and contain at least one menu tag.  Each menu tag that is specified will create a new option in the menu bar.  Non-menu tags will be ignored.</p>
+<p>Any unlisted arguments that were have specified for the window will be passed on to each created menu.</p>
+<p>For information on the specifics of menu customisation, please refer to the <class name="Menu">Menu</class> class.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Minimise</name>
+      <comment>Operator for the title bar's minimise gadget.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>The Minimise field controls the activity of the minimise gadget, which is typically found in the window title bar.  The default value for the gadget is TRUE (environment dependent) and may be switched off at any time by setting this field to FALSE.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Minimise</name>
+      <comment>The surface that represents the minimise gadget</comment>
+      <access>-/-</access>
+      <type>OBJECTID</type>
+    </field>
+
+    <field>
+      <name>MinimiseObject</name>
+      <comment>The surface that controls the minimise gadget.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>OBJECTID</type>
+      <description>
+<p>The surface that represents the window's minimise gadget may be referenced through this field.  If no minimise gadget is available then this field will be empty.</p>
+<p>Theme Developers: The window style must set this field with the ID of the surface that has been created for the minimise gadget.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>MoveToBack</name>
+      <comment>Operator for the title bar's move-to-back gadget.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>The MoveToBack field controls the activity of the move-to-back gadget, which is typically found in the window title bar.  The default value for the gadget is TRUE (environment dependent) and may be switched off at any time by setting this field to FALSE.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>MoveToBack</name>
+      <comment>The surface that represents the move-to-back gadget</comment>
+      <access>-/-</access>
+      <type>OBJECTID</type>
+    </field>
+
+    <field>
+      <name>MoveToBackObject</name>
+      <comment>The surface that controls the move-to-back gadget.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>OBJECTID</type>
+      <description>
+<p>The surface that represents the window's move-to-back gadget may be referenced through this field.  If no move-to-back gadget is available then this field will be empty.</p>
+<p>Theme Developers: The window style must set this field with the ID of the surface that has been created for the move-to-back gadget.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Orientation</name>
+      <comment>The orientation to use for the display when the window is maximised.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type lookup="WOR">INT</type>
+      <description>
+<p>The orientation allows for a preferred display orientation to be used when the window is maximised or operating in full-screen mode.  This feature is typically used on mobile devices.  If an orientation is not defined, then the window will use the user's preferred orientation (for hand-held devices, this can change dynamically according to how the device is held).</p>
+<types lookup="WOR"/>
+      </description>
+    </field>
+
+    <field>
+      <name>ParentHeight</name>
+      <comment>The height of the window's parent surface.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+      <description>
+<p>The height of the window's parent surface can be read from this field.  On hosted systems such as Microsoft Windows, the value will reflect the height of the user's desktop.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ParentWidth</name>
+      <comment>The width of the window's parent surface.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+      <description>
+<p>The width of the window's parent surface can be read from this field.  On hosted systems such as Microsoft Windows, the value will reflect the width of the user's desktop.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Quit</name>
+      <comment>Set to FALSE to prevent application termination when the window is closed.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>By default this field is set to TRUE, which will force the program to quit when the window is closed (the application will be sent a QUIT message).  Set this field to FALSE to disable this behaviour.  Window closure can be detected by subscribing to the <method>Close</method> method.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Resize</name>
+      <comment>Determines what sides of the window are resizeable.</comment>
+      <access write="I">Init</access>
+      <type>INT</type>
+      <description>
+<p>This field defines what sides of the window are resizeable.  It can only be set from the style script that is defined for the window.  The string format is defined as a series of flags separated with the or character.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ResizeBorder</name>
+      <comment>Defines the extent of the resize area at the sides of the window.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+      <description>
+<p>If the <field>Resize</field> field is defined, the size of the border to use for each window edge can be specified here. Recommended values range between 4 and 8 pixels.</p>
+<p>This field can only be set from the style script that is defined for the window.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ResizeFlags</name>
+      <access>-/-</access>
+      <type lookup="EDGE">INT</type>
+      <description>
+<types lookup="EDGE"/>
+      </description>
+    </field>
+
+    <field>
+      <name>RestoreHeight</name>
+      <comment>Controls the height of the window when restoring to its previous state.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>This field assists in the restoration of the window when it is minimised, maximised or has its dimensions changed in a customised way.  The value that is set here will reflect the new height of the window when it is restored to its 'previous' state.  This field is provided for control purposes and should only be used from the window's style script.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>RestoreWidth</name>
+      <comment>Controls the width of the window when restoring to its previous state.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>This field assists in the restoration of the window when it is minimised, maximised or has its dimensions changed in a customised way.  The value that is set here will reflect the new width of the window when it is restored to its 'previous' state.  This field is provided for control purposes and should only be used from the window's style script.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>RestoreX</name>
+      <comment>Controls the horizontal position of the window when restoring to its previous state.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>This field assists in the restoration of the window when it is minimised, maximised or has its dimensions changed in a customised way.  The value that is set here will reflect the new horizontal coordinate of the window when it is restored to its 'previous' state.  This field is provided for control purposes and should only be used from the window's style script.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>RestoreY</name>
+      <comment>Controls the vertical position of the window when restoring to its previous state.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>This field assists in the restoration of the window when it is minimised, maximised or has its dimensions changed in a customised way.  The value that is set here will reflect the new vertical coordinate of the window when it is restored to its 'previous' state.  This field is provided for control purposes and should only be used from the window's style script.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>StickToFront</name>
+      <comment>Forces the window to stick to the front of the display.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>Set this field to TRUE to force the window to stay at the front of its display.  This option should be used leniently. It is recommended for use in small windows and presenting warning or error messages to the user.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Surface</name>
+      <comment>The window's surface.</comment>
+      <access read="R">Read</access>
+      <type class="Surface">*Surface</type>
+      <description>
+<p>The surface that represents the window on the display can be retrieved through this field.  The reference is a direct pointer to the <class name="Surface">Surface</class> object in question. It is possible to manipulate the surface without encountering adverse effects with the window object, although it is wise to refrain from doing so where functionality is duplicated in the Window class.  For instance, <action>Hide</action> and <action>Show</action> actions should not be called on the surface object as this functionality is managed by the window system.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Title</name>
+      <comment>The title string to display in the window's title bar.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>OBJECTID</type>
+      <description>
+<p>The Title field controls the text that is displayed in the window's title bar.  Set this field at any time in order to change the title that is displayed inside the window.  A standard UTF-8 text string is acceptable and will be trimmed if it exceeds the maximum number of possible characters.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>TitleObject</name>
+      <comment>The object that controls the window title is referenced here.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>OBJECTID</type>
+      <description>
+<p>The object that controls the window's title bar text is referenced through this field.  If no title bar is configured then this field will be empty.</p>
+<p>Theme Developers: The window style must set this field with the ID of the object that manages the title bar.  A Text object is typically used for this purpose.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>UserFocus</name>
+      <comment>Indicates the object that should have the user focus when the window is active.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>OBJECTID</type>
+      <description>
+<p>The UserFocus field is internally managed by the Window class.  It is acceptable to read this value to get the ID of the object that has the user focus.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Width</name>
+      <comment>The width of the window.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>This field defines the width of the window area.  It includes the window borders imposed by the desktop, if present. To get the internal width of the window excluding the borders, use <field>InsideWidth</field>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>X</name>
+      <comment>The horizontal position of the window, relative to its container.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>Y</name>
+      <comment>The vertical position of the window, relative to its container.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="WNF" comment="Window flags.">
+      <const name="SMART_LIMITS">Use automated limits to prevent the window from leaving the display.  This mode will ensure that enough of the title bar is visible so as to allow the user to drag the window back into the display area.</const>
+      <const name="FORCE_POS">Force window coordinates, don't try to be smart about it.</const>
+      <const name="NO_MARGINS">Do not apply margins within the window (graphics will be aligned to the window borders).</const>
+      <const name="DISABLED">Disable on creation.</const>
+      <const name="BACKGROUND">This option will guarantee that the background of the window will always be cleared to a neutral colour (probably grey).  Background clearing occurs automatically for desktop windows, but not for windows that are in full-screen mode.  The client must set this flag if there is no intention to draw a customised background or fill the canvas.</const>
+      <const name="VIDEO">Request that the window be buffered in video RAM instead of software RAM.</const>
+      <const name="BORDERLESS">Create the window without the titlebar, border and background.</const>
+    </constants>
+
+    <constants lookup="WOR" comment="The orientation to use for the display when the window is maximised.">
+      <const name="ANY">The default.  Any orientation is acceptable to the application.</const>
+      <const name="PORTRAIT">Portrait mode is preferred.</const>
+      <const name="LANDSCAPE">Landscape mode is preferred.</const>
+    </constants>
+
+  </types>
+  <structs>
+  </structs>
+</book>

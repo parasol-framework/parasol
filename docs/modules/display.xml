@@ -1,0 +1,968 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="module.xsl"?>
+
+<book>
+  <info>
+    <name>Display</name>
+    <type>module</type>
+    <version>1</version>
+    <status>stable</status>
+    <prefix>gfx</prefix>
+    <copyright>Paul Manias 2003-2020</copyright>
+    <classes>
+      <class>Bitmap</class>
+      <class>Display</class>
+      <class>Pointer</class>
+    </classes>
+  </info>
+
+  <function>
+    <name>AccessPointer</name>
+    <comment>Returns a lock on the default pointer object.</comment>
+    <prototype>struct rkPointer * gfxAccessPointer()</prototype>
+    <description>
+<p>Use AccessPointer() to grab a lock on the default pointer object that is active in the system.  This is typically the first object created from the Pointer class with a name of "SystemPointer".</p>
+<p>Call <function module="Core">ReleaseObject</function> to free the lock once it is no longer required.</p>
+    </description>
+    <result type="struct rkPointer *">Returns the address of the default pointer object.</result>
+  </function>
+
+  <function>
+    <name>Compress</name>
+    <comment>Compresses bitmap data to save memory.</comment>
+    <prototype>ERROR gfxCompress(struct rkBitmap * Bitmap, LONG Level)</prototype>
+    <input>
+      <param type="struct rkBitmap *" name="Bitmap">Pointer to the <class name="Bitmap">Bitmap</class> that will be compressed.</param>
+      <param type="LONG" name="Level">Level of compression.  Zero uses a default setting (recommended), the maximum is 10.</param>
+    </input>
+    <description>
+<p>A bitmap can be compressed with the Compress() function to save memory when the bitmap is not in use.  This is useful if a large bitmap needs to be stored in memory and it is anticipated that the bitmap will be used infrequently.</p>
+<p>Once a bitmap is compressed, its image data is invalid.  Any attempt to access the bitmap image data will likely result in a memory access fault.  The image data will remain invalid until the <function module="Display">Decompress</function> function is called to restore the bitmap to its original state.</p>
+<p>The BMF_COMPRESSED bit will be set in the Flags field after a successful call to this function to indicate that the bitmap is compressed.</p>
+    </description>
+    <result type="ERROR">
+      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+      <error code="Args">Invalid arguments passed to function.</error>
+      <error code="CreateObject">A call to CreateObject() failed.</error>
+      <error code="Okay">Operation successful.</error>
+      <error code="ReallocMemory">The reallocation of a memory block failed.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>CopyArea</name>
+    <comment>Copies a rectangular area from one bitmap to another.</comment>
+    <prototype>ERROR gfxCopyArea(struct rkBitmap * Bitmap, struct rkBitmap * Dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+    <input>
+      <param type="struct rkBitmap *" name="Bitmap">The source bitmap.</param>
+      <param type="struct rkBitmap *" name="Dest">Pointer to the destination bitmap.</param>
+      <param type="LONG" name="Flags" lookup="BAF">Special flags.</param>
+      <param type="LONG" name="X">The horizontal position of the area to be copied.</param>
+      <param type="LONG" name="Y">The vertical position of the area to be copied.</param>
+      <param type="LONG" name="Width">The width of the area.</param>
+      <param type="LONG" name="Height">The height of the area.</param>
+      <param type="LONG" name="XDest">The horizontal position to copy the area to.</param>
+      <param type="LONG" name="YDest">The vertical position to copy the area to.</param>
+    </input>
+    <description>
+<p>This function copies rectangular areas from one bitmap to another.  It performs a straight region-copy only, using the fastest method available.  Bitmaps may be of a different type (e.g. bit depth), however this will result in performance penalties.  The copy process will respect the clipping region defined in both the source and destination bitmap objects.</p>
+<p>If the TRANSPARENT flag is set in the source object, all colours that match the ColourIndex field will be ignored in the copy operation.</p>
+<p>To enable dithering, pass BAF_DITHER in the Flags argument.  The drawing algorithm will use dithering if the source needs to be down-sampled to the target bitmap's bit depth.  To enable alpha blending, set BAF_BLEND (the source bitmap will also need to have the BMF_ALPHA_CHANNEL flag set to indicate that an alpha channel is available).</p>
+    </description>
+    <result type="ERROR">
+      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="Mismatch">A mis-match has been detected that prevents further processing.</error>
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>CopyStretch</name>
+    <comment>Copies a rectangular area from one bitmap to another, with stretching.</comment>
+    <prototype>ERROR gfxCopyStretch(struct rkBitmap * Bitmap, struct rkBitmap * Dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest, LONG DestWidth, LONG DestHeight)</prototype>
+    <input>
+      <param type="struct rkBitmap *" name="Bitmap">The source bitmap.</param>
+      <param type="struct rkBitmap *" name="Dest">Pointer to the destination bitmap.</param>
+      <param type="LONG" name="Flags" lookup="CSTF">Special flags.</param>
+      <param type="LONG" name="X">The horizontal position of the area to be copied.</param>
+      <param type="LONG" name="Y">The vertical position of the area to be copied.</param>
+      <param type="LONG" name="Width">The width of the source area.</param>
+      <param type="LONG" name="Height">The height of the source area.</param>
+      <param type="LONG" name="XDest">The horizontal position to copy the area to.</param>
+      <param type="LONG" name="YDest">The vertical position to copy the area to.</param>
+      <param type="LONG" name="DestWidth">The width to use for the destination area.</param>
+      <param type="LONG" name="DestHeight">The height to use for the destination area.</param>
+    </input>
+    <description>
+<p>This function copies rectangular images between bitmaps.  It performs a straight region-copy with the added capability of stretching the source to match the destination area.  The source and destination bitmaps may be of a different type, however this will result in a much slower copy operation.  The copy will honour the clip region set in both the source and destination bitmap objects.</p>
+<p>Special flags affecting the stretch operation are accepted by this routine.  The following table illustrates the available options.</p>
+<types lookup="CSTF"/>
+<p>Special operations like transparency and alpha blending are not currently supported by this routine.</p>
+    </description>
+    <result type="ERROR">
+      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="Mismatch">A mis-match has been detected that prevents further processing.</error>
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>CopySurface</name>
+    <comment>Copies graphics data from an arbitrary surface to a bitmap.</comment>
+    <prototype>ERROR gfxCopySurface(struct BitmapSurfaceV2 * Surface, struct rkBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+    <input>
+      <param type="struct BitmapSurfaceV2 *" name="Surface">Description of the surface source.</param>
+      <param type="struct rkBitmap *" name="Bitmap">Destination bitmap.</param>
+      <param type="LONG" name="Flags" lookup="CSRF">Optional flags.</param>
+      <param type="LONG" name="X">Horizontal source coordinate.</param>
+      <param type="LONG" name="Y">Vertical source coordinate.</param>
+      <param type="LONG" name="Width">Source width.</param>
+      <param type="LONG" name="Height">Source height.</param>
+      <param type="LONG" name="XDest">Horizontal destination coordinate.</param>
+      <param type="LONG" name="YDest">Vertical destination coordinate.</param>
+    </input>
+    <description>
+<p>This function will copy data from a described surface to a destination bitmap object.  You are required to provide the function with a full description of the source in a BitmapSurface structure.</p>
+<p>The X, Y, Width and Height parameters define the area from the source that you wish to copy.  The XDest and YDest parameters define the top left corner that you will blit the graphics to in the destination.</p>
+    </description>
+    <result type="ERROR">
+      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="Okay">Operation successful.</error>
+      <error code="Args">Invalid arguments passed to function.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>Decompress</name>
+    <comment>Decompresses a compressed bitmap.</comment>
+    <prototype>ERROR gfxDecompress(struct rkBitmap * Bitmap, LONG RetainData)</prototype>
+    <input>
+      <param type="struct rkBitmap *" name="Bitmap">Pointer to the <class name="Bitmap">Bitmap</class> that will be decompressed.</param>
+      <param type="LONG" name="RetainData">Retains the compression data if TRUE.</param>
+    </input>
+    <description>
+<p>The Decompress() function is used to restore a compressed bitmap to its original state.  If the bitmap is not compressed, this function does nothing.</p>
+<p>By default the original compression data will be terminated, however it can be retained by setting the RetainData argument to TRUE.  Retaining the data will allow it to be decompressed on consecutive occasions.  Because both the raw and compressed image data will be held in memory, it is recommended that CompressBitmap is called as soon as possible with the Altered argument set to FALSE.  This will remove the raw image data from memory while retaining the original compressed data without starting a recompression process.</p>
+    </description>
+    <result type="ERROR">
+      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>DrawEllipse</name>
+    <comment>Draws an ellipse within a bounding box.</comment>
+    <prototype>void gfxDrawEllipse(struct rkBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Fill)</prototype>
+    <input>
+      <param type="struct rkBitmap *" name="Bitmap">Pointer to the target <class name="Bitmap">Bitmap</class>.</param>
+      <param type="LONG" name="X">The left-side of the bounding box.</param>
+      <param type="LONG" name="Y">The top-side of the bounding box.</param>
+      <param type="LONG" name="Width">The width of the bounding box.</param>
+      <param type="LONG" name="Height">The height of the bounding box.</param>
+      <param type="ULONG" name="Colour">The colour of the ellipse, expressed in packed RGB format.</param>
+      <param type="LONG" name="Fill">Set to TRUE to fill the ellipse.</param>
+    </input>
+    <description>
+<p>This function will draw an ellipse within the bounding box defined by (X, Y, Width, Height).  If Fill is TRUE then the ellipse will be filled with Colour.  If FALSE then the border of the ellipse will be drawn at a size of 1 pixel.</p>
+    </description>
+  </function>
+
+  <function>
+    <name>DrawLine</name>
+    <comment>Draws a line to a bitmap.</comment>
+    <prototype>void gfxDrawLine(struct rkBitmap * Bitmap, LONG X, LONG Y, LONG XEnd, LONG YEnd, ULONG Colour)</prototype>
+    <input>
+      <param type="struct rkBitmap *" name="Bitmap">The target bitmap.</param>
+      <param type="LONG" name="X">X-axis starting position.</param>
+      <param type="LONG" name="Y">Y-axis starting position.</param>
+      <param type="LONG" name="XEnd">X-axis end position.</param>
+      <param type="LONG" name="YEnd">Y-axis end position.</param>
+      <param type="ULONG" name="Colour">The pixel colour for drawing the line.</param>
+    </input>
+    <description>
+<p>This function will draw a line using a bitmap colour value.  The line will start from the position determined by (X, Y) and end at (EndX, EndY) inclusive.  Hardware acceleration will be used to draw the line if available.</p>
+<p>The opacity of the line is determined by the value in the Opacity field of the target bitmap.</p>
+    </description>
+  </function>
+
+  <function>
+    <name>DrawPixel</name>
+    <comment>Draws a single pixel to a bitmap.</comment>
+    <prototype>void gfxDrawPixel(struct rkBitmap * Bitmap, LONG X, LONG Y, ULONG Colour)</prototype>
+    <input>
+      <param type="struct rkBitmap *" name="Bitmap">The target bitmap object.</param>
+      <param type="LONG" name="X">The horizontal coordinate of the pixel.</param>
+      <param type="LONG" name="Y">The vertical coordinate of the pixel.</param>
+      <param type="ULONG" name="Colour">The colour value to use for the pixel.</param>
+    </input>
+    <description>
+<p>This function draws a pixel to the coordinates X, Y on a bitmap with a colour determined by the Colour index. This function will check the given coordinates to make sure that the pixel is inside the bitmap's clipping area.</p>
+    </description>
+  </function>
+
+  <function>
+    <name>DrawRGBPixel</name>
+    <comment>Draws a 24 bit pixel to a bitmap.</comment>
+    <prototype>void gfxDrawRGBPixel(struct rkBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB)</prototype>
+    <input>
+      <param type="struct rkBitmap *" name="Bitmap">The target bitmap object.</param>
+      <param type="LONG" name="X">Horizontal coordinate of the pixel.</param>
+      <param type="LONG" name="Y">Vertical coordinate of the pixel.</param>
+      <param type="struct RGB8 *" name="RGB">The colour to be drawn, in RGB format.</param>
+    </input>
+    <description>
+<p>This function draws an RGB colour to the (X, Y) position of a target bitmap.  The function will check the given coordinates to ensure that the pixel is inside the bitmap's clipping area.</p>
+    </description>
+  </function>
+
+  <function>
+    <name>DrawRectangle</name>
+    <comment>Draws rectangles, both filled and unfilled.</comment>
+    <prototype>void gfxDrawRectangle(struct rkBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags)</prototype>
+    <input>
+      <param type="struct rkBitmap *" name="Bitmap">Pointer to the target <class name="Bitmap">Bitmap</class>.</param>
+      <param type="LONG" name="X">The left-most coordinate of the rectangle.</param>
+      <param type="LONG" name="Y">The top-most coordinate of the rectangle.</param>
+      <param type="LONG" name="Width">The width of the rectangle.</param>
+      <param type="LONG" name="Height">The height of the rectangle.</param>
+      <param type="ULONG" name="Colour">The colour value to use for the rectangle.</param>
+      <param type="LONG" name="Flags" lookup="BAF">Use BAF_FILL to fill the rectangle.  Use of BAF_BLEND will enable blending.</param>
+    </input>
+    <description>
+<p>This function draws both filled and unfilled rectangles.  The rectangle is drawn to the target bitmap at position (X, Y) with dimensions determined by the specified Width and Height.  If the Flags parameter defines BAF_FILL then the rectangle will be filled, otherwise only the outline will be drawn.  The colour of the rectangle is determined by the pixel value in the Colour argument.  Blending is not enabled unless the BAF_BLEND flag is defined and an alpha value is present in the Colour.</p>
+    </description>
+  </function>
+
+  <function>
+    <name>FlipBitmap</name>
+    <comment>Flips a bitmap around its horizontal or vertical axis.</comment>
+    <prototype>void gfxFlipBitmap(struct rkBitmap * Bitmap, LONG Orientation)</prototype>
+    <input>
+      <param type="struct rkBitmap *" name="Bitmap">Pointer to a bitmap object.</param>
+      <param type="LONG" name="Orientation" lookup="FLIP">Set to either FLIP_HORIZONTAL or FLIP_VERTICAL.  If set to neither, the function does nothing.</param>
+    </input>
+    <description>
+<p>The FlipBitmap() function is used to flip bitmap images on their horizontal or vertical axis.  The amount of time required to flip a bitmap is dependent on the area of the bitmap you are trying to flip over and its total number of colours.</p>
+    </description>
+  </function>
+
+  <function>
+    <name>Flood</name>
+    <comment>Perform a flood-fill operation on a pixel specified at (X, Y).</comment>
+    <prototype>ERROR gfxFlood(struct rkBitmap * Bitmap, LONG X, LONG Y, ULONG Colour)</prototype>
+    <input>
+      <param type="struct rkBitmap *" name="Bitmap">Pointer to a bitmap object.</param>
+      <param type="LONG" name="X">The horizontal coordinate of the pixel to target for the flood operation.</param>
+      <param type="LONG" name="Y">The vertical coordinate of the pixel to target for the flood operation.</param>
+      <param type="ULONG" name="Colour">The colour value of the fill in packed-pixel format.</param>
+    </input>
+    <description>
+<p>This function performs a flood-fill operation on a bitmap.  It requires an X and Y value that will target a pixel to initiate the flood-fill operation.  The colour value indicated in RGB will be used to change the targeted pixel and all adjacent pixels that share the targeted pixel's colour.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>GetColourFormat</name>
+    <comment>Generates the values for a ColourFormat structure for a given bit depth.</comment>
+    <prototype>void gfxGetColourFormat(struct ColourFormat * Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask)</prototype>
+    <input>
+      <param type="struct ColourFormat *" name="Format">Pointer to an empty ColourFormat structure.</param>
+      <param type="LONG" name="BitsPerPixel">The depth that you would like to generate colour values for.  Ignored if mask values are set.</param>
+      <param type="LONG" name="RedMask">Red component bit mask value.  Set this value to zero if the BitsPerPixel argument is used.</param>
+      <param type="LONG" name="GreenMask">Green component bit mask value.</param>
+      <param type="LONG" name="BlueMask">Blue component bit mask value.</param>
+      <param type="LONG" name="AlphaMask">Alpha component bit mask value.</param>
+    </input>
+    <description>
+<p>This function will generate the values for a ColourFormat structure, for either a given bit depth or customised colour bit values.  The ColourFormat structure is used by internal bitmap routines to pack and unpack bit values to and from bitmap memory.</p>
+<pre>struct ColourFormat {
+   UBYTE  RedShift;    // Right shift value (applies only to 15/16 bit formats for eliminating redundant bits)
+   UBYTE  BlueShift;
+   UBYTE  GreenShift;
+   UBYTE  AlphaShift;
+   UBYTE  RedMask;     // The unshifted mask value (ranges from 0x00 to 0xff)
+   UBYTE  GreenMask;
+   UBYTE  BlueMask;
+   UBYTE  AlphaMask;
+   UBYTE  RedPos;      // Left shift/positional value
+   UBYTE  GreenPos;
+   UBYTE  BluePos;
+   UBYTE  AlphaPos;
+};
+</pre>
+<p>The ColourFormat structure is supported by the following macros for packing and unpacking colour bit values:</p>
+<pre>Colour = CFPackPixel(Format,Red,Green,Blue)
+Colour = CFPackPixelA(Format,Red,Green,Blue,Alpha)
+Colour = CFPackAlpha(Format,Alpha)
+Red    = CFUnpackRed(Format,Colour)
+Green  = CFUnpackGreen(Format,Colour)
+Blue   = CFUnpackBlue(Format,Colour)
+Alpha  = CFUnpackAlpha(Format,Colour)
+</pre>
+    </description>
+  </function>
+
+  <function>
+    <name>GetCursorInfo</name>
+    <comment>Retrieves graphics information from the active mouse cursor.</comment>
+    <prototype>ERROR gfxGetCursorInfo(struct CursorInfo * Info, LONG Size)</prototype>
+    <input>
+      <param type="struct CursorInfo *" name="Info">Pointer to a CursorInfo structure.</param>
+      <param type="LONG" name="Size">The byte-size of the Info structure.</param>
+    </input>
+    <description>
+<p>The GetCursorInfo() function is used to retrieve useful information on the graphics structure of the mouse cursor.  It will return the maximum possible dimensions for custom cursor graphics and indicates the optimal bits-per-pixel setting for the hardware cursor.</p>
+<p>If there is no cursor (e.g. this is likely on touch-screen devices) then all field values will be set to zero.</p>
+<p>Note: If the hardware cursor is monochrome, the bits-per-pixel setting will be set to 2 on return.  This does not indicate a 4 colour cursor image; rather colour 0 is the mask, 1 is the foreground colour (black), 2 is the background colour (white) and 3 is an XOR pixel.  When creating the bitmap, always set the palette to the RGB values that are wanted.  The mask colour for the bitmap must refer to colour index 0.</p>
+    </description>
+    <result type="ERROR">
+      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="NoSupport">This request is not supported.</error>
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>GetCursorPos</name>
+    <comment>Returns the coordinates of the UI pointer.</comment>
+    <prototype>ERROR gfxGetCursorPos(LONG * X, LONG * Y)</prototype>
+    <input>
+      <param type="LONG *" name="X">32-bit variable that will store the pointer's horizontal coordinate.</param>
+      <param type="LONG *" name="Y">32-bit variable that will store the pointer's vertical coordinate.</param>
+    </input>
+    <description>
+<p>This function is used to retrieve the current coordinates of the user interface pointer.  If the device is touch-screen based then the coordinates will reflect the last position that a touch event occurred.</p>
+    </description>
+    <result type="ERROR">
+      <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>GetDisplayInfo</name>
+    <comment>Retrieves display information.</comment>
+    <prototype>ERROR gfxGetDisplayInfo(OBJECTID Display, struct DisplayInfoV3 ** Info)</prototype>
+    <input>
+      <param type="OBJECTID" name="Display">Object ID of the display to be analysed.</param>
+      <param type="struct DisplayInfoV3 **" name="Info">This reference will receive a pointer to a DISPLAYINFO structure.</param>
+    </input>
+    <description>
+<p>The GetDisplayInfo() function returns information about a display, which includes information such as its size and bit depth.  If the system is running on a hosted display (e.g. Windows or X11) then GetDisplayInfo() can also be used to retrieve information about the default monitor by using a Display of zero.</p>
+<p>The resulting DISPLAYINFO structure values remain good until the next call to this function, at which point they will be overwritten.</p>
+    </description>
+    <result type="ERROR">
+      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>GetDisplayType</name>
+    <comment>Returns the type of display supported.</comment>
+    <prototype>LONG gfxGetDisplayType()</prototype>
+    <description>
+<p>This function returns the type of display supported by the loaded Display module.  Current return values are:</p>
+<types lookup="DT"/>
+    </description>
+    <result type="LONG" lookup="DT">Returns an integer indicating the display type.</result>
+  </function>
+
+  <function>
+    <name>GetInputMsg</name>
+    <comment>Read the next message delivered from the user input message queue.</comment>
+    <prototype>ERROR gfxGetInputMsg(struct dcInputReady * Input, LONG Flags, struct InputMsg ** Msg)</prototype>
+    <input>
+      <param type="struct dcInputReady *" name="Input">Points to an input ready message as received through the DC_INPUTREADY data channel.</param>
+      <param type="LONG" name="Flags" lookup="JTYPE">Input mask flags.</param>
+      <param type="struct InputMsg **" name="Msg">Pointer to a InputMsg structural reference that will store the result.  GetInputMsg() will not modify the existing value stored in this parameter in the event of an error.</param>
+    </input>
+    <description>
+<p>This function reads messages from the input message queue.  It is designed to be used in conjunction with the <function module="Core">SubscribeInput</function> function and is called when InputReady messages are received through the subscriber's data feed.  This function should be called using a loop to parse all the messages waiting on the input queue (refer to the <function module="Core">SubscribeInput</function> function for an example).</p>
+<p>All receivable messages are held in an InputMsg structure that is returned in the Msg parameter.  The structure format is as follows:</p>
+<fields>
+<fld type="UWORD" name="Type">This value is set to a JET constant that describes the input event.</fld>
+<fld type="UWORD" name="Flags">Flags provide a broad description of the event type and can also provide more specific information relevant to the event (see JTYPE flags).</fld>
+<fld type="DOUBLE" name="Value">The value associated with the Type</fld>
+<fld type="OBJECTID" name="RecipientID">The surface that the input message is being conveyed to.</fld>
+<fld type="OBJECTID" name="OverID">The surface that was directly under the mouse pointer at the time of the event.</fld>
+<fld type="LONG" name="AbsX">Absolute horizontal coordinate of the mouse pointer (relative to the top left of the display).</fld>
+<fld type="LONG" name="AbsY">Absolute vertical coordinate of the mouse pointer (relative to the top left of the display).</fld>
+<fld type="LONG" name="OverX">Horizontal pointer coordinate, usually relative to the surface that the pointer is positioned over.  If a mouse button is held or the pointer is anchored, the coordinates are relative to the Recipient surface.</fld>
+<fld type="LONG" name="OverY">Vertical pointer coordinate.</fld>
+<fld type="LARGE" name="Timestamp">Millisecond counter at which the input was recorded, or as close to it as possible.</fld>
+<fld type="OBJECTID" name="DeviceID">Reference to the hardware device that this event originated from.  There is no guarantee that the DeviceID is a reference to a publicly accessible object.</fld>
+</fields>
+<p>JET constants are as follows, taking special note of ENTERED_SURFACE and LEFT_SURFACE, which are not driven by device input:</p>
+<types lookup="JET"/>
+<p>The JTYPE flags that can be set in the Flags field are as follows.  Note that these flags serve as input masks for the <function module="Core">SubscribeInput</function> function, so to receive a message of the given type the appropriate JTYPE flag must have been set in the original subscription call.</p>
+<types lookup="JTYPE"/>
+    </description>
+    <result type="ERROR">
+      <error code="OutOfRange">A specified number is outside of the valid range.</error>
+      <error code="Finished">Operation finished.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="AccessMemory">Access to a shared memory block was denied.</error>
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>GetInputTypeName</name>
+    <comment>Returns the string name for an input type.</comment>
+    <prototype>CSTRING gfxGetInputTypeName(LONG Type)</prototype>
+    <input>
+      <param type="LONG" name="Type" lookup="JET">JET type integer.</param>
+    </input>
+    <description>
+<p>This function converts JET integer constants to their string equivalent.  Refer to <function module="Core">SubscribeInput</function> for a list of JET constants.</p>
+    </description>
+    <result type="CSTRING">A string describing the input type is returned or NULL if the Type is invalid.</result>
+  </function>
+
+  <function>
+    <name>GetRelativeCursorPos</name>
+    <comment>Returns the coordinates of the pointer cursor, relative to a surface object.</comment>
+    <prototype>ERROR gfxGetRelativeCursorPos(OBJECTID Surface, LONG * X, LONG * Y)</prototype>
+    <input>
+      <param type="OBJECTID" name="Surface">Unique ID of the surface that the coordinates need to be relative to.</param>
+      <param type="LONG *" name="X">32-bit variable that will store the pointer's horizontal coordinate.</param>
+      <param type="LONG *" name="Y">32-bit variable that will store the pointer's vertical coordinate.</param>
+    </input>
+    <description>
+<p>This function is used to retrieve the current coordinates of the pointer cursor. The coordinates are relative to the surface object that is specified in the Surface argument.</p>
+<p>The X and Y parameters will not be set if a failure occurs.</p>
+    </description>
+    <result type="ERROR">
+      <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>LockCursor</name>
+    <comment>Anchors the cursor so that it cannot move without explicit movement signals.</comment>
+    <prototype>ERROR gfxLockCursor(OBJECTID Surface)</prototype>
+    <input>
+      <param type="OBJECTID" name="Surface">Refers to the surface object that the pointer should send movement signals to.</param>
+    </input>
+    <description>
+<p>The LockCursor() function will lock the current pointer position and pass UserMovement signals to the surface referenced in the Surface parameter.  The pointer will not move unless the <function module="Display">SetCursorPos</function> function is called. The anchor is granted on a time-limited basis.  It is necessary to reissue the anchor every time that a UserMovement signal is intercepted.  Failure to reissue the anchor will return the pointer to its normal state, typically within 200 microseconds.</p>
+<p>The anchor can be released at any time by calling the <function module="Display">UnlockCursor</function> function.</p>
+    </description>
+    <result type="ERROR">
+      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="NoSupport">This request is not supported.</error>
+      <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>ReadPixel</name>
+    <comment>Reads a pixel's colour from the target bitmap.</comment>
+    <prototype>ULONG gfxReadPixel(struct rkBitmap * Bitmap, LONG X, LONG Y)</prototype>
+    <input>
+      <param type="struct rkBitmap *" name="Bitmap">Pointer to a bitmap object.</param>
+      <param type="LONG" name="X">The horizontal coordinate of the pixel.</param>
+      <param type="LONG" name="Y">The vertical coordinate of the pixel.</param>
+    </input>
+    <description>
+<p>This function reads a pixel from a bitmap area and returns its colour index (if the Bitmap is indexed with a palette) or its packed pixel value.  Zero is returned if the pixel is out of bounds.</p>
+    </description>
+    <result type="ULONG">The colour value of the pixel will be returned.  Zero is returned if the pixel is out of bounds.</result>
+  </function>
+
+  <function>
+    <name>ReadRGBPixel</name>
+    <comment>Reads a pixel's colour from the target bitmap.</comment>
+    <prototype>void gfxReadRGBPixel(struct rkBitmap * Bitmap, LONG X, LONG Y, struct RGB8 ** RGB)</prototype>
+    <input>
+      <param type="struct rkBitmap *" name="Bitmap">Pointer to a bitmap object.</param>
+      <param type="LONG" name="X">The horizontal coordinate of the pixel.</param>
+      <param type="LONG" name="Y">The vertical coordinate of the pixel.</param>
+      <param type="struct RGB8 **" name="RGB">The colour values will be stored in this RGB structure.</param>
+    </input>
+    <description>
+<p>This function reads a pixel from a bitmap surface and returns the value in an RGB structure that remains good up until the next call to this function.  Zero is returned in the alpha component if the pixel is out of bounds.</p>
+<p>This function is thread-safe if the target Bitmap is locked.</p>
+    </description>
+  </function>
+
+  <function>
+    <name>Resample</name>
+    <comment>Resamples a bitmap by dithering it to a new set of colour masks.</comment>
+    <prototype>ERROR gfxResample(struct rkBitmap * Bitmap, struct ColourFormat * ColourFormat)</prototype>
+    <input>
+      <param type="struct rkBitmap *" name="Bitmap">The bitmap object to be resampled.</param>
+      <param type="struct ColourFormat *" name="ColourFormat">The new colour format to be applied to the bitmap.</param>
+    </input>
+    <description>
+<p>The Resample() function provides a means for resampling a bitmap to a new colour format without changing the actual bit depth of the image. It uses dithering so as to retain the quality of the image when down-sampling.  This function is generally used to 'pre-dither' true colour bitmaps in preparation for copying to bitmaps with lower colour quality.</p>
+<p>You are required to supply a ColourFormat structure that describes the colour format that you would like to apply to the bitmap's image data.</p>
+    </description>
+    <result type="ERROR">
+      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>RestoreCursor</name>
+    <comment>Returns the pointer image to its original state.</comment>
+    <prototype>ERROR gfxRestoreCursor(LONG Cursor, OBJECTID Owner)</prototype>
+    <input>
+      <param type="LONG" name="Cursor" lookup="PTR">The cursor image that the pointer will be restored to (0 for the default).</param>
+      <param type="OBJECTID" name="Owner">The ownership ID that was given in the initial call to SetCursor().</param>
+    </input>
+    <description>
+<p>Use the RestoreCursor() function to undo an earlier call to <function module="Display">SetCursor</function>.  It is necessary to provide the same OwnerID that was used in the original call to <function module="Display">SetCursor</function>.</p>
+<p>To release ownership of the cursor without changing the current cursor image, use a Cursor setting of PTR_NOCHANGE.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Args">Invalid arguments passed to function.</error>
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>ScaleToDPI</name>
+    <comment>Scales a value to the active display's DPI.</comment>
+    <prototype>DOUBLE gfxScaleToDPI(DOUBLE Value)</prototype>
+    <input>
+      <param type="DOUBLE" name="Value">The number to be scaled.</param>
+    </input>
+    <description>
+<p>ScaleToDPI() is a convenience function for scaling any value to the active display's current DPI setting.  The value that you provide must be fixed in relation to the system wide default of 96 DPI.  If the display's DPI varies differs to that, your value will be scaled to match.  For instance, an 8 point font at 96 DPI would be scaled to 20 points if the display was 240 DPI.</p>
+<p>If the DPI of the display is unknown, your value will be returned unscaled.</p>
+    </description>
+    <result type="DOUBLE">The scaled value is returned.</result>
+  </function>
+
+  <function>
+    <name>SetClipRegion</name>
+    <comment>Sets a clipping region for a bitmap object.</comment>
+    <prototype>void gfxSetClipRegion(struct rkBitmap * Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate)</prototype>
+    <input>
+      <param type="struct rkBitmap *" name="Bitmap">The target bitmap.</param>
+      <param type="LONG" name="Number">The number of the clip region to set.</param>
+      <param type="LONG" name="Left">The horizontal start of the clip region.</param>
+      <param type="LONG" name="Top">The vertical start of the clip region.</param>
+      <param type="LONG" name="Right">The right-most edge of the clip region.</param>
+      <param type="LONG" name="Bottom">The bottom-most edge of the clip region.</param>
+      <param type="LONG" name="Terminate">Set to TRUE if this is the last clip region in the list, otherwise FALSE.</param>
+    </input>
+    <description>
+<p>The SetClipRegion() method is used to manage the clipping regions assigned to a bitmap object.  Each new bitmap that is created has at least one clip region assigned to it, but by using SetClipRegion() you can also define multiple clipping areas, which is useful for complex graphics management.</p>
+<p>Each clipping region that you set is assigned a Number, starting from zero which is the default.  Each time that you set a new clip region you must specify the number of the region that you wish to set.  If you attempt to 'skip' regions - for instance, if you set regions 0, 1, 2 and 3, then skip 4 and set 5, the routine will set region 4 instead. If you have specified multiple clip regions and want to lower the count or reset the list, set the number of the last region that you want in your list and set the Terminate argument to TRUE to kill the regions specified beyond it.</p>
+<p>The ClipLeft, ClipTop, ClipRight and ClipBottom fields in the target Bitmap will be updated to reflect the overall area that is covered by the clipping regions that have been set.</p>
+    </description>
+  </function>
+
+  <function>
+    <name>SetCursor</name>
+    <comment>Sets the cursor image and can anchor the pointer to any surface.</comment>
+    <prototype>ERROR gfxSetCursor(OBJECTID Surface, LONG Flags, LONG Cursor, CSTRING Name, OBJECTID Owner)</prototype>
+    <input>
+      <param type="OBJECTID" name="Surface">Refers to the surface object that the pointer should anchor itself to, if the CRF_RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.</param>
+      <param type="LONG" name="Flags" lookup="CRF">Optional flags that affect the cursor.</param>
+      <param type="LONG" name="Cursor" lookup="PTR">The ID of the cursor image that is to be set.</param>
+      <param type="CSTRING" name="Name">The name of the cursor image that is to be set (if Cursor is zero).</param>
+      <param type="OBJECTID" name="Owner">The object nominated as the owner of the anchor, and/or owner of the cursor image setting.</param>
+    </input>
+    <description>
+<p>Use the SetCursor() function to change the pointer image and/or restrict the movement of the pointer to a surface area.</p>
+<p>To change the cursor image, set the Cursor or Name parameters to define the new image.  Valid cursor ID's and their equivalent names are listed in the documentation for the Cursor field.  If the ObjectID field is set to a valid surface, then the cursor image will switch back to the default setting once the pointer moves outside of its region.  If both the Cursor and Name parameters are NULL, the cursor image will remain unchanged from its current image.</p>
+<p>The SetCursor() function accepts the following flags in the Flags parameter:</p>
+<types lookup="CRF"/>
+<p>The Owner parameter is used as a locking mechanism to prevent the cursor from being changed whilst it is locked.  We recommend that it is set to an object ID such as the program's task ID.  As the owner, the cursor remains under your program's control until <function module="Display">RestoreCursor</function> is called.</p>
+    </description>
+    <result type="ERROR">
+      <error code="NoSupport">This request is not supported.</error>
+      <error code="OutOfRange">A specified number is outside of the valid range.</error>
+      <error code="Args">Invalid arguments passed to function.</error>
+      <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>SetCursorPos</name>
+    <comment>Changes the position of the pointer cursor.</comment>
+    <prototype>ERROR gfxSetCursorPos(LONG X, LONG Y)</prototype>
+    <input>
+      <param type="LONG" name="X">The new horizontal coordinate for the pointer.</param>
+      <param type="LONG" name="Y">The new vertical coordinate for the pointer.</param>
+    </input>
+    <description>
+<p>Changes the position of the pointer cursor using coordinates relative to the entire display.</p>
+    </description>
+    <result type="ERROR">
+      <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>SetCustomCursor</name>
+    <comment>Sets the cursor to a customised bitmap image.</comment>
+    <prototype>ERROR gfxSetCustomCursor(OBJECTID Surface, LONG Flags, struct rkBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner)</prototype>
+    <input>
+      <param type="OBJECTID" name="Surface">Refers to the surface object that the pointer should restrict itself to, if the CRF_RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.</param>
+      <param type="LONG" name="Flags" lookup="CRF">Optional flags affecting the cursor are set here.</param>
+      <param type="struct rkBitmap *" name="Bitmap">The bitmap to set for the mouse cursor.</param>
+      <param type="LONG" name="HotX">The horizontal position of the cursor hot-spot.</param>
+      <param type="LONG" name="HotY">The vertical position of the cursor hot-spot.</param>
+      <param type="OBJECTID" name="Owner">The object nominated as the owner of the anchor.</param>
+    </input>
+    <description>
+<p>Use the SetCustomCursor() function to change the pointer image and/or anchor the position of the pointer so that it cannot move without permission.  The functionality provided is identical to that of the SetCursor() function with some minor adjustments to allow custom images to be set.</p>
+<p>The Bitmap that is provided should be within the width, height and bits-per-pixel settings that are returned by the GetCursorInfo() function.  If the basic settings are outside the allowable parameters, the Bitmap will be trimmed or resampled appropriately when the cursor is downloaded to the video card.</p>
+<p>It may be possible to speed up the creation of custom cursors by drawing directly to the pointer's internal bitmap buffer rather than supplying a fresh bitmap.  To do this, the Bitmap parameter must be NULL and it is necessary to draw to the pointer's bitmap before calling SetCustomCursor().  Note that the bitmap is always returned as a 32-bit, alpha-enabled graphics area.  The following code illustrates this process:</p>
+<pre>objPointer *pointer;
+objBitmap *bitmap;
+
+if ((pointer = gfxAccessPointer())) {
+   if (!AccessObject(pointer-&gt;BitmapID, 3000, &amp;bitmap)) {
+      // Adjust clipping to match the cursor size.
+      buffer-&gt;Clip.Right  = CursorWidth;
+      buffer-&gt;Clip.Bottom = CursorHeight;
+      if (buffer-&gt;Clip.Right &gt; buffer-&gt;Width) buffer-&gt;Clip.Right = buffer-&gt;Width;
+      if (buffer-&gt;Clip.Bottom &gt; buffer-&gt;Height) buffer-&gt;Clip.Bottom = buffer-&gt;Height;
+
+      // Draw to the bitmap here.
+      ...
+
+      gfxSetCustomCursor(ObjectID, NULL, NULL, 1, 1, glTaskID, NULL);
+      ReleaseObject(bitmap);
+   }
+   gfxReleasePointer(pointer);
+}
+</pre>
+    </description>
+    <result type="ERROR">
+      <error code="NoSupport">This request is not supported.</error>
+      <error code="Okay">Operation successful.</error>
+      <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
+      <error code="Args">Invalid arguments passed to function.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>SetHostOption</name>
+    <comment>Alter options associated with the host display system.</comment>
+    <prototype>ERROR gfxSetHostOption(LONG Option, LARGE Value)</prototype>
+    <input>
+      <param type="LONG" name="Option" lookup="HOST">One of HOST_TRAY_ICON, HOST_TASKBAR or HOST_STICK_TO_FRONT.</param>
+      <param type="LARGE" name="Value">The value to be applied to the option.</param>
+    </input>
+    <description>
+<p>For internal usage only.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>StartCursorDrag</name>
+    <comment>Attaches an item to the cursor for the purpose of drag and drop.</comment>
+    <prototype>ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface)</prototype>
+    <input>
+      <param type="OBJECTID" name="Source">Refers to an object that is managing the source data.</param>
+      <param type="LONG" name="Item">A custom number that represents the item being dragged from the source.</param>
+      <param type="CSTRING" name="Datatypes">A null terminated byte array that lists the datatypes supported by the source item, in order of conversion preference.</param>
+      <param type="OBJECTID" name="Surface">A 32-bit composite surface that represents the item being dragged.</param>
+    </input>
+    <description>
+<p>This function starts a drag and drop operation with the mouse cursor.  The user must be holding the primary mouse button to initiate the drag and drop operation.</p>
+<p>A Source object ID is required that indicates the origin of the item being dragged and will be used to retrieve the data on completion of the drag and drop operation. An Item number, which is optional, identifies the item being dragged from the Source object.</p>
+<p>The type of data represented by the source item and all other supportable data types are specified in the Datatypes parameter as a null terminated array.  The array is arranged in order of preference, starting with the item's native data type.  Acceptable data type values are listed in the documentation for the DataFeed action.</p>
+<p>The Surface argument allows for a composite surface to be dragged by the mouse cursor as a graphical representation of the source item.  It is recommended that the graphic be 32x32 pixels in size and no bigger than 64x64 pixels.  The Surface will be hidden on completion of the drag and drop operation.</p>
+<p>If the call to StartCursorDrag() is successful, the mouse cursor will operate in drag and drop mode.  The UserMovement and UserClickRelease actions normally reported from the SystemPointer will now include the JD_DRAGITEM flag in the ButtonFlags parameter.  When the user releases the primary mouse button, the drag and drop operation will stop and the DragDrop action will be passed to the surface immediately underneath the mouse cursor.  Objects that are monitoring for the DragDrop action on that surface can then contact the Source object with a DataFeed DragDropRequest.  The resulting data is then passed to the requesting object with a DragDropResult on the DataFeed.</p>
+    </description>
+    <result type="ERROR">
+      <error code="InUse">Previous allocations have not been freed.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="Failed">General failure.</error>
+      <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>SubscribeInput</name>
+    <comment>Subscribe to incoming input messages for any active surface object.</comment>
+    <prototype>ERROR gfxSubscribeInput(OBJECTID Surface, LONG Mask, OBJECTID Device)</prototype>
+    <input>
+      <param type="OBJECTID" name="Surface">If set, only the input messages that match the given surface ID will be received.</param>
+      <param type="LONG" name="Mask" lookup="JTYPE">Combine JTYPE flags to define the input messages that you wish to received.  Set to 0xffffffff if all messages are desirable.</param>
+      <param type="OBJECTID" name="Device">If set, only the input messages that match the given device ID will be received.  NOTE - Support not yet implemented, set to zero.</param>
+    </input>
+    <description>
+<p>The SubscribeInput() function provides a method for receiving input messages.  Input messages can be filtered so that they are received in relation to surfaces and devices.  An input mask can also be applied so that only certain types of messages are received.  If no filters are applied, then all user input messages can be received.</p>
+<p>The input system is limited to managing messages that are related to the display (such as track pads, mouse pointers, graphics tablets and touch screens). Keyboard devices are not included in the input management system as they are specially supported by the <module>Keyboard</module> module.</p>
+<p>To reduce the number of messages being passed through the system, input messages are placed on a global queue that is accessible to all tasks.  When a new message appears that matches a client's filtering criteria, an InputReady data feed message will be sent to it.  The <function module="Core">GetInputMsg</function> function can then be used to process the available messages in the queue.  The following code segment illustrates an example of this, and would be used in the DataFeed action:</p>
+<pre>if (Args-&gt;DataType IS DATA_INPUT_READY) {
+   struct InputMsg *input;
+
+   while (!scrGetInputMsg(Args-&gt;Buffer, 0, &amp;input)) {
+      if (input-&gt;Flags &amp; JTYPE_MOVEMENT) {
+
+      }
+      else if (input-&gt;Type IS JET_LMB) {
+
+      }
+   }
+}
+</pre>
+<p>Further information on the processing of input messages is available in the documentation for the <function module="Core">GetInputMsg</function> function.</p>
+<p>You are required to remove the subscription with <function module="Core">UnsubscribeInput</function> once it is no longer required.</p>
+    </description>
+    <result type="ERROR">
+      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>Sync</name>
+    <comment>Waits for the completion of all active bitmap operations.</comment>
+    <prototype>void gfxSync(struct rkBitmap * Bitmap)</prototype>
+    <input>
+      <param type="struct rkBitmap *" name="Bitmap">Pointer to the bitmap that you want to synchronise or NULL to sleep on the graphics accelerator.</param>
+    </input>
+    <description>
+<p>The Sync() function will wait for all current video operations to complete before it returns.  This ensures that it is safe to write to video memory with the CPU, preventing any possibility of clashes with the onboard graphics chip.</p>
+    </description>
+  </function>
+
+  <function>
+    <name>UnlockCursor</name>
+    <comment>Undoes an earlier call to LockCursor()</comment>
+    <prototype>ERROR gfxUnlockCursor(OBJECTID Surface)</prototype>
+    <input>
+      <param type="OBJECTID" name="Surface">Refers to the surface object used for calling LockCursor().</param>
+    </input>
+    <description>
+<p>Call this function to undo any earlier calls to LockCursor() and return the mouse pointer to its regular state.</p>
+    </description>
+    <result type="ERROR">
+      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="NotLocked">There is no exclusive lock on this object.</error>
+      <error code="AccessObject">An attempt to gain exclusive access to a shared object failed.</error>
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>UnsubscribeInput</name>
+    <comment>Removes an input subscription.</comment>
+    <prototype>ERROR gfxUnsubscribeInput(OBJECTID Surface)</prototype>
+    <input>
+      <param type="OBJECTID" name="Surface">The surface to target for unsubscription.  If zero, all subscriptions are removed for the active object.</param>
+    </input>
+    <description>
+<p>This function removes an input subscription that has been configured using <function module="Core">SubscribeInput</function>.  If a Surface filter was specified in the original subscription, this can also be defined so that any other active subscriptions acquired by the Subscriber are unaffected.</p>
+    </description>
+    <result type="ERROR">
+      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="NotFound">A search routine in this function failed.</error>
+      <error code="Okay">Operation successful.</error>
+    </result>
+  </function>
+
+  <types>
+    <constants lookup="CSRF" comment="Flags for CopySurface().">
+      <const name="ALPHA">Enable alpha blending if the source is in 32-bit colour format with an alpha channel.</const>
+      <const name="TRANSLUCENT">Perform a translucent copy operation, using the strength value specified in the Surface Opacity field.</const>
+      <const name="OFFSET">Adjust X and Y coordinates by the offset values defined in the Surface' XOffset and YOffset fields.</const>
+      <const name="CLIP">Enable clipping of the source coordinates.</const>
+      <const name="TRANSPARENT">Enable transparent copying, whereby colours matching the source's Colour field will be ignored.</const>
+      <const name="DEFAULT_FORMAT">Ignore the colour format defined in the source surface (if any) and generate a default format based on the BitsPerPixel value.</const>
+    </constants>
+
+    <constants lookup="ACF" comment="Acceleration flags for GetDisplayInfo().">
+      <const name="VIDEO_BLIT">Video blitting is supported for this display.</const>
+      <const name="SOFTWARE_BLIT">Software blitting is used (or forced) for this display.</const>
+    </constants>
+
+    <constants lookup="BMF" comment="Bitmap flags">
+      <const name="NO_BLEND">Drawing routines that support this flag will not blend pixels.</const>
+      <const name="FIXED_DEPTH">Prevent changing of bitmap depth after initialisation (e.g. via acResize()).</const>
+      <const name="QUERIED">Automatically set after a Query on the bitmap.</const>
+      <const name="ACCELERATED_3D">3D video acceleration is available.</const>
+      <const name="ALPHA_CHANNEL">For 32-bit images, indicates that an alpha channel is present.</const>
+      <const name="TRANSPARENT">Indicates that the bitmap utilises a transparent colour.  This is automatically set if the ColourRGB field is set and support exists in functions such as CopyArea().</const>
+      <const name="NO_DATA">Do not allocate memory in the Data field on initialisation.</const>
+      <const name="ACCELERATED_2D">2D video acceleration is available.</const>
+      <const name="CLEAR">Clear graphics on initialisation and when resizing.</const>
+      <const name="COMPRESSED">The bitmap data is compressed.</const>
+      <const name="USER">User flag allows tagging of bitmaps for special meaning; not used internally.</const>
+      <const name="NEVER_SHRINK">Ignore resize requests that would shrink the size of the bitmap.</const>
+      <const name="BLANK_PALETTE">Forces a blank/black palette on initialisation.</const>
+      <const name="INVERSE_ALPHA">Indicates reverse alpha blending, higher values are transparent.</const>
+      <const name="MASK">Declare the Bitmap as a 1 or 8 bit mask.  Must be set in conjunction with the BitsPerPixel field on initialisation.</const>
+    </constants>
+
+    <constants lookup="DPMS" comment="Possible modes for the Display class' DPMS field.">
+      <const name="DEFAULT">Use the default DPMS mode as defined by the display driver.</const>
+      <const name="OFF">Stop sending power to the display in order to turn it off (it may not be possible to restart the display without the user's intervention).</const>
+      <const name="SUSPEND">Puts the display into suspend mode (blanks the display output while maintaining normal power levels).</const>
+      <const name="STANDBY">Puts the display into standby (reduced power) mode.</const>
+    </constants>
+
+    <constants lookup="FLIP" comment="Flags for the bitmap Flip method.">
+      <const name="HORIZONTAL">Flip the bitmap from top to bottom.</const>
+      <const name="VERTICAL">Flip the bitmap from left to right.</const>
+    </constants>
+
+    <constants lookup="CSTF" comment="Flags for CopyStretch().">
+      <const name="BICUBIC">Cubic scaling.</const>
+      <const name="BRESENHAM">Smooth bresenham.</const>
+      <const name="CLAMP">Pixels that are past the edge of the source material will have a default alpha value of 0 unless the CLAMP flag is used, in which case the value is approximated with a bias of 255 if not otherwise calculable.</const>
+      <const name="GOOD_QUALITY">Enables bilinear resampling of the source image.  This increases the quality of the resize at a cost of speed.</const>
+      <const name="CUBIC">Cubic scaling.</const>
+      <const name="NEIGHBOUR">Nearest neighbour scaling</const>
+      <const name="FILTER_SOURCE">If the source bitmap is temporary and will not be required after the stretch operation, you have the option of setting this flag.  By doing so, the stretch routine will pass the source image through a simple filter so that it can improve the resulting image.  This option is available at a speed cost and is best used in conjunction with bilinear resizing.</const>
+      <const name="BILINEAR">Enables bilinear resampling of the source image.  This increases the quality of the resize at a cost of speed.</const>
+    </constants>
+
+    <constants lookup="DT" comment="Flags for GetDisplayType().">
+      <const name="NATIVE">The display is native (supported by internal drivers).</const>
+      <const name="X11">The display is driven by the X Window System (X11, X.Org, XFree86)</const>
+      <const name="WINDOWS">The display is driven by Microsoft Windows drivers.</const>
+      <const name="GLES">The display is driven by OpenGLES.</const>
+    </constants>
+
+    <constants lookup="SMF" comment="Flags for the Display class SetMonitor() method.">
+      <const name="AUTO_DETECT">Monitor settings to be auto-detected on startup.</const>
+      <const name="BIT_6">The device is limited to 6-bit colour production in real terms.</const>
+    </constants>
+
+    <constants lookup="GMF" comment="Flags for gamma operations.">
+      <const name="SAVE">Save the provided settings permanently.</const>
+    </constants>
+
+    <constants lookup="HOST">
+      <const name="TRAY_ICON">All new displays are represented in the system tray when this option is active.</const>
+      <const name="TASKBAR">The hosted display is given a taskbar button.</const>
+      <const name="STICK_TO_FRONT">The hosted display sticks to the front.</const>
+      <const name="TRANSLUCENCE">Change the alpha channel level for the entire window.</const>
+      <const name="TRANSPARENT">Defines an RGB colour that is to be used as transparent.</const>
+    </constants>
+
+    <constants lookup="PF" comment="Flags for the Pointer class.">
+      <const name="UNUSED"/>
+      <const name="VISIBLE">Indicates that the pointer is currently visible.  Read-only.</const>
+      <const name="ANCHOR">Allow the pointer to be anchored.</const>
+    </constants>
+
+    <constants lookup="CRF" comment="Flags for the SetCursor() function.">
+      <const name="LMB">Release the cursor after the left mouse button is held and released.</const>
+      <const name="NO_BUTTONS">Set the cursor only on the condition that the user is not holding down any buttons.  ERR_NothingDone is returned if the user has a button held down.</const>
+      <const name="MMB">Release the cursor after the middle mouse button is held and released.</const>
+      <const name="BUFFER">Use of the BUFFER option allows the cursor request to be buffered in the event that the cursor is locked at the time of calling the SetCursor() function.  Use of this flag is highly recommended in most circumstances, but may not be used in conjunction with the ANCHOR option.</const>
+      <const name="RMB">Release the cursor after the right mouse button is held and released.</const>
+      <const name="RESTRICT">Similar to the anchor option, but allows the pointer to move within the surface referred to by ObjectID.</const>
+    </constants>
+
+    <constants lookup="BAF" comment="Instructions for basic graphics operations.">
+      <const name="COPY">Special CopyArea() option that avoids blending when the destination pixel is empty.</const>
+      <const name="BLEND">Enable alpha blending to the destination if the source supports an alpha channel.</const>
+      <const name="FILL">For primitive operations such as DrawRectangle(), this will fill the shape with a solid colour or texture.</const>
+      <const name="DITHER">Perform dithering if the colour formats differ between the source and destination.</const>
+    </constants>
+
+    <constants lookup="BMP" comment="Bitmap types">
+      <const name="PLANAR">Planar pixel mode separates pixel bits across multiple planes.  Commonly used for single bit bitmap masks.</const>
+      <const name="CHUNKY">Chunky pixel mode (default).</const>
+    </constants>
+
+    <constants lookup="SCR" comment="Display flags.">
+      <const name="CUSTOM_WINDOW">The display has been created with a custom window reference.</const>
+      <const name="BIT_6">Display is limited to 6-bit output per colour gun.</const>
+      <const name="AUTO_SAVE">Saves settings to the global display state when the object is freed.</const>
+      <const name="MAXSIZE">For GetDisplayInfo() only, indicates that the width and height values indicate the display's maximum size.</const>
+      <const name="NO_ACCELERATION">2D graphics card acceleration is not available.</const>
+      <const name="VISIBLE">Set if the screen is on display.</const>
+      <const name="COMPOSITE">Enables alpha channel blending (if display is hosted and 32-bit).</const>
+      <const name="READ_ONLY">Synonym for MAXIMISE | CUSTOM_WINDOW | FLIPPABLE | GTF_ENABLED | DPMS_ENABLED | POWERSAVE | HOSTED | MAXSIZE | REFRESH | BIT_6 | VISIBLE | NO_ACCELERATION</const>
+      <const name="REFRESH">For GetDisplayInfo() only, used to indicate that a display change has recently occurred and cache refresh is required.</const>
+      <const name="DPMS_ENABLED">Power saving through DPMS is supported.</const>
+      <const name="GTF_ENABLED">GTF frequency timings are supported.</const>
+      <const name="BORDERLESS">If display is hosted, create it as a popup / borderless window.</const>
+      <const name="HOSTED">The display is a desktop hosted window.</const>
+      <const name="BUFFER">Set if you would like a complementing buffer in video RAM.</const>
+      <const name="POWERSAVE">Power saving is active (read-only).</const>
+      <const name="ALPHA_BLEND">Enables alpha channel blending (if display is hosted and 32-bit).</const>
+      <const name="MAXIMISE">Special win32 flag.</const>
+      <const name="FLIPPABLE">If SCR_BUFFER is used, this flag may be set by the display manager if it is possible to flip the buffer.</const>
+    </constants>
+
+  </types>
+  <structs>
+    <struct name="CursorInfo">
+      <field name="Width" type="LONG">Maximum cursor width for custom cursors</field>
+      <field name="Height" type="LONG">Maximum cursor height for custom cursors</field>
+      <field name="Flags" type="LONG">Currently unused</field>
+      <field name="BitsPerPixel" type="WORD">Preferred bits-per-pixel setting for custom cursors</field>
+    </struct>
+
+    <struct name="PixelFormat" comment="Carries instructions to pack or unpack RGBA colours." typeName="PIXELFORMAT">
+      <field name="RedShift" type="UBYTE">Right shift value</field>
+      <field name="GreenShift" type="UBYTE"></field>
+      <field name="BlueShift" type="UBYTE"></field>
+      <field name="AlphaShift" type="UBYTE"></field>
+      <field name="RedMask" type="UBYTE">The unshifted mask value (ranges from 0x00 to 0xff)</field>
+      <field name="GreenMask" type="UBYTE"></field>
+      <field name="BlueMask" type="UBYTE"></field>
+      <field name="AlphaMask" type="UBYTE"></field>
+      <field name="RedPos" type="UBYTE">Left shift/positional value</field>
+      <field name="GreenPos" type="UBYTE"></field>
+      <field name="BluePos" type="UBYTE"></field>
+      <field name="AlphaPos" type="UBYTE"></field>
+    </struct>
+
+    <struct name="DisplayInfo" typeName="DISPLAYINFO">
+      <field name="Display" type="OBJECTID">Object ID related to the display</field>
+      <field name="Flags" type="LONG" lookup="SCR">Display flags</field>
+      <field name="Width" type="WORD">Pixel width of the display</field>
+      <field name="Height" type="WORD">Pixel height of the display</field>
+      <field name="BitsPerPixel" type="WORD">Bits per pixel</field>
+      <field name="BytesPerPixel" type="WORD">Bytes per pixel</field>
+      <field name="AccelFlags" type="LARGE" lookup="ACF">Flags describing supported hardware features.</field>
+      <field name="AmtColours" type="LONG">Total number of supported colours.</field>
+      <field name="PixelFormat" type="struct PixelFormat">The colour format to use for each pixel.</field>
+      <field name="MinRefresh" type="FLOAT">Minimum refresh rate</field>
+      <field name="MaxRefresh" type="FLOAT">Maximum refresh rate</field>
+      <field name="RefreshRate" type="FLOAT">Recommended refresh rate</field>
+      <field name="Index" type="LONG">Display mode ID (internal)</field>
+      <field name="HDensity" type="LONG">Horizontal pixel density per inch.</field>
+      <field name="VDensity" type="LONG">Vertical pixel density per inch.</field>
+    </struct>
+
+    <struct name="BitmapSurface" typeName="BITMAPSURFACE">
+      <field name="Data" type="APTR">Pointer to the bitmap graphics data.</field>
+      <field name="Width" type="WORD">Pixel width of the bitmap.</field>
+      <field name="Height" type="WORD">Pixel height of the bitmap.</field>
+      <field name="LineWidth" type="LONG">The distance between bitmap lines, measured in bytes.</field>
+      <field name="BitsPerPixel" type="UBYTE">The number of bits per pixel (8, 15, 16, 24, 32).</field>
+      <field name="BytesPerPixel" type="UBYTE">The number of bytes per pixel (1, 2, 3, 4).</field>
+      <field name="Opacity" type="UBYTE">Opacity level of the source if CSRF_TRANSLUCENT is used.</field>
+      <field name="Version" type="UBYTE">Version of this structure.</field>
+      <field name="Colour" type="LONG">Colour index to use if CSRF_TRANSPARENT is used.</field>
+      <field name="Clip" type="struct ClipRectangle">A clipping rectangle will restrict drawing operations to this region if CSRF_CLIP is used.</field>
+      <field name="XOffset" type="WORD">Offset all X coordinate references by the given value.</field>
+      <field name="YOffset" type="WORD">Offset all Y coordinate references by the given value.</field>
+      <field name="Format" type="struct ColourFormat">The colour format of this bitmap's pixels, or alternatively use CSRF_DEFAULT_FORMAT.</field>
+      <field name="Private" type="APTR">A private pointer reserved for internal usage</field>
+    </struct>
+
+  </structs>
+</book>

@@ -1,0 +1,112 @@
+<?xml version="1.0"?>
+
+<body face="veranda" fontsize="10" link="60,60,130" topmargin="50"
+  leftmargin="20" rightmargin="20" bottommargin="8"/>
+
+<template name="h1">
+  <p leading="2.0"><font face="Helvete" size="18" colour="#404050" style="bold"><inject/></font></p>
+</template>
+
+<template name="h2">
+  <p leading="2.0"><font face="Helvete" size="14" colour="#000000" style="bold"><inject/></font></p>
+</template>
+
+<template name="h3">
+  <p leading="1.5"><font colour="0,0,0" size="12"><inject/></font></p>
+</template>
+
+<template name="namehdr">
+  <p leading="1.0"><font face="Helvete" size="14" colour="80,80,80" style="bold"><u><inject/></u></font></p>
+</template>
+
+<template name="eventhdr">
+  <p leading="1.0"><font face="Helvete" size="14" colour="80,80,80" style="bold"><inject/></font></p>
+</template>
+
+<template name="code">
+  <p><font face="courier" size="10" preformat><inject/></font></p>
+</template>
+
+<template name="fixed">
+  <font face="courier" size="10" preformat><inject/></font>
+</template>
+
+<template name="function">
+  <a href="../modules/viewmodule.rpl?xml=[@mod].xml&amp;function=[%content]"><inject/>()</a>
+</template>
+
+<template name="class">
+  <a href="../classes/viewclass.rpl?xml=[%content]"><inject/></a>
+</template>
+
+<template name="startpage">
+  <gradient x="0" y="0" xoffset="0" height="32" firstcolour="40,40,30"
+    lastcolour="100,100,90" direction="vertical" layout="!background"/>
+
+  <box colour="0,0,0,30" x="0" xoffset="0" height="1" y="31" layout="!background"/>
+  <box colour="255,255,255,100" x="0" xoffset="0" y="0" height="1" layout="!background"/>
+
+  <text x="20" y="0" height="32" xoffset="190" string="[@title:Untitled]"
+    face="helvete:14" colour="255,255,255" align="vertical" font.flags="!charclip"/>
+
+  <image src="../images/rocklyte.png" x="2" y="0" height="32" xoffset="2"
+    align="vertical|right" eastgap="8"/>
+</template>
+
+<footer>
+  <p><box color="190,190,190" x="0" xoffset="0" height="1"/></p>
+  <p align="center"><font face="opti small" size="8" colour="100,100,100">Rocklyte Ltd © 2000-2013</font></p>
+</template>
+
+<template name="ul">
+  <list type="bullet"><inject/></list>
+</template>
+
+<template name="flags">
+  <indent>
+  <table width="100%" columns="1,12,0" vspacing="4">
+    <row><cell><b><u>Flag</u></b></cell><cell/><cell><b><u>Description</u></b></cell></row>
+    <inject/>
+  </table>
+  </indent>
+</template>
+
+<template name="flag">
+  <row><cell><print value="[@name]"/></cell><cell/><cell><inject/></cell></row>
+</template>
+
+<template name="types">
+  <indent>
+  <table width="100%" columns="1,12,0" vspacing="4">
+    <row><cell><p nowrap><b><u><print value="[@type:Type]"/></u></b></p></cell><cell/><cell><b><u>Description</u></b></cell></row>
+    <inject/>
+  </table>
+  </indent>
+</template>
+
+<template name="type">
+  <row><cell><print value="[@name]"/></cell><cell/><cell><inject/></cell></row>
+</template>
+
+<template name="fields">
+  <indent>
+  <table width="100%" columns="1,12,1,12,0" vspacing="4">
+    <row><cell><b><u>Type</u></b></cell><cell/><cell><b><u>Name</u></b></cell><cell/><cell><b><u>Description</u></b></cell></row>
+    <inject/>
+  </table>
+  </indent>
+</template>
+
+<template name="fld">
+  <row><cell><p nowrap><print value="[@type]"/></p></cell><cell/><cell><p nowrap><print value="[@name]"/></p></cell><cell/><cell><inject/></cell></row>
+</template>
+
+<template name="field">
+  <!-- A class reference must be present so that we can locate the XML file -->
+  <if notnull="[@class]">
+    <a href="../classes/viewclass.rpl?xml=[@class].xml&amp;name=[%content]#Field"><inject/></a>
+  </if>
+  <else>
+    <font colour="128,0,0"><inject/></font>
+  </else>
+</field>

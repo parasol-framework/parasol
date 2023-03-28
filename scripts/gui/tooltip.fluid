@@ -1,0 +1,97 @@
+--[[
+To create a tool tip:
+
+   local tip = gui.tooltip({ Options... })
+
+Valid options to use when creating the dialog are as follows:
+
+   text:  The text to display inside the tool-tip
+
+The surface representing the tooltip is readable from the 'surface' field.  Early termination of the tooltip
+is possible by calling the free method.
+--]]
+
+   require 'common'
+   require 'gui/box'
+
+   if (gui == nil) then gui = { } end
+
+gui.tooltip = function(Options)
+   local self = { // Public variables
+      surfaceID
+   }
+
+   self.free = function()
+      self.surface.acFree()
+   end
+
+   catch(function()
+      local pointer = obj.find('systempointer')
+
+      local lSurface = obj.new('surface', { name='rgnTip', x=pointer.x + 6, y=pointer.y, width=300, parent=0, windowType='none' })
+      gui.box({ target=lSurface, x=0, y=0, xOffset=0, yOffset=0, border='#606040', colour='#ffffe0' })
+      local lText = lSurface.new('text', { name='txtTip', x=4, xoffset=4, y=4, string=Options.text, colour='#000000', flags='!wordwrap' })
+
+      // This code segment attaches to the surface and terminates it when the pointer is moved by the user.
+
+      lSurface.new('fluid', { name='flTip', _surface=lSurface.id, statement=[[
+         include 'display'
+         local surface = obj.find(arg('surface'))
+         if (surface != nil) then
+            input.subscribe(JTYPE_MOVEMENT, nil, 0, function(Input, Message)
+               Input.unsubscribe()
+               surface.acFree()
+            end)
+            input.keyboard(nil, function()
+               Input.unsubscribe()
+               surface.acFree()
+            end)
+         end
+      ]] }).acActivate()
+
+      // Reduce the width of the tooltip if the text is short.
+
+      if (lSurface.width > lText.textWidth + 8) then
+         lSurface.width = 10 + lText.textWidth
+      end
+
+      lSurface.height = 8 + lText.textHeight
+      lSurface.y = pointer.y - lSurface.height  // Place the tooltip just above the mouse pointer.
+
+      // Adjust the position of the tool tip so that it fits on the screen.
+
+      if (systemSurface != nil) then
+         if (lSurface.right > systemSurface.width) then
+            lSurface.x = pointer.x - lSurface.width
+         end
+      end
+
+      if (lSurface.y < 0) then
+         lSurface.y = pointer.y + 20
+      end
+
+      lSurface.acShow()
+      lSurface.detach()
+
+      self.surfaceID = lSurface.id
+   end,
+   function(Exception)
+      msg('Failed to initialise ToolTip: ' .. Exception.message)
+      return nil
+   end)
+
+   return self
+end
+
+   // This sub-routine is provided for languages other than Fluid to utilise the module.
+
+   do
+      local state = getExecutionState()
+      if (state.inRequire != true) then
+         local tip = gui.tooltip({
+            text = arg('text')
+         })
+
+         return tip.surfaceID
+      end
+   end

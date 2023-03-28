@@ -1,0 +1,203 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>ClientSocket</name>
+    <type>class</type>
+    <module>Network</module>
+    <comment>Represents a single socket connection to a client IP address.</comment>
+    <version>1</version>
+    <id>a14972ed</id>
+    <idstring>ID_CLIENTSOCKET</idstring>
+    <category>Network</category>
+    <include>modules/clientsocket.h</include>
+    <copyright>Paul Manias © 2005-2020</copyright>
+    <description>
+<p>If a <class name="Netsocket">Netsocket</class> is running in server mode then it will create a new ClientSocket object every time that a new connection is opened by a client.  This is a very simple class that assists in the management of I/O between the client and server.</p></description>
+    <source>
+      <file path="clientsocket/">clientsocket.cpp</file>
+    </source>
+  </info>
+
+  <actions>
+    <action>
+      <name>Read</name>
+      <comment>Read incoming data from a client socket.</comment>
+      <description>
+<p>The Read action will read incoming data from the socket and write it to the provided buffer.  If the socket connection is safe, success will always be returned by this action regardless of whether or not data was available.  Almost all other return codes indicate permanent failure, and the socket connection will be closed when the action returns.</p>
+      </description>
+      <result>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Failed">A permanent failure has occurred and socket has been closed.</error>
+        <error code="Disconnected">The socket connection is closed.</error>
+        <error code="Okay">Read successful (if no data was on the socket, success is still indicated).</error>
+      </result>
+    </action>
+
+    <action>
+      <name>Write</name>
+      <comment>Writes data to the socket.</comment>
+      <description>
+<p>Write raw data to a client socket with this action.  Write connections are buffered, so any data overflow generated in a call to this action will be buffered into a software queue.  Resource limits placed on the software queue are governed by the #MsgLimit field setting.</p>
+      </description>
+    </action>
+
+  </actions>
+
+  <methods>
+    <method>
+      <name>ReadClientMsg</name>
+      <comment>Read a message from the socket.</comment>
+      <prototype>ERROR csReadClientMsg(OBJECTPTR Object, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC)</prototype>
+      <input>
+        <param type="APTR *" name="Message">A pointer to the message buffer will be placed here if a message has been received.</param>
+        <param type="LONG *" name="Length">The length of the message is returned here.</param>
+        <param type="LONG *" name="Progress">The number of bytes that have been read for the incoming message.</param>
+        <param type="LONG *" name="CRC">Indicates the CRC value that the message is expected to match.</param>
+      </input>
+      <description>
+<p>This method reads messages that have been sent to the socket using Parasol Message Protocols.  Any message sent with the WriteClientMsg method will conform to this protocol, thus simplifying message transfers between programs based on the core platform at either point of the network link.</p>
+<p>This method never returns a successful error code unless an entire message has been received from the sender.</p>
+      </description>
+      <result>
+        <error code="LimitedSuccess">Some data has arrived, but the entire message is incomplete.  The length of the incoming message may be indicated in the Length parameter.</error>
+        <error code="NoData">No new data was found for the socket.</error>
+        <error code="Args">Invalid arguments passed to function.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="AllocMemory">A message buffer could not be allocated.</error>
+        <error code="BadData">The message header or tail was invalid, or the message length exceeded internally imposed limits.</error>
+        <error code="Okay">A complete message has been read and indicated in the result parameters.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>WriteClientMsg</name>
+      <comment>Writes a message to the socket.</comment>
+      <prototype>ERROR csWriteClientMsg(OBJECTPTR Object, APTR Message, LONG Length)</prototype>
+      <input>
+        <param type="APTR" name="Message">Pointer to the message to send.</param>
+        <param type="LONG" name="Length">The length of the message.</param>
+      </input>
+      <description>
+<p>Messages can be written to sockets with the WriteClientMsg method and read back by the receiver with <method>ReadClientMsg</method>.  The message data is sent through the <action>Write</action> action, so the standard process will apply (the message will be queued and does not block if buffers are full).</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="OutOfRange">A specified number is outside of the valid range.</error>
+        <error code="Args">Invalid arguments passed to function.</error>
+      </result>
+    </method>
+
+  </methods>
+
+  <fields>
+    <field>
+      <name>Client</name>
+      <comment>Parent client structure</comment>
+      <access read="R">Read</access>
+      <type>struct rkNetClient *</type>
+    </field>
+
+    <field>
+      <name>ConnectTime</name>
+      <comment>System time for the creation of this socket</comment>
+      <access read="R">Read</access>
+      <type>BIGINT</type>
+    </field>
+
+    <field>
+      <name>Incoming</name>
+      <comment>Callback for data being received from the socket</comment>
+      <access read="R">Read</access>
+      <type>FUNCTION</type>
+    </field>
+
+    <field>
+      <name>MsgLen</name>
+      <comment>Length of the current incoming message</comment>
+      <access read="R">Read</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>Next</name>
+      <comment>Next socket in the chain</comment>
+      <access read="R">Read</access>
+      <type class="ClientSocket">*ClientSocket</type>
+    </field>
+
+    <field>
+      <name>Outgoing</name>
+      <comment>Callback for data being sent over the socket</comment>
+      <access read="R">Read</access>
+      <type>FUNCTION</type>
+    </field>
+
+    <field>
+      <name>Prev</name>
+      <comment>Previous socket in the chain</comment>
+      <access read="R">Read</access>
+      <type class="ClientSocket">*ClientSocket</type>
+    </field>
+
+    <field>
+      <name>ReadCalled</name>
+      <comment>TRUE if the Read action has been called</comment>
+      <access>-/-</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>UserData</name>
+      <comment>Free for user data storage.</comment>
+      <access read="R">Read</access>
+      <type>APTR</type>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="IPADDR" comment="Address types for the IPAddress structure.">
+      <const name="V4"/>
+      <const name="V6"/>
+    </constants>
+
+    <constants lookup="NSF">
+      <const name="SERVER">Puts the socket into server mode.  In this state the netsocket object will wait for incoming connections from clients.</const>
+      <const name="SSL">Use Secure Sockets Layer for all communication.</const>
+      <const name="MULTI_CONNECT">Allow multiple connections from the same IP when in server mode.</const>
+      <const name="DEBUG">Print extra log messages.</const>
+      <const name="SYNCHRONOUS">Use synchronous (blocking) network calls.</const>
+    </constants>
+
+    <constants lookup="NLF" comment="Options for NetLookup">
+      <const name="NO_CACHE">Contact the name service and do not use the local DNS cache.</const>
+    </constants>
+
+    <constants lookup="NTC" comment="NetSocket states">
+      <const name="DISCONNECTED">There is no connection.</const>
+      <const name="CONNECTING">A connection is being established.</const>
+      <const name="CONNECTING_SSL">An SSL connection is being established.</const>
+      <const name="CONNECTED">There is an active connection at present.</const>
+    </constants>
+
+  </types>
+  <structs>
+    <struct name="IPAddress">
+      <field name="Data" type="ULONG" size="4">128-bit array for supporting both V4 and V6 IP addresses.</field>
+      <field name="Type" type="LONG" lookup="IPADDR"></field>
+      <field name="Pad" type="LONG">Unused padding for 64-bit alignment</field>
+    </struct>
+
+    <struct name="rkNetClient" comment="Simple data storage class utilised by NetSocket to represent a client machine/IP.">
+      <field name="IP" type="char" size="8">IP address in 4/8-byte format</field>
+      <field name="Next" type="struct rkNetClient *">Next client in the chain</field>
+      <field name="Prev" type="struct rkNetClient *">Previous client in the chain</field>
+      <field name="NetSocket" type="struct rkNetSocket *">Reference to the parent socket</field>
+      <field name="Sockets" type="struct rkClientSocket *">Pointer to a list of sockets opened with this client.</field>
+      <field name="UserData" type="APTR">Free for user data storage.</field>
+      <field name="TotalSockets" type="LONG">Count of all created sockets</field>
+    </struct>
+
+  </structs>
+</book>

@@ -1,0 +1,80 @@
+<?xml version="1.0"?>
+<!DOCTYPE dmd PUBLIC "-//ROCKLYTE//DTD DMD 2.0//EN">
+
+<template name="includeref">
+  <p><a href="?include=[@file]"><print value="[@file]"/></a></p>
+</template>
+
+<template name="sourceref">
+  <a href="?path=[@path]&amp;source=[@file]"><print value="[@file]"/></a>
+</template>
+
+<template name="includeview">
+  <if isnull="[@include][@src]">
+    <p>No include parameter was provided.</p>
+    <break/>
+  </if>
+
+  <script type="Fluid">
+<![CDATA[
+
+   local result
+
+   local srcfile = "sdk:include/rocklyte/" .. args("include")
+
+   file = obj.new("file", { src=srcfile, flags="!read" } )
+
+   if (file == nil) then
+      return("<p>Failed to load include file '" .. srcfile .. "'.</p>")
+   end
+
+   local buf = mem.alloc(file.size+1, MEM_STRING)
+
+   error, result = file.acRead(buf, file.size)
+   if (error == ERR_Okay) then
+      buf.setchar(result, 0) /* Terminate the end of the buffer */
+
+      local str = buf.getstring(0, result)
+      result = "<p nowrap><font face=\"courier:10\"><pre><![CDATA[" .. str .. "]]" .. "></pre></font></p>"
+      return(result)
+   else
+      return("<p>Failed to read content from the include file.</p>")
+   end
+]]>
+  </script>
+</template>
+
+<template name="sourceview">
+  <if isnull="[@source]">
+    <p>No source file was provided.</p>
+    <break/>
+  </if>
+
+  <script type="Fluid">
+<![CDATA[
+
+   local result
+
+   local srcfile = args("path") .. args("source")
+
+   file = obj.new("file", { src=srcfile, flags="!read" } )
+
+   if (file == nil) then
+      return("<p>Failed to load source file '" .. args("path") .. args("source") .. "'.</p>")
+   end
+
+   local buf = mem.alloc(file.size+1, MEM_STRING)
+
+   error, result = file.acRead(buf, file.size)
+   if (error == ERR_Okay) then
+      buf.setchar(result, 0) /* Terminate the end of the buffer */
+
+      local str = buf.getstring(0, result)
+      result = "<p nowrap><font face=\"courier:10\"><pre><![CDATA[" .. str .. "]]" .. "></pre></font></p>"
+      return(result)
+   else
+      return("<p>Failed to read content from the source file.</p>")
+   end
+]]>
+  </script>
+</template>

@@ -1,0 +1,78 @@
+-- Flute tests for XML
+
+//=====================================================================================================================
+// Check that the Tags array works as expected when used in Fluid
+
+function testTagsArray()
+   local tags = glXML.tags
+   for k, tag in pairs(tags) do
+      print(tag.index, " ", tag.totalAttrib, " ", tag.attrib.name)
+   end
+
+   if (#tags != glXML.tagCount) then
+      error("The total number of extracted tag elements (" .. #tags .. ") does not match the XML.TagCount of " .. glXML.tagCount)
+   end
+end
+
+//=====================================================================================================================
+// Test the FindTag() and GetTag() methods.
+
+function testIndexing()
+   local err, index = glXML.mtFindTag("/book/function")
+   if err == ERR_Okay then
+      print("Retrieving tag " .. index .. " of " .. glXML.tagCount)
+
+      local err, tags = glXML.mtGetTag(index)
+      if err == ERR_Okay then
+         local totalFunctions = 0
+         while tags != nil do
+            if tags.totalAttrib > 0 then
+               if tags.attrib.name != 'function' then
+                  error("Expected 'function', got '" .. nz(tags.attrib.name,"NIL") .. "'")
+               end
+               totalFunctions = totalFunctions + 1
+            end
+            tags = tags.next
+         end
+
+         if (totalFunctions != 3) then
+            error("Expected 3 functions, got " .. totalFunctions)
+         end
+      else
+         error("Failed to get tag " .. index .. ", " .. mSys.GetErrorMsg(err))
+      end
+   else
+      error("Failed to find /book/function, error: " .. mSys.GetErrorMsg(err))
+   end
+end
+
+//=====================================================================================================================
+// Test the GetAttrib() method
+
+function testGetAttrib()
+   local err, index = glXML.mtFindTag("/book/function/input/param")
+   if err == ERR_Okay then
+      local err, value = glXML.mtGetAttrib(index, 'type')
+      if err == ERR_Okay then
+         if (value != 'struct rkFont *') then
+            error("Tag type value of '" .. value .. "' was not expected.")
+         end
+      else
+         error("Failed to retrieve 'type' attribute, error: " .. mSys.GetErrorMsg(err))
+      end
+   else
+      error("Failed to find /book/function/input/param, error: " .. mSys.GetErrorMsg(err))
+   end
+end
+
+//=====================================================================================================================
+
+   return {
+      tests = { 'testTagsArray', 'testIndexing', 'testGetAttrib' },
+      init = function(ScriptFolder)
+         glXML = obj.new("xml", { path = ScriptFolder .. "test.xml" })
+      end,
+      cleanup = function()
+         glXML = nil
+      end
+   }

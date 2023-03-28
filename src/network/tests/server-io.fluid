@@ -1,0 +1,53 @@
+--[[
+This test checks connectivity and I/O with a server by sending a simple HTTP request over port 80.
+--]]
+
+   include 'network'
+
+//=====================================================================================================================
+
+function testHTTP()
+   local proc = processing.new({ timeout = 5.0 })
+   local netsocket
+   netsocket = obj.new('netsocket', {
+      feedback = function(Socket, Client, State)
+         local state = netsocket.get('$state')
+
+         if (string.lower(state) == 'connecting') then
+            print('Connecting...')
+
+         elseif (string.lower(state) == 'connected') then
+            print('Connected to server.')
+
+            netsocket.acWrite('GET /index.html HTTP/1.1\r\nHost: parasol.ws\r\nConnection: close\r\nUser-Agent: Parasol Client\r\n\r\n')
+
+         elseif (string.lower(state) == 'disconnected') then
+            print('Disconnected from server.')
+            proc.signal()
+         else
+            print('Unknown netsocket state: ' .. state)
+         end
+      end,
+      incoming = function(Socket, Script)
+         print('Incoming data...')
+         local buffer = string.rep(nil, 1024)
+         local err, read_len = netsocket.acRead(buffer)
+         if (err == ERR_Okay) then
+            print(buffer:sub(1,read_len))
+         end
+      end
+   } )
+
+   assert(netsocket, 'Failed to create NetSocket object.')
+
+   netsocket.mtConnect('parasol.ws', 80)
+
+   local err = proc.sleep()
+   assert(err == ERR_Okay, 'Failed to complete the test: ' .. mSys.GetErrorMsg(err))
+end
+
+//=====================================================================================================================
+
+   return {
+      tests = { 'testHTTP' }
+   }

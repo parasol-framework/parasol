@@ -1,0 +1,163 @@
+<?xml version="1.0"?>
+
+<page>
+  <info>
+    <title>Module Development Guide</title>
+    <author>Rocklyte Systems</author>
+    <description>A detailed description on how to develop modules for Parasol.</description>
+    <keywords>module, tutorial, development, guide, manual</keywords>
+  </info>
+
+  <include src="inc_style.rpl"/>
+  <startpage title="Module Development Guide"/>
+
+  <p>Modules, also known as libraries and APIs, provide shared functionality for applications.  A Parasol module can do two things: It can export classes (e.g. the FileSystem module contains the File class); and it can export functions that perform routines. The majority of Parasol's existing modules are focussed around classes, but this document section will cover modules that export functions only. If you want to learn how to create class-based modules, we recommend that you read this tutorial first to grasp the basic concepts of module development, then move onto the <a href="class_development_guide.rpl">Class Development Tutorial</a>. </p>
+
+<h2>Writing the Module</h2>
+
+<p>The fastest way to get started is to use the module template included with the Rocklyte SDK, which you can find in the "templates/module" directory. By using the template you will be able to create a compiled module in about 10 minutes.  From there, it will be a matter of writing the functions that are going to be exported.  In this section we will explain some of the finer points of module construction.</p>
+
+<h3>The Module Header</h3>
+
+<p>If you open the module template or the source code to any other module in a text editor you should come across a structure such as the following in the first page of text:</p>
+
+<indent><code>struct ModHeader ModHeader = {
+   MODULE_HEADER_V1,
+   CMDInit, NULL, CMDOpen, NULL,
+   JMP_DEFAULT, JumpTableV1, CPU_PC, VER_ModuleVersion, VER_KERNEL,
+   "Rocklyte Systems",
+   "Copyright Rocklyte Ltd © 2001-2014",
+   "November 2014",
+   "Strings"
+};</code></indent>
+
+<p>This structure, known as the module header tells the object kernel how the module should be handled.  The structure is detailed in the following table:</p>
+
+<indent>
+<table spacing="0" padding="2" width="90%" columns="120,0">
+<row><cell><b><u>Field</u></b></><cell><b><u>Description</u></b></></row>
+<row><cell>Version</><cell>This is the version of the module header structure - set this to MODULE_HEADER_V1</></row>
+<row><cell>Init</><cell>This field points to the module's initialisation routine (compulsory).</></row>
+<row><cell>Close</><cell>This field points to the module's close routine (optional).</></row>
+<row><cell>Open</><cell>This field points to the module's open routine (optional).</></row>
+<row><cell>Expunge</><cell>This field points to the module's expunge routine (optional).</></row>
+<row><cell>KernelTable</><cell>The type of function table passed to the module when it is initialised is defined here. JMP_DEFAULT is sufficient for C/C++ code.</></row>
+<row><cell>DefaultList</><cell>This field points to the default function list that is to be used for generating jump tables for programs that will use your module.</></row>
+<row><cell>CPUNumber</><cell>The CPU that the module is compiled for is specified here, e.g. CPU_I386.  Use CPU_PC to reflect the CPU used on your own machine. CPU's are defined in the "system/modules.h" include file.</></row>
+<row><cell>ModVersion</><cell>The current version and revision of the module is specified here in floating point format - e.g. 1.4.</></row>
+<row><cell>MinKernelVersion</><cell>The minimum version number required of the object kernel. If the version you specify is higher than the user's object kernel, the module will not be loaded due to the version mismatch.</></row>
+<row><cell>Author</><cell>Enter your name, or the name of your employer or organisation here.</></row>
+<row><cell>Copyright</><cell>Full copyright details associated with the module are entered here. </></row>
+<row><cell>Date</><cell>The month and year of the most recent change to the module source code is entered here, e.g. "April 2001".</></row>
+<row><cell>Name</><cell>The name of the module must be typed in here.</></row>
+</table>
+</indent>
+
+<h3>Module Sub-Routines</h3>
+
+<p>The module header contains four fields that refer to other functions within the module - Init, Open, Close and Expunge. It is compulsory to provide a routine for the Init field, while the other three are optional.</p>
+
+<p>The Init routine is called when the module is loaded for the first time and not on subsequent occasions.  Your Init routine will be passed a pointer to a jump-table that can be used to make function calls to the kernel. Because the jump-table is the only connection that you will have with the object kernel to begin with, you will have to store it so that you can make function calls. The following routine is a typical example of this:</p>
+
+<indent><code>ERROR CMDInit(OBJECTPTR Module, struct KernelBase *argKernelBase)
+{
+   KernelBase = argKernelBase;
+
+   /*** Your code follows ***/
+
+   return(ERR_Okay);
+}</code></indent>
+
+<p>The Open routine is called each time the module is opened, including the first time that the module is initialised. You will receive a pointer to the module object that opened the module file. It is recommended that you set the FunctionList field in the Module object to the jump-table requested by the program opening your module. This becomes more important over time, as during the evolution of a module it is likely that functions may be added, as well as altered between versions. To avoid backwards compatibility problems, you can assign different jump tables to each version of a module. Thus if a program requests a version 2 jump-table and your module is currently at version 5, you can give a version 2 jump-table to the program. The following example shows what the Open routine should look like for the first version of your module:</p>
+
+<indent><code>ERROR CMDOpen(OBJECTPTR Module)
+{
+   SetPointer(Module, FID_FunctionList, JumpTableV1);
+   return(ERR_Okay);
+}</code></indent>
+
+<p>The Close routine is called each time that the module is closed. You should support this routine if there is code in your Open function that needs to be 'undone' each time that the module is closed. In most cases, you can set this field to NULL.</p>
+
+<p>The Expunge routine is called when the module is being unloaded from memory.  You will need to support the expunge sequence if your Init routine allocated memory, created classes or used other resources that need to be destroyed when the module is removed from the system.</p>
+
+<h3>Writing the Functions</h3>
+
+<p>Functions exported by your module must be defined in your module's jump table(s).  Here is an example of a jump table taken from the Strings module:</p>
+
+<indent><code>struct Function JumpTableV1[] = {
+   { IntToStr,  "IntToStr",  argsIntToStr },
+   { StrShrink, "StrShrink", argsStrShrink },
+   { StrExpand, "StrExpand", argsStrExpand },
+   { StrInsert, "StrInsert", argsStrInsert },
+   { NULL, NULL }
+};</code></indent>
+
+<p>When designing a function jump table, the order of the list is unimportant.  However, you will need to create a matching header file that describes the jump table structurally, in the same order. In the above case the header file would be located in the "include/modules/strings.h" directory. The matching header file for our aforementioned jump table would be described as follows:</p>
+
+<indent><code>#ifndef  MODULES_STRINGS_H
+#define  MODULES_STRINGS_H
+
+
+#ifndef  MAIN_H
+#include &lt;rocklyte/main.h&gt;
+#endif
+
+#ifndef LOCAL_STRINGS
+
+struct StringsBase {
+   LONG   (*IntToStr)(LONG, STRING, LONG);
+   LONG   (*StrShrink)(STRING, LONG, LONG);
+   LONG   (*StrExpand)(STRING, LONG, LONG);
+   void   (*StrInsert)(STRING, STRING, LONG);
+};
+
+#define IntToStr(a,b,c)  (StringsBase->IntToStr(a,b,c))
+#define StrInsert(a,b,c) (StringsBase->StrInsert(a,b,c))
+#define StrExpand(a,b,c) (StringsBase->StrExpand(a,b,c))
+#define StrShrink(a,b,c) (StringsBase->StrShrink(a,b,c))
+
+#endif /* LOCAL_STRINGS */
+#endif /* MODULES_STRINGS_H */</code></indent>
+
+<p>When creating the header file for your module, use the one provided in the template directory to get you started, as it will provide you with full instructions.  Do not write a header file from scratch, and do not copy and paste information from other module headers.</p>
+
+<p>Finally, some important information on describing your functions. You will notice that each jump table entry requires you to describe the arguments for each function. You are required to do this so that languages specially developed for our platform can examine the functions provided by the module and build an impression of each function's synopsis. The function descriptions for the previously mentioned functions would be as follows:</p>
+
+<indent><code>struct FunctionField argsIntToStr[] = { { "Total", ARG_LONG }, { "Integer", ARG_LONG }, { "String", ARG_STR }, { "Size", ARG_LONG }, { 0, 0 } };
+
+struct FunctionField argsStrExpand[] = { { "NewLength", ARG_LONG }, { "String", ARG_STR }, { "Pos", ARG_LONG }, { "Total", ARG_LONG }, { 0, 0 } };
+
+struct FunctionField argsStrInsert[] = { { "Void", ARG_VOID }, { "Insert", ARG_STR }, { "Dest", ARG_STR }, { "Pos", ARG_LONG }, { 0, 0 } };
+
+struct FunctionField argsStrShrink[] = { { "NewLength", ARG_LONG }, { "String", ARG_STR }, { "Pos", ARG_LONG }, { "Total", ARG_LONG }, { 0, 0 } };</code></indent>
+
+<p>The first entry in a function description is for the return type. If the function does not return a result, the correct definition is to use a string of "Void" and set the argument flags to ARG_VOID.  Following the result type are the function arguments, which must match the function synopsis exactly. Failing to make an exact match can potentially crash some programs that might use your module.  The available argument types defined by the ARG_ prefix are as follows:</p>
+
+<indent>
+<table spacing="0" padding="2" width="100%" columns="120,0">
+<row><cell><b><u>Type</u></b></><cell><b><u>Description</u></b></></row>
+<row><cell>ARG_VOID</><cell>No type - valid only as a return value.</></row>
+<row><cell>ARG_LONG</><cell>A 32-bit integer value ranging from -2,147,483,647 to 2,147,483,648.</></row>
+<row><cell>ARG_LARGE</><cell>A 64-bit integer value.</></row>
+<row><cell>ARG_PTR</><cell>An address space pointer, can be 32 or 64 bit depending on the target CPU.</></row>
+<row><cell>ARG_STRING</><cell>An address space pointer that refers to a null-terminated string.</></row>
+<row><cell>ARG_DOUBLE</><cell>A 64-bit floating point value with high level of accuracy.</></row>
+<row><cell>ARG_ARRAY</><cell>The argument is a pointer to an array.  If the array entries can be represented by one of the other arg types, combine the type with ARG_ARRAY - for instance ARG_ARRAY|ARG_LONG defines an array of 32 bit pointers.</></row>
+<row><cell>ARG_OBJECTID</><cell>32-bit integer that refers to an object ID.</></row>
+<row><cell>ARG_OBJECTPTR</><cell>Pointer to an object address.</></row>
+<row><cell>ARG_BUFFER</><cell>Combine with ARG_PTR to indicate a pointer to a buffer.</></row>
+<row><cell>ARG_BUFSIZE</><cell>This argument type can only be used if it follows an ARG_PTR type, and if the argument itself is intended to reflect the size of the buffer indicated by the previous ARG_PTR argument.</></row>
+<row><cell>ARG_RESULT</><cell>This special flag is set in conjunction with the other data-based argument types. Example: If the user is required to supply a pointer to a LONG field in which the function will store a result, the correct argument definition will be ARG_RESULT|ARG_LONG|ARG_PTR. To make the definition of these argument types easier, ARG_PTRRESULT, ARG_LONGRESULT and ARG_FLOATRESULT macros are also available for use.</></row>
+<row><cell>ARG_COLOUR</><cell>Combine this flag with ARG_PTR to indicate a pointer to an RGB structure or with ARG_LONG to indicate a 32-bit packed RGB value.</></row>
+<row><cell>ARG_ALLOC</><cell>Combine with ARG_RESULT to indicate a memory allocation that must be freed once it is no longer required.  This is especially useful for assisting garbage collectors.</></row>
+<row><cell>ARG_TAGS</><cell>Indicates that a variable number of arguments follow.  This option can only be used at the end of an argument list.</></row>
+</table>
+</indent>
+
+<p>Notice that there is no support for 8 or 16 bit integers and 32 bit floats.  You are limited to 32 or 64 bit integers and 64 bit floats in your exported functions.</p>
+
+<h2>Writing the Documentation</h2>
+
+<p>During the development of your module you should give some consideration to its documentation.  Assuming that your module will be available for other developers to use, the module should be self-documented using Rocklyte's existing standards.  For more information, please refer to the <a href="documentation_guide.rpl">Documentation Guide</a> in this manual.</p>
+
+</page>

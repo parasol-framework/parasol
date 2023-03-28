@@ -1,0 +1,337 @@
+<?xml version="1.0"?>
+
+<info>
+ <title>Distribution and Installation</title>
+ <author>Rocklyte Systems</author>
+ <keywords>package, management, distribution, installation, install, file, program, executable, generate, compile, deploy, setup</keywords>
+ <description>Complete information on how to distribute programs written with the Rocklyte SDK.</description>
+</info>
+
+<include src="inc_style.rpl"/>
+
+<page>
+
+<startpage title="Distribution and Installation"/>
+
+<p>If you've developed a new program or want to package an existing product for Athene, you can use our native installation program, QikInstall, to handle the entire installation process.  All that is required is that you write an installation file describing the package and the instructions to install it to the user's PC.  QikInstall works cross-platform and provides support for user friendly features, such as selecting optional components and defining the directories to which the software should be installed.  Packages designed for QikInstall are stored in ZIP format to ease the compilation process and simplify accessibility.</p>
+
+<h2>Native Platform Deployment</h2>
+
+<p>QikInstall is only available with Athene, so it may not be a practical choice if you intend to distribute your program with an embedded version of the Rocklyte Core Platform.  If you can't use QikInstall, you will have to choose an installation method that is specific to the platform that you are targetting.  For instance, if you are targetting Windows then you will likely need to use a commercial installation package, while on Linux you might deliver your program in a compressed tar file, RPM or similar.</p>
+
+<p>You will need to consider how you want the user to install the Rocklyte binaries if they do not have them on their system already.  There are two ways that you can do this:  Either refer them to an Internet address where they can download the latest binaries (such as the Rocklyte <a href="http://www.rocklyte.com/downloads.html">downloads</a> page) or you can install the binaries with your program.  For non-commercial projects we have taken the liberty of waiving distribution rights on the core platform binaries so that you can include them with your program without prior licensing permission.  You will only need to ensure that the system folder is placed at the root of your installation, effectively alongside your executable program file.  Commercial projects need to contact us first for licensing information.  In some cases we are happy to provide free licensing, so check first.</p>
+
+<h2>QikInstall Deployment</h2>
+
+<image src="images/qikinstall.gif" align="right" westgap="10" southgap="10"/>
+
+<p>The most important and useful feature of QikInstall is that it provides an official standard for the installation of Athene and DML based software.  This standard, which is based on XML, ensures that there is consistency in the deployment and removal of software on a user's system.  In this section we will discuss the XML-Install standard so that you can create your own installation packages.  Before continuing, make sure that you try out the QikInstall software if you have not already.  It is important to familiarise yourself with the way that the installation process works before diving in to create your own packages.</p>
+
+<h3>Background</h2>
+
+<p>Install packages are distributed as compressed files and use a '.install' extension to formally identify them.  The compression format can theoretically be of any type supported by the Compression class.  Currently ZIP is the only format that we recommend as they are fast to access and easy to update and restore on individual files.  If you want to see the contents of any install package, try decompressing it using a pkzip decompressor so that you can examine the content.  You will find that it contains the data files as well as a special 'install.xml' file.  This file contains the XML-Install code with commands that will tell QikInstall how to install the package.  Here is an example install.xml file taken from Key Maker, a keymap customisation program for Athene:</p>
+
+<indent><code>&lt;?xml version="1.0"?&gt;
+
+&lt;install language="ENG"&gt;
+  &lt;info&gt;
+    &lt;name&gt;Key Maker&lt;/name&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+    &lt;author&gt;Rocklyte Systems&lt;/author&gt;
+    &lt;date&gt;February 2002&lt;/date&gt;
+    &lt;license&gt;ODL&lt;/license&gt;
+    &lt;description&gt;
+Key Maker is a program that allows you to create customised keymaps for Athene.  It is particularly useful for international users that need to create keymaps for their native keyboards, as well as people that wish to assign special unicode symbols to specific key combinations.
+    &lt;/description&gt;
+  &lt;/info&gt;
+
+  &lt;components&gt;
+    &lt;option name="icon" value="on" text="Desktop Icon"/&gt;
+    &lt;option name="source" value="off" text="Key Maker Source Code"/&gt;
+  &lt;/components&gt;
+
+  &lt;directories&gt;
+    &lt;directory name="programdir" path="scripts:tools/system/keymaker/"&gt;
+      Destination for the Key Maker program:
+    &lt;/directory&gt;
+
+    &lt;component name="source"&gt;
+      &lt;directory name="srcdir" path="user:source/classes/tools/keymaker/"&gt;
+        Destination for the Key Maker source code:
+      &lt;/directory&gt;
+    &lt;/component&gt;
+  &lt;/directories&gt;
+
+  &lt;installation&gt;
+    &lt;!-- Register the keymaker class --&gt;
+
+    &lt;component name="platform_windows"&gt;
+      &lt;register class="KeyMaker" id="8400" category="Tool" src="keymaker.dll" dest="classes:tools/keymaker.dll"/&gt;
+    &lt;/component&gt;
+
+    &lt;component name="platform_linux"&gt;
+      &lt;register class="KeyMaker" id="8400" category="Tool" src="keymaker.so" dest="classes:tools/keymaker.so"/&gt;
+    &lt;/component&gt;
+
+    &lt;!-- Register the program --&gt;
+
+    &lt;register program="Key Maker"&gt;
+      &lt;desktop&gt;[@icon]&lt;/desktop&gt;
+      &lt;text&gt;Key Maker&lt;/text&gt;
+      &lt;description&gt;Generates keymap files for international keyboards.&lt;/description&gt;
+      &lt;icon&gt;icons:programs/tool&lt;/icon&gt;
+      &lt;smallicon&gt;icons:tiny/font&lt;/smallicon&gt;
+      &lt;command&gt;bin:parasol-gui&lt;/command&gt;
+      &lt;args&gt;[@programdir]main.dml&lt;/args&gt;
+      &lt;category&gt;Development&lt;/category&gt;
+    &lt;/register&gt;
+
+    &lt;!-- Install the program --&gt;
+
+    &lt;copy src="script/*" dest="[@programdir]"/&gt;
+
+    &lt;!-- Source code --&gt;
+
+    &lt;component name="source"&gt;
+      &lt;copy src="*" dest="[@srcdir]"/&gt;
+    &lt;/component&gt;
+  &lt;/installation&gt;
+&lt;/install&gt;
+
+&lt;!-- This tag enables the default uninstall method --&gt;
+
+&lt;uninstall/&gt;</code></indent>
+
+<image src="images/qikfiles.gif" align="right"/>
+
+<p>At 78 lines, this install file is reasonably small.  Even so, it provides the user with a full description of what the software is, options as to what components should be installed, and a choice of directories for it to be installed to.  The software correctly registers itself in Athene's program database on installation and even detects what platform is being used and copies the appropriate binaries across.  You should find that all the necessary features are available to you and are easy to utilise when writing your install file.</p>
+
+<h3>Creating an Install Package</h3>
+
+<p>There are two parts to building an installation package.  Your first objective is to determine what files you'll be including in the installation.  We recommend that you create a special directory to hold the install files.  If you have a lot of files to install, think about grouping them under sub-directories so that you can manage them easily.  The second objective is to write the install.xml file, which you can create by opening <a href="install.xml">this file</a> and saving it as 'install.xml' in the directory that you have created for file containment.</p>
+
+<p>Please note that it is vital that the install.xml file lies at the root directory of the compressed package - don't place it in a sub-directory or the QikInstall program won't be able to find it.  After developing your install file, you can test it by compressing the package into a zip file (make sure you give it a '.install' extension) and then load it into QikInstall.  Once you are satisfied with the package configuration, you can distribute it through whatever channels are appropriate.  We may also be able to help in distributing the package if you want to make it freely available to the public.</p>
+
+<p>Note: In Linux, we recommend using Athene's native compressor if you need to store the permissions of each file (important for security measures and applying executable bit settings).  You can use the compression object in DML scripts to create ZIP files, as in the following example:</p>
+
+<code>&lt;dml type="batch"&gt;
+  &lt;compression location="Key Maker.install" flags="NEW"&gt;
+    &lt;action object="[owner]" method="CompressFile" @location="keymaker/" @path=""/&gt;
+  &lt;/compression&gt;
+&lt;/dml&gt;</code>
+
+<h2>Developing the install.xml File</h2>
+
+<p>The installation process starts from the first &lt;install&gt; tag (anything prior to that will be ignored) and ends when the tag is closed.  Within the install area you can specify any number of a series of special installation commands and data structures.  In this section we will discuss these tags in detail so that you can get a complete insight on the extent of support provided by the XML-Install standard.  There is no predetermined order that you must follow in using these tags, but you must keep in mind that QikInstall will execute the script from top to bottom, following the order that you have specified.  If you are unsure as to what order you should use in placing these tags, we recommend the following: info, components, directories then installation.</p>
+
+<indent>
+
+<h3>Install Tag</h3>
+
+<p>The install tag marks the start of the installation process.  You must have at least one install tag in the XML file, or no installation can be performed.  Under normal circumstances you will define one install tag for the file, but if you want to support multiple languages then you will need to write an install section for each language that you want to support.  You can specify the language used in an install section by setting the <i>language</i> attribute.  If no language is defined then English (ENG) is assumed.  Valid values for the language attribute are listed as three letter codes in system:config/languages.cfg.</p>
+
+<h3>Components Tag</h3>
+
+<image src="images/qikcomponents.gif" align="right" westgap="8"/>
+
+<p>If you need to split your installation into optional components, use the components tag.  The components tag has no associated attributes.  It contains option tags that define the available components and their dependency on each other.  For example:</p>
+
+<code>&lt;components&gt;
+  &lt;option name="program" value="on" text="ZTerm Program"/&gt;
+    &lt;option name="icon" value="on" text="Desktop Icon"/&gt;
+  &lt;/option&gt;
+
+  &lt;option name="source" value="off" text="ZTerm Source Code"/&gt;
+&lt;/components&gt;</code>
+
+<p>In this example we have created three options, the second of which has a dependency on the first.  Dependencies tell the user that if the parent option is turned off, then the dependent options will also be unavailable.  The attributes available for the option tag are <i>name</i>, <i>value</i> and <i>text</i>.  The name that you choose for an option must be unique or it will override any tags that have used the same name.  Keep the name of each option in mind as you will need to refer to them during the installation process.  The <i>value</i> attribute indicates the default setting that you want to use for the option (valid settings are 'on' and 'off').  The <i>text</i> attribute is a short description of what the component is (limit your string to 40 characters).</p>
+
+<p>For large installations it is recommended that you try to consolidate the available options so that the user is not overwhelmed.  If you have more than 40 options, then you have too many.  You should also limit the extent of nested options to no more than 4 levels of detail.</p>
+
+<h3>Directories Tag</h3>
+
+<image src="images/qikdirectories.gif" align="right"/>
+
+<p>The directories tag is used to give the user the option of selecting installation directories just before the install process takes place.  The directories tag has no associated attributes.  It must contain a list of directory tags that will define the directory options.  For example:</p>
+
+<code>&lt;directories&gt;
+  &lt;directory name="programdir" path="tools:keymaker/"&gt;Destination for the Key Maker program:
+  &lt;/directory&gt;
+
+  &lt;component name="source"&gt;
+    &lt;directory name="srcdir" path="user:source/keymaker/"&gt;Destination for the Key Maker source code:&lt;/directory&gt;
+  &lt;/component&gt;
+&lt;/directories&gt;
+</code>
+
+<p>In this example two directory options are created, but the second is dependent on the 'source' component.  If the user has not selected that option then the second directory will not be displayed to the user when directory selection occurs.  The first directory tag has no dependencies, this ensures that it is a compulsory setting.</p>
+
+<p>The directory tag accepts <i>name</i> and <i>path</i> attributes.  The name that you choose for a directory must be unique or it will override any tags that have used the set name.  Keep the name of each directory in mind as you will need to refer to them during the installation process.  The <i>path</i> attribute is the default setting for the directory option.  You should decide on a sensible directory location here as it is likely that most users would accept the default.  You will also notice that each directory tag contains text describing what the directory option is for (e.g. "Destination for the ZTerm program.").  This is essential for letting the user know what each directory option is for.</p>
+
+<h3>Info Tag</h3>
+
+<p>The info tag is used to provide information on what an installation package contains.  The info tag has no attributes but is associated with a variety of child tags.  Each child tag contains content that is relative to the tag's name and you may specify as few or as many tags as you like.  When the user tries to install your package, all the settings that you have provided will be read and displayed to the user so that he or she can make an informed decision as to whether or not to install your package.  The info tags are as follows:</p>
+
+<list type="custom">
+<li value="NAME">The name of the package (program or document name etc).</>
+<li value="VERSION">The version number of the package, for example 1.0.</>
+<li value="AUTHOR">Your name is entered here.</>
+<li value="EMAIL">Your contact email address is entered here.</>
+<li value="COPYRIGHT">A copyright string can be entered under this tag.</>
+<li value="DATE">The date that you want to associate with the package.  We recommend that you specify the date as the name of the month followed by the year, for example 'February 2002'.</>
+<li value="LICENSE">The license that the package is distributed under can be entered here.  Common licenses are 'freeware', 'GPL', 'PCL', 'shareware' and 'commercial'.</>
+<li value="REQUIREMENTS">If your package has special requirements or only works on a specific platform, you need to list the requirements here. We recommend that you list each requirement using commas as separation marks.</>
+<li value="PLATFORM">Similar to the requirements tag, the platform tag allows you to specify exactly what platforms are supported by your installation package.  Allowable values for the platform tag are currently limited to 'Windows' and 'Linux'.  If your package supports multiple platforms then you should list the name of each supported platform, separated by commas.</>
+<li value="DESCRIPTON">A complete description of what the package is for should be entered here.  You can enter as much information as is necessary to describe the package's content.  We recommend that you write two to five paragraphs of text here.</>
+</list>
+
+<h3>Text Tag</h3>
+
+<p>Use the text tag if you would like to print a message to the user during the installation process.  The text tag is commonly used for printing license agreements, installation notes and readme information at the beginning or end of the install.  Currently the text tag accepts one attribute, the <i>title</i> tag, which should summarise the body of text in about two to five words (for example, "Usage Information").  The text needs to be written in plain UTF-8 characters embodied within the text tag.  Word wrap is enabled by default, and it is recommended that each paragraph is formatted as a single long line to make full use of the word wrapping feature.</p>
+
+<h3>License Tag</h3>
+
+<p>The license tag is identical to the text tag in its functionality and format, but explicitly defines the text as a license agreement.</p>
+
+<h3>Break Tag</h3>
+
+<p>If the break tag is encountered at any stage of installation, the install process will stop.  No errors or notifications will be printed, so this tag is typically used in conjunction with the text tag, for displaying a text message prior to the break.</p>
+
+<h3>Installation Tag</h3>
+
+<p>The installation tag is used near the end of the install process to do the actual installation of your package's files.  The installation tag has no attributes but supports a series of commands that are used to copy, rename, delete, move files and more.  During this process you may need to make references to some of your variables (such as those generated from component and directory options).  You can declare a variable reference by enclosing its name in curly brackets.  For instance, to refer to a directory option that was given a name of 'srcdir' you would refer to it as '[@srcdir]' in your XML code.  Please refer to the example provided earlier in this document to see how variables are used during the install process.</p>
+
+<p>Currently the following command tags are supported:</p>
+
+<indent>
+<h3>Component / Test</h3>
+
+<p>Use the component and test tags for areas of your installation that are dependent on user selected options.  When the install procedure encounters one of these tags, it will check to see whether or not that option is active.  If it is, the install procedure will execute all of the commands within the tag.  If the condition is not met, then everything inside the tag will be avoided.  Here is an example:</p>
+
+<code>&lt;component name="icon"&gt;
+  &lt;item name="Desktop"&gt;Yes&lt;/item&gt;
+&lt;/component&gt;</code>
+
+<p>In the above case, the item tag will only be executed if the user chose to install the desktop icon component of the software.  This raises another issue - sometimes you may need to execute a set of instructions only if the user has chosen not to select an option.  To do this, just put an exclamation mark prior to the <i>name</i> attribute, as illustrated in this example:</p>
+
+<code>&lt;component !name="icon"&gt;
+  &lt;item name="Desktop"&gt;No&lt;/item&gt;
+&lt;/component&gt;</code>
+
+<p>Note that the test tag is a synonym for the component tag, so you can use either according to personal preference.</p>
+
+<h3>Copy</h3>
+
+<p>Use the copy tag to copy files from your package to the user's system.  Attributes used by the copy tag include <i>src</i>, <i>dest</i> and <i>nofail</i>.  The <i>src</i> tag indicates the source location and you may use wildcards if you need to copy multiple files.  To copy directories, make sure that you place a trailing slash at the end of the string or the installer will assume that you are trying to copy a file.  The <i>dest</i> argument must refer to the destination directory.  If you have allowed the user to select directory locations, you may need to make a reference to one of your variables here.  The <i>nofail</i> attribute can be used if you want to avoid failures during the copy operation.</p>
+
+<h3>Delete</h3>
+
+<p>Use the delete tag to delete files from the user's system.  Use this command sparingly!  The only attribute supported by the delete tag is <i>src</i>, which refers to the location that you want to delete.  You may use wildcards if you wish to delete multiple files.</p>
+
+<p>As you might imagine, the delete tag is more commonly used in the uninstall tag rather than during the installation process.</p>
+
+<h3>DML</h3>
+
+<p>Use the DML tag to execute DML statements during the installation process.  There are no limits to what you can do with your DML script - running programs and other scripts is legitimate, as is the creation of standard DML objects.  The DML statement must be embodied within the DML opening and closing tags.</p>
+
+<h3>Link</h3>
+
+<p>Use the link tag to create symbolic links from one file to another.  This tag only works on file systems and operating systems that support symbolic links.  Attributes used by the link tag include <i>from</i>, <i>to</i> and <i>permanent</i>.  The <i>to</i> tag refers to the file or folder that you are linking to (i.e. the file should exist).  The <i>from</i> tag refers to the location of the new symbolic link.  The <i>permanent</i> tag may be specified if the link should remain after the package has been removed.</p>
+
+<h3>MakeDir</h3>
+
+<p>The makedir tag is used to create new directories on the user's file system.  Attributes used by the makedir tag include <i>dir</i>, <i>nofail</i> and <i>permanent</i>.  The <i>dir</i> tag specifies the location of the new directory.  The <i>nofail</i> tag can be used to prevent failure in case the directory could not be created.  The <i>permanent</i> tag may be specified if the directory should remain after the package has been removed.</p>
+
+<h3>Merge</h3>
+
+<p>The merge tag is used to merge information into configuration files, which are usually identifiable by a '.cfg' file extension.  Merging is a common requirement for registering classes in the system:config/classes.cfg file and programs in the user:config/programs.cfg file.  If you haven't viewed these files in a text viewer before, we recommend that you do so before attempting to use this tag.</p>
+
+<p>The merge tag accepts <i>file</i>, <i>section</i> and <i>nofail</i> attributes.  The <i>file</i> attribute refers to the file that you want to merge with.  The <i>section</i> must refer to the section of information that you want to add your data to (sections are identifiable in configuration files by their square brackets).  The <i>nofail</i> attribute can be used to avoid failure if a merge is not possible.</p>
+
+<p>To declare the information that is to be merged into the configuration file, you need to use item tags in the merge section.  Each item tag requires that you specify a <i>name</i> and you must also include content that will be added to the data associated with that item.  To illustrate, here is a complete example of a merge tag and its items:</p>
+
+<code>&lt;merge file="user:config/programs.cfg" section="Key Maker"&gt;
+  &lt;item name="Desktop"&gt;No&lt;/item&gt;
+  &lt;item name="Text"&gt;Key Maker&lt;/item&gt;
+  &lt;item name="Description"&gt;Generates keymap files for international keyboards.&lt;/item&gt;
+  &lt;item name="Icon"&gt;icons:programs/tool&lt;/item&gt;
+  &lt;item name="SmallIcon"&gt;icons:tiny/font&lt;/item&gt;
+  &lt;item name="Command"&gt;bin:parasol-gui&lt;/item&gt;
+  &lt;item name="Args"&gt;[@programdir]/main.dml&lt;/item&gt;
+  &lt;item name="Category"&gt;Development&lt;/item&gt;
+&lt;/merge&gt;</code>
+
+<p>If you want to merge with more than one section, you have the option of using the section tag to switch over to a new section area midway through the merge.  If you use this tag, then all the following items that you use will be merged under the new section.  Using the section tag means that you only need to specify one attribute, the <i>name</i> to indicate the name of the section that you want to switch to.</p>
+
+<p>Finally, some important technical notes.  If the file that you are merging with does not exist, the installer will automatically create a new configuration file at that location.  If the file is loaded and it is found that the selected section exists in the file, your specifications will automatically overwrite any matching items in the file.</p>
+
+<h3>Move</h3>
+
+<p>Use the move tag to move files and directories to different locations on the user's system.  The move tag supports <i>src</i> and <i>dest</i> attributes which indicate the source and destination locations respectively.  You may use wildcards in the src tag if you have multiple files to copy.  Do not attempt to use the move command to move files in your install package - use the copy command for this purpose.</p>
+
+<h3>NoFail</h3>
+
+<p>The nofail tag can be used to prevent failures over a series of installation commands.  Just encapsulate the tags that you want to safeguard with the nofail tag.</p>
+
+<h3>Register</h3>
+
+<p>The register tag is used to register programs and classes in the system.  The following example illustrates how to register a class:</p>
+
+<code>&lt;register class="KeyMaker" id="8400" category="Tool" src="keymaker.dll" dest="classes:tools/keymaker.dll"/&gt;</code>
+
+<p>Registering a class requires that you specify the <i>class</i>, <i>id</i>, <i>category</i>, <i>src</i> and <i>dest</i> attributes of the tag.  Each attribute reflects the values found in the sytem:config/classes.cfg file, except for the <i>src</i> and <i>dest</i> tags, which are used to copy the class binary from the package to the destination location.</p>
+
+<p>This next example shows how to register a new program in the system:</p>
+
+<code>&lt;register program="Key Maker"&gt;
+  &lt;desktop&gt;[@icon]&lt;/desktop&gt;
+  &lt;text&gt;Key Maker&lt;/text&gt;
+  &lt;description&gt;Generates keymap files for international keyboards.&lt;/description&gt;
+  &lt;icon&gt;icons:programs/tool&lt;/icon&gt;
+  &lt;command&gt;bin:parasol-gui&lt;/command&gt;
+  &lt;args&gt;[@programdir]main.dml&lt;/args&gt;
+  &lt;category&gt;Development&lt;/category&gt;
+&lt;/register&gt;</code>
+
+<p>The only attribute that you need to specify is the <i>program</i> tag, which reflects the name of the program.  Try to keep the name unique so that it does not overwrite any existing program registrations.  Within the register tag you need to list the attributes of the program by using child tags.  Currently supported child tags are <i>desktop</i>, <i>text</i>, <i>description</i>, <i>icon</i>, <i>smallicon</i>, <i>command</i> and <i>category</i>.  To further your understanding of program registration settings, try viewing the system:user/config/programs.cfg file for examples.</p>
+
+<h3>Rename</h3>
+
+<p>The rename tag can be used to rename files in the user's system.  Simply provide the source location in the <i>src</i> attribute and declare the new name of the file or directory with the <i>newname</i> attribute.</p>
+
+<h3>Run</h3>
+
+<p>Use the run tag whenever you need to run an executable program, data file or script.  You can even use it to run files that you have included in your installation package.  The run tag accepts the attributes <i>src</i>, <i>args</i>, <i>mode</i> and <i>nofail</i>.  The <i>src</i> is a compulsory setting that refers to the location of the file that you wish to run.  The <i>args</i> attribute can be used if you need to send command line arguments to a program.  The <i>mode</i> attribute defines what mode should be used in running the file - available modes include open, edit, view and print.  The <i>nofail</i> attribute tells the intsaller not to fail if the program cannot be found or some other error occurs.</p>
+
+<h3>Set</h3>
+
+<p>The set tag can be used at any time during installation to create a new variable, or change the value of an existing variable created during the installation process.  To use, write a series of variable names and values as attributes within the set tag.  For example:</p>
+
+<code>&lt;set desktop="no" sdk="1"/&gt;</code>
+
+</indent>
+
+</indent>
+
+<p>Please note that if any of the core tags fail in a way that is terminal, the installation process will be aborted at the point where the error occurred.  Command tags processed during the installation process will also fail in the same way, but this can be prevented with the 'nofail' option.</p>
+
+<h3>Providing Support for Software Removal</h3>
+
+<p>By default, the installation process will not provide support for the removal of your software for the user.  To add support for its removal you need to use the &lt;uninstall&gt; tag in your XML-Install file.  When you use this tag the QikInstall program will record its actions during the installation process and will create a file which can reverse the process.  This file is stored at a user accessible location so that your software can be uninstalled at any time.</p>
+
+<p>In some cases you may need to customise the removal of the software if certain files need to be altered that were not originally covered in the installation process.  You can do this by using the same commands that are available for installation, i.e. copy, delete, run, rename, dml and move.  Simply add the commands to the &lt;uninstall&gt; section of your XML-Install file and they will be processed at priority when the software is removed by the user.</p>
+
+<h2>Preset Variables</h2>
+
+<p>Earlier in this document we mentioned the use of variables, which are automatically created based on the names that you have given for user selectable options and directories.  The installer also contains preset variables that can be important if you need to know what the status of the user's environment is.  Currently the following preset variables are supported:</p>
+
+<list type="custom">
+  <li value="PLATFORM_LINUX">Set if the platform accepts Linux (ELF formatted) binaries.  No distinction is made as to the CPU that is being used.</>
+  <li value="PLATFORM_WINDOWS">Set if the platform accepts Windows formatted binaries.</>
+  <li value="PLATFORM_MACX">Set if the platform accepts Mac OS X formatted binaries.</>
+  <li value="CPU_INTEL">Set if the platform is running on an Intel CPU or a CPU with a compatible instruction set (I386 or better).</>
+  <li value="CPU_PPC">Set if the platform is running on a Power PC RISC CPU.</>
+  <li value="CPU_MOTOROLA">Set if the platform is running on a Motorola CPU (68000 or better).</>
+</list>
+
+</page>

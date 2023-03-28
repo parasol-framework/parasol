@@ -1,0 +1,338 @@
+--[[
+This module adds user interactive functions to the file interface.  They are intended to provide a standard
+way of interacting with the user when displaying progress of long-term copy operations, or requesting confirmation
+to overwrite an existing file.
+
+Due to the emphasis on user interaction, any fatal errors will result in a standard error dialog being presented to the
+user with an explanation.  The function will then return with the original error code.  Exceptions will only be thrown
+if an unexpected condition occurs.
+
+Please note that due to UI operations needing to operate on the main thread, these functions do not return until
+complete, and may not be called from a child thread.  For this reason it is recommended that these features are
+executed from a self-contained child process with a custom script.
+
+Available functions are:
+
+file.ui.copy(Source, Dest, Options)
+   Copy Source path or paths (if provided as a list of strings) to the file or folder at Dest.  Available options:
+
+   feedback: Call this function for every file about to be copied.
+   move:     If true, each file is deleted after being successfully copied.
+
+file.ui.paste(Dest, Cluster)
+   Paste files on the clipboard to a destination path.
+
+file.ui.delete(Path, Options)
+   Delete the identified file or folder at Path.  A progress window is opened if the operation is taking a while to run.
+   Options are:
+
+   prompt: If true, prompt the user with a yes/no dialog before attempting to delete the item.
+
+--]]
+
+   require 'common'
+   require 'gui/dialog'
+
+if not file.ui then file.ui = { } end
+
+file.ui.copy = function(Source, Dest, Options)
+   local MAX_PATH = 80
+   local progress_status, progress_dialog
+   local progress_time = mSys.PreciseTime()
+   local break_dialog = mSys.AllocateID(IDTYPE_MESSAGE)
+
+   local err, handle = mSys.AddMsgHandler(nil, break_dialog, function()
+      check(ERR_Terminate)
+   end, nil)
+
+   if type(Source) == 'string' then
+      Source = { Source }
+   elseif type(Source) != 'table' then
+      error('Invalid Source parameter of ' .. type(Source))
+   end
+
+   if type(Dest) != 'string' then
+      error('Invalid destination parameter type of ' .. type(Dest))
+   end
+
+   if not Options then Options = { } end
+
+   -- copyFeedback() is called for every file that is copied, or multiple times for large files.
+
+   local function copyFeedback(Size, Position, Path, Dest, FeedbackID)
+      msg('copyFedback() ' .. Path .. ' TO ' .. Dest)
+
+      if string.len(Path) >= MAX_PATH then
+         last_file = '...' .. string.sub(Path, -MAX_PATH)
+      else
+         last_file = Path
+      end
+
+      if progress_status == 'cancel' then
+         return FFR_ABORT
+      elseif progress_status == 'closed' then
+         return FFR_OKAY
+      end
+
+      -- If the file processing exceeds a set time period, popup a progress window
+
+      if (not progress_dialog) and (mSys.PreciseTime() - progress_time > 500000) then
+         progress_dialog = gui.dialog.message({
+            image   = 'tools/copy',
+            title   = 'File Transfer Progress',
+            message = 'Copying...\nPlease wait...',
+            options = { id=-1, text='Cancel', icon='items/cancel' },
+            feedback = function(Dialog, Response, State)
+               if Response then
+                  if Response.id == -1 then
+                     progress_status = 'cancel'
+                  end
+               else
+                  progress_status = 'closed'
+               end
+            end
+         })
+      end
+
+      if progress_dialog and (Position == 0 or Size > 32768) then
+         local folder, file = file.splitPath(Path)
+
+         local msg
+         if Position == 0 then
+            if Size >= 1048576 then
+               msg = string.format('Copying: %s\n\n%.2f MB', file, Size / 1048576.0)
+            else
+               msg = string.format('Copying: %s\n\n%.2f KB', file, Size / 1024.0)
+            end
+         elseif mSys.PreciseTime() - progress_time > 50000 then
+            if Size >= 1048576 then
+               msg = string.format('Copying: %s\n\n%.2f / %.2f MB', file, Position / 1048576.0, Size / 1048576.0)
+            else
+               msg = string.format('Copying: %s\n\n%.2f / %.2f KB', file, Position / 1024.0, Size / 1024.0)
+            end
+         end
+
+         if msg then
+            progress_dialog.message(msg)
+            progress_time = mSys.PreciseTime()
+            processMessages(0)
+         end
+      end
+   end
+
+   -- Scan the file list and move or copy each file to the destination directory
+
+   local response = 'yes'
+   local err = ERR_Okay
+   for _, src_path in pairs(Source) do
+      if response != 'yes-all' then response = 'yes' end -- Reset response to the default
+
+      msg('Processing file source ' .. src_path)
+      local src_folder, src_file = file.splitPath(src_path)
+
+      local dest_path = Dest .. src_file
+
+      -- Check if the destination already exists
+
+      if response != 'yes-all' then
+         if src_path == dest_path then
+            if Options.move then
+               goto continue -- Do nothing for move operations when the source and destination are identical
+            elseif dest_path:find('^[A-Z].+') then
+               dest_path = Dest .. 'Copy of ' .. src_file
+            else
+               dest_path = Dest .. 'copy of ' .. src_file
+            end
+         end
+
+         -- Request user confirmation
+
+         local err, path = mSys.ResolvePath(dest_path, RSF_NO_FILE_CHECK)
+
+         if err == ERR_Okay then -- Resolve to avoid multi-directory volume problems
+            local err, type = mSys.AnalysePath(path)
+            if (err == ERR_Okay) and (type == LOC_FILE or type == LOC_DIRECTORY) then
+               response = 'cancel'
+
+               gui.dialog.message({
+                  type    = 'attention',
+                  options = { { id=-1, text='No', icon='items/cancel' },
+                              { id=1, text='Yes', icon='items/checkmark' },
+                              { id=2, text='Yes to All', icon='items/checkmark' } },
+                  title   = 'Confirmation Required',
+                  fmtMessage = '<p>You are about to overwrite this location - should it be replaced?</p><indent>' .. src_file .. '</indent>',
+                  feedback = function(Dialog, Response, State)
+                     if Response then
+                        if Response.id == -1 then
+                           response = 'no'
+                        elseif Response.id == -1 then
+                           response = 'no-all'
+                        elseif Response.id == 1 then
+                           response = 'yes'
+                        elseif Response.id == 2 then
+                           response = 'yes-all'
+                        end
+                     else
+                        response = 'cancel'
+                     end
+
+                     mSys.SendMessage(0, break_dialog, MSF_WAIT, NULL, 0)
+                  end
+               })
+
+               processMessages(-1)
+
+               progress_time = mSys.PreciseTime() -- Reset the start time whenever a user dialog is presented
+            end
+         end
+      end
+
+      if response == 'cancel' then
+         msg('Copy operation cancelled by user.')
+         return
+      elseif response != 'yes' and response != 'yes-all' then
+         msg('Skipping file ' .. src_file .. ', response ' .. response)
+      else
+         msg('Copy/Move from "' .. src_path .. '" TO "' .. dest_path .. '"')
+         if Options.move then
+            err = mSys.MoveFile(src_path, dest_path, copyFeedback)
+         else
+            err = mSys.CopyFile(src_path, dest_path, copyFeedback)
+         end
+
+         if err == ERR_Cancelled then return end
+
+         if err != ERR_Okay then
+            msg('Error during copy operation [' .. err .. ']: ' .. mSys.GetErrorMsg(err))
+
+            local message
+            if err == ERR_OutOfSpace then
+               message = 'There is not enough space in the destination volume to copy this file:\n\n' .. src_file
+            elseif err == ERR_Permissions then
+               message = 'You do not have the necessary permissions to copy this file:\n\n' .. src_file
+            else
+               message = 'An error occurred while copying this file:\n\n'
+                  .. src_file .. '\n\n' .. mSys.GetErrorMsg(err) .. '.  Process cancelled.'
+            end
+
+            gui.dialog.message({
+               type    = 'error',
+               options = { id=1, text='Okay', icon='items/checkmark' },
+               title   = 'File Copy Failure',
+               string  = message,
+               feedback = function(Dialog, Response, State)
+                  mSys.SendMessage(0, break_dialog, MSF_WAIT, NULL, 0)
+               end
+            })
+
+            processMessages(-1)
+            return err
+         end
+      end
+::continue::
+   end
+end
+
+file.ui.paste = function(Dest, Cluster)
+   local options = { }
+   if Cluster then options['cluster'] = Cluster end
+
+   local clip = obj.new('clipboard', options)
+   local err, _, list, clip_options = clip.mtGetFiles(CLIPTYPE_FILE)
+   if err != ERR_Okay then return end
+
+   local move = false
+   if bit.band(clip_options, CEF_DELETE) != 0 then
+      move = true
+   end
+
+   file.ui.copy(list, Dest, { move=move })
+
+   if move then
+      clip.mtRemove(CLIPTYPE_FILE)
+   end
+end
+
+--[[
+
+** The following C clip is the original dialog feedback for file.delete()
+
+const char feedback_script[] = "
+   require 'gui/dialog'
+
+   local dlg = gui.dialog.message({
+      image   = 'icons:tools/eraser',
+      title   = 'File Deletion Progress',
+      message = 'Deleting...',
+      options = { id=1, text='Cancel', icon='items/cancel' },
+      feedback = function(Dialog, Response, State)
+         if Response then
+            if Response.id == 1 then
+               obj.find('self')._status = '1'
+            end
+         else
+            obj.find('self')._status = '2'
+         end
+      end
+   })
+
+function update_msg(Message)
+   dlg.message(Message)
+end
+"
+
+LONG feedback_delete(struct FileFeedback *Feedback)
+{
+   objFile *Self = Feedback->User;
+
+   if (Self->TargetID IS -1) return FFR_OKAY;
+
+   if (Self->ProgressDialog) {
+      char response[20];
+      if (!acGetVar(Self->ProgressDialog, "response", response, sizeof(response))) {
+         if (response[0] IS '1') return FFR_ABORT;
+         else if (response[0] IS '2') {
+            // If the window was closed then continue deleting files, don't bother the user with further messages.
+
+            acFree(Self->ProgressDialog);
+            Self->ProgressDialog = NULL;
+            Self->TargetID = -1;
+            return FFR_OKAY;
+         }
+      }
+   }
+
+   // If the copy process exceeds a set time period, popup a progress window
+
+   if ((!Self->ProgressDialog) AND ((PreciseTime() - Self->ProgressTime) > 500000LL)) {
+      if (!CreateObject(ID_SCRIPT, NF_INTEGRAL, (OBJECTPTR *)&Self->ProgressDialog,
+            FID_Target|TLONG,   Self->TargetID,
+            FID_Statement|TSTR, feedback_script,
+            TAGEND)) {
+         acShow(Self->ProgressDialog);
+      }
+   }
+
+   if (Self->ProgressDialog) {
+      LONG i;
+
+      STRING str = Feedback->Path;
+      for (i=0; str[i]; i++);
+      while ((i > 0) AND (str[i-1] != '/') AND (str[i-1] != '\\') AND (str[i-1] != ':')) i--;
+
+      char buffer[256];
+      StrFormat(buffer, sizeof(buffer), "Deleting: %s", str+i);
+      struct ScriptArg args[] = { { "Message", FD_STRING, { .Address = buffer } } };
+      scExec(Self->ProgressDialog, "update_msg", args, 1);
+      Self->ProgressTime = PreciseTime();
+
+      ProcessMessages(0, 0);
+   }
+
+   return FFR_OKAY;
+}
+--]]
+
+file.ui.delete = function(Path)
+
+end

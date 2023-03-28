@@ -1,0 +1,77 @@
+--[[
+Client-Server Network Communications test.  Creates a server socket and then starts client sockets to connect to itself.
+
+1. Client initiates connection to server
+2. Server responds to the connection with 'Hello from the server'
+3. Client responds with 'Reply from the client'
+4. Server prints the received message.
+--]]
+
+   include 'network'
+
+   glPort = 8206
+   glTestCompleted = false
+
+//=====================================================================================================================
+
+function testClientServer()
+   local proc = processing.new({ timeout = 5.0 })
+
+   print('Creating server socket.')
+
+   local sockServer = obj.new('netsocket', {
+      name = 'Server',
+      feedback = function(Socket, Client, State)
+         if (State == NTC_CONNECTED) then
+            local err, len = Client.acWrite('Hello from the server')
+            assert(err == ERR_Okay, '[Server] Failed to send message to the client: ' .. mSys.GetErrorMsg(err))
+         end
+      end,
+      incoming = function(Socket, Client)
+         local buffer = string.rep(nil, 1024)
+         local err, read_len = Client.acRead(buffer)
+         assert(err == ERR_Okay, 'Failed to read data from client, error: ' .. mSys.GetErrorMsg(err))
+         local msg = buffer:sub(1,read_len)
+         print('[Server] Received: ' .. msg)
+         if (string.match(msg, 'Reply.*')) then
+            glTestCompleted = true
+            proc.signal()
+         end
+      end,
+      port  = glPort,
+      flags = 'SERVER|MULTICONNECT'
+   } )
+
+   print('Creating client socket.')
+
+   local clientSocket = obj.new('netsocket', {
+      name = 'Client',
+      feedback = function(Socket, Client, State)
+         if (State == NTC_CONNECTED) then
+            print('[Client] Writing hello message to the server...')
+            local err, len = Socket.acWrite('Hello from the client.')
+            assert(err == ERR_Okay, '[Client] Failed to write chars, error: ' .. mSys.GetErrorMsg(err))
+         end
+      end,
+      incoming = function(Socket, Script)
+         local buffer = string.rep(nil, 1024)
+         local err, read_len = Socket.acRead(buffer)
+         assert(err == ERR_Okay, '[Client] Failed to read data from the socket.')
+         print('[Client] Received: ' .. buffer:sub(1,read_len))
+         local err, len = Socket.acWrite('Reply from the client.')
+      end
+   } )
+
+   print('Connecting client to the server...')
+
+   if (clientSocket.mtConnect('127.0.0.1', glPort) != ERR_Okay) then error('Failed to connect to server.') end
+   local err = proc.sleep()
+   assert(err == ERR_Okay, 'Failed to complete the test: ' .. mSys.GetErrorMsg(err))
+   assert(glTestCompleted, 'The test did not complete the steps as expected.')
+end
+
+//=====================================================================================================================
+
+   return {
+      tests = { 'testClientServer' }
+   }

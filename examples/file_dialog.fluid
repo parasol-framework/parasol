@@ -1,0 +1,26 @@
+
+   require 'gui/filedialog'
+
+   gui.dialog.file({
+      filterList = 'All Files;*;MP3 Audio Files;*.mp3;Text Files;*.txt',
+      okText     = 'Select File',
+      cancelText = 'Exit',
+      modal      = true,
+      warnExists = true,
+      multiSelect = true,
+      feedback = function(Dialog, Path, Files)
+         mSys.SendMessage(0, MSGID_QUIT)
+
+         if (Files == nil) then
+            print('Dialog was cancelled.')
+            return
+         end
+
+         for k, v in ipairs(Files) do
+             print(k, ' = ', Path .. v)
+         end
+      end
+   })
+
+   processing.sleep()
+

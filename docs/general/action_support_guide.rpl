@@ -1,0 +1,115 @@
+<?xml version="1.0"?>
+
+<info>
+ <title>Action Support Guide</>
+ <author>Rocklyte Systems</>
+ <description>Describes the minimum requirements for supporting the available system actions.</>
+ <keywords>action, support, class, kernel, event</>
+</info>
+
+<include src="inc_style.rpl"/>
+
+<template name="navigation">
+  <table columns="100,1,4,0" width="100%" padding="15">
+    <row>
+      <cell colour="245,245,245">
+      <font face="totem">
+        <a href="action_support_guide.rpl">Overview</a><br/><br/>
+
+        <if statement="[xml.count:/action] > 0">
+          <b><u>Action List</u></b><br/>
+          <repeat count="[xml.count:/action]">
+            <if statement="[xml./action([%index])/short] = Undocumented">
+              <font colour="150,0,0"><print value="[xml./action([%index])/name]"/></font><br/>
+            </if>
+            <else>
+              <a href="?xml=[@xml]&amp;action=[xml./action([%index])/name]"><print value="[xml./action([%index])/name]"/></a><br/>
+            </else>
+          </repeat>
+        </if>
+      </font>
+      </cell>
+      <cell colour="190,190,190"></cell>
+      <cell/>
+      <cell><inject/></cell>
+    </row>
+  </table>
+</template>
+
+<page>
+  <obj:xml name="xml" src="action_list.xml"/>
+
+  <if not exists="[xml]">
+    <p>Failed to load external XML file.</p>
+  </else>
+
+  <if notnull="[@action]">
+    <startpage title="Action Support Guide"/>
+
+    <body face="sans serif" fontsize="10" link="60,60,130" margins="0"/>
+
+    <navigation>
+      <obj:action method="setroot" object="[xml]" @xpath="/action/name(=[@action])"/>
+
+      <namehdr><print value="[xml./name]"/> Action</>
+      <p><print value="[xml./Short]"/></p>
+
+      <if notnull="[xml.exists:/args]">
+      <p><table columns="1,8,0" width="100%" vspacing="8">
+          <row><cell><b>Input:</b></cell><cell/><cell>
+            <table width="100%" columns="1,8,1,8,0">
+              <repeat count="[xml.count:/args/arg]">
+                <row>
+                  <cell><p nowrap><print value="[xml./args/arg([%index])/@type]"/></></cell>
+                  <cell/>
+                  <cell><print value="[xml./args/arg([%index])/@name]"/></cell>
+                  <cell/>
+                  <cell><print value="[xml./args/arg([%index])]"/></cell>
+                </row>
+                <row height="4"><cell/></row>
+              </repeat>
+            </table>
+          </cell></row>
+      </table></p>
+      </if>
+
+      <p><box height="1" color="220,220,220"/></p>
+
+      <if notnull="[xml.exists:/support]">
+        <p><parse value="[xml.extract:/support]"/></p>
+      </if>
+
+      <set object="[xml]" rootindex="0"/>
+    </navigation>
+
+    <break/>
+  </if>
+  <else>
+    <startpage title="Action Support Guide"/>
+
+    <p><table columns="100,0" width="100%">
+      <row><td>Date:</td><td>October 2007</td></row>
+      <row><td>Author:</td><td>Rocklyte Systems</td></row>
+      <row><td>Copyright:</td><td>Rocklyte Ltd © 1996-2007</td></row>
+    </table></p>
+
+    <p>This document describes the complete list of system actions and the standards that must be adhered to by class developers supporting the available action types.  Advice on the basic requirements and potential issues is also included.  For general documentation on the available actions and what they are intended to do, please refer to the <a href="action_list.rpl">Action List</a> instead.</p>
+
+    <p>This document is for technical reference only.  The <class>Class</> Manual and <a href="class_development_guide.rpl">Class Development Guide</a> should be read first by new class developers.</p>
+
+    <h2>Action List</h2>
+
+      <indent>
+        <table width="100%" columns="1,0" vspacing="4" hspacing="8">
+          <repeat count="[xml.count:/action]">
+            <row>
+              <cell><a href="?action=[xml./action([%index])/name]"><print value="[xml./action([%index])/name]"/></a></cell>
+              <cell><print value="[xml./action([%index])/short]"/></cell>
+            </row>
+          </repeat>
+        </table>
+      </indent>
+
+    <endpage/>
+  </else>
+</page>

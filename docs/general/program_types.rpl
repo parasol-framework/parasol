@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+
+<info>
+ <title>Program Types</title>
+ <author>Rocklyte Systems</author>
+ <keywords>rocklyte, sdk, program, types, script, object, exe, executable</keywords>
+ <description>Information on the deployment of programs developed with the Rocklyte SDK.</description>
+</info>
+
+<include src="inc_style.rpl"/>
+
+<page name="Index">
+<startpage title="Program Types"/>
+
+<p>Before you begin developing your first program using the SDK, some consideration should be made towards the way in which you will do this.  On most competing platforms your choices will often boil down to choosing a language that suits your requirements and compiling the program down to an executable. However Rocklyte's scripting provisions and object methodologies give you many ways to tackle the development process. In this section we look at these options in detail.</p>
+
+<h2>Executable Programs</h2>
+
+<p>We recommend that application developers avoid programming executables for reasons that you will see in the next section. Projects suitable for executable development tend to be those running in a continual loop and/or utilising large amounts of CPU time, such as games.  If the project code will not be reusable (thus unsuited for a class or module) and is complex (unsuitable for a script) then executable development can also be warranted.  The disadvantage in developing an executable is that you will miss out on the extra features gained from scripted programming, and this can be a hindrance if you wish to develop more advanced applications.</p>
+
+<p>Currently C and C++ are the only languages officially supported for building executables with our SDK, but there is nothing to prevent you from trying other languages.  If you cannot find third party support for a particular language that you wish to use, your main obstacle is converting the include and header files from C to the format accepted by your chosen language.  This may take considerable time, plus you will have to keep the files updated as new versions of the SDK are released.  If you wish, you can submit translated files to us and we can assist in keeping them current for you and the rest of the development community.</p>
+
+<p>To see how executable programs are built, refer to the example programs provided with the SDK and the <a href="hello_world.rpl">Hello World</a> chapter of the manual.</p>
+
+<h2>Scripted Programs</h2>
+
+<p>If you've used Athene previously then you may have an idea of what a scripted program is - anything written in DML is a valid example.  The addition of the Fluid language in 2007 also allows you to develop complex programs that have close to the same level of system access as C programs enjoy.  Here are a few major advantages of scripted programming:</p>
+
+<indent>
+<list type="bullet">
+<li>If the user loads your program multiple times, less code is re-loaded into memory compared to your executable equivalent.  For very large programs, this saving can be extremely significant.</li>
+<li>Micro-tasking - a very significant methodology to employ for large programs.  Micro-tasking involves splitting your program into multiple parts that are protected by their own memory protection boundaries.  This concept is easy to implement through scripts and is especially recommended for mission critical applications, or just for improved crash protection for initial software releases.</li>
+<li>A scripted program will always be smaller than its executable equivalent when distributed to end users.  All you need to supply are the scripts and object classes that may be specific to your application.  If all the classes that your program uses are in the core platform, you won't need to distribute binaries at all.</li>
+<li>Scripted programs are very easy for power-users to modify if they need to make additions or alterations to your program. By providing this added flexibility, people may be more inclined to use your software if they know they can adjust it to their liking without having to look through vast quantities of code to find what they're looking for.</li>
+<li>Writing multi-lingual applications is simplified as you can store the phrases in translation files and refer to them in your interface script.  Foreign users can aid you in supporting other languages simply by modifying your configuration files and submitting them back to you.</li>
+<li>Scripts simplify your resource tracking as the objects you create will automatically terminate themselves during script execution.</li>
+</list>
+</indent>
+
+<h2>Class Development</h2>
+
+<p>If your program script requires the addition of functionality that is not provided in the default set of object classes, you will need to write one or more new classes to suit your requirements. The bigger your program, the more likely it is that you will have to write extra code to 'fill in the gaps'. When choosing a language to develop an object class, your choices are severely limited if you want to achieve maximum portability. The key issue here is that the language that you wish to use must support two important features - 1. Must be widespread enough to support a number of platforms and processors, and 2. Must be able to compile 'library code' that is compatible with C and be flexible enough to support the library standards across different platforms. Our recommendation is that you use standard C for the development of object classes. This will give you fewer headaches in the long run, and is the only reasonable choice if you intend to distribute your code publicly. C++ can also be used internally by your class as it can export C headers.</p>
+
+<p>For further information on the development of object classes for use in your scripts, refer to the <a href="class_development_guide.rpl">Class Development Guide</a>.</p>
+
+</page>

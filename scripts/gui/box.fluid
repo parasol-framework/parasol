@@ -1,0 +1,232 @@
+--[[
+The Box class provides a convenient interface for drawing filled rectangles and borders.
+
+The following example illustrates typical usage:
+
+   gui.box({
+      target=surface, x=10, y=10, width=100, height=100,
+      colour='#808080', shadow='30,30,30', highlight='255,255,255'
+      raised=true
+   })
+
+Valid options to use when creating the box are as follows:
+
+  target:    Required.  Refers to a surface area that will contain the box.
+  x:         The x coordinate of the box.
+  y:         The y coordinate of the box.
+  width:     The width of the box.
+  height:    The height of the box.
+  xOffset:   Offset the right side of the box.
+  yOffset:   Offset the bottom of the box.
+  thickness: The thickness of the box border, in pixels.
+  colour:    Fill colour in RGB format
+  border:    Draw the border using one single colour (RGB format).
+  highlight: Set a border highlight in RGB format.
+  shadow:    Set a border shadow in RGB format.
+  raised:    Apply a raised effect to the box.
+  sunken:    Apply a sunken effect to the box.
+  opacity:   Overall opacity level of all colours, measured from 0 - 1.0
+--]]
+
+   require 'common'
+   require 'gui'
+   include 'display'
+
+gui.box = function(Options)
+   local self = { // Public variables
+   }
+
+   local lRaised = false
+   local lThickness = 0
+   local lDimensions = 0
+   local lOpacity = 1.0
+   local lBorder = { r=0, g=0, b=0, a=0 }
+   local lHighlight = { r=0, g=0, b=0, a=0 }
+   local lShadow = { r=0, g=0, b=0, a=0 }
+   local lColour = { r=0, g=0, b=0, a=0 }
+   local lX, lY, lWidth, lHeight, lXOffset, lYOffset
+
+   local function drawBox(Surface, Bitmap)
+      // Convert relative values to their fixed equivalent
+
+      local x, y, xo, yo, width, height
+      if (lX.relative) then
+         x = Surface.width * lX.value
+      else
+         x = lX.value
+      end
+
+      if (lY.relative) then
+         y = Surface.height * lY.value
+      else
+         y = lY.value
+      end
+
+      if (lXOffset.relative) then
+         xo = Surface.width * lXOffset.value
+      else
+         xo = lXOffset.value
+      end
+
+      if (lYOffset.relative) then
+         yo = Surface.height * lYOffset.value
+      else
+         yo = lYOffset.value
+      end
+
+      if (lWidth.relative) then
+         width = Surface.width * lWidth.value
+      elseif (lWidth.value) then
+         width = lWidth.value
+      elseif (xo and x) then
+         width = Surface.width - x - xo
+      else
+         error('Invalid width defined for the box.')
+      end
+
+      if (lHeight.relative) then
+         height = Surface.height * lHeight.value
+      elseif (lHeight.value) then
+         height = lHeight.value
+      elseif (xo and x) then
+         height = Surface.height - y - yo
+      else
+         error('Invalid height defined for the box.')
+      end
+
+      if ((width < 1) or (height < 1)) then
+         return
+      end
+
+      if (xo and width) then
+         x = Surface.width - xo - width
+      end
+
+      if (yo and height) then
+         y = Surface.height - yo - height
+      end
+
+      if (lColour.a > 0) then
+         local err, colour = Bitmap.mtGetColour(lColour.r, lColour.g, lColour.b, lColour.a)
+         Bitmap.mtDrawRectangle(x + lThickness, y + lThickness, width - (lThickness*2), height - (lThickness*2), colour, bit.bor(BAF_FILL, BAF_BLEND))
+      end
+
+      if (lThickness > 0) then // Top, Bottom, Left, Right
+         local err, highlight, shadow,border
+         if (lRaised == 1) then
+            err, highlight = Bitmap.mtGetColour(lHighlight.r, lHighlight.g, lHighlight.b, lHighlight.a)
+            err, shadow    = Bitmap.mtGetColour(lShadow.r, lShadow.g, lShadow.b, lShadow.a)
+            for t=0,lThickness-1 do
+               Bitmap.mtDrawRectangle(x+t, y+t, width-t-t, 1, highlight, bit.bor(BAF_FILL, BAF_BLEND))
+               Bitmap.mtDrawRectangle(x+t, y+height-1-t, width-t-t, 1, shadow, bit.bor(BAF_FILL, BAF_BLEND))
+               Bitmap.mtDrawRectangle(x+t, y+t, 1, height-t-t, highlight, bit.bor(BAF_FILL, BAF_BLEND))
+               Bitmap.mtDrawRectangle(x+width-t-1, y+1+t, 1, height-1-t-t, shadow, bit.bor(BAF_FILL, BAF_BLEND))
+            end
+         elseif (lRaised == -1) then
+            err, highlight = Bitmap.mtGetColour(lShadow.r, lShadow.g, lShadow.b, lShadow.a)
+            err, shadow    = Bitmap.mtGetColour(lHighlight.r, lHighlight.g, lHighlight.b, lHighlight.a)
+            for t=0,lThickness-1 do
+               Bitmap.mtDrawRectangle(x+t, y+t, width-t-t, 1, highlight, bit.bor(BAF_FILL, BAF_BLEND))
+               Bitmap.mtDrawRectangle(x+t, y+height-1-t, width-t-t, 1, shadow, bit.bor(BAF_FILL, BAF_BLEND))
+               Bitmap.mtDrawRectangle(x+t, y+t, 1, height-t-t, highlight, bit.bor(BAF_FILL, BAF_BLEND))
+               Bitmap.mtDrawRectangle(x+width-t-1, y+1+t, 1, height-1-t-t, shadow, bit.bor(BAF_FILL, BAF_BLEND))
+            end
+         else
+            err, border = Bitmap.mtGetColour(lBorder.r, lBorder.g, lBorder.b, lBorder.a)
+            // Top, Bottom, Left, Right
+            Bitmap.mtDrawRectangle(x, y, width, lThickness, border, bit.bor(BAF_FILL, BAF_BLEND))
+            Bitmap.mtDrawRectangle(x, y+height-lThickness, width, lThickness, border, bit.bor(BAF_FILL, BAF_BLEND))
+            Bitmap.mtDrawRectangle(x, y+lThickness, lThickness, height-(lThickness*2), border, bit.bor(BAF_FILL, BAF_BLEND))
+            Bitmap.mtDrawRectangle(x+width-lThickness, y+lThickness, lThickness, height-(lThickness*2), border, bit.bor(BAF_FILL, BAF_BLEND))
+         end
+      end
+   end
+
+   local function parse_dimension(Value)
+      if (Value == nil) then
+         return { }
+      end
+
+      if (type(Value) == 'number') then
+         return { value=tonumber(Value) }
+      elseif (type(Value) == 'string') then
+         local relative = Value:match('^(.+)%%$')
+         if (relative) then
+            return { value=tonumber(relative) / 100, relative=true }
+         else
+            return { value=tonumber(Value) }
+         end
+      else
+         error('Unsupported value "' .. tostring(Value) .. '", type ' .. type(Value))
+      end
+   end
+
+   self.setX = function(Value)
+      lX = parse_dimension(Value)
+   end
+
+   self.setY = function(Value)
+      lY = parse_dimension(Value)
+   end
+
+   self.setWidth = function(Value)
+      lWidth = parse_dimension(Value)
+   end
+
+   self.setHeight = function(Value)
+      lHeight = parse_dimension(Value)
+   end
+
+   self.setXOffset = function(Value)
+      lXOffset = parse_dimension(Value)
+   end
+
+   self.setYOffset = function(Value)
+      lYOffset = parse_dimension(Value)
+   end
+
+   // Main entry point
+
+   catch(function()
+      if (not Options.target) then error('A target surface is required.') end
+
+      if (Options.border) then
+         lThickness = 1
+         lBorder = gui.strToRGB(Options.border)
+      end
+
+      if (Options.colour) then
+         lColour = gui.strToRGB(Options.colour)
+      end
+
+      if (Options.highlight) then
+         lRaised = 1
+         lThickness = 1
+         lHighlight = gui.strToRGB(Options.highlight)
+      end
+
+      if (Options.shadow) then
+         lThickness = 1
+         lShadow = gui.strToRGB(Options.shadow)
+      end
+
+      lOpacity   = nz(Options.opacity, 1.0)
+      if (Options.sunken) then lRaised = -1 end
+      if (Options.raised) then lRaised = 1 end
+      lThickness = nz(tonumber(Options.thickness), lThickness)
+
+      lX       = parse_dimension(Options.x)
+      lY       = parse_dimension(Options.y)
+      lXOffset = parse_dimension(Options.xOffset)
+      lYOffset = parse_dimension(Options.yOffset)
+      lWidth   = parse_dimension(Options.width)
+      lHeight  = parse_dimension(Options.height)
+
+      Options.target.mtAddCallback(drawBox)
+   end,
+   function(Exception)
+      error('Failed to initialise Box: ' .. Exception.message)
+   end)
+
+   return self
+end

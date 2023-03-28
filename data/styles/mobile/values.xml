@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+
+<!--
+This is the style guide for mobile devices.
+
+You can use it to emulate your mobile display by setting values in /interface/@matchdpi and /interface/@dpi.  Here's a quick rundown:
+
+  /interface/@matchdpi
+     This setting will resize your windows to match the physical size of a device indicated by the DPI value.
+     Font sizes are not affected.
+
+  /interface/@dpi
+    This option allows you to emulate the font and widget resizing that would normally occur when running your program on your mobile.
+    The dimensions of the window will be unchanged, so the window will typically look quite large.  However, the graphics should be roughly identical to your target device.
+
+Note: The DPI normally assigned to PC displays is 96.  Mobile devices typically have a DPI around 200 - check the technical specs
+of your device to get an accurate value.
+
+DO NOT set both values at once.  Choose one or the other.
+
+-->
+
+<fonts>
+  <!-- Use percentages for scalable sizes, where 100% is equivalent to the value of "/interface/@fontsize" -->
+
+  <font name="default"  face="Sans Serif,Open Sans" size="100%" colour="0,0,0"/>
+  <font name="scalable" face="Open Sans"/> <!-- Name of the default scalable font (for upgrading fixed fonts) -->
+  <font name="window"   face="Sans Serif,Open Sans" size="100%" colour="0,0,0"/>
+  <font name="button"   face="Sans Serif,Open Sans" size="100%" colour="0,0,0"/>
+  <font name="icon"     face="Sans Serif,Open Sans" size="100%" colour="255,255,255"/>
+  <font name="menu"     face="Sans Serif,Open Sans" size="100%" colour="255,255,255" highlight="255,255,255"/>
+  <font name="titlebar" face="Sans Serif,Open Sans" size="100%" colour="255,255,255"/>
+  <font name="small"    face="Tiny" size="6" colour="0,0,0"/>
+  <font name="large"    face="Helvete,Open Sans" size="130%" colour="0,0,0"/>
+  <font name="widget"   face="Luxi Sans,Open Sans" size="8" colour="0,0,0"/>
+</fonts>
+
+<colours shadow="60,60,80" highlight="240,240,240" colour="220,220,220" widget="200,200,200"
+  button="230,230,230" buttonclick="200,200,200" menubar="190,190,190" menu="240,240,240"
+  border="#909090" menuborder="200,200,200" desktop="160,160,160" recess="160,160,160"
+  white="255,255,255" red="255,0,0" green="0,255,0" blue="0,0,255" background="255,255,255"
+  texthighlight="#e0e0f0" window="220,220,220"/>
+
+<interface
+  inputborder="1" inputborder_x="0" inputborder_y="0" inputborder_xo="0" inputborder_yo="0"
+  outputborder="1" outputborder_x="0" outputborder_y="0" outputborder_xo="0" outputborder_yo="0"
+  widgetmargin="10" widgetgap="6" textborder="1" fontsize="8" dpi="216"
+  slidersize="16" scrollsize="18" scrollopacity="100"
+  wallpaper="pictures:backgrounds/Green Fields.jpg" wallpaper_style="Stretch"
+  screensaver_delay="180" monitoroff_delay="1200"
+  screensaver="programs:multimedia/screensavers/Flames"
+  iconratio="7%" icontheme="Default" iconsize="0"/>
+
