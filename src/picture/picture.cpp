@@ -97,8 +97,8 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERROR CMDExpunge(void)
 {
-   if (clPicture)  { acFree(clPicture); clPicture = NULL; }
-   if (modDisplay) { acFree(modDisplay); modDisplay = NULL; }
+   if (clPicture)  { FreeResource(clPicture); clPicture = NULL; }
+   if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
    return ERR_Okay;
 }
 
@@ -312,7 +312,7 @@ static ERROR PIC_Activate(prvPicture *Self, APTR Void)
 
    if (!error) {
       png_read_end(read_ptr, end_info);
-      if (Self->prvFile) { acFree(Self->prvFile); Self->prvFile = NULL; }
+      if (Self->prvFile) { FreeResource(Self->prvFile); Self->prvFile = NULL; }
    }
    else {
 exit:
@@ -331,9 +331,9 @@ static ERROR PIC_Free(prvPicture *Self, APTR Void)
    if (Self->prvPath)        { FreeResource(Self->prvPath); Self->prvPath = NULL; }
    if (Self->prvDescription) { FreeResource(Self->prvDescription); Self->prvDescription = NULL; }
    if (Self->prvDisclaimer)  { FreeResource(Self->prvDisclaimer); Self->prvDisclaimer = NULL; }
-   if (Self->prvFile)        { acFree(Self->prvFile); Self->prvFile = NULL; }
-   if (Self->Bitmap)         { acFree(Self->Bitmap); Self->Bitmap = NULL; }
-   if (Self->Mask)           { acFree(Self->Mask); Self->Mask = NULL; }
+   if (Self->prvFile)        { FreeResource(Self->prvFile); Self->prvFile = NULL; }
+   if (Self->Bitmap)         { FreeResource(Self->Bitmap); Self->Bitmap = NULL; }
+   if (Self->Mask)           { FreeResource(Self->Mask); Self->Mask = NULL; }
    return ERR_Okay;
 }
 
@@ -803,7 +803,7 @@ exit:
    if ((Args) and (Args->DestID)) {
       if (file) ReleaseObject(file);
    }
-   else if (file) acFree(file);
+   else if (file) FreeResource(file);
 
    if (error) return log.warning(error);
    else return ERR_Okay;

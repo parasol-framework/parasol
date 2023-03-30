@@ -385,7 +385,7 @@ gui.simpleGradient = function(Scene, Name, Colours, X1, Y1, X2, Y2, Units, Ignor
 
       if (ex) then
          if (ex.code == ERR_ResourceExists) then
-            gradient.acFree()
+            gradient.free()
             return nil
          else
             error(ex)

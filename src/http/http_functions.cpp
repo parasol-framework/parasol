@@ -132,7 +132,7 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG 
             // and create a new one once the user responds to the dialog.
 
             Self->Socket->set(FID_Feedback, (APTR)NULL);
-            acFree(Socket);
+            FreeResource(Socket);
             Self->Socket = NULL;
             Self->SecurePath = TRUE;
             return;
@@ -231,7 +231,7 @@ redo_upload:
 
       if ((Self->flInput->Position IS size) or (len IS 0)) {
          log.trace("All file content read (%d bytes) - freeing file.", (LONG)size);
-         acFree(Self->flInput);
+         FreeResource(Self->flInput);
          Self->flInput = NULL;
          if (!error) error = ERR_Terminate;
       }

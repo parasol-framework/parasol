@@ -129,7 +129,7 @@ public:
    filter_bitmap() : Bitmap(NULL), Data(NULL), DataSize(0) { };
 
    ~filter_bitmap() {
-      if (Bitmap) { acFree(Bitmap); Bitmap = NULL; }
+      if (Bitmap) { FreeResource(Bitmap); Bitmap = NULL; }
       if (Data) { FreeResource(Data); Data = NULL; }
    };
 

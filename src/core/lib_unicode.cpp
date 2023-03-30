@@ -364,7 +364,7 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
          modResolveSymbol(modIconv, "libiconv", (APTR *)&iconv);
 
          if ((!iconv) or (!iconv_open) or (!iconv_close)) {
-            acFree(modIconv);
+            FreeResource(modIconv);
             modIconv    = NULL;
             tlContext   = context;
             init_failed = true;

@@ -1188,7 +1188,7 @@ MEMORYID ReleaseMemory(APTR Address)
 ReleaseMemoryID: Releases locked memory blocks by ID.
 Category: Memory
 
-Successful calls to ~AccessMemoryID() must be paired with a call to ~ReleaseMemory() or ReleaseMemoryID so that the
+Successful calls to ~AccessMemoryID() must be paired with a call to ~ReleaseMemory() or ReleaseMemoryID() so that the
 memory can be made available to other processes.  By releasing the memory, the access count will decrease, and if
 applicable, a process that is in the queue for access may then be able to gain a lock.
 
@@ -1313,7 +1313,7 @@ void ReleaseObject(OBJECTPTR Object)
 
          if (Object->defined(NF::UNLOCK_FREE) and (!Object->defined(NF::FREE))) {
             Object->Flags &= ~NF::UNLOCK_FREE;
-            acFree(Object);
+            FreeResource(Object);
 
             cond_wake_all(CN_OBJECTS);
          }
@@ -1325,7 +1325,7 @@ void ReleaseObject(OBJECTPTR Object)
    }
    else if (Object->defined(NF::UNLOCK_FREE) and (!Object->defined(NF::FREE))) {
       Object->Flags &= ~NF::UNLOCK_FREE;
-      acFree(Object);
+      FreeResource(Object);
    }
 }
 

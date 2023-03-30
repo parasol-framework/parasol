@@ -1409,7 +1409,7 @@ private:
             mBitmap = bmpSave;
             mFormat.setBitmap(*mBitmap);
             drawBitmap(shape->Scene->SampleMethod, mRenderBase, raster, bmpBkgd, VSPREAD_CLIP, 1.0);
-            acFree(bmpBkgd);
+            FreeResource(bmpBkgd);
          }
       }
    }

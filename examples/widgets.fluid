@@ -358,7 +358,7 @@ end
                vfx.rotate(Icon.viewport, 0.8),
                vfx.zoomOut(Icon.viewport, 0.8)
             }, function()
-               Icon.viewport.acFree()
+               Icon.viewport.free()
                Icon.viewport = nil
             end)
 

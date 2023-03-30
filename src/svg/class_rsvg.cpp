@@ -25,7 +25,7 @@ static ERROR RSVG_Activate(prvPicture *Self, APTR Void)
 static ERROR RSVG_Free(prvPicture *Self, APTR Void)
 {
    if (auto prv = (prvSVG *)Self->ChildPrivate) {
-      if (prv->SVG) { acFree(prv->SVG); prv->SVG = NULL; }
+      if (prv->SVG) { FreeResource(prv->SVG); prv->SVG = NULL; }
    }
    return ERR_Okay;
 }

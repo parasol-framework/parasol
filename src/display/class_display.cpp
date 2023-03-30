@@ -517,17 +517,17 @@ static ERROR DISPLAY_Free(extDisplay *Self, APTR Void)
 
    // Free the display's bitmap buffer
 
-   if (Self->BufferID) { acFree(Self->BufferID); Self->BufferID = 0; }
+   if (Self->BufferID) { FreeResource(Self->BufferID); Self->BufferID = 0; }
 
    // Free the display's video bitmap
 
    if (Self->BitmapID) {
       if (Self->Bitmap) {
-         acFree(Self->Bitmap);
+         FreeResource(Self->Bitmap);
          if (Self->BitmapID < 0) ReleaseObject(Self->Bitmap);
          Self->Bitmap = NULL;
       }
-      else acFree(Self->BitmapID);
+      else FreeResource(Self->BitmapID);
       Self->BitmapID = 0;
    }
 
@@ -1182,14 +1182,10 @@ static ERROR DISPLAY_NewObject(extDisplay *Self, APTR Void)
    Self->BitmapID = Self->Bitmap->UID;
 
    OBJECTID id;
-   if (FindObject("SystemVideo", 0, 0, &id) != ERR_Okay) {
-      SetName(Self->Bitmap, "SystemVideo");
-   }
+   if (FindObject("SystemVideo", 0, 0, &id) != ERR_Okay) SetName(Self->Bitmap, "SystemVideo");
 
    if (!(GetName(Self)[0])) {
-      if (FindObject("SystemDisplay", 0, 0, &id) != ERR_Okay) {
-         SetName(Self, "SystemDisplay");
-      }
+      if (FindObject("SystemDisplay", 0, 0, &id) != ERR_Okay) SetName(Self, "SystemDisplay");
    }
 
    #ifdef __xwindows__
@@ -1971,7 +1967,7 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
             else log.warning("Failed to get Android Config object.");
          #endif
 
-         if (acInit(pointer) != ERR_Okay) acFree(pointer);
+         if (acInit(pointer) != ERR_Okay) FreeResource(pointer);
          else acShow(pointer);
       }
    }
@@ -3072,7 +3068,7 @@ void alloc_display_buffer(extDisplay *Self)
 
    log.branch("Allocating a video based buffer bitmap.");
 
-   if (Self->BufferID) { acFree(Self->BufferID); Self->BufferID = 0; }
+   if (Self->BufferID) { FreeResource(Self->BufferID); Self->BufferID = 0; }
 
    if (auto buffer = objBitmap::create::integral(
          fl::Name("SystemBuffer"),

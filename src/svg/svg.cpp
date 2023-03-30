@@ -136,11 +136,11 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 ERROR CMDExpunge(void)
 {
-   if (modDisplay) { acFree(modDisplay); modDisplay = NULL; }
-   if (modVector)  { acFree(modVector);  modVector = NULL; }
+   if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
+   if (modVector)  { FreeResource(modVector);  modVector = NULL; }
 
-   if (clSVG)  { acFree(clSVG);  clSVG = NULL; }
-   if (clRSVG) { acFree(clRSVG); clRSVG = NULL; }
+   if (clSVG)  { FreeResource(clSVG);  clSVG = NULL; }
+   if (clRSVG) { FreeResource(clRSVG); clRSVG = NULL; }
    return ERR_Okay;
 }
 

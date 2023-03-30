@@ -168,8 +168,8 @@ gui.toolbar = function(HostVP, Options)
 
       -- The _groupClip simplifies masking and 'vg' provides a container for hosting temporary vectors.
 
-      if self._groupClip then self._groupClip.acFree() end
-      if self.vg then self.vg.acFree() end
+      if self._groupClip then self._groupClip.free() end
+      if self.vg then self.vg.free() end
 
       if (self._groupCount > 0) then
          self._groupClip = self.viewport.scene.new('VectorClip', { name='GroupMask', units='BoundingBox' })

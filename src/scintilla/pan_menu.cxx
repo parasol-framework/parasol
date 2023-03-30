@@ -54,11 +54,11 @@ void Scintilla::Menu::Destroy()
    //OBJECTID surface_id;
    //GetField(menu, FID_Drawable, FT_LONG, &surface_id);
 
-   //ActionMsg(AC_Free, *reinterpret_cast<OBJECTID *>(&id), NULL);
-   //acFree(menu);
+   //FreeResource(AC_Free, *reinterpret_cast<OBJECTID *>(&id), NULL);
+   //FreeResource(menu);
 
    //if (surface_id)
-   //   ActionMsg(AC_Free, surface_id, NULL);
+   //   FreeResource(AC_Free, surface_id, NULL);
 }
 
 /****************************************************************************/

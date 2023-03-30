@@ -86,7 +86,7 @@ static void * thread_entry(struct thread_info *info)
 
          if (glTerminateObject) {
             if (i >= glLockAttempts-2) {
-               acFree(glConfig);
+               FreeResource(glConfig);
                #ifdef QUICKLOCK
                prv_release(glConfig);
                #else
@@ -169,7 +169,7 @@ void program(void)
       pthread_join(glThreads[i].thread, NULL);
    }
 
-   acFree(glConfig);
+   FreeResource(glConfig);
 
    print("Testing complete.\n");
 }

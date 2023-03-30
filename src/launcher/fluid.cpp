@@ -297,7 +297,7 @@ int main(int argc, CSTRING *argv)
                if (glProcedure) script->set(FID_Procedure, glProcedure);
                if (glArgs) set_script_args(script, glArgs);
                result = run_script(script);
-               acFree(script);
+               FreeResource(script);
             }
             else {
                print("Internal Failure: Failed to create a new Script object for file processing.");

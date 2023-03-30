@@ -78,10 +78,7 @@ SurfacePan::~SurfacePan()
 
 void SurfacePan::Release()
 {
-   if ((bitmap) and (own_bitmap)) {
-      acFree(bitmap);
-      bitmap = NULL;
-   }
+   if ((bitmap) and (own_bitmap)) { FreeResource(bitmap); bitmap = NULL; }
 }
 
 bool SurfacePan::Initialised()

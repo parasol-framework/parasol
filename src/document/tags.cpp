@@ -1574,7 +1574,7 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
       else log.trace("Object %d self-destructed.", object->UID);
    }
    else {
-      acFree(object);
+      FreeResource(object);
       log.warning("Failed to initialise object of class $%.8x", class_id);
    }
 
@@ -1734,7 +1734,7 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
             script->set(FID_Statement, Self->Temp);
          }
          else {
-            acFree(script);
+            FreeResource(script);
             return;
          }
       }
@@ -1787,9 +1787,9 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
                }
             }
          }
-         else acFree(script);
+         else FreeResource(script);
       }
-      else acFree(script);
+      else FreeResource(script);
    }
 }
 

@@ -32,28 +32,28 @@
    #endif
 #endif
 
-std::string glRootPath = "" ROOT_PATH "";
+std::string glRootPath   = "" ROOT_PATH "";
 std::string glSystemPath = "" SYSTEM_PATH "";
 std::string glModulePath = "" MODULE_PATH ""; // NB: This path will be updated to its resolved-form during Core initialisation.
 
 char glDisplayDriver[28] = "";
 
 CSTRING glClassBinPath = "system:config/classes.bin";
-objMetaClass *glRootModuleClass = 0;
-objMetaClass *glModuleClass = 0;
-objMetaClass *glTaskClass = 0;
-objMetaClass *glThreadClass = 0;
-objMetaClass *glTimeClass = 0;
-objMetaClass *glConfigClass = 0;
-objMetaClass *glFileClass = 0;
-objMetaClass *glScriptClass = 0;
-objMetaClass *glArchiveClass = 0;
+objMetaClass *glRootModuleClass  = 0;
+objMetaClass *glModuleClass      = 0;
+objMetaClass *glTaskClass        = 0;
+objMetaClass *glThreadClass      = 0;
+objMetaClass *glTimeClass        = 0;
+objMetaClass *glConfigClass      = 0;
+objMetaClass *glFileClass        = 0;
+objMetaClass *glScriptClass      = 0;
+objMetaClass *glArchiveClass     = 0;
+objMetaClass *glStorageClass     = 0;
 objMetaClass *glCompressionClass = 0;
 objMetaClass *glCompressedStreamClass = 0;
 #ifdef __ANDROID__
 objMetaClass *glAssetClass = 0;
 #endif
-objMetaClass *glStorageClass = NULL;
 BYTE fs_initialised = FALSE;
 APTR glPageFault = NULL;
 bool glScanClasses = false;
@@ -90,7 +90,7 @@ TIMER glCacheTimer = 0;
 LONG glMemoryFD = -1;
 LONG glTaskMessageMID = 0;
 LONG glValidateProcessID = 0;
-LONG glProcessID  = 0;
+LONG glProcessID = 0;
 LONG glEUID = -1, glEGID = -1, glGID = -1, glUID = -1;
 LONG glPrivateIDCounter = 500;
 LONG glMessageIDCount = 10000;

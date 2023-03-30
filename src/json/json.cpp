@@ -96,7 +96,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 ERROR CMDExpunge(void)
 {
-   if (clJSON) { acFree(clJSON); clJSON = NULL; }
+   if (clJSON) { FreeResource(clJSON); clJSON = NULL; }
    return ERR_Okay;
 }
 

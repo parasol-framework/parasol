@@ -73,7 +73,7 @@ static int module_destruct(lua_State *Lua)
 {
    struct module *mod;
    if ((mod = (struct module *)luaL_checkudata(Lua, 1, "Fluid.mod"))) {
-      acFree(mod->Module);
+      FreeResource(mod->Module);
    }
 
    return 0;

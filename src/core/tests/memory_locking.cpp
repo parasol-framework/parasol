@@ -158,7 +158,7 @@ void program(void)
       pthread_join(glThreads[i].thread, NULL);
    }
 
-   FreeResourceID(glMemoryID);
+   FreeResource(glMemoryID);
 
    print("Testing complete.\n");
 }

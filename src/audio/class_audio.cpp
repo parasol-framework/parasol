@@ -1399,5 +1399,5 @@ ERROR add_audio_class(void)
 
 void free_audio_class(void)
 {
-   if (clAudio) { acFree(clAudio); clAudio = NULL; }
+   if (clAudio) { FreeResource(clAudio); clAudio = NULL; }
 }

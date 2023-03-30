@@ -413,7 +413,7 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
 
          if (Self->PageName) { FreeResource(Self->PageName); Self->PageName = NULL; }
          if (Self->Bookmark) { FreeResource(Self->Bookmark); Self->Bookmark = NULL; }
-         if (Self->XML) { acFree(Self->XML); Self->XML = NULL; }
+         if (Self->XML) { FreeResource(Self->XML); Self->XML = NULL; }
 
          QueueAction(MT_DrwInvalidateRegion, Self->SurfaceID);
       }

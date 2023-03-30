@@ -308,7 +308,7 @@ static ERROR DOCUMENT_Clear(extDocument *Self, APTR Void)
 
    log.branch();
    unload_doc(Self, 0);
-   if (Self->XML) { acFree(Self->XML); Self->XML = NULL; }
+   if (Self->XML) { FreeResource(Self->XML); Self->XML = NULL; }
    redraw(Self, FALSE);
    return ERR_Okay;
 }
@@ -674,9 +674,9 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
    if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
    if (Self->FlashTimer)  { UpdateTimer(Self->FlashTimer, 0); Self->FlashTimer = 0; }
 
-   if (Self->PageID)    { acFree(Self->PageID); Self->PageID = 0; }
-   if (Self->ViewID)    { acFree(Self->ViewID); Self->ViewID = 0; }
-   if (Self->InsertXML) { acFree(Self->InsertXML); Self->InsertXML = NULL; }
+   if (Self->PageID)    { FreeResource(Self->PageID); Self->PageID = 0; }
+   if (Self->ViewID)    { FreeResource(Self->ViewID); Self->ViewID = 0; }
+   if (Self->InsertXML) { FreeResource(Self->InsertXML); Self->InsertXML = NULL; }
 
    if ((Self->FocusID) and (Self->FocusID != Self->SurfaceID)) {
       OBJECTPTR object;
@@ -707,12 +707,12 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
 
    if (Self->TBuffer)     { FreeResource(Self->TBuffer); Self->TBuffer = NULL; }
    if (Self->Path)        { FreeResource(Self->Path); Self->Path = NULL; }
-   if (Self->XML)         { acFree(Self->XML); Self->XML = NULL; }
+   if (Self->XML)         { FreeResource(Self->XML); Self->XML = NULL; }
    if (Self->FontFace)    { FreeResource(Self->FontFace); Self->FontFace = NULL; }
    if (Self->Buffer)      { FreeResource(Self->Buffer); Self->Buffer = NULL; }
    if (Self->Temp)        { FreeResource(Self->Temp); Self->Temp = NULL; }
    if (Self->WorkingPath) { FreeResource(Self->WorkingPath); Self->WorkingPath = NULL; }
-   if (Self->Templates)   { acFree(Self->Templates); Self->Templates = NULL; }
+   if (Self->Templates)   { FreeResource(Self->Templates); Self->Templates = NULL; }
    if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; };
 
    Self->~extDocument();

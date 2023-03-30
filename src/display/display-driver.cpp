@@ -995,8 +995,8 @@ static ERROR CMDExpunge(void)
    if (glDither)              { FreeResource(glDither); glDither = NULL; }
    if (glExposeHandler)       { FreeResource(glExposeHandler); glExposeHandler = NULL; }
    if (glRefreshPointerTimer) { UpdateTimer(glRefreshPointerTimer, 0); glRefreshPointerTimer = 0; }
-   if (glComposite)           { acFree(glComposite); glComposite = NULL; }
-   if (glCompress)            { acFree(glCompress); glCompress = NULL; }
+   if (glComposite)           { FreeResource(glComposite); glComposite = NULL; }
+   if (glCompress)            { FreeResource(glCompress); glCompress = NULL; }
    if (glDemultiply)          { FreeResource(glDemultiply); glDemultiply = NULL; }
 
    DeregisterFD((HOSTHANDLE)-2); // Disable input_event_loop()
@@ -1004,7 +1004,7 @@ static ERROR CMDExpunge(void)
 #ifdef __xwindows__
 
    if (!glHeadless) {
-      if (modXRR) { acFree(modXRR); modXRR = NULL; }
+      if (modXRR) { FreeResource(modXRR); modXRR = NULL; }
 
       if (glXFD != -1) { DeregisterFD(glXFD); glXFD = -1; }
 
@@ -1043,7 +1043,7 @@ static ERROR CMDExpunge(void)
                         ACB_TERM_WINDOW, &fTermWindow,
                         TAGEND);
 
-      acFree(modAndroid);
+      FreeResource(modAndroid);
       modAndroid = NULL;
    }
 
@@ -1054,12 +1054,12 @@ static ERROR CMDExpunge(void)
 
 #endif
 
-   if (glIconArchive) { acFree(glIconArchive); glIconArchive = NULL; }
-   if (clPointer)     { acFree(clPointer);     clPointer     = NULL; }
-   if (clDisplay)     { acFree(clDisplay);     clDisplay     = NULL; }
-   if (clBitmap)      { acFree(clBitmap);      clBitmap      = NULL; }
-   if (clClipboard)   { acFree(clClipboard);   clClipboard   = NULL; }
-   if (clSurface)     { acFree(clSurface);     clSurface     = NULL; }
+   if (glIconArchive) { FreeResource(glIconArchive); glIconArchive = NULL; }
+   if (clPointer)     { FreeResource(clPointer);     clPointer     = NULL; }
+   if (clDisplay)     { FreeResource(clDisplay);     clDisplay     = NULL; }
+   if (clBitmap)      { FreeResource(clBitmap);      clBitmap      = NULL; }
+   if (clClipboard)   { FreeResource(clClipboard);   clClipboard   = NULL; }
+   if (clSurface)     { FreeResource(clSurface);     clSurface     = NULL; }
 
    #ifdef _GLES_
       free_egl();

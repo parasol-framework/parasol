@@ -1095,6 +1095,7 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 #define MSGID_VALIDATE_PROCESS 93
 #define MSGID_EVENT 94
 #define MSGID_DEBUG 95
+#define MSGID_FREE 98
 #define MSGID_ACTION 99
 #define MSGID_BREAK 100
 #define MSGID_CORE_END 100
@@ -1598,8 +1599,8 @@ struct ObjectSignal {
 };
 
 struct ResourceManager {
-   CSTRING Name;           // The name of the resource.
-   void (*Free)(APTR);     // A function that will remove the resource's content when terminated.
+   CSTRING Name;            // The name of the resource.
+   ERROR (*Free)(APTR);     // A function that will remove the resource's content when terminated.
 };
 
 typedef struct pfBase64Decode {
@@ -1887,8 +1888,8 @@ struct CoreBase {
    ERROR (*_FindObject)(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * ObjectID);
    objMetaClass * (*_FindClass)(CLASSID ClassID);
    ERROR (*_AnalysePath)(CSTRING Path, LONG * Type);
-   ERROR (*_FreeResource)(const void * Address);
-   ERROR (*_FreeResourceID)(MEMORYID ID);
+   LONG (*_UTF8Copy)(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
+   ERROR (*_FreeResource)(MEMORYID ID);
    CLASSID (*_GetClassID)(OBJECTID Object);
    OBJECTID (*_GetOwnerID)(OBJECTID Object);
    ERROR (*_GetField)(OBJECTPTR Object, FIELD Field, APTR Result);
@@ -1989,7 +1990,6 @@ struct CoreBase {
    const struct SystemState * (*_GetSystemState)(void);
    ULONG (*_StrHash)(CSTRING String, LONG CaseSensitive);
    ERROR (*_AddInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING Value);
-   LONG (*_UTF8Copy)(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2013,8 +2013,8 @@ template<class... Args> void LogF(CSTRING Header, CSTRING Message, Args... Tags)
 inline ERROR FindObject(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * ObjectID) { return CoreBase->_FindObject(Name,ClassID,Flags,ObjectID); }
 inline objMetaClass * FindClass(CLASSID ClassID) { return CoreBase->_FindClass(ClassID); }
 inline ERROR AnalysePath(CSTRING Path, LONG * Type) { return CoreBase->_AnalysePath(Path,Type); }
-inline ERROR FreeResource(const void * Address) { return CoreBase->_FreeResource(Address); }
-inline ERROR FreeResourceID(MEMORYID ID) { return CoreBase->_FreeResourceID(ID); }
+inline LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size) { return CoreBase->_UTF8Copy(Src,Dest,Chars,Size); }
+inline ERROR FreeResource(MEMORYID ID) { return CoreBase->_FreeResource(ID); }
 inline CLASSID GetClassID(OBJECTID Object) { return CoreBase->_GetClassID(Object); }
 inline OBJECTID GetOwnerID(OBJECTID Object) { return CoreBase->_GetOwnerID(Object); }
 inline ERROR GetField(OBJECTPTR Object, FIELD Field, APTR Result) { return CoreBase->_GetField(Object,Field,Result); }
@@ -2115,7 +2115,6 @@ inline ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB) { return CoreBase->_
 inline const struct SystemState * GetSystemState(void) { return CoreBase->_GetSystemState(); }
 inline ULONG StrHash(CSTRING String, LONG CaseSensitive) { return CoreBase->_StrHash(String,CaseSensitive); }
 inline ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
-inline LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size) { return CoreBase->_UTF8Copy(Src,Dest,Chars,Size); }
 #endif
 
 
@@ -2162,6 +2161,10 @@ template <class T> inline LONG StrCopy(T &&Source, STRING Dest, LONG Length = 0x
 }
 
 #ifndef PRV_CORE_DATA
+
+inline ERROR FreeResource(const void *Address) {
+   return FreeResource(((LONG *)Address)[-2]);
+}
 
 inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address) {
    return AllocMemory(Size, Flags, (APTR *)Address, NULL);
@@ -2701,7 +2704,7 @@ class Create {
             }
 
             if ((error = acInit(obj))) {
-               acFree(obj);
+               FreeResource(obj->UID);
                obj = NULL;
             }
          }
@@ -2715,7 +2718,7 @@ class Create {
                   return; // Detected a successfully created unscoped object
                }
             }
-            acFree(obj);
+            FreeResource(obj->UID);
             obj = NULL;
          }
       }
@@ -2768,7 +2771,6 @@ inline ERROR acDraw(OBJECTPTR Object) { return Action(AC_Draw,Object,NULL); }
 inline ERROR acEnable(OBJECTPTR Object) { return Action(AC_Enable,Object,NULL); }
 inline ERROR acFlush(OBJECTPTR Object) { return Action(AC_Flush,Object,NULL); }
 inline ERROR acFocus(OBJECTPTR Object) { return Action(AC_Focus,Object,NULL); }
-inline ERROR acFree(OBJECTPTR Object) { return Action(AC_Free,Object,NULL); }
 inline ERROR acHide(OBJECTPTR Object) { return Action(AC_Hide,Object,NULL); }
 inline ERROR acInit(OBJECTPTR Object) { return Action(AC_Init,Object,NULL); }
 inline ERROR acLock(OBJECTPTR Object) { return Action(AC_Lock,Object,NULL); }
@@ -3858,7 +3860,6 @@ inline ERROR acDraw(OBJECTID ObjectID) { return ActionMsg(AC_Draw, ObjectID, NUL
 inline ERROR acEnable(OBJECTID ObjectID) { return ActionMsg(AC_Enable, ObjectID, NULL); }
 inline ERROR acFlush(OBJECTID ObjectID) { return ActionMsg(AC_Flush, ObjectID, NULL); }
 inline ERROR acFocus(OBJECTID ObjectID) { return ActionMsg(AC_Focus, ObjectID, NULL); }
-inline ERROR acFree(OBJECTID ObjectID) { return ActionMsg(AC_Free, ObjectID, NULL); }
 inline ERROR acHide(OBJECTID ObjectID) { return ActionMsg(AC_Hide, ObjectID, NULL); }
 inline ERROR acInit(OBJECTID ObjectID) { return ActionMsg(AC_Init, ObjectID, NULL); }
 inline ERROR acLostFocus(OBJECTID ObjectID) { return ActionMsg(AC_LostFocus, ObjectID, NULL); }

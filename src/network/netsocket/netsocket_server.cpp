@@ -233,5 +233,5 @@ static void free_client_socket(extNetSocket *Socket, extClientSocket *ClientSock
       }
    }
 
-   acFree(ClientSocket);
+   FreeResource(ClientSocket);
 }

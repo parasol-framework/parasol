@@ -582,7 +582,7 @@ gui.window = function(Options)
 
    m.__index = function(t, k) return self[k] end
    m.__newindex = function(t, k, v) self[k] = v end
-   m.__gc = function() if self.surface then self.surface.acFree() end end
+   m.__gc = function() if self.surface then self.surface.free() end end
 
    return proxy
 end

@@ -562,7 +562,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    init_metaclass();
 
    ManagedActions[AC_Init] = (LONG (*)(OBJECTPTR, APTR))MGR_Init;
-   ManagedActions[AC_Free] = (LONG (*)(OBJECTPTR, APTR))MGR_Free;
    ManagedActions[AC_Signal] = (LONG (*)(OBJECTPTR, APTR))MGR_Signal;
 
    if (add_task_class() != ERR_Okay)    { CloseCore(); return NULL; }

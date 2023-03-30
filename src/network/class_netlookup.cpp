@@ -342,7 +342,7 @@ static ERROR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nlResolveAddres
             return ERR_Okay;
          }
          else {
-            acFree(th);
+            FreeResource(th);
             return log.warning(ERR_Failed);
          }
       }
@@ -406,7 +406,7 @@ static ERROR NETLOOKUP_ResolveName(extNetLookup *Self, struct nlResolveName *Arg
          return ERR_Okay;
       }
       else {
-         acFree(th);
+         FreeResource(th);
          error = ERR_Failed;
       }
    }

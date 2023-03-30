@@ -106,7 +106,7 @@ static ERROR JPEG_Activate(prvPicture *Self, APTR Void)
       }
    }
 
-   acFree(Self->prvFile);
+   FreeResource(Self->prvFile);
    Self->prvFile = NULL;
 
    return ERR_Okay;
@@ -310,7 +310,7 @@ static ERROR JPEG_SaveImage(prvPicture *Self, struct acSaveImage *Args)
 
    if (file) {
       if ((Args) and (Args->DestID)) ReleaseObject(file);
-      else acFree(file);
+      else FreeResource(file);
    }
 
    return ERR_Okay;
@@ -354,8 +354,8 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERROR CMDExpunge(void)
 {
-   if (modDisplay) { acFree(modDisplay); modDisplay = NULL; }
-   if (clJPEG)     { acFree(clJPEG);     clJPEG = NULL; }
+   if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
+   if (clJPEG)     { FreeResource(clJPEG);     clJPEG = NULL; }
    return ERR_Okay;
 }
 

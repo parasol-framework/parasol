@@ -208,7 +208,7 @@ exit:
 
    if (glProcedure) { FreeResource(glProcedure); glProcedure = NULL; }
    if (glTargetFile) { FreeResource(glTargetFile); glTargetFile = NULL; }
-   if (glScript) acFree(glScript);
+   if (glScript) FreeResource(glScript);
 
    close_parasol();
 
@@ -233,7 +233,7 @@ ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)
       }
       else error = ERR_CreateObject;
 
-      if (error) { acFree(glTarget); glTarget = NULL; }
+      if (error) { FreeResource(glTarget); glTarget = NULL; }
    }
    else error = ERR_NewObject;
 

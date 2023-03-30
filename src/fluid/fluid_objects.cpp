@@ -172,7 +172,7 @@ static int object_new(lua_State *Lua)
          }
 
          if ((field_error) or ((error = acInit(obj)) != ERR_Okay)) {
-            acFree(obj);
+            FreeResource(obj);
 
             if (field_error) {
                prv->CaughtError = field_error;
@@ -193,7 +193,7 @@ static int object_new(lua_State *Lua)
       object->Class    = FindClass(object->ClassID); //obj->Class;
 
       // In theory, objects created with obj.new() can be permanently locked because they belong to the
-      // script.  This prevents them from being deleted prior to garbage collection and use of acFree() will not
+      // script.  This prevents them from being deleted prior to garbage collection and use of FreeResource() will not
       // subvert Fluid's reference based locks.  If necessary, a permanent release of the lock can be achieved with
       // a call to detach() at any time by the client program.
 
@@ -324,7 +324,7 @@ static int object_newchild(lua_State *Lua)
          }
 
          if ((field_error) or ((error = acInit(obj)) != ERR_Okay)) {
-            acFree(obj);
+            FreeResource(obj);
 
             if (field_error) {
                prv->CaughtError = field_error;
@@ -509,12 +509,12 @@ static int object_class(lua_State *Lua)
    luaL_getmetatable(Lua, "Fluid.obj"); // +1 stack
    lua_setmetatable(Lua, -2); // -1 stack
 
-   def->prvObject = cl;
-   def->ObjectID  = cl->UID;
-   def->ClassID   = cl->SubID ? cl->SubID : cl->ClassID;
-   def->Class     = cl;
-   def->Detached  = TRUE;
-   def->Locked    = FALSE;
+   def->prvObject   = cl;
+   def->ObjectID    = cl->UID;
+   def->ClassID     = cl->SubID ? cl->SubID : cl->ClassID;
+   def->Class       = cl;
+   def->Detached    = TRUE;
+   def->Locked      = FALSE;
    def->AccessCount = 0;
    return 1;
 }
@@ -611,9 +611,7 @@ static int object_detach(lua_State *Lua)
    pf::Log log("obj.detach");
    log.traceBranch("Detached: %d", def->Detached);
 
-   if (!def->Detached) {
-      def->Detached = TRUE;
-   }
+   if (!def->Detached) def->Detached = TRUE;
 
    return 0;
 }
@@ -626,11 +624,8 @@ static int object_detach(lua_State *Lua)
 
 static int object_exists(lua_State *Lua)
 {
-   struct object *def;
-
-   if ((def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
-      OBJECTPTR obj;
-      if ((obj = access_object(def))) {
+   if (auto def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj")) {
+      if (access_object(def)) {
          release_object(def);
          lua_pushboolean(Lua, TRUE);
          return 1;
@@ -797,55 +792,50 @@ static int object_unsubscribe(lua_State *Lua)
 
 static int object_delaycall(lua_State *Lua)
 {
-   struct object *def;
-   if (!(def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
-      luaL_argerror(Lua, 1, "Expected object.");
-      return 0;
-   }
-
-   def->DelayCall = TRUE;
+   if (auto def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj")) def->DelayCall = TRUE;
+   else luaL_argerror(Lua, 1, "Expected object.");
    return 0;
 }
 
 //********************************************************************************************************************
 // Object garbage collector.
+//
+// NOTE: It is possible for the referenced object to have already been destroyed if it is owned by something outside of
+// Fluid's environment.  This is commonplace for UI objects.  In addition the object's class may have been removed if
+// the termination process is running during an expunge.
 
 static int object_destruct(lua_State *Lua)
 {
-   pf::Log log("obj.destruct");
-   struct object *def;
-
-   if ((def = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) {
-      // NOTE: It is possible for the referenced object to have already been destroyed if it is owned by something outside of
-      // Fluid's environment.  This is commonplace for UI objects.  In addition the object's class may have been removed if
-      // the termination process is running during an expunge.
+   if (auto def = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
+      pf::Log log("obj.destruct");
 
       //log.traceBranch("obj.destruct(#%d, Owner #%d, Class $%.8x, Detached: %d, Locks: %d)", def->ObjectID, GetOwnerID(def->ObjectID), def->ClassID, def->Detached, def->AccessCount);
 
-      while (def->AccessCount > 0) {
-         release_object(def);
-      }
+      while (def->AccessCount > 0) release_object(def);
 
       if (!def->Detached) {
-         // Object belongs to this Lua instance.  Note that it is possible that an object could destroy itself prior to
-         // the garbage collector picking it up.  Because of this, we cannot rely on the integrity of the object
-         // address and must free it on the ID.
+         // Note that if the object's owner has switched to something out of our context, we
+         // don't terminate it (an exception is applied for Recordset objects as these must be
+         // owned by a Database object).
 
-         if (def->ObjectID > 0) {
-            // Object is private.  Note that if the object's owner has switched to something out of our context, we
-            // don't terminate it (an exception is applied for Recordset objects as these must be
-            // owned by a Database object).
-
-            auto owner_id = GetOwnerID(def->ObjectID);
-            if ((def->ClassID IS ID_RECORDSET) or (owner_id IS Lua->Script->UID) or (owner_id IS Lua->Script->TargetID)) {
-               log.trace("Freeing Fluid-owned object #%d.", def->ObjectID);
-               acFree(def->ObjectID);
-            }
-         }
-         else {
-            // Object is public
+         auto owner_id = GetOwnerID(def->ObjectID);
+         if ((def->ClassID IS ID_RECORDSET) or (owner_id IS Lua->Script->UID) or (owner_id IS Lua->Script->TargetID)) {
+            log.trace("Freeing Fluid-owned object #%d.", def->ObjectID);
+            FreeResource(def->ObjectID); // We can't presume that the object pointer would be valid
          }
       }
+   }
+
+   return 0;
+}
+
+//********************************************************************************************************************
+
+static int object_free(lua_State *Lua)
+{
+   if (auto def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj")) {
+      FreeResource(def->ObjectID);
+      ClearMemory(def, sizeof(struct object)); // Mark the object as unusable
    }
 
    return 0;
@@ -856,8 +846,7 @@ static int object_destruct(lua_State *Lua)
 
 static int object_tostring(lua_State *Lua)
 {
-   struct object *def;
-   if ((def = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) {
+   if (auto def = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
       pf::Log log("obj.tostring");
       log.trace("#%d", def->ObjectID);
       lua_pushfstring(Lua, "#%d", def->ObjectID);
@@ -871,17 +860,13 @@ static int object_tostring(lua_State *Lua)
 
 static int object_index(lua_State *Lua)
 {
-   pf::Log log;
-   struct object *def;
-
-   if ((def = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) {
-      CSTRING code;
-      if ((code = luaL_checkstring(Lua, 2))) {
+   if (auto def = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
+      if (auto code = luaL_checkstring(Lua, 2)) {
+         pf::Log log;
          log.trace("obj.index(#%d, %s)", def->ObjectID, code);
 
          if ((code[0] IS 'a') and (code[1] IS 'c') and (code[2] >= 'A') and (code[2] <= 'Z')) {
-            auto it = glActionLookup.find(code + 2);
-            if (it != glActionLookup.end()) {
+            if (auto it = glActionLookup.find(code + 2); it != glActionLookup.end()) {
                lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
                lua_pushinteger(Lua, it->second); // Arg2: Action ID
                lua_pushcclosure(Lua, object_call, 2);
@@ -918,6 +903,7 @@ static int object_index(lua_State *Lua)
          }
          else {
             switch (StrHash(code, 0)) {
+               case HASH_FREE:        SET_CONTEXT(Lua, (APTR)object_free); return 1;
                case HASH_LOCK:        SET_CONTEXT(Lua, (APTR)object_lock); return 1;
                case HASH_CHILDREN:    SET_CONTEXT(Lua, (APTR)object_children); return 1;
                case HASH_DETACH:      SET_CONTEXT(Lua, (APTR)object_detach); return 1;
@@ -973,8 +959,7 @@ static int object_next_pair(lua_State *Lua)
 
 static int object_pairs(lua_State *Lua)
 {
-   auto def = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj");
-   if (def) {
+   if (auto def = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
       FieldArray *fields;
       LONG total;
       if (!GetFieldArray(def->Class, FID_Fields, &fields, &total)) {

@@ -294,7 +294,7 @@ LONG feedback_delete(struct FileFeedback *Feedback)
          else if (response[0] IS '2') {
             // If the window was closed then continue deleting files, don't bother the user with further messages.
 
-            acFree(Self->ProgressDialog);
+            Self->ProgressDialog.free()
             Self->ProgressDialog = NULL;
             Self->TargetID = -1;
             return FFR_OKAY;

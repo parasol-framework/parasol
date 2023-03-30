@@ -4977,7 +4977,7 @@ static ERROR load_doc(extDocument *Self, CSTRING Path, BYTE Unload, BYTE UnloadF
          fl::Flags(XMF_ALL_CONTENT|XMF_PARSE_HTML|XMF_STRIP_HEADERS|XMF_WELL_FORMED),
          fl::Path(path), fl::ReadOnly(TRUE))) {
 
-         if (Self->XML) acFree(Self->XML);
+         if (Self->XML) FreeResource(Self->XML);
          Self->XML = xml;
 
          AdjustLogLevel(3);
@@ -5658,7 +5658,7 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
 
    if (Self->Templates) {
       if (Self->TemplatesModified != Self->Templates->Modified) {
-         acFree(Self->Templates);
+         FreeResource(Self->Templates);
          Self->Templates = NULL;
       }
    }
@@ -5687,14 +5687,14 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
                resource = resource->Next;
                continue;
             }
-            else if (Flags & ULD_TERMINATE) acFree(resource->ObjectID);
-            else QueueAction(AC_Free, resource->ObjectID);
+            else if (Flags & ULD_TERMINATE) FreeResource(resource->ObjectID);
+            else SendMessage(0, MSGID_FREE, 0, &resource->ObjectID, sizeof(OBJECTID));
          }
          else if (resource->Type IS RT_OBJECT_UNLOAD_DELAY) {
-            if (Flags & ULD_TERMINATE) acFree(resource->ObjectID);
-            else QueueAction(AC_Free, resource->ObjectID);
+            if (Flags & ULD_TERMINATE) FreeResource(resource->ObjectID);
+            else SendMessage(0, MSGID_FREE, 0, &resource->ObjectID, sizeof(OBJECTID));
          }
-         else acFree(resource->ObjectID);
+         else FreeResource(resource->ObjectID);
 
          if (resource IS Self->Resources) Self->Resources = resource->Next;
          if (resource->Prev) resource->Prev->Next = resource->Next;
@@ -5906,7 +5906,7 @@ static LONG create_font(CSTRING Face, CSTRING Style, LONG Point)
       for (i=0; i < glTotalFonts; i++) {
          if ((!StrMatch(font->Face, glFonts[i].Font->Face)) and (!StrMatch(font->Style, glFonts[i].Font->Style)) and (font->Point IS glFonts[i].Point)) {
             log.trace("Match %d = %s(%s,%d)", i, Face, Style, Point);
-            acFree(font);
+            FreeResource(font);
             AdjustLogLevel(-2);
             return i;
          }

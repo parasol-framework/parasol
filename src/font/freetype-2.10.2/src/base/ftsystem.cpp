@@ -179,7 +179,7 @@ extern struct CoreBase *CoreBase;
   FT_CALLBACK_DEF( void )
   ft_ansi_stream_close( FT_Stream  stream )
   {
-    Action(AC_Free, (OBJECTPTR)STREAM_FILE(stream), NULL);
+    FreeResource((OBJECTPTR)STREAM_FILE(stream));
 
     stream->descriptor.pointer = NULL;
     stream->size               = 0;

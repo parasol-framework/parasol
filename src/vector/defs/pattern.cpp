@@ -62,8 +62,8 @@ static ERROR PATTERN_Free(extVectorPattern *Self, APTR Void)
    }
    Self->Matrices = NULL;
 
-   if (Self->Bitmap) { acFree(Self->Bitmap); Self->Bitmap = NULL; }
-   if (Self->Scene)  { acFree(Self->Scene); Self->Scene = NULL; }
+   if (Self->Bitmap) { FreeResource(Self->Bitmap); Self->Bitmap = NULL; }
+   if (Self->Scene)  { FreeResource(Self->Scene); Self->Scene = NULL; }
 
    return ERR_Okay;
 }

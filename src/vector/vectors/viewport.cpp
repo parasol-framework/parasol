@@ -98,7 +98,7 @@ static ERROR VECTORVIEWPORT_Clear(extVectorViewport *Self, APTR Void)
 {
    pf::vector<ChildEntry> list;
    if (!ListChildren(Self->UID, &list)) {
-      for (unsigned i=0; i < list.size(); i++) acFree(list[i].ObjectID);
+      for (unsigned i=0; i < list.size(); i++) FreeResource(list[i].ObjectID);
    }
 
    return ERR_Okay;
@@ -108,7 +108,7 @@ static ERROR VECTORVIEWPORT_Clear(extVectorViewport *Self, APTR Void)
 
 static ERROR VECTORVIEWPORT_Free(extVectorViewport *Self, APTR Void)
 {
-   if (Self->vpClipMask) { acFree(Self->vpClipMask); Self->vpClipMask = NULL; }
+   if (Self->vpClipMask) { FreeResource(Self->vpClipMask); Self->vpClipMask = NULL; }
 
    if ((Self->Scene) and (!((extVectorScene *)Self->Scene)->ResizeSubscriptions.empty())) {
       if (((extVectorScene *)Self->Scene)->ResizeSubscriptions.contains(Self)) {

@@ -188,7 +188,7 @@ static ERROR ARCHIVE_Free(extFile *Self, APTR Void)
    auto prv = (prvFileArchive *)Self->ChildPrivate;
 
    if (prv) {
-      if (prv->FileStream) { acFree(prv->FileStream); prv->FileStream = NULL; }
+      if (prv->FileStream) { FreeResource(prv->FileStream); prv->FileStream = NULL; }
       if (prv->Inflating)  { inflateEnd(&prv->Stream); prv->Inflating = false; }
       prv->~prvFileArchive();
    }

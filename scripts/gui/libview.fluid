@@ -170,10 +170,10 @@ gui.initView = function(Options, BuildUI, NewItems)
                Item._vectors.viewport = nil
 
                for k, v in pairs(Item._vectors) do
-                  v.acFree()
+                  v.free()
                end
 
-               if vp then vp.acFree() end
+               if vp then vp.free() end
 
                Item._vectors = { }
             end

@@ -226,10 +226,10 @@ static ERROR snd_init_audio(extSound *Self)
          if (!(error = acActivate(audio))) {
             Self->AudioID = audio->UID;
          }
-         else acFree(audio);
+         else FreeResource(audio);
       }
       else {
-         acFree(audio);
+         FreeResource(audio);
          error = ERR_Init;
       }
    }
@@ -624,7 +624,7 @@ static ERROR SOUND_Free(extSound *Self, APTR Void)
    }
 
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
-   if (Self->File) { acFree(Self->File); Self->File = NULL; }
+   if (Self->File) { FreeResource(Self->File); Self->File = NULL; }
 
    Self->~extSound();
    return ERR_Okay;
@@ -711,7 +711,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
       if ((StrCompare((CSTRING)Self->Header, "RIFF", 4, STR_CASE) != ERR_Okay) or
           (StrCompare((CSTRING)Self->Header + 8, "WAVE", 4, STR_CASE) != ERR_Okay)) {
-         acFree(Self->File);
+         FreeResource(Self->File);
          Self->File = NULL;
          return ERR_NoSupport;
       }
@@ -1783,5 +1783,5 @@ ERROR add_sound_class(void)
 
 void free_sound_class(void)
 {
-   if (clSound) { acFree(clSound); clSound = 0; }
+   if (clSound) { FreeResource(clSound); clSound = 0; }
 }

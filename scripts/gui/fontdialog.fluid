@@ -128,7 +128,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
       refreshGuidelines()
 
       if self.exampleText then
-         self.exampleText.acFree()
+         self.exampleText.free()
       end
 
       self.exampleText = self.examplePage.new('VectorText', {

@@ -339,6 +339,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
      BREAK            = 100,
      CORE_END         = 100,    -- End marker for Core generated messages
      ACTION           = 99,     -- Start from 99 descending (lower risk of accidental ID matches)
+     FREE             = 98,
      DEBUG            = 95,
      EVENT            = 94,
      VALIDATE_PROCESS = 93,
@@ -851,7 +852,7 @@ struct FieldValue {
 
   struct("ResourceManager", { comment="This structure must be placed at the start of any memory block allocated with the MEM_MANAGED flag.", restrict="c" }, [[
      cstr Name            # The name of the resource.
-     fptr(void ptr) Free  # A function that will remove the resource's content when terminated.
+     fptr(error ptr) Free  # A function that will remove the resource's content when terminated.
   ]])
 
   struct("pfBase64Decode", { type="base64decode", comment="Private structure for the Base64Decode() function." }, [[
@@ -1155,8 +1156,8 @@ struct ScriptArg { // For use with scExec
     "FindObject",
     "FindClass",
     "AnalysePath",
+    "UTF8Copy",
     "FreeResource",
-    "FreeResourceID",
     "GetClassID",
     "GetOwnerID",
     "GetField",
@@ -1256,8 +1257,7 @@ struct ScriptArg { // For use with scExec
     "CompareFilePaths",
     "GetSystemState",
     "StrHash",
-    "AddInfoTag",
-    "UTF8Copy")
+    "AddInfoTag")
 
   c_insert([[
 
@@ -1304,6 +1304,10 @@ template <class T> inline LONG StrCopy(T &&Source, STRING Dest, LONG Length = 0x
 }
 
 #ifndef PRV_CORE_DATA
+
+inline ERROR FreeResource(const void *Address) {
+   return FreeResource(((LONG *)Address)[-2]);
+}
 
 inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address) {
    return AllocMemory(Size, Flags, (APTR *)Address, NULL);
@@ -1843,7 +1847,7 @@ class Create {
             }
 
             if ((error = acInit(obj))) {
-               acFree(obj);
+               FreeResource(obj->UID);
                obj = NULL;
             }
          }
@@ -1857,7 +1861,7 @@ class Create {
                   return; // Detected a successfully created unscoped object
                }
             }
-            acFree(obj);
+            FreeResource(obj->UID);
             obj = NULL;
          }
       }
@@ -1910,7 +1914,6 @@ inline ERROR acDraw(OBJECTPTR Object) { return Action(AC_Draw,Object,NULL); }
 inline ERROR acEnable(OBJECTPTR Object) { return Action(AC_Enable,Object,NULL); }
 inline ERROR acFlush(OBJECTPTR Object) { return Action(AC_Flush,Object,NULL); }
 inline ERROR acFocus(OBJECTPTR Object) { return Action(AC_Focus,Object,NULL); }
-inline ERROR acFree(OBJECTPTR Object) { return Action(AC_Free,Object,NULL); }
 inline ERROR acHide(OBJECTPTR Object) { return Action(AC_Hide,Object,NULL); }
 inline ERROR acInit(OBJECTPTR Object) { return Action(AC_Init,Object,NULL); }
 inline ERROR acLock(OBJECTPTR Object) { return Action(AC_Lock,Object,NULL); }
@@ -2456,7 +2459,6 @@ inline ERROR acDraw(OBJECTID ObjectID) { return ActionMsg(AC_Draw, ObjectID, NUL
 inline ERROR acEnable(OBJECTID ObjectID) { return ActionMsg(AC_Enable, ObjectID, NULL); }
 inline ERROR acFlush(OBJECTID ObjectID) { return ActionMsg(AC_Flush, ObjectID, NULL); }
 inline ERROR acFocus(OBJECTID ObjectID) { return ActionMsg(AC_Focus, ObjectID, NULL); }
-inline ERROR acFree(OBJECTID ObjectID) { return ActionMsg(AC_Free, ObjectID, NULL); }
 inline ERROR acHide(OBJECTID ObjectID) { return ActionMsg(AC_Hide, ObjectID, NULL); }
 inline ERROR acInit(OBJECTID ObjectID) { return ActionMsg(AC_Init, ObjectID, NULL); }
 inline ERROR acLostFocus(OBJECTID ObjectID) { return ActionMsg(AC_LostFocus, ObjectID, NULL); }

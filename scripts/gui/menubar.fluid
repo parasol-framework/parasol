@@ -130,7 +130,7 @@ local function highlightItem(self, Item)
 end
 
 local function arrangeItems(self)
-   if self._vg then self._vg.acFree() end
+   if self._vg then self._vg.free() end
 
    self._vg = self.viewport.new('VectorGroup', { name='ItemGroup' })
 

@@ -164,7 +164,7 @@ static void xtag_pathtransition(extSVG *Self, objXML *XML, const XMLTag &Tag)
       }
       else log.warning("No id attribute specified in <pathTransition> at line %d.", Tag.LineNo);
 
-      acFree(trans);
+      FreeResource(trans);
    }
 }
 
@@ -206,11 +206,11 @@ static void xtag_clippath(extSVG *Self, objXML *XML, const XMLTag &Tag)
             process_children(Self, XML, state, Tag, clip);
             scAddDef(Self->Scene, id.c_str(), clip);
          }
-         else acFree(clip);
+         else FreeResource(clip);
       }
       else {
          log.warning("No id attribute specified in <clipPath> at line %d.", Tag.LineNo);
-         acFree(clip);
+         FreeResource(clip);
       }
    }
 }
@@ -254,7 +254,7 @@ static ERROR parse_fe_blur(extSVG *Self, objVectorFilter *Filter, const XMLTag &
 
    if (!fx->init()) return ERR_Okay;
    else {
-      acFree(fx);
+      FreeResource(fx);
       return ERR_Init;
    }
 }
@@ -283,7 +283,7 @@ static ERROR parse_fe_offset(extSVG *Self, objVectorFilter *Filter, const XMLTag
 
    if (!fx->init()) return ERR_Okay;
    else {
-      acFree(fx);
+      FreeResource(fx);
       return ERR_Init;
    }
 }
@@ -344,14 +344,14 @@ static ERROR parse_fe_merge(extSVG *Self, objVectorFilter *Filter, const XMLTag 
 
    if (!list.empty()) {
       if (SetArray(fx, FID_SourceList, list)) {
-         acFree(fx);
+         FreeResource(fx);
          return log.warning(ERR_SetField);
       }
    }
 
    if (!fx->init()) return ERR_Okay;
    else {
-      acFree(fx);
+      FreeResource(fx);
       return log.warning(ERR_Init);
    }
 }
@@ -409,7 +409,7 @@ static ERROR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, const
 
                default:
                   log.warning("Unrecognised colour matrix type '%s'", val.c_str());
-                  acFree(fx);
+                  FreeResource(fx);
                   return ERR_InvalidValue;
             }
 
@@ -440,7 +440,7 @@ static ERROR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, const
 
    if (!fx->init()) return ERR_Okay;
    else {
-      acFree(fx);
+      FreeResource(fx);
       return ERR_Init;
    }
 }
@@ -531,7 +531,7 @@ static ERROR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, con
 
    if (!fx->init()) return ERR_Okay;
    else {
-      acFree(fx);
+      FreeResource(fx);
       return ERR_Init;
    }
 }
@@ -645,14 +645,14 @@ static ERROR parse_fe_lighting(extSVG *Self, objVectorFilter *Filter, const XMLT
       }
 
       if (error) {
-         acFree(fx);
+         FreeResource(fx);
          return error;
       }
    }
 
    if (!fx->init()) return ERR_Okay;
    else {
-      acFree(fx);
+      FreeResource(fx);
       return ERR_Init;
    }
 }
@@ -706,7 +706,7 @@ static ERROR parse_fe_displacement_map(extSVG *Self, objVectorFilter *Filter, co
 
    if (!fx->init()) return ERR_Okay;
    else {
-      acFree(fx);
+      FreeResource(fx);
       return ERR_Init;
    }
 }
@@ -788,7 +788,7 @@ static ERROR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, cons
 
    if (!fx->init()) return ERR_Okay;
    else {
-      acFree(fx);
+      FreeResource(fx);
       return ERR_Init;
    }
 }
@@ -839,7 +839,7 @@ static ERROR parse_fe_composite(extSVG *Self, objVectorFilter *Filter, const XML
                case SVF_OVERLAY:    fx->set(FID_Operator, OP_OVERLAY); break;
                default:
                   log.warning("Composite operator '%s' not recognised.", val.c_str());
-                  acFree(fx);
+                  FreeResource(fx);
                   return ERR_InvalidValue;
             }
             break;
@@ -891,7 +891,7 @@ static ERROR parse_fe_composite(extSVG *Self, objVectorFilter *Filter, const XML
 
    if (!fx->init()) return ERR_Okay;
    else {
-      acFree(fx);
+      FreeResource(fx);
       return ERR_Init;
    }
 }
@@ -946,7 +946,7 @@ static ERROR parse_fe_flood(extSVG *Self, objVectorFilter *Filter, const XMLTag 
 
    if (!error) return fx->init();
    else {
-      acFree(fx);
+      FreeResource(fx);
       return log.warning(error);
    }
 }
@@ -1006,7 +1006,7 @@ static ERROR parse_fe_turbulence(extSVG *Self, objVectorFilter *Filter, const XM
 
    if (!fx->init()) return ERR_Okay;
    else {
-      acFree(fx);
+      FreeResource(fx);
       return ERR_Init;
    }
 }
@@ -1052,7 +1052,7 @@ static ERROR parse_fe_morphology(extSVG *Self, objVectorFilter *Filter, const XM
 
    if (!fx->init()) return ERR_Okay;
    else {
-      acFree(fx);
+      FreeResource(fx);
       return ERR_Init;
    }
 }
@@ -1109,7 +1109,7 @@ static ERROR parse_fe_source(extSVG *Self, objXML *XML, svgState &State, objVect
    }
    else error = ERR_UndefinedField;
 
-   acFree(fx);
+   FreeResource(fx);
    if (required) return log.warning(error);
    return ERR_Okay; // Default behaviour is not to force a failure despite the error.
 }
@@ -1177,12 +1177,12 @@ static ERROR parse_fe_image(extSVG *Self, objXML *XML, svgState &State, objVecto
       // Check for security risks in the path.
 
       if ((path[0] IS '/') or ((path[0] IS '.') and (path[1] IS '.') and (path[2] IS '/'))) {
-         acFree(fx);
+         FreeResource(fx);
          return log.warning(ERR_InvalidValue);
       }
       else {
          if (path.find(':') != std::string::npos) {
-            acFree(fx);
+            FreeResource(fx);
             return log.warning(ERR_InvalidValue);
          }
 
@@ -1204,7 +1204,7 @@ static ERROR parse_fe_image(extSVG *Self, objXML *XML, svgState &State, objVecto
    }
 
    if (auto error = fx->init()) {
-      acFree(fx);
+      FreeResource(fx);
       if (image_required) return error;
       else return ERR_Okay;
    }
@@ -1321,7 +1321,7 @@ static void xtag_filter(extSVG *Self, objXML *XML, svgState &State, const XMLTag
 
          scAddDef(Self->Scene, id.c_str(), filter);
       }
-      else acFree(filter);
+      else FreeResource(filter);
    }
 }
 
@@ -1402,7 +1402,7 @@ static void process_pattern(extSVG *Self, objXML *XML, const XMLTag &Tag)
       }
 
       if (id.empty()) {
-         acFree(pattern);
+         FreeResource(pattern);
          log.trace("Failed to create a valid definition.");
       }
 
@@ -1418,7 +1418,7 @@ static void process_pattern(extSVG *Self, objXML *XML, const XMLTag &Tag)
          scAddDef(Self->Scene, id.c_str(), pattern);
       }
       else {
-         acFree(pattern);
+         FreeResource(pattern);
          log.trace("Pattern initialisation failed.");
       }
    }
@@ -1477,7 +1477,7 @@ static ERROR process_shape(extSVG *Self, CLASSID VectorID, objXML *XML, svgState
          return error;
       }
       else {
-         acFree(vector);
+         FreeResource(vector);
          return ERR_Init;
       }
    }
@@ -1627,7 +1627,7 @@ static ERROR load_pic(extSVG *Self, std::string Path, objPicture **Picture)
 
    if (file) {
       flDelete(file, 0);
-      acFree(file);
+      FreeResource(file);
    }
 
    if (error) log.warning(error);
@@ -1682,17 +1682,17 @@ static void def_image(extSVG *Self, const XMLTag &Tag)
                scAddDef(Self->Scene, id.c_str(), image);
             }
             else {
-               acFree(image);
+               FreeResource(image);
                log.trace("Picture initialisation failed.");
             }
          }
          else {
-            acFree(image);
+            FreeResource(image);
             log.trace("Unable to load a picture for <image/> '%s' at line %d", id.c_str(), Tag.LineNo);
          }
       }
       else {
-         acFree(image);
+         FreeResource(image);
          log.trace("No id specified in <image/> at line %d", Tag.LineNo);
       }
    }
@@ -2085,7 +2085,7 @@ static void xtag_use(extSVG *Self, objXML *XML, svgState &State, const XMLTag &T
          }
       }
 
-      if (vector->init() != ERR_Okay) { acFree(vector); return; }
+      if (vector->init() != ERR_Okay) { FreeResource(vector); return; }
 
       // Add all child elements in <symbol> to the viewport.
 
@@ -2099,7 +2099,7 @@ static void xtag_use(extSVG *Self, objXML *XML, svgState &State, const XMLTag &T
          apply_state(state, vector);
          process_attrib(Self, XML, Tag, vector); // Apply 'use' attributes to the group.
 
-         if (vector->init() != ERR_Okay) { acFree(vector); return; }
+         if (vector->init() != ERR_Okay) { FreeResource(vector); return; }
 
          objVector *sibling = NULL;
          xtag_default(Self, XML, state, *tagref, vector, &sibling);
@@ -2133,7 +2133,7 @@ static void xtag_group(extSVG *Self, objXML *XML, svgState &State, const XMLTag 
    }
 
    if (!group->init()) *Vector = group;
-   else acFree(group);
+   else FreeResource(group);
 }
 
 /*********************************************************************************************************************
@@ -2260,7 +2260,7 @@ static void xtag_svg(extSVG *Self, objXML *XML, svgState &State, const XMLTag &T
    }
 
    if (!viewport->init()) *Vector = viewport;
-   else acFree(viewport);
+   else FreeResource(viewport);
 }
 
 //********************************************************************************************************************
