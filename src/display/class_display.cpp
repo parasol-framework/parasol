@@ -104,57 +104,28 @@ static void printConfig(EGLDisplay display, EGLConfig config) {
 //********************************************************************************************************************
 // Build a list of valid resolutions.
 
-static resolution * get_resolutions(extDisplay *Self)
+static void get_resolutions(extDisplay *Self)
 {
 #ifdef __xwindows__
-
-   pf::Log log(__FUNCTION__);
-
    if (XRandRBase) {
-      static resolution resolutions[30];
       struct xrMode *mode;
 
-      if (Self->TotalResolutions) return resolutions;
+      if (!Self->Resolutions.empty()) return;
 
-      Self->TotalResolutions = xrGetDisplayTotal();
-
-      if (Self->TotalResolutions > ARRAYSIZE(resolutions) - 1) {
-         Self->TotalResolutions = ARRAYSIZE(resolutions) - 1;
-      }
-
-      LONG i;
-      for (i=0; i < Self->TotalResolutions; i++) {
+      auto total = xrGetDisplayTotal();
+      for (LONG i=0; i < total; i++) {
          if ((mode = (xrMode *)xrGetDisplayMode(i))) {
-            resolutions[i].width  = mode->Width;
-            resolutions[i].height = mode->Height;
-            resolutions[i].bpp    = mode->Depth;
+            Self->Resolutions.emplace_back(mode->Width, mode->Height, mode->Depth);
          }
       }
-      resolutions[i].width  = 0;
-      resolutions[i].height = 0;
-      resolutions[i].bpp    = 0;
-
-      return resolutions;
    }
    else {
-      static resolution resolutions[2] = {
-         { 1024, 768, 32 },
-         { 0, 0, 0 }
-      };
-
+      pf::Log log(__FUNCTION__);
       log.msg("RandR extension not available.");
-
-      resolutions[0].width  = glRootWindow.width;
-      resolutions[0].height = glRootWindow.height;
-      resolutions[0].bpp    = DefaultDepth(XDisplay, DefaultScreen(XDisplay));
-
-      Self->TotalResolutions = 1;
-      return resolutions;
+      Self->Resolutions.emplace_back(glRootWindow.width, glRootWindow.height, DefaultDepth(XDisplay, DefaultScreen(XDisplay)));
    }
-
 #else
-
-   static resolution resolutions[] = {
+   Self->Resolutions = {
       { 640, 480, 32 },
       { 800, 600, 32 },
       { 1024, 768, 32 },
@@ -162,10 +133,6 @@ static resolution * get_resolutions(extDisplay *Self)
       { 1280, 960, 32 },
       { 0, 0, 0 }
    };
-
-   Self->TotalResolutions = ARRAYSIZE(resolutions);
-   return resolutions;
-
 #endif
 }
 
@@ -521,22 +488,9 @@ static ERROR DISPLAY_Free(extDisplay *Self, APTR Void)
 
    // Free the display's video bitmap
 
-   if (Self->BitmapID) {
-      if (Self->Bitmap) {
-         FreeResource(Self->Bitmap);
-         if (Self->BitmapID < 0) ReleaseObject(Self->Bitmap);
-         Self->Bitmap = NULL;
-      }
-      else FreeResource(Self->BitmapID);
-      Self->BitmapID = 0;
-   }
+   if (Self->Bitmap) { FreeResource(Self->Bitmap); Self->Bitmap = NULL; }
 
-   if (Self->ResolutionsMID) {
-      if (Self->Resolutions) { ReleaseMemory(Self->Resolutions); Self->Resolutions = NULL; }
-      FreeResource(Self->ResolutionsMID);
-      Self->ResolutionsMID = 0;
-   }
-
+   Self->~extDisplay();
    return ERR_Okay;
 }
 
@@ -558,8 +512,6 @@ static ERROR DISPLAY_GetVar(extDisplay *Self, struct acGetVar *Args)
    buffer[0] = 0;
 
    if (!StrCompare("resolution(", Args->Field, 11, 0)) {
-      resolution *list;
-
       // Field is in the format:  Resolution(Index, Format) Where 'Format' contains % symbols to indicate variable references.
 
       CSTRING str = Args->Field + 11;
@@ -568,8 +520,10 @@ static ERROR DISPLAY_GetVar(extDisplay *Self, struct acGetVar *Args)
       if (*str IS ',') str++;
       while ((*str) and (*str <= 0x20)) str++;
 
-      if ((list = get_resolutions(Self))) {
-         if (index >= Self->TotalResolutions) return ERR_OutOfRange;
+      if (Self->Resolutions.empty()) get_resolutions(Self);
+
+      if (!Self->Resolutions.empty()) {
+         if (index >= LONG(Self->Resolutions.size())) return ERR_OutOfRange;
 
          LONG i = 0;
          while ((*str) and (*str != ')') and (i < Args->Size-1)) {
@@ -586,10 +540,10 @@ static ERROR DISPLAY_GetVar(extDisplay *Self, struct acGetVar *Args)
             str++;
 
             switch (*str) {
-               case 'w': i += IntToStr(list[index].width, buffer+i, Args->Size-i); break;
-               case 'h': i += IntToStr(list[index].height, buffer+i, Args->Size-i); break;
-               case 'd': i += IntToStr(list[index].bpp, buffer+i, Args->Size-i); break;
-               case 'c': if (list[index].bpp <= 24) colours = 1<<list[index].bpp;
+               case 'w': i += IntToStr(Self->Resolutions[index].width, buffer+i, Args->Size-i); break;
+               case 'h': i += IntToStr(Self->Resolutions[index].height, buffer+i, Args->Size-i); break;
+               case 'd': i += IntToStr(Self->Resolutions[index].bpp, buffer+i, Args->Size-i); break;
+               case 'c': if (Self->Resolutions[index].bpp <= 24) colours = 1<<Self->Resolutions[index].bpp;
                          else colours = 1<<24;
                          i += IntToStr(colours, buffer+i, Args->Size-i);
                          break;
@@ -1178,8 +1132,9 @@ static ERROR DISPLAY_MoveToPoint(extDisplay *Self, struct acMoveToPoint *Args)
 
 static ERROR DISPLAY_NewObject(extDisplay *Self, APTR Void)
 {
+   new (Self) extDisplay;
+
    if (NewObject(ID_BITMAP, NF::INTEGRAL, &Self->Bitmap)) return ERR_NewObject;
-   Self->BitmapID = Self->Bitmap->UID;
 
    OBJECTID id;
    if (FindObject("SystemVideo", 0, 0, &id) != ERR_Okay) SetName(Self->Bitmap, "SystemVideo");
@@ -1816,12 +1771,7 @@ static ERROR DISPLAY_SetMonitor(extDisplay *Self, struct gfxSetMonitor *Args)
 
    // Mark the resolution list for regeneration
 
-   if (Self->ResolutionsMID) {
-      if (Self->Resolutions) { ReleaseMemory(Self->Resolutions); Self->Resolutions = NULL; }
-      FreeResourceID(Self->ResolutionsMID);
-      Self->ResolutionsMID = 0;
-      Self->TotalResolutions = 0;
-   }
+   Self->Resolutions.clear();
 
    // Regenerate the screen.xml file
 
@@ -2894,15 +2844,9 @@ TotalResolutions: The total number of resolutions supported by the display.
 
 static ERROR GET_TotalResolutions(extDisplay *Self, LONG *Value)
 {
-   if (Self->TotalResolutions) {
-      *Value = Self->TotalResolutions;
-      return ERR_Okay;
-   }
-   else if (get_resolutions(Self)) {
-      *Value = Self->TotalResolutions;
-      return ERR_Okay;
-   }
-   else return ERR_Failed;
+   if (Self->Resolutions.empty()) get_resolutions(Self);
+   *Value = Self->Resolutions.size();
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************

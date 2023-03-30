@@ -381,11 +381,8 @@ class extDisplay : public objDisplay {
    using create = pf::Create<extDisplay>;
 
    DOUBLE Gamma[3];          // Red, green, blue gamma radioactivity indicator
-   struct resolution *Resolutions;
+   std::vector<struct resolution> Resolutions;
    FUNCTION  ResizeFeedback;
-   MEMORYID  ResolutionsMID;
-   WORD      TotalResolutions;
-   OBJECTID  BitmapID;
    LONG      BmpXOffset;     // X offset for scrolling
    LONG      BmpYOffset;     // Y offset for scrolling
    #ifdef __xwindows__

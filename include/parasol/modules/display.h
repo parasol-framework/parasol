@@ -843,7 +843,7 @@ class objPointer : public BaseClass {
    OBJECTID RestrictID;    // Refers to a surface when the pointer is restricted.
    LONG     HostX;         // Indicates the current position of the host cursor on Windows or X11
    LONG     HostY;         // Indicates the current position of the host cursor on Windows or X11
-   OBJECTID BitmapID;      // Refers to bitmap in which custom cursor images can be drawn.
+   objBitmap * Bitmap;     // Refers to bitmap in which custom cursor images can be drawn.
    OBJECTID DragSourceID;  // The object managing the current drag operation, as defined by StartCursorDrag().
    LONG     DragItem;      // The currently dragged item, as defined by StartCursorDrag().
    OBJECTID OverObjectID;  // Readable field that gives the ID of the object under the pointer.

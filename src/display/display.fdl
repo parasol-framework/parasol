@@ -501,7 +501,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     oid    Restrict        # Surface object that the pointer is restricted to
     int    HostX           # Indicates the current position of the host cursor on Windows or X11
     int    HostY           # Indicates the current position of the host cursor on Windows or X11
-    oid    Bitmap          # Bitmap to use for custom cursor images
+    obj(Bitmap) Bitmap     # Bitmap to use for custom cursor images
     oid    DragSource      # If drag & drop is active, refers to the object managing the draggable item
     int    DragItem        # If drag & drop is active, refers to the custom ID of the item being dragged
     oid    OverObject      # Object positioned under the pointer

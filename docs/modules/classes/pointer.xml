@@ -47,7 +47,7 @@
       <name>Bitmap</name>
       <comment>Refers to bitmap in which custom cursor images can be drawn.</comment>
       <access read="R">Read</access>
-      <type>OBJECTID</type>
+      <type class="Bitmap">*Bitmap</type>
       <description>
 <p>The pointer graphic can be changed to a custom image if the <code>PTR_CUSTOM</code> <field>CursorID</field> type is defined and an image is drawn to the <class name="Bitmap">Bitmap</class> object referenced by this field.</p>
       </description>

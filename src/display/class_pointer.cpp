@@ -502,7 +502,7 @@ static ERROR PTR_Free(extPointer *Self, APTR Void)
 {
    acHide(Self);
 
-   if (Self->BitmapID) { FreeResource(Self->BitmapID); Self->BitmapID = 0; }
+   if (Self->Bitmap) { FreeResource(Self->Bitmap); Self->Bitmap = NULL; }
 
 /*
    OBJECTPTR object;
@@ -566,20 +566,15 @@ static ERROR PTR_Init(extPointer *Self, APTR Void)
 
    // Allocate a custom cursor bitmap
 
-   if (auto bitmap = objBitmap::create::integral(
+   if ((Self->Bitmap = objBitmap::create::integral(
          fl::Name("CustomCursor"),
          fl::Width(MAX_CURSOR_WIDTH),
          fl::Height(MAX_CURSOR_HEIGHT),
          fl::BitsPerPixel(32),
          fl::BytesPerPixel(4),
-         fl::Flags(BMF_ALPHA_CHANNEL))) {
-
-      Self->BitmapID = bitmap->UID;
+         fl::Flags(BMF_ALPHA_CHANNEL)))) {
    }
-   else {
-      Self->BitmapID = 0;
-      log.warning(ERR_NewObject);
-   }
+   else log.warning(ERR_NewObject);
 
    if (Self->MaxSpeed < 1) Self->MaxSpeed = 10;
    if (Self->Speed < 1)    Self->Speed    = 150;
@@ -1313,7 +1308,7 @@ static const FieldArray clPointerFields[] = {
    { "Restrict",     FDF_OBJECTID|FDF_R, NULL, NULL, ID_SURFACE },
    { "HostX",        FDF_LONG|FDF_R|FDF_SYSTEM },
    { "HostY",        FDF_LONG|FDF_R|FDF_SYSTEM },
-   { "Bitmap",       FDF_OBJECTID|FDF_R, NULL, NULL, ID_BITMAP },
+   { "Bitmap",       FDF_OBJECT|FDF_R, NULL, NULL, ID_BITMAP },
    { "DragSource",   FDF_OBJECTID|FDF_R },
    { "DragItem",     FDF_LONG|FDF_R },
    { "OverObject",   FDF_OBJECTID|FDF_R },
