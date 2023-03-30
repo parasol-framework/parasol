@@ -18,26 +18,20 @@ This version of the Parasol launcher is intended for use from the command-line o
 
 #include "common.h"
 
-CSTRING ProgName = "Parasol";
-
 extern struct CoreBase *CoreBase;
 
+static std::string glProcedure;
 static objSurface *glTarget = NULL;
 static CSTRING *glArgs = NULL;
 static STRING glAllow = NULL;
+static STRING glTargetFile = NULL;
+static OBJECTPTR glTask = NULL;
+static objScript *glScript = NULL;
 static bool glSandbox = false;
 static bool glRelaunched = false;
-static OBJECTPTR glTask = NULL;
-static OBJECTPTR glScript = NULL;
 static bool glTime = false;
-static LONG glWinHandle = 0;
-static STRING glProcedure = NULL;
-static STRING glTargetFile = NULL;
-static LONG glWidth = 0;
-static LONG glHeight = 0;
 
-static ERROR prep_environment(LONG, LONG, LONG);
-static ERROR exec_source(CSTRING, LONG, CSTRING);
+static ERROR exec_source(CSTRING, LONG, const std::string);
 
 static const char glHelp[] = {
 "This command-line program can execute scripts and PARC files developed for the Parasol framework.  The\n\
@@ -63,18 +57,16 @@ The following parameters can be used when executing script files:\n\
 #include "exec.cpp"
 
 //********************************************************************************************************************
-// Process arguments
 
 static ERROR process_args(void)
 {
    pf::Log log("Parasol");
    CSTRING *args;
-   LONG i, j;
+   LONG i;
 
    if ((!glTask->getPtr(FID_Parameters, &args)) and (args)) {
       for (i=0; args[i]; i++) {
-         if (!StrMatch(args[i], "--help")) {
-            // Print help for the user
+         if (!StrMatch(args[i], "--help")) { // Print help for the user
             print(glHelp);
             return ERR_Terminate;
          }
@@ -104,43 +96,21 @@ static ERROR process_args(void)
             return ERR_Terminate;
          }
          else if (!StrMatch(args[i], "--sandbox")) {
-            glSandbox = TRUE;
+            glSandbox = true;
          }
          else if (!StrMatch(args[i], "--time")) {
-            glTime = TRUE;
+            glTime = true;
          }
-         else if (!StrMatch(args[i], "--instance")) {
-            glTask->get(FID_Instance, &j);
-            print("Instance: %d", j);
-         }
-         else if (!StrMatch(args[i], "--winhandle")) { // Target a desktop window in the host environment
-            if (args[i+1]) {
-               if ((glWinHandle = StrToInt(args[i+1]))) i++;
-            }
-         }
-         else if (!StrMatch(args[i], "--width")) {
-            if (args[i+1]) {
-               if ((glWidth = StrToInt(args[i+1]))) i++;
-            }
-         }
-         else if (!StrMatch(args[i], "--height")) {
-            if (args[i+1]) {
-               if ((glHeight = StrToInt(args[i+1]))) i++;
-            }
+         else if (!StrMatch(args[i], "--relaunch")) {
+            glRelaunched = true;
          }
          else if (!StrMatch(args[i], "--procedure")) {
-            if (glProcedure) { FreeResource(glProcedure); glProcedure = NULL; }
-
             if (args[i+1]) {
-               glProcedure = StrClone(args[i+1]);
+               glProcedure.assign(args[i+1]);
                i++;
             }
          }
-         else if (!StrMatch(args[i], "--relaunch")) {
-            glRelaunched = TRUE;
-         }
-         else {
-            // If argument not recognised, assume this arg is the target file.
+         else { // If argument not recognised, assume this arg is the target file.
             if (ResolvePath(args[i], RSF_APPROXIMATE, &glTargetFile)) {
                print("Unable to find file '%s'", args[i]);
                return ERR_Terminate;
@@ -161,10 +131,8 @@ int main(int argc, CSTRING *argv)
 {
    pf::Log log("Parasol");
 
-   const char *msg = init_parasol(argc, argv);
-   if (msg) {
-      int i;
-      for (i=1; i < argc; i++) { // If in --verify mode, return with no error code and print nothing.
+   if (auto msg = init_parasol(argc, argv)) {
+      for (int i=1; i < argc; i++) { // If in --verify mode, return with no error code and print nothing.
          if (!strcmp(argv[i], "--verify")) return 0;
       }
       print(msg);
@@ -173,69 +141,26 @@ int main(int argc, CSTRING *argv)
 
    glTask = CurrentTask();
 
+   int result = 0;
    if (!process_args()) {
       if (glTargetFile) {
          STRING path;
          if (!glTask->get(FID_Path, &path)) log.msg("Path: %s", path);
          else log.error("No working path.");
 
-         if (glWinHandle) {
-            if (prep_environment(glWinHandle, glWidth, glHeight) != ERR_Okay) {
-               print("Failed to prepare an environment for running this script.");
-               goto exit;
-            }
-         }
-
-         if (!AnalysePath("parasol:pictures/", NULL)) {
-            SetVolume("pictures", "parasol:pictures/", "misc/picture", NULL, NULL, VOLUME_REPLACE);
-         }
-
-         if (!AnalysePath("parasol:programs/", NULL)) {
-            SetVolume("programs", "parasol:programs/", "items/launch", NULL, NULL, VOLUME_REPLACE);
-         }
-
          LONG type;
          if ((AnalysePath(glTargetFile, &type) != ERR_Okay) or (type != LOC_FILE)) {
             print("File '%s' does not exist.", glTargetFile);
          }
-         else exec_source(glTargetFile, glTime, glProcedure);
+         else result = exec_source(glTargetFile, glTime, glProcedure);
       }
       else print(glHelp);
    }
 
-exit:
-   log.msg("parasol now exiting...");
-
-   if (glProcedure) { FreeResource(glProcedure); glProcedure = NULL; }
    if (glTargetFile) { FreeResource(glTargetFile); glTargetFile = NULL; }
-   if (glScript) FreeResource(glScript);
+   if (glScript)     { FreeResource(glScript); glScript = NULL; }
 
    close_parasol();
 
-   return 0;
-}
-
-//********************************************************************************************************************
-// This function targets an existing OS window handle and prepares it for running Parasol.
-
-ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)
-{
-   pf::Log log("Parasol");
-   log.branch("Win: %d, Size: %dx%d", WindowHandle, Width, Height);
-
-   ERROR error;
-   if (auto glTarget = objSurface::create::global(fl::Name("SystemSurface"), fl::WindowHandle(WindowHandle),
-      fl::X(0), fl::Y(0), fl::Width(Width), fl::Height(Height))) {
-      if ((objPointer::create::global(fl::Owner(glTarget->UID), fl::Name("SystemPointer")))) {
-         objScript::create script = { fl::Path("~templates:defaultvariables"), fl::Target(glTarget->UID) };
-         if (script.ok()) error = script->activate();
-         else error = ERR_CreateObject;
-      }
-      else error = ERR_CreateObject;
-
-      if (error) { FreeResource(glTarget); glTarget = NULL; }
-   }
-   else error = ERR_NewObject;
-
-   return error;
+   return result;
 }
