@@ -579,7 +579,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    if (add_asset_class() != ERR_Okay) { CloseCore(); return NULL; }
    #endif
 
-   if (!(glCurrentTask = objTask::create::untracked())) {
+   if (!(glCurrentTask = extTask::create::untracked())) {
       CloseCore();
       return NULL;
    }
