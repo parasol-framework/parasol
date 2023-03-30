@@ -22,26 +22,26 @@ Name: Objects
 
 using namespace pf;
 
-#define SIZE_ACTIONBUFFER 2048
+static const LONG SIZE_ACTIONBUFFER = 2048;
 
 //********************************************************************************************************************
 // These globals pertain to action subscriptions.  Variables are global to all threads, so need to be locked via
 // glSubLock.
 
 struct subscription {
-   OBJECTPTR Object;
+   OBJECTID ObjectID;
    ACTIONID ActionID;
    FUNCTION Callback;
 
-   subscription(OBJECTPTR pObject, ACTIONID pAction, FUNCTION pCallback) :
-      Object(pObject), ActionID(pAction), Callback(pCallback) { }
+   subscription(OBJECTID pObject, ACTIONID pAction, FUNCTION pCallback) :
+      ObjectID(pObject), ActionID(pAction), Callback(pCallback) { }
 };
 
 struct unsubscription {
-   OBJECTPTR Object;
+   OBJECTID ObjectID;
    ACTIONID ActionID;
 
-   unsubscription(OBJECTPTR pObject, ACTIONID pAction) : Object(pObject), ActionID(pAction) { }
+   unsubscription(OBJECTID pObject, ACTIONID pAction) : ObjectID(pObject), ActionID(pAction) { }
 };
 
 static std::recursive_mutex glSubLock; // The following variables are locked by this mutex
@@ -202,26 +202,6 @@ static ResourceManager glResourceObject = {
    "Object",
    (ERROR (*)(APTR))&object_free
 };
-
-//********************************************************************************************************************
-// Deal with any un/subscriptions that occurred inside a client callback.
-
-static void process_delayed_subs(void)
-{
-   if (!glDelayedSubscribe.empty()) {
-      for (auto &entry : glDelayedSubscribe) {
-         SubscribeAction(entry.Object, entry.ActionID, &entry.Callback);
-      }
-      glDelayedSubscribe.clear();
-   }
-
-   if (!glDelayedUnsubscribe.empty()) {
-      for (auto &entry : glDelayedUnsubscribe) {
-         UnsubscribeAction(entry.Object, entry.ActionID);
-      }
-      glDelayedUnsubscribe.clear();
-   }
-}
 
 //********************************************************************************************************************
 
@@ -811,24 +791,44 @@ void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR E
    if (!(Object->NotifyFlags[ActionID>>5] & (1<<(ActionID & 31)))) return;
 
    const std::lock_guard<std::recursive_mutex> lock(glSubLock);
-   glSubReadOnly++;
 
    if ((!glSubscriptions[Object->UID].empty()) and (!glSubscriptions[Object->UID][ActionID].empty())) {
+      glSubReadOnly++;
       for (auto &sub : glSubscriptions[Object->UID][ActionID]) {
          if (sub.Context) {
             pf::SwitchContext ctx(sub.Context);
             sub.Callback(Object, ActionID, ErrorCode, Parameters);
          }
       }
+      glSubReadOnly--;
 
-      process_delayed_subs();
+      if (!glSubReadOnly) {
+         if (!glDelayedSubscribe.empty()) {
+            for (auto &entry : glDelayedSubscribe) {
+               glSubscriptions[entry.ObjectID][entry.ActionID].emplace_back(entry.Callback.StdC.Context, entry.Callback.StdC.Routine);
+            }
+            glDelayedSubscribe.clear();
+         }
+
+         if (!glDelayedUnsubscribe.empty()) {
+            for (auto &entry : glDelayedUnsubscribe) {
+               if (Object->UID IS entry.ObjectID) UnsubscribeAction(Object, ActionID);
+               else {
+                  OBJECTPTR obj;
+                  if (!AccessObjectID(entry.ObjectID, 3000, &obj)) {
+                     UnsubscribeAction(obj, entry.ActionID);
+                     ReleaseObject(obj);
+                  }
+               }
+            }
+            glDelayedUnsubscribe.clear();
+         }
+      }
    }
    else {
       log.warning("Unstable subscription flags discovered for object #%d, action %d: %.8x %.8x", Object->UID, ActionID, Object->NotifyFlags[0], Object->NotifyFlags[1]);
       __atomic_and_fetch(&Object->NotifyFlags[ActionID>>5], ~(1<<(ActionID & 31)), __ATOMIC_RELAXED);
    }
-
-   glSubReadOnly--;
 }
 
 /*********************************************************************************************************************
@@ -988,9 +988,11 @@ ERROR SubscribeAction(OBJECTPTR Object, ACTIONID ActionID, FUNCTION *Callback)
    if ((!Object) or (!Callback)) return log.warning(ERR_NullArgs);
    if ((ActionID < 0) or (ActionID >= AC_END)) return log.warning(ERR_OutOfRange);
    if (Callback->Type != CALL_STDC) return log.warning(ERR_Args);
+   if (Object->collecting()) return ERR_Okay;
 
    if (glSubReadOnly) {
-      glDelayedSubscribe.emplace_back(Object, ActionID, *Callback);
+      glDelayedSubscribe.emplace_back(Object->UID, ActionID, *Callback);
+      __atomic_or_fetch(&Object->NotifyFlags[ActionID>>5], 1<<(ActionID & 31), __ATOMIC_RELAXED);
    }
    else {
       std::lock_guard<std::recursive_mutex> lock(glSubLock);
@@ -1031,7 +1033,7 @@ ERROR UnsubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
    if ((ActionID < 0) or (ActionID >= AC_END)) return log.warning(ERR_Args);
 
    if (glSubReadOnly) {
-      glDelayedUnsubscribe.emplace_back(Object, ActionID);
+      glDelayedUnsubscribe.emplace_back(Object->UID, ActionID);
       return ERR_Okay;
    }
 
