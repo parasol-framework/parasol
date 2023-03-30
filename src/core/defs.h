@@ -417,6 +417,7 @@ class extTask : public objTask {
    #ifdef _WIN32
       STRING Env;
       APTR Platform;
+      WINHANDLE Lock;
    #endif
    struct ActionEntry Actions[AC_END]; // Action routines to be intercepted by the program
 };
@@ -608,7 +609,7 @@ extern LARGE glTimeLog;
 extern struct RootModule     *glModuleList;    // Locked with TL_GENERIC.  Maintained as a linked-list; hashmap unsuitable.
 extern struct SharedControl  *glSharedControl; // Locked with PL_FORBID
 extern struct OpenInfo       *glOpenInfo;      // Read-only.  The OpenInfo structure initially passed to OpenCore()
-extern objTask *glCurrentTask;
+extern extTask *glCurrentTask;
 extern const struct ActionTable ActionTable[];
 extern const struct Function    glFunctions[];
 extern std::list<CoreTimer> glTimers;           // Locked with TL_TIMER

@@ -80,7 +80,7 @@ struct OpenInfo       *glOpenInfo      = NULL;
 struct MsgHandler     *glMsgHandlers   = NULL, *glLastMsgHandler = 0;
 
 objFile *glClassFile   = NULL;
-objTask *glCurrentTask = NULL;
+extTask *glCurrentTask = NULL;
 objConfig *glDatatypes = NULL;
 
 APTR glJNIEnv = 0;

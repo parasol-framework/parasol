@@ -1472,6 +1472,8 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
       else return ERR_AllocMemory;
 
 #ifdef _WIN32
+      Self->Lock = get_threadlock();
+
       LONG i;
       char buffer[300];
       if (winGetExeDirectory(sizeof(buffer), buffer)) {

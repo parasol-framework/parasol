@@ -1555,7 +1555,7 @@ static ERROR wake_task(OBJECTID TaskID)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!glCurrentTask) or (TaskID IS glCurrentTask->UID) or (!TaskID)) return ERR_Okay;
+   if (!glCurrentTask) return ERR_Okay;
 
    if (tlPublicLockCount > 0) {
       if (glProgramStage != STAGE_SHUTDOWN) log.warning("Illegal call while holding %d global locks.", tlPublicLockCount);
@@ -1590,21 +1590,44 @@ static ERROR wake_task(OBJECTID TaskID)
       }
    }
 
+   // Determine the target process
+
+   LONG target_pid = 0;
+   if ((TaskID IS glCurrentTask->UID) or (!TaskID)) {
+      target_pid = glProcessID; // Wake self (a thread may be trying to wake a sleeping main).
+   }
+   else {
+      for (auto &task : glTasks) {
+         if (TaskID IS task.TaskID) {
+            target_pid = task.ProcessID;
+            break;
+         }
+      }
+   }
+
    // Place a single character in the destination task's socket to indicate that there are messages to be processed.
 
    socklen_t socklen;
-   struct sockaddr_un *sockpath = get_socket_path(glTasks[TaskID].ProcessID, &socklen);
+   struct sockaddr_un *sockpath = get_socket_path(target_pid, &socklen);
    if (sendto(tlSendSocket, &msg, sizeof(msg), MSG_DONTWAIT, (struct sockaddr *)sockpath, socklen) IS -1) {
       if (errno != EAGAIN) {
-         log.warning("sendto(%d) from %d failed: %s", glTasks[TaskID].ProcessID, glProcessID, strerror(errno));
-         glValidateProcessID = glTasks[TaskID].ProcessID;
+         log.warning("sendto(%d) from %d failed: %s", target_pid, glProcessID, strerror(errno));
+         glValidateProcessID = target_pid;
       }
    }
 
 #elif _WIN32
 
-   for (auto &task : glTasks) {
-      if (TaskID IS task.TaskID) wake_waitlock(task.Lock, task.ProcessID, 1);
+   if ((TaskID IS glCurrentTask->UID) or (!TaskID)) {
+      wake_waitlock(glCurrentTask->Lock, glProcessID, 1);
+   }
+   else {
+      for (auto &task : glTasks) {
+         if (TaskID IS task.TaskID) {
+            wake_waitlock(task.Lock, task.ProcessID, 1);
+            break;
+         }
+      }
    }
 
 #endif
