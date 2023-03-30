@@ -533,7 +533,7 @@ static ERROR DISPLAY_Free(extDisplay *Self, APTR Void)
 
    if (Self->ResolutionsMID) {
       if (Self->Resolutions) { ReleaseMemory(Self->Resolutions); Self->Resolutions = NULL; }
-      FreeResourceID(Self->ResolutionsMID);
+      FreeResource(Self->ResolutionsMID);
       Self->ResolutionsMID = 0;
    }
 

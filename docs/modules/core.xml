@@ -1531,7 +1531,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <param type="MEMORYID" name="MemoryID">A reference to a memory block for release.</param>
     </input>
     <description>
-<p>Successful calls to <function module="Core">AccessMemoryID</function> must be paired with a call to <function module="Core">ReleaseMemory</function> or ReleaseMemoryID so that the memory can be made available to other processes.  By releasing the memory, the access count will decrease, and if applicable, a process that is in the queue for access may then be able to gain a lock.</p>
+<p>Successful calls to <function module="Core">AccessMemoryID</function> must be paired with a call to <function module="Core">ReleaseMemory</function> or ReleaseMemoryID() so that the memory can be made available to other processes.  By releasing the memory, the access count will decrease, and if applicable, a process that is in the queue for access may then be able to gain a lock.</p>
 <p>This function is both faster and safer than the <function module="Core">ReleaseMemory</function> function.</p>
     </description>
     <result type="ERROR">
