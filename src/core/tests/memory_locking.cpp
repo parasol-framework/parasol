@@ -58,13 +58,13 @@ static void * test_locking(struct thread_info *info)
          if (glTerminateMemory) {
             if (i >= glLockAttempts-2) {
                FreeResource(memory);
-               ReleaseMemoryID(glMemoryID);
+               ReleaseMemory(glMemoryID);
                memory = NULL;
                break;
             }
          }
 
-         ReleaseMemoryID(glMemoryID);
+         ReleaseMemory(glMemoryID);
 
          log.msg("%d: Memory released.", info->index);
 

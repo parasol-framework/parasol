@@ -335,7 +335,7 @@ ERROR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
 
          if ((action->ActionID IS MT_DrwInvalidateRegion) and (action->ObjectID IS Self->UID)) {
             if (!action->SendArgs) {
-               ReleaseMemoryID(msgqueue);
+               ReleaseMemory(msgqueue);
                return ERR_Okay|ERF_Notified;
             }
          }
@@ -365,11 +365,11 @@ ERROR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
                // We do nothing here because the next draw message will draw everything.
             }
 
-            ReleaseMemoryID(msgqueue);
+            ReleaseMemory(msgqueue);
             return ERR_Okay|ERF_Notified;
          }
       }
-      ReleaseMemoryID(msgqueue);
+      ReleaseMemory(msgqueue);
    }
 
    log.traceBranch("%dx%d,%dx%d", x, y, width, height);
@@ -450,11 +450,11 @@ static ERROR SURFACE_Expose(extSurface *Self, struct drwExpose *Args)
                // We do nothing here because the next expose message will draw everything.
             }
 
-            ReleaseMemoryID(msgqueue);
+            ReleaseMemory(msgqueue);
             return ERR_Okay|ERF_Notified;
          }
       }
-      ReleaseMemoryID(msgqueue);
+      ReleaseMemory(msgqueue);
    }
 
    ERROR error;
@@ -536,11 +536,11 @@ static ERROR SURFACE_InvalidateRegion(extSurface *Self, struct drwInvalidateRegi
             }
             else { } // We do nothing here because the next invalidation message will draw everything.
 
-            ReleaseMemoryID(msgqueue);
+            ReleaseMemory(msgqueue);
             return ERR_Okay|ERF_Notified;
          }
       }
-      ReleaseMemoryID(msgqueue);
+      ReleaseMemory(msgqueue);
    }
 
    if (Args) {

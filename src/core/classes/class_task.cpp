@@ -1475,7 +1475,7 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
 
       if (!AllocMemory(sizeof(MessageHeader), MEM_DATA, (void **)&msgblock, &glTaskMessageMID)) {
          Self->MessageMID = glTaskMessageMID;
-         ReleaseMemoryID(glTaskMessageMID);
+         ReleaseMemory(glTaskMessageMID);
       }
       else return ERR_AllocMemory;
 

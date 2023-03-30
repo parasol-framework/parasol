@@ -1103,108 +1103,26 @@ ERROR LockSharedMutex(APTR Mutex, LONG MilliSeconds)
 /*********************************************************************************************************************
 
 -FUNCTION-
-ReleaseMemory: Releases memory blocks from access locks.
+ReleaseMemory: Releases a lock from a memory based resource.
 Category: Memory
 
-Successful calls to ~AccessMemoryID() must be paired with a call to ReleaseMemory or ~ReleaseMemoryID() so that the
-memory can be made available to other processes.  By releasing the memory, the access count will decrease, and if
-applicable, a process that is in the queue for access may then be able to gain a lock.
+Successful calls to ~AccessMemoryID() must be paired with a call to ReleaseMemory() so that the memory can be made
+available to other processes.  By releasing the resource, the access count will decrease, and if applicable a
+thread that is in the queue for access may then be able to acquire a lock.
 
 -INPUT-
-ptr Address: Pointer to the memory address that you want to release.
-
--RESULT-
-mem: Returns the memory ID of the block that was released, or zero if an error occurred.
--END-
-
-*********************************************************************************************************************/
-
-MEMORYID ReleaseMemory(APTR Address)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (!Address) {
-      log.warning(ERR_NullArgs);
-      return 0;
-   }
-
-   // Address was not found in the public memory list - drop through to private list
-
-   if (((LONG *)Address)[-1] != CODE_MEMH) {
-      log.warning("Address %p is not a recognised address, or the header is corrupt.", Address);
-      return 0;
-   }
-
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) {
-      auto mem = glPrivateMemory.find(((LONG *)Address)[-2]);
-
-      if ((mem IS glPrivateMemory.end()) or (!mem->second.Address)) {
-         if (tlContext->object()->Class) log.warning("Unable to find a record for memory address %p, ID %d [Context %d, Class %s].", Address, ((LONG *)Address)[-2], tlContext->object()->UID, tlContext->object()->className());
-         else log.warning("Unable to find a record for memory address %p.", Address);
-         if (glLogLevel > 1) print_diagnosis(0);
-         return 0;
-      }
-
-      auto id = mem->second.MemoryID;
-
-      WORD access;
-      if (mem->second.AccessCount > 0) { // Sometimes ReleaseMemory() is called on private addresses that aren't actually locked.  This is OK - we simply don't do anything in that case.
-         access = __sync_sub_and_fetch(&mem->second.AccessCount, 1);
-         tlPrivateLockCount--;
-      }
-      else access = -1;
-
-      #ifdef DBG_LOCKS
-         log.trace("MemoryID: %d, Address: %p, Locks: %d", id, Address, access);
-      #endif
-
-      if (!access) {
-         #ifdef __unix__
-            mem->second.ThreadLockID = 0; // This is more for peace of mind (it's the access count that matters)
-         #endif
-
-         if (mem->second.Flags & MEM_DELETE) {
-            log.trace("Deleting marked private memory block #%d (MEM_DELETE)", id);
-            FreeResource(mem->second.Address); // NB: The block entry will no longer be valid from this point onward
-            cond_wake_all(CN_PRIVATE_MEM); // Wake up any threads sleeping on this memory block.
-            return id;
-         }
-         else if (mem->second.Flags & MEM_EXCLUSIVE) {
-            mem->second.Flags &= ~MEM_EXCLUSIVE;
-         }
-
-         cond_wake_all(CN_PRIVATE_MEM); // Wake up any threads sleeping on this memory block.
-      }
-
-      return id;
-   }
-   else return 0;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-ReleaseMemoryID: Releases locked memory blocks by ID.
-Category: Memory
-
-Successful calls to ~AccessMemoryID() must be paired with a call to ~ReleaseMemory() or ReleaseMemoryID() so that the
-memory can be made available to other processes.  By releasing the memory, the access count will decrease, and if
-applicable, a process that is in the queue for access may then be able to gain a lock.
-
-This function is both faster and safer than the ~ReleaseMemory() function.
-
--INPUT-
-mem MemoryID: A reference to a memory block for release.
+mem MemoryID: A reference to a memory resource for release.
 
 -ERRORS-
 Okay
 NullArgs
+Search
+SystemLocked
 -END-
 
 *********************************************************************************************************************/
 
-ERROR ReleaseMemoryID(MEMORYID MemoryID)
+ERROR ReleaseMemory(MEMORYID MemoryID)
 {
    pf::Log log(__FUNCTION__);
 

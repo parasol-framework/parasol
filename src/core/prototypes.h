@@ -46,7 +46,7 @@ ERROR ProcessMessages(LONG Flags, LONG TimeOut);
 ERROR IdentifyFile(CSTRING Path, CLASSID * Class, CLASSID * SubClass);
 ERROR ReallocMemory(APTR Memory, LONG Size, APTR * Address, MEMORYID * ID);
 ERROR GetMessage(MEMORYID Queue, LONG Type, LONG Flags, APTR Buffer, LONG Size);
-MEMORYID ReleaseMemory(APTR Address);
+ERROR ReleaseMemory(MEMORYID MemoryID);
 CLASSID ResolveClassName(CSTRING Name);
 ERROR SendMessage(OBJECTID Task, LONG Type, LONG Flags, APTR Data, LONG Size);
 ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner);
@@ -88,7 +88,7 @@ CSTRING GetErrorMsg(ERROR Error);
 struct Message * GetActionMsg();
 ERROR FuncError(CSTRING Header, ERROR Error);
 ERROR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements);
-ERROR ReleaseMemoryID(MEMORYID MemoryID);
+ULONG StrHash(CSTRING String, LONG CaseSensitive);
 ERROR LockObject(OBJECTPTR Object, LONG MilliSeconds);
 void ReleaseObject(OBJECTPTR Object);
 ERROR AllocMutex(LONG Flags, APTR * Result);
@@ -124,7 +124,6 @@ void UnloadFile(struct CacheFile * Cache);
 void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions);
 ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB);
 const struct SystemState * GetSystemState();
-ULONG StrHash(CSTRING String, LONG CaseSensitive);
 ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
 
 #ifdef  __cplusplus

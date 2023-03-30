@@ -268,7 +268,7 @@ ERROR GetMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Buffer, LONG B
       header->Count--;
       if (header->Count IS 0) header->NextEntry = 0;
 
-      if (!(Flags & MSF_ADDRESS)) ReleaseMemoryID(MessageMID);
+      if (!(Flags & MSF_ADDRESS)) ReleaseMemory(MessageMID);
       return ERR_Okay;
 
 next:
@@ -277,7 +277,7 @@ next:
       msg = (TaskMessage *)ResolveAddress(msg, msg->NextMsg);
    }
 
-   if (!(Flags & MSF_ADDRESS)) ReleaseMemoryID(MessageMID);
+   if (!(Flags & MSF_ADDRESS)) ReleaseMemory(MessageMID);
    return ERR_Search;
 }
 
@@ -514,7 +514,7 @@ timer_cycle:
                } // while(1)
             }
 
-            ReleaseMemoryID(glTaskMessageMID);
+            ReleaseMemory(glTaskMessageMID);
          }
 
          if (!msgfound) break;
@@ -837,7 +837,7 @@ ERROR SendMessage(OBJECTID TaskID, LONG Type, LONG Flags, APTR Data, LONG Size)
          while (i < header->Count) {
             if (msg->Type IS Type) {
                if (Flags & MSF_NO_DUPLICATE) {
-                  ReleaseMemoryID(glTaskMessageMID);
+                  ReleaseMemory(glTaskMessageMID);
                   return ERR_Okay;
                }
                else {
@@ -872,7 +872,7 @@ ERROR SendMessage(OBJECTID TaskID, LONG Type, LONG Flags, APTR Data, LONG Size)
          if (header->CompressReset) {
             // Do nothing if we've already tried compression and no messages have been pulled off the queue since that time.
             log.warning("Message buffer %d is at capacity.", glTaskMessageMID);
-            ReleaseMemoryID(glTaskMessageMID);
+            ReleaseMemory(glTaskMessageMID);
             return ERR_ArrayFull;
          }
 
@@ -940,7 +940,7 @@ ERROR SendMessage(OBJECTID TaskID, LONG Type, LONG Flags, APTR Data, LONG Size)
             //view_messages(header);
 
             header->CompressReset = 1;
-            ReleaseMemoryID(glTaskMessageMID);
+            ReleaseMemory(glTaskMessageMID);
             return ERR_ArrayFull;
          }
       }
@@ -962,7 +962,7 @@ ERROR SendMessage(OBJECTID TaskID, LONG Type, LONG Flags, APTR Data, LONG Size)
       header->Count++;
       header->CompressReset = 0;
 
-      ReleaseMemoryID(glTaskMessageMID);
+      ReleaseMemory(glTaskMessageMID);
 
       // Alert the process to indicate that there are messages available.
 

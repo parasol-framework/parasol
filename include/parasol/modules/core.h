@@ -1910,7 +1910,7 @@ struct CoreBase {
    ERROR (*_IdentifyFile)(CSTRING Path, CLASSID * Class, CLASSID * SubClass);
    ERROR (*_ReallocMemory)(APTR Memory, LONG Size, APTR Address, MEMORYID * ID);
    ERROR (*_GetMessage)(MEMORYID Queue, LONG Type, LONG Flags, APTR Buffer, LONG Size);
-   MEMORYID (*_ReleaseMemory)(APTR Address);
+   ERROR (*_ReleaseMemory)(MEMORYID MemoryID);
    CLASSID (*_ResolveClassName)(CSTRING Name);
    ERROR (*_SendMessage)(OBJECTID Task, LONG Type, LONG Flags, APTR Data, LONG Size);
    ERROR (*_SetOwner)(OBJECTPTR Object, OBJECTPTR Owner);
@@ -1952,7 +1952,7 @@ struct CoreBase {
    struct Message * (*_GetActionMsg)(void);
    ERROR (*_FuncError)(CSTRING Header, ERROR Error);
    ERROR (*_SetArray)(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements);
-   ERROR (*_ReleaseMemoryID)(MEMORYID MemoryID);
+   ULONG (*_StrHash)(CSTRING String, LONG CaseSensitive);
    ERROR (*_LockObject)(OBJECTPTR Object, LONG MilliSeconds);
    void (*_ReleaseObject)(OBJECTPTR Object);
    ERROR (*_AllocMutex)(LONG Flags, APTR Result);
@@ -1988,7 +1988,6 @@ struct CoreBase {
    void (*_SetDefaultPermissions)(LONG User, LONG Group, LONG Permissions);
    ERROR (*_CompareFilePaths)(CSTRING PathA, CSTRING PathB);
    const struct SystemState * (*_GetSystemState)(void);
-   ULONG (*_StrHash)(CSTRING String, LONG CaseSensitive);
    ERROR (*_AddInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING Value);
 };
 
@@ -2035,7 +2034,7 @@ inline ERROR ProcessMessages(LONG Flags, LONG TimeOut) { return CoreBase->_Proce
 inline ERROR IdentifyFile(CSTRING Path, CLASSID * Class, CLASSID * SubClass) { return CoreBase->_IdentifyFile(Path,Class,SubClass); }
 inline ERROR ReallocMemory(APTR Memory, LONG Size, APTR Address, MEMORYID * ID) { return CoreBase->_ReallocMemory(Memory,Size,Address,ID); }
 inline ERROR GetMessage(MEMORYID Queue, LONG Type, LONG Flags, APTR Buffer, LONG Size) { return CoreBase->_GetMessage(Queue,Type,Flags,Buffer,Size); }
-inline MEMORYID ReleaseMemory(APTR Address) { return CoreBase->_ReleaseMemory(Address); }
+inline ERROR ReleaseMemory(MEMORYID MemoryID) { return CoreBase->_ReleaseMemory(MemoryID); }
 inline CLASSID ResolveClassName(CSTRING Name) { return CoreBase->_ResolveClassName(Name); }
 inline ERROR SendMessage(OBJECTID Task, LONG Type, LONG Flags, APTR Data, LONG Size) { return CoreBase->_SendMessage(Task,Type,Flags,Data,Size); }
 inline ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner) { return CoreBase->_SetOwner(Object,Owner); }
@@ -2077,7 +2076,7 @@ inline CSTRING GetErrorMsg(ERROR Error) { return CoreBase->_GetErrorMsg(Error); 
 inline struct Message * GetActionMsg(void) { return CoreBase->_GetActionMsg(); }
 inline ERROR FuncError(CSTRING Header, ERROR Error) { return CoreBase->_FuncError(Header,Error); }
 inline ERROR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements) { return CoreBase->_SetArray(Object,Field,Array,Elements); }
-inline ERROR ReleaseMemoryID(MEMORYID MemoryID) { return CoreBase->_ReleaseMemoryID(MemoryID); }
+inline ULONG StrHash(CSTRING String, LONG CaseSensitive) { return CoreBase->_StrHash(String,CaseSensitive); }
 inline ERROR LockObject(OBJECTPTR Object, LONG MilliSeconds) { return CoreBase->_LockObject(Object,MilliSeconds); }
 inline void ReleaseObject(OBJECTPTR Object) { return CoreBase->_ReleaseObject(Object); }
 inline ERROR AllocMutex(LONG Flags, APTR Result) { return CoreBase->_AllocMutex(Flags,Result); }
@@ -2113,7 +2112,6 @@ inline void UnloadFile(struct CacheFile * Cache) { return CoreBase->_UnloadFile(
 inline void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions) { return CoreBase->_SetDefaultPermissions(User,Group,Permissions); }
 inline ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB) { return CoreBase->_CompareFilePaths(PathA,PathB); }
 inline const struct SystemState * GetSystemState(void) { return CoreBase->_GetSystemState(); }
-inline ULONG StrHash(CSTRING String, LONG CaseSensitive) { return CoreBase->_StrHash(String,CaseSensitive); }
 inline ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
 #endif
 
@@ -2162,7 +2160,13 @@ template <class T> inline LONG StrCopy(T &&Source, STRING Dest, LONG Length = 0x
 
 #ifndef PRV_CORE_DATA
 
+inline ERROR ReleaseMemory(const void *Address) {
+   if (!Address) return ERR_NullArgs;
+   return ReleaseMemory(((MEMORYID *)Address)[-2]);
+}
+
 inline ERROR FreeResource(const void *Address) {
+   if (!Address) return ERR_NullArgs;
    return FreeResource(((LONG *)Address)[-2]);
 }
 

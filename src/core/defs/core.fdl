@@ -1220,7 +1220,7 @@ struct ScriptArg { // For use with scExec
     "GetActionMsg",
     "FuncError",
     "SetArray",
-    "ReleaseMemoryID",
+    "StrHash",
     "LockObject",
     "ReleaseObject",
     "AllocMutex",
@@ -1256,7 +1256,6 @@ struct ScriptArg { // For use with scExec
     "SetDefaultPermissions",
     "CompareFilePaths",
     "GetSystemState",
-    "StrHash",
     "AddInfoTag")
 
   c_insert([[
@@ -1305,7 +1304,13 @@ template <class T> inline LONG StrCopy(T &&Source, STRING Dest, LONG Length = 0x
 
 #ifndef PRV_CORE_DATA
 
+inline ERROR ReleaseMemory(const void *Address) {
+   if (!Address) return ERR_NullArgs;
+   return ReleaseMemory(((MEMORYID *)Address)[-2]);
+}
+
 inline ERROR FreeResource(const void *Address) {
+   if (!Address) return ERR_NullArgs;
    return FreeResource(((LONG *)Address)[-2]);
 }
 
