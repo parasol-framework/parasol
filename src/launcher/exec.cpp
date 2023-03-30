@@ -2,7 +2,7 @@
 //********************************************************************************************************************
 // Executes the target.
 
-ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
+ERROR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
 {
    pf::Log log(__FUNCTION__);
    LONG i, j;
@@ -28,7 +28,7 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
          if (il < INTEGRITY_LEVEL_LOW) {
             // If running with an integrity better than 'low', re-run the process with a low integrity.
 
-            if (glRelaunched) return(ERR_Security);
+            if (glRelaunched) return ERR_Security;
 
             log.msg("Inappropriate integrity level %d (must be %d or higher), re-launching...\n", il, INTEGRITY_LEVEL_LOW);
 
@@ -36,7 +36,7 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
 
             cmdline[0] = '"';
             ULONG i = get_exe(cmdline+1, sizeof(cmdline));
-            if ((!i) or (i >= sizeof(cmdline)-30)) return(ERR_Failed);
+            if ((!i) or (i >= sizeof(cmdline)-30)) return ERR_Failed;
             i++;
 
             i += StrCopy("\" --relaunch", cmdline+i, sizeof(cmdline)-i);
@@ -57,7 +57,7 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
                if (i < sizeof(cmdline)-1) cmdline[i++] = '"';
             }
             cmdline[i] = 0;
-            if (i >= sizeof(cmdline)-3) return(ERR_BufferOverflow);
+            if (i >= sizeof(cmdline)-3) return ERR_BufferOverflow;
 
             // Temporarily switch off debug messages until the child process returns.
 
@@ -68,7 +68,7 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
 
             SetResource(RES_LOG_LEVEL, log_level);
 
-            return(ERR_LimitedSuccess);
+            return ERR_LimitedSuccess;
          }
 
       #else
@@ -76,11 +76,11 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
          error = init_sandbox(args, glRelaunched ? FALSE : TRUE);
          if (error IS ERR_LimitedSuccess) {
             // Limited success means that the process was re-launched with a lower priority.
-            return(error);
+            return error;
          }
          else if (error) {
             print("Sandbox initialisation failed.");
-            return(error);
+            return error;
          }
 */
       #endif
@@ -109,13 +109,14 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
          error = ERR_CreateObject;
       }
 
-      return(error);
+      return error;
    }
 
    if (!NewObject(subclass ? subclass : class_id, &glScript)) {
-      glScript->setFields(fl::Path(TargetFile),
-                          fl::Target(glTarget ? glTarget->UID : CurrentTaskID()),
-                          fl::Procedure(Procedure));
+      glScript->set(FID_Path, TargetFile);
+      glScript->set(FID_Target, glTarget ? glTarget->UID : CurrentTaskID());
+
+      if (!Procedure.empty()) glScript->set(FID_Procedure, Procedure);
 
       if (glArgs) {
          BYTE argbuffer[100];
@@ -159,29 +160,38 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
       LARGE start_time = 0;
       if (ShowTime) start_time = PreciseTime();
 
-      if (!(error = acInit(glScript))) {
-         if (!(error = acActivate(glScript))) {
+      if (auto error = acInit(glScript); !error) {
+         if (auto error = acActivate(glScript); !error) {
             if (ShowTime) { // Print the execution time of the script
-               DOUBLE startseconds = (DOUBLE)start_time / 1000000.0;
-               DOUBLE endseconds   = (DOUBLE)PreciseTime() / 1000000.0;
-               print("Script executed in %f seconds.\n\n", endseconds - startseconds);
+               auto start_seconds = (DOUBLE)start_time / 1000000.0;
+               auto end_seconds   = (DOUBLE)PreciseTime() / 1000000.0;
+               print("Script executed in %f seconds.\n\n", end_seconds - start_seconds);
             }
+
+            if (glScript->Error) {
+               log.msg("Script returned an error code of %d: %s", glScript->Error, GetErrorMsg(glScript->Error));
+               return glScript->Error;
+            }
+
+            STRING msg;
+            if ((!glScript->get(FID_ErrorString, &msg)) and (msg)) {
+               log.msg("Script returned error message: %s", msg);
+               return ERR_Failed;
+            }
+            else return ERR_Okay;
          }
          else {
             print("Script failed during processing.  Use the --log-error option to examine the failure.");
-            return(ERR_Failed);
+            return ERR_Failed;
          }
       }
       else {
          print("Failed to load / initialise the script.");
-         return(ERR_Failed);
+         return ERR_Failed;
       }
-
-      log.msg("Script initialised.");
-      return(ERR_Okay);
    }
    else {
       print("Internal Failure: Failed to create a new Script object for file processing.");
-      return(ERR_Failed);
+      return ERR_Failed;
    }
 }
