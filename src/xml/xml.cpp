@@ -163,7 +163,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 ERROR CMDExpunge(void)
 {
-   if (clXML) { acFree(clXML); clXML = NULL; }
+   if (clXML) { FreeResource(clXML); clXML = NULL; }
    return ERR_Okay;
 }
 

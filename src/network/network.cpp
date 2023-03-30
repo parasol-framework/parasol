@@ -349,10 +349,10 @@ static ERROR MODExpunge(void)
    if (ShutdownWinsock() != 0) log.warning("Warning: Winsock DLL Cleanup failed.");
 #endif
 
-   if (clNetSocket)    { acFree(clNetSocket); clNetSocket = NULL; }
-   if (clClientSocket) { acFree(clClientSocket); clClientSocket = NULL; }
-   if (clProxy)        { acFree(clProxy); clProxy = NULL; }
-   if (clNetLookup)    { acFree(clNetLookup); clNetLookup = NULL; }
+   if (clNetSocket)    { FreeResource(clNetSocket); clNetSocket = NULL; }
+   if (clClientSocket) { FreeResource(clClientSocket); clClientSocket = NULL; }
+   if (clProxy)        { FreeResource(clProxy); clProxy = NULL; }
+   if (clNetLookup)    { FreeResource(clNetLookup); clNetLookup = NULL; }
 
 #ifdef ENABLE_SSL
    if (ssl_init) {

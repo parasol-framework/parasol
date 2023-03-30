@@ -502,7 +502,7 @@ static ERROR PTR_Free(extPointer *Self, APTR Void)
 {
    acHide(Self);
 
-   if (Self->BitmapID) { acFree(Self->BitmapID); Self->BitmapID = 0; }
+   if (Self->BitmapID) { FreeResource(Self->BitmapID); Self->BitmapID = 0; }
 
 /*
    OBJECTPTR object;

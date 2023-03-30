@@ -61,7 +61,7 @@ static LONG StrShrink(STRING String, LONG Offset, LONG TotalBytes)
 /*
 static void free_proxy(void)
 {
- if (glConfig) { acFree(glConfig); glConfig = NULL; }
+ if (glConfig) { FreeResource(glConfig); glConfig = NULL; }
 }
 */
 
@@ -93,7 +93,7 @@ static ERROR PROXY_Delete(extProxy *Self, APTR Void)
       #endif
    }
 
-   if (glConfig) { acFree(glConfig); glConfig = NULL; }
+   if (glConfig) { FreeResource(glConfig); glConfig = NULL; }
 
    if ((glConfig = objConfig::create::untracked(fl::Path("user:config/network/proxies.cfg")))) {
       cfgDeleteGroup(glConfig, Self->GroupName);
@@ -174,7 +174,7 @@ static ERROR PROXY_Find(extProxy *Self, struct prxFind *Args)
 
    // Remove the previous cache of the proxy database
 
-   if (glConfig) { acFree(glConfig); glConfig = NULL; }
+   if (glConfig) { FreeResource(glConfig); glConfig = NULL; }
 
    // Load the current proxy database into the cache
 

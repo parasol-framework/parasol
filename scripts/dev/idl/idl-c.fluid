@@ -1742,7 +1742,7 @@ function cType(Field, Origin)
 
    Field.defType = Field.type -- Save the original type name
 
-   -- A ! symbol indicates that the field is a result that is allocated and can be removed with FreeResource() or acFree()
+   -- A ! symbol indicates that the field is a result that is allocated and can be removed with FreeResource()
    -- A & symbol indicates that the field is a pointer to a reserved area that will store a result value, e.g. LONG *
 
    local resultValue

@@ -502,7 +502,7 @@ static ERROR FILE_Free(extFile *Self, APTR Void)
 #endif
 
    if (Self->prvIcon) { FreeResource(Self->prvIcon); Self->prvIcon = NULL; }
-   if (Self->ProgressDialog) { acFree(Self->ProgressDialog); Self->ProgressDialog = NULL; }
+   if (Self->ProgressDialog) { FreeResource(Self->ProgressDialog); Self->ProgressDialog = NULL; }
    if (Self->prvLine) { FreeResource(Self->prvLine); Self->prvLine = NULL; }
    if (Self->Path)    { FreeResource(Self->Path); Self->Path = NULL; }
    if (Self->prvList) { FreeResource(Self->prvList); Self->prvList = NULL; }

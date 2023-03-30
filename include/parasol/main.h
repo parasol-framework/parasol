@@ -74,7 +74,7 @@ class ScopedObject { // C++ wrapper for automatically freeing an object
 
       ScopedObject(T *Object) { obj = Object; }
       ScopedObject() { obj = NULL; }
-      ~ScopedObject() { if (obj) acFree(obj); }
+      ~ScopedObject() { if (obj) FreeResource(obj); }
 };
 
 //********************************************************************************************************************

@@ -24,8 +24,8 @@ void LogF(CSTRING Header, CSTRING Message, ...);
 ERROR FindObject(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * ObjectID);
 objMetaClass * FindClass(CLASSID ClassID);
 ERROR AnalysePath(CSTRING Path, LONG * Type);
-ERROR FreeResource(const void * Address);
-ERROR FreeResourceID(MEMORYID ID);
+LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
+ERROR FreeResource(MEMORYID ID);
 CLASSID GetClassID(OBJECTID Object);
 OBJECTID GetOwnerID(OBJECTID Object);
 ERROR GetField(OBJECTPTR Object, FIELD Field, APTR Result);
@@ -126,7 +126,6 @@ ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB);
 const struct SystemState * GetSystemState();
 ULONG StrHash(CSTRING String, LONG CaseSensitive);
 ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
-LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
 
 #ifdef  __cplusplus
 }

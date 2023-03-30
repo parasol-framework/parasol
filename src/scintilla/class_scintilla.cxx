@@ -259,11 +259,11 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 ERROR CMDExpunge(void)
 {
-   if (modDisplay)  { acFree(modDisplay);  modDisplay = NULL; }
-   if (modFont)     { acFree(modFont);     modFont = NULL; }
-   if (modVector)   { acFree(modVector);   modVector = NULL; }
-   if (clScintilla) { acFree(clScintilla); clScintilla = NULL; }
-   if (clScintillaSearch) { acFree(clScintillaSearch); clScintillaSearch = NULL; }
+   if (modDisplay)  { FreeResource(modDisplay);  modDisplay = NULL; }
+   if (modFont)     { FreeResource(modFont);     modFont = NULL; }
+   if (modVector)   { FreeResource(modVector);   modVector = NULL; }
+   if (clScintilla) { FreeResource(clScintilla); clScintilla = NULL; }
+   if (clScintillaSearch) { FreeResource(clScintillaSearch); clScintillaSearch = NULL; }
    return ERR_Okay;
 }
 
@@ -382,7 +382,7 @@ static void notify_write(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, stru
    if (!Args) return;
 
    if (Result != ERR_Okay) {
-      if (Self->FileStream) { acFree(Self->FileStream); Self->FileStream = NULL; }
+      if (Self->FileStream) { FreeResource(Self->FileStream); Self->FileStream = NULL; }
       return;
    }
 
@@ -658,13 +658,13 @@ static ERROR SCINTILLA_Free(extScintilla *Self, APTR)
    }*/
 
    if (Self->prvKeyEvent)  { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
-   if (Self->FileStream)   { acFree(Self->FileStream); Self->FileStream = NULL; }
+   if (Self->FileStream)   { FreeResource(Self->FileStream); Self->FileStream = NULL; }
    if (Self->Path)         { FreeResource(Self->Path);  Self->Path = NULL; }
    if (Self->StringBuffer) { FreeResource(Self->StringBuffer); Self->StringBuffer = NULL; }
-   if (Self->Font)         { acFree(Self->Font);       Self->Font = NULL; }
-   if (Self->BoldFont)     { acFree(Self->BoldFont);   Self->BoldFont = NULL; }
-   if (Self->ItalicFont)   { acFree(Self->ItalicFont); Self->ItalicFont = NULL; }
-   if (Self->BIFont)       { acFree(Self->BIFont);     Self->BIFont = NULL; }
+   if (Self->Font)         { FreeResource(Self->Font);       Self->Font = NULL; }
+   if (Self->BoldFont)     { FreeResource(Self->BoldFont);   Self->BoldFont = NULL; }
+   if (Self->ItalicFont)   { FreeResource(Self->ItalicFont); Self->ItalicFont = NULL; }
+   if (Self->BIFont)       { FreeResource(Self->BIFont);     Self->BIFont = NULL; }
 
    gfxUnsubscribeInput(Self->InputHandle);
 
@@ -2116,9 +2116,9 @@ static void create_styled_fonts(extScintilla *Self)
 
    if (!Self->Font) return;
 
-   if (Self->BoldFont)   { acFree(Self->BoldFont); Self->BoldFont = NULL; }
-   if (Self->ItalicFont) { acFree(Self->ItalicFont); Self->ItalicFont = NULL; }
-   if (Self->BIFont)     { acFree(Self->BIFont); Self->BIFont = NULL; }
+   if (Self->BoldFont)   { FreeResource(Self->BoldFont); Self->BoldFont = NULL; }
+   if (Self->ItalicFont) { FreeResource(Self->ItalicFont); Self->ItalicFont = NULL; }
+   if (Self->BIFont)     { FreeResource(Self->BIFont); Self->BIFont = NULL; }
 
    if ((Self->BoldFont = objFont::create::integral(
          fl::Face(Self->Font->Face),
@@ -2267,7 +2267,7 @@ static ERROR load_file(extScintilla *Self, CSTRING Path)
       }
       else error = ERR_File;
 
-      if (file) acFree(file);
+      if (file) FreeResource(file);
    }
    else error = ERR_File;
 

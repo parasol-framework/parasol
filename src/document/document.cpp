@@ -868,17 +868,17 @@ ERROR CMDExpunge(void)
    {
       pf::Log log;
       log.msg("Freeing %d internally allocated fonts.", glTotalFonts);
-      for (LONG i=0; i < glTotalFonts; i++) acFree(glFonts[i].Font);
+      for (LONG i=0; i < glTotalFonts; i++) FreeResource(glFonts[i].Font);
    }
 
    if (exsbuffer) { FreeResource(exsbuffer); exsbuffer = NULL; }
    if (glFonts)   { FreeResource(glFonts);   glFonts   = NULL; }
 
-   if (modVector)  { acFree(modVector);   modVector  = NULL; }
-   if (modDisplay) { acFree(modDisplay);  modDisplay = NULL; }
-   if (modFont)    { acFree(modFont);     modFont    = NULL; }
+   if (modVector)  { FreeResource(modVector);   modVector  = NULL; }
+   if (modDisplay) { FreeResource(modDisplay);  modDisplay = NULL; }
+   if (modFont)    { FreeResource(modFont);     modFont    = NULL; }
 
-   if (clDocument) { acFree(clDocument);  clDocument = NULL; }
+   if (clDocument) { FreeResource(clDocument);  clDocument = NULL; }
    return ERR_Okay;
 }
 

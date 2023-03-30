@@ -62,10 +62,7 @@ ListBoxImp::~ListBoxImp()
    pf::Log log(__FUNCTION__);
    log.branch();
 
-   if (menu) {
-      acFree(menu);
-      menu = NULL;
-   }
+   if (menu) { FreeResource(menu); menu = NULL; }
 }
 
 Scintilla::ListBox * Scintilla::ListBox::Allocate()

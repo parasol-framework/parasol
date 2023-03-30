@@ -4,7 +4,7 @@
 
 set (FUNCTIONS  # Full paths are required for add_custom_command() dependencies to work correctly
    "${CMAKE_CURRENT_SOURCE_DIR}/core.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/lib_actions.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/lib_objects.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_base64.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_events.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_fields_read.cpp"
@@ -15,7 +15,6 @@ set (FUNCTIONS  # Full paths are required for add_custom_command() dependencies 
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_log.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_messages.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_memory.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/lib_newobject.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_strings.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_unicode.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/fs_folders.cpp"
@@ -85,7 +84,7 @@ target_sources (core PRIVATE
    "data.cpp"
    "data_actionlist.cpp"
    "internal.cpp"
-   "lib_actions.cpp"
+   "lib_objects.cpp"
    "lib_events.cpp"
    "lib_log.cpp"
    "lib_fields_read.cpp"
@@ -95,7 +94,6 @@ target_sources (core PRIVATE
    "lib_locking.cpp"
    "lib_memory.cpp"
    "lib_messages.cpp"
-   "lib_newobject.cpp"
    "lib_semaphores.cpp"
    "lib_strings.cpp"
    "classes/class_config.cpp"

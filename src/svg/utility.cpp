@@ -453,14 +453,14 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
                   xml->set(FID_Source, stream);
                }
                else {
-                  acFree(xml);
-                  acFree(file);
+                  FreeResource(xml);
+                  FreeResource(file);
                   error = ERR_CreateObject;
                   goto end;
                }
             }
             else {
-               acFree(xml);
+               FreeResource(xml);
                error = ERR_CreateObject;
                goto end;
             }
@@ -521,7 +521,7 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
          FreeResource(working_path);
       }
 
-      acFree(xml);
+      FreeResource(xml);
    }
    else error = ERR_NewObject;
 

@@ -4,7 +4,7 @@ Name: Files
 -END-
 *********************************************************************************************************************/
 
-static void folder_free(APTR Address)
+static ERROR folder_free(APTR Address)
 {
    pf::Log log("CloseDir");
    auto folder = (DirInfo *)Address;
@@ -21,6 +21,7 @@ static void folder_free(APTR Address)
    }
 
    fs_closedir(folder);
+   return ERR_Okay;
 }
 
 static ResourceManager glResourceFolder = {

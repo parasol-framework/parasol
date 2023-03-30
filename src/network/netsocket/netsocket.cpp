@@ -347,7 +347,7 @@ static ERROR NETSOCKET_Free(extNetSocket *Self, APTR Void)
 #endif
 
    if (Self->Address) { FreeResource(Self->Address); Self->Address = NULL; }
-   if (Self->NetLookup) { acFree(Self->NetLookup); Self->NetLookup = NULL; }
+   if (Self->NetLookup) { FreeResource(Self->NetLookup); Self->NetLookup = NULL; }
 
    free_socket(Self);
 
@@ -372,7 +372,7 @@ static ERROR NETSOCKET_FreeWarning(extNetSocket *Self, APTR Void)
       if (!Self->Terminating) { // Check terminating state to prevent flooding of the message queue
          log.msg("NetSocket in use, cannot free yet (request delayed).");
          Self->Terminating = TRUE;
-         QueueAction(AC_Free, Self->UID);
+         SendMessage(0, MSGID_FREE, 0, &Self->UID, sizeof(OBJECTID));
       }
       return ERR_InUse;
    }

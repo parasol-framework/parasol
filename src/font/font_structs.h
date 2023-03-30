@@ -109,6 +109,7 @@ public:
 
    ~font_cache() {
       pf::Log log;
+      pf::SwitchContext ctx(modFont);
       FT_Done_Face(Face);
       log.trace("Terminated cache entry for '%s'", Path.c_str());
    }

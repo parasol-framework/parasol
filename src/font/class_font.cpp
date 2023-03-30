@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -121,7 +120,7 @@ static ERROR FONT_Free(extFont *Self, APTR Void)
    }
 
    if (Self->prvTempGlyph.Outline) { FreeResource(Self->prvTempGlyph.Outline); Self->prvTempGlyph.Outline = NULL; }
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->Path)    { FreeResource(Self->Path); Self->Path = NULL; }
    if (Self->prvTabs) { FreeResource(Self->prvTabs); Self->prvTabs = NULL; }
 
    if ((Self->String) and ((APTR)Self->String != (APTR)Self->prvBuffer)) {
@@ -1461,7 +1460,7 @@ static ERROR cache_truetype_font(extFont *Self, CSTRING Path)
       std::string sp(Path);
       if (glCache.contains(sp)) Self->Cache = glCache[sp];
       else {
-         log.msg("Creating new cache for font '%s'", Path);
+         log.branch("Creating new cache for font '%s'", Path);
 
          FT_Face face;
          openargs.flags    = FT_OPEN_PATHNAME;

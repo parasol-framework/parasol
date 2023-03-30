@@ -780,37 +780,19 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
   <function>
     <name>FreeResource</name>
     <category>Memory</category>
-    <comment>Frees private memory blocks allocated from AllocMemory().</comment>
-    <prototype>ERROR FreeResource(const void * Address)</prototype>
-    <input>
-      <param type="const void *" name="Address">Points to the start of a memory block to be freed.</param>
-    </input>
-    <description>
-<p>This function will free a memory block originating from <function module="Core">AllocMemory</function>.</p>
-<p>The process of freeing the block will not necessarily take place immediately.  If the block is locked then it will be marked for deletion and not removed until the lock count reaches zero.</p>
-<p>Crash protection measures are built-in.  If the memory header or tail is missing from the block, it is assumed that a routine has has over-written the memory boundaries, or the caller is attempting to free a non-existent allocation. Double-freeing can be caught but is not guaranteed.  Freeing memory blocks that are out of scope will result in a warning.  All caught errors are reported to the application log and warrant priority attention.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Memory">General memory error.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
-    <name>FreeResourceID</name>
-    <category>Memory</category>
-    <comment>Frees memory blocks allocated from AllocMemory().</comment>
-    <prototype>ERROR FreeResourceID(MEMORYID ID)</prototype>
+    <comment>Frees resources originating from AllocMemory().</comment>
+    <prototype>ERROR FreeResource(MEMORYID ID)</prototype>
     <input>
       <param type="MEMORYID" name="ID">The unique ID of the memory block.</param>
     </input>
     <description>
-<p>This function will free a memory block with the ID as the identifier.</p>
-<p>The process of freeing the block will not necessarily take place immediately.  If the block is locked then it will be marked for deletion and not removed until the lock count reaches zero.</p>
+<p>This function will free any resource that originates from AllocMemory(), using its ID for identification.  C++ headers also include a variant of this function that allows a direct memory pointer to be used as the identifier (however we do recommend the use of IDs to improve memory safety).</p>
+<p>In some circumstances the termination of the block will not take place immediately.  If the block is locked then it will be marked for deletion and not be collected until the lock count reaches zero.</p>
+<p>Crash protection measures are built-in.  If the memory header or tail is missing from the block, it is assumed that code has over-written the memory boundaries.  All caught errors are reported to the application log and warrant priority attention.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
+      <error code="InvalidData">There is an error in the provided data.</error>
       <error code="MemoryDoesNotExist">Memory block does not exist.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -1322,7 +1304,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>The NewObject() function is used to create new objects and register them for use within the Core.  After creating a new object, the client can proceed to set the object's field values and initialise it with <action>Init</action> so that it can be used as intended.</p>
 <p>The new object will be modeled according to the class blueprint indicated by ClassID.  Pre-defined class ID's are defined in their documentation and the <code>parasol/system/register.h</code> include file.  ID's for unregistered classes can be computed using the <function module="Core">ResolveClassName</function> function.</p>
 <p>A pointer to the new object will be returned in the Object parameter.  By default, object allocations are context sensitive and will be collected when their owner is terminated.  It is possible to track an object to a different owner by using the <function module="Core">SetOwner</function> function.</p>
-<p>To destroy an object, use the <action>Free</action> action.</p>
+<p>To destroy an object, call <function module="Core">FreeResource</function>.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -1549,7 +1531,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <param type="MEMORYID" name="MemoryID">A reference to a memory block for release.</param>
     </input>
     <description>
-<p>Successful calls to <function module="Core">AccessMemoryID</function> must be paired with a call to <function module="Core">ReleaseMemory</function> or ReleaseMemoryID so that the memory can be made available to other processes.  By releasing the memory, the access count will decrease, and if applicable, a process that is in the queue for access may then be able to gain a lock.</p>
+<p>Successful calls to <function module="Core">AccessMemoryID</function> must be paired with a call to <function module="Core">ReleaseMemory</function> or ReleaseMemoryID() so that the memory can be made available to other processes.  By releasing the memory, the access count will decrease, and if applicable, a process that is in the queue for access may then be able to gain a lock.</p>
 <p>This function is both faster and safer than the <function module="Core">ReleaseMemory</function> function.</p>
     </description>
     <result type="ERROR">
@@ -1790,9 +1772,9 @@ auto ctx = SetContext(display);
    AllocMemory(1000, MEM_DATA, &amp;memory, NULL);
 
 SetContext(ctx);
-acFree(display);
+FreeResource(display-&gt;UID);
 </pre>
-<p>The above code allocates a Bitmap and a memory block, both of which will be contained by the display. When the <action>Free</action> action is called, both the bitmap and memory block will be automatically removed as they have a dependency on the display's existence.  Please keep in mind that the following is incorrect:</p>
+<p>The above code allocates a Bitmap and a memory block, both of which will be contained by the display. When <function module="Core">FreeResource</function> is called, both the bitmap and memory block will be automatically removed as they have a dependency on the display's existence.  Please keep in mind that the following is incorrect:</p>
 <pre>acInit(display);
 auto ctx = SetContext(display);
 
@@ -1800,9 +1782,9 @@ auto ctx = SetContext(display);
    AllocMemory(1000, MEM_DATA, &amp;memory, NULL);
 
 SetContext(ctx);
-acFree(display); // The bitmap and memory would be auto-collected
-acFree(bitmap); // Reference is no longer valid
-FreeResource(memory); // Reference is no longer valid
+FreeResource(display-&gt;UID); // The bitmap and memory would be auto-collected
+FreeResource(bitmap-&gt;UID);  // Reference is no longer valid
+FreeResource(memory);  // Reference is no longer valid
 </pre>
 <p>As the bitmap and memory block would have been freed as members of the display, their references are invalid when manually terminated in the following instructions.</p>
 <p>SetContext() is intended for use by modules and classes.  Do not use it in an application unless conditions necessitate its use.  The Core automatically manages the context when calling class actions, methods and interactive fields.</p>
@@ -3221,6 +3203,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="CORE_END"/>
       <const name="DEBUG"/>
       <const name="EVENT"/>
+      <const name="FREE"/>
       <const name="QUIT"/>
       <const name="THREAD_ACTION"/>
       <const name="THREAD_CALLBACK"/>

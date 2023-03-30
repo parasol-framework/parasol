@@ -127,7 +127,7 @@ void threadpool_release(extThread *Thread)
       // If the thread object is not pooled, assume it was allocated dynamically from threadpool_get() and destroy it.
 
       lock.release();
-      acFree(Thread);
+      FreeResource(Thread);
    }
 }
 
@@ -205,7 +205,7 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
          }
       }
 
-      if (thread->Flags & THF_AUTO_FREE) acFree(thread);
+      if (thread->Flags & THF_AUTO_FREE) FreeResource(thread);
 
       ReleaseObject(thread);
    }
@@ -269,7 +269,7 @@ static void * thread_entry(extThread *Self)
          }
          else if (Self->Flags & THF_AUTO_FREE) {
             Self->Active = FALSE;
-            acFree(Self);
+            FreeResource(Self);
          }
          else Self->Active = FALSE;
 

@@ -271,7 +271,7 @@ static ERROR CMDOpen(OBJECTPTR Module)
 
 static ERROR CMDExpunge(void)
 {
-   if (modDriver) { acFree(modDriver); modDriver = NULL; }
+   if (modDriver) { FreeResource(modDriver); modDriver = NULL; }
    return ERR_Okay;
 }
 

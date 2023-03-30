@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -29,8 +28,8 @@ inline char read_nibble(CSTRING Str)
 
 // Resource management for the SimpleVector follows.  NB: This is a beta feature in the Core.
 
-void simplevector_free(APTR Address) {
-
+ERROR simplevector_free(APTR Address) {
+   return ERR_Okay;
 }
 
 static ResourceManager glResourceSimpleVector = {

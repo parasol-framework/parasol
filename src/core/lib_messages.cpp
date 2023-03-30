@@ -40,7 +40,7 @@ static ERROR sleep_task(LONG);
 ERROR write_nonblock(LONG Handle, APTR Data, LONG Size, LARGE EndTime);
 #endif
 
-static void msghandler_free(APTR Address)
+static ERROR msghandler_free(APTR Address)
 {
    pf::Log log("RemoveMsgHandler");
    log.trace("Handle: %p", Address);
@@ -53,6 +53,7 @@ static void msghandler_free(APTR Address)
       if (h->Next) h->Next->Prev = h->Prev;
       if (h->Prev) h->Prev->Next = h->Next;
    }
+   return ERR_Okay;
 }
 
 static ResourceManager glResourceMsgHandler = {

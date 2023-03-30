@@ -139,7 +139,7 @@ static ERROR IMAGEFX_Draw(extImageFX *Self, struct acDraw *Args)
 
 static ERROR IMAGEFX_Free(extImageFX *Self, APTR Void)
 {
-   if (Self->Picture) { acFree(Self->Picture); Self->Picture = NULL; }
+   if (Self->Picture) { FreeResource(Self->Picture); Self->Picture = NULL; }
    return ERR_Okay;
 }
 

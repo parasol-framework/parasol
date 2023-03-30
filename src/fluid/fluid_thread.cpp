@@ -81,7 +81,7 @@ static ERROR thread_script_entry(objThread *Thread)
    thread_callback *cb;
    if (!Thread->getPtr(FID_Data, &cb)) {
       acActivate(cb->threadScript);
-      acFree(cb->threadScript);
+      FreeResource(cb->threadScript);
    }
    return ERR_Okay;
 }

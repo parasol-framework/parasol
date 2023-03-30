@@ -500,7 +500,7 @@ static ERROR VECTORFILTER_Clear(extVectorFilter *Self, APTR Void)
    pf::Log log;
 
    log.branch("");
-   while (Self->Effects) acFree(Self->Effects);
+   while (Self->Effects) FreeResource(Self->Effects);
 
    Self->Bank.clear();
    Self->BankIndex = 0;
@@ -514,8 +514,8 @@ static ERROR VECTORFILTER_Free(extVectorFilter *Self, APTR Void)
 {
    acClear(Self);
 
-   if (Self->SourceGraphic) { acFree(Self->SourceGraphic); Self->SourceGraphic = NULL; }
-   if (Self->SourceScene)   { acFree(Self->SourceScene);   Self->SourceScene = NULL; }
+   if (Self->SourceGraphic) { FreeResource(Self->SourceGraphic); Self->SourceGraphic = NULL; }
+   if (Self->SourceScene)   { FreeResource(Self->SourceScene);   Self->SourceScene = NULL; }
 
    Self->~extVectorFilter();
    return ERR_Okay;

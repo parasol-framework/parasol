@@ -237,7 +237,7 @@ void gen_vector_path(extVector *Vector)
             acDraw(view->vpClipMask);
          }
       }
-      else if (view->vpClipMask) { acFree(view->vpClipMask); view->vpClipMask = NULL; }
+      else if (view->vpClipMask) { FreeResource(view->vpClipMask); view->vpClipMask = NULL; }
 
       log.trace("Clipping boundary for #%d is %.2f %.2f %.2f %.2f",
          Vector->UID, view->vpBX1, view->vpBY1, view->vpBX2, view->vpBY2);

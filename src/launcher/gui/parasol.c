@@ -203,13 +203,13 @@ exit:
       OBJECTPTR file;
       if (!PrivateObject(ID_FILE, 0, &file, FID_Path|TSTR, glDirectory, TAGEND)) {
          flDelete(file, 0);
-         acFree(file);
+         FreeResource(file);
       }
 
       FreeResource(glDirectory);
    }
 
-   if (glScript) acFree(glScript);
+   if (glScript) FreeResource(glScript);
 }
 
 /*********************************************************************************************************************
@@ -305,7 +305,7 @@ ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRI
             }
 
             acActivate(run);
-            acFree(run);
+            FreeResource(run);
          }
 
          return(ERR_LimitedSuccess);

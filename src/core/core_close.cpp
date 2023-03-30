@@ -27,7 +27,7 @@ EXPORT void CloseCore(void)
    tlContext = &glTopContext;
    tlDepth   = 0;
 
-   if (glClassFile) { acFree(glClassFile); glClassFile = NULL; }
+   if (glClassFile) { FreeResource(glClassFile); glClassFile = NULL; }
 
    free_events(); // Remove event subscriptions
 
@@ -129,8 +129,8 @@ EXPORT void CloseCore(void)
       }
    }
    else { // This code is only safe to execute if the process hasn't crashed.
-      if (glLocale) { acFree(glLocale); glLocale = NULL; } // Allocated by StrReadLocale()
-      if (glTime) { acFree(glTime); glTime = NULL; }
+      if (glLocale) { FreeResource(glLocale); glLocale = NULL; } // Allocated by StrReadLocale()
+      if (glTime) { FreeResource(glTime); glTime = NULL; }
 
       // Removing objects that are tracked to the task before the first expunge will make for a cleaner exit.
 
@@ -140,7 +140,7 @@ EXPORT void CloseCore(void)
          if (children.size() > 0) {
             log.branch("Freeing %d objects allocated to task #%d.", (LONG)children.size(), glCurrentTask->UID);
 
-            for (const auto id : children) ActionMsg(AC_Free, id, NULL);
+            for (const auto id : children) FreeResource(id);
          }
          else log.msg("There are no child objects belonging to task #%d.", glCurrentTask->UID);
       }
@@ -166,7 +166,7 @@ EXPORT void CloseCore(void)
       if (glCurrentTask) {
          pf::Log log("Shutdown");
          log.branch("Freeing the task object and its resources.");
-         acFree(glCurrentTask);
+         FreeResource(glCurrentTask);
       }
 
       // Remove locks on any private objects that have not been unlocked yet
@@ -210,19 +210,19 @@ EXPORT void CloseCore(void)
       // Remove system classes
 
       #ifdef __ANDROID__
-      if (glAssetClass) { acFree(glAssetClass); glAssetClass = 0; }
+      if (glAssetClass) { FreeResource(glAssetClass); glAssetClass = 0; }
       #endif
-      if (glCompressedStreamClass) { acFree(glCompressedStreamClass); glCompressedStreamClass  = 0; }
-      if (glArchiveClass)      { acFree(glArchiveClass);      glArchiveClass      = 0; }
-      if (glCompressionClass)  { acFree(glCompressionClass);  glCompressionClass  = 0; }
-      if (glScriptClass)       { acFree(glScriptClass);       glScriptClass       = 0; }
-      if (glFileClass)         { acFree(glFileClass);         glFileClass         = 0; }
-      if (glStorageClass)      { acFree(glStorageClass);      glStorageClass      = 0; }
-      if (glConfigClass)       { acFree(glConfigClass);       glConfigClass       = 0; }
-      if (glTimeClass)         { acFree(glTimeClass);         glTimeClass         = 0; }
-      if (glModuleClass)       { acFree(glModuleClass);       glModuleClass       = 0; }
-      if (glThreadClass)       { acFree(glThreadClass);       glThreadClass       = 0; }
-      if (glRootModuleClass)   { acFree(glRootModuleClass);   glRootModuleClass   = 0; }
+      if (glCompressedStreamClass) { FreeResource(glCompressedStreamClass); glCompressedStreamClass  = 0; }
+      if (glArchiveClass)      { FreeResource(glArchiveClass);      glArchiveClass      = 0; }
+      if (glCompressionClass)  { FreeResource(glCompressionClass);  glCompressionClass  = 0; }
+      if (glScriptClass)       { FreeResource(glScriptClass);       glScriptClass       = 0; }
+      if (glFileClass)         { FreeResource(glFileClass);         glFileClass         = 0; }
+      if (glStorageClass)      { FreeResource(glStorageClass);      glStorageClass      = 0; }
+      if (glConfigClass)       { FreeResource(glConfigClass);       glConfigClass       = 0; }
+      if (glTimeClass)         { FreeResource(glTimeClass);         glTimeClass         = 0; }
+      if (glModuleClass)       { FreeResource(glModuleClass);       glModuleClass       = 0; }
+      if (glThreadClass)       { FreeResource(glThreadClass);       glThreadClass       = 0; }
+      if (glRootModuleClass)   { FreeResource(glRootModuleClass);   glRootModuleClass   = 0; }
 
       #ifdef __unix__
          if (glSocket != -1) RegisterFD(glSocket, RFD_REMOVE, NULL, NULL);
@@ -244,7 +244,7 @@ EXPORT void CloseCore(void)
    // Unless we have crashed, free the Task class
 
    if (!glCrashStatus) {
-      if (glTaskClass) { acFree(glTaskClass); glTaskClass = 0; }
+      if (glTaskClass) { FreeResource(glTaskClass); glTaskClass = 0; }
    }
 
    if (glCodeIndex < CP_FREE_COREBASE) {
@@ -369,7 +369,7 @@ EXPORT void Expunge(WORD Force)
                   log.branch("Sending expunge request to the %s module #%d.", mod_master->Name, mod_master->UID);
                   if (!mod_master->Expunge()) {
                      ccount++;
-                     if (acFree(mod_master)) {
+                     if (FreeResource(mod_master)) {
                         log.warning("RootModule data is corrupt");
                         mod_count = ccount; // Break the loop because the chain links are broken.
                         break;
@@ -379,7 +379,7 @@ EXPORT void Expunge(WORD Force)
                }
                else {
                   ccount++;
-                  if (acFree(mod_master)) {
+                  if (FreeResource(mod_master)) {
                      log.warning("RootModule data is corrupt");
                      mod_count = ccount; // Break the loop because the chain links are broken.
                      break;
@@ -438,11 +438,11 @@ EXPORT void Expunge(WORD Force)
             log.branch("Forcing the expunge of stubborn module %s.", mod_master->Name);
             mod_master->Expunge();
             mod_master->NoUnload = TRUE; // Do not actively destroy the module code as a precaution
-            acFree(mod_master);
+            FreeResource(mod_master);
          }
          else {
             ccount++;
-            acFree(mod_master);
+            FreeResource(mod_master);
          }
          mod_master = next;
       }

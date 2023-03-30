@@ -525,6 +525,14 @@ static ERROR msg_quit(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG 
 }
 
 //********************************************************************************************************************
+
+static ERROR msg_free(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+{
+   FreeResource(((OBJECTID *)Message)[0]);
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
 // This function is called when a WIN32 process that we launched has been terminated.
 //
 // For the linux equivalent, refer to internal.c validate_processID().
@@ -1268,13 +1276,13 @@ static ERROR TASK_Free(extTask *Self, APTR Void)
    if (Self->Path)        { FreeResource(Self->Path);        Self->Path        = NULL; }
    if (Self->ProcessPath) { FreeResource(Self->ProcessPath); Self->ProcessPath = NULL; }
    if (Self->Parameters)  { FreeResource(Self->Parameters);  Self->Parameters  = NULL; }
-   if (Self->MessageMID)  { FreeResourceID(Self->MessageMID); Self->MessageMID  = 0; }
+   if (Self->MessageMID)  { FreeResource(Self->MessageMID); Self->MessageMID  = 0; }
 
    if (Self->MsgAction)          { FreeResource(Self->MsgAction);          Self->MsgAction          = NULL; }
    if (Self->MsgDebug)           { FreeResource(Self->MsgDebug);           Self->MsgDebug           = NULL; }
-   if (Self->MsgValidateProcess) { FreeResource(Self->MsgValidateProcess); Self->MsgValidateProcess = NULL; }
    if (Self->MsgWaitForObjects)  { FreeResource(Self->MsgWaitForObjects);  Self->MsgWaitForObjects  = NULL; }
    if (Self->MsgQuit)            { FreeResource(Self->MsgQuit);            Self->MsgQuit            = NULL; }
+   if (Self->MsgFree)            { FreeResource(Self->MsgFree);            Self->MsgFree            = NULL; }
    if (Self->MsgEvent)           { FreeResource(Self->MsgEvent);           Self->MsgEvent           = NULL; }
    if (Self->MsgThreadCallback)  { FreeResource(Self->MsgThreadCallback);  Self->MsgThreadCallback  = NULL; }
    if (Self->MsgThreadAction)    { FreeResource(Self->MsgThreadAction);    Self->MsgThreadAction    = NULL; }
@@ -1541,6 +1549,9 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
       call.Type = CALL_STDC;
       call.StdC.Routine = (APTR)msg_action;
       AddMsgHandler(NULL, MSGID_ACTION, &call, &Self->MsgAction);
+
+      call.StdC.Routine = (APTR)msg_free;
+      AddMsgHandler(NULL, MSGID_FREE, &call, &Self->MsgFree);
 
       call.StdC.Routine = (APTR)msg_quit;
       AddMsgHandler(NULL, MSGID_QUIT, &call, &Self->MsgQuit);

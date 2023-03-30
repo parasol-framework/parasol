@@ -79,7 +79,7 @@ public:
       selectColumn(0), selectRow(0) { }
 
    ~TextCursor() {
-      if (vector) { acFree(vector); vector = NULL; }
+      if (vector) { FreeResource(vector); vector = NULL; }
       if (timer) { UpdateTimer(timer, 0); timer = 0; }
    }
 
@@ -286,10 +286,10 @@ static ERROR VECTORTEXT_Free(extVectorText *Self, APTR Void)
    Self->txLines.~vector<TextLine>();
    Self->txCursor.~TextCursor();
 
-   if (Self->txBitmapImage) { acFree(Self->txBitmapImage); Self->txBitmapImage = NULL; }
-   if (Self->txAlphaBitmap) { acFree(Self->txAlphaBitmap); Self->txAlphaBitmap = NULL; }
+   if (Self->txBitmapImage) { FreeResource(Self->txBitmapImage); Self->txBitmapImage = NULL; }
+   if (Self->txAlphaBitmap) { FreeResource(Self->txAlphaBitmap); Self->txAlphaBitmap = NULL; }
    if (Self->txFamily)      { FreeResource(Self->txFamily); Self->txFamily = NULL; }
-   if (Self->txFont)        { acFree(Self->txFont); Self->txFont = NULL; }
+   if (Self->txFont)        { FreeResource(Self->txFont); Self->txFont = NULL; }
    if (Self->txDX)          { FreeResource(Self->txDX); Self->txDX = NULL; }
    if (Self->txDY)          { FreeResource(Self->txDY); Self->txDY = NULL; }
    if (Self->txKeyEvent)    { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = NULL; }
@@ -1801,7 +1801,7 @@ static void reset_font(extVectorText *Vector)
       font->set(FID_Point, point_size);
 
       if (!acInit(font)) {
-         if (Vector->txFont) acFree(Vector->txFont);
+         if (Vector->txFont) FreeResource(Vector->txFont);
          Vector->txFont = font;
       }
    }

@@ -498,7 +498,7 @@ failure:
       }
       else {
          log.msg("Owner #%d no longer exists - self-terminating.", owner_id);
-         acFree(Self);
+         FreeResource(Self);
       }
    }
 
@@ -564,7 +564,7 @@ restart:
                      }
                   }
 
-                  acFree(xml);
+                  FreeResource(xml);
 
                   if (lua_pcall(prv->Lua, 1, 0, 0)) { // function(Items)
                      process_error(Self, "Data Receipt Callback");

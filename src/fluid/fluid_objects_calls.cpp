@@ -74,11 +74,6 @@ static int object_call(lua_State *Lua)
          lua_pushinteger(Lua, error);
          results = 1;
       }
-
-      if (action_id IS AC_Free) {
-         // Mark the object as unusable if it's been explicitly terminated.
-         ClearMemory(object, sizeof(struct object));
-      }
    }
    else { // Method
       auto methods = (MethodArray *)lua_touserdata(Lua, lua_upvalueindex(3));

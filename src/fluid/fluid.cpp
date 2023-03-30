@@ -327,8 +327,8 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERROR CMDExpunge(void)
 {
-   if (clFluid)        { acFree(clFluid); clFluid = NULL; }
-   if (modDisplay)     { acFree(modDisplay); modDisplay = NULL; }
+   if (clFluid)        { FreeResource(clFluid); clFluid = NULL; }
+   if (modDisplay)     { FreeResource(modDisplay); modDisplay = NULL; }
    return ERR_Okay;
 }
 

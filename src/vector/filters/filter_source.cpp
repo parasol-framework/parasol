@@ -166,9 +166,9 @@ static ERROR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
 
 static ERROR SOURCEFX_Free(extSourceFX *Self, APTR Void)
 {
-   if (Self->Bitmap)     { acFree(Self->Bitmap); Self->Bitmap = NULL; }
+   if (Self->Bitmap)     { FreeResource(Self->Bitmap); Self->Bitmap = NULL; }
    if (Self->Source)     { UnsubscribeAction(Self->Source, AC_Free); Self->Source = NULL; }
-   if (Self->Scene)      { acFree(Self->Scene); Self->Scene = NULL; }
+   if (Self->Scene)      { FreeResource(Self->Scene); Self->Scene = NULL; }
    if (Self->BitmapData) { FreeResource(Self->BitmapData); Self->BitmapData = NULL; }
    return ERR_Okay;
 }

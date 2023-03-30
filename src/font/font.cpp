@@ -27,7 +27,6 @@ Font: Provides font management functionality and hosts the Font class.
 #include FT_STROKER_H
 
 #include <parasol/main.h>
-#include "font_structs.h"
 
 #include <parasol/modules/xml.h>
 #include <parasol/modules/picture.h>
@@ -70,6 +69,9 @@ struct DisplayBase *DisplayBase;
 static OBJECTPTR clFont = NULL;
 static OBJECTPTR modDisplay = NULL;
 static FT_Library glFTLibrary = NULL;
+
+#include "font_structs.h"
+
 static LONG glDisplayVDPI = FIXED_DPI; // Initially matches the fixed DPI value, can change if display has a high DPI setting.
 static LONG glDisplayHDPI = FIXED_DPI;
 
@@ -303,10 +305,10 @@ static ERROR CMDExpunge(void)
    if (glCacheTimer) { UpdateTimer(glCacheTimer, 0); glCacheTimer = NULL; }
 
    if (glFTLibrary) { FT_Done_FreeType(glFTLibrary); glFTLibrary = NULL; }
-   if (glConfig)    { acFree(glConfig); glConfig = NULL; }
+   if (glConfig)    { FreeResource(glConfig); glConfig = NULL; }
 
-   if (clFont)     { acFree(clFont);     clFont = NULL; }
-   if (modDisplay) { acFree(modDisplay); modDisplay = NULL; }
+   if (clFont)     { FreeResource(clFont);     clFont = NULL; }
+   if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
 
    glBitmapCache.clear();
 

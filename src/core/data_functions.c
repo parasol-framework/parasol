@@ -37,8 +37,7 @@ FDEF argsFindClass[] = { { "Object", FD_OBJECTPTR }, { "ClassID", FD_LONG|FD_UNS
 FDEF argsFindField[] = { { "Field", FD_PTR|FD_STRUCT }, { "Object", FD_OBJECTPTR }, { "FieldID", FD_LONG|FD_UNSIGNED }, { "Target", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
 FDEF argsFindObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "ClassID", FD_LONG|FD_UNSIGNED }, { "Flags", FD_LONG }, { "ObjectID", FD_OBJECTID|FD_RESULT }, { 0, 0 } };
 FDEF argsFreeMutex[] = { { "Void", FD_VOID }, { "Mutex", FD_PTR }, { 0, 0 } };
-FDEF argsFreeResource[] = { { "Error", FD_LONG|FD_ERROR }, { "Address", FD_PTR }, { 0, 0 } };
-FDEF argsFreeResourceID[] = { { "Error", FD_LONG|FD_ERROR }, { "ID", FD_LONG }, { 0, 0 } };
+FDEF argsFreeResource[] = { { "Error", FD_LONG|FD_ERROR }, { "ID", FD_LONG }, { 0, 0 } };
 FDEF argsFreeSharedMutex[] = { { "Void", FD_VOID }, { "Mutex", FD_PTR }, { 0, 0 } };
 FDEF argsFuncError[] = { { "Error", FD_LONG|FD_ERROR }, { "Header", FD_STR }, { "Error", FD_LONG|FD_ERROR }, { 0, 0 } };
 FDEF argsGenCRC32[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "CRC", FD_LONG|FD_UNSIGNED }, { "Data", FD_PTR }, { "Length", FD_LONG|FD_UNSIGNED }, { 0, 0 } };
@@ -149,8 +148,8 @@ const struct Function glFunctions[] = {
    { (APTR)FindObject, "FindObject", argsFindObject },
    { (APTR)FindClass, "FindClass", argsFindClass },
    { (APTR)AnalysePath, "AnalysePath", argsAnalysePath },
+   { (APTR)UTF8Copy, "UTF8Copy", argsUTF8Copy },
    { (APTR)FreeResource, "FreeResource", argsFreeResource },
-   { (APTR)FreeResourceID, "FreeResourceID", argsFreeResourceID },
    { (APTR)GetClassID, "GetClassID", argsGetClassID },
    { (APTR)GetOwnerID, "GetOwnerID", argsGetOwnerID },
    { (APTR)GetField, "GetField", argsGetField },
@@ -251,7 +250,6 @@ const struct Function glFunctions[] = {
    { (APTR)GetSystemState, "GetSystemState", argsGetSystemState },
    { (APTR)StrHash, "StrHash", argsStrHash },
    { (APTR)AddInfoTag, "AddInfoTag", argsAddInfoTag },
-   { (APTR)UTF8Copy, "UTF8Copy", argsUTF8Copy },
    { NULL, NULL, NULL }
 };
 

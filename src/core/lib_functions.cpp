@@ -1164,12 +1164,12 @@ auto ctx = SetContext(display);
    AllocMemory(1000, MEM_DATA, &memory, NULL);
 
 SetContext(ctx);
-acFree(display);
+FreeResource(display->UID);
 </pre>
 
-The above code allocates a Bitmap and a memory block, both of which will be contained by the display. When the #Free()
-action is called, both the bitmap and memory block will be automatically removed as they have a dependency on the
-display's existence.  Please keep in mind that the following is incorrect:
+The above code allocates a Bitmap and a memory block, both of which will be contained by the display. When
+~FreeResource() is called, both the bitmap and memory block will be automatically removed as they have a dependency
+on the display's existence.  Please keep in mind that the following is incorrect:
 
 <pre>
 acInit(display);
@@ -1179,9 +1179,9 @@ auto ctx = SetContext(display);
    AllocMemory(1000, MEM_DATA, &memory, NULL);
 
 SetContext(ctx);
-acFree(display); // The bitmap and memory would be auto-collected
-acFree(bitmap); // Reference is no longer valid
-FreeResource(memory); // Reference is no longer valid
+FreeResource(display->UID); // The bitmap and memory would be auto-collected
+FreeResource(bitmap->UID);  // Reference is no longer valid
+FreeResource(memory);  // Reference is no longer valid
 </pre>
 
 As the bitmap and memory block would have been freed as members of the display, their references are invalid when

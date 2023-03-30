@@ -22,26 +22,26 @@ Name: Objects
 
 using namespace pf;
 
-#define SIZE_ACTIONBUFFER 2048
+static const LONG SIZE_ACTIONBUFFER = 2048;
 
 //********************************************************************************************************************
 // These globals pertain to action subscriptions.  Variables are global to all threads, so need to be locked via
 // glSubLock.
 
 struct subscription {
-   OBJECTPTR Object;
+   OBJECTID ObjectID;
    ACTIONID ActionID;
    FUNCTION Callback;
 
-   subscription(OBJECTPTR pObject, ACTIONID pAction, FUNCTION pCallback) :
-      Object(pObject), ActionID(pAction), Callback(pCallback) { }
+   subscription(OBJECTID pObject, ACTIONID pAction, FUNCTION pCallback) :
+      ObjectID(pObject), ActionID(pAction), Callback(pCallback) { }
 };
 
 struct unsubscription {
-   OBJECTPTR Object;
+   OBJECTID ObjectID;
    ACTIONID ActionID;
 
-   unsubscription(OBJECTPTR pObject, ACTIONID pAction) : Object(pObject), ActionID(pAction) { }
+   unsubscription(OBJECTID pObject, ACTIONID pAction) : ObjectID(pObject), ActionID(pAction) { }
 };
 
 static std::recursive_mutex glSubLock; // The following variables are locked by this mutex
@@ -50,25 +50,158 @@ static std::vector<unsubscription> glDelayedUnsubscribe;
 static std::vector<subscription> glDelayedSubscribe;
 static LONG glSubReadOnly = 0; // To prevent modification of glSubscriptions
 
+static void free_children(OBJECTPTR Object);
+
 //********************************************************************************************************************
-// Deal with any un/subscriptions that occurred inside a client callback.
 
-static void process_delayed_subs(void)
+static ERROR object_free(BaseClass *Object)
 {
-   if (!glDelayedSubscribe.empty()) {
-      for (auto &entry : glDelayedSubscribe) {
-         SubscribeAction(entry.Object, entry.ActionID, &entry.Callback);
-      }
-      glDelayedSubscribe.clear();
+   pf::Log log("Free");
+
+   Object->threadLock();
+   ObjectContext new_context(Object, AC_Free);
+
+   auto mc = Object->ExtClass;
+   if (!mc) {
+      log.trace("Object %p #%d is missing its class pointer.", Object, Object->UID);
+      Object->threadRelease();
+      return ERR_Okay;
    }
 
-   if (!glDelayedUnsubscribe.empty()) {
-      for (auto &entry : glDelayedUnsubscribe) {
-         UnsubscribeAction(entry.Object, entry.ActionID);
-      }
-      glDelayedUnsubscribe.clear();
+   // Check to see if the object is currently locked from AccessObjectID().  If it is, we mark it for deletion so that we
+   // can safely get rid of it during ReleaseObject().
+
+   if ((Object->Locked) or (Object->ThreadPending)) {
+      log.debug("Object #%d locked; marking for deletion.", Object->UID);
+      Object->Flags |= NF::UNLOCK_FREE;
+      Object->threadRelease();
+      return ERR_InUse;
    }
+
+   // Return if the object is currently in the process of being freed (i.e. avoid recursion)
+
+   if (Object->defined(NF::FREE)) {
+      log.trace("Object already marked with NF::FREE.");
+      Object->threadRelease();
+      return ERR_InUse;
+   }
+
+   if (Object->ActionDepth > 0) {
+      // Free() is being called while the object itself is still in use.
+      // This can be an issue with objects that haven't been locked with AccessObject().
+      log.trace("Free() attempt while object is in use.");
+      if (!Object->defined(NF::COLLECT)) {
+         Object->Flags |= NF::COLLECT;
+         SendMessage(0, MSGID_FREE, 0, &Object->UID, sizeof(OBJECTID));
+      }
+      Object->threadRelease();
+      return ERR_InUse;
+   }
+
+   if (Object->ClassID IS ID_METACLASS)   log.branch("%s, Owner: %d", Object->className(), Object->OwnerID);
+   else if (Object->ClassID IS ID_MODULE) log.branch("%s, Owner: %d", ((extModule *)Object)->Name, Object->OwnerID);
+   else if (Object->Name[0])              log.branch("Name: %s, Owner: %d", Object->Name, Object->OwnerID);
+   else log.branch("Owner: %d", Object->OwnerID);
+
+   // If the object wants to be warned when the free process is about to be executed, it will subscribe to the
+   // FreeWarning action.  The process can be aborted by returning ERR_InUse.
+
+   if (mc->ActionTable[AC_FreeWarning].PerformAction) {
+      if (mc->ActionTable[AC_FreeWarning].PerformAction(Object, NULL) IS ERR_InUse) {
+         if (Object->collecting()) {
+            // If the object is marked for deletion then it is not possible to avoid destruction (this prevents objects
+            // from locking up the shutdown process).
+
+            log.msg("Object will be destroyed despite being in use.");
+         }
+         else {
+            Object->threadRelease();
+            return ERR_InUse;
+         }
+      }
+   }
+
+   if (mc->Base) { // Sub-class detected, so call the base class
+      if (mc->Base->ActionTable[AC_FreeWarning].PerformAction) {
+         if (mc->Base->ActionTable[AC_FreeWarning].PerformAction(Object, NULL) IS ERR_InUse) {
+            if (Object->collecting()) {
+               // If the object is marked for deletion then it is not possible to avoid destruction (this prevents
+               // objects from locking up the shutdown process).
+               log.msg("Object will be destroyed despite being in use.");
+            }
+            else {
+               Object->threadRelease();
+               return ERR_InUse;
+            }
+         }
+      }
+   }
+
+   // Mark the object as being in the free process.  The mark prevents any further access to the object via
+   // AccessObjectID().  Classes may also use the flag to check if an object is in the process of being freed.
+
+   Object->Flags = (Object->Flags|NF::FREE) & (~NF::UNLOCK_FREE);
+
+   NotifySubscribers(Object, AC_Free, NULL, ERR_Okay);
+
+   if (mc->ActionTable[AC_Free].PerformAction) {  // If the class that formed the object is a sub-class, we call its Free() support first, and then the base-class to clean up.
+      mc->ActionTable[AC_Free].PerformAction(Object, NULL);
+   }
+
+   if (mc->Base) { // Sub-class detected, so call the base class
+      if (mc->Base->ActionTable[AC_Free].PerformAction) {
+         mc->Base->ActionTable[AC_Free].PerformAction(Object, NULL);
+      }
+   }
+
+   if ((Object->NotifyFlags[0]) or (Object->NotifyFlags[1])) {
+      const std::lock_guard<std::recursive_mutex> lock(glSubLock);
+      glSubscriptions.erase(Object->UID);
+   }
+
+   // If a private child structure is present, remove it
+
+   if (Object->ChildPrivate) {
+      if (FreeResource(Object->ChildPrivate)) log.warning("Invalid ChildPrivate address %p.", Object->ChildPrivate);
+      Object->ChildPrivate = NULL;
+   }
+
+   free_children(Object);
+
+   if (Object->defined(NF::TIMER_SUB)) {
+      ThreadLock lock(TL_TIMER, 200);
+      if (lock.granted()) {
+         for (auto it=glTimers.begin(); it != glTimers.end(); ) {
+            if (it->SubscriberID IS Object->UID) {
+               log.warning("%s object #%d has an unfreed timer subscription, routine %p, interval %" PF64, mc->ClassName, Object->UID, &it->Routine, it->Interval);
+               it = glTimers.erase(it);
+            }
+            else it++;
+         }
+      }
+   }
+
+   if ((mc->Base) and (mc->Base->OpenCount > 0)) mc->Base->OpenCount--; // Child detected
+   if (mc->OpenCount > 0) mc->OpenCount--;
+
+   if (Object->Name[0]) { // Remove the object from the name lookup list
+      ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
+      if (lock.granted()) remove_object_hash(Object);
+   }
+
+   // Clear the object header.  This helps to raise problems in any areas of code that may attempt to use the object
+   // after it has been destroyed.
+
+   Object->Class   = NULL;
+   Object->ClassID = 0;
+   Object->UID     = 0;
+   return ERR_Okay;
 }
+
+static ResourceManager glResourceObject = {
+   "Object",
+   (ERROR (*)(APTR))&object_free
+};
 
 //********************************************************************************************************************
 
@@ -162,7 +295,7 @@ static void free_children(OBJECTPTR Object)
                if (mem.Object->defined(NF::INTEGRAL)) {
                   log.warning("Found unfreed child object #%d (class %s) belonging to %s object #%d.", mem.Object->UID, ResolveClassID(mem.Object->ClassID), Object->className(), Object->UID);
                }
-               acFree(mem.Object);
+               FreeResource(mem.Object);
             }
          }
       }
@@ -321,8 +454,7 @@ ERROR Action(LONG ActionID, OBJECTPTR Object, APTR Parameters)
       glSubReadOnly--;
    }
 
-   if (ActionID != AC_Free) Object->ActionDepth--;
-
+   Object->ActionDepth--;
    Object->threadRelease();
 
 #ifdef DEBUG
@@ -490,7 +622,7 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
             args = ActionTable[ActionID].Args;
             if ((argssize = ActionTable[ActionID].Size) > 0) {
                if (!(error = copy_args(args, argssize, (BYTE *)Parameters, call_data + sizeof(thread_data), SIZE_ACTIONBUFFER, &argssize, ActionTable[ActionID].Name))) {
-                  free_args = TRUE;
+                  free_args = true;
                }
 
                argssize += sizeof(thread_data);
@@ -502,7 +634,7 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
                args = cl->Methods[-ActionID].Args;
                if ((argssize = cl->Methods[-ActionID].Size) > 0) {
                   if (!(error = copy_args(args, argssize, (BYTE *)Parameters, call_data + sizeof(thread_data), SIZE_ACTIONBUFFER, &argssize, cl->Methods[-ActionID].Name))) {
-                     free_args = TRUE;
+                     free_args = true;
                   }
                }
                else log.trace("Ignoring parameters provided for method %s", cl->Methods[-ActionID].Name);
@@ -659,24 +791,44 @@ void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR E
    if (!(Object->NotifyFlags[ActionID>>5] & (1<<(ActionID & 31)))) return;
 
    const std::lock_guard<std::recursive_mutex> lock(glSubLock);
-   glSubReadOnly++;
 
    if ((!glSubscriptions[Object->UID].empty()) and (!glSubscriptions[Object->UID][ActionID].empty())) {
+      glSubReadOnly++;
       for (auto &sub : glSubscriptions[Object->UID][ActionID]) {
          if (sub.Context) {
             pf::SwitchContext ctx(sub.Context);
             sub.Callback(Object, ActionID, ErrorCode, Parameters);
          }
       }
+      glSubReadOnly--;
 
-      process_delayed_subs();
+      if (!glSubReadOnly) {
+         if (!glDelayedSubscribe.empty()) {
+            for (auto &entry : glDelayedSubscribe) {
+               glSubscriptions[entry.ObjectID][entry.ActionID].emplace_back(entry.Callback.StdC.Context, entry.Callback.StdC.Routine);
+            }
+            glDelayedSubscribe.clear();
+         }
+
+         if (!glDelayedUnsubscribe.empty()) {
+            for (auto &entry : glDelayedUnsubscribe) {
+               if (Object->UID IS entry.ObjectID) UnsubscribeAction(Object, ActionID);
+               else {
+                  OBJECTPTR obj;
+                  if (!AccessObjectID(entry.ObjectID, 3000, &obj)) {
+                     UnsubscribeAction(obj, entry.ActionID);
+                     ReleaseObject(obj);
+                  }
+               }
+            }
+            glDelayedUnsubscribe.clear();
+         }
+      }
    }
    else {
       log.warning("Unstable subscription flags discovered for object #%d, action %d: %.8x %.8x", Object->UID, ActionID, Object->NotifyFlags[0], Object->NotifyFlags[1]);
       __atomic_and_fetch(&Object->NotifyFlags[ActionID>>5], ~(1<<(ActionID & 31)), __ATOMIC_RELAXED);
    }
-
-   glSubReadOnly--;
 }
 
 /*********************************************************************************************************************
@@ -742,24 +894,22 @@ ERROR QueueAction(LONG ActionID, OBJECTID ObjectID, APTR Args)
             msg.Action.SendArgs = true;
          }
       }
-      else {
-         if (auto cl = (extMetaClass *)FindClass(GetClassID(ObjectID))) {
-            if ((-ActionID) < cl->TotalMethods) {
-               fields   = cl->Methods[-ActionID].Args;
-               argssize = cl->Methods[-ActionID].Size;
-               if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, cl->Methods[-ActionID].Name) != ERR_Okay) {
-                  log.warning("Failed to buffer arguments for method \"%s\".", cl->Methods[-ActionID].Name);
-                  return ERR_Failed;
-               }
-               msg.Action.SendArgs = true;
+      else if (auto cl = (extMetaClass *)FindClass(GetClassID(ObjectID))) {
+         if ((-ActionID) < cl->TotalMethods) {
+            fields   = cl->Methods[-ActionID].Args;
+            argssize = cl->Methods[-ActionID].Size;
+            if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, cl->Methods[-ActionID].Name) != ERR_Okay) {
+               log.warning("Failed to buffer arguments for method \"%s\".", cl->Methods[-ActionID].Name);
+               return ERR_Failed;
             }
-            else {
-               log.warning("Illegal method ID %d executed on class %s.", ActionID, cl->ClassName);
-               return ERR_IllegalMethodID;
-            }
+            msg.Action.SendArgs = true;
          }
-         else return log.warning(ERR_MissingClass);
+         else {
+            log.warning("Illegal method ID %d executed on class %s.", ActionID, cl->ClassName);
+            return ERR_IllegalMethodID;
+         }
       }
+      else return log.warning(ERR_MissingClass);
    }
 
    ERROR error = SendMessage(0, MSGID_ACTION, 0, &msg.Action, msgsize + sizeof(ActionMessage));
@@ -838,9 +988,11 @@ ERROR SubscribeAction(OBJECTPTR Object, ACTIONID ActionID, FUNCTION *Callback)
    if ((!Object) or (!Callback)) return log.warning(ERR_NullArgs);
    if ((ActionID < 0) or (ActionID >= AC_END)) return log.warning(ERR_OutOfRange);
    if (Callback->Type != CALL_STDC) return log.warning(ERR_Args);
+   if (Object->collecting()) return ERR_Okay;
 
    if (glSubReadOnly) {
-      glDelayedSubscribe.emplace_back(Object, ActionID, *Callback);
+      glDelayedSubscribe.emplace_back(Object->UID, ActionID, *Callback);
+      __atomic_or_fetch(&Object->NotifyFlags[ActionID>>5], 1<<(ActionID & 31), __ATOMIC_RELAXED);
    }
    else {
       std::lock_guard<std::recursive_mutex> lock(glSubLock);
@@ -881,7 +1033,7 @@ ERROR UnsubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
    if ((ActionID < 0) or (ActionID >= AC_END)) return log.warning(ERR_Args);
 
    if (glSubReadOnly) {
-      glDelayedUnsubscribe.emplace_back(Object, ActionID);
+      glDelayedUnsubscribe.emplace_back(Object->UID, ActionID);
       return ERR_Okay;
    }
 
@@ -932,140 +1084,6 @@ restart:
    }
 
    return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-** Action: Free()
-*/
-
-ERROR MGR_Free(OBJECTPTR Object, APTR Void)
-{
-   pf::Log log("Free");
-   extMetaClass *mc;
-
-   Object->ActionDepth--; // See Action() regarding this
-
-   if (!(mc = Object->ExtClass)) {
-      log.trace("Object %p #%d is missing its class pointer.", Object, Object->UID);
-      return log.warning(ERR_ObjectCorrupt)|ERF_Notified;
-   }
-
-   // Check to see if the object is currently locked from AccessObjectID().  If it is, we mark it for deletion so that we
-   // can safely get rid of it during ReleaseObject().
-
-   if ((Object->Locked) or (Object->ThreadPending)) {
-      log.debug("Object #%d locked; marking for deletion.", Object->UID);
-      Object->Flags |= NF::UNLOCK_FREE;
-      return ERR_Okay|ERF_Notified;
-   }
-
-   // Return if the object is currently in the process of being freed (i.e. avoid recursion)
-
-   if (Object->defined(NF::FREE)) {
-      log.trace("Object already marked with NF::FREE.");
-      return ERR_Okay|ERF_Notified;
-   }
-
-   if (Object->ActionDepth > 0) { // Free() is being called while the object itself is still in use.  This can be an issue with private objects that haven't been locked with AccessObjectID().
-      log.trace("Free() attempt while object is in use.");
-      if (!Object->defined(NF::COLLECT)) {
-         Object->Flags |= NF::COLLECT;
-         ActionMsg(AC_Free, Object->UID, NULL);
-      }
-      return ERR_Okay|ERF_Notified;
-   }
-
-   if (Object->ClassID IS ID_METACLASS)   log.branch("%s, Owner: %d", Object->className(), Object->OwnerID);
-   else if (Object->ClassID IS ID_MODULE) log.branch("%s, Owner: %d", ((extModule *)Object)->Name, Object->OwnerID);
-   else if (Object->Name[0])              log.branch("Name: %s, Owner: %d", Object->Name, Object->OwnerID);
-   else log.branch("Owner: %d", Object->OwnerID);
-
-   // If the object wants to be warned when the free process is about to be executed, it will subscribe to the
-   // FreeWarning action.  The process can be aborted by returning ERR_InUse.
-
-   if (mc->ActionTable[AC_FreeWarning].PerformAction) {
-      if (mc->ActionTable[AC_FreeWarning].PerformAction(Object, NULL) IS ERR_InUse) {
-         if (Object->collecting()) {
-            // If the object is marked for deletion then it is not possible to avoid destruction (this prevents objects
-            // from locking up the shutdown process).
-
-            log.msg("Object will be destroyed despite being in use.");
-         }
-         else return ERR_InUse|ERF_Notified;
-      }
-   }
-
-   if (mc->Base) { // Sub-class detected, so call the base class
-      if (mc->Base->ActionTable[AC_FreeWarning].PerformAction) {
-         if (mc->Base->ActionTable[AC_FreeWarning].PerformAction(Object, NULL) IS ERR_InUse) {
-            if (Object->collecting()) {
-               // If the object is marked for deletion then it is not possible to avoid destruction (this prevents
-               // objects from locking up the shutdown process).
-               log.msg("Object will be destroyed despite being in use.");
-            }
-            else return ERR_InUse|ERF_Notified;
-         }
-      }
-   }
-
-   // Mark the object as being in the free process.  The mark prevents any further access to the object via
-   // AccessObjectID().  Classes may also use the flag to check if an object is in the process of being freed.
-
-   Object->Flags = (Object->Flags|NF::FREE) & (~NF::UNLOCK_FREE);
-
-   NotifySubscribers(Object, AC_Free, NULL, ERR_Okay);
-
-   if (mc->ActionTable[AC_Free].PerformAction) {  // If the class that formed the object is a sub-class, we call its Free() support first, and then the base-class to clean up.
-      mc->ActionTable[AC_Free].PerformAction(Object, NULL);
-   }
-
-   if (mc->Base) { // Sub-class detected, so call the base class
-      if (mc->Base->ActionTable[AC_Free].PerformAction) {
-         mc->Base->ActionTable[AC_Free].PerformAction(Object, NULL);
-      }
-   }
-
-   if ((Object->NotifyFlags[0]) or (Object->NotifyFlags[1])) {
-      const std::lock_guard<std::recursive_mutex> lock(glSubLock);
-      glSubscriptions.erase(Object->UID);
-   }
-
-   // If a private child structure is present, remove it
-
-   if (Object->ChildPrivate) {
-      if (FreeResource(Object->ChildPrivate)) log.warning("Invalid ChildPrivate address %p.", Object->ChildPrivate);
-      Object->ChildPrivate = NULL;
-   }
-
-   free_children(Object);
-
-   if (Object->defined(NF::TIMER_SUB)) {
-      ThreadLock lock(TL_TIMER, 200);
-      if (lock.granted()) {
-         for (auto it=glTimers.begin(); it != glTimers.end(); ) {
-            if (it->SubscriberID IS Object->UID) {
-               log.warning("%s object #%d has an unfreed timer subscription, routine %p, interval %" PF64, mc->ClassName, Object->UID, &it->Routine, it->Interval);
-               it = glTimers.erase(it);
-            }
-            else it++;
-         }
-      }
-   }
-
-   if ((mc->Base) and (mc->Base->OpenCount > 0)) mc->Base->OpenCount--; // Child detected
-   if (mc->OpenCount > 0) mc->OpenCount--;
-
-   if (Object->Name[0]) { // Remove the object from the name lookup list
-      ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
-      if (lock.granted()) remove_object_hash(Object);
-   }
-
-   // Clear the object header.  This helps to raise problems in any areas of code that may attempt to use the object
-   // after it has been destroyed.
-   ClearMemory(Object, sizeof(BaseClass));
-   FreeResource(Object);
-
-   return ERR_Okay|ERF_Notified; // Prevent notifications after termination.
 }
 
 /*********************************************************************************************************************
@@ -1225,4 +1243,197 @@ ERROR MGR_Signal(OBJECTPTR Object, APTR Void)
 {
    Object->Flags |= NF::SIGNALLED;
    return ERR_Okay;
+}
+/*********************************************************************************************************************
+
+-FUNCTION-
+NewObject: Creates new objects.
+
+The NewObject() function is used to create new objects and register them for use within the Core.  After creating
+a new object, the client can proceed to set the object's field values and initialise it with #Init() so that it
+can be used as intended.
+
+The new object will be modeled according to the class blueprint indicated by ClassID.  Pre-defined class ID's are
+defined in their documentation and the `parasol/system/register.h` include file.  ID's for unregistered classes can
+be computed using the ~ResolveClassName() function.
+
+A pointer to the new object will be returned in the Object parameter.  By default, object allocations are context
+sensitive and will be collected when their owner is terminated.  It is possible to track an object to a different
+owner by using the ~SetOwner() function.
+
+To destroy an object, call ~FreeResource().
+
+-INPUT-
+large ClassID: A class ID from "system/register.h" or generated by ~ResolveClassName().
+flags(NF) Flags:  Optional flags.
+&obj Object: Pointer to an address variable that will store a reference to the new object.
+
+-ERRORS-
+Okay
+NullArgs
+MissingClass: The ClassID is invalid or refers to a class that is not installed.
+Failed
+ObjectExists: An object with the provided Name already exists in the system (applies only when the NF_UNIQUE flag has been used).
+-END-
+
+*********************************************************************************************************************/
+
+ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
+{
+   pf::Log log(__FUNCTION__);
+
+   auto class_id = ULONG(ClassID & 0xffffffff);
+   if ((!class_id) or (!Object)) return log.warning(ERR_NullArgs);
+
+   auto mc = (extMetaClass *)FindClass(class_id);
+   if (!mc) {
+      if (glClassMap.contains(class_id)) {
+         log.function("Class %s was not found in the system.", glClassMap[class_id]->ClassName);
+      }
+      else log.function("Class $%.8x was not found in the system.", class_id);
+      return ERR_MissingClass;
+   }
+
+   if (Object) *Object = NULL;
+
+   Flags &= (NF::UNTRACKED|NF::INTEGRAL|NF::UNIQUE|NF::NAME|NF::SUPPRESS_LOG); // Very important to eliminate any internal flags.
+
+   // If the object is integral then turn off use of the UNTRACKED flag (otherwise the child will
+   // end up being tracked to its task rather than its parent object).
+
+   if ((Flags & NF::INTEGRAL) != NF::NIL) Flags = Flags & (~NF::UNTRACKED);
+
+   // Force certain flags on the class' behalf
+
+   if (mc->Flags & CLF_NO_OWNERSHIP) Flags |= NF::UNTRACKED;
+
+   if ((Flags & NF::SUPPRESS_LOG) IS NF::NIL) log.branch("%s #%d, Flags: $%x", mc->ClassName, glPrivateIDCounter, LONG(Flags));
+
+   OBJECTPTR head = NULL;
+   MEMORYID head_id;
+
+   if (!AllocMemory(mc->Size, MEM_MANAGED|MEM_OBJECT|MEM_NO_LOCK|(((Flags & NF::UNTRACKED) != NF::NIL) ? MEM_UNTRACKED : 0), (APTR *)&head, &head_id)) {
+      set_memory_manager(head, &glResourceObject);
+
+      head->UID     = head_id;
+      head->ClassID = mc->BaseClassID;
+      head->Class   = (extMetaClass *)mc;
+      head->Flags   = Flags;
+
+      if (mc->BaseClassID IS mc->SubClassID) head->SubID = 0; // Object derived from a base class
+      else head->SubID = mc->SubClassID; // Object derived from a sub-class
+
+      // Tracking for our new object is configured here.
+
+      if (mc->Flags & CLF_NO_OWNERSHIP) { } // Used by classes like RootModule to avoid tracking back to the task.
+      else if ((Flags & NF::UNTRACKED) != NF::NIL) {
+         if (class_id IS ID_MODULE); // Untracked modules have no owner, due to the expunge process.
+         else {
+            // Untracked objects are owned by the current task.  This ensures that the object
+            // is deallocated correctly when the Core is closed.
+
+            if (glCurrentTask) {
+               ScopedObjectAccess lock(glCurrentTask);
+               SetOwner(head, glCurrentTask);
+            }
+         }
+      }
+      else if (tlContext != &glTopContext) { // Track the object to the current context
+         SetOwner(head, tlContext->resource());
+      }
+      else if (glCurrentTask) {
+         ScopedObjectAccess lock(glCurrentTask);
+         SetOwner(head, glCurrentTask);
+      }
+
+      // After the header has been created we can set the context, then call the base class's NewObject() support.  If this
+      // object belongs to a sub-class, we will also call its supporting NewObject() action if it has specified one.
+
+      pf::SwitchContext context(head);
+
+      ERROR error = ERR_Okay;
+      if (mc->Base) {
+         if (mc->Base->ActionTable[AC_NewObject].PerformAction) {
+            if ((error = mc->Base->ActionTable[AC_NewObject].PerformAction(head, NULL))) {
+               log.warning(error);
+            }
+         }
+         else error = log.warning(ERR_NoAction);
+      }
+
+      if ((!error) and (mc->ActionTable[AC_NewObject].PerformAction)) {
+         if ((error = mc->ActionTable[AC_NewObject].PerformAction(head, NULL))) {
+            log.warning(error);
+         }
+      }
+
+      if (!error) {
+         ((extMetaClass *)head->Class)->OpenCount++;
+         if (mc->Base) mc->Base->OpenCount++;
+
+         *Object = head;
+         return ERR_Okay;
+      }
+
+      FreeResource(head);
+      return error;
+   }
+   else return ERR_AllocMemory;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+ResolveClassName: Resolves any class name to a unique identification ID.
+
+This function will resolve a class name to its unique ID.
+
+Class ID's are used by functions such as ~NewObject() for fast processing.
+
+-INPUT-
+cstr Name: The name of the class that requires resolution.
+
+-RESULT-
+cid: Returns the class ID identified from the class name, or NULL if the class could not be found.
+-END-
+
+*********************************************************************************************************************/
+
+CLASSID ResolveClassName(CSTRING ClassName)
+{
+   if ((!ClassName) or (!*ClassName)) {
+      pf::Log log(__FUNCTION__);
+      log.warning(ERR_NullArgs);
+      return 0;
+   }
+
+   CLASSID cid = StrHash(ClassName, FALSE);
+   if (glClassDB.contains(cid)) return cid;
+   else return 0;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+ResolveClassID: Converts a valid class ID to its equivalent name.
+
+This function is able to resolve a valid class identifier to its equivalent name.  The name is resolved by scanning the
+class database, so the class must be registered in the database for this function to return successfully.
+
+-INPUT-
+cid ID: The ID of the class that needs to be resolved.
+
+-RESULT-
+cstr: Returns the name of the class, or NULL if the ID is not recognised.  Standard naming conventions apply, so it can be expected that the string is capitalised and without spaces, e.g. "NetSocket".
+-END-
+
+*********************************************************************************************************************/
+
+CSTRING ResolveClassID(CLASSID ID)
+{
+   if (glClassDB.contains(ID)) return glClassDB[ID].Name.c_str();
+
+   pf::Log log(__FUNCTION__);
+   log.warning("Failed to resolve ID $%.8x", ID);
+   return NULL;
 }

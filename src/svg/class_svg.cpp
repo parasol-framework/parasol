@@ -82,7 +82,7 @@ static ERROR SVG_Free(extSVG *Self, APTR Void)
    }
 
    if ((Self->Target) and (Self->Target IS Self->Scene) and (Self->Scene->ownerID() IS Self->UID)) {
-      acFree(Self->Target);
+      FreeResource(Self->Target);
       Self->Target = NULL;
    }
 

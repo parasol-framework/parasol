@@ -231,7 +231,7 @@ void free_iconv(void)
       if (glIconv) { iconv_close(glIconv); glIconv = NULL; }
       if (glIconvBuffer) { FreeResource(glIconvBuffer); glIconvBuffer = NULL; }
 
-      acFree(modIconv);
+      FreeResource(modIconv);
       modIconv = NULL;
    }
 }

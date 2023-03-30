@@ -103,7 +103,7 @@ if (!NewObject(ID_DISPLAY, 0, &display)) {
    if (!display->init(display)) {
       LogF("Demo","The width of the display is: %d", display-&gt;Width);
    }
-   acFree(display);
+   FreeResource(display);
 }
 </pre>
 

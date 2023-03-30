@@ -389,7 +389,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
 
                free_module(master->LibraryBase);
                master->LibraryBase = NULL;
-               acFree(master);
+               FreeResource(master);
 
                Self->Root = table->Root;
                master = table->Root;
@@ -508,7 +508,7 @@ exit:
             master->Expunge();
          }
 
-         acFree(master);
+         FreeResource(master);
          Self->Root = NULL;
       }
    }

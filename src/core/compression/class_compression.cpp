@@ -1765,7 +1765,7 @@ static ERROR COMPRESSION_Free(extCompression *Self, APTR Void)
    if (Self->OutputBuffer) { FreeResource(Self->OutputBuffer); Self->OutputBuffer = NULL; }
    if (Self->Input)        { FreeResource(Self->Input); Self->Input = NULL; }
    if (Self->Output)       { FreeResource(Self->Output); Self->Output = NULL; }
-   if (Self->FileIO)       { acFree(Self->FileIO); Self->FileIO = NULL; }
+   if (Self->FileIO)       { FreeResource(Self->FileIO); Self->FileIO = NULL; }
    if (Self->Path)         { FreeResource(Self->Path); Self->Path = NULL; }
 
    Self->~extCompression();

@@ -301,7 +301,7 @@ void MsgWindowClose(OBJECTID SurfaceID)
          }
       }
 
-      acFree(SurfaceID);
+      FreeResource(SurfaceID);
    }
 }
 
@@ -312,7 +312,7 @@ void MsgWindowDestroyed(OBJECTID SurfaceID)
    if (SurfaceID) {
       pf::Log log("WinMgr");
       log.branch("Freeing window surface #%d.", SurfaceID);
-      acFree(SurfaceID);
+      FreeResource(SurfaceID);
    }
 }
 

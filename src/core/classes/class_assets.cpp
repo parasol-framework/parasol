@@ -179,7 +179,7 @@ void free_asset_class(void)
 
    VirtualAssign("assets", VAS_DEREGISTER, TAGEND);
 
-   if (glAssetClass) { acFree(glAssetClass); glAssetClass = NULL; }
+   if (glAssetClass) { FreeResource(glAssetClass); glAssetClass = NULL; }
 }
 
 //********************************************************************************************************************

@@ -307,7 +307,7 @@ static ERROR MP3_Free(objSound *Self, APTR Void)
    prvMP3 *prv;
    if (!(prv = (prvMP3 *)Self->ChildPrivate)) return ERR_Okay;
 
-   if (prv->File) { acFree(prv->File); prv->File = NULL; }
+   if (prv->File) { FreeResource(prv->File); prv->File = NULL; }
 
    return ERR_Okay;
 }
@@ -890,7 +890,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERROR CMDExpunge(void)
 {
-   if (clMP3) { acFree(clMP3); clMP3 = NULL; }
+   if (clMP3) { FreeResource(clMP3); clMP3 = NULL; }
    return ERR_Okay;
 }
 

@@ -299,9 +299,9 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERROR CMDExpunge(void)
 {
-   if (clHTTP)     { acFree(clHTTP);     clHTTP     = NULL; }
-   if (glProxy)    { acFree(glProxy);    glProxy    = NULL; }
-   if (modNetwork) { acFree(modNetwork); modNetwork = NULL; }
+   if (clHTTP)     { FreeResource(clHTTP);     clHTTP     = NULL; }
+   if (glProxy)    { FreeResource(glProxy);    glProxy    = NULL; }
+   if (modNetwork) { FreeResource(modNetwork); modNetwork = NULL; }
    return ERR_Okay;
 }
 
@@ -383,14 +383,14 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
 
    if ((Self->Socket) and (Self->Socket->State IS NTC_DISCONNECTED)) {
       Self->Socket->set(FID_Feedback, (APTR)NULL);
-      acFree(Self->Socket);
+      FreeResource(Self->Socket);
       Self->Socket = NULL;
       Self->SecurePath = TRUE;
    }
 
    if (Self->Response) { FreeResource(Self->Response); Self->Response = NULL; }
-   if (Self->flInput)  { acFree(Self->flInput); Self->flInput = NULL; }
-   if (Self->flOutput) { acFree(Self->flOutput); Self->flOutput = NULL; }
+   if (Self->flInput)  { FreeResource(Self->flInput); Self->flInput = NULL; }
+   if (Self->flOutput) { FreeResource(Self->flOutput); Self->flOutput = NULL; }
 
    if (Self->RecvBuffer) {
       FreeResource(Self->RecvBuffer);
@@ -720,8 +720,8 @@ static ERROR HTTP_Deactivate(extHTTP *Self, APTR Void)
 
    // Closing files is important for dropping the file locks
 
-   if (Self->flInput) { acFree(Self->flInput); Self->flInput = NULL; }
-   if (Self->flOutput) { acFree(Self->flOutput); Self->flOutput = NULL; }
+   if (Self->flInput) { FreeResource(Self->flInput); Self->flInput = NULL; }
+   if (Self->flOutput) { FreeResource(Self->flOutput); Self->flOutput = NULL; }
 
    // Free up the outgoing buffer since it is only needed during transfers and will be reallocated as necessary.
 
@@ -736,7 +736,7 @@ static ERROR HTTP_Deactivate(extHTTP *Self, APTR Void)
       if ((Self->Socket->State IS NTC_DISCONNECTED) or (Self->CurrentState IS HGS_TERMINATED)) {
          log.msg("Terminating socket (disconnected).");
          Self->Socket->set(FID_Feedback, (APTR)NULL);
-         acFree(Self->Socket);
+         FreeResource(Self->Socket);
          Self->Socket = NULL;
          Self->SecurePath = TRUE;
       }
@@ -754,14 +754,14 @@ static ERROR HTTP_Free(extHTTP *Self, APTR Args)
 
    if (Self->Socket)     {
       Self->Socket->set(FID_Feedback, (APTR)NULL);
-      acFree(Self->Socket);
+      FreeResource(Self->Socket);
       Self->Socket = NULL;
    }
 
    if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
 
-   if (Self->flInput)     { acFree(Self->flInput);           Self->flInput = NULL; }
-   if (Self->flOutput)    { acFree(Self->flOutput);          Self->flOutput = NULL; }
+   if (Self->flInput)     { FreeResource(Self->flInput);           Self->flInput = NULL; }
+   if (Self->flOutput)    { FreeResource(Self->flOutput);          Self->flOutput = NULL; }
    if (Self->Buffer)      { FreeResource(Self->Buffer);      Self->Buffer = NULL; }
    if (Self->Chunk)       { FreeResource(Self->Chunk);       Self->Chunk = NULL; }
    if (Self->Path)        { FreeResource(Self->Path);        Self->Path = NULL; }
@@ -1190,7 +1190,7 @@ static ERROR SET_Location(extHTTP *Self, CSTRING Value)
 
       if (Self->Socket) {
          Self->Socket->set(FID_Feedback, (APTR)NULL);
-         acFree(Self->Socket);
+         FreeResource(Self->Socket);
          Self->Socket = NULL;
       }
 

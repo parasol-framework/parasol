@@ -252,7 +252,7 @@ static void expose_buffer(const SURFACELIST &list, LONG Limit, LONG Index, LONG 
        ((list[Index].ParentID) or (list[Index].Flags & RNF_CURSOR))) {
       if (glComposite) {
          if (glComposite->BitsPerPixel != list[Index].BitsPerPixel) {
-            acFree(glComposite);
+            FreeResource(glComposite);
             glComposite = NULL;
          }
          else {
@@ -421,7 +421,7 @@ static void notify_free_parent(OBJECTPTR Object, ACTIONID ActionID, ERROR Result
    Self->Flags &= ~RNF_VISIBLE;
    UpdateSurfaceField(Self, &SurfaceRecord::Flags, Self->Flags);
    if (Self->defined(NF::INTEGRAL)) QueueAction(AC_Free, Self->UID); // If the object is a child of something, give the parent object time to do the deallocation itself
-   else acFree(Self);
+   else FreeResource(Self);
 }
 
 static void notify_free_callback(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Void)
@@ -942,13 +942,13 @@ static ERROR SURFACE_Free(extSurface *Self, APTR Void)
    untrack_layer(Self->UID);
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
-      acFree(Self->DisplayID);
+      FreeResource(Self->DisplayID);
       Self->DisplayID = 0;
    }
 
    if ((Self->BufferID) and ((!Self->BitmapOwnerID) or (Self->BitmapOwnerID IS Self->UID))) {
       if (Self->Bitmap) { ReleaseObject(Self->Bitmap); Self->Bitmap = NULL; }
-      acFree(Self->BufferID);
+      FreeResource(Self->BufferID);
       Self->BufferID = 0;
    }
 
@@ -2226,12 +2226,12 @@ static ERROR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
          }
 
          if (!Action(AC_SaveImage, picture, Args)) { // Save the picture to disk
-            acFree(picture);
+            FreeResource(picture);
             return ERR_Okay;
          }
       }
 
-      acFree(picture);
+      FreeResource(picture);
       return log.warning(ERR_Failed);
    }
    else return log.warning(ERR_NewObject);

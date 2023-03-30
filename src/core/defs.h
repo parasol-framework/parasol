@@ -121,6 +121,14 @@ public:
 
    PrivateAddress(APTR aAddress, MEMORYID aMemoryID, OBJECTID aOwnerID, ULONG aSize, WORD aFlags) :
       Address(aAddress), MemoryID(aMemoryID), OwnerID(aOwnerID), Size(aSize), Flags(aFlags) { };
+
+   void clear() {
+      Address  = 0;
+      MemoryID = 0;
+      OwnerID  = 0;
+      Flags    = 0;
+      ThreadLockID = 0;
+   }
 };
 
 struct rkWatchPath {
@@ -402,9 +410,9 @@ class extTask : public objTask {
    FUNCTION ExitCallback;
    FUNCTION InputCallback;
    struct MsgHandler *MsgAction;
+   struct MsgHandler *MsgFree;
    struct MsgHandler *MsgDebug;
    struct MsgHandler *MsgWaitForObjects;
-   struct MsgHandler *MsgValidateProcess;
    struct MsgHandler *MsgQuit;
    struct MsgHandler *MsgEvent;
    struct MsgHandler *MsgThreadCallback;
@@ -867,7 +875,6 @@ extern "C" {
 // Action managers.
 
 ERROR MGR_Init(OBJECTPTR, APTR);
-ERROR MGR_Free(OBJECTPTR, APTR);
 ERROR MGR_Signal(OBJECTPTR, APTR);
 
 //********************************************************************************************************************
