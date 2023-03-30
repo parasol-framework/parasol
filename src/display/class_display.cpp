@@ -488,15 +488,7 @@ static ERROR DISPLAY_Free(extDisplay *Self, APTR Void)
 
    // Free the display's video bitmap
 
-   if (Self->BitmapID) {
-      if (Self->Bitmap) {
-         FreeResource(Self->Bitmap);
-         if (Self->BitmapID < 0) ReleaseObject(Self->Bitmap);
-         Self->Bitmap = NULL;
-      }
-      else FreeResource(Self->BitmapID);
-      Self->BitmapID = 0;
-   }
+   if (Self->Bitmap) { FreeResource(Self->Bitmap); Self->Bitmap = NULL; }
 
    Self->~extDisplay();
    return ERR_Okay;
@@ -1143,7 +1135,6 @@ static ERROR DISPLAY_NewObject(extDisplay *Self, APTR Void)
    new (Self) extDisplay;
 
    if (NewObject(ID_BITMAP, NF::INTEGRAL, &Self->Bitmap)) return ERR_NewObject;
-   Self->BitmapID = Self->Bitmap->UID;
 
    OBJECTID id;
    if (FindObject("SystemVideo", 0, 0, &id) != ERR_Okay) SetName(Self->Bitmap, "SystemVideo");
