@@ -730,6 +730,225 @@ ERROR CheckAction(OBJECTPTR Object, LONG ActionID)
 /*********************************************************************************************************************
 
 -FUNCTION-
+CheckObjectExists: Checks if a particular object is still available in the system.
+
+The CheckObjectExists() function verifies the presence of any object created by ~NewObject().
+
+-INPUT-
+oid Object: The object identity to verify.
+
+-ERRORS-
+True:  The object exists.
+False: The object ID does not exist.
+LockFailed:
+
+*********************************************************************************************************************/
+
+ERROR CheckObjectExists(OBJECTID ObjectID)
+{
+   ThreadLock lock(TL_PRIVATE_MEM, 4000);
+   if (lock.granted()) {
+      LONG result = ERR_False;
+      auto mem = glPrivateMemory.find(ObjectID);
+      if ((mem != glPrivateMemory.end()) and (mem->second.Object)) {
+         if (mem->second.Object->defined(NF::UNLOCK_FREE));
+         else result = ERR_True;
+      }
+      return result;
+   }
+   else {
+      pf::Log log(__FUNCTION__);
+      return log.warning(ERR_LockFailed);
+   }
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+CurrentContext: Returns a pointer to the object that has the current context.
+
+This function returns a pointer to the object that has the current context.  Context is primarily used to manage
+resource allocations.  Manipulating the context is sometimes necessary to ensure that a resource is tracked to
+the correct object.
+
+To get the parent context (technically the 'context of the current context'), use GetParentContext(), which is
+implemented as a macro.  This is used in method and action routines where the context of the object's caller may be
+needed.
+
+-RESULT-
+obj: Returns an object pointer (of which the Task has exclusive access to).  Cannot return NULL except in the initial start-up and late shut-down sequence of the Core.
+
+*********************************************************************************************************************/
+
+OBJECTPTR CurrentContext(void)
+{
+   return tlContext->object();
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+FindClass: Returns all class objects for a given class ID.
+
+This function will find a specific class by ID and return its @MetaClass.  If the class is not in memory, the internal
+dictionary is checked to discover a module binary registered with that ID.  If this succeeds, the module is loaded
+into memory and the class will be returned.  In any event of failure, NULL is returned.
+
+If the ID of a named class is not known, call ~ResolveClassName() first and pass the resulting ID to this function.
+
+-INPUT-
+cid ClassID: A class ID such as one retrieved from ~ResolveClassName().
+
+-RESULT-
+obj(MetaClass): Returns a pointer to the MetaClass structure that has been found as a result of the search, or NULL if no matching class was found.
+
+*********************************************************************************************************************/
+
+objMetaClass * FindClass(CLASSID ClassID)
+{
+   auto it = glClassMap.find(ClassID);
+   if (it != glClassMap.end()) return it->second;
+
+   if (glProgramStage IS STAGE_SHUTDOWN) return NULL; // No new module loading during shutdown
+
+   // Class is not loaded.  Try and find a master in the dictionary.  If we find one, we can
+   // initialise the module and then find the new Class.
+   //
+   // Note: Children of the class are not automatically loaded into memory if they are unavailable at the time.  Doing so
+   // would result in lost CPU and memory resources due to loading code that may not be needed.
+
+   pf::Log log(__FUNCTION__);
+   if (glClassDB.contains(ClassID)) {
+      auto &path = glClassDB[ClassID].Path;
+
+      if (!path.empty()) {
+         // Load the module from the associated location and then find the class that it contains.  If the module fails,
+         // we keep on looking for other installed modules that may handle the class.
+
+         log.branch("Attempting to load module \"%s\" for class $%.8x.", path.c_str(), ClassID);
+
+         objModule::create mod = { fl::Name(path) };
+         if (mod.ok()) {
+            it = glClassMap.find(ClassID);
+            if (it != glClassMap.end()) return it->second;
+            else log.warning("Module \"%s\" did not configure class \"%s\"", path.c_str(), glClassDB[ClassID].Name.c_str());
+         }
+         else log.warning("Failed to load module \"%s\"", path.c_str());
+      }
+      else log.warning("No module path defined for class \%s\"", glClassDB[ClassID].Name.c_str());
+   }
+   else log.warning("Could not find class $%.8x in memory or in dictionary.", ClassID);
+
+   return NULL;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+FindObject: Searches for objects by name.
+
+The FindObject() function searches for all objects that match a given name and can filter by class.
+
+The following example is a typical illustration of this function's use.  It finds the most recent object created
+with a given name:
+
+<pre>
+OBJECTID id;
+FindObject("SystemPointer", ID_POINTER, 0, &id);
+</pre>
+
+If FindObject() cannot find any matching objects then it will return an error code.
+
+-INPUT-
+cstr Name:      The name of an object to search for.
+cid ClassID:    Optional.  Set to a class ID to filter the results down to a specific class type.
+int(FOF) Flags: Optional flags.
+&oid ObjectID:  An object id variable for storing the result.
+
+-ERRORS-
+Okay: At least one matching object was found and stored in the ObjectID.
+Args:
+Search: No objects matching the given name could be found.
+LockFailed:
+EmptyString:
+DoesNotExist:
+-END-
+
+*********************************************************************************************************************/
+
+ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Result)
+{
+   pf::Log log(__FUNCTION__);
+
+   if ((!Result) or (!InitialName)) return ERR_NullArgs;
+   if (!InitialName[0]) return log.warning(ERR_EmptyString);
+
+   if (Flags & FOF_SMART_NAMES) {
+      // If an integer based name (defined by #num) is passed, we translate it to an ObjectID rather than searching for
+      // an object of name "#1234".
+
+      bool number = false;
+      if (InitialName[0] IS '#') number = true;
+      else {
+         // If the name consists entirely of numbers, it must be considered an object ID (we can make this check because
+         // it is illegal for a name to consist entirely of digits).
+
+         LONG i = (InitialName[0] IS '-') ? 1 : 0;
+         for (; InitialName[i]; i++) {
+            if (InitialName[i] < '0') break;
+            if (InitialName[i] > '9') break;
+         }
+         if (!InitialName[i]) number = true;
+      }
+
+      if (number) {
+         if (auto objectid = (OBJECTID)StrToInt(InitialName)) {
+            if (!CheckObjectExists(objectid)) {
+               *Result = objectid;
+               return ERR_Okay;
+            }
+            else return ERR_Search;
+         }
+         else return ERR_Search;
+      }
+
+      if (!StrMatch("owner", InitialName)) {
+         if ((tlContext != &glTopContext) and (tlContext->object()->OwnerID)) {
+            if (!CheckObjectExists(tlContext->object()->OwnerID)) {
+               *Result = tlContext->object()->OwnerID;
+               return ERR_Okay;
+            }
+            else return ERR_DoesNotExist;
+         }
+         else return ERR_DoesNotExist;
+      }
+   }
+
+   ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
+   if (lock.granted()) {
+      if (glObjectLookup.contains(InitialName)) {
+         auto &list = glObjectLookup[InitialName];
+         if (!ClassID) {
+            *Result = list.back()->UID;
+            return ERR_Okay;
+         }
+
+         for (auto it=list.rbegin(); it != list.rend(); it++) {
+            auto obj = *it;
+            if (obj->ClassID IS ClassID) {
+               *Result = obj->UID;
+               return ERR_Okay;
+            }
+         }
+      }
+   }
+
+   return ERR_Search;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
 GetActionMsg: Returns a message structure if called from an action that was executed by the message system.
 
 This function is for use by action and method support routines only.  It will return a Message structure if the
@@ -752,6 +971,300 @@ Message * GetActionMsg(void)
       }
    }
    return NULL;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+GetClassID: Returns the class ID of an ID-referenced object.
+
+Call this function with any valid object ID to learn the identifier for its base class.  This is the quickest way to
+retrieve the class of an object without having to gain exclusive access to the object first.
+
+Note that if the object's pointer is already known, the quickest way to learn of its class is to read the ClassID
+field in the object header.
+
+-INPUT-
+oid Object: The object to be examined.
+
+-RESULT-
+cid: Returns the base class ID of the object or NULL if failure.
+
+*********************************************************************************************************************/
+
+CLASSID GetClassID(OBJECTID ObjectID)
+{
+   if (auto object = GetObjectPtr(ObjectID)) return object->ClassID;
+   else return 0;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+GetName: Retrieves object names.
+
+This function will return the name of the object referenced by the Object pointer. If the target object has not been
+assigned a name then a null-string is returned.
+
+-INPUT-
+obj Object: An object to query.
+
+-RESULT-
+cstr: A string containing the object name is returned.  If the object has no name or the parameter is invalid, a null-terminated string is returned.
+
+*********************************************************************************************************************/
+
+CSTRING GetName(OBJECTPTR Object)
+{
+   if (Object) return Object->Name;
+   else return "";
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+GetObjectPtr: Returns the object address for any private object ID.
+
+This function translates private object ID's (owned by the process) to their respective address pointers.  Public
+object ID's are not supported.
+
+-INPUT-
+oid Object: The ID of the object to lookup.
+
+-RESULT-
+obj: The address of the object is returned, or NULL if the ID does not relate to an object.
+
+*********************************************************************************************************************/
+
+OBJECTPTR GetObjectPtr(OBJECTID ObjectID)
+{
+   ThreadLock lock(TL_PRIVATE_MEM, 4000);
+   if (lock.granted()) {
+      auto mem = glPrivateMemory.find(ObjectID);
+      if (mem != glPrivateMemory.end()) {
+         if ((mem->second.Flags & MEM_OBJECT) and (mem->second.Object)) {
+            if (mem->second.Object->UID IS ObjectID) {
+               return mem->second.Object;
+            }
+         }
+      }
+   }
+
+   return NULL;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+GetOwnerID: Returns the unique ID of an object's owner.
+
+This function returns an identifier for the owner of any valid object.  This is the fastest way to retrieve the
+owner of an object if only the ID is known.
+
+If the object address is already known then the fastest means of retrieval is via the ownerID() C++ class method.
+
+-INPUT-
+oid Object: The ID of an object to query.
+
+-RESULT-
+oid: Returns the ID of the object's owner.  If the object does not have a owner (i.e. if it is untracked) or if the provided ID is invalid, this function will return NULL.
+
+*********************************************************************************************************************/
+
+OBJECTID GetOwnerID(OBJECTID ObjectID)
+{
+   ThreadLock lock(TL_PRIVATE_MEM, 4000);
+   if (lock.granted()) {
+      auto mem = glPrivateMemory.find(ObjectID);
+      if (mem != glPrivateMemory.end()) {
+         if (mem->second.Object) return mem->second.Object->OwnerID;
+      }
+   }
+   return 0;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+ListChildren: Returns a list of all children belonging to an object.
+
+The ListChildren() function returns a list of all children belonging to an object.  The client must provide an empty
+vector of ChildEntry structures to host the results, which include unique object ID's and their class identifiers.
+
+Note that any child objects marked with the `INTEGRAL` flag will be excluded because they are private members of the
+targeted object.
+
+-INPUT-
+oid Object: An object to query.
+ptr(cpp(array(resource(ChildEntry)))) List: Must refer to an array of ChildEntry structures.
+
+-ERRORS-
+Okay: Zero or more children were found and listed.
+Args
+NullArgs
+
+*********************************************************************************************************************/
+
+ERROR ListChildren(OBJECTID ObjectID, pf::vector<ChildEntry> *List)
+{
+   pf::Log log(__FUNCTION__);
+
+   if ((!ObjectID) or (!List)) return log.warning(ERR_NullArgs);
+
+   log.trace("#%d, List: %p", ObjectID, List);
+
+   ThreadLock lock(TL_PRIVATE_MEM, 4000);
+   if (lock.granted()) {
+      for (const auto id : glObjectChildren[ObjectID]) {
+         auto mem = glPrivateMemory.find(id);
+         if (mem IS glPrivateMemory.end()) continue;
+
+         if (auto child = mem->second.Object) {
+            if (!child->defined(NF::INTEGRAL)) {
+               List->emplace_back(child->UID, child->ClassID);
+            }
+         }
+      }
+      return ERR_Okay;
+   }
+   else return ERR_LockFailed;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+NewObject: Creates new objects.
+
+The NewObject() function is used to create new objects and register them for use within the Core.  After creating
+a new object, the client can proceed to set the object's field values and initialise it with #Init() so that it
+can be used as intended.
+
+The new object will be modeled according to the class blueprint indicated by ClassID.  Pre-defined class ID's are
+defined in their documentation and the `parasol/system/register.h` include file.  ID's for unregistered classes can
+be computed using the ~ResolveClassName() function.
+
+A pointer to the new object will be returned in the Object parameter.  By default, object allocations are context
+sensitive and will be collected when their owner is terminated.  It is possible to track an object to a different
+owner by using the ~SetOwner() function.
+
+To destroy an object, call ~FreeResource().
+
+-INPUT-
+large ClassID: A class ID from "system/register.h" or generated by ~ResolveClassName().
+flags(NF) Flags:  Optional flags.
+&obj Object: Pointer to an address variable that will store a reference to the new object.
+
+-ERRORS-
+Okay
+NullArgs
+MissingClass: The ClassID is invalid or refers to a class that is not installed.
+Failed
+ObjectExists: An object with the provided Name already exists in the system (applies only when the NF_UNIQUE flag has been used).
+-END-
+
+*********************************************************************************************************************/
+
+ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
+{
+   pf::Log log(__FUNCTION__);
+
+   auto class_id = ULONG(ClassID & 0xffffffff);
+   if ((!class_id) or (!Object)) return log.warning(ERR_NullArgs);
+
+   auto mc = (extMetaClass *)FindClass(class_id);
+   if (!mc) {
+      if (glClassMap.contains(class_id)) {
+         log.function("Class %s was not found in the system.", glClassMap[class_id]->ClassName);
+      }
+      else log.function("Class $%.8x was not found in the system.", class_id);
+      return ERR_MissingClass;
+   }
+
+   if (Object) *Object = NULL;
+
+   Flags &= (NF::UNTRACKED|NF::INTEGRAL|NF::UNIQUE|NF::NAME|NF::SUPPRESS_LOG); // Very important to eliminate any internal flags.
+
+   // If the object is integral then turn off use of the UNTRACKED flag (otherwise the child will
+   // end up being tracked to its task rather than its parent object).
+
+   if ((Flags & NF::INTEGRAL) != NF::NIL) Flags = Flags & (~NF::UNTRACKED);
+
+   // Force certain flags on the class' behalf
+
+   if (mc->Flags & CLF_NO_OWNERSHIP) Flags |= NF::UNTRACKED;
+
+   if ((Flags & NF::SUPPRESS_LOG) IS NF::NIL) log.branch("%s #%d, Flags: $%x", mc->ClassName, glPrivateIDCounter, LONG(Flags));
+
+   OBJECTPTR head = NULL;
+   MEMORYID head_id;
+
+   if (!AllocMemory(mc->Size, MEM_MANAGED|MEM_OBJECT|MEM_NO_LOCK|(((Flags & NF::UNTRACKED) != NF::NIL) ? MEM_UNTRACKED : 0), (APTR *)&head, &head_id)) {
+      set_memory_manager(head, &glResourceObject);
+
+      head->UID     = head_id;
+      head->ClassID = mc->BaseClassID;
+      head->Class   = (extMetaClass *)mc;
+      head->Flags   = Flags;
+
+      if (mc->BaseClassID IS mc->SubClassID) head->SubID = 0; // Object derived from a base class
+      else head->SubID = mc->SubClassID; // Object derived from a sub-class
+
+      // Tracking for our new object is configured here.
+
+      if (mc->Flags & CLF_NO_OWNERSHIP) { } // Used by classes like RootModule to avoid tracking back to the task.
+      else if ((Flags & NF::UNTRACKED) != NF::NIL) {
+         if (class_id IS ID_MODULE); // Untracked modules have no owner, due to the expunge process.
+         else {
+            // Untracked objects are owned by the current task.  This ensures that the object
+            // is deallocated correctly when the Core is closed.
+
+            if (glCurrentTask) {
+               ScopedObjectAccess lock(glCurrentTask);
+               SetOwner(head, glCurrentTask);
+            }
+         }
+      }
+      else if (tlContext != &glTopContext) { // Track the object to the current context
+         SetOwner(head, tlContext->resource());
+      }
+      else if (glCurrentTask) {
+         ScopedObjectAccess lock(glCurrentTask);
+         SetOwner(head, glCurrentTask);
+      }
+
+      // After the header has been created we can set the context, then call the base class's NewObject() support.  If this
+      // object belongs to a sub-class, we will also call its supporting NewObject() action if it has specified one.
+
+      pf::SwitchContext context(head);
+
+      ERROR error = ERR_Okay;
+      if (mc->Base) {
+         if (mc->Base->ActionTable[AC_NewObject].PerformAction) {
+            if ((error = mc->Base->ActionTable[AC_NewObject].PerformAction(head, NULL))) {
+               log.warning(error);
+            }
+         }
+         else error = log.warning(ERR_NoAction);
+      }
+
+      if ((!error) and (mc->ActionTable[AC_NewObject].PerformAction)) {
+         if ((error = mc->ActionTable[AC_NewObject].PerformAction(head, NULL))) {
+            log.warning(error);
+         }
+      }
+
+      if (!error) {
+         ((extMetaClass *)head->Class)->OpenCount++;
+         if (mc->Base) mc->Base->OpenCount++;
+
+         *Object = head;
+         return ERR_Okay;
+      }
+
+      FreeResource(head);
+      return error;
+   }
+   else return ERR_AllocMemory;
 }
 
 /*********************************************************************************************************************
@@ -895,7 +1408,7 @@ ERROR QueueAction(LONG ActionID, OBJECTID ObjectID, APTR Args)
          }
       }
       else if (auto cl = (extMetaClass *)FindClass(GetClassID(ObjectID))) {
-         if ((-ActionID) < cl->TotalMethods) {
+         if (-ActionID < cl->TotalMethods) {
             fields   = cl->Methods[-ActionID].Args;
             argssize = cl->Methods[-ActionID].Size;
             if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, cl->Methods[-ActionID].Name) != ERR_Okay) {
@@ -924,6 +1437,274 @@ ERROR QueueAction(LONG ActionID, OBJECTID ObjectID, APTR Args)
    }
 
    return error;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+ResolveClassName: Resolves any class name to a unique identification ID.
+
+This function will resolve a class name to its unique ID.
+
+Class ID's are used by functions such as ~NewObject() for fast processing.
+
+-INPUT-
+cstr Name: The name of the class that requires resolution.
+
+-RESULT-
+cid: Returns the class ID identified from the class name, or NULL if the class could not be found.
+-END-
+
+*********************************************************************************************************************/
+
+CLASSID ResolveClassName(CSTRING ClassName)
+{
+   if ((!ClassName) or (!*ClassName)) {
+      pf::Log log(__FUNCTION__);
+      log.warning(ERR_NullArgs);
+      return 0;
+   }
+
+   CLASSID cid = StrHash(ClassName, FALSE);
+   if (glClassDB.contains(cid)) return cid;
+   else return 0;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+ResolveClassID: Converts a valid class ID to its equivalent name.
+
+This function is able to resolve a valid class identifier to its equivalent name.  The name is resolved by scanning the
+class database, so the class must be registered in the database for this function to return successfully.
+
+-INPUT-
+cid ID: The ID of the class that needs to be resolved.
+
+-RESULT-
+cstr: Returns the name of the class, or NULL if the ID is not recognised.  Standard naming conventions apply, so it can be expected that the string is capitalised and without spaces, e.g. "NetSocket".
+-END-
+
+*********************************************************************************************************************/
+
+CSTRING ResolveClassID(CLASSID ID)
+{
+   if (glClassDB.contains(ID)) return glClassDB[ID].Name.c_str();
+
+   pf::Log log(__FUNCTION__);
+   log.warning("Failed to resolve ID $%.8x", ID);
+   return NULL;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+SetOwner: Changes object ownership dynamically.
+
+This function changes the ownership of an existing object.  Ownership is an attribute that affects an object's
+placement within the object hierarchy as well as impacting on the resource tracking of the object in question.
+Internally, setting a new owner will cause three things to happen:
+
+<list type="sorted">
+<li>The new owner's class will receive notification via the #NewChild() action.  If the owner rejects the object by sending back an error, SetOwner() will fail immediately.</li>
+<li>The object's class will then receive notification via the #NewOwner() action.</li>
+<li>The resource tracking of the new owner will be modified so that the object is accepted as its child.  This means that if and when the owning object is destroyed, the new child object will be destroyed with it.</li>
+</list>
+
+If the Object does not support the NewOwner action, or the Owner does not support the NewChild action, then the
+process will not fail.  It will continue on the assumption that neither party is concerned about ownership management.
+
+-INPUT-
+obj Object: Pointer to the object to modify.
+obj Owner: Pointer to the new owner for the object.
+
+-ERRORS-
+Okay
+NullArgs
+Args
+-END-
+
+*********************************************************************************************************************/
+
+ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
+{
+   pf::Log log(__FUNCTION__);
+
+   if ((!Object) or (!Owner)) return log.warning(ERR_NullArgs);
+
+   if (Object->OwnerID IS Owner->UID) return ERR_Okay;
+
+   if (Object->ExtClass->Flags & CLF_NO_OWNERSHIP) {
+      log.traceWarning("Cannot set the object owner as CLF_NO_OWNERSHIP is set in its class.");
+      return ERR_Okay;
+   }
+
+   if (Object IS Owner) return log.warning(ERR_Recursion);
+
+   //log.msg("Object: %d, New Owner: %d, Current Owner: %d", Object->UID, Owner->UID, Object->OwnerID);
+
+   // Send a new child alert to the owner.  If the owner returns an error then we return immediately.
+
+   ScopedObjectAccess objlock(Object);
+
+   if (!CheckAction(Owner, AC_NewChild)) {
+      struct acNewChild newchild = { .Object = Object };
+      if (auto error = Action(AC_NewChild, Owner, &newchild); error != ERR_NoSupport) {
+         if (error) { // If the owner has passed the object through to another owner, return ERR_Okay, otherwise error.
+            if (error IS ERR_OwnerPassThrough) return ERR_Okay;
+            else return error;
+         }
+      }
+   }
+
+   struct acNewOwner newowner = {
+      .NewOwnerID = Owner->UID, // Send a owner alert to the object
+      .ClassID    = Owner->ClassID
+   };
+   Action(AC_NewOwner, Object, &newowner);
+
+   // Make the change
+
+   //if (Object->OwnerID) log.trace("SetOwner:","Changing the owner for object %d from %d to %d.", Object->UID, Object->OwnerID, Owner->UID);
+
+   // Track the object's memory header to the new owner
+
+   ThreadLock lock(TL_PRIVATE_MEM, 4000);
+   if (lock.granted()) {
+      auto mem = glPrivateMemory.find(Object->UID);
+      if (mem IS glPrivateMemory.end()) return log.warning(ERR_SystemCorrupt);
+      mem->second.OwnerID = Owner->UID;
+
+      // Remove reference from the now previous owner
+      if (Object->OwnerID) glObjectChildren[Object->OwnerID].erase(Object->UID);
+
+      Object->OwnerID = Owner->UID;
+
+      glObjectChildren[Owner->UID].insert(Object->UID);
+   }
+   else return log.warning(ERR_Lock);
+
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+SetContext: Alters the nominated owner of newly created objects.
+
+This function defines the object that has control of the current thread.  Once called, all further resource
+allocations are assigned to that object.  This is significant for the automatic collection of memory and object
+allocations.  For example:
+
+<pre>
+acInit(display);
+auto ctx = SetContext(display);
+
+   NewObject(ID_BITMAP, &bitmap);
+   AllocMemory(1000, MEM_DATA, &memory, NULL);
+
+SetContext(ctx);
+FreeResource(display->UID);
+</pre>
+
+The above code allocates a Bitmap and a memory block, both of which will be contained by the display. When
+~FreeResource() is called, both the bitmap and memory block will be automatically removed as they have a dependency
+on the display's existence.  Please keep in mind that the following is incorrect:
+
+<pre>
+acInit(display);
+auto ctx = SetContext(display);
+
+   NewObject(ID_BITMAP, &bitmap);
+   AllocMemory(1000, MEM_DATA, &memory, NULL);
+
+SetContext(ctx);
+FreeResource(display->UID); // The bitmap and memory would be auto-collected
+FreeResource(bitmap->UID);  // Reference is no longer valid
+FreeResource(memory);  // Reference is no longer valid
+</pre>
+
+As the bitmap and memory block would have been freed as members of the display, their references are invalid when
+manually terminated in the following instructions.
+
+SetContext() is intended for use by modules and classes.  Do not use it in an application unless conditions
+necessitate its use.  The Core automatically manages the context when calling class actions, methods and interactive
+fields.
+
+-INPUT-
+obj Object: Pointer to the object that will take on the new context.  If NULL, no change to the context will be made.
+
+-RESULT-
+obj: Returns a pointer to the previous context.  Because contexts nest, the client must call SetContext() a second time with this pointer in order to keep the process stable.
+
+*********************************************************************************************************************/
+
+OBJECTPTR SetContext(OBJECTPTR Object)
+{
+   if (Object) return tlContext->setContext(Object);
+   else return tlContext->object();
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+SetName: Sets the name of an object.
+
+This function sets the name of an object.  This enhances log messages and allows the object to be found in searches.
+Please note that the length of the Name will be limited to the value indicated in the core header file, under
+the `MAX_NAME_LEN` definition.  Names exceeding the allowed length are trimmed to fit.
+
+Object names are limited to alpha-numeric characters and the underscore symbol.  Invalid characters are replaced with
+an underscore.
+
+-INPUT-
+obj Object: The target object.
+cstr Name: The new name for the object.
+
+-ERRORS-
+Okay:
+NullArgs:
+Search:       The Object is not recognised by the system - the address may be invalid.
+LockFailed:
+
+*********************************************************************************************************************/
+
+static const char sn_lookup[256] = {
+   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
+   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
+   '_', '_', '_', '_', '0', '1', '2', '3', '4', '5', '6', '7', '8', '_', '_', '_', '_', '_', '_', '_', '_', 'a',
+   'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w',
+   'x', 'y', '_', '_', '_', '_', '_', '_', '_', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+   'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', '_', '_', '_', '_', '_', '_',
+   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
+   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
+   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
+   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
+   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
+   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_'
+};
+
+ERROR SetName(OBJECTPTR Object, CSTRING NewName)
+{
+   pf::Log log(__FUNCTION__);
+
+   if ((!Object) or (!NewName)) return log.warning(ERR_NullArgs);
+
+   ScopedObjectAccess objlock(Object);
+   ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
+   if (!lock.granted()) return log.warning(ERR_LockFailed);
+
+   // Remove any existing name first.
+
+   if (Object->Name[0]) remove_object_hash(Object);
+
+   LONG i;
+   for (i=0; (i < (MAX_NAME_LEN-1)) and (NewName[i]); i++) Object->Name[i] = sn_lookup[UBYTE(NewName[i])];
+   Object->Name[i] = 0;
+
+   if (Object->Name[0]) glObjectLookup[Object->Name].push_back(Object);
+
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
@@ -1002,6 +1783,30 @@ ERROR SubscribeAction(OBJECTPTR Object, ACTIONID ActionID, FUNCTION *Callback)
    }
 
    return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+TotalChildren: Returns the total number of children owned by an object.
+
+This function returns the total number of children that are owned by an object.  It is normally called as a precursor
+to ~ListChildren().
+
+-INPUT-
+oid Object: The object to query.
+
+-RESULT-
+int: The total number of children belonging to the object.  Returns zero if the object does not exist.
+
+*********************************************************************************************************************/
+
+LONG TotalChildren(OBJECTID ObjectID)
+{
+   if (glObjectChildren.contains(ObjectID)) {
+      return glObjectChildren[ObjectID].size();
+   }
+   else return 0;
 }
 
 /*********************************************************************************************************************
@@ -1243,197 +2048,4 @@ ERROR MGR_Signal(OBJECTPTR Object, APTR Void)
 {
    Object->Flags |= NF::SIGNALLED;
    return ERR_Okay;
-}
-/*********************************************************************************************************************
-
--FUNCTION-
-NewObject: Creates new objects.
-
-The NewObject() function is used to create new objects and register them for use within the Core.  After creating
-a new object, the client can proceed to set the object's field values and initialise it with #Init() so that it
-can be used as intended.
-
-The new object will be modeled according to the class blueprint indicated by ClassID.  Pre-defined class ID's are
-defined in their documentation and the `parasol/system/register.h` include file.  ID's for unregistered classes can
-be computed using the ~ResolveClassName() function.
-
-A pointer to the new object will be returned in the Object parameter.  By default, object allocations are context
-sensitive and will be collected when their owner is terminated.  It is possible to track an object to a different
-owner by using the ~SetOwner() function.
-
-To destroy an object, call ~FreeResource().
-
--INPUT-
-large ClassID: A class ID from "system/register.h" or generated by ~ResolveClassName().
-flags(NF) Flags:  Optional flags.
-&obj Object: Pointer to an address variable that will store a reference to the new object.
-
--ERRORS-
-Okay
-NullArgs
-MissingClass: The ClassID is invalid or refers to a class that is not installed.
-Failed
-ObjectExists: An object with the provided Name already exists in the system (applies only when the NF_UNIQUE flag has been used).
--END-
-
-*********************************************************************************************************************/
-
-ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
-{
-   pf::Log log(__FUNCTION__);
-
-   auto class_id = ULONG(ClassID & 0xffffffff);
-   if ((!class_id) or (!Object)) return log.warning(ERR_NullArgs);
-
-   auto mc = (extMetaClass *)FindClass(class_id);
-   if (!mc) {
-      if (glClassMap.contains(class_id)) {
-         log.function("Class %s was not found in the system.", glClassMap[class_id]->ClassName);
-      }
-      else log.function("Class $%.8x was not found in the system.", class_id);
-      return ERR_MissingClass;
-   }
-
-   if (Object) *Object = NULL;
-
-   Flags &= (NF::UNTRACKED|NF::INTEGRAL|NF::UNIQUE|NF::NAME|NF::SUPPRESS_LOG); // Very important to eliminate any internal flags.
-
-   // If the object is integral then turn off use of the UNTRACKED flag (otherwise the child will
-   // end up being tracked to its task rather than its parent object).
-
-   if ((Flags & NF::INTEGRAL) != NF::NIL) Flags = Flags & (~NF::UNTRACKED);
-
-   // Force certain flags on the class' behalf
-
-   if (mc->Flags & CLF_NO_OWNERSHIP) Flags |= NF::UNTRACKED;
-
-   if ((Flags & NF::SUPPRESS_LOG) IS NF::NIL) log.branch("%s #%d, Flags: $%x", mc->ClassName, glPrivateIDCounter, LONG(Flags));
-
-   OBJECTPTR head = NULL;
-   MEMORYID head_id;
-
-   if (!AllocMemory(mc->Size, MEM_MANAGED|MEM_OBJECT|MEM_NO_LOCK|(((Flags & NF::UNTRACKED) != NF::NIL) ? MEM_UNTRACKED : 0), (APTR *)&head, &head_id)) {
-      set_memory_manager(head, &glResourceObject);
-
-      head->UID     = head_id;
-      head->ClassID = mc->BaseClassID;
-      head->Class   = (extMetaClass *)mc;
-      head->Flags   = Flags;
-
-      if (mc->BaseClassID IS mc->SubClassID) head->SubID = 0; // Object derived from a base class
-      else head->SubID = mc->SubClassID; // Object derived from a sub-class
-
-      // Tracking for our new object is configured here.
-
-      if (mc->Flags & CLF_NO_OWNERSHIP) { } // Used by classes like RootModule to avoid tracking back to the task.
-      else if ((Flags & NF::UNTRACKED) != NF::NIL) {
-         if (class_id IS ID_MODULE); // Untracked modules have no owner, due to the expunge process.
-         else {
-            // Untracked objects are owned by the current task.  This ensures that the object
-            // is deallocated correctly when the Core is closed.
-
-            if (glCurrentTask) {
-               ScopedObjectAccess lock(glCurrentTask);
-               SetOwner(head, glCurrentTask);
-            }
-         }
-      }
-      else if (tlContext != &glTopContext) { // Track the object to the current context
-         SetOwner(head, tlContext->resource());
-      }
-      else if (glCurrentTask) {
-         ScopedObjectAccess lock(glCurrentTask);
-         SetOwner(head, glCurrentTask);
-      }
-
-      // After the header has been created we can set the context, then call the base class's NewObject() support.  If this
-      // object belongs to a sub-class, we will also call its supporting NewObject() action if it has specified one.
-
-      pf::SwitchContext context(head);
-
-      ERROR error = ERR_Okay;
-      if (mc->Base) {
-         if (mc->Base->ActionTable[AC_NewObject].PerformAction) {
-            if ((error = mc->Base->ActionTable[AC_NewObject].PerformAction(head, NULL))) {
-               log.warning(error);
-            }
-         }
-         else error = log.warning(ERR_NoAction);
-      }
-
-      if ((!error) and (mc->ActionTable[AC_NewObject].PerformAction)) {
-         if ((error = mc->ActionTable[AC_NewObject].PerformAction(head, NULL))) {
-            log.warning(error);
-         }
-      }
-
-      if (!error) {
-         ((extMetaClass *)head->Class)->OpenCount++;
-         if (mc->Base) mc->Base->OpenCount++;
-
-         *Object = head;
-         return ERR_Okay;
-      }
-
-      FreeResource(head);
-      return error;
-   }
-   else return ERR_AllocMemory;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-ResolveClassName: Resolves any class name to a unique identification ID.
-
-This function will resolve a class name to its unique ID.
-
-Class ID's are used by functions such as ~NewObject() for fast processing.
-
--INPUT-
-cstr Name: The name of the class that requires resolution.
-
--RESULT-
-cid: Returns the class ID identified from the class name, or NULL if the class could not be found.
--END-
-
-*********************************************************************************************************************/
-
-CLASSID ResolveClassName(CSTRING ClassName)
-{
-   if ((!ClassName) or (!*ClassName)) {
-      pf::Log log(__FUNCTION__);
-      log.warning(ERR_NullArgs);
-      return 0;
-   }
-
-   CLASSID cid = StrHash(ClassName, FALSE);
-   if (glClassDB.contains(cid)) return cid;
-   else return 0;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-ResolveClassID: Converts a valid class ID to its equivalent name.
-
-This function is able to resolve a valid class identifier to its equivalent name.  The name is resolved by scanning the
-class database, so the class must be registered in the database for this function to return successfully.
-
--INPUT-
-cid ID: The ID of the class that needs to be resolved.
-
--RESULT-
-cstr: Returns the name of the class, or NULL if the ID is not recognised.  Standard naming conventions apply, so it can be expected that the string is capitalised and without spaces, e.g. "NetSocket".
--END-
-
-*********************************************************************************************************************/
-
-CSTRING ResolveClassID(CLASSID ID)
-{
-   if (glClassDB.contains(ID)) return glClassDB[ID].Name.c_str();
-
-   pf::Log log(__FUNCTION__);
-   log.warning("Failed to resolve ID $%.8x", ID);
-   return NULL;
 }

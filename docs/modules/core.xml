@@ -2155,7 +2155,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
 
   <function>
     <name>TotalChildren</name>
-    <category>System</category>
+    <category>Objects</category>
     <comment>Returns the total number of children owned by an object.</comment>
     <prototype>LONG TotalChildren(OBJECTID Object)</prototype>
     <input>
