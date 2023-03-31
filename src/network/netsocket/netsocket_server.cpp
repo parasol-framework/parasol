@@ -133,7 +133,7 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
    if (!NewObject(ID_CLIENTSOCKET, &client_socket)) {
       client_socket->Handle = clientfd;
       client_socket->Client = client_ip;
-      acInit(client_socket);
+      InitObject(client_socket);
    }
    else {
       CLOSESOCKET(clientfd);

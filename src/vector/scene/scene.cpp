@@ -193,7 +193,7 @@ static ERROR VECTORSCENE_Debug(extVectorScene *Self, APTR Void)
       for (auto &rec : list) {
          auto obj = GetObjectPtr(rec.ObjectID);
          if (obj IS Self->Viewport) continue;
-         log.msg("#%d %s %s", rec.ObjectID, obj->Class->ClassName, GetName(obj) ? GetName(obj) : "");
+         log.msg("#%d %s %s", rec.ObjectID, obj->Class->ClassName, obj->Name);
       }
 
    }

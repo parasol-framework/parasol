@@ -364,7 +364,7 @@ ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRI
       LARGE start_time = 0;
       if (ShowTime) start_time = PreciseTime();
 
-      if (!(error = acInit(glScript))) {
+      if (!(error = InitObject(glScript))) {
          if (!(error = acActivate(glScript))) {
             if (ShowTime) {
                DOUBLE startseconds = (DOUBLE)start_time / 1000000.0;

@@ -13,10 +13,9 @@ new classes.  All classes that are created within the system at run-time are rep
 MetaClass object can be inspected to discover detailed information about the class that has been declared.  Most
 of the interesting structural data can be gleaned from the #Fields array.
 
-A number of functions are available in the Core for the purpose of class management.  The Core maintains
-its own list of MetaClass objects, which you can search by calling the ~FindClass() function.  The
-~CheckAction() function provides a way of checking if a particular pre-defined action is supported
-by a class.
+A number of functions are available in the Core for the purpose of class management.  The Core maintains its own list
+of MetaClass objects, which you can search by calling the ~FindClass() function.  The ~CheckAction() function
+provides a way of checking if a particular pre-defined action is supported by a class.
 
 Classes are almost always encapsulated by shared modules, although it is possible to create private classes inside
 executable programs.  For information on the creation of classes, refer to the Class Development Guide for a
@@ -159,6 +158,15 @@ static MethodArray glMetaMethods[TOTAL_METAMETHODS+2] = {
 extMetaClass glMetaClass;
 
 //********************************************************************************************************************
+// Standard signal action, applicable to all classes
+
+static ERROR DEFAULT_Signal(OBJECTPTR Object, APTR Void)
+{
+   Object->Flags |= NF::SIGNALLED;
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
 
 void init_metaclass(void)
 {
@@ -185,6 +193,7 @@ void init_metaclass(void)
 
    glMetaClass.ActionTable[AC_Free].PerformAction = (ERROR (*)(OBJECTPTR, APTR))CLASS_Free;
    glMetaClass.ActionTable[AC_Init].PerformAction = (ERROR (*)(OBJECTPTR, APTR))CLASS_Init;
+   glMetaClass.ActionTable[AC_Signal].PerformAction = &DEFAULT_Signal;
 
    sort_class_fields(&glMetaClass, glMetaClass.prvFields);
 
@@ -433,6 +442,8 @@ Never define method ID's in an action list - the #Methods field is provided for 
 static ERROR SET_Actions(extMetaClass *Self, const ActionArray *Actions)
 {
    if (!Actions) return ERR_Failed;
+
+   Self->ActionTable[AC_Signal].PerformAction = &DEFAULT_Signal;
 
    for (auto i=0; Actions[i].ActionCode; i++) {
       auto code = Actions[i].ActionCode;

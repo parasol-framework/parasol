@@ -80,7 +80,7 @@ static ERROR JPEG_Activate(prvPicture *Self, APTR Void)
    }
 
    if (!acQuery(bmp)) {
-      if (acInit(bmp) != ERR_Okay) {
+      if (InitObject(bmp) != ERR_Okay) {
          jpeg_destroy_decompress(&cinfo);
          return ERR_Init;
       }
@@ -181,7 +181,7 @@ static ERROR JPEG_Init(prvPicture *Self, APTR Void)
       if (!Self->Bitmap->Height) Self->Bitmap->Height = Self->DisplayHeight;
 
       if ((Self->Bitmap->Width) and (Self->Bitmap->Height)) {
-         if (!acInit(Self->Bitmap)) {
+         if (!InitObject(Self->Bitmap)) {
             return ERR_Okay;
          }
          else return log.warning(ERR_Init);

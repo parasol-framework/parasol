@@ -1473,7 +1473,7 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
       }
    }
 
-   if (!acInit(object)) {
+   if (!InitObject(object)) {
       escObject escobj;
 
       if (Self->Invisible) acHide(object); // Hide the object if it's in an invisible section
@@ -1708,7 +1708,7 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
       for (auto resource=Self->Resources; resource; resource=resource->Next) {
          if (resource->Type IS RT_PERSISTENT_SCRIPT) {
             script = GetObjectPtr(resource->ObjectID);
-            if (!StrMatch(name, GetName(script))) {
+            if (!StrMatch(name, script->Name)) {
                log.msg("Persistent script discovered.");
                if ((!Self->DefaultScript) or (defaultscript)) Self->DefaultScript = script;
                return;
@@ -1755,7 +1755,7 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
          }
       }
 
-      if (!(error = acInit(script))) {
+      if (!(error = InitObject(script))) {
          // Pass document arguments to the script
 
          std::unordered_map<std::string, std::string> *vs;

@@ -162,7 +162,7 @@ class objHTTP : public BaseClass {
       if ((error) and (Buffer)) Buffer[0] = 0;
       return error;
    }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);

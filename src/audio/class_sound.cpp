@@ -222,7 +222,7 @@ static ERROR snd_init_audio(extSound *Self)
       SetName(audio, "SystemAudio");
       SetOwner(audio, CurrentTask());
 
-      if (!acInit(audio)) {
+      if (!InitObject(audio)) {
          if (!(error = acActivate(audio))) {
             Self->AudioID = audio->UID;
          }

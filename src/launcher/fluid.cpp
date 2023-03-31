@@ -96,7 +96,7 @@ static LONG run_script(objScript *Script)
    DOUBLE start_time = (DOUBLE)PreciseTime() / 1000000.0;
    ERROR error;
 
-   if (!(error = acInit(Script))) {
+   if (!(error = InitObject(Script))) {
       if (!(error = acActivate(Script))) {
          if (glTime) { // Print the execution time of the script
             DOUBLE end_time = (DOUBLE)PreciseTime() / 1000000.0;

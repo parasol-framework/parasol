@@ -442,7 +442,7 @@ gui.menu = function(Options)
    self.surface.y          = self.y
    self.surface.windowType = 'NONE'
    self.surface.height     = 40
-   if (self.surface.acInit() != ERR_Okay) then error('Failed to initialise surface.') end
+   if (self.surface.init() != ERR_Okay) then error('Failed to initialise surface.') end
 
    self.scene = obj.new('VectorScene', { flags=VPF_RESIZE, surface=self.surface })
    self.viewport = self.scene.new('VectorViewport', { })

@@ -186,7 +186,6 @@ objTime *glTime = NULL;
 THREADVAR WORD tlMsgRecursion = 0;
 THREADVAR struct Message *tlCurrentMsg   = 0;
 
-std::array<LONG (*)(struct BaseClass *, APTR), AC_END> ManagedActions;
 ERROR (*glMessageHandler)(struct Message *) = 0;
 void (*glVideoRecovery)(void) = 0;
 void (*glKeyboardRecovery)(void) = 0;

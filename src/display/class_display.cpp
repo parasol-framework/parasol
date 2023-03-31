@@ -140,7 +140,7 @@ static void get_resolutions(extDisplay *Self)
 
 static void update_displayinfo(extDisplay *Self)
 {
-   if (StrMatch("SystemDisplay", GetName(Self)) != ERR_Okay) return;
+   if (StrMatch("SystemDisplay", Self->Name) != ERR_Okay) return;
 
    glDisplayInfo.DisplayID = 0;
    get_display_info(Self->UID, &glDisplayInfo, sizeof(DISPLAYINFO));
@@ -803,7 +803,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
          hints.flags = USPosition|USSize;
          XSetWMNormalHints(XDisplay, Self->XWindowHandle, &hints);
 
-         if (acInit(bmp) != ERR_Okay) {
+         if (InitObject(bmp) != ERR_Okay) {
             return log.warning(ERR_Init);
          }
       }
@@ -822,7 +822,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
          bmp->Width  = Self->Width;
          bmp->Height = Self->Height;
 
-         if (acInit(bmp) != ERR_Okay) {
+         if (InitObject(bmp) != ERR_Okay) {
             return log.warning(ERR_Init);
          }
 
@@ -845,7 +845,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
       bmp->Flags |= BMF_NO_DATA;
       bmp->DataFlags = MEM_VIDEO;
 
-      if (acInit(bmp) != ERR_Okay) {
+      if (InitObject(bmp) != ERR_Okay) {
          return log.warning(ERR_Init);
       }
 
@@ -914,7 +914,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
 
       bmp->Flags |= BMF_NO_DATA;
       bmp->DataFlags = MEM_VIDEO;
-      if (acInit(bmp) != ERR_Okay) {
+      if (InitObject(bmp) != ERR_Okay) {
          return log.warning(ERR_Init);
       }
 
@@ -1045,7 +1045,7 @@ MoveToBack: Move the display to the back of the display list.
 static ERROR DISPLAY_MoveToBack(extDisplay *Self, APTR Void)
 {
    pf::Log log;
-   log.branch("%s", GetName(Self));
+   log.branch("%s", Self->Name);
 
 #ifdef _WIN32
    winMoveToBack(Self->WindowHandle);
@@ -1065,7 +1065,7 @@ MoveToFront: Move the display to the front of the display list.
 static ERROR DISPLAY_MoveToFront(extDisplay *Self, APTR Void)
 {
    pf::Log log;
-   log.branch("%s", GetName(Self));
+   log.branch("%s", Self->Name);
 #ifdef _WIN32
    winMoveToFront(Self->WindowHandle);
 #elif __xwindows__
@@ -1139,7 +1139,7 @@ static ERROR DISPLAY_NewObject(extDisplay *Self, APTR Void)
    OBJECTID id;
    if (FindObject("SystemVideo", 0, 0, &id) != ERR_Okay) SetName(Self->Bitmap, "SystemVideo");
 
-   if (!(GetName(Self)[0])) {
+   if (!Self->Name[0]) {
       if (FindObject("SystemDisplay", 0, 0, &id) != ERR_Okay) SetName(Self, "SystemDisplay");
    }
 
@@ -1868,7 +1868,7 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
 
       // This really shouldn't be here, but until the management of menu focussing is fixed, we need it.
 
-      if (!StrMatch("SystemDisplay", GetName(Self))) {
+      if (!StrMatch("SystemDisplay", Self->Name)) {
          XSetInputFocus(XDisplay, Self->XWindowHandle, RevertToNone, CurrentTime);
       }
 
@@ -1917,7 +1917,7 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
             else log.warning("Failed to get Android Config object.");
          #endif
 
-         if (acInit(pointer) != ERR_Okay) FreeResource(pointer);
+         if (InitObject(pointer) != ERR_Okay) FreeResource(pointer);
          else acShow(pointer);
       }
    }

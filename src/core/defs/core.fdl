@@ -1147,7 +1147,7 @@ struct ScriptArg { // For use with scExec
     "CheckAction",
     "CheckMemoryExists",
     "CheckObjectExists",
-    "DeleteFile",
+    "InitObject",
     "VirtualVolume",
     "CurrentContext",
     "GetFieldArray",
@@ -1162,8 +1162,8 @@ struct ScriptArg { // For use with scExec
     "GetOwnerID",
     "GetField",
     "GetFieldVariable",
-    "TotalChildren",
-    "GetName",
+    "CompareFilePaths",
+    "GetSystemState",
     "ListChildren",
     "Base64Decode",
     "RegisterFD",
@@ -1254,9 +1254,8 @@ struct ScriptArg { // For use with scExec
     "StrDatatype",
     "UnloadFile",
     "SetDefaultPermissions",
-    "CompareFilePaths",
-    "GetSystemState",
-    "AddInfoTag")
+    "AddInfoTag",
+    "DeleteFile")
 
   c_insert([[
 
@@ -1851,7 +1850,7 @@ class Create {
                else { error = log.warning(ERR_UnsupportedField); return; }
             }
 
-            if ((error = acInit(obj))) {
+            if ((error = InitObject(obj))) {
                FreeResource(obj->UID);
                obj = NULL;
             }
@@ -1920,7 +1919,6 @@ inline ERROR acEnable(OBJECTPTR Object) { return Action(AC_Enable,Object,NULL); 
 inline ERROR acFlush(OBJECTPTR Object) { return Action(AC_Flush,Object,NULL); }
 inline ERROR acFocus(OBJECTPTR Object) { return Action(AC_Focus,Object,NULL); }
 inline ERROR acHide(OBJECTPTR Object) { return Action(AC_Hide,Object,NULL); }
-inline ERROR acInit(OBJECTPTR Object) { return Action(AC_Init,Object,NULL); }
 inline ERROR acLock(OBJECTPTR Object) { return Action(AC_Lock,Object,NULL); }
 inline ERROR acLostFocus(OBJECTPTR Object) { return Action(AC_LostFocus,Object,NULL); }
 inline ERROR acMoveToBack(OBJECTPTR Object) { return Action(AC_MoveToBack,Object,NULL); }
@@ -2465,7 +2463,6 @@ inline ERROR acEnable(OBJECTID ObjectID) { return ActionMsg(AC_Enable, ObjectID,
 inline ERROR acFlush(OBJECTID ObjectID) { return ActionMsg(AC_Flush, ObjectID, NULL); }
 inline ERROR acFocus(OBJECTID ObjectID) { return ActionMsg(AC_Focus, ObjectID, NULL); }
 inline ERROR acHide(OBJECTID ObjectID) { return ActionMsg(AC_Hide, ObjectID, NULL); }
-inline ERROR acInit(OBJECTID ObjectID) { return ActionMsg(AC_Init, ObjectID, NULL); }
 inline ERROR acLostFocus(OBJECTID ObjectID) { return ActionMsg(AC_LostFocus, ObjectID, NULL); }
 inline ERROR acMoveToBack(OBJECTID ObjectID) { return ActionMsg(AC_MoveToBack, ObjectID, NULL); }
 inline ERROR acMoveToFront(OBJECTID ObjectID) { return ActionMsg(AC_MoveToFront, ObjectID, NULL); }

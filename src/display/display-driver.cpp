@@ -802,7 +802,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
          IntToStr((MAXINT)XDisplay, buffer, sizeof(buffer));
          acSetVar(modXRR, "XDisplay", buffer);
          modXRR->set(FID_Name, "xrandr");
-         if (!acInit(modXRR)) {
+         if (!InitObject(modXRR)) {
             if (modXRR->getPtr(FID_ModBase, &XRandRBase) != ERR_Okay) XRandRBase = NULL;
          }
       }

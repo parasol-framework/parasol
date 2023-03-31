@@ -1702,7 +1702,7 @@ static ERROR SURFACE_MoveToBack(extSurface *Self, APTR Void)
       return ERR_Okay|ERF_Notified;
    }
 
-   log.branch("%s", GetName(Self));
+   log.branch("%s", Self->Name);
 
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
    auto &list = glSurfaces;
@@ -1757,7 +1757,7 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
 {
    pf::Log log;
 
-   log.branch("%s", GetName(Self));
+   log.branch("%s", Self->Name);
 
    if (!Self->ParentID) {
       acMoveToFront(Self->DisplayID);
@@ -2196,7 +2196,7 @@ static ERROR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
          release_video(display);
       }
 
-      if (!acInit(picture)) {
+      if (!InitObject(picture)) {
          // Scan through the surface list and copy each buffer to our picture
 
          const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);

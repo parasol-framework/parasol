@@ -75,8 +75,15 @@
 <p>This function resolves an object ID to its address and acquires a lock on the object so that other threads cannot use it simultaneously.</p>
 <p>If the object is already locked, it will wait until the object becomes available.   This must occur within the amount of time specified in the Milliseconds parameter.  If the time expires, the function will return with an <code>ERR_TimeOut</code> error code.  If successful, <code>ERR_Okay</code> is returned and a reference to the object's address is stored in the Result variable.</p>
 <p>It is crucial that calls to AccessObject() are followed with a call to <function module="Core">ReleaseObject</function> once the lock is no longer required.  Calls to AccessObject() will also nest, so they must be paired with <function module="Core">ReleaseObject</function> correctly.</p>
-<p>If AccessObject() fails, the Result variable will be automatically set to a NULL pointer on return.</p>
-<p>Hint: If the name of the target object is known but not the ID, use <function module="Core">FindObject</function> to resolve it.</p>
+<p>It is recommended that C++ developers use the <code>ScopedObjectLock</code> class to acquire object locks rather than making direct calls to AccessObject().  The following example illustrates lock acquisition within a 1 second time limit:</p>
+<pre>{
+   pf::ScopedObjectLock<OBJECTPTR> obj(my_object_id, 1000);
+   if (lock.granted()) {
+      obj.acDraw();
+   }
+}
+</OBJECTPTR>
+</pre>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -100,20 +107,20 @@
     </input>
     <description>
 <p>This function is the key entry point for executing actions and method routines.  An action is a predefined function call that can be called on any object, while a method is a function call that is specific to a class implementation. You can find a complete list of available actions and their associated details in the Action List document. The actions and methods supported by any class will be referenced in their auto-generated documentation.</p>
-<p>Here are two examples that demonstrate how to make an action call.  The first performs an initialisation, which does not require any additional arguments.  The second performs a move operation, which requires three additional arguments to be passed to the Action() function:</p>
-<pre>1. Action(AC_Init, Picture, NULL);
+<p>Here are two examples that demonstrate how to make an action call.  The first performs an activation, which does not require any additional arguments.  The second performs a move operation, which requires three additional arguments to be passed to the Action() function:</p>
+<pre>1. Action(AC_Activate, Picture, NULL);
 
 2. struct acMove move = { 30, 15, 0 };
    Action(AC_Move, Window, &amp;move);
 </pre>
 <p>In all cases, action calls in C++ can be simplified by using their corresponding helper functions:</p>
-<pre>1.  acInit(Picture);
+<pre>1.  acActivate(Picture);
 
 2a. acMove(Window, 30, 15, 0);
 
 2b. Window-&gt;move(30, 15, 0);
 </pre>
-<p>If the class of an object does not support the action ID, an error code of <code>ERR_NoSupport</code> is returned.  To test an object to see if its class supports a particular action, use the <function module="Core">CheckAction</function> function.</p>
+<p>If the class of an object does not support the action ID, an error code of <code>ERR_NoSupport</code> is returned.  To test an object to see if its class supports an action, use the <function module="Core">CheckAction</function> function.</p>
 <p>In circumstances where an object ID is known without its pointer, the use of <function module="Core">ActionMsg</function> or <function module="Core">QueueAction</function> may be desirable to avoid acquiring an object lock.</p>
     </description>
     <result type="ERROR">
@@ -174,7 +181,7 @@ struct FunctionField argsResize[] = {
       <param type="APTR" name="Args">The parameter structure required by Action.</param>
     </input>
     <description>
-<p>Use ActionMsg() to execute an action where only the object ID is known.</p>
+<p>Use ActionMsg() to execute an action when only the object ID is known.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -1001,29 +1008,15 @@ GetField(Object, FID_Y|TLONG, &amp;y);
   </function>
 
   <function>
-    <name>GetName</name>
-    <category>Objects</category>
-    <comment>Retrieves object names.</comment>
-    <prototype>CSTRING GetName(OBJECTPTR Object)</prototype>
-    <input>
-      <param type="OBJECTPTR" name="Object">An object to query.</param>
-    </input>
-    <description>
-<p>This function will return the name of the object referenced by the Object pointer. If the target object has not been assigned a name then a null-string is returned.</p>
-    </description>
-    <result type="CSTRING">A string containing the object name is returned.  If the object has no name or the parameter is invalid, a null-terminated string is returned.</result>
-  </function>
-
-  <function>
     <name>GetObjectPtr</name>
     <category>Objects</category>
-    <comment>Returns the object address for any private object ID.</comment>
+    <comment>Returns a direct pointer for any object ID.</comment>
     <prototype>OBJECTPTR GetObjectPtr(OBJECTID Object)</prototype>
     <input>
       <param type="OBJECTID" name="Object">The ID of the object to lookup.</param>
     </input>
     <description>
-<p>This function translates private object ID's (owned by the process) to their respective address pointers.  Public object ID's are not supported.</p>
+<p>This function translates object ID's to their respective address pointers.</p>
     </description>
     <result type="OBJECTPTR">The address of the object is returned, or NULL if the ID does not relate to an object.</result>
   </function>
@@ -1090,6 +1083,26 @@ GetField(Object, FID_Y|TLONG, &amp;y);
       <error code="FileNotFound">File not found.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="Read">Error reading data from file.</error>
+    </result>
+  </function>
+
+  <function>
+    <name>InitObject</name>
+    <category>Objects</category>
+    <comment>Initialises an object so that it is ready for use.</comment>
+    <prototype>ERROR InitObject(OBJECTPTR Object)</prototype>
+    <input>
+      <param type="OBJECTPTR" name="Object">The object to initialise.</param>
+    </input>
+    <description>
+<p>This function initialises objects so that they can be used for their intended purpose. The process of initialisation is compulsory, and a client may not use any other actions on an object until it has been initialised.  Exceptions to this rule only apply to the GetVar() and SetVar() actions.</p>
+<p>If the initialisation of an object fails due to a support problem (for example, if a PNG <class name="Picture">Picture</class> object attempts to load a JPEG file), the initialiser will search for a sub-class that can handle the data.  If a sub-class that can provide ample support exists, a partial transfer of ownership will occur and the object's  management will be shared between both the base class and the sub-class.</p>
+<p>If an object does not support the data or its configuration, an error code of <code>ERR_NoSupport</code> will be returned. Other appropriate error codes can be returned if initialisation fails.</p>
+    </description>
+    <result type="ERROR">
+      <error code="Okay">Operation successful.</error>
+      <error code="LostClass">The object has lost its class reference.</error>
+      <error code="ObjectCorrupt">The object structure is corrupt or has not been initialised.</error>
     </result>
   </function>
 
@@ -1168,7 +1181,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
       <param type="LONG" name="MilliSeconds">The total number of milliseconds to wait before giving up.  If -1, the function will wait indefinitely.</param>
     </input>
     <description>
-<p>Use LockObject() to gain exclusivity to an object at thread-level.  This function provides identical behaviour to that of <function module="Core">AccessObject</function>, but with a slight speed advantage as the object ID does not need to be resolved to an address.  Calls to LockObject() will nest, and must be matched with a call to <function module="Core">ReleaseObject</function> to unlock the object.</p>
+<p>Use LockObject() to gain exclusive access to an object at thread-level.  This function provides identical behaviour to that of <function module="Core">AccessObject</function>, but with a slight speed advantage as the object ID does not need to be resolved to an address.  Calls to LockObject() will nest, and must be matched with a call to <function module="Core">ReleaseObject</function> to unlock the object.</p>
 <p>Be aware that while this function is faster than <function module="Core">AccessObject</function>, its use may be considered unsafe if other threads could terminate the object without a suitable barrier in place.</p>
 <p>If it is guaranteed that an object is not being shared between threads, object locking is unnecessary.</p>
     </description>
@@ -1327,8 +1340,8 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <param type="ERROR" name="Error">The error code that is associated with the action result.</param>
     </input>
     <description>
-<p>This function can be used by classes that need total control over notification management.  The system default for notifying action subscribers is to call them immediately after an action has taken place.  This may be inconvenient if the code for an action needs to perform a procedure after the subscribers have been notified.  Using NotifySubscribers() allows for such a scenario.  Another possible use is customising the parameter values of the called action so that the original values are not sent to the subscriber(s).</p>
-<p>NOTE: Calling NotifySubscribers() does nothing to prevent the core from sending out an action notification as it normally would, thus causing duplication.  To prevent this scenario, you must logical-or the return code of your action support function with <code>ERF_Notified</code>, e.g. <code>ERR_Okay|ERF_Notified</code>.</p>
+<p>This function can be used by classes that need total control over notification management.  The system default for notifying action subscribers is to call them immediately after an action has taken place.  This may be inconvenient if the code for an action needs to execute code post-notification.  Using NotifySubscribers() allows these scenarios to be addressed.  Another possible use is for customised parameter values to be sent to subscribers instead of the original values.</p>
+<p>NOTE: Calling NotifySubscribers() does nothing to prevent the core from sending out an action notification as it normally would, thus causing duplication.  To prevent this the client must logical-or the return code of the action function with <code>ERF_Notified</code>, e.g. <code>ERR_Okay|ERF_Notified</code>.</p>
     </description>
   </function>
 
@@ -1549,7 +1562,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <param type="CLASSID" name="ID">The ID of the class that needs to be resolved.</param>
     </input>
     <description>
-<p>This function is able to resolve a valid class identifier to its equivalent name.  The name is resolved by scanning the class database, so the class must be registered in the database for this function to return successfully.</p>
+<p>This function will resolve a valid class ID to its equivalent name.  The name is resolved by scanning the class database, so the class must be registered in the database for this function to return successfully. Registration is achieved by loading the module that hosts the class, after which the class is permanently saved in the database.</p>
     </description>
     <result type="CSTRING">Returns the name of the class, or NULL if the ID is not recognised.  Standard naming conventions apply, so it can be expected that the string is capitalised and without spaces, e.g. "NetSocket".</result>
   </function>
@@ -1752,7 +1765,7 @@ SetArray(Object, FID_Table|TLONG, array, 100);
     </input>
     <description>
 <p>This function defines the object that has control of the current thread.  Once called, all further resource allocations are assigned to that object.  This is significant for the automatic collection of memory and object allocations.  For example:</p>
-<pre>acInit(display);
+<pre>InitObject(display);
 auto ctx = SetContext(display);
 
    NewObject(ID_BITMAP, &amp;bitmap);
@@ -1762,7 +1775,7 @@ SetContext(ctx);
 FreeResource(display-&gt;UID);
 </pre>
 <p>The above code allocates a Bitmap and a memory block, both of which will be contained by the display. When <function module="Core">FreeResource</function> is called, both the bitmap and memory block will be automatically removed as they have a dependency on the display's existence.  Please keep in mind that the following is incorrect:</p>
-<pre>acInit(display);
+<pre>InitObject(display);
 auto ctx = SetContext(display);
 
    NewObject(ID_BITMAP, &amp;bitmap);
@@ -2062,7 +2075,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <param type="FUNCTION *" name="Callback">A C/C++ function to callback when the action is triggered.</param>
     </input>
     <description>
-<p>The SubscribeAction() function allows a client to receive a callback each time that an action is executed on an object.  This technique is referred to as "action monitoring" and is especially useful for responding to events in the UI and the termination of objects.</p>
+<p>The SubscribeAction() function allows a client to receive a callback each time that an action is executed on an object.  This technique is referred to as "action monitoring" and is often used for responding to UI events and the termination of objects.</p>
 <p>Subscriptions are context sensitive, so the Callback will execute in the space attributed to to the caller.</p>
 <p>The following example illustrates how to listen to a Surface object's Redimension action and respond to resize events:</p>
 <pre>auto callback = make_function_stdc(notify_resize);
@@ -2138,20 +2151,6 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <error code="InvalidState">Object was in an incorrect state for the operation.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
-  </function>
-
-  <function>
-    <name>TotalChildren</name>
-    <category>Objects</category>
-    <comment>Returns the total number of children owned by an object.</comment>
-    <prototype>LONG TotalChildren(OBJECTID Object)</prototype>
-    <input>
-      <param type="OBJECTID" name="Object">The object to query.</param>
-    </input>
-    <description>
-<p>This function returns the total number of children that are owned by an object.  It is normally called as a precursor to <function module="Core">ListChildren</function>.</p>
-    </description>
-    <result type="LONG">The total number of children belonging to the object.  Returns zero if the object does not exist.</result>
   </function>
 
   <function>

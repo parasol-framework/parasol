@@ -53,10 +53,10 @@ void debug_tree(extVector *Vector, LONG &Level)
 
       if ((v->ClassID IS ID_VECTOR) and (v->Child)) {
          pf::Log blog(__FUNCTION__);
-         blog.branch("#%d%s %s %s %s", v->UID, indent, v->Class->ClassName, GetName(v) ? GetName(v) : "", buffer);
+         blog.branch("#%d%s %s %s %s", v->UID, indent, v->Class->ClassName, v->Name, buffer);
          debug_tree((extVector *)v->Child, Level);
       }
-      else log.msg("#%d%s %s %s %s", v->UID, indent, v->Class->ClassName, GetName(v) ? GetName(v) : "", buffer);
+      else log.msg("#%d%s %s %s %s", v->UID, indent, v->Class->ClassName, v->Name, buffer);
    }
 
    Level--;

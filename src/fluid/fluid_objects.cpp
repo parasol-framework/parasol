@@ -97,7 +97,7 @@ static ACTIONID get_action_info(lua_State *Lua, CLASSID ClassID, CSTRING action,
 ** Usage: object = obj.new("Screen", { field1 = value1, field2 = value2, ...})
 **
 ** If fields are provided in the second argument, the object will be initialised automatically.  If no field list is
-** provided, acInit() must be used to initialise the object.
+** provided, InitObject() must be used to initialise the object.
 **
 ** Variable fields can be denoted with an underscore prefix.
 **
@@ -171,7 +171,7 @@ static int object_new(lua_State *Lua)
             else lua_pop(Lua, 1);  // removes 'value'; keeps 'key' for the proceeding lua_next() iteration
          }
 
-         if ((field_error) or ((error = acInit(obj)) != ERR_Okay)) {
+         if ((field_error) or ((error = InitObject(obj)) != ERR_Okay)) {
             FreeResource(obj);
 
             if (field_error) {
@@ -323,7 +323,7 @@ static int object_newchild(lua_State *Lua)
             else lua_pop(Lua, 1);  // removes 'value'; keeps 'key' for the proceeding lua_next() iteration
          }
 
-         if ((field_error) or ((error = acInit(obj)) != ERR_Okay)) {
+         if ((field_error) or ((error = InitObject(obj)) != ERR_Okay)) {
             FreeResource(obj);
 
             if (field_error) {
@@ -842,6 +842,27 @@ static int object_free(lua_State *Lua)
 }
 
 //********************************************************************************************************************
+
+static int object_init(lua_State *Lua)
+{
+   if (auto def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj")) {
+      if (auto obj = access_object(def)) {
+         lua_pushinteger(Lua, InitObject(obj));
+         release_object(def);
+         return 1;
+      }
+      else {
+         luaL_error(Lua, GetErrorMsg(ERR_AccessObject));
+         return 0;
+      }
+   }
+   else {
+      lua_pushinteger(Lua, ERR_SystemCorrupt);
+      return 1;
+   }
+}
+
+//********************************************************************************************************************
 // Prints the object interface as the object ID, e.g. #-10513
 
 static int object_tostring(lua_State *Lua)
@@ -903,6 +924,7 @@ static int object_index(lua_State *Lua)
          }
          else {
             switch (StrHash(code, 0)) {
+               case HASH_INIT:        SET_CONTEXT(Lua, (APTR)object_init); return 1;
                case HASH_FREE:        SET_CONTEXT(Lua, (APTR)object_free); return 1;
                case HASH_LOCK:        SET_CONTEXT(Lua, (APTR)object_lock); return 1;
                case HASH_CHILDREN:    SET_CONTEXT(Lua, (APTR)object_children); return 1;

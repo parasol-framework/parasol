@@ -160,7 +160,7 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure
       LARGE start_time = 0;
       if (ShowTime) start_time = PreciseTime();
 
-      if (auto error = acInit(glScript); !error) {
+      if (auto error = InitObject(glScript); !error) {
          if (auto error = acActivate(glScript); !error) {
             if (ShowTime) { // Print the execution time of the script
                auto start_seconds = (DOUBLE)start_time / 1000000.0;

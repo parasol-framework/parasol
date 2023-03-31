@@ -3108,7 +3108,7 @@ list_repass:
 
                   if ((cell.Bottom <= cell.Top) or (cell.Right <= cell.Left)) {
                      CSTRING name;
-                     if ((name = GetName(object))) log.warning("%s object %s returned an invalid clip region of %dx%d,%dx%d", object->Class->ClassName, name, cell.Left, cell.Top, cell.Right, cell.Bottom);
+                     if ((name = object->Name)) log.warning("%s object %s returned an invalid clip region of %dx%d,%dx%d", object->Class->ClassName, name, cell.Left, cell.Top, cell.Right, cell.Bottom);
                      else log.warning("%s object #%d returned an invalid clip region of %dx%d,%dx%d", object->Class->ClassName, object->UID, cell.Left, cell.Top, cell.Right, cell.Bottom);
                      break;
                   }
@@ -5803,7 +5803,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
       }
       else acSetVar(dialog, "message", Message);
 
-      if ((!acInit(dialog)) and (!acActivate(dialog))) {
+      if ((!InitObject(dialog)) and (!acActivate(dialog))) {
          CSTRING *results;
          LONG size;
          if ((!GetFieldArray(dialog, FID_Results, (APTR *)&results, &size)) and (size > 0)) {

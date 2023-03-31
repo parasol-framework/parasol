@@ -341,12 +341,12 @@ call that can be called on any object, while a method is a function call that is
 You can find a complete list of available actions and their associated details in the Action List document.
 The actions and methods supported by any class will be referenced in their auto-generated documentation.
 
-Here are two examples that demonstrate how to make an action call.  The first performs an initialisation, which
+Here are two examples that demonstrate how to make an action call.  The first performs an activation, which
 does not require any additional arguments.  The second performs a move operation, which requires three additional
 arguments to be passed to the Action() function:
 
 <pre>
-1. Action(AC_Init, Picture, NULL);
+1. Action(AC_Activate, Picture, NULL);
 
 2. struct acMove move = { 30, 15, 0 };
    Action(AC_Move, Window, &move);
@@ -355,7 +355,7 @@ arguments to be passed to the Action() function:
 In all cases, action calls in C++ can be simplified by using their corresponding helper functions:
 
 <pre>
-1.  acInit(Picture);
+1.  acActivate(Picture);
 
 2a. acMove(Window, 30, 15, 0);
 
@@ -363,7 +363,7 @@ In all cases, action calls in C++ can be simplified by using their corresponding
 </pre>
 
 If the class of an object does not support the action ID, an error code of `ERR_NoSupport` is returned.  To test
-an object to see if its class supports a particular action, use the ~CheckAction() function.
+an object to see if its class supports an action, use the ~CheckAction() function.
 
 In circumstances where an object ID is known without its pointer, the use of ~ActionMsg() or ~QueueAction() may be
 desirable to avoid acquiring an object lock.
@@ -398,14 +398,7 @@ ERROR Action(LONG ActionID, OBJECTPTR Object, APTR Parameters)
 
    ERROR error;
    if (ActionID >= 0) {
-      // Action precedence is as follows:
-      //
-      // 1. Managed actions.
-      // 2. If applicable, the object's sub-class (e.g. Picture:JPEG).
-      // 3. The base-class.
-
-      if (ManagedActions[ActionID]) error = ManagedActions[ActionID](Object, Parameters);
-      else if (cl->ActionTable[ActionID].PerformAction) { // Can be base or sub-class
+      if (cl->ActionTable[ActionID].PerformAction) { // Can be a base-class or sub-class call
          error = cl->ActionTable[ActionID].PerformAction(Object, Parameters);
          if (error IS ERR_NoAction) {
             if ((cl->Base) and (cl->Base->ActionTable[ActionID].PerformAction)) { // Base is set only if this is a sub-class
@@ -527,7 +520,7 @@ void ActionList(struct ActionTable **List, LONG *Size)
 -FUNCTION-
 ActionMsg: Execute an action or method by way of object ID.
 
-Use ActionMsg() to execute an action where only the object ID is known.
+Use ActionMsg() to execute an action when only the object ID is known.
 
 -INPUT-
 int Action: The ID of the action or method to be executed.
@@ -710,7 +703,7 @@ ERROR CheckAction(OBJECTPTR Object, LONG ActionID)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((Object) and (ActionID)) {
+   if (Object) {
       if (Object->ClassID IS ID_METACLASS) {
          if (((extMetaClass *)Object)->ActionTable[ActionID].PerformAction) return ERR_Okay;
          else return ERR_False;
@@ -1001,32 +994,9 @@ CLASSID GetClassID(OBJECTID ObjectID)
 /*********************************************************************************************************************
 
 -FUNCTION-
-GetName: Retrieves object names.
+GetObjectPtr: Returns a direct pointer for any object ID.
 
-This function will return the name of the object referenced by the Object pointer. If the target object has not been
-assigned a name then a null-string is returned.
-
--INPUT-
-obj Object: An object to query.
-
--RESULT-
-cstr: A string containing the object name is returned.  If the object has no name or the parameter is invalid, a null-terminated string is returned.
-
-*********************************************************************************************************************/
-
-CSTRING GetName(OBJECTPTR Object)
-{
-   if (Object) return Object->Name;
-   else return "";
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-GetObjectPtr: Returns the object address for any private object ID.
-
-This function translates private object ID's (owned by the process) to their respective address pointers.  Public
-object ID's are not supported.
+This function translates object ID's to their respective address pointers.
 
 -INPUT-
 oid Object: The ID of the object to lookup.
@@ -1040,8 +1010,7 @@ OBJECTPTR GetObjectPtr(OBJECTID ObjectID)
 {
    ThreadLock lock(TL_PRIVATE_MEM, 4000);
    if (lock.granted()) {
-      auto mem = glPrivateMemory.find(ObjectID);
-      if (mem != glPrivateMemory.end()) {
+      if (auto mem = glPrivateMemory.find(ObjectID); mem != glPrivateMemory.end()) {
          if ((mem->second.Flags & MEM_OBJECT) and (mem->second.Object)) {
             if (mem->second.Object->UID IS ObjectID) {
                return mem->second.Object;
@@ -1075,12 +1044,193 @@ OBJECTID GetOwnerID(OBJECTID ObjectID)
 {
    ThreadLock lock(TL_PRIVATE_MEM, 4000);
    if (lock.granted()) {
-      auto mem = glPrivateMemory.find(ObjectID);
-      if (mem != glPrivateMemory.end()) {
+      if (auto mem = glPrivateMemory.find(ObjectID); mem != glPrivateMemory.end()) {
          if (mem->second.Object) return mem->second.Object->OwnerID;
       }
    }
    return 0;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+InitObject: Initialises an object so that it is ready for use.
+
+This function initialises objects so that they can be used for their intended purpose. The process of initialisation
+is compulsory, and a client may not use any other actions on an object until it has been initialised.  Exceptions to
+this rule only apply to the GetVar() and SetVar() actions.
+
+If the initialisation of an object fails due to a support problem (for example, if a PNG @Picture object attempts to
+load a JPEG file), the initialiser will search for a sub-class that can handle the data.  If a sub-class that can
+provide ample support exists, a partial transfer of ownership will occur and the object's  management will be shared
+between both the base class and the sub-class.
+
+If an object does not support the data or its configuration, an error code of `ERR_NoSupport` will be returned.
+Other appropriate error codes can be returned if initialisation fails.
+
+-INPUT-
+obj Object: The object to initialise.
+
+-ERRORS-
+Okay: The object was initialised.
+LostClass
+ObjectCorrupt
+
+*********************************************************************************************************************/
+
+ERROR InitObject(OBJECTPTR Object)
+{
+   pf::Log log("Init");
+
+   extMetaClass *cl;
+   if (!(cl = Object->ExtClass)) return log.warning(ERR_LostClass);
+
+   if (Object->ClassID != cl->BaseClassID) {
+      log.warning("Cannot initialise object #%d - the Object.ClassID ($%.8x) does not match the Class.BaseClassID ($%.8x)", Object->UID, Object->ClassID, cl->BaseClassID);
+      return ERR_ObjectCorrupt;
+   }
+
+   if (Object->initialised()) {  // Initialising twice does not cause an error, but send a warning and return
+      log.warning(ERR_DoubleInit);
+      return ERR_Okay;
+   }
+
+   if (Object->Name[0]) log.branch("Name: %s, Owner: %d", Object->Name, Object->OwnerID);
+   else log.branch("Owner: %d", Object->OwnerID);
+
+   Object->threadLock();
+   ObjectContext new_context(Object, AC_Init);
+
+   bool use_subclass = false;
+   ERROR error = ERR_Okay;
+   if (Object->SubID) {
+      // For sub-classes, the base-class gets called first.  It should check the SubID in the header to determine that
+      // the object is sub-classed so as to prevent it from doing 'too much' initialisation.
+
+      if (cl->Base->ActionTable[AC_Init].PerformAction) {
+         error = cl->Base->ActionTable[AC_Init].PerformAction(Object, NULL);
+      }
+
+      if (!error) {
+         if (cl->ActionTable[AC_Init].PerformAction) {
+            error = cl->ActionTable[AC_Init].PerformAction(Object, NULL);
+         }
+
+         if (!error) Object->Flags |= NF::INITIALISED;
+      }
+
+      Object->threadRelease();
+      return error;
+   }
+   else {
+      // Meaning of special error codes:
+      //
+      // ERR_NoSupport: The source data is not recognised.  Search for a sub-class that might have better luck.  Note
+      //   that in the first case we can only support classes that are already in memory.  The second part of this
+      //   routine supports checking of sub-classes that aren't loaded yet.
+      //
+      // ERR_UseSubClass: Similar to ERR_NoSupport, but avoids scanning of sub-classes that aren't loaded in memory.
+
+      std::array<extMetaClass *, 16> sublist;
+      LONG sli = -1;
+
+      while (Object->ExtClass) {
+         if (Object->ExtClass->ActionTable[AC_Init].PerformAction) {
+            error = Object->ExtClass->ActionTable[AC_Init].PerformAction(Object, NULL);
+         }
+         else error = ERR_Okay; // If no initialiser defined, auto-OK
+
+         if (!error) {
+            Object->Flags |= NF::INITIALISED;
+
+            if (Object->ExtClass != cl) {
+               // Due to the switch, increase the open count of the sub-class (see NewObject() for details on object
+               // reference counting).
+
+               log.msg("Object class switched to sub-class \"%s\".", Object->className());
+
+               Object->ExtClass->OpenCount++;
+               Object->SubID = Object->ExtClass->SubClassID;
+               Object->Flags |= NF::RECLASSED; // This flag indicates that the object originally belonged to the base-class
+            }
+
+            Object->threadRelease();
+            return ERR_Okay;
+         }
+
+         if (error IS ERR_UseSubClass) {
+            log.trace("Requested to use registered sub-class.");
+            use_subclass = TRUE;
+         }
+         else if (error != ERR_NoSupport) break;
+
+         if (sli IS -1) {
+            // Initialise a list of all sub-classes already in memory for querying in sequence.
+            sli = 0;
+            LONG i = 0;
+            for (auto & [ id, class_ptr ] : glClassMap) {
+               if (i >= LONG(sublist.size())-1) break;
+               if ((Object->ClassID IS class_ptr->BaseClassID) and (class_ptr->BaseClassID != class_ptr->SubClassID)) {
+                  sublist[i++] = class_ptr;
+               }
+            }
+
+            sublist[i] = NULL;
+         }
+
+         // Attempt to initialise with the next known sub-class.
+
+         if ((Object->Class = sublist[sli++])) {
+            log.trace("Attempting initialisation with sub-class '%s'", Object->className());
+            Object->SubID = Object->Class->SubClassID;
+         }
+      }
+   }
+
+   Object->Class = cl;  // Put back the original to retain integrity
+   Object->SubID = Object->Class->SubClassID;
+
+   // If the base class and its loaded sub-classes failed, check the object for a Path field and check the data
+   // against sub-classes that are not currently in memory.
+   //
+   // This is the only way we can support the automatic loading of sub-classes without causing undue load on CPU and
+   // memory resources (loading each sub-class into memory just to check whether or not the data is supported is overkill).
+
+   CSTRING path;
+   if (use_subclass) { // If ERR_UseSubClass was set and the sub-class was not registered, do not call IdentifyFile()
+      log.warning("ERR_UseSubClass was used but no suitable sub-class was registered.");
+   }
+   else if ((error IS ERR_NoSupport) and (!GetField(Object, FID_Path|TSTR, &path)) and (path)) {
+      CLASSID classid;
+      if (!IdentifyFile(path, &classid, &Object->SubID)) {
+         if ((classid IS Object->ClassID) and (Object->SubID)) {
+            log.msg("Searching for subclass $%.8x", Object->SubID);
+            if ((Object->ExtClass = (extMetaClass *)FindClass(Object->SubID))) {
+               if (Object->ExtClass->ActionTable[AC_Init].PerformAction) {
+                  if (!(error = Object->ExtClass->ActionTable[AC_Init].PerformAction(Object, NULL))) {
+                     log.msg("Object class switched to sub-class \"%s\".", Object->className());
+                     Object->Flags |= NF::INITIALISED;
+                     Object->ExtClass->OpenCount++;
+                     Object->threadRelease();
+                     return ERR_Okay;
+                  }
+               }
+               else {
+                  Object->threadRelease();
+                  return ERR_Okay;
+               }
+            }
+            else log.warning("Failed to load module for class #%d.", Object->SubID);
+         }
+      }
+      else log.warning("File '%s' does not belong to class '%s', got $%.8x.", path, Object->className(), classid);
+
+      Object->Class = cl;  // Put back the original to retain object integrity
+      Object->SubID = cl->SubClassID;
+   }
+
+   Object->threadRelease();
+   return error;
 }
 
 /*********************************************************************************************************************
@@ -1274,13 +1424,13 @@ NotifySubscribers: Used to send notification messages to action subscribers.
 
 This function can be used by classes that need total control over notification management.  The system default for
 notifying action subscribers is to call them immediately after an action has taken place.  This may be inconvenient
-if the code for an action needs to perform a procedure after the subscribers have been notified.  Using
-NotifySubscribers() allows for such a scenario.  Another possible use is customising the parameter values of the
-called action so that the original values are not sent to the subscriber(s).
+if the code for an action needs to execute code post-notification.  Using NotifySubscribers() allows these scenarios
+to be addressed.  Another possible use is for customised parameter values to be sent to subscribers instead of
+the original values.
 
 NOTE: Calling NotifySubscribers() does nothing to prevent the core from sending out an action notification as it
-normally would, thus causing duplication.  To prevent this scenario, you must logical-or the return code of your
-action support function with `ERF_Notified`, e.g. `ERR_Okay|ERF_Notified`.
+normally would, thus causing duplication.  To prevent this the client must logical-or the return code of
+the action function with `ERF_Notified`, e.g. `ERR_Okay|ERF_Notified`.
 
 -INPUT-
 obj Object: Pointer to the object that is to receive the notification message.
@@ -1306,7 +1456,7 @@ void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR E
    const std::lock_guard<std::recursive_mutex> lock(glSubLock);
 
    if ((!glSubscriptions[Object->UID].empty()) and (!glSubscriptions[Object->UID][ActionID].empty())) {
-      glSubReadOnly++;
+      glSubReadOnly++; // Prevents changes to glSubscriptions while we're processing it.
       for (auto &sub : glSubscriptions[Object->UID][ActionID]) {
          if (sub.Context) {
             pf::SwitchContext ctx(sub.Context);
@@ -1390,15 +1540,13 @@ ERROR QueueAction(LONG ActionID, OBJECTID ObjectID, APTR Args)
       .SendArgs = false
    };
 
-   const FunctionField *fields = NULL;
    LONG msgsize = 0;
 
    if (Args) {
-      LONG argssize = 0;
       if (ActionID > 0) {
          if (ActionTable[ActionID].Size) {
-            fields   = ActionTable[ActionID].Args;
-            argssize = ActionTable[ActionID].Size;
+            auto fields   = ActionTable[ActionID].Args;
+            auto argssize = ActionTable[ActionID].Size;
             if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, ActionTable[ActionID].Name) != ERR_Okay) {
                log.warning("Failed to buffer arguments for action \"%s\".", ActionTable[ActionID].Name);
                return ERR_Failed;
@@ -1409,8 +1557,8 @@ ERROR QueueAction(LONG ActionID, OBJECTID ObjectID, APTR Args)
       }
       else if (auto cl = (extMetaClass *)FindClass(GetClassID(ObjectID))) {
          if (-ActionID < cl->TotalMethods) {
-            fields   = cl->Methods[-ActionID].Args;
-            argssize = cl->Methods[-ActionID].Size;
+            auto fields   = cl->Methods[-ActionID].Args;
+            auto argssize = cl->Methods[-ActionID].Size;
             if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, cl->Methods[-ActionID].Name) != ERR_Okay) {
                log.warning("Failed to buffer arguments for method \"%s\".", cl->Methods[-ActionID].Name);
                return ERR_Failed;
@@ -1475,8 +1623,10 @@ CLASSID ResolveClassName(CSTRING ClassName)
 -FUNCTION-
 ResolveClassID: Converts a valid class ID to its equivalent name.
 
-This function is able to resolve a valid class identifier to its equivalent name.  The name is resolved by scanning the
+This function will resolve a valid class ID to its equivalent name.  The name is resolved by scanning the
 class database, so the class must be registered in the database for this function to return successfully.
+Registration is achieved by loading the module that hosts the class, after which the class is permanently saved
+in the database.
 
 -INPUT-
 cid ID: The ID of the class that needs to be resolved.
@@ -1563,8 +1713,6 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
    };
    Action(AC_NewOwner, Object, &newowner);
 
-   // Make the change
-
    //if (Object->OwnerID) log.trace("SetOwner:","Changing the owner for object %d from %d to %d.", Object->UID, Object->OwnerID, Owner->UID);
 
    // Track the object's memory header to the new owner
@@ -1581,10 +1729,9 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
       Object->OwnerID = Owner->UID;
 
       glObjectChildren[Owner->UID].insert(Object->UID);
+      return ERR_Okay;
    }
-   else return log.warning(ERR_Lock);
-
-   return ERR_Okay;
+   else return log.warning(ERR_SystemLocked);
 }
 
 /*********************************************************************************************************************
@@ -1597,7 +1744,7 @@ allocations are assigned to that object.  This is significant for the automatic 
 allocations.  For example:
 
 <pre>
-acInit(display);
+InitObject(display);
 auto ctx = SetContext(display);
 
    NewObject(ID_BITMAP, &bitmap);
@@ -1612,7 +1759,7 @@ The above code allocates a Bitmap and a memory block, both of which will be cont
 on the display's existence.  Please keep in mind that the following is incorrect:
 
 <pre>
-acInit(display);
+InitObject(display);
 auto ctx = SetContext(display);
 
    NewObject(ID_BITMAP, &bitmap);
@@ -1713,8 +1860,8 @@ ERROR SetName(OBJECTPTR Object, CSTRING NewName)
 SubscribeAction: Monitor action calls made against an object.
 
 The SubscribeAction() function allows a client to receive a callback each time that an action is executed on
-an object.  This technique is referred to as "action monitoring" and is especially useful for responding to
-events in the UI and the termination of objects.
+an object.  This technique is referred to as "action monitoring" and is often used for responding to UI
+events and the termination of objects.
 
 Subscriptions are context sensitive, so the Callback will execute in the space attributed to to the caller.
 
@@ -1783,30 +1930,6 @@ ERROR SubscribeAction(OBJECTPTR Object, ACTIONID ActionID, FUNCTION *Callback)
    }
 
    return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-TotalChildren: Returns the total number of children owned by an object.
-
-This function returns the total number of children that are owned by an object.  It is normally called as a precursor
-to ~ListChildren().
-
--INPUT-
-oid Object: The object to query.
-
--RESULT-
-int: The total number of children belonging to the object.  Returns zero if the object does not exist.
-
-*********************************************************************************************************************/
-
-LONG TotalChildren(OBJECTID ObjectID)
-{
-   if (glObjectChildren.contains(ObjectID)) {
-      return glObjectChildren[ObjectID].size();
-   }
-   else return 0;
 }
 
 /*********************************************************************************************************************
@@ -1888,164 +2011,5 @@ restart:
       }
    }
 
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-** Action: Init()
-*/
-
-ERROR MGR_Init(OBJECTPTR Object, APTR Void)
-{
-   pf::Log log("Init");
-
-   extMetaClass *cl;
-   if (!(cl = Object->ExtClass)) return log.warning(ERR_LostClass);
-
-   if (Object->ClassID != cl->BaseClassID) {
-      log.warning("Cannot initialise object #%d - the Object.ClassID ($%.8x) does not match the Class.BaseClassID ($%.8x)", Object->UID, Object->ClassID, cl->BaseClassID);
-      return ERR_ObjectCorrupt;
-   }
-
-   if (Object->initialised()) {  // Initialising twice does not cause an error, but send a warning and return
-      log.warning(ERR_DoubleInit);
-      return ERR_Okay;
-   }
-
-   if (Object->Name[0]) log.branch("Name: %s, Owner: %d", Object->Name, Object->OwnerID);
-   else log.branch("Owner: %d", Object->OwnerID);
-
-   bool use_subclass = false;
-   ERROR error = ERR_Okay;
-   if (Object->SubID) {
-      // For sub-classes, the base-class gets called first.  It should check the SubID in the header to determine that
-      // the object is sub-classed so as to prevent it from doing 'too much' initialisation.
-
-      if (cl->Base->ActionTable[AC_Init].PerformAction) {
-         error = cl->Base->ActionTable[AC_Init].PerformAction(Object, NULL);
-      }
-
-      if (!error) {
-         if (cl->ActionTable[AC_Init].PerformAction) {
-            error = cl->ActionTable[AC_Init].PerformAction(Object, NULL);
-         }
-
-         if (!error) Object->Flags |= NF::INITIALISED;
-      }
-
-      return error;
-   }
-   else {
-      // Meaning of special error codes:
-      //
-      // ERR_NoSupport: The source data is not recognised.  Search for a sub-class that might have better luck.  Note
-      //   that in the first case we can only support classes that are already in memory.  The second part of this
-      //   routine supports checking of sub-classes that aren't loaded yet.
-      //
-      // ERR_UseSubClass: Similar to ERR_NoSupport, but avoids scanning of sub-classes that aren't loaded in memory.
-
-      std::array<extMetaClass *, 16> sublist;
-      LONG sli = -1;
-
-      while (Object->ExtClass) {
-         if (Object->ExtClass->ActionTable[AC_Init].PerformAction) {
-            error = Object->ExtClass->ActionTable[AC_Init].PerformAction(Object, NULL);
-         }
-         else error = ERR_Okay; // If no initialiser defined, auto-OK
-
-         if (!error) {
-            Object->Flags |= NF::INITIALISED;
-
-            if (Object->ExtClass != cl) {
-               // Due to the switch, increase the open count of the sub-class (see NewObject() for details on object
-               // reference counting).
-
-               log.msg("Object class switched to sub-class \"%s\".", Object->className());
-
-               Object->ExtClass->OpenCount++;
-               Object->SubID = Object->ExtClass->SubClassID;
-               Object->Flags |= NF::RECLASSED; // This flag indicates that the object originally belonged to the base-class
-            }
-
-            return ERR_Okay;
-         }
-
-         if (error IS ERR_UseSubClass) {
-            log.trace("Requested to use registered sub-class.");
-            use_subclass = TRUE;
-         }
-         else if (error != ERR_NoSupport) break;
-
-         if (sli IS -1) {
-            // Initialise a list of all sub-classes already in memory for querying in sequence.
-            sli = 0;
-            LONG i = 0;
-            for (auto & [ id, class_ptr ] : glClassMap) {
-               if (i >= LONG(sublist.size())-1) break;
-               if ((Object->ClassID IS class_ptr->BaseClassID) and (class_ptr->BaseClassID != class_ptr->SubClassID)) {
-                  sublist[i++] = class_ptr;
-               }
-            }
-
-            sublist[i] = NULL;
-         }
-
-         // Attempt to initialise with the next known sub-class.
-
-         if ((Object->Class = sublist[sli++])) {
-            log.trace("Attempting initialisation with sub-class '%s'", Object->className());
-            Object->SubID = Object->Class->SubClassID;
-         }
-      }
-   }
-
-   Object->Class = cl;  // Put back the original to retain integrity
-   Object->SubID = Object->Class->SubClassID;
-
-   // If the base class and its loaded sub-classes failed, check the object for a Path field and check the data
-   // against sub-classes that are not currently in memory.
-   //
-   // This is the only way we can support the automatic loading of sub-classes without causing undue load on CPU and
-   // memory resources (loading each sub-class into memory just to check whether or not the data is supported is overkill).
-
-   CSTRING path;
-   if (use_subclass) { // If ERR_UseSubClass was set and the sub-class was not registered, do not call IdentifyFile()
-      log.warning("ERR_UseSubClass was used but no suitable sub-class was registered.");
-   }
-   else if ((error IS ERR_NoSupport) and (!GetField(Object, FID_Path|TSTR, &path)) and (path)) {
-      CLASSID classid;
-      if (!IdentifyFile(path, &classid, &Object->SubID)) {
-         if ((classid IS Object->ClassID) and (Object->SubID)) {
-            log.msg("Searching for subclass $%.8x", Object->SubID);
-            if ((Object->ExtClass = (extMetaClass *)FindClass(Object->SubID))) {
-               if (Object->ExtClass->ActionTable[AC_Init].PerformAction) {
-                  if (!(error = Object->ExtClass->ActionTable[AC_Init].PerformAction(Object, NULL))) {
-                     log.msg("Object class switched to sub-class \"%s\".", Object->className());
-                     Object->Flags |= NF::INITIALISED;
-                     Object->ExtClass->OpenCount++;
-                     return ERR_Okay;
-                  }
-               }
-               else return ERR_Okay;
-            }
-            else log.warning("Failed to load module for class #%d.", Object->SubID);
-         }
-      }
-      else log.warning("File '%s' does not belong to class '%s', got $%.8x.", path, Object->className(), classid);
-
-      Object->Class = cl;  // Put back the original to retain object integrity
-      Object->SubID = cl->SubClassID;
-   }
-
-   return error;
-}
-
-/*********************************************************************************************************************
-** Action: Signal
-*/
-
-ERROR MGR_Signal(OBJECTPTR Object, APTR Void)
-{
-   Object->Flags |= NF::SIGNALLED;
    return ERR_Okay;
 }

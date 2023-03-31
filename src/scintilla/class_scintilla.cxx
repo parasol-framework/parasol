@@ -847,7 +847,7 @@ static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
 
    // TODO: Run the scrollbar script here
 
-   if (acInit(Self->Font) != ERR_Okay) return ERR_Init;
+   if (InitObject(Self->Font) != ERR_Okay) return ERR_Init;
 
    create_styled_fonts(Self);
 
@@ -2212,7 +2212,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
       }
       else acSetVar(dialog, "message", Message);
 
-      if ((!acInit(dialog)) and (!acActivate(dialog))) {
+      if ((!InitObject(dialog)) and (!acActivate(dialog))) {
          CSTRING *results;
          LONG size;
          if ((!GetFieldArray(dialog, FID_Results, (APTR *)&results, &size)) and (size > 0)) {

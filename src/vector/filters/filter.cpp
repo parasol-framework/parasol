@@ -422,9 +422,9 @@ ERROR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVecto
 
    pf::SwitchContext context(Self);
 
-   auto filter_name = GetName(Self);
+   CSTRING filter_name = Self->Name;
    if ((!filter_name) or (!filter_name[0])) filter_name = "Unnamed";
-   auto vector_name = GetName(Vector);
+   CSTRING vector_name = Vector->Name;
    if ((!vector_name) or (!vector_name[0])) vector_name = "Unnamed";
    log.branch("Rendering '%s' filter content for %s #%d '%s'.", filter_name, Vector->Class->ClassName, Vector->UID, vector_name);
 
