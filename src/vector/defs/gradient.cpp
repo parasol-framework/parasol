@@ -208,7 +208,6 @@ the gradient type requires it (such as the radial type).  By default, the center
 static ERROR VECTORGRADIENT_GET_CenterX(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->CenterX;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_CX)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -221,10 +220,7 @@ static ERROR VECTORGRADIENT_SET_CenterX(extVectorGradient *Self, Variable *Value
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Flags = (Self->Flags | VGF_RELATIVE_CX) & (~VGF_FIXED_CX);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Flags = (Self->Flags | VGF_RELATIVE_CX) & (~VGF_FIXED_CX);
    else Self->Flags = (Self->Flags | VGF_FIXED_CX) & (~VGF_RELATIVE_CX);
 
    Self->CenterX = val;
@@ -244,7 +240,6 @@ the gradient type requires it (such as the radial type).  By default, the center
 static ERROR VECTORGRADIENT_GET_CenterY(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->CenterY;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_CY)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -257,10 +252,7 @@ static ERROR VECTORGRADIENT_SET_CenterY(extVectorGradient *Self, Variable *Value
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Flags = (Self->Flags | VGF_RELATIVE_CY) & (~VGF_FIXED_CY);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Flags = (Self->Flags | VGF_RELATIVE_CY) & (~VGF_FIXED_CY);
    else Self->Flags = (Self->Flags | VGF_FIXED_CY) & (~VGF_RELATIVE_CY);
 
    Self->CenterY = val;
@@ -293,7 +285,6 @@ center of the gradient.
 static ERROR VECTORGRADIENT_GET_FX(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->FX;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_FX)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -306,10 +297,7 @@ static ERROR VECTORGRADIENT_SET_FX(extVectorGradient *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Flags = (Self->Flags | VGF_RELATIVE_FX) & (~VGF_FIXED_FX);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Flags = (Self->Flags | VGF_RELATIVE_FX) & (~VGF_FIXED_FX);
    else Self->Flags = (Self->Flags | VGF_FIXED_FX) & (~VGF_RELATIVE_FX);
 
    Self->FX = val;
@@ -329,7 +317,6 @@ center of the gradient.
 static ERROR VECTORGRADIENT_GET_FY(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->FY;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_FY)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -342,10 +329,7 @@ static ERROR VECTORGRADIENT_SET_FY(extVectorGradient *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Flags = (Self->Flags | VGF_RELATIVE_FY) & (~VGF_FIXED_FY);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Flags = (Self->Flags | VGF_RELATIVE_FY) & (~VGF_FIXED_FY);
    else Self->Flags = (Self->Flags | VGF_FIXED_FY) & (~VGF_RELATIVE_FY);
 
    Self->FY = val;
@@ -493,7 +477,6 @@ The Radius value has no effect if the gradient is linear.
 static ERROR VECTORGRADIENT_GET_Radius(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->Radius;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_RADIUS)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -507,10 +490,7 @@ static ERROR VECTORGRADIENT_SET_Radius(extVectorGradient *Self, Variable *Value)
    else return ERR_FieldTypeMismatch;
 
    if (val >= 0) {
-      if (Value->Type & FD_PERCENTAGE) {
-         val = val * 0.01;
-         Self->Flags = (Self->Flags | VGF_RELATIVE_RADIUS) & (~VGF_FIXED_RADIUS);
-      }
+      if (Value->Type & FD_PERCENTAGE) Self->Flags = (Self->Flags | VGF_RELATIVE_RADIUS) & (~VGF_FIXED_RADIUS);
       else Self->Flags = (Self->Flags | VGF_FIXED_RADIUS) & (~VGF_RELATIVE_RADIUS);
 
       Self->Radius = val;
@@ -635,7 +615,6 @@ Coordinate values can be expressed as percentages that are relative to the targe
 static ERROR VECTORGRADIENT_GET_X1(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->X1;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_X1)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -648,10 +627,7 @@ static ERROR VECTORGRADIENT_SET_X1(extVectorGradient *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Flags = (Self->Flags | VGF_RELATIVE_X1) & (~VGF_FIXED_X1);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Flags = (Self->Flags | VGF_RELATIVE_X1) & (~VGF_FIXED_X1);
    else Self->Flags = (Self->Flags | VGF_FIXED_X1) & (~VGF_RELATIVE_X1);
 
    Self->X1 = val;
@@ -672,7 +648,6 @@ Coordinate values can be expressed as percentages that are relative to the targe
 static ERROR VECTORGRADIENT_GET_X2(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->X2;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_X2)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -685,10 +660,7 @@ static ERROR VECTORGRADIENT_SET_X2(extVectorGradient *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Flags = (Self->Flags | VGF_RELATIVE_X2) & (~VGF_FIXED_X2);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Flags = (Self->Flags | VGF_RELATIVE_X2) & (~VGF_FIXED_X2);
    else Self->Flags = (Self->Flags | VGF_FIXED_X2) & (~VGF_RELATIVE_X2);
 
    Self->X2 = val;
@@ -707,7 +679,6 @@ these values.
 static ERROR VECTORGRADIENT_GET_Y1(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->Y1;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_Y1)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -720,10 +691,7 @@ static ERROR VECTORGRADIENT_SET_Y1(extVectorGradient *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Flags = (Self->Flags | VGF_RELATIVE_Y1) & (~VGF_FIXED_Y1);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Flags = (Self->Flags | VGF_RELATIVE_Y1) & (~VGF_FIXED_Y1);
    else Self->Flags = (Self->Flags | VGF_FIXED_Y1) & (~VGF_RELATIVE_Y1);
 
    Self->Y1 = val;
@@ -744,7 +712,6 @@ Coordinate values can be expressed as percentages that are relative to the targe
 static ERROR VECTORGRADIENT_GET_Y2(extVectorGradient *Self, Variable *Value)
 {
    DOUBLE val = Self->Y2;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Flags & VGF_RELATIVE_Y2)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -757,10 +724,7 @@ static ERROR VECTORGRADIENT_SET_Y2(extVectorGradient *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Flags = (Self->Flags | VGF_RELATIVE_Y2) & (~VGF_FIXED_Y2);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Flags = (Self->Flags | VGF_RELATIVE_Y2) & (~VGF_FIXED_Y2);
    else Self->Flags = (Self->Flags | VGF_FIXED_Y2) & (~VGF_RELATIVE_Y2);
 
    Self->Y2 = val;

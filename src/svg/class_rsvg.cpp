@@ -114,8 +114,8 @@ static ERROR RSVG_Query(prvPicture *Self, APTR Void)
 
       // If the SVG source doesn't specify fixed dimensions, automatically force rescaling to the display width and height.
 
-      if (!view_width)  SetField(view, FID_Width|TDOUBLE|TPERCENT, 100.0);
-      if (!view_height) SetField(view, FID_Height|TDOUBLE|TPERCENT, 100.0);
+      if (!view_width)  SetField(view, FID_Width|TDOUBLE|TPERCENT, 1.0);
+      if (!view_height) SetField(view, FID_Height|TDOUBLE|TPERCENT, 1.0);
 
       if ((Self->DisplayWidth > 0) and (Self->DisplayHeight > 0)) { // Client specified the display size?
          // Give the vector scene a target width and height.

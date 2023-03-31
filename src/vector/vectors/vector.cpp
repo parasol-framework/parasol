@@ -2084,15 +2084,9 @@ static ERROR VECTOR_SET_StrokeWidth(extVector *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if ((val >= 0.0) and (val <= 1000.0)) {
-      if (Value->Type & FD_PERCENTAGE) {
-         Self->StrokeWidth = val * 0.01;
-         Self->RelativeStrokeWidth = true;
-      }
-      else {
-         Self->StrokeWidth = val;
-         Self->RelativeStrokeWidth = false;
-      }
+   if ((val >= 0.0) and (val <= 100.0)) {
+      Self->StrokeWidth = val;
+      Self->RelativeStrokeWidth = (Value->Type & FD_PERCENTAGE) ? true : false;
       return ERR_Okay;
    }
    else return ERR_OutOfRange;

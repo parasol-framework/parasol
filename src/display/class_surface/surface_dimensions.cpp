@@ -191,34 +191,34 @@ static ERROR SET_Dimensions(extSurface *Self, LONG Value)
 
       struct acRedimension resize;
       if (Self->Dimensions & DMF_FIXED_X) resize.X = Self->X;
-      else if (Self->Dimensions & DMF_RELATIVE_X) resize.X = (parent->Width * F2I(Self->XPercent)) / 100;
+      else if (Self->Dimensions & DMF_RELATIVE_X) resize.X = (parent->Width * F2I(Self->XPercent));
       else if (Self->Dimensions & DMF_FIXED_X_OFFSET) resize.X = parent->Width - Self->XOffset;
-      else if (Self->Dimensions & DMF_RELATIVE_X_OFFSET) resize.X = parent->Width - ((parent->Width * F2I(Self->XOffsetPercent)) / 100);
+      else if (Self->Dimensions & DMF_RELATIVE_X_OFFSET) resize.X = parent->Width - ((parent->Width * F2I(Self->XOffsetPercent)));
       else resize.X = 0;
 
       if (Self->Dimensions & DMF_FIXED_Y) resize.Y = Self->Y;
-      else if (Self->Dimensions & DMF_RELATIVE_Y) resize.Y = (parent->Height * F2I(Self->YPercent)) / 100;
+      else if (Self->Dimensions & DMF_RELATIVE_Y) resize.Y = (parent->Height * F2I(Self->YPercent));
       else if (Self->Dimensions & DMF_FIXED_Y_OFFSET) resize.Y = parent->Height - Self->YOffset;
-      else if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) resize.Y = parent->Height - ((parent->Height * F2I(Self->YOffsetPercent)) / 100);
+      else if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) resize.Y = parent->Height - ((parent->Height * F2I(Self->YOffsetPercent)));
       else resize.Y = 0;
 
       if (Self->Dimensions & DMF_FIXED_WIDTH) resize.Width = Self->Width;
-      else if (Self->Dimensions & DMF_RELATIVE_WIDTH) resize.Width = (parent->Width * F2I(Self->WidthPercent)) / 100;
+      else if (Self->Dimensions & DMF_RELATIVE_WIDTH) resize.Width = (parent->Width * F2I(Self->WidthPercent));
       else {
-         if (Self->Dimensions & DMF_RELATIVE_X_OFFSET) resize.Width = parent->Width - (parent->Width * F2I(Self->XOffsetPercent)) / 100;
+         if (Self->Dimensions & DMF_RELATIVE_X_OFFSET) resize.Width = parent->Width - (parent->Width * F2I(Self->XOffsetPercent));
          else resize.Width = parent->Width - Self->XOffset;
 
-         if (Self->Dimensions & DMF_RELATIVE_X) resize.Width = resize.Width - ((parent->Width * F2I(Self->XPercent)) / 100);
+         if (Self->Dimensions & DMF_RELATIVE_X) resize.Width = resize.Width - ((parent->Width * F2I(Self->XPercent)));
          else resize.Width = resize.Width - Self->X;
       }
 
       if (Self->Dimensions & DMF_FIXED_HEIGHT) resize.Height = Self->Height;
-      else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) resize.Height = (parent->Height * F2I(Self->HeightPercent)) / 100;
+      else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) resize.Height = (parent->Height * F2I(Self->HeightPercent));
       else {
-         if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) resize.Height = parent->Height - (parent->Height * F2I(Self->YOffsetPercent)) / 100;
+         if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) resize.Height = parent->Height - (parent->Height * F2I(Self->YOffsetPercent));
          else resize.Height = parent->Height - Self->YOffset;
 
-         if (Self->Dimensions & DMF_RELATIVE_Y) resize.Height = resize.Height - ((parent->Height * F2I(Self->YPercent)) / 100);
+         if (Self->Dimensions & DMF_RELATIVE_Y) resize.Height = resize.Height - ((parent->Height * F2I(Self->YPercent)));
          else resize.Height = resize.Height - Self->Y;
       }
 
@@ -274,7 +274,7 @@ static ERROR SET_Height(extSurface *Self, Variable *Value)
 
    if (Value->Type & FD_DOUBLE)      value = Value->Double;
    else if (Value->Type & FD_LARGE)  value = Value->Large;
-   else if (Value->Type & FD_STRING) value = StrToInt((CSTRING)Value->Pointer);
+   else if (Value->Type & FD_STRING) value = StrToFloat((CSTRING)Value->Pointer);
    else return log.warning(ERR_SetValueNotNumeric);
 
    if (value <= 0) {
@@ -292,7 +292,7 @@ static ERROR SET_Height(extSurface *Self, Variable *Value)
          if (!AccessObject(Self->ParentID, 500, &parent)) {
             Self->HeightPercent = value;
             Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_HEIGHT) | DMF_RELATIVE_HEIGHT;
-            resize_layer(Self, Self->X, Self->Y, 0, parent->Height * value * 0.01, 0, 0, 0, 0, 0);
+            resize_layer(Self, Self->X, Self->Y, 0, parent->Height * value, 0, 0, 0, 0, 0);
             ReleaseObject(parent);
          }
          else return log.warning(ERR_AccessObject);
@@ -794,7 +794,7 @@ static ERROR SET_Width(extSurface *Self, Variable *Value)
 
    if (Value->Type & FD_DOUBLE)      value = Value->Double;
    else if (Value->Type & FD_LARGE)  value = Value->Large;
-   else if (Value->Type & FD_STRING) value = StrToInt((CSTRING)Value->Pointer);
+   else if (Value->Type & FD_STRING) value = StrToFloat((CSTRING)Value->Pointer);
    else return log.warning(ERR_SetValueNotNumeric);
 
    if (value <= 0) {
@@ -811,7 +811,7 @@ static ERROR SET_Width(extSurface *Self, Variable *Value)
          if (!AccessObject(Self->ParentID, 500, &parent)) {
             Self->WidthPercent = value;
             Self->Dimensions   = (Self->Dimensions & ~DMF_FIXED_WIDTH) | DMF_RELATIVE_WIDTH;
-            resize_layer(Self, Self->X, Self->Y, parent->Width * value / 100, 0, 0, 0, 0, 0, 0);
+            resize_layer(Self, Self->X, Self->Y, parent->Width * value, 0, 0, 0, 0, 0, 0);
             ReleaseObject(parent);
          }
          else return ERR_AccessObject;
@@ -879,7 +879,7 @@ static ERROR SET_XCoord(extSurface *Self, Variable *Value)
 
    if (Value->Type & FD_DOUBLE)      value = Value->Double;
    else if (Value->Type & FD_LARGE)  value = Value->Large;
-   else if (Value->Type & FD_STRING) value = StrToInt((CSTRING)Value->Pointer);
+   else if (Value->Type & FD_STRING) value = StrToFloat((CSTRING)Value->Pointer);
    else return log.warning(ERR_SetValueNotNumeric);
 
    if (Value->Type & FD_PERCENTAGE) {
@@ -887,7 +887,7 @@ static ERROR SET_XCoord(extSurface *Self, Variable *Value)
       Self->XPercent   = value;
       if (Self->ParentID) {
          if (AccessObject(Self->ParentID, 500, &parent) IS ERR_Okay) {
-            move_layer(Self, (parent->Width * value) / 100, Self->Y);
+            move_layer(Self, parent->Width * value, Self->Y);
             ReleaseObject(parent);
          }
          else return log.warning(ERR_AccessObject);
@@ -939,7 +939,7 @@ static ERROR GET_XOffset(extSurface *Self, Variable *Value)
       xoffset.Type = FD_DOUBLE;
       xoffset.Double = 0;
       if (GET_XOffset(Self, &xoffset) IS ERR_Okay) {
-         value = xoffset.Double / Self->Width * 100;
+         value = xoffset.Double / Self->Width;
       }
       else value = 0;
    }
@@ -974,7 +974,7 @@ static ERROR SET_XOffset(extSurface *Self, Variable *Value)
 
    if (Value->Type & FD_DOUBLE)      value = Value->Double;
    else if (Value->Type & FD_LARGE)  value = Value->Large;
-   else if (Value->Type & FD_STRING) value = StrToInt((CSTRING)Value->Pointer);
+   else if (Value->Type & FD_STRING) value = StrToFloat((CSTRING)Value->Pointer);
    else return log.warning(ERR_SetValueNotNumeric);
 
    if (value < 0) value = -value;
@@ -985,7 +985,7 @@ static ERROR SET_XOffset(extSurface *Self, Variable *Value)
 
       if (Self->ParentID) {
          if (!AccessObject(Self->ParentID, 500, &parent)) {
-            Self->XOffset = (parent->Width * F2I(Self->XOffsetPercent)) / 100;
+            Self->XOffset = parent->Width * F2I(Self->XOffsetPercent);
             if (!(Self->Dimensions & DMF_X)) Self->X = parent->Width - Self->XOffset - Self->Width;
             if (!(Self->Dimensions & DMF_WIDTH)) {
                resize_layer(Self, Self->X, Self->Y, parent->Width - Self->X - Self->XOffset, 0, 0, 0, 0, 0, 0);
@@ -1007,7 +1007,7 @@ static ERROR SET_XOffset(extSurface *Self, Variable *Value)
          else return log.warning(ERR_AccessObject);
       }
       else if ((Self->Dimensions & DMF_X) and (Self->ParentID)) {
-         if (AccessObject(Self->ParentID, 1000, &parent) IS ERR_Okay) {
+         if (!AccessObject(Self->ParentID, 1000, &parent)) {
             resize_layer(Self, Self->X, Self->Y, parent->Width - Self->X - Self->XOffset, 0, 0, 0, 0, 0, 0);
             ReleaseObject(parent);
          }
@@ -1055,7 +1055,7 @@ static ERROR SET_YCoord(extSurface *Self, Variable *Value)
 
    if (Value->Type & FD_DOUBLE)     value = Value->Double;
    else if (Value->Type & FD_LARGE) value = Value->Large;
-   else if (Value->Type & FD_STRING) value = StrToInt((CSTRING)Value->Pointer);
+   else if (Value->Type & FD_STRING) value = StrToFloat((CSTRING)Value->Pointer);
    else return log.warning(ERR_SetValueNotNumeric);
 
    if (Value->Type & FD_PERCENTAGE) {
@@ -1063,7 +1063,7 @@ static ERROR SET_YCoord(extSurface *Self, Variable *Value)
       Self->YPercent = value;
       if (Self->ParentID) {
          if (!AccessObject(Self->ParentID, 500, &parent)) {
-            move_layer(Self, Self->X, (parent->Height * value) / 100);
+            move_layer(Self, Self->X, parent->Height * value);
             ReleaseObject(parent);
          }
          else return log.warning(ERR_AccessObject);
@@ -1105,7 +1105,7 @@ static ERROR GET_YOffset(extSurface *Self, Variable *Value)
       yoffset.Type = FD_DOUBLE;
       yoffset.Double = 0;
       if (!GET_YOffset(Self, &yoffset)) {
-         value = yoffset.Double / Self->Height * 100;
+         value = yoffset.Double / Self->Height;
       }
       else value = 0;
    }
@@ -1149,7 +1149,7 @@ static ERROR SET_YOffset(extSurface *Self, Variable *Value)
 
       if (Self->ParentID) {
          if (!AccessObject(Self->ParentID, 500, &parent)) {
-            Self->YOffset = (parent->Height * F2I(Self->YOffsetPercent)) / 100;
+            Self->YOffset = parent->Height * F2I(Self->YOffsetPercent);
             if (!(Self->Dimensions & DMF_Y))Self->Y = parent->Height - Self->YOffset - Self->Height;
             if (!(Self->Dimensions & DMF_HEIGHT)) {
                resize_layer(Self, Self->X, Self->Y, 0, parent->Height - Self->Y - Self->YOffset, 0, 0, 0, 0, 0);

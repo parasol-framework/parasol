@@ -381,7 +381,6 @@ a percentage.
 static ERROR POLY_GET_X1(extVectorPoly *Self, Variable *Value)
 {
    DOUBLE val = Self->Points[0].X;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Points[0].XRelative)) val = val * 100;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -397,10 +396,7 @@ static ERROR POLY_SET_X1(extVectorPoly *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return log.warning(ERR_SetValueNotNumeric);
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Points[0].XRelative = TRUE;
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Points[0].XRelative = TRUE;
    else Self->Points[0].XRelative = FALSE;
    Self->Points[0].X = val;
    reset_path(Self);
@@ -422,7 +418,6 @@ a percentage.
 static ERROR POLY_GET_X2(extVectorPoly *Self, Variable *Value)
 {
    DOUBLE val = Self->Points[1].X;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Points[1].XRelative)) val = val * 100;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -438,10 +433,7 @@ static ERROR POLY_SET_X2(extVectorPoly *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return log.warning(ERR_SetValueNotNumeric);
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Points[1].XRelative = TRUE;
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Points[1].XRelative = TRUE;
    else Self->Points[1].XRelative = FALSE;
    Self->Points[1].X = val;
    reset_path(Self);
@@ -463,7 +455,6 @@ a percentage.
 static ERROR POLY_GET_Y1(extVectorPoly *Self, Variable *Value)
 {
    DOUBLE val = Self->Points[0].Y;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Points[0].YRelative)) val = val * 100;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -479,10 +470,7 @@ static ERROR POLY_SET_Y1(extVectorPoly *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return log.warning(ERR_SetValueNotNumeric);
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Points[0].YRelative = TRUE;
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Points[0].YRelative = TRUE;
    else Self->Points[0].YRelative = FALSE;
    Self->Points[0].Y = val;
    reset_path(Self);
@@ -504,7 +492,6 @@ a percentage.
 static ERROR POLY_GET_Y2(extVectorPoly *Self, Variable *Value)
 {
    DOUBLE val = Self->Points[1].Y;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Points[1].YRelative)) val = val * 100;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -520,10 +507,7 @@ static ERROR POLY_SET_Y2(extVectorPoly *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return log.warning(ERR_SetValueNotNumeric);
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Points[1].YRelative = TRUE;
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Points[1].YRelative = TRUE;
    else Self->Points[1].YRelative = FALSE;
    Self->Points[1].Y = val;
    reset_path(Self);

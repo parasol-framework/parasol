@@ -812,7 +812,7 @@ static ERROR SET_Point(extFont *Self, Variable *Value)
       // Default point size is scaled relative to display DPI, then re-scaled to the % value that was passed in.
       DOUBLE global_point = global_point_size();
       DOUBLE pct = value;
-      value = (global_point * (DOUBLE)glDisplayHDPI / 96.0) * (pct / 100.0);
+      value = (global_point * (DOUBLE)glDisplayHDPI / 96.0) * pct;
       log.msg("Calculated point size: %.2f, from global point %.2f * %.0f%%, DPI %d", value, global_point, pct, glDisplayHDPI);
    }
 

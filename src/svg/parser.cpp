@@ -2040,7 +2040,7 @@ static void xtag_use(extSVG *Self, objXML *XML, svgState &State, const XMLTag &T
 
       if (NewObject(ID_VECTORVIEWPORT, &vector)) return;
       SetOwner(vector, Parent);
-      vector->setFields(fl::Width(PERCENT(100.0)), fl::Height(PERCENT(100.0))); // SVG default
+      vector->setFields(fl::Width(PERCENT(1.0)), fl::Height(PERCENT(1.0))); // SVG default
 
       // Apply attributes from 'use' to the group and/or viewport
       for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {

@@ -432,14 +432,10 @@ static ERROR VIEW_SET_Height(extVectorViewport *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return ERR_SetValueNotNumeric;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
-      Self->vpTargetHeight = val * 0.01;
-   }
-   else {
-      Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_HEIGHT) & (~DMF_RELATIVE_HEIGHT);
-      Self->vpTargetHeight = val;
-   }
+   Self->vpTargetHeight = val;
+   if (Value->Type & FD_PERCENTAGE) Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
+   else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_HEIGHT) & (~DMF_RELATIVE_HEIGHT);
+
    mark_dirty((extVector *)Self, RC_ALL);
    return ERR_Okay;
 }
@@ -672,14 +668,10 @@ static ERROR VIEW_SET_Width(extVectorViewport *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return ERR_SetValueNotNumeric;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
-      Self->vpTargetWidth = val * 0.01;
-   }
-   else {
-      Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_WIDTH) & (~DMF_RELATIVE_WIDTH);
-      Self->vpTargetWidth = val;
-   }
+   Self->vpTargetWidth = val;
+   if (Value->Type & FD_PERCENTAGE) Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
+   else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_WIDTH) & (~DMF_RELATIVE_WIDTH);
+
    mark_dirty((extVector *)Self, RC_ALL);
    return ERR_Okay;
 }
@@ -715,7 +707,7 @@ static ERROR VIEW_GET_X(extVectorViewport *Self, Variable *Value)
    }
    else value = 0;
 
-   if (Value->Type & FD_PERCENTAGE) value = (value * 100.0) / Self->ParentView->vpFixedWidth;
+   if (Value->Type & FD_PERCENTAGE) value = value / Self->ParentView->vpFixedWidth;
 
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
@@ -735,14 +727,10 @@ static ERROR VIEW_SET_X(extVectorViewport *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return ERR_SetValueNotNumeric;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
-      Self->vpTargetX = val * 0.01;
-   }
-   else {
-      Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_X) & (~DMF_RELATIVE_X);
-      Self->vpTargetX = val;
-   }
+   Self->vpTargetX = val;
+   if (Value->Type & FD_PERCENTAGE) Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
+   else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_X) & (~DMF_RELATIVE_X);
+
    mark_dirty((extVector *)Self, RC_ALL);
    return ERR_Okay;
 }
@@ -780,7 +768,7 @@ static ERROR VIEW_GET_XOffset(extVectorViewport *Self, Variable *Value)
    }
    else value = 0;
 
-   if (Value->Type & FD_PERCENTAGE) value = (value * 100.0) / Self->ParentView->vpFixedWidth;
+   if (Value->Type & FD_PERCENTAGE) value = value / Self->ParentView->vpFixedWidth;
 
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
@@ -801,14 +789,10 @@ static ERROR VIEW_SET_XOffset(extVectorViewport *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return ERR_SetValueNotNumeric;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_X_OFFSET) & (~DMF_FIXED_X_OFFSET);
-      Self->vpTargetXO = val * 0.01;
-   }
-   else {
-      Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_X_OFFSET) & (~DMF_RELATIVE_X_OFFSET);
-      Self->vpTargetXO = val;
-   }
+   Self->vpTargetXO = val;
+   if (Value->Type & FD_PERCENTAGE) Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_X_OFFSET) & (~DMF_FIXED_X_OFFSET);
+   else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_X_OFFSET) & (~DMF_RELATIVE_X_OFFSET);
+
    mark_dirty((extVector *)Self, RC_ALL);
    return ERR_Okay;
 }
@@ -845,7 +829,7 @@ static ERROR VIEW_GET_Y(extVectorViewport *Self, Variable *Value)
    }
    else value = 0;
 
-   if (Value->Type & FD_PERCENTAGE) value = (value * 100.0) / Self->ParentView->vpFixedHeight;
+   if (Value->Type & FD_PERCENTAGE) value = value / Self->ParentView->vpFixedHeight;
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
    else {
@@ -864,14 +848,10 @@ static ERROR VIEW_SET_Y(extVectorViewport *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return ERR_SetValueNotNumeric;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
-      Self->vpTargetY = val * 0.01;
-   }
-   else {
-      Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_Y) & (~DMF_RELATIVE_Y);
-      Self->vpTargetY = val;
-   }
+   Self->vpTargetY = val;
+   if (Value->Type & FD_PERCENTAGE) Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
+   else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_Y) & (~DMF_RELATIVE_Y);
+
    mark_dirty((extVector *)Self, RC_ALL);
    return ERR_Okay;
 }
@@ -909,7 +889,7 @@ static ERROR VIEW_GET_YOffset(extVectorViewport *Self, Variable *Value)
    }
    else value = 0;
 
-   if (Value->Type & FD_PERCENTAGE) value = (value * 100.0) / Self->ParentView->vpFixedHeight;
+   if (Value->Type & FD_PERCENTAGE) value = value / Self->ParentView->vpFixedHeight;
 
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
@@ -929,14 +909,10 @@ static ERROR VIEW_SET_YOffset(extVectorViewport *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return ERR_SetValueNotNumeric;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_Y_OFFSET) & (~DMF_FIXED_Y_OFFSET);
-      Self->vpTargetYO = val * 0.01;
-   }
-   else {
-      Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_Y_OFFSET) & (~DMF_RELATIVE_Y_OFFSET);
-      Self->vpTargetYO = val;
-   }
+   Self->vpTargetYO = val;
+   if (Value->Type & FD_PERCENTAGE) Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_Y_OFFSET) & (~DMF_FIXED_Y_OFFSET);
+   else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_Y_OFFSET) & (~DMF_RELATIVE_Y_OFFSET);
+
    mark_dirty((extVector *)Self, RC_ALL);
    return ERR_Okay;
 }
