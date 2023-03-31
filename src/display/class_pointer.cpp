@@ -126,7 +126,7 @@ static ERROR PTR_DataFeed(extPointer *Self, struct acDataFeed *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (Args->DataType IS DATA_DEVICE_INPUT) {
+   if (Args->Datatype IS DATA_DEVICE_INPUT) {
       if (auto input = (struct dcDeviceInput *)Args->Buffer) {
          for (LONG i=0; i < ARRAYSIZE(Self->Buttons); i++) {
             if ((Self->Buttons[i].LastClicked) and (CheckObjectExists(Self->Buttons[i].LastClicked) != ERR_Okay)) Self->Buttons[i].LastClicked = 0;

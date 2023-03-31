@@ -345,7 +345,7 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (Args->DataType IS DATA_TEXT) {
+   if (Args->Datatype IS DATA_TEXT) {
       log.msg("Copying text to the clipboard.");
 
       add_text_to_host(Self, (CSTRING)Args->Buffer, Args->Size);
@@ -361,20 +361,20 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
       }
       else return log.warning(error);
    }
-   else if ((Args->DataType IS DATA_REQUEST) and (Self->Flags & CLF_DRAG_DROP))  {
+   else if ((Args->Datatype IS DATA_REQUEST) and (Self->Flags & CLF_DRAG_DROP))  {
       auto request = (struct dcRequest *)Args->Buffer;
-      log.branch("Data request from #%d received for item %d, datatype %d", Args->ObjectID, request->Item, request->Preference[0]);
+      log.branch("Data request from #%d received for item %d, datatype %d", Args->Object->UID, request->Item, request->Preference[0]);
 
       ERROR error = ERR_Okay;
       if (Self->RequestHandler.Type IS CALL_STDC) {
-         auto routine = (ERROR (*)(objClipboard *, OBJECTID, LONG, char *))Self->RequestHandler.StdC.Routine;
+         auto routine = (ERROR (*)(objClipboard *, OBJECTPTR, LONG, char *))Self->RequestHandler.StdC.Routine;
          pf::SwitchContext ctx(Self->RequestHandler.StdC.Context);
-         error = routine(Self, Args->ObjectID, request->Item, request->Preference);
+         error = routine(Self, Args->Object, request->Item, request->Preference);
       }
       else if (Self->RequestHandler.Type IS CALL_SCRIPT) {
          const ScriptArg args[] = {
             { "Clipboard", FD_OBJECTPTR,     { .Address = Self } },
-            { "Requester", FD_OBJECTID,      { .Long = Args->ObjectID } },
+            { "Requester", FD_OBJECTPTR,     { .Address = Args->Object } },
             { "Item",      FD_LONG,          { .Long = request->Item } },
             { "Datatypes", FD_ARRAY|FD_BYTE, { .Address = request->Preference } },
             { "Size",      FD_LONG|FD_ARRAYSIZE, { .Long = ARRAYSIZE(request->Preference) } }
@@ -388,7 +388,7 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
 
       return ERR_Okay;
    }
-   else log.warning("Unrecognised data type %d.", Args->DataType);
+   else log.warning("Unrecognised data type %d.", Args->Datatype);
 
    return ERR_Okay;
 }
@@ -585,7 +585,7 @@ Clipboard's DataFeed action.  Doing so will result in a callback to the function
 RequestHandler, which must be defined by the source application.  The RequestHandler function must follow this
 template:
 
-`ERROR RequestHandler(*Clipboard, OBJECTID Requester, LONG Item, BYTE Datatypes[4])`
+`ERROR RequestHandler(*Clipboard, OBJECTPTR Requester, LONG Item, BYTE Datatypes[4])`
 
 The function will be expected to send a `DATA_RECEIPT` to the object referenced in the Requester paramter.  The
 receipt must provide coverage for the referenced Item and use one of the indicated Datatypes as the data format.

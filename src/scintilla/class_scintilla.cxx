@@ -287,7 +287,7 @@ static void notify_dragdrop(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, s
    request.Preference[2] = 0;
 
    struct acDataFeed dc;
-   dc.ObjectID = Self->UID;
+   dc.Object   = Self;
    dc.Datatype = DATA_REQUEST;
    dc.Buffer   = &request;
    dc.Size     = sizeof(request);
@@ -392,7 +392,7 @@ static void notify_write(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, stru
    SCICALL(SCI_SETUNDOCOLLECTION, 0UL); // Turn off undo
 
    if (Args->Buffer) {
-      acDataFeed(Self, Self->UID, DATA_TEXT, Args->Buffer, Args->Result);
+      acDataFeed(Self, Self, DATA_TEXT, Args->Buffer, Args->Result);
    }
    else { // We have to read the data from the file stream
    }
@@ -455,7 +455,7 @@ static ERROR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (Args->DataType IS DATA_TEXT) {
+   if (Args->Datatype IS DATA_TEXT) {
       CSTRING str;
 
       // Incoming text is appended to the end of the document
@@ -466,7 +466,7 @@ static ERROR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
       SCICALL(SCI_APPENDTEXT, StrLength(str), str);
    }
    else if (Args->Datatype IS DATA_RECEIPT) {
-      log.msg("Received item receipt from object %d.", Args->ObjectID);
+      log.msg("Received item receipt from object %d.", Args->Object ? Args->Object->UID : 0);
 
       objXML::create xml = { fl::Statement((CSTRING)Args->Buffer) };
       if (xml.ok()) {

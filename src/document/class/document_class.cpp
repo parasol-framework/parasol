@@ -434,7 +434,7 @@ static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
 
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
 
-   if ((Args->DataType IS DATA_TEXT) or (Args->DataType IS DATA_XML)) {
+   if ((Args->Datatype IS DATA_TEXT) or (Args->Datatype IS DATA_XML)) {
       // Incoming data is translated on the fly and added to the end of the current document page.  The original XML
       // information is retained in case of refresh.
       //
@@ -467,7 +467,7 @@ static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
       return ERR_Okay;
    }
    else {
-      log.msg("Datatype %d not supported.", Args->DataType);
+      log.msg("Datatype %d not supported.", Args->Datatype);
       return ERR_Mismatch;
    }
 }

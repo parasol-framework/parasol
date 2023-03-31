@@ -1836,7 +1836,6 @@ static ERROR BITMAP_SaveImage(extBitmap *Self, struct acSaveImage *Args)
       UBYTE dummy[54];
    } pcx;
    RGB8 rgb;
-   OBJECTPTR dest;
    UBYTE *buffer, lastpixel, newpixel;
    LONG i, j, p, size;
 

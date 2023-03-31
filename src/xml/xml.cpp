@@ -238,7 +238,7 @@ static ERROR XML_DataFeed(extXML *Self, struct acDataFeed *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if ((Args->DataType IS DATA_XML) or (Args->DataType IS DATA_TEXT)) {
+   if ((Args->Datatype IS DATA_XML) or (Args->Datatype IS DATA_TEXT)) {
       if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
 
       TAGS tags;

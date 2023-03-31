@@ -258,12 +258,12 @@ static ERROR DISPLAY_DataFeed(extDisplay *Self, struct acDataFeed *Args)
    if (!Args) return log.warning(ERR_NullArgs);
 
 #ifdef _WIN32
-   if (Args->DataType IS DATA_REQUEST) {
+   if (Args->Datatype IS DATA_REQUEST) {
       // Supported for handling the windows clipboard
 
       auto request = (struct dcRequest *)Args->Buffer;
 
-      log.traceBranch("Received data request from object %d, item %d", Args->ObjectID, request->Item);
+      log.traceBranch("Received data request from object %d, item %d", Args->Object ? Args->Object->UID : 0, request->Item);
 
       #ifdef WIN_DRAGDROP
       struct WinDT *data;
@@ -292,11 +292,11 @@ static ERROR DISPLAY_DataFeed(extDisplay *Self, struct acDataFeed *Args)
             pos += StrCopy("</receipt>", xml+pos, xmlsize-pos);
 
             struct acDataFeed dc;
-            dc.ObjectID = Self->UID;
+            dc.Object   = Self;
             dc.Datatype = DATA_RECEIPT;
             dc.Buffer   = xml;
             dc.Size     = pos+1;
-            ActionMsg(AC_DataFeed, Args->ObjectID, &dc);
+            Action(AC_DataFeed, Args->Object, &dc);
 
             FreeResource(xml);
          }

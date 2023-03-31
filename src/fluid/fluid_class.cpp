@@ -515,22 +515,22 @@ static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
 
    if (!Args) return ERR_NullArgs;
 
-   if (Args->DataType IS DATA_TEXT) {
+   if (Args->Datatype IS DATA_TEXT) {
       Self->set(FID_String, (CSTRING)Args->Buffer);
    }
-   else if (Args->DataType IS DATA_XML) {
+   else if (Args->Datatype IS DATA_XML) {
       Self->set(FID_String, (CSTRING)Args->Buffer);
    }
-   else if (Args->DataType IS DATA_RECEIPT) {
+   else if (Args->Datatype IS DATA_RECEIPT) {
       auto prv = (prvFluid *)Self->ChildPrivate;
       struct datarequest *prev;
 
-      log.branch("Incoming data receipt from #%d", Args->ObjectID);
+      log.branch("Incoming data receipt from #%d", Args->Object ? Args->Object->UID : 0);
 
 restart:
       prev = NULL;
       for (auto list=prv->Requests; list; list=list->Next) {
-         if (list->SourceID IS Args->ObjectID) {
+         if ((Args->Object) and (list->SourceID IS Args->Object->UID)) {
             // Execute the callback associated with this input subscription: function({Items...})
 
             LONG step = GetResource(RES_LOG_DEPTH); // Required as thrown errors cause the debugger to lose its step position
