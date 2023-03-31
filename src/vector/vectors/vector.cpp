@@ -539,7 +539,7 @@ static ERROR VECTOR_NewOwner(extVector *Self, struct acNewOwner *Args)
 
    if (Self->initialised()) return log.warning(ERR_AlreadyDefined);
 
-   set_parent(Self, Args->NewOwnerID);
+   set_parent(Self, Args->NewOwner->UID);
 
    return ERR_Okay;
 }

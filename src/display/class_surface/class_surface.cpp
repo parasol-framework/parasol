@@ -1887,14 +1887,12 @@ static ERROR SURFACE_MoveToPoint(extSurface *Self, struct acMoveToPoint *Args)
    return Action(AC_Move, Self, &move)|ERF_Notified;
 }
 
-/*********************************************************************************************************************
-** Surface: NewOwner()
-*/
+//********************************************************************************************************************
 
 static ERROR SURFACE_NewOwner(extSurface *Self, struct acNewOwner *Args)
 {
    if ((!Self->ParentDefined) and (!Self->initialised())) {
-      OBJECTID owner_id = Args->NewOwnerID;
+      OBJECTID owner_id = Args->NewOwner->UID;
       while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
          owner_id = GetOwnerID(owner_id);
       }

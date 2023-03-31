@@ -1157,7 +1157,7 @@ static ERROR DOCUMENT_NewObject(extDocument *Self, APTR Void)
 static ERROR DOCUMENT_NewOwner(extDocument *Self, struct acNewOwner *Args)
 {
    if (!Self->initialised()) {
-      OBJECTID owner_id = Args->NewOwnerID;
+      OBJECTID owner_id = Args->NewOwner->UID;
       while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
          owner_id = GetOwnerID(owner_id);
       }

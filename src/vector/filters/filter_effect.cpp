@@ -114,8 +114,8 @@ static ERROR FILTEREFFECT_NewObject(extFilterEffect *Self, APTR Void)
 
 static ERROR FILTEREFFECT_NewOwner(extFilterEffect *Self, struct acNewOwner *Args)
 {
-   if ((Args) and (Args->ClassID IS ID_VECTORFILTER)) {
-      Self->Filter = (extVectorFilter *)GetObjectPtr(Args->NewOwnerID);
+   if (Args->NewOwner->ClassID IS ID_VECTORFILTER) {
+      Self->Filter = (extVectorFilter *)Args->NewOwner;
    }
    return ERR_Okay;
 }

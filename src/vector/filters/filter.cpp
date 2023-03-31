@@ -578,8 +578,8 @@ static ERROR VECTORFILTER_NewObject(extVectorFilter *Self, APTR Void)
 
 static ERROR VECTORFILTER_NewOwner(extVectorFilter *Self, struct acNewOwner *Args)
 {
-   if ((Args) and (Args->ClassID IS ID_VECTORSCENE)) {
-      Self->Scene = (extVectorScene *)GetObjectPtr(Args->NewOwnerID);
+   if (Args->NewOwner->ClassID IS ID_VECTORSCENE) {
+      Self->Scene = (extVectorScene *)Args->NewOwner;
    }
    return ERR_Okay;
 }
