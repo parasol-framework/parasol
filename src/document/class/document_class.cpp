@@ -1409,17 +1409,11 @@ SaveToObject: Use this action to save edited information as an XML document file
 static ERROR DOCUMENT_SaveToObject(extDocument *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
-   OBJECTPTR Object;
 
-   if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR_NullArgs);
 
-   log.branch("Destination: %d, Lines: %d", Args->DestID, Self->SegCount);
-
-   if (!AccessObject(Args->DestID, 5000, &Object)) {
-      acWrite(Object, "Save not supported.", 0, NULL);
-      ReleaseObject(Object);
-   }
-
+   log.branch("Destination: %d, Lines: %d", Args->Dest->UID, Self->SegCount);
+   acWrite(Args->Dest, "Save not supported.", 0, NULL);
    return ERR_Okay;
 }
 

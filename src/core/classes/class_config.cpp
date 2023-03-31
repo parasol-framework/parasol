@@ -312,7 +312,7 @@ static ERROR CONFIG_Free(extConfig *Self, APTR Void)
             log.msg("Auto-saving changes to \"%s\" (CRC: %d : %d)", Self->Path, Self->CRC, crc);
 
             objFile::create file = { fl::Path(Self->Path), fl::Flags(FL_WRITE|FL_NEW), fl::Permissions(0) };
-            acSaveToObject(Self, file->UID, 0);
+            Self->saveToObject(*file);
          }
          else log.msg("Not auto-saving data (CRC unchanged).");
       }
@@ -515,7 +515,6 @@ This action will save the configuration data back to its original file source (a
 static ERROR CONFIG_SaveSettings(extConfig *Self, APTR Void)
 {
    pf::Log log;
-
    log.branch();
 
    ULONG crc = calc_crc(Self);
@@ -527,9 +526,7 @@ static ERROR CONFIG_SaveSettings(extConfig *Self, APTR Void)
       };
 
       if (file.ok()) {
-         if (!acSaveToObject(Self, file->UID, 0)) {
-            Self->CRC = crc;
-         }
+         if (!Self->saveToObject(*file)) Self->CRC = crc;
          return ERR_Okay;
       }
       else return ERR_File;
@@ -547,25 +544,20 @@ static ERROR CONFIG_SaveToObject(extConfig *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
 
-   log.msg("Saving %d groups to object #%d.", (LONG)Self->Groups->size(), Args->DestID);
+   log.msg("Saving %d groups to object #%d.", (LONG)Self->Groups->size(), Args->Dest->UID);
 
-   OBJECTPTR dest;
-   if (!AccessObject(Args->DestID, 5000, &dest)) {
-      ConfigGroups &groups = Self->Groups[0];
-      for (auto& [group, keys] : groups) {
-         std::string out_group("\n[" + group + "]\n");
-         acWrite(dest, out_group.c_str(), out_group.size(), NULL);
+   ConfigGroups &groups = Self->Groups[0];
+   for (auto& [group, keys] : groups) {
+      std::string out_group("\n[" + group + "]\n");
+      acWrite(Args->Dest, out_group.c_str(), out_group.size(), NULL);
 
-         for (auto& [k, v] : keys) {
-            std::string kv(k + " = " + v + "\n");
-            acWrite(dest, kv.c_str(), kv.size(), NULL);
-         }
+      for (auto& [k, v] : keys) {
+         std::string kv(k + " = " + v + "\n");
+         acWrite(Args->Dest, kv.c_str(), kv.size(), NULL);
       }
-
-      ReleaseObject(dest);
-      return ERR_Okay;
    }
-   else return ERR_AccessObject;
+
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************

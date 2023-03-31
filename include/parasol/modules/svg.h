@@ -54,12 +54,12 @@ class objSVG : public BaseClass {
    }
    inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }
    inline ERROR init() { return InitObject(this); }
-   inline ERROR saveImage(OBJECTID DestID, CLASSID ClassID) {
-      struct acSaveImage args = { { DestID }, { ClassID } };
+   inline ERROR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) {
+      struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }
-   inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
-      struct acSaveToObject args = { { DestID }, { ClassID } };
+   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) {
+      struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
 };

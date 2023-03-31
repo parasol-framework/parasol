@@ -253,8 +253,8 @@ class objXML : public BaseClass {
    }
    inline ERROR init() { return InitObject(this); }
    inline ERROR reset() { return Action(AC_Reset, this, NULL); }
-   inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
-      struct acSaveToObject args = { { DestID }, { ClassID } };
+   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) {
+      struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
    inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) {

@@ -264,7 +264,7 @@ static ERROR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Arg
             auto path = std::string("clipboard:") + glProcessID + "_" + get_datatype(datatype) + std::to_string(counter) + idx;
 
             objFile::create file = { fl::Path(path), fl::Flags(FL_WRITE|FL_NEW) };
-            if (file.ok()) acSaveToObject(object.obj, file->UID, 0);
+            if (file.ok()) acSaveToObject(*object, *file);
             else return ERR_CreateFile;
          }
       }

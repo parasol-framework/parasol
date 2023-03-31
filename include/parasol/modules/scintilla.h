@@ -194,8 +194,8 @@ class objScintilla : public BaseClass {
       struct acRedo args = { Steps };
       return Action(AC_Redo, this, &args);
    }
-   inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
-      struct acSaveToObject args = { { DestID }, { ClassID } };
+   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) {
+      struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
    inline ERROR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {

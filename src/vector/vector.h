@@ -780,7 +780,7 @@ inline static void save_bitmap(objBitmap *Bitmap, std::string Name)
 
    if (pic.ok()) {
       gfxCopyArea(Bitmap, pic->Bitmap, 0, Bitmap->Clip.Left, Bitmap->Clip.Top, pic->Bitmap->Width, pic->Bitmap->Height, 0, 0);
-      acSaveImage(*pic, 0, 0);
+      pic->saveImage(NULL);
    }
 }
 
@@ -806,7 +806,7 @@ inline static void save_bitmap(std::string Name, UBYTE *Data, LONG Width, LONG H
          out  += pic->Bitmap->LineWidth;
          Data += Width * pic->Bitmap->BytesPerPixel;
       }
-      acSaveImage(*pic, 0, 0);
+      pic->saveImage(NULL);
    }
 }
 

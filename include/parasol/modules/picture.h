@@ -43,5 +43,66 @@ class objPicture : public BaseClass {
    LONG DisplayWidth;     // The preferred width to use when displaying the image.
    LONG Quality;          // Defines the quality level to use when saving the image.
    LONG FrameRate;        // Refresh & redraw the picture X times per second.  Used by pictures that have an animation refresh rate
+
+   // Action stubs
+
+   inline ERROR activate() { return Action(AC_Activate, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
+   inline ERROR query() { return Action(AC_Query, this, NULL); }
+   template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) {
+      static_assert(std::is_integral<U>::value, "Result value must be an integer type");
+      static_assert(std::is_integral<T>::value, "Size value must be an integer type");
+      ERROR error;
+      const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
+      struct acRead read = { (BYTE *)Buffer, bytes };
+      if (!(error = Action(AC_Read, this, &read))) *Result = static_cast<U>(read.Result);
+      else *Result = 0;
+      return error;
+   }
+   template <class T> ERROR read(APTR Buffer, T Size) {
+      static_assert(std::is_integral<T>::value, "Size value must be an integer type");
+      const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
+      struct acRead read = { (BYTE *)Buffer, bytes };
+      return Action(AC_Read, this, &read);
+   }
+   inline ERROR refresh() { return Action(AC_Refresh, this, NULL); }
+   inline ERROR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) {
+      struct acSaveImage args = { Dest, { ClassID } };
+      return Action(AC_SaveImage, this, &args);
+   }
+   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) {
+      struct acSaveToObject args = { Dest, { ClassID } };
+      return Action(AC_SaveToObject, this, &args);
+   }
+   inline ERROR seek(DOUBLE Offset, LONG Position = SEEK_CURRENT) {
+      struct acSeek args = { Offset, Position };
+      return Action(AC_Seek, this, &args);
+   }
+   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK_START); }
+   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK_END); }
+   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK_CURRENT); }
+   inline ERROR write(CPTR Buffer, LONG Size, LONG *Result = NULL) {
+      ERROR error;
+      struct acWrite write = { (BYTE *)Buffer, Size };
+      if (!(error = Action(AC_Write, this, &write))) {
+         if (Result) *Result = write.Result;
+      }
+      else if (Result) *Result = 0;
+      return error;
+   }
+   inline ERROR write(std::string Buffer, LONG *Result = NULL) {
+      ERROR error;
+      struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
+      if (!(error = Action(AC_Write, this, &write))) {
+         if (Result) *Result = write.Result;
+      }
+      else if (Result) *Result = 0;
+      return error;
+   }
+   inline LONG writeResult(CPTR Buffer, LONG Size) {
+      struct acWrite write = { (BYTE *)Buffer, Size };
+      if (!Action(AC_Write, this, &write)) return write.Result;
+      else return 0;
+   }
 };
 

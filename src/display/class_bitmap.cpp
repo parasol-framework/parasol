@@ -1849,9 +1849,9 @@ static ERROR BITMAP_SaveImage(extBitmap *Self, struct acSaveImage *Args)
    UBYTE *buffer, lastpixel, newpixel;
    LONG i, j, p, size;
 
-   if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Dest)) return log.warning(ERR_NullArgs);
 
-   log.branch("Save To #%d", Args->DestID);
+   log.branch("Save To #%d", Args->Dest->UID);
 
    LONG width = Self->Clip.Right - Self->Clip.Left;
    LONG height = Self->Clip.Bottom - Self->Clip.Top;
@@ -1878,120 +1878,113 @@ static ERROR BITMAP_SaveImage(extBitmap *Self, struct acSaveImage *Args)
 
    size = width * height * pcx.NumPlanes;
    if (!AllocMemory(size, MEM_DATA|MEM_NO_CLEAR, &buffer)) {
-      if (!AccessObject(Args->DestID, 3000, &dest)) {
-         acWrite(dest, &pcx, sizeof(pcx), NULL);
+      acWrite(Args->Dest, &pcx, sizeof(pcx), NULL);
 
-         LONG dp = 0;
-         for (i=Self->Clip.Top; i < (Self->Clip.Bottom); i++) {
-            if (pcx.NumPlanes IS 1) { // Save as a 256 colour image
-               lastpixel = Self->ReadUCPixel(Self, Self->Clip.Left, i);
+      LONG dp = 0;
+      for (i=Self->Clip.Top; i < (Self->Clip.Bottom); i++) {
+         if (pcx.NumPlanes IS 1) { // Save as a 256 colour image
+            lastpixel = Self->ReadUCPixel(Self, Self->Clip.Left, i);
+            UBYTE counter = 1;
+            for (j=Self->Clip.Left+1; j <= width; j++) {
+               newpixel = Self->ReadUCPixel(Self, j, i);
+
+               if ((newpixel IS lastpixel) and (j != width - 1) and (counter <= 62)) {
+                  counter++;
+               }
+               else {
+                  if (!((counter IS 1) and (lastpixel < 192))) {
+                     buffer[dp++] = 192 + counter;
+                  }
+                  buffer[dp++] = lastpixel;
+                  lastpixel = newpixel;
+                  counter = 1;
+               }
+
+               if (dp >= (size - 10)) {
+                  FreeResource(buffer);
+                  return log.warning(ERR_BufferOverflow);
+               }
+            }
+         }
+         else { // Save as a true colour image with run-length encoding
+            for (p=0; p < 3; p++) {
+               Self->ReadUCRPixel(Self, Self->Clip.Left, i, &rgb);
+
+               if (Self->ColourSpace IS CS_LINEAR_RGB) {
+                  rgb.Red   = conv_l2r(rgb.Red);
+                  rgb.Green = conv_l2r(rgb.Green);
+                  rgb.Blue  = conv_l2r(rgb.Blue);
+               }
+
+               switch(p) {
+                  case 0:  lastpixel = rgb.Red;   break;
+                  case 1:  lastpixel = rgb.Green; break;
+                  default: lastpixel = rgb.Blue;
+               }
                UBYTE counter = 1;
-               for (j=Self->Clip.Left+1; j <= width; j++) {
-                  newpixel = Self->ReadUCPixel(Self, j, i);
 
-                  if ((newpixel IS lastpixel) and (j != width - 1) and (counter <= 62)) {
+               for (j=Self->Clip.Left+1; j < Self->Clip.Right; j++) {
+                  Self->ReadUCRPixel(Self, j, i, &rgb);
+                  switch(p) {
+                     case 0:  newpixel = rgb.Red;   break;
+                     case 1:  newpixel = rgb.Green; break;
+                     default: newpixel = rgb.Blue;
+                  }
+
+                  if (newpixel IS lastpixel) {
                      counter++;
+                     if (counter IS 63) {
+                        buffer[dp++] = 0xc0 | counter;
+                        buffer[dp++] = lastpixel;
+                        counter = 0;
+                     }
                   }
                   else {
-                     if (!((counter IS 1) and (lastpixel < 192))) {
-                        buffer[dp++] = 192 + counter;
+                     if ((counter IS 1) and (0xc0 != (0xc0 & lastpixel))) {
+                        buffer[dp++] = lastpixel;
                      }
-                     buffer[dp++] = lastpixel;
+                     else if (counter) {
+                        buffer[dp++] = 0xc0 | counter;
+                        buffer[dp++] = lastpixel;
+                     }
                      lastpixel = newpixel;
                      counter = 1;
                   }
-
-                  if (dp >= (size - 10)) {
-                     FreeResource(buffer);
-                     ReleaseObject(dest);
-                     return log.warning(ERR_BufferOverflow);
-                  }
                }
-            }
-            else { // Save as a true colour image with run-length encoding
-               for (p=0; p < 3; p++) {
-                  Self->ReadUCRPixel(Self, Self->Clip.Left, i, &rgb);
 
-                  if (Self->ColourSpace IS CS_LINEAR_RGB) {
-                     rgb.Red   = conv_l2r(rgb.Red);
-                     rgb.Green = conv_l2r(rgb.Green);
-                     rgb.Blue  = conv_l2r(rgb.Blue);
-                  }
+               // Finish line if necessary
 
-                  switch(p) {
-                     case 0:  lastpixel = rgb.Red;   break;
-                     case 1:  lastpixel = rgb.Green; break;
-                     default: lastpixel = rgb.Blue;
-                  }
-                  UBYTE counter = 1;
-
-                  for (j=Self->Clip.Left+1; j < Self->Clip.Right; j++) {
-                     Self->ReadUCRPixel(Self, j, i, &rgb);
-                     switch(p) {
-                        case 0:  newpixel = rgb.Red;   break;
-                        case 1:  newpixel = rgb.Green; break;
-                        default: newpixel = rgb.Blue;
-                     }
-
-                     if (newpixel IS lastpixel) {
-                        counter++;
-                        if (counter IS 63) {
-                           buffer[dp++] = 0xc0 | counter;
-                           buffer[dp++] = lastpixel;
-                           counter = 0;
-                        }
-                     }
-                     else {
-                        if ((counter IS 1) and (0xc0 != (0xc0 & lastpixel))) {
-                           buffer[dp++] = lastpixel;
-                        }
-                        else if (counter) {
-                           buffer[dp++] = 0xc0 | counter;
-                           buffer[dp++] = lastpixel;
-                        }
-                        lastpixel = newpixel;
-                        counter = 1;
-                     }
-                  }
-
-                  // Finish line if necessary
-
-                  if ((counter IS 1) and (0xc0 != (0xc0 & lastpixel))) {
-                     buffer[dp++] = lastpixel;
-                  }
-                  else if (counter) {
-                     buffer[dp++] = 0xc0 | counter;
-                     buffer[dp++] = lastpixel;
-                  }
+               if ((counter IS 1) and (0xc0 != (0xc0 & lastpixel))) {
+                  buffer[dp++] = lastpixel;
+               }
+               else if (counter) {
+                  buffer[dp++] = 0xc0 | counter;
+                  buffer[dp++] = lastpixel;
                }
             }
          }
+      }
 
-         acWrite(dest, buffer, dp, NULL);
-         FreeResource(buffer);
+      acWrite(Args->Dest, buffer, dp, NULL);
+      FreeResource(buffer);
 
-         // Setup palette
+      // Setup palette
 
-         if (Self->AmtColours <= 256) {
-            UBYTE palette[(256 * 3) + 1];
-            LONG j = 0;
-            palette[j++] = 12;          // Palette identifier
-            for (LONG i=0; i < 256; i++) {
-               palette[j++] = Self->Palette->Col[i].Red;
-               palette[j++] = Self->Palette->Col[i].Green;
-               palette[j++] = Self->Palette->Col[i].Blue;
-            }
-
-            acWrite(dest, palette, sizeof(palette), NULL);
+      if (Self->AmtColours <= 256) {
+         UBYTE palette[(256 * 3) + 1];
+         LONG j = 0;
+         palette[j++] = 12;          // Palette identifier
+         for (LONG i=0; i < 256; i++) {
+            palette[j++] = Self->Palette->Col[i].Red;
+            palette[j++] = Self->Palette->Col[i].Green;
+            palette[j++] = Self->Palette->Col[i].Blue;
          }
 
-         ReleaseObject(dest);
-         return ERR_Okay;
+         acWrite(Args->Dest, palette, sizeof(palette), NULL);
       }
-      else {
-         FreeResource(buffer);
-         return ERR_AccessObject;
-      }
+
+      return ERR_Okay;
+
    }
    else return ERR_AllocMemory;
 }

@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -1257,27 +1256,22 @@ static ERROR SCINTILLA_SaveToObject(extScintilla *Self, struct acSaveToObject *A
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Dest)) return log.warning(ERR_NullArgs);
 
    LONG len = SCICALL(SCI_GETLENGTH);
 
-   log.branch("To: %d, Size: %d", Args->DestID, len);
+   log.branch("To: %d, Size: %d", Args->Dest->UID, len);
 
-   OBJECTPTR object;
-   if (!AccessObject(Args->DestID, 5000, &object)) {
-      ERROR error;
-      APTR buffer;
-      if (!(AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &buffer))) {
-         SCICALL(SCI_GETTEXT, len+1, (const char *)buffer);
-         error = acWrite(object, buffer, len, NULL);
-         FreeResource(buffer);
-      }
-      else error = ERR_AllocMemory;
-
-      ReleaseObject(object);
-      return error;
+   ERROR error;
+   APTR buffer;
+   if (!(AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &buffer))) {
+      SCICALL(SCI_GETTEXT, len+1, (const char *)buffer);
+      error = acWrite(Args->Dest, buffer, len, NULL);
+      FreeResource(buffer);
    }
-   else return log.warning(ERR_AccessObject);
+   else error = ERR_AllocMemory;
+
+   return error;
 }
 
 /*********************************************************************************************************************

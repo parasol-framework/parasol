@@ -2,7 +2,7 @@
 
 //********************************************************************************************************************
 
-static ERROR RSVG_Activate(prvPicture *Self, APTR Void)
+static ERROR RSVG_Activate(extPicture *Self, APTR Void)
 {
    prvSVG *prv;
    if (!(prv = (prvSVG *)Self->ChildPrivate)) return ERR_NotInitialised;
@@ -22,7 +22,7 @@ static ERROR RSVG_Activate(prvPicture *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR RSVG_Free(prvPicture *Self, APTR Void)
+static ERROR RSVG_Free(extPicture *Self, APTR Void)
 {
    if (auto prv = (prvSVG *)Self->ChildPrivate) {
       if (prv->SVG) { FreeResource(prv->SVG); prv->SVG = NULL; }
@@ -32,7 +32,7 @@ static ERROR RSVG_Free(prvPicture *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR RSVG_Init(prvPicture *Self, APTR Void)
+static ERROR RSVG_Init(extPicture *Self, APTR Void)
 {
    pf::Log log;
    STRING path;
@@ -66,7 +66,7 @@ static ERROR RSVG_Init(prvPicture *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR RSVG_Query(prvPicture *Self, APTR Void)
+static ERROR RSVG_Query(extPicture *Self, APTR Void)
 {
    pf::Log log;
    prvSVG *prv;
@@ -153,7 +153,7 @@ static ERROR RSVG_Query(prvPicture *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR RSVG_Resize(prvPicture *Self, struct acResize *Args)
+static ERROR RSVG_Resize(extPicture *Self, struct acResize *Args)
 {
    prvSVG *prv;
    if (!(prv = (prvSVG *)Self->ChildPrivate)) return ERR_NotInitialised;

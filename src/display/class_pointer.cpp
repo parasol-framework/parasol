@@ -725,7 +725,7 @@ static ERROR PTR_SaveToObject(extPointer *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Dest)) return log.warning(ERR_NullArgs);
 
    objConfig::create config = { };
    if (config.ok()) {
@@ -735,7 +735,7 @@ static ERROR PTR_SaveToObject(extPointer *Self, struct acSaveToObject *Args)
       config->write("POINTER", "MaxSpeed", Self->MaxSpeed);
       config->write("POINTER", "WheelSpeed", Self->WheelSpeed);
       config->write("POINTER", "ButtonOrder", Self->ButtonOrder);
-      config->saveToObject(Args->DestID, 0);
+      config->saveToObject(Args->Dest);
    }
 
    return ERR_Okay;

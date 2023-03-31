@@ -2753,8 +2753,8 @@ struct acRedimension   { DOUBLE X; DOUBLE Y; DOUBLE Z; DOUBLE Width; DOUBLE Heig
 struct acRedo          { LONG Steps; };
 struct acRename        { CSTRING Name; };
 struct acResize        { DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
-struct acSaveImage     { union { OBJECTID DestID; OBJECTID Dest; }; union { CLASSID ClassID; CLASSID Class; }; };
-struct acSaveToObject  { union { OBJECTID DestID; OBJECTID Dest; }; union { CLASSID ClassID; CLASSID Class; }; };
+struct acSaveImage     { OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
+struct acSaveToObject  { OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
 struct acScroll        { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
 struct acScrollToPoint { DOUBLE X; DOUBLE Y; DOUBLE Z; LONG Flags; };
 struct acSeek          { DOUBLE Offset; LONG Position; };
@@ -2826,7 +2826,7 @@ inline ERROR acRead(OBJECTPTR Object, APTR Buffer, LONG Bytes, LONG *Read) {
    }
 }
 
-inline ERROR acRedo(OBJECTPTR Object, LONG Steps) {
+inline ERROR acRedo(OBJECTPTR Object, LONG Steps = 1) {
    struct acRedo args = { Steps };
    return Action(AC_Redo, Object, &args);
 }
@@ -2873,13 +2873,13 @@ inline ERROR acMoveToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, LONG 
    return Action(AC_MoveToPoint, Object, &moveto);
 }
 
-inline ERROR acSaveImage(OBJECTPTR Object, OBJECTID DestID, CLASSID ClassID) {
-   struct acSaveImage args = { { DestID }, { ClassID } };
+inline ERROR acSaveImage(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = 0) {
+   struct acSaveImage args = { Dest, { ClassID } };
    return Action(AC_SaveImage, Object, &args);
 }
 
-inline ERROR acSaveToObject(OBJECTPTR Object, OBJECTID DestID, CLASSID ClassID) {
-   struct acSaveToObject args = { { DestID }, { ClassID } };
+inline ERROR acSaveToObject(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = 0) {
+   struct acSaveToObject args = { Dest, { ClassID } };
    return Action(AC_SaveToObject, Object, &args);
 }
 
@@ -3262,8 +3262,8 @@ class objConfig : public BaseClass {
    inline ERROR flush() { return Action(AC_Flush, this, NULL); }
    inline ERROR init() { return InitObject(this); }
    inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }
-   inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
-      struct acSaveToObject args = { { DestID }, { ClassID } };
+   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) {
+      struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
    inline ERROR sort() { return Action(AC_Sort, this, NULL); }

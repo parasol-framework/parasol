@@ -553,8 +553,8 @@ class objBitmap : public BaseClass {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
    }
-   inline ERROR saveImage(OBJECTID DestID, CLASSID ClassID) {
-      struct acSaveImage args = { { DestID }, { ClassID } };
+   inline ERROR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) {
+      struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }
    inline ERROR seek(DOUBLE Offset, LONG Position = SEEK_CURRENT) {
@@ -734,8 +734,8 @@ class objDisplay : public BaseClass {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
    }
-   inline ERROR saveImage(OBJECTID DestID, CLASSID ClassID) {
-      struct acSaveImage args = { { DestID }, { ClassID } };
+   inline ERROR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) {
+      struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }
    inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }
@@ -994,8 +994,8 @@ class objSurface : public BaseClass {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
    }
-   inline ERROR saveImage(OBJECTID DestID, CLASSID ClassID) {
-      struct acSaveImage args = { { DestID }, { ClassID } };
+   inline ERROR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) {
+      struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }
    inline ERROR scroll(DOUBLE X, DOUBLE Y, DOUBLE Z = 0) {

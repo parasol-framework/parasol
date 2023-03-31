@@ -210,7 +210,7 @@ static ERROR SVG_SaveImage(extSVG *Self, struct acSaveImage *Args)
    objPicture::create pic = { fl::Width(width), fl::Height(height), fl::Flags(PCF_ALPHA|PCF_NEW) };
    if (pic.ok()) {
       if (!(error = svgRender(Self, pic->Bitmap, 0, 0, width, height))) {
-         if (!(error = acSaveImage(*pic, Args->DestID, Args->ClassID))) {
+         if (!(error = acSaveImage(*pic, Args->Dest, Args->ClassID))) {
             return ERR_Okay;
          }
       }
@@ -243,7 +243,7 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
             return routine[AC_SaveToObject](Self, Args);
          }
          else if ((routine[AC_SaveImage]) and (routine[AC_SaveImage] != (APTR)SVG_SaveImage)) {
-            struct acSaveImage saveimage = { .DestID = Args->DestID };
+            struct acSaveImage saveimage = { .Dest = Args->Dest };
             return routine[AC_SaveImage](Self, &saveimage);
          }
          else return log.warning(ERR_NoSupport);
@@ -267,7 +267,7 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
                      save_svg_scan(Self, *xml, scan, index);
                   }
 
-                  error = xml->saveToObject(Args->DestID, 0);
+                  error = xml->saveToObject(Args->Dest);
                }
             }
             else {
@@ -305,7 +305,7 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
                         save_svg_scan(Self, *xml, scan, index);
                      }
 
-                     error = xml->saveToObject(Args->DestID, 0);
+                     error = xml->saveToObject(Args->Dest);
                   }
                }
             }
