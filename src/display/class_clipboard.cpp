@@ -544,7 +544,7 @@ int(CLIPTYPE) Datatype: The datatype(s) that will be deleted (datatypes may be l
 -ERRORS-
 Okay
 NullArgs
-AccessMemoryID: The clipboard memory data was not accessible.
+AccessMemory: The clipboard memory data was not accessible.
 -END-
 
 *********************************************************************************************************************/

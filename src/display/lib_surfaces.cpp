@@ -556,7 +556,7 @@ ERROR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LO
       if (InsideHeight < Height) InsideHeight = Height;
 
       OBJECTPTR display;
-      if (!AccessObjectID(Self->DisplayID, 5000, &display)) { // NB: SetDisplay() always processes coordinates relative to the client area in order to resolve issues when in hosted mode.
+      if (!AccessObject(Self->DisplayID, 5000, &display)) { // NB: SetDisplay() always processes coordinates relative to the client area in order to resolve issues when in hosted mode.
          if (gfxSetDisplay(display, X, Y, Width, Height, InsideWidth, InsideHeight, BPP, RefreshRate, DeviceFlags)) {
             ReleaseObject(display);
             return log.warning(ERR_Redimension);
@@ -926,7 +926,7 @@ ERROR gfxCopySurface(OBJECTID SurfaceID, extBitmap *Bitmap, LONG Flags,
 
          if ((Flags & BDF_DITHER) or (!list_root.Data)) {
             extBitmap *src;
-            if (!AccessObjectID(list_root.BitmapID, 4000, &src)) {
+            if (!AccessObject(list_root.BitmapID, 4000, &src)) {
                src->XOffset     = list_i.Left - list_root.Left;
                src->YOffset     = list_i.Top - list_root.Top;
                src->Clip.Left   = 0;
@@ -1137,7 +1137,7 @@ ERROR gfxGetSurfaceFlags(OBJECTID SurfaceID, LONG *Flags)
 GetSurfaceInfo: Retrieves display information for any surface object without having to access it directly.
 
 GetSurfaceInfo() is used for quickly retrieving basic information from surfaces, allowing the client to bypass the
-AccessObjectID() function.  The resulting structure values are good only up until the next call to this function,
+AccessObject() function.  The resulting structure values are good only up until the next call to this function,
 at which point those values will be overwritten.
 
 -INPUT-
@@ -1408,11 +1408,11 @@ ERROR _redraw_surface(OBJECTID SurfaceID, const SURFACELIST &list, LONG index,
 
    extSurface *surface;
    ERROR error;
-   if (!(error = AccessObjectID(list[index].SurfaceID, 5000, &surface))) {
+   if (!(error = AccessObject(list[index].SurfaceID, 5000, &surface))) {
       log.trace("Area: %dx%d,%dx%d", Left, Top, Right-Left, Bottom-Top);
 
       extBitmap *bitmap;
-      if (!AccessObjectID(list[index].BitmapID, 5000, &bitmap)) {
+      if (!AccessObject(list[index].BitmapID, 5000, &bitmap)) {
          // Check if there has been a change in the video bit depth.  If so, regenerate the bitmap with a matching depth.
 
          check_bmp_buffer_depth(surface, bitmap);
@@ -1684,7 +1684,7 @@ OBJECTID gfxSetModalSurface(OBJECTID SurfaceID)
    if (SurfaceID) {
       extSurface *surface;
       OBJECTID divert = 0;
-      if (!AccessObjectID(SurfaceID, 3000, &surface)) {
+      if (!AccessObject(SurfaceID, 3000, &surface)) {
          if (!(surface->Flags & RNF_VISIBLE)) {
             divert = surface->PrevModalID;
             if (!divert) SurfaceID = 0;
@@ -1754,9 +1754,9 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LONG *Info)
    *Bitmap = 0;
 
    extSurface *surface;
-   if (!AccessObjectID(SurfaceID, 5000, &surface)) {
+   if (!AccessObject(SurfaceID, 5000, &surface)) {
       extBitmap *bitmap;
-      if (AccessObjectID(surface->BufferID, 5000, &bitmap) != ERR_Okay) {
+      if (AccessObject(surface->BufferID, 5000, &bitmap) != ERR_Okay) {
          ReleaseObject(surface);
          return log.warning(ERR_AccessObject);
       }
@@ -1844,7 +1844,7 @@ ERROR gfxLockBitmap(OBJECTID SurfaceID, objBitmap **Bitmap, LONG *Info)
    // Gain access to the bitmap buffer and set the clipping and offsets to the correct values.
 
    extBitmap *bmp;
-   if (!AccessObjectID(list_root.BitmapID, 5000, &bmp)) {
+   if (!AccessObject(list_root.BitmapID, 5000, &bmp)) {
       bmp->XOffset = expose.Left - list_root.Left; // The offset is the position of the surface within the root bitmap
       bmp->YOffset = expose.Top - list_root.Top;
 

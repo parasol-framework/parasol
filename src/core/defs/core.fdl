@@ -1136,14 +1136,14 @@ struct ScriptArg { // For use with scExec
 ]])
 
   functionNames(nil,
-    "AccessMemoryID",
+    "AccessMemory",
     "Action",
     "ActionList",
     "ActionMsg",
     "ResolveClassID",
     "AllocateID",
     "AllocMemory",
-    "AccessObjectID",
+    "AccessObject",
     "CheckAction",
     "CheckMemoryExists",
     "CheckObjectExists",
@@ -1616,7 +1616,7 @@ struct BaseClass { // Must be 64-bit aligned
    UBYTE ThreadPending;         // ActionThread() increments this.
    volatile BYTE Queue;         // Managed by locking functions
    volatile BYTE SleepQueue;    //
-   volatile bool Locked;        // Set if locked by AccessObjectID()/LockObject()
+   volatile bool Locked;        // Set if locked by AccessObject()/LockObject()
    BYTE ActionDepth;            // Incremented each time an action or method is called on the object
 
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }

@@ -218,7 +218,7 @@ ERROR GetMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Buffer, LONG B
 
    MessageHeader *header;
    if (Flags & MSF_ADDRESS) header = (MessageHeader *)(MAXINT)MessageMID;
-   else if (AccessMemoryID(MessageMID, MEM_READ_WRITE, 2000, (void **)&header) != ERR_Okay) {
+   else if (AccessMemory(MessageMID, MEM_READ_WRITE, 2000, (void **)&header) != ERR_Okay) {
       return ERR_AccessMemory;
    }
 
@@ -392,7 +392,7 @@ timer_cycle:
                   relock = true;
                   error = routine(NULL, elapsed, current_time);
                }
-               else if (!AccessObjectID(timer->SubscriberID, 50, &subscriber)) {
+               else if (!AccessObject(timer->SubscriberID, 50, &subscriber)) {
                   pf::SwitchContext context(subscriber);
 
                   auto routine = (ERROR (*)(OBJECTPTR, LARGE, LARGE))timer->Routine.StdC.Routine;
@@ -444,7 +444,7 @@ timer_cycle:
       while (1) {
          MessageHeader *msgbuffer;
          BYTE msgfound = FALSE;
-         if (!AccessMemoryID(glTaskMessageMID, MEM_READ_WRITE, 2000, (void **)&msgbuffer)) {
+         if (!AccessMemory(glTaskMessageMID, MEM_READ_WRITE, 2000, (void **)&msgbuffer)) {
             if (msgbuffer->Count) {
                auto scanmsg = (TaskMessage *)msgbuffer->Buffer;
                TaskMessage *prevmsg = NULL;
@@ -657,14 +657,14 @@ timer_cycle:
 ScanMessages: Scans a message queue for multiple occurrences of a message type.
 
 Use the ScanMessages() function to scan a message queue for information without affecting the state of the queue.  To
-use this function, you need to establish a connection to the queue by using the ~AccessMemoryID() function
+use this function, you need to establish a connection to the queue by using the ~AccessMemory() function
 first to gain access.  Then make repeated calls to ScanMessages() to analyse the queue until it returns an error code
 other than `ERR_Okay`.  Use ~ReleaseMemory() to let go of the message queue when you are done with it.
 
 Here is an example that scans the queue of the active task:
 
 <pre>
-if (!AccessMemoryID(GetResource(RES_MESSAGEQUEUE), MEM_READ, &queue)) {
+if (!AccessMemory(GetResource(RES_MESSAGEQUEUE), MEM_READ, &queue)) {
    while (!ScanMessages(queue, &index, MSGID_QUIT, NULL, NULL)) {
       ...
    }
@@ -680,7 +680,7 @@ Message data is written to the supplied buffer with a Message structure (struct 
 up with the actual message data.  The message structure includes the following fields:
 
 -INPUT-
-ptr Queue:  An address pointer for a message queue (use AccessMemoryID() to get an address from a message queue ID).
+ptr Queue:  An address pointer for a message queue (use AccessMemory() to get an address from a message queue ID).
 &int Index: Pointer to a 32-bit value that must initially be set to zero.  The ScanMessages() function will automatically update this variable with each call so that it can remember its analysis position.
 int Type:   The message type to filter for, or zero to scan all messages in the queue.
 buf(ptr) Buffer: Pointer to a buffer that is large enough to hold the message information.  Set to NULL if you are not interested in the message data.
@@ -829,7 +829,7 @@ ERROR SendMessage(OBJECTID TaskID, LONG Type, LONG Flags, APTR Data, LONG Size)
    ERROR error;
    TaskMessage *msg, *prevmsg;
    MessageHeader *header;
-   if (!(error = AccessMemoryID(glTaskMessageMID, MEM_READ_WRITE, 2000, (void **)&header))) {
+   if (!(error = AccessMemory(glTaskMessageMID, MEM_READ_WRITE, 2000, (void **)&header))) {
       if (Flags & (MSF_NO_DUPLICATE|MSF_UPDATE)) {
          msg = (TaskMessage *)header->Buffer;
          prevmsg = NULL;
@@ -976,7 +976,7 @@ ERROR SendMessage(OBJECTID TaskID, LONG Type, LONG Flags, APTR Data, LONG Size)
    }
    else {
       log.warning("Could not gain access to message port #%d: %s", glTaskMessageMID, glMessages[error]);
-      return error; // Important that the original AccessMemoryID() error is returned (some code depends on this for detailed clarification)
+      return error; // Important that the original AccessMemory() error is returned (some code depends on this for detailed clarification)
    }
 }
 

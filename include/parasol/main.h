@@ -31,7 +31,7 @@ class ScopedAccessMemory { // C++ wrapper for automatically releasing shared mem
 
       ScopedAccessMemory(LONG ID, LONG Flags, LONG Milliseconds = 5000) {
          id = ID;
-         error = AccessMemoryID(ID, Flags, Milliseconds, (APTR *)&ptr);
+         error = AccessMemory(ID, Flags, Milliseconds, (APTR *)&ptr);
       }
 
       ~ScopedAccessMemory() { if (!error) ReleaseMemory(ptr); }
@@ -87,7 +87,7 @@ class ScopedObjectLock { // C++ wrapper for automatically releasing an object
       T *obj;
 
       ScopedObjectLock(OBJECTID ObjectID, LONG Milliseconds = 3000) {
-         error = AccessObjectID(ObjectID, Milliseconds, &obj);
+         error = AccessObject(ObjectID, Milliseconds, &obj);
       }
 
       ScopedObjectLock(OBJECTPTR Object, LONG Milliseconds = 3000) {

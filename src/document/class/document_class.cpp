@@ -680,7 +680,7 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
 
    if ((Self->FocusID) and (Self->FocusID != Self->SurfaceID)) {
       OBJECTPTR object;
-      if (!AccessObjectID(Self->FocusID, 5000, &object)) {
+      if (!AccessObject(Self->FocusID, 5000, &object)) {
          UnsubscribeAction(object, 0);
          ReleaseObject(object);
       }
@@ -688,7 +688,7 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
 
    if (Self->SurfaceID) {
       OBJECTPTR object;
-      if (!AccessObjectID(Self->SurfaceID, 5000, &object)) {
+      if (!AccessObject(Self->SurfaceID, 5000, &object)) {
          drwRemoveCallback(object, NULL);
          UnsubscribeAction(object, 0);
          ReleaseObject(object);
@@ -753,7 +753,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
    if (!Self->FocusID) Self->FocusID = Self->SurfaceID;
 
    objSurface *surface;
-   if (!AccessObjectID(Self->FocusID, 5000, &surface)) {
+   if (!AccessObject(Self->FocusID, 5000, &surface)) {
       if (surface->ClassID != ID_SURFACE) {
          ReleaseObject(surface);
          return log.warning(ERR_WrongObjectType);
@@ -777,7 +777,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 
    // Setup the target surface
 
-   if (!AccessObjectID(Self->SurfaceID, 5000, &surface)) {
+   if (!AccessObject(Self->SurfaceID, 5000, &surface)) {
       Self->SurfaceWidth = surface->Width;
       Self->SurfaceHeight = surface->Height;
 
@@ -1415,7 +1415,7 @@ static ERROR DOCUMENT_SaveToObject(extDocument *Self, struct acSaveToObject *Arg
 
    log.branch("Destination: %d, Lines: %d", Args->DestID, Self->SegCount);
 
-   if (!AccessObjectID(Args->DestID, 5000, &Object)) {
+   if (!AccessObject(Args->DestID, 5000, &Object)) {
       acWrite(Object, "Save not supported.", 0, NULL);
       ReleaseObject(Object);
    }

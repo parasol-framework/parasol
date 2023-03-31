@@ -46,7 +46,7 @@ static void * test_locking(struct thread_info *info)
       if (!glMemoryID) break;
       //LogF("~","Attempt %d.%d: Acquiring the memory.", info->index, i);
 
-      if (!(error = AccessMemoryID(glMemoryID, MEM_READ_WRITE, 30000, &memory))) {
+      if (!(error = AccessMemory(glMemoryID, MEM_READ_WRITE, 30000, &memory))) {
          memory[0]++;
          log.msg("%d.%d: Memory acquired.", info->index, i);
          WaitTime(0, 2000);

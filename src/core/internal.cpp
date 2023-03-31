@@ -343,7 +343,7 @@ ERROR resolve_args(APTR Parameters, const struct FunctionField *Args)
             MEMORYID mid = ((MEMORYID *)(Buffer + pos))[0];
             if (mid < 0) {
                APTR memory;
-               if (!AccessMemoryID(mid, MEM_READ_WRITE, 3000, &memory)) {
+               if (!AccessMemory(mid, MEM_READ_WRITE, 3000, &memory)) {
                   ((APTR *)(Buffer + pos))[0] = memory;
                }
                else {

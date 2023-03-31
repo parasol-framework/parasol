@@ -34,10 +34,10 @@
   </info>
 
   <function>
-    <name>AccessMemoryID</name>
+    <name>AccessMemory</name>
     <category>Memory</category>
     <comment>Grants access to memory blocks by identifier.</comment>
-    <prototype>ERROR AccessMemoryID(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR * Result)</prototype>
+    <prototype>ERROR AccessMemory(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR * Result)</prototype>
     <input>
       <param type="MEMORYID" name="Memory">The ID of the memory block that you want to access.</param>
       <param type="LONG" name="Flags" lookup="MEM">Set to MEM_READ, MEM_WRITE or MEM_READ_WRITE according to requirements.</param>
@@ -45,7 +45,7 @@
       <param type="APTR *" name="Result">Must point to an APTR variable that will store the resolved address.</param>
     </input>
     <description>
-<p>Call AccessMemoryID() to resolve a memory ID to its address and acquire a lock so that it is inaccessible to other threads.</p>
+<p>Call AccessMemory() to resolve a memory ID to its address and acquire a lock so that it is inaccessible to other threads.</p>
 <p>Memory blocks should never be locked for extended periods of time.  Ensure that all locks are matched with a call to <function module="Core">ReleaseMemory</function> within the same code block.</p>
     </description>
     <result type="ERROR">
@@ -62,10 +62,10 @@
   </function>
 
   <function>
-    <name>AccessObjectID</name>
+    <name>AccessObject</name>
     <category>Objects</category>
     <comment>Grants exclusive access to objects via unique ID.</comment>
-    <prototype>ERROR AccessObjectID(OBJECTID Object, LONG MilliSeconds, OBJECTPTR * Result)</prototype>
+    <prototype>ERROR AccessObject(OBJECTID Object, LONG MilliSeconds, OBJECTPTR * Result)</prototype>
     <input>
       <param type="OBJECTID" name="Object">The unique ID of the target object.</param>
       <param type="LONG" name="MilliSeconds">The limit in milliseconds before a timeout occurs.  The maximum limit is 60000, and 100 is recommended.</param>
@@ -74,8 +74,8 @@
     <description>
 <p>This function resolves an object ID to its address and acquires a lock on the object so that other threads cannot use it simultaneously.</p>
 <p>If the object is already locked, it will wait until the object becomes available.   This must occur within the amount of time specified in the Milliseconds parameter.  If the time expires, the function will return with an <code>ERR_TimeOut</code> error code.  If successful, <code>ERR_Okay</code> is returned and a reference to the object's address is stored in the Result variable.</p>
-<p>It is crucial that calls to AccessObjectID() are followed with a call to <function module="Core">ReleaseObject</function> once the lock is no longer required.  Calls to AccessObjectID() will also nest, so they must be paired with <function module="Core">ReleaseObject</function> correctly.</p>
-<p>If AccessObjectID() fails, the Result variable will be automatically set to a NULL pointer on return.</p>
+<p>It is crucial that calls to AccessObject() are followed with a call to <function module="Core">ReleaseObject</function> once the lock is no longer required.  Calls to AccessObject() will also nest, so they must be paired with <function module="Core">ReleaseObject</function> correctly.</p>
+<p>If AccessObject() fails, the Result variable will be automatically set to a NULL pointer on return.</p>
 <p>Hint: If the name of the target object is known but not the ID, use <function module="Core">FindObject</function> to resolve it.</p>
     </description>
     <result type="ERROR">
@@ -297,7 +297,7 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
 <p>A number of flag definitions are available that affect the memory allocation process.  They are:</p>
 <types lookup="MEM"/>
 <p>Notice that memory allocation can be returned as an address pointer and/or as a unique memory ID.  Typically a private address with no ID reference is sufficient.</p>
-<p>If the client retrieves both the ID and Address pointer, an internal call will be made to <function module="Core">AccessMemoryID</function> to lock the memory block.  This means that before freeing the memory block the client must call <function module="Core">ReleaseMemory</function> to unlock it. Blocks that are persistently locked will remain in memory until the process is terminated.</p>
+<p>If the client retrieves both the ID and Address pointer, an internal call will be made to <function module="Core">AccessMemory</function> to lock the memory block.  This means that before freeing the memory block the client must call <function module="Core">ReleaseMemory</function> to unlock it. Blocks that are persistently locked will remain in memory until the process is terminated.</p>
 <p>Memory that is allocated through AllocMemory() is automatically cleared with zero-byte values.  When allocating large blocks it may be wise to turn off this feature, achieved by setting the <code>MEM_NO_CLEAR</code> flag.</p>
     </description>
     <result type="ERROR">
@@ -1168,8 +1168,8 @@ GetField(Object, FID_Y|TLONG, &amp;y);
       <param type="LONG" name="MilliSeconds">The total number of milliseconds to wait before giving up.  If -1, the function will wait indefinitely.</param>
     </input>
     <description>
-<p>Use LockObject() to gain exclusivity to an object at thread-level.  This function provides identical behaviour to that of <function module="Core">AccessObjectID</function>, but with a slight speed advantage as the object ID does not need to be resolved to an address.  Calls to LockObject() will nest, and must be matched with a call to <function module="Core">ReleaseObject</function> to unlock the object.</p>
-<p>Be aware that while this function is faster than <function module="Core">AccessObjectID</function>, its use may be considered unsafe if other threads could terminate the object without a suitable barrier in place.</p>
+<p>Use LockObject() to gain exclusivity to an object at thread-level.  This function provides identical behaviour to that of <function module="Core">AccessObject</function>, but with a slight speed advantage as the object ID does not need to be resolved to an address.  Calls to LockObject() will nest, and must be matched with a call to <function module="Core">ReleaseObject</function> to unlock the object.</p>
+<p>Be aware that while this function is faster than <function module="Core">AccessObject</function>, its use may be considered unsafe if other threads could terminate the object without a suitable barrier in place.</p>
 <p>If it is guaranteed that an object is not being shared between threads, object locking is unnecessary.</p>
     </description>
     <result type="ERROR">
@@ -1517,7 +1517,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <param type="MEMORYID" name="MemoryID">A reference to a memory resource for release.</param>
     </input>
     <description>
-<p>Successful calls to <function module="Core">AccessMemoryID</function> must be paired with a call to ReleaseMemory() so that the memory can be made available to other processes.  By releasing the resource, the access count will decrease, and if applicable a thread that is in the queue for access may then be able to acquire a lock.</p>
+<p>Successful calls to <function module="Core">AccessMemory</function> must be paired with a call to ReleaseMemory() so that the memory can be made available to other processes.  By releasing the resource, the access count will decrease, and if applicable a thread that is in the queue for access may then be able to acquire a lock.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -1536,7 +1536,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <param type="OBJECTPTR" name="Object">Pointer to the object to be released.</param>
     </input>
     <description>
-<p>Release a lock previously obtained from <function module="Core">AccessObjectID</function> or <function module="Core">LockObject</function>.  Locks will nest, so a release is required for every lock that has been granted.</p>
+<p>Release a lock previously obtained from <function module="Core">AccessObject</function> or <function module="Core">LockObject</function>.  Locks will nest, so a release is required for every lock that has been granted.</p>
     </description>
   </function>
 
@@ -1663,16 +1663,16 @@ if (!OpenDir(path, RDF_FILE|RDF_FOLDER, &amp;info)) {
     <comment>Scans a message queue for multiple occurrences of a message type.</comment>
     <prototype>ERROR ScanMessages(APTR Queue, LONG * Index, LONG Type, APTR Buffer, LONG Size)</prototype>
     <input>
-      <param type="APTR" name="Queue">An address pointer for a message queue (use AccessMemoryID() to get an address from a message queue ID).</param>
+      <param type="APTR" name="Queue">An address pointer for a message queue (use AccessMemory() to get an address from a message queue ID).</param>
       <param type="LONG *" name="Index">Pointer to a 32-bit value that must initially be set to zero.  The ScanMessages() function will automatically update this variable with each call so that it can remember its analysis position.</param>
       <param type="LONG" name="Type">The message type to filter for, or zero to scan all messages in the queue.</param>
       <param type="APTR" name="Buffer">Pointer to a buffer that is large enough to hold the message information.  Set to NULL if you are not interested in the message data.</param>
       <param type="LONG" name="Size">The byte-size of the supplied Buffer.</param>
     </input>
     <description>
-<p>Use the ScanMessages() function to scan a message queue for information without affecting the state of the queue.  To use this function, you need to establish a connection to the queue by using the <function module="Core">AccessMemoryID</function> function first to gain access.  Then make repeated calls to ScanMessages() to analyse the queue until it returns an error code other than <code>ERR_Okay</code>.  Use <function module="Core">ReleaseMemory</function> to let go of the message queue when you are done with it.</p>
+<p>Use the ScanMessages() function to scan a message queue for information without affecting the state of the queue.  To use this function, you need to establish a connection to the queue by using the <function module="Core">AccessMemory</function> function first to gain access.  Then make repeated calls to ScanMessages() to analyse the queue until it returns an error code other than <code>ERR_Okay</code>.  Use <function module="Core">ReleaseMemory</function> to let go of the message queue when you are done with it.</p>
 <p>Here is an example that scans the queue of the active task:</p>
-<pre>if (!AccessMemoryID(GetResource(RES_MESSAGEQUEUE), MEM_READ, &amp;queue)) {
+<pre>if (!AccessMemory(GetResource(RES_MESSAGEQUEUE), MEM_READ, &amp;queue)) {
    while (!ScanMessages(queue, &amp;index, MSGID_QUIT, NULL, NULL)) {
       ...
    }

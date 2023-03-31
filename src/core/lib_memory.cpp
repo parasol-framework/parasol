@@ -73,7 +73,7 @@ A number of flag definitions are available that affect the memory allocation pro
 Notice that memory allocation can be returned as an address pointer and/or as a unique memory ID.  Typically a private
 address with no ID reference is sufficient.
 
-If the client retrieves both the ID and Address pointer, an internal call will be made to ~AccessMemoryID() to lock the
+If the client retrieves both the ID and Address pointer, an internal call will be made to ~AccessMemory() to lock the
 memory block.  This means that before freeing the memory block the client must call ~ReleaseMemory() to unlock it.
 Blocks that are persistently locked will remain in memory until the process is terminated.
 
@@ -171,7 +171,7 @@ ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
 
       if ((MemoryID) and (Address)) {
          if (Flags & MEM_NO_LOCK) *Address = data_start;
-         else if (AccessMemoryID(unique_id, MEM_READ_WRITE, 2000, Address) != ERR_Okay) {
+         else if (AccessMemory(unique_id, MEM_READ_WRITE, 2000, Address) != ERR_Okay) {
             log.warning("Memory block %d stolen during allocation!", *MemoryID);
             return ERR_AccessMemory;
          }

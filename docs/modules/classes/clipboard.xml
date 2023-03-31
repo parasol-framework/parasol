@@ -138,7 +138,7 @@
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
-        <error code="AccessMemoryID">The clipboard memory data was not accessible.</error>
+        <error code="AccessMemory">The clipboard memory data was not accessible.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>

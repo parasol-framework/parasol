@@ -550,7 +550,7 @@ static ERROR CONFIG_SaveToObject(extConfig *Self, struct acSaveToObject *Args)
    log.msg("Saving %d groups to object #%d.", (LONG)Self->Groups->size(), Args->DestID);
 
    OBJECTPTR dest;
-   if (!AccessObjectID(Args->DestID, 5000, &dest)) {
+   if (!AccessObject(Args->DestID, 5000, &dest)) {
       ConfigGroups &groups = Self->Groups[0];
       for (auto& [group, keys] : groups) {
          std::string out_group("\n[" + group + "]\n");

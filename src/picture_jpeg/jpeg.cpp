@@ -258,7 +258,7 @@ static ERROR JPEG_SaveImage(prvPicture *Self, struct acSaveImage *Args)
    objFile *file = NULL;
 
    if ((Args) and (Args->DestID)) {
-      if (AccessObjectID(Args->DestID, 3000, &file)) return log.warning(ERR_AccessObject);
+      if (AccessObject(Args->DestID, 3000, &file)) return log.warning(ERR_AccessObject);
    }
    else {
       STRING path;

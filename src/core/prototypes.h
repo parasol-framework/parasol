@@ -4,14 +4,14 @@
 extern "C" {
 #endif
 
-ERROR AccessMemoryID(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR * Result);
+ERROR AccessMemory(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR * Result);
 ERROR Action(LONG Action, OBJECTPTR Object, APTR Parameters);
 void ActionList(struct ActionTable ** Actions, LONG * Size);
 ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args);
 CSTRING ResolveClassID(CLASSID ID);
 LONG AllocateID(LONG Type);
 ERROR AllocMemory(LONG Size, LONG Flags, APTR * Address, MEMORYID * ID);
-ERROR AccessObjectID(OBJECTID Object, LONG MilliSeconds, OBJECTPTR * Result);
+ERROR AccessObject(OBJECTID Object, LONG MilliSeconds, OBJECTPTR * Result);
 ERROR CheckAction(OBJECTPTR Object, LONG Action);
 ERROR CheckMemoryExists(MEMORYID ID);
 ERROR CheckObjectExists(OBJECTID Object);

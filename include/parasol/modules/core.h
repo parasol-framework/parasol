@@ -1868,14 +1868,14 @@ struct ScriptArg { // For use with scExec
 
 extern struct CoreBase *CoreBase;
 struct CoreBase {
-   ERROR (*_AccessMemoryID)(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR Result);
+   ERROR (*_AccessMemory)(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR Result);
    ERROR (*_Action)(LONG Action, OBJECTPTR Object, APTR Parameters);
    void (*_ActionList)(struct ActionTable ** Actions, LONG * Size);
    ERROR (*_ActionMsg)(LONG Action, OBJECTID Object, APTR Args);
    CSTRING (*_ResolveClassID)(CLASSID ID);
    LONG (*_AllocateID)(LONG Type);
    ERROR (*_AllocMemory)(LONG Size, LONG Flags, APTR Address, MEMORYID * ID);
-   ERROR (*_AccessObjectID)(OBJECTID Object, LONG MilliSeconds, APTR Result);
+   ERROR (*_AccessObject)(OBJECTID Object, LONG MilliSeconds, APTR Result);
    ERROR (*_CheckAction)(OBJECTPTR Object, LONG Action);
    ERROR (*_CheckMemoryExists)(MEMORYID ID);
    ERROR (*_CheckObjectExists)(OBJECTID Object);
@@ -1992,14 +1992,14 @@ struct CoreBase {
 };
 
 #ifndef PRV_CORE_MODULE
-inline ERROR AccessMemoryID(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessMemoryID(Memory,Flags,MilliSeconds,Result); }
+inline ERROR AccessMemory(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessMemory(Memory,Flags,MilliSeconds,Result); }
 inline ERROR Action(LONG Action, OBJECTPTR Object, APTR Parameters) { return CoreBase->_Action(Action,Object,Parameters); }
 inline void ActionList(struct ActionTable ** Actions, LONG * Size) { return CoreBase->_ActionList(Actions,Size); }
 inline ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args) { return CoreBase->_ActionMsg(Action,Object,Args); }
 inline CSTRING ResolveClassID(CLASSID ID) { return CoreBase->_ResolveClassID(ID); }
 inline LONG AllocateID(LONG Type) { return CoreBase->_AllocateID(Type); }
 inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address, MEMORYID * ID) { return CoreBase->_AllocMemory(Size,Flags,Address,ID); }
-inline ERROR AccessObjectID(OBJECTID Object, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessObjectID(Object,MilliSeconds,Result); }
+inline ERROR AccessObject(OBJECTID Object, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessObject(Object,MilliSeconds,Result); }
 inline ERROR CheckAction(OBJECTPTR Object, LONG Action) { return CoreBase->_CheckAction(Object,Action); }
 inline ERROR CheckMemoryExists(MEMORYID ID) { return CoreBase->_CheckMemoryExists(ID); }
 inline ERROR CheckObjectExists(OBJECTID Object) { return CoreBase->_CheckObjectExists(Object); }
@@ -2472,7 +2472,7 @@ struct BaseClass { // Must be 64-bit aligned
    UBYTE ThreadPending;         // ActionThread() increments this.
    volatile BYTE Queue;         // Managed by locking functions
    volatile BYTE SleepQueue;    //
-   volatile bool Locked;        // Set if locked by AccessObjectID()/LockObject()
+   volatile bool Locked;        // Set if locked by AccessObject()/LockObject()
    BYTE ActionDepth;            // Incremented each time an action or method is called on the object
 
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }

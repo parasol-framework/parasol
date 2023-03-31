@@ -1107,7 +1107,7 @@ static void tag_set(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, 
          if (!FindObject(Tag->Attrib[1].Value, 0, FOF_SMART_NAMES, &objectid)) {
             if (valid_objectid(Self, objectid) IS TRUE) {
                OBJECTPTR object;
-               if (!AccessObjectID(objectid, 3000, &object)) {
+               if (!AccessObject(objectid, 3000, &object)) {
                   for (LONG i=2; i < Tag->TotalAttrib; i++) {
                      log.trace("tag_set:","#%d %s = '%s'", objectid, Tag->Attrib[i].Name, Tag->Attrib[i].Value);
 
@@ -1437,7 +1437,7 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
                if (!FindObject(src, 0, FOF_SMART_NAMES, &objectid)) {
                   if ((objectid) and (valid_objectid(Self, objectid))) {
                      objXML *objxml;
-                     if (!AccessObjectID(objectid, 3000, &objxml)) {
+                     if (!AccessObject(objectid, 3000, &objxml)) {
                         if (objxml->ClassID IS ID_XML) {
                            if (!xmlGetString(objxml, 0, XMF_INCLUDE_SIBLINGS|XMF_STRIP_CDATA, &content)) {
                               acDataXML(object, content);

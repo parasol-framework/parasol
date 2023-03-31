@@ -122,12 +122,12 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
          if (auto display_id = get_display(xevent.xany.window)) {
             auto surface_id = GetOwnerID(display_id);
             objSurface *surface;
-            if (!AccessObjectID(surface_id, 5000, &surface)) {
+            if (!AccessObject(surface_id, 5000, &surface)) {
                // Update the display width/height so that we don't recursively post further display mode updates to the
                // X server.
 
              extDisplay *display;
-              if (!AccessObjectID(display_id, 5000, &display)) {
+              if (!AccessObject(display_id, 5000, &display)) {
                   display->Width  = notify->width;
                   display->Height = notify->height;
                   acResize(surface, notify->width, notify->height, 0);
@@ -298,7 +298,7 @@ void handle_configure_notify(XConfigureEvent *xevent)
 
       // Update the display dimensions
 
-      if (!AccessObjectID(display_id, 3000, &display)) {
+      if (!AccessObject(display_id, 3000, &display)) {
          Window childwin;
          LONG absx, absy;
 

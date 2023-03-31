@@ -488,7 +488,7 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
          CopyMemory(&glDisplayInfo, Info, InfoSize);
          return ERR_Okay;
       }
-      else if (!AccessObjectID(DisplayID, 5000, &display)) {
+      else if (!AccessObject(DisplayID, 5000, &display)) {
          Info->DisplayID     = DisplayID;
          Info->Flags         = display->Flags;
          Info->Width         = display->Width;
@@ -1203,7 +1203,7 @@ ERROR init_egl(void)
       objPointer *pointer;
       if (!adGetConfig(&config)) {
          DOUBLE dp_factor = 160.0 / AConfiguration_getDensity(config);
-         if (!AccessObjectID(glPointerID, 3000, &pointer)) {
+         if (!AccessObject(glPointerID, 3000, &pointer)) {
             pointer->ClickSlop = F2I(8.0 * dp_factor);
             log.msg("Click-slop calculated as %d.", pointer->ClickSlop);
             ReleaseObject(pointer);

@@ -88,7 +88,7 @@ static ERROR PTR_GrabX11Pointer(extPointer *Self, struct ptrGrabX11Pointer *Args
    APTR xwin;
    OBJECTPTR surface;
 
-   if (!AccessObjectID(Self->SurfaceID, 5000, &surface)) {
+   if (!AccessObject(Self->SurfaceID, 5000, &surface)) {
       surface->getPtr(FID_WindowHandle, &xwin);
       ReleaseObject(surface);
 
@@ -506,7 +506,7 @@ static ERROR PTR_Free(extPointer *Self, APTR Void)
 
 /*
    OBJECTPTR object;
-   if ((Self->SurfaceID) and (!AccessObjectID(Self->SurfaceID, 5000, &object))) {
+   if ((Self->SurfaceID) and (!AccessObject(Self->SurfaceID, 5000, &object))) {
       UnsubscribeFeed(object);
       ReleaseObject(object);
    }
@@ -531,7 +531,7 @@ static ERROR PTR_Hide(extPointer *Self, APTR Void)
       APTR xwin;
       OBJECTPTR surface;
 
-      if (AccessObjectID(Self->SurfaceID, 5000, &surface) IS ERR_Okay) {
+      if (AccessObject(Self->SurfaceID, 5000, &surface) IS ERR_Okay) {
          surface->getPtr(FID_WindowHandle, &xwin);
          XDefineCursor(XDisplay, (Window)xwin, GetX11Cursor(Self->CursorID));
          ReleaseObject(surface);
@@ -631,7 +631,7 @@ static ERROR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
 #ifdef __xwindows__
    OBJECTPTR surface;
 
-   if (!AccessObjectID(Self->SurfaceID, 3000, &surface)) {
+   if (!AccessObject(Self->SurfaceID, 3000, &surface)) {
       APTR xwin;
 
       if (!surface->getPtr(FID_WindowHandle, &xwin)) {
@@ -649,7 +649,7 @@ static ERROR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
 #elif _WIN32
    OBJECTPTR surface;
 
-   if (!AccessObjectID(Self->SurfaceID, 3000, &surface)) {
+   if (!AccessObject(Self->SurfaceID, 3000, &surface)) {
       if (Args->Flags & MTF_X) Self->X = Args->X;
       if (Args->Flags & MTF_Y) Self->Y = Args->Y;
       if (Self->X < 0) Self->X = 0;
@@ -758,7 +758,7 @@ static ERROR PTR_Show(extPointer *Self, APTR Void)
       APTR xwin;
       OBJECTPTR surface;
 
-      if (!AccessObjectID(Self->SurfaceID, 5000, &surface)) {
+      if (!AccessObject(Self->SurfaceID, 5000, &surface)) {
          surface->getPtr(FID_WindowHandle, &xwin);
          XDefineCursor(XDisplay, (Window)xwin, GetX11Cursor(Self->CursorID));
          ReleaseObject(surface);

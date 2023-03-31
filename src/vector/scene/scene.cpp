@@ -332,7 +332,7 @@ static ERROR VECTORSCENE_Free(extVectorScene *Self, APTR Args)
 
    if (Self->SurfaceID) {
       OBJECTPTR surface;
-      if (!AccessObjectID(Self->SurfaceID, 5000, &surface)) {
+      if (!AccessObject(Self->SurfaceID, 5000, &surface)) {
          UnsubscribeAction(surface, 0);
          ReleaseObject(surface);
       }

@@ -187,7 +187,7 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
    if (!(msg = (ThreadMessage *)Message)) return ERR_Okay;
 
    extThread *thread;
-   if (!AccessObjectID(msg->ThreadID, 5000, (OBJECTPTR *)&thread)) {
+   if (!AccessObject(msg->ThreadID, 5000, (OBJECTPTR *)&thread)) {
       thread->Active = FALSE; // Because marking the thread as inactive is not done until the message is received by the core program
 
       if (thread->Callback.Type IS CALL_STDC) {

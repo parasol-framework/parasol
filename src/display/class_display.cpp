@@ -866,7 +866,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
          HWND popover = 0;
          if (Self->PopOverID) {
             extDisplay *other_display;
-            if (!AccessObjectID(Self->PopOverID, 3000, &other_display)) {
+            if (!AccessObject(Self->PopOverID, 3000, &other_display)) {
                popover = other_display->WindowHandle;
                ReleaseObject(other_display);
             }
@@ -2744,7 +2744,7 @@ static ERROR SET_PopOver(extDisplay *Self, OBJECTID Value)
          Self->PopOverID = 0;
          XSetTransientForHint(XDisplay, Self->XWindowHandle, (Window)0);
       }
-      else if (!AccessObjectID(Value, 2000, &popover)) {
+      else if (!AccessObject(Value, 2000, &popover)) {
          if (popover->ClassID IS ID_DISPLAY) {
             Self->PopOverID = Value;
             XSetTransientForHint(XDisplay, Self->XWindowHandle, (Window)popover->WindowHandle);
