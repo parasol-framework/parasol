@@ -1708,7 +1708,7 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
       for (auto resource=Self->Resources; resource; resource=resource->Next) {
          if (resource->Type IS RT_PERSISTENT_SCRIPT) {
             script = GetObjectPtr(resource->ObjectID);
-            if (!StrMatch(name, GetName(script))) {
+            if (!StrMatch(name, script->Name)) {
                log.msg("Persistent script discovered.");
                if ((!Self->DefaultScript) or (defaultscript)) Self->DefaultScript = script;
                return;

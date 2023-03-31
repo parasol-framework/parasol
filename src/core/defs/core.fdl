@@ -1163,7 +1163,7 @@ struct ScriptArg { // For use with scExec
     "GetField",
     "GetFieldVariable",
     "TotalChildren",
-    "GetName",
+    "GetSystemState",
     "ListChildren",
     "Base64Decode",
     "RegisterFD",
@@ -1255,7 +1255,6 @@ struct ScriptArg { // For use with scExec
     "UnloadFile",
     "SetDefaultPermissions",
     "CompareFilePaths",
-    "GetSystemState",
     "AddInfoTag")
 
   c_insert([[

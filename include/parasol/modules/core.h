@@ -1895,7 +1895,7 @@ struct CoreBase {
    ERROR (*_GetField)(OBJECTPTR Object, FIELD Field, APTR Result);
    ERROR (*_GetFieldVariable)(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size);
    LONG (*_TotalChildren)(OBJECTID Object);
-   CSTRING (*_GetName)(OBJECTPTR Object);
+   const struct SystemState * (*_GetSystemState)(void);
    ERROR (*_ListChildren)(OBJECTID Object, pf::vector<ChildEntry> * List);
    ERROR (*_Base64Decode)(struct pfBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
    ERROR (*_RegisterFD)(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
@@ -1987,7 +1987,6 @@ struct CoreBase {
    void (*_UnloadFile)(struct CacheFile * Cache);
    void (*_SetDefaultPermissions)(LONG User, LONG Group, LONG Permissions);
    ERROR (*_CompareFilePaths)(CSTRING PathA, CSTRING PathB);
-   const struct SystemState * (*_GetSystemState)(void);
    ERROR (*_AddInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING Value);
 };
 
@@ -2019,7 +2018,7 @@ inline OBJECTID GetOwnerID(OBJECTID Object) { return CoreBase->_GetOwnerID(Objec
 inline ERROR GetField(OBJECTPTR Object, FIELD Field, APTR Result) { return CoreBase->_GetField(Object,Field,Result); }
 inline ERROR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size) { return CoreBase->_GetFieldVariable(Object,Field,Buffer,Size); }
 inline LONG TotalChildren(OBJECTID Object) { return CoreBase->_TotalChildren(Object); }
-inline CSTRING GetName(OBJECTPTR Object) { return CoreBase->_GetName(Object); }
+inline const struct SystemState * GetSystemState(void) { return CoreBase->_GetSystemState(); }
 inline ERROR ListChildren(OBJECTID Object, pf::vector<ChildEntry> * List) { return CoreBase->_ListChildren(Object,List); }
 inline ERROR Base64Decode(struct pfBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written) { return CoreBase->_Base64Decode(State,Input,InputSize,Output,Written); }
 inline ERROR RegisterFD(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data) { return CoreBase->_RegisterFD(FD,Flags,Routine,Data); }
@@ -2111,7 +2110,6 @@ inline LONG StrDatatype(CSTRING String) { return CoreBase->_StrDatatype(String);
 inline void UnloadFile(struct CacheFile * Cache) { return CoreBase->_UnloadFile(Cache); }
 inline void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions) { return CoreBase->_SetDefaultPermissions(User,Group,Permissions); }
 inline ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB) { return CoreBase->_CompareFilePaths(PathA,PathB); }
-inline const struct SystemState * GetSystemState(void) { return CoreBase->_GetSystemState(); }
 inline ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
 #endif
 

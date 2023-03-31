@@ -49,7 +49,6 @@ FDEF argsGetField[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR 
 FDEF argsGetFieldArray[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_LARGE }, { "Result", FD_PTR|FD_RESULT }, { "Elements", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsGetFieldVariable[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_STR }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsGetMessage[] = { { "Error", FD_LONG|FD_ERROR }, { "Queue", FD_LONG }, { "Type", FD_LONG }, { "Flags", FD_LONG }, { "Buffer", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
-FDEF argsGetName[] = { { "Result", FD_STR }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsGetObjectPtr[] = { { "Object", FD_OBJECTPTR }, { "Object", FD_OBJECTID }, { 0, 0 } };
 FDEF argsGetOwnerID[] = { { "Result", FD_OBJECTID }, { "Object", FD_OBJECTID }, { 0, 0 } };
 FDEF argsGetResource[] = { { "Result", FD_LARGE }, { "Resource", FD_LONG }, { 0, 0 } };
@@ -154,7 +153,7 @@ const struct Function glFunctions[] = {
    { (APTR)GetField, "GetField", argsGetField },
    { (APTR)GetFieldVariable, "GetFieldVariable", argsGetFieldVariable },
    { (APTR)TotalChildren, "TotalChildren", argsTotalChildren },
-   { (APTR)GetName, "GetName", argsGetName },
+   { (APTR)GetSystemState, "GetSystemState", argsGetSystemState },
    { (APTR)ListChildren, "ListChildren", argsListChildren },
    { (APTR)Base64Decode, "Base64Decode", argsBase64Decode },
    { (APTR)RegisterFD, "RegisterFD", argsRegisterFD },
@@ -246,7 +245,6 @@ const struct Function glFunctions[] = {
    { (APTR)UnloadFile, "UnloadFile", argsUnloadFile },
    { (APTR)SetDefaultPermissions, "SetDefaultPermissions", argsSetDefaultPermissions },
    { (APTR)CompareFilePaths, "CompareFilePaths", argsCompareFilePaths },
-   { (APTR)GetSystemState, "GetSystemState", argsGetSystemState },
    { (APTR)AddInfoTag, "AddInfoTag", argsAddInfoTag },
    { NULL, NULL, NULL }
 };

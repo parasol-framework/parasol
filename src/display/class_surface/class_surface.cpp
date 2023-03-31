@@ -1702,7 +1702,7 @@ static ERROR SURFACE_MoveToBack(extSurface *Self, APTR Void)
       return ERR_Okay|ERF_Notified;
    }
 
-   log.branch("%s", GetName(Self));
+   log.branch("%s", Self->Name);
 
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
    auto &list = glSurfaces;
@@ -1757,7 +1757,7 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
 {
    pf::Log log;
 
-   log.branch("%s", GetName(Self));
+   log.branch("%s", Self->Name);
 
    if (!Self->ParentID) {
       acMoveToFront(Self->DisplayID);

@@ -527,7 +527,7 @@ void ActionList(struct ActionTable **List, LONG *Size)
 -FUNCTION-
 ActionMsg: Execute an action or method by way of object ID.
 
-Use ActionMsg() to execute an action where only the object ID is known.
+Use ActionMsg() to execute an action when only the object ID is known.
 
 -INPUT-
 int Action: The ID of the action or method to be executed.
@@ -710,7 +710,7 @@ ERROR CheckAction(OBJECTPTR Object, LONG ActionID)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((Object) and (ActionID)) {
+   if (Object) {
       if (Object->ClassID IS ID_METACLASS) {
          if (((extMetaClass *)Object)->ActionTable[ActionID].PerformAction) return ERR_Okay;
          else return ERR_False;
@@ -1001,32 +1001,9 @@ CLASSID GetClassID(OBJECTID ObjectID)
 /*********************************************************************************************************************
 
 -FUNCTION-
-GetName: Retrieves object names.
+GetObjectPtr: Returns a direct pointer for any object ID.
 
-This function will return the name of the object referenced by the Object pointer. If the target object has not been
-assigned a name then a null-string is returned.
-
--INPUT-
-obj Object: An object to query.
-
--RESULT-
-cstr: A string containing the object name is returned.  If the object has no name or the parameter is invalid, a null-terminated string is returned.
-
-*********************************************************************************************************************/
-
-CSTRING GetName(OBJECTPTR Object)
-{
-   if (Object) return Object->Name;
-   else return "";
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-GetObjectPtr: Returns the object address for any private object ID.
-
-This function translates private object ID's (owned by the process) to their respective address pointers.  Public
-object ID's are not supported.
+This function translates object ID's to their respective address pointers.
 
 -INPUT-
 oid Object: The ID of the object to lookup.
@@ -1040,8 +1017,7 @@ OBJECTPTR GetObjectPtr(OBJECTID ObjectID)
 {
    ThreadLock lock(TL_PRIVATE_MEM, 4000);
    if (lock.granted()) {
-      auto mem = glPrivateMemory.find(ObjectID);
-      if (mem != glPrivateMemory.end()) {
+      if (auto mem = glPrivateMemory.find(ObjectID); mem != glPrivateMemory.end()) {
          if ((mem->second.Flags & MEM_OBJECT) and (mem->second.Object)) {
             if (mem->second.Object->UID IS ObjectID) {
                return mem->second.Object;
@@ -1075,8 +1051,7 @@ OBJECTID GetOwnerID(OBJECTID ObjectID)
 {
    ThreadLock lock(TL_PRIVATE_MEM, 4000);
    if (lock.granted()) {
-      auto mem = glPrivateMemory.find(ObjectID);
-      if (mem != glPrivateMemory.end()) {
+      if (auto mem = glPrivateMemory.find(ObjectID); mem != glPrivateMemory.end()) {
          if (mem->second.Object) return mem->second.Object->OwnerID;
       }
    }
@@ -1274,13 +1249,13 @@ NotifySubscribers: Used to send notification messages to action subscribers.
 
 This function can be used by classes that need total control over notification management.  The system default for
 notifying action subscribers is to call them immediately after an action has taken place.  This may be inconvenient
-if the code for an action needs to perform a procedure after the subscribers have been notified.  Using
-NotifySubscribers() allows for such a scenario.  Another possible use is customising the parameter values of the
-called action so that the original values are not sent to the subscriber(s).
+if the code for an action needs to execute code post-notification.  Using NotifySubscribers() allows these scenarios
+to be addressed.  Another possible use is for customised parameter values to be sent to subscribers instead of
+the original values.
 
 NOTE: Calling NotifySubscribers() does nothing to prevent the core from sending out an action notification as it
-normally would, thus causing duplication.  To prevent this scenario, you must logical-or the return code of your
-action support function with `ERF_Notified`, e.g. `ERR_Okay|ERF_Notified`.
+normally would, thus causing duplication.  To prevent this the client must logical-or the return code of
+the action function with `ERF_Notified`, e.g. `ERR_Okay|ERF_Notified`.
 
 -INPUT-
 obj Object: Pointer to the object that is to receive the notification message.
@@ -1306,7 +1281,7 @@ void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR E
    const std::lock_guard<std::recursive_mutex> lock(glSubLock);
 
    if ((!glSubscriptions[Object->UID].empty()) and (!glSubscriptions[Object->UID][ActionID].empty())) {
-      glSubReadOnly++;
+      glSubReadOnly++; // Prevents changes to glSubscriptions while we're processing it.
       for (auto &sub : glSubscriptions[Object->UID][ActionID]) {
          if (sub.Context) {
             pf::SwitchContext ctx(sub.Context);
@@ -1390,15 +1365,13 @@ ERROR QueueAction(LONG ActionID, OBJECTID ObjectID, APTR Args)
       .SendArgs = false
    };
 
-   const FunctionField *fields = NULL;
    LONG msgsize = 0;
 
    if (Args) {
-      LONG argssize = 0;
       if (ActionID > 0) {
          if (ActionTable[ActionID].Size) {
-            fields   = ActionTable[ActionID].Args;
-            argssize = ActionTable[ActionID].Size;
+            auto fields   = ActionTable[ActionID].Args;
+            auto argssize = ActionTable[ActionID].Size;
             if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, ActionTable[ActionID].Name) != ERR_Okay) {
                log.warning("Failed to buffer arguments for action \"%s\".", ActionTable[ActionID].Name);
                return ERR_Failed;
@@ -1409,8 +1382,8 @@ ERROR QueueAction(LONG ActionID, OBJECTID ObjectID, APTR Args)
       }
       else if (auto cl = (extMetaClass *)FindClass(GetClassID(ObjectID))) {
          if (-ActionID < cl->TotalMethods) {
-            fields   = cl->Methods[-ActionID].Args;
-            argssize = cl->Methods[-ActionID].Size;
+            auto fields   = cl->Methods[-ActionID].Args;
+            auto argssize = cl->Methods[-ActionID].Size;
             if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, cl->Methods[-ActionID].Name) != ERR_Okay) {
                log.warning("Failed to buffer arguments for method \"%s\".", cl->Methods[-ActionID].Name);
                return ERR_Failed;
