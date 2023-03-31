@@ -4,8 +4,8 @@
 #define FDEF static const struct FunctionField
 #endif
 
-FDEF argsAccessMemoryID[] = { { "Error", FD_LONG|FD_ERROR }, { "Memory", FD_LONG }, { "Flags", FD_LONG }, { "MilliSeconds", FD_LONG }, { "Result", FD_PTR|FD_RESULT }, { 0, 0 } };
-FDEF argsAccessObjectID[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTID }, { "MilliSeconds", FD_LONG }, { "Result", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
+FDEF argsAccessMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Memory", FD_LONG }, { "Flags", FD_LONG }, { "MilliSeconds", FD_LONG }, { "Result", FD_PTR|FD_RESULT }, { 0, 0 } };
+FDEF argsAccessObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTID }, { "MilliSeconds", FD_LONG }, { "Result", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
 FDEF argsAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Action", FD_LONG }, { "Object", FD_OBJECTPTR }, { "Parameters", FD_PTR }, { 0, 0 } };
 FDEF argsActionList[] = { { "Void", FD_VOID }, { "ActionTable:Actions", FD_ARRAY|FD_STRUCT|FD_RESULT }, { "Size", FD_LONG|FD_ARRAYSIZE|FD_RESULT }, { 0, 0 } };
 FDEF argsActionMsg[] = { { "Error", FD_LONG|FD_ERROR }, { "Action", FD_LONG }, { "Object", FD_OBJECTID }, { "Args", FD_PTR }, { 0, 0 } };
@@ -75,8 +75,7 @@ FDEF argsReadFileToBuffer[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR 
 FDEF argsReadInfoTag[] = { { "Error", FD_LONG|FD_ERROR }, { "FileInfo:Info", FD_PTR|FD_STRUCT }, { "Name", FD_STR }, { "Value", FD_STR|FD_RESULT }, { 0, 0 } };
 FDEF argsReallocMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Memory", FD_PTR }, { "Size", FD_LONG }, { "Address", FD_PTR|FD_ALLOC|FD_RESULT }, { "ID", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsRegisterFD[] = { { "Error", FD_LONG|FD_ERROR }, { "FD", FD_PTR }, { "Flags", FD_LONG }, { "Routine", FD_PTR }, { "Data", FD_PTR }, { 0, 0 } };
-FDEF argsReleaseMemory[] = { { "Result", FD_LONG }, { "Address", FD_PTR }, { 0, 0 } };
-FDEF argsReleaseMemoryID[] = { { "Error", FD_LONG|FD_ERROR }, { "MemoryID", FD_LONG }, { 0, 0 } };
+FDEF argsReleaseMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "MemoryID", FD_LONG }, { 0, 0 } };
 FDEF argsReleaseObject[] = { { "Void", FD_VOID }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsResolveClassID[] = { { "Result", FD_STR }, { "ID", FD_LONG|FD_UNSIGNED }, { 0, 0 } };
 FDEF argsResolveClassName[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "Name", FD_STR }, { 0, 0 } };
@@ -128,14 +127,14 @@ FDEF argsWaitForObjects[] = { { "Error", FD_LONG|FD_ERROR }, { "Flags", FD_LONG 
 FDEF argsWaitTime[] = { { "Void", FD_VOID }, { "Seconds", FD_LONG }, { "MicroSeconds", FD_LONG }, { 0, 0 } };
 
 const struct Function glFunctions[] = {
-   { (APTR)AccessMemoryID, "AccessMemoryID", argsAccessMemoryID },
+   { (APTR)AccessMemory, "AccessMemory", argsAccessMemory },
    { (APTR)Action, "Action", argsAction },
    { (APTR)ActionList, "ActionList", argsActionList },
    { (APTR)ActionMsg, "ActionMsg", argsActionMsg },
    { (APTR)ResolveClassID, "ResolveClassID", argsResolveClassID },
    { (APTR)AllocateID, "AllocateID", argsAllocateID },
    { (APTR)AllocMemory, "AllocMemory", argsAllocMemory },
-   { (APTR)AccessObjectID, "AccessObjectID", argsAccessObjectID },
+   { (APTR)AccessObject, "AccessObject", argsAccessObject },
    { (APTR)CheckAction, "CheckAction", argsCheckAction },
    { (APTR)CheckMemoryExists, "CheckMemoryExists", argsCheckMemoryExists },
    { (APTR)CheckObjectExists, "CheckObjectExists", argsCheckObjectExists },
@@ -212,7 +211,7 @@ const struct Function glFunctions[] = {
    { (APTR)GetActionMsg, "GetActionMsg", argsGetActionMsg },
    { (APTR)FuncError, "FuncError", argsFuncError },
    { (APTR)SetArray, "SetArray", argsSetArray },
-   { (APTR)ReleaseMemoryID, "ReleaseMemoryID", argsReleaseMemoryID },
+   { (APTR)StrHash, "StrHash", argsStrHash },
    { (APTR)LockObject, "LockObject", argsLockObject },
    { (APTR)ReleaseObject, "ReleaseObject", argsReleaseObject },
    { (APTR)AllocMutex, "AllocMutex", argsAllocMutex },
@@ -248,7 +247,6 @@ const struct Function glFunctions[] = {
    { (APTR)SetDefaultPermissions, "SetDefaultPermissions", argsSetDefaultPermissions },
    { (APTR)CompareFilePaths, "CompareFilePaths", argsCompareFilePaths },
    { (APTR)GetSystemState, "GetSystemState", argsGetSystemState },
-   { (APTR)StrHash, "StrHash", argsStrHash },
    { (APTR)AddInfoTag, "AddInfoTag", argsAddInfoTag },
    { NULL, NULL, NULL }
 };

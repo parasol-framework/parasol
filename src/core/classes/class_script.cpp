@@ -633,7 +633,7 @@ static ERROR SET_Owner(objScript *Self, OBJECTID Value)
 
    if (Value) {
       OBJECTPTR newowner;
-      if (!AccessObjectID(Value, 2000, &newowner)) {
+      if (!AccessObject(Value, 2000, &newowner)) {
          SetOwner(Self, newowner);
          ReleaseObject(newowner);
          return ERR_Okay;

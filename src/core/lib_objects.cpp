@@ -68,7 +68,7 @@ static ERROR object_free(BaseClass *Object)
       return ERR_Okay;
    }
 
-   // Check to see if the object is currently locked from AccessObjectID().  If it is, we mark it for deletion so that we
+   // Check to see if the object is currently locked from AccessObject().  If it is, we mark it for deletion so that we
    // can safely get rid of it during ReleaseObject().
 
    if ((Object->Locked) or (Object->ThreadPending)) {
@@ -138,7 +138,7 @@ static ERROR object_free(BaseClass *Object)
    }
 
    // Mark the object as being in the free process.  The mark prevents any further access to the object via
-   // AccessObjectID().  Classes may also use the flag to check if an object is in the process of being freed.
+   // AccessObject().  Classes may also use the flag to check if an object is in the process of being freed.
 
    Object->Flags = (Object->Flags|NF::FREE) & (~NF::UNLOCK_FREE);
 
@@ -546,7 +546,7 @@ Failed: Failed to build buffered arguments.
 ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args)
 {
    OBJECTPTR object;
-   if (auto error = AccessObjectID(ObjectID, 3000, &object); !error) {
+   if (auto error = AccessObject(ObjectID, 3000, &object); !error) {
       error = Action(ActionID, object, Args);
       ReleaseObject(object);
       return error;
@@ -1328,7 +1328,7 @@ void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR E
                if (Object->UID IS entry.ObjectID) UnsubscribeAction(Object, ActionID);
                else {
                   OBJECTPTR obj;
-                  if (!AccessObjectID(entry.ObjectID, 3000, &obj)) {
+                  if (!AccessObject(entry.ObjectID, 3000, &obj)) {
                      UnsubscribeAction(obj, entry.ActionID);
                      ReleaseObject(obj);
                   }

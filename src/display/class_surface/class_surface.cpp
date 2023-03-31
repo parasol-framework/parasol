@@ -72,7 +72,7 @@ void refresh_pointer(extSurface *Self)
 
 static ERROR access_video(OBJECTID DisplayID, objDisplay **Display, objBitmap **Bitmap)
 {
-   if (!AccessObjectID(DisplayID, 5000, Display)) {
+   if (!AccessObject(DisplayID, 5000, Display)) {
       APTR winhandle;
 
       if (!Display[0]->getPtr(FID_WindowHandle, &winhandle)) {
@@ -392,7 +392,7 @@ static void display_resized(OBJECTID DisplayID, LONG X, LONG Y, LONG Width, LONG
 {
    OBJECTID surface_id = GetOwnerID(DisplayID);
    extSurface *surface;
-   if (!AccessObjectID(surface_id, 4000, &surface)) {
+   if (!AccessObject(surface_id, 4000, &surface)) {
       if (surface->ClassID IS ID_SURFACE) {
          if ((X != surface->X) or (Y != surface->Y)) {
             surface->X = X;
@@ -926,7 +926,7 @@ static ERROR SURFACE_Free(extSurface *Self, APTR Void)
    if (Self->ParentID) {
       extSurface *parent;
       ERROR error;
-      if (!(error = AccessObjectID(Self->ParentID, 5000, &parent))) {
+      if (!(error = AccessObject(Self->ParentID, 5000, &parent))) {
          UnsubscribeAction(parent, 0);
          if (Self->Flags & RNF_TRANSPARENT) {
             drwRemoveCallback(parent, NULL);
@@ -1318,7 +1318,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
       if (Self->PopOverID) {
          extSurface *popsurface;
-         if (!AccessObjectID(Self->PopOverID, 2000, &popsurface)) {
+         if (!AccessObject(Self->PopOverID, 2000, &popsurface)) {
             pop_display = popsurface->DisplayID;
             ReleaseObject(popsurface);
 
@@ -1459,7 +1459,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
    // If the FIXED_BUFFER option is set, pass the NEVER_SHRINK option to the bitmap
 
    if (Self->Flags & RNF_FIXED_BUFFER) {
-      if (!AccessObjectID(Self->BufferID, 5000, &bitmap)) {
+      if (!AccessObject(Self->BufferID, 5000, &bitmap)) {
          bitmap->Flags |= BMF_NEVER_SHRINK;
          ReleaseObject(bitmap);
       }
@@ -1579,7 +1579,7 @@ static ERROR SURFACE_Move(extSurface *Self, struct acMove *Args)
    // response times.
 
    APTR queue;
-   if (!AccessMemoryID(GetResource(RES_MESSAGE_QUEUE), MEM_READ, 2000, &queue)) {
+   if (!AccessMemory(GetResource(RES_MESSAGE_QUEUE), MEM_READ, 2000, &queue)) {
       LONG index = 0;
       UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct acMove)];
       while (!ScanMessages(queue, &index, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
@@ -1838,7 +1838,7 @@ static ERROR SURFACE_MoveToFront(extSurface *Self, APTR Void)
       //   Areas of our surface that were obscured by surfaces that also shared our bitmap space.
 
       objBitmap *bitmap;
-      if (!AccessObjectID(Self->BufferID, 5000, &bitmap)) {
+      if (!AccessObject(Self->BufferID, 5000, &bitmap)) {
          auto area = ClipRectangle(cplist[i].Left, cplist[i].Top, cplist[i].Right, cplist[i].Bottom);
          invalidate_overlap(Self, cplist, currentindex, i, area, bitmap);
          ReleaseObject(bitmap);
@@ -2038,7 +2038,7 @@ int(DMF) Dimensions: Dimension flags.
 -ERRORS-
 Okay
 NullArgs
-AccessMemoryID: Unable to access internal surface list.
+AccessMemory: Unable to access internal surface list.
 -END-
 
 *********************************************************************************************************************/

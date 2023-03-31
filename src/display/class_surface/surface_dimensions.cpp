@@ -289,7 +289,7 @@ static ERROR SET_Height(extSurface *Self, Variable *Value)
    if (Value->Type & FD_PERCENTAGE) {
       if (Self->ParentID) {
          extSurface *parent;
-         if (!AccessObjectID(Self->ParentID, 500, &parent)) {
+         if (!AccessObject(Self->ParentID, 500, &parent)) {
             Self->HeightPercent = value;
             Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_HEIGHT) | DMF_RELATIVE_HEIGHT;
             resize_layer(Self, Self->X, Self->Y, 0, parent->Height * value * 0.01, 0, 0, 0, 0, 0);
@@ -808,7 +808,7 @@ static ERROR SET_Width(extSurface *Self, Variable *Value)
 
    if (Value->Type & FD_PERCENTAGE) {
       if (Self->ParentID) {
-         if (!AccessObjectID(Self->ParentID, 500, &parent)) {
+         if (!AccessObject(Self->ParentID, 500, &parent)) {
             Self->WidthPercent = value;
             Self->Dimensions   = (Self->Dimensions & ~DMF_FIXED_WIDTH) | DMF_RELATIVE_WIDTH;
             resize_layer(Self, Self->X, Self->Y, parent->Width * value / 100, 0, 0, 0, 0, 0, 0);
@@ -886,7 +886,7 @@ static ERROR SET_XCoord(extSurface *Self, Variable *Value)
       Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_X) | DMF_RELATIVE_X;
       Self->XPercent   = value;
       if (Self->ParentID) {
-         if (AccessObjectID(Self->ParentID, 500, &parent) IS ERR_Okay) {
+         if (AccessObject(Self->ParentID, 500, &parent) IS ERR_Okay) {
             move_layer(Self, (parent->Width * value) / 100, Self->Y);
             ReleaseObject(parent);
          }
@@ -900,7 +900,7 @@ static ERROR SET_XCoord(extSurface *Self, Variable *Value)
       // If our right-hand side is relative, we need to resize our surface to counteract the movement.
 
       if ((Self->ParentID) and (Self->Dimensions & (DMF_RELATIVE_X_OFFSET|DMF_FIXED_X_OFFSET))) {
-         if (!AccessObjectID(Self->ParentID, 1000, &parent)) {
+         if (!AccessObject(Self->ParentID, 1000, &parent)) {
             resize_layer(Self, Self->X, Self->Y, parent->Width - Self->X - Self->XOffset, 0, 0, 0, 0, 0, 0);
             ReleaseObject(parent);
          }
@@ -950,7 +950,7 @@ static ERROR GET_XOffset(extSurface *Self, Variable *Value)
       else if ((Self->Dimensions & DMF_WIDTH) and
                (Self->Dimensions & DMF_X) and
                (Self->ParentID)) {
-         if (!AccessObjectID(Self->ParentID, 1000, &parent)) {
+         if (!AccessObject(Self->ParentID, 1000, &parent)) {
             value = parent->Width - Self->X - Self->Width;
             ReleaseObject(parent);
          }
@@ -984,7 +984,7 @@ static ERROR SET_XOffset(extSurface *Self, Variable *Value)
       Self->XOffsetPercent = value;
 
       if (Self->ParentID) {
-         if (!AccessObjectID(Self->ParentID, 500, &parent)) {
+         if (!AccessObject(Self->ParentID, 500, &parent)) {
             Self->XOffset = (parent->Width * F2I(Self->XOffsetPercent)) / 100;
             if (!(Self->Dimensions & DMF_X)) Self->X = parent->Width - Self->XOffset - Self->Width;
             if (!(Self->Dimensions & DMF_WIDTH)) {
@@ -1000,14 +1000,14 @@ static ERROR SET_XOffset(extSurface *Self, Variable *Value)
       Self->XOffset = value;
 
       if ((Self->Dimensions & DMF_WIDTH) and (Self->ParentID)) {
-         if (!AccessObjectID(Self->ParentID, 1000, &parent)) {
+         if (!AccessObject(Self->ParentID, 1000, &parent)) {
             move_layer(Self, parent->Width - Self->XOffset - Self->Width, Self->Y);
             ReleaseObject(parent);
          }
          else return log.warning(ERR_AccessObject);
       }
       else if ((Self->Dimensions & DMF_X) and (Self->ParentID)) {
-         if (AccessObjectID(Self->ParentID, 1000, &parent) IS ERR_Okay) {
+         if (AccessObject(Self->ParentID, 1000, &parent) IS ERR_Okay) {
             resize_layer(Self, Self->X, Self->Y, parent->Width - Self->X - Self->XOffset, 0, 0, 0, 0, 0, 0);
             ReleaseObject(parent);
          }
@@ -1062,7 +1062,7 @@ static ERROR SET_YCoord(extSurface *Self, Variable *Value)
       Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_Y) | DMF_RELATIVE_Y;
       Self->YPercent = value;
       if (Self->ParentID) {
-         if (!AccessObjectID(Self->ParentID, 500, &parent)) {
+         if (!AccessObject(Self->ParentID, 500, &parent)) {
             move_layer(Self, Self->X, (parent->Height * value) / 100);
             ReleaseObject(parent);
          }
@@ -1114,7 +1114,7 @@ static ERROR GET_YOffset(extSurface *Self, Variable *Value)
          value = Self->YOffset;
       }
       else if ((Self->Dimensions & DMF_HEIGHT) and (Self->Dimensions & DMF_Y) and (Self->ParentID)) {
-         if (!AccessObjectID(Self->ParentID, 1000, &parent)) {
+         if (!AccessObject(Self->ParentID, 1000, &parent)) {
             value = parent->Height - Self->Y - Self->Height;
             ReleaseObject(parent);
          }
@@ -1148,7 +1148,7 @@ static ERROR SET_YOffset(extSurface *Self, Variable *Value)
       Self->YOffsetPercent = value;
 
       if (Self->ParentID) {
-         if (!AccessObjectID(Self->ParentID, 500, &parent)) {
+         if (!AccessObject(Self->ParentID, 500, &parent)) {
             Self->YOffset = (parent->Height * F2I(Self->YOffsetPercent)) / 100;
             if (!(Self->Dimensions & DMF_Y))Self->Y = parent->Height - Self->YOffset - Self->Height;
             if (!(Self->Dimensions & DMF_HEIGHT)) {
@@ -1165,7 +1165,7 @@ static ERROR SET_YOffset(extSurface *Self, Variable *Value)
       Self->YOffset = value;
 
       if ((Self->Dimensions & DMF_HEIGHT) and (Self->ParentID)) {
-         if (!AccessObjectID(Self->ParentID, 1000, &parent)) {
+         if (!AccessObject(Self->ParentID, 1000, &parent)) {
             if (!(Self->Dimensions & DMF_HEIGHT)) {
                resize_layer(Self, Self->X, Self->Y, 0, parent->Height - Self->Y - Self->YOffset, 0, 0, 0, 0, 0);
             }
@@ -1175,7 +1175,7 @@ static ERROR SET_YOffset(extSurface *Self, Variable *Value)
          else return log.warning(ERR_AccessObject);
       }
       else if ((Self->Dimensions & DMF_Y) and (Self->ParentID)) {
-         if (!AccessObjectID(Self->ParentID, 1000, &parent)) {
+         if (!AccessObject(Self->ParentID, 1000, &parent)) {
             resize_layer(Self, Self->X, Self->Y, 0, parent->Height - Self->Y - Self->YOffset, 0, 0, 0, 0, 0);
             ReleaseObject(parent);
          }

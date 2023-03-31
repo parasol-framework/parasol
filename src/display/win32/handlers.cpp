@@ -166,10 +166,10 @@ void MsgResizedWindow(OBJECTID SurfaceID, LONG WinX, LONG WinY, LONG WinWidth, L
    if ((!SurfaceID) or (WinWidth < 1) or (WinHeight < 1)) return;
 
    objSurface *surface;
-   if (!AccessObjectID(SurfaceID, 3000, &surface)) {
+   if (!AccessObject(SurfaceID, 3000, &surface)) {
       extDisplay *display;
       OBJECTID display_id = surface->DisplayID;
-      if (!AccessObjectID(display_id, 3000, &display)) {
+      if (!AccessObject(display_id, 3000, &display)) {
          FUNCTION feedback = display->ResizeFeedback;
          display->X = WinX;
          display->Y = WinY;
@@ -200,7 +200,7 @@ void MsgSetFocus(OBJECTID SurfaceID)
 {
    pf::Log log;
    objSurface *surface;
-   if (!AccessObjectID(SurfaceID, 3000, &surface)) {
+   if (!AccessObject(SurfaceID, 3000, &surface)) {
       if ((!(surface->Flags & RNF_HAS_FOCUS)) and (surface->Flags & RNF_VISIBLE)) {
          log.msg("WM_SETFOCUS: Sending focus to surface #%d.", SurfaceID);
          QueueAction(AC_Focus, SurfaceID);
@@ -218,7 +218,7 @@ void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
    if ((!SurfaceID) or (!Width) or (!Height)) return;
 
    objSurface *surface;
-   if (!AccessObjectID(SurfaceID, 3000, &surface)) {
+   if (!AccessObject(SurfaceID, 3000, &surface)) {
       LONG minwidth, minheight, maxwidth, maxheight;
       LONG left, right, top, bottom;
       surface->get(FID_MinWidth, &minwidth);

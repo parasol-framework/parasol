@@ -32,7 +32,7 @@ void clear_subscriptions(objScript *Self)
 
       if (action->ObjectID) {
          OBJECTPTR object;
-         if (!AccessObjectID(action->ObjectID, 3000, &object)) {
+         if (!AccessObject(action->ObjectID, 3000, &object)) {
             UnsubscribeAction(object, action->ActionID);
             ReleaseObject(object);
          }

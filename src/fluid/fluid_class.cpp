@@ -492,7 +492,7 @@ failure:
 
    if (owner_id) {
       OBJECTPTR owner;
-      if (!AccessObjectID(owner_id, 5000, &owner)) {
+      if (!AccessObject(owner_id, 5000, &owner)) {
          SetOwner(Self, owner);
          ReleaseObject(owner);
       }
@@ -889,7 +889,7 @@ static ERROR save_binary(objScript *Self, OBJECTID FileID)
    // Write the fluid header first.  This must identify the content as compiled, plus include any relevant options,
    // such as the persistent identifier.
 
-   if (!AccessObjectID(FileID, 3000, &dest)) {
+   if (!AccessObject(FileID, 3000, &dest)) {
       LONG result;
       UBYTE header[256];
 

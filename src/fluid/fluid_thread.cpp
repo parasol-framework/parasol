@@ -96,7 +96,7 @@ static ERROR thread_script_callback(objThread *Thread)
 
    if ((!Thread->getPtr(FID_Data, &cb)) and (cb)) {
       objScript *script;
-      if (!AccessObjectID(cb->mainScriptID, 4000, &script)) {
+      if (!AccessObject(cb->mainScriptID, 4000, &script)) {
          auto prv = (prvFluid *)script->ChildPrivate;
          if (!prv) return log.warning(ERR_ObjectCorrupt);
          scCallback(script, cb->callbackID, NULL, 0, NULL);

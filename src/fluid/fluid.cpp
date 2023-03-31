@@ -217,7 +217,7 @@ OBJECTPTR access_object(struct object *Object)
    if (!Object->prvObject) {
       ERROR error;
       log.trace("Locking object #%d.", Object->ObjectID);
-      if (!(error = AccessObjectID(Object->ObjectID, 5000, &Object->prvObject))) {
+      if (!(error = AccessObject(Object->ObjectID, 5000, &Object->prvObject))) {
          Object->Locked = TRUE;
       }
       else if (error IS ERR_DoesNotExist) {

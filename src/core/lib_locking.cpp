@@ -315,7 +315,7 @@ void cond_wake_all(UBYTE Index)
 ** Prepare a thread for going to sleep on a resource.  Checks for deadlocks in advance.  Once a thread has added a
 ** WakeLock entry, it must keep it until either the thread or process is destroyed.
 **
-** Used by AccessMemoryID() and LockObject()
+** Used by AccessMemory() and LockObject()
 */
 
 static THREADVAR WORD glWLIndex = -1;
@@ -601,10 +601,10 @@ void free_threadlock(void)
 /*********************************************************************************************************************
 
 -FUNCTION-
-AccessMemoryID: Grants access to memory blocks by identifier.
+AccessMemory: Grants access to memory blocks by identifier.
 Category: Memory
 
-Call AccessMemoryID() to resolve a memory ID to its address and acquire a lock so that it is inaccessible to other
+Call AccessMemory() to resolve a memory ID to its address and acquire a lock so that it is inaccessible to other
 threads.
 
 Memory blocks should never be locked for extended periods of time.  Ensure that all locks are matched with a
@@ -630,7 +630,7 @@ SystemLocked
 
 *********************************************************************************************************************/
 
-ERROR AccessMemoryID(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Result)
+ERROR AccessMemory(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Result)
 {
    pf::Log log(__FUNCTION__);
 
@@ -641,7 +641,7 @@ ERROR AccessMemoryID(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Res
       return ERR_Args;
    }
 
-   // NB: Printing AccessMemoryID() calls is usually a waste of time unless the process is going to sleep.
+   // NB: Printing AccessMemory() calls is usually a waste of time unless the process is going to sleep.
    //log.trace("MemoryID: %d, Flags: $%x, TimeOut: %d", MemoryID, Flags, MilliSeconds);
 
    *Result = NULL;
@@ -683,7 +683,7 @@ ERROR AccessMemoryID(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Res
 /*********************************************************************************************************************
 
 -FUNCTION-
-AccessObjectID: Grants exclusive access to objects via unique ID.
+AccessObject: Grants exclusive access to objects via unique ID.
 Category: Objects
 
 This function resolves an object ID to its address and acquires a lock on the object so that other threads cannot use
@@ -694,13 +694,22 @@ of time specified in the Milliseconds parameter.  If the time expires, the funct
 error code.  If successful, `ERR_Okay` is returned and a reference to the object's address is stored in the Result
 variable.
 
-It is crucial that calls to AccessObjectID() are followed with a call to ~ReleaseObject() once the lock is no
-longer required.  Calls to AccessObjectID() will also nest, so they must be paired with ~ReleaseObject()
+It is crucial that calls to AccessObject() are followed with a call to ~ReleaseObject() once the lock is no
+longer required.  Calls to AccessObject() will also nest, so they must be paired with ~ReleaseObject()
 correctly.
 
-If AccessObjectID() fails, the Result variable will be automatically set to a NULL pointer on return.
+It is recommended that C++ developers use the `ScopedObjectLock` class to acquire object locks rather than making
+direct calls to AccessObject().  The following example illustrates lock acquisition within a 1 second time limit:
 
-Hint: If the name of the target object is known but not the ID, use ~FindObject() to resolve it.
+<pre>
+{
+   pf::ScopedObjectLock<OBJECTPTR> obj(my_object_id, 1000);
+   if (lock.granted()) {
+      obj.acDraw();
+   }
+}
+</pre>
+
 
 -INPUT-
 oid Object: The unique ID of the target object.
@@ -718,33 +727,33 @@ TimeOut
 
 *********************************************************************************************************************/
 
-ERROR AccessObjectID(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
+ERROR AccessObject(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
 {
    pf::Log log(__FUNCTION__);
-   ERROR error;
 
    if ((!Result) or (!ObjectID)) return log.warning(ERR_NullArgs);
+   if (MilliSeconds <= 0) log.warning(ERR_Args); // Warn but do not fail
 
-   *Result = NULL;
-
-   if (MilliSeconds <= 0) log.warning("Object: %d, MilliSeconds: %d - This is bad practice.", ObjectID, MilliSeconds);
-
-   auto mem = glPrivateMemory.find(ObjectID);
-   if ((mem != glPrivateMemory.end()) and (mem->second.Address)) {
-      if (!(error = LockObject((OBJECTPTR)mem->second.Address, MilliSeconds))) {
-         *Result = (OBJECTPTR)mem->second.Address;
-         return ERR_Okay;
+   ThreadLock lock(TL_PRIVATE_MEM, 4000);
+   if (lock.granted()) {
+      auto mem = glPrivateMemory.find(ObjectID);
+      if ((mem != glPrivateMemory.end()) and (mem->second.Address)) {
+         if (auto error = LockObject((OBJECTPTR)mem->second.Address, MilliSeconds); !error) {
+            *Result = (OBJECTPTR)mem->second.Address;
+            return ERR_Okay;
+         }
+         else return error;
       }
-      else return error;
-   }
-   else if (ObjectID IS glMetaClass.UID) { // Access to the MetaClass requires this special case handler.
-      if (!(error = LockObject(&glMetaClass, MilliSeconds))) {
-         *Result = &glMetaClass;
-         return ERR_Okay;
+      else if (ObjectID IS glMetaClass.UID) { // Access to the MetaClass requires this special case handler.
+         if (auto error = LockObject(&glMetaClass, MilliSeconds); !error) {
+            *Result = &glMetaClass;
+            return ERR_Okay;
+         }
+         else return error;
       }
-      else return error;
+      else return ERR_NoMatchingObject;
    }
-   else return ERR_NoMatchingObject;
+   else return log.warning(ERR_SystemLocked);
 }
 
 /*********************************************************************************************************************
@@ -753,12 +762,12 @@ ERROR AccessObjectID(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
 LockObject: Lock an object to prevent contention between threads.
 Category: Objects
 
-Use LockObject() to gain exclusivity to an object at thread-level.  This function provides identical
-behaviour to that of ~AccessObjectID(), but with a slight speed advantage as the object ID does not need to be
+Use LockObject() to gain exclusive access to an object at thread-level.  This function provides identical
+behaviour to that of ~AccessObject(), but with a slight speed advantage as the object ID does not need to be
 resolved to an address.  Calls to LockObject() will nest, and must be matched with a call to
 ~ReleaseObject() to unlock the object.
 
-Be aware that while this function is faster than ~AccessObjectID(), its use may be considered unsafe if other threads
+Be aware that while this function is faster than ~AccessObject(), its use may be considered unsafe if other threads
 could terminate the object without a suitable barrier in place.
 
 If it is guaranteed that an object is not being shared between threads, object locking is unnecessary.
@@ -794,20 +803,12 @@ ERROR LockObject(OBJECTPTR Object, LONG Timeout)
       // destroying the object when other threads could potentially be using it).
 
       if (Object->incQueue() IS 1) {
-         /*if (Object->defined(NF::FREE)) { // Disallow access to objects being freed.
-            Object->subQueue();
-            return ERR_MarkedForDeletion;
-         }*/
          Object->Locked = true;
          Object->ThreadID = our_thread;
          return ERR_Okay;
       }
 
       if (our_thread IS Object->ThreadID) { // Support nested locks.
-         /*if (Object->defined(NF::FREE)) { // Disallow access to objects being freed.
-            Object->subQueue();
-            return ERR_MarkedForDeletion;
-         }*/
          return ERR_Okay;
       }
 
@@ -1103,108 +1104,26 @@ ERROR LockSharedMutex(APTR Mutex, LONG MilliSeconds)
 /*********************************************************************************************************************
 
 -FUNCTION-
-ReleaseMemory: Releases memory blocks from access locks.
+ReleaseMemory: Releases a lock from a memory based resource.
 Category: Memory
 
-Successful calls to ~AccessMemoryID() must be paired with a call to ReleaseMemory or ~ReleaseMemoryID() so that the
-memory can be made available to other processes.  By releasing the memory, the access count will decrease, and if
-applicable, a process that is in the queue for access may then be able to gain a lock.
+Successful calls to ~AccessMemory() must be paired with a call to ReleaseMemory() so that the memory can be made
+available to other processes.  By releasing the resource, the access count will decrease, and if applicable a
+thread that is in the queue for access may then be able to acquire a lock.
 
 -INPUT-
-ptr Address: Pointer to the memory address that you want to release.
-
--RESULT-
-mem: Returns the memory ID of the block that was released, or zero if an error occurred.
--END-
-
-*********************************************************************************************************************/
-
-MEMORYID ReleaseMemory(APTR Address)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (!Address) {
-      log.warning(ERR_NullArgs);
-      return 0;
-   }
-
-   // Address was not found in the public memory list - drop through to private list
-
-   if (((LONG *)Address)[-1] != CODE_MEMH) {
-      log.warning("Address %p is not a recognised address, or the header is corrupt.", Address);
-      return 0;
-   }
-
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) {
-      auto mem = glPrivateMemory.find(((LONG *)Address)[-2]);
-
-      if ((mem IS glPrivateMemory.end()) or (!mem->second.Address)) {
-         if (tlContext->object()->Class) log.warning("Unable to find a record for memory address %p, ID %d [Context %d, Class %s].", Address, ((LONG *)Address)[-2], tlContext->object()->UID, tlContext->object()->className());
-         else log.warning("Unable to find a record for memory address %p.", Address);
-         if (glLogLevel > 1) print_diagnosis(0);
-         return 0;
-      }
-
-      auto id = mem->second.MemoryID;
-
-      WORD access;
-      if (mem->second.AccessCount > 0) { // Sometimes ReleaseMemory() is called on private addresses that aren't actually locked.  This is OK - we simply don't do anything in that case.
-         access = __sync_sub_and_fetch(&mem->second.AccessCount, 1);
-         tlPrivateLockCount--;
-      }
-      else access = -1;
-
-      #ifdef DBG_LOCKS
-         log.trace("MemoryID: %d, Address: %p, Locks: %d", id, Address, access);
-      #endif
-
-      if (!access) {
-         #ifdef __unix__
-            mem->second.ThreadLockID = 0; // This is more for peace of mind (it's the access count that matters)
-         #endif
-
-         if (mem->second.Flags & MEM_DELETE) {
-            log.trace("Deleting marked private memory block #%d (MEM_DELETE)", id);
-            FreeResource(mem->second.Address); // NB: The block entry will no longer be valid from this point onward
-            cond_wake_all(CN_PRIVATE_MEM); // Wake up any threads sleeping on this memory block.
-            return id;
-         }
-         else if (mem->second.Flags & MEM_EXCLUSIVE) {
-            mem->second.Flags &= ~MEM_EXCLUSIVE;
-         }
-
-         cond_wake_all(CN_PRIVATE_MEM); // Wake up any threads sleeping on this memory block.
-      }
-
-      return id;
-   }
-   else return 0;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-ReleaseMemoryID: Releases locked memory blocks by ID.
-Category: Memory
-
-Successful calls to ~AccessMemoryID() must be paired with a call to ~ReleaseMemory() or ReleaseMemoryID() so that the
-memory can be made available to other processes.  By releasing the memory, the access count will decrease, and if
-applicable, a process that is in the queue for access may then be able to gain a lock.
-
-This function is both faster and safer than the ~ReleaseMemory() function.
-
--INPUT-
-mem MemoryID: A reference to a memory block for release.
+mem MemoryID: A reference to a memory resource for release.
 
 -ERRORS-
 Okay
 NullArgs
+Search
+SystemLocked
 -END-
 
 *********************************************************************************************************************/
 
-ERROR ReleaseMemoryID(MEMORYID MemoryID)
+ERROR ReleaseMemory(MEMORYID MemoryID)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1261,7 +1180,7 @@ ERROR ReleaseMemoryID(MEMORYID MemoryID)
 ReleaseObject: Release a locked private object.
 Category: Objects
 
-Release a lock previously obtained from ~AccessObjectID() or ~LockObject().  Locks will nest, so a release is
+Release a lock previously obtained from ~AccessObject() or ~LockObject().  Locks will nest, so a release is
 required for every lock that has been granted.
 
 -INPUT-

@@ -777,7 +777,7 @@ static ERROR open_shared_control(void)
       }
 
       // Map the first portion of the file into our process (i.e. the system stuff that needs to be permanently mapped).
-      // Mapping of blocks in the global pool will only be done on request in AccessMemoryID().
+      // Mapping of blocks in the global pool will only be done on request in AccessMemory().
 
       if ((glSharedControl = mmap(0, glMemorySize, PROT_READ|PROT_WRITE, MAP_SHARED, glMemoryFD, 0)) != (APTR)-1) {
          // Call init_shared_control() if this is the first time that the block has been created.

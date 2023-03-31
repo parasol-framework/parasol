@@ -240,7 +240,7 @@ redo_upload:
       if (Self->Flags & HTF_DEBUG) log.msg("Sending content from InputObject #%d.", Self->InputObjectID);
 
       OBJECTPTR object;
-      if (!(error = AccessObjectID(Self->InputObjectID, 100, &object))) {
+      if (!(error = AccessObject(Self->InputObjectID, 100, &object))) {
          error = acRead(object, Self->WriteBuffer, Self->WriteSize, &len);
          ReleaseObject(object);
       }
