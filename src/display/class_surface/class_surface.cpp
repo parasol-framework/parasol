@@ -503,32 +503,32 @@ static void notify_redimension_parent(OBJECTPTR Object, ACTIONID ActionID, ERROR
 
    // Convert relative offsets to their fixed equivalent
 
-   if (Self->Dimensions & DMF_RELATIVE_X_OFFSET) Self->XOffset = (parentwidth * Self->XOffsetPercent) * 0.01;
-   if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) Self->YOffset = (parentheight * Self->YOffsetPercent) * 0.01;
+   if (Self->Dimensions & DMF_RELATIVE_X_OFFSET) Self->XOffset = parentwidth * Self->XOffsetPercent;
+   if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) Self->YOffset = parentheight * Self->YOffsetPercent;
 
    // Calculate absolute width and height values
 
-   if (Self->Dimensions & DMF_RELATIVE_WIDTH)   width = parentwidth * Self->WidthPercent * 0.01;
+   if (Self->Dimensions & DMF_RELATIVE_WIDTH)   width = parentwidth * Self->WidthPercent;
    else if (Self->Dimensions & DMF_FIXED_WIDTH) width = Self->Width;
    else if (Self->Dimensions & DMF_X_OFFSET) {
       if (Self->Dimensions & DMF_FIXED_X) {
          width = parentwidth - Self->X - Self->XOffset;
       }
       else if (Self->Dimensions & DMF_RELATIVE_X) {
-         width = parentwidth - (parentwidth * Self->XPercent * 0.01) - Self->XOffset;
+         width = parentwidth - (parentwidth * Self->XPercent) - Self->XOffset;
       }
       else width = parentwidth - Self->XOffset;
    }
    else width = Self->Width;
 
-   if (Self->Dimensions & DMF_RELATIVE_HEIGHT)   height = parentheight * Self->HeightPercent * 0.01;
+   if (Self->Dimensions & DMF_RELATIVE_HEIGHT)   height = parentheight * Self->HeightPercent;
    else if (Self->Dimensions & DMF_FIXED_HEIGHT) height = Self->Height;
    else if (Self->Dimensions & DMF_Y_OFFSET) {
       if (Self->Dimensions & DMF_FIXED_Y) {
          height = parentheight - Self->Y - Self->YOffset;
       }
       else if (Self->Dimensions & DMF_RELATIVE_Y) {
-         height = parentheight - (parentheight * Self->YPercent * 0.01) - Self->YOffset;
+         height = parentheight - (parentheight * Self->YPercent) - Self->YOffset;
       }
       else height = parentheight - Self->YOffset;
    }
@@ -536,11 +536,11 @@ static void notify_redimension_parent(OBJECTPTR Object, ACTIONID ActionID, ERROR
 
    // Calculate new coordinates
 
-   if (Self->Dimensions & DMF_RELATIVE_X) x = (parentwidth * Self->XPercent * 0.01);
+   if (Self->Dimensions & DMF_RELATIVE_X) x = parentwidth * Self->XPercent;
    else if (Self->Dimensions & DMF_X_OFFSET) x = parentwidth - Self->XOffset - width;
    else x = Self->X;
 
-   if (Self->Dimensions & DMF_RELATIVE_Y) y = (parentheight * Self->YPercent * 0.01);
+   if (Self->Dimensions & DMF_RELATIVE_Y) y = parentheight * Self->YPercent;
    else if (Self->Dimensions & DMF_Y_OFFSET) y = parentheight - Self->YOffset - height;
    else y = Self->Y;
 
@@ -1338,7 +1338,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
             fl::RefreshRate(glpRefreshRate),
             fl::Flags(scrflags),
             fl::DPMS(glpDPMS),
-            fl::Opacity((Self->Opacity * 100) / 255),
+            fl::Opacity(Self->Opacity * (100.0 / 255.0)),
             fl::PopOver(pop_display),
             fl::WindowHandle((APTR)Self->DisplayWindow))) { // Sometimes a window may be preset, e.g. for a web plugin
 
@@ -1887,14 +1887,12 @@ static ERROR SURFACE_MoveToPoint(extSurface *Self, struct acMoveToPoint *Args)
    return Action(AC_Move, Self, &move)|ERF_Notified;
 }
 
-/*********************************************************************************************************************
-** Surface: NewOwner()
-*/
+//********************************************************************************************************************
 
 static ERROR SURFACE_NewOwner(extSurface *Self, struct acNewOwner *Args)
 {
    if ((!Self->ParentDefined) and (!Self->initialised())) {
-      OBJECTID owner_id = Args->NewOwnerID;
+      OBJECTID owner_id = Args->NewOwner->UID;
       while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
          owner_id = GetOwnerID(owner_id);
       }
@@ -2339,7 +2337,7 @@ static ERROR SURFACE_SetOpacity(extSurface *Self, struct drwSetOpacity *Args)
 
    DOUBLE value;
    if (Args->Adjustment) {
-      value = (Self->Opacity * 100 / 255) + Args->Adjustment;
+      value = (Self->Opacity * (100.0 / 255.0)) + Args->Adjustment;
       SET_Opacity(Self, value);
    }
    else {

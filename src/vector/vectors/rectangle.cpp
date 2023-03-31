@@ -157,7 +157,6 @@ will flip the rectangle on the vertical axis).
 static ERROR RECTANGLE_GET_Height(extVectorRectangle *Self, Variable *Value)
 {
    DOUBLE val = Self->rHeight;
-   if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -173,10 +172,7 @@ static ERROR RECTANGLE_SET_Height(extVectorRectangle *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return log.warning(ERR_SetValueNotNumeric);
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
    else Self->rDimensions = (Self->rDimensions | DMF_FIXED_HEIGHT) & (~DMF_RELATIVE_HEIGHT);
 
    Self->rHeight = val;
@@ -244,7 +240,6 @@ The position of the rectangle on the x-axis is defined here as a fixed or relati
 static ERROR RECTANGLE_GET_X(extVectorRectangle *Self, Variable *Value)
 {
    DOUBLE val = Self->rX;
-   if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -260,10 +255,7 @@ static ERROR RECTANGLE_SET_X(extVectorRectangle *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return log.warning(ERR_SetValueNotNumeric);
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
    else Self->rDimensions = (Self->rDimensions | DMF_FIXED_X) & (~DMF_RELATIVE_X);
 
    Self->rX = val;
@@ -284,7 +276,6 @@ will flip the rectangle on the horizontal axis).
 static ERROR RECTANGLE_GET_Width(extVectorRectangle *Self, Variable *Value)
 {
    DOUBLE val = Self->rWidth;
-   if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -300,10 +291,7 @@ static ERROR RECTANGLE_SET_Width(extVectorRectangle *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return log.warning(ERR_SetValueNotNumeric);
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
    else Self->rDimensions = (Self->rDimensions | DMF_FIXED_WIDTH) & (~DMF_RELATIVE_WIDTH);
 
    Self->rWidth = val;
@@ -324,7 +312,6 @@ The position of the rectangle on the y-axis is defined here as a fixed or relati
 static ERROR RECTANGLE_GET_Y(extVectorRectangle *Self, Variable *Value)
 {
    DOUBLE val = Self->rY;
-   if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -340,10 +327,7 @@ static ERROR RECTANGLE_SET_Y(extVectorRectangle *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return log.warning(ERR_SetValueNotNumeric);
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
    else Self->rDimensions = (Self->rDimensions | DMF_FIXED_Y) & (~DMF_RELATIVE_Y);
 
    Self->rY = val;

@@ -126,7 +126,7 @@ static ERROR PTR_DataFeed(extPointer *Self, struct acDataFeed *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (Args->DataType IS DATA_DEVICE_INPUT) {
+   if (Args->Datatype IS DATA_DEVICE_INPUT) {
       if (auto input = (struct dcDeviceInput *)Args->Buffer) {
          for (LONG i=0; i < ARRAYSIZE(Self->Buttons); i++) {
             if ((Self->Buttons[i].LastClicked) and (CheckObjectExists(Self->Buttons[i].LastClicked) != ERR_Okay)) Self->Buttons[i].LastClicked = 0;
@@ -297,7 +297,10 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
       }
 
       if (!modal_id) {
-         acDragDrop(Self->OverObjectID, Self->DragSourceID, Self->DragItem, Self->DragData);
+         pf::ScopedObjectLock<> src(Self->DragSourceID);
+         if (src.granted()) {
+            acDragDrop(Self->OverObjectID, *src, Self->DragItem, Self->DragData);
+         }
       }
 
       Self->DragItem = 0;
@@ -725,7 +728,7 @@ static ERROR PTR_SaveToObject(extPointer *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Dest)) return log.warning(ERR_NullArgs);
 
    objConfig::create config = { };
    if (config.ok()) {
@@ -735,7 +738,7 @@ static ERROR PTR_SaveToObject(extPointer *Self, struct acSaveToObject *Args)
       config->write("POINTER", "MaxSpeed", Self->MaxSpeed);
       config->write("POINTER", "WheelSpeed", Self->WheelSpeed);
       config->write("POINTER", "ButtonOrder", Self->ButtonOrder);
-      config->saveToObject(Args->DestID, 0);
+      config->saveToObject(Args->Dest);
    }
 
    return ERR_Okay;

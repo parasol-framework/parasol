@@ -578,8 +578,8 @@ static ERROR VECTORFILTER_NewObject(extVectorFilter *Self, APTR Void)
 
 static ERROR VECTORFILTER_NewOwner(extVectorFilter *Self, struct acNewOwner *Args)
 {
-   if ((Args) and (Args->ClassID IS ID_VECTORSCENE)) {
-      Self->Scene = (extVectorScene *)GetObjectPtr(Args->NewOwnerID);
+   if (Args->NewOwner->ClassID IS ID_VECTORSCENE) {
+      Self->Scene = (extVectorScene *)Args->NewOwner;
    }
    return ERR_Okay;
 }
@@ -655,7 +655,6 @@ If width or height is not specified, the effect is as if a value of 120% were sp
 static ERROR VECTORFILTER_GET_Height(extVectorFilter *Self, struct Variable *Value)
 {
    DOUBLE val = Self->Height;
-   if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = val;
    return ERR_Okay;
@@ -669,10 +668,7 @@ static ERROR VECTORFILTER_SET_Height(extVectorFilter *Self, Variable *Value)
    else return ERR_FieldTypeMismatch;
 
    if (val > 0) {
-      if (Value->Type & FD_PERCENTAGE) {
-         val = val * 0.01;
-         Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
-      }
+      if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
       else Self->Dimensions = (Self->Dimensions | DMF_FIXED_HEIGHT) & (~DMF_RELATIVE_HEIGHT);
 
       Self->Height = val;
@@ -760,7 +756,6 @@ If width or height is not specified, the effect is as if a value of 120% were sp
 static ERROR VECTORFILTER_GET_Width(extVectorFilter *Self, Variable *Value)
 {
    DOUBLE val = Self->Width;
-   if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = val;
    return ERR_Okay;
@@ -774,10 +769,7 @@ static ERROR VECTORFILTER_SET_Width(extVectorFilter *Self, Variable *Value)
    else return ERR_FieldTypeMismatch;
 
    if (val > 0) {
-      if (Value->Type & FD_PERCENTAGE) {
-         val = val * 0.01;
-         Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
-      }
+      if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
       else Self->Dimensions = (Self->Dimensions | DMF_FIXED_WIDTH) & (~DMF_RELATIVE_WIDTH);
 
       Self->Width = val;
@@ -801,7 +793,6 @@ If X or Y is not specified, the effect is as if a value of -10% were specified.
 static ERROR VECTORFILTER_GET_X(extVectorFilter *Self, Variable *Value)
 {
    DOUBLE val = Self->X;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_X)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = val;
    return ERR_Okay;
@@ -814,10 +805,7 @@ static ERROR VECTORFILTER_SET_X(extVectorFilter *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_X) & (~DMF_RELATIVE_X);
 
    Self->X = val;
@@ -840,7 +828,6 @@ If X or Y is not specified, the effect is as if a value of -10% were specified.
 static ERROR VECTORFILTER_GET_Y(extVectorFilter *Self, Variable *Value)
 {
    DOUBLE val = Self->Y;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_Y)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = val;
    return ERR_Okay;
@@ -853,10 +840,7 @@ static ERROR VECTORFILTER_SET_Y(extVectorFilter *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_Y) & (~DMF_RELATIVE_Y);
 
    Self->Y = val;

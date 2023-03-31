@@ -633,6 +633,11 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
    if (FD IS -1) return log.warning(ERR_Args);
 #endif
 
+   if (glFDProtected) { // Cache the request while glFDTable is in use.
+      glRegisterFD.emplace_back(FD, Routine, Data, Flags);
+      return ERR_Okay;
+   }
+
    if (Flags & RFD_REMOVE) {
       if (!(Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL))) Flags |= RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL;
 

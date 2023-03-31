@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -288,11 +287,11 @@ static void notify_dragdrop(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, s
    request.Preference[2] = 0;
 
    struct acDataFeed dc;
-   dc.ObjectID = Self->UID;
+   dc.Object   = Self;
    dc.Datatype = DATA_REQUEST;
    dc.Buffer   = &request;
    dc.Size     = sizeof(request);
-   if (!ActionMsg(AC_DataFeed, Args->SourceID, &dc)) {
+   if (!Action(AC_DataFeed, Args->Source, &dc)) {
       // The source will return a DATA_RECEIPT for the items that we've asked for (see the DataFeed action).
    }
 }
@@ -393,7 +392,7 @@ static void notify_write(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, stru
    SCICALL(SCI_SETUNDOCOLLECTION, 0UL); // Turn off undo
 
    if (Args->Buffer) {
-      acDataFeed(Self, Self->UID, DATA_TEXT, Args->Buffer, Args->Result);
+      acDataFeed(Self, Self, DATA_TEXT, Args->Buffer, Args->Result);
    }
    else { // We have to read the data from the file stream
    }
@@ -456,7 +455,7 @@ static ERROR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (Args->DataType IS DATA_TEXT) {
+   if (Args->Datatype IS DATA_TEXT) {
       CSTRING str;
 
       // Incoming text is appended to the end of the document
@@ -467,7 +466,7 @@ static ERROR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
       SCICALL(SCI_APPENDTEXT, StrLength(str), str);
    }
    else if (Args->Datatype IS DATA_RECEIPT) {
-      log.msg("Received item receipt from object %d.", Args->ObjectID);
+      log.msg("Received item receipt from object %d.", Args->Object ? Args->Object->UID : 0);
 
       objXML::create xml = { fl::Statement((CSTRING)Args->Buffer) };
       if (xml.ok()) {
@@ -1063,7 +1062,7 @@ static ERROR SCINTILLA_NewObject(extScintilla *Self, APTR)
 static ERROR SCINTILLA_NewOwner(extScintilla *Self, struct acNewOwner *Args)
 {
    if (!Self->initialised()) {
-      OBJECTID owner_id = Args->NewOwnerID;
+      OBJECTID owner_id = Args->NewOwner->UID;
       while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
          owner_id = GetOwnerID(owner_id);
       }
@@ -1257,27 +1256,22 @@ static ERROR SCINTILLA_SaveToObject(extScintilla *Self, struct acSaveToObject *A
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Dest)) return log.warning(ERR_NullArgs);
 
    LONG len = SCICALL(SCI_GETLENGTH);
 
-   log.branch("To: %d, Size: %d", Args->DestID, len);
+   log.branch("To: %d, Size: %d", Args->Dest->UID, len);
 
-   OBJECTPTR object;
-   if (!AccessObject(Args->DestID, 5000, &object)) {
-      ERROR error;
-      APTR buffer;
-      if (!(AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &buffer))) {
-         SCICALL(SCI_GETTEXT, len+1, (const char *)buffer);
-         error = acWrite(object, buffer, len, NULL);
-         FreeResource(buffer);
-      }
-      else error = ERR_AllocMemory;
-
-      ReleaseObject(object);
-      return error;
+   ERROR error;
+   APTR buffer;
+   if (!(AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &buffer))) {
+      SCICALL(SCI_GETTEXT, len+1, (const char *)buffer);
+      error = acWrite(Args->Dest, buffer, len, NULL);
+      FreeResource(buffer);
    }
-   else return log.warning(ERR_AccessObject);
+   else error = ERR_AllocMemory;
+
+   return error;
 }
 
 /*********************************************************************************************************************

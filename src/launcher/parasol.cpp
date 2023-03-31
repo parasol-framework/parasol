@@ -11,7 +11,6 @@ This version of the Parasol launcher is intended for use from the command-line o
 
 #include <parasol/main.h>
 #include <parasol/modules/core.h>
-#include <parasol/modules/parc.h>
 #include <parasol/modules/display.h>
 #include <startup.h>
 #include <string.h>
@@ -23,7 +22,7 @@ extern struct CoreBase *CoreBase;
 static std::string glProcedure;
 static objSurface *glTarget = NULL;
 static CSTRING *glArgs = NULL;
-static STRING glAllow = NULL;
+//static STRING glAllow = NULL;
 static STRING glTargetFile = NULL;
 static OBJECTPTR glTask = NULL;
 static objScript *glScript = NULL;

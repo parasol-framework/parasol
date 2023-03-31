@@ -85,7 +85,7 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure
 */
       #endif
    }
-
+#if 0
    if (class_id IS ID_PARC) {
       objParc::create parc = { fl::Path(TargetFile), fl::Allow(glAllow) };
 
@@ -111,7 +111,7 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure
 
       return error;
    }
-
+#endif
    if (!NewObject(subclass ? subclass : class_id, &glScript)) {
       glScript->set(FID_Path, TargetFile);
       glScript->set(FID_Target, glTarget ? glTarget->UID : CurrentTaskID());

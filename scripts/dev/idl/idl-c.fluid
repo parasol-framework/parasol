@@ -50,12 +50,12 @@ glActionStubs = {
    Unlock       = "   inline ERROR unlock() { return Action(AC_Unlock, this, NULL); }",
 
    CopyData = [[
-   inline ERROR copyData(OBJECTID DestID) {
-      struct acCopyData args = { .DestID = DestID };
+   inline ERROR copyData(OBJECTPTR Dest) {
+      struct acCopyData args = { .Dest = Dest };
       return Action(AC_CopyData, this, &args);
    }]],
    DragDrop = [[
-   inline ERROR dragDrop(OBJECTID Source, LONG Item, CSTRING Datatype) {
+   inline ERROR dragDrop(OBJECTPTR Source, LONG Item, CSTRING Datatype) {
       struct acDragDrop args = { .Source = Source, .Item = Item, .Datatype = Datatype };
       return Action(AC_DragDrop, this, &args);
    }]],
@@ -71,8 +71,8 @@ glActionStubs = {
       return Action(AC_Draw, this, &args);
    }]],
    DataFeed = [[
-   inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
-      struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+   inline ERROR dataFeed(OBJECTPTR Object, LONG Datatype, const void *Buffer, LONG Size) {
+      struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }]],
    Move = [[
@@ -149,13 +149,13 @@ glActionStubs = {
       return Action(AC_MoveToPoint, this, &moveto);
    }]],
    SaveImage = [[
-   inline ERROR saveImage(OBJECTID DestID, CLASSID ClassID) {
-      struct acSaveImage args = { { DestID }, { ClassID } };
+   inline ERROR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) {
+      struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }]],
    SaveToObject = [[
-   inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
-      struct acSaveToObject args = { { DestID }, { ClassID } };
+   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) {
+      struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }]],
    Seek = [[

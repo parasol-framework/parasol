@@ -14,5 +14,20 @@ static const struct FieldDef clPictureFlags[] = {
    { NULL, 0 }
 };
 
+static const struct ActionArray clPictureActions[] = {
+   { AC_Activate, PICTURE_Activate },
+   { AC_Free, PICTURE_Free },
+   { AC_Init, PICTURE_Init },
+   { AC_NewObject, PICTURE_NewObject },
+   { AC_Query, PICTURE_Query },
+   { AC_Read, PICTURE_Read },
+   { AC_Refresh, PICTURE_Refresh },
+   { AC_SaveImage, PICTURE_SaveImage },
+   { AC_SaveToObject, PICTURE_SaveToObject },
+   { AC_Seek, PICTURE_Seek },
+   { AC_Write, PICTURE_Write },
+   { 0, NULL }
+};
+
 #undef MOD_IDL
 #define MOD_IDL "c.PCF:ALPHA=0x40,FORCE_ALPHA_32=0x100,LAZY=0x80,MASK=0x20,NEW=0x10,NO_PALETTE=0x2,RESIZE=0x9,RESIZE_X=0x1,RESIZE_Y=0x8,SCALABLE=0x4\n"

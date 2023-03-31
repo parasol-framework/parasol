@@ -434,7 +434,7 @@ static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
 
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
 
-   if ((Args->DataType IS DATA_TEXT) or (Args->DataType IS DATA_XML)) {
+   if ((Args->Datatype IS DATA_TEXT) or (Args->Datatype IS DATA_XML)) {
       // Incoming data is translated on the fly and added to the end of the current document page.  The original XML
       // information is retained in case of refresh.
       //
@@ -467,7 +467,7 @@ static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
       return ERR_Okay;
    }
    else {
-      log.msg("Datatype %d not supported.", Args->DataType);
+      log.msg("Datatype %d not supported.", Args->Datatype);
       return ERR_Mismatch;
    }
 }
@@ -1157,7 +1157,7 @@ static ERROR DOCUMENT_NewObject(extDocument *Self, APTR Void)
 static ERROR DOCUMENT_NewOwner(extDocument *Self, struct acNewOwner *Args)
 {
    if (!Self->initialised()) {
-      OBJECTID owner_id = Args->NewOwnerID;
+      OBJECTID owner_id = Args->NewOwner->UID;
       while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
          owner_id = GetOwnerID(owner_id);
       }
@@ -1409,17 +1409,11 @@ SaveToObject: Use this action to save edited information as an XML document file
 static ERROR DOCUMENT_SaveToObject(extDocument *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
-   OBJECTPTR Object;
 
-   if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR_NullArgs);
 
-   log.branch("Destination: %d, Lines: %d", Args->DestID, Self->SegCount);
-
-   if (!AccessObject(Args->DestID, 5000, &Object)) {
-      acWrite(Object, "Save not supported.", 0, NULL);
-      ReleaseObject(Object);
-   }
-
+   log.branch("Destination: %d, Lines: %d", Args->Dest->UID, Self->SegCount);
+   acWrite(Args->Dest, "Save not supported.", 0, NULL);
    return ERR_Okay;
 }
 

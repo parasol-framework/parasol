@@ -1,14 +1,11 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
-This software is based in part on the work of the Independent JPEG Group.
-Source code has been derived from the libjpeg archive, a separate package
-copyright to Thomas G. Lane.  Libjpeg is publicly available on terms that
-are not related to this Package.  The original libjpeg source code can be
-obtained from http://www.ijg.org.
+This software is based in part on the work of the Independent JPEG Group.  Source code has been derived from the
+libjpeg archive, a separate package copyright to Thomas G. Lane.  Libjpeg is publicly available on terms that are not
+related to this Package.  The original libjpeg source code can be obtained from http://www.ijg.org.
 
 *********************************************************************************************************************/
 
@@ -29,16 +26,16 @@ struct DisplayBase *DisplayBase = NULL;
 static OBJECTPTR clJPEG = NULL;
 static OBJECTPTR modDisplay = NULL;
 
-static ERROR JPEG_Activate(prvPicture *, APTR);
-static ERROR JPEG_Init(prvPicture *, APTR);
-static ERROR JPEG_Query(prvPicture *, APTR);
-static ERROR JPEG_SaveImage(prvPicture *, struct acSaveImage *);
+static ERROR JPEG_Activate(extPicture *, APTR);
+static ERROR JPEG_Init(extPicture *, APTR);
+static ERROR JPEG_Query(extPicture *, APTR);
+static ERROR JPEG_SaveImage(extPicture *, struct acSaveImage *);
 
-static void decompress_jpeg(prvPicture *, objBitmap *, struct jpeg_decompress_struct *);
+static void decompress_jpeg(extPicture *, objBitmap *, struct jpeg_decompress_struct *);
 
 //********************************************************************************************************************
 
-static ERROR JPEG_Activate(prvPicture *Self, APTR Void)
+static ERROR JPEG_Activate(extPicture *Self, APTR Void)
 {
    pf::Log log;
    struct jpeg_decompress_struct cinfo;
@@ -112,7 +109,7 @@ static ERROR JPEG_Activate(prvPicture *Self, APTR Void)
    return ERR_Okay;
 }
 
-static void decompress_jpeg(prvPicture *Self, objBitmap *Bitmap, struct jpeg_decompress_struct *Cinfo)
+static void decompress_jpeg(extPicture *Self, objBitmap *Bitmap, struct jpeg_decompress_struct *Cinfo)
 {
    pf::Log log;
    RGB8 rgb;
@@ -165,7 +162,7 @@ static void decompress_jpeg(prvPicture *Self, objBitmap *Bitmap, struct jpeg_dec
 ** Picture: Init
 */
 
-static ERROR JPEG_Init(prvPicture *Self, APTR Void)
+static ERROR JPEG_Init(extPicture *Self, APTR Void)
 {
    pf::Log log;
    UBYTE *buffer;
@@ -203,7 +200,7 @@ static ERROR JPEG_Init(prvPicture *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR JPEG_Query(prvPicture *Self, APTR Void)
+static ERROR JPEG_Query(extPicture *Self, APTR Void)
 {
    pf::Log log;
    struct jpeg_decompress_struct *cinfo;
@@ -249,17 +246,15 @@ static ERROR JPEG_Query(prvPicture *Self, APTR Void)
 ** Picture: SaveImage
 */
 
-static ERROR JPEG_SaveImage(prvPicture *Self, struct acSaveImage *Args)
+static ERROR JPEG_SaveImage(extPicture *Self, struct acSaveImage *Args)
 {
    pf::Log log;
 
    log.branch();
 
-   objFile *file = NULL;
+   OBJECTPTR file = NULL;
 
-   if ((Args) and (Args->DestID)) {
-      if (AccessObject(Args->DestID, 3000, &file)) return log.warning(ERR_AccessObject);
-   }
+   if ((Args) and (Args->Dest)) file = Args->Dest;
    else {
       STRING path;
       if (Self->get(FID_Location, &path) != ERR_Okay) return log.warning(ERR_MissingPath);
@@ -275,7 +270,7 @@ static ERROR JPEG_SaveImage(prvPicture *Self, struct acSaveImage *Args)
    struct jpeg_error_mgr jerr;
    cinfo.err = jpeg_std_error((struct jpeg_error_mgr *)&jerr);
    jpeg_create_compress(&cinfo);
-   jpeg_stdio_dest(&cinfo, file);
+   jpeg_stdio_dest(&cinfo, (objFile *)file);
 
    cinfo.image_width      = Self->Bitmap->Width; 	// image width and height, in pixels
    cinfo.image_height     = Self->Bitmap->Height;
@@ -309,7 +304,7 @@ static ERROR JPEG_SaveImage(prvPicture *Self, struct acSaveImage *Args)
    jpeg_destroy_compress(&cinfo);
 
    if (file) {
-      if ((Args) and (Args->DestID)) ReleaseObject(file);
+      if ((Args) and (Args->Dest));
       else FreeResource(file);
    }
 

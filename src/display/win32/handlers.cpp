@@ -60,8 +60,8 @@ void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG W
       joy[1].Timestamp = joy[0].Timestamp;
 
       struct acDataFeed feed = {
-         .ObjectID = 0,
-         .DataType = DATA_DEVICE_INPUT,
+         .Object   = NULL,
+         .Datatype = DATA_DEVICE_INPUT,
          .Buffer   = &joy,
          .Size     = sizeof(struct dcDeviceInput) * 2
       };
@@ -84,8 +84,8 @@ void MsgWheelMovement(OBJECTID SurfaceID, FLOAT Wheel)
    joy.Timestamp = PreciseTime();
 
    struct acDataFeed feed;
-   feed.ObjectID = 0;
-   feed.DataType = DATA_DEVICE_INPUT;
+   feed.Object   = NULL;
+   feed.Datatype = DATA_DEVICE_INPUT;
    feed.Buffer   = &joy;
    feed.Size     = sizeof(struct dcDeviceInput);
    ActionMsg(AC_DataFeed, glPointerID, &feed);
@@ -144,8 +144,8 @@ void MsgButtonPress(LONG button, LONG State)
 
       if (i) {
          struct acDataFeed feed;
-         feed.ObjectID = 0;
-         feed.DataType = DATA_DEVICE_INPUT;
+         feed.Object   = NULL;
+         feed.Datatype = DATA_DEVICE_INPUT;
          feed.Buffer   = &joy;
          feed.Size     = sizeof(struct dcDeviceInput) * i;
          if (ActionMsg(AC_DataFeed, glPointerID, &feed) IS ERR_NoMatchingObject) {

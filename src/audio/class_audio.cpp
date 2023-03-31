@@ -642,9 +642,7 @@ static ERROR AUDIO_SaveSettings(extAudio *Self, APTR Void)
 {
    objFile::create file = { fl::Path("user:config/audio.cfg"), fl::Flags(FL_NEW|FL_WRITE) };
 
-   if (file.ok()) {
-      return acSaveToObject(Self, file->UID, 0);
-   }
+   if (file.ok()) return Self->saveToObject(*file);
    else return ERR_CreateFile;
 }
 
@@ -658,7 +656,7 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Dest)) return log.warning(ERR_NullArgs);
 
    objConfig::create config = { };
    if (config.ok()) {
@@ -745,7 +743,7 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
       }
 #endif
 
-      config->saveToObject(Args->DestID, 0);
+      config->saveToObject(Args->Dest);
    }
 
    return ERR_Okay;

@@ -520,8 +520,8 @@ class objBitmap : public BaseClass {
    // Action stubs
 
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
-   inline ERROR copyData(OBJECTID DestID) {
-      struct acCopyData args = { .DestID = DestID };
+   inline ERROR copyData(OBJECTPTR Dest) {
+      struct acCopyData args = { .Dest = Dest };
       return Action(AC_CopyData, this, &args);
    }
    inline ERROR draw() { return Action(AC_Draw, this, NULL); }
@@ -553,8 +553,8 @@ class objBitmap : public BaseClass {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
    }
-   inline ERROR saveImage(OBJECTID DestID, CLASSID ClassID) {
-      struct acSaveImage args = { { DestID }, { ClassID } };
+   inline ERROR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) {
+      struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }
    inline ERROR seek(DOUBLE Offset, LONG Position = SEEK_CURRENT) {
@@ -691,8 +691,8 @@ class objDisplay : public BaseClass {
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
-   inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
-      struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+   inline ERROR dataFeed(OBJECTPTR Object, LONG Datatype, const void *Buffer, LONG Size) {
+      struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
    inline ERROR disable() { return Action(AC_Disable, this, NULL); }
@@ -734,8 +734,8 @@ class objDisplay : public BaseClass {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
    }
-   inline ERROR saveImage(OBJECTID DestID, CLASSID ClassID) {
-      struct acSaveImage args = { { DestID }, { ClassID } };
+   inline ERROR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) {
+      struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }
    inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }
@@ -806,8 +806,8 @@ class objClipboard : public BaseClass {
    // Action stubs
 
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
-   inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
-      struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+   inline ERROR dataFeed(OBJECTPTR Object, LONG Datatype, const void *Buffer, LONG Size) {
+      struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
    inline ERROR init() { return InitObject(this); }
@@ -994,8 +994,8 @@ class objSurface : public BaseClass {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
    }
-   inline ERROR saveImage(OBJECTID DestID, CLASSID ClassID) {
-      struct acSaveImage args = { { DestID }, { ClassID } };
+   inline ERROR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) {
+      struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }
    inline ERROR scroll(DOUBLE X, DOUBLE Y, DOUBLE Z = 0) {

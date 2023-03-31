@@ -141,7 +141,6 @@ then the dimension is calculated relative to the bounding box or viewport applyi
 static ERROR PATTERN_GET_Height(extVectorPattern *Self, Variable *Value)
 {
    DOUBLE val = Self->Height;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_HEIGHT)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -154,10 +153,7 @@ static ERROR PATTERN_SET_Height(extVectorPattern *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_HEIGHT) & (~DMF_RELATIVE_HEIGHT);
 
    Self->Height = val;
@@ -344,7 +340,6 @@ then the dimension is calculated relative to the bounding box or viewport applyi
 static ERROR PATTERN_GET_Width(extVectorPattern *Self, Variable *Value)
 {
    DOUBLE val = Self->Width;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_WIDTH)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -357,10 +352,7 @@ static ERROR PATTERN_SET_Width(extVectorPattern *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_WIDTH) & (~DMF_RELATIVE_WIDTH);
 
    Self->Width = val;
@@ -379,7 +371,6 @@ The (X,Y) field values define the starting coordinate for mapping patterns.
 static ERROR PATTERN_GET_X(extVectorPattern *Self, Variable *Value)
 {
    DOUBLE val = Self->X;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_X)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -392,10 +383,7 @@ static ERROR PATTERN_SET_X(extVectorPattern *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_X) & (~DMF_RELATIVE_X);
 
    Self->X = val;
@@ -415,7 +403,6 @@ The (X,Y) field values define the starting coordinate for mapping patterns.
 static ERROR PATTERN_GET_Y(extVectorPattern *Self, Variable *Value)
 {
    DOUBLE val = Self->Y;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_Y)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -428,10 +415,7 @@ static ERROR PATTERN_SET_Y(extVectorPattern *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_Y) & (~DMF_RELATIVE_Y);
 
    Self->Y = val;

@@ -153,7 +153,6 @@ The height of the ellipse is defined here as the equivalent of #RadiusY * 2.0.
 static ERROR ELLIPSE_GET_Height(extVectorEllipse *Self, Variable *Value)
 {
    DOUBLE val = Self->eRadiusY * 2.0;
-   if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -181,7 +180,6 @@ The horizontal center of the ellipse is defined here as either a fixed or relati
 static ERROR ELLIPSE_GET_CenterX(extVectorEllipse *Self, Variable *Value)
 {
    DOUBLE val = Self->eCX;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->eDimensions & DMF_RELATIVE_CENTER_X)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -194,10 +192,7 @@ static ERROR ELLIPSE_SET_CenterX(extVectorEllipse *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_CENTER_X) & (~DMF_FIXED_CENTER_X);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_CENTER_X) & (~DMF_FIXED_CENTER_X);
    else Self->eDimensions = (Self->eDimensions | DMF_FIXED_CENTER_X) & (~DMF_RELATIVE_CENTER_X);
 
    Self->eCX = val;
@@ -217,7 +212,6 @@ The vertical center of the ellipse is defined here as either a fixed or relative
 static ERROR ELLIPSE_GET_CenterY(extVectorEllipse *Self, Variable *Value)
 {
    DOUBLE val = Self->eCY;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->eDimensions & DMF_RELATIVE_CENTER_Y)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -230,10 +224,7 @@ static ERROR ELLIPSE_SET_CenterY(extVectorEllipse *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_CENTER_Y) & (~DMF_FIXED_CENTER_Y);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_CENTER_Y) & (~DMF_FIXED_CENTER_Y);
    else Self->eDimensions = (Self->eDimensions | DMF_FIXED_CENTER_Y) & (~DMF_RELATIVE_CENTER_Y);
 
    Self->eCY = val;
@@ -253,7 +244,6 @@ The radius of the ellipse is defined here as either a fixed or relative value.  
 static ERROR ELLIPSE_GET_Radius(extVectorEllipse *Self, Variable *Value)
 {
    DOUBLE val = (Self->eRadiusX + Self->eRadiusY) * 0.5;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->eDimensions & DMF_RELATIVE_RADIUS)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -266,10 +256,7 @@ static ERROR ELLIPSE_SET_Radius(extVectorEllipse *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_RADIUS) & (~DMF_FIXED_RADIUS);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_RADIUS) & (~DMF_FIXED_RADIUS);
    else Self->eDimensions = (Self->eDimensions | DMF_FIXED_RADIUS) & (~DMF_RELATIVE_RADIUS);
 
    Self->eRadiusX = Self->eRadiusY = val;
@@ -288,7 +275,6 @@ The horizontal radius of the ellipse is defined here as either a fixed or relati
 static ERROR ELLIPSE_GET_RadiusX(extVectorEllipse *Self, Variable *Value)
 {
    DOUBLE val = Self->eRadiusX;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->eDimensions & DMF_RELATIVE_RADIUS_X)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -301,10 +287,7 @@ static ERROR ELLIPSE_SET_RadiusX(extVectorEllipse *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_RADIUS_X) & (~DMF_FIXED_RADIUS_X);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_RADIUS_X) & (~DMF_FIXED_RADIUS_X);
    else Self->eDimensions = (Self->eDimensions | DMF_FIXED_RADIUS_X) & (~DMF_RELATIVE_RADIUS_X);
 
    Self->eRadiusX = val;
@@ -323,7 +306,6 @@ The vertical radius of the ellipse is defined here as either a fixed or relative
 static ERROR ELLIPSE_GET_RadiusY(extVectorEllipse *Self, Variable *Value)
 {
    DOUBLE val = Self->eRadiusY;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->eDimensions & DMF_RELATIVE_RADIUS_Y)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -336,10 +318,7 @@ static ERROR ELLIPSE_SET_RadiusY(extVectorEllipse *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_RADIUS_Y) & (~DMF_FIXED_RADIUS_Y);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_RADIUS_Y) & (~DMF_FIXED_RADIUS_Y);
    else Self->eDimensions = (Self->eDimensions | DMF_FIXED_RADIUS_Y) & (~DMF_RELATIVE_RADIUS_Y);
 
    Self->eRadiusY = val;
@@ -386,7 +365,6 @@ The width of the ellipse is defined here as the equivalent of #RadiusX * 2.0.
 static ERROR ELLIPSE_GET_Width(extVectorEllipse *Self, Variable *Value)
 {
    DOUBLE val = Self->eRadiusX * 2.0;
-   if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;

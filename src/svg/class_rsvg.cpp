@@ -2,7 +2,7 @@
 
 //********************************************************************************************************************
 
-static ERROR RSVG_Activate(prvPicture *Self, APTR Void)
+static ERROR RSVG_Activate(extPicture *Self, APTR Void)
 {
    prvSVG *prv;
    if (!(prv = (prvSVG *)Self->ChildPrivate)) return ERR_NotInitialised;
@@ -22,7 +22,7 @@ static ERROR RSVG_Activate(prvPicture *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR RSVG_Free(prvPicture *Self, APTR Void)
+static ERROR RSVG_Free(extPicture *Self, APTR Void)
 {
    if (auto prv = (prvSVG *)Self->ChildPrivate) {
       if (prv->SVG) { FreeResource(prv->SVG); prv->SVG = NULL; }
@@ -32,7 +32,7 @@ static ERROR RSVG_Free(prvPicture *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR RSVG_Init(prvPicture *Self, APTR Void)
+static ERROR RSVG_Init(extPicture *Self, APTR Void)
 {
    pf::Log log;
    STRING path;
@@ -66,7 +66,7 @@ static ERROR RSVG_Init(prvPicture *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR RSVG_Query(prvPicture *Self, APTR Void)
+static ERROR RSVG_Query(extPicture *Self, APTR Void)
 {
    pf::Log log;
    prvSVG *prv;
@@ -114,8 +114,8 @@ static ERROR RSVG_Query(prvPicture *Self, APTR Void)
 
       // If the SVG source doesn't specify fixed dimensions, automatically force rescaling to the display width and height.
 
-      if (!view_width)  SetField(view, FID_Width|TDOUBLE|TPERCENT, 100.0);
-      if (!view_height) SetField(view, FID_Height|TDOUBLE|TPERCENT, 100.0);
+      if (!view_width)  SetField(view, FID_Width|TDOUBLE|TPERCENT, 1.0);
+      if (!view_height) SetField(view, FID_Height|TDOUBLE|TPERCENT, 1.0);
 
       if ((Self->DisplayWidth > 0) and (Self->DisplayHeight > 0)) { // Client specified the display size?
          // Give the vector scene a target width and height.
@@ -153,7 +153,7 @@ static ERROR RSVG_Query(prvPicture *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR RSVG_Resize(prvPicture *Self, struct acResize *Args)
+static ERROR RSVG_Resize(extPicture *Self, struct acResize *Args)
 {
    prvSVG *prv;
    if (!(prv = (prvSVG *)Self->ChildPrivate)) return ERR_NotInitialised;

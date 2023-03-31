@@ -379,7 +379,6 @@ The height of the area containing the wave is defined here as a fixed or relativ
 static ERROR WAVE_GET_Height(extVectorWave *Self, Variable *Value)
 {
    DOUBLE val = Self->wHeight;
-   if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -392,10 +391,7 @@ static ERROR WAVE_SET_Height(extVectorWave *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
    else Self->wDimensions = (Self->wDimensions | DMF_FIXED_HEIGHT) & (~DMF_RELATIVE_HEIGHT);
 
    Self->wHeight = val;
@@ -458,7 +454,6 @@ The width of the area containing the wave is defined here as a fixed or relative
 static ERROR WAVE_GET_Width(extVectorWave *Self, Variable *Value)
 {
    DOUBLE val = Self->wWidth;
-   if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -471,10 +466,7 @@ static ERROR WAVE_SET_Width(extVectorWave *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
    else Self->wDimensions = (Self->wDimensions | DMF_FIXED_WIDTH) & (~DMF_RELATIVE_WIDTH);
 
    Self->wWidth = val;
@@ -493,7 +485,6 @@ The x coordinate of the wave is defined here as either a fixed or relative value
 static ERROR WAVE_GET_X(extVectorWave *Self, Variable *Value)
 {
    DOUBLE val = Self->wX;
-   if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -506,10 +497,7 @@ static ERROR WAVE_SET_X(extVectorWave *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
    else Self->wDimensions = (Self->wDimensions | DMF_FIXED_X) & (~DMF_RELATIVE_X);
 
    Self->wX = val;
@@ -528,7 +516,6 @@ The y coordinate of the wave is defined here as either a fixed or relative value
 static ERROR WAVE_GET_Y(extVectorWave *Self, Variable *Value)
 {
    DOUBLE val = Self->wY;
-   if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -541,10 +528,7 @@ static ERROR WAVE_SET_Y(extVectorWave *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
    else Self->wDimensions = (Self->wDimensions | DMF_FIXED_Y) & (~DMF_RELATIVE_Y);
 
    Self->wY = val;

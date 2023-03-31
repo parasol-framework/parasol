@@ -4,23 +4,23 @@
 #define FDEF static const struct FunctionField
 
 FDEF argsClipboard[]     = { { "Mode", FD_LONG }, { 0, 0 } };
-FDEF argsCopyData[]      = { { "Dest", FD_OBJECTID  }, { 0, 0 } };
+FDEF argsCopyData[]      = { { "Dest", FD_OBJECTPTR  }, { 0, 0 } };
 FDEF argsCustom[]        = { { "Number", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
-FDEF argsDataFeed[]      = { { "Object", FD_OBJECTID }, { "Datatype", FD_LONG }, { "Buffer", FD_PTR }, { "Size", FD_LONG|FD_PTRSIZE }, { 0, 0 } };
-FDEF argsDragDrop[]      = { { "Source", FD_OBJECTID }, { "Item", FD_LONG }, { "Datatype", FD_STR }, { 0, 0 } };
+FDEF argsDataFeed[]      = { { "Object", FD_OBJECTPTR }, { "Datatype", FD_LONG }, { "Buffer", FD_PTR }, { "Size", FD_LONG|FD_PTRSIZE }, { 0, 0 } };
+FDEF argsDragDrop[]      = { { "Source", FD_OBJECTPTR }, { "Item", FD_LONG }, { "Datatype", FD_STR }, { 0, 0 } };
 FDEF argsDraw[]          = { { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { 0, 0 } };
 FDEF argsGetVar[]        = { { "Field", FD_STR }, { "Buffer",  FD_PTRBUFFER }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsMove[]          = { { "DeltaX", FD_DOUBLE }, { "DeltaY", FD_DOUBLE }, { "DeltaZ", FD_DOUBLE }, { 0, 0 } };
 FDEF argsMoveToPoint[]   = { { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { "Z", FD_DOUBLE }, { "Flags", FD_LONG }, { 0, 0 } };
-FDEF argsNewChild[]      = { { "NewChild", FD_OBJECTID }, { 0, 0 } };
-FDEF argsNewOwner[]      = { { "NewOwner", FD_OBJECTID }, { "Class", FD_LONG }, { 0, 0 } };
+FDEF argsNewChild[]      = { { "NewChild", FD_OBJECTPTR }, { 0, 0 } };
+FDEF argsNewOwner[]      = { { "NewOwner", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsRead[]          = { { "Buffer", FD_PTRBUFFER }, { "Length", FD_LONG|FD_BUFSIZE }, { "Result", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsRedimension[]   = { { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { "Z", FD_DOUBLE }, { "Width", FD_DOUBLE }, { "Height", FD_DOUBLE }, { "Depth", FD_DOUBLE }, { 0, 0 } };
 FDEF argsRedo[]          = { { "Steps", FD_LONG }, { 0, 0 } };
 FDEF argsRename[]        = { { "Name", FD_STR }, { 0, 0 } };
 FDEF argsResize[]        = { { "Width", FD_DOUBLE }, { "Height", FD_DOUBLE }, { "Depth", FD_DOUBLE }, { 0, 0 } };
-FDEF argsSaveImage[]     = { { "Dest", FD_OBJECTID }, { "Class", FD_LONG }, { 0, 0 } };
-FDEF argsSaveToObject[]  = { { "Dest", FD_OBJECTID }, { "Class", FD_LONG }, { 0, 0 } };
+FDEF argsSaveImage[]     = { { "Dest", FD_OBJECTPTR }, { "Class", FD_LONG }, { 0, 0 } };
+FDEF argsSaveToObject[]  = { { "Dest", FD_OBJECTPTR }, { "Class", FD_LONG }, { 0, 0 } };
 FDEF argsScroll[]        = { { "DeltaX", FD_DOUBLE }, { "DeltaY", FD_DOUBLE }, { "DeltaZ", FD_DOUBLE }, { 0, 0 } };
 FDEF argsScrollToPoint[] = { { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { "Z", FD_DOUBLE }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsSeek[]          = { { "Offset", FD_DOUBLE }, { "Position", FD_LONG }, { 0, 0 } };

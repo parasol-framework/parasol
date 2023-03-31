@@ -837,7 +837,6 @@ The x-axis coordinate of the text is specified here as a fixed value.  Relative 
 static ERROR TEXT_GET_X(extVectorText *Self, Variable *Value)
 {
    DOUBLE val = Self->txX;
-   if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -865,7 +864,6 @@ Unlike other vector shapes, the Y coordinate positions the text from its base li
 static ERROR TEXT_GET_Y(extVectorText *Self, Variable *Value)
 {
    DOUBLE val = Self->txY;
-   if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;

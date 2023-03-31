@@ -48,18 +48,18 @@ class objSVG : public BaseClass {
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
-   inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
-      struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+   inline ERROR dataFeed(OBJECTPTR Object, LONG Datatype, const void *Buffer, LONG Size) {
+      struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
    inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }
    inline ERROR init() { return InitObject(this); }
-   inline ERROR saveImage(OBJECTID DestID, CLASSID ClassID) {
-      struct acSaveImage args = { { DestID }, { ClassID } };
+   inline ERROR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) {
+      struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }
-   inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
-      struct acSaveToObject args = { { DestID }, { ClassID } };
+   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) {
+      struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
 };

@@ -1049,8 +1049,8 @@ static ERROR process_data(extHTTP *Self, APTR Buffer, LONG Length)
    if (Self->OutputObjectID) {
       if (Self->ObjectMode IS HOM_DATA_FEED) {
          struct acDataFeed data = {
-            .ObjectID = Self->UID,
-            .DataType = Self->Datatype,
+            .Object   = Self,
+            .Datatype = Self->Datatype,
             .Buffer   = Buffer,
             .Size     = Length
          };

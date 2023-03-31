@@ -73,6 +73,7 @@ std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes;
 std::list<FDRecord> glFDTable;
 std::list<CoreTimer> glTimers;
 std::vector<TaskRecord> glTasks;
+std::vector<FDRecord> glRegisterFD;
 
 struct RootModule     *glModuleList    = NULL;
 struct SharedControl  *glSharedControl = NULL;
@@ -98,6 +99,7 @@ LONG glGlobalIDCount = 1;
 LONG glEventMask = 0;
 TIMER glProcessJanitor = 0;
 UBYTE glTimerCycle = 1;
+BYTE glFDProtected = 0;
 CSTRING glIDL = MOD_IDL;
 
 #ifdef __unix__

@@ -273,7 +273,7 @@ static int input_request_item(lua_State *Lua)
       dcr.Preference[1] = 0;
 
       struct acDataFeed dc = {
-         .ObjectID = Lua->Script->UID,
+         .Object   = Lua->Script,
          .Datatype = DATA_REQUEST,
          .Buffer   = &dcr,
          .Size     = sizeof(dcr)

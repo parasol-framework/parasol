@@ -316,6 +316,7 @@ static DOUBLE read_unit(const std::string Value, LARGE *FieldID)
 
       if (*str IS '%') {
          *FieldID |= TPERCENT;
+         multiplier = 0.01;
          str++;
       }
       else if ((str[0] IS 'p') and (str[1] IS 'x')); // Pixel.  This is the default type
@@ -348,12 +349,7 @@ INLINE void set_double_units(OBJECTPTR Object, FIELD FieldID, const std::string 
 {
    LARGE field = FieldID;
    DOUBLE num = read_unit(Value, &field);
-   if (Units IS VUNIT_BOUNDING_BOX) {
-      if (!(field & TPERCENT)) {
-         num *= 100.0;
-         field |= TPERCENT;
-      }
-   }
+   if (Units IS VUNIT_BOUNDING_BOX) field |= TPERCENT;
    SetField(Object, field, num);
 }
 
@@ -511,7 +507,7 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 
             auto view = Self->Scene->Viewport;
             while ((view) and (view->SubID != ID_VECTORVIEWPORT)) view = (objVectorViewport *)view->Next;
-            if (view) view->setFields(fl::Width(PERCENT(100.0)), fl::Height(PERCENT(100.0)));
+            if (view) view->setFields(fl::Width(PERCENT(1.0)), fl::Height(PERCENT(1.0)));
          }
       }
       else error = ERR_Init;

@@ -1707,10 +1707,7 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
       }
    }
 
-   struct acNewOwner newowner = {
-      .NewOwnerID = Owner->UID, // Send a owner alert to the object
-      .ClassID    = Owner->ClassID
-   };
+   struct acNewOwner newowner = { .NewOwner = Owner };
    Action(AC_NewOwner, Object, &newowner);
 
    //if (Object->OwnerID) log.trace("SetOwner:","Changing the owner for object %d from %d to %d.", Object->UID, Object->OwnerID, Owner->UID);

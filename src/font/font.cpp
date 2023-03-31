@@ -1,12 +1,10 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
-This code utilises the work of the FreeType Project under the FreeType
-License.  For more information please refer to the FreeType home page at
-www.freetype.org.
+This code utilises the work of the FreeType Project under the FreeType License.  For more information please refer to
+the FreeType home page at www.freetype.org.
 
 **********************************************************************************************************************
 
@@ -1299,7 +1297,7 @@ static ERROR fntRefreshFonts(void)
    log.trace("Saving the font configuration file.");
 
    objFile::create file = { fl::Path("fonts:fonts.cfg"), fl::Flags(FL_NEW|FL_WRITE) };
-   if (file.ok()) glConfig->saveToObject(file->UID, 0);
+   if (file.ok()) glConfig->saveToObject(*file);
 
    return ERR_Okay;
 }

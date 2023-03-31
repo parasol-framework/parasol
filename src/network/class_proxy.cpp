@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -582,7 +581,7 @@ static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
          fl::Flags(FL_NEW|FL_WRITE)
       };
 
-      if (file.ok()) return config->saveToObject(file->UID, 0);
+      if (file.ok()) return config->saveToObject(*file);
       else return ERR_CreateObject;
    }
    else return ERR_CreateObject;

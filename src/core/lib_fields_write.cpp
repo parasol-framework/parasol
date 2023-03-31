@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol Framework is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol Framework is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 -CATEGORY-
 Name: Fields
@@ -568,6 +567,7 @@ static ERROR setval_variable(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Da
          var.Double = strtod((CSTRING)Data, &pct);
          if (pct[0] IS '%') {
             var.Type = FD_DOUBLE|FD_PERCENTAGE;
+            var.Double *= 0.01;
             return ((ERROR (*)(APTR, Variable *))(Field->SetValue))(Object, &var);
          }
          else {

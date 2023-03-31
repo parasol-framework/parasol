@@ -238,7 +238,7 @@ static ERROR XML_DataFeed(extXML *Self, struct acDataFeed *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if ((Args->DataType IS DATA_XML) or (Args->DataType IS DATA_TEXT)) {
+   if ((Args->Datatype IS DATA_XML) or (Args->Datatype IS DATA_TEXT)) {
       if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
 
       TAGS tags;
@@ -1169,16 +1169,16 @@ static ERROR XML_SaveToObject(extXML *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Dest)) return log.warning(ERR_NullArgs);
    if (Self->Tags.size() <= 0) return ERR_Okay;
 
-   log.traceBranch("To: %d", Args->DestID);
+   log.traceBranch("To: %d", Args->Dest->UID);
 
    ERROR error;
    STRING str;
    if (!(error = xmlGetString(Self, 0, XMF_READABLE|XMF_INCLUDE_SIBLINGS, &str))) {
       struct acWrite write = { str, StrLength(str) };
-      if (ActionMsg(AC_Write, Args->DestID, &write) != ERR_Okay) error = ERR_Write;
+      if (Action(AC_Write, Args->Dest, &write) != ERR_Okay) error = ERR_Write;
       FreeResource(str);
       return error;
    }
