@@ -1,0 +1,58 @@
+-- Generate HTML documentation by running xsltproc against every XML document file.
+
+   require 'common'
+   require 'filesearch'
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Resolve the location of the Parasol SDK and create an 'sdk:' volume.
+
+function resolveSDKPath(Path)
+   local sdk_path
+   local err = ERR_Failed
+   local search_list = { }
+   if not Path then
+      local search_path = 'CMakeLists.txt'
+      local limit = 5
+      while (err != ERR_Okay) and (limit > 0) do
+         table.insert(search_list, search_path)
+         err, sdk_path = mSys.ResolvePath(search_path)
+         search_path = '../' .. search_path
+         limit = limit - 1
+      end
+   else
+      table.insert(search_list, Path .. '/CMakeLists.txt')
+      err, sdk_path = mSys.ResolvePath(Path .. '/CMakeLists.txt')
+   end
+
+   if (err == ERR_Okay) then
+      sdk_path = sdk_path:match("(.+)CMakeLists%.txt")
+   else
+      local msg = ''
+      for _, path in ipairs(search_list) do
+         msg = msg .. path .. '\n'
+      end
+      print('Unable to find CMakeLists.txt after searching the following paths:\n' .. msg)
+      error('A path to the Parasol SDK could not be determined.')
+   end
+
+   mSys.SetVolume('sdk', sdk_path)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+   glPath = obj.find('self').workingPath
+
+   resolveSDKPath(arg('sdk'))
+
+   local outPath = nz(glDocPath, 'sdk:docs/xml/modules/')
+
+   file.search('sdk:docs/xml/', {
+      nameFilter = '*.xml',
+      nameWild   = true,
+      matchFeedback = function(Path, FileName, File)
+         local src_path = Path .. FileName
+         local output_path = src_path:gsub('/xml/', '/html/')
+         output_path = output_path:gsub('.xml', '.html')
+         print('xsltproc ' .. src_path .. ' -o ' .. output_path)
+      end
+   })

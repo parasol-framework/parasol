@@ -84,7 +84,7 @@ We recommend using the GCC compiler to build the framework on all platforms.  If
 Linux systems require a few package dependencies to be installed first if a complete build is desired.  For an Apt based system such as Debian or Ubuntu, execute the following:
 
 ```
-sudo apt-get install libasound2-dev libxrandr-dev libxxf86dga-dev cmake g++
+sudo apt-get install libasound2-dev libxrandr-dev libxxf86dga-dev cmake g++ xsltproc
 ```
 
 To create the initial build you must run the following from the SDK's root folder with `<BUILD ENVIRONMENT>` set to the preferred build system on your platform, or if you don't know this then omit the option to get the default.  For Windows systems the correct build environment is `MinGW Makefiles`.
