@@ -834,6 +834,8 @@ struct FDRecord {
 
 extern std::list<FDRecord> glFDTable;
 extern LONG glInotify;
+extern BYTE glFDProtected;
+extern std::vector<FDRecord> glRegisterFD;
 
 #define LRT_Exclusive 1
 

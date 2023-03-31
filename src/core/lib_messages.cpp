@@ -1347,6 +1347,7 @@ ERROR sleep_task(LONG Timeout)
 
    UBYTE buffer[64];
    if (result > 0) {
+      glFDProtected++;
       for (auto &fd : glFDTable) {
          if (fd.Flags & RFD_READ) {  // Readable FD support
             if (FD_ISSET(fd.FD, &fread)) {
@@ -1376,6 +1377,14 @@ ERROR sleep_task(LONG Timeout)
 
             fd.Flags &= ~RFD_STOP_RECURSE;
          }
+      }
+      glFDProtected--;
+
+      if ((!glRegisterFD.empty()) and (!glFDProtected)) {
+         for (auto &record : glRegisterFD) {
+            RegisterFD(record.FD, record.Flags, record.Routine, record.Data);
+         }
+         glRegisterFD.clear();
       }
    }
    else if (result IS -1) {

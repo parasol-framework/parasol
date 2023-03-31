@@ -166,8 +166,8 @@ void handle_button_press(XEvent *xevent)
       input.Value     = value;
       input.Timestamp = PreciseTime();
 
-      feed.ObjectID = 0;
-      feed.DataType = DATA_DEVICE_INPUT;
+      feed.Object   = NULL;
+      feed.Datatype = DATA_DEVICE_INPUT;
       feed.Buffer   = &input;
       feed.Size     = sizeof(input);
       ActionMsg(AC_DataFeed, glPointerID, &feed);
@@ -196,8 +196,8 @@ void handle_button_press(XEvent *xevent)
       input.Flags = glInputType[input.Type].Flags;
       input.Timestamp = PreciseTime();
 
-      feed.ObjectID = 0;
-      feed.DataType = DATA_DEVICE_INPUT;
+      feed.Object   = NULL;
+      feed.Datatype = DATA_DEVICE_INPUT;
       feed.Buffer   = &input;
       feed.Size     = sizeof(input);
       if (ActionMsg(AC_DataFeed, glPointerID, &feed) IS ERR_NoMatchingObject) {
@@ -222,8 +222,8 @@ void handle_button_release(XEvent *xevent)
 
    struct dcDeviceInput input;
    struct acDataFeed feed;
-   feed.ObjectID = 0;
-   feed.DataType = DATA_DEVICE_INPUT;
+   feed.Object   = NULL;
+   feed.Datatype = DATA_DEVICE_INPUT;
    feed.Buffer   = &input;
    feed.Size     = sizeof(input);
    input.Type  = 0;
@@ -708,8 +708,8 @@ void process_movement(Window Window, LONG X, LONG Y)
 
       struct acDataFeed feed;
       struct dcDeviceInput input[2];
-      feed.ObjectID = 0;
-      feed.DataType = DATA_DEVICE_INPUT;
+      feed.Object   = NULL;
+      feed.Datatype = DATA_DEVICE_INPUT;
       feed.Buffer   = &input;
       feed.Size     = sizeof(input);
       input[0].Type      = JET_ABS_X;
