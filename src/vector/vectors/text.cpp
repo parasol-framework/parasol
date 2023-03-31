@@ -1800,7 +1800,7 @@ static void reset_font(extVectorText *Vector)
       DOUBLE point_size = Vector->txFontSize * (3.0 / 4.0);
       font->set(FID_Point, point_size);
 
-      if (!acInit(font)) {
+      if (!InitObject(font)) {
          if (Vector->txFont) FreeResource(Vector->txFont);
          Vector->txFont = font;
       }

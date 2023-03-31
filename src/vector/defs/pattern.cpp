@@ -94,8 +94,8 @@ static ERROR PATTERN_Init(extVectorPattern *Self, APTR Void)
       Self->Dimensions |= DMF_FIXED_HEIGHT;
    }
 
-   if (acInit(Self->Scene)) return ERR_Init;
-   if (acInit(Self->Viewport)) return ERR_Init;
+   if (InitObject(Self->Scene)) return ERR_Init;
+   if (InitObject(Self->Viewport)) return ERR_Init;
 
    return ERR_Okay;
 }

@@ -99,7 +99,7 @@ class objFont : public BaseClass {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC_Draw, this, &args);
    }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
 };
 
 extern struct FontBase *FontBase;

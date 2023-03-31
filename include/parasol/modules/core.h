@@ -1879,7 +1879,7 @@ struct CoreBase {
    ERROR (*_CheckAction)(OBJECTPTR Object, LONG Action);
    ERROR (*_CheckMemoryExists)(MEMORYID ID);
    ERROR (*_CheckObjectExists)(OBJECTID Object);
-   ERROR (*_DeleteFile)(CSTRING Path, FUNCTION * Callback);
+   ERROR (*_InitObject)(OBJECTPTR Object);
    ERROR (*_VirtualVolume)(CSTRING Name, ...);
    OBJECTPTR (*_CurrentContext)(void);
    ERROR (*_GetFieldArray)(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements);
@@ -1987,6 +1987,7 @@ struct CoreBase {
    void (*_UnloadFile)(struct CacheFile * Cache);
    void (*_SetDefaultPermissions)(LONG User, LONG Group, LONG Permissions);
    ERROR (*_AddInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING Value);
+   ERROR (*_DeleteFile)(CSTRING Path, FUNCTION * Callback);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2001,7 +2002,7 @@ inline ERROR AccessObject(OBJECTID Object, LONG MilliSeconds, APTR Result) { ret
 inline ERROR CheckAction(OBJECTPTR Object, LONG Action) { return CoreBase->_CheckAction(Object,Action); }
 inline ERROR CheckMemoryExists(MEMORYID ID) { return CoreBase->_CheckMemoryExists(ID); }
 inline ERROR CheckObjectExists(OBJECTID Object) { return CoreBase->_CheckObjectExists(Object); }
-inline ERROR DeleteFile(CSTRING Path, FUNCTION * Callback) { return CoreBase->_DeleteFile(Path,Callback); }
+inline ERROR InitObject(OBJECTPTR Object) { return CoreBase->_InitObject(Object); }
 template<class... Args> ERROR VirtualVolume(CSTRING Name, Args... Tags) { return CoreBase->_VirtualVolume(Name,Tags...); }
 inline OBJECTPTR CurrentContext(void) { return CoreBase->_CurrentContext(); }
 inline ERROR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements) { return CoreBase->_GetFieldArray(Object,Field,Result,Elements); }
@@ -2109,6 +2110,7 @@ inline LONG StrDatatype(CSTRING String) { return CoreBase->_StrDatatype(String);
 inline void UnloadFile(struct CacheFile * Cache) { return CoreBase->_UnloadFile(Cache); }
 inline void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions) { return CoreBase->_SetDefaultPermissions(User,Group,Permissions); }
 inline ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
+inline ERROR DeleteFile(CSTRING Path, FUNCTION * Callback) { return CoreBase->_DeleteFile(Path,Callback); }
 #endif
 
 
@@ -2703,7 +2705,7 @@ class Create {
                else { error = log.warning(ERR_UnsupportedField); return; }
             }
 
-            if ((error = acInit(obj))) {
+            if ((error = InitObject(obj))) {
                FreeResource(obj->UID);
                obj = NULL;
             }
@@ -2772,7 +2774,6 @@ inline ERROR acEnable(OBJECTPTR Object) { return Action(AC_Enable,Object,NULL); 
 inline ERROR acFlush(OBJECTPTR Object) { return Action(AC_Flush,Object,NULL); }
 inline ERROR acFocus(OBJECTPTR Object) { return Action(AC_Focus,Object,NULL); }
 inline ERROR acHide(OBJECTPTR Object) { return Action(AC_Hide,Object,NULL); }
-inline ERROR acInit(OBJECTPTR Object) { return Action(AC_Init,Object,NULL); }
 inline ERROR acLock(OBJECTPTR Object) { return Action(AC_Lock,Object,NULL); }
 inline ERROR acLostFocus(OBJECTPTR Object) { return Action(AC_LostFocus,Object,NULL); }
 inline ERROR acMoveToBack(OBJECTPTR Object) { return Action(AC_MoveToBack,Object,NULL); }
@@ -3041,7 +3042,7 @@ class objFile : public BaseClass {
       struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    inline ERROR query() { return Action(AC_Query, this, NULL); }
    template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
@@ -3259,7 +3260,7 @@ class objConfig : public BaseClass {
       return Action(AC_DataFeed, this, &args);
    }
    inline ERROR flush() { return Action(AC_Flush, this, NULL); }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }
    inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
       struct acSaveToObject args = { { DestID }, { ClassID } };
@@ -3375,7 +3376,7 @@ class objScript : public BaseClass {
       if ((error) and (Buffer)) Buffer[0] = 0;
       return error;
    }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    inline ERROR reset() { return Action(AC_Reset, this, NULL); }
    inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) {
       struct acSetVar args = { FieldName, Value };
@@ -3486,7 +3487,7 @@ class objTask : public BaseClass {
       if ((error) and (Buffer)) Buffer[0] = 0;
       return error;
    }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);
@@ -3556,7 +3557,7 @@ class objThread : public BaseClass {
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
    inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
 };
 
 // Module class definition
@@ -3606,7 +3607,7 @@ class objModule : public BaseClass {
 
    // Action stubs
 
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
 };
 
 // Time class definition
@@ -3642,7 +3643,7 @@ class objTime : public BaseClass {
    // Action stubs
 
    inline ERROR query() { return Action(AC_Query, this, NULL); }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
 };
 
 // Compression class definition
@@ -3769,7 +3770,7 @@ class objCompression : public BaseClass {
    // Action stubs
 
    inline ERROR flush() { return Action(AC_Flush, this, NULL); }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
 };
 
 // CompressedStream class definition
@@ -3861,7 +3862,6 @@ inline ERROR acEnable(OBJECTID ObjectID) { return ActionMsg(AC_Enable, ObjectID,
 inline ERROR acFlush(OBJECTID ObjectID) { return ActionMsg(AC_Flush, ObjectID, NULL); }
 inline ERROR acFocus(OBJECTID ObjectID) { return ActionMsg(AC_Focus, ObjectID, NULL); }
 inline ERROR acHide(OBJECTID ObjectID) { return ActionMsg(AC_Hide, ObjectID, NULL); }
-inline ERROR acInit(OBJECTID ObjectID) { return ActionMsg(AC_Init, ObjectID, NULL); }
 inline ERROR acLostFocus(OBJECTID ObjectID) { return ActionMsg(AC_LostFocus, ObjectID, NULL); }
 inline ERROR acMoveToBack(OBJECTID ObjectID) { return ActionMsg(AC_MoveToBack, ObjectID, NULL); }
 inline ERROR acMoveToFront(OBJECTID ObjectID) { return ActionMsg(AC_MoveToFront, ObjectID, NULL); }

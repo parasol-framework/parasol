@@ -377,7 +377,7 @@ static ERROR PIC_Init(prvPicture *Self, APTR Void)
       if (!Self->Bitmap->Height) Self->Bitmap->Height = Self->DisplayHeight;
 
       if ((Self->Bitmap->Width) and (Self->Bitmap->Height)) {
-         if (!acInit(Self->Bitmap)) {
+         if (!InitObject(Self->Bitmap)) {
             if (Self->Flags & PCF_FORCE_ALPHA_32) Self->Flags &= ~(PCF_ALPHA|PCF_MASK);
 
             if (Self->Flags & (PCF_ALPHA|PCF_MASK)) {
@@ -1210,7 +1210,7 @@ static ERROR decompress_png(prvPicture *Self, objBitmap *Bitmap, int BitDepth, i
    LONG rowsize = png_get_rowbytes(ReadPtr, InfoPtr);
    if ((error = acQuery(Bitmap)) != ERR_Okay) return error;
    if (!Bitmap->initialised()) {
-      if ((error = acInit(Bitmap)) != ERR_Okay) return error;
+      if ((error = InitObject(Bitmap)) != ERR_Okay) return error;
    }
    if ((error = AllocMemory(rowsize, MEM_DATA|MEM_NO_CLEAR, &row)) != ERR_Okay) return error;
 

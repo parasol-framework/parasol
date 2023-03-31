@@ -2196,7 +2196,7 @@ static ERROR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
          release_video(display);
       }
 
-      if (!acInit(picture)) {
+      if (!InitObject(picture)) {
          // Scan through the surface list and copy each buffer to our picture
 
          const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);

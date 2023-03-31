@@ -155,7 +155,7 @@ static void xtag_pathtransition(extSVG *Self, objXML *XML, const XMLTag &Tag)
          if (stops.size() >= 2) {
             SetArray(trans, FID_Stops, stops);
 
-            if (!acInit(trans)) {
+            if (!InitObject(trans)) {
                scAddDef(Self->Scene, id.c_str(), trans);
                return;
             }
@@ -198,7 +198,7 @@ static void xtag_clippath(extSVG *Self, objXML *XML, const XMLTag &Tag)
       }
 
       if (!id.empty()) {
-         if (!acInit(clip)) {
+         if (!InitObject(clip)) {
             svgState state;
 
             // Valid child elements for clip-path are: circle, ellipse, line, path, polygon, polyline, rect, text, use, animate
@@ -1410,7 +1410,7 @@ static void process_pattern(extSVG *Self, objXML *XML, const XMLTag &Tag)
          viewport->setFields(fl::ViewX(0), fl::ViewY(0), fl::ViewWidth(vwidth), fl::ViewHeight(vheight));
       }*/
 
-      if (!acInit(pattern)) {
+      if (!InitObject(pattern)) {
          // Child vectors for the pattern need to be instantiated and belong to the pattern's Viewport.
          svgState state;
          process_children(Self, XML, state, Tag, viewport);
@@ -1677,7 +1677,7 @@ static void def_image(extSVG *Self, const XMLTag &Tag)
       if (!id.empty()) {
          if (pic) {
             image->set(FID_Picture, pic);
-            if (!acInit(image)) {
+            if (!InitObject(image)) {
                add_id(Self, Tag, id);
                scAddDef(Self->Scene, id.c_str(), image);
             }

@@ -15,7 +15,7 @@ ERROR AccessObject(OBJECTID Object, LONG MilliSeconds, OBJECTPTR * Result);
 ERROR CheckAction(OBJECTPTR Object, LONG Action);
 ERROR CheckMemoryExists(MEMORYID ID);
 ERROR CheckObjectExists(OBJECTID Object);
-ERROR DeleteFile(CSTRING Path, FUNCTION * Callback);
+ERROR InitObject(OBJECTPTR Object);
 ERROR VirtualVolume(CSTRING Name, ...);
 OBJECTPTR CurrentContext();
 ERROR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR * Result, LONG * Elements);
@@ -123,6 +123,7 @@ LONG StrDatatype(CSTRING String);
 void UnloadFile(struct CacheFile * Cache);
 void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions);
 ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
+ERROR DeleteFile(CSTRING Path, FUNCTION * Callback);
 
 #ifdef  __cplusplus
 }

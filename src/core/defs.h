@@ -872,12 +872,8 @@ extern "C" {
 #endif
 
 //********************************************************************************************************************
-// Action managers.
 
-ERROR MGR_Init(OBJECTPTR, APTR);
 ERROR MGR_Signal(OBJECTPTR, APTR);
-
-//********************************************************************************************************************
 
 ERROR AccessSemaphore(LONG, LONG, LONG);
 ERROR AllocSemaphore(CSTRING, LONG, LONG, LONG *);

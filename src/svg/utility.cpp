@@ -482,7 +482,7 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
       }
       else if (Buffer) xml->set(FID_Statement, Buffer);
 
-      if (!acInit(xml)) {
+      if (!InitObject(xml)) {
          Self->SVGVersion = 1.0;
 
          convert_styles(xml->Tags);

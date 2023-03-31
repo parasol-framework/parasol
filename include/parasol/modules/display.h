@@ -530,7 +530,7 @@ class objBitmap : public BaseClass {
       return Action(AC_Draw, this, &args);
    }
    inline ERROR flush() { return Action(AC_Flush, this, NULL); }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    inline ERROR lock() { return Action(AC_Lock, this, NULL); }
    inline ERROR query() { return Action(AC_Query, this, NULL); }
    template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) {
@@ -711,7 +711,7 @@ class objDisplay : public BaseClass {
       return error;
    }
    inline ERROR hide() { return Action(AC_Hide, this, NULL); }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    inline ERROR move(DOUBLE X, DOUBLE Y, DOUBLE Z) {
       struct acMove args = { X, Y, Z };
       return Action(AC_Move, this, &args);
@@ -810,7 +810,7 @@ class objClipboard : public BaseClass {
       struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
 };
 
 // Pointer class definition
@@ -970,7 +970,7 @@ class objSurface : public BaseClass {
    inline ERROR enable() { return Action(AC_Enable, this, NULL); }
    inline ERROR focus() { return Action(AC_Focus, this, NULL); }
    inline ERROR hide() { return Action(AC_Hide, this, NULL); }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    inline ERROR lostFocus() { return Action(AC_LostFocus, this, NULL); }
    inline ERROR move(DOUBLE X, DOUBLE Y, DOUBLE Z) {
       struct acMove args = { X, Y, Z };

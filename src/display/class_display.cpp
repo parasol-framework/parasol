@@ -803,7 +803,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
          hints.flags = USPosition|USSize;
          XSetWMNormalHints(XDisplay, Self->XWindowHandle, &hints);
 
-         if (acInit(bmp) != ERR_Okay) {
+         if (InitObject(bmp) != ERR_Okay) {
             return log.warning(ERR_Init);
          }
       }
@@ -822,7 +822,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
          bmp->Width  = Self->Width;
          bmp->Height = Self->Height;
 
-         if (acInit(bmp) != ERR_Okay) {
+         if (InitObject(bmp) != ERR_Okay) {
             return log.warning(ERR_Init);
          }
 
@@ -845,7 +845,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
       bmp->Flags |= BMF_NO_DATA;
       bmp->DataFlags = MEM_VIDEO;
 
-      if (acInit(bmp) != ERR_Okay) {
+      if (InitObject(bmp) != ERR_Okay) {
          return log.warning(ERR_Init);
       }
 
@@ -914,7 +914,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
 
       bmp->Flags |= BMF_NO_DATA;
       bmp->DataFlags = MEM_VIDEO;
-      if (acInit(bmp) != ERR_Okay) {
+      if (InitObject(bmp) != ERR_Okay) {
          return log.warning(ERR_Init);
       }
 
@@ -1917,7 +1917,7 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
             else log.warning("Failed to get Android Config object.");
          #endif
 
-         if (acInit(pointer) != ERR_Okay) FreeResource(pointer);
+         if (InitObject(pointer) != ERR_Okay) FreeResource(pointer);
          else acShow(pointer);
       }
    }

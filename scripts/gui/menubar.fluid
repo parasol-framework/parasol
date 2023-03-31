@@ -303,7 +303,7 @@ gui.menubar = function(HostVP, Options)
       self.viewport.height = 1
       self.viewport.xOffset = nz(Options.xOffset, 0)
 
-      if (self.viewport.acInit() != ERR_Okay) then error('Failed to initialise viewport.') end
+      if (self.viewport.init() != ERR_Okay) then error('Failed to initialise viewport.') end
 
       self.viewport.subscribe('free', function(Viewport, Args)
          self = { }

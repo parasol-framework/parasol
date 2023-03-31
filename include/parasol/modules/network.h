@@ -144,7 +144,7 @@ class objClientSocket : public BaseClass {
 
    // Action stubs
 
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
@@ -231,7 +231,7 @@ class objProxy : public BaseClass {
 
    inline ERROR disable() { return Action(AC_Disable, this, NULL); }
    inline ERROR enable() { return Action(AC_Enable, this, NULL); }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }
 };
 
@@ -284,7 +284,7 @@ class objNetLookup : public BaseClass {
 
    // Action stubs
 
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
 };
 
 // NetSocket class definition
@@ -369,7 +369,7 @@ class objNetSocket : public BaseClass {
       return Action(AC_DataFeed, this, &args);
    }
    inline ERROR disable() { return Action(AC_Disable, this, NULL); }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");

@@ -12,7 +12,7 @@ static ERROR RSVG_Activate(prvPicture *Self, APTR Void)
 
    auto bmp = Self->Bitmap;
    if (!bmp->initialised()) {
-      if (acInit(bmp) != ERR_Okay) return ERR_Init;
+      if (InitObject(bmp) != ERR_Okay) return ERR_Init;
    }
 
    gfxDrawRectangle(bmp, 0, 0, bmp->Width, bmp->Height, 0, BAF_FILL); // Black background
@@ -162,7 +162,7 @@ static ERROR RSVG_Resize(prvPicture *Self, struct acResize *Args)
 
    if (prv->SVG) {
       if (!Self->Bitmap->initialised()) {
-         if (acInit(Self->Bitmap)) return ERR_Init;
+         if (InitObject(Self->Bitmap)) return ERR_Init;
       }
 
       if (!Action(AC_Resize, Self->Bitmap, Args)) {

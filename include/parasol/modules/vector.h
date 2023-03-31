@@ -486,7 +486,7 @@ class objVectorScene : public BaseClass {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC_Draw, this, &args);
    }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    inline ERROR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
       struct acRedimension args = { X, Y, Z, Width, Height, Depth };
       return Action(AC_Redimension, this, &args);
@@ -577,7 +577,7 @@ class objVectorGradient : public BaseClass {
 
    // Action stubs
 
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
 };
 
 // FilterEffect class definition
@@ -606,7 +606,7 @@ class objFilterEffect : public BaseClass {
 
    // Action stubs
 
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    inline ERROR moveToBack() { return Action(AC_MoveToBack, this, NULL); }
    inline ERROR moveToFront() { return Action(AC_MoveToFront, this, NULL); }
 };
@@ -892,7 +892,7 @@ class objVectorFilter : public BaseClass {
    // Action stubs
 
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
 };
 
 // Vector class definition
@@ -1012,7 +1012,7 @@ class objVector : public BaseClass {
    }
    inline ERROR enable() { return Action(AC_Enable, this, NULL); }
    inline ERROR hide() { return Action(AC_Hide, this, NULL); }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    inline ERROR moveToBack() { return Action(AC_MoveToBack, this, NULL); }
    inline ERROR moveToFront() { return Action(AC_MoveToFront, this, NULL); }
    inline ERROR show() { return Action(AC_Show, this, NULL); }

@@ -5803,7 +5803,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
       }
       else acSetVar(dialog, "message", Message);
 
-      if ((!acInit(dialog)) and (!acActivate(dialog))) {
+      if ((!InitObject(dialog)) and (!acActivate(dialog))) {
          CSTRING *results;
          LONG size;
          if ((!GetFieldArray(dialog, FID_Results, (APTR *)&results, &size)) and (size > 0)) {

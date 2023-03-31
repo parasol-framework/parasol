@@ -189,7 +189,7 @@ class objScintilla : public BaseClass {
    inline ERROR enable() { return Action(AC_Enable, this, NULL); }
    inline ERROR focus() { return Action(AC_Focus, this, NULL); }
    inline ERROR hide() { return Action(AC_Hide, this, NULL); }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    inline ERROR redo(LONG Steps) {
       struct acRedo args = { Steps };
       return Action(AC_Redo, this, &args);

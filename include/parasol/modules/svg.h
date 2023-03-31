@@ -53,7 +53,7 @@ class objSVG : public BaseClass {
       return Action(AC_DataFeed, this, &args);
    }
    inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    inline ERROR saveImage(OBJECTID DestID, CLASSID ClassID) {
       struct acSaveImage args = { { DestID }, { ClassID } };
       return Action(AC_SaveImage, this, &args);

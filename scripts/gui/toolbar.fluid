@@ -571,7 +571,7 @@ gui.toolbar = function(HostVP, Options)
       self._arrangedWidth = false
    end
 
-   if (self.viewport.acInit() != ERR_Okay) then error('Failed to initialise viewport.') end
+   if (self.viewport.init() != ERR_Okay) then error('Failed to initialise viewport.') end
 
    self.viewport.subscribe('free', function(Viewport, Args)
       if self._tipTimer then mSys.UpdateTimer(self._tipTimer, 0) end
