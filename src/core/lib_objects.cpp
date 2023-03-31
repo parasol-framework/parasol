@@ -1448,8 +1448,10 @@ CLASSID ResolveClassName(CSTRING ClassName)
 -FUNCTION-
 ResolveClassID: Converts a valid class ID to its equivalent name.
 
-This function is able to resolve a valid class identifier to its equivalent name.  The name is resolved by scanning the
+This function will resolve a valid class ID to its equivalent name.  The name is resolved by scanning the
 class database, so the class must be registered in the database for this function to return successfully.
+Registration is achieved by loading the module that hosts the class, after which the class is permanently saved
+in the database.
 
 -INPUT-
 cid ID: The ID of the class that needs to be resolved.
@@ -1536,8 +1538,6 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
    };
    Action(AC_NewOwner, Object, &newowner);
 
-   // Make the change
-
    //if (Object->OwnerID) log.trace("SetOwner:","Changing the owner for object %d from %d to %d.", Object->UID, Object->OwnerID, Owner->UID);
 
    // Track the object's memory header to the new owner
@@ -1554,10 +1554,9 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
       Object->OwnerID = Owner->UID;
 
       glObjectChildren[Owner->UID].insert(Object->UID);
+      return ERR_Okay;
    }
-   else return log.warning(ERR_Lock);
-
-   return ERR_Okay;
+   else return log.warning(ERR_SystemLocked);
 }
 
 /*********************************************************************************************************************
@@ -1686,8 +1685,8 @@ ERROR SetName(OBJECTPTR Object, CSTRING NewName)
 SubscribeAction: Monitor action calls made against an object.
 
 The SubscribeAction() function allows a client to receive a callback each time that an action is executed on
-an object.  This technique is referred to as "action monitoring" and is especially useful for responding to
-events in the UI and the termination of objects.
+an object.  This technique is referred to as "action monitoring" and is often used for responding to UI
+events and the termination of objects.
 
 Subscriptions are context sensitive, so the Callback will execute in the space attributed to to the caller.
 
@@ -1756,30 +1755,6 @@ ERROR SubscribeAction(OBJECTPTR Object, ACTIONID ActionID, FUNCTION *Callback)
    }
 
    return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-TotalChildren: Returns the total number of children owned by an object.
-
-This function returns the total number of children that are owned by an object.  It is normally called as a precursor
-to ~ListChildren().
-
--INPUT-
-oid Object: The object to query.
-
--RESULT-
-int: The total number of children belonging to the object.  Returns zero if the object does not exist.
-
-*********************************************************************************************************************/
-
-LONG TotalChildren(OBJECTID ObjectID)
-{
-   if (glObjectChildren.contains(ObjectID)) {
-      return glObjectChildren[ObjectID].size();
-   }
-   else return 0;
 }
 
 /*********************************************************************************************************************

@@ -103,7 +103,6 @@ FDEF argsSubscribeEvent[] = { { "Error", FD_LONG|FD_ERROR }, { "Event", FD_LARGE
 FDEF argsSubscribeTimer[] = { { "Error", FD_LONG|FD_ERROR }, { "Interval", FD_DOUBLE }, { "Callback", FD_FUNCTIONPTR }, { "Subscription", FD_PTR|FD_RESULT }, { 0, 0 } };
 FDEF argsSysLock[] = { { "Error", FD_LONG|FD_ERROR }, { "Index", FD_LONG }, { "MilliSeconds", FD_LONG }, { 0, 0 } };
 FDEF argsSysUnlock[] = { { "Error", FD_LONG|FD_ERROR }, { "Index", FD_LONG }, { 0, 0 } };
-FDEF argsTotalChildren[] = { { "Result", FD_LONG }, { "Object", FD_OBJECTID }, { 0, 0 } };
 FDEF argsUTF8CharLength[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsUTF8CharOffset[] = { { "Result", FD_LONG }, { "String", FD_STR }, { "Offset", FD_LONG }, { 0, 0 } };
 FDEF argsUTF8Copy[] = { { "Result", FD_LONG }, { "Src", FD_STR }, { "Dest", FD_STR }, { "Chars", FD_LONG }, { "Size", FD_LONG }, { 0, 0 } };
@@ -152,7 +151,7 @@ const struct Function glFunctions[] = {
    { (APTR)GetOwnerID, "GetOwnerID", argsGetOwnerID },
    { (APTR)GetField, "GetField", argsGetField },
    { (APTR)GetFieldVariable, "GetFieldVariable", argsGetFieldVariable },
-   { (APTR)TotalChildren, "TotalChildren", argsTotalChildren },
+   { (APTR)CompareFilePaths, "CompareFilePaths", argsCompareFilePaths },
    { (APTR)GetSystemState, "GetSystemState", argsGetSystemState },
    { (APTR)ListChildren, "ListChildren", argsListChildren },
    { (APTR)Base64Decode, "Base64Decode", argsBase64Decode },
@@ -244,7 +243,6 @@ const struct Function glFunctions[] = {
    { (APTR)StrDatatype, "StrDatatype", argsStrDatatype },
    { (APTR)UnloadFile, "UnloadFile", argsUnloadFile },
    { (APTR)SetDefaultPermissions, "SetDefaultPermissions", argsSetDefaultPermissions },
-   { (APTR)CompareFilePaths, "CompareFilePaths", argsCompareFilePaths },
    { (APTR)AddInfoTag, "AddInfoTag", argsAddInfoTag },
    { NULL, NULL, NULL }
 };

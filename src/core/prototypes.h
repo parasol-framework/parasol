@@ -30,7 +30,7 @@ CLASSID GetClassID(OBJECTID Object);
 OBJECTID GetOwnerID(OBJECTID Object);
 ERROR GetField(OBJECTPTR Object, FIELD Field, APTR Result);
 ERROR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size);
-LONG TotalChildren(OBJECTID Object);
+ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB);
 const struct SystemState * GetSystemState();
 ERROR ListChildren(OBJECTID Object, pf::vector<ChildEntry> * List);
 ERROR Base64Decode(struct pfBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
@@ -122,7 +122,6 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result
 LONG StrDatatype(CSTRING String);
 void UnloadFile(struct CacheFile * Cache);
 void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions);
-ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB);
 ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
 
 #ifdef  __cplusplus
