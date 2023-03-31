@@ -629,38 +629,29 @@ This action features automatic clipping and remapping, for occasions where the b
 static ERROR BITMAP_CopyData(extBitmap *Self, struct acCopyData *Args)
 {
    pf::Log log;
-   extBitmap *Dest;
-   LONG MaxHeight;
 
-   if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Dest)) return log.warning(ERR_NullArgs);
+   if ((Args->Dest->ClassID != ID_BITMAP)) return log.warning(ERR_Args);
 
-   if (!AccessObject(Args->DestID, 3000, &Dest)) {
-      if ((Dest->ClassID != ID_BITMAP)) {
-         ReleaseObject(Dest);
-         return log.warning(ERR_Args);
-      }
+   auto target = (extBitmap *)Args->Dest;
 
-      if (Self->Height > Dest->Height) MaxHeight = Dest->Height;
-      else MaxHeight = Self->Height;
+   LONG max_height = Self->Height > target->Height ? target->Height : Self->Height;
 
-      if (Self->Width >= Dest->Width) { // Source is wider or equal to the target
-         gfxCopyArea(Self, Dest, 0, 0, 0, Dest->Width, MaxHeight, 0, 0);
-      }
-      else { // The target is wider than the source.  Cpoy the source first, then clear the exposed region on the right.
-         gfxCopyArea(Self, Dest, 0, 0, 0, Self->Width, MaxHeight, 0, 0);
-         gfxDrawRectangle(Dest, Self->Width, 0, Dest->Width - Self->Width, MaxHeight, Dest->BkgdIndex, BAF_FILL);
-      }
-
-      // If the target height is greater, we will need to clear the pixels trailing at the bottom.
-
-      if (Self->Height < Dest->Height) {
-         gfxDrawRectangle(Dest, 0, Self->Height, Dest->Width, Dest->Height - Self->Height, Dest->BkgdIndex, BAF_FILL);
-      }
-
-      ReleaseObject(Dest);
-      return ERR_Okay;
+   if (Self->Width >= target->Width) { // Source is wider or equal to the target
+      gfxCopyArea(Self, target, 0, 0, 0, target->Width, max_height, 0, 0);
    }
-   else return log.warning(ERR_ExclusiveDenied);
+   else { // The target is wider than the source.  Cpoy the source first, then clear the exposed region on the right.
+      gfxCopyArea(Self, target, 0, 0, 0, Self->Width, max_height, 0, 0);
+      gfxDrawRectangle(target, Self->Width, 0, target->Width - Self->Width, max_height, target->BkgdIndex, BAF_FILL);
+   }
+
+   // If the target height is greater, we will need to clear the pixels trailing at the bottom.
+
+   if (Self->Height < target->Height) {
+      gfxDrawRectangle(target, 0, Self->Height, target->Width, target->Height - Self->Height, target->BkgdIndex, BAF_FILL);
+   }
+
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************

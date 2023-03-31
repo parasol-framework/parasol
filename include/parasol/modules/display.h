@@ -520,8 +520,8 @@ class objBitmap : public BaseClass {
    // Action stubs
 
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
-   inline ERROR copyData(OBJECTID DestID) {
-      struct acCopyData args = { .DestID = DestID };
+   inline ERROR copyData(OBJECTPTR Dest) {
+      struct acCopyData args = { .Dest = Dest };
       return Action(AC_CopyData, this, &args);
    }
    inline ERROR draw() { return Action(AC_Draw, this, NULL); }

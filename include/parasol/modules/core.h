@@ -2738,10 +2738,10 @@ inline APTR SetResourcePtr(LONG Res, APTR Value) { return (APTR)(MAXINT)(CoreBas
 // Action and Notification Structures
 
 struct acClipboard     { LONG Mode; };
-struct acCopyData      { union { OBJECTID DestID; OBJECTID Dest; }; };
+struct acCopyData      { OBJECTPTR Dest; };
 struct acCustom        { LONG Number; CSTRING String; };
 struct acDataFeed      { union { OBJECTID ObjectID; OBJECTID Object; }; union { LONG DataType; LONG Datatype; }; const void *Buffer; LONG Size; };
-struct acDragDrop      { union { OBJECTID SourceID; OBJECTID Source; }; LONG Item; CSTRING Datatype; };
+struct acDragDrop      { OBJECTPTR Source; LONG Item; CSTRING Datatype; };
 struct acDraw          { LONG X; LONG Y; LONG Width; LONG Height; };
 struct acGetVar        { CSTRING Field; STRING Buffer; LONG Size; };
 struct acMove          { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
@@ -2793,7 +2793,7 @@ inline ERROR acClipboard(OBJECTPTR Object, LONG Mode) {
    return Action(AC_Clipboard, Object, &args);
 }
 
-inline ERROR acDragDrop(OBJECTPTR Object, OBJECTID Source, LONG Item, CSTRING Datatype) {
+inline ERROR acDragDrop(OBJECTPTR Object, OBJECTPTR Source, LONG Item, CSTRING Datatype) {
    struct acDragDrop args = { Source, Item, Datatype };
    return Action(AC_DragDrop, Object, &args);
 }
@@ -3809,8 +3809,8 @@ inline ERROR acDataFeed(OBJECTID ObjectID, OBJECTID SenderID, LONG Datatype, con
    return ActionMsg(AC_DataFeed, ObjectID, &channel);
 }
 
-inline ERROR acDragDrop(OBJECTID ObjectID, OBJECTID Source, LONG Item, CSTRING Datatype) {
-   struct acDragDrop args = { { Source }, Item, Datatype };
+inline ERROR acDragDrop(OBJECTID ObjectID, OBJECTPTR Source, LONG Item, CSTRING Datatype) {
+   struct acDragDrop args = { Source, Item, Datatype };
    return ActionMsg(AC_DragDrop, ObjectID, &args);
 }
 

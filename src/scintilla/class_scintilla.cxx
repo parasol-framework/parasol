@@ -291,7 +291,7 @@ static void notify_dragdrop(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, s
    dc.Datatype = DATA_REQUEST;
    dc.Buffer   = &request;
    dc.Size     = sizeof(request);
-   if (!ActionMsg(AC_DataFeed, Args->SourceID, &dc)) {
+   if (!Action(AC_DataFeed, Args->Source, &dc)) {
       // The source will return a DATA_RECEIPT for the items that we've asked for (see the DataFeed action).
    }
 }

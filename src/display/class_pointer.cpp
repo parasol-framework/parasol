@@ -297,7 +297,10 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
       }
 
       if (!modal_id) {
-         acDragDrop(Self->OverObjectID, Self->DragSourceID, Self->DragItem, Self->DragData);
+         pf::ScopedObjectLock<> src(Self->DragSourceID);
+         if (src.granted()) {
+            acDragDrop(Self->OverObjectID, *src, Self->DragItem, Self->DragData);
+         }
       }
 
       Self->DragItem = 0;
