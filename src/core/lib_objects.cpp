@@ -398,14 +398,7 @@ ERROR Action(LONG ActionID, OBJECTPTR Object, APTR Parameters)
 
    ERROR error;
    if (ActionID >= 0) {
-      // Action precedence is as follows:
-      //
-      // 1. Managed actions.
-      // 2. If applicable, the object's sub-class (e.g. Picture:JPEG).
-      // 3. The base-class.
-
-      if (ManagedActions[ActionID]) error = ManagedActions[ActionID](Object, Parameters);
-      else if (cl->ActionTable[ActionID].PerformAction) { // Can be base or sub-class
+      if (cl->ActionTable[ActionID].PerformAction) { // Can be a base-class or sub-class call
          error = cl->ActionTable[ActionID].PerformAction(Object, Parameters);
          if (error IS ERR_NoAction) {
             if ((cl->Base) and (cl->Base->ActionTable[ActionID].PerformAction)) { // Base is set only if this is a sub-class
@@ -2018,15 +2011,5 @@ restart:
       }
    }
 
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-** Action: Signal
-*/
-
-ERROR MGR_Signal(OBJECTPTR Object, APTR Void)
-{
-   Object->Flags |= NF::SIGNALLED;
    return ERR_Okay;
 }

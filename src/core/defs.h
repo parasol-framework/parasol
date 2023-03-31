@@ -698,7 +698,6 @@ extern THREADVAR LONG glForceUID, glForceGID, glDefaultPermissions;
 
 //********************************************************************************************************************
 
-extern std::array<LONG (*)(struct BaseClass *, APTR), AC_END> ManagedActions;
 extern ERROR (*glMessageHandler)(struct Message *);
 extern void (*glVideoRecovery)(void);
 extern void (*glKeyboardRecovery)(void);
@@ -872,8 +871,6 @@ extern "C" {
 #endif
 
 //********************************************************************************************************************
-
-ERROR MGR_Signal(OBJECTPTR, APTR);
 
 ERROR AccessSemaphore(LONG, LONG, LONG);
 ERROR AllocSemaphore(CSTRING, LONG, LONG, LONG *);

@@ -561,8 +561,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    init_metaclass();
 
-   ManagedActions[AC_Signal] = (LONG (*)(OBJECTPTR, APTR))MGR_Signal;
-
    if (add_task_class() != ERR_Okay)    { CloseCore(); return NULL; }
    if (add_thread_class() != ERR_Okay)  { CloseCore(); return NULL; }
    if (add_module_class() != ERR_Okay)  { CloseCore(); return NULL; }
