@@ -1,6 +1,5 @@
 -- Generate HTML documentation by running xsltproc against every XML document file.
 
-   require 'common'
    require 'filesearch'
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -40,11 +39,8 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-   glPath = obj.find('self').workingPath
-
    resolveSDKPath(arg('sdk'))
 
-   local outPath = nz(glDocPath, 'sdk:docs/xml/modules/')
 
    file.search('sdk:docs/xml/', {
       nameFilter = '*.xml',
@@ -53,6 +49,18 @@ end
          local src_path = Path .. FileName
          local output_path = src_path:gsub('/xml/', '/html/')
          output_path = output_path:gsub('.xml', '.html')
-         print('xsltproc ' .. src_path .. ' -o ' .. output_path)
+
+         err, res_output_path = mSys.ResolvePath(output_path, RSF_NO_FILE_CHECK)
+         assert(err == ERR_Okay, 'Failed to resolve path ' .. output_path)
+
+         err, res_src_path = mSys.ResolvePath(src_path)
+         assert(err == ERR_Okay, 'Failed to resolve path ' .. src_path)
+
+         local task = obj.new('task', {
+            src   = 'xsltproc',
+            args  = res_src_path .. ' -o ' .. res_output_path,
+            flags = 'WAIT'
+         })
+         task.acActivate()
       end
    })
