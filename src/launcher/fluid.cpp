@@ -1,3 +1,4 @@
+// DEPRECATED
 
 #include <parasol/main.h>
 #include <startup.h>

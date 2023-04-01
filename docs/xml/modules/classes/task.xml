@@ -32,7 +32,7 @@
       <description>
 <p>Activating a task results in the execution of the file referenced in the <field>Location</field> field.</p>
 <p>On successful execution, the ProcessID will refer to the ID of the executed process.  This ID is compatible with the hosting platform's unique process numbers.</p>
-<p>If the WAIT flag is specified, this action will not return until the executed process has returned or the <field>TimeOut</field> (if specified) has expired.  Messages are processed as normal during this time, ensuring that your process remains responsive while waiting.</p>
+<p>If the <code>WAIT</code> flag is specified, this action will not return until the executed process has returned or the <field>TimeOut</field> (if specified) has expired.  Messages are processed as normal during this time, ensuring that your process remains responsive while waiting.</p>
 <p>The process' return code can be read from the <field>ReturnCode</field> field after the process has completed its execution.</p>
 <p>In Microsoft Windows, output can be redirected to a file if the redirection symbol is used to direct output in one of the task arguments.  For instance <code>&gt;C:\output.txt</code> will redirect both stderr and stdout to <code>c:\output.txt</code>.  The use of <code>1&gt;</code> to redirect stdout and <code>2&gt;</code> to redirect stderr independently of each other is also acceptable.</p>
 <p>When running a DOS program in Microsoft Windows, the SHELL flag can be set in the <field>Flags</field> field to prevent the DOS window from appearing.  The DOS window will also be hidden if the stdout or stderr pipes are redirected.</p>
@@ -68,19 +68,17 @@
   <methods>
     <method>
       <name>AddArgument</name>
-      <comment>Adds new arguments to the Parameters field.</comment>
+      <comment>Adds a new argument to the Parameters field.</comment>
       <prototype>ERROR taskAddArgument(OBJECTPTR Object, CSTRING Argument)</prototype>
       <input>
-        <param type="CSTRING" name="Argument">The argument string that you want to add.</param>
+        <param type="CSTRING" name="Argument">The new argument string.</param>
       </input>
       <description>
-<p>This method provides a simple way of adding new arguments to the <field>Parameters</field> field.  Provide the value of the new argument to add it to the end of the list.  If the string is surrounded by quotes, they will be removed automatically.</p>
+<p>This method will add a new argument to the end of the <field>Parameters</field> field array.  If the string is surrounded by quotes, they will be removed automatically.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
-        <error code="Args">Invalid arguments passed to function.</error>
-        <error code="AllocMemory">Memory for the new Parameters could not be allocated.</error>
-        <error code="GetField">The Parameters field could not be retrieved.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -293,16 +291,14 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING []</type>
       <description>
-<p>Command line arguments for a program can be defined here in list format, whereby each argument is an independent string.  The list must be terminated with a NULL pointer.</p>
-<p>To illustrate, the following command-line string:</p>
+<p>Command line arguments for a program can be defined here as a vector list, whereby each argument is an independent string.  To illustrate, the following command-line string:</p>
 <pre>1&gt; YourProgram PREFS MyPrefs -file "documents:readme.txt"</pre>
 <p>Would be represented as follows:</p>
-<pre>CSTRING Args[] = {
+<pre>pf::vector&lt;std::string&gt; Args = {
    "PREFS",
    "MyPrefs",
    "-file",
-   "documents:readme.txt",
-   NULL
+   "documents:readme.txt"
 };
 </pre>
       </description>
@@ -367,7 +363,7 @@
       <access read="R" write="W">Read/Write</access>
       <type>DOUBLE</type>
       <description>
-<p>This field can be set in conjunction with the WAIT flag to define the time limit when waiting for a launched process to return.  The time out is defined in seconds.</p>
+<p>This field can be set in conjunction with the <code>WAIT</code> flag to define the time limit when waiting for a launched process to return.  The time out is defined in seconds.</p>
       </description>
     </field>
 

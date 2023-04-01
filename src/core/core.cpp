@@ -360,7 +360,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    std::forward_list<std::string> volumes;
 
-   std::vector<CSTRING> newargs;
+   pf::vector<std::string> newargs;
    if (Info->Flags & OPF_ARGS) {
       for (i=1; i < Info->ArgCount; i++) {
          auto arg = Info->Args[i];
@@ -622,7 +622,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       else glScanClasses = true; // If no file, a database rebuild is required.
    }
 
-   if (!newargs.empty()) SetArray(glCurrentTask, FID_Parameters, newargs.data(), newargs.size());
+   if (!newargs.empty()) SetArray(glCurrentTask, FID_Parameters, &newargs, newargs.size());
 
    // In Windows, set the PATH environment variable so that DLL's installed under modules:lib can be found.
 

@@ -396,15 +396,14 @@ class extTask : public objTask {
    public:
    using create = pf::Create<extTask>;
    std::map<std::string, std::string, CaseInsensitiveMap> Fields; // Variable field storage
+   pf::vector<std::string> Parameters; // Arguments (string array)
    MEMORYID MessageMID;
    STRING   LaunchPath;
    STRING   Path;
    STRING   ProcessPath;
    STRING   Location;         // Where to load the task from (string)
-   CSTRING  *Parameters;      // Arguments (string array)
    char     Name[32];         // Name of the task, if specified (string)
-   LONG     ParametersSize;   // Byte size of the arguments structure
-   BYTE     ReturnCodeSet;    // TRUE if the ReturnCode has been set
+   bool     ReturnCodeSet;    // TRUE if the ReturnCode has been set
    FUNCTION ErrorCallback;
    FUNCTION OutputCallback;
    FUNCTION ExitCallback;
