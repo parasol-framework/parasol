@@ -1053,17 +1053,18 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
       error = ERR_Okay;
       if (Self->Flags & TSF_WAIT) {
-         log.msg("Waiting for process to turn into a zombie.");
+         log.branch("Waiting for process to turn into a zombie in %.2fs.", Self->TimeOut);
 
          // Wait for the child process to turn into a zombie.  NB: A parent process or our own child handler may
          // potentially pick this up but that's fine as waitpid() will just fail with -1 in that case.
 
          LONG status = 0;
-         LARGE ticks = PreciseTime() + F2I(Self->TimeOut * 1000000);
+         LARGE ticks = PreciseTime() + LARGE(Self->TimeOut * 1000000.0);
          while (!waitpid(pid, &status, WNOHANG)) {
-            ProcessMessages(0, 20);
+            ProcessMessages(0, 100);
 
-            if ((Self->TimeOut) and (PreciseTime() >= ticks)) {
+            auto remaining = ticks - PreciseTime();
+            if (remaining <= 0) {
                error = log.warning(ERR_TimeOut);
                break;
             }
