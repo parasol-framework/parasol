@@ -76,7 +76,7 @@ glActionComments[AC_Write]          = 'Writes data to objects that provide stora
 function saveDocuments()
    -- Save module functions, if any
 
-   local outPath = nz(glDocPath, 'sdk:docs/modules/')
+   local outPath = nz(glDocPath, 'sdk:docs/xml/modules/')
    if (outPath:sub(-1) != '/') then outPath = outPath .. '/' end
 
    if nz(glFunctions) then

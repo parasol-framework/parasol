@@ -1,4 +1,3 @@
-<!-- xsltproc -o core.html module.xsl core.xml -->
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
   <xsl:output doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" media-type="application/html+xml" encoding="utf-8" omit-xml-declaration="yes" indent="no"/>
 
@@ -150,13 +149,13 @@
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
               </button>
-              <a class="navbar-brand" href="/index.html">Parasol Framework</a>
+              <a class="navbar-brand" href="../index.html">Parasol Framework</a>
             </div>
             <div id="navbar" class="collapse navbar-collapse">
               <ul class="nav navbar-nav">
-                <li class="active"><a href="/modules/core.xml">Modules</a></li>
-                <li><a href="/modules/classes/module.xml">Classes</a></li>
-                <li><a href="/modules/fluid.xml">Fluid</a></li>
+                <li class="active"><a href="core.html">Modules</a></li>
+                <li><a href="classes/module.html">Classes</a></li>
+                <li><a href="fluid.html">Fluid</a></li>
               </ul>
             </div> <!-- nav-collapse -->
           </div>
@@ -171,14 +170,14 @@
                 <p>Use the navigation bar on the right to peruse the available functionality of the selected module.</p>
                 <p>Beginners should start with the Core module, which includes the bulk of Parasol's functionality.</p>
                 <ul>
-                  <li><a href="audio.xml">Audio</a></li>
-                  <li><a href="core.xml">Core</a></li>
-                  <li><a href="display.xml">Display</a></li>
-                  <li><a href="document.xml">Document</a></li>
-                  <li><a href="fluid.xml">Fluid</a></li>
-                  <li><a href="font.xml">Font</a></li>
-                  <li><a href="network.xml">Network</a></li>
-                  <li><a href="vector.xml">Vector</a></li>
+                  <li><a href="audio.html">Audio</a></li>
+                  <li><a href="core.html">Core</a></li>
+                  <li><a href="display.html">Display</a></li>
+                  <li><a href="document.html">Document</a></li>
+                  <li><a href="fluid.html">Fluid</a></li>
+                  <li><a href="font.html">Font</a></li>
+                  <li><a href="network.html">Network</a></li>
+                  <li><a href="vector.html">Vector</a></li>
                 </ul>
               </div>
 
@@ -299,7 +298,7 @@
                     <div id="classes" class="panel-collapse collapse">
                       <div class="panel-body">
                         <ul class="list-unstyled">
-                          <xsl:for-each select="info/classes/class"><xsl:variable name="class_name"><xsl:value-of select="."/></xsl:variable><xsl:variable name="lower" select="translate($class_name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/><li><a><xsl:attribute name="href">classes/<xsl:value-of select="$lower"/>.xml</xsl:attribute><xsl:value-of select="."/></a></li></xsl:for-each>
+                          <xsl:for-each select="info/classes/class"><xsl:variable name="class_name"><xsl:value-of select="."/></xsl:variable><xsl:variable name="lower" select="translate($class_name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/><li><a><xsl:attribute name="href">classes/<xsl:value-of select="$lower"/>.html</xsl:attribute><xsl:value-of select="."/></a></li></xsl:for-each>
                         </ul>
                       </div>
                     </div>

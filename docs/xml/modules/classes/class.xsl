@@ -1,4 +1,3 @@
-<!-- xsltproc -o audio.html class.xsl audio.xml -->
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
   <xsl:output doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" media-type="application/html+xml" encoding="utf-8" omit-xml-declaration="yes" indent="no"/>
 
@@ -76,7 +75,7 @@
     <a data-toggle="tooltip"><xsl:attribute name="title"><xsl:value-of select="/book/methods/method[name=$methodName]/comment"/></xsl:attribute><xsl:attribute name="href">#tm-<xsl:value-of select="node()"/></xsl:attribute><xsl:value-of select="node()"/>()</a></xsl:template>
 
   <xsl:template match="class">
-    <a><xsl:attribute name="href"><xsl:value-of select="@name"/>.xml<xsl:if test="@index">?index=<xsl:value-of select="@index"/></xsl:if></xsl:attribute><xsl:value-of select="@name"/>
+    <a><xsl:attribute name="href"><xsl:value-of select="@name"/>.html<xsl:if test="@index">?index=<xsl:value-of select="@index"/></xsl:if></xsl:attribute><xsl:value-of select="@name"/>
       <xsl:if test="@index">&#8658;<xsl:value-of select="@index"/></xsl:if>
     </a>
   </xsl:template>
@@ -166,12 +165,12 @@
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
               </button>
-              <a class="navbar-brand" href="/index.html">Parasol Framework</a>
+              <a class="navbar-brand" href="../../index.html">Parasol Framework</a>
             </div>
             <div id="navbar" class="collapse navbar-collapse">
               <ul class="nav navbar-nav">
-                <li><a href="../core.xml">Modules</a></li>
-                <li class="active"><a href="module.xml">Classes</a></li>
+                <li><a href="../core.html">Modules</a></li>
+                <li class="active"><a href="module.html">Classes</a></li>
                 <li><a href="../fluid.html">Fluid</a></li>
               </ul>
             </div> <!-- nav-collapse -->
@@ -214,7 +213,7 @@
                         <td class="col-md-1"><span class="text-nowrap">
                           <xsl:choose>
                             <xsl:when test="type/@class">
-                              <a><xsl:attribute name="href"><xsl:value-of select="type/@class"/>.xml</xsl:attribute><xsl:value-of select="type"/></a>
+                              <a><xsl:attribute name="href"><xsl:value-of select="type/@class"/>.html</xsl:attribute><xsl:value-of select="type"/></a>
                             </xsl:when>
                             <xsl:otherwise>
                               <xsl:value-of select="type"/>
@@ -258,7 +257,7 @@
                               </xsl:when>
                             </xsl:choose>
                           </td>
-                          <th class="col-md-1"><a href="actions.xml"><xsl:value-of select="name"/></a></th>
+                          <th class="col-md-1"><a href="actions.html"><xsl:value-of select="name"/></a></th>
                           <td><xsl:value-of select="comment"/></td>
                         </tr>
                         <xsl:if test="description">
@@ -395,14 +394,14 @@
                     <div id="structures" class="panel-collapse">
                       <div class="panel-body">
                         <ul class="list-unstyled">
-                          <li>Audio<ul><li><a href="audio.xml">Audio</a></li><li><a href="sound.xml">Sound</a></li></ul></li>
-                          <li>Core<ul><li><a href="file.xml">File</a></li><li><a href="metaclass.xml">MetaClass</a></li><li><a href="module.xml">Module</a></li><li><a href="storagedevice.xml">StorageDevice</a></li><li><a href="task.xml">Task</a></li><li><a href="thread.xml">Thread</a></li><li><a href="time.xml">Time</a></li></ul></li>
-                          <li>Data<ul><li><a href="compression.xml">Compression</a></li><li><a href="config.xml">Config</a></li><li><a href="script.xml">Script</a></li><li><a href="xml.xml">XML</a></li></ul></li>
-                          <li>Effects<ul><li><a href="blurfx.xml">BlurFX</a></li><li><a href="colourfx.xml">ColourFX</a></li><li><a href="compositefx.xml">CompositeFX</a></li><li><a href="convolvefx.xml">ConvolveFX</a></li><li><a href="displacementfx.xml">DisplacementFX</a></li><li><a href="floodfx.xml">FloodFX</a></li><li><a href="imagefx.xml">ImageFX</a></li><li><a href="lightingfx.xml">LightingFX</a></li><li><a href="mergefx.xml">MergeFX</a></li><li><a href="morphologyfx.xml">MorphologyFX</a></li><li><a href="offsetfx.xml">OffsetFX</a></li><li><a href="remapfx.xml">RemapFX</a></li><li><a href="sourcefx.xml">SourceFX</a></li><li><a href="turbulencefx.xml">TurbulenceFX</a></li></ul></li>
-                          <li>Extensions<ul><li><a href="scintilla.xml">Scintilla</a></li><li><a href="scintillasearch.xml">ScintillaSearch</a></li></ul></li>
-                          <li>Graphics<ul><li><a href="bitmap.xml">Bitmap</a></li><li><a href="clipboard.xml">Clipboard</a></li><li><a href="display.xml">Display</a></li><li><a href="document.xml">Document</a></li><li><a href="font.xml">Font</a></li><li><a href="picture.xml">Picture</a></li><li><a href="pointer.xml">Pointer</a></li><li><a href="surface.xml">Surface</a></li><li><a href="svg.xml">SVG</a></li></ul></li>
-                          <li>Network<ul><li><a href="clientsocket.xml">ClientSocket</a></li><li><a href="http.xml">HTTP</a></li><li><a href="netsocket.xml">NetSocket</a></li><li><a href="proxy.xml">Proxy</a></li></ul></li>
-                          <li>Vectors<ul><li><a href="vector.xml">Vector</a></li><li><a href="vectorclip.xml">VectorClip</a></li><li><a href="vectorcolour.xml">VectorColour</a></li><li><a href="vectorellipse.xml">VectorEllipse</a></li><li><a href="vectorfilter.xml">VectorFilter</a></li><li><a href="vectorgradient.xml">VectorGradient</a></li><li><a href="vectorimage.xml">VectorImage</a></li><li><a href="vectorpath.xml">VectorPath</a></li><li><a href="vectorpattern.xml">VectorPattern</a></li><li><a href="vectorpolygon.xml">VectorPolygon</a></li><li><a href="vectorrectangle.xml">VectorRectangle</a></li><li><a href="vectorscene.xml">VectorScene</a></li><li><a href="vectorshape.xml">VectorShape</a></li><li><a href="vectorspiral.xml">VectorSpiral</a></li><li><a href="vectortext.xml">VectorText</a></li><li><a href="vectorviewport.xml">VectorViewport</a></li><li><a href="vectorwave.xml">VectorWave</a></li></ul></li>
+                          <li>Audio<ul><li><a href="audio.html">Audio</a></li><li><a href="sound.html">Sound</a></li></ul></li>
+                          <li>Core<ul><li><a href="file.html">File</a></li><li><a href="metaclass.html">MetaClass</a></li><li><a href="module.html">Module</a></li><li><a href="storagedevice.html">StorageDevice</a></li><li><a href="task.html">Task</a></li><li><a href="thread.html">Thread</a></li><li><a href="time.html">Time</a></li></ul></li>
+                          <li>Data<ul><li><a href="compression.html">Compression</a></li><li><a href="config.html">Config</a></li><li><a href="script.html">Script</a></li><li><a href="xml.html">XML</a></li></ul></li>
+                          <li>Effects<ul><li><a href="blurfx.html">BlurFX</a></li><li><a href="colourfx.html">ColourFX</a></li><li><a href="compositefx.html">CompositeFX</a></li><li><a href="convolvefx.html">ConvolveFX</a></li><li><a href="displacementfx.html">DisplacementFX</a></li><li><a href="floodfx.html">FloodFX</a></li><li><a href="imagefx.html">ImageFX</a></li><li><a href="lightingfx.html">LightingFX</a></li><li><a href="mergefx.html">MergeFX</a></li><li><a href="morphologyfx.html">MorphologyFX</a></li><li><a href="offsetfx.html">OffsetFX</a></li><li><a href="remapfx.html">RemapFX</a></li><li><a href="sourcefx.html">SourceFX</a></li><li><a href="turbulencefx.html">TurbulenceFX</a></li></ul></li>
+                          <li>Extensions<ul><li><a href="scintilla.html">Scintilla</a></li><li><a href="scintillasearch.html">ScintillaSearch</a></li></ul></li>
+                          <li>Graphics<ul><li><a href="bitmap.html">Bitmap</a></li><li><a href="clipboard.html">Clipboard</a></li><li><a href="display.html">Display</a></li><li><a href="document.html">Document</a></li><li><a href="font.html">Font</a></li><li><a href="picture.html">Picture</a></li><li><a href="pointer.html">Pointer</a></li><li><a href="surface.html">Surface</a></li><li><a href="svg.html">SVG</a></li></ul></li>
+                          <li>Network<ul><li><a href="clientsocket.html">ClientSocket</a></li><li><a href="http.html">HTTP</a></li><li><a href="netsocket.html">NetSocket</a></li><li><a href="proxy.html">Proxy</a></li></ul></li>
+                          <li>Vectors<ul><li><a href="vector.html">Vector</a></li><li><a href="vectorclip.html">VectorClip</a></li><li><a href="vectorcolour.html">VectorColour</a></li><li><a href="vectorellipse.html">VectorEllipse</a></li><li><a href="vectorfilter.html">VectorFilter</a></li><li><a href="vectorgradient.html">VectorGradient</a></li><li><a href="vectorimage.html">VectorImage</a></li><li><a href="vectorpath.html">VectorPath</a></li><li><a href="vectorpattern.html">VectorPattern</a></li><li><a href="vectorpolygon.html">VectorPolygon</a></li><li><a href="vectorrectangle.html">VectorRectangle</a></li><li><a href="vectorscene.html">VectorScene</a></li><li><a href="vectorshape.html">VectorShape</a></li><li><a href="vectorspiral.html">VectorSpiral</a></li><li><a href="vectortext.html">VectorText</a></li><li><a href="vectorviewport.html">VectorViewport</a></li><li><a href="vectorwave.html">VectorWave</a></li></ul></li>
                         </ul>
                       </div>
                     </div>

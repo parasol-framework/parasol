@@ -63,17 +63,22 @@ EXPORT void CloseCore(void)
 
    // Wait for sub-tasks to die within the designated time limit
 
-   log.msg("Waiting for child processes to terminate...");
+   log.msg("Waiting for %d child processes to terminate...", LONG(glTasks.size()));
 
-   #define TIMETODIE 6 // Seconds to wait before a task has to die
-   LONG cycle;
-   for (cycle=0; cycle < (TIMETODIE * 10); cycle++) {
-      if (glTasks.empty()) break;
-      for (auto &task : glTasks) {
-         if ((task.ProcessID) and (task.ProcessID != glProcessID)) {
-            log.msg("Process %d is still live.", task.ProcessID);
-            break;
+   static const LONG TIME_TO_DIE = 6; // Seconds to wait before a task has to die
+   auto wait_until = PreciseTime() + (TIME_TO_DIE * 1000000);
+   while ((!glTasks.empty()) and (PreciseTime() < wait_until)) {
+      for (auto it = glTasks.begin(); it != glTasks.end(); ) {
+         if (it->ProcessID) {
+            #ifdef __unix__
+            if (kill(it->ProcessID, 0)) { // Process exists?
+               it = glTasks.erase(it);
+               continue;
+            }
+            #endif
+            log.msg("Process %d is still live.", it->ProcessID);
          }
+         it++;
       }
 
       WaitTime(0, -100000);
@@ -261,7 +266,7 @@ EXPORT void CloseCore(void)
 
    #ifdef _WIN32
       if (glSharedControl) {
-         SharedControl *tmp = glSharedControl;
+         auto tmp = glSharedControl;
          glSharedControl = NULL;
          winUnmapViewOfFile(tmp);
       }
@@ -548,3 +553,4 @@ static void free_shared_control(void)
    }
 }
 #endif
+

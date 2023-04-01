@@ -689,8 +689,12 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
    if (!Self->Location) return log.warning(ERR_MissingPath);
 
-   auto call = make_function_stdc(process_janitor);
-   SubscribeTimer(60, &call, &glProcessJanitor);
+   if (!glJanitorActive) {
+      pf::SwitchContext ctx(glCurrentTask);
+      auto call = make_function_stdc(process_janitor);
+      SubscribeTimer(60, &call, &glProcessJanitor);
+      glJanitorActive = true;
+   }
 
 #ifdef _WIN32
    // Determine the launch folder
@@ -912,9 +916,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
    }
 
    CSTRING argslist[Self->Parameters.size()+2];
-   LONG bufend;
-
-   bufend = i;
+   LONG bufend = i;
 
    // Following the executable path are any arguments that have been used. NOTE: This isn't needed if TSF_SHELL is used,
    // however it is extremely useful in the debug printout to see what is being executed.
@@ -1055,17 +1057,18 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
       error = ERR_Okay;
       if (Self->Flags & TSF_WAIT) {
-         log.msg("Waiting for process to turn into a zombie.");
+         log.branch("Waiting for process to turn into a zombie in %.2fs.", Self->TimeOut);
 
          // Wait for the child process to turn into a zombie.  NB: A parent process or our own child handler may
          // potentially pick this up but that's fine as waitpid() will just fail with -1 in that case.
 
          LONG status = 0;
-         LARGE ticks = PreciseTime() + F2I(Self->TimeOut * 1000000);
+         LARGE ticks = PreciseTime() + LARGE(Self->TimeOut * 1000000.0);
          while (!waitpid(pid, &status, WNOHANG)) {
-            ProcessMessages(0, 20);
+            ProcessMessages(0, 100);
 
-            if ((Self->TimeOut) and (PreciseTime() >= ticks)) {
+            auto remaining = ticks - PreciseTime();
+            if (remaining <= 0) {
                error = log.warning(ERR_TimeOut);
                break;
             }
@@ -1076,6 +1079,15 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
          if (WIFEXITED(status)) {
             Self->ReturnCode = (BYTE)WEXITSTATUS(status);
             Self->ReturnCodeSet = true;
+         }
+
+         if (kill(pid, 0)) {
+            for (auto it = glTasks.begin(); it != glTasks.end(); it++) {
+               if (it->ProcessID IS pid) {
+                  glTasks.erase(it);
+                  break;
+               }
+            }
          }
       }
 

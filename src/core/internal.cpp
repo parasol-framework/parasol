@@ -81,6 +81,11 @@ TaskRecord * find_process(LONG ProcessID)
 
 ERROR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
 {
+   if (glTasks.empty()) {
+      glJanitorActive = false;
+      return ERR_Terminate;
+   }
+
 #ifdef __unix__
    pf::Log log(__FUNCTION__);
 
