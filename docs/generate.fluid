@@ -48,7 +48,7 @@ end
       matchFeedback = function(Path, FileName, File)
          local src_path = Path .. FileName
          local output_path = src_path:gsub('/xml/', '/html/')
-         output_path = output_path:gsub('.xml', '.html')
+         output_path = output_path:gsub('%.xml', '.html')
 
          err, res_output_path = mSys.ResolvePath(output_path, RSF_NO_FILE_CHECK)
          assert(err == ERR_Okay, 'Failed to resolve path ' .. output_path)
