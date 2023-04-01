@@ -912,9 +912,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
    }
 
    CSTRING argslist[Self->Parameters.size()+2];
-   LONG bufend;
-
-   bufend = i;
+   LONG bufend = i;
 
    // Following the executable path are any arguments that have been used. NOTE: This isn't needed if TSF_SHELL is used,
    // however it is extremely useful in the debug printout to see what is being executed.

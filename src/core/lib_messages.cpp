@@ -351,7 +351,7 @@ ERROR ProcessMessages(LONG Flags, LONG TimeOut)
    ERROR returncode = ERR_Okay;
    Message *msg = NULL;
    LONG msgbufsize = 0;
-   BYTE breaking = FALSE;
+   bool breaking = false;
    ERROR error;
 
    #ifdef DEBUG
@@ -440,10 +440,10 @@ timer_cycle:
       // This sub-routine consumes all of the queued messages
 
       WORD msgcount = 0;
-      BYTE repass = FALSE;
+      bool repass = false;
       while (1) {
          MessageHeader *msgbuffer;
-         BYTE msgfound = FALSE;
+         bool msgfound = false;
          if (!AccessMemory(glTaskMessageMID, MEM_READ_WRITE, 2000, (void **)&msgbuffer)) {
             if (msgbuffer->Count) {
                auto scanmsg = (TaskMessage *)msgbuffer->Buffer;
@@ -503,7 +503,7 @@ timer_cycle:
                      msgbuffer->CompressReset = 0;
                      msgbuffer->Count--;
                      if (msgbuffer->Count IS 0) msgbuffer->NextEntry = 0;
-                     msgfound = TRUE;
+                     msgfound = true;
                      break;
                   }
 
@@ -521,7 +521,7 @@ timer_cycle:
 
          tlCurrentMsg = (Message *)msg; // This global variable is available through GetResourcePtr(RES_CURRENTMSG)
 
-         if ((msg->Type IS MSGID_BREAK) and (tlMsgRecursion > 1)) breaking = TRUE; // MSGID_BREAK will break out of recursive calls to ProcessMessages() only
+         if ((msg->Type IS MSGID_BREAK) and (tlMsgRecursion > 1)) breaking = true; // MSGID_BREAK will break out of recursive calls to ProcessMessages() only
 
          ThreadLock lock(TL_MSGHANDLER, 5000);
          if (lock.granted()) {
@@ -561,7 +561,7 @@ timer_cycle:
          tlCurrentMsg = NULL;
 
          if (++msgcount > 30) {
-            repass = TRUE;
+            repass = true;
             break; // Break if there are a lot of messages, so that we can call message hooks etc
          }
       } // while(1)
@@ -583,7 +583,7 @@ timer_cycle:
             winProcessMessages();
             if (glNetProcessMessages) glNetProcessMessages(NETMSG_END, NULL);
 
-            if (tlMsgSent) repass = TRUE; // We may have placed a message on our own queue - make sure we go back and process it rather than sleeping
+            if (tlMsgSent) repass = true; // We may have placed a message on our own queue - make sure we go back and process it rather than sleeping
          }
       #endif
 

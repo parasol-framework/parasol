@@ -289,7 +289,7 @@
       <name>Parameters</name>
       <comment>Command line arguments (list format).</comment>
       <access read="G" write="S">Get/Set</access>
-      <type>STRING []</type>
+      <type>pf::vector&lt;std::string&gt;</type>
       <description>
 <p>Command line arguments for a program can be defined here as a vector list, whereby each argument is an independent string.  To illustrate, the following command-line string:</p>
 <pre>1&gt; YourProgram PREFS MyPrefs -file "documents:readme.txt"</pre>
