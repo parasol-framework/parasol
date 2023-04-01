@@ -689,10 +689,11 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
    if (!Self->Location) return log.warning(ERR_MissingPath);
 
-   {
+   if (!glJanitorActive) {
       pf::SwitchContext ctx(glCurrentTask);
       auto call = make_function_stdc(process_janitor);
       SubscribeTimer(60, &call, &glProcessJanitor);
+      glJanitorActive = true;
    }
 
 #ifdef _WIN32
@@ -1078,6 +1079,15 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
          if (WIFEXITED(status)) {
             Self->ReturnCode = (BYTE)WEXITSTATUS(status);
             Self->ReturnCodeSet = true;
+         }
+
+         if (kill(pid, 0)) {
+            for (auto it = glTasks.begin(); it != glTasks.end(); it++) {
+               if (it->ProcessID IS pid) {
+                  glTasks.erase(it);
+                  break;
+               }
+            }
          }
       }
 

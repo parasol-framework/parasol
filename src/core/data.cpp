@@ -57,6 +57,7 @@ objMetaClass *glAssetClass = 0;
 BYTE fs_initialised = FALSE;
 APTR glPageFault = NULL;
 bool glScanClasses = false;
+bool glJanitorActive = false;
 LONG glDebugMemory = FALSE;
 struct CoreBase *LocalCoreBase = NULL;
 
