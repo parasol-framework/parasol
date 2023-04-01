@@ -68,7 +68,9 @@ public:
    }
 
    vector& operator=(vector const &copy) {
-      copyAssign<T>(copy);
+      //copyAssign<T>(copy);
+      vector<T> tmp(copy); // Copy and Swap idiom
+      tmp.swap(*this);
       return *this;
    }
 

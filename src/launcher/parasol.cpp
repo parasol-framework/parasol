@@ -21,7 +21,8 @@ extern struct CoreBase *CoreBase;
 
 static std::string glProcedure;
 static objSurface *glTarget = NULL;
-static CSTRING *glArgs = NULL;
+pf::vector<std::string> *glArgs;
+static LONG glArgsIndex = 0;
 //static STRING glAllow = NULL;
 static STRING glTargetFile = NULL;
 static OBJECTPTR glTask = NULL;
@@ -60,11 +61,10 @@ The following parameters can be used when executing script files:\n\
 static ERROR process_args(void)
 {
    pf::Log log("Parasol");
-   CSTRING *args;
-   LONG i;
 
-   if ((!glTask->getPtr(FID_Parameters, &args)) and (args)) {
-      for (i=0; args[i]; i++) {
+   if ((!glTask->getPtr(FID_Parameters, &glArgs)) and (glArgs)) {
+      pf::vector<std::string> &args = *glArgs;
+      for (unsigned i=0; i < args.size(); i++) {
          if (!StrMatch(args[i], "--help")) { // Print help for the user
             print(glHelp);
             return ERR_Terminate;
@@ -104,17 +104,17 @@ static ERROR process_args(void)
             glRelaunched = true;
          }
          else if (!StrMatch(args[i], "--procedure")) {
-            if (args[i+1]) {
+            if (i + 1 < args.size()) {
                glProcedure.assign(args[i+1]);
                i++;
             }
          }
          else { // If argument not recognised, assume this arg is the target file.
-            if (ResolvePath(args[i], RSF_APPROXIMATE, &glTargetFile)) {
-               print("Unable to find file '%s'", args[i]);
+            if (ResolvePath(args[i].c_str(), RSF_APPROXIMATE, &glTargetFile)) {
+               print("Unable to find file '%s'", args[i].c_str());
                return ERR_Terminate;
             }
-            if (args[i+1]) glArgs = args + i + 1;
+            glArgsIndex = i + 1;
             break;
          }
       }

@@ -463,7 +463,7 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
       OBJECTPTR obj;
       ERROR error;
       if (!(error = AccessObject(action->ObjectID, 5000, &obj))) {
-         if (action->SendArgs IS FALSE) {
+         if (action->SendArgs IS false) {
             obj->Flags |= NF::MESSAGE;
             Action(action->ActionID, obj, NULL);
             obj->Flags = obj->Flags & (~NF::MESSAGE);
@@ -544,7 +544,7 @@ static void task_process_end(WINHANDLE FD, extTask *Task)
 
    winGetExitCodeProcess(Task->Platform, &Task->ReturnCode);
    if (Task->ReturnCode != 259) {
-      Task->ReturnCodeSet = TRUE;
+      Task->ReturnCodeSet = true;
       log.branch("Process %" PF64 " ended, return code: %d.", (LARGE)FD, Task->ReturnCode);
    }
    else log.branch("Process %" PF64 " signalled exit too early.", (LARGE)FD);
@@ -642,7 +642,7 @@ Activating a task results in the execution of the file referenced in the #Locati
 On successful execution, the ProcessID will refer to the ID of the executed process.  This ID is compatible with the
 hosting platform's unique process numbers.
 
-If the WAIT flag is specified, this action will not return until the executed process has returned or the
+If the `WAIT` flag is specified, this action will not return until the executed process has returned or the
 #TimeOut (if specified) has expired.  Messages are processed as normal during this time, ensuring that your
 process remains responsive while waiting.
 
@@ -670,7 +670,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
    pf::Log log;
    LONG i, j, k;
    char buffer[1000];
-   STRING path, *args;
+   STRING path;
    ERROR error;
    #ifdef _WIN32
       char launchdir[500];
@@ -683,7 +683,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       BYTE privileged, shell;
    #endif
 
-   Self->ReturnCodeSet = FALSE;
+   Self->ReturnCodeSet = false;
 
    if (Self->Flags & TSF_FOREIGN) Self->Flags |= TSF_SHELL;
 
@@ -741,55 +741,54 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
    redirect_stdout = NULL;
    redirect_stderr = NULL;
-   hide_output = FALSE;
+   hide_output = false;
 
-   if (!GetField(Self, FID_Parameters|TPTR, &args)) {
-      for (j=0; args[j]; j++) {
-         if (args[j][0] IS '>') {
-            // Redirection argument detected
+   for (auto &param : Self->Parameters) {
+      if (param[0] IS '>') {
+         // Redirection argument detected
 
-            if (!ResolvePath(args[j] + 1, RSF_NO_FILE_CHECK, &redirect_stdout)) {
-               redirect_stderr = redirect_stdout;
-            }
-
-            log.msg("StdOut/Err redirected to %s", redirect_stdout);
-
-            hide_output = TRUE;
-            continue;
-         }
-         else if ((args[j][0] IS '2') and (args[j][1] IS '>')) {
-            log.msg("StdErr redirected to %s", args[j] + 2);
-            ResolvePath(args[j] + 2, RSF_NO_FILE_CHECK, &redirect_stderr);
-            hide_output = TRUE;
-            continue;
-         }
-         else if ((args[j][0] IS '1') and (args[j][1] IS '>')) {
-            log.msg("StdOut redirected to %s", args[j] + 2);
-            ResolvePath(args[j] + 2, RSF_NO_FILE_CHECK, &redirect_stdout);
-            hide_output = TRUE;
-            continue;
+         if (!ResolvePath(param.c_str() + 1, RSF_NO_FILE_CHECK, &redirect_stdout)) {
+            redirect_stderr = redirect_stdout;
          }
 
-         buffer[i++] = ' ';
+         log.msg("StdOut/Err redirected to %s", redirect_stdout);
 
-         // Check if the argument contains spaces - if so, we need to encapsulate it within quotes.  Otherwise, just
-         // copy it as normal.
-
-         for (k=0; (args[j][k]) and (args[j][k] != ' '); k++);
-
-         if (args[j][k] IS ' ') {
-            buffer[i++] = '"';
-            for (k=0; args[j][k]; k++) buffer[i++] = args[j][k];
-            buffer[i++] = '"';
-         }
-         else for (k=0; args[j][k]; k++) buffer[i++] = args[j][k];
+         hide_output = true;
+         continue;
       }
+      else if ((param[0] IS '2') and (param[1] IS '>')) {
+         log.msg("StdErr redirected to %s", param.c_str() + 2);
+         ResolvePath(param.c_str() + 2, RSF_NO_FILE_CHECK, &redirect_stderr);
+         hide_output = true;
+         continue;
+      }
+      else if ((param[0] IS '1') and (param[1] IS '>')) {
+         log.msg("StdOut redirected to %s", param.c_str() + 2);
+         ResolvePath(param.c_str() + 2, RSF_NO_FILE_CHECK, &redirect_stdout);
+         hide_output = true;
+         continue;
+      }
+
+      buffer[i++] = ' ';
+
+      // Check if the argument contains spaces - if so, we need to encapsulate it within quotes.  Otherwise, just
+      // copy it as normal.
+
+      for (k=0; (param[k]) and (param[k] != ' '); k++);
+
+      if (param[k] IS ' ') {
+         buffer[i++] = '"';
+         for (k=0; param[k]; k++) buffer[i++] = param[k];
+         buffer[i++] = '"';
+      }
+      else for (k=0; param[k]; k++) buffer[i++] = param[k];
    }
+
    buffer[i] = 0;
 
    // Convert single quotes into double quotes
 
-   BYTE whitespace = TRUE;
+   bool whitespace = true;
    for (i=0; buffer[i]; i++) {
       if (whitespace) {
          if (buffer[i] IS '"') {
@@ -797,7 +796,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
             i++;
             while ((buffer[i]) and (buffer[i] != '"')) i++;
             if (!buffer[i]) break;
-            whitespace = FALSE;
+            whitespace = false;
             continue;
          }
          else if (buffer[i] IS '\'') {
@@ -815,8 +814,8 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
          }
       }
 
-      if (buffer[i] <= 0x20) whitespace = TRUE;
-      else whitespace = FALSE;
+      if (buffer[i] <= 0x20) whitespace = true;
+      else whitespace = false;
    }
 
    log.trace("Exec: %s", buffer);
@@ -824,16 +823,16 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
    // Hide window if this is designated a shell program (i.e. hide the DOS window).
    // NB: If you hide a non-shell program, this usually results in the first GUI window that pops up being hidden.
 
-   if (Self->Flags & TSF_SHELL) hide_output = TRUE;
+   if (Self->Flags & TSF_SHELL) hide_output = true;
 
    // Determine whether this new process will be a member of the parent process' group.  This can be forced with the TSF_DETACHED/ATTACHED flags,
    // otherwise it will be determined automatically according to the status of our current task.
 
-   BYTE group;
+   bool group;
 
-   if (Self->Flags & TSF_ATTACHED) group = TRUE;
-   else if (Self->Flags & TSF_DETACHED) group = FALSE;
-   else group = TRUE;
+   if (Self->Flags & TSF_ATTACHED) group = true;
+   else if (Self->Flags & TSF_DETACHED) group = false;
+   else group = true;
 
    LONG internal_redirect = 0;
    if (Self->OutputCallback.Type) internal_redirect |= TSTD_OUT;
@@ -853,7 +852,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
          ProcessMessages(0, -1);
 
          winGetExitCodeProcess(Self->Platform, &Self->ReturnCode);
-         if (Self->ReturnCode != 259) Self->ReturnCodeSet = TRUE;
+         if (Self->ReturnCode != 259) Self->ReturnCodeSet = true;
       }
    }
    else {
@@ -912,12 +911,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       buffer[i] = 0;
    }
 
-   argcount = 0;
-   if (!GetField(Self, FID_Parameters|TPTR, &args)) {
-      for (argcount=0; args[argcount]; argcount++);
-   }
-
-   STRING argslist[argcount+2];
+   STRING argslist[Self->Parameters.size()+2];
    LONG bufend;
 
    bufend = i;
@@ -925,24 +919,22 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
    // Following the executable path are any arguments that have been used. NOTE: This isn't needed if TSF_SHELL is used,
    // however it is extremely useful in the debug printout to see what is being executed.
 
-   if (!GetField(Self, FID_Parameters|TPTR, &args)) {
-      for (j=0; args[j]; j++) {
-         buffer[i++] = ' ';
+   for (auto &param : Self->Parameters) {
+      buffer[i++] = ' ';
 
-         // Check if the argument contains spaces - if so, we need to encapsulate it within quotes.  Otherwise, just
-         // copy it as normal.
+      // Check if the argument contains spaces - if so, we need to encapsulate it within quotes.  Otherwise, just
+      // copy it as normal.
 
-         for (k=0; (args[j][k]) and (args[j][k] != ' '); k++);
+      for (k=0; (param[k]) and (param[k] != ' '); k++);
 
-         if (args[j][k] IS ' ') {
-            buffer[i++] = '"';
-            for (k=0; args[j][k]; k++) buffer[i++] = args[j][k];
-            buffer[i++] = '"';
-         }
-         else for (k=0; args[j][k]; k++) buffer[i++] = args[j][k];
+      if (param[k] IS ' ') {
+         buffer[i++] = '"';
+         for (k=0; param[k]; k++) buffer[i++] = param[k];
+         buffer[i++] = '"';
       }
-      buffer[i] = 0;
+      else for (k=0; param[k]; k++) buffer[i++] = param[k];
    }
+   buffer[i] = 0;
 
    // Convert single quotes into double quotes
 
@@ -1082,7 +1074,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
          if (WIFEXITED(status)) {
             Self->ReturnCode = (BYTE)WEXITSTATUS(status);
-            Self->ReturnCodeSet = TRUE;
+            Self->ReturnCodeSet = true;
          }
       }
 
@@ -1144,81 +1136,34 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 /*********************************************************************************************************************
 
 -METHOD-
-AddArgument: Adds new arguments to the Parameters field.
+AddArgument: Adds a new argument to the Parameters field.
 
-This method provides a simple way of adding new arguments to the #Parameters field.  Provide the value of the
-new argument to add it to the end of the list.  If the string is surrounded by quotes, they will be removed
-automatically.
+This method will add a new argument to the end of the #Parameters field array.  If the string is surrounded by quotes,
+they will be removed automatically.
 
 -INPUT-
-cstr Argument: The argument string that you want to add.
+cstr Argument: The new argument string.
 
 -ERRORS-
 Okay
-Args
-GetField:    The Parameters field could not be retrieved.
-AllocMemory: Memory for the new Parameters could not be allocated.
+NullArgs
 
 *********************************************************************************************************************/
 
 static ERROR TASK_AddArgument(extTask *Self, struct taskAddArgument *Args)
 {
-   pf::Log log;
+   if ((!Args) or (!Args->Argument) or (!*Args->Argument)) return ERR_NullArgs;
 
-   if ((!Args) or (!Args->Argument) or (!*Args->Argument)) return log.warning(ERR_NullArgs);
-
-   if (!Self->Parameters) {
-      CSTRING *args;
-      if (GetField(Self, FID_Parameters|TPTR, &args) != ERR_Okay) {
-         return log.warning(ERR_GetField);
-      }
-      Self->Parameters = args;
+   auto src = Args->Argument;
+   if ((*src IS '"') or (*src IS '\'')) {
+      auto end = *src++;
+      LONG len = 0;
+      while ((src[len]) and (src[len] != end)) len++;
+      Self->Parameters.emplace_back(std::string(src, len));
    }
+   else Self->Parameters.emplace_back(Args->Argument);
 
-   // Calculate the new size of the argument block
-
-   LONG total;
-   LONG len = StrLength(Args->Argument) + 1;
-   CSTRING *args;
-   if (!AllocMemory(Self->ParametersSize + sizeof(STRING) + len, MEM_DATA|MEM_NO_CLEAR, (void **)&args, NULL)) {
-      Self->ParametersSize += sizeof(STRING) + len;
-
-      for (total=0; Self->Parameters[total]; total++);
-
-      STRING str = (STRING)(args + total + 2);
-
-      // Copy the old arguments across to the new array
-
-      LONG i, j;
-      for (i=0; Self->Parameters[i]; i++) {
-         args[i] = str;
-         for (j=0; Self->Parameters[i][j]; j++) str[j] = Self->Parameters[i][j];
-         str[j++] = 0;
-         str += j;
-      }
-
-      // Add the new argument.  Notice that we strip enclosing quotes if necessary.
-
-      args[i++] = str;
-      args[i]   = NULL;
-
-      CSTRING src = Args->Argument;
-      if (*src IS '"') {
-         src++;
-         while ((*src) and (*src != '"')) *str++ = *src++;
-      }
-      else if (*src IS '\'') {
-         src++;
-         while ((*src) and (*src != '\'')) *str++ = *src++;
-      }
-      else while (*src) *str++ = *src++;
-      *str = 0;
-
-      FreeResource(Self->Parameters);
-      Self->Parameters = args;
-      return ERR_Okay;
-   }
-   else return log.warning(ERR_AllocMemory);
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
@@ -1235,7 +1180,7 @@ Okay
 
 static ERROR TASK_Expunge(extTask *Self, APTR Void)
 {
-   Expunge(FALSE);
+   Expunge(false);
    return ERR_Okay;
 }
 
@@ -1275,7 +1220,6 @@ static ERROR TASK_Free(extTask *Self, APTR Void)
    if (Self->Location)    { FreeResource(Self->Location);    Self->Location    = NULL; }
    if (Self->Path)        { FreeResource(Self->Path);        Self->Path        = NULL; }
    if (Self->ProcessPath) { FreeResource(Self->ProcessPath); Self->ProcessPath = NULL; }
-   if (Self->Parameters)  { FreeResource(Self->Parameters);  Self->Parameters  = NULL; }
    if (Self->MessageMID)  { FreeResource(Self->MessageMID); Self->MessageMID  = 0; }
 
    if (Self->MsgAction)          { FreeResource(Self->MsgAction);          Self->MsgAction          = NULL; }
@@ -1874,82 +1818,6 @@ static ERROR SET_Args(extTask *Self, CSTRING Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Parameters: Command line arguments (list format).
-
-Command line arguments for a program can be defined here in list format, whereby each argument is an independent
-string.  The list must be terminated with a NULL pointer.
-
-To illustrate, the following command-line string:
-
-<pre>1&gt; YourProgram PREFS MyPrefs -file "documents:readme.txt"</pre>
-
-Would be represented as follows:
-
-<pre>
-CSTRING Args[] = {
-   "PREFS",
-   "MyPrefs",
-   "-file",
-   "documents:readme.txt",
-   NULL
-};
-</pre>
-
-*********************************************************************************************************************/
-
-static ERROR GET_Parameters(extTask *Self, CSTRING **Value, LONG *Elements)
-{
-   pf::Log log;
-
-   if (Self->Parameters) {
-      *Value = Self->Parameters;
-      *Elements = 0;
-      return ERR_Okay;
-   }
-   else {
-      log.msg("No arguments to return.");
-      *Value = NULL;
-      *Elements = 0;
-      return ERR_FieldNotSet;
-   }
-}
-
-static ERROR SET_Parameters(extTask *Self, CSTRING *Value, LONG Elements)
-{
-   pf::Log log;
-
-   if (Self->Parameters) { FreeResource(Self->Parameters); Self->Parameters = 0; }
-
-   if (Value) {
-      // Calculate the size of the argument array and strings tacked onto the end
-
-      LONG i, j;
-      Self->ParametersSize = sizeof(STRING); // Null-terminated array entry
-      for (j=0; j < Elements; j++) {
-         if (!Value[j]) { Elements = j; break; }
-         Self->ParametersSize += sizeof(STRING); // Array entry
-         for (i=0; Value[j][i]; i++) Self->ParametersSize++; // String length
-         Self->ParametersSize++; // String null terminator
-      }
-
-      if (!AllocMemory(Self->ParametersSize, MEM_NO_CLEAR, (void **)&Self->Parameters, NULL)) {
-         STRING args = (STRING)(Self->Parameters + j + 1);
-         for (j=0; j < Elements; j++) {
-            Self->Parameters[j] = args;
-            for (i=0; Value[j][i]; i++) args[i] = Value[j][i];
-            args[i++] = 0;
-            args += i;
-         }
-         Self->Parameters[j] = 0;
-      }
-      else return log.warning(ERR_AllocMemory);
-   }
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
 ExitCallback: The callback is activated when the process is terminated.
 
 The ExitCallback field can be set with a function reference that will be called when the executed process is
@@ -2211,10 +2079,41 @@ static ERROR SET_Name(extTask *Self, CSTRING Value)
 /*********************************************************************************************************************
 
 -FIELD-
-TimeOut: Limits the amount of time to wait for a launched process to return.
+Parameters: Command line arguments (list format).
 
-This field can be set in conjunction with the WAIT flag to define the time limit when waiting for a launched
-process to return.  The time out is defined in seconds.
+Command line arguments for a program can be defined here as a vector list, whereby each argument is an independent
+string.  To illustrate, the following command-line string:
+
+<pre>1&gt; YourProgram PREFS MyPrefs -file "documents:readme.txt"</pre>
+
+Would be represented as follows:
+
+<pre>
+pf::vector&lt;std::string&gt; Args = {
+   "PREFS",
+   "MyPrefs",
+   "-file",
+   "documents:readme.txt"
+};
+</pre>
+
+*********************************************************************************************************************/
+
+static ERROR GET_Parameters(extTask *Self, pf::vector<std::string> **Value, LONG *Elements)
+{
+   *Value = &Self->Parameters;
+   *Elements = Self->Parameters.size();
+   return ERR_Okay;
+}
+
+static ERROR SET_Parameters(extTask *Self, const pf::vector<std::string> *Value, LONG Elements)
+{
+   if (Value) Self->Parameters = Value[0];
+   else Self->Parameters.clear();
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
 
 -FIELD-
 ProcessID: Reflects the process ID when an executable is launched.
@@ -2379,7 +2278,7 @@ static ERROR GET_ReturnCode(extTask *Self, LONG *Value)
 
       if (WIFEXITED(status)) {
          Self->ReturnCode = (BYTE)WEXITSTATUS(status);
-         Self->ReturnCodeSet = TRUE;
+         Self->ReturnCodeSet = true;
       }
 
       *Value = Self->ReturnCode;
@@ -2392,7 +2291,7 @@ static ERROR GET_ReturnCode(extTask *Self, LONG *Value)
    winGetExitCodeProcess(Self->Platform, &Self->ReturnCode);
    if (Self->ReturnCode IS 259) return ERR_TaskStillExists;
    else {
-      Self->ReturnCodeSet = TRUE;
+      Self->ReturnCodeSet = true;
       *Value = Self->ReturnCode;
       return ERR_Okay;
    }
@@ -2406,12 +2305,20 @@ static ERROR GET_ReturnCode(extTask *Self, LONG *Value)
 
 static ERROR SET_ReturnCode(extTask *Self, LONG Value)
 {
-   Self->ReturnCodeSet = TRUE;
+   Self->ReturnCodeSet = true;
    Self->ReturnCode = Value;
    return ERR_Okay;
 }
 
-//********************************************************************************************************************
+/*********************************************************************************************************************
+
+-FIELD-
+TimeOut: Limits the amount of time to wait for a launched process to return.
+
+This field can be set in conjunction with the `WAIT` flag to define the time limit when waiting for a launched
+process to return.  The time out is defined in seconds.
+
+*********************************************************************************************************************/
 
 static const FieldArray clFields[] = {
    { "TimeOut",         FDF_DOUBLE|FDF_RW },
@@ -2421,7 +2328,7 @@ static const FieldArray clFields[] = {
    // Virtual fields
    { "Actions",        FDF_POINTER|FDF_R,  GET_Actions },
    { "Args",           FDF_STRING|FDF_W,   NULL, SET_Args },
-   { "Parameters",     FDF_ARRAY|FDF_STRING|FDF_RW, GET_Parameters, SET_Parameters },
+   { "Parameters",     FDF_CPP|FDF_ARRAY|FDF_STRING|FDF_RW, GET_Parameters, SET_Parameters },
    { "ErrorCallback",  FDF_FUNCTIONPTR|FDF_RI, GET_ErrorCallback,   SET_ErrorCallback }, // STDERR
    { "ExitCallback",   FDF_FUNCTIONPTR|FDF_RW, GET_ExitCallback,    SET_ExitCallback },
    { "InputCallback",  FDF_FUNCTIONPTR|FDF_RW, GET_InputCallback,   SET_InputCallback }, // STDIN
@@ -2435,7 +2342,6 @@ static const FieldArray clFields[] = {
    { "Priority",       FDF_LONG|FDF_W,         NULL, SET_Priority },
    // Synonyms
    { "Src",            FDF_SYNONYM|FDF_STRING|FDF_RW, GET_Location, SET_Location },
-   { "ArgsList",       FDF_ARRAY|FDF_STRING|FDF_SYSTEM|FDF_RW, GET_Parameters, SET_Parameters }, // OBSOLETE
    END_FIELD
 };
 

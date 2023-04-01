@@ -1490,22 +1490,42 @@ function getFieldType(Type, CustomName, Option)
    elseif bit.band(Type, FD_ARRAY) != 0 then
       -- All arrays are pointers, with additional information indicating the type of values in the array.
 
-      if bit.band(Type, FD_BYTE) != 0 then
-         return 'BYTE []'
-      elseif bit.band(Type, FD_WORD) != 0 then
-         return 'WORD []'
-      elseif bit.band(Type, FD_LONG) != 0 then
-         return 'LONG []'
-      elseif bit.band(Type, FD_DOUBLE) != 0 then
-         return 'DOUBLE []'
-      elseif bit.band(Type, FD_STRING) != 0 then
-         return 'STRING []'
-      elseif bit.band(Type, FD_POINTER) != 0 then
-         return 'APTR []'
-      elseif bit.band(Type, FD_STRUCT) != 0 then
-         return 'STRUCT []'
+      if bit.band(Type, FD_CPP) != 0 then
+         if bit.band(Type, FD_BYTE) != 0 then
+            return 'pf::vector<BYTE>'
+         elseif bit.band(Type, FD_WORD) != 0 then
+            return 'pf::vector<WORD>'
+         elseif bit.band(Type, FD_LONG) != 0 then
+            return 'pf::vector<LONG>'
+         elseif bit.band(Type, FD_DOUBLE) != 0 then
+            return 'pf::vector<DOUBLE>'
+         elseif bit.band(Type, FD_STRING) != 0 then
+            return 'pf::vector<std::string>'
+         elseif bit.band(Type, FD_POINTER) != 0 then
+            return 'pf::vector<APTR>'
+         elseif bit.band(Type, FD_STRUCT) != 0 then
+            return 'pf::vector<STRUCT>'
+         else
+            return 'pf::vector<>'
+         end
       else
-         return 'ARRAY'
+         if bit.band(Type, FD_BYTE) != 0 then
+            return 'BYTE []'
+         elseif bit.band(Type, FD_WORD) != 0 then
+            return 'WORD []'
+         elseif bit.band(Type, FD_LONG) != 0 then
+            return 'LONG []'
+         elseif bit.band(Type, FD_DOUBLE) != 0 then
+            return 'DOUBLE []'
+         elseif bit.band(Type, FD_STRING) != 0 then
+            return 'STRING []'
+         elseif bit.band(Type, FD_POINTER) != 0 then
+            return 'APTR []'
+         elseif bit.band(Type, FD_STRUCT) != 0 then
+            return 'STRUCT []'
+         else
+            return 'ARRAY'
+         end
       end
    elseif bit.band(Type, FD_STRING) != 0 then
       return 'STRING'
