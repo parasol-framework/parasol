@@ -164,7 +164,7 @@
       <description>
 <p>Applications can request data from a clipboard if it is in drag-and-drop mode by sending a <code>DATA_REQUEST</code> to the Clipboard's DataFeed action.  Doing so will result in a callback to the function that is referenced in the RequestHandler, which must be defined by the source application.  The RequestHandler function must follow this template:</p>
 <p>
-<code>ERROR RequestHandler(*Clipboard, OBJECTID Requester, LONG Item, BYTE Datatypes[4])</code></p>
+<code>ERROR RequestHandler(*Clipboard, OBJECTPTR Requester, LONG Item, BYTE Datatypes[4])</code></p>
 <p>The function will be expected to send a <code>DATA_RECEIPT</code> to the object referenced in the Requester paramter.  The receipt must provide coverage for the referenced Item and use one of the indicated Datatypes as the data format. If this cannot be achieved then <code>ERR_NoSupport</code> should be returned by the function.</p>
       </description>
     </field>
