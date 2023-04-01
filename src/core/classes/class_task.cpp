@@ -679,7 +679,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       LONG winerror;
    #endif
    #ifdef __unix__
-      LONG pid, argcount;
+      LONG pid;
       BYTE privileged, shell;
    #endif
 
@@ -911,7 +911,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       buffer[i] = 0;
    }
 
-   STRING argslist[Self->Parameters.size()+2];
+   CSTRING argslist[Self->Parameters.size()+2];
    LONG bufend;
 
    bufend = i;
@@ -948,10 +948,11 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       buffer[bufend] = 0;
 
       argslist[0] = buffer;
-      for (i=0; i < argcount; i++) {
-         argslist[i+1] = args[i];
+      unsigned i;
+      for (i=0; i < Self->Parameters.size(); i++) {
+         argslist[i+1] = Self->Parameters[i].c_str();
       }
-      argslist[i+1] = 0;
+      argslist[i+1] = NULL;
 
       if (Self->Flags & TSF_DEBUG) {
          for (i=1; argslist[i]; i++) {
