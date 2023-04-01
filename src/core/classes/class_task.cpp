@@ -689,8 +689,11 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
    if (!Self->Location) return log.warning(ERR_MissingPath);
 
-   auto call = make_function_stdc(process_janitor);
-   SubscribeTimer(60, &call, &glProcessJanitor);
+   {
+      pf::SwitchContext ctx(glCurrentTask);
+      auto call = make_function_stdc(process_janitor);
+      SubscribeTimer(60, &call, &glProcessJanitor);
+   }
 
 #ifdef _WIN32
    // Determine the launch folder
