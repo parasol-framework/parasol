@@ -969,5 +969,21 @@ header({ path="system/fields", copyright="Paul Manias © 1996-2023" }, function(
     "WordSpacing",
     "XMLDef",
     "XChannel",
-    "YChannel")
+    "YChannel",
+    "BaseClass",
+    "KeyFilter",
+    "GroupFilter",
+    "SubClass",
+    "Process",
+    "Clip",
+    "TransRGB",
+    "HDensity",
+    "VDensity",
+    "RequestHandler",
+    "ErrorCallback",
+    "ExitCallback",
+    "LaunchPath",
+    "OutputCallback",
+    "Created"
+    )
 end)

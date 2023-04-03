@@ -365,7 +365,7 @@ class extFile : public objFile {
 class extConfig : public objConfig {
    public:
    using create = pf::Create<extConfig>;
-   ULONG    CRC;   // CRC32, for determining if config data has been altered
+   ULONG CRC;   // CRC32, for determining if config data has been altered
 };
 
 class extStorageDevice : public objStorageDevice {

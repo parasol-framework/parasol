@@ -588,6 +588,149 @@ class objBitmap : public BaseClass {
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
    }
+
+   // Customised field setting
+
+   inline ERROR setPalette(const struct RGBPalette * Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Palette, &target);
+      return field->WriteValue(target, field, 0x08000300, Value, 1);
+   }
+
+   inline ERROR setData(const UBYTE * Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Data, &target);
+      return field->WriteValue(target, field, 0x08000500, Value, 1);
+   }
+
+   inline ERROR setWidth(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Width = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setHeight(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Height = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setType(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Type = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setClip(const struct ClipRectangle * Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Clip, &target);
+      return field->WriteValue(target, field, 0x08000310, Value, 1);
+   }
+
+   inline ERROR setDataFlags(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->DataFlags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setAmtColours(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->AmtColours = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setTransIndex(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_TransIndex, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setBytesPerPixel(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->BytesPerPixel = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBitsPerPixel(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->BitsPerPixel = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setXOffset(const LONG Value) {
+      this->XOffset = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setYOffset(const LONG Value) {
+      this->YOffset = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setOpacity(const LONG Value) {
+      this->Opacity = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setTransRGB(const struct RGB8 * Value, LONG Elements) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_TransRGB, &target);
+      return field->WriteValue(target, field, 0x01081300, Value, Elements);
+   }
+
+   inline ERROR setBkgdIndex(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_BkgdIndex, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setColourSpace(const LONG Value) {
+      this->ColourSpace = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setClipLeft(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_ClipLeft, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setClipRight(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_ClipRight, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setClipBottom(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_ClipBottom, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setClipTop(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_ClipTop, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setBkgd(const BYTE * Value, LONG Elements) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Bkgd, &target);
+      return field->WriteValue(target, field, 0x01081300, Value, Elements);
+   }
+
+   inline ERROR setHandle(const APTR Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Handle, &target);
+      return field->WriteValue(target, field, 0x08010300, Value, 1);
+   }
+
 };
 
 // Display class definition
@@ -740,6 +883,108 @@ class objDisplay : public BaseClass {
    }
    inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }
    inline ERROR show() { return Action(AC_Show, this, NULL); }
+
+   // Customised field setting
+
+   inline ERROR setRefreshRate(const DOUBLE Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_RefreshRate, &target);
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Flags, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setWidth(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Width, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setHeight(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Height, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setX(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_X, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setY(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Y, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setBmpX(const LONG Value) {
+      this->BmpX = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBmpY(const LONG Value) {
+      this->BmpY = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setDPMS(const LONG Value) {
+      this->DPMS = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setPopOver(const OBJECTID Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_PopOver, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setGamma(const DOUBLE * Value, LONG Elements) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Gamma, &target);
+      return field->WriteValue(target, field, 0x80001508, Value, Elements);
+   }
+
+   inline ERROR setHDensity(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_HDensity, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setVDensity(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_VDensity, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setOpacity(const DOUBLE Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Opacity, &target);
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setResizeFeedback(const FUNCTION Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_ResizeFeedback, &target);
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   inline ERROR setWindowHandle(const APTR Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_WindowHandle, &target);
+      return field->WriteValue(target, field, 0x08000308, Value, 1);
+   }
+
+   inline ERROR setTitle(const STRING Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Title, &target);
+      return field->WriteValue(target, field, 0x08800308, Value, 1);
+   }
+
 };
 
 // Clipboard class definition
@@ -811,6 +1056,21 @@ class objClipboard : public BaseClass {
       return Action(AC_DataFeed, this, &args);
    }
    inline ERROR init() { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERROR setFlags(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setRequestHandler(const FUNCTION Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_RequestHandler, &target);
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
 };
 
 // Pointer class definition
@@ -848,6 +1108,85 @@ class objPointer : public BaseClass {
    LONG     DragItem;      // The currently dragged item, as defined by StartCursorDrag().
    OBJECTID OverObjectID;  // Readable field that gives the ID of the object under the pointer.
    LONG     ClickSlop;     // A leniency value that assists in determining if the user intended to click or drag.
+
+   // Customised field setting
+
+   inline ERROR setSpeed(const DOUBLE Value) {
+      this->Speed = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setAcceleration(const DOUBLE Value) {
+      this->Acceleration = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setDoubleClick(const DOUBLE Value) {
+      this->DoubleClick = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setWheelSpeed(const DOUBLE Value) {
+      this->WheelSpeed = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setX(const DOUBLE Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_X, &target);
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setY(const DOUBLE Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Y, &target);
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setMaxSpeed(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_MaxSpeed, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setInput(const OBJECTID Value) {
+      this->InputID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setSurface(const OBJECTID Value) {
+      this->SurfaceID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setCursor(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->CursorID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setCursorOwner(const OBJECTID Value) {
+      this->CursorOwnerID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setClickSlop(const LONG Value) {
+      this->ClickSlop = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setButtonOrder(const STRING Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_ButtonOrder, &target);
+      return field->WriteValue(target, field, 0x08800300, Value, 1);
+   }
+
 };
 
 // Surface class definition
@@ -1007,6 +1346,251 @@ class objSurface : public BaseClass {
       return Action(AC_ScrollToPoint, this, &args);
    }
    inline ERROR show() { return Action(AC_Show, this, NULL); }
+
+   // Customised field setting
+
+   inline ERROR setDrag(const OBJECTID Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Drag, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setParent(const OBJECTID Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Parent, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setPopOver(const OBJECTID Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_PopOver, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setTopMargin(const LONG Value) {
+      this->TopMargin = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBottomMargin(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_BottomMargin, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setLeftMargin(const LONG Value) {
+      this->LeftMargin = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setRightMargin(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_RightMargin, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setMinWidth(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_MinWidth, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setMinHeight(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_MinHeight, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setMaxWidth(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_MaxWidth, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setMaxHeight(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_MaxHeight, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setLeftLimit(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_LeftLimit, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setRightLimit(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_RightLimit, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setTopLimit(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_TopLimit, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setBottomLimit(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_BottomLimit, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Flags, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setX(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_X, &target);
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_LARGE, &var, 1);
+   }
+
+   inline ERROR setY(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Y, &target);
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_LARGE, &var, 1);
+   }
+
+   inline ERROR setWidth(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Width, &target);
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_LARGE, &var, 1);
+   }
+
+   inline ERROR setHeight(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Height, &target);
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_LARGE, &var, 1);
+   }
+
+   inline ERROR setAlign(const LONG Value) {
+      this->Align = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setDimensions(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Dimensions, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setCursor(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Cursor, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setColour(const struct RGB8 Value) {
+      this->Colour = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setType(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Type = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setModal(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Modal, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setRootLayer(const OBJECTID Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_RootLayer, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setAbsX(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_AbsX, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setAbsY(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_AbsY, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setBitsPerPixel(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_BitsPerPixel, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setInsideHeight(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_InsideHeight, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setInsideWidth(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_InsideWidth, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setMovement(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Movement, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setOpacity(const DOUBLE Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Opacity, &target);
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setRevertFocus(const OBJECTID Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_RevertFocus, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setVisible(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Visible, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setWindowType(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_WindowType, &target);
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setWindowHandle(const APTR Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_WindowHandle, &target);
+      return field->WriteValue(target, field, 0x08000308, Value, 1);
+   }
+
+   inline ERROR setXOffset(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_XOffset, &target);
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_LARGE, &var, 1);
+   }
+
+   inline ERROR setYOffset(const LONG Value) {
+      OBJECTPTR target;
+      auto field = FindField(this, FID_YOffset, &target);
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_LARGE, &var, 1);
+   }
+
 };
 
 extern struct DisplayBase *DisplayBase;

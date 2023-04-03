@@ -963,4 +963,19 @@
 #define FID_XMLDef 0x27bb6ee5LL
 #define FID_XChannel 0xf9068f76LL
 #define FID_YChannel 0xe5486457LL
+#define FID_BaseClass 0x95f02736LL
+#define FID_KeyFilter 0x2ff6eaf4LL
+#define FID_GroupFilter 0x7f88a558LL
+#define FID_SubClass 0xb7799ba5LL
+#define FID_Process 0xc336efe4LL
+#define FID_Clip 0x7c95326dLL
+#define FID_TransRGB 0xbb42bc88LL
+#define FID_HDensity 0x7bd1ed6dLL
+#define FID_VDensity 0x676b91bbLL
+#define FID_RequestHandler 0x781c36ecLL
+#define FID_ErrorCallback 0x192eda5cLL
+#define FID_ExitCallback 0x28e186acLL
+#define FID_LaunchPath 0x096e116dLL
+#define FID_OutputCallback 0xb7c8ace3LL
+#define FID_Created 0xd9cc0a3dLL
 

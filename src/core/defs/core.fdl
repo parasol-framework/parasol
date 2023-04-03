@@ -955,6 +955,13 @@ struct FieldValue {
     large  Large    # The value as a 64-bit integer.
     double Double   # The value as a 64-bit float-point number.
     ptr    Pointer  # The value as an address pointer.
+  ]],
+  [[
+   Variable(LONG Value) : Type(FD_LARGE), Large(Value) { }
+   Variable(LARGE Value) : Type(FD_LARGE), Large(Value) { }
+   Variable(DOUBLE Value) : Type(FD_DOUBLE), Double(Value) { }
+   Variable(APTR Value) : Type(FD_POINTER), Pointer(Value) { }
+   Variable() { }
   ]])
 
   -- Structures for defining method and action invocations.

@@ -1043,7 +1043,7 @@ static void set_pointer_defaults(extPointer *Self)
 {
    DOUBLE speed        = glDefaultSpeed;
    DOUBLE acceleration = glDefaultAcceleration;
-   DOUBLE maxspeed     = 100;
+   LONG maxspeed     = 100;
    DOUBLE wheelspeed   = DEFAULT_WHEELSPEED;
    DOUBLE doubleclick  = 0.36;
    CSTRING buttonorder = "123456789ABCDEF";

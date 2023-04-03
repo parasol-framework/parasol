@@ -309,15 +309,14 @@ static ERROR SET_Height(extSurface *Self, Variable *Value)
 
       // If the offset flags are used, adjust the vertical position
 
-      Variable var;
       if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) {
+         Variable var;
          var.Type   = FD_DOUBLE|FD_PERCENTAGE;
          var.Double = Self->YOffsetPercent;
          SET_YOffset(Self, &var);
       }
       else if (Self->Dimensions & DMF_FIXED_Y_OFFSET) {
-         var.Type   = FD_DOUBLE;
-         var.Double = Self->YOffset;
+         Variable var(Self->YOffset);
          SET_YOffset(Self, &var);
       }
    }

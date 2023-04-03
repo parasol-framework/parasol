@@ -1000,7 +1000,7 @@ static ERROR field_setup(extMetaClass *Class)
 
    if (glLogLevel >= 2) register_fields(Class);
 
-   // Check for field name hash collisions and other significant development errors
+   // Check for field name hash collisions and other significant development errors if logging is enabled.
 
    Field *fields = Class->prvFields;
 

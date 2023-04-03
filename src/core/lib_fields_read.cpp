@@ -127,17 +127,9 @@ Please note that FieldID is explicitly defined as 32-bit because using the FIELD
 
 Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target) // Read-only, thread safe function.
 {
-   if (!Object) return NULL;
-
    OBJECTPTR dummy;
    if (!Target) Target = &dummy;
-
-   /*if (Object->ClassID IS ID_METACLASS) {
-      // If FindField() is called on a meta-class, the fields declared for that class will be inspected rather than
-      // the metaclass itself.
-      return lookup_id_byclass((extMetaClass *)Object, FieldID, (extMetaClass **)Target);
-   }
-   else*/ return lookup_id(Object, FieldID, Target);
+   return lookup_id(Object, FieldID, Target);
 }
 
 /*********************************************************************************************************************
