@@ -327,12 +327,12 @@ class extMetaClass : public objMetaClass {
    public:
    using create = pf::Create<extMetaClass>;
    class extMetaClass *Base;            // Reference to the base class if this is a sub-class
-   struct Field *prvFields;             // Internal field structure
+   std::vector<Field> prvFields;        // Internal field structure
    const struct FieldArray *SubFields;  // Extra fields defined by the sub-class
    struct RootModule *Root;             // Root module that owns this class, if any.
-   UBYTE Children[8];                   // Child objects (field indexes), in order
+   UBYTE Integral[8];                   // Integral object references (by field indexes), in order
    STRING Location;                     // Location of the class binary, this field exists purely for caching the location string if the user reads it
-   struct ActionEntry ActionTable[AC_END];
+   ActionEntry ActionTable[AC_END];
    WORD OriginalFieldTotal;
 };
 
@@ -940,14 +940,13 @@ struct Field * lookup_id(OBJECTPTR, ULONG, OBJECTPTR *);
 ERROR  msg_event(APTR, LONG, LONG, APTR, LONG);
 ERROR  msg_threadcallback(APTR, LONG, LONG, APTR, LONG);
 ERROR  msg_threadaction(APTR, LONG, LONG, APTR, LONG);
-void   optimise_write_field(struct Field *);
+void   optimise_write_field(struct Field &);
 void   PrepareSleep(void);
 ERROR  process_janitor(OBJECTID, LONG, LONG);
 void   remove_process_waitlocks(void);
 void   remove_semaphores(void);
 ERROR  resolve_args(APTR, const struct FunctionField *);
 void   scan_classes(void);
-ERROR  sort_class_fields(extMetaClass *, struct Field *);
 void   remove_threadpool(void);
 ERROR  threadpool_get(extThread **);
 void   threadpool_release(extThread *);
