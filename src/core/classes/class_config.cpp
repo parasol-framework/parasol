@@ -608,8 +608,7 @@ static ERROR CONFIG_Sort(extConfig *Self, APTR Void)
    log.branch("Sorting by group name.");
 
    std::sort(Self->Groups->begin(), Self->Groups->end(),
-      [](const std::pair<std::string, std::map<std::string, std::string>> &a,
-         const std::pair<std::string, std::map<std::string, std::string>> &b ) {
+      [](const ConfigGroup &a, const ConfigGroup &b ) {
       return a.first < b.first;
    });
 
