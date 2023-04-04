@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol Framework is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol Framework is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 -CATEGORY-
 Name: Fields
@@ -25,38 +24,38 @@ static THREADVAR char strGetField[400]; // Buffer for retrieving variable field 
 Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target)
 {
    auto mc = Object->ExtClass;
-   auto field = mc->prvFields;
+   auto &field = mc->prvFields;
    *Target = Object;
 
-   LONG floor = 0;
-   LONG ceiling = mc->TotalFields;
+   unsigned floor = 0;
+   auto ceiling = field.size();
    while (floor < ceiling) {
-      LONG i = (floor + ceiling)>>1;
+      auto i = (floor + ceiling)>>1;
       if (field[i].FieldID < FieldID) floor = i + 1;
       else if (field[i].FieldID > FieldID) ceiling = i;
       else {
          while ((i > 0) and (field[i-1].FieldID IS FieldID)) i--;
-         return field+i;
+         return &field[i];
       }
    }
 
    if (mc->Flags & CLF_PROMOTE_INTEGRAL) {
-      for (LONG i=0; mc->Children[i] != 0xff; i++) {
+      for (LONG i=0; mc->Integral[i] != 0xff; i++) {
          OBJECTPTR child;
-         if ((!copy_field_to_buffer(Object, mc->prvFields + mc->Children[i], FT_POINTER, &child, NULL, NULL)) and (child)) {
+         if ((!copy_field_to_buffer(Object, &mc->prvFields[mc->Integral[i]], FT_POINTER, &child, NULL, NULL)) and (child)) {
             auto childclass = child->ExtClass;
-            field = childclass->prvFields;
+            auto &field = childclass->prvFields;
 
-            LONG floor = 0;
-            LONG ceiling = childclass->TotalFields;
+            unsigned floor = 0;
+            auto ceiling = field.size();
             while (floor < ceiling) {
-               LONG j = (floor + ceiling)>>1;
+               auto j = (floor + ceiling)>>1;
                if (field[j].FieldID < FieldID) floor = j + 1;
                else if (field[j].FieldID > FieldID) ceiling = j;
                else {
                   while ((j > 0) and (field[j-1].FieldID IS FieldID)) j--;
                   *Target = child;
-                  return field+j;
+                  return &field[j];
                }
             }
          }

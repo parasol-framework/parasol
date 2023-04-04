@@ -738,33 +738,33 @@ static ERROR setval_large(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data,
 // This routine configures WriteValue so that it uses the correct set-field function, according to the field type that
 // has been defined.
 
-void optimise_write_field(Field *Field)
+void optimise_write_field(Field &Field)
 {
-   pf::Log log("WriteField");
+   pf::Log log(__FUNCTION__);
 
-   if (Field->Flags & FD_FLAGS)       Field->WriteValue = writeval_flags;
-   else if (Field->Flags & FD_LOOKUP) Field->WriteValue = writeval_lookup;
-   else if (!Field->SetValue) {
-      if (Field->Flags & FD_ARRAY)         Field->WriteValue = writeval_array;
-      else if (Field->Flags & FD_LONG)     Field->WriteValue = writeval_long;
-      else if (Field->Flags & FD_LARGE)    Field->WriteValue = writeval_large;
-      else if (Field->Flags & (FD_DOUBLE|FD_FLOAT)) Field->WriteValue = writeval_double;
-      else if (Field->Flags & FD_FUNCTION) Field->WriteValue = writeval_function;
-      else if (Field->Flags & (FD_POINTER|FD_STRING)) Field->WriteValue = writeval_ptr;
-      else log.warning("Invalid field flags for %s: $%.8x.", Field->Name, Field->Flags);
+   if (Field.Flags & FD_FLAGS)       Field.WriteValue = writeval_flags;
+   else if (Field.Flags & FD_LOOKUP) Field.WriteValue = writeval_lookup;
+   else if (!Field.SetValue) {
+      if (Field.Flags & FD_ARRAY)         Field.WriteValue = writeval_array;
+      else if (Field.Flags & FD_LONG)     Field.WriteValue = writeval_long;
+      else if (Field.Flags & FD_LARGE)    Field.WriteValue = writeval_large;
+      else if (Field.Flags & (FD_DOUBLE|FD_FLOAT)) Field.WriteValue = writeval_double;
+      else if (Field.Flags & FD_FUNCTION) Field.WriteValue = writeval_function;
+      else if (Field.Flags & (FD_POINTER|FD_STRING)) Field.WriteValue = writeval_ptr;
+      else log.warning("Invalid field flags for %s: $%.8x.", Field.Name, Field.Flags);
    }
    else {
-      if (Field->Flags & FD_VARIABLE)      Field->WriteValue = setval_variable;
-      else if (Field->Flags & FD_RGB) {
-         if (Field->Flags & FD_BYTE) Field->WriteValue = setval_brgb;
-         else log.warning("Invalid field flags for %s: $%.8x.", Field->Name, Field->Flags);
+      if (Field.Flags & FD_VARIABLE)      Field.WriteValue = setval_variable;
+      else if (Field.Flags & FD_RGB) {
+         if (Field.Flags & FD_BYTE) Field.WriteValue = setval_brgb;
+         else log.warning("Invalid field flags for %s: $%.8x.", Field.Name, Field.Flags);
       }
-      else if (Field->Flags & FD_ARRAY)    Field->WriteValue = setval_array;
-      else if (Field->Flags & FD_FUNCTION) Field->WriteValue = setval_function;
-      else if (Field->Flags & FD_LONG)     Field->WriteValue = setval_long;
-      else if (Field->Flags & (FD_DOUBLE|FD_FLOAT))   Field->WriteValue = setval_double;
-      else if (Field->Flags & (FD_POINTER|FD_STRING)) Field->WriteValue = setval_pointer;
-      else if (Field->Flags & FD_LARGE)    Field->WriteValue = setval_large;
-      else log.warning("Invalid field flags for %s: $%.8x.", Field->Name, Field->Flags);
+      else if (Field.Flags & FD_ARRAY)    Field.WriteValue = setval_array;
+      else if (Field.Flags & FD_FUNCTION) Field.WriteValue = setval_function;
+      else if (Field.Flags & FD_LONG)     Field.WriteValue = setval_long;
+      else if (Field.Flags & (FD_DOUBLE|FD_FLOAT))   Field.WriteValue = setval_double;
+      else if (Field.Flags & (FD_POINTER|FD_STRING)) Field.WriteValue = setval_pointer;
+      else if (Field.Flags & FD_LARGE)    Field.WriteValue = setval_large;
+      else log.warning("Invalid field flags for %s: $%.8x.", Field.Name, Field.Flags);
    }
 }
