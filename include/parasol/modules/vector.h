@@ -422,6 +422,29 @@ class objVectorColour : public BaseClass {
    DOUBLE Green;  // The green component value.
    DOUBLE Blue;   // The blue component value.
    DOUBLE Alpha;  // The alpha component value.
+
+   // Customised field setting
+
+   inline ERROR setRed(const DOUBLE Value) {
+      this->Red = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setGreen(const DOUBLE Value) {
+      this->Green = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBlue(const DOUBLE Value) {
+      this->Blue = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setAlpha(const DOUBLE Value) {
+      this->Alpha = Value;
+      return ERR_Okay;
+   }
+
 };
 
 // VectorScene class definition
@@ -500,6 +523,54 @@ class objVectorScene : public BaseClass {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
    }
+
+   // Customised field setting
+
+   inline ERROR setGamma(const DOUBLE Value) {
+      this->Gamma = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setHostScene(objVectorScene * Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->HostScene = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBitmap(objBitmap * Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
+      return field->WriteValue(target, field, 0x08000301, Value, 1);
+   }
+
+   inline ERROR setSurface(const OBJECTID Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[11];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setPageWidth(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setPageHeight(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setSampleMethod(const LONG Value) {
+      this->SampleMethod = Value;
+      return ERR_Okay;
+   }
+
 };
 
 // VectorImage class definition
@@ -521,6 +592,51 @@ class objVectorImage : public BaseClass {
    LONG   Dimensions;       // Dimension flags define whether individual dimension fields contain fixed or relative values.
    LONG   SpreadMethod;     // Defines the drawing mode.
    LONG   AspectRatio;      // Flags that affect the aspect ratio of the image within its target vector.
+
+   // Customised field setting
+
+   inline ERROR setX(const DOUBLE Value) {
+      this->X = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setY(const DOUBLE Value) {
+      this->Y = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setPicture(objPicture * Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, 0x08000301, Value, 1);
+   }
+
+   inline ERROR setBitmap(objBitmap * Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[11];
+      return field->WriteValue(target, field, 0x08000301, Value, 1);
+   }
+
+   inline ERROR setUnits(const LONG Value) {
+      this->Units = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setDimensions(const LONG Value) {
+      this->Dimensions = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setSpreadMethod(const LONG Value) {
+      this->SpreadMethod = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setAspectRatio(const LONG Value) {
+      this->AspectRatio = Value;
+      return ERR_Okay;
+   }
+
 };
 
 // VectorPattern class definition
@@ -545,6 +661,76 @@ class objVectorPattern : public BaseClass {
    LONG   Units;                  // Defines the coordinate system for fields X, Y, Width and Height.
    LONG   ContentUnits;           // Private. Not yet implemented.
    LONG   Dimensions;             // Dimension flags are stored here.
+
+   // Customised field setting
+
+   inline ERROR setX(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+   }
+
+   inline ERROR setY(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+   }
+
+   inline ERROR setWidth(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+   }
+
+   inline ERROR setHeight(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+   }
+
+   inline ERROR setOpacity(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[11];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setInherit(objVectorPattern * Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
+      return field->WriteValue(target, field, 0x08000301, Value, 1);
+   }
+
+   inline ERROR setSpreadMethod(const LONG Value) {
+      this->SpreadMethod = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setUnits(const LONG Value) {
+      this->Units = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setContentUnits(const LONG Value) {
+      this->ContentUnits = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setMatrices(APTR Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, 0x08000318, Value, 1);
+   }
+
+   inline ERROR setTransform(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, 0x08800208, Value, 1);
+   }
+
 };
 
 // VectorGradient class definition
@@ -578,6 +764,136 @@ class objVectorGradient : public BaseClass {
    // Action stubs
 
    inline ERROR init() { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERROR setX1(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+   }
+
+   inline ERROR setY1(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+   }
+
+   inline ERROR setX2(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+   }
+
+   inline ERROR setY2(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+   }
+
+   inline ERROR setCenterX(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[21];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+   }
+
+   inline ERROR setCenterY(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[22];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+   }
+
+   inline ERROR setFX(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+   }
+
+   inline ERROR setFY(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+   }
+
+   inline ERROR setRadius(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+   }
+
+   inline ERROR setInherit(objVectorGradient * Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[19];
+      return field->WriteValue(target, field, 0x08000301, Value, 1);
+   }
+
+   inline ERROR setSpreadMethod(const LONG Value) {
+      this->SpreadMethod = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setUnits(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Units = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setType(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Type = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setColourSpace(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->ColourSpace = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setMatrices(APTR Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(target, field, 0x08000318, Value, 1);
+   }
+
+   inline ERROR setNumeric(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[20];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setID(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(target, field, 0x08800308, Value, 1);
+   }
+
+   inline ERROR setStops(const APTR Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[11];
+      return field->WriteValue(target, field, 0x00001318, Value, Elements);
+   }
+
+   inline ERROR setTransform(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(target, field, 0x08800208, Value, 1);
+   }
+
 };
 
 // FilterEffect class definition
@@ -609,6 +925,74 @@ class objFilterEffect : public BaseClass {
    inline ERROR init() { return InitObject(this); }
    inline ERROR moveToBack() { return Action(AC_MoveToBack, this, NULL); }
    inline ERROR moveToFront() { return Action(AC_MoveToFront, this, NULL); }
+
+   // Customised field setting
+
+   inline ERROR setNext(objFilterEffect * Value) {
+      this->Next = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setPrev(objFilterEffect * Value) {
+      this->Prev = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setTarget(objBitmap * Value) {
+      this->Target = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setInput(objFilterEffect * Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, 0x08000301, Value, 1);
+   }
+
+   inline ERROR setMix(objFilterEffect * Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, 0x08000301, Value, 1);
+   }
+
+   inline ERROR setX(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+   }
+
+   inline ERROR setY(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+   }
+
+   inline ERROR setWidth(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+   }
+
+   inline ERROR setHeight(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+   }
+
+   inline ERROR setSourceType(const LONG Value) {
+      this->SourceType = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setMixType(const LONG Value) {
+      this->MixType = Value;
+      return ERR_Okay;
+   }
+
 };
 
 struct MergeSource {
@@ -893,6 +1277,76 @@ class objVectorFilter : public BaseClass {
 
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
    inline ERROR init() { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERROR setX(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+   }
+
+   inline ERROR setY(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+   }
+
+   inline ERROR setWidth(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+   }
+
+   inline ERROR setHeight(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+   }
+
+   inline ERROR setOpacity(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setInherit(objVectorFilter * Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[13];
+      return field->WriteValue(target, field, 0x08000301, Value, 1);
+   }
+
+   inline ERROR setResX(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->ResX = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setResY(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->ResY = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setUnits(const LONG Value) {
+      this->Units = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setPrimitiveUnits(const LONG Value) {
+      this->PrimitiveUnits = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setColourSpace(const LONG Value) {
+      this->ColourSpace = Value;
+      return ERR_Okay;
+   }
+
 };
 
 // Vector class definition
@@ -1016,6 +1470,210 @@ class objVector : public BaseClass {
    inline ERROR moveToBack() { return Action(AC_MoveToBack, this, NULL); }
    inline ERROR moveToFront() { return Action(AC_MoveToFront, this, NULL); }
    inline ERROR show() { return Action(AC_Show, this, NULL); }
+
+   // Customised field setting
+
+   inline ERROR setNext(objVector * Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[26];
+      return field->WriteValue(target, field, 0x08000301, Value, 1);
+   }
+
+   inline ERROR setPrev(objVector * Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[27];
+      return field->WriteValue(target, field, 0x08000301, Value, 1);
+   }
+
+   inline ERROR setStrokeOpacity(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[34];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setFillOpacity(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[40];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setOpacity(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[20];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setMiterLimit(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[13];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setInnerMiterLimit(const DOUBLE Value) {
+      this->InnerMiterLimit = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setDashOffset(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[19];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setVisibility(const LONG Value) {
+      this->Visibility = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setCursor(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[41];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setPathQuality(const LONG Value) {
+      this->PathQuality = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setColourSpace(const LONG Value) {
+      this->ColourSpace = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setClipRule(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setDashArray(const DOUBLE * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[28];
+      return field->WriteValue(target, field, 0x80001308, Value, Elements);
+   }
+
+   inline ERROR setMask(OBJECTPTR Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[24];
+      return field->WriteValue(target, field, 0x08000309, Value, 1);
+   }
+
+   inline ERROR setMorph(OBJECTPTR Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, 0x08000309, Value, 1);
+   }
+
+   inline ERROR setMorphFlags(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setNumeric(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[33];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setID(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, 0x08800308, Value, 1);
+   }
+
+   inline ERROR setResizeEvent(const FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[36];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   inline ERROR setStroke(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[11];
+      return field->WriteValue(target, field, 0x08800308, Value, 1);
+   }
+
+   inline ERROR setStrokeColour(const FLOAT * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
+      return field->WriteValue(target, field, 0x10001308, Value, Elements);
+   }
+
+   inline ERROR setStrokeWidth(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+   }
+
+   inline ERROR setTransition(OBJECTPTR Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[29];
+      return field->WriteValue(target, field, 0x08000309, Value, 1);
+   }
+
+   inline ERROR setEnableBkgd(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[39];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setFill(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[23];
+      return field->WriteValue(target, field, 0x08800308, Value, 1);
+   }
+
+   inline ERROR setFillColour(const FLOAT * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[32];
+      return field->WriteValue(target, field, 0x10001308, Value, Elements);
+   }
+
+   inline ERROR setFillRule(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setFilter(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[42];
+      return field->WriteValue(target, field, 0x08800308, Value, 1);
+   }
+
+   inline ERROR setLineJoin(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[35];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setLineCap(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[22];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setInnerJoin(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setTabOrder(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[30];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
 };
 
 // VectorPath class definition

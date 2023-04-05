@@ -24,7 +24,7 @@ static THREADVAR char strGetField[400]; // Buffer for retrieving variable field 
 Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target)
 {
    auto mc = Object->ExtClass;
-   auto &field = mc->prvFields;
+   auto &field = mc->prvDictionary;
    *Target = Object;
 
    unsigned floor = 0;
@@ -42,10 +42,9 @@ Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target)
    if (mc->Flags & CLF_PROMOTE_INTEGRAL) {
       for (LONG i=0; mc->Integral[i] != 0xff; i++) {
          OBJECTPTR child;
-         if ((!copy_field_to_buffer(Object, &mc->prvFields[mc->Integral[i]], FT_POINTER, &child, NULL, NULL)) and (child)) {
+         if ((!copy_field_to_buffer(Object, &mc->prvDictionary[mc->Integral[i]], FT_POINTER, &child, NULL, NULL)) and (child)) {
             auto childclass = child->ExtClass;
-            auto &field = childclass->prvFields;
-
+            auto &field = childclass->prvDictionary;
             unsigned floor = 0;
             auto ceiling = field.size();
             while (floor < ceiling) {
@@ -104,12 +103,14 @@ The FindField() function checks if an object supports a specified field by scann
 If a matching field is declared, its descriptor is returned.  For example:
 
 <pre>
-if ((field = FindField(Screen, FID_Width, NULL))) {
-   log.msg("The field name is \"%s\".", Field-&gt;Name);
+if (auto field = FindField(Screen, FID_Width, NULL)) {
+   log.msg("The field name is \"%s\".", field-&gt;Name);
 }
 </pre>
 
 The resulting Field structure is immutable.
+
+Note: To lookup the field definition of a MetaClass, use the @MetaClass.FindField() method.
 
 -INPUT-
 obj Object:   The target object.

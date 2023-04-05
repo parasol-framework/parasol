@@ -114,7 +114,7 @@ Lr,Lg,Lb = RGB components of light
       <name>Colour</name>
       <comment>Defines the colour of the light source.</comment>
       <access read="G" write="S">Get/Set</access>
-      <type>ARRAY</type>
+      <type>FLOAT []</type>
       <description>
 <p>Set the Colour field to define the colour of the light source.  The colour is defined as an array of four 32-bit floating point values between 0 and 1.0.  The array elements consist of Red, Green, Blue and Alpha values in that order.</p>
 <p>If the algorithm supports it, the Alpha component defines the intensity of the light source.</p>

@@ -941,6 +941,7 @@
 #define FID_Bias 0x7c949844LL
 #define FID_Constant 0x42a2b30fLL
 #define FID_Def 0x0b8869b4LL
+#define FID_Dictionary 0xccb60b7bLL
 #define FID_Divisor 0x12ffda05LL
 #define FID_EdgeMode 0xbb10b09fLL
 #define FID_Exponent 0xd4513596LL

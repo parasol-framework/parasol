@@ -1491,8 +1491,17 @@ function outputClassHeader(class, Private, Custom)
                end
 
                local field_type = f.type
+
+               if field_type:find('^STRUCT *') then -- Unnamed structs must be converted to PTR
+                  field_type = 'APTR'
+               end
+
                if not field_type:find('^const ') then
-                  field_type = 'const ' .. field_type
+                  if bit.band(f.flags, FD_POINTER) != 0 then
+                     -- Applying const to pointers can cause type conversion issues.
+                  else
+                     field_type = 'const ' .. field_type
+                  end
                end
 
                if (f.write == 'Set') or nz(f.setField) or f.virtual then
@@ -1521,8 +1530,14 @@ function outputClassHeader(class, Private, Custom)
                      output(indent .. 'if (this->initialised()) return ERR_NoFieldAccess;')
                   end
 
-                  output(indent .. 'OBJECTPTR target;')
-                  output(indent .. string.format('auto field = FindField(this, FID_%s, &target);', fid_name))
+                  local err, fl, target = class.meta.mtFindField(mSys.StrHash(f.name, false))
+                  if (err == ERR_Okay) and (target.id == class.meta.id) then
+                     output(indent .. 'auto target = this;')
+                     output(indent .. string.format('auto field = &this->Class->Dictionary[%d];', fl.index))
+                  else
+                     output(indent .. 'OBJECTPTR target;')
+                     output(indent .. string.format('auto field = FindField(this, FID_%s, &target);', fid_name))
+                  end
 
                   if bit.band(f.flags, FD_VARIABLE) != 0 then
                      output(indent .. 'Variable var(Value);')

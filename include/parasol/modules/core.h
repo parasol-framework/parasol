@@ -18,11 +18,11 @@
 #include <bit>
 #endif
 
+class objMetaClass;
 class objStorageDevice;
 class objFile;
 class objConfig;
 class objScript;
-class objMetaClass;
 class objTask;
 class objThread;
 class objModule;
@@ -2942,6 +2942,145 @@ inline ERROR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
 #define GetVar(a,b,c,d)  acGetVar(a,b,c,d)
 #define SetVar(a,b,c)    acSetVar(a,b,c)
 
+// MetaClass class definition
+
+#define VER_METACLASS (1.000000)
+
+// MetaClass methods
+
+#define MT_mcFindField -1
+
+struct mcFindField { LONG ID; struct Field * Field; objMetaClass * Source;  };
+
+INLINE ERROR mcFindField(APTR Ob, LONG ID, struct Field ** Field, objMetaClass ** Source) {
+   struct mcFindField args = { ID, 0, 0 };
+   ERROR error = Action(MT_mcFindField, (OBJECTPTR)Ob, &args);
+   if (Field) *Field = args.Field;
+   if (Source) *Source = args.Source;
+   return(error);
+}
+
+
+class objMetaClass : public BaseClass {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_METACLASS;
+   static constexpr CSTRING CLASS_NAME = "MetaClass";
+
+   using create = pf::Create<objMetaClass>;
+
+   DOUBLE  ClassVersion;                // The version number of the class.
+   struct MethodArray * Methods;        // Set this field to define the methods supported by the class.
+   const struct FieldArray * Fields;    // Points to a field array that describes the class' object structure.
+   struct Field * Dictionary;           // Returns a field lookup table sorted by field IDs.
+   CSTRING ClassName;                   // The name of the represented class.
+   CSTRING FileExtension;               // Describes the file extension represented by the class.
+   CSTRING FileDescription;             // Describes the file type represented by the class.
+   CSTRING FileHeader;                  // Defines a string expression that will allow relevant file data to be matched to the class.
+   CSTRING Path;                        // The path to the module binary that represents the class.
+   LONG    Size;                        // The total size of the object structure represented by the MetaClass.
+   LONG    Flags;                       // Optional flag settings.
+   CLASSID SubClassID;                  // Specifies the sub-class ID of a class object.
+   CLASSID BaseClassID;                 // Specifies the base class ID of a class object.
+   LONG    OpenCount;                   // The total number of active objects that are linked back to the MetaClass.
+   LONG    TotalMethods;                // The total number of methods supported by a class.
+   LONG    TotalFields;                 // The total number of fields defined by a class.
+   LONG    Category;                    // The system category that a class belongs to.
+
+   // Customised field setting
+
+   inline ERROR setClassVersion(const DOUBLE Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->ClassVersion = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setMethods(const struct MethodArray * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(target, field, 0x00001510, Value, Elements);
+   }
+
+   inline ERROR setFields(const struct FieldArray * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[25];
+      return field->WriteValue(target, field, 0x00001510, Value, Elements);
+   }
+
+   inline ERROR setClassName(CSTRING Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->ClassName = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFileExtension(CSTRING Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->FileExtension = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFileDescription(CSTRING Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->FileDescription = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFileHeader(CSTRING Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->FileHeader = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setPath(CSTRING Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Path = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setSize(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Size = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setSubClass(const CLASSID Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->SubClassID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBaseClass(const CLASSID Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->BaseClassID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setCategory(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Category = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setActions(APTR Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, 0x08000400, Value, 1);
+   }
+
+   inline ERROR setName(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, 0x08810500, Value, 1);
+   }
+
+};
+
 // StorageDevice class definition
 
 #define VER_STORAGEDEVICE (1.000000)
@@ -2960,9 +3099,9 @@ class objStorageDevice : public BaseClass {
 
    // Customised field setting
 
-   inline ERROR setVolume(const STRING Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Volume, &target);
+   inline ERROR setVolume(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, 0x08800504, Value, 1);
    }
 
@@ -3113,8 +3252,8 @@ class objFile : public BaseClass {
    // Customised field setting
 
    inline ERROR setPosition(const LARGE Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Position, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, FD_LARGE, &Value, 1);
    }
 
@@ -3135,51 +3274,51 @@ class objFile : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setDate(const APTR Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Date, &target);
+   inline ERROR setDate(APTR Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x08000310, Value, 1);
    }
 
-   inline ERROR setCreated(const APTR Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Created, &target);
+   inline ERROR setCreated(APTR Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[20];
       return field->WriteValue(target, field, 0x08000310, Value, 1);
    }
 
-   inline ERROR setPath(const STRING Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Path, &target);
+   inline ERROR setPath(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, 0x08800500, Value, 1);
    }
 
    inline ERROR setPermissions(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Permissions, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setSize(const LARGE Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Size, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, FD_LARGE, &Value, 1);
    }
 
-   inline ERROR setLink(const STRING Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Link, &target);
+   inline ERROR setLink(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, 0x08800300, Value, 1);
    }
 
    inline ERROR setUser(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_User, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setGroup(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Group, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -3358,21 +3497,21 @@ class objConfig : public BaseClass {
 
    // Customised field setting
 
-   inline ERROR setPath(const STRING Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Path, &target);
+   inline ERROR setPath(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, 0x08800300, Value, 1);
    }
 
-   inline ERROR setKeyFilter(const STRING Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_KeyFilter, &target);
+   inline ERROR setKeyFilter(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, 0x08800300, Value, 1);
    }
 
-   inline ERROR setGroupFilter(const STRING Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_GroupFilter, &target);
+   inline ERROR setGroupFilter(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, 0x08800300, Value, 1);
    }
 
@@ -3515,196 +3654,58 @@ class objScript : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setCacheFile(const STRING Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_CacheFile, &target);
+   inline ERROR setCacheFile(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, 0x08800300, Value, 1);
    }
 
-   inline ERROR setErrorString(const STRING Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_ErrorString, &target);
+   inline ERROR setErrorString(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x08800300, Value, 1);
    }
 
-   inline ERROR setWorkingPath(const STRING Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_WorkingPath, &target);
+   inline ERROR setWorkingPath(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[20];
       return field->WriteValue(target, field, 0x08800300, Value, 1);
    }
 
-   inline ERROR setProcedure(const STRING Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Procedure, &target);
+   inline ERROR setProcedure(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x08800300, Value, 1);
    }
 
-   inline ERROR setName(const STRING Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Name, &target);
+   inline ERROR setName(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, 0x08810300, Value, 1);
    }
 
    inline ERROR setOwner(const OBJECTID Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Owner, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setPath(const STRING Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Path, &target);
+   inline ERROR setPath(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, 0x08800500, Value, 1);
    }
 
-   inline ERROR setResults(const STRING * Value, LONG Elements) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Results, &target);
+   inline ERROR setResults(STRING * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, 0x08801300, Value, Elements);
    }
 
-   inline ERROR setStatement(const STRING Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Statement, &target);
+   inline ERROR setStatement(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, 0x08800300, Value, 1);
-   }
-
-};
-
-// MetaClass class definition
-
-#define VER_METACLASS (1.000000)
-
-// MetaClass methods
-
-#define MT_mcFindField -1
-
-struct mcFindField { LONG ID; struct Field * Field; objMetaClass * Source;  };
-
-INLINE ERROR mcFindField(APTR Ob, LONG ID, struct Field ** Field, objMetaClass ** Source) {
-   struct mcFindField args = { ID, 0, 0 };
-   ERROR error = Action(MT_mcFindField, (OBJECTPTR)Ob, &args);
-   if (Field) *Field = args.Field;
-   if (Source) *Source = args.Source;
-   return(error);
-}
-
-
-class objMetaClass : public BaseClass {
-   public:
-   static constexpr CLASSID CLASS_ID = ID_METACLASS;
-   static constexpr CSTRING CLASS_NAME = "MetaClass";
-
-   using create = pf::Create<objMetaClass>;
-
-   DOUBLE  ClassVersion;                // The version number of the class.
-   struct MethodArray * Methods;        // Set this field to define the methods supported by the class.
-   const struct FieldArray * Fields;    // Points to a field array that describes the class' object structure.
-   CSTRING ClassName;                   // The name of the represented class.
-   CSTRING FileExtension;               // Describes the file extension represented by the class.
-   CSTRING FileDescription;             // Describes the file type represented by the class.
-   CSTRING FileHeader;                  // Defines a string expression that will allow relevant file data to be matched to the class.
-   CSTRING Path;                        // The path to the module binary that represents the class.
-   LONG    Size;                        // The total size of the object structure represented by the MetaClass.
-   LONG    Flags;                       // Optional flag settings.
-   CLASSID SubClassID;                  // Specifies the sub-class ID of a class object.
-   CLASSID BaseClassID;                 // Specifies the base class ID of a class object.
-   LONG    OpenCount;                   // The total number of active objects that are linked back to the MetaClass.
-   LONG    TotalMethods;                // The total number of methods supported by a class.
-   LONG    TotalFields;                 // The total number of fields defined by a class.
-   LONG    Category;                    // The system category that a class belongs to.
-
-   // Customised field setting
-
-   inline ERROR setClassVersion(const DOUBLE Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
-      this->ClassVersion = Value;
-      return ERR_Okay;
-   }
-
-   inline ERROR setMethods(const struct MethodArray * Value, LONG Elements) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Methods, &target);
-      return field->WriteValue(target, field, 0x00001510, Value, Elements);
-   }
-
-   inline ERROR setFields(const struct FieldArray * Value, LONG Elements) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Fields, &target);
-      return field->WriteValue(target, field, 0x00001510, Value, Elements);
-   }
-
-   inline ERROR setClassName(const CSTRING Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
-      this->ClassName = Value;
-      return ERR_Okay;
-   }
-
-   inline ERROR setFileExtension(const CSTRING Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
-      this->FileExtension = Value;
-      return ERR_Okay;
-   }
-
-   inline ERROR setFileDescription(const CSTRING Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
-      this->FileDescription = Value;
-      return ERR_Okay;
-   }
-
-   inline ERROR setFileHeader(const CSTRING Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
-      this->FileHeader = Value;
-      return ERR_Okay;
-   }
-
-   inline ERROR setPath(const CSTRING Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
-      this->Path = Value;
-      return ERR_Okay;
-   }
-
-   inline ERROR setSize(const LONG Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
-      this->Size = Value;
-      return ERR_Okay;
-   }
-
-   inline ERROR setFlags(const LONG Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
-      this->Flags = Value;
-      return ERR_Okay;
-   }
-
-   inline ERROR setSubClass(const CLASSID Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
-      this->SubClassID = Value;
-      return ERR_Okay;
-   }
-
-   inline ERROR setBaseClass(const CLASSID Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
-      this->BaseClassID = Value;
-      return ERR_Okay;
-   }
-
-   inline ERROR setCategory(const LONG Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
-      this->Category = Value;
-      return ERR_Okay;
-   }
-
-   inline ERROR setActions(const APTR Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Actions, &target);
-      return field->WriteValue(target, field, 0x08000400, Value, 1);
-   }
-
-   inline ERROR setName(const STRING Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Name, &target);
-      return field->WriteValue(target, field, 0x08810500, Value, 1);
    }
 
 };
@@ -3811,8 +3812,8 @@ class objTask : public BaseClass {
    }
 
    inline ERROR setReturnCode(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_ReturnCode, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -3822,69 +3823,69 @@ class objTask : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setArgs(const STRING Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Args, &target);
+   inline ERROR setArgs(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, 0x08800200, Value, 1);
    }
 
-   inline ERROR setParameters(const pf::vector<std::string> *Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Parameters, &target);
+   inline ERROR setParameters(pf::vector<std::string> *Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, 0x08805300, Value, Value->size());
    }
 
-   inline ERROR setErrorCallback(const FUNCTION Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_ErrorCallback, &target);
+   inline ERROR setErrorCallback(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERROR setExitCallback(const FUNCTION Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_ExitCallback, &target);
+   inline ERROR setExitCallback(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERROR setInputCallback(const FUNCTION Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_InputCallback, &target);
+   inline ERROR setInputCallback(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERROR setLaunchPath(const STRING Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_LaunchPath, &target);
+   inline ERROR setLaunchPath(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x08800300, Value, 1);
    }
 
-   inline ERROR setLocation(const STRING Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Location, &target);
+   inline ERROR setLocation(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, 0x08800300, Value, 1);
    }
 
-   inline ERROR setName(const STRING Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Name, &target);
+   inline ERROR setName(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, 0x08800300, Value, 1);
    }
 
-   inline ERROR setOutputCallback(const FUNCTION Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_OutputCallback, &target);
+   inline ERROR setOutputCallback(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[19];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERROR setPath(const STRING Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Path, &target);
+   inline ERROR setPath(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, 0x08800300, Value, 1);
    }
 
    inline ERROR setPriority(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Priority, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -3945,15 +3946,15 @@ class objThread : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setCallback(const FUNCTION Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Callback, &target);
+   inline ERROR setCallback(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERROR setRoutine(const FUNCTION Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Routine, &target);
+   inline ERROR setRoutine(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
@@ -4021,9 +4022,9 @@ class objModule : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setHeader(const struct ModHeader * Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Header, &target);
+   inline ERROR setHeader(struct ModHeader * Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x08000500, Value, 1);
    }
 
@@ -4033,9 +4034,9 @@ class objModule : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setName(const STRING Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Name, &target);
+   inline ERROR setName(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, 0x08800500, Value, 1);
    }
 
@@ -4270,8 +4271,8 @@ class objCompression : public BaseClass {
    }
 
    inline ERROR setCompressionLevel(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_CompressionLevel, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -4291,32 +4292,32 @@ class objCompression : public BaseClass {
    }
 
    inline ERROR setWindowBits(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_WindowBits, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setArchiveName(const STRING Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_ArchiveName, &target);
+   inline ERROR setArchiveName(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, 0x08800200, Value, 1);
    }
 
-   inline ERROR setPath(const STRING Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Path, &target);
+   inline ERROR setPath(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x08800300, Value, 1);
    }
 
-   inline ERROR setFeedback(const FUNCTION Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Feedback, &target);
+   inline ERROR setFeedback(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERROR setPassword(const STRING Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Password, &target);
+   inline ERROR setPassword(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, 0x08800300, Value, 1);
    }
 
@@ -4340,13 +4341,13 @@ class objCompressedStream : public BaseClass {
 
    // Customised field setting
 
-   inline ERROR setInput(const OBJECTPTR Value) {
+   inline ERROR setInput(OBJECTPTR Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Input = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setOutput(const OBJECTPTR Value) {
+   inline ERROR setOutput(OBJECTPTR Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Output = Value;
       return ERR_Okay;

@@ -352,7 +352,7 @@
       <name>FillColour</name>
       <comment>Defines a solid colour for filling the vector path.</comment>
       <access read="G" write="S">Get/Set</access>
-      <type>ARRAY</type>
+      <type>FLOAT []</type>
       <description>
 <p>Set the FillColour field to define a solid colour for filling the vector path.  The colour is defined as an array of four 32-bit floating point values between 0 and 1.0.  The array elements consist of Red, Green, Blue and Alpha values in that order.</p>
 <p>If the Alpha component is set to zero then the FillColour will be ignored by the renderer.</p>
@@ -621,7 +621,7 @@ Z: Close Path
       <name>StrokeColour</name>
       <comment>Defines the colour of the path stroke in RGB float format.</comment>
       <access read="G" write="S">Get/Set</access>
-      <type>ARRAY</type>
+      <type>FLOAT []</type>
       <description>
 <p>This field defines the colour that will be used in stroking a path, and is comprised of floating point RGBA values. The intensity of each component is measured from 0 - 1.0.  Stroking is disabled if the alpha value is 0.</p>
 <p>This field is complemented by the <field>StrokeOpacity</field> and <field>Stroke</field> fields.</p>

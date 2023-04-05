@@ -35,7 +35,7 @@ static ERROR OBJECT_SetOwner(OBJECTPTR, OBJECTID);
 static ERROR OBJECT_SetName(OBJECTPTR, CSTRING);
 
 static ERROR field_setup(extMetaClass *);
-static ERROR sort_class_fields(extMetaClass *, std::vector<Field> &);
+static void sort_class_fields(extMetaClass *, std::vector<Field> &);
 
 static void add_field(extMetaClass *, const FieldArray *, UWORD &);
 static void register_fields(extMetaClass *);
@@ -55,6 +55,7 @@ static ERROR GET_Methods(extMetaClass *Self, const MethodArray **, LONG *);
 static ERROR GET_Module(extMetaClass *, CSTRING *);
 static ERROR GET_PrivateObjects(extMetaClass *, OBJECTID **, LONG *);
 static ERROR GET_RootModule(extMetaClass *, struct RootModule **);
+static ERROR GET_Dictionary(extMetaClass *, struct Field **, LONG *);
 static ERROR GET_SubFields(extMetaClass *, const FieldArray **, LONG *);
 static ERROR GET_TotalMethods(extMetaClass *, LONG *);
 
@@ -87,31 +88,32 @@ static const FieldDef CategoryTable[] = {
 
 static const std::vector<Field> glMetaFieldsPreset = {
    // If you adjust this table, remember to change TOTAL_METAFIELDS, adjust the index numbers and the byte offsets into the structure.
-   { 0, 0, 0,                      writeval_default, "ClassVersion",                           FID_ClassVersion, sizeof(BaseClass),                0, FDF_DOUBLE|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "ClassVersion",    FID_ClassVersion, sizeof(BaseClass), 0, FDF_DOUBLE|FDF_RI },
    { (MAXINT)"MethodArray", (ERROR (*)(APTR, APTR))GET_Methods, (APTR)SET_Methods, writeval_default, "Methods", FID_Methods,      sizeof(BaseClass)+8,              1, FDF_ARRAY|FD_STRUCT|FDF_RI },
    { (MAXINT)"FieldArray", (ERROR (*)(APTR, APTR))GET_Fields, (APTR)SET_Fields, writeval_default, "Fields",     FID_Fields,       sizeof(BaseClass)+8+sizeof(APTR), 2, FDF_ARRAY|FD_STRUCT|FDF_RI },
-   { 0, 0, 0,                      writeval_default, "ClassName",       FID_ClassName,       sizeof(BaseClass)+8+(sizeof(APTR)*2),  3,  FDF_STRING|FDF_RI },
-   { 0, 0, 0,                      writeval_default, "FileExtension",   FID_FileExtension,   sizeof(BaseClass)+8+(sizeof(APTR)*3),  4,  FDF_STRING|FDF_RI },
-   { 0, 0, 0,                      writeval_default, "FileDescription", FID_FileDescription, sizeof(BaseClass)+8+(sizeof(APTR)*4),  5,  FDF_STRING|FDF_RI },
-   { 0, 0, 0,                      writeval_default, "FileHeader",      FID_FileHeader,      sizeof(BaseClass)+8+(sizeof(APTR)*5),  6,  FDF_STRING|FDF_RI },
-   { 0, 0, 0,                      writeval_default, "Path",            FID_Path,            sizeof(BaseClass)+8+(sizeof(APTR)*6),  7,  FDF_STRING|FDF_RI },
-   { 0, 0, 0,                      writeval_default, "Size",            FID_Size,            sizeof(BaseClass)+8+(sizeof(APTR)*7),  8,  FDF_LONG|FDF_RI },
-   { 0, 0, 0,                      writeval_default, "Flags",           FID_Flags,           sizeof(BaseClass)+12+(sizeof(APTR)*7), 9,  FDF_LONG|FDF_RI },
-   { 0, 0, 0,                      writeval_default, "SubClassID",      FID_SubClassID,      sizeof(BaseClass)+16+(sizeof(APTR)*7), 10, FDF_LONG|FDF_UNSIGNED|FDF_RI },
-   { 0, 0, 0,                      writeval_default, "BaseClassID",     FID_BaseClassID,     sizeof(BaseClass)+20+(sizeof(APTR)*7), 11, FDF_LONG|FDF_UNSIGNED|FDF_RI },
-   { 0, 0, 0,                      writeval_default, "OpenCount",       FID_OpenCount,       sizeof(BaseClass)+24+(sizeof(APTR)*7), 12, FDF_LONG|FDF_R },
-   { 0, (ERROR (*)(APTR, APTR))GET_TotalMethods, 0, writeval_default,   "TotalMethods",      FID_TotalMethods,    sizeof(BaseClass)+28+(sizeof(APTR)*7), 13, FDF_LONG|FDF_R },
-   { 0, 0, 0,                      writeval_default, "TotalFields",     FID_TotalFields,     sizeof(BaseClass)+32+(sizeof(APTR)*7), 14, FDF_LONG|FDF_R },
-   { (MAXINT)&CategoryTable, 0, 0, writeval_default, "Category",        FID_Category,        sizeof(BaseClass)+36+(sizeof(APTR)*7), 15, FDF_LONG|FDF_LOOKUP|FDF_RI },
+   { (MAXINT)"Field",      (ERROR (*)(APTR, APTR))GET_Dictionary, NULL, writeval_default, "Dictionary",         FID_Dictionary,   sizeof(BaseClass)+8+(sizeof(APTR)*2), 3, FDF_ARRAY|FD_STRUCT|FDF_R },
+   { 0, NULL, NULL,                writeval_default, "ClassName",       FID_ClassName,       sizeof(BaseClass)+8+(sizeof(APTR)*3),  4,  FDF_STRING|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "FileExtension",   FID_FileExtension,   sizeof(BaseClass)+8+(sizeof(APTR)*4),  5,  FDF_STRING|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "FileDescription", FID_FileDescription, sizeof(BaseClass)+8+(sizeof(APTR)*5),  6,  FDF_STRING|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "FileHeader",      FID_FileHeader,      sizeof(BaseClass)+8+(sizeof(APTR)*6),  7,  FDF_STRING|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "Path",            FID_Path,            sizeof(BaseClass)+8+(sizeof(APTR)*7),  8,  FDF_STRING|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "Size",            FID_Size,            sizeof(BaseClass)+8+(sizeof(APTR)*8),  9,  FDF_LONG|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "Flags",           FID_Flags,           sizeof(BaseClass)+12+(sizeof(APTR)*8), 10, FDF_LONG|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "SubClassID",      FID_SubClassID,      sizeof(BaseClass)+16+(sizeof(APTR)*8), 11, FDF_LONG|FDF_UNSIGNED|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "BaseClassID",     FID_BaseClassID,     sizeof(BaseClass)+20+(sizeof(APTR)*8), 12, FDF_LONG|FDF_UNSIGNED|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "OpenCount",       FID_OpenCount,       sizeof(BaseClass)+24+(sizeof(APTR)*8), 13, FDF_LONG|FDF_R },
+   { 0, (ERROR (*)(APTR, APTR))GET_TotalMethods, 0, writeval_default,   "TotalMethods", FID_TotalMethods, sizeof(BaseClass)+28+(sizeof(APTR)*8), 14, FDF_LONG|FDF_R },
+   { 0, NULL, NULL,                writeval_default, "TotalFields",     FID_TotalFields,     sizeof(BaseClass)+32+(sizeof(APTR)*8), 15, FDF_LONG|FDF_R },
+   { (MAXINT)&CategoryTable, NULL, NULL, writeval_default, "Category",  FID_Category,        sizeof(BaseClass)+36+(sizeof(APTR)*8), 16, FDF_LONG|FDF_LOOKUP|FDF_RI },
    // Virtual fields
-   { 0, 0, (APTR)SET_Actions,      writeval_default, "Actions",         FID_Actions,         sizeof(BaseClass), 16, FDF_POINTER|FDF_I },
-   { 0, (ERROR (*)(APTR, APTR))GET_ActionTable, 0,  writeval_default,   "ActionTable",       FID_ActionTable,     sizeof(BaseClass), 17, FDF_ARRAY|FDF_POINTER|FDF_R },
-   { 0, (ERROR (*)(APTR, APTR))GET_Location, 0,     writeval_default,   "Location",          FID_Location,        sizeof(BaseClass), 18, FDF_STRING|FDF_R },
-   { 0, (ERROR (*)(APTR, APTR))GET_ClassName, (APTR)SET_ClassName, writeval_default, "Name", FID_Name,            sizeof(BaseClass), 19, FDF_STRING|FDF_SYSTEM|FDF_RI },
-   { 0, (ERROR (*)(APTR, APTR))GET_Module, 0,       writeval_default,   "Module",            FID_Module,          sizeof(BaseClass), 20, FDF_STRING|FDF_R },
-   { 0, (ERROR (*)(APTR, APTR))GET_PrivateObjects, 0, writeval_default, "PrivateObjects",    FID_PrivateObjects,  sizeof(BaseClass), 21, FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R },
-   { (MAXINT)"FieldArray", (ERROR (*)(APTR, APTR))GET_SubFields, 0, writeval_default, "SubFields", FID_SubFields, sizeof(BaseClass), 22, FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R },
-   { ID_ROOTMODULE, (ERROR (*)(APTR, APTR))GET_RootModule, 0, writeval_default, "RootModule", FID_RootModule,     sizeof(BaseClass), 23, FDF_OBJECT|FDF_R },
+   { 0, NULL, (APTR)SET_Actions,   writeval_default, "Actions",         FID_Actions,         sizeof(BaseClass), 17, FDF_POINTER|FDF_I },
+   { 0, (ERROR (*)(APTR, APTR))GET_ActionTable, 0,  writeval_default,   "ActionTable",       FID_ActionTable,     sizeof(BaseClass), 18, FDF_ARRAY|FDF_POINTER|FDF_R },
+   { 0, (ERROR (*)(APTR, APTR))GET_Location, 0,     writeval_default,   "Location",          FID_Location,        sizeof(BaseClass), 19, FDF_STRING|FDF_R },
+   { 0, (ERROR (*)(APTR, APTR))GET_ClassName, (APTR)SET_ClassName, writeval_default, "Name", FID_Name,            sizeof(BaseClass), 20, FDF_STRING|FDF_SYSTEM|FDF_RI },
+   { 0, (ERROR (*)(APTR, APTR))GET_Module, 0,       writeval_default,   "Module",            FID_Module,          sizeof(BaseClass), 21, FDF_STRING|FDF_R },
+   { 0, (ERROR (*)(APTR, APTR))GET_PrivateObjects, 0, writeval_default, "PrivateObjects",    FID_PrivateObjects,  sizeof(BaseClass), 22, FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R },
+   { (MAXINT)"FieldArray", (ERROR (*)(APTR, APTR))GET_SubFields, 0, writeval_default, "SubFields", FID_SubFields, sizeof(BaseClass), 23, FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R },
+   { ID_ROOTMODULE, (ERROR (*)(APTR, APTR))GET_RootModule, 0, writeval_default, "RootModule", FID_RootModule,     sizeof(BaseClass), 24, FDF_OBJECT|FDF_R },
    { 0, 0, 0, NULL, "", 0, 0, 0,  0 }
 };
 
@@ -119,6 +121,7 @@ static const FieldArray glMetaFields[] = {
    { "ClassVersion",    FDF_DOUBLE|FDF_RI },
    { "Methods",         FDF_ARRAY|FD_STRUCT|FDF_RI, GET_Methods, SET_Methods, "MethodArray" },
    { "Fields",          FDF_ARRAY|FD_STRUCT|FDF_RI, GET_Fields, SET_Fields, "FieldArray" },
+   { "Dictionary",      FDF_ARRAY|FD_STRUCT|FDF_R, GET_Dictionary, NULL, "Field" },
    { "ClassName",       FDF_STRING|FDF_RI },
    { "FileExtension",   FDF_STRING|FDF_RI },
    { "FileDescription", FDF_STRING|FDF_RI },
@@ -188,7 +191,7 @@ void init_metaclass(void)
    glMetaClass.TotalMethods       = TOTAL_METAMETHODS;
    glMetaClass.TotalFields        = TOTAL_METAFIELDS;
    glMetaClass.Category           = CCF_SYSTEM;
-   glMetaClass.prvFields          = glMetaFieldsPreset;
+   glMetaClass.prvDictionary      = glMetaFieldsPreset;
    glMetaClass.OriginalFieldTotal = ARRAYSIZE(glMetaFields)-1;
 
    glMetaClass.ActionTable[AC_Free].PerformAction = (ERROR (*)(OBJECTPTR, APTR))CLASS_Free;
@@ -196,7 +199,7 @@ void init_metaclass(void)
    glMetaClass.ActionTable[AC_NewObject].PerformAction = (ERROR (*)(OBJECTPTR, APTR))CLASS_NewObject;
    glMetaClass.ActionTable[AC_Signal].PerformAction = &DEFAULT_Signal;
 
-   sort_class_fields(&glMetaClass, glMetaClass.prvFields);
+   sort_class_fields(&glMetaClass, glMetaClass.prvDictionary);
 
    glClassMap[ID_METACLASS] = &glMetaClass;
 }
@@ -214,7 +217,7 @@ parameter.
 -INPUT-
 int ID: The field ID to search for.  Field names can be converted to ID's by using the ~StrHash() function.
 &struct(*Field) Field: Pointer to the field if discovered, otherwise NULL.
-&obj(MetaClass) Source: Pointer to the class that is associated with the field, or NULL if the field was not found.
+&obj(MetaClass) Source: Pointer to the class that is associated with the field (which can match the caller), or NULL if the field was not found.
 
 -RESULT-
 Okay
@@ -227,9 +230,9 @@ Search
 
 ERROR CLASS_FindField(extMetaClass *Class, struct mcFindField *Args)
 {
-   if (!Args) return ERR_NullArgs;
+   if ((!Args) or (!Args->ID)) return ERR_NullArgs;
 
-   extMetaClass *src;
+   extMetaClass *src = NULL;
    Args->Field = lookup_id_byclass(Class, Args->ID, &src);
    Args->Source = src;
    if (Args->Field) return ERR_Okay;
@@ -516,6 +519,26 @@ This field value must reflect the version of the class structure.  Legal version
 1.0 and ascend.  Revision numbers can be used to indicate bug-fixes or very minor changes.
 
 If declaring a sub-class then this value can be 0, but base classes must set a value here.
+
+-FIELD-
+Dictionary: Returns a field lookup table sorted by field IDs.
+
+Following initialisation of the MetaClass, the Dictionary can be read to retrieve a fast field lookup table that is
+sorted by FieldID.  The client should typically use the binary search technique to find fields by their ID.
+
+*********************************************************************************************************************/
+
+static ERROR GET_Dictionary(extMetaClass *Self, struct Field **Value, LONG *Elements)
+{
+   if (Self->initialised()) {
+      *Value    = Self->prvDictionary.data();
+      *Elements = Self->prvDictionary.size();
+      return ERR_Okay;
+   }
+   else return ERR_NotInitialised;
+}
+
+/*********************************************************************************************************************
 
 -FIELD-
 Fields: Points to a field array that describes the class' object structure.
@@ -862,17 +885,16 @@ static ERROR field_setup(extMetaClass *Class)
       // This is a sub-class.  Clone the field array from the base class, then check for field over-riders specified in
       // the sub-class field list.  Sub-classes can also define additional fields if the fields are virtual.
 
-      Class->prvFields = Class->Base->prvFields;
-      auto &fields = Class->prvFields;
+      Class->prvDictionary = Class->Base->prvDictionary;
+      auto &fields = Class->prvDictionary;
 
       if (Class->SubFields) {
          std::vector<WORD> ext;
 
-         LONG i;
-         for (i=0; Class->SubFields[i].Name; i++) {
+         for (LONG i=0; Class->SubFields[i].Name; i++) {
             auto hash = StrHash(Class->SubFields[i].Name, false);
             unsigned j;
-            for (j=0; j < Class->prvFields.size(); j++) {
+            for (j=0; j < Class->prvDictionary.size(); j++) {
                if (fields[j].FieldID IS hash) {
                   if (Class->SubFields[i].GetField) {
                      fields[j].GetValue = (ERROR (*)(APTR, APTR))Class->SubFields[i].GetField;
@@ -891,18 +913,19 @@ static ERROR field_setup(extMetaClass *Class)
             }
 
             // If the field was not found in the base, it must be marked virtual or we cannot accept it.
-            if (j >= Class->prvFields.size()) {
+
+            if (j >= Class->prvDictionary.size()) {
                if (Class->SubFields[i].Flags & FD_VIRTUAL) ext.emplace_back(i);
                else log.warning("%s field %s has no match in the base class (change field to virtual).", Class->ClassName, Class->SubFields[i].Name);
             }
          }
 
          if (!ext.empty()) {
-            unsigned j = Class->prvFields.size();
+            unsigned j = Class->prvDictionary.size();
             UWORD offset = 0;
             for (unsigned i=0; i < ext.size(); i++) {
                add_field(Class, Class->SubFields + ext[i], offset);
-               Class->prvFields[j].Index = j;
+               Class->prvDictionary[j].Index = j;
                j++;
             }
          }
@@ -912,7 +935,7 @@ static ERROR field_setup(extMetaClass *Class)
       bool name_field  = true;
       bool owner_field = true;
       auto class_fields = (FieldArray *)Class->Fields;
-      auto &fields = Class->prvFields;
+      auto &fields = Class->prvDictionary;
       UWORD offset = sizeof(BaseClass);
       for (unsigned i=0; class_fields[i].Name; i++) {
          add_field(Class, &class_fields[i], offset);
@@ -922,7 +945,7 @@ static ERROR field_setup(extMetaClass *Class)
          else if (fields[i].FieldID IS FID_Owner) owner_field = false;
       }
 
-      Class->prvFields = fields;
+      Class->prvDictionary = fields;
 
       // Add mandatory system fields that haven't already been defined.
 
@@ -983,21 +1006,21 @@ static ERROR field_setup(extMetaClass *Class)
       });
    }
 
-   Class->TotalFields = Class->prvFields.size();
+   Class->TotalFields = Class->prvDictionary.size();
 
    if (glLogLevel >= 2) register_fields(Class);
 
    // Check for field name hash collisions and other significant development errors if logging is enabled.
 
-   auto &fields = Class->prvFields;
+   auto &fields = Class->prvDictionary;
 
    if (glLogLevel >= 3) {
-      for (unsigned i=0; i < Class->prvFields.size(); i++) {
+      for (unsigned i=0; i < Class->prvDictionary.size(); i++) {
          if (!(fields[i].Flags & FDF_FIELDTYPES)) {
             log.warning("Badly defined type in field \"%s\".", fields[i].Name);
          }
 
-         for (unsigned j=0; j < Class->prvFields.size(); j++) {
+         for (unsigned j=0; j < Class->prvDictionary.size(); j++) {
             if (i IS j) continue;
             if (fields[i].FieldID IS fields[j].FieldID) {
                log.warning("%s: Hash collision - field '%s' collides with '%s'", Class->ClassName, fields[i].Name, fields[j].Name);
@@ -1006,7 +1029,9 @@ static ERROR field_setup(extMetaClass *Class)
       }
    }
 
-   return sort_class_fields(Class, fields);
+   sort_class_fields(Class, fields);
+   Class->Dictionary = Class->prvDictionary.data();
+   return ERR_Okay;
 }
 
 //********************************************************************************************************************
@@ -1016,9 +1041,9 @@ static void register_fields(extMetaClass *Class)
 {
    ThreadLock lock(TL_FIELDKEYS, 1000);
    if (lock.granted()) {
-      for (unsigned i=0; i < Class->prvFields.size(); i++) {
-         if (!glFields.contains(Class->prvFields[i].FieldID)) {
-            glFields[Class->prvFields[i].FieldID] = Class->prvFields[i].Name;
+      for (unsigned i=0; i < Class->prvDictionary.size(); i++) {
+         if (!glFields.contains(Class->prvDictionary[i].FieldID)) {
+            glFields[Class->prvDictionary[i].FieldID] = Class->prvDictionary[i].Name;
          }
       }
    }
@@ -1030,7 +1055,7 @@ static void add_field(extMetaClass *Class, const FieldArray *Source, UWORD &Offs
 {
    pf::Log log(__FUNCTION__);
 
-   auto &field = Class->prvFields.emplace_back(
+   auto &field = Class->prvDictionary.emplace_back(
       Source->Arg,
       (ERROR (*)(APTR, APTR))Source->GetField,
       Source->SetField,
@@ -1080,7 +1105,7 @@ static void add_field(extMetaClass *Class, const FieldArray *Source, UWORD &Offs
 ** NOTE: This is also used in NewObject() to sort the fields of the glMetaClass.
 */
 
-static ERROR sort_class_fields(extMetaClass *Class, std::vector<Field> &fields)
+static void sort_class_fields(extMetaClass *Class, std::vector<Field> &fields)
 {
    ULONG integral[ARRAYSIZE(Class->Integral)];
 
@@ -1088,7 +1113,7 @@ static ERROR sort_class_fields(extMetaClass *Class, std::vector<Field> &fields)
 
    UBYTE childcount = 0;
    if (Class->Flags & CLF_PROMOTE_INTEGRAL) {
-      for (unsigned i=0; i < Class->prvFields.size(); i++) {
+      for (unsigned i=0; i < Class->prvDictionary.size(); i++) {
          if (fields[i].Flags & FD_INTEGRAL) {
             Class->Integral[childcount] = i;
             integral[childcount++] = fields[i].FieldID;
@@ -1098,7 +1123,7 @@ static ERROR sort_class_fields(extMetaClass *Class, std::vector<Field> &fields)
    }
    Class->Integral[childcount] = 0xff;
 
-   std::sort(Class->prvFields.begin(), Class->prvFields.end(),
+   std::sort(Class->prvDictionary.begin(), Class->prvDictionary.end(),
       [](const Field &a, const Field &b ) {
          return a.FieldID < b.FieldID;
       }
@@ -1107,7 +1132,7 @@ static ERROR sort_class_fields(extMetaClass *Class, std::vector<Field> &fields)
    // Repair integral indexes
 
    for (unsigned i=0; i < childcount; i++) {
-      for (unsigned j=0; j < Class->prvFields.size(); j++) {
+      for (unsigned j=0; j < Class->prvDictionary.size(); j++) {
          if (integral[i] IS fields[j].FieldID) {
             Class->Integral[i] = j;
             break;
@@ -1117,9 +1142,7 @@ static ERROR sort_class_fields(extMetaClass *Class, std::vector<Field> &fields)
 
    // Repair field indexes
 
-   for (unsigned i=0; i < Class->prvFields.size(); i++) fields[i].Index = i;
-
-   return ERR_Okay;
+   for (unsigned i=0; i < Class->prvDictionary.size(); i++) fields[i].Index = i;
 }
 
 //********************************************************************************************************************
@@ -1231,10 +1254,10 @@ void scan_classes(void)
 
 static Field * lookup_id_byclass(extMetaClass *Class, ULONG FieldID, extMetaClass **Result)
 {
-   auto &field = Class->prvFields;
+   auto &field = Class->prvDictionary;
 
    LONG floor = 0;
-   LONG ceiling = Class->prvFields.size();
+   LONG ceiling = Class->prvDictionary.size();
    while (floor < ceiling) {
       LONG i = (floor + ceiling)>>1;
       if (field[i].FieldID < FieldID) floor = i + 1;
@@ -1248,7 +1271,7 @@ static Field * lookup_id_byclass(extMetaClass *Class, ULONG FieldID, extMetaClas
 
    if (Class->Flags & CLF_PROMOTE_INTEGRAL) {
       for (LONG i=0; Class->Integral[i] != 0xff; i++) {
-         auto &field = Class->prvFields[Class->Integral[i]];
+         auto &field = Class->prvDictionary[Class->Integral[i]];
          if (field.Arg) {
             if (auto child_class = (extMetaClass *)FindClass(field.Arg)) {
                *Result = child_class;

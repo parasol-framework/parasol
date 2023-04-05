@@ -207,6 +207,186 @@ class objScintilla : public BaseClass {
       struct acUndo args = { Steps };
       return Action(AC_Undo, this, &args);
    }
+
+   // Customised field setting
+
+   inline ERROR setEventFlags(const LARGE Value) {
+      this->EventFlags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setPath(CSTRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[22];
+      return field->WriteValue(target, field, 0x08800300, Value, 1);
+   }
+
+   inline ERROR setSurface(const OBJECTID Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->SurfaceID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFocus(const OBJECTID Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->FocusID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setVisible(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Visible = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setLeftMargin(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[32];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setRightMargin(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[27];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setLineHighlight(const struct RGB8 * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, 0x01081300, Value, Elements);
+   }
+
+   inline ERROR setSelectFore(const struct RGB8 * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[34];
+      return field->WriteValue(target, field, 0x01081500, Value, Elements);
+   }
+
+   inline ERROR setSelectBkgd(const struct RGB8 * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[33];
+      return field->WriteValue(target, field, 0x01081500, Value, Elements);
+   }
+
+   inline ERROR setBkgdColour(const struct RGB8 * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[23];
+      return field->WriteValue(target, field, 0x01081300, Value, Elements);
+   }
+
+   inline ERROR setCursorColour(const struct RGB8 * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, 0x01081300, Value, Elements);
+   }
+
+   inline ERROR setTextColour(const struct RGB8 * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[24];
+      return field->WriteValue(target, field, 0x01081300, Value, Elements);
+   }
+
+   inline ERROR setCursorRow(const LONG Value) {
+      this->CursorRow = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setCursorCol(const LONG Value) {
+      this->CursorCol = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setLexer(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setModified(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setAllowTabs(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setAutoIndent(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setFileDrop(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[11];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   inline ERROR setFoldingMarkers(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[13];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setLineNumbers(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setOrigin(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, 0x08800300, Value, 1);
+   }
+
+   inline ERROR setShowWhitespace(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setEventCallback(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[35];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   inline ERROR setString(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, 0x08800300, Value, 1);
+   }
+
+   inline ERROR setSymbols(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[28];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setTabWidth(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[25];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setWordwrap(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[29];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
 };
 
 // ScintillaSearch class definition
@@ -257,5 +437,25 @@ class objScintillaSearch : public BaseClass {
    LONG    Flags;               // Optional flags.
    LONG    Start;               // Start of the current/most recent selection
    LONG    End;                 // End of the current/most recent selection
+
+   // Customised field setting
+
+   inline ERROR setScintilla(objScintilla * Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Scintilla = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setText(CSTRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, 0x08800300, Value, 1);
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
 };
 

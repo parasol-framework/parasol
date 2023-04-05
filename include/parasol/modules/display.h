@@ -591,15 +591,15 @@ class objBitmap : public BaseClass {
 
    // Customised field setting
 
-   inline ERROR setPalette(const struct RGBPalette * Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Palette, &target);
+   inline ERROR setPalette(struct RGBPalette * Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[31];
       return field->WriteValue(target, field, 0x08000300, Value, 1);
    }
 
-   inline ERROR setData(const UBYTE * Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Data, &target);
+   inline ERROR setData(UBYTE * Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[25];
       return field->WriteValue(target, field, 0x08000500, Value, 1);
    }
 
@@ -621,9 +621,9 @@ class objBitmap : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setClip(const struct ClipRectangle * Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Clip, &target);
+   inline ERROR setClip(struct ClipRectangle * Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[24];
       return field->WriteValue(target, field, 0x08000310, Value, 1);
    }
 
@@ -646,8 +646,8 @@ class objBitmap : public BaseClass {
    }
 
    inline ERROR setTransIndex(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_TransIndex, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[30];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -679,14 +679,14 @@ class objBitmap : public BaseClass {
    }
 
    inline ERROR setTransRGB(const struct RGB8 * Value, LONG Elements) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_TransRGB, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[34];
       return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
    inline ERROR setBkgdIndex(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_BkgdIndex, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -696,38 +696,38 @@ class objBitmap : public BaseClass {
    }
 
    inline ERROR setClipLeft(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_ClipLeft, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setClipRight(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_ClipRight, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setClipBottom(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_ClipBottom, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setClipTop(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_ClipTop, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[38];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setBkgd(const BYTE * Value, LONG Elements) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Bkgd, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[23];
       return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
-   inline ERROR setHandle(const APTR Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Handle, &target);
+   inline ERROR setHandle(APTR Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x08010300, Value, 1);
    }
 
@@ -887,38 +887,38 @@ class objDisplay : public BaseClass {
    // Customised field setting
 
    inline ERROR setRefreshRate(const DOUBLE Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_RefreshRate, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[43];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERROR setFlags(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Flags, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setWidth(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Width, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setHeight(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Height, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setX(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_X, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setY(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Y, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -938,50 +938,50 @@ class objDisplay : public BaseClass {
    }
 
    inline ERROR setPopOver(const OBJECTID Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_PopOver, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[27];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setGamma(const DOUBLE * Value, LONG Elements) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Gamma, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x80001508, Value, Elements);
    }
 
    inline ERROR setHDensity(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_HDensity, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setVDensity(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_VDensity, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setOpacity(const DOUBLE Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Opacity, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERROR setResizeFeedback(const FUNCTION Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_ResizeFeedback, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[32];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERROR setWindowHandle(const APTR Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_WindowHandle, &target);
+   inline ERROR setWindowHandle(APTR Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, 0x08000308, Value, 1);
    }
 
-   inline ERROR setTitle(const STRING Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Title, &target);
+   inline ERROR setTitle(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, 0x08800308, Value, 1);
    }
 
@@ -1065,9 +1065,9 @@ class objClipboard : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setRequestHandler(const FUNCTION Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_RequestHandler, &target);
+   inline ERROR setRequestHandler(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
@@ -1132,20 +1132,20 @@ class objPointer : public BaseClass {
    }
 
    inline ERROR setX(const DOUBLE Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_X, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERROR setY(const DOUBLE Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Y, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERROR setMaxSpeed(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_MaxSpeed, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -1181,9 +1181,9 @@ class objPointer : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setButtonOrder(const STRING Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_ButtonOrder, &target);
+   inline ERROR setButtonOrder(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, 0x08800300, Value, 1);
    }
 
@@ -1350,20 +1350,20 @@ class objSurface : public BaseClass {
    // Customised field setting
 
    inline ERROR setDrag(const OBJECTID Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Drag, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[29];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setParent(const OBJECTID Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Parent, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setPopOver(const OBJECTID Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_PopOver, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[40];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -1373,8 +1373,8 @@ class objSurface : public BaseClass {
    }
 
    inline ERROR setBottomMargin(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_BottomMargin, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[43];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -1384,89 +1384,89 @@ class objSurface : public BaseClass {
    }
 
    inline ERROR setRightMargin(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_RightMargin, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[38];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setMinWidth(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_MinWidth, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[37];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setMinHeight(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_MinHeight, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[33];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setMaxWidth(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_MaxWidth, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[23];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setMaxHeight(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_MaxHeight, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setLeftLimit(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_LeftLimit, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setRightLimit(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_RightLimit, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[19];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setTopLimit(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_TopLimit, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[52];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setBottomLimit(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_BottomLimit, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[50];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setFlags(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Flags, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setX(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_X, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
       Variable var(Value);
       return field->WriteValue(target, field, FD_LARGE, &var, 1);
    }
 
    inline ERROR setY(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Y, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
       Variable var(Value);
       return field->WriteValue(target, field, FD_LARGE, &var, 1);
    }
 
    inline ERROR setWidth(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Width, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
       Variable var(Value);
       return field->WriteValue(target, field, FD_LARGE, &var, 1);
    }
 
    inline ERROR setHeight(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Height, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
       Variable var(Value);
       return field->WriteValue(target, field, FD_LARGE, &var, 1);
    }
@@ -1477,14 +1477,14 @@ class objSurface : public BaseClass {
    }
 
    inline ERROR setDimensions(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Dimensions, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[35];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setCursor(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Cursor, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[53];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -1500,93 +1500,93 @@ class objSurface : public BaseClass {
    }
 
    inline ERROR setModal(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Modal, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setRootLayer(const OBJECTID Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_RootLayer, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[39];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setAbsX(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_AbsX, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[27];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setAbsY(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_AbsY, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[28];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setBitsPerPixel(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_BitsPerPixel, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[41];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setInsideHeight(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_InsideHeight, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[47];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setInsideWidth(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_InsideWidth, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[36];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setMovement(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Movement, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[34];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setOpacity(const DOUBLE Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Opacity, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[25];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERROR setRevertFocus(const OBJECTID Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_RevertFocus, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setVisible(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Visible, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[26];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setWindowType(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_WindowType, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[32];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setWindowHandle(const APTR Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_WindowHandle, &target);
+   inline ERROR setWindowHandle(APTR Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, 0x08000308, Value, 1);
    }
 
    inline ERROR setXOffset(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_XOffset, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[17];
       Variable var(Value);
       return field->WriteValue(target, field, FD_LARGE, &var, 1);
    }
 
    inline ERROR setYOffset(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_YOffset, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[24];
       Variable var(Value);
       return field->WriteValue(target, field, FD_LARGE, &var, 1);
    }

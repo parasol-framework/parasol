@@ -1036,7 +1036,7 @@ static ERROR TEXT_SET_TextLength(extVectorText *Self, DOUBLE Value)
 
 /*********************************************************************************************************************
 -FIELD-
-TextWidth: The raw pixel width of the widest line in the @String value..
+TextWidth: The raw pixel width of the widest line in the #String value.
 
 *********************************************************************************************************************/
 

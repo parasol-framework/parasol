@@ -30,7 +30,7 @@
       <input>
         <param type="LONG" name="ID">The field ID to search for.  Field names can be converted to ID's by using the <function module="Core">StrHash</function> function.</param>
         <param type="struct Field **" name="Field">Pointer to the field if discovered, otherwise NULL.</param>
-        <param type="objMetaClass **" name="Source">Pointer to the class that is associated with the field, or NULL if the field was not found.</param>
+        <param type="objMetaClass **" name="Source">Pointer to the class that is associated with the field (which can match the caller), or NULL if the field was not found.</param>
       </input>
       <description>
 <p>This method checks if a class has defined a given field by scanning its blueprint for a matching ID.</p>
@@ -115,6 +115,16 @@
       <description>
 <p>This field value must reflect the version of the class structure.  Legal version numbers start from 1.0 and ascend.  Revision numbers can be used to indicate bug-fixes or very minor changes.</p>
 <p>If declaring a sub-class then this value can be 0, but base classes must set a value here.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Dictionary</name>
+      <comment>Returns a field lookup table sorted by field IDs.</comment>
+      <access read="G">Get</access>
+      <type>struct Field *</type>
+      <description>
+<p>Following initialisation of the MetaClass, the Dictionary can be read to retrieve a fast field lookup table that is sorted by FieldID.  The client should typically use the binary search technique to find fields by their ID.</p>
       </description>
     </field>
 

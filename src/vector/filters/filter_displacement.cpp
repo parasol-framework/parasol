@@ -158,7 +158,7 @@ static ERROR DISPLACEMENTFX_NewObject(extDisplacementFX *Self, APTR Void)
 -FIELD-
 Scale: Displacement scale factor.
 
-The amount is expressed in the coordinate system established by #Filter.PrimitiveUnits on the parent @Filter.
+The amount is expressed in the coordinate system established by #Filter.PrimitiveUnits on the parent @VectorFilter.
 When the value of this field is 0, this operation has no effect on the source image.
 
 *********************************************************************************************************************/

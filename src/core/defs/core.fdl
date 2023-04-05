@@ -2090,6 +2090,30 @@ inline ERROR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
 #define SetVar(a,b,c)    acSetVar(a,b,c)
 ]])
 
+  methods("MetaClass", "mc", {
+    { id=1, name="FindField" }
+  })
+
+  class("MetaClass", { src="../classes/class_metaclass.cpp" }, [[
+    double ClassVersion    # Version of the class
+    struct(*MethodArray) Methods # Original method array supplied by the module.
+    cstruct(*FieldArray) Fields  # Original field array supplied by the module.
+    array(struct(Field)) Dictionary # Field lookup by ID
+    cstr ClassName         # Name of the class
+    cstr FileExtension     # File extension that is supported by this class.
+    cstr FileDescription   # File description
+    cstr FileHeader        # Internal file header for identifying the file
+    cstr Path              # Module path to the class
+    int Size               # Byte-size of the class when produced as an object
+    int(CLF) Flags         # Special flags
+    cid SubClassID         # Sub-class ID
+    cid BaseClassID        # Base-class ID
+    int OpenCount          # Number of objects allocated to this class
+    int TotalMethods       # Total number of methods
+    int TotalFields        # Total number of fields, including any additional standard fields like 'Name'
+    int(CCF) Category      # Assigned category
+  ]])
+
   class("StorageDevice", { src="../classes/class_storagedevice.cpp" }, [[
     large(DEVICE) DeviceFlags  # Flags identifying the type of media
     large DeviceSize           # Size of the device
@@ -2261,29 +2285,6 @@ inline ERROR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
    LONG     TotalArgs;            // Total number of ProcArgs
    char     LanguageDir[32];      // Directory to use for language files
    OBJECTID ScriptOwnerID;
-  ]])
-
-  methods("MetaClass", "mc", {
-    { id=1, name="FindField" }
-  })
-
-  class("MetaClass", { src="../classes/class_metaclass.cpp" }, [[
-    double ClassVersion    # Version of the class
-    struct(*MethodArray) Methods # Original method array supplied by the module.
-    cstruct(*FieldArray) Fields  # Original field array supplied by the module.
-    cstr ClassName         # Name of the class
-    cstr FileExtension     # File extension that is supported by this class.
-    cstr FileDescription   # File description
-    cstr FileHeader        # Internal file header for identifying the file
-    cstr Path              # Module path to the class
-    int Size               # Byte-size of the class when produced as an object
-    int(CLF) Flags         # Special flags
-    cid SubClassID         # Sub-class ID
-    cid BaseClassID        # Base-class ID
-    int OpenCount          # Number of objects allocated to this class
-    int TotalMethods       # Total number of methods
-    int TotalFields        # Total number of fields, including any additional standard fields like 'Name'
-    int(CCF) Category      # Assigned category
   ]])
 
   methods("Task", "Task", {

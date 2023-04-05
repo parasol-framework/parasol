@@ -64,6 +64,8 @@ function getFieldType(Type, CustomName, Option)
             return 'pf::vector<WORD>'
          elseif bit.band(Type, FD_LONG) != 0 then
             return 'pf::vector<LONG>'
+         elseif bit.band(Type, FD_FLOAT) != 0 then
+            return 'pf::vector<FLOAT>'
          elseif bit.band(Type, FD_DOUBLE) != 0 then
             return 'pf::vector<DOUBLE>'
          elseif bit.band(Type, FD_STRING) != 0 then
@@ -82,6 +84,8 @@ function getFieldType(Type, CustomName, Option)
             return 'WORD []'
          elseif bit.band(Type, FD_LONG) != 0 then
             return 'LONG []'
+         elseif bit.band(Type, FD_FLOAT) != 0 then
+            return 'FLOAT []'
          elseif bit.band(Type, FD_DOUBLE) != 0 then
             return 'DOUBLE []'
          elseif bit.band(Type, FD_STRING) != 0 then

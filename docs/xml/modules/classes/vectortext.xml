@@ -290,7 +290,7 @@
 
     <field>
       <name>TextWidth</name>
-      <comment>The raw pixel width of the widest line in the @String value..</comment>
+      <comment>The raw pixel width of the widest line in the <field>String</field> value.</comment>
       <access read="G">Get</access>
       <type>INT</type>
     </field>
