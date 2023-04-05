@@ -112,7 +112,7 @@ class objFont : public BaseClass {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setStrokeSize(const DOUBLE Value) {
@@ -125,28 +125,28 @@ class objFont : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setString(STRING Value) {
+   template <class T> inline ERROR setString(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setPath(STRING Value) {
+   template <class T> inline ERROR setPath(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[30];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setStyle(STRING Value) {
+   template <class T> inline ERROR setStyle(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[13];
-      return field->WriteValue(target, field, 0x08800500, Value, 1);
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
-   inline ERROR setFace(STRING Value) {
+   template <class T> inline ERROR setFace(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[27];
-      return field->WriteValue(target, field, 0x08800500, Value, 1);
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
    inline ERROR setEscapeCallback(APTR Value) {
@@ -276,10 +276,10 @@ class objFont : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setEscapeChar(STRING Value) {
+   template <class T> inline ERROR setEscapeChar(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[38];
-      return field->WriteValue(target, field, 0x08800308, Value, 1);
+      return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    inline ERROR setItalic(const LONG Value) {

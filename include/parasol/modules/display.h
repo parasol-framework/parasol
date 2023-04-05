@@ -979,10 +979,10 @@ class objDisplay : public BaseClass {
       return field->WriteValue(target, field, 0x08000308, Value, 1);
    }
 
-   inline ERROR setTitle(STRING Value) {
+   template <class T> inline ERROR setTitle(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
-      return field->WriteValue(target, field, 0x08800308, Value, 1);
+      return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
 };
@@ -1181,10 +1181,10 @@ class objPointer : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setButtonOrder(STRING Value) {
+   template <class T> inline ERROR setButtonOrder(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[13];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
 };
@@ -1447,28 +1447,28 @@ class objSurface : public BaseClass {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_LARGE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setY(const LONG Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_LARGE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setWidth(const LONG Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_LARGE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setHeight(const LONG Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_LARGE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setAlign(const LONG Value) {
@@ -1581,14 +1581,14 @@ class objSurface : public BaseClass {
       auto target = this;
       auto field = &this->Class->Dictionary[17];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_LARGE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setYOffset(const LONG Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[24];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_LARGE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
 };

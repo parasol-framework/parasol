@@ -3006,31 +3006,31 @@ class objMetaClass : public BaseClass {
       return field->WriteValue(target, field, 0x00001510, Value, Elements);
    }
 
-   inline ERROR setClassName(CSTRING Value) {
+   template <class T> inline ERROR setClassName(T && Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->ClassName = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setFileExtension(CSTRING Value) {
+   template <class T> inline ERROR setFileExtension(T && Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->FileExtension = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setFileDescription(CSTRING Value) {
+   template <class T> inline ERROR setFileDescription(T && Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->FileDescription = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setFileHeader(CSTRING Value) {
+   template <class T> inline ERROR setFileHeader(T && Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->FileHeader = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setPath(CSTRING Value) {
+   template <class T> inline ERROR setPath(T && Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Path = Value;
       return ERR_Okay;
@@ -3073,10 +3073,10 @@ class objMetaClass : public BaseClass {
       return field->WriteValue(target, field, 0x08000400, Value, 1);
    }
 
-   inline ERROR setName(STRING Value) {
+   template <class T> inline ERROR setName(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
-      return field->WriteValue(target, field, 0x08810500, Value, 1);
+      return field->WriteValue(target, field, 0x08810500, to_cstring(Value), 1);
    }
 
 };
@@ -3099,10 +3099,10 @@ class objStorageDevice : public BaseClass {
 
    // Customised field setting
 
-   inline ERROR setVolume(STRING Value) {
+   template <class T> inline ERROR setVolume(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[4];
-      return field->WriteValue(target, field, 0x08800504, Value, 1);
+      return field->WriteValue(target, field, 0x08800504, to_cstring(Value), 1);
    }
 
 };
@@ -3286,10 +3286,10 @@ class objFile : public BaseClass {
       return field->WriteValue(target, field, 0x08000310, Value, 1);
    }
 
-   inline ERROR setPath(STRING Value) {
+   template <class T> inline ERROR setPath(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[16];
-      return field->WriteValue(target, field, 0x08800500, Value, 1);
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
    inline ERROR setPermissions(const LONG Value) {
@@ -3304,10 +3304,10 @@ class objFile : public BaseClass {
       return field->WriteValue(target, field, FD_LARGE, &Value, 1);
    }
 
-   inline ERROR setLink(STRING Value) {
+   template <class T> inline ERROR setLink(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERROR setUser(const LONG Value) {
@@ -3497,22 +3497,22 @@ class objConfig : public BaseClass {
 
    // Customised field setting
 
-   inline ERROR setPath(STRING Value) {
+   template <class T> inline ERROR setPath(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setKeyFilter(STRING Value) {
+   template <class T> inline ERROR setKeyFilter(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setGroupFilter(STRING Value) {
+   template <class T> inline ERROR setGroupFilter(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERROR setFlags(const LONG Value) {
@@ -3654,34 +3654,34 @@ class objScript : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setCacheFile(STRING Value) {
+   template <class T> inline ERROR setCacheFile(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setErrorString(STRING Value) {
+   template <class T> inline ERROR setErrorString(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setWorkingPath(STRING Value) {
+   template <class T> inline ERROR setWorkingPath(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[20];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setProcedure(STRING Value) {
+   template <class T> inline ERROR setProcedure(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setName(STRING Value) {
+   template <class T> inline ERROR setName(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
-      return field->WriteValue(target, field, 0x08810300, Value, 1);
+      return field->WriteValue(target, field, 0x08810300, to_cstring(Value), 1);
    }
 
    inline ERROR setOwner(const OBJECTID Value) {
@@ -3690,10 +3690,10 @@ class objScript : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setPath(STRING Value) {
+   template <class T> inline ERROR setPath(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
-      return field->WriteValue(target, field, 0x08800500, Value, 1);
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
    inline ERROR setResults(STRING * Value, LONG Elements) {
@@ -3702,10 +3702,10 @@ class objScript : public BaseClass {
       return field->WriteValue(target, field, 0x08801300, Value, Elements);
    }
 
-   inline ERROR setStatement(STRING Value) {
+   template <class T> inline ERROR setStatement(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[16];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
 };
@@ -3823,10 +3823,10 @@ class objTask : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setArgs(STRING Value) {
+   template <class T> inline ERROR setArgs(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
-      return field->WriteValue(target, field, 0x08800200, Value, 1);
+      return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
    }
 
    inline ERROR setParameters(pf::vector<std::string> *Value) {
@@ -3853,22 +3853,22 @@ class objTask : public BaseClass {
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERROR setLaunchPath(STRING Value) {
+   template <class T> inline ERROR setLaunchPath(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setLocation(STRING Value) {
+   template <class T> inline ERROR setLocation(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[13];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setName(STRING Value) {
+   template <class T> inline ERROR setName(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERROR setOutputCallback(FUNCTION Value) {
@@ -3877,10 +3877,10 @@ class objTask : public BaseClass {
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERROR setPath(STRING Value) {
+   template <class T> inline ERROR setPath(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[16];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERROR setPriority(const LONG Value) {
@@ -4034,10 +4034,10 @@ class objModule : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setName(STRING Value) {
+   template <class T> inline ERROR setName(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
-      return field->WriteValue(target, field, 0x08800500, Value, 1);
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
 };
@@ -4297,16 +4297,16 @@ class objCompression : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setArchiveName(STRING Value) {
+   template <class T> inline ERROR setArchiveName(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[18];
-      return field->WriteValue(target, field, 0x08800200, Value, 1);
+      return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
    }
 
-   inline ERROR setPath(STRING Value) {
+   template <class T> inline ERROR setPath(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERROR setFeedback(FUNCTION Value) {
@@ -4315,10 +4315,10 @@ class objCompression : public BaseClass {
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERROR setPassword(STRING Value) {
+   template <class T> inline ERROR setPassword(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
 };

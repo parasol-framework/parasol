@@ -77,9 +77,9 @@ static ERROR access_video(OBJECTID DisplayID, objDisplay **Display, objBitmap **
 
       if (!Display[0]->getPtr(FID_WindowHandle, &winhandle)) {
          #ifdef _WIN32
-            Display[0]->Bitmap->set(FID_Handle, winGetDC(winhandle));
+            Display[0]->Bitmap->setHandle(winGetDC(winhandle));
          #else
-            Display[0]->Bitmap->set(FID_Handle, winhandle);
+            Display[0]->Bitmap->setHandle(winhandle);
          #endif
       }
 
@@ -102,7 +102,7 @@ static void release_video(objDisplay *Display)
          winReleaseDC(winhandle, surface);
       }
 
-      Display->Bitmap->set(FID_Handle, (APTR)NULL);
+      Display->Bitmap->setHandle((APTR)NULL);
    #endif
 
    acFlush(Display);
@@ -1156,10 +1156,10 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
       // Recalculate coordinates if offsets are used
 
-      if (Self->Dimensions & DMF_FIXED_X_OFFSET)         Self->set(FID_XOffset, Self->XOffset);
+      if (Self->Dimensions & DMF_FIXED_X_OFFSET)         Self->setXOffset(Self->XOffset);
       else if (Self->Dimensions & DMF_RELATIVE_X_OFFSET) Self->setPercentage(FID_XOffset, Self->XOffsetPercent);
 
-      if (Self->Dimensions & DMF_FIXED_Y_OFFSET)         Self->set(FID_YOffset, Self->YOffset);
+      if (Self->Dimensions & DMF_FIXED_Y_OFFSET)         Self->setYOffset(Self->YOffset);
       else if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) Self->setPercentage(FID_YOffset, Self->YOffsetPercent);
 
       if (Self->Dimensions & DMF_RELATIVE_X)       Self->setPercentage(FID_X, Self->XPercent);
@@ -1189,13 +1189,13 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
       // Alignment adjustments
 
-      if (Self->Align & ALIGN_LEFT) { Self->X = 0; Self->set(FID_X, Self->X); }
-      else if (Self->Align & ALIGN_RIGHT) { Self->X = parent->Width - Self->Width; Self->set(FID_X, Self->X); }
-      else if (Self->Align & ALIGN_HORIZONTAL) { Self->X = (parent->Width - Self->Width) / 2; Self->set(FID_X, Self->X); }
+      if (Self->Align & ALIGN_LEFT) { Self->X = 0; Self->setX(Self->X); }
+      else if (Self->Align & ALIGN_RIGHT) { Self->X = parent->Width - Self->Width; Self->setX(Self->X); }
+      else if (Self->Align & ALIGN_HORIZONTAL) { Self->X = (parent->Width - Self->Width) / 2; Self->setX(Self->X); }
 
-      if (Self->Align & ALIGN_TOP) { Self->Y = 0; Self->set(FID_Y, Self->Y); }
-      else if (Self->Align & ALIGN_BOTTOM) { Self->Y = parent->Height - Self->Height; Self->set(FID_Y, Self->Y); }
-      else if (Self->Align & ALIGN_VERTICAL) { Self->Y = (parent->Height - Self->Height) / 2; Self->set(FID_Y, Self->Y); }
+      if (Self->Align & ALIGN_TOP) { Self->Y = 0; Self->setY(Self->Y); }
+      else if (Self->Align & ALIGN_BOTTOM) { Self->Y = parent->Height - Self->Height; Self->setY(Self->Y); }
+      else if (Self->Align & ALIGN_VERTICAL) { Self->Y = (parent->Height - Self->Height) / 2; Self->setY(Self->Y); }
 
       if (Self->Height < Self->MinHeight + Self->TopMargin  + Self->BottomMargin) Self->Height = Self->MinHeight + Self->TopMargin  + Self->BottomMargin;
       if (Self->Width  < Self->MinWidth  + Self->LeftMargin + Self->RightMargin)  Self->Width  = Self->MinWidth  + Self->LeftMargin + Self->RightMargin;
@@ -1293,13 +1293,13 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
          DISPLAYINFO *display;
          if (!gfxGetDisplayInfo(0, &display)) {
-            if (Self->Align & ALIGN_LEFT) { Self->X = 0; Self->set(FID_X, Self->X); }
-            else if (Self->Align & ALIGN_RIGHT) { Self->X = display->Width - Self->Width; Self->set(FID_X, Self->X); }
-            else if (Self->Align & ALIGN_HORIZONTAL) { Self->X = (display->Width - Self->Width) / 2; Self->set(FID_X, Self->X); }
+            if (Self->Align & ALIGN_LEFT) { Self->X = 0; Self->setX(Self->X); }
+            else if (Self->Align & ALIGN_RIGHT) { Self->X = display->Width - Self->Width; Self->setX(Self->X); }
+            else if (Self->Align & ALIGN_HORIZONTAL) { Self->X = (display->Width - Self->Width) / 2; Self->setX(Self->X); }
 
-            if (Self->Align & ALIGN_TOP) { Self->Y = 0; Self->set(FID_Y, Self->Y); }
-            else if (Self->Align & ALIGN_BOTTOM) { Self->Y = display->Height - Self->Height; Self->set(FID_Y, Self->Y); }
-            else if (Self->Align & ALIGN_VERTICAL) { Self->Y = (display->Height - Self->Height) / 2; Self->set(FID_Y, Self->Y); }
+            if (Self->Align & ALIGN_TOP) { Self->Y = 0; Self->setY(Self->Y); }
+            else if (Self->Align & ALIGN_BOTTOM) { Self->Y = display->Height - Self->Height; Self->setY(Self->Y); }
+            else if (Self->Align & ALIGN_VERTICAL) { Self->Y = (display->Height - Self->Height) / 2; Self->setY(Self->Y); }
          }
       }
 
@@ -1377,8 +1377,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
          // can be used by the host to notify of window exposures.
 
          if (Self->DisplayWindow) {
-            auto func = make_function_stdc(display_resized);
-            display->set(FID_ResizeFeedback, &func);
+            display->setResizeFeedback(make_function_stdc(display_resized));
 
             auto callback = make_function_stdc(notify_draw_display);
             SubscribeAction(display, AC_Draw, &callback);

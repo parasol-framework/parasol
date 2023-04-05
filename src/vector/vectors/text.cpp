@@ -753,7 +753,7 @@ static ERROR TEXT_SET_LineLimit(extVectorText *Self, LONG Value)
    return ERR_Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 SelectColumn: Indicates the column position of a selection's beginning.
 
@@ -1544,7 +1544,7 @@ static void generate_text_bitmap(extVectorText *Vector)
       auto str = line.c_str();
       if (!str[0]) y += Vector->txFont->LineSpacing;
       else {
-         Vector->txFont->set(FID_String, str);
+         Vector->txFont->setString(str);
          Vector->txFont->X = 0;
          Vector->txFont->Y = y;
          acDraw(Vector->txFont);
@@ -1779,24 +1779,24 @@ static void reset_font(extVectorText *Vector)
                if (style IS "Regular") style = "Italic";
                else style.append(" Italic");
             }
-            font->set(FID_Style, style);
+            font->setStyle(style);
          }
-         else font->set(FID_Style, Vector->txFontStyle);
+         else font->setStyle(Vector->txFontStyle);
 
          CSTRING location;
          if (!fntSelectFont(family.c_str(), style.c_str(), Vector->txFontSize, FTF_PREFER_SCALED, &location)) {
-            font->set(FID_Path, location);
+            font->setPath(location);
             FreeResource(location);
          }
-         else font->set(FID_Face, "*");
+         else font->setFace("*");
       }
-      else font->set(FID_Face, "*");
+      else font->setFace("*");
 
       // Set the correct point size, which is really for the benefit of the client e.g. if the Font object
       // is used to determine the source font's attributes.
 
       DOUBLE point_size = Vector->txFontSize * (3.0 / 4.0);
-      font->set(FID_Point, point_size);
+      font->setPoint(point_size);
 
       if (!InitObject(font)) {
          if (Vector->txFont) FreeResource(Vector->txFont);
@@ -1812,7 +1812,7 @@ static ERROR cursor_timer(extVectorText *Self, LARGE Elapsed, LARGE CurrentTime)
    if ((Self->txFlags & VTXF_EDITABLE) and (Self->txCursor.vector)) {
       pf::Log log(__FUNCTION__);
       Self->txCursor.flash ^= 1;
-      Self->txCursor.vector->set(FID_Visibility, Self->txCursor.flash ? VIS_VISIBLE : VIS_HIDDEN);
+      Self->txCursor.vector->setVisibility(Self->txCursor.flash ? VIS_VISIBLE : VIS_HIDDEN);
       acDraw(Self);
       return ERR_Okay;
    }
@@ -1871,12 +1871,12 @@ static ERROR text_focus_event(extVector *Vector, LONG Event)
          }
 
          Self->txCursor.resetFlash();
-         Self->txCursor.vector->set(FID_Visibility, VIS_VISIBLE);
+         Self->txCursor.vector->setVisibility(VIS_VISIBLE);
          acDraw(Self);
       }
    }
    else if (Event & (FM_LOST_FOCUS|FM_CHILD_HAS_FOCUS)) {
-      if (Self->txCursor.vector) Self->txCursor.vector->set(FID_Visibility, VIS_HIDDEN);
+      if (Self->txCursor.vector) Self->txCursor.vector->setVisibility(VIS_HIDDEN);
       if (Self->txCursor.timer)  { UpdateTimer(Self->txCursor.timer, 0); Self->txCursor.timer = 0; }
       if (Self->txKeyEvent)      { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = NULL; }
 
@@ -1973,7 +1973,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
    log.trace("$%.8x, Value: %d", Event->Qualifiers, Event->Code);
 
    Self->txCursor.resetFlash(); // Reset the flashing cursor to make it visible
-   Self->txCursor.vector->set(FID_Visibility, VIS_VISIBLE);
+   Self->txCursor.vector->setVisibility(VIS_VISIBLE);
 
    if ((!(Self->txFlags & VTXF_NO_SYS_KEYS)) and (Event->Qualifiers & KQ_CTRL)) {
       switch(Event->Code) {
@@ -2108,14 +2108,14 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
 
    case K_LEFT:
       Self->txCursor.resetFlash();
-      Self->txCursor.vector->set(FID_Visibility, VIS_VISIBLE);
+      Self->txCursor.vector->setVisibility(VIS_VISIBLE);
       if (Self->txCursor.column() > 0) Self->txCursor.move(Self, Self->txCursor.row(), Self->txCursor.column()-1);
       else if (Self->txCursor.row() > 0) Self->txCursor.move(Self, Self->txCursor.row()-1, Self->txLines[Self->txCursor.row()-1].utf8Length());
       break;
 
    case K_RIGHT:
       Self->txCursor.resetFlash();
-      Self->txCursor.vector->set(FID_Visibility, VIS_VISIBLE);
+      Self->txCursor.vector->setVisibility(VIS_VISIBLE);
       if (!Self->txLines.empty()) {
          if (Self->txCursor.column() < Self->txLines[Self->txCursor.row()].utf8Length()) {
             Self->txCursor.move(Self, Self->txCursor.row(), Self->txCursor.column()+1);
@@ -2129,7 +2129,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
    case K_DOWN:
    case K_UP:
       Self->txCursor.resetFlash();
-      Self->txCursor.vector->set(FID_Visibility, VIS_VISIBLE);
+      Self->txCursor.vector->setVisibility(VIS_VISIBLE);
       if (((Event->Code IS K_UP) and (Self->txCursor.row() > 0)) or
           ((Event->Code IS K_DOWN) and ((size_t)Self->txCursor.row() < Self->txLines.size()-1))) {
          LONG end_column;

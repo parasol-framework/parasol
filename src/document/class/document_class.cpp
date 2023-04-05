@@ -240,8 +240,8 @@ static ERROR DOCUMENT_ApplyFontStyle(extDocument *Self, struct docApplyFontStyle
       font->Underline = style->FontUnderline;
    }
    else {
-      font->set(FID_Face, style->Font->Face);
-      font->set(FID_Style, style->Font->Style);
+      font->setFace(style->Font->Face);
+      font->setStyle(style->Font->Style);
       font->Point     = style->Font->Point;
       font->Colour    = style->FontColour;
       font->Underline = style->FontUnderline;
@@ -781,7 +781,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
       Self->SurfaceWidth = surface->Width;
       Self->SurfaceHeight = surface->Height;
 
-      surface->set(FID_Colour, "255,255,255");
+      surface->setColour("255,255,255");
 
       auto callback = make_function_stdc(notify_disable_surface);
       SubscribeAction(surface, AC_Disable, &callback);
@@ -1009,7 +1009,7 @@ static ERROR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
    if (!Self->InsertXML) {
       if (!(Self->InsertXML = objXML::create::integral(fl::Statement(Args->XML)))) error = ERR_CreateObject;
    }
-   else error = Self->InsertXML->set(FID_Statement, Args->XML);
+   else error = Self->InsertXML->setStatement(Args->XML);
 
    if (!error) {
       if (!Self->Buffer) {

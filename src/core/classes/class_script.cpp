@@ -61,10 +61,10 @@ static ERROR SCRIPT_DataFeed(objScript *Self, struct acDataFeed *Args)
    if (!Args) return ERR_NullArgs;
 
    if (Args->Datatype IS DATA_XML) {
-      Self->set(FID_String, (CSTRING)Args->Buffer);
+      Self->setStatement((STRING)Args->Buffer);
    }
    else if (Args->Datatype IS DATA_TEXT) {
-      Self->set(FID_String, (CSTRING)Args->Buffer);
+      Self->setStatement((STRING)Args->Buffer);
    }
 
    return ERR_Okay;
@@ -580,7 +580,7 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
                         }
                      }
 
-                     if (!StrMatch("target", arg)) Self->set(FID_Target, argval);
+                     if (!StrMatch("target", arg)) Self->setTarget(StrToInt(argval));
                      else acSetVar(Self, arg, argval);
                   }
                }

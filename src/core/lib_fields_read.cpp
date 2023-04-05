@@ -43,8 +43,7 @@ Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target)
       for (LONG i=0; mc->Integral[i] != 0xff; i++) {
          OBJECTPTR child;
          if ((!copy_field_to_buffer(Object, &mc->prvDictionary[mc->Integral[i]], FT_POINTER, &child, NULL, NULL)) and (child)) {
-            auto childclass = child->ExtClass;
-            auto &field = childclass->prvDictionary;
+            auto &field = child->ExtClass->prvDictionary;
             unsigned floor = 0;
             auto ceiling = field.size();
             while (floor < ceiling) {

@@ -347,7 +347,7 @@ static ERROR SET_InsideHeight(extSurface *Self, LONG Value)
 {
    LONG height = Value + Self->TopMargin + Self->BottomMargin;
    if (height < Self->MinHeight) height = Self->MinHeight;
-   Self->set(FID_Height, height);
+   Self->setHeight(height);
    return ERR_Okay;
 }
 
@@ -373,7 +373,7 @@ static ERROR SET_InsideWidth(extSurface *Self, LONG Value)
 {
    LONG width = Value + Self->LeftMargin + Self->RightMargin;
    if (width < Self->MinWidth) width = Self->MinWidth;
-   Self->set(FID_Width, width);
+   Self->setWidth(width);
    return ERR_Okay;
 }
 

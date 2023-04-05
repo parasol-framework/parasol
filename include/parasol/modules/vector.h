@@ -725,7 +725,7 @@ class objVectorPattern : public BaseClass {
       return field->WriteValue(target, field, 0x08000318, Value, 1);
    }
 
-   inline ERROR setTransform(STRING Value) {
+   inline ERROR setTransform(CSTRING Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, 0x08800208, Value, 1);
@@ -876,7 +876,7 @@ class objVectorGradient : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setID(STRING Value) {
+   inline ERROR setID(CSTRING Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, 0x08800308, Value, 1);
@@ -888,7 +888,7 @@ class objVectorGradient : public BaseClass {
       return field->WriteValue(target, field, 0x00001318, Value, Elements);
    }
 
-   inline ERROR setTransform(STRING Value) {
+   inline ERROR setTransform(CSTRING Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, 0x08800208, Value, 1);
@@ -1583,7 +1583,7 @@ class objVector : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setID(STRING Value) {
+   inline ERROR setID(CSTRING Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x08800308, Value, 1);
@@ -1595,7 +1595,7 @@ class objVector : public BaseClass {
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERROR setStroke(STRING Value) {
+   inline ERROR setStroke(CSTRING Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, 0x08800308, Value, 1);
@@ -1626,7 +1626,7 @@ class objVector : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setFill(STRING Value) {
+   inline ERROR setFill(CSTRING Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[23];
       return field->WriteValue(target, field, 0x08800308, Value, 1);
@@ -1644,7 +1644,7 @@ class objVector : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setFilter(STRING Value) {
+   inline ERROR setFilter(CSTRING Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[42];
       return field->WriteValue(target, field, 0x08800308, Value, 1);
