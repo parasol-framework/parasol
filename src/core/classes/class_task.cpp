@@ -475,15 +475,7 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
             else {
                auto cl = obj->ExtClass;
                if (cl->Base) cl = cl->Base;
-
-               if (cl->Methods) {
-                  fields = cl->Methods[-action->ActionID].Args;
-               }
-               else {
-                  log.warning("No method table for object #%d, class %d", obj->UID, obj->ClassID);
-                  fields = NULL;
-                  ReleaseObject(obj);
-               }
+               fields = cl->Methods[-action->ActionID].Args;
             }
 
             // Use resolve_args() to process the args structure back into something readable

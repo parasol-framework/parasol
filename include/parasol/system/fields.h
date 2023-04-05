@@ -14,8 +14,6 @@
 #define FID_FileHeader 0x9d60e6ceLL
 #define FID_SubClassID 0x7c4f26d2LL
 #define FID_OpenCount 0x376e7220LL
-#define FID_TotalMethods 0xb864fbfdLL
-#define FID_TotalFields 0xd67acde0LL
 #define FID_Usage 0x1084ecfaLL
 #define FID_ActionTable 0x1c85e14bLL
 #define FID_Listener 0xcec9a28bLL

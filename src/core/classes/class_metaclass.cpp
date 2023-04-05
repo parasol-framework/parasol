@@ -45,19 +45,15 @@ static Field * lookup_id_byclass(extMetaClass *, ULONG, extMetaClass **);
 // The MetaClass is the focal point of the OO design model.  Because classes are treated like objects, they must point
 // back to a controlling class definition - this it.  See NewObject() for the management code for this data.
 
-#define TOTAL_METAFIELDS  25
-#define TOTAL_METAMETHODS 1
-
 static ERROR GET_ActionTable(extMetaClass *, ActionEntry **, LONG *);
 static ERROR GET_Fields(extMetaClass *, const FieldArray **, LONG *);
 static ERROR GET_Location(extMetaClass *, CSTRING *);
-static ERROR GET_Methods(extMetaClass *Self, const MethodArray **, LONG *);
+static ERROR GET_Methods(extMetaClass *, const MethodArray **, LONG *);
 static ERROR GET_Module(extMetaClass *, CSTRING *);
 static ERROR GET_PrivateObjects(extMetaClass *, OBJECTID **, LONG *);
 static ERROR GET_RootModule(extMetaClass *, struct RootModule **);
 static ERROR GET_Dictionary(extMetaClass *, struct Field **, LONG *);
 static ERROR GET_SubFields(extMetaClass *, const FieldArray **, LONG *);
-static ERROR GET_TotalMethods(extMetaClass *, LONG *);
 
 static ERROR SET_Actions(extMetaClass *, const ActionArray *);
 static ERROR SET_Fields(extMetaClass *, const FieldArray *, LONG);
@@ -851,28 +847,6 @@ static ERROR GET_SubFields(extMetaClass *Self, const FieldArray **Fields, LONG *
       *Elements = 0;
    }
    return ERR_Okay;
-}
-
-/*********************************************************************************************************************
--FIELD-
-TotalFields: The total number of fields defined by a class.
-
--FIELD-
-TotalMethods: The total number of methods supported by a class.
--END-
-
-*********************************************************************************************************************/
-
-static ERROR GET_TotalMethods(extMetaClass *Class, LONG *Value)
-{
-   if (Class->TotalMethods > 0) {
-      *Value = Class->TotalMethods - 1; // Minus 1 due to the dummy entry at the start
-      return ERR_Okay;
-   }
-   else {
-      *Value = 0;
-      return ERR_Okay;
-   }
 }
 
 //********************************************************************************************************************

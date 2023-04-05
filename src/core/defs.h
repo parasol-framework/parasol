@@ -328,10 +328,11 @@ class extMetaClass : public objMetaClass {
    using create = pf::Create<extMetaClass>;
    class extMetaClass *Base;            // Reference to the base class if this is a sub-class
    std::vector<Field> prvDictionary;    // Field dictionary
+   std::vector<MethodArray> Methods;     // Original method array supplied by the module.
    const struct FieldArray *SubFields;  // Extra fields defined by the sub-class
    struct RootModule *Root;             // Root module that owns this class, if any.
    UBYTE Integral[8];                   // Integral object references (by field indexes), in order
-   STRING Location;                     // Location of the class binary, this field exists purely for caching the location string if the user reads it
+   STRING Location;                     // Location of the class binary, this field exists purely for caching the location string if the client reads it
    ActionEntry ActionTable[AC_END];
    WORD OriginalFieldTotal;
 };

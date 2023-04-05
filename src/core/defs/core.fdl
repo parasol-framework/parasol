@@ -980,6 +980,11 @@ struct FieldValue {
     cstr Name       # Name of the method
     cstruct(*FunctionField) Args  # List of parameters accepted by the method
     int  Size       # Total byte-size of all accepted parameters when they are assembled as a C structure.
+  ]],
+  [[
+   MethodArray() : MethodID(0), Routine(NULL), Name(NULL) { }
+   MethodArray(LONG pID, APTR pRoutine, CSTRING pName, const struct FunctionField *pArgs, LONG pSize) :
+      MethodID(pID), Routine(pRoutine), Name(pName), Args(pArgs), Size(pSize) { }
   ]])
 
   struct("ActionTable", { comment="Structure for ActionList" }, [[
@@ -2096,7 +2101,6 @@ inline ERROR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
 
   class("MetaClass", { src="../classes/class_metaclass.cpp" }, [[
     double ClassVersion    # Version of the class
-    struct(*MethodArray) Methods # Original method array supplied by the module.
     cstruct(*FieldArray) Fields  # Original field array supplied by the module.
     array(struct(Field)) Dictionary # Field lookup by ID
     cstr ClassName         # Name of the class
@@ -2109,8 +2113,6 @@ inline ERROR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
     cid SubClassID         # Sub-class ID
     cid BaseClassID        # Base-class ID
     int OpenCount          # Number of objects allocated to this class
-    int TotalMethods       # Total number of methods
-    int TotalFields        # Total number of fields, including any additional standard fields like 'Name'
     int(CCF) Category      # Assigned category
   ]])
 

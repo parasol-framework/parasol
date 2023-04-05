@@ -223,9 +223,9 @@ static int thread_method(lua_State *Lua)
          }
 
          if ((!GetFieldArray(mc, FID_Methods, &table, &total_methods)) and (table)) {
-            BYTE found = FALSE;
-            for (i=1; i < total_methods+1; i++) {
-               if ((table[i].Name) and (!StrMatch(table[i].Name, method))) { found = TRUE; break; }
+            bool found = false;
+            for (i=1; i < total_methods; i++) {
+               if ((table[i].Name) and (!StrMatch(table[i].Name, method))) { found = true; break; }
             }
 
             if (found) {

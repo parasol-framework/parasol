@@ -77,7 +77,7 @@ static ACTIONID get_action_info(lua_State *Lua, CLASSID ClassID, CSTRING action,
       LONG total_methods;
       ACTIONID action_id;
       if ((!GetFieldArray(mc, FID_Methods, &table, &total_methods)) and (table)) {
-         for (LONG i=1; i < total_methods+1; i++) {
+         for (LONG i=1; i < total_methods; i++) {
             if ((table[i].Name) and (!StrMatch(action, table[i].Name))) {
                action_id = table[i].MethodID;
                *Args = table[i].Args;
@@ -909,7 +909,7 @@ static int object_index(lua_State *Lua)
             MethodArray *table;
             LONG total_methods;
             if ((!GetFieldArray(cl, FID_Methods, &table, &total_methods)) and (table)) {
-               for (LONG i=1; i < total_methods+1; i++) { // TODO: Sorted hash IDs and a binary search would be best
+               for (LONG i=1; i < total_methods; i++) { // TODO: Sorted hash IDs and a binary search would be best
                   if (!StrMatch(table[i].Name, code+2)) {
                      lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
                      lua_pushinteger(Lua, table[i].MethodID); // Arg2: Method ID

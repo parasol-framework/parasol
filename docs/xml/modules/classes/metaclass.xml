@@ -198,11 +198,10 @@
       <name>Methods</name>
       <comment>Set this field to define the methods supported by the class.</comment>
       <access read="G" write="S">Get/Set</access>
-      <type>struct MethodArray *</type>
+      <type>STRUCT []</type>
       <description>
-<p>If a class design will include support for methods, define them by creating a method list and then setting this field with the specifications before the class object is initialised.  A method list provides information on each method's ID, name, arguments, and structure size. When you set the Methods field with your method list, the information will be processed into a jump table that is used for making method calls.  After this process, your method list will serve no further purpose.</p>
-<p>The Class Development Guide has a section devoted to describing how the method list must be set up.  Please read the guide for more information.</p>
-<p>Never use action ID's in a Methods array - please use the <field>Actions</field> field for this.</p>
+<p>If a class design will include support for methods, create a MethodArray and set this field prior to initialisation. A method array provides information on each method's ID, name, arguments, and structure size.</p>
+<p>The Class Development Guide has a section devoted to method configuration.  Please read the guide for further information.</p>
       </description>
     </field>
 
@@ -269,23 +268,9 @@
       <type>CLASSID</type>
       <description>
 <p>The SubClassID field is used to indicate that a class is derived from a base class.  If you are creating a sub-class then set the SubClassID field to the hash value of the class' name (use the <function module="Core">StrHash</function> function).</p>
-<p>This field must not be set when creating a base class.</p>
+<p>This field must not be defined when creating a base class.</p>
 <p>To determine whether or not a class is a sub-class or a base class, compare the BaseClassID and SubClassID fields.  If they are identical then it is a base class, otherwise it is a sub-class.</p>
       </description>
-    </field>
-
-    <field>
-      <name>TotalFields</name>
-      <comment>The total number of fields defined by a class.</comment>
-      <access read="R">Read</access>
-      <type>INT</type>
-    </field>
-
-    <field>
-      <name>TotalMethods</name>
-      <comment>The total number of methods supported by a class.</comment>
-      <access read="R">Read</access>
-      <type>INT</type>
     </field>
 
   </fields>
