@@ -128,12 +128,12 @@ void LogF(CSTRING Header, CSTRING Format, ...)
 
    if (Header) {
       if (*Header IS '~') { // ~ is the create-branch code
-         new_branch = TRUE;
+         new_branch = true;
          msgstate = MS_FUNCTION;
          Header++;
       }
       else {
-         new_branch = FALSE;
+         new_branch = false;
          msgstate = MS_MSG;
       }
 
@@ -196,7 +196,7 @@ void LogF(CSTRING Header, CSTRING Format, ...)
    else {
       if (glLogLevel < 3) return;
       msglevel = 3;
-      new_branch = FALSE;
+      new_branch = false;
       msgstate = MS_NONE;
    }
 
@@ -205,13 +205,13 @@ void LogF(CSTRING Header, CSTRING Format, ...)
       //fprintf(stderr, "%.8d. ", winGetCurrentThreadId());
 
       #if defined(__unix__) and !defined(__ANDROID__)
-         BYTE flushdbg;
+         bool flushdbg;
          if (glLogLevel >= 3) {
-            flushdbg = TRUE;
-            if (tlPublicLockCount) flushdbg = FALSE;
+            flushdbg = true;
+            if (tlPublicLockCount) flushdbg = false;
             if (flushdbg) fcntl(STDERR_FILENO, F_SETFL, glStdErrFlags & (~O_NONBLOCK));
          }
-         else flushdbg = FALSE;
+         else flushdbg = false;
       #endif
 
       #ifdef ESC_OUTPUT
@@ -229,15 +229,10 @@ void LogF(CSTRING Header, CSTRING Format, ...)
 
       auto ctx = tlContext;
       auto obj = tlContext->object();
-      if (ctx->Action) {
-         if (ctx->Action < 0) {
-            auto mc = obj->Class;
-            if ((mc) and (mc->Methods) and (-ctx->Action < mc->TotalMethods)) {
-               action = mc->Methods[-ctx->Action].Name;
-            }
-            else action = "Method";
-         }
-         else action = ActionTable[ctx->Action].Name;
+      if (ctx->Action > 0) action = ActionTable[ctx->Action].Name;
+      else if (ctx->Action < 0) {
+         if (obj->Class) action = ((extMetaClass *)obj->Class)->Methods[-ctx->Action].Name;
+         else action = "Method";
       }
       else action = "App";
 
@@ -418,13 +413,13 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
       //fprintf(stderr, "%p ", ctx);
 
       #if defined(__unix__) and !defined(__ANDROID__)
-         BYTE flushdbg;
+         bool flushdbg;
          if (glLogLevel >= 3) {
-            flushdbg = TRUE;
-            if (tlPublicLockCount) flushdbg = FALSE;
+            flushdbg = true;
+            if (tlPublicLockCount) flushdbg = false;
             if (flushdbg) fcntl(STDERR_FILENO, F_SETFL, glStdErrFlags & (~O_NONBLOCK));
          }
-         else flushdbg = FALSE;
+         else flushdbg = false;
       #endif
 
       #ifdef ESC_OUTPUT // Highlight errors if the log output is crowded
@@ -442,15 +437,10 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
 
       auto ctx = tlContext;
       auto obj = tlContext->object();
-      if (ctx->Action) {
-         if (ctx->Action < 0) {
-            auto mc = obj->Class;
-            if ((mc) and (mc->Methods) and (-ctx->Action < mc->TotalMethods)) {
-               action = mc->Methods[-ctx->Action].Name;
-            }
-            else action = "Method";
-         }
-         else action = ActionTable[ctx->Action].Name;
+      if (ctx->Action > 0) action = ActionTable[ctx->Action].Name;
+      else if (ctx->Action < 0) {
+         if (obj->Class) action = ((extMetaClass *)obj->Class)->Methods[-ctx->Action].Name;
+         else action = "Method";
       }
       else action = "App";
 
@@ -563,10 +553,10 @@ ERROR FuncError(CSTRING Header, ERROR Code)
 
    // Issue a LogReturn() call if the error code is negative
 
-   BYTE step = FALSE;
+   bool step = false;
    if (Code < 0) {
       Code = -Code;
-      step = TRUE;
+      step = true;
    }
 
    if (glLogLevel < 2) {
@@ -585,15 +575,10 @@ ERROR FuncError(CSTRING Header, ERROR Code)
       auto ctx = tlContext;
       auto obj = tlContext->object();
       if (!Header) {
-         if (ctx->Action) {
-            if (ctx->Action < 0) {
-               auto mc = obj->Class;
-               if ((mc) and (mc->Methods) and (-ctx->Action < mc->TotalMethods)) {
-                  Header = mc->Methods[-ctx->Action].Name;
-               }
-               else Header = "Method";
-            }
-            else Header = ActionTable[ctx->Action].Name;
+         if (ctx->Action > 0) Header = ActionTable[ctx->Action].Name;
+         else if (ctx->Action < 0) {
+            if (obj->Class) Header = ((extMetaClass *)obj->Class)->Methods[-ctx->Action].Name;
+            else Header = "Method";
          }
          else Header = "Function";
       }

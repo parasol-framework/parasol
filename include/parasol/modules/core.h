@@ -18,11 +18,11 @@
 #include <bit>
 #endif
 
+class objMetaClass;
 class objStorageDevice;
 class objFile;
 class objConfig;
 class objScript;
-class objMetaClass;
 class objTask;
 class objThread;
 class objModule;
@@ -1709,6 +1709,9 @@ struct MethodArray {
    CSTRING Name;                         // Name of the method
    const struct FunctionField * Args;    // List of parameters accepted by the method
    LONG    Size;                         // Total byte-size of all accepted parameters when they are assembled as a C structure.
+   MethodArray() : MethodID(0), Routine(NULL), Name(NULL) { }
+   MethodArray(LONG pID, APTR pRoutine, CSTRING pName, const struct FunctionField *pArgs, LONG pSize) :
+      MethodID(pID), Routine(pRoutine), Name(pName), Args(pArgs), Size(pSize) { }
 };
 
 struct ActionTable {
@@ -2937,6 +2940,47 @@ inline ERROR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
 #define GetVar(a,b,c,d)  acGetVar(a,b,c,d)
 #define SetVar(a,b,c)    acSetVar(a,b,c)
 
+// MetaClass class definition
+
+#define VER_METACLASS (1.000000)
+
+// MetaClass methods
+
+#define MT_mcFindField -1
+
+struct mcFindField { LONG ID; struct Field * Field; objMetaClass * Source;  };
+
+INLINE ERROR mcFindField(APTR Ob, LONG ID, struct Field ** Field, objMetaClass ** Source) {
+   struct mcFindField args = { ID, 0, 0 };
+   ERROR error = Action(MT_mcFindField, (OBJECTPTR)Ob, &args);
+   if (Field) *Field = args.Field;
+   if (Source) *Source = args.Source;
+   return(error);
+}
+
+
+class objMetaClass : public BaseClass {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_METACLASS;
+   static constexpr CSTRING CLASS_NAME = "MetaClass";
+
+   using create = pf::Create<objMetaClass>;
+
+   DOUBLE  ClassVersion;                // The version number of the class.
+   const struct FieldArray * Fields;    // Points to a field array that describes the class' object structure.
+   CSTRING ClassName;                   // The name of the represented class.
+   CSTRING FileExtension;               // Describes the file extension represented by the class.
+   CSTRING FileDescription;             // Describes the file type represented by the class.
+   CSTRING FileHeader;                  // Defines a string expression that will allow relevant file data to be matched to the class.
+   CSTRING Path;                        // The path to the module binary that represents the class.
+   LONG    Size;                        // The total size of the object structure represented by the MetaClass.
+   LONG    Flags;                       // Optional flag settings.
+   CLASSID SubClassID;                  // Specifies the sub-class ID of a class object.
+   CLASSID BaseClassID;                 // Specifies the base class ID of a class object.
+   LONG    OpenCount;                   // The total number of active objects that are linked back to the MetaClass.
+   LONG    Category;                    // The system category that a class belongs to.
+};
+
 // StorageDevice class definition
 
 #define VER_STORAGEDEVICE (1.000000)
@@ -3382,50 +3426,6 @@ class objScript : public BaseClass {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);
    }
-};
-
-// MetaClass class definition
-
-#define VER_METACLASS (1.000000)
-
-// MetaClass methods
-
-#define MT_mcFindField -1
-
-struct mcFindField { LONG ID; struct Field * Field; objMetaClass * Source;  };
-
-INLINE ERROR mcFindField(APTR Ob, LONG ID, struct Field ** Field, objMetaClass ** Source) {
-   struct mcFindField args = { ID, 0, 0 };
-   ERROR error = Action(MT_mcFindField, (OBJECTPTR)Ob, &args);
-   if (Field) *Field = args.Field;
-   if (Source) *Source = args.Source;
-   return(error);
-}
-
-
-class objMetaClass : public BaseClass {
-   public:
-   static constexpr CLASSID CLASS_ID = ID_METACLASS;
-   static constexpr CSTRING CLASS_NAME = "MetaClass";
-
-   using create = pf::Create<objMetaClass>;
-
-   DOUBLE  ClassVersion;                // The version number of the class.
-   struct MethodArray * Methods;        // Set this field to define the methods supported by the class.
-   const struct FieldArray * Fields;    // Points to a field array that describes the class' object structure.
-   CSTRING ClassName;                   // The name of the represented class.
-   CSTRING FileExtension;               // Describes the file extension represented by the class.
-   CSTRING FileDescription;             // Describes the file type represented by the class.
-   CSTRING FileHeader;                  // Defines a string expression that will allow relevant file data to be matched to the class.
-   CSTRING Path;                        // The path to the module binary that represents the class.
-   LONG    Size;                        // The total size of the object structure represented by the MetaClass.
-   LONG    Flags;                       // Optional flag settings.
-   CLASSID SubClassID;                  // Specifies the sub-class ID of a class object.
-   CLASSID BaseClassID;                 // Specifies the base class ID of a class object.
-   LONG    OpenCount;                   // The total number of active objects that are linked back to the MetaClass.
-   LONG    TotalMethods;                // The total number of methods supported by a class.
-   LONG    TotalFields;                 // The total number of fields defined by a class.
-   LONG    Category;                    // The system category that a class belongs to.
 };
 
 // Task class definition
