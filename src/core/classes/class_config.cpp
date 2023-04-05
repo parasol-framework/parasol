@@ -909,13 +909,13 @@ static bool check_for_key(CSTRING Data)
 void merge_groups(ConfigGroups &Dest, ConfigGroups &Source)
 {
    for (auto& [src_group, src_keys] : Source) {
-      bool processed = FALSE;
+      bool processed = false;
 
       // Check if the group already exists and merge the keys
 
       for (auto& [dest_group, dest_keys] : Dest) {
          if (!dest_group.compare(src_group)) {
-            processed = TRUE;
+            processed = true;
             for (auto& [k, v] : src_keys) {
                dest_keys[k] = v;
             }

@@ -205,14 +205,14 @@ static ResourceManager glResourceObject = {
 
 //********************************************************************************************************************
 
-CSTRING action_name(OBJECTPTR Object, LONG ActionID)
+CSTRING action_name(OBJECTPTR Object, ACTIONID ActionID)
 {
    if (ActionID > 0) {
       if (ActionID < AC_END) return ActionTable[ActionID].Name;
       else return "Action";
    }
-   else if ((Object) and (Object->Class) and (Object->Class->Methods)) {
-      return Object->Class->Methods[-ActionID].Name;
+   else if ((Object) and (!((extMetaClass *)Object->Class)->Methods.empty())) {
+      return ((extMetaClass *)Object->Class)->Methods[-ActionID].Name;
    }
    else return "Method";
 }
@@ -241,7 +241,7 @@ static ERROR thread_action(extThread *Thread)
 
       if (data->Parameters) { // Free any temporary buffers that were allocated.
          if (data->ActionID > 0) local_free_args(data + 1, ActionTable[data->ActionID].Args);
-         else local_free_args(data + 1, obj->Class->Methods[-data->ActionID].Args);
+         else local_free_args(data + 1, ((extMetaClass *)obj->Class)->Methods[-data->ActionID].Args);
       }
 
       if (obj->defined(NF::FREE)) obj = NULL; // Clear the obj pointer because the object will be deleted on release.
@@ -412,18 +412,14 @@ ERROR Action(LONG ActionID, OBJECTPTR Object, APTR Parameters)
       else error = ERR_NoAction;
    }
    else { // Method call
-      if ((cl->Methods) and (cl->Methods[-ActionID].Routine)) {
-         // Note that sub-classes may return ERR_NoAction if propagation to the base class is desirable.
-         auto routine = (ERROR (*)(OBJECTPTR, APTR))cl->Methods[-ActionID].Routine;
-         error = routine(Object, Parameters);
-      }
+      // Note that sub-classes may return ERR_NoAction if propagation to the base class is desirable.
+      auto routine = (ERROR (*)(OBJECTPTR, APTR))cl->Methods[-ActionID].Routine;
+      if (routine) error = routine(Object, Parameters);
       else error = ERR_NoAction;
 
       if ((error IS ERR_NoAction) and (cl->Base)) {  // If this is a child, check the base class
-         if ((cl->Base->Methods) and (cl->Base->Methods[-ActionID].Routine)) {
-            auto routine = (ERROR (*)(OBJECTPTR, APTR))cl->Base->Methods[-ActionID].Routine;
-            error = routine(Object, Parameters);
-         }
+         auto routine = (ERROR (*)(OBJECTPTR, APTR))cl->Base->Methods[-ActionID].Routine;
+         if (routine) error = routine(Object, Parameters);
       }
    }
 
@@ -623,18 +619,15 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
             else argssize = sizeof(thread_data);
          }
          else if (auto cl = Object->ExtClass) {
-            if ((-ActionID) < cl->TotalMethods) {
-               args = cl->Methods[-ActionID].Args;
-               if ((argssize = cl->Methods[-ActionID].Size) > 0) {
-                  if (!(error = copy_args(args, argssize, (BYTE *)Parameters, call_data + sizeof(thread_data), SIZE_ACTIONBUFFER, &argssize, cl->Methods[-ActionID].Name))) {
-                     free_args = true;
-                  }
+            args = cl->Methods[-ActionID].Args;
+            if ((argssize = cl->Methods[-ActionID].Size) > 0) {
+               if (!(error = copy_args(args, argssize, (BYTE *)Parameters, call_data + sizeof(thread_data), SIZE_ACTIONBUFFER, &argssize, cl->Methods[-ActionID].Name))) {
+                  free_args = true;
                }
-               else log.trace("Ignoring parameters provided for method %s", cl->Methods[-ActionID].Name);
-
-               argssize += sizeof(thread_data);
             }
-            else error = log.warning(ERR_IllegalMethodID);
+            else log.trace("Ignoring parameters provided for method %s", cl->Methods[-ActionID].Name);
+
+            argssize += sizeof(thread_data);
          }
          else error = log.warning(ERR_MissingClass);
       }
@@ -1095,8 +1088,8 @@ ERROR InitObject(OBJECTPTR Object)
       return ERR_Okay;
    }
 
-   if (Object->Name[0]) log.branch("Name: %s, Owner: %d", Object->Name, Object->OwnerID);
-   else log.branch("Owner: %d", Object->OwnerID);
+   if (Object->Name[0]) log.branch("%s #%d, Name: %s, Owner: %d", cl->ClassName, Object->UID, Object->Name, Object->OwnerID);
+   else log.branch("%s #%d, Owner: %d", cl->ClassName, Object->UID, Object->OwnerID);
 
    Object->threadLock();
    ObjectContext new_context(Object, AC_Init);
@@ -1556,19 +1549,13 @@ ERROR QueueAction(LONG ActionID, OBJECTID ObjectID, APTR Args)
          }
       }
       else if (auto cl = (extMetaClass *)FindClass(GetClassID(ObjectID))) {
-         if (-ActionID < cl->TotalMethods) {
-            auto fields   = cl->Methods[-ActionID].Args;
-            auto argssize = cl->Methods[-ActionID].Size;
-            if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, cl->Methods[-ActionID].Name) != ERR_Okay) {
-               log.warning("Failed to buffer arguments for method \"%s\".", cl->Methods[-ActionID].Name);
-               return ERR_Failed;
-            }
-            msg.Action.SendArgs = true;
+         auto fields   = cl->Methods[-ActionID].Args;
+         auto argssize = cl->Methods[-ActionID].Size;
+         if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, cl->Methods[-ActionID].Name) != ERR_Okay) {
+            log.warning("Failed to buffer arguments for method \"%s\".", cl->Methods[-ActionID].Name);
+            return ERR_Failed;
          }
-         else {
-            log.warning("Illegal method ID %d executed on class %s.", ActionID, cl->ClassName);
-            return ERR_IllegalMethodID;
-         }
+         msg.Action.SendArgs = true;
       }
       else return log.warning(ERR_MissingClass);
    }

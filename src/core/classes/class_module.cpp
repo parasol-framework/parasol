@@ -834,7 +834,7 @@ static const FunctionField argsResolveSymbol[] = { { "Name", FD_STR }, { "Addres
 
 static const MethodArray glModuleMethods[] = {
    { MT_ModResolveSymbol, (APTR)MODULE_ResolveSymbol, "ResolveSymbol", argsResolveSymbol, sizeof(struct modResolveSymbol) },
-   { 0, NULL, NULL, 0 }
+   { 0, NULL, NULL, NULL, 0 }
 };
 
 //********************************************************************************************************************

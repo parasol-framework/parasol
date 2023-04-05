@@ -201,32 +201,6 @@ struct metafield {
    LONG SetFunction;
 };
 
-struct fwidget {
-   objMetaClass *Class;
-   struct metafield *Fields;
-   lua_State *Lua;
-   LONG InputMask;
-   struct {
-      LONG Activate;
-      LONG Deactivate;
-      LONG Disable;
-      LONG Draw;
-      LONG Enable;
-      LONG Free;
-      LONG Hide;
-      LONG Input;
-      LONG Keyboard;
-      LONG Focus;
-      LONG New;
-      LONG MoveToBack;
-      LONG MoveToFront;
-      LONG Redimension;
-      LONG Resize;
-      LONG Show;
-   } AC;
-   WORD TotalFields;
-};
-
 #define FIM_KEYBOARD 1
 #define FIM_DEVICE 2
 
