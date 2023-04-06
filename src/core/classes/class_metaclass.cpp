@@ -83,39 +83,36 @@ static const FieldDef CategoryTable[] = {
 };
 
 static const std::vector<Field> glMetaFieldsPreset = {
-   // If you adjust this table, remember to change TOTAL_METAFIELDS, adjust the index numbers and the byte offsets into the structure.
+   // If you adjust this table, remember to adjust the index numbers and the byte offsets into the structure.
    { 0, NULL, NULL,                writeval_default, "ClassVersion",    FID_ClassVersion, sizeof(BaseClass), 0, FDF_DOUBLE|FDF_RI },
-   { (MAXINT)"MethodArray", (ERROR (*)(APTR, APTR))GET_Methods, (APTR)SET_Methods, writeval_default, "Methods", FID_Methods,      sizeof(BaseClass)+8,              1, FDF_ARRAY|FD_STRUCT|FDF_RI },
-   { (MAXINT)"FieldArray", (ERROR (*)(APTR, APTR))GET_Fields, (APTR)SET_Fields, writeval_default, "Fields",     FID_Fields,       sizeof(BaseClass)+8+sizeof(APTR), 2, FDF_ARRAY|FD_STRUCT|FDF_RI },
-   { (MAXINT)"Field",      (ERROR (*)(APTR, APTR))GET_Dictionary, NULL, writeval_default, "Dictionary",         FID_Dictionary,   sizeof(BaseClass)+8+(sizeof(APTR)*2), 3, FDF_ARRAY|FD_STRUCT|FDF_R },
-   { 0, NULL, NULL,                writeval_default, "ClassName",       FID_ClassName,       sizeof(BaseClass)+8+(sizeof(APTR)*3),  4,  FDF_STRING|FDF_RI },
-   { 0, NULL, NULL,                writeval_default, "FileExtension",   FID_FileExtension,   sizeof(BaseClass)+8+(sizeof(APTR)*4),  5,  FDF_STRING|FDF_RI },
-   { 0, NULL, NULL,                writeval_default, "FileDescription", FID_FileDescription, sizeof(BaseClass)+8+(sizeof(APTR)*5),  6,  FDF_STRING|FDF_RI },
-   { 0, NULL, NULL,                writeval_default, "FileHeader",      FID_FileHeader,      sizeof(BaseClass)+8+(sizeof(APTR)*6),  7,  FDF_STRING|FDF_RI },
-   { 0, NULL, NULL,                writeval_default, "Path",            FID_Path,            sizeof(BaseClass)+8+(sizeof(APTR)*7),  8,  FDF_STRING|FDF_RI },
-   { 0, NULL, NULL,                writeval_default, "Size",            FID_Size,            sizeof(BaseClass)+8+(sizeof(APTR)*8),  9,  FDF_LONG|FDF_RI },
-   { 0, NULL, NULL,                writeval_default, "Flags",           FID_Flags,           sizeof(BaseClass)+12+(sizeof(APTR)*8), 10, FDF_LONG|FDF_RI },
-   { 0, NULL, NULL,                writeval_default, "SubClassID",      FID_SubClassID,      sizeof(BaseClass)+16+(sizeof(APTR)*8), 11, FDF_LONG|FDF_UNSIGNED|FDF_RI },
-   { 0, NULL, NULL,                writeval_default, "BaseClassID",     FID_BaseClassID,     sizeof(BaseClass)+20+(sizeof(APTR)*8), 12, FDF_LONG|FDF_UNSIGNED|FDF_RI },
-   { 0, NULL, NULL,                writeval_default, "OpenCount",       FID_OpenCount,       sizeof(BaseClass)+24+(sizeof(APTR)*8), 13, FDF_LONG|FDF_R },
-   { 0, (ERROR (*)(APTR, APTR))GET_TotalMethods, 0, writeval_default,   "TotalMethods", FID_TotalMethods, sizeof(BaseClass)+28+(sizeof(APTR)*8), 14, FDF_LONG|FDF_R },
-   { 0, NULL, NULL,                writeval_default, "TotalFields",     FID_TotalFields,     sizeof(BaseClass)+32+(sizeof(APTR)*8), 15, FDF_LONG|FDF_R },
-   { (MAXINT)&CategoryTable, NULL, NULL, writeval_default, "Category",  FID_Category,        sizeof(BaseClass)+36+(sizeof(APTR)*8), 16, FDF_LONG|FDF_LOOKUP|FDF_RI },
+   { (MAXINT)"FieldArray", (ERROR (*)(APTR, APTR))GET_Fields, (APTR)SET_Fields, writeval_default, "Fields", FID_Fields, sizeof(BaseClass)+8+sizeof(APTR), 1, FDF_ARRAY|FD_STRUCT|FDF_RI },
+   { (MAXINT)"Field",      (ERROR (*)(APTR, APTR))GET_Dictionary, NULL, writeval_default, "Dictionary", FID_Dictionary, sizeof(BaseClass)+8+(sizeof(APTR)*2), 2, FDF_ARRAY|FD_STRUCT|FDF_R },
+   { 0, NULL, NULL,                writeval_default, "ClassName",       FID_ClassName,       sizeof(BaseClass)+8+(sizeof(APTR)*3),  3,  FDF_STRING|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "FileExtension",   FID_FileExtension,   sizeof(BaseClass)+8+(sizeof(APTR)*4),  4,  FDF_STRING|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "FileDescription", FID_FileDescription, sizeof(BaseClass)+8+(sizeof(APTR)*5),  5,  FDF_STRING|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "FileHeader",      FID_FileHeader,      sizeof(BaseClass)+8+(sizeof(APTR)*6),  6,  FDF_STRING|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "Path",            FID_Path,            sizeof(BaseClass)+8+(sizeof(APTR)*7),  7,  FDF_STRING|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "Size",            FID_Size,            sizeof(BaseClass)+8+(sizeof(APTR)*8),  8,  FDF_LONG|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "Flags",           FID_Flags,           sizeof(BaseClass)+12+(sizeof(APTR)*8), 9, FDF_LONG|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "SubClassID",      FID_SubClassID,      sizeof(BaseClass)+16+(sizeof(APTR)*8), 10, FDF_LONG|FDF_UNSIGNED|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "BaseClassID",     FID_BaseClassID,     sizeof(BaseClass)+20+(sizeof(APTR)*8), 11, FDF_LONG|FDF_UNSIGNED|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "OpenCount",       FID_OpenCount,       sizeof(BaseClass)+24+(sizeof(APTR)*8), 12, FDF_LONG|FDF_R },
+   { (MAXINT)&CategoryTable, NULL, NULL, writeval_default, "Category",  FID_Category,        sizeof(BaseClass)+36+(sizeof(APTR)*8), 13, FDF_LONG|FDF_LOOKUP|FDF_RI },
    // Virtual fields
-   { 0, NULL, (APTR)SET_Actions,   writeval_default, "Actions",         FID_Actions,         sizeof(BaseClass), 17, FDF_POINTER|FDF_I },
-   { 0, (ERROR (*)(APTR, APTR))GET_ActionTable, 0,  writeval_default,   "ActionTable",       FID_ActionTable,     sizeof(BaseClass), 18, FDF_ARRAY|FDF_POINTER|FDF_R },
-   { 0, (ERROR (*)(APTR, APTR))GET_Location, 0,     writeval_default,   "Location",          FID_Location,        sizeof(BaseClass), 19, FDF_STRING|FDF_R },
-   { 0, (ERROR (*)(APTR, APTR))GET_ClassName, (APTR)SET_ClassName, writeval_default, "Name", FID_Name,            sizeof(BaseClass), 20, FDF_STRING|FDF_SYSTEM|FDF_RI },
-   { 0, (ERROR (*)(APTR, APTR))GET_Module, 0,       writeval_default,   "Module",            FID_Module,          sizeof(BaseClass), 21, FDF_STRING|FDF_R },
-   { 0, (ERROR (*)(APTR, APTR))GET_PrivateObjects, 0, writeval_default, "PrivateObjects",    FID_PrivateObjects,  sizeof(BaseClass), 22, FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R },
-   { (MAXINT)"FieldArray", (ERROR (*)(APTR, APTR))GET_SubFields, 0, writeval_default, "SubFields", FID_SubFields, sizeof(BaseClass), 23, FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R },
-   { ID_ROOTMODULE, (ERROR (*)(APTR, APTR))GET_RootModule, 0, writeval_default, "RootModule", FID_RootModule,     sizeof(BaseClass), 24, FDF_OBJECT|FDF_R },
+   { (MAXINT)"MethodArray", (ERROR (*)(APTR, APTR))GET_Methods, (APTR)SET_Methods, writeval_default, "Methods", FID_Methods, sizeof(BaseClass), 14, FDF_ARRAY|FD_STRUCT|FDF_RI },
+   { 0, NULL, (APTR)SET_Actions,                    writeval_default,   "Actions",           FID_Actions,         sizeof(BaseClass), 15, FDF_POINTER|FDF_I },
+   { 0, (ERROR (*)(APTR, APTR))GET_ActionTable, 0,  writeval_default,   "ActionTable",       FID_ActionTable,     sizeof(BaseClass), 16, FDF_ARRAY|FDF_POINTER|FDF_R },
+   { 0, (ERROR (*)(APTR, APTR))GET_Location, 0,     writeval_default,   "Location",          FID_Location,        sizeof(BaseClass), 17, FDF_STRING|FDF_R },
+   { 0, (ERROR (*)(APTR, APTR))GET_ClassName, (APTR)SET_ClassName, writeval_default, "Name", FID_Name,            sizeof(BaseClass), 18, FDF_STRING|FDF_SYSTEM|FDF_RI },
+   { 0, (ERROR (*)(APTR, APTR))GET_Module, 0,       writeval_default,   "Module",            FID_Module,          sizeof(BaseClass), 19, FDF_STRING|FDF_R },
+   { 0, (ERROR (*)(APTR, APTR))GET_PrivateObjects, 0, writeval_default, "PrivateObjects",    FID_PrivateObjects,  sizeof(BaseClass), 20, FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R },
+   { (MAXINT)"FieldArray", (ERROR (*)(APTR, APTR))GET_SubFields, 0, writeval_default, "SubFields", FID_SubFields, sizeof(BaseClass), 21, FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R },
+   { ID_ROOTMODULE, (ERROR (*)(APTR, APTR))GET_RootModule, 0, writeval_default, "RootModule", FID_RootModule,     sizeof(BaseClass), 22, FDF_OBJECT|FDF_R },
    { 0, 0, 0, NULL, "", 0, 0, 0,  0 }
 };
 
 static const FieldArray glMetaFields[] = {
    { "ClassVersion",    FDF_DOUBLE|FDF_RI },
-   { "Methods",         FDF_ARRAY|FD_STRUCT|FDF_RI, GET_Methods, SET_Methods, "MethodArray" },
    { "Fields",          FDF_ARRAY|FD_STRUCT|FDF_RI, GET_Fields, SET_Fields, "FieldArray" },
    { "Dictionary",      FDF_ARRAY|FD_STRUCT|FDF_R, GET_Dictionary, NULL, "Field" },
    { "ClassName",       FDF_STRING|FDF_RI },
@@ -128,10 +125,9 @@ static const FieldArray glMetaFields[] = {
    { "SubClassID",      FDF_LONG|FDF_UNSIGNED|FDF_RI },
    { "BaseClassID",     FDF_LONG|FDF_UNSIGNED|FDF_RI },
    { "OpenCount",       FDF_LONG|FDF_R },
-   { "TotalMethods",    FDF_LONG|FDF_R },
-   { "TotalFields",     FDF_LONG|FDF_R },
    { "Category",        FDF_LONG|FDF_LOOKUP|FDF_RI, NULL, NULL, &CategoryTable },
    // Virtual fields
+   { "Methods",         FDF_ARRAY|FD_STRUCT|FDF_RI, GET_Methods, SET_Methods, "MethodArray" },
    { "Actions",         FDF_POINTER|FDF_I },
    { "ActionTable",     FDF_ARRAY|FDF_POINTER|FDF_R, GET_ActionTable },
    { "Location",        FDF_STRING|FDF_R },
@@ -149,12 +145,6 @@ extern "C" ERROR CLASS_Init(extMetaClass *, APTR);
 extern "C" ERROR CLASS_NewObject(extMetaClass *, APTR);
 
 FDEF argsFindField[] = { { "ID", FD_LONG }, { "Field:Field", FD_RESULT|FD_PTR|FD_STRUCT }, { "Source", FD_RESULT|FD_OBJECTPTR }, { 0, 0 } };
-
-static MethodArray glMetaMethods[TOTAL_METAMETHODS+2] = {
-   { 0, 0, 0, 0, 0 },
-   { -1, (APTR)CLASS_FindField, "FindField", argsFindField, sizeof(struct mcFindField) },
-   { 0, 0, 0, 0, 0 }
-};
 
 extMetaClass glMetaClass;
 
@@ -178,14 +168,13 @@ void init_metaclass(void)
    glMetaClass.BaseClass::Flags   = NF::INITIALISED;
 
    glMetaClass.ClassVersion       = 1;
-   glMetaClass.Methods            = glMetaMethods;
+   glMetaClass.Methods.resize(2);
+   glMetaClass.Methods[1]         = { -1, (APTR)CLASS_FindField, "FindField", argsFindField, sizeof(struct mcFindField) };
    glMetaClass.Fields             = glMetaFields;
    glMetaClass.ClassName          = "MetaClass";
    glMetaClass.Size               = sizeof(extMetaClass);
    glMetaClass.SubClassID         = ID_METACLASS;
    glMetaClass.BaseClassID        = ID_METACLASS;
-   glMetaClass.TotalMethods       = TOTAL_METAMETHODS;
-   glMetaClass.TotalFields        = TOTAL_METAFIELDS;
    glMetaClass.Category           = CCF_SYSTEM;
    glMetaClass.prvDictionary      = glMetaFieldsPreset;
    glMetaClass.OriginalFieldTotal = ARRAYSIZE(glMetaFields)-1;
@@ -240,7 +229,6 @@ ERROR CLASS_FindField(extMetaClass *Class, struct mcFindField *Args)
 ERROR CLASS_Free(extMetaClass *Self, APTR Void)
 {
    if (Self->SubClassID) glClassMap.erase(Self->SubClassID);
-   if (Self->Methods)  { FreeResource(Self->Methods);  Self->Methods  = NULL; }
    if (Self->Location) { FreeResource(Self->Location); Self->Location = NULL; }
    Self->~extMetaClass();
    return ERR_Okay;
@@ -306,30 +294,16 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
          // Note: Sub-classes can define their own custom methods independent of the base class, but care must be taken
          // to use a large enough cushion to prevent an overlap of method ID's.
 
-         if ((Self->Methods) and (base->Methods)) {
-            if (Self->TotalMethods < base->TotalMethods) { // Expand the method table to match the base class.
-               if (!ReallocMemory(Self->Methods, sizeof(MethodArray) * (base->TotalMethods+1), (APTR *)&Self->Methods, NULL)) {
-                  Self->TotalMethods = base->TotalMethods;
-               }
-               else return log.warning(ERR_ReallocMemory);
-            }
+         if (Self->Methods.size() < base->Methods.size()) Self->Methods.resize(base->Methods.size());
 
-            // Copy over method information from the base-class (the sub-class' function pointers will
-            // not be modified).
+         // Copy method info from the base-class, but leave the sub-class' function pointers if defined.
 
-            for (LONG i=0; i < base->TotalMethods+1; i++) {
-               Self->Methods[i].MethodID = base->Methods[i].MethodID;
-               Self->Methods[i].Name = base->Methods[i].Name;
-               Self->Methods[i].Args = base->Methods[i].Args;
-               Self->Methods[i].Size = base->Methods[i].Size;
-            }
-         }
-         else if ((!Self->Methods) and (base->Methods)) { // Copy methods from the base-class
-            if (!AllocMemory(sizeof(MethodArray) * (base->TotalMethods + 1), MEM_DATA, (APTR *)&Self->Methods, NULL)) {
-               CopyMemory(base->Methods, Self->Methods, sizeof(MethodArray) * (base->TotalMethods + 1));
-               Self->TotalMethods = base->TotalMethods;
-            }
-            else return ERR_AllocMemory;
+         for (unsigned i=0; i < base->Methods.size(); i++) {
+            Self->Methods[i].MethodID = base->Methods[i].MethodID;
+            Self->Methods[i].Name = base->Methods[i].Name;
+            Self->Methods[i].Args = base->Methods[i].Args;
+            Self->Methods[i].Size = base->Methods[i].Size;
+            if (!Self->Methods[i].Routine) Self->Methods[i].Routine = base->Methods[i].Routine;
          }
       }
       else {
@@ -645,23 +619,18 @@ static ERROR GET_Location(extMetaClass *Self, CSTRING *Value)
 -FIELD-
 Methods: Set this field to define the methods supported by the class.
 
-If a class design will include support for methods, define them by creating a method list and then
-setting this field with the specifications before the class object is initialised.  A method list provides
-information on each method's ID, name, arguments, and structure size. When you set the Methods field with your
-method list, the information will be processed into a jump table that is used for making method calls.  After this
-process, your method list will serve no further purpose.
+If a class design will include support for methods, create a MethodArray and set this field prior to initialisation.
+A method array provides information on each method's ID, name, arguments, and structure size.
 
-The Class Development Guide has a section devoted to describing how the method list must be set up.  Please read
-the guide for more information.
-
-Never use action ID's in a Methods array - please use the #Actions field for this.
+The Class Development Guide has a section devoted to method configuration.  Please read the guide for further
+information.
 
 *********************************************************************************************************************/
 
 static ERROR GET_Methods(extMetaClass *Self, const MethodArray **Methods, LONG *Elements)
 {
-   *Methods = Self->Methods;
-   *Elements = Self->TotalMethods;
+   *Methods = Self->Methods.data();
+   *Elements = Self->Methods.size();
    return ERR_Okay;
 }
 
@@ -669,44 +638,31 @@ static ERROR SET_Methods(extMetaClass *Self, const MethodArray *Methods, LONG El
 {
    pf::Log log;
 
-   if (!Methods) return ERR_Failed;
+   Self->Methods.clear();
+   if (!Methods) return ERR_Okay;
 
-   if (Self->Methods) { FreeResource(Self->Methods); Self->Methods = NULL; }
+   // Search for the method with the lowest ID number
 
-   // Search for the method with the lowest rating ID number
-
-   LONG j = 0;
+   LONG lowest = 0;
    for (LONG i=0; Methods[i].MethodID; i++) {
-      if (Methods[i].MethodID < j) j = Methods[i].MethodID;
+      if (Methods[i].MethodID < lowest) lowest = Methods[i].MethodID;
    }
 
    // Generate the method array.  Note that the first entry that we put in the array will
    // be NULL because methods start at -1, not zero.
 
-   if (j < 0) {
-      log.msg("Detected %d methods in class %s.", -j, Self->ClassName ? Self->ClassName : (STRING)"Unnamed");
-      j = (-j) + 2;
-      if (!AllocMemory(sizeof(MethodArray) * j, MEM_DATA, (APTR *)&Self->Methods, NULL)) {
-         for (LONG i=0; Methods[i].MethodID; i++) {
-            if (Methods[i].MethodID >= 0) {
-               log.warning("Invalid method ID (%d) detected in the method array.", Methods[i].MethodID);
-            }
-            else {
-               Self->Methods[-Methods[i].MethodID].MethodID = Methods[i].MethodID;
-               Self->Methods[-Methods[i].MethodID].Routine  = Methods[i].Routine;
-               Self->Methods[-Methods[i].MethodID].Size     = Methods[i].Size;
-               Self->Methods[-Methods[i].MethodID].Name     = Methods[i].Name;
-               Self->Methods[-Methods[i].MethodID].Args     = Methods[i].Args;
-            }
-         }
-
-         // Store the total number of methods
-
-         Self->TotalMethods = j-1;
-
-         // NOTE: If this is a sub-class, the initialisation process will add the base-class methods to the list.
+   if (lowest < 0) {
+      log.msg("Detected %d methods in class %s.", -lowest, Self->ClassName ? Self->ClassName : (STRING)"Unnamed");
+      Self->Methods.resize((-lowest) + 1);
+      for (unsigned i=0; Methods[i].MethodID; i++) {
+         Self->Methods[-Methods[i].MethodID].MethodID = Methods[i].MethodID;
+         Self->Methods[-Methods[i].MethodID].Routine  = Methods[i].Routine;
+         Self->Methods[-Methods[i].MethodID].Size     = Methods[i].Size;
+         Self->Methods[-Methods[i].MethodID].Name     = Methods[i].Name;
+         Self->Methods[-Methods[i].MethodID].Args     = Methods[i].Args;
       }
-      else return ERR_AllocMemory;
+
+      // NOTE: If this is a sub-class, the initialisation process will add the base-class methods to the list.
    }
 
    return ERR_Okay;
@@ -827,10 +783,11 @@ SubClassID: Specifies the sub-class ID of a class object.
 The SubClassID field is used to indicate that a class is derived from a base class.  If you are creating a sub-class
 then set the SubClassID field to the hash value of the class' name (use the ~StrHash() function).
 
-This field must not be set when creating a base class.
+This field must not be defined when creating a base class.
 
 To determine whether or not a class is a sub-class or a base class, compare the BaseClassID and SubClassID fields.  If
 they are identical then it is a base class, otherwise it is a sub-class.
+-END-
 
 *********************************************************************************************************************/
 
@@ -979,8 +936,6 @@ static ERROR field_setup(extMetaClass *Class)
          .Flags     = FDF_LONG|FDF_UNSIGNED|FDF_R|FDF_SYSTEM
       });
    }
-
-   Class->TotalFields = Class->prvDictionary.size();
 
    if (glLogLevel >= 2) register_fields(Class);
 

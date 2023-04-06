@@ -1714,6 +1714,9 @@ struct MethodArray {
    CSTRING Name;                         // Name of the method
    const struct FunctionField * Args;    // List of parameters accepted by the method
    LONG    Size;                         // Total byte-size of all accepted parameters when they are assembled as a C structure.
+   MethodArray() : MethodID(0), Routine(NULL), Name(NULL) { }
+   MethodArray(LONG pID, APTR pRoutine, CSTRING pName, const struct FunctionField *pArgs, LONG pSize) :
+      MethodID(pID), Routine(pRoutine), Name(pName), Args(pArgs), Size(pSize) { }
 };
 
 struct ActionTable {
@@ -2969,7 +2972,6 @@ class objMetaClass : public BaseClass {
    using create = pf::Create<objMetaClass>;
 
    DOUBLE  ClassVersion;                // The version number of the class.
-   struct MethodArray * Methods;        // Set this field to define the methods supported by the class.
    const struct FieldArray * Fields;    // Points to a field array that describes the class' object structure.
    struct Field * Dictionary;           // Returns a field lookup table sorted by field IDs.
    CSTRING ClassName;                   // The name of the represented class.
@@ -2982,8 +2984,6 @@ class objMetaClass : public BaseClass {
    CLASSID SubClassID;                  // Specifies the sub-class ID of a class object.
    CLASSID BaseClassID;                 // Specifies the base class ID of a class object.
    LONG    OpenCount;                   // The total number of active objects that are linked back to the MetaClass.
-   LONG    TotalMethods;                // The total number of methods supported by a class.
-   LONG    TotalFields;                 // The total number of fields defined by a class.
    LONG    Category;                    // The system category that a class belongs to.
 
    // Customised field setting
@@ -2994,15 +2994,9 @@ class objMetaClass : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setMethods(const struct MethodArray * Value, LONG Elements) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[18];
-      return field->WriteValue(target, field, 0x00001510, Value, Elements);
-   }
-
    inline ERROR setFields(const struct FieldArray * Value, LONG Elements) {
       auto target = this;
-      auto field = &this->Class->Dictionary[25];
+      auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, 0x00001510, Value, Elements);
    }
 
@@ -3064,6 +3058,12 @@ class objMetaClass : public BaseClass {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Category = Value;
       return ERR_Okay;
+   }
+
+   inline ERROR setMethods(const APTR Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(target, field, 0x00001510, Value, Elements);
    }
 
    inline ERROR setActions(APTR Value) {
