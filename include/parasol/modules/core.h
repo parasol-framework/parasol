@@ -1708,14 +1708,14 @@ struct ActionArray {
   template <class T> ActionArray(LONG pID, T pRoutine) : ActionCode(pID), Routine((APTR)pRoutine) { }
 };
 
-struct MethodArray {
+struct MethodEntry {
    LONG    MethodID;                     // Unique method identifier
    APTR    Routine;                      // The method entry point, defined as ERROR (*Routine)(OBJECTPTR, APTR);
    CSTRING Name;                         // Name of the method
    const struct FunctionField * Args;    // List of parameters accepted by the method
    LONG    Size;                         // Total byte-size of all accepted parameters when they are assembled as a C structure.
-   MethodArray() : MethodID(0), Routine(NULL), Name(NULL) { }
-   MethodArray(LONG pID, APTR pRoutine, CSTRING pName, const struct FunctionField *pArgs, LONG pSize) :
+   MethodEntry() : MethodID(0), Routine(NULL), Name(NULL) { }
+   MethodEntry(LONG pID, APTR pRoutine, CSTRING pName, const struct FunctionField *pArgs, LONG pSize) :
       MethodID(pID), Routine(pRoutine), Name(pName), Args(pArgs), Size(pSize) { }
 };
 
@@ -2996,7 +2996,7 @@ class objMetaClass : public BaseClass {
 
    inline ERROR setFields(const struct FieldArray * Value, LONG Elements) {
       auto target = this;
-      auto field = &this->Class->Dictionary[22];
+      auto field = &this->Class->Dictionary[23];
       return field->WriteValue(target, field, 0x00001510, Value, Elements);
    }
 

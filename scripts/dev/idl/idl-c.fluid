@@ -1064,7 +1064,7 @@ function class(Name, Options, Blueprint, Private, Custom)
          end
          mdef = mdef .. '\n'
 
-         mdef = mdef .. 'static const struct MethodArray cl' .. Name .. 'Methods[] = {\n'
+         mdef = mdef .. 'static const struct MethodEntry cl' .. Name .. 'Methods[] = {\n'
          for k, m in ipairs(class.methods) do
             local structSize
             if not nz(m.params) then

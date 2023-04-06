@@ -374,7 +374,7 @@ static const FunctionField argsNext[] = { { "Pos", FD_LONG|FD_RESULT }, { NULL, 
 static const FunctionField argsPrev[] = { { "Pos", FD_LONG|FD_RESULT }, { NULL, 0 } };
 static const FunctionField argsFind[] = { { "Pos", FD_LONG|FD_RESULT }, { NULL, 0 } };
 
-static const MethodArray clMethods[] = {
+static const MethodEntry clMethods[] = {
    { MT_SsNext, (APTR)SEARCH_Next, "Next", argsNext, sizeof(struct ssNext) },
    { MT_SsPrev, (APTR)SEARCH_Prev, "Prev", argsPrev, sizeof(struct ssPrev) },
    { MT_SsFind, (APTR)SEARCH_Find, "Find", argsFind, sizeof(struct ssFind) },

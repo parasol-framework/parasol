@@ -124,7 +124,7 @@
       <access read="G">Get</access>
       <type>struct Field *</type>
       <description>
-<p>Following initialisation of the MetaClass, the Dictionary can be read to retrieve a fast field lookup table that is sorted by FieldID.  The client should typically use the binary search technique to find fields by their ID.</p>
+<p>Following initialisation of the MetaClass, the Dictionary can be read to retrieve the internal field lookup table. For base-classes, the client can use the binary search technique to find fields by their ID.  For sub-classes, use linear scanning.</p>
       </description>
     </field>
 
@@ -200,7 +200,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRUCT []</type>
       <description>
-<p>If a class design will include support for methods, create a MethodArray and set this field prior to initialisation. A method array provides information on each method's ID, name, arguments, and structure size.</p>
+<p>If a class design will include support for methods, create a MethodEntry and set this field prior to initialisation. A method array provides information on each method's ID, name, arguments, and structure size.</p>
 <p>The Class Development Guide has a section devoted to method configuration.  Please read the guide for further information.</p>
       </description>
     </field>

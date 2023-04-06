@@ -1075,13 +1075,7 @@ ERROR InitObject(OBJECTPTR Object)
 {
    pf::Log log("Init");
 
-   extMetaClass *cl;
-   if (!(cl = Object->ExtClass)) return log.warning(ERR_LostClass);
-
-   if (Object->ClassID != cl->BaseClassID) {
-      log.warning("Cannot initialise object #%d - the Object.ClassID ($%.8x) does not match the Class.BaseClassID ($%.8x)", Object->UID, Object->ClassID, cl->BaseClassID);
-      return ERR_ObjectCorrupt;
-   }
+   auto cl = Object->ExtClass;
 
    if (Object->initialised()) {  // Initialising twice does not cause an error, but send a warning and return
       log.warning(ERR_DoubleInit);
@@ -1194,9 +1188,9 @@ ERROR InitObject(OBJECTPTR Object)
       log.warning("ERR_UseSubClass was used but no suitable sub-class was registered.");
    }
    else if ((error IS ERR_NoSupport) and (!GetField(Object, FID_Path|TSTR, &path)) and (path)) {
-      CLASSID classid;
-      if (!IdentifyFile(path, &classid, &Object->SubID)) {
-         if ((classid IS Object->ClassID) and (Object->SubID)) {
+      CLASSID class_id;
+      if (!IdentifyFile(path, &class_id, &Object->SubID)) {
+         if ((class_id IS Object->ClassID) and (Object->SubID)) {
             log.msg("Searching for subclass $%.8x", Object->SubID);
             if ((Object->ExtClass = (extMetaClass *)FindClass(Object->SubID))) {
                if (Object->ExtClass->ActionTable[AC_Init].PerformAction) {
@@ -1216,7 +1210,7 @@ ERROR InitObject(OBJECTPTR Object)
             else log.warning("Failed to load module for class #%d.", Object->SubID);
          }
       }
-      else log.warning("File '%s' does not belong to class '%s', got $%.8x.", path, Object->className(), classid);
+      else log.warning("File '%s' does not belong to class '%s', got $%.8x.", path, Object->className(), class_id);
 
       Object->Class = cl;  // Put back the original to retain object integrity
       Object->SubID = cl->SubClassID;

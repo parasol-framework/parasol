@@ -115,10 +115,10 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure
    }
 #endif
    if (!NewObject(subclass ? subclass : class_id, &glScript)) {
-      glScript->set(FID_Path, TargetFile);
-      glScript->set(FID_Target, glTarget ? glTarget->UID : CurrentTaskID());
+      glScript->setTarget(glTarget ? glTarget->UID : CurrentTaskID());
+      glScript->setPath(TargetFile);
 
-      if (!Procedure.empty()) glScript->set(FID_Procedure, Procedure);
+      if (!Procedure.empty()) glScript->setProcedure(Procedure);
 
       if (glArgsIndex) {
          pf::vector<std::string> &args = *glArgs;

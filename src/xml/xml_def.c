@@ -35,7 +35,7 @@ FDEF maInsertContent[] = { { "Index", FD_LONG }, { "Where", FD_LONG }, { "Conten
 FDEF maRemoveXPath[] = { { "XPath", FD_STR }, { "Limit", FD_LONG }, { 0, 0 } };
 FDEF maGetTag[] = { { "Index", FD_LONG }, { "XMLTag:Result", FD_PTR|FD_STRUCT|FD_RESULT }, { 0, 0 } };
 
-static const struct MethodArray clXMLMethods[] = {
+static const struct MethodEntry clXMLMethods[] = {
    { -1, (APTR)XML_SetAttrib, "SetAttrib", maSetAttrib, sizeof(struct xmlSetAttrib) },
    { -2, (APTR)XML_GetString, "GetString", maGetString, sizeof(struct xmlGetString) },
    { -3, (APTR)XML_InsertXML, "InsertXML", maInsertXML, sizeof(struct xmlInsertXML) },

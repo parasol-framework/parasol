@@ -6,7 +6,7 @@ FDEF maSetCommand[] = { { "Index", FD_LONG }, { "PathCommand:Command", FD_BUFFER
 FDEF maGetCommand[] = { { "Index", FD_LONG }, { "PathCommand:Command", FD_PTR|FD_STRUCT|FD_RESULT }, { 0, 0 } };
 FDEF maSetCommandList[] = { { "Commands", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 
-static const struct MethodArray clVectorPathMethods[] = {
+static const struct MethodEntry clVectorPathMethods[] = {
    { -30, (APTR)VECTORPATH_AddCommand, "AddCommand", maAddCommand, sizeof(struct vpAddCommand) },
    { -31, (APTR)VECTORPATH_RemoveCommand, "RemoveCommand", maRemoveCommand, sizeof(struct vpRemoveCommand) },
    { -32, (APTR)VECTORPATH_SetCommand, "SetCommand", maSetCommand, sizeof(struct vpSetCommand) },

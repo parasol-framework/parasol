@@ -28,7 +28,7 @@ FDEF maReadLine[] = { { "Result", FD_STR|FD_RESULT }, { 0, 0 } };
 FDEF maNext[] = { { "File", FD_OBJECTPTR|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 FDEF maWatch[] = { { "Callback", FD_FUNCTIONPTR }, { "Custom", FD_LARGE }, { "Flags", FD_LONG }, { 0, 0 } };
 
-static const struct MethodArray clFileMethods[] = {
+static const struct MethodEntry clFileMethods[] = {
    { -1, (APTR)FILE_StartStream, "StartStream", maStartStream, sizeof(struct flStartStream) },
    { -2, (APTR)FILE_StopStream, "StopStream", 0, 0 },
    { -3, (APTR)FILE_Delete, "Delete", maDelete, sizeof(struct flDelete) },

@@ -24,11 +24,11 @@ static THREADVAR char strGetField[400]; // Buffer for retrieving variable field 
 Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target)
 {
    auto mc = Object->ExtClass;
-   auto &field = mc->prvDictionary;
+   auto &field = mc->FieldLookup;
    *Target = Object;
 
    unsigned floor = 0;
-   auto ceiling = field.size();
+   unsigned ceiling = mc->BaseCeiling;
    while (floor < ceiling) {
       auto i = (floor + ceiling)>>1;
       if (field[i].FieldID < FieldID) floor = i + 1;
@@ -39,27 +39,45 @@ Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target)
       }
    }
 
-   if (mc->Flags & CLF_PROMOTE_INTEGRAL) {
-      for (LONG i=0; mc->Integral[i] != 0xff; i++) {
-         OBJECTPTR child;
-         if ((!copy_field_to_buffer(Object, &mc->prvDictionary[mc->Integral[i]], FT_POINTER, &child, NULL, NULL)) and (child)) {
-            auto &field = child->ExtClass->prvDictionary;
-            unsigned floor = 0;
-            auto ceiling = field.size();
-            while (floor < ceiling) {
-               auto j = (floor + ceiling)>>1;
-               if (field[j].FieldID < FieldID) floor = j + 1;
-               else if (field[j].FieldID > FieldID) ceiling = j;
-               else {
-                  while ((j > 0) and (field[j-1].FieldID IS FieldID)) j--;
-                  *Target = child;
-                  return &field[j];
-               }
+   // Sub-class fields (located in the upper register of FieldLookup)
+
+   if (mc->BaseCeiling < mc->FieldLookup.size()) {
+      unsigned floor = mc->BaseCeiling;
+      auto ceiling = mc->FieldLookup.size();
+      while (floor < ceiling) {
+         auto i = (floor + ceiling)>>1;
+         if (field[i].FieldID < FieldID) floor = i + 1;
+         else if (field[i].FieldID > FieldID) ceiling = i;
+         else {
+            while ((i > 0) and (field[i-1].FieldID IS FieldID)) i--;
+            return &field[i];
+         }
+      }
+   }
+
+   // Integral field support.  NOTE: This is fallback mechanism.  The client can optimise their code by
+   // directly retrieving a pointer to the integral object and then reading the field value from that.
+
+   for (unsigned i=0; mc->Integral[i] != 0xff; i++) {
+      OBJECTPTR child;
+      if ((!copy_field_to_buffer(Object, &mc->FieldLookup[mc->Integral[i]], FT_POINTER, &child, NULL, NULL)) and (child)) {
+         auto &field = child->ExtClass->FieldLookup;
+         unsigned floor = 0;
+         auto ceiling = child->ExtClass->BaseCeiling;
+         while (floor < ceiling) {
+            auto j = (floor + ceiling)>>1;
+            if (field[j].FieldID < FieldID) floor = j + 1;
+            else if (field[j].FieldID > FieldID) ceiling = j;
+            else {
+               while ((j > 0) and (field[j-1].FieldID IS FieldID)) j--;
+               *Target = child;
+               return &field[j];
             }
          }
       }
    }
-   return 0;
+
+   return NULL;
 }
 
 /*********************************************************************************************************************
@@ -575,7 +593,7 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
 
    if (Field->GetValue) {
       ObjectContext ctx(Object, 0, Field);
-      ERROR (*get_field)(APTR, APTR, LONG *) = (ERROR (*)(APTR, APTR, LONG *))Field->GetValue;
+      auto get_field = (ERROR (*)(APTR, APTR, LONG *))Field->GetValue;
       ERROR error = get_field(Object, value, &array_size);
       if (error) return error;
       data = value;

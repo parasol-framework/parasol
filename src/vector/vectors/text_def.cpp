@@ -2,7 +2,7 @@
 
 FDEF maDeleteLine[] = { { "Line", FD_LONG }, { 0, 0 } };
 
-static const struct MethodArray clVectorTextMethods[] = {
+static const struct MethodEntry clVectorTextMethods[] = {
    { -30, (APTR)VECTORTEXT_DeleteLine, "DeleteLine", maDeleteLine, sizeof(struct vtDeleteLine) },
    { 0, 0, 0, 0, 0 }
 };

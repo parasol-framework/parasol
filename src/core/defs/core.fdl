@@ -974,7 +974,7 @@ struct FieldValue {
   template <class T> ActionArray(LONG pID, T pRoutine) : ActionCode(pID), Routine((APTR)pRoutine) { }
   ]])
 
-  struct("MethodArray", { restrict="c" }, [[
+  struct("MethodEntry", { restrict="c" }, [[
     int  MethodID   # Unique method identifier
     ptr  Routine    # The method entry point, defined as ERROR (*Routine)(OBJECTPTR, APTR);
     cstr Name       # Name of the method
@@ -982,8 +982,8 @@ struct FieldValue {
     int  Size       # Total byte-size of all accepted parameters when they are assembled as a C structure.
   ]],
   [[
-   MethodArray() : MethodID(0), Routine(NULL), Name(NULL) { }
-   MethodArray(LONG pID, APTR pRoutine, CSTRING pName, const struct FunctionField *pArgs, LONG pSize) :
+   MethodEntry() : MethodID(0), Routine(NULL), Name(NULL) { }
+   MethodEntry(LONG pID, APTR pRoutine, CSTRING pName, const struct FunctionField *pArgs, LONG pSize) :
       MethodID(pID), Routine(pRoutine), Name(pName), Args(pArgs), Size(pSize) { }
   ]])
 

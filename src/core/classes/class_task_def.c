@@ -4,7 +4,7 @@ FDEF maAddArgument[] = { { "Argument", FD_STR }, { 0, 0 } };
 FDEF maGetEnv[] = { { "Name", FD_STR }, { "Value", FD_STR|FD_RESULT }, { 0, 0 } };
 FDEF maSetEnv[] = { { "Name", FD_STR }, { "Value", FD_STR }, { 0, 0 } };
 
-static const struct MethodArray clTaskMethods[] = {
+static const struct MethodEntry clTaskMethods[] = {
    { -1, (APTR)TASK_Expunge, "Expunge", 0, 0 },
    { -2, (APTR)TASK_AddArgument, "AddArgument", maAddArgument, sizeof(struct taskAddArgument) },
    { -3, (APTR)TASK_Quit, "Quit", 0, 0 },

@@ -64,7 +64,7 @@ static STRUCTS glStructures = {
    { "InputEvent",          sizeof(InputEvent) },
    { "MemInfo",             sizeof(MemInfo) },
    { "Message",             sizeof(Message) },
-   { "MethodArray",         sizeof(MethodArray) },
+   { "MethodEntry",         sizeof(MethodEntry) },
    { "ModHeader",           sizeof(ModHeader) },
    { "MsgHandler",          sizeof(MsgHandler) },
    { "ObjectSignal",        sizeof(ObjectSignal) },
@@ -832,7 +832,7 @@ static void free_module(MODHANDLE handle)
 
 static const FunctionField argsResolveSymbol[] = { { "Name", FD_STR }, { "Address", FD_PTR|FD_RESULT }, { NULL, 0 } };
 
-static const MethodArray glModuleMethods[] = {
+static const MethodEntry glModuleMethods[] = {
    { MT_ModResolveSymbol, (APTR)MODULE_ResolveSymbol, "ResolveSymbol", argsResolveSymbol, sizeof(struct modResolveSymbol) },
    { 0, NULL, NULL, NULL, 0 }
 };

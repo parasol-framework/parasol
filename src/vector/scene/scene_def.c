@@ -32,7 +32,7 @@ FDEF maAddDef[] = { { "Name", FD_STR }, { "Def", FD_OBJECTPTR }, { 0, 0 } };
 FDEF maSearchByID[] = { { "ID", FD_LONG }, { "Result", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
 FDEF maFindDef[] = { { "Name", FD_STR }, { "Def", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
 
-static const struct MethodArray clVectorSceneMethods[] = {
+static const struct MethodEntry clVectorSceneMethods[] = {
    { -1, (APTR)VECTORSCENE_AddDef, "AddDef", maAddDef, sizeof(struct scAddDef) },
    { -2, (APTR)VECTORSCENE_SearchByID, "SearchByID", maSearchByID, sizeof(struct scSearchByID) },
    { -3, (APTR)VECTORSCENE_FindDef, "FindDef", maFindDef, sizeof(struct scFindDef) },

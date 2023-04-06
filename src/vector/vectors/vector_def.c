@@ -69,7 +69,7 @@ FDEF maSubscribeFeedback[] = { { "Mask", FD_LONG }, { "Callback", FD_FUNCTIONPTR
 FDEF maNewMatrix[] = { { "VectorMatrix:Transform", FD_PTR|FD_STRUCT|FD_RESOURCE|FD_RESULT }, { 0, 0 } };
 FDEF maFreeMatrix[] = { { "VectorMatrix:Matrix", FD_PTR|FD_STRUCT }, { 0, 0 } };
 
-static const struct MethodArray clVectorMethods[] = {
+static const struct MethodEntry clVectorMethods[] = {
    { -1, (APTR)VECTOR_Push, "Push", maPush, sizeof(struct vecPush) },
    { -2, (APTR)VECTOR_TracePath, "TracePath", maTracePath, sizeof(struct vecTracePath) },
    { -3, (APTR)VECTOR_GetBoundary, "GetBoundary", maGetBoundary, sizeof(struct vecGetBoundary) },

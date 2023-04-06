@@ -215,7 +215,7 @@ static int thread_method(lua_State *Lua)
    if (auto object = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
       if (auto method = luaL_checkstring(Lua, 2)) {
          objMetaClass *mc;
-         MethodArray *table;
+         MethodEntry *table;
          LONG total_methods, i;
 
          if (!(mc = FindClass(object->ClassID))) {

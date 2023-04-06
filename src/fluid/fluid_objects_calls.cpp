@@ -76,7 +76,7 @@ static int object_call(lua_State *Lua)
       }
    }
    else { // Method
-      auto methods = (MethodArray *)lua_touserdata(Lua, lua_upvalueindex(3));
+      auto methods = (MethodEntry *)lua_touserdata(Lua, lua_upvalueindex(3));
       action_name = methods->Name;
 
       if ((methods->Args) and (methods->Size)) {

@@ -20,7 +20,7 @@ FDEF maAddStream[] = { { "Callback", FD_FUNCTION }, { "OnStop", FD_FUNCTION }, {
 FDEF maBeep[] = { { "Pitch", FD_LONG }, { "Duration", FD_LONG }, { "Volume", FD_LONG }, { 0, 0 } };
 FDEF maSetVolume[] = { { "Index", FD_LONG }, { "Name", FD_STR }, { "Flags", FD_LONG }, { "Channel", FD_LONG }, { "Volume", FD_DOUBLE }, { 0, 0 } };
 
-static const struct MethodArray clAudioMethods[] = {
+static const struct MethodEntry clAudioMethods[] = {
    { -1, (APTR)AUDIO_OpenChannels, "OpenChannels", maOpenChannels, sizeof(struct sndOpenChannels) },
    { -2, (APTR)AUDIO_CloseChannels, "CloseChannels", maCloseChannels, sizeof(struct sndCloseChannels) },
    { -3, (APTR)AUDIO_AddSample, "AddSample", maAddSample, sizeof(struct sndAddSample) },

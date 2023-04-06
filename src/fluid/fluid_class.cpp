@@ -81,7 +81,7 @@ static const ActionArray clActions[] = {
 static ERROR FLUID_GetProcedureID(objScript *, struct scGetProcedureID *);
 static ERROR FLUID_DerefProcedure(objScript *, struct scDerefProcedure *);
 
-static const MethodArray clMethods[] = {
+static const MethodEntry clMethods[] = {
    { MT_ScGetProcedureID, (APTR)FLUID_GetProcedureID, "GetProcedureID", NULL, 0 },
    { MT_ScDerefProcedure, (APTR)FLUID_DerefProcedure, "DerefProcedure", NULL, 0 },
    { 0, NULL, NULL, NULL, 0 }

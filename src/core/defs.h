@@ -327,21 +327,22 @@ class extMetaClass : public objMetaClass {
    public:
    using create = pf::Create<extMetaClass>;
    class extMetaClass *Base;            // Reference to the base class if this is a sub-class
-   std::vector<Field> prvDictionary;    // Field dictionary
-   std::vector<MethodArray> Methods;     // Original method array supplied by the module.
+   std::vector<Field> FieldLookup;      // Field dictionary for base-class fields
+   std::vector<MethodEntry> Methods;    // Original method array supplied by the module.
    const struct FieldArray *SubFields;  // Extra fields defined by the sub-class
    struct RootModule *Root;             // Root module that owns this class, if any.
    UBYTE Integral[8];                   // Integral object references (by field indexes), in order
    STRING Location;                     // Location of the class binary, this field exists purely for caching the location string if the client reads it
    ActionEntry ActionTable[AC_END];
    WORD OriginalFieldTotal;
+   UWORD BaseCeiling;                   // FieldLookup ceiling value for the base-class fields
 };
 
 class extFile : public objFile {
    public:
    using create = pf::Create<extFile>;
-   struct DateTime prvModified;  // [28 byte structure]
-   struct DateTime prvCreated;  // [28 byte structure]
+   struct DateTime prvModified;
+   struct DateTime prvCreated;
    LARGE Size;
    #ifdef _WIN32
       LONG  Stream;
